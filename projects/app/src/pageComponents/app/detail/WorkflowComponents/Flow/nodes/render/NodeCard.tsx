@@ -15,6 +15,7 @@ import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/system
 import {
   getToolRawId,
   isDebugToolSource,
+  mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
@@ -712,10 +713,7 @@ const NodeIntro = React.memo(function NodeIntro({
 }) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const placeholder =
-    flowNodeType === FlowNodeTypeEnum.toolSet
-      ? t('app:toolset_intro_placeholder')
-      : t('app:node_not_intro');
+  const [isIntroEditing, setIsIntroEditing] = useState(false);
 
   const handleSave = useCallback(
     (newVal: string) => {
@@ -740,7 +738,8 @@ const NodeIntro = React.memo(function NodeIntro({
         onSave={handleSave}
         type={'textarea'}
         maxLength={500}
-        placeholder={placeholder}
+        placeholder={t('app:node_not_intro')}
+        onEditingChange={setIsIntroEditing}
         fontSize={'sm'}
         lineHeight={'short'}
         color={'myGray.500'}
@@ -748,6 +747,19 @@ const NodeIntro = React.memo(function NodeIntro({
         py={'3px'}
         px={'6px'}
       />
+      {isIntroEditing && flowNodeType === FlowNodeTypeEnum.toolSet && (
+        <Flex
+          alignItems={'center'}
+          gap={'0.25rem'}
+          py={'0.25rem'}
+          px={0}
+          fontSize={'xs'}
+          color={'myGray.500'}
+        >
+          <MyIcon name={'common/info'} w={'14px'} />
+          {t('app:toolset_intro_tips')}
+        </Flex>
+      )}
     </Box>
   );
 });
@@ -821,7 +833,11 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
                 template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
               name: node.name,
               intro: node.intro,
-              avatar: node.avatar
+              avatar: node.avatar,
+              toolConfig: mergeToolSetChildDescriptions({
+                savedToolConfig: node.toolConfig,
+                templateToolConfig: template.toolConfig
+              })
             }
           });
         }

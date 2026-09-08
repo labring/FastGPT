@@ -9,6 +9,7 @@ export type InlineEditProps = BoxProps & {
   placeholder?: string;
   innerH?: BoxProps['h'];
   noOfLines?: number;
+  onEditingChange?: (isEditing: boolean) => void;
 
   // Custom display element
   renderDisplay?: (val: string) => React.ReactNode;
@@ -22,12 +23,21 @@ export const InlineEdit = React.memo(function InlineEdit({
   placeholder,
   innerH,
   noOfLines,
+  onEditingChange,
   renderDisplay,
   ...rest
 }: InlineEditProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [prevValue, setPrevValue] = useState(value);
   const [tempValue, setTempValue] = useState(value);
+
+  const updateEditingState = useCallback(
+    (isEditing: boolean) => {
+      setIsEditing(isEditing);
+      onEditingChange?.(isEditing);
+    },
+    [onEditingChange]
+  );
 
   // Sync state during render
   if (value !== prevValue) {
@@ -40,13 +50,13 @@ export const InlineEdit = React.memo(function InlineEdit({
     if (success === false) {
       setTempValue(value);
     }
-    setIsEditing(false);
-  }, [onSave, tempValue, value]);
+    updateEditingState(false);
+  }, [onSave, tempValue, updateEditingState, value]);
 
   const handleCancelEdit = useCallback(() => {
     setTempValue(value);
-    setIsEditing(false);
-  }, [value]);
+    updateEditingState(false);
+  }, [updateEditingState, value]);
 
   if (isEditing) {
     return (
@@ -159,7 +169,7 @@ export const InlineEdit = React.memo(function InlineEdit({
   return (
     <Box
       cursor={'pointer'}
-      onClick={() => setIsEditing(true)}
+      onClick={() => updateEditingState(true)}
       title={value}
       w={'100%'}
       minW={0}

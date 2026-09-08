@@ -1,7 +1,7 @@
 import { AppToolSourceEnum } from '../tool/constants';
 import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeTypeEnum } from '../../workflow/node/constant';
-import type { StoreNodeItemType } from '../../workflow/type/node';
+import type { NodeToolConfigType, StoreNodeItemType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from '../formEdit/type';
 
 /**
@@ -224,4 +224,86 @@ export const getToolNameCandidates = (toolName?: string) => {
   }
 
   return candidates;
+};
+
+/** 返回工具集子工具的有效描述；空白保存值继续使用工具定义默认值。 */
+export const getToolSetChildDescription = (
+  savedDescription?: string,
+  definitionDescription = ''
+) => (savedDescription?.trim() ? savedDescription : definitionDescription);
+
+/**
+ * 将当前节点保存的子工具描述合并到新模板配置。
+ *
+ * 系统工具集用 `toolId` 匹配，MCP/HTTP 工具集用 `name` 匹配；只保留非空描述，
+ * 以便新增工具和历史空值继续使用新模板的工具定义描述。
+ */
+export const mergeToolSetChildDescriptions = ({
+  savedToolConfig,
+  templateToolConfig
+}: {
+  savedToolConfig?: NodeToolConfigType;
+  templateToolConfig?: NodeToolConfigType;
+}) => {
+  if (!templateToolConfig) return templateToolConfig;
+
+  const mergeToolList = <T extends { description: string }>({
+    templateList,
+    savedList,
+    getKey
+  }: {
+    templateList: T[];
+    savedList: T[] | undefined;
+    getKey: (tool: T) => string;
+  }) => {
+    const savedDescriptionMap = new Map(savedList?.map((tool) => [getKey(tool), tool.description]));
+
+    return templateList.map((tool) => {
+      const description = getToolSetChildDescription(
+        savedDescriptionMap.get(getKey(tool)),
+        tool.description
+      );
+      return description === tool.description ? tool : { ...tool, description };
+    });
+  };
+
+  return {
+    ...templateToolConfig,
+    ...(templateToolConfig.systemToolSet
+      ? {
+          systemToolSet: {
+            ...templateToolConfig.systemToolSet,
+            toolList: mergeToolList({
+              templateList: templateToolConfig.systemToolSet.toolList,
+              savedList: savedToolConfig?.systemToolSet?.toolList,
+              getKey: (tool) => tool.toolId
+            })
+          }
+        }
+      : {}),
+    ...(templateToolConfig.mcpToolSet
+      ? {
+          mcpToolSet: {
+            ...templateToolConfig.mcpToolSet,
+            toolList: mergeToolList({
+              templateList: templateToolConfig.mcpToolSet.toolList,
+              savedList: savedToolConfig?.mcpToolSet?.toolList,
+              getKey: (tool) => tool.name
+            })
+          }
+        }
+      : {}),
+    ...(templateToolConfig.httpToolSet
+      ? {
+          httpToolSet: {
+            ...templateToolConfig.httpToolSet,
+            toolList: mergeToolList({
+              templateList: templateToolConfig.httpToolSet.toolList,
+              savedList: savedToolConfig?.httpToolSet?.toolList,
+              getKey: (tool) => tool.name
+            })
+          }
+        }
+      : {})
+  };
 };

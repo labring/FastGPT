@@ -21,6 +21,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   isSystemOrCommercialToolId,
+  mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -266,7 +267,10 @@ export async function rewriteAppWorkflowToDetail({
             node.intro = preview.intro;
           }
 
-          node.toolConfig = preview.toolConfig;
+          node.toolConfig = mergeToolSetChildDescriptions({
+            savedToolConfig: node.toolConfig,
+            templateToolConfig: preview.toolConfig
+          });
 
           // Latest version
           if (!node.version) {

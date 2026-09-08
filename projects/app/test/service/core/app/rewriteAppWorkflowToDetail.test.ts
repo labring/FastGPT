@@ -511,6 +511,62 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
   });
 });
 
+describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
+  it('保留工具集节点已编辑的子工具描述', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'systemTool-toolset',
+      pluginId: 'systemTool-toolset',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'Tool set',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: 'v2',
+      isLatestVersion: true,
+      toolConfig: {
+        systemToolSet: {
+          toolId: 'systemTool-toolset',
+          toolList: [
+            { toolId: 'search', name: 'Search', description: 'Definition description' },
+            { toolId: 'new', name: 'New', description: 'New definition description' }
+          ]
+        }
+      }
+    });
+    const nodes = [
+      {
+        nodeId: 'tool-set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        pluginId: 'systemTool-toolset',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          systemToolSet: {
+            toolId: 'systemTool-toolset',
+            toolList: [
+              { toolId: 'search', name: 'Search', description: 'Custom description' },
+              { toolId: 'removed', name: 'Removed', description: 'Removed description' }
+            ]
+          }
+        }
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].toolConfig?.systemToolSet?.toolList).toEqual([
+      { toolId: 'search', name: 'Search', description: 'Custom description' },
+      { toolId: 'new', name: 'New', description: 'New definition description' }
+    ]);
+  });
+});
+
 describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
   it('保留候选类型并由画布按工具上下文处理用户问题', async () => {
     const userQuestion = {

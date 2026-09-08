@@ -327,6 +327,27 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     expect(result[0].intro).toBe('Original Intro');
   });
 
+  it('should use the child definition description when the saved description is blank', async () => {
+    const toolSetNode = makeToolSetNode({
+      toolList: [{ toolId: 'child-1', name: 'Search', description: '  ' }]
+    });
+
+    mockToolDetail([
+      {
+        id: 'child-1',
+        name: 'Search',
+        description: 'Definition description'
+      }
+    ]);
+
+    const result = await getSystemToolRunTimeNodeFromSystemToolset({
+      toolSetNode,
+      lang: 'en'
+    });
+
+    expect(result[0].intro).toBe('Definition description');
+  });
+
   it('should pass systemInputConfig value to child tool inputs', async () => {
     const toolSetNode = makeToolSetNode({
       toolList: [{ toolId: 'child-1', name: 'Tool1', description: 'Desc1' }],

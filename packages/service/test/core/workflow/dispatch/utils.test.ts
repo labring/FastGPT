@@ -1055,6 +1055,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
+      intro: 'desc',
       toolConfig: {
         mcpTool: {
           toolId: 'mcp-mcp-app-1/tool1'
@@ -1209,9 +1210,67 @@ describe('rewriteRuntimeWorkFlow', () => {
         ])
       );
       expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
+      expect(nodes.find((n) => n.nodeId === 'ts40')?.intro).toBe('desc1');
+      expect(nodes.find((n) => n.nodeId === 'ts41')?.intro).toBe('desc2');
       expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
     }
   );
+
+  it('should prefer saved MCP and HTTP toolSet child descriptions', async () => {
+    const mcpToolSetNode = makeNode('mcpToolSet', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'mcp-app-1',
+      name: 'MCP ToolSet',
+      toolConfig: {
+        mcpToolSet: {
+          toolList: [{ name: 'search', description: 'Saved MCP description' }]
+        }
+      }
+    } as any);
+    const httpToolSetNode = makeNode('httpToolSet', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'http-app-1',
+      name: 'HTTP ToolSet',
+      toolConfig: {
+        httpToolSet: {
+          toolList: [{ name: 'search', description: 'Saved HTTP description' }]
+        }
+      }
+    } as any);
+    const nodes = [mcpToolSetNode, httpToolSetNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    mockMongoAppFindOne.mockImplementation(({ _id }: { _id: string }) => ({
+      lean: vi.fn().mockResolvedValue(
+        _id === 'mcp-app-1'
+          ? {
+              _id,
+              modules: [
+                { toolConfig: { mcpToolSet: { url: 'https://mcp.example.com', toolList: [] } } }
+              ]
+            }
+          : { _id }
+      )
+    }));
+    mockGetMCPChildren.mockResolvedValue([
+      { name: 'search', description: 'Default MCP description', inputSchema: {} }
+    ]);
+    mockGetHTTPToolList.mockResolvedValue([
+      {
+        name: 'search',
+        description: 'Default HTTP description',
+        path: '/search',
+        method: 'GET'
+      }
+    ]);
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(nodes.find((node) => node.nodeId === 'mcpToolSet0')?.intro).toBe(
+      'Saved MCP description'
+    );
+    expect(nodes.find((node) => node.nodeId === 'httpToolSet0')?.intro).toBe(
+      'Saved HTTP description'
+    );
+  });
 
   // Helper: route MongoApp.find responses by the toolsetId it queries, since
   // parseMcpTool and parseHttpTool may both hit MongoApp.find in parallel.

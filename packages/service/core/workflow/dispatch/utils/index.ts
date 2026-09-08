@@ -42,6 +42,7 @@ import {
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getToolSetChildDescription } from '@fastgpt/global/core/app/tool/utils';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -656,14 +657,24 @@ export const rewriteRuntimeWorkFlow = async ({
           if (!app) continue;
           const toolList = (await getMCPChildren(app)) as RuntimeMcpTool[];
 
+          const savedDescriptionMap = new Map(
+            (mcpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
+          );
           toolList.forEach((tool, index) => {
+            const runtimeTool = {
+              ...tool,
+              description: getToolSetChildDescription(
+                savedDescriptionMap.get(tool.name),
+                tool.description
+              )
+            };
             const newToolNode = initToolSetChildNode(
               getMCPToolRuntimeNode({
                 nodeId: `${toolSetNode.nodeId}${index}`,
                 toolSetId,
                 toolsetName: toolSetNode.name,
                 avatar: toolSetNode.avatar,
-                tool
+                tool: runtimeTool,
               })
             );
             nodes.push(newToolNode);
@@ -680,10 +691,20 @@ export const rewriteRuntimeWorkFlow = async ({
 
           const toolList = await getHTTPToolList(app);
 
+          const savedDescriptionMap = new Map(
+            (httpToolsetVal.toolList ?? []).map((tool) => [tool.name, tool.description])
+          );
           toolList.forEach((tool: HttpToolConfigType, index: number) => {
+            const runtimeTool = {
+              ...tool,
+              description: getToolSetChildDescription(
+                savedDescriptionMap.get(tool.name),
+                tool.description
+              )
+            };
             const newToolNode = initToolSetChildNode(
               getHTTPToolRuntimeNode({
-                tool,
+                tool: runtimeTool,
                 nodeId: `${toolSetNode.nodeId}${index}`,
                 avatar: toolSetNode.avatar,
                 toolSetId,
