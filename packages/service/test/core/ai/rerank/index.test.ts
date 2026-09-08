@@ -366,7 +366,7 @@ describe('reRankRecall', () => {
         query: 'q',
         documents: [{ id: 'doc1', text: 'hello' }]
       })
-    ).rejects.toThrow(ModelErrEnum.unExist);
+    ).rejects.toThrow(ModelErrEnum.unConfigured);
   });
 
   it('query 超过 maxToken 时 reject', async () => {

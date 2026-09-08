@@ -84,10 +84,12 @@ const OpenAPIAppQGConfigSchema = z.object({
 
 // 上线回填完成前，客户端仍可能携带旧 model；接口接收后由业务层按 modelId 优先解析。
 // 可选模型的 null 表示未填写；在请求边界归一化，存储结构仍只保存 string/undefined。
+// transform 外层保留 optional，确保推导出的对象字段仍可省略，而非必填的 string | undefined。
 const OptionalAppModelIdInputSchema = z
   .string()
-  .nullish()
-  .transform((value) => value ?? undefined);
+  .nullable()
+  .transform((value) => value ?? undefined)
+  .optional();
 export const AppQuestionGuideInputSchema = OpenAPIAppQGConfigSchema.extend({
   modelId: OptionalAppModelIdInputSchema.meta({
     description: '猜你想问模型 ID；开启但未填写时，发布使用默认 LLM'

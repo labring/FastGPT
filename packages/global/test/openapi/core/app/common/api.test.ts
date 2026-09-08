@@ -6,6 +6,7 @@ import {
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
+import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 
 const currentNode = {
@@ -125,6 +126,24 @@ describe('PublishAppBodySchema', () => {
 });
 
 describe('legacy chat model input schemas', () => {
+  it('keeps modelId optional in parsed configuration types', () => {
+    // 显式类型赋值让类型检查覆盖字段可省略性，运行时同时验证缺省字段不会被补出。
+    const questionGuide: z.infer<typeof AppQuestionGuideInputSchema> = { open: true };
+    const ttsConfig: z.infer<typeof AppTTSConfigInputSchema> = { type: 'model' };
+    expect(AppQuestionGuideInputSchema.parse(questionGuide)).toStrictEqual(questionGuide);
+    expect(AppTTSConfigInputSchema.parse(ttsConfig)).toStrictEqual(ttsConfig);
+  });
+
+  it.each([null, undefined])('normalizes empty modelId (%s) to undefined', (modelId) => {
+    expect(AppQuestionGuideInputSchema.parse({ open: true, modelId }).modelId).toBeUndefined();
+    expect(AppTTSConfigInputSchema.parse({ type: 'model', modelId }).modelId).toBeUndefined();
+  });
+
+  it.each([42, false, {}, []])('rejects invalid modelId (%j)', (modelId) => {
+    expect(AppQuestionGuideInputSchema.safeParse({ open: true, modelId }).success).toBe(false);
+    expect(AppTTSConfigInputSchema.safeParse({ type: 'model', modelId }).success).toBe(false);
+  });
+
   it('preserves deprecated model references for runtime compatibility', () => {
     expect(AppQuestionGuideInputSchema.parse({ open: true, model: 'legacy-llm' })).toMatchObject({
       model: 'legacy-llm'
