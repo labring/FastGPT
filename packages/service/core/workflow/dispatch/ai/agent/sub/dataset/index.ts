@@ -4,7 +4,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getEmbeddingModelData,
   getLLMModelData,
-  getOptionalVlmModelData,
   getRerankModelData
 } from '../../../../../../ai/model';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
@@ -14,6 +13,7 @@ import { formatModelChars2Points } from '../../../../../../../support/wallet/usa
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '../../../../../../dataset/schema';
+import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
@@ -227,10 +227,7 @@ export const dispatchAgentDatasetSearch = async ({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel
     });
-    const vlmModelData = getOptionalVlmModelData({
-      modelId: dataset?.vlmModelId,
-      model: dataset?.vlmModel
-    });
+    const vlmModelData = await getDatasetSearchVlmModel({ teamId, datasetIds });
     // Get Rerank Model
     const rerankModelData = datasetParams.usingReRank
       ? getRerankModelData({

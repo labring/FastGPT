@@ -18,6 +18,7 @@ export type MultipleSelectProps = {
   changeOnEverySelect?: boolean;
   ButtonProps?: ButtonProps;
   onOpenFunc?: () => void;
+  onCloseFunc?: () => void;
 };
 export type MultipleArraySelectProps = Omit<MultipleSelectProps, 'value'> & {
   value?: any[][];

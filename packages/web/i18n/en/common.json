@@ -907,6 +907,8 @@
   "model.type.tts": "TTS",
   "model_loading": "Model loading...",
   "model_loading_label": "Requesting models",
+  "model_forbidden": "No permission to use {{model}}",
+  "model_detail_load_failed": "Unable to load model. Please retry.",
   "model_catalog_load_failed": "The model catalog failed to load. Refresh the page and try again.",
   "model_not_exist": "Model does not exist",
   "invalid_value": "Invalid value",

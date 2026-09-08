@@ -13,8 +13,41 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/memberGroup/groupMemberSchema';
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { MongoOrgMemberModel } from '@fastgpt/service/support/permission/org/orgMemberSchema';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 
 describe('model permission cache', () => {
+  it('separates permission-filtered inactive display models from active execution cache', async () => {
+    const teamId = new Types.ObjectId().toString();
+    const tmbId = new Types.ObjectId().toString();
+    const activeId = new Types.ObjectId().toString();
+    const inactiveId = new Types.ObjectId().toString();
+    const hiddenId = new Types.ObjectId();
+    global.systemActiveModelList = [{ modelId: activeId }] as typeof global.systemActiveModelList;
+    global.systemModelList = [
+      { modelId: activeId },
+      { modelId: inactiveId },
+      { modelId: String(hiddenId) }
+    ] as typeof global.systemModelList;
+    await MongoResourcePermission.collection.insertOne({
+      teamId: new Types.ObjectId(teamId),
+      resourceType: PerResourceTypeEnum.model,
+      resourceId: hiddenId,
+      tmbId: new Types.ObjectId(),
+      permission: ReadPermissionVal
+    });
+    expect(await getMemberModelIds({ teamId, tmbId, isTeamOwner: false })).toEqual([activeId]);
+    const display = await getMemberModelCatalogPermission({
+      teamId,
+      tmbId,
+      isTeamOwner: false,
+      includeInactive: true
+    });
+    expect(display.modelIds).toEqual([activeId, inactiveId]);
+    expect(await getMemberModelIds({ teamId, tmbId, isTeamOwner: false })).toEqual([activeId]);
+  });
   beforeEach(async () => {
     await Promise.all([
       MongoTmpData.deleteMany({}),

@@ -162,6 +162,7 @@ export const MultipleRowSelect = ({
   onSelect,
   ButtonProps,
   onOpenFunc,
+  onCloseFunc,
   changeOnEverySelect = false,
   rowMinWidth = 'auto'
 }: MultipleSelectProps & {
@@ -169,7 +170,7 @@ export const MultipleRowSelect = ({
 }) => {
   const ButtonRef = useRef<HTMLButtonElement>(null);
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclosure({ onClose: onCloseFunc });
   const [cloneValue, setCloneValue] = useState(value);
 
   const MenuRef = useRef<(HTMLDivElement | null)[]>([]);

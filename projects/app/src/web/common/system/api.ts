@@ -5,6 +5,14 @@ import type {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { GET, POST } from '@/web/common/api/request';
 import type {
+  GetModelDetailsBody,
+  GetModelDetailsResponse
+} from '@fastgpt/global/openapi/core/ai/model/detail';
+
+/** 批量详情接口；选择器调用时只提交当前一个模型 ID。 */
+export const getUserModelDetails = (body: GetModelDetailsBody) =>
+  POST<GetModelDetailsResponse>('/core/ai/model/detail', body);
+import type {
   CollaboratorListType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';

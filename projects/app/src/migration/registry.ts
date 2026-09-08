@@ -16,6 +16,7 @@ import { backfillResourceCreateTime } from './tasks/4170/20260903_backfill_resou
 import { backfillBillMetadata } from './tasks/4170/20260905_backfill_bill_metadata';
 import { backfillResourceOwnerAcl } from './tasks/4170/20260905_backfill_resource_owner_acl';
 import { cleanupTeamMemberRoles } from './tasks/4170/20260907_cleanup_team_member_roles';
+import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legacy_invited_members';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -309,6 +310,32 @@ export const systemMigrations = [
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillResourceOwnerAcl
+  },
+  {
+    id: '20260908_cleanup_legacy_invited_members',
+    version: '4.17.0',
+    nameKey: i18nT('system_migration:migrations.20260908_cleanup_legacy_invited_members.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260908_cleanup_legacy_invited_members.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260908_cleanup_legacy_invited_members.result'),
+    progressSteps: [
+      {
+        key: 'cleanup',
+        labelKey: i18nT(
+          'system_migration:migrations.20260908_cleanup_legacy_invited_members.cleanup'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20260908_cleanup_legacy_invited_members.validation'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: cleanupLegacyInvitedMembers
   }
 ] as const satisfies readonly SystemMigration[];
 

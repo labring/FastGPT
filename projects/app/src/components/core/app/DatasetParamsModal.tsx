@@ -32,6 +32,7 @@ import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { resolveClientModelReferenceId } from '@/web/core/ai/model/modelReference';
+import { resolveQueryExtensionModelId } from './DatasetParamsModal.utils';
 
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -62,7 +63,7 @@ const DatasetParamsModal = ({
 }) => {
   const { t } = useTranslation();
   const { defaultModels } = useUserModelStore();
-  const { reRankModelList, llmModelList } = useUserModelLists();
+  const { reRankModelList, llmModelList } = useUserModelLists({ enabled: false });
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
@@ -101,17 +102,13 @@ const DatasetParamsModal = ({
         limit,
         similarity,
         datasetSearchUsingExtensionQuery,
-        datasetSearchExtensionModelId:
-          resolveClientModelReferenceId({
-            models: llmModelList,
-            reference: {
-              modelId: datasetSearchExtensionModelId,
-              model: datasetSearchExtensionModel
-            }
-          }) ??
-          (datasetSearchExtensionModelId === undefined && !datasetSearchExtensionModel
-            ? defaultModels.llm?.modelId
-            : undefined),
+        datasetSearchExtensionModelId: resolveQueryExtensionModelId({
+          enabled: datasetSearchUsingExtensionQuery,
+          modelId: datasetSearchExtensionModelId,
+          legacyModel: datasetSearchExtensionModel,
+          models: llmModelList,
+          defaultModelId: defaultModels.llm?.modelId
+        }),
         datasetSearchExtensionBg
       }
     });
@@ -135,21 +132,7 @@ const DatasetParamsModal = ({
       const legacyModel = reRankModelList.find((item) => item.model === rerankModel);
       if (legacyModel?.modelId) setValue('rerankModelId', legacyModel.modelId);
     }
-    if (queryExtensionModelId === undefined && datasetSearchExtensionModel) {
-      const legacyModel = llmModelList.find((item) => item.model === datasetSearchExtensionModel);
-      if (legacyModel?.modelId) {
-        setValue('datasetSearchExtensionModelId', legacyModel.modelId);
-      }
-    }
-  }, [
-    datasetSearchExtensionModel,
-    llmModelList,
-    queryExtensionModelId,
-    reRankModelIdWatch,
-    reRankModelList,
-    rerankModel,
-    setValue
-  ]);
+  }, [reRankModelIdWatch, reRankModelList, rerankModel, setValue]);
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
@@ -163,15 +146,19 @@ const DatasetParamsModal = ({
   }, [reRankModelList.length, usingReRank]);
 
   useEffect(() => {
-    if (datasetSearchUsingCfrForm) {
-      if (queryExtensionModelId === undefined) {
-        setValue('datasetSearchExtensionModelId', defaultModels.llm?.modelId);
-      }
-    } else {
-      setValue('datasetSearchExtensionModelId', undefined);
+    const modelId = resolveQueryExtensionModelId({
+      enabled: datasetSearchUsingCfrForm,
+      modelId: queryExtensionModelId,
+      legacyModel: datasetSearchExtensionModel,
+      models: llmModelList,
+      defaultModelId: defaultModels.llm?.modelId
+    });
+    if (modelId !== queryExtensionModelId) {
+      setValue('datasetSearchExtensionModelId', modelId);
     }
   }, [
-    queryExtensionModelList,
+    llmModelList,
+    datasetSearchExtensionModel,
     datasetSearchUsingCfrForm,
     defaultModels.llm?.modelId,
     queryExtensionModelId,
@@ -461,8 +448,8 @@ const DatasetParamsModal = ({
           {t('common:Close')}
         </Button>
         <Button
+          isDisabled={!!datasetSearchUsingCfrForm && !queryExtensionModelId}
           onClick={() => {
-            onClose();
             handleSubmit((values) => {
               // 兼容读取旧字符串字段，但新的表单提交只保留稳定 modelId。
               const {
@@ -471,6 +458,7 @@ const DatasetParamsModal = ({
                 ...canonicalValues
               } = values;
               onSuccess(canonicalValues);
+              onClose();
             })();
           }}
         >

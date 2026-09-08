@@ -9,7 +9,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import MultimodalTag from '@/components/core/ai/MultimodelTag';
 import {
@@ -19,6 +19,8 @@ import {
   resolveModelSelectorProviders,
   resolveModelSelectorSelection
 } from './AIModelSelector.utils';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { ModelStatusLabel } from './ModelStatusLabel';
 import { useUserModelLists } from '@/web/core/ai/model/useUserModelLists';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -28,8 +30,7 @@ type Props = Omit<SelectProps, 'list'> & {
   /** 迁移期限制模型范围；候选模型仍来自当前成员完整目录。 */
   list?: SelectProps['list'];
   /**
-   * 详情接口已解析的当前模型。当它因停用而不在可选目录中时，仅用于展示
-   * 模型名称和停用状态，不将其重新加入候选项。
+   * 兼容现有调用方；当前状态统一由展示详情接口提供，避免绕过成员权限判断。
    */
   resolvedCurrentModel?: MyModelItemType;
   disableTip?: string;
@@ -99,11 +100,11 @@ const ModelLabel = ({
   );
 };
 
-/** 通过统一 loader 校验完整目录，再使用 useUserModelStore 本地筛选和选择模型。 */
+/** 收起时仅查询当前模型详情；展开时校验候选目录，显示和选择都不使用隐式默认值。 */
 const AIModelSelector = ({
   modelType,
   list: restrictedList,
-  resolvedCurrentModel,
+  resolvedCurrentModel: _resolvedCurrentModel,
   onChange,
   disableTip,
   noOfLines,
@@ -115,7 +116,12 @@ const AIModelSelector = ({
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
-  const { modelList, loading } = useUserModelLists({ outLinkAuthData });
+  const [isOpen, setIsOpen] = useState(false);
+  const {
+    modelList,
+    loading,
+    error: catalogError
+  } = useUserModelLists({ outLinkAuthData, enabled: isOpen });
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
   const getModelProviders = useUserModelStore((state) => state.getModelProviders);
   const defaultModelId = useUserModelStore((state) => state.defaultModelIds[modelType]);
@@ -146,15 +152,13 @@ const AIModelSelector = ({
     [currentValue, models]
   );
   const selectedModel = selection?.model;
-  const unavailableModel =
-    resolvedCurrentModel?.modelId === currentValue ? resolvedCurrentModel : undefined;
-  const legacySelectedItem = restrictedList?.find((item) => String(item.value) === currentValue);
+  const detailState = useModelDetail({ modelId: currentValue, outLinkAuthData });
   const normalizedSelectionRef = useRef<string>();
   const autoSelectedDefaultRef = useRef<string>();
 
   // 完整目录加载后自动把旧 model 值写回 modelId，选择器对外只输出稳定 ID。
   useEffect(() => {
-    if (loading || !selection?.shouldNormalize) {
+    if (!isOpen || loading || catalogError || !selection?.shouldNormalize) {
       normalizedSelectionRef.current = undefined;
       return;
     }
@@ -163,7 +167,7 @@ const AIModelSelector = ({
     if (normalizedSelectionRef.current === normalizationKey) return;
     normalizedSelectionRef.current = normalizationKey;
     onChange?.(selection.normalizedValue);
-  }, [currentValue, loading, onChange, selection]);
+  }, [catalogError, currentValue, isOpen, loading, onChange, selection]);
 
   const defaultModel = useMemo(
     () => resolveModelSelectorDefault({ models, defaultModelId }),
@@ -172,13 +176,23 @@ const AIModelSelector = ({
 
   // 仅为明确启用该能力的业务表单补齐空值；历史失效值必须保留并显示不可用状态。
   useEffect(() => {
-    if (!autoSelectDefault || loading || currentValue || !defaultModel) return;
+    if (!isOpen || !autoSelectDefault || loading || catalogError || currentValue || !defaultModel)
+      return;
 
     const defaultKey = `${modelType}:${defaultModel.modelId}`;
     if (autoSelectedDefaultRef.current === defaultKey) return;
     autoSelectedDefaultRef.current = defaultKey;
     onChange?.(defaultModel.modelId);
-  }, [autoSelectDefault, currentValue, defaultModel, loading, modelType, onChange]);
+  }, [
+    autoSelectDefault,
+    catalogError,
+    currentValue,
+    defaultModel,
+    isOpen,
+    loading,
+    modelType,
+    onChange
+  ]);
 
   const providerIds = resolveModelSelectorProviders({
     models,
@@ -215,41 +229,31 @@ const AIModelSelector = ({
       children: []
     });
 
-  const invalidValue = !!currentValue && !selectedModel && !unavailableModel && !loading;
-  const selectedLabel =
-    canBeUnset && currentValue === UNSET_MODEL_VALUE ? (
-      <>{unsetLabel ?? t('common:not_model_config')}</>
-    ) : selectedModel ? (
-      <ModelLabel
-        model={selectedModel}
-        avatarSize={avatarSize}
-        noOfLines={noOfLines}
-        showTags={false}
-      />
-    ) : unavailableModel ? (
-      <MyTooltip
-        label={t('common:model_disabled', { model: unavailableModel.name })}
-        showOnlyWhenOverflow
-        shouldWrapChildren={false}
-      >
-        <Box data-preserve-width w={'100%'} color={'red.500'} noOfLines={noOfLines ?? 1}>
-          {t('common:model_disabled', { model: unavailableModel.name })}
-        </Box>
-      </MyTooltip>
-    ) : invalidValue ? (
-      <MyTooltip label={t('common:model_delisted')} showOnlyWhenOverflow shouldWrapChildren={false}>
-        <Box data-preserve-width w={'100%'} color={'red.500'} noOfLines={noOfLines ?? 1}>
-          {t('common:model_delisted')}
-        </Box>
-      </MyTooltip>
-    ) : legacySelectedItem ? (
-      <>{legacySelectedItem.label}</>
-    ) : undefined;
-
   const selector = (
     <MultipleRowSelect
-      label={loading ? <>{t('common:model_loading_label')}</> : selectedLabel}
-      list={selectorList}
+      label={
+        <ModelStatusLabel
+          modelId={currentValue}
+          detail={detailState.detail}
+          loading={detailState.loading}
+          error={detailState.error}
+          emptyLabel={canBeUnset ? unsetLabel : placeholder}
+          avatarSize={avatarSize}
+        />
+      }
+      list={loading || catalogError ? [] : selectorList}
+      emptyTip={
+        loading
+          ? t('common:model_loading_label')
+          : catalogError
+            ? t('common:model_detail_load_failed')
+            : undefined
+      }
+      onOpenFunc={() => {
+        setIsOpen(true);
+        detailState.refresh();
+      }}
+      onCloseFunc={() => setIsOpen(false)}
       value={
         selectedModel
           ? grouped
@@ -274,6 +278,8 @@ const AIModelSelector = ({
       }}
       ButtonProps={{
         ...props,
+        isLoading: isOpen && loading,
+        loadingText: t('common:model_loading_label'),
         isDisabled: resolveModelSelectorDisabled({
           isDisabled: props.isDisabled,
           loading,

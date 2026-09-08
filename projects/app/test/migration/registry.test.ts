@@ -31,7 +31,8 @@ describe('validateSystemMigrationRegistry', () => {
       '20260903_backfill_app_model_references',
       '20260903_backfill_resource_create_time',
       '20260905_backfill_bill_metadata',
-      '20260905_backfill_resource_owner_acl'
+      '20260905_backfill_resource_owner_acl',
+      '20260908_cleanup_legacy_invited_members'
     ]);
     expect(systemMigrations.slice(2).every((migration) => !migration.blockStartup)).toBe(true);
     expect(

@@ -22,7 +22,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
-import { getDatasetEmbeddingModel, getDatasetVlmModel } from '@fastgpt/service/core/dataset/model';
+import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
+import { findFirstDatasetSearchVlmModel } from '@fastgpt/service/core/dataset/search/vlm';
 
 export async function handler(
   req: ApiRequestProps<SearchDatasetTestBody>,
@@ -102,7 +103,7 @@ export async function handler(
     ? getLLMModelData({ modelId: datasetDeepSearchModelId, model: datasetDeepSearchModel })
     : undefined;
   const embeddingModelData = getDatasetEmbeddingModel(dataset);
-  const vlmModelData = getDatasetVlmModel(dataset);
+  const vlmModelData = findFirstDatasetSearchVlmModel([dataset]);
 
   const searchData = {
     histories: [],

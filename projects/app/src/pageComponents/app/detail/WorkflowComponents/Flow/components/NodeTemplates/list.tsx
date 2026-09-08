@@ -47,6 +47,7 @@ import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/
 import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/workflowStartAutoFill';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -378,6 +379,7 @@ const NodeTemplateList = ({
             : preparedInputs;
 
         const newNode = nodeTemplate2FlowNode({
+          defaultModelIds: useUserModelStore.getState().defaultModelIds,
           template: {
             ...templateNode,
             name: computedNewNodeName({

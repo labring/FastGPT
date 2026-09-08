@@ -1,4 +1,9 @@
 {
+  "migrations.20260908_cleanup_legacy_invited_members.name": "Clean up legacy invited members",
+  "migrations.20260908_cleanup_legacy_invited_members.description": "Removes historical waiting/reject members and their permission, group, and department memberships. Protected owners are retained for review.",
+  "migrations.20260908_cleanup_legacy_invited_members.cleanup": "Cleaning up legacy invitations",
+  "migrations.20260908_cleanup_legacy_invited_members.validation": "Validating cleanup",
+  "migrations.20260908_cleanup_legacy_invited_members.result": "Removed {{members}} members, {{permissions}} permissions, {{groups}} group memberships, and {{orgs}} department memberships.",
   "migrations.20260907_cleanup_team_member_roles.name": "Clean up legacy team member roles",
   "migrations.20260907_cleanup_team_member_roles.description": "Remove deprecated non-owner role fields while preserving owners and existing permissions.",
   "migrations.20260907_cleanup_team_member_roles.result": "Checked {{scannedCount}} member records; {{remaining}} invalid roles remain.",

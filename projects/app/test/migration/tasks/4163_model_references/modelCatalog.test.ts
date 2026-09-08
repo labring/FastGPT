@@ -114,4 +114,176 @@ describe('loadModelCatalog', () => {
     });
     await expect(loadModelCatalog()).rejects.toThrow('database unavailable');
   });
+
+  it.each([false, true])(
+    'prefers the dataset slot default and falls back by ID when it is unavailable (vision=%s)',
+    async (vision) => {
+      const ids = Array.from({ length: 5 }, () => new Types.ObjectId());
+      await MongoAIModel.collection.insertMany([
+        {
+          _id: ids[0],
+          scope: 'system',
+          model: 'first',
+          type: 'llm',
+          isActive: true,
+          config: { vision: true }
+        },
+        {
+          _id: ids[1],
+          scope: 'system',
+          model: 'text-only',
+          type: 'llm',
+          isActive: true,
+          config: {}
+        },
+        {
+          _id: ids[2],
+          scope: 'system',
+          model: 'disabled',
+          type: 'llm',
+          isActive: false,
+          config: { vision: true }
+        },
+        {
+          _id: ids[3],
+          scope: 'system',
+          model: 'wrong-type',
+          type: 'embedding',
+          isActive: true,
+          config: {}
+        },
+        {
+          _id: ids[4],
+          scope: 'system',
+          model: 'preferred',
+          type: 'llm',
+          isActive: true,
+          config: { vision: true }
+        }
+      ]);
+      const slot = vision ? 'datasetImageLLM' : 'datasetTextLLM';
+      for (const defaultId of [
+        String(ids[4]),
+        undefined,
+        'missing-id',
+        String(ids[2]),
+        String(ids[3]),
+        String(ids[1])
+      ]) {
+        await MongoAIDefaultModel.collection.updateOne(
+          { scope: 'system' },
+          {
+            $set: {
+              defaultModelIds: { llm: String(ids[4]), ...(defaultId ? { [slot]: defaultId } : {}) }
+            }
+          },
+          { upsert: true }
+        );
+        const catalog = await loadModelCatalog();
+        const expectedId =
+          defaultId === String(ids[4]) || (!vision && defaultId === String(ids[1]))
+            ? defaultId
+            : String(ids[0]);
+        expect(
+          catalog.resolveDatasetUnderstandingModelId({
+            legacyModel: 'deleted',
+            modelId: undefined,
+            vision
+          })
+        ).toBe(expectedId);
+        // 默认模型不能覆盖能精确恢复的原引用，也不能给未配置字段新增 ID。
+        expect(
+          catalog.resolveDatasetUnderstandingModelId({
+            legacyModel: 'first',
+            modelId: undefined,
+            vision
+          })
+        ).toBe(String(ids[0]));
+        expect(
+          catalog.resolveDatasetUnderstandingModelId({
+            legacyModel: 'deleted',
+            modelId: ids[0],
+            vision
+          })
+        ).toBe(String(ids[0]));
+        expect(
+          catalog.resolveDatasetUnderstandingModelId({
+            legacyModel: undefined,
+            modelId: undefined,
+            vision
+          })
+        ).toBeUndefined();
+      }
+    }
+  );
+
+  it('falls back only configured dataset understanding models to the first active compatible model', async () => {
+    const ids = Array.from({ length: 4 }, () => new Types.ObjectId());
+    await MongoAIModel.collection.insertMany([
+      {
+        _id: ids[0],
+        scope: 'system',
+        model: 'disabled',
+        type: 'llm',
+        isActive: false,
+        config: { vision: true }
+      },
+      { _id: ids[1], scope: 'system', model: 'text', type: 'llm', isActive: true, config: {} },
+      {
+        _id: ids[2],
+        scope: 'system',
+        model: 'vision',
+        type: 'llm',
+        isActive: true,
+        config: { vision: true }
+      },
+      {
+        _id: ids[3],
+        scope: 'system',
+        model: 'embedding',
+        type: 'embedding',
+        isActive: true,
+        config: {}
+      }
+    ]);
+    const catalog = await loadModelCatalog();
+    const resolve = catalog.resolveDatasetUnderstandingModelId;
+    expect(resolve({ legacyModel: 'deleted', modelId: undefined, vision: false })).toBe(
+      String(ids[1])
+    );
+    expect(resolve({ legacyModel: 'deleted', modelId: undefined, vision: true })).toBe(
+      String(ids[2])
+    );
+    expect(resolve({ legacyModel: 'text', modelId: ids[2], vision: false })).toBe(String(ids[2]));
+    expect(resolve({ legacyModel: 'disabled', modelId: undefined, vision: true })).toBe(
+      String(ids[0])
+    );
+    expect(resolve({ legacyModel: 'deleted', modelId: ids[0], vision: true })).toBe(String(ids[0]));
+    expect(resolve({ legacyModel: 'vision', modelId: 'missing', vision: true })).toBe(
+      String(ids[2])
+    );
+    expect(resolve({ legacyModel: 'text', modelId: ids[3], vision: true })).toBe(String(ids[2]));
+    for (const legacyModel of [undefined, null, '', '  ', 123]) {
+      expect(resolve({ legacyModel, modelId: undefined, vision: true })).toBeUndefined();
+      expect(resolve({ legacyModel, modelId: ids[2], vision: true })).toBeUndefined();
+    }
+    await MongoAIModel.deleteMany({ isActive: true });
+    const noActive = await loadModelCatalog();
+    expect(
+      noActive.resolveDatasetUnderstandingModelId({
+        legacyModel: 'deleted',
+        modelId: undefined,
+        vision: true
+      })
+    ).toBeUndefined();
+    await MongoAIModel.deleteMany({});
+    const empty = await loadModelCatalog();
+    expect(
+      empty.resolveDatasetUnderstandingModelId({
+        legacyModel: 'deleted',
+        modelId: undefined,
+        vision: false
+      })
+    ).toBeUndefined();
+  });
 });

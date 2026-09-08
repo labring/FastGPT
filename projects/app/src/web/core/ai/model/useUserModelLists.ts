@@ -48,21 +48,35 @@ export const useUserModelLists = ({
   const requestKey = validOutLinkAuthData
     ? `${expectedIdentity}:${validOutLinkAuthData.outLinkUid}`
     : expectedIdentity;
-  const [validatedRequestKey, setValidatedRequestKey] = useState<string>();
+  const activeRequestKey = enabled ? requestKey : undefined;
+  const [requestState, setRequestState] = useState<{
+    key?: string;
+    validatedRequestKey?: string;
+    error: boolean;
+  }>({ key: activeRequestKey, error: false });
+  // 每次重新展开都是一次新的校验；同步派生 loading，避免先展示上次目录再切换加载态。
+  if (requestState.key !== activeRequestKey) {
+    setRequestState({ key: activeRequestKey, error: false });
+  }
 
   useEffect(() => {
     if (!enabled || !requestKey) return;
+    let active = true;
+    let error = false;
 
     // 每个消费者都会校验目录；同时发起时由 Store 复用相同身份的 in-flight Promise。
     const request = validOutLinkAuthData
-      ? loadModelCatalog({ outLinkAuthData: validOutLinkAuthData }).catch(() => {})
+      ? loadModelCatalog({ outLinkAuthData: validOutLinkAuthData })
       : teamId && tmbId
-        ? loadModelCatalog({ teamId, tmbId }).catch(() => {})
+        ? loadModelCatalog({ teamId, tmbId })
         : Promise.resolve();
-    let active = true;
-    request.finally(() => {
-      if (active) setValidatedRequestKey(requestKey);
-    });
+    request
+      .catch(() => {
+        error = true;
+      })
+      .finally(() => {
+        if (active) setRequestState({ key: requestKey, validatedRequestKey: requestKey, error });
+      });
 
     return () => {
       active = false;
@@ -95,10 +109,11 @@ export const useUserModelLists = ({
         expectedIdentity,
         isCurrentIdentity,
         requestKey,
-        validatedRequestKey
+        validatedRequestKey: requestState.validatedRequestKey
       }),
       loaded: isCurrentIdentity && loaded,
       modelList: visibleModelList,
+      error: enabled && requestState.error,
       llmModelList,
       embeddingModelList,
       ttsModelList,
@@ -106,13 +121,5 @@ export const useUserModelLists = ({
       reRankModelList,
       vlmModelList: llmModelList.filter((model) => !!model.config.vision)
     };
-  }, [
-    enabled,
-    expectedIdentity,
-    isCurrentIdentity,
-    loaded,
-    modelList,
-    requestKey,
-    validatedRequestKey
-  ]);
+  }, [enabled, expectedIdentity, isCurrentIdentity, loaded, modelList, requestState, requestKey]);
 };

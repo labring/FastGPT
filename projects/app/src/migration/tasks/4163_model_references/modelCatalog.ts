@@ -1,4 +1,4 @@
-import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { findSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
@@ -38,6 +38,36 @@ export const loadModelCatalog = async () => {
     (!requirement.vision || ('vision' in model.config && model.config.vision === true));
 
   return {
+    /**
+     * 知识库理解模型：旧名称为空时不补 ID；有效 ID、精确旧名称依次优先。
+     * 引用失效时优先使用对应知识库槽位的启用默认模型，再按 _id 升序回退；图片理解要求视觉能力。
+     * 原模型仅停用时保留原选择；目录为空或无同类型候选时不生成 ID。
+     */
+    resolveDatasetUnderstandingModelId: ({
+      legacyModel,
+      modelId,
+      vision
+    }: {
+      legacyModel: unknown;
+      modelId: unknown;
+      vision: boolean;
+    }): string | undefined => {
+      if (typeof legacyModel !== 'string' || !legacyModel.trim()) return;
+      const requirement = { type: ModelTypeEnum.llm, vision };
+      const current = modelById.get(String(modelId ?? ''));
+      if (current && matchesRequirement(current, requirement)) return String(current._id);
+      const named = modelByName.get(legacyModel);
+      if (named && matchesRequirement(named, requirement)) return String(named._id);
+      const defaultId = defaultModelIds[vision ? 'datasetImageLLM' : 'datasetTextLLM'];
+      const defaultModel = defaultId ? modelById.get(defaultId) : undefined;
+      if (defaultModel?.isActive && matchesRequirement(defaultModel, requirement)) {
+        return String(defaultModel._id);
+      }
+      const fallback = models.find(
+        (model) => model.isActive && matchesRequirement(model, requirement)
+      );
+      return fallback ? String(fallback._id) : undefined;
+    },
     // 权限清理必须先证明目录可用，不能把空目录中的全部 ACL 判断为悬空权限。
     assertAvailable,
     resolveModelIdByName: (modelName: string | undefined): string | undefined => {

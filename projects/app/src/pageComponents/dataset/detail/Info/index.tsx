@@ -39,7 +39,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
-  const { llmModelList, embeddingModelList, vlmModelList: vllmModelList } = useUserModelLists();
+  const {
+    llmModelList,
+    embeddingModelList,
+    vlmModelList: vllmModelList
+  } = useUserModelLists({ enabled: false });
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();

@@ -907,6 +907,8 @@
   "model.type.tts": "语音合成",
   "model_loading": "模型加载中...",
   "model_loading_label": "模型请求中",
+  "model_forbidden": "无权使用 {{model}}",
+  "model_detail_load_failed": "模型加载失败，请重试",
   "model_catalog_load_failed": "模型目录加载失败，请刷新页面后重试。",
   "model_not_exist": "模型不存在",
   "invalid_value": "无效值",

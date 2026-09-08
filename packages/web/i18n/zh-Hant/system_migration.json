@@ -1,4 +1,9 @@
 {
+  "migrations.20260908_cleanup_legacy_invited_members.name": "清理歷史邀請成員",
+  "migrations.20260908_cleanup_legacy_invited_members.description": "清理 waiting/reject 歷史成員及其權限、成員組和部門關係；受保護的擁有者保留並回報待處理。",
+  "migrations.20260908_cleanup_legacy_invited_members.cleanup": "清理歷史邀請及關聯記錄",
+  "migrations.20260908_cleanup_legacy_invited_members.validation": "驗證清理結果",
+  "migrations.20260908_cleanup_legacy_invited_members.result": "已清理 {{members}} 個成員、{{permissions}} 條權限、{{groups}} 條成員組關係、{{orgs}} 條部門關係。",
   "migrations.20260907_cleanup_team_member_roles.name": "清理歷史團隊成員角色",
   "migrations.20260907_cleanup_team_member_roles.description": "移除非 owner 的廢棄角色欄位，保留擁有者標識及現有權限。",
   "migrations.20260907_cleanup_team_member_roles.result": "已檢查 {{scannedCount}} 筆成員記錄，剩餘非法角色 {{remaining}} 筆。",

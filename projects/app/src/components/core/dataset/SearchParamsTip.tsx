@@ -5,9 +5,10 @@ import {
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import React, { useMemo } from 'react';
+import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
+import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 
 const SearchParamsTip = ({
   searchMode,
@@ -27,16 +28,14 @@ const SearchParamsTip = ({
   queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList, llmModelList } = useUserModelLists();
+  const { reRankModelList } = useUserModelLists({ enabled: false });
+  const detailState = useModelDetail({
+    modelId: usingExtensionQuery ? queryExtensionModel : undefined
+  });
 
-  const hasReRankModel = reRankModelList.length > 0;
+  const hasReRankModel = reRankModelList.length > 0 || usingReRank;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
-
-  const extensionModelName = useMemo(
-    () => (usingExtensionQuery ? getWebLLMModel(queryExtensionModel, llmModelList)?.name : ''),
-    [llmModelList, queryExtensionModel, usingExtensionQuery]
-  );
 
   return (
     <TableContainer
@@ -103,7 +102,16 @@ const SearchParamsTip = ({
               </Td>
             )}
             <Td pt={0} pb={2} fontSize={'mini'}>
-              {extensionModelName || '❌'}
+              {usingExtensionQuery ? (
+                <ModelStatusLabel
+                  modelId={queryExtensionModel}
+                  detail={detailState.detail}
+                  loading={detailState.loading}
+                  error={detailState.error}
+                />
+              ) : (
+                '❌'
+              )}
             </Td>
             {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}
           </Tr>

@@ -49,6 +49,17 @@ const catalogData = {
 };
 
 describe('useUserModelStore catalog cache', () => {
+  it('stores only candidates and clears them with the identity', async () => {
+    mocks.getUserModelCatalog.mockResolvedValueOnce({
+      version: 'inactive-v1',
+      data: catalogData
+    });
+    await useUserModelStore.getState().loadModelCatalog({ teamId: 'team', tmbId: 'member' });
+    expect(useUserModelStore.getState().modelList).toEqual(catalogData.models);
+    expect(useUserModelStore.getState().modelMap['inactive-id']).toBeUndefined();
+    useUserModelStore.getState().clearMemory();
+    expect(useUserModelStore.getState().modelList).toEqual([]);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     const storage = createStorage();

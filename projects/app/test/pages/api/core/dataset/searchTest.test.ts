@@ -40,6 +40,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
   getRerankModelData: mockGetRerankModelData,
   getEmbeddingModelData: mockGetEmbeddingModelData,
   getLLMModelData: mockGetLLMModelData,
+  findModelData: mockGetOptionalVlmModelData,
   getOptionalVlmModelData: mockGetOptionalVlmModelData
 }));
 
@@ -95,6 +96,7 @@ describe('searchTest query image auth', () => {
       modelId: '68ad85a7463006c963799a02',
       model: 'mock-vlm-model',
       name: 'Mock VLM model',
+      isActive: true,
       type: 'llm',
       config: { vision: true }
     });
@@ -127,6 +129,14 @@ describe('searchTest query image auth', () => {
     mockCreateExternalUrl.mockResolvedValue({
       url: 'https://file.fastgpt.io/temp/team-1/search-image.png?token=mock'
     });
+  });
+
+  it('continues search without a VLM when the configured model has been deleted', async () => {
+    mockGetOptionalVlmModelData.mockReturnValue(undefined);
+    await handler({ body: { datasetId, text: 'question', queryImageUrls: [] } } as any, {} as any);
+    expect(mockDefaultSearchDatasetData).toHaveBeenCalledWith(
+      expect.objectContaining({ vlmModel: undefined })
+    );
   });
 
   it('should convert current-team temp image keys to external urls before dataset search', async () => {

@@ -1,17 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
-import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
+import { getDatasetSearchParamInputs, getDatasetSearchParams } from './SelectDatasetParams.utils';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
@@ -20,35 +17,9 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     (v) => v.llmMaxQuoteContext
   );
   const { t } = useTranslation();
-  const { defaultModels } = useUserModelStore();
-
-  const [data, setData] = useState<AppDatasetSearchParamsType>({
-    searchMode: DatasetSearchModeEnum.embedding,
-    embeddingWeight: 0.5,
-    limit: 3000,
-    similarity: 0.5,
-    usingReRank: true,
-    rerankModelId: defaultModels.rerank?.modelId,
-    rerankWeight: 0.6,
-    datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModelId: defaultModels.llm?.modelId,
-    datasetSearchExtensionBg: ''
-  });
+  const data = useMemo(() => getDatasetSearchParams(inputs), [inputs]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-
-  useEffect(() => {
-    inputs.forEach((input) => {
-      // @ts-ignore
-      if (data[input.key] !== undefined) {
-        setData((state) => ({
-          ...state,
-          // @ts-ignore
-          [input.key]: input.value ?? state[input.key]
-        }));
-      }
-    });
-  }, [inputs]);
 
   return (
     <>
@@ -72,11 +43,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
         limit={data.limit}
         usingReRank={data.usingReRank}
         usingExtensionQuery={data.datasetSearchUsingExtensionQuery}
-        queryExtensionModel={
-          data.datasetSearchExtensionModelId !== undefined
-            ? data.datasetSearchExtensionModelId
-            : data.datasetSearchExtensionModel
-        }
+        queryExtensionModel={data.datasetSearchExtensionModelId}
       />
 
       {isOpen && (
@@ -85,20 +52,12 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           maxTokens={llmMaxQuoteContext}
           onClose={onClose}
           onSuccess={(e) => {
-            setData(e);
-            for (const key in e) {
-              const item = inputs.find((input) => input.key === key);
-              if (!item) continue;
-              onChangeNode({
-                nodeId,
-                type: 'updateInput',
-                key,
-                value: {
-                  ...item,
-                  //@ts-ignore
-                  value: e[key]
-                }
-              });
+            for (const input of getDatasetSearchParamInputs({ inputs, values: e })) {
+              if (inputs.some((item) => item.key === input.key)) {
+                onChangeNode({ nodeId, type: 'updateInput', key: input.key, value: input });
+              } else {
+                onChangeNode({ nodeId, type: 'addInput', value: input });
+              }
             }
           }}
         />

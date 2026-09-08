@@ -11,6 +11,61 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 describe('GET /api/core/dataset/detail', () => {
+  it.each(['unconfigured', 'deleted-legacy', 'deleted-id', 'disabled'])(
+    'returns model IDs for selector state without exposing legacy fallback fields (%s)',
+    async (state) => {
+      const owner = await getUser(`dataset-model-display-${getNanoid(6)}`);
+      const originalMap = global.systemModelMap;
+      const disabledModel = {
+        ...global.systemDefaultModel.llm!,
+        modelId: '68ad85a7463006c963799a77',
+        model: 'disabled-vision',
+        isActive: false,
+        config: { ...global.systemDefaultModel.llm!.config, vision: true }
+      };
+      global.systemModelMap = new Map(originalMap);
+      global.systemModelMap.set(`id:${disabledModel.modelId}`, disabledModel);
+      const modelConfig = (() => {
+        if (state === 'deleted-legacy') return { vlmModel: 'deleted-vision' };
+        if (state === 'deleted-id')
+          return { vlmModelId: '68ad85a7463006c963799a78', vlmModel: 'deleted-vision' };
+        if (state === 'disabled')
+          return { vlmModelId: disabledModel.modelId, vlmModel: disabledModel.model };
+        return {};
+      })();
+      try {
+        const dataset = await MongoDataset.create({
+          teamId: owner.teamId,
+          tmbId: owner.tmbId,
+          name: 'Model display',
+          type: DatasetTypeEnum.dataset,
+          ...modelConfig
+        });
+        const result = await Call<
+          Record<string, never>,
+          GetDatasetDetailQuery,
+          GetDatasetDetailResponse
+        >(handler, {
+          auth: owner,
+          query: { id: String(dataset._id) }
+        });
+        expect(result.code).toBe(200);
+        expect(result.data).not.toHaveProperty('modelReferences');
+        expect(result.data.vlmModelId).toBe(modelConfig.vlmModelId);
+        if (state === 'disabled') {
+          expect(result.data.vlmModel).toMatchObject({
+            modelId: disabledModel.modelId,
+            isActive: false
+          });
+        } else {
+          expect(result.data.vlmModel).toBeUndefined();
+        }
+      } finally {
+        global.systemModelMap = originalMap;
+      }
+    }
+  );
+
   it.each([true, false])(
     'returns details without createTime (legacy missing=%s)',
     async (missing) => {

@@ -1,4 +1,9 @@
 {
+  "migrations.20260908_cleanup_legacy_invited_members.name": "이전 초대 멤버 정리",
+  "migrations.20260908_cleanup_legacy_invited_members.description": "waiting/reject 상태의 이전 멤버와 권한, 그룹 및 부서 소속을 삭제합니다. 보호된 소유자는 검토를 위해 유지됩니다.",
+  "migrations.20260908_cleanup_legacy_invited_members.cleanup": "이전 초대 및 관련 레코드 정리",
+  "migrations.20260908_cleanup_legacy_invited_members.validation": "정리 결과 검증",
+  "migrations.20260908_cleanup_legacy_invited_members.result": "멤버 {{members}}명, 권한 {{permissions}}개, 그룹 소속 {{groups}}개, 부서 소속 {{orgs}}개를 삭제했습니다.",
   "migrations.20260907_cleanup_team_member_roles.name": "이전 팀 구성원 역할 정리",
   "migrations.20260907_cleanup_team_member_roles.description": "소유자 및 기존 권한을 유지하고 owner가 아닌 사용 중단된 역할 필드를 제거합니다.",
   "migrations.20260907_cleanup_team_member_roles.result": "구성원 기록 {{scannedCount}}개를 확인했습니다. 잘못된 역할 {{remaining}}개가 남아 있습니다.",

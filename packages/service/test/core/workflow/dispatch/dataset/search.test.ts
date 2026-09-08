@@ -7,12 +7,14 @@ const {
   defaultSearchDatasetDataMock,
   deepRagSearchMock,
   findDatasetByIdMock,
+  getDatasetSearchVlmModelMock,
   formatModelChars2PointsMock,
   usagePushMock
 } = vi.hoisted(() => ({
   defaultSearchDatasetDataMock: vi.fn(),
   deepRagSearchMock: vi.fn(),
   findDatasetByIdMock: vi.fn(),
+  getDatasetSearchVlmModelMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn(),
   usagePushMock: vi.fn()
 }));
@@ -20,6 +22,10 @@ const {
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
   defaultSearchDatasetData: defaultSearchDatasetDataMock,
   deepRagSearch: deepRagSearchMock
+}));
+
+vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
+  getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', () => ({
@@ -78,6 +84,13 @@ import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dat
 describe('dispatchDatasetSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getDatasetSearchVlmModelMock.mockResolvedValue({
+      modelId: '68ad85a7463006c963799a03',
+      model: 'vision-model',
+      name: 'gpt-vision name',
+      type: 'llm',
+      config: { vision: true }
+    });
     findDatasetByIdMock.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
         vectorModel: 'embedding-model',
@@ -98,6 +111,37 @@ describe('dispatchDatasetSearch', () => {
         totalPoints: (inputTokens + outputTokens) / 100
       })
     );
+  });
+
+  it('continues text search when all selected VLM models are unusable', async () => {
+    getDatasetSearchVlmModelMock.mockResolvedValue(undefined);
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingReRank: false
+    });
+    const result = await dispatchDatasetSearch({
+      runningAppInfo: { teamId: 'team_1' },
+      runningUserInfo: { tmbId: 'tmb_1' },
+      externalProvider: {},
+      histories: [],
+      node: { name: 'Dataset Search' },
+      params: {
+        datasets: [{ datasetId: 'first' }, { datasetId: 'second' }],
+        userChatInput: 'question'
+      },
+      usagePush: usagePushMock
+    } as any);
+    expect(getDatasetSearchVlmModelMock).toHaveBeenCalledWith({
+      teamId: 'team_1',
+      datasetIds: ['first', 'second']
+    });
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({ vlmModel: undefined })
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.data?.quoteQA).toEqual([]);
   });
 
   it('adds query extension as a child node response of dataset search', async () => {

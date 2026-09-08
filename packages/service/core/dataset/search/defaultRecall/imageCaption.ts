@@ -27,8 +27,8 @@ const emptyImageCaptionQueries = (): ImageCaptionQueries => ({
 
 /**
  * 将图片 query 转成可参与文本召回的图片描述 query。
- * VLM 未配置或单张图片生成失败时只降级图片描述召回；显式配置的 VLM 不存在时由
- * 模型解析层抛出“模型不存在”，不能静默切换到其他模型。
+ * 搜索入口已从候选知识库中选出首个可用 VLM；全部不可用或单张图片生成失败时，
+ * 只降级图片描述召回，不影响文本检索。
  * 原始图片仍可能继续走图片向量召回，所以这里不会抛出错误中断搜索。
  */
 export const getImageCaptionQueries = async ({

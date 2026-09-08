@@ -59,6 +59,53 @@ import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/wo
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 describe('nodeTemplate2FlowNode', () => {
+  it('persists default model IDs when creating a dataset search node without mutating its template', () => {
+    const node = nodeTemplate2FlowNode({
+      template: DatasetSearchModule,
+      position: { x: 0, y: 0 },
+      defaultModelIds: { llm: 'default-llm', rerank: 'default-rerank' },
+      t: ((key: string) => key) as any
+    });
+    const stored = uiWorkflow2StoreWorkflow({ nodes: [node], edges: [] });
+    expect(stored.nodes[0].inputs).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          value: 'default-llm'
+        }),
+        expect.objectContaining({
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
+          value: 'default-rerank'
+        })
+      ])
+    );
+    expect(
+      DatasetSearchModule.inputs.find(
+        (i) => i.key === NodeInputKeyEnum.datasetSearchExtensionModelId
+      )?.value
+    ).toBeUndefined();
+  });
+
+  it('keeps explicit template model choices and leaves no-candidate IDs empty', () => {
+    const template = {
+      ...DatasetSearchModule,
+      inputs: DatasetSearchModule.inputs.map((i) =>
+        i.key === NodeInputKeyEnum.datasetSearchExtensionModelId ? { ...i, value: 'chosen-id' } : i
+      )
+    };
+    const node = nodeTemplate2FlowNode({
+      template,
+      position: { x: 0, y: 0 },
+      t: ((key: string) => key) as any
+    });
+    expect(
+      node.data.inputs.find((i) => i.key === NodeInputKeyEnum.datasetSearchExtensionModelId)?.value
+    ).toBe('chosen-id');
+    expect(
+      node.data.inputs.find((i) => i.key === NodeInputKeyEnum.datasetSearchRerankModelId)?.value
+    ).toBeUndefined();
+  });
+
   it('should initialize template text once before formatting the instance name', () => {
     const template: FlowNodeTemplateType = {
       id: 'template1',
