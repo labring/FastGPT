@@ -21,7 +21,11 @@ export const WorkflowTemplateTypeSchema = z.object({
   avatar: z.string().optional(),
   name: z.union([I18nStringSchema, z.string()]),
   intro: z.union([I18nStringSchema, z.string()]).optional(),
-  toolDescription: z.string().optional(),
+  /** @deprecated Unused now in favor of `intro` in node data. */
+  toolDescription: z.string().optional().meta({
+    description: '已废弃：节点作为工具被调用时的能力说明',
+    deprecated: true
+  }),
 
   author: z.string().optional(),
   courseUrl: z.string().optional(),

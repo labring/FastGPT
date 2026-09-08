@@ -130,6 +130,10 @@ export const OpenAPIStoreNodeItemTypeSchema = StoreNodeItemTypeSchema.omit({
     intro: z.string().optional().meta({
       description: '节点简介'
     }),
+    toolDescription: StoreNodeItemTypeSchema.shape.toolDescription.meta({
+      description: '已废弃：节点作为工具被调用时的能力说明',
+      deprecated: true
+    }),
     showStatus: BoolSchema.optional().meta({
       description: '对话运行时是否展示该节点执行状态'
     }),

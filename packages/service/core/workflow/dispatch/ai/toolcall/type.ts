@@ -48,6 +48,8 @@ export type ToolNodeItemType = {
   name: RuntimeNodeItemType['name'];
   avatar?: RuntimeNodeItemType['avatar'];
   intro?: RuntimeNodeItemType['intro'];
+  /** @deprecated Unused now in favor of `intro` in node data. */
+  toolDescription?: RuntimeNodeItemType['toolDescription'];
   flowNodeType: RuntimeNodeItemType['flowNodeType'];
 
   jsonSchema?: JSONSchemaInputType;

@@ -60,7 +60,14 @@ type SystemToolRuntimeType = {
 
 type SystemToolDisplayChildType = Pick<
   SystemToolChildDetailType,
-  'id' | 'name' | 'status' | 'description' | 'icon' | 'currentCost' | 'systemKeyCost'
+  | 'id'
+  | 'name'
+  | 'status'
+  | 'description'
+  | 'toolDescription'
+  | 'icon'
+  | 'currentCost'
+  | 'systemKeyCost'
 >;
 
 type SystemToolDisplayInfoType = Pick<
@@ -75,6 +82,7 @@ type SystemToolDisplayInfoType = Pick<
   | 'intro'
   | 'author'
   | 'tags'
+  | 'toolDescription'
   | 'userGuide'
   | 'readmeUrl'
   | 'courseUrl'

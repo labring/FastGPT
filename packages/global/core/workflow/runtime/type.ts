@@ -18,6 +18,8 @@ export type RuntimeNodeItemType = {
   name: StoreNodeItemType['name'];
   avatar?: StoreNodeItemType['avatar'];
   intro?: StoreNodeItemType['intro'];
+  /** @deprecated Unused now in favor of `intro` in node data. */
+  toolDescription?: StoreNodeItemType['toolDescription'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
   isEntry?: boolean;
