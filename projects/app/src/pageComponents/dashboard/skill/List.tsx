@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Grid, IconButton, HStack, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -230,6 +230,7 @@ const List = ({
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [moveSkillId, setMoveSkillId] = useState<string>();
   const [editPerSkillId, setEditPerSkillId] = useState<string>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasActiveFilter = hasResourceListActiveFilter({
     searchKey,
     creatorMode: listFilters.creator.mode,
@@ -239,6 +240,7 @@ const List = ({
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skills,
     listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    scrollContainerRef,
     reservedSlotCount: isInitialLoading ? 0 : 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
@@ -575,7 +577,12 @@ const List = ({
   };
 
   return (
-    <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
+    <ScrollData
+      ScrollContainerRef={scrollContainerRef}
+      h={'full'}
+      minH={0}
+      showLoadingOverlay={false}
+    >
       <>
         {isInitialLoading ? (
           <Grid

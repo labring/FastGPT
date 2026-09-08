@@ -142,9 +142,11 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const isLoading = isTeamTemplate ? isTeamLoading : isSystemLoading;
   const rawTemplates = isTeamTemplate ? teamTemplates : systemTemplates;
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: teamTemplates,
     listKey: `${templateType}:${parentId ?? ''}:${searchKey}`,
+    scrollContainerRef,
     defaultColumnCount: 2,
     estimatedRowHeight: 54,
     estimatedRowGap: 12
@@ -264,7 +266,13 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       )}
       <MyBox isLoading={isLoading} mt={1} pb={3} flex={'1 0 0'} h={0} minH={0}>
         {isTeamTemplate ? (
-          <TeamScrollData flex={1} minH={0} isLoading={isLoading} showLoadingOverlay={false}>
+          <TeamScrollData
+            ScrollContainerRef={scrollContainerRef}
+            flex={1}
+            minH={0}
+            isLoading={isLoading}
+            showLoadingOverlay={false}
+          >
             <RenderList
               templates={templates}
               type={templateType}
@@ -438,7 +446,7 @@ const RenderList = React.memo(function RenderList({
           px={3}
           _hover={{ bg: 'myWhite.600' }}
           borderRadius={'sm'}
-          h={'100%'}
+          h={'54px'}
         >
           <MyAvatar
             src={template.avatar}

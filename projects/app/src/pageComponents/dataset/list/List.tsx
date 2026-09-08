@@ -71,6 +71,7 @@ function List() {
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
   const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const formatDatasets = useMemo(
     () =>
@@ -94,6 +95,7 @@ function List() {
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: formatDatasets,
     listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${listFilters.type}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    scrollContainerRef,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
     loadingItemCount: isFetchingDatasets ? pageSize : 0,
@@ -413,7 +415,12 @@ function List() {
   };
 
   return (
-    <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
+    <ScrollData
+      ScrollContainerRef={scrollContainerRef}
+      h={'full'}
+      minH={0}
+      showLoadingOverlay={false}
+    >
       <>
         {isFetchingDatasets ? (
           <Grid

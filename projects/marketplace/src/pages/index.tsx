@@ -255,9 +255,11 @@ const ToolkitMarketplace = () => {
 
   const selectedTagKey = selectedTagIds.join(',');
   const selectedSourceKey = selectedSource ?? 'all';
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: displayTools,
     listKey: `${searchText}-${selectedTagKey}-${selectedSourceKey}-${i18n.language}`,
+    scrollContainerRef,
     estimatedRowHeight: 178,
     estimatedRowGap: 20
   });
@@ -543,7 +545,13 @@ const ToolkitMarketplace = () => {
           </Box>
         </Box>
 
-        <ScrollData flex={1} minHeight={0} height="auto" pb={10}>
+        <ScrollData
+          ScrollContainerRef={scrollContainerRef}
+          flex={1}
+          minHeight={0}
+          height="auto"
+          pb={10}
+        >
           <VStack ref={heroSectionRef} w={'full'} gap={8} px={8} pt={4} pb={8} mt={8}>
             <Box
               position={'relative'}

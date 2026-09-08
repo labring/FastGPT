@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -110,9 +110,11 @@ const SkillSelectModal = ({
     onEnterFolder,
     onUpdateParentId
   } = useSkillSelectData();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skillList,
     listKey: `skill-select-${parentId}-${searchKey}`,
+    scrollContainerRef,
     defaultColumnCount: 2,
     estimatedRowHeight: 54,
     estimatedRowGap: 12
@@ -258,6 +260,7 @@ const SkillSelectModal = ({
               minH={0}
             >
               <ScrollData
+                ScrollContainerRef={scrollContainerRef}
                 flex={1}
                 minH={0}
                 isLoading={isLoadingSkillList}
@@ -394,7 +397,7 @@ const SkillCard = React.memo(function SkillCard({
         px={3}
         _hover={{ bg: 'myWhite.600' }}
         borderRadius={'sm'}
-        h={'100%'}
+        h={'54px'}
       >
         {isFolder ? (
           <MyIcon name={'common/folderFill'} w={'1.75rem'} color={'myGray.500'} flexShrink={0} />

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Box, Grid, IconButton, HStack, Flex, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
@@ -101,10 +101,12 @@ const List = () => {
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editPerAppId, setEditPerAppId] = useState<string>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoading = !isEmpty && myApps.length === 0 && isFetchingApps;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: myApps,
     listKey: `${router.pathname}-${appType}-${parentId || ''}-${searchKey}-${listFilters.type}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    scrollContainerRef,
     reservedSlotCount: isInitialLoading ? 0 : 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
@@ -447,7 +449,12 @@ const List = () => {
   };
 
   return (
-    <ScrollData h={'full'} minH={0} showLoadingOverlay={false}>
+    <ScrollData
+      ScrollContainerRef={scrollContainerRef}
+      h={'full'}
+      minH={0}
+      showLoadingOverlay={false}
+    >
       <>
         {isInitialLoading ? (
           <Grid

@@ -40,7 +40,7 @@ const loadMoreThreshold = 100;
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 type VirtualScrollWindowOptions = {
-  containerRef: RefObject<HTMLElement>;
+  containerRef: RefObject<HTMLElement | null>;
   syncWindow: (options?: { usePreload?: boolean }) => void;
   listenToWindow?: boolean;
 };

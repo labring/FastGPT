@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useTheme, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -38,9 +38,11 @@ const SelectMarkCollection = ({
   const { t } = useTranslation();
   const theme = useTheme();
   const { paths, setParentId, datasets, isFetching, ScrollData, parentId } = useDatasetSelect();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: datasets,
     listKey: `mark-dataset-select-${parentId}`,
+    scrollContainerRef,
     defaultColumnCount: 3,
     estimatedRowHeight: 80,
     estimatedRowGap: 12
@@ -59,7 +61,13 @@ const SelectMarkCollection = ({
           tips={t('common:core.chat.Select dataset Desc')}
         >
           {datasets.length === 0 && <EmptyTip text={t('chat:empty_directory')}></EmptyTip>}
-          <ScrollData flex={1} minH={0} isLoading={isFetching} showLoadingOverlay={false}>
+          <ScrollData
+            ScrollContainerRef={scrollContainerRef}
+            flex={1}
+            minH={0}
+            isLoading={isFetching}
+            showLoadingOverlay={false}
+          >
             <Grid
               ref={gridRef}
               display={'grid'}
