@@ -8,7 +8,7 @@
 import { spawn, execFile, execFileSync, type ChildProcess } from 'child_process';
 import { createInterface, type Interface } from 'readline';
 import { readdirSync, readFileSync } from 'fs';
-import { promisify } from 'util';
+import { inspect, promisify } from 'util';
 import { platform } from 'os';
 import { env, RUNTIME_MEMORY_OVERHEAD_MB } from '../env';
 import type { ExecuteOptions, ExecuteResult } from '../types';
@@ -388,7 +388,13 @@ export abstract class BaseProcessPool {
             );
           }
           settle(result, { recycleWorker: Boolean(recycleReason) });
-        } catch {
+        } catch (error) {
+          // 此处也会捕获解析后的同步处理异常；保留完整堆栈和 cause，不额外记录用户响应正文。
+          serverLogger.error(`${this.tag}: failed to parse or handle worker response`, {
+            workerId: worker.id,
+            responseLength: line.length,
+            error: inspect(error, { depth: null, maxStringLength: null, maxArrayLength: null })
+          });
           settle({ success: false, message: 'Invalid worker response' });
         }
       };
