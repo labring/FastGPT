@@ -49,6 +49,7 @@ const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetPa
 const SkillSelectModal = dynamic(() => import('../FormComponent/ToolSelector/SkillSelectModal'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
+const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
 const WelcomeQuestionsConfig = dynamic(
   () => import('@/components/core/app/WelcomeQuestionsConfig')
@@ -671,7 +672,7 @@ const EditForm = ({
         </Box>
 
         {/* question guide */}
-        {/* <Box {...BoxStyles}>
+        <Box {...BoxStyles}>
           <QGConfig
             value={appForm.chatConfig.questionGuide}
             onChange={(e) => {
@@ -684,7 +685,7 @@ const EditForm = ({
               }));
             }}
           />
-        </Box> */}
+        </Box>
 
         {/* question tips */}
         {/* <Box {...BoxStyles}>
