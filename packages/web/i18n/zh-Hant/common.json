@@ -1276,6 +1276,7 @@
   "password_update_error": "修改密碼異常",
   "password_verification_description": "為保護帳號安全，請先完成身分驗證。",
   "password_verification_failed": "身分驗證失敗，請重試",
+  "password_verification_expired": "身分認證已過期，請重新驗證",
   "password_verification_retry": "重試",
   "password_verification_title": "身分驗證",
   "password_verification_unavailable": "目前帳號沒有可用的身分驗證方式",

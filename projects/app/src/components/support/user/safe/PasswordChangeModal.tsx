@@ -257,6 +257,10 @@ const PasswordChangeModal = ({
       if (errorResponse?.statusText === UserErrEnum.passwordChangeAuthorizationInvalid) {
         reset();
         setStoredSession(undefined);
+        toast({
+          status: 'error',
+          title: t('common:password_verification_expired', '身份认证已过期，请重新验证')
+        });
         setStage({ type: 'authorizing' });
         return;
       }

@@ -1276,6 +1276,7 @@
   "password_update_error": "Exception when changing password",
   "password_verification_description": "To protect your account, complete identity verification first.",
   "password_verification_failed": "Identity verification failed. Try again.",
+  "password_verification_expired": "Identity authentication expired. Please verify again.",
   "password_verification_retry": "Retry",
   "password_verification_title": "Identity verification",
   "password_verification_unavailable": "No identity verification method is available for this account",

@@ -1276,6 +1276,7 @@
   "password_update_error": "修改密码异常",
   "password_verification_description": "为保护账号安全，请先完成身份验证。",
   "password_verification_failed": "身份验证失败，请重试",
+  "password_verification_expired": "身份认证已过期，请重新验证",
   "password_verification_retry": "重试",
   "password_verification_title": "身份验证",
   "password_verification_unavailable": "当前账号没有可用的身份验证方式",
