@@ -181,13 +181,15 @@ export function TransferOwnershipModal({
               if (!selectedMember) return;
 
               openTransferConfirm({
-                customContent: t(
-                  `account_team:${userInfo?.team?.isWecomTeam ? 'transfer_confirm_content_wecom' : 'transfer_confirm_content_multi'}`,
-                  {
-                    teamName: userInfo?.team?.teamName,
-                    memberName: selectedMember.memberName
-                  }
-                ),
+                customContent: userInfo?.team?.isWecomTeam
+                  ? t('account_team:transfer_confirm_content_wecom', {
+                      teamName: userInfo?.team?.teamName,
+                      memberName: selectedMember.memberName
+                    })
+                  : t('account_team:transfer_confirm_content_multi', {
+                      teamName: userInfo?.team?.teamName,
+                      memberName: selectedMember.memberName
+                    }),
                 onConfirm: onTransfer
               })();
             }}
