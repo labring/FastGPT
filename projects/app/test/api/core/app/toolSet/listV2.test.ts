@@ -23,9 +23,24 @@ describe('POST /api/core/app/toolSet/listV2', () => {
           toolConfig: {
             httpToolSet: {
               toolList: [
-                { name: 'create-ticket', description: 'Create a ticket' },
-                { name: 'search-ticket', description: 'Search tickets' },
-                { name: 'delete-ticket', description: 'Delete a ticket' }
+                {
+                  name: 'create-ticket',
+                  description: 'Create a ticket',
+                  path: '/create-ticket',
+                  method: 'POST'
+                },
+                {
+                  name: 'search-ticket',
+                  description: 'Search tickets',
+                  path: '/search-ticket',
+                  method: 'GET'
+                },
+                {
+                  name: 'delete-ticket',
+                  description: 'Delete a ticket',
+                  path: '/delete-ticket',
+                  method: 'DELETE'
+                }
               ]
             }
           }

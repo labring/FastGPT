@@ -318,4 +318,28 @@ describe('getTeamAppTemplates', () => {
     );
     expect(result).toMatchObject({ total: 1, list: [{ id: 'mcp-set/search', isTool: true }] });
   });
+
+  it('keeps Agent pages on the app list when the cached parent is a toolset', async () => {
+    const type = [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow];
+    mocks.getMyAppsV2.mockResolvedValueOnce({ list: [], total: 0 });
+
+    await expect(
+      getTeamAppTemplatesV2({
+        parentId: 'mcp-set',
+        parentType: AppTypeEnum.mcpToolSet,
+        type
+      })
+    ).resolves.toEqual({ list: [], total: 0 });
+
+    expect(mocks.post).not.toHaveBeenCalled();
+    expect(mocks.getMyAppsV2).toHaveBeenCalledWith(
+      {
+        parentId: 'mcp-set',
+        searchKey: undefined,
+        type,
+        excludeAppId: undefined
+      },
+      undefined
+    );
+  });
 });

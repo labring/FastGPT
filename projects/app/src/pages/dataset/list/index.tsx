@@ -118,30 +118,32 @@ const Dataset = () => {
           overflowY={'hidden'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'} justifyContent={'space-between'}>
-            <FolderPath
-              paths={paths}
-              FirstPathDom={
-                <Flex flex={1} alignItems={'center'}>
-                  <Box
-                    pl={2}
-                    letterSpacing={1}
-                    fontSize={'1.25rem'}
-                    fontWeight={'bold'}
-                    color={'myGray.900'}
-                  >
-                    {t('common:core.dataset.My Dataset')}
-                  </Box>
-                </Flex>
-              }
-              onClick={(e) => {
-                router.push({
-                  query: {
-                    parentId: e
-                  }
-                });
-              }}
-            />
+          <Flex alignItems={'center'} gap={3} minW={0}>
+            <Box flexShrink={0}>
+              <FolderPath
+                paths={paths}
+                FirstPathDom={
+                  <Flex alignItems={'center'}>
+                    <Box
+                      pl={2}
+                      letterSpacing={1}
+                      fontSize={'1.25rem'}
+                      fontWeight={'bold'}
+                      color={'myGray.900'}
+                    >
+                      {t('common:core.dataset.My Dataset')}
+                    </Box>
+                  </Flex>
+                }
+                onClick={(e) => {
+                  router.push({
+                    query: {
+                      parentId: e
+                    }
+                  });
+                }}
+              />
+            </Box>
 
             {isPc && (
               <>

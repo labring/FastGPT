@@ -28,6 +28,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
   const [parentSource, setParentSource] = useState<string>();
   // 进入目录/面包屑只携带 ID，保留已加载父项类型，避免再次查询详情。
   const parentTypes = useRef(new Map<string, AppTypeEnum>());
+  const [parentType, setParentType] = useState<AppTypeEnum>();
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   const { basicNodeTemplates, getNodeList, nodeAmount } = useContextSelector(
@@ -61,7 +62,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
       parentId,
       searchKey: searchKey || undefined,
       type: teamTemplateTypes,
-      parentType: parentId ? parentTypes.current.get(parentId) : undefined,
+      parentType: templateType === TemplateTypeEnum.myTools && parentId ? parentType : undefined,
       excludeAppId: appId
     },
     pageSize: 50,
@@ -183,9 +184,14 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType, source?: string) => {
       const nextParentSource = parentId ? (source ?? parentSource) : undefined;
+      const nextParentType =
+        templateType === TemplateTypeEnum.myTools && parentId
+          ? parentTypes.current.get(parentId)
+          : undefined;
 
       searchKeyLock.current = true;
       setSearchKey('');
+      setParentType(nextParentType);
       setParentId(parentId);
       setParentSource(nextParentSource);
       if (templateType === TemplateTypeEnum.systemTools) {
@@ -198,6 +204,7 @@ export const useNodeTemplates = (context: NodeTemplateContext | null = null) => 
     (type: TemplateTypeEnum) => {
       searchKeyLock.current = true;
       setSearchKey('');
+      setParentType(undefined);
       setParentId('');
       setParentSource(undefined);
       setSelectedTagIds([]);

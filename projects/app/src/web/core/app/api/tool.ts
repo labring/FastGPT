@@ -135,8 +135,9 @@ export const getTeamAppTemplatesV2 = async (
   if (parentId) {
     const resolvedParentType = parentType ?? (await getAppDetailById(parentId)).type;
     if (
-      resolvedParentType === AppTypeEnum.mcpToolSet ||
-      resolvedParentType === AppTypeEnum.httpToolSet
+      (resolvedParentType === AppTypeEnum.mcpToolSet ||
+        resolvedParentType === AppTypeEnum.httpToolSet) &&
+      (!type || type.includes(resolvedParentType))
     ) {
       return getToolSetListV2({ parentId, searchKey, ...pagination }, cancelToken);
     }

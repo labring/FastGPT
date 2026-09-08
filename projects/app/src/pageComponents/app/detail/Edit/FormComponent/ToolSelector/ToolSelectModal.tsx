@@ -89,6 +89,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [parentSource, setParentSource] = useState<string>();
   const parentTypes = useRef(new Map<string, AppTypeEnum>());
+  const [parentType, setParentType] = useState<AppTypeEnum>();
   const [searchKey, setSearchKey] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
@@ -105,7 +106,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       parentId,
       searchKey: searchKey || undefined,
       type: teamTemplateTypes,
-      parentType: parentId ? parentTypes.current.get(parentId) : undefined,
+      parentType: parentId ? parentType : undefined,
       excludeAppId: appDetail._id
     },
     pageSize: 50,
@@ -180,6 +181,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
+      setParentType(nextParentId ? parentTypes.current.get(nextParentId) : undefined);
       setParentId(nextParentId);
       setParentSource(nextParentId ? (source ?? parentSource) : undefined);
     },
@@ -227,6 +229,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           value={templateType}
           onChange={(e) => {
             setTemplateType(e as TemplateTypeEnum);
+            setParentType(undefined);
             setParentId(null);
             setParentSource(undefined);
           }}
