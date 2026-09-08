@@ -54,7 +54,7 @@ const JsonModelConfigModal = ({
         </>
       }
     >
-      <JsonEditor value={data} onChange={setData} h="100%" />
+      <JsonEditor value={data} onChange={setData} h="100%" validateOnBlur={false} />
     </MyModal>
   );
 };

@@ -27,6 +27,8 @@ type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   isDisabled?: boolean;
   readOnly?: boolean;
   isInvalid?: boolean;
+  /** 提交入口统一展示校验错误时可关闭失焦提示，避免同一次提交产生重复 Toast。 */
+  validateOnBlur?: boolean;
 };
 
 const options = {
@@ -65,6 +67,7 @@ const JSONEditor = ({
   isDisabled = false,
   readOnly = false,
   isInvalid = false,
+  validateOnBlur = true,
   ...props
 }: Props) => {
   const { toast } = useToast();
@@ -176,7 +179,7 @@ const JSONEditor = ({
   }, [value]);
 
   const onBlur = useCallback(() => {
-    if (!formatedValue) return;
+    if (!validateOnBlur || !formatedValue) return;
     // replace {{xx}} to true
     const replaceValue = formatedValue?.replace(/{{(.*?)}}/g, 'true');
     try {
@@ -187,7 +190,7 @@ const JSONEditor = ({
         title: t('common:json_parse_error')
       });
     }
-  }, [formatedValue, toast, t]);
+  }, [formatedValue, toast, t, validateOnBlur]);
 
   const beforeMount = useCallback(
     (monaco: Monaco) => {

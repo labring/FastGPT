@@ -80,7 +80,7 @@ export type AdminModelChannel = z.infer<typeof AdminModelChannelSchema>;
  * API: 创建 AI Proxy 渠道
  * Route: POST /api/aiproxy/api/createChannel
  * Method: POST
- * Description: 校验创建参数后使用服务端管理员凭证转发，保留 AI Proxy 响应协议
+ * Description: 创建单个命名渠道，兼容旧版 AI Proxy 并返回准确渠道 ID
  * Tags: ['系统模型管理', 'Write']
  * ============================================================================ */
 export const CreateAdminAIProxyChannelBodySchema = z
@@ -88,7 +88,13 @@ export const CreateAdminAIProxyChannelBodySchema = z
     name: z.string().trim().min(1).meta({ description: '渠道名称', example: 'OpenAI' }),
     type: IntSchema.positive().meta({ description: 'AI Proxy 协议类型', example: 1 }),
     base_url: z.string().optional().meta({ description: '渠道模型服务地址' }),
-    key: z.string().optional().meta({ description: '渠道模型服务凭证' }),
+    key: z
+      .string()
+      .refine((key) => key.split('\n').filter((line) => line.trim()).length <= 1, {
+        message: 'Only one channel credential is supported'
+      })
+      .optional()
+      .meta({ description: '单个渠道模型服务凭证；不支持换行分隔多个密钥' }),
     models: z.array(z.string().trim().min(1)).optional().meta({ description: '支持的模型标识' }),
     model_mapping: z.record(z.string(), z.unknown()).optional().meta({ description: '模型映射' }),
     priority: IntSchema.positive().optional().meta({ description: '渠道优先级', example: 1 })
@@ -96,13 +102,15 @@ export const CreateAdminAIProxyChannelBodySchema = z
   .passthrough();
 export type CreateAdminAIProxyChannelBody = z.infer<typeof CreateAdminAIProxyChannelBodySchema>;
 /** 此代理保留第三方 envelope，而不是 FastGPT NextAPI 的 data 响应。 */
-export const CreateAdminAIProxyChannelResponseSchema = z
-  .object({
-    success: z.boolean(),
-    message: z.string().optional(),
-    data: z.unknown().optional()
-  })
-  .passthrough();
+export const CreateAdminAIProxyChannelResponseSchema = z.discriminatedUnion('success', [
+  z.object({
+    success: z.literal(true),
+    data: z.object({
+      id: IntSchema.positive().meta({ description: '创建成功的准确渠道 ID', example: 1 })
+    })
+  }),
+  z.object({ success: z.literal(false), message: z.string().optional() })
+]);
 export type CreateAdminAIProxyChannelResponse = z.infer<
   typeof CreateAdminAIProxyChannelResponseSchema
 >;

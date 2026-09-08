@@ -33,7 +33,7 @@ export const AdminSystemModelPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: 'AI Proxy 创建结果',
+          description: '单渠道创建结果；成功时返回准确渠道 ID（兼容 AI Proxy v0.6.5）',
           content: { 'application/json': { schema: CreateAdminAIProxyChannelResponseSchema } }
         }
       }

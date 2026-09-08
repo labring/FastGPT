@@ -28,8 +28,12 @@ vi.mock('@fastgpt/service/core/app/provider/controller', () => ({
 import {
   createSystemModel,
   createSystemModelsFromTemplates,
-  deleteSystemModels
+  deleteSystemModels,
+  importSystemModels,
+  updateSystemDefaultModels,
+  updateSystemModel
 } from '@/service/core/ai/model/service';
+import { updateSystemModelStatus } from '@fastgpt/service/core/ai/config/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
@@ -288,5 +292,184 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(getCachedModelHandle()?.getAllModels()).toMatchObject([
       { modelId, model: 'reload-repair' }
     ]);
+  });
+
+  it('rejects the entire template batch before external writes when one template disappears', async () => {
+    external.listModels.mockResolvedValue([createDraft('available')]);
+    await expect(
+      createSystemModelsFromTemplates({
+        templates: [
+          { type: ModelTypeEnum.llm, model: 'available' },
+          { type: ModelTypeEnum.llm, model: 'removed' }
+        ],
+        channelIds: [1, 2]
+      })
+    ).rejects.toThrow('no longer exists');
+    expect(requests).toEqual([]);
+    expect(await MongoAIModel.countDocuments()).toBe(0);
+    expect(await catalogEntity.readSystemModelRevision()).toBe(0);
+  });
+
+  it('uses the latest template parameters, skips installed names and leaves instances unchanged later', async () => {
+    const installed = await createSystemModel({
+      modelData: createDraft('installed'),
+      channelIds: []
+    });
+    external.listModels.mockResolvedValue([
+      { ...createDraft('installed'), type: ModelTypeEnum.stt, config: {} },
+      {
+        ...createDraft('fresh'),
+        name: 'Latest template',
+        config: { maxContext: 64000, maxResponse: 8000, quoteMaxToken: 32000 }
+      }
+    ]);
+    const result = await createSystemModelsFromTemplates({
+      templates: [
+        { type: ModelTypeEnum.stt, model: 'installed' },
+        { type: ModelTypeEnum.llm, model: 'fresh' }
+      ],
+      channelIds: []
+    });
+    expect(result.models).toHaveLength(1);
+    expect(await MongoAIModel.findById(installed.modelId).lean()).toMatchObject({
+      type: 'llm',
+      name: 'installed'
+    });
+    expect(await MongoAIModel.findById(result.models[0].modelId).lean()).toMatchObject({
+      name: 'Latest template',
+      isActive: false,
+      config: { maxContext: 64000 }
+    });
+    external.listModels.mockResolvedValue([]);
+    await loadInstalledModels();
+    expect(getCachedModelHandle()?.getAllModels()).toHaveLength(2);
+    expect(external.listModels).toHaveBeenCalledTimes(1);
+    expect(requests).toEqual([]);
+  });
+
+  it('rolls back a partially matched status update without advancing revision or snapshot', async () => {
+    const { modelId } = await createSystemModel({
+      modelData: createDraft('status'),
+      channelIds: []
+    });
+    const missingId = new connectionMongo.Types.ObjectId().toString();
+    await expect(
+      updateSystemModelStatus({ modelIds: [modelId, missingId], isActive: false })
+    ).rejects.toBeDefined();
+    expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({ isActive: true });
+    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
+    expect(getCachedModelHandle()?.revision).toBe(1);
+    await updateSystemModelStatus({ modelIds: [modelId], isActive: false });
+    expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({ isActive: false });
+    expect(await catalogEntity.readSystemModelRevision()).toBe(2);
+  });
+
+  it('preserves configured defaults when creating another model and rolls back invalid default changes', async () => {
+    const { modelId } = await createSystemModel({
+      modelData: createDraft('default'),
+      channelIds: []
+    });
+    await updateSystemDefaultModels({ llm: modelId, chatTitleLLMModelId: modelId });
+    const defaultsBefore = await MongoAIDefaultModel.find({}, { defaultModelIds: 1 }).lean();
+    const second = await createSystemModel({ modelData: createDraft('second'), channelIds: [] });
+    expect(second.modelId).not.toBe(modelId);
+    expect(await MongoAIDefaultModel.find({}, { defaultModelIds: 1 }).lean()).toEqual(
+      defaultsBefore
+    );
+    const revision = await catalogEntity.readSystemModelRevision();
+    await expect(
+      updateSystemDefaultModels({ llm: second.modelId, datasetImageLLMModelId: modelId })
+    ).rejects.toBeDefined();
+    expect(await MongoAIDefaultModel.find({}, { defaultModelIds: 1 }).lean()).toEqual(
+      defaultsBefore
+    );
+    expect(await catalogEntity.readSystemModelRevision()).toBe(revision);
+    await updateSystemDefaultModels({});
+    expect(await catalogEntity.readSystemModelRevision()).toBe(revision + 1);
+  });
+
+  it('prechecks immutable type before channel replacement and clears omitted request credentials on update', async () => {
+    const { modelId } = await createSystemModel({
+      modelData: {
+        ...createDraft('editable'),
+        requestUrl: 'http://local.test',
+        requestAuth: 'test-secret'
+      },
+      channelIds: [1]
+    });
+    requests = [];
+    const { model: _model, ...editable } = createDraft('editable');
+    await expect(
+      updateSystemModel({
+        modelId,
+        modelData: { ...editable, type: ModelTypeEnum.stt, config: {} },
+        channelIds: [2]
+      })
+    ).rejects.toThrow('type cannot be changed');
+    expect(requests).toEqual([]);
+    await updateSystemModel({
+      modelId,
+      modelData: { ...editable, name: 'Renamed' },
+      channelIds: [2]
+    });
+    const updated = await MongoAIModel.findById(modelId).lean();
+    expect(updated).toMatchObject({ name: 'Renamed', model: 'editable', type: 'llm' });
+    expect(updated).not.toHaveProperty('requestUrl');
+    expect(updated).not.toHaveProperty('requestAuth');
+    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], ['editable']]);
+  });
+
+  it('keeps JSON import atomic and distinguishes legacy no-ID records from deliberate empty configuration', async () => {
+    const { modelId } = await createSystemModel({
+      modelData: createDraft('json-original'),
+      channelIds: []
+    });
+    const before = await MongoAIModel.find({}).lean();
+    await expect(
+      importSystemModels({
+        config: [
+          { ...createDraft('external'), modelId: 'external' },
+          { ...createDraft('invalid'), modelId: 'invalid', config: { maxContext: 'bad' } }
+        ]
+      })
+    ).rejects.toThrow('Invalid system model');
+    expect(await MongoAIModel.find({}).lean()).toEqual(before);
+    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
+    await importSystemModels({ config: [createDraft('legacy')] });
+    expect(await MongoAIModel.find({}).lean()).toEqual(before);
+    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
+    await importSystemModels({
+      config: [
+        {
+          ...createDraft('injected-name'),
+          modelId,
+          type: ModelTypeEnum.stt,
+          name: 'Imported',
+          inputPrice: 0,
+          outputPrice: 2
+        }
+      ]
+    });
+    const imported = await MongoAIModel.findById(modelId).lean();
+    expect(imported).toMatchObject({ model: 'json-original', type: 'llm', name: 'Imported' });
+    expect(imported).not.toHaveProperty('inputPrice');
+    expect(imported).not.toHaveProperty('outputPrice');
+    expect(imported?.priceTiers).toEqual(
+      expect.arrayContaining([expect.objectContaining({ inputPrice: 0, outputPrice: 2 })])
+    );
+    await importSystemModels({ config: [] });
+    expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({ isActive: false });
+    expect(await MongoAIModel.countDocuments()).toBe(1);
+  });
+
+  it('rejects concurrent duplicate creation through the real unique index with one committed revision', async () => {
+    const results = await Promise.allSettled([
+      createSystemModel({ modelData: createDraft('concurrent'), channelIds: [] }),
+      createSystemModel({ modelData: createDraft('concurrent'), channelIds: [] })
+    ]);
+    expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter(({ status }) => status === 'rejected')).toHaveLength(1);
+    expect(await MongoAIModel.countDocuments({ model: 'concurrent' })).toBe(1);
+    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
   });
 });

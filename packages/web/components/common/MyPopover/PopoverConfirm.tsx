@@ -141,9 +141,10 @@ const PopoverConfirm = ({
             isLoading={loading}
             variant={map.variant}
             size="sm"
-            onClick={async (e) => {
+            onClick={(e) => {
               e.stopPropagation();
-              await onclickConfirm();
+              // useRequest 已展示失败提示；保留确认框重试，不把拒绝继续抛给浏览器事件。
+              void onclickConfirm().catch(() => {});
             }}
           >
             {confirmText || t('common:Confirm')}
