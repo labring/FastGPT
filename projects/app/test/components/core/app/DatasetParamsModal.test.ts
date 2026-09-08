@@ -43,14 +43,6 @@ vi.mock('react-hook-form', async (importOriginal) => {
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }));
-vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
-  useUserModelStore: () => ({
-    defaultModels: {
-      llm: { modelId: mocks.defaultModelId },
-      rerank: { modelId: mocks.defaultRerankId }
-    }
-  })
-}));
 vi.mock('@/web/core/ai/model/modelData', () => ({
   getModelDefault: vi.fn(async ({ modelType }) => {
     if (modelType === 'rerank') return { modelId: mocks.defaultRerankId ?? 'rerank-id' };

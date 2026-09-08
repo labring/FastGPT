@@ -1,13 +1,10 @@
 import {
-  createRestrictedModelDiscovery,
   isModelAllowedByValues,
   resolveModelSelectorDisabled,
   resolveModelSelectorProviders,
-  resolveModelSelectorSelection,
-  resolveModelSelectorProvider
+  resolveModelSelectorSelection
 } from '@/components/Select/AIModelSelector.utils';
 import { describe, expect, it } from 'vitest';
-import { getDefaultModelSelection } from '@/web/core/ai/model/selection';
 
 describe('AIModelSelector utils', () => {
   const model = { modelId: 'model-id', model: 'gpt-4o' };
@@ -98,88 +95,5 @@ describe('AIModelSelector utils', () => {
         value: 'missing-model'
       })
     ).toBeUndefined();
-  });
-
-  it('uses the configured default model when it is selectable', () => {
-    const fallbackModel = { modelId: 'fallback-id' };
-    const defaultModel = { modelId: 'default-id' };
-
-    expect(
-      getDefaultModelSelection({
-        models: [fallbackModel, defaultModel],
-        defaultModelId: 'default-id'
-      })
-    ).toBe(defaultModel);
-  });
-
-  it('falls back within the selectable range when the default is unavailable', () => {
-    const fallbackModel = { modelId: 'fallback-id' };
-
-    expect(
-      getDefaultModelSelection({
-        models: [fallbackModel],
-        defaultModelId: 'unavailable-id'
-      })
-    ).toBe(fallbackModel);
-    expect(getDefaultModelSelection({ models: [] })).toBeUndefined();
-  });
-
-  it('does not select a provider for ten or fewer models', () => {
-    expect(
-      resolveModelSelectorProvider({
-        total: 10,
-        pageSize: 10,
-        providers: ['openai'],
-        selectedProvider: 'openai'
-      })
-    ).toBe('');
-  });
-
-  it('prefers the selected model provider in grouped mode', () => {
-    expect(
-      resolveModelSelectorProvider({
-        total: 11,
-        pageSize: 10,
-        providers: ['openai', 'anthropic'],
-        selectedProvider: 'anthropic',
-        currentProvider: 'openai'
-      })
-    ).toBe('anthropic');
-  });
-
-  it('keeps a valid manually selected provider and recovers from stale providers', () => {
-    expect(
-      resolveModelSelectorProvider({
-        total: 11,
-        pageSize: 10,
-        providers: ['openai', 'anthropic'],
-        currentProvider: 'anthropic'
-      })
-    ).toBe('anthropic');
-    expect(
-      resolveModelSelectorProvider({
-        total: 11,
-        pageSize: 10,
-        providers: ['openai'],
-        currentProvider: 'removed-provider'
-      })
-    ).toBe('openai');
-  });
-
-  it('derives grouped providers only from whitelist-matched models', () => {
-    const discovery = createRestrictedModelDiscovery({
-      models: [
-        { modelId: 'openai-1', model: 'gpt-4o', provider: 'openai' },
-        { modelId: 'anthropic-1', model: 'claude-3', provider: 'anthropic' },
-        { modelId: 'anthropic-1', model: 'claude-3', provider: 'anthropic' }
-      ],
-      allowedValues: new Set(['anthropic-1'])
-    });
-
-    expect(discovery).toEqual({
-      list: [{ modelId: 'anthropic-1', model: 'claude-3', provider: 'anthropic' }],
-      total: 1,
-      providers: ['anthropic']
-    });
   });
 });

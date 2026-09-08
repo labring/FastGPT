@@ -16,10 +16,6 @@ vi.mock('react', async (importOriginal) => ({
   }
 }));
 vi.mock('next-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
-  useUserModelStore: (select: (state: unknown) => unknown) =>
-    select({ defaultModelIds: { llm: 'default-id' } })
-}));
 vi.mock('@/web/core/ai/model/modelData', () => ({
   getModelDefault: vi.fn(async () => mocks.models[0])
 }));
