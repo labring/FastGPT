@@ -58,7 +58,10 @@ jobs:
             if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
               git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
             fi
-            git submodule update --init --recursive --jobs 8
+            # 只 init pro：本 workflow 只消费 pro/admin，max 由 checkout 的
+            # GITHUB_TOKEN 对同 org private 仓库无权拉取（PRO_SUBMODULE_TOKEN
+            # 亦未授权 fastgpt-max），全量 init 会 403。
+            git submodule update --init --recursive --jobs 8 pro
           fi
       - name: Install system deps for node-canvas
         run: |

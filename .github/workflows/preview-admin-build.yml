@@ -50,7 +50,9 @@ jobs:
             if [ -n "${PRO_SUBMODULE_TOKEN}" ]; then
               git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
             fi
-            git submodule update --init --recursive
+            # 只 init pro：本 workflow 只构建 admin（pro），max 非依赖；
+            # 全量 init 会因 PRO_SUBMODULE_TOKEN 未授权 fastgpt-max 而 403。
+            git submodule update --init --recursive pro
           fi
 
       - name: Set up Docker Buildx
