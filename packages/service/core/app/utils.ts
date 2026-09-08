@@ -262,7 +262,8 @@ export async function rewriteAppWorkflowToDetail({
           const { source } = splitCombineToolId(node.pluginId);
           if (
             (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) &&
-            !node.intro?.trim()
+            node.intro !== '' &&
+            !node.intro
           ) {
             node.intro = preview.intro;
           }

@@ -20,13 +20,19 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 describe('tool set child descriptions', () => {
-  it('uses a definition description when the saved description is blank', () => {
-    expect(getToolSetChildDescription('  ', 'Definition description')).toBe(
-      'Definition description'
-    );
+  it('uses definitions for falsy values except an explicitly empty description', () => {
     expect(getToolSetChildDescription(undefined, 'Definition description')).toBe(
       'Definition description'
     );
+    expect(getToolSetChildDescription(null, 'Definition description')).toBe(
+      'Definition description'
+    );
+    expect(getToolSetChildDescription(false, 'Definition description')).toBe(
+      'Definition description'
+    );
+    expect(getToolSetChildDescription(0, 'Definition description')).toBe('Definition description');
+    expect(getToolSetChildDescription('', 'Definition description')).toBe('');
+    expect(getToolSetChildDescription('  ', 'Definition description')).toBe('  ');
     expect(getToolSetChildDescription(' Custom description ', 'Definition description')).toBe(
       ' Custom description '
     );
@@ -90,14 +96,14 @@ describe('tool set child descriptions', () => {
       mcpToolSet: {
         toolList: [
           { name: 'search', description: 'Custom MCP description' },
-          { name: 'blank', description: 'Blank MCP default' },
+          { name: 'blank', description: '  ' },
           { name: 'new', description: 'New MCP default' }
         ]
       },
       httpToolSet: {
         toolList: [
           { name: 'search', description: 'Custom HTTP description' },
-          { name: 'blank', description: 'Blank HTTP default' },
+          { name: 'blank', description: '' },
           { name: 'new', description: 'New HTTP default' }
         ]
       }

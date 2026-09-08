@@ -304,7 +304,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     expect(result[0].jsonSchema).toBe(inputSchema);
   });
 
-  it('should use child name and descriptions when selected config is empty', async () => {
+  it('should use child name and preserve an explicitly empty description', async () => {
     const toolSetNode = makeToolSetNode({
       toolList: [{ toolId: 'child-1', name: '', description: '' }]
     });
@@ -324,10 +324,10 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('Original Name');
-    expect(result[0].intro).toBe('Original Intro');
+    expect(result[0].intro).toBe('');
   });
 
-  it('should use the child definition description when the saved description is blank', async () => {
+  it('should preserve whitespace in the saved description', async () => {
     const toolSetNode = makeToolSetNode({
       toolList: [{ toolId: 'child-1', name: 'Search', description: '  ' }]
     });
@@ -345,7 +345,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
       lang: 'en'
     });
 
-    expect(result[0].intro).toBe('Definition description');
+    expect(result[0].intro).toBe('  ');
   });
 
   it('should pass systemInputConfig value to child tool inputs', async () => {

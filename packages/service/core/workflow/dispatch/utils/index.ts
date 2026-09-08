@@ -768,8 +768,8 @@ export const rewriteRuntimeWorkFlow = async ({
       const toolRaw = toolList.find((tool) => tool.name === parseResult.toolName);
       if (!toolRaw) return;
       node.jsonSchema = toolRaw.inputSchema;
-      // 为已存在的 MCP 工具节点提供描述回退。
-      if (!node.intro?.trim()) {
+      // 空字符串代表用户主动清空，历史缺失值才使用工具定义描述。
+      if (node.intro !== '' && !node.intro) {
         node.intro = toolRaw.description;
       }
       mergeToolNodeInputs({ node, jsonSchema: toolRaw.inputSchema, schemaType: 'mcp' });
@@ -812,8 +812,8 @@ export const rewriteRuntimeWorkFlow = async ({
       if (!toolRaw) return;
       const { inputSchema, requestSchema } = getHTTPToolRuntimeSchemas(toolRaw);
       node.jsonSchema = requestSchema;
-      // 为已存在的 HTTP 工具节点提供描述回退。
-      if (!node.intro?.trim()) {
+      // 空字符串代表用户主动清空，历史缺失值才使用工具定义描述。
+      if (node.intro !== '' && !node.intro) {
         node.intro = toolRaw.description;
       }
       mergeToolNodeInputs({

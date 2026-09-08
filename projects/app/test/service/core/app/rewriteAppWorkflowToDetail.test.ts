@@ -529,6 +529,7 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
           toolId: 'systemTool-toolset',
           toolList: [
             { toolId: 'search', name: 'Search', description: 'Definition description' },
+            { toolId: 'blank', name: 'Blank', description: 'Definition blank description' },
             { toolId: 'new', name: 'New', description: 'New definition description' }
           ]
         }
@@ -546,6 +547,7 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
             toolId: 'systemTool-toolset',
             toolList: [
               { toolId: 'search', name: 'Search', description: 'Custom description' },
+              { toolId: 'blank', name: 'Blank', description: '' },
               { toolId: 'removed', name: 'Removed', description: 'Removed description' }
             ]
           }
@@ -562,6 +564,7 @@ describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
 
     expect(nodes[0].toolConfig?.systemToolSet?.toolList).toEqual([
       { toolId: 'search', name: 'Search', description: 'Custom description' },
+      { toolId: 'blank', name: 'Blank', description: '' },
       { toolId: 'new', name: 'New', description: 'New definition description' }
     ]);
   });
@@ -783,7 +786,11 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     });
     authAppByTmbIdMock.mockResolvedValue({});
 
-    for (const originalIntro of [undefined, '', '  ']) {
+    for (const [originalIntro, expectedIntro] of [
+      [undefined, description],
+      ['', ''],
+      ['  ', '  ']
+    ] as const) {
       const nodes = [
         {
           nodeId: 'tool',
@@ -802,7 +809,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         isRoot: false
       });
 
-      expect(nodes[0].intro).toBe(description);
+      expect(nodes[0].intro).toBe(expectedIntro);
     }
   });
 

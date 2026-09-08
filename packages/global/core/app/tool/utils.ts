@@ -226,17 +226,17 @@ export const getToolNameCandidates = (toolName?: string) => {
   return candidates;
 };
 
-/** 返回工具集子工具的有效描述；空白保存值继续使用工具定义默认值。 */
+/** 返回工具集子工具的有效描述；主动保存空字符串时保留空值。 */
 export const getToolSetChildDescription = (
-  savedDescription?: string,
+  savedDescription?: string | null | false | 0,
   definitionDescription = ''
-) => (savedDescription?.trim() ? savedDescription : definitionDescription);
+) => (savedDescription === '' ? savedDescription : savedDescription || definitionDescription);
 
 /**
  * 将当前节点保存的子工具描述合并到新模板配置。
  *
- * 系统工具集用 `toolId` 匹配，MCP/HTTP 工具集用 `name` 匹配；只保留非空描述，
- * 以便新增工具和历史空值继续使用新模板的工具定义描述。
+ * 系统工具集用 `toolId` 匹配，MCP/HTTP 工具集用 `name` 匹配；保留用户保存的描述，
+ * 以便新增工具和历史缺失值继续使用新模板的工具定义描述。
  */
 export const mergeToolSetChildDescriptions = ({
   savedToolConfig,
