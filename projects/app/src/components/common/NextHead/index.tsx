@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 
 const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?: string }) => {
   const formatIcon = useMemo(() => {
-    if (!icon) return '/favicon.ico';
+    if (!icon || icon === '/') return '/favicon.ico';
     if (icon.startsWith('http') || icon.startsWith('/')) {
       return icon;
     }
