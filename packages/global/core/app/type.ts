@@ -252,6 +252,13 @@ export type AppDetailType = AppSchemaType & {
   permission: AppPermission;
 };
 
+// 可选模型兼容 null 输入，解析后仍保持 string/undefined；外层 optional 保留字段可省略语义。
+const OptionalDatasetModelSchema = z
+  .string()
+  .nullish()
+  .transform((value) => value ?? undefined)
+  .optional();
+
 export const AppDatasetSearchParamsTypeSchema = z.object({
   searchMode: z.enum(DatasetSearchModeEnum),
   limit: NumSchema.optional(), // limit max tokens
@@ -259,15 +266,15 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   embeddingWeight: NumSchema.optional(), // embedding weight, fullText weight = 1 - embeddingWeight
 
   usingReRank: BoolSchema.optional(),
-  rerankModelId: z.string().optional(),
+  rerankModelId: OptionalDatasetModelSchema,
   /** @deprecated */
-  rerankModel: z.string().optional(),
+  rerankModel: OptionalDatasetModelSchema,
   rerankWeight: NumSchema.optional(),
 
   datasetSearchUsingExtensionQuery: BoolSchema.optional(),
-  datasetSearchExtensionModelId: z.string().optional(),
+  datasetSearchExtensionModelId: OptionalDatasetModelSchema,
   /** @deprecated */
-  datasetSearchExtensionModel: z.string().optional(),
+  datasetSearchExtensionModel: OptionalDatasetModelSchema,
   datasetSearchExtensionBg: z.string().optional(),
   [NodeInputKeyEnum.authTmbId]: BoolSchema.optional(),
 

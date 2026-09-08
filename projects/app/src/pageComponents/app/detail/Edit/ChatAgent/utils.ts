@@ -148,6 +148,7 @@ export const checkAgentSkillSandboxUnavailable = ({
   );
 };
 
+/** 将 Agent 表单转换为工作流，并通过共用 Schema 校验和归一化知识库参数。 */
 export function agentForm2AppWorkflow(
   data: AppFormEditFormType,
   t: any // i18nT
