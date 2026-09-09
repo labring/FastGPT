@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/summary';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { findModelData } from '@fastgpt/service/core/ai/model';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getMemberModelCatalogPermission } from '@fastgpt/service/support/permission/model/controller';
 
 /** 只返回展示白名单字段；停用模型照常鉴权，无权限模型允许显示名称，但绝不泄露执行配置。 */
@@ -20,14 +20,16 @@ export async function handler(
     bodySchema: GetModelSummariesBodySchema
   }).body;
   const identity = await authModelViewer({ req, outLinkAuthData });
+  const modelHandle = await getModelHandle();
   const { modelIds: permittedIds } = await getMemberModelCatalogPermission({
     ...identity,
-    includeInactive: true
+    includeInactive: true,
+    catalogSnapshot: { models: modelHandle.getAllModels(), revision: modelHandle.revision }
   });
   const permitted = new Set(permittedIds);
   return GetModelSummariesResponseSchema.parse({
     models: modelIds.map((modelId) => {
-      const model = findModelData({ modelId });
+      const model = modelHandle.findModelData({ modelId });
       if (!model) return { modelId, status: 'deleted' };
       return {
         modelId,

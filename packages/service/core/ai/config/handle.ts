@@ -1,3 +1,4 @@
+import { assertModelAvailable } from '../utils';
 import { cloneDeep } from 'lodash-es';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
@@ -13,6 +14,7 @@ import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
 import type { SystemDefaultModelType } from '../type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
 
 type ModelSnapshot = {
   models: SystemModelDataType[];
@@ -58,8 +60,8 @@ export const createModelHandle = (input: ModelSnapshot) => {
 
   /** modelId 一旦出现就禁止按旧名称回退；展示名不作为模型身份。 */
   const resolve = (reference: ModelReferenceType) => {
-    if (reference.modelId !== undefined) return modelsById.get(reference.modelId);
-    if (reference.model) return modelsByName.get(reference.model);
+    if (!isEmptyModelValue(reference.modelId)) return modelsById.get(reference.modelId!);
+    if (!isEmptyModelValue(reference.model)) return modelsByName.get(reference.model!);
   };
   const typedGetter =
     <T extends SystemModelDataType>(type: T['type'], vision = false) =>
@@ -67,18 +69,12 @@ export const createModelHandle = (input: ModelSnapshot) => {
       reference: ModelReferenceType,
       options?: { optional?: O }
     ): OptionalResult<T, O> => {
-      if (options?.optional && reference.modelId === undefined && reference.model === undefined) {
-        return undefined as OptionalResult<T, O>;
+      if (isEmptyModelValue(getModelReferenceValue(reference))) {
+        if (options?.optional) return undefined as OptionalResult<T, O>;
+        throw new UserError(ModelErrEnum.unConfigured);
       }
       const model = resolve(reference);
-      if (
-        !model ||
-        model.type !== type ||
-        !model.isActive ||
-        (vision && !(model.type === ModelTypeEnum.llm && model.config.vision))
-      ) {
-        throw new UserError(ModelErrEnum.unExist);
-      }
+      assertModelAvailable({ model, type, vision });
       return model as OptionalResult<T, O>;
     };
 
@@ -101,7 +97,10 @@ export const createModelHandle = (input: ModelSnapshot) => {
       try {
         return { model: getVlmModelData(reference), error: undefined };
       } catch (error) {
-        if (error instanceof UserError && error.message === ModelErrEnum.unExist) {
+        if (
+          error instanceof UserError &&
+          (error.message === ModelErrEnum.unExist || error.message === ModelErrEnum.unConfigured)
+        ) {
           return { model: undefined, error };
         }
         throw error;
@@ -124,20 +123,14 @@ export const createModelHandle = (input: ModelSnapshot) => {
     /** 保留原缺省约定：图片与标题可缺省，其余默认槽位缺失时明确报错。 */
     getDefaultModelData: <S extends DefaultSlot>(slot: S): DefaultResult<S> => {
       const model = snapshot.defaultModels[slot];
-      if (!model?.isActive) {
-        if (slot === 'datasetImageLLM' || slot === 'chatTitleLLM')
-          return undefined as DefaultResult<S>;
-        throw new UserError(ModelErrEnum.unExist);
+      if (slot === 'datasetImageLLM' || slot === 'chatTitleLLM') {
+        if (!model?.isActive) return undefined as DefaultResult<S>;
       }
+      if (!model) throw new UserError(ModelErrEnum.unConfigured);
       const expectedType = ['datasetTextLLM', 'datasetImageLLM', 'chatTitleLLM'].includes(slot)
         ? ModelTypeEnum.llm
-        : slot;
-      if (
-        model.type !== expectedType ||
-        (slot === 'datasetImageLLM' && !(model.type === ModelTypeEnum.llm && model.config.vision))
-      ) {
-        throw new UserError(ModelErrEnum.unExist);
-      }
+        : (slot as ModelTypeEnum);
+      assertModelAvailable({ model, type: expectedType, vision: slot === 'datasetImageLLM' });
       return model as DefaultResult<S>;
     },
     getSystemDefaultModelIds: () => defaultIds,

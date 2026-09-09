@@ -8,6 +8,7 @@ const {
   defaultSearchDatasetDataMock,
   filterDatasetsByTmbIdMock,
   findDatasetByIdMock,
+  getDatasetSearchVlmModelMock,
   formatModelChars2PointsMock
 } = vi.hoisted(() => ({
   countPromptTokensMock: vi.fn(),
@@ -15,11 +16,16 @@ const {
   defaultSearchDatasetDataMock: vi.fn(),
   filterDatasetsByTmbIdMock: vi.fn(),
   findDatasetByIdMock: vi.fn(),
+  getDatasetSearchVlmModelMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
   defaultSearchDatasetData: defaultSearchDatasetDataMock
+}));
+
+vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
+  getDatasetSearchVlmModel: getDatasetSearchVlmModelMock
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
@@ -35,6 +41,8 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   getModelHandle: async () => ({
+    getDefaultLLMModelData: vi.fn(),
+    getDefaultRerankModelData: vi.fn(),
     getEmbeddingModelData: vi.fn(() => ({
       model: 'embedding-model',
       name: 'Embedding Model',
@@ -52,7 +60,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
       name: `${model} name`,
       config: { vision: true }
     })),
-    getVlmModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) =>
+    getOptionalVlmModelData: vi.fn(({ modelId, model }: { modelId?: string; model?: string }) =>
       modelId || model
         ? {
             modelId,
@@ -96,6 +104,11 @@ const llmModelData = (model: string) =>
 describe('dispatchAgentDatasetSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getDatasetSearchVlmModelMock.mockResolvedValue({
+      model: 'vlm-model',
+      name: 'vlm-model name',
+      config: { vision: true }
+    });
     findDatasetByIdMock.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
         vectorModel: 'embedding-model',

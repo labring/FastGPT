@@ -72,12 +72,9 @@ describe('model handle operations', () => {
   it('does not fall back from invalid IDs or search display aliases', () => {
     const handle = build();
     expect(handle.getLLMModelData({ model: model.model }).modelId).toBe(model.modelId);
-    for (const ref of [
-      { modelId: '', model: model.model },
-      { modelId: 'missing', model: model.model },
-      { model: model.name },
-      {}
-    ]) {
+    expect(handle.getLLMModelData({ modelId: '', model: model.model }).modelId).toBe(model.modelId);
+    expect(() => handle.getLLMModelData({})).toThrow('modelUnConfigured');
+    for (const ref of [{ modelId: 'missing', model: model.model }, { model: model.name }]) {
       expect(() => handle.getLLMModelData(ref)).toThrow('modelUnExist');
     }
   });

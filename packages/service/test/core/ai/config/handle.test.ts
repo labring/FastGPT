@@ -1,3 +1,4 @@
+import { assertModelAvailable } from '@fastgpt/service/core/ai/utils';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
@@ -6,7 +7,7 @@ import type {
   SystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
+import { UserError, getErrText } from '@fastgpt/global/common/error/utils';
 import { createModelHandle } from '../../../../core/ai/config/handle';
 
 const vlm: LLMSystemModelDataType = {
@@ -47,10 +48,8 @@ describe('tryGetVlmModelData', () => {
   });
 
   it.each<ModelReferenceType>([
-    {},
     { modelId: 'missing' },
     { model: 'missing' },
-    { modelId: '', model: vlm.model },
     { modelId: 'missing', model: vlm.model },
     { model: vlm.name }
   ])('returns a model-unavailable result for an invalid reference: %j', (reference) => {
@@ -88,5 +87,60 @@ describe('tryGetVlmModelData', () => {
       }
     };
     expect(() => createHandle().tryGetVlmModelData(reference)).toThrow(error);
+  });
+});
+
+describe('upstream model selection semantics', () => {
+  it.each([undefined, null, '', '   '])('treats empty references consistently (%s)', (modelId) => {
+    const handle = createHandle();
+    expect(() => handle.getLLMModelData({ modelId })).toThrow(ModelErrEnum.unConfigured);
+    expect(handle.getLLMModelData({ modelId }, { optional: true })).toBeUndefined();
+    expect(handle.getVlmModelData({ modelId }, { optional: true })).toBeUndefined();
+    expect(handle.getLLMModelData({ modelId, model: vlm.model }).modelId).toBe(vlm.modelId);
+    expect(handle.tryGetVlmModelData({ modelId }).error?.message).toBe(ModelErrEnum.unConfigured);
+  });
+
+  it('reports disabled and wrong-type models by actual display name', () => {
+    for (const [model, type, vision, message] of [
+      [{ ...vlm, isActive: false }, ModelTypeEnum.llm, false, 'Model is disabled: Visual model'],
+      [vlm, ModelTypeEnum.embedding, false, 'Model type mismatch: Visual model'],
+      [
+        { ...vlm, config: { ...vlm.config, vision: false } },
+        ModelTypeEnum.llm,
+        true,
+        'Model type mismatch: Visual model'
+      ],
+      [
+        { ...vlm, name: '', isActive: false },
+        ModelTypeEnum.llm,
+        false,
+        'Model is disabled: test-vlm'
+      ]
+    ] as const) {
+      expect(() => assertModelAvailable({ model, type, vision })).toThrow(ModelErrEnum.unExist);
+      try {
+        assertModelAvailable({ model, type, vision });
+      } catch (error) {
+        expect(getErrText(error)).toBe(message);
+      }
+    }
+    expect(() => assertModelAvailable({ type: ModelTypeEnum.llm })).toThrow(ModelErrEnum.unExist);
+  });
+
+  it('distinguishes absent defaults from disabled defaults', () => {
+    expect(() => createHandle().getDefaultModelData('llm')).toThrow(ModelErrEnum.unConfigured);
+    const handle = createModelHandle({
+      models: [vlm],
+      defaultModels: { llm: { ...vlm, isActive: false } },
+      configuredDefaultModelIds: {},
+      revision: 0,
+      version: 'disabled'
+    });
+    expect(() => handle.getDefaultModelData('llm')).toThrow(ModelErrEnum.unExist);
+    try {
+      handle.getDefaultModelData('llm');
+    } catch (error) {
+      expect(getErrText(error)).toBe('Model is disabled: Visual model');
+    }
   });
 });

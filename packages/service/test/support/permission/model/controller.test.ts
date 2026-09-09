@@ -27,12 +27,18 @@ describe('model permission cache', () => {
     const activeId = new Types.ObjectId().toString();
     const inactiveId = new Types.ObjectId().toString();
     const hiddenId = new Types.ObjectId();
-    global.systemActiveModelList = [{ modelId: activeId }] as typeof global.systemActiveModelList;
-    global.systemModelList = [
-      { modelId: activeId },
-      { modelId: inactiveId },
-      { modelId: String(hiddenId) }
-    ] as typeof global.systemModelList;
+    setModelTestSnapshot({
+      models: [{ modelId: activeId }] as ReturnType<
+        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+      >
+    });
+    setModelTestSnapshot({
+      models: [
+        { modelId: activeId },
+        { modelId: inactiveId, isActive: false },
+        { modelId: String(hiddenId), isActive: false }
+      ] as ReturnType<NonNullable<ReturnType<typeof getCachedModelHandle>>['getAllModels']>
+    });
     await MongoResourcePermission.collection.insertOne({
       teamId: new Types.ObjectId(teamId),
       resourceType: PerResourceTypeEnum.model,

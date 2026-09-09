@@ -41,37 +41,44 @@ export const clearMyModelsCache = ({
 export const clearAllMyModelsCache = ({ session }: { session?: ClientSession } = {}) =>
   MongoTmpData.deleteMany(myModelsCacheFilter, { session });
 
-/** 返回当前成员可使用的稳定模型 ID；模型权限只按 resourceId 判断。 */
+/** 返回成员权限范围内的模型 ID；默认仅启用模型，展示目录可显式包含停用模型。 */
 export const getMemberModelCatalogPermission = async ({
   teamId,
   tmbId,
   isTeamOwner,
-  catalogSnapshot
+  catalogSnapshot,
+  includeInactive = false
 }: {
   teamId: string;
   tmbId: string;
   isTeamOwner: boolean;
-  /** 目录响应传入同一个不可变快照，避免权限计算期间热刷新混用两个版本。 */
+  /** 仅供目录展示停用状态；执行权限调用仍保持 active 模型范围。 */
+  includeInactive?: boolean;
+  /** 调用方传入同一快照，避免权限计算期间混用目录版本。 */
   catalogSnapshot?: { models: SystemModelDataType[]; revision: number };
 }) => {
   const snapshot =
     catalogSnapshot ??
     (await (async () => {
       const handle = await getModelHandle();
-      return { models: handle.getActiveModels(), revision: handle.revision };
+      return { models: handle.getAllModels(), revision: handle.revision };
     })());
-  const activeModels = snapshot.models;
+  const catalogModels = includeInactive
+    ? snapshot.models
+    : snapshot.models.filter((model) => model.isActive);
   const catalogRevision = snapshot.revision;
   if (isTeamOwner) {
-    const modelIds = activeModels.map((model) => model.modelId);
+    const modelIds = catalogModels.map((model) => model.modelId);
     return { modelIds, version: hashStr([...modelIds].sort().join('\n')) };
   }
 
   const cacheMetadata = { teamId, tmbId };
-  const cachedModels = await getTmpData({
-    type: TmpDataEnum.MyModels,
-    metadata: cacheMetadata
-  });
+  const cachedModels = includeInactive
+    ? undefined
+    : await getTmpData({
+        type: TmpDataEnum.MyModels,
+        metadata: cacheMetadata
+      });
   if (cachedModels && (cachedModels.data.catalogRevision ?? 0) === catalogRevision) {
     return {
       modelIds: cachedModels.data.modelIds,
@@ -101,7 +108,7 @@ export const getMemberModelCatalogPermission = async ({
   const permissionConfiguredModelSet = new Set(
     rps.map(getPermissionModelId).filter((modelId): modelId is string => !!modelId)
   );
-  const unconfiguredModels = activeModels.filter(
+  const unconfiguredModels = catalogModels.filter(
     (model) => !permissionConfiguredModelSet.has(model.modelId)
   );
 
@@ -122,17 +129,19 @@ export const getMemberModelCatalogPermission = async ({
   );
   const version = hashStr([...modelIds].sort().join('\n'));
 
-  await setTmpData({
-    type: TmpDataEnum.MyModels,
-    metadata: cacheMetadata,
-    data: {
-      teamId,
-      tmbId,
-      modelIds,
-      version,
-      catalogRevision
-    }
-  }).catch(() => {});
+  // 展示目录不复用可执行模型的权限缓存，避免混入停用模型或命中旧 active 快照。
+  if (!includeInactive)
+    await setTmpData({
+      type: TmpDataEnum.MyModels,
+      metadata: cacheMetadata,
+      data: {
+        teamId,
+        tmbId,
+        modelIds,
+        version,
+        catalogRevision
+      }
+    }).catch(() => {});
 
   return { modelIds, version };
 };

@@ -50,9 +50,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
   const agentModelData =
     modelHandle.getLLMModelData({ modelId: agentModelId }, { optional: true }) ??
     modelHandle.getDefaultModelData('llm');
+  // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认。
   const vlmModelData =
-    modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true }) ??
-    modelHandle.getDefaultModelData('datasetImageLLM');
+    vlmModelId === undefined
+      ? modelHandle.getDefaultModelData('datasetImageLLM')
+      : modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
 
   const { teamId, tmbId, userId } = parentId
     ? await authDataset({

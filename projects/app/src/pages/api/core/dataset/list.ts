@@ -34,14 +34,8 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     bodySchema: GetDatasetListBodySchema
   }).body;
 
-  // Auth user permission
   const [{ tmbId, teamId, permission: teamPer }] = await Promise.all([
-    authUserPer({
-      req,
-      authToken: true,
-      authApiKey: true,
-      per: ReadPermissionVal
-    }),
+    authUserPer({ req, authToken: true, authApiKey: true, per: ReadPermissionVal }),
     ...(parentId
       ? [
           authDataset({
@@ -56,29 +50,19 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   ]);
 
   if (Array.isArray(tmbIds) && tmbIds.length === 0) {
-    return [];
+    return GetDatasetListResponseSchema.parse([]);
   }
 
-  // Get team all app permissions
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
-    getResourcePermissionsByTeam({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId
-    }),
-    getGroupsByTmbId({
-      tmbId,
-      teamId
-    }).then((item) => {
+    getResourcePermissionsByTeam({ resourceType: PerResourceTypeEnum.dataset, teamId }),
+    getGroupsByTmbId({ tmbId, teamId }).then((item) => {
       const map = new Map<string, 1>();
       item.forEach((item) => {
         map.set(String(item._id), 1);
       });
       return map;
     }),
-    getOrgIdSetWithParentByTmbId({
-      teamId,
-      tmbId
-    })
+    getOrgIdSetWithParentByTmbId({ teamId, tmbId })
   ]);
   const roleListMap = new Map<string, (typeof roleList)[number][]>();
   roleList.forEach((item) => {
@@ -95,10 +79,8 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   );
 
   const findDatasetQuery = (() => {
-    // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
     const datasetPerQuery = teamPer.isOwner ? {} : idList;
-
     const searchMatch = searchKey
       ? {
           $or: [
@@ -107,39 +89,27 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
           ]
         }
       : {};
-    const listFilter = {
-      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
-      ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
-    };
-
-    if (searchKey) {
-      const data = {
-        ...datasetPerQuery,
-        teamId,
-        deleteTime: null, // 搜索时也要过滤已删除数据
-        ...listFilter,
-        ...searchMatch
-      };
-      // @ts-ignore
-      delete data.parentId;
-      return data;
-    }
-
-    return {
+    const typeMatch = type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {};
+    const creatorMatch = tmbIds ? { tmbId: { $in: tmbIds } } : {};
+    const baseQuery = {
       ...datasetPerQuery,
       teamId,
-      deleteTime: null, // 关键：只返回未删除的数据
-      ...listFilter,
+      deleteTime: null,
+      ...typeMatch,
+      ...creatorMatch
+    };
+    if (searchKey) return { $and: [baseQuery, searchMatch] };
+    return {
+      ...baseQuery,
       ...parseParentIdInMongo(parentId)
     };
   })();
 
   const datasetSort = ((): Record<string, 1 | -1> => {
-    if (sort === AppListSortEnum.createTimeAsc) return { createTime: 1 };
-    if (sort === AppListSortEnum.createTimeDesc) return { createTime: -1 };
-    return { updateTime: -1 };
+    if (sort === AppListSortEnum.createTimeAsc) return { _id: 1 };
+    if (sort === AppListSortEnum.createTimeDesc) return { _id: -1 };
+    return { updateTime: -1, _id: -1 };
   })();
-
   const myDatasets = await MongoDataset.find(findDatasetQuery).sort(datasetSort).lean();
   const modelHandle = await getModelHandle();
   const formatDatasets = myDatasets
@@ -166,15 +136,11 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
           });
         };
         const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];
-
         return {
           Per: getPer(String(dataset._id)),
-          privateDataset: isPrivateResourceByCollaborators({
-            resourceClbs
-          })
+          privateDataset: isPrivateResourceByCollaborators({ resourceClbs })
         };
       })();
-
       return {
         _id: dataset._id,
         avatar: dataset.avatar,
@@ -192,11 +158,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return GetDatasetListResponseSchema.parse(
-    await addSourceMember({
-      list: formatDatasets
-    })
-  );
+  return GetDatasetListResponseSchema.parse(await addSourceMember({ list: formatDatasets }));
 }
 
 export default NextAPI(handler);

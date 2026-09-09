@@ -69,9 +69,14 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const agentModelStore =
     modelHandle.getLLMModelData({ modelId: agentModelId, model: agentModel }, { optional: true }) ??
     modelHandle.getDefaultModelData('llm');
-  const vlmModelStore =
-    modelHandle.getVlmModelData({ modelId: vlmModelId, model: vlmModel }, { optional: true }) ??
-    modelHandle.getDefaultModelData('datasetImageLLM');
+  // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认。
+  const vlmModelStore = (() => {
+    if (vlmModelId !== undefined)
+      return modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
+    if (vlmModel !== undefined)
+      return modelHandle.getVlmModelData({ model: vlmModel }, { optional: true });
+    return modelHandle.getDefaultModelData('datasetImageLLM');
+  })();
 
   // check limit
   await checkTeamDatasetLimit(teamId);

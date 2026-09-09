@@ -1,15 +1,21 @@
 import { MongoDataset } from '../schema';
-import { findDatasetVlmModel } from '../model';
+import { getDatasetModelReference } from '../model';
+import { getModelHandle } from '../../ai/model';
+import type { ModelHandle } from '../../ai/config/handle';
 
 /**
  * 搜索的视觉能力是可选增强：按知识库顺序选择第一个启用且支持视觉的模型。
  * 缺失、停用、类型不符和空配置均跳过，全部不可用时返回 undefined；不影响训练的严格校验。
  */
 export const findFirstDatasetSearchVlmModel = (
-  datasets: Parameters<typeof findDatasetVlmModel>[0][]
+  datasets: Parameters<typeof getDatasetModelReference>[0][],
+  modelHandle: ModelHandle
 ) => {
   for (const dataset of datasets) {
-    const model = findDatasetVlmModel(dataset);
+    const model = modelHandle.findModelData(getDatasetModelReference(dataset, 'vlm'), {
+      type: 'llm',
+      vision: true
+    });
     if (model?.isActive) return model;
   }
 };
@@ -19,10 +25,12 @@ export const findFirstDatasetSearchVlmModel = (
  */
 export const getDatasetSearchVlmModel = async ({
   teamId,
-  datasetIds
+  datasetIds,
+  modelHandle
 }: {
   teamId: string;
   datasetIds: string[];
+  modelHandle?: ModelHandle;
 }) => {
   if (datasetIds.length === 0) return;
   const datasets = await MongoDataset.find(
@@ -34,6 +42,7 @@ export const getDatasetSearchVlmModel = async ({
     datasetIds.flatMap((id) => {
       const dataset = datasetMap.get(id);
       return dataset ? [dataset] : [];
-    })
+    }),
+    modelHandle ?? (await getModelHandle())
   );
 };

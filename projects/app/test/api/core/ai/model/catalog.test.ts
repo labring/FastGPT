@@ -25,7 +25,7 @@ vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
   MongoTeamMember: { findOne: mocks.findTeamMember }
 }));
 
-import handler from '@/pages/api/core/ai/model/catalog';
+import { handler } from '@/pages/api/core/ai/model/catalog';
 
 const model = {
   modelId: 'model-1',
@@ -80,7 +80,7 @@ describe('GET /api/core/ai/model/catalog', () => {
   it('returns the full desensitized catalog when the version changed', async () => {
     const result = await handler({ query: {} } as any);
 
-    expect(result.version).toBe('1:catalog-version:permission-version');
+    expect(result.version).toBe('3:catalog-version:permission-version');
     expect(result.data?.models[0]).not.toHaveProperty('requestAuth');
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
     expect(result.data?.providers[0].provider).toBe('provider');
@@ -95,7 +95,7 @@ describe('GET /api/core/ai/model/catalog', () => {
       return { modelIds: [model.modelId], version: 'permission-version' };
     });
     const result = await handler({ query: {} } as any);
-    expect(result.version).toBe('1:catalog-version:permission-version');
+    expect(result.version).toBe('3:catalog-version:permission-version');
     expect(result.data?.models.map((item) => item.modelId)).toEqual([model.modelId]);
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
     expect(result.data?.providers[0].provider).toBe('provider');
@@ -123,10 +123,10 @@ describe('GET /api/core/ai/model/catalog', () => {
 
   it('returns only the version when the client cache is current', async () => {
     const result = await handler({
-      query: { version: '1:catalog-version:permission-version' }
+      query: { version: '3:catalog-version:permission-version' }
     } as any);
 
-    expect(result).toEqual({ version: '1:catalog-version:permission-version' });
+    expect(result).toEqual({ version: '3:catalog-version:permission-version' });
   });
 
   it('uses the server-side outlink member identity instead of login auth', async () => {
@@ -173,5 +173,22 @@ describe('GET /api/core/ai/model/catalog', () => {
       model.modelId,
       secondModel.modelId
     ]);
+  });
+
+  it('does not include inactive model metadata in the candidate catalog', async () => {
+    setModelTestSnapshot({
+      models: [
+        model,
+        { ...model, modelId: 'inactive', isActive: false },
+        { ...model, modelId: 'hidden', isActive: false }
+      ] as ReturnType<NonNullable<ReturnType<typeof getCachedModelHandle>>['getAllModels']>
+    });
+    mocks.getMemberModelCatalogPermission.mockResolvedValue({
+      modelIds: [model.modelId, 'inactive'],
+      version: 'p'
+    });
+    const result = await handler({ query: {} } as any);
+    expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
+    expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
   });
 });

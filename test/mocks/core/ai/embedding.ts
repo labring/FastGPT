@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 /**
  * Mock embedding generation utilities for testing

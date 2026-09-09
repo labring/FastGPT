@@ -1,3 +1,4 @@
+import { assertModelAvailable } from '@fastgpt/service/core/ai/utils';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { runSystemModelTransaction } from '@fastgpt/service/core/ai/config/entity';
 import {
@@ -328,7 +329,7 @@ export const updateSystemDefaultModels = async (
         (
           await MongoAIModel.find(
             { scope: ModelScopeEnum.system },
-            '_id type isActive config.vision'
+            '_id name model type isActive config.vision'
           )
             .session(session)
             .lean()
@@ -336,15 +337,11 @@ export const updateSystemDefaultModels = async (
       );
 
       for (const { modelId, expectedType, requiresVision } of defaultFields) {
-        const model = modelMap.get(modelId);
-        if (
-          !model ||
-          !model.isActive ||
-          model.type !== expectedType ||
-          (requiresVision && !('vision' in model.config && model.config.vision))
-        ) {
-          throw new UserError(ModelErrEnum.unExist);
-        }
+        assertModelAvailable({
+          model: modelMap.get(modelId),
+          type: expectedType,
+          vision: requiresVision
+        });
       }
     }
 
