@@ -338,6 +338,62 @@ describe('support user OpenAPI contracts', () => {
     expect(GetInvitationLinkInfoResponseSchema.parse(undefined)).toBeUndefined();
   });
 
+  it('defaults missing member names in team response contracts', () => {
+    const member = {
+      tmbId: objectId,
+      userId: objectId,
+      teamId: objectId,
+      name: '历史成员',
+      status: TeamMemberStatusEnum.active,
+      createTime: '2026-01-01T00:00:00.000Z'
+    };
+
+    expect(
+      SearchMembersOrgsGroupsResponseSchema.parse({
+        members: [member],
+        orgs: [],
+        groups: []
+      }).members[0].memberName
+    ).toBe('Member');
+
+    expect(
+      GetTeamListResponseSchema.parse([
+        {
+          userId: objectId,
+          teamId: objectId,
+          teamName: 'FastGPT 团队',
+          tmbId: objectId,
+          status: TeamMemberStatusEnum.active,
+          permission: {
+            role: 1,
+            isOwner: false,
+            hasManagePer: false,
+            hasWritePer: false,
+            hasReadPer: true,
+            hasManageRole: false,
+            hasWriteRole: false,
+            hasReadRole: true
+          }
+        }
+      ])[0].memberName
+    ).toBe('Member');
+
+    expect(
+      ListTeamMembersResponseSchema.parse({
+        total: 1,
+        list: [
+          {
+            userId: objectId,
+            tmbId: objectId,
+            teamId: objectId,
+            status: TeamMemberStatusEnum.active,
+            createTime: '2026-01-01T00:00:00.000Z'
+          }
+        ]
+      }).list[0].memberName
+    ).toBe('Member');
+  });
+
   it('parses team management list and write contracts', () => {
     expect(GetTeamListQuerySchema.parse({ status: 'active' })).toEqual({ status: 'active' });
     expect(GetTeamListQuerySchema.parse({})).toEqual({});

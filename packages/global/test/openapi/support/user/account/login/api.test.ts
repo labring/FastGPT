@@ -251,4 +251,27 @@ describe('user account OpenAPI contracts', () => {
       }
     });
   });
+
+  it('defaults a missing team member name in user details', () => {
+    const user = OpenAPIUserSchema.parse({
+      _id: objectIdLike,
+      username: 'user@example.com',
+      avatar: '/icon/avatar.svg',
+      timezone: 'Asia/Shanghai',
+      contact: null,
+      team: {
+        userId: objectIdLike,
+        teamId: objectIdLike,
+        teamName: 'FastGPT 团队',
+        avatar: '/icon/avatar.svg',
+        tmbId: objectIdLike,
+        status: 'active',
+        notificationAccount: null,
+        permission: {}
+      },
+      permission: {}
+    });
+
+    expect(user.team.memberName).toBe('Member');
+  });
 });

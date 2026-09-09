@@ -65,7 +65,7 @@ const SearchMemberSchema = z
       example: '张三',
       description: '成员名称'
     }),
-    memberName: z.string().meta({
+    memberName: z.string().default('Member').meta({
       example: '张三',
       description: '成员展示名称'
     }),
@@ -249,7 +249,7 @@ export const TeamListItemSchema = z
       example: 'FastGPT 团队',
       description: '团队名称'
     }),
-    memberName: z.string().meta({
+    memberName: z.string().default('Member').meta({
       example: '张三',
       description: '当前用户在团队中的名称'
     }),
