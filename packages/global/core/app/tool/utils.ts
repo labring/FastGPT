@@ -286,7 +286,7 @@ export const mergeToolSetChildDescriptions = ({
           mcpToolSet: {
             ...templateToolConfig.mcpToolSet,
             toolList: mergeToolList({
-              templateList: templateToolConfig.mcpToolSet.toolList,
+              templateList: templateToolConfig.mcpToolSet.toolList ?? [],
               savedList: savedToolConfig?.mcpToolSet?.toolList,
               getKey: (tool) => tool.name
             })
@@ -298,12 +298,12 @@ export const mergeToolSetChildDescriptions = ({
           httpToolSet: {
             ...templateToolConfig.httpToolSet,
             toolList: mergeToolList({
-              templateList: templateToolConfig.httpToolSet.toolList,
+              templateList: templateToolConfig.httpToolSet.toolList ?? [],
               savedList: savedToolConfig?.httpToolSet?.toolList,
               getKey: (tool) => tool.name
             })
           }
         }
       : {})
-  };
+  } as NodeToolConfigType;
 };

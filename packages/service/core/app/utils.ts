@@ -259,7 +259,7 @@ export async function rewriteAppWorkflowToDetail({
           node.hasTokenFee = preview.hasTokenFee;
           node.hasSystemSecret = preview.hasSystemSecret;
 
-          const { source } = splitCombineToolId(node.pluginId);
+          const { source } = splitCombineToolId(toolId);
           if (
             (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) &&
             node.intro !== '' &&

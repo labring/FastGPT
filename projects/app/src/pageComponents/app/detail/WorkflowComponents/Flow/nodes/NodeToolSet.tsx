@@ -31,7 +31,7 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           ...data.toolConfig,
           [toolSetKey]: {
             ...toolSet,
-            toolList: toolSet.toolList.map((tool, toolIndex) =>
+            toolList: (toolSet.toolList ?? []).map((tool, toolIndex) =>
               toolIndex === index ? { ...tool, description } : tool
             )
           }
