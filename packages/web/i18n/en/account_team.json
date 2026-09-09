@@ -203,7 +203,7 @@
   "log_set_invoice_header": "【{{name}}】The invoice header operation was set up",
   "log_time": "Operation time",
   "log_transfer_app_ownership": "【{{name}}】 transferred ownership of the {{appType}} 【{{appName}}】 from 【{{oldOwnerName}}】 to 【{{newOwnerName}}】",
-  "log_transfer_dataset_ownership": "【{{name}}】 transferred ownership of the {{datasetType}} 【{{datasetName}}】 from 【{{oldOwnerName}}】 to 【{{newOwnerName}}】",
+  "log_transfer_team_ownership": "【{{name}}】 transferred ownership of the team 【{{teamName}}】 from 【{{oldOwnerName}}】 to 【{{newOwnerName}}】",
   "log_type": "Operation Type",
   "log_update_api_key": "【{{name}}】Updated the API key named [{{keyName}}]",
   "log_update_app_collaborator": "【{{name}}】 updated collaborators for the {{appType}} 【{{appName}}】: organizations 【{{orgList}}】, groups 【{{groupList}}】, members 【{{tmbList}}】; permissions: read 【{{readPermission}}】, write 【{{writePermission}}】, manage 【{{managePermission}}】",
