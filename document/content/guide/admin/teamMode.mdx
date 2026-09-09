@@ -7,17 +7,25 @@ description: FastGPT 团队模式说明文档
 
 目前支持的团队模式：
 
-1. 多团队模式（默认模式）
-2. 单团队模式（全局只有一个团队）
+1. 单团队模式（默认模式，全局只有一个团队）
+2. 多团队模式
 3. 成员同步模式（所有成员自外部同步）
 
 <table className="table-hover table-striped-columns" style={{ textAlign: 'center' }}>
   <thead>
     <tr>
-      <th rowSpan="2" className="text-center">团队模式</th>
-      <th colSpan="2" className="text-center">短信/邮箱 注册</th>
-      <th colSpan="2" className="text-center">管理员直接添加</th>
-      <th colSpan="2" className="text-center">SSO 注册</th>
+      <th rowSpan="2" className="text-center">
+        团队模式
+      </th>
+      <th colSpan="2" className="text-center">
+        短信/邮箱注册
+      </th>
+      <th colSpan="2" className="text-center">
+        管理员直接添加
+      </th>
+      <th colSpan="2" className="text-center">
+        SSO 注册
+      </th>
     </tr>
     <tr>
       <th className="text-center">是否创建默认团队</th>
@@ -28,7 +36,7 @@ description: FastGPT 团队模式说明文档
       <th className="text-center">是否加入 Root 团队</th>
     </tr>
   </thead>
-  <tbody >
+  <tbody>
     <tr>
       <td className="text-center">单团队模式</td>
       <td className="text-center">❌</td>
@@ -59,7 +67,7 @@ description: FastGPT 团队模式说明文档
   </tbody>
 </table>
 
-### 多团队模式（默认模式）
+### 多团队模式
 
 多团队模式下，每个用户创建时默认创建以自己为所有者的默认团队。
 
@@ -73,9 +81,8 @@ description: FastGPT 团队模式说明文档
 
 具体的同步方式和规则请参考 [SSO & 外部成员同步](./sso.mdx)。
 
-
 ## 配置
 
-在 `fastgpt-pro` 的`系统配置-成员配置`中，可以配置团队模式。
+在 `fastgpt-pro` 的 `系统配置-成员配置` 中，可以配置团队模式。
 
 ![](/imgs/teammode.png)
