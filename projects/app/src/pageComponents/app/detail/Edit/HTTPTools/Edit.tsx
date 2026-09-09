@@ -22,14 +22,16 @@ const Edit = () => {
     return toolSetNode?.toolConfig?.httpToolSet;
   }, [appDetail.nodes]);
 
+  const editableToolSetData = toolSetData && 'toolId' in toolSetData ? undefined : toolSetData;
+
   const [currentTool, setCurrentTool] = useState<HttpToolConfigType | undefined>(
-    toolSetData?.toolList?.[0]
+    editableToolSetData?.toolList?.[0]
   );
-  const baseUrl = toolSetData?.baseUrl ?? '';
-  const toolList = toolSetData?.toolList ?? [];
-  const apiSchemaStr = toolSetData?.apiSchemaStr;
-  const headerSecret = toolSetData?.headerSecret ?? {};
-  const customHeaders = toolSetData?.customHeaders;
+  const baseUrl = editableToolSetData?.baseUrl ?? '';
+  const toolList = editableToolSetData?.toolList ?? [];
+  const apiSchemaStr = editableToolSetData?.apiSchemaStr;
+  const headerSecret = editableToolSetData?.headerSecret ?? {};
+  const customHeaders = editableToolSetData?.customHeaders;
   const parsedCustomHeaders = useMemo(() => {
     try {
       return JSON.parse(customHeaders || '{}') || {};

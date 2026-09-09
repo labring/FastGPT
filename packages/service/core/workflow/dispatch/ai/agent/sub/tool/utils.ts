@@ -533,7 +533,7 @@ export const getAgentRuntimeTools = async ({
           ? loadWorkflowAppResource({
               tmbId,
               appId: authAppId,
-              type: idSource === AppToolSourceEnum.personal ? 'agent' : 'tool',
+              type: 'tool',
               dynamic
             }).then((app) => ({ app }))
           : Promise.resolve(undefined);

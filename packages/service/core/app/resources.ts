@@ -9,6 +9,7 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId, splitToolsetToolPluginId } from '@fastgpt/global/core/app/tool/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
@@ -19,7 +20,10 @@ import { getLogger, LogCategories } from '../../common/logger';
 
 const resourceLogger = getLogger(LogCategories.MODULE.APP);
 
-type AppResourceModelType = Extract<AppResource, { type: 'model' }>['data']['modelType'];
+type AppResourceModelType =
+  | `${ModelTypeEnum.llm}`
+  | `${ModelTypeEnum.rerank}`
+  | `${ModelTypeEnum.tts}`;
 
 const modelInputTypes = new Map<string, AppResourceModelType>([
   [NodeInputKeyEnum.aiModelId, 'llm'],
@@ -59,17 +63,27 @@ const getModelId = (value: unknown, modelType: AppResourceModelType) => {
   return rawValue;
 };
 
-/** 资源去重键；模型额外包含 modelType，避免同名模型冲突。 */
-export const getAppResourceKey = (resource: AppResource) =>
-  resource.type === 'model'
-    ? `${resource.type}:${resource.data.modelType}:${resource.id}`
-    : `${resource.type}:${resource.id}`;
+/** 资源快照统一按 type + id 去重。 */
+export const getAppResourceKey = (resource: AppResource) => `${resource.type}:${resource.id}`;
+
+/** 判断资源快照是否声明了指定资源。 */
+export const hasAppResource = ({
+  resources,
+  resource
+}: {
+  resources: AppResourcesType;
+  resource: AppResource;
+}) => {
+  const key = getAppResourceKey(resource);
+  return resources.some((item) => getAppResourceKey(item) === key);
+};
 
 const isAclAppResource = (resource: AppResource) =>
   resource.type === 'agent' ||
   resource.type === 'tool' ||
   resource.type === 'dataset' ||
-  resource.type === 'skill';
+  resource.type === 'skill' ||
+  resource.type === 'model';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -146,10 +160,6 @@ export const mergeAppResources = (resources: AppResourcesType): AppResourcesType
 
     const idCompare = a.id.localeCompare(b.id);
     if (idCompare) return idCompare;
-
-    if (a.type === 'model' && b.type === 'model') {
-      return a.data.modelType.localeCompare(b.data.modelType);
-    }
 
     return 0;
   });
@@ -240,7 +250,7 @@ export const extractAppResources = ({
   const addModels = (value: unknown, modelType: AppResourceModelType) => {
     getValueList(value).forEach((item) => {
       const id = getModelId(item, modelType);
-      if (id) addResource({ type: 'model', id, data: { modelType } });
+      if (id) addResource({ type: 'model', id });
     });
   };
 

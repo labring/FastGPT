@@ -18,6 +18,7 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 const makePackage = async (entries: Array<{ path: string; name: string; description: string }>) => {
   const zip = new JSZip();
@@ -295,6 +296,31 @@ description: Zeta skill
 });
 
 describe('injectAgentSkillFilesToSandbox', () => {
+  it('rejects a declared static skill when its entity is unavailable', async () => {
+    const resource = { type: 'skill' as const, id: 'missing-skill' };
+    const resourceContext = {
+      isRoot: false,
+      resources: [resource],
+      resourceMap: new Map([['skill:missing-skill', resource]]),
+      appMap: new Map(),
+      workflowMap: new Map(),
+      datasetMap: new Map(),
+      skillMap: new Map()
+    };
+
+    await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+      expect(
+        injectAgentSkillFilesToSandbox({
+          sandbox: createSkillFilesystemMocks() as any,
+          skillIds: [resource.id],
+          teamId: 'team-id',
+          tmbId: 'tmb-id',
+          workDirectory: '/workspace'
+        })
+      ).rejects.toBe(SkillErrEnum.unExist)
+    );
+  });
+
   it('stops when deployed skill directory enumeration fails', async () => {
     const sandbox = {
       ...createSkillFilesystemMocks(),

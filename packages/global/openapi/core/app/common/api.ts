@@ -240,7 +240,10 @@ export const CreateAppBodySchema = z
       description: '应用节点配置'
     }),
     // 旧 modules 只能在 preprocess 成功后被删除；残留时必须拒绝，避免静默创建空应用。
-    modules: z.never().optional(),
+    modules: z.never().optional().meta({
+      description: '已废弃：旧版节点配置，建议使用 nodes',
+      deprecated: true
+    }),
     edges: CreateAppEdgesSchema.optional().meta({
       example: [],
       description: '应用连线'

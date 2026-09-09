@@ -72,8 +72,7 @@ describe('findTeamAppsByPublishedResource', () => {
     const { apps, counts } = await findTeamAppsByPublishedResource({
       teamId: String(teamId),
       type: 'skill',
-      ids: 'skill-1',
-      projection: 'name'
+      ids: 'skill-1'
     });
 
     expect(apps.map((app) => String(app._id))).toEqual([String(appId)]);

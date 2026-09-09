@@ -398,7 +398,6 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     },
     [
       appDetail.chatConfig,
-      llmModelList,
       past,
       setAppDetail,
       setEdges,

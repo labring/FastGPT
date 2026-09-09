@@ -98,7 +98,7 @@ describe('initAppResources migration API', () => {
     ).toMatchObject({ resourceRefs: { skillIds: ['published-skill'] } });
   });
 
-  it('writes resources in batches and removes legacy resource references', async () => {
+  it('writes resources in batches and preserves legacy fields', async () => {
     const records = Array.from({ length: 3 }, () =>
       createLegacyRecords({
         currentAppId: new Types.ObjectId(),
@@ -127,35 +127,37 @@ describe('initAppResources migration API', () => {
     expect(await MongoApp.collection.findOne({ _id: records[0].app._id })).toMatchObject({
       publishedVersionId: records[0].version._id
     });
-    expect(await MongoApp.collection.findOne({ _id: records[0].app._id })).not.toHaveProperty(
-      'modules'
-    );
+    expect(await MongoApp.collection.findOne({ _id: records[0].app._id })).toMatchObject({
+      modules: records[0].app.modules,
+      resourceRefs: records[0].app.resourceRefs
+    });
     expect(await MongoAppVersion.collection.findOne({ _id: records[0].version._id })).toMatchObject(
       {
-        resources: [{ type: 'skill', id: 'published-skill' }]
+        resources: [{ type: 'skill', id: 'published-skill' }],
+        resourceRefs: records[0].version.resourceRefs
       }
     );
-    expect(await MongoApp.countDocuments({ resourceRefs: { $exists: true } })).toBe(0);
-    expect(await MongoAppVersion.countDocuments({ resourceRefs: { $exists: true } })).toBe(0);
+    expect(await MongoApp.countDocuments({ resourceRefs: { $exists: true } })).toBe(3);
+    expect(await MongoAppVersion.countDocuments({ resourceRefs: { $exists: true } })).toBe(3);
   });
 
   it('skips records changed after they were read and preserves their retry references', async () => {
     await insertLegacyRecords();
 
-    const originalVersionBulkWrite = MongoAppVersion.collection.bulkWrite.bind(
+    const originalVersionUpdateOne = MongoAppVersion.collection.updateOne.bind(
       MongoAppVersion.collection
     );
     let hasConcurrentChange = false;
-    vi.spyOn(MongoAppVersion.collection, 'bulkWrite').mockImplementation(
-      async (operations, options) => {
+    vi.spyOn(MongoAppVersion.collection, 'updateOne').mockImplementation(
+      async (filter, update, options) => {
         if (!hasConcurrentChange) {
           hasConcurrentChange = true;
-          await MongoAppVersion.collection.updateOne(
+          await originalVersionUpdateOne(
             { _id: versionId },
             { $set: { nodes: [{ nodeId: 'changed-after-read' }] } }
           );
         }
-        return originalVersionBulkWrite(operations, options);
+        return originalVersionUpdateOne(filter, update, options);
       }
     );
 
@@ -192,18 +194,20 @@ describe('initAppResources migration API', () => {
   it('does not unset App graph after the App changes during migration', async () => {
     await insertLegacyRecords();
 
-    const originalAppBulkWrite = MongoApp.collection.bulkWrite.bind(MongoApp.collection);
+    const originalAppUpdateOne = MongoApp.collection.updateOne.bind(MongoApp.collection);
     let hasConcurrentChange = false;
-    vi.spyOn(MongoApp.collection, 'bulkWrite').mockImplementation(async (operations, options) => {
-      if (!hasConcurrentChange) {
-        hasConcurrentChange = true;
-        await MongoApp.collection.updateOne(
-          { _id: appId },
-          { $set: { modules: [{ nodeId: 'changed-after-read' }] } }
-        );
+    vi.spyOn(MongoApp.collection, 'updateOne').mockImplementation(
+      async (filter, update, options) => {
+        if (!hasConcurrentChange) {
+          hasConcurrentChange = true;
+          await originalAppUpdateOne(
+            { _id: appId },
+            { $set: { modules: [{ nodeId: 'changed-after-read' }] } }
+          );
+        }
+        return originalAppUpdateOne(filter, update, options);
       }
-      return originalAppBulkWrite(operations, options);
-    });
+    );
 
     const result = await runInitAppResourcesMigration({
       dryRun: false,
@@ -229,25 +233,27 @@ describe('initAppResources migration API', () => {
       resources: [{ type: 'skill', id: 'published-skill' }]
     });
     expect(await MongoApp.countDocuments({ resourceRefs: { $exists: true } })).toBe(1);
-    expect(await MongoAppVersion.countDocuments({ resourceRefs: { $exists: true } })).toBe(0);
+    expect(await MongoAppVersion.countDocuments({ resourceRefs: { $exists: true } })).toBe(1);
   });
 
   it('does not overwrite a concurrently published version pointer', async () => {
     await insertLegacyRecords();
     const concurrentVersionId = new Types.ObjectId();
 
-    const originalAppBulkWrite = MongoApp.collection.bulkWrite.bind(MongoApp.collection);
+    const originalAppUpdateOne = MongoApp.collection.updateOne.bind(MongoApp.collection);
     let hasConcurrentChange = false;
-    vi.spyOn(MongoApp.collection, 'bulkWrite').mockImplementation(async (operations, options) => {
-      if (!hasConcurrentChange) {
-        hasConcurrentChange = true;
-        await MongoApp.collection.updateOne(
-          { _id: appId },
-          { $set: { publishedVersionId: concurrentVersionId } }
-        );
+    vi.spyOn(MongoApp.collection, 'updateOne').mockImplementation(
+      async (filter, update, options) => {
+        if (!hasConcurrentChange) {
+          hasConcurrentChange = true;
+          await originalAppUpdateOne(
+            { _id: appId },
+            { $set: { publishedVersionId: concurrentVersionId } }
+          );
+        }
+        return originalAppUpdateOne(filter, update, options);
       }
-      return originalAppBulkWrite(operations, options);
-    });
+    );
 
     const result = await runInitAppResourcesMigration({
       dryRun: false,
@@ -314,24 +320,26 @@ describe('initAppResources migration API', () => {
     expect(await MongoApp.collection.findOne({ _id: appId })).toMatchObject({
       publishedVersionId: createdVersion?._id
     });
-    expect(await MongoApp.countDocuments({ resourceRefs: { $exists: true } })).toBe(0);
+    expect(await MongoApp.countDocuments({ resourceRefs: { $exists: true } })).toBe(1);
   });
 
   it('removes a generated version when a zero-version app changes before pointer backfill', async () => {
     await insertLegacyAppWithoutVersions();
 
-    const originalAppBulkWrite = MongoApp.collection.bulkWrite.bind(MongoApp.collection);
+    const originalAppUpdateOne = MongoApp.collection.updateOne.bind(MongoApp.collection);
     let hasConcurrentChange = false;
-    vi.spyOn(MongoApp.collection, 'bulkWrite').mockImplementation(async (operations, options) => {
-      if (!hasConcurrentChange) {
-        hasConcurrentChange = true;
-        await MongoApp.collection.updateOne(
-          { _id: appId },
-          { $set: { modules: [{ nodeId: 'changed-after-read' }] } }
-        );
+    vi.spyOn(MongoApp.collection, 'updateOne').mockImplementation(
+      async (filter, update, options) => {
+        if (!hasConcurrentChange) {
+          hasConcurrentChange = true;
+          await originalAppUpdateOne(
+            { _id: appId },
+            { $set: { modules: [{ nodeId: 'changed-after-read' }] } }
+          );
+        }
+        return originalAppUpdateOne(filter, update, options);
       }
-      return originalAppBulkWrite(operations, options);
-    });
+    );
 
     const result = await runInitAppResourcesMigration({
       dryRun: false,

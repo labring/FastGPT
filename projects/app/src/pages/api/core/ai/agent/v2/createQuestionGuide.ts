@@ -18,6 +18,9 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { hasAppResource } from '@fastgpt/service/core/app/resources';
+import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 async function handler(
   req: ApiRequestProps<CreateQuestionGuideV2BodyType>,
@@ -49,13 +52,14 @@ async function handler(
     outLinkAuthData
   });
 
+  const appWorkflow =
+    resolvedSourceType === ChatSourceTypeEnum.app
+      ? await getAppLatestVersion(resolvedSourceId)
+      : undefined;
   // 未由客户端覆盖时读取持久化配置；该分支在迁移期兼容历史 model 字段。
-  const persistedQuestionGuide: AppQGConfigType | undefined = await (async () => {
-    if (inputQuestionGuide || resolvedSourceType !== ChatSourceTypeEnum.app) return undefined;
-
-    const { chatConfig } = await getAppLatestVersion(resolvedSourceId);
-    return chatConfig.questionGuide;
-  })();
+  const persistedQuestionGuide: AppQGConfigType | undefined = inputQuestionGuide
+    ? undefined
+    : appWorkflow?.chatConfig.questionGuide;
   const questionGuide = inputQuestionGuide ?? persistedQuestionGuide;
 
   // Get histories
@@ -87,6 +91,14 @@ async function handler(
     }
     return modelHandle.getDefaultModelData('llm');
   })();
+  const modelResource = { type: 'model' as const, id: qgModelData.modelId };
+  if (appWorkflow) {
+    if (!hasAppResource({ resources: appWorkflow.resources, resource: modelResource })) {
+      throw ERROR_ENUM.unAuthModel;
+    }
+  } else {
+    await checkAppResourceReadPermissions({ resources: [modelResource], tmbId });
+  }
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,

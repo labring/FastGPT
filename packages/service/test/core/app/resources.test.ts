@@ -115,13 +115,13 @@ describe('extractAppResources', () => {
       { type: 'agent', id: 'agent-app' },
       { type: 'dataset', id: 'dataset-1' },
       { type: 'dataset', id: 'dataset-2' },
-      { type: 'model', id: 'extension-model-id', data: { modelType: 'llm' } },
-      { type: 'model', id: 'guide-model-id', data: { modelType: 'llm' } },
-      { type: 'model', id: 'llm-model-id', data: { modelType: 'llm' } },
-      { type: 'model', id: 'nested-extension-model-id', data: { modelType: 'llm' } },
-      { type: 'model', id: 'nested-rerank-model-id', data: { modelType: 'rerank' } },
-      { type: 'model', id: 'rerank-model-id', data: { modelType: 'rerank' } },
-      { type: 'model', id: 'tts-model-id', data: { modelType: 'tts' } },
+      { type: 'model', id: 'extension-model-id' },
+      { type: 'model', id: 'guide-model-id' },
+      { type: 'model', id: 'llm-model-id' },
+      { type: 'model', id: 'nested-extension-model-id' },
+      { type: 'model', id: 'nested-rerank-model-id' },
+      { type: 'model', id: 'rerank-model-id' },
+      { type: 'model', id: 'tts-model-id' },
       { type: 'skill', id: 'skill-1' }
     ]);
   });
@@ -186,19 +186,18 @@ describe('nodeHasDynamicInput', () => {
 });
 
 describe('mergeAppResources', () => {
-  it('keeps model types separate and lets a whole toolset override child tools', () => {
+  it('deduplicates models by id and lets a whole toolset override child tools', () => {
     expect(
       mergeAppResources([
-        { type: 'model', id: 'same-model', data: { modelType: 'rerank' } },
+        { type: 'model', id: 'same-model' },
         { type: 'tool', id: 'toolset', data: { toolNames: ['b'] } },
-        { type: 'model', id: 'same-model', data: { modelType: 'llm' } },
+        { type: 'model', id: 'same-model' },
         { type: 'tool', id: 'toolset' },
         { type: 'tool', id: 'toolset', data: { toolNames: ['a'] } },
         { type: 'tool', id: 'empty-names', data: { toolNames: [] } }
       ])
     ).toEqual([
-      { type: 'model', id: 'same-model', data: { modelType: 'llm' } },
-      { type: 'model', id: 'same-model', data: { modelType: 'rerank' } },
+      { type: 'model', id: 'same-model' },
       { type: 'tool', id: 'empty-names' },
       { type: 'tool', id: 'toolset' }
     ]);
@@ -244,6 +243,14 @@ describe('resolveStoredAppResources', () => {
       })
     ).toEqual([{ type: 'tool', id: 'mcp-app', data: { toolNames: ['search'] } }]);
   });
+
+  it('normalizes legacy model metadata to the common resource shape', () => {
+    expect(
+      resolveStoredAppResources({
+        resources: [{ type: 'model', id: 'model-1', data: { modelType: 'llm' } }]
+      })
+    ).toEqual([{ type: 'model', id: 'model-1' }]);
+  });
 });
 
 describe('splitExtractedAppResources', () => {
@@ -261,14 +268,14 @@ describe('splitExtractedAppResources', () => {
       extracted: [
         { type: 'dataset', id: 'old-dataset' },
         { type: 'skill', id: 'new-skill' },
-        { type: 'model', id: 'gpt', data: { modelType: 'llm' } }
+        { type: 'model', id: 'gpt' }
       ],
       baseline: [{ type: 'dataset', id: 'old-dataset' }]
     });
-    expect(kept).toEqual([
-      { type: 'dataset', id: 'old-dataset' },
-      { type: 'model', id: 'gpt', data: { modelType: 'llm' } }
+    expect(kept).toEqual([{ type: 'dataset', id: 'old-dataset' }]);
+    expect(added).toEqual([
+      { type: 'skill', id: 'new-skill' },
+      { type: 'model', id: 'gpt' }
     ]);
-    expect(added).toEqual([{ type: 'skill', id: 'new-skill' }]);
   });
 });

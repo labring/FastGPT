@@ -46,8 +46,6 @@ describe('app version detail API resources', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(res.data.resources).toEqual([
-      { type: 'model', id: 'guide-model-id', data: { modelType: 'llm' } }
-    ]);
+    expect(res.data.resources).toEqual([{ type: 'model', id: 'guide-model-id' }]);
   });
 });

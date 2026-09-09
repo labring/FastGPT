@@ -40,9 +40,10 @@ export const loadAgentDatasetContext = async (
   if (selectedDataset.length === 0) return [];
 
   const datasetIds = selectedDataset.map((item) => item.datasetId);
+  const resourceContext = getWorkflowResourceContext();
   assertWorkflowDatasetResources({ datasetIds, dynamic: dynamicDataset });
   const authorizedDatasetIds =
-    authTmbId || dynamicDataset
+    authTmbId || dynamicDataset || !resourceContext
       ? await filterDatasetsByTmbId({
           datasetIds,
           tmbId
@@ -50,7 +51,6 @@ export const loadAgentDatasetContext = async (
       : datasetIds;
   if (authorizedDatasetIds.length === 0) return [];
 
-  const resourceContext = getWorkflowResourceContext();
   const datasets =
     resourceContext && !dynamicDataset
       ? authorizedDatasetIds

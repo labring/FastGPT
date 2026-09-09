@@ -140,7 +140,7 @@ export const dispatchTool = async ({
      */
     const authRuntimeToolset = async (parentId: string, toolName?: string) =>
       loadWorkflowAppResource({
-        tmbId: runningUserInfo.tmbId,
+        tmbId: runningAppInfo.tmbId,
         appId: parentId,
         type: 'tool',
         toolName,

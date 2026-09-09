@@ -205,12 +205,13 @@ export const dispatchAgentDatasetSearch = async ({
 
   try {
     const requestedDatasetIds = datasetParams.datasets.map((item) => item.datasetId);
-    const datasetIds = datasetParams.authTmbId || dynamicDataset
-      ? await filterDatasetsByTmbId({
-          datasetIds: requestedDatasetIds,
-          tmbId
-        })
-      : requestedDatasetIds;
+    const datasetIds =
+      datasetParams.authTmbId || dynamicDataset
+        ? await filterDatasetsByTmbId({
+            datasetIds: requestedDatasetIds,
+            tmbId
+          })
+        : requestedDatasetIds;
 
     if (datasetIds.length === 0) {
       return {

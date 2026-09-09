@@ -211,7 +211,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'caller-without-toolset-permission',
+      tmbId: 'attacker-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
@@ -264,7 +264,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'caller-without-toolset-permission',
+      tmbId: 'attacker-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
@@ -412,7 +412,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'caller-without-toolset-permission',
+      tmbId: 'attacker-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });

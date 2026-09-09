@@ -29,6 +29,7 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 const mocks = vi.hoisted(() => ({
   getClientToolPreviewNode: vi.fn()
@@ -558,6 +559,48 @@ describe('checkAppResourceReadPermissions', () => {
         tmbId: member.tmbId
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('uses the existing model collaborator permissions for model resources', async () => {
+    const owner = await getUser(`model-resource-owner-${getNanoid(6)}`);
+    const member = await getUser(`model-resource-member-${getNanoid(6)}`, owner.teamId);
+    const modelId = String(new Types.ObjectId());
+    const model = {
+      ...global.systemDefaultModel.llm!,
+      modelId,
+      model: `model-${modelId}`,
+      isActive: true
+    };
+    const previousModels = global.systemActiveModelList;
+    const previousModelMap = global.systemModelMap;
+    global.systemActiveModelList = [...previousModels, model];
+    global.systemModelMap = new Map(previousModelMap).set(`id:${modelId}`, model);
+
+    try {
+      await MongoResourcePermission.create({
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        resourceType: PerResourceTypeEnum.model,
+        resourceId: modelId,
+        permission: ReadPermissionVal
+      });
+
+      await expect(
+        checkAppResourceReadPermissions({
+          resources: [{ type: 'model', id: modelId }],
+          tmbId: member.tmbId
+        })
+      ).rejects.toBe(ERROR_ENUM.unAuthModel);
+      await expect(
+        checkAppResourceReadPermissions({
+          resources: [{ type: 'model', id: modelId }],
+          tmbId: owner.tmbId
+        })
+      ).resolves.toBeUndefined();
+    } finally {
+      global.systemActiveModelList = previousModels;
+      global.systemModelMap = previousModelMap;
+    }
   });
 });
 

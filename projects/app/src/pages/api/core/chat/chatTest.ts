@@ -61,10 +61,7 @@ import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/s
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
 import { extractAppResources } from '@fastgpt/service/core/app/resources';
 import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
-import {
-  getWorkflowResourceEntities,
-  loadWorkflowResourceContext
-} from '@fastgpt/service/core/workflow/utils/resource';
+import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -115,8 +112,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       tmbId,
       isRoot,
       blockOnUnauthorized: true,
-      allowRootCrossTeam: isRoot,
-      resourceEntities: getWorkflowResourceEntities(resourceContext)
+      allowRootCrossTeam: isRoot
     });
 
     // 类型获取

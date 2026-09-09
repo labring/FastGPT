@@ -34,7 +34,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getHTTPToolList } from '../../../app/http';
 import { getWorkflowResourceContext } from '../../utils/context';
-import { assertWorkflowResource, filterWorkflowToolList } from '../../utils/resource';
+import { filterWorkflowToolList, loadWorkflowAppResource } from '../../utils/resource';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   getSavedToolInputSelectedType,
@@ -591,8 +591,7 @@ export const rewriteRuntimeWorkFlow = async ({
   const getAuthorizedToolSet = async (toolSetId: string) => {
     const resourceContext = getWorkflowResourceContext();
     if (resourceContext) {
-      assertWorkflowResource({ context: resourceContext, type: 'tool', id: toolSetId });
-      return resourceContext.appMap.get(toolSetId);
+      return loadWorkflowAppResource({ appId: toolSetId, tmbId, type: 'tool' });
     }
 
     try {

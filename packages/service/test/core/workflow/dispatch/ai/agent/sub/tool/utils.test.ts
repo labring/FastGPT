@@ -996,6 +996,34 @@ describe('getAgentRuntimeTools schema loading', () => {
     );
   });
 
+  it('loads a personal Agent tool from a tool resource snapshot', async () => {
+    const resource = { type: 'tool' as const, id: 'workflow_app' };
+    const tools = await runWithContext(
+      {
+        mcpClientMemory: {},
+        resourceContext: {
+          teamId: 'team_1',
+          isRoot: false,
+          resources: [resource],
+          resourceMap: new Map([['tool:workflow_app', resource]]),
+          appMap: new Map([['workflow_app', appMap.workflow_app]]),
+          workflowMap: new Map(),
+          datasetMap: new Map(),
+          skillMap: new Map()
+        }
+      },
+      () =>
+        getAgentRuntimeTools({
+          tmbId: 'tmb_1',
+          tools: [{ id: 'workflow_app', config: {} }]
+        })
+    );
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].type).toBe('workflow');
+    expect(authAppByTmbIdMock).not.toHaveBeenCalled();
+  });
+
   it('loads a legacy HTTP tool without isToolParam as an agent tool', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',

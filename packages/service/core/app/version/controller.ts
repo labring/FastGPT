@@ -36,14 +36,19 @@ const getVersionResourceSnapshot = (
     resourceRefs: version.resourceRefs
   });
 
-const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionWorkflow => {
-  // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
-  // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
-  const normalizedWorkflow = migrateWorkflowToCurrent({
+const normalizeStoredVersionWorkflow = (
+  version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>
+) =>
+  migrateWorkflowToCurrent({
     nodes: decodeToolSetNodesFromStorage(version.nodes),
     edges: version.edges,
     chatConfig: version.chatConfig
   });
+
+const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionWorkflow => {
+  // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
+  // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
+  const normalizedWorkflow = normalizeStoredVersionWorkflow(version);
   return {
     versionId: String(version._id),
     versionName: version.versionName,
@@ -307,7 +312,10 @@ export const getAppPublishedWorkflowMap = async (
       const version = isPointerVersionForApp(app, pointerVersion)
         ? pointerVersion
         : versionByAppId.get(String(app._id));
-      return [String(app._id), { nodes: decodeToolSetNodesFromStorage(version?.nodes ?? []) }];
+      return [
+        String(app._id),
+        { nodes: version ? normalizeStoredVersionWorkflow(version).nodes : [] }
+      ];
     })
   );
 };

@@ -192,6 +192,9 @@ export const injectAgentSkillFilesToSandbox = async ({
         id: skillId
       })
     );
+    if (skillIds.some((skillId) => !resourceContext.skillMap.has(skillId))) {
+      throw SkillErrEnum.unExist;
+    }
   }
   const teamSkills =
     resourceContext && !dynamic
@@ -213,13 +216,7 @@ export const injectAgentSkillFilesToSandbox = async ({
     await Promise.all(
       teamSkills.map(async (skill) => {
         try {
-          if (resourceContext && !dynamic) {
-            assertWorkflowResource({
-              context: resourceContext,
-              type: 'skill',
-              id: String(skill._id)
-            });
-          } else {
+          if (!resourceContext || dynamic) {
             await authSkillByTmbId({
               tmbId,
               skillId: String(skill._id),

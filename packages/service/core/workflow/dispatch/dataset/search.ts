@@ -4,7 +4,10 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io'
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
-import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getDatasetSearchVlmModel } from '../../../dataset/search/vlm';
+import { getDatasetSearchAuxiliaryModels } from '../../../dataset/search/auxiliaryModels';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -127,12 +130,13 @@ export async function dispatchDatasetSearch(
       NodeInputKeyEnum.datasetParams
     ]);
     const requestedDatasetIds = datasets.map((item) => item.datasetId);
-    const datasetIds = authTmbId || dynamicDataset
-      ? await filterDatasetsByTmbId({
-          datasetIds: requestedDatasetIds,
-          tmbId
-        })
-      : requestedDatasetIds;
+    const datasetIds =
+      authTmbId || dynamicDataset
+        ? await filterDatasetsByTmbId({
+            datasetIds: requestedDatasetIds,
+            tmbId
+          })
+        : requestedDatasetIds;
 
     if (datasetIds.length === 0) {
       return emptyResult;

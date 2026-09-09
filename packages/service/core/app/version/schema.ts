@@ -53,7 +53,7 @@ const AppVersionSchema = new Schema(
     resources: {
       type: Array
     },
-    /** @deprecated 仅供 4.16.3 资源快照迁移读取 skillIds */
+    /** @deprecated 仅供旧版本兼容、回滚和资源迁移核对 */
     resourceRefs: {
       type: Object,
       default: undefined

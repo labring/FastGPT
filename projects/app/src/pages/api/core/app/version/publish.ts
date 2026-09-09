@@ -7,7 +7,6 @@ import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { type PostPublishAppProps } from '@/global/core/app/api';
-import { authModelViewer } from '@/service/core/ai/model/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';

@@ -63,15 +63,17 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
     return toolSetNode?.toolConfig?.httpToolSet;
   }, [appDetail.nodes]);
 
+  const editableToolSetData = toolSetData && 'toolId' in toolSetData ? undefined : toolSetData;
+
   const { register, setValue, handleSubmit, watch } = useForm<HttpToolsType>({
     defaultValues: {
       avatar: '',
       name: appDetail?.name || '',
       intro: '',
-      baseUrl: toolSetData?.baseUrl || '',
-      apiSchemaStr: toolSetData?.apiSchemaStr || '',
-      customHeaders: toolSetData?.customHeaders || '{"Authorization":"Bearer"}',
-      headerSecret: toolSetData?.headerSecret || {}
+      baseUrl: editableToolSetData?.baseUrl || '',
+      apiSchemaStr: editableToolSetData?.apiSchemaStr || '',
+      customHeaders: editableToolSetData?.customHeaders || '{"Authorization":"Bearer"}',
+      headerSecret: editableToolSetData?.headerSecret || {}
     }
   });
 

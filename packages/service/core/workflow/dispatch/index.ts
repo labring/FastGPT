@@ -67,6 +67,7 @@ import {
 } from './utils/entry';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
+import { assertWorkflowNodeModelResources } from '../utils/resource';
 import {
   addWorkflowStepEvent,
   getWorkflowStepStatus,
@@ -894,6 +895,11 @@ export class WorkflowQueue {
         node,
         runtimeNodesMap: this.runtimeNodesMap,
         variableState: this.data.variableState
+      });
+      await assertWorkflowNodeModelResources({
+        node,
+        params,
+        tmbId: this.data.runningUserInfo.tmbId
       });
 
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {

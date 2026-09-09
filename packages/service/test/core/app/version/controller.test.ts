@@ -331,6 +331,47 @@ describe('getAppPublishedWorkflowMap', () => {
     expect(aggregateMock).toHaveBeenCalled();
     expect(result.get('app-id')?.nodes.map((node) => node.nodeId)).toEqual(['own-node']);
   });
+
+  it('normalizes legacy MCP nodes in the batch published workflow path', async () => {
+    const versionId = '507f1f77bcf86cd799439011';
+    findMock.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: versionId,
+          appId: 'app-id',
+          nodes: [
+            {
+              nodeId: 'legacy-mcp',
+              name: 'Legacy MCP',
+              flowNodeType: FlowNodeTypeEnum.toolSet,
+              pluginId: 'mcp-app-id',
+              inputs: [
+                {
+                  key: NodeInputKeyEnum.toolSetData,
+                  label: 'Tool set',
+                  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+                  value: { url: 'https://example.com/mcp', toolList: [] }
+                }
+              ],
+              outputs: []
+            }
+          ],
+          edges: [],
+          chatConfig: {}
+        }
+      ])
+    });
+
+    const result = await getAppPublishedWorkflowMap([
+      { _id: 'app-id', publishedVersionId: versionId } as any
+    ]);
+
+    expect(result.get('app-id')?.nodes[0].toolConfig?.mcpToolSet).toMatchObject({
+      url: 'https://example.com/mcp',
+      toolList: []
+    });
+    expect(result.get('app-id')?.nodes[0].inputs).toEqual([]);
+  });
 });
 
 describe('updateAppPublishedVersion', () => {

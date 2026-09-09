@@ -55,22 +55,22 @@ const AppSchema = new Schema(
       default: () => new Date()
     },
 
-    /** @deprecated 仅供 4.16.3 历史数据迁移读取，正常工作流使用 app_versions.nodes */
+    /** @deprecated 仅供旧版本兼容和回滚，正常工作流使用 app_versions.nodes */
     modules: {
       type: Array,
       default: undefined
     },
-    /** @deprecated 仅供 4.16.3 历史数据迁移读取，正常工作流使用 app_versions.edges */
+    /** @deprecated 仅供旧版本兼容和回滚，正常工作流使用 app_versions.edges */
     edges: {
       type: Array,
       default: undefined
     },
-    /** @deprecated 仅供 4.16.3 历史数据迁移读取，正常工作流使用 app_versions.chatConfig */
+    /** @deprecated 仅供旧版本兼容和回滚，正常工作流使用 app_versions.chatConfig */
     chatConfig: {
       type: Object,
       default: undefined
     },
-    /** @deprecated 仅供 4.16.3 资源快照迁移读取 skillIds */
+    /** @deprecated 仅供旧版本兼容、回滚和资源迁移核对 */
     resourceRefs: {
       type: Object,
       default: undefined
@@ -135,10 +135,8 @@ defineIndex(AppSchema, { key: { teamId: 1, parentId: 1 } });
 defineIndex(AppSchema, {
   key: { teamId: 1, deleteTime: 1, publishedVersionId: 1 }
 });
-defineIndex(AppSchema, {
-  key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 },
-  deprecated: true
-});
+// 旧版本回滚仍会按 resourceRefs.skillIds 反查，兼容窗口结束后再登记为 deprecated。
+defineIndex(AppSchema, { key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 } });
 
 // Schedule
 defineIndex(AppSchema, {

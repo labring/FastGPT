@@ -1,31 +1,39 @@
-import type { AppResourceType } from '@fastgpt/global/core/app/type';
+import type { AppResourceType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
 import { AppVersionCollectionName } from './version/schema';
 import { buildAppResourceMongoQuery } from './resources';
 
 type PublishedAppResource = { type: AppResourceType; id: string };
-type MatchedPublishedApp = {
-  _id: unknown;
+type MatchedPublishedApp = Pick<
+  AppSchemaType,
+  | '_id'
+  | 'parentId'
+  | 'avatar'
+  | 'type'
+  | 'name'
+  | 'intro'
+  | 'tmbId'
+  | 'updateTime'
+  | 'inheritPermission'
+  | 'publishedVersionId'
+> & {
   publishedResources?: PublishedAppResource[];
 };
 
 /**
  * 按当前正式 Version 反查引用了指定资源的团队 App。
  * 只查已有 publishedVersionId 的 App；4163 会给非文件夹 App 补齐该指针。
- * 先通过 $lookup 把资源匹配下推到 Mongo 拿到命中的 App id，再按 id 投影加载，
- * 避免全团队 App 入内存，同时保留 find 的投影类型推断。
+ * 通过 $lookup 把资源匹配下推到 Mongo，并一次返回固定的最小 App 字段与资源计数。
  */
 export const findTeamAppsByPublishedResource = async ({
   teamId,
   type,
-  ids,
-  projection
+  ids
 }: {
   teamId: string;
   type: AppResourceType;
   ids: string | string[];
-  projection?: string;
 }) => {
   const idList = Array.isArray(ids) ? ids : [ids];
   const resourceQuery = buildAppResourceMongoQuery({ type, ids: idList }).resources;
@@ -50,13 +58,24 @@ export const findTeamAppsByPublishedResource = async ({
     },
     { $unwind: { path: '$published' } },
     { $match: { 'published.resources': resourceQuery } },
-    { $project: { publishedResources: '$published.resources' } }
+    {
+      $project: {
+        parentId: 1,
+        avatar: 1,
+        type: 1,
+        name: 1,
+        intro: 1,
+        tmbId: 1,
+        updateTime: 1,
+        inheritPermission: 1,
+        publishedVersionId: 1,
+        publishedResources: '$published.resources'
+      }
+    }
   ]);
 
-  const appIds: string[] = [];
   const counts = new Map<string, number>();
   matched.forEach((app) => {
-    appIds.push(String(app._id));
     const matchedResourceIds = new Set(
       (app.publishedResources ?? [])
         .filter((resource) => resource.type === type && idList.includes(resource.id))
@@ -67,13 +86,7 @@ export const findTeamAppsByPublishedResource = async ({
     });
   });
 
-  const apps =
-    appIds.length > 0
-      ? await MongoApp.find(
-          { _id: { $in: appIds } },
-          `_id publishedVersionId ${projection ?? ''}`
-        ).lean()
-      : [];
+  const apps = matched.map(({ publishedResources: _publishedResources, ...app }) => app);
 
   return { apps, counts };
 };

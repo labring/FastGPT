@@ -58,8 +58,7 @@ async function handler(
   const { apps } = await findTeamAppsByPublishedResource({
     teamId,
     type: 'skill',
-    ids: skillId,
-    projection: 'parentId avatar type name intro tmbId updateTime inheritPermission'
+    ids: skillId
   });
   apps.sort((a, b) => +new Date(b.updateTime) - +new Date(a.updateTime));
 

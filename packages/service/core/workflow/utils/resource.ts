@@ -7,16 +7,23 @@ import type {
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import {
+  isWorkflowSystemModelInput,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
 import { MongoApp } from '../../app/schema';
 import { MongoDataset } from '../../dataset/schema';
 import { MongoAgentSkills } from '../../ai/skill/model/schema';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
 import { mergeAppResources } from '../../app/resources';
+import { checkAppResourceReadPermissions } from '../../../support/permission/app/resource';
 import { getWorkflowResourceContext } from './context';
 import {
   getAppPublishedWorkflowMap,
@@ -35,20 +42,13 @@ export type WorkflowResourceContext = {
   skillMap: Map<string, AgentSkillSchemaType>;
 };
 
-export type WorkflowResourceEntities = {
-  apps: AppSchemaType[];
-  datasets: DatasetSchemaType[];
-  skills: AgentSkillSchemaType[];
-};
-
 /** 静态资源快照不一致错误；不能被工具加载器降级为单个工具不可用。 */
 export class WorkflowResourceError extends UserError {}
 
 export const isWorkflowResourceError = (error: unknown): error is WorkflowResourceError =>
   error instanceof WorkflowResourceError;
 
-const getResourceKey = (type: AppResourceType, id: string, modelType?: string) =>
-  type === 'model' ? `${type}:${modelType}:${id}` : `${type}:${id}`;
+const getResourceKey = (type: AppResourceType, id: string) => `${type}:${id}`;
 
 /** 按资源快照批量加载实体；root 调试请求跳过团队过滤，但仍校验实体存在。 */
 export const loadWorkflowResourceContext = async ({
@@ -62,14 +62,7 @@ export const loadWorkflowResourceContext = async ({
 }) => {
   const normalizedResources = mergeAppResources(Array.isArray(resources) ? resources : []);
   const resourceMap = new Map(
-    normalizedResources.map((resource) => [
-      getResourceKey(
-        resource.type,
-        resource.id,
-        resource.type === 'model' ? resource.data.modelType : undefined
-      ),
-      resource
-    ])
+    normalizedResources.map((resource) => [getResourceKey(resource.type, resource.id), resource])
   );
   const appIds = normalizedResources
     .filter((resource) => resource.type === 'agent' || resource.type === 'tool')
@@ -128,15 +121,6 @@ export const loadWorkflowResourceContext = async ({
   } satisfies WorkflowResourceContext;
 };
 
-/** 将资源上下文转换为权限校验可复用的实体集合，避免重复查询资源实体。 */
-export const getWorkflowResourceEntities = (
-  context: WorkflowResourceContext
-): WorkflowResourceEntities => ({
-  apps: Array.from(context.appMap.values()),
-  datasets: Array.from(context.datasetMap.values()),
-  skills: Array.from(context.skillMap.values())
-});
-
 /** 校验当前工作流版本声明了指定资源；没有上下文时保留非 App 调试场景的旧权限语义。 */
 export const assertWorkflowResource = ({
   context,
@@ -158,6 +142,111 @@ export const assertWorkflowResource = ({
     if (!resource.data.toolNames.includes(toolName)) {
       throw new WorkflowResourceError(`App tool is not declared: ${id}/${toolName}`);
     }
+  }
+};
+
+const modelFeatureKeyMap = new Map<string, NodeInputKeyEnum>([
+  [NodeInputKeyEnum.datasetSearchRerankModelId, NodeInputKeyEnum.datasetSearchUsingReRank],
+  [NodeInputKeyEnum.datasetSearchRerankModel, NodeInputKeyEnum.datasetSearchUsingReRank],
+  [
+    NodeInputKeyEnum.datasetSearchExtensionModelId,
+    NodeInputKeyEnum.datasetSearchUsingExtensionQuery
+  ],
+  [NodeInputKeyEnum.datasetSearchExtensionModel, NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
+  [NodeInputKeyEnum.datasetDeepSearchModelId, NodeInputKeyEnum.datasetDeepSearch],
+  [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearch]
+]);
+
+const getRuntimeModelId = (value: unknown): string | undefined => {
+  const rawValue = (() => {
+    if (typeof value === 'string' && value) return value;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const record = value as Record<string, unknown>;
+    if (typeof record.modelId === 'string' && record.modelId) return record.modelId;
+    if (typeof record.model === 'string' && record.model) return record.model;
+  })();
+  if (!rawValue) return;
+
+  return (
+    global.systemModelMap?.get(`id:${rawValue}`)?.modelId ??
+    global.systemModelMap?.get(`model:${rawValue}`)?.modelId ??
+    rawValue
+  );
+};
+
+/**
+ * 在统一节点调度边界校验实际使用的模型资源。
+ *
+ * 静态输入只能使用当前 Version 快照声明的模型；引用输入和非 App 工作流按运行成员权限校验。
+ * 这里只判断资源身份和授权来源，模型类型、启用状态仍由具体调用点的 typed getter 校验。
+ */
+export const assertWorkflowNodeModelResources = async ({
+  node,
+  params,
+  tmbId
+}: {
+  node: Pick<RuntimeNodeItemType, 'flowNodeType' | 'inputs'>;
+  params: Record<string, unknown>;
+  tmbId: string;
+}) => {
+  const modelReferences: Array<{ id: string; dynamic: boolean }> = [];
+  const addModel = (value: unknown, dynamic: boolean) => {
+    const id = getRuntimeModelId(value);
+    if (id) modelReferences.push({ id, dynamic });
+  };
+
+  node.inputs.forEach((input) => {
+    if (!isWorkflowSystemModelInput({ node, input })) return;
+    const featureKey = modelFeatureKeyMap.get(input.key);
+    if (featureKey && params[featureKey] !== true) return;
+    addModel(params[input.key], nodeInputIsReference(input));
+  });
+
+  const datasetParamsInput = node.inputs.find(
+    (input) => input.key === NodeInputKeyEnum.datasetParams
+  );
+  const datasetParams = params[NodeInputKeyEnum.datasetParams];
+  if (
+    node.flowNodeType === FlowNodeTypeEnum.agent &&
+    datasetParams &&
+    typeof datasetParams === 'object' &&
+    !Array.isArray(datasetParams)
+  ) {
+    const config = datasetParams as Record<string, unknown>;
+    const dynamic = datasetParamsInput ? nodeInputIsReference(datasetParamsInput) : false;
+    if (config[NodeInputKeyEnum.datasetSearchUsingReRank] === true) {
+      addModel(
+        config[NodeInputKeyEnum.datasetSearchRerankModelId] ??
+          config[NodeInputKeyEnum.datasetSearchRerankModel],
+        dynamic
+      );
+    }
+    if (config[NodeInputKeyEnum.datasetSearchUsingExtensionQuery] === true) {
+      addModel(
+        config[NodeInputKeyEnum.datasetSearchExtensionModelId] ??
+          config[NodeInputKeyEnum.datasetSearchExtensionModel],
+        dynamic
+      );
+    }
+  }
+
+  const context = getWorkflowResourceContext();
+  const permissionResources = new Map<string, AppResource>();
+  modelReferences.forEach(({ id, dynamic }) => {
+    if (context && !dynamic) {
+      assertWorkflowResource({ context, type: 'model', id });
+      return;
+    }
+    permissionResources.set(id, { type: 'model', id });
+  });
+
+  if (permissionResources.size > 0) {
+    await checkAppResourceReadPermissions({
+      resources: Array.from(permissionResources.values()),
+      tmbId,
+      isRoot: context?.isRoot,
+      allowRootCrossTeam: context?.isRoot
+    });
   }
 };
 
@@ -285,7 +374,7 @@ export const loadWorkflowAppResource = async ({
 
   assertWorkflowResource({ context, type, id: appId, toolName });
   const app = context.appMap.get(appId);
-  if (!app) throw AppErrEnum.unExist;
+  if (!app) throw new WorkflowResourceError(`App resource is unavailable: ${type}:${appId}`);
   return app;
 };
 
