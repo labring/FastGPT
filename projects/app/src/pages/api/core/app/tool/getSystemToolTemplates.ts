@@ -71,7 +71,7 @@ export async function handler(
       parent.children
         ?.filter((child) => isSelectableToolStatus(child.status))
         .map((child) => ({
-          ...omitLegacyToolDescription(parent),
+          ...parent,
           templateType: FlowNodeTemplateTypeEnum.tools,
           isTool: true,
           // templateType: tool.isToolSet
@@ -120,7 +120,7 @@ export async function handler(
       return true;
     })
     .map<NodeTemplateListItemType>((tool) => ({
-      ...omitLegacyToolDescription(tool),
+      ...tool,
       templateType: FlowNodeTemplateTypeEnum.tools,
       isTool: true,
       flowNodeType: tool.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
@@ -185,11 +185,4 @@ function filterTemplateBySearchKey(template: NodeTemplateListItemType, searchReg
   return [template.name, template.intro, template.instructions, ...(template.tags ?? [])].some(
     (text) => searchRegex.test(String(text ?? ''))
   );
-}
-
-/** API 边界裁剪历史系统工具资源字段，兼容旧 provider 或数据库对象。 */
-function omitLegacyToolDescription<T extends object>(value: T): T {
-  const result = { ...value } as T & { toolDescription?: unknown };
-  delete result.toolDescription;
-  return result;
 }
