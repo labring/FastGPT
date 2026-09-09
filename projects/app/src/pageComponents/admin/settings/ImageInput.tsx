@@ -35,7 +35,7 @@ function ImageInput<T extends FieldValues>({
     }
   );
   return (
-    <Box mt={4} mb={4}>
+    <>
       <AvatarUploader />
 
       {value ? (
@@ -67,7 +67,7 @@ function ImageInput<T extends FieldValues>({
           <AddIcon />
         </Box>
       )}
-    </Box>
+    </>
   );
 }
 

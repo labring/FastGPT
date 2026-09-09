@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Box, Input, Textarea } from '@chakra-ui/react';
+import { Input, Textarea } from '@chakra-ui/react';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
 import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
@@ -8,7 +8,6 @@ import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';
 import SettingPage from '@/pageComponents/admin/settings/SettingPage';
-import SecondTitle from '@/pageComponents/admin/settings/SecondTitle';
 import FormItem from '@/pageComponents/admin/settings/FormItem';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import NavbarItems from './components/FormField/NavbarItems';
@@ -20,7 +19,7 @@ interface titleType {
 }
 
 export const Settings = () => {
-  const [rawData, setRawData] = useState<any>({});
+  const [rawData, setRawData] = useState<ConfigFormType>();
   const { setValue, reset, watch, register, handleSubmit, control } =
     useForm<ConfigFormType['siteSettings']>();
 
@@ -51,7 +50,6 @@ export const Settings = () => {
       })
     );
   });
-
   const isLoading = loadingConfig || loadingSave;
 
   const titles: Array<titleType> = [
@@ -73,7 +71,7 @@ export const Settings = () => {
   return (
     <SettingPage titles={titles} loading={isLoading} onSubmit={onSubmit}>
       <FirstTitle title="基础配置" />
-      <SecondTitle title="前端展示配置" />
+      <FirstTitle title="前端展示配置" />
       <FormItem title="系统名" description="">
         <Input {...register('feConfigs.systemTitle')} placeholder="" />
       </FormItem>
@@ -81,19 +79,13 @@ export const Settings = () => {
         title="自定义api域名"
         description="可以设置一个额外的api地址，不使用主站的地址，需配置域名的cname和ssl证书。"
       >
-        <Input
-          {...register('feConfigs.customApiDomain')}
-          placeholder="可以设置一个额外的api地址，不使用主站的地址，需配置域名的cname和ssl证书。"
-        />
+        <Input {...register('feConfigs.customApiDomain')} placeholder="" />
       </FormItem>
       <FormItem
         title="自定义分享链接域名"
         description="可以设置一个额外的分享链接地址，不使用主站的地址，需配置域名的cname和ssl证书。"
       >
-        <Input
-          {...register('feConfigs.customSharePageDomain')}
-          placeholder="可以设置一个额外的分享链接地址，不使用主站的地址，需配置域名的cname和ssl证书。"
-        />
+        <Input {...register('feConfigs.customSharePageDomain')} placeholder="" />
       </FormItem>
       <FormItem title="favicon" description="">
         <ImageInput control={control} name="feConfigs.favicon" />
@@ -102,7 +94,7 @@ export const Settings = () => {
         <Input {...register('systemEnv.openapiPrefix')} placeholder="" />
       </FormItem>
 
-      <SecondTitle title="个性化配置" />
+      <FirstTitle title="个性化配置" />
 
       <FormItem
         title="联系弹窗"
@@ -114,7 +106,6 @@ export const Settings = () => {
           whiteSpace="pre-wrap"
           wordBreak={'break-word'}
           {...register('concatMd')}
-          placeholder="使用 Markdown 进行配置，配置之后，在网页中“联系我们”相关的内容，会提示填写的内容。"
         />
       </FormItem>
 
@@ -134,25 +125,23 @@ export const Settings = () => {
         <Input {...register('feConfigs.appTemplateCourse')} placeholder="" />
       </FormItem>
 
-      <SecondTitle title="全局Script脚本" />
+      <FirstTitle title="全局Script脚本" />
 
       <FormItem
         title="全局 Script 脚本"
         description="自定义 Script 脚本，可以全局插入（可以做站点流量监控之类的）"
       >
-        <Box mb={8} w="100%">
-          <JsonEditor
-            value={watch('scripts')}
-            onChange={(e) => {
-              setValue('scripts', e || '');
-            }}
-            defaultHeight={250}
-            resize
-          />
-        </Box>
+        <JsonEditor
+          value={watch('scripts')}
+          onChange={(e) => {
+            setValue('scripts', e || '');
+          }}
+          defaultHeight={250}
+          resize
+        />
       </FormItem>
 
-      <SecondTitle title="系统参数" />
+      <FirstTitle title="系统参数" />
       <FormItem
         title="oneAPI地址(会覆盖环境变量配置的)"
         description="oneAPI地址，可以使用 oneapi 来实现多模型接入"
@@ -222,7 +211,7 @@ export const Settings = () => {
           placeholder=""
         />
       </FormItem>
-      <SecondTitle title="PDF 解析配置" />
+      <FirstTitle title="PDF 解析配置" />
       <FormItem title="自定义 PDF 解析地址 (第一优先级)" description="">
         <Input {...register('systemEnv.customPdfParse.url')} placeholder="" />
       </FormItem>
@@ -254,7 +243,7 @@ export const Settings = () => {
           placeholder=""
         />
       </FormItem>
-      <SecondTitle title="使用限制" />
+      <FirstTitle title="使用限制" />
       <FormItem title="导出间隔时长(分钟)" description="">
         <Input
           type="number"
@@ -273,21 +262,21 @@ export const Settings = () => {
           placeholder=""
         />
       </FormItem>
-      <SecondTitle title="小助手配置" />
+      <FirstTitle title="小助手配置" />
       <FormItem title="小助手 iframe 地址" description="">
         <Input {...register('feConfigs.botIframeUrl')} placeholder="" />
       </FormItem>
-      <SecondTitle title="侧边栏配置" />
-      <Box p={6}>
+      <FirstTitle title="侧边栏配置" />
+      <FormItem full>
         <NavbarItems
           value={watch('navbar')}
-          onChange={(e: any) => {
+          onChange={(e) => {
             setValue('navbar', e);
           }}
           title="侧边栏配置"
           description="移动端的侧边栏显示在账号 - 个人信息里"
         />
-      </Box>
+      </FormItem>
     </SettingPage>
   );
 };

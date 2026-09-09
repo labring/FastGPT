@@ -6,7 +6,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const ThirdPartyVariables = ({
@@ -39,9 +38,9 @@ const ThirdPartyVariables = ({
   return (
     <Box minH={'400px'}>
       <Flex alignItems={'center'} justifyContent={'space-between'}>
-        <MyTag fontSize={'md'} type="borderFill">
+        <Box color={'myGray.900'} fontSize={'lg'} fontWeight={'bold'}>
           {title}
-        </MyTag>
+        </Box>
         <Button
           size={'sm'}
           leftIcon={<MyIcon name={'common/addLight'} width={4} />}

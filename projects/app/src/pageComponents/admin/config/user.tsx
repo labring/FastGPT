@@ -10,7 +10,7 @@ import Switch from '@/pageComponents/admin/settings/Switch';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
-import { Box, Divider, Input, Textarea } from '@chakra-ui/react';
+import { Box, Input, Textarea } from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useMemo, useState } from 'react';
@@ -116,7 +116,6 @@ const UserSetting = () => {
         </FormItem>
       )}
 
-      <Divider mt="4" />
       {!!watch('sso.url') && (
         <>
           <SecondTitle title="自定义用户系统配置" />
@@ -140,7 +139,6 @@ const UserSetting = () => {
           </FormItem>
         </>
       )}
-      <Divider mt="4" />
 
       <SecondTitle title="邮箱通知配置(注册、套餐通知)" />
       <FormItem
@@ -174,7 +172,6 @@ const UserSetting = () => {
       <FormItem title="是否开启邮箱注册" description="是否开启邮箱注册">
         <Switch control={control} name="email.register" />
       </FormItem>
-      <Divider />
       <SecondTitle title="阿里云短信配置" />
       <FormItem
         title="ACCESSKEYID"
@@ -354,7 +351,6 @@ const UserSetting = () => {
             </FormItem>
           </>
           <>
-            <Divider />
             <SecondTitle title="Google 登录配置" />
             <FormItem title="Google Client ID">
               <Input {...register('google.clientId')} placeholder="Google Client ID" />
@@ -364,7 +360,6 @@ const UserSetting = () => {
             </FormItem>
           </>
           <>
-            <Divider />
             <SecondTitle title="微软登录配置" />
             <FormItem
               title="Microsoft Client ID"
@@ -389,7 +384,6 @@ const UserSetting = () => {
             </FormItem>
           </>
           <>
-            <Divider />
             <SecondTitle title="快速登录（不推荐）" />
             <FormItem>
               <Textarea {...register('fastLogin')} placeholder="快速登录（不推荐）" />

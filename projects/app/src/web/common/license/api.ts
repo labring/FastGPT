@@ -18,3 +18,8 @@ export const getLicenseData = async (): Promise<LicenseDataType | undefined> => 
 
 export const postActiveLicense = (data: { license: string }) =>
   POST('/proApi/admin/common/license/active', data);
+/** 获取当前部署实例 ID（决策版激活：客户提供 instanceId 给官方签发绑定 license） */
+export const getInstanceId = async (): Promise<string | undefined> => {
+  const res = await GET<{ instanceId?: string }>('/proApi/admin/common/license/instanceId');
+  return res?.instanceId;
+};

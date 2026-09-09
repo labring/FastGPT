@@ -1,6 +1,6 @@
 import { Box } from '@chakra-ui/react';
 
-function FirstTitle({ title }: { title: string }) {
+function FirstTitle({ title, mb = 4 }: { title: string; mb?: number }) {
   return (
     <Box
       fontSize={'lg'}
@@ -9,6 +9,7 @@ function FirstTitle({ title }: { title: string }) {
       bg={'myGray.100'}
       px={4}
       py={2}
+      mb={mb}
       id={title}
     >
       {title}
