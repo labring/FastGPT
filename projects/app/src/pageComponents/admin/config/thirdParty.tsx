@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { Box, Divider, Flex } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
 import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
@@ -9,6 +9,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';
 import SettingPage from '@/pageComponents/admin/settings/SettingPage';
 import SecondTitle from '@/pageComponents/admin/settings/SecondTitle';
+import FormItem from '@/pageComponents/admin/settings/FormItem';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Switch from '@/pageComponents/admin/settings/Switch';
 import ThirdPartyVariables from './components/FormField/ThirdPartyVariables';
@@ -84,7 +85,7 @@ export const Settings = () => {
   return (
     <SettingPage titles={titles} loading={isLoading} onSubmit={onSubmit}>
       <Flex bg={'myGray.100'} alignItems={'center'}>
-        <FirstTitle title="第三方账号配置" />
+        <FirstTitle title="第三方账号配置" mb={0} />
         <Flex
           color={'primary.600'}
           alignItems={'center'}
@@ -107,8 +108,7 @@ export const Settings = () => {
         <FormLabel title="OpenAI/OneAPI 账号" description="" mb={2} minW={'240px'} />
         <Switch control={control} name="siteSettings.feConfigs.show_openai_account" />
       </Flex>
-      <Divider mt="4" />
-      <Box p={6}>
+      <FormItem full>
         <ThirdPartyVariables
           value={externalProviderWorkflowVariables}
           onChange={(val) => {
@@ -116,7 +116,7 @@ export const Settings = () => {
           }}
           title="自定义工作流变量"
         />
-      </Box>
+      </FormItem>
     </SettingPage>
   );
 };

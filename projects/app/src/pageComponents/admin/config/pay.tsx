@@ -350,19 +350,13 @@ export const ModelSettings = () => {
             title="自定义套餐说明"
             description="如果填写了该地址，会覆盖系统上套餐页面，会跳转到这个自定义页面，你可以在自定义页面里定义收费规则"
           >
-            <Input
-              {...register('subPlans.planDescriptionUrl')}
-              placeholder="如果填写了该地址，会覆盖系统上套餐页面，会跳转到这个自定义页面，你可以在自定义页面里定义收费规则"
-            />
+            <Input {...register('subPlans.planDescriptionUrl')} />
           </FormItem>
           <FormItem
             title="应用备案地址"
             description="申请应用备案的跳转地址，用于引导用户进行应用备案申请"
           >
-            <Input
-              {...register('subPlans.appRegistrationUrl')}
-              placeholder="申请应用备案的跳转地址"
-            />
+            <Input {...register('subPlans.appRegistrationUrl')} placeholder="" />
           </FormItem>
           <FormItem
             title="社区支持提示"
@@ -374,7 +368,6 @@ export const ModelSettings = () => {
               rows={8}
               whiteSpace="pre-wrap"
               wordBreak={'break-word'}
-              placeholder="输入社区支持提示内容，支持 Markdown 格式。例如：欢迎加入我们的社区获取支持"
             />
           </FormItem>
           <FormItem title="活动到期时间">
@@ -404,31 +397,25 @@ export const ModelSettings = () => {
         title="appid"
         description="微信支付相关材料\nhttps://pay.weixin.qq.com/index.php/core/home/login?return_url=https%3A%2F%2Fpay.weixin.qq.com%2Findex.php%2Fextend%2Femployee\n自行注册微信支付，目前需要wx扫码支付\nappid: ![](/config/appid.png)"
       >
-        <Input
-          {...register('wx.WX_APPID')}
-          placeholder="微信支付相关材料\nhttps://pay.weixin.qq.com/index.php/core/home/login?return_url=https%3A%2F%2Fpay.weixin.qq.com%2Findex.php%2Fextend%2Femployee\n自行注册微信支付，目前需要wx扫码支付\nappid: ![](/config/appid.png)"
-        />
+        <Input {...register('wx.WX_APPID')} placeholder="" />
       </FormItem>
       <FormItem title="Merchant ID" description="![](/config/wx_mchid.png)">
-        <Input {...register('wx.WX_MCHID')} placeholder="![](/config/wx_mchid.png)" />
+        <Input {...register('wx.WX_MCHID')} placeholder="" />
       </FormItem>
 
       <FormItem title="V3 Code" description="![](/config/ws_v3_code.png)">
-        <Input {...register('wx.WX_V3_CODE')} placeholder="![](/config/ws_v3_code.png)" />
+        <Input {...register('wx.WX_V3_CODE')} placeholder="" />
       </FormItem>
 
       <FormItem title="Notify URL" description="没用到，随便填个">
-        <Input {...register('wx.WX_NOTIFY_URL')} placeholder="没用到，随便填个" />
+        <Input {...register('wx.WX_NOTIFY_URL')} placeholder="" />
       </FormItem>
 
       <FormItem
         title="Serial Number"
         description="点管理证书进去看到\n![](/config/wx_serial_no.png)"
       >
-        <Input
-          {...register('wx.WX_SERIAL_NO')}
-          placeholder="点管理证书进去看到\n![](/config/wx_serial_no.png)"
-        />
+        <Input {...register('wx.WX_SERIAL_NO')} placeholder="" />
       </FormItem>
 
       <FormItem
@@ -441,7 +428,6 @@ export const ModelSettings = () => {
           rows={8}
           whiteSpace="pre-wrap"
           wordBreak={'break-word'}
-          placeholder="按微信教程拿到这几个文件，txt打开key\n![](/config/wx_private_key.png)"
         />
       </FormItem>
       <SecondTitle title="支付宝支付配置" />
@@ -449,10 +435,7 @@ export const ModelSettings = () => {
         title="appid"
         description="支付宝支付相关材料\nhttps://open.alipay.com/develop/manage\n自行注册支付宝应用，目前需要开通电脑网站支付"
       >
-        <Input
-          {...register('alipay.APP_ID')}
-          placeholder="支付宝支付相关材料\nhttps://open.alipay.com/develop/manage\n自行注册支付宝应用，目前需要开通电脑网站支付"
-        />
+        <Input {...register('alipay.APP_ID')} placeholder="" />
       </FormItem>
       <FormItem
         title="Private Key"
@@ -464,7 +447,6 @@ export const ModelSettings = () => {
           rows={8}
           whiteSpace="pre-wrap"
           wordBreak={'break-word'}
-          placeholder="点接口加签方式后选择证书加密方式，具体操作参考\nhttps://opendocs.alipay.com/common/056zub?pathHash=91c49771\n"
         />
       </FormItem>
       <FormItem title="应用公钥证书" description="参考上面私钥获取文档">
@@ -474,7 +456,6 @@ export const ModelSettings = () => {
           rows={8}
           whiteSpace="pre-wrap"
           wordBreak={'break-word'}
-          placeholder="参考上面私钥获取文档"
         />
       </FormItem>
       <FormItem title="支付宝根证书" description="参考上面私钥获取文档">
@@ -484,7 +465,6 @@ export const ModelSettings = () => {
           rows={8}
           whiteSpace="pre-wrap"
           wordBreak={'break-word'}
-          placeholder="参考上面私钥获取文档"
         />
       </FormItem>
       <FormItem title="支付宝公钥证书" description="参考上面私钥获取文档">
@@ -494,29 +474,22 @@ export const ModelSettings = () => {
           rows={8}
           whiteSpace="pre-wrap"
           wordBreak={'break-word'}
-          placeholder="参考上面私钥获取文档"
         />
       </FormItem>
       <FormItem
         title="支付宝网关"
         description="支付宝网关，注意测试使用的沙箱环境是\nhttps://openapi-sandbox.dl.alipaydev.com/gateway.do\n，而生成环境是\nhttps://openapi.alipay.com/gateway.do\n"
       >
-        <Input
-          {...register('alipay.ALIPAY_GATEWAY')}
-          placeholder="支付宝网关，注意测试使用的沙箱环境是\nhttps://openapi-sandbox.dl.alipaydev.com/gateway.do\n，而生成环境是\nhttps://openapi.alipay.com/gateway.do\n"
-        />
+        <Input {...register('alipay.ALIPAY_GATEWAY')} placeholder="" />
       </FormItem>
       <FormItem
         title="Endpoint"
         description="支付宝端点，注意测试使用的沙箱环境是\nhttps://openapi-sandbox.dl.alipaydev.com\n，而生成环境是\nhttps://openapi.alipay.com\n"
       >
-        <Input
-          {...register('alipay.ALIPAY_ENDPOINT')}
-          placeholder="支付宝端点，注意测试使用的沙箱环境是\nhttps://openapi-sandbox.dl.alipaydev.com\n，而生成环境是\nhttps://openapi.alipay.com\n"
-        />
+        <Input {...register('alipay.ALIPAY_ENDPOINT')} placeholder="" />
       </FormItem>
       <FormItem title="Notify URL" description="没用到，随便填个">
-        <Input {...register('alipay.ALIPAY_NOTIFY_URL')} placeholder="没用到，随便填个" />
+        <Input {...register('alipay.ALIPAY_NOTIFY_URL')} placeholder="" />
       </FormItem>
       <SecondTitle title="对公支付消息提示" />
       <FormItem title="消息提示" description="支持markdown格式">

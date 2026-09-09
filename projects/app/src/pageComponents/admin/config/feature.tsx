@@ -71,7 +71,7 @@ export const Settings = () => {
 
       <>
         <SecondTitle title="功能展示配置" />
-        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={[6, 8]}>
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={6}>
           <Flex alignItems={'center'} my={3}>
             <FormLabel title="展示聊天空白页（都关闭即可）" description="" minW={'240px'} />
             <Switch control={control} name="feConfigs.show_emptyChat" />
@@ -85,7 +85,7 @@ export const Settings = () => {
 
       <>
         <SecondTitle title="第三方知识库" />
-        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={[6, 8]}>
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={6}>
           <Flex alignItems={'center'} my={3}>
             <FormLabel
               title="飞书知识库"
@@ -107,7 +107,7 @@ export const Settings = () => {
 
       <>
         <SecondTitle title="第三方发布渠道" />
-        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={[6, 8]}>
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={6}>
           <Flex alignItems={'center'} my={3}>
             <FormLabel
               title="飞书发布渠道"
@@ -153,7 +153,7 @@ export const Settings = () => {
 
       <>
         <SecondTitle title="插件系统" />
-        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={[6, 8]}>
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={6}>
           <Flex alignItems={'center'} my={3}>
             <FormLabel
               title="允许团队上传插件"
@@ -173,8 +173,8 @@ export const Settings = () => {
           <Box px={6} mb="4">
             Saas 服务才会用到，借助 Sealos 能力，允许用户配置自定义域名。
           </Box>
-          <Flex>
-            <Box px={6}>是否使用自定义域名</Box>
+          <Flex px={6} alignItems={'center'} my={3}>
+            <FormLabel title="是否使用自定义域名" description="" minW={'240px'} />
             <Switch control={control} name="feConfigs.customDomain.enable" />
           </Flex>
         </Box>

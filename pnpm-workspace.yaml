@@ -10,6 +10,7 @@ packages:
   - pro/admin
   - pro/sso
   - pro/browser-sandbox
+  - pro/license-server
 
   - document/
   - scripts/icon

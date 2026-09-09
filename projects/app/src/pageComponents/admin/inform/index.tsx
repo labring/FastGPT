@@ -276,7 +276,9 @@ const InformSetting = () => {
         <Box fontSize={'18px'} color={'myGray.700'}>
           运营图片
         </Box>
-        <ImageInput control={controlOperationalAd} name="operationalAdImage" />
+        <Box mt={4} mb={4}>
+          <ImageInput control={controlOperationalAd} name="operationalAdImage" />
+        </Box>
         <Box fontSize={'18px'} color={'myGray.700'} mb={2}>
           跳转链接
         </Box>
@@ -313,13 +315,15 @@ const InformSetting = () => {
         <Box fontSize={'18px'} color={'myGray.700'}>
           活动图片
         </Box>
-        <ImageInput
-          control={controlActivityAd}
-          name="activityAdImage"
-          uploadMaxW={1920}
-          uploadMaxH={1920}
-          uploadMaxSize={1024 * 1024 * 5}
-        />
+        <Box mt={4} mb={4}>
+          <ImageInput
+            control={controlActivityAd}
+            name="activityAdImage"
+            uploadMaxW={1920}
+            uploadMaxH={1920}
+            uploadMaxSize={1024 * 1024 * 5}
+          />
+        </Box>
         <Box fontSize={'18px'} color={'myGray.700'} mb={2}>
           跳转链接
         </Box>

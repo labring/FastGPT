@@ -13,13 +13,10 @@ import SecondaryNavigationContainer, {
  * 复用 SecondaryNavigationContainer 两级分组侧栏：父级可展开子项，
  * 非 root 访问时重定向回个人中心。
  *
- * 注：app 侧暂无 License 系统，pay/customTemplates 相关菜单默认隐藏；
- * 后续商业版接入 license 时替换为真实 licenseData。
+ * 菜单授权（决策版）：
+ * - 套餐管理/支付记录/开票/充值 = functions.pay 控制（商业功能，激活且开启才显示）
+ * - 模板 & 工具（模板市场/工具箱）= 始终显示（customTemplates 已从决策版移除，模板市场开源化）
  */
-const adminLicenseFunctions = {
-  pay: false,
-  customTemplates: false
-};
 
 const AdminContainer = ({
   children,
@@ -29,7 +26,7 @@ const AdminContainer = ({
   isLoading?: boolean;
 }) => {
   const router = useRouter();
-  const { initd } = useSystemStore();
+  const { initd, licenseData } = useSystemStore();
   const { userInfo } = useUserStore();
   const isRoot = userInfo?.username === 'root';
 
@@ -67,7 +64,7 @@ const AdminContainer = ({
             label: '团队管理',
             value: '/admin/teams'
           },
-          ...(adminLicenseFunctions.pay
+          ...(licenseData?.functions?.pay
             ? [
                 {
                   icon: 'support/account/plans',
@@ -135,7 +132,7 @@ const AdminContainer = ({
             label: '用户配置',
             value: '/admin/config/user'
           },
-          ...(adminLicenseFunctions.pay
+          ...(licenseData?.functions?.pay
             ? [
                 {
                   icon: 'support/bill/priceLight',
@@ -156,27 +153,23 @@ const AdminContainer = ({
         label: '模型提供商',
         value: '/admin/config/modelProvider'
       },
-      ...(adminLicenseFunctions.customTemplates
-        ? [
-            {
-              icon: 'common/layer',
-              label: '模板 & 工具',
-              value: '/admin/templates/app',
-              children: [
-                {
-                  icon: 'common/templateMarket',
-                  label: '模板市场',
-                  value: '/admin/templates/app'
-                },
-                {
-                  icon: 'common/toolkit',
-                  label: '工具箱',
-                  value: '/admin/templates/toolkit'
-                }
-              ]
-            }
-          ]
-        : []),
+      {
+        icon: 'common/layer',
+        label: '模板 & 工具',
+        value: '/admin/templates/app',
+        children: [
+          {
+            icon: 'common/templateMarket',
+            label: '模板市场',
+            value: '/admin/templates/app'
+          },
+          {
+            icon: 'common/toolkit',
+            label: '工具箱',
+            value: '/admin/templates/toolkit'
+          }
+        ]
+      },
       {
         icon: 'common/audit',
         label: '审计日志',
@@ -188,7 +181,7 @@ const AdminContainer = ({
         value: '/admin/home'
       }
     ],
-    []
+    [licenseData]
   );
 
   // 非 root 访问管理员区域时重定向回个人中心
