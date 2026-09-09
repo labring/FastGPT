@@ -107,7 +107,7 @@ const shouldSendStreamResumeHeader = (url: string) =>
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
-    '/api/proApi/core/chat/chatAgentHelper/completions',
+    '/api/maxApi/core/chat/chatAgentHelper/completions',
     '/api/core/ai/skill/debugChat',
     '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);

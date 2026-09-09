@@ -1,0 +1,110 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { Readable } from 'stream';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { FastGPTMaxUrl } from '@fastgpt/service/common/system/constants';
+import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
+
+const buildRequestPath = (req: NextApiRequest): string => {
+  const { path: pathPart, ...query } = req.query;
+  const pathSegments = Array.isArray(pathPart) ? pathPart : pathPart ? [pathPart] : [];
+
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (Array.isArray(value)) {
+      for (const item of value) searchParams.append(key, item);
+    } else if (value !== undefined) {
+      searchParams.append(key, value);
+    }
+  }
+  const queryString = searchParams.toString();
+
+  return `/api/${pathSegments.join('/')}${queryString ? `?${queryString}` : ''}`;
+};
+
+/**
+ * max 服务（max/apps/server）同源反代。
+ *
+ * 与 /api/proApi/[...path] 同构：客户端 cookie/headers 原样透传给独立 Hono 服务，
+ * SSE 响应以流方式回传。服务内部完成鉴权与生成。
+ */
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    const requestPath = buildRequestPath(req);
+
+    if (!requestPath) {
+      throw new Error('url is empty');
+    }
+    if (!FastGPTMaxUrl) {
+      throw new Error('未配置 max 服务链接: MAX_URL');
+    }
+
+    // 防御 protocol-relative URL 覆盖主机(如 path 含空段 → `//169.254...`)
+    const targetUrl = buildSameOriginUrl(requestPath, FastGPTMaxUrl);
+
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (
+        key === 'rootkey' ||
+        key === 'fastgpt-pro-token' ||
+        key === 'host' ||
+        key === 'connection'
+      ) {
+        continue;
+      }
+      if (value) {
+        headers[key] = Array.isArray(value) ? value.join(', ') : value;
+      }
+    }
+
+    // Node stream/web 与 undici BodyInit 的 ReadableStream 类型不同源；运行时同为 web stream 实现。
+    const body =
+      req.method === 'GET' || req.method === 'HEAD'
+        ? undefined
+        : (Readable.toWeb(req) as unknown as BodyInit);
+    const request = new Request(targetUrl, {
+      method: req.method,
+      headers,
+      ...(body ? { body, duplex: 'half' } : {})
+    });
+
+    const response = await fetch(request);
+
+    response.headers.forEach((value, key) => {
+      const lowerKey = key.toLowerCase();
+      if (lowerKey === 'content-encoding' || lowerKey === 'transfer-encoding') return;
+      res.setHeader(key, value);
+    });
+
+    // 仅 SSE 响应声明 no-transform，让 Next 的 compress 中间件跳过本响应
+    // （compression 对 Cache-Control 含 no-transform 的响应不压缩）：SSE 经
+    // 流式 gzip 会被缓冲成整段，浏览器端表现为"等很久然后一次性收到"。
+    // 非 SSE（JSON/错误）响应保持可压缩。与主进程 createSseResponse 的
+    // no-cache, no-transform 语义一致。
+    const contentType = response.headers.get('content-type')?.toLowerCase();
+    if (response.body && contentType?.includes('text/event-stream')) {
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+    }
+
+    res.status(response.status);
+
+    if (response.body) {
+      const nodeStream = Readable.fromWeb(
+        response.body as unknown as import('stream/web').ReadableStream
+      );
+      nodeStream.pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (error) {
+    jsonRes(res, {
+      code: 500,
+      error
+    });
+  }
+}
+
+export const config = {
+  api: {
+    bodyParser: false
+  }
+};

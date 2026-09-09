@@ -6,8 +6,8 @@
       "cache": false,
       "persistent": true
     },
-    "dev:pro": {
-      "with": ["@fastgpt/admin#dev"],
+    "dev:all": {
+      "with": ["@fastgpt/app#dev", "@fastgpt/admin#dev", "@fastgpt/server#dev"],
       "cache": false,
       "persistent": true
     },
