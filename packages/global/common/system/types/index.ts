@@ -1,5 +1,18 @@
 import type { SubPlanType } from '../../../support/wallet/sub/type';
 import type { AccountCancellationVerificationCapabilities } from '../../../support/user/account/cancellation/type';
+import type { LicensePayload, LicenseSchemaVersionType, LicenseType, LicenseFunctions, LicenseLimits } from '../license/schema';
+
+export type { LicensePayload, LicenseSchemaVersionType, LicenseType, LicenseFunctions, LicenseLimits };
+export {
+  licenseFunctionKeys,
+  licenseLimitsKeys,
+  LicensePayloadSchema,
+  StrictLicensePayloadSchema,
+  LicenseFunctionsSchema,
+  LicenseLimitsSchema,
+  LicenseSchemaVersionSchema,
+  LicenseTypeSchema
+} from '../license/schema';
 
 export type NavbarItemType = {
   id: string;
@@ -216,20 +229,22 @@ export type customPdfParseType = {
   price?: number;
 };
 
-export type LicenseDataType = {
-  startTime: string;
-  expiredTime: string;
-  company: string;
-  description?: string; // 描述
-  hosts?: string[]; // 管理端有效域名
-  maxUsers?: number; // 最大用户数，不填默认不上限
-  maxApps?: number; // 最大应用数，不填默认不上限
-  maxDatasets?: number; // 最大数据集数，不填默认不上限
-  functions: {
-    sso: boolean;
-    pay: boolean;
-    customTemplates: boolean;
-    datasetEnhance: boolean;
-    batchEval: boolean;
+/**
+ * 运行时 License 数据（global.licenseData / 前端展示）=
+ * 决策版 payload（schema 单一来源派生）+ deprecated 兼容视图。
+ *
+ * deprecated 视图（旧 UI/消费方直接读顶层字段，避免回归；新代码一律用 limits/functions 决策版键）：
+ * - 顶层 maxUsers/maxApps/maxDatasets（旧结构，归一化回填自 limits）
+ * - hosts（仅兼容读取，不参与校验）
+ * - functions.batchEval / functions.customTemplates（旧 UI 展示兜底）
+ */
+export type LicenseDataType = LicensePayload & {
+  hosts?: string[];
+  maxUsers?: number;
+  maxApps?: number;
+  maxDatasets?: number;
+  functions: LicenseFunctions & {
+    batchEval?: boolean;
+    customTemplates?: boolean;
   };
 };

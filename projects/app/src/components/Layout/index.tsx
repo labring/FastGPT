@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -54,6 +54,9 @@ const ActivityAdModal = dynamic(() => import('@/components/support/activity/Acti
 const ProModal = dynamic(() => import('@/components/ProTip/ProModal'), {
   ssr: false
 });
+const LicenseInput = dynamic(() => import('@/components/admin/License/Input'), {
+  ssr: false
+});
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -92,12 +95,33 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { toast } = useToast();
   const { t } = useClientTranslation('price');
   const { Loading } = useLoading();
-  const { setLastRoute, loading, feConfigs, showProModal, setShowProModal } = useSystemStore();
+  const {
+    setLastRoute,
+    loading,
+    feConfigs,
+    showProModal,
+    setShowProModal,
+    licenseData,
+    licenseLoading,
+    initLicenseData
+  } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const modelLoginGeneration = useUserModelStore((state) => state.loginGeneration);
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
   const checkedModelIdentityRef = useRef<string>();
+
+  // root 登录后检测 license 状态（开源版未激活时提示激活/购买商业版）
+  const [dismissLicenseModal, setDismissLicenseModal] = useState(false);
+  const isRoot = userInfo?.username === 'root';
+
+  useEffect(() => {
+    if (!userInfo || !isRoot) return;
+    void initLicenseData();
+  }, [initLicenseData, isRoot, userInfo]);
+
+  // 检测完成前不弹窗，避免已有 license 时刷新页面闪烁激活弹窗
+  const showLicenseModal = isRoot && !licenseLoading && !licenseData && !dismissLicenseModal;
 
   // Auto redeem coupon
   useCheckCoupon();
@@ -225,6 +249,9 @@ const Layout = ({ children }: { children: JSX.Element }) => {
         </>
       )}
       <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
+
+      {/* 开源版未激活 license 时，root 提示激活/购买商业版（可取消） */}
+      {showLicenseModal && <LicenseInput onClose={() => setDismissLicenseModal(true)} />}
 
       <ManualCopyModal />
       <ActivityAdModal />

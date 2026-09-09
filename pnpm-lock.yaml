@@ -6,6 +6,15 @@ settings:
 
 catalogs:
   default:
+    '@alicloud/dysmsapi20170525':
+      specifier: ^2.0.24
+      version: 2.0.24
+    '@alicloud/openapi-client':
+      specifier: ^0.4.15
+      version: 0.4.15
+    '@alicloud/tea-util':
+      specifier: ^1.4.11
+      version: 1.4.11
     '@chakra-ui/anatomy':
       specifier: ^2
       version: 2.3.6
@@ -57,6 +66,9 @@ catalogs:
     '@tanstack/react-query':
       specifier: ^4.24.10
       version: 4.36.1
+    '@tanstack/react-table':
+      specifier: ^8.21.3
+      version: 8.21.3
     '@types/js-yaml':
       specifier: ^4.0.9
       version: 4.0.9
@@ -72,12 +84,18 @@ catalogs:
     '@types/node':
       specifier: ^24.13.3
       version: 24.13.3
+    '@types/nodemailer':
+      specifier: ^6.4.24
+      version: 6.4.24
     '@types/proxy-addr':
       specifier: 2.0.3
       version: 2.0.3
     '@types/request-ip':
       specifier: ^0.0.38
       version: 0.0.38
+    '@types/xml2js':
+      specifier: ^0.4.14
+      version: 0.4.14
     '@vitest/coverage-v8':
       specifier: ^4.1.5
       version: 4.1.5
@@ -165,6 +183,9 @@ catalogs:
     next-i18next:
       specifier: 15.4.2
       version: 15.4.2
+    nodemailer:
+      specifier: ^7.0.13
+      version: 7.0.13
     postcss:
       specifier: ^8.5.12
       version: 8.5.22
@@ -219,6 +240,9 @@ catalogs:
     vitest:
       specifier: ^4.1.5
       version: 4.1.5
+    xml2js:
+      specifier: ^0.6.2
+      version: 0.6.2
     zod:
       specifier: ^4
       version: 4.1.12
@@ -990,7 +1014,7 @@ importers:
         version: 1.14.3
       '@scalar/api-reference-react':
         specifier: ^0.9.59
-        version: 0.9.60(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(react@18.3.1)(tailwindcss@4.2.4)(typescript@6.0.3)(zod@4.1.12)
+        version: 0.9.60(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(react@18.3.1)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))(typescript@6.0.3)(zod@4.1.12)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
@@ -1243,6 +1267,37 @@ importers:
         specifier: 'catalog:'
         version: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.4.3(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
 
+  pro/license-server:
+    dependencies:
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../../packages/global
+      '@hono/node-server':
+        specifier: 'catalog:'
+        version: 2.0.12(hono@4.12.27)
+      '@t3-oss/env-core':
+        specifier: 'catalog:'
+        version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
+      hono:
+        specifier: 'catalog:'
+        version: 4.12.27
+      zod:
+        specifier: 'catalog:'
+        version: 4.1.12
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      tsdown:
+        specifier: 'catalog:'
+        version: 0.21.10(typescript@6.0.3)
+      tsx:
+        specifier: 'catalog:'
+        version: 4.20.6
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
   pro/llm_benchmark/content_benchmark:
     dependencies:
       '@fastgpt/global':
@@ -1325,6 +1380,15 @@ importers:
 
   projects/app:
     dependencies:
+      '@alicloud/dysmsapi20170525':
+        specifier: 'catalog:'
+        version: 2.0.24(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      '@alicloud/openapi-client':
+        specifier: 'catalog:'
+        version: 0.4.15(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      '@alicloud/tea-util':
+        specifier: 'catalog:'
+        version: 1.4.11(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@chakra-ui/anatomy':
         specifier: 'catalog:'
         version: 2.3.6
@@ -1403,6 +1467,15 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 4.36.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-table':
+        specifier: 'catalog:'
+        version: 8.21.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@types/nodemailer':
+        specifier: 'catalog:'
+        version: 6.4.24
+      '@types/xml2js':
+        specifier: 'catalog:'
+        version: 0.4.14
       '@xterm/addon-fit':
         specifier: 'catalog:'
         version: 0.10.0(@xterm/xterm@5.5.0)
@@ -1496,6 +1569,9 @@ importers:
       next-i18next:
         specifier: 'catalog:'
         version: 15.4.2(i18next@23.16.8)(next@16.3.0(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      nodemailer:
+        specifier: 'catalog:'
+        version: 7.0.13
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
@@ -1574,6 +1650,9 @@ importers:
       vfile:
         specifier: ^6.0.3
         version: 6.0.3
+      xml2js:
+        specifier: 'catalog:'
+        version: 0.6.2
       zod:
         specifier: 'catalog:'
         version: 4.1.12
@@ -2440,10 +2519,6 @@ packages:
   '@babel/helper-string-parser@8.0.0':
     resolution: {integrity: sha512-6mJgmFFFIIO82vvoLt9XtRC7/TkzXfts1t/SpRX4IHSzMgqoPYCWesVu1udUPUWioAE/2fcG6WuI8zrkE1gwrg==}
     engines: {node: ^22.18.0 || >=24.11.0}
-
-  '@babel/helper-validator-identifier@7.28.5':
-    resolution: {integrity: sha512-qSs4ifwzKJSV39ucNjsvc6WVHs6b7S03sOh2OcHF9UHfVPqWWALUsNUVzhSBiItjRZoLHx7nIarVjqKVusUZ1Q==}
-    engines: {node: '>=6.9.0'}
 
   '@babel/helper-validator-identifier@7.29.7':
     resolution: {integrity: sha512-qehxGkRj55h/ff8EMaJ+cYhyaKlHIxqYDn682wQD7RNp9UujOQsHog2uS0r2vzr4pW+sXf90NeeayjcNaX3fFg==}
@@ -6891,9 +6966,6 @@ packages:
   '@types/node@18.19.130':
     resolution: {integrity: sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg==}
 
-  '@types/node@20.17.24':
-    resolution: {integrity: sha512-d7fGCyB96w9BnWQrOsJtpyiSaBcAYYr75bnK6ZRjDbql2cGLj/3GsL5OYmLPNq76l7Gf2q4Rv9J2o6h5CrD9sA==}
-
   '@types/node@20.19.43':
     resolution: {integrity: sha512-6oYBAi5ikg4Pl+kGsoYtawUMBT2zZMCvPNF7pVLnHZfd1zf38DRiWn/gT01RYCdUqkv7Fhr+C9ot4/tb+2sVvA==}
 
@@ -9698,9 +9770,6 @@ packages:
   get-symbol-description@1.1.0:
     resolution: {integrity: sha512-w9UMqWwJxHNOvoNzSJ2oPF5wvYcvP7jUvYzhp67yEhTi17ZDBBC1z9pTdGuzjD+EFIqLSYRweZjqfiPzQ06Ebg==}
     engines: {node: '>= 0.4'}
-
-  get-tsconfig@4.13.6:
-    resolution: {integrity: sha512-shZT/QMiSHc/YBLxxOkMtgSid5HFoauqCE3/exfsEcwg1WkeqjG+V40yBbBrsD+jW2HDXcs28xOfcbm2jI8Ddw==}
 
   get-tsconfig@4.14.0:
     resolution: {integrity: sha512-yTb+8DXzDREzgvYmh6s9vHsSVCHeC0G3PI5bEXNBHtmshPnO+S5O7qgLEOn0I5QvMy6kpZN8K1NKGyilLb93wA==}
@@ -14305,9 +14374,6 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
-  undici-types@6.19.8:
-    resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
-
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
@@ -15957,7 +16023,7 @@ snapshots:
 
   '@babel/code-frame@7.26.2':
     dependencies:
-      '@babel/helper-validator-identifier': 7.28.5
+      '@babel/helper-validator-identifier': 7.29.7
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
@@ -15985,16 +16051,16 @@ snapshots:
 
   '@babel/generator@7.26.10':
     dependencies:
-      '@babel/parser': 7.29.2
-      '@babel/types': 7.29.0
+      '@babel/parser': 7.29.8
+      '@babel/types': 7.29.8
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
       jsesc: 3.1.0
 
   '@babel/generator@8.0.0-rc.3':
     dependencies:
-      '@babel/parser': 8.0.0-rc.3
-      '@babel/types': 8.0.0-rc.3
+      '@babel/parser': 8.0.4
+      '@babel/types': 8.0.4
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
       '@types/jsesc': 2.5.1
@@ -16002,7 +16068,7 @@ snapshots:
 
   '@babel/helper-annotate-as-pure@7.25.9':
     dependencies:
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
 
   '@babel/helper-compilation-targets@7.26.5':
     dependencies:
@@ -16046,14 +16112,14 @@ snapshots:
   '@babel/helper-member-expression-to-functions@7.25.9':
     dependencies:
       '@babel/traverse': 7.26.10
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-module-imports@7.25.9':
     dependencies:
       '@babel/traverse': 7.26.10
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -16061,14 +16127,14 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.10
       '@babel/helper-module-imports': 7.25.9
-      '@babel/helper-validator-identifier': 7.28.5
+      '@babel/helper-validator-identifier': 7.29.7
       '@babel/traverse': 7.26.10
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-optimise-call-expression@7.25.9':
     dependencies:
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
 
   '@babel/helper-plugin-utils@7.26.5': {}
 
@@ -16093,7 +16159,7 @@ snapshots:
   '@babel/helper-skip-transparent-expression-wrappers@7.25.9':
     dependencies:
       '@babel/traverse': 7.26.10
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -16102,8 +16168,6 @@ snapshots:
   '@babel/helper-string-parser@7.29.7': {}
 
   '@babel/helper-string-parser@8.0.0': {}
-
-  '@babel/helper-validator-identifier@7.28.5': {}
 
   '@babel/helper-validator-identifier@7.29.7': {}
 
@@ -16117,18 +16181,18 @@ snapshots:
     dependencies:
       '@babel/template': 7.26.9
       '@babel/traverse': 7.26.10
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helpers@7.26.10':
     dependencies:
       '@babel/template': 7.26.9
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
 
   '@babel/parser@7.29.2':
     dependencies:
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
 
   '@babel/parser@7.29.8':
     dependencies:
@@ -16136,7 +16200,7 @@ snapshots:
 
   '@babel/parser@8.0.0-rc.3':
     dependencies:
-      '@babel/types': 8.0.0-rc.3
+      '@babel/types': 8.0.4
 
   '@babel/parser@8.0.4':
     dependencies:
@@ -16369,7 +16433,7 @@ snapshots:
       '@babel/core': 7.26.10
       '@babel/helper-module-transforms': 7.26.0(@babel/core@7.26.10)
       '@babel/helper-plugin-utils': 7.26.5
-      '@babel/helper-validator-identifier': 7.28.5
+      '@babel/helper-validator-identifier': 7.29.7
       '@babel/traverse': 7.26.10
     transitivePeerDependencies:
       - supports-color
@@ -16482,7 +16546,7 @@ snapshots:
       '@babel/helper-module-imports': 7.25.9
       '@babel/helper-plugin-utils': 7.26.5
       '@babel/plugin-syntax-jsx': 7.25.9(@babel/core@7.26.10)
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -16650,7 +16714,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.26.10
       '@babel/helper-plugin-utils': 7.26.5
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
       esutils: 2.0.3
 
   '@babel/preset-react@7.26.3(@babel/core@7.26.10)':
@@ -16683,16 +16747,16 @@ snapshots:
   '@babel/template@7.26.9':
     dependencies:
       '@babel/code-frame': 7.26.2
-      '@babel/parser': 7.29.2
-      '@babel/types': 7.29.0
+      '@babel/parser': 7.29.8
+      '@babel/types': 7.29.8
 
   '@babel/traverse@7.26.10':
     dependencies:
       '@babel/code-frame': 7.26.2
       '@babel/generator': 7.26.10
-      '@babel/parser': 7.29.2
+      '@babel/parser': 7.29.8
       '@babel/template': 7.26.9
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
       debug: 4.4.3
       globals: 11.12.0
     transitivePeerDependencies:
@@ -16701,7 +16765,7 @@ snapshots:
   '@babel/types@7.29.0':
     dependencies:
       '@babel/helper-string-parser': 7.27.1
-      '@babel/helper-validator-identifier': 7.28.5
+      '@babel/helper-validator-identifier': 7.29.7
 
   '@babel/types@7.29.8':
     dependencies:
@@ -16711,7 +16775,7 @@ snapshots:
   '@babel/types@8.0.0-rc.3':
     dependencies:
       '@babel/helper-string-parser': 8.0.0
-      '@babel/helper-validator-identifier': 8.0.0-rc.3
+      '@babel/helper-validator-identifier': 8.0.4
 
   '@babel/types@8.0.4':
     dependencies:
@@ -17788,10 +17852,6 @@ snapshots:
     dependencies:
       tailwindcss: 3.4.18(tsx@4.20.6)(yaml@2.8.4)
 
-  '@headlessui/tailwindcss@0.2.2(tailwindcss@4.2.4)':
-    dependencies:
-      tailwindcss: 4.2.4
-
   '@headlessui/vue@1.7.23(vue@3.5.40(typescript@6.0.3))':
     dependencies:
       '@tanstack/vue-virtual': 3.13.12(vue@3.5.40(typescript@6.0.3))
@@ -18108,7 +18168,7 @@ snapshots:
   '@kubernetes/client-node@1.4.0(bufferutil@4.1.0)(encoding@0.1.13)(utf-8-validate@5.0.10)':
     dependencies:
       '@types/js-yaml': 4.0.9
-      '@types/node': 24.13.3
+      '@types/node': 24.0.13
       '@types/node-fetch': 2.6.13
       '@types/stream-buffers': 3.0.8
       form-data: 4.0.5
@@ -18418,8 +18478,8 @@ snapshots:
   '@mistralai/mistralai@1.14.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
       ws: 8.20.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
-      zod: 4.1.12
-      zod-to-json-schema: 3.25.1(zod@4.1.12)
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.1(zod@4.4.3)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -19793,44 +19853,6 @@ snapshots:
       - universal-cookie
       - zod
 
-  '@scalar/agent-chat@0.12.23(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@4.2.4)(typescript@6.0.3)(zod@4.1.12)':
-    dependencies:
-      '@ai-sdk/vue': 3.0.33(vue@3.5.40(typescript@6.0.3))(zod@4.1.12)
-      '@scalar/api-client': 3.14.0(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/components': 0.27.10(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/helpers': 0.9.2
-      '@scalar/icons': 0.7.5(typescript@6.0.3)
-      '@scalar/json-magic': 0.12.19
-      '@scalar/openapi-types': 0.9.4
-      '@scalar/schemas': 0.8.0
-      '@scalar/themes': 0.17.2
-      '@scalar/types': 0.17.0
-      '@scalar/use-toasts': 0.10.4(typescript@6.0.3)
-      '@scalar/validation': 0.6.2
-      '@scalar/workspace-store': 0.56.0(typescript@6.0.3)
-      '@vueuse/core': 13.9.0(vue@3.5.40(typescript@6.0.3))
-      ai: 6.0.33(zod@4.1.12)
-      js-base64: 3.7.8
-      neverpanic: 0.0.8
-      truncate-json: 3.0.1
-      vue: 3.5.40(typescript@6.0.3)
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - async-validator
-      - axios
-      - change-case
-      - drauu
-      - idb-keyval
-      - jwt-decode
-      - nprogress
-      - qrcode
-      - sortablejs
-      - supports-color
-      - tailwindcss
-      - typescript
-      - universal-cookie
-      - zod
-
   '@scalar/api-client@3.14.0(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))(typescript@6.0.3)':
     dependencies:
       '@headlessui/tailwindcss': 0.2.2(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))
@@ -19879,79 +19901,9 @@ snapshots:
       - typescript
       - universal-cookie
 
-  '@scalar/api-client@3.14.0(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@4.2.4)(typescript@6.0.3)':
-    dependencies:
-      '@headlessui/tailwindcss': 0.2.2(tailwindcss@4.2.4)
-      '@headlessui/vue': 1.7.23(vue@3.5.40(typescript@6.0.3))
-      '@scalar/blocks': 0.1.9(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/components': 0.27.10(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/helpers': 0.9.2
-      '@scalar/icons': 0.7.5(typescript@6.0.3)
-      '@scalar/oas-utils': 0.19.9(typescript@6.0.3)
-      '@scalar/openapi-types': 0.9.4
-      '@scalar/sidebar': 0.9.34(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/snippetz': 0.9.24
-      '@scalar/themes': 0.17.2
-      '@scalar/typebox': 0.1.3
-      '@scalar/types': 0.17.0
-      '@scalar/use-codemirror': 0.14.14(typescript@6.0.3)
-      '@scalar/use-hooks': 0.4.9(typescript@6.0.3)
-      '@scalar/use-toasts': 0.10.4(typescript@6.0.3)
-      '@scalar/workspace-store': 0.56.0(typescript@6.0.3)
-      '@vueuse/core': 13.9.0(vue@3.5.40(typescript@6.0.3))
-      '@vueuse/integrations': 13.9.0(axios@1.18.1)(focus-trap@7.8.0)(fuse.js@7.1.0)(nprogress@0.2.0)(qrcode@1.5.4)(vue@3.5.40(typescript@6.0.3))
-      focus-trap: 7.8.0
-      fuse.js: 7.1.0
-      js-base64: 3.7.8
-      jsonc-parser: 3.3.1
-      nanoid: 5.1.16
-      pretty-ms: 9.3.0
-      radix-vue: 1.9.17(vue@3.5.40(typescript@6.0.3))
-      set-cookie-parser: 3.1.0
-      vue: 3.5.40(typescript@6.0.3)
-      yaml: 2.8.4
-      zod: 4.4.3
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - async-validator
-      - axios
-      - change-case
-      - drauu
-      - idb-keyval
-      - jwt-decode
-      - nprogress
-      - qrcode
-      - sortablejs
-      - supports-color
-      - tailwindcss
-      - typescript
-      - universal-cookie
-
   '@scalar/api-reference-react@0.9.60(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(react@18.3.1)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))(typescript@6.0.3)(zod@4.1.12)':
     dependencies:
       '@scalar/api-reference': 1.64.0(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))(typescript@6.0.3)(zod@4.1.12)
-      '@scalar/types': 0.17.0
-      react: 18.3.1
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - async-validator
-      - axios
-      - change-case
-      - drauu
-      - idb-keyval
-      - jwt-decode
-      - nprogress
-      - qrcode
-      - sortablejs
-      - supports-color
-      - tailwindcss
-      - typescript
-      - universal-cookie
-      - zod
-
-  '@scalar/api-reference-react@0.9.60(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(react@18.3.1)(tailwindcss@4.2.4)(typescript@6.0.3)(zod@4.1.12)':
-    dependencies:
-      '@scalar/api-reference': 1.64.0(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@4.2.4)(typescript@6.0.3)(zod@4.1.12)
       '@scalar/types': 0.17.0
       react: 18.3.1
     transitivePeerDependencies:
@@ -20015,50 +19967,6 @@ snapshots:
       - universal-cookie
       - zod
 
-  '@scalar/api-reference@1.64.0(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@4.2.4)(typescript@6.0.3)(zod@4.1.12)':
-    dependencies:
-      '@headlessui/vue': 1.7.23(vue@3.5.40(typescript@6.0.3))
-      '@scalar/agent-chat': 0.12.23(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@4.2.4)(typescript@6.0.3)(zod@4.1.12)
-      '@scalar/api-client': 3.14.0(axios@1.18.1)(nprogress@0.2.0)(qrcode@1.5.4)(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/blocks': 0.1.9(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/code-highlight': 0.4.3
-      '@scalar/components': 0.27.10(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/helpers': 0.9.2
-      '@scalar/icons': 0.7.5(typescript@6.0.3)
-      '@scalar/oas-utils': 0.19.9(typescript@6.0.3)
-      '@scalar/schemas': 0.8.0
-      '@scalar/sidebar': 0.9.34(tailwindcss@4.2.4)(typescript@6.0.3)
-      '@scalar/snippetz': 0.9.24
-      '@scalar/themes': 0.17.2
-      '@scalar/types': 0.17.0
-      '@scalar/use-hooks': 0.4.9(typescript@6.0.3)
-      '@scalar/use-toasts': 0.10.4(typescript@6.0.3)
-      '@scalar/validation': 0.6.2
-      '@scalar/workspace-store': 0.56.0(typescript@6.0.3)
-      '@unhead/vue': 2.1.17(vue@3.5.40(typescript@6.0.3))
-      '@vueuse/core': 13.9.0(vue@3.5.40(typescript@6.0.3))
-      fuse.js: 7.1.0
-      microdiff: 1.5.0
-      nanoid: 5.1.16
-      vue: 3.5.40(typescript@6.0.3)
-      yaml: 2.8.4
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - async-validator
-      - axios
-      - change-case
-      - drauu
-      - idb-keyval
-      - jwt-decode
-      - nprogress
-      - qrcode
-      - sortablejs
-      - supports-color
-      - tailwindcss
-      - typescript
-      - universal-cookie
-      - zod
-
   '@scalar/asyncapi-upgrader@0.1.4':
     dependencies:
       '@scalar/helpers': 0.9.2
@@ -20066,24 +19974,6 @@ snapshots:
   '@scalar/blocks@0.1.9(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))(typescript@6.0.3)':
     dependencies:
       '@scalar/components': 0.27.10(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))(typescript@6.0.3)
-      '@scalar/helpers': 0.9.2
-      '@scalar/icons': 0.7.5(typescript@6.0.3)
-      '@scalar/snippetz': 0.9.24
-      '@scalar/themes': 0.17.2
-      '@scalar/types': 0.17.0
-      '@scalar/workspace-store': 0.56.0(typescript@6.0.3)
-      '@types/har-format': 1.2.16
-      js-base64: 3.7.8
-      vue: 3.5.40(typescript@6.0.3)
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - supports-color
-      - tailwindcss
-      - typescript
-
-  '@scalar/blocks@0.1.9(tailwindcss@4.2.4)(typescript@6.0.3)':
-    dependencies:
-      '@scalar/components': 0.27.10(tailwindcss@4.2.4)(typescript@6.0.3)
       '@scalar/helpers': 0.9.2
       '@scalar/icons': 0.7.5(typescript@6.0.3)
       '@scalar/snippetz': 0.9.24
@@ -20124,28 +20014,6 @@ snapshots:
       '@floating-ui/utils': 0.2.10
       '@floating-ui/vue': 1.1.9(vue@3.5.40(typescript@6.0.3))
       '@headlessui/tailwindcss': 0.2.2(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))
-      '@headlessui/vue': 1.7.23(vue@3.5.40(typescript@6.0.3))
-      '@scalar/code-highlight': 0.4.3
-      '@scalar/helpers': 0.9.2
-      '@scalar/icons': 0.7.5(typescript@6.0.3)
-      '@scalar/themes': 0.17.2
-      '@scalar/use-hooks': 0.4.9(typescript@6.0.3)
-      '@vueuse/core': 13.9.0(vue@3.5.40(typescript@6.0.3))
-      cva: 1.0.0-beta.4(typescript@6.0.3)
-      radix-vue: 1.9.17(vue@3.5.40(typescript@6.0.3))
-      vue: 3.5.40(typescript@6.0.3)
-      vue-component-type-helpers: 3.3.9
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - supports-color
-      - tailwindcss
-      - typescript
-
-  '@scalar/components@0.27.10(tailwindcss@4.2.4)(typescript@6.0.3)':
-    dependencies:
-      '@floating-ui/utils': 0.2.10
-      '@floating-ui/vue': 1.1.9(vue@3.5.40(typescript@6.0.3))
-      '@headlessui/tailwindcss': 0.2.2(tailwindcss@4.2.4)
       '@headlessui/vue': 1.7.23(vue@3.5.40(typescript@6.0.3))
       '@scalar/code-highlight': 0.4.3
       '@scalar/helpers': 0.9.2
@@ -20206,21 +20074,6 @@ snapshots:
   '@scalar/sidebar@0.9.34(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))(typescript@6.0.3)':
     dependencies:
       '@scalar/components': 0.27.10(tailwindcss@3.4.18(tsx@4.20.6)(yaml@2.8.4))(typescript@6.0.3)
-      '@scalar/helpers': 0.9.2
-      '@scalar/icons': 0.7.5(typescript@6.0.3)
-      '@scalar/themes': 0.17.2
-      '@scalar/use-hooks': 0.4.9(typescript@6.0.3)
-      '@scalar/workspace-store': 0.56.0(typescript@6.0.3)
-      vue: 3.5.40(typescript@6.0.3)
-    transitivePeerDependencies:
-      - '@vue/composition-api'
-      - supports-color
-      - tailwindcss
-      - typescript
-
-  '@scalar/sidebar@0.9.34(tailwindcss@4.2.4)(typescript@6.0.3)':
-    dependencies:
-      '@scalar/components': 0.27.10(tailwindcss@4.2.4)(typescript@6.0.3)
       '@scalar/helpers': 0.9.2
       '@scalar/icons': 0.7.5(typescript@6.0.3)
       '@scalar/themes': 0.17.2
@@ -20783,7 +20636,7 @@ snapshots:
 
   '@svgr/hast-util-to-babel-ast@6.5.1':
     dependencies:
-      '@babel/types': 7.29.0
+      '@babel/types': 7.29.8
       entities: 4.5.0
 
   '@svgr/plugin-jsx@6.5.1(@svgr/core@6.5.1)':
@@ -21125,7 +20978,7 @@ snapshots:
 
   '@types/cors@2.8.19':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
 
   '@types/d3-array@3.2.1': {}
 
@@ -21252,7 +21105,7 @@ snapshots:
 
   '@types/dns-packet@5.6.5':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
 
   '@types/estree-jsx@1.0.5':
     dependencies:
@@ -21264,7 +21117,7 @@ snapshots:
 
   '@types/express-serve-static-core@4.19.9':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
       '@types/qs': 6.9.18
       '@types/range-parser': 1.2.7
       '@types/send': 0.17.4
@@ -21318,7 +21171,7 @@ snapshots:
 
   '@types/jsdom@21.1.7':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
       '@types/tough-cookie': 4.0.5
       parse5: 7.3.0
 
@@ -21378,7 +21231,7 @@ snapshots:
 
   '@types/node-fetch@2.6.13':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
       form-data: 4.0.5
 
   '@types/node-int64@0.4.32':
@@ -21390,10 +21243,6 @@ snapshots:
   '@types/node@18.19.130':
     dependencies:
       undici-types: 5.26.5
-
-  '@types/node@20.17.24':
-    dependencies:
-      undici-types: 6.19.8
 
   '@types/node@20.19.43':
     dependencies:
@@ -21417,7 +21266,7 @@ snapshots:
 
   '@types/nodemailer@6.4.24':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
 
   '@types/nprogress@0.2.3': {}
 
@@ -21491,7 +21340,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
 
   '@types/send@0.17.4':
     dependencies:
@@ -21506,7 +21355,7 @@ snapshots:
 
   '@types/stream-buffers@3.0.8':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
 
   '@types/thrift@0.10.17':
     dependencies:
@@ -21543,11 +21392,11 @@ snapshots:
 
   '@types/xml-encryption@1.2.4':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
 
   '@types/xml2js@0.4.14':
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
 
   '@types/yauzl@2.10.3':
     dependencies:
@@ -23922,8 +23771,8 @@ snapshots:
       '@next/eslint-plugin-next': 16.3.0(eslint@9.39.4(jiti@2.7.0))
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-react: 7.37.4(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-react-hooks: 7.1.1(eslint@9.39.4(jiti@2.7.0))
@@ -23945,21 +23794,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
-    dependencies:
-      '@nolyfill/is-core-module': 1.0.39
-      debug: 4.4.3
-      eslint: 9.39.4(jiti@2.7.0)
-      get-tsconfig: 4.14.0
-      is-bun-module: 1.3.0
-      oxc-resolver: 5.0.0
-      stable-hash: 0.0.5
-      tinyglobby: 0.2.16
-    optionalDependencies:
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
-    transitivePeerDependencies:
-      - supports-color
-
   eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@1.21.7)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
@@ -23975,6 +23809,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0)):
+    dependencies:
+      '@nolyfill/is-core-module': 1.0.39
+      debug: 4.4.3
+      eslint: 9.39.4(jiti@2.7.0)
+      get-tsconfig: 4.14.0
+      is-bun-module: 1.3.0
+      oxc-resolver: 5.0.0
+      stable-hash: 0.0.5
+      tinyglobby: 0.2.16
+    optionalDependencies:
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0))
+    transitivePeerDependencies:
+      - supports-color
+
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@1.21.7))(typescript@6.0.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@1.21.7)):
     dependencies:
       debug: 3.2.7
@@ -23986,13 +23835,13 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
+  eslint-module-utils@2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -24025,7 +23874,7 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
 
-  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
+  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -24036,7 +23885,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-module-utils: 2.12.1(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.9.0)(eslint@9.39.4(jiti@2.7.0))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -24096,8 +23945,8 @@ snapshots:
       '@babel/parser': 7.29.2
       eslint: 9.39.4(jiti@1.21.7)
       hermes-parser: 0.25.1
-      zod: 4.1.12
-      zod-validation-error: 4.0.2(zod@4.1.12)
+      zod: 4.4.3
+      zod-validation-error: 4.0.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -24107,8 +23956,8 @@ snapshots:
       '@babel/parser': 7.29.2
       eslint: 9.39.4(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 4.1.12
-      zod-validation-error: 4.0.2(zod@4.1.12)
+      zod: 4.4.3
+      zod-validation-error: 4.0.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -24520,10 +24369,6 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.3):
     optionalDependencies:
       picomatch: 4.0.3
-
-  fdir@6.5.0(picomatch@4.0.4):
-    optionalDependencies:
-      picomatch: 4.0.4
 
   fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
@@ -24958,10 +24803,6 @@ snapshots:
       call-bound: 1.0.4
       es-errors: 1.3.0
       get-intrinsic: 1.3.0
-
-  get-tsconfig@4.13.6:
-    dependencies:
-      resolve-pkg-maps: 1.0.0
 
   get-tsconfig@4.14.0:
     dependencies:
@@ -25480,7 +25321,7 @@ snapshots:
 
   httpx@2.3.3:
     dependencies:
-      '@types/node': 20.17.24
+      '@types/node': 20.19.43
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
@@ -30413,8 +30254,8 @@ snapshots:
 
   tinyglobby@0.2.16:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.4)
-      picomatch: 4.0.4
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
 
   tinyglobby@0.2.17:
     dependencies:
@@ -30559,7 +30400,7 @@ snapshots:
   tsx@4.20.6:
     dependencies:
       esbuild: 0.25.12
-      get-tsconfig: 4.13.6
+      get-tsconfig: 4.14.3
     optionalDependencies:
       fsevents: 2.3.3
 
@@ -30715,8 +30556,6 @@ snapshots:
   underscore@1.13.7: {}
 
   undici-types@5.26.5: {}
-
-  undici-types@6.19.8: {}
 
   undici-types@6.21.0: {}
 
@@ -31659,13 +31498,17 @@ snapshots:
     dependencies:
       zod: 4.1.12
 
+  zod-to-json-schema@3.25.1(zod@4.4.3):
+    dependencies:
+      zod: 4.4.3
+
   zod-validation-error@3.4.0(zod@3.25.76):
     dependencies:
       zod: 3.25.76
 
-  zod-validation-error@4.0.2(zod@4.1.12):
+  zod-validation-error@4.0.2(zod@4.4.3):
     dependencies:
-      zod: 4.1.12
+      zod: 4.4.3
 
   zod@3.23.8: {}
 

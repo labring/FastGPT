@@ -45,6 +45,10 @@ export const serviceEnv = createEnv({
     // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
     INVOKE_TOKEN_SECRET: z.string().min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters'),
 
+    // License-server 公钥：与签发服务使用同一密钥对；支持内联 PEM 或文件路径。
+    LICENSE_PUBLIC_KEY: z.string().optional(),
+    LICENSE_PUBLIC_KEY_PATH: z.string().optional(),
+
     // ==================== 服务地址与集成 ====================
     // 插件
     PLUGIN_BASE_URL: UrlSchema.default('http://localhost:3004'),
