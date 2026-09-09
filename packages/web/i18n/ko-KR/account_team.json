@@ -195,6 +195,7 @@
   "log_set_invoice_header": "【{{name}}】세금계산서 상호 설정 작업을 수행함",
   "log_time": "작업 시간",
   "log_transfer_app_ownership": "【{{name}}】님이 【{{appName}}】 {{appType}}의 소유권을 【{{oldOwnerName}}】에서 【{{newOwnerName}}】(으)로 이전함",
+  "log_transfer_dataset_ownership": "【{{name}}】님이 【{{datasetName}}】 {{datasetType}}의 소유권을 【{{oldOwnerName}}】에서 【{{newOwnerName}}】(으)로 이전함",
   "log_transfer_team_ownership": "【{{name}}】님이 팀 【{{teamName}}】의 소유권을 【{{oldOwnerName}}】에서 【{{newOwnerName}}】(으)로 이전함",
   "log_type": "작업 유형",
   "log_update_api_key": "【{{name}}】[{{keyName}}]이라는 이름의 API 키를 업데이트함",

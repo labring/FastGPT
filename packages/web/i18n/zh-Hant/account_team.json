@@ -203,6 +203,7 @@
   "log_set_invoice_header": "【{{name}}】進行了設置發票抬頭操作",
   "log_time": "操作時間",
   "log_transfer_app_ownership": "【{{name}}】將名為【{{appName}}】的【{{appType}}】的所有權從【{{oldOwnerName}}】轉移到【{{newOwnerName}}】",
+  "log_transfer_dataset_ownership": "【{{name}}】將名為【{{datasetName}}】的【{{datasetType}}】的所有權從【{{oldOwnerName}}】轉移到【{{newOwnerName}}】",
   "log_transfer_team_ownership": "【{{name}}】將團隊【{{teamName}}】的所有權從【{{oldOwnerName}}】轉移到【{{newOwnerName}}】",
   "log_type": "操作類型",
   "log_update_api_key": "【{{name}}】更新了名為【{{keyName}}】的api密鑰",
