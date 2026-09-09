@@ -395,7 +395,10 @@ export abstract class BaseProcessPool {
             responseLength: line.length,
             error: inspect(error, { depth: null, maxStringLength: null, maxArrayLength: null })
           });
-          settle({ success: false, message: 'Invalid worker response' });
+          // 将异常类型和原因返回给调用方，完整堆栈仍通过服务端日志排查。
+          const errorMessage =
+            error instanceof Error ? `${error.name}: ${error.message}` : inspect(error);
+          settle({ success: false, message: `Invalid worker response: ${errorMessage}` });
         }
       };
 

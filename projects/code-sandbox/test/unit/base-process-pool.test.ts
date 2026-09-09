@@ -33,7 +33,7 @@ describe('BaseProcessPool worker response logging', () => {
   it.each([
     ['debug: task started', 'SyntaxError'],
     ['null', 'TypeError']
-  ])('记录响应 %s 的完整异常且不改变返回结果', async (line, errorName) => {
+  ])('记录响应 %s 的完整异常并返回具体原因', async (line, errorName) => {
     const proc = new ChildProcess();
     proc.stdin = new PassThrough();
     const stdout = new PassThrough();
@@ -48,7 +48,7 @@ describe('BaseProcessPool worker response logging', () => {
 
       await expect(result).resolves.toEqual({
         success: false,
-        message: 'Invalid worker response'
+        message: expect.stringMatching(new RegExp(`^Invalid worker response: ${errorName}: .+`))
       });
       expect(logError).toHaveBeenCalledOnce();
       expect(logError).toHaveBeenCalledWith(
