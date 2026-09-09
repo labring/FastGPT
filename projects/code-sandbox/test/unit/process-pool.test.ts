@@ -16,6 +16,80 @@ import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner'
 // ============================================================
 // JS ProcessPool
 // ============================================================
+describe('JS 错误诊断', () => {
+  let pool: ProcessPool;
+
+  afterEach(async () => {
+    await pool?.shutdown();
+  });
+
+  it('返回异常堆栈、cause 和失败前 console 输出', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+    const result = await pool.execute({
+      code: `async function main() {
+        console.log('before failure');
+        throw new TypeError('outer failure', { cause: new Error('root failure') });
+      }`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('TypeError: outer failure');
+    expect(result.message).toContain('at main');
+    expect(result.message).toContain('root failure');
+    expect(result.message).toContain('Console output:\nbefore failure');
+  });
+
+  it.each(['null', "'plain failure'", "{ reason: 'object failure' }"])(
+    '抛出非 Error 值 %s 时仍返回失败原因',
+    async (value) => {
+      pool = new ProcessPool(1);
+      await pool.init();
+      const result = await pool.execute({
+        code: `async function main() { throw ${value}; }`,
+        variables: {}
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/null|plain failure|object failure/);
+      expect(result.message).not.toContain('Console output:');
+    }
+  );
+
+  it('语法错误返回具体原因和位置', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+    const result = await pool.execute({
+      code: 'async function main( {',
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('SyntaxError');
+    expect(result.message).toContain('Unexpected token');
+    expect(result.message).toMatch(/1:\d+/);
+  });
+
+  it('错误和输出过长时保留原始错误并标记截断', async () => {
+    pool = new ProcessPool(1);
+    await pool.init();
+    const result = await pool.execute({
+      code: `async function main() {
+        console.log('x'.repeat(20000));
+        console.log('last captured line');
+        console.log('x'.repeat(1024 * 1024));
+        throw new Error('original failure ' + 'x'.repeat(20000));
+      }`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('Error: original failure');
+    expect(result.message).toContain('[error truncated]');
+    expect(result.message).toContain('[earlier logs truncated]');
+    expect(result.message).toContain('last captured line');
+    expect(result.message).toContain('[log capture limit reached]');
+    expect(result.message!.length).toBeLessThan(34000);
+  });
+});
+
 describe('ProcessPool 生命周期', () => {
   let pool: ProcessPool;
 

@@ -395,10 +395,15 @@ export abstract class BaseProcessPool {
             responseLength: line.length,
             error: inspect(error, { depth: null, maxStringLength: null, maxArrayLength: null })
           });
-          // 将异常类型和原因返回给调用方，完整堆栈仍通过服务端日志排查。
+          // 在 settle 回收 worker、清空缓冲区前读取 stderr，供 API 调用方排查。
+          // 附带 worker 标识和响应长度以关联服务端日志，完整堆栈仍仅记录在服务端。
           const errorMessage =
             error instanceof Error ? `${error.name}: ${error.message}` : inspect(error);
-          settle({ success: false, message: `Invalid worker response: ${errorMessage}` });
+          const stderr = this.formatStderr(worker);
+          settle({
+            success: false,
+            message: `Invalid worker response: ${errorMessage} | workerId: ${worker.id} | responseLength: ${line.length}${stderr}`
+          });
         }
       };
 
