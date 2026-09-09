@@ -1,5 +1,4 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   PerResourceTypeEnum,
@@ -20,7 +19,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import {
   findResourceKeysByCollaboratorsPermission,
@@ -133,39 +132,13 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     MongoApp.countDocuments(findAppsQuery)
   ]);
 
-  const getInteractiveAppIdSet = async () => {
-    const pointerIds = myApps
-      .map((app) => app.publishedVersionId)
-      .filter((id): id is NonNullable<typeof id> => !!id && Types.ObjectId.isValid(String(id)));
-    if (pointerIds.length === 0) return new Set<string>();
-
-    const versions = await MongoAppVersion.find(
-      { _id: { $in: pointerIds } },
-      { _id: 1, appId: 1, nodes: 1 }
-    ).lean();
-    const versionById = new Map(versions.map((version) => [String(version._id), version]));
-    const ids = new Set<string>();
-
-    for (const app of myApps) {
-      const version = app.publishedVersionId
-        ? versionById.get(String(app.publishedVersionId))
-        : undefined;
-      if (!version || String(version.appId) !== String(app._id)) continue;
-      if ((version.nodes ?? []).some((node) => isInteractiveNodeType(node.flowNodeType))) {
-        ids.add(String(app._id));
-      }
-    }
-
-    return ids;
-  };
-
   const [pageRoleList, interactiveAppIds] = await Promise.all([
     getResourcePermissionsByResourceIds({
       resourceType: PerResourceTypeEnum.app,
       teamId,
       resourceIds: myApps.map((app) => String(app._id))
     }),
-    getInteractiveAppIdSet()
+    getInteractiveAppIdSet(myApps)
   ]);
   const roleListMap = new Map<string, (typeof pageRoleList)[number][]>();
   pageRoleList.forEach((item) => {

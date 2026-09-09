@@ -393,7 +393,7 @@ const List = ({
                 {
                   icon: 'key',
                   type: 'grayBg' as const,
-                  label: t('skill:permission_settings'),
+                  label: t('common:permission.Permission'),
                   onClick: () => {
                     setEditPerSkillId(skill._id);
                   }

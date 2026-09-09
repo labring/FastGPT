@@ -34,12 +34,12 @@
 
 保留但废弃：
 
-- `modules / edges / chatConfig`：保留已有数据并在 Schema 标记 deprecated；新代码不再读取或写入。
+- `modules / edges / chatConfig`：保留已有数据并在 Schema 标记 deprecated；新代码仅在 App 没有正式 Version 的迁移窗口读取，不再写入。
 - `resourceRefs`：保留已有数据并在 Schema 标记 deprecated；仅供旧版本兼容和迁移核对。
 
 新建 App 不再主动写这些旧字段。文件夹没有工作流，不写 Version；历史文件夹已有的旧字段也不由本次迁移清理。
 
-旧字段不是双写副本，也不是 Version 缺失时的常规运行回退。只有“该 App 一条 Version 都没有”的迁移分支可以把它们作为一次性源数据补建 Version，避免两份事实长期漂移。
+旧字段不是双写副本。只有“该 App 没有正式 Version”的迁移窗口允许正式运行读取旧图，同时迁移会把它作为一次性源数据补建正式 Version；已有草稿或自动保存 Version 不能替代旧代码实际运行的 App 图。正式 Version 建立后永久停止 fallback，避免两份事实长期漂移。
 
 `pluginData.nodeVersion` 与 `publishedVersionId` 的职责不得混用：正式运行只看 `publishedVersionId`（或等价的最新正式 Version 查询），不看 `nodeVersion`。
 
@@ -49,20 +49,20 @@
 
 | 场景 | 读谁 |
 | --- | --- |
-| 正式 Chat / OutLink / MCP 调 App / 定时任务 | `publishedVersionId` 对应 Version；没有指针则 `isPublish: true` + `time: -1` |
+| 正式 Chat / OutLink / MCP 调 App / 定时任务 | `publishedVersionId` 对应 Version；没有指针则 `isPublish: true` + `time: -1`；没有正式 Version 时在迁移窗口读取 App 旧图 |
 | 子 App / 工具钉死 `versionId` | `getAppVersionById`，只读那一条 |
 | 打开编辑器、复制工作流 | 该 App `time` 最新 Version（含 autoSave） |
 | Skill/资源反查（哪些 App 在用） | 查 **当前正式 Version**：`_id ∈ publishedVersionId` 且 `resources.$elemMatch`。禁止对所有 `isPublish: true` 做 elemMatch，否则旧正式版会把已删引用算进去 |
 
 Test/Debug：仍用请求体 nodes，服务端 `extract` + 按当前操作人鉴权，不读已发布快照，不接受客户端传 `resources`。
 
-不要用 `apps.modules` 补运行快照。不要用最新正式 Version 的 `resources` 去跑另一条 Version 的 nodes。
+已有正式 Version 时不要用 `apps.modules` 补运行快照。不要用最新正式 Version 的 `resources` 去跑另一条 Version 的 nodes。
 
-编辑器详情 `GET /core/app/detail`、创建 `POST /core/app/create`、画布和工具编辑都直接用 `nodes`，与 Version 同名。不要再把 Version.nodes 映射成 App.modules。`apps.modules` 只作为零 Version 迁移源和回滚依据保留。
+编辑器详情 `GET /core/app/detail`、创建 `POST /core/app/create`、画布和工具编辑都直接用 `nodes`，与 Version 同名。不要再把 Version.nodes 映射成 App.modules。`apps.modules` 只作为无正式 Version 迁移窗口的兼容读源、迁移源和回滚依据保留。
 
 API 契约向后兼容：
 - `CreateAppBodySchema` 主规范使用 `nodes`，同时保留 `@deprecated modules?: any[]` 并通过 `migrateCreateAppBodyWorkflow` 预处理自动映射归一化为 `nodes`，防止破坏已有前端调用方（如模板市场创建、JSON 导入等）而造成不必要的大范围级联修改。
-- `AppDetailType` 在继承 `nodes` 的同时保留 `@deprecated modules?: AppVersionSchemaType['nodes']` 别名。
+- 兼容只覆盖创建输入；详情响应和 `AppDetailType` 只输出 `nodes`，不再暴露 `modules`。
 
 应用列表的 `hasInteractiveNode`（评测选应用过滤表单输入 / 用户选择）只扫当前 `publishedVersionId` 对应 Version 的 `nodes`，不读 `apps.modules`。
 
@@ -127,7 +127,7 @@ API 契约向后兼容：
 
 ## 6. 迁移
 
-本节只约束本设计中的 4163 App 资源迁移，不改变注册表中其他已发布系统迁移的既有语义。若 4163 后续接入自动系统迁移框架，应作为新的、只回填的任务追加到注册表末尾，不能修改已经发布任务。
+本节只约束本设计中的 App 资源迁移，不改变注册表中其他已发布系统迁移的既有语义。该迁移以 `20260909_backfill_app_resource_snapshots` 作为永久任务 ID、首次发布版本为 4.17.0，并作为新的只回填任务追加到注册表末尾，不能修改已经发布任务。
 
 ### 6.1 4163（资源）
 
@@ -139,10 +139,11 @@ API 契约向后兼容：
 - 已有合法 `resources` 直接跳过；迁移只回填缺失或结构非法的快照，重复执行不会改变已迁 Version 和旧字段。
 - 历史 Version 中已经存在的静态资源（包括模型）直接回填为该 Version 的授权快照，不追溯校验历史发布人或当前 App owner 的个人权限，避免升级破坏既有正式应用。迁移只验证资源结构；实体缺失或停用仍由编辑器提示和运行时按需报错。
 
-### 6.2 补 Version（仅零条记录）
+### 6.2 补正式 Version
 
-- `app_versions` 里该 `appId` **一条都没有**：才用 App 的 `modules/edges/chatConfig` 建一条 `isPublish: true`，并写出 `resources`、`publishedVersionId`。
-- **只要有任意 Version（含 MCP/HTTP 那一条、仅 autoSave）**：不把 App 图拷进 Version。
+- `app_versions` 里该 `appId` **没有 `isPublish: true` 的记录**：用 App 的 `modules/edges/chatConfig` 建一条正式 Version，并写出 `resources`、`publishedVersionId`。
+- 已有草稿或 autoSave Version 时保留原记录，不覆盖、不提升为正式版；新建的正式 Version 仍以旧代码实际运行的 App 图为源。
+- 已有正式 Version 时不把 App 图拷进 Version，只回填或修复 `publishedVersionId`。
 
 ### 6.3 保留旧字段并在 Schema 废弃
 
@@ -155,6 +156,18 @@ API 契约向后兼容：
 **MCP/HTTP**：已有 Version，不新建、不覆盖；最多校验与旧 `apps.modules` 是否一致。
 
 **类型转换**：必须写 Version；旧 App 图虽然保留，但不能继续作为转换结果的事实来源。
+
+### 6.4 自动迁移执行契约
+
+- 恢复策略使用分批断点续跑。App 和 Version 数量没有固定上界，分别按不可变 ObjectId `_id` 固定扫描上界并推进游标；每批使用全局 `SYSTEM_MIGRATION_BATCH_SIZE`，内存只保留当前批次和有限状态。
+- 阶段固定为 `versions`、`apps`、`validation`。任务位于当前注册表末尾，依赖此前的模型引用迁移先补齐工作流 `modelId`，再从 Version 工作流生成完整资源快照。
+- 任务非阻塞启动并使用 `onFailure: continue`。新版本对缺失 `resources` 保留运行时提取兼容，对没有正式 Version 的 App 临时读取旧图；旧版本仍可读取保留的 App 图和 `resourceRefs`，因此任务失败不影响节点 readiness，也不要求停机升级。
+- Version 快照使用读取字段 compare-and-set，只在该 Version 的 `nodes/edges/chatConfig/resourceRefs/resources` 未变化时回填；已有合法快照保持不变。批次重放会再次计算同一确定性结果，不产生额外记录。
+- App 正式指针只在扫描时读取的 `publishedVersionId` 未变化时回填。无正式 Version App 的补 Version 与指针写入在同一 Mongo 事务内完成，并在事务内再次确认仍无正式 Version，避免业务并发发布或进程退出留下孤立迁移版本；已有草稿不影响补建。
+- 非阻塞失败记录只保存 `appId` 或 `versionId`、阶段和截断后的原始原因。重试时先重放上次失败记录，完整错误快照持久化成功后才推进对应 checkpoint。
+- 主快照完成后尾扫新增记录；最终校验全部 Version 均有合法 `resources`，所有非文件夹 App 均有正式 Version，且正式指针指向自身 Version。仍有异常时任务保持 failed，管理员修复数据后重试。
+- checkpoint 只保存各阶段固定上界、最后完成游标、进度计数和完成标志。业务写入成功但 checkpoint 前退出时，重放会跳过已完成写入，因此最终结果只返回可稳定恢复的扫描计数，不展示无法精确恢复的更新计数。
+- 成功结果不写 i18n key、业务正文或完整错误栈。
 
 ## 7. 保存增量鉴权
 
@@ -245,7 +258,7 @@ app_versions.resources $elemMatch { type, id }
 1. **读容错**：`getAppLatestVersion` / `getAppVersionById` 对缺 `resources` 改为 extract，去掉该错误码；`[]` 保持空。
 2. **指针**：发布/创建写入 `publishedVersionId`；4163 回填。
 3. **反查改查正式 Version**。
-4. **零 Version 补建正式 Version**。
+4. **无正式 Version App 补建正式 Version**。
 5. 编辑器/复制/Chat 回退改读 Version；类型转换/MCP 更新只写 Version。
 6. 旧 App 图和 `resourceRefs` 停止读写并在 Schema 标记 deprecated，但保留原数据。
 7. 将 `model` 纳入增量资源鉴权，并在所有模型运行入口接入静态快照 / 动态运行人校验。
@@ -278,7 +291,7 @@ app_versions.resources $elemMatch { type, id }
 3. 4163 只回填，不清理旧表字段；旧字段在 Schema 标记 deprecated 并保留回滚能力。
 4. `model` 是标准 ACL 资源。发布前按操作人授权，发布后以 Version 快照作为 App 权限，不再校验人的模型权限。
 5. `model` 与其他资源统一按 `type + id` 标识；快照不保存 `modelType`，模型类型由模型实体和具体调用点的 typed getter 校验。
-6. API 契约向后兼容：`CreateAppBodySchema` 与 `AppDetailType` 保留对 `modules` 的向后兼容解析和别名支持，防止向周边业务页面（Dashboard、模板市场、JSON 导入等）过度扩散破坏性修改。
+6. API 契约向后兼容：`CreateAppBodySchema` 保留对 `modules` 创建输入的兼容解析；详情响应和 `AppDetailType` 统一使用 `nodes`，不继续输出旧字段。
 7. 资源无权限与已删除严格区分：编辑器与工作流校验保留 `permissionDenied` 状态并独立报出 `resource_no_permission`，配合工作流加载时的 `scheduleEntryCheck` 自动定位（`fitView`）至错误节点，与已删除实体的 `resource_missing` 区分对待。
 8. 技能目录权限继承：技能资源列表（`listReadableAgentSkills`）严格保留基于目录的权限继承机制（`skill.inheritPermission && skill.parentId`），与应用资源快照重构相互解耦，不破坏既有目录权限体系。
 
@@ -297,3 +310,28 @@ type AppResource =
 - `model` 进入标准资源鉴权并与其他资源统一使用 `type + id`；静态模型写入快照，动态模型输入不写入静态快照并在运行时按运行人鉴权。
 - 提取器只解析、归一化、合并、去重、稳定排序，不访问数据库。
 - 动态资源 ID 保存阶段不确定则不虚构记录。
+
+---
+
+## 13. 表单应用（Agent & AgentV2）发布校验与提示对齐
+
+### 13.1 现状与问题
+在表单式应用（Agent 与 AgentV2）中，若引用的工具、技能、知识库等资源被卸载、删除或操作者无权限，点击发布时出现提示 UI 不一致：
+- **Agent**：前端 `Header.tsx` 捕获到工作流图中的工具异常，但直接写死弹窗 `app.error.publish_unExist_app`（“发布失败，请检查工具配置是否正确”）；
+- **AgentV2**：工作流未将工具展开为独立节点，且通用校验器 `workflowCheck.ts` 未对未开放的 Agent 节点进行工具校验，导致请求直接穿透到后端 `/api/core/app/version/publish` 接口，后端 ACL 鉴权失败返回 `unAuthApp`，前端弹窗 `code_error.app_error.un_auth_app`（“无权操作该应用”）。
+
+### 13.2 对齐方案与设计决策
+1. **统一前端拦截**：在 `Header.tsx` 的 `checkData` 发布前阶段，统一调用表单资源检查函数 `checkAppFormResourceIssues`，对 `appForm.selectedTools`、`appForm.selectedAgentSkills`、`appForm.dataset.datasets` 进行有效性与权限扫描，若存在异常立即在前端阻断发布。
+2. **优先显示具体原因**：
+   - 提取具体错误原因（无权限优先提示 `core.workflow.check.resource_no_permission` 或 `tool_no_permission`，已下线提示 `tool_offline`，已删除提示 `tool_missing` / `resource_missing`）；
+   - 在后续 `checkWorkflowBeforeRunOrPublish` 检查中，若发现其他错误（如模型未配置、模型不可用），优先取 `firstIssue.message`，兜底才使用通用文案。
+3. **工作流校验器边界保护**：保持 `workflowCheck.ts` 不变，不提前引入对未开放的 Agent 节点的工作流校验，改动完全收敛在表单层 `FormComponent` 中。
+
+---
+
+## 14. 表单应用发布校验 TODO
+
+- [x] 1. 在 `projects/app/src/pageComponents/app/detail/Edit/FormComponent/checkAppForm.ts` 封装 `checkAppFormResourceIssues` 校验函数，覆盖工具、技能、知识库的权限、下线及缺失状态。
+- [x] 2. 改造 `projects/app/src/pageComponents/app/detail/Edit/FormComponent/Header.tsx`：在 `checkData` 中接入表单级资源检查，并在 `checkResults.hasError` 时优先展示具体 `issue.message`。
+- [x] 3. 编写单测 `projects/app/test/pageComponents/app/detail/Edit/FormComponent/checkAppForm.test.ts`，验证各类异常场景与正常场景。
+- [x] 4. 运行单测验证修改结果。

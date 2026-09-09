@@ -6,6 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 type DatasetCardProps = {
@@ -62,24 +63,34 @@ const DatasetCard = React.memo(function DatasetCard({
       }}
     >
       <Avatar src={dataset.avatar} w={'1.5rem'} borderRadius={'sm'} />
-      <Box
-        ml={2}
-        flex={'1 1 auto'}
-        w={0}
-        minW={0}
-        className={'textEllipsis'}
-        fontSize={'sm'}
-        color={isUnavailable ? 'red.600' : 'myGray.900'}
+      <MyTooltip
+        label={isDeleted ? t('common:dataset_deleted') : dataset.name}
+        showOnlyWhenOverflow
       >
-        {isDeleted ? t('common:dataset_deleted') : dataset.name}
-      </Box>
+        <Box
+          ml={2}
+          flex={'1 1 auto'}
+          w={0}
+          minW={0}
+          className={'textEllipsis'}
+          fontSize={'sm'}
+          color={isUnavailable ? 'red.600' : 'myGray.900'}
+        >
+          {isDeleted ? t('common:dataset_deleted') : dataset.name}
+        </Box>
+      </MyTooltip>
 
       {permissionDenied && (
         <MyTag colorSchema="red" type="fill" className="unHoverStyle" flexShrink={0}>
           <MyIcon name="common/error" w="14px" mr={1} />
-          <Box color="red.600" maxW="150px" className="textEllipsis">
-            {t('common:core.workflow.check.resource_no_permission')}
-          </Box>
+          <MyTooltip
+            label={t('common:core.workflow.check.resource_no_permission')}
+            showOnlyWhenOverflow
+          >
+            <Box color="red.600" maxW="150px" className="textEllipsis">
+              {t('common:core.workflow.check.resource_no_permission')}
+            </Box>
+          </MyTooltip>
         </MyTag>
       )}
 

@@ -271,8 +271,6 @@ export type AppWithPermissionType = AppSchemaType & {
 /** 应用详情：元数据 + 当前草稿 Version 的 nodes/edges/chatConfig。 */
 export type AppDetailType = AppSchemaType & {
   nodes: AppVersionSchemaType['nodes'];
-  /** @deprecated 兼容历史前端代码读取，与 nodes 相同 */
-  modules?: AppVersionSchemaType['nodes'];
   edges: AppVersionSchemaType['edges'];
   chatConfig: AppVersionSchemaType['chatConfig'];
   permission: AppPermission;

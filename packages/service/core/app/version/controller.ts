@@ -11,6 +11,7 @@ import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import { resolveStoredAppResources } from '../resources';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 
 type VersionResourceSource = Pick<AppVersionSchemaType, 'nodes' | 'chatConfig' | 'resources'> & {
@@ -75,14 +76,47 @@ const emptyVersionWorkflow = (): AppVersionWorkflow => {
   };
 };
 
-export type AppVersionLookupApp = AppSchemaType;
+export type AppVersionLookupApp = AppSchemaType & {
+  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
+  modules?: unknown[];
+  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
+  edges?: unknown;
+  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
+  chatConfig?: unknown;
+  /** @deprecated 仅用于无正式 Version 历史应用的迁移窗口兼容。 */
+  resourceRefs?: unknown;
+};
 
 const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
-  app ?? ((await MongoApp.findById(appId).lean()) as AppSchemaType | null | undefined);
+  app ?? ((await MongoApp.findById(appId).lean()) as AppVersionLookupApp | null | undefined);
+
+/**
+ * 在非阻塞迁移窗口内读取无正式 Version 应用的旧工作流。
+ * 草稿 Version 不能替代旧代码实际运行的 App 图；迁移补出正式 Version 后停止 fallback。
+ */
+const normalizeLegacyAppWorkflow = (app?: AppVersionLookupApp | null): AppVersionWorkflow => {
+  if (!app) return emptyVersionWorkflow();
+
+  const normalizedWorkflow = migrateWorkflowToCurrent({
+    nodes: decodeToolSetNodesFromStorage(Array.isArray(app.modules) ? app.modules : []),
+    edges: Array.isArray(app.edges) ? app.edges : [],
+    chatConfig: app.chatConfig
+  });
+  return {
+    versionId: undefined,
+    versionName: undefined,
+    resources: resolveStoredAppResources({
+      nodes: normalizedWorkflow.nodes,
+      chatConfig: normalizedWorkflow.chatConfig,
+      resourceRefs: app.resourceRefs
+    }),
+    ...normalizedWorkflow
+  };
+};
 
 /**
  * 读取当前正式工作流：优先 publishedVersionId，否则最新 isPublish Version。
- * 找不到 Version 时返回空图，不再读 App.modules。
+ * 找不到正式 Version 时为尚未补建的历史 App 读取旧图；已有草稿不能让线上应用变空。
  */
 export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupApp) => {
   const migrationApp = await loadApp(appId, app);
@@ -107,17 +141,17 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
       .lean());
 
   if (version) return normalizeAppVersionWorkflow(version);
-  return emptyVersionWorkflow();
+  return normalizeLegacyAppWorkflow(migrationApp);
 };
 
 /**
  * 读取编辑器工作副本：始终取该 App 最新写入的 Version，包含自动保存记录。
- * 找不到 Version 时返回空图，不再读 App.modules。
+ * 找不到 Version 时仅为尚未补建 Version 的历史 App 读取旧图，避免保存空图抢先生成 Version。
  */
-export const getAppDraftWorkflow = async (appId: string) => {
+export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupApp) => {
   const draft = await getAppDraftVersion(appId);
   if (draft) return normalizeAppVersionWorkflow(draft);
-  return emptyVersionWorkflow();
+  return normalizeLegacyAppWorkflow(await loadApp(appId, app));
 };
 
 /**
@@ -289,7 +323,11 @@ export const getAppPublishedWorkflowMap = async (
     }>([
       {
         $match: {
-          appId: { $in: appsNeedingLatestPublish },
+          appId: {
+            $in: appsNeedingLatestPublish.map((id) =>
+              Types.ObjectId.isValid(String(id)) ? new Types.ObjectId(String(id)) : id
+            )
+          },
           isPublish: true
         }
       },
@@ -318,6 +356,38 @@ export const getAppPublishedWorkflowMap = async (
       ];
     })
   );
+};
+
+/**
+ * 评测选应用会过滤含表单输入 / 用户选择等交互节点的工作流。
+ * 只扫传入应用列表中 publishedVersionId 对应 Version 的 nodes，不读 App.modules。
+ */
+export const getInteractiveAppIdSet = async (
+  apps: Array<{ _id: unknown; publishedVersionId?: unknown }>
+): Promise<Set<string>> => {
+  const pointerIds = apps
+    .map((app) => app.publishedVersionId)
+    .filter((id): id is NonNullable<typeof id> => !!id && Types.ObjectId.isValid(String(id)));
+  if (pointerIds.length === 0) return new Set<string>();
+
+  const versions = await MongoAppVersion.find(
+    { _id: { $in: pointerIds } },
+    { _id: 1, appId: 1, nodes: 1 }
+  ).lean();
+  const versionById = new Map(versions.map((version) => [String(version._id), version]));
+  const ids = new Set<string>();
+
+  for (const app of apps) {
+    const version = app.publishedVersionId
+      ? versionById.get(String(app.publishedVersionId))
+      : undefined;
+    if (!version || String(version.appId) !== String(app._id)) continue;
+    if ((version.nodes ?? []).some((node) => isInteractiveNodeType(node.flowNodeType))) {
+      ids.add(String(app._id));
+    }
+  }
+
+  return ids;
 };
 
 export const getAppVersionById = async ({
@@ -355,7 +425,7 @@ export const checkIsLatestVersion = async ({
     {
       appId,
       isPublish: true,
-      _id: { $gt: versionId }
+      _id: { $gt: new Types.ObjectId(versionId) }
     },
     '_id'
   ).lean();

@@ -50,7 +50,7 @@ const getStringValue = (value: unknown) => {
  * 把节点/对话配置里的模型引用收成稳定标识。
  * 新写入只保留 modelId；解析失败时保留现场 ID，提取器只记录不鉴权。
  */
-const getModelId = (value: unknown, modelType: AppResourceModelType) => {
+export const resolveSystemModelId = (value: unknown, modelType?: AppResourceModelType) => {
   const rawValue =
     getStringValue(value) ??
     getStringValue(getObjectValue(value, 'modelId')) ??
@@ -59,9 +59,12 @@ const getModelId = (value: unknown, modelType: AppResourceModelType) => {
 
   const resolved =
     global.systemModelMap?.get(`id:${rawValue}`) ?? global.systemModelMap?.get(`model:${rawValue}`);
-  if (resolved && resolved.type === modelType) return resolved.modelId;
+  if (resolved && (!modelType || resolved.type === modelType)) return resolved.modelId;
   return rawValue;
 };
+
+const getModelId = (value: unknown, modelType: AppResourceModelType) =>
+  resolveSystemModelId(value, modelType);
 
 /** 资源快照统一按 type + id 去重。 */
 export const getAppResourceKey = (resource: AppResource) => `${resource.type}:${resource.id}`;

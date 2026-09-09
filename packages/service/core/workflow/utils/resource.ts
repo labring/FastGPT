@@ -22,7 +22,7 @@ import { MongoDataset } from '../../dataset/schema';
 import { MongoAgentSkills } from '../../ai/skill/model/schema';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
-import { mergeAppResources } from '../../app/resources';
+import { getAppResourceKey, mergeAppResources, resolveSystemModelId } from '../../app/resources';
 import { checkAppResourceReadPermissions } from '../../../support/permission/app/resource';
 import { getWorkflowResourceContext } from './context';
 import {
@@ -48,7 +48,8 @@ export class WorkflowResourceError extends UserError {}
 export const isWorkflowResourceError = (error: unknown): error is WorkflowResourceError =>
   error instanceof WorkflowResourceError;
 
-const getResourceKey = (type: AppResourceType, id: string) => `${type}:${id}`;
+const getResourceKey = (type: AppResourceType, id: string) =>
+  getAppResourceKey({ type, id } as AppResource);
 
 /** 按资源快照批量加载实体；root 调试请求跳过团队过滤，但仍校验实体存在。 */
 export const loadWorkflowResourceContext = async ({
@@ -157,22 +158,7 @@ const modelFeatureKeyMap = new Map<string, NodeInputKeyEnum>([
   [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearch]
 ]);
 
-const getRuntimeModelId = (value: unknown): string | undefined => {
-  const rawValue = (() => {
-    if (typeof value === 'string' && value) return value;
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
-    const record = value as Record<string, unknown>;
-    if (typeof record.modelId === 'string' && record.modelId) return record.modelId;
-    if (typeof record.model === 'string' && record.model) return record.model;
-  })();
-  if (!rawValue) return;
-
-  return (
-    global.systemModelMap?.get(`id:${rawValue}`)?.modelId ??
-    global.systemModelMap?.get(`model:${rawValue}`)?.modelId ??
-    rawValue
-  );
-};
+const getRuntimeModelId = (value: unknown): string | undefined => resolveSystemModelId(value);
 
 /**
  * 在统一节点调度边界校验实际使用的模型资源。

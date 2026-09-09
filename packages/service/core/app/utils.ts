@@ -25,7 +25,7 @@ import {
   mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import {
@@ -87,23 +87,34 @@ export async function rewriteAppWorkflowToDetail({
     id: string;
     resourceType: 'agent' | 'tool';
   }) => {
-    const normalizedResource = normalizeAppToolResource(id);
-    const resourceInSnapshot =
-      !!normalizedResource && hasSnapshotResource(resourceType, normalizedResource.id);
-    if ((!viewerTmbId || resourceInSnapshot) && !isRoot) return false;
-
-    let authAppId: string | undefined;
+    let parsed: ReturnType<typeof splitCombineToolId> | undefined;
     try {
-      authAppId = splitCombineToolId(id).authAppId;
+      parsed = splitCombineToolId(id);
     } catch {
+      // 无法被解析为有效 toolId 时，如果快照中有则放行，否则视为未授权
+      return !hasSnapshotResource(resourceType, id);
+    }
+
+    // 系统工具或商业版公共工具无需应用级鉴权
+    if (
+      parsed.source === AppToolSourceEnum.systemTool ||
+      parsed.source === AppToolSourceEnum.commercial ||
+      parsed.source === AppToolSourceEnum.community
+    ) {
       return false;
     }
-    if (!authAppId) return false;
+
+    const normalizedResource = normalizeAppToolResource(id);
+    const targetAppId = normalizedResource?.id ?? parsed.authAppId ?? parsed.pluginId;
+    if (!targetAppId) return true;
+
+    const resourceInSnapshot = hasSnapshotResource(resourceType, targetAppId);
+    if ((!viewerTmbId || resourceInSnapshot) && !isRoot) return false;
 
     try {
       await authAppByTmbId({
         tmbId: viewerTmbId ?? ownerTmbId,
-        appId: authAppId,
+        appId: targetAppId,
         per: ReadPermissionVal,
         isRoot
       });

@@ -1,14 +1,19 @@
-import type { AppResource } from '@fastgpt/global/core/app/type';
+import type { AppResource, AppResourcesType } from '@fastgpt/global/core/app/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ClientSession } from '../../../common/mongo';
 import {
   getAppResourceKey,
+  hasAppResource,
   mergeAppResources,
   splitExtractedAppResources
 } from '../../../core/app/resources';
-import { getAppDraftResourceBaseline } from '../../../core/app/version/controller';
+import {
+  getAppDraftResourceBaseline,
+  getAppLatestVersion
+} from '../../../core/app/version/controller';
 import { authDatasetByTmbId } from '../dataset/auth';
 import { authSkillByTmbId } from '../skill/auth';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
@@ -46,7 +51,7 @@ export const getUnauthorizedAppResources = async ({
     const modelIds = await getMemberModelIds({
       teamId,
       tmbId,
-      isTeamOwner: permission.isOwner || isRoot
+      isTeamOwner: permission.isOwner || (isRoot && allowRootCrossTeam)
     });
     return new Set(modelIds);
   })();
@@ -153,4 +158,32 @@ export const resolveAppResourcesByPermission = async ({
     ...kept,
     ...added.filter((resource) => !unauthorizedKeys.has(getAppResourceKey(resource)))
   ]);
+};
+
+/**
+ * 校验独立辅助调用点（如问题引导、TTS 音频生成）使用的模型资源。
+ * 目标为 App 时严格校验当前正式 Version 的资源快照；非 App 或动态场景按成员个人模型权限校验。
+ */
+export const authTargetModelResource = async ({
+  targetType,
+  targetId,
+  modelId,
+  tmbId,
+  resources
+}: {
+  targetType: ChatSourceTypeEnum;
+  targetId?: string;
+  modelId: string;
+  tmbId: string;
+  resources?: AppResourcesType;
+}) => {
+  const modelResource = { type: 'model' as const, id: modelId };
+  if (targetType === ChatSourceTypeEnum.app && targetId) {
+    const snapshot = resources ?? (await getAppLatestVersion(targetId)).resources;
+    if (!hasAppResource({ resources: snapshot, resource: modelResource })) {
+      throw ERROR_ENUM.unAuthModel;
+    }
+    return;
+  }
+  await checkAppResourceReadPermissions({ resources: [modelResource], tmbId });
 };
