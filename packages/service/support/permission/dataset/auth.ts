@@ -43,7 +43,7 @@ export const authDatasetByTmbId = async ({
   const dataset = await (async () => {
     const [{ teamId, permission: tmbPer }, dataset] = await Promise.all([
       getTmbInfoByTmbId({ tmbId }),
-      MongoDataset.findOne({ _id: datasetId }).lean()
+      MongoDataset.findOne({ _id: datasetId, deleteTime: null }).lean()
     ]);
 
     if (!dataset) {

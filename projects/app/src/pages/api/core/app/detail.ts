@@ -31,7 +31,7 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
     per: ReadPermissionVal
   });
 
-  const workflow = await getAppDraftWorkflow(app._id);
+  const workflow = await getAppDraftWorkflow(app._id, app);
   await rewriteAppWorkflowToDetail({
     nodes: workflow.nodes,
     teamId,
@@ -49,7 +49,7 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
       intro: app.intro ?? '',
       nodes: [],
       edges: [],
-      chatConfig: workflow.chatConfig
+      chatConfig: undefined
     });
   }
 

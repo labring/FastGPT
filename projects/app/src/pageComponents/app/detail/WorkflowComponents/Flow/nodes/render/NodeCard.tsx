@@ -18,7 +18,7 @@ import {
   mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { formatToolError } from '@fastgpt/global/core/app/utils';
+import { getToolErrorMessage } from '@/web/core/workflow/workflowCheck';
 import {
   PluginStatusEnum,
   PluginStatusMap,
@@ -355,7 +355,6 @@ const NodeCard = (props: Props) => {
   }, [isAppNode, node, toolStatus]);
 
   /* Node header - 重构后的版本,依赖项大幅减少 */
-  const error = useMemo(() => formatToolError(node?.pluginData?.error), [node?.pluginData?.error]);
   const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
 
   const RenderToolHandle = useMemo(
@@ -454,7 +453,10 @@ const NodeCard = (props: Props) => {
                       rtDoms={rtDoms}
                     />
 
-                    <NodeStatusBadge status={nodeTemplate?.status} error={error} />
+                    <NodeStatusBadge
+                      status={nodeTemplate?.status ?? node?.pluginData?.status}
+                      error={node?.pluginData?.error}
+                    />
                   </Flex>
 
                   <NodeIntro nodeId={nodeId} intro={intro} flowNodeType={flowNodeType} />
@@ -1188,8 +1190,7 @@ NodeActionButtons.displayName = 'NodeActionButtons';
 const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(
   ({ status, error }) => {
     const { t } = useTranslation();
-    const errorText =
-      error || (status === PluginStatusEnum.Offline ? 'common:error.tool_not_exist' : undefined);
+    const errorText = getToolErrorMessage({ status, error, t });
 
     if (errorText) {
       return (
@@ -1203,7 +1204,7 @@ const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string |
           fontWeight={'medium'}
         >
           <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-          <Box color={'red.600'}>{t(errorText as any)}</Box>
+          <Box color={'red.600'}>{errorText}</Box>
         </Flex>
       );
     }

@@ -278,7 +278,7 @@ export async function getClientToolPreviewNode({
     const app: AppToolType = await (async () => {
       // App / Mcp toolset / Http toolset
       if (idSource === AppToolSourceEnum.personal) {
-        const item = await MongoApp.findById(pluginId).lean();
+        const item = await MongoApp.findOne({ _id: pluginId, deleteTime: null }).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
         if (AppFolderTypeList.includes(item.type)) return Promise.reject(PluginErrEnum.unExist);
 

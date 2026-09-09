@@ -5,20 +5,29 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
-const { findOneMock, findMock, aggregateMock, findAppByIdMock, updateVersionMock, updateAppMock } =
-  vi.hoisted(() => ({
-    findOneMock: vi.fn(),
-    findMock: vi.fn(),
-    aggregateMock: vi.fn(),
-    findAppByIdMock: vi.fn(),
-    updateVersionMock: vi.fn(),
-    updateAppMock: vi.fn()
-  }));
+const {
+  findOneMock,
+  findMock,
+  existsMock,
+  aggregateMock,
+  findAppByIdMock,
+  updateVersionMock,
+  updateAppMock
+} = vi.hoisted(() => ({
+  findOneMock: vi.fn(),
+  findMock: vi.fn(),
+  existsMock: vi.fn(),
+  aggregateMock: vi.fn(),
+  findAppByIdMock: vi.fn(),
+  updateVersionMock: vi.fn(),
+  updateAppMock: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/core/app/version/schema', () => ({
   MongoAppVersion: {
     findOne: findOneMock,
     find: findMock,
+    exists: existsMock,
     aggregate: aggregateMock,
     updateOne: updateVersionMock
   }
@@ -37,6 +46,7 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => {
 
 import {
   getAppDraftVersion,
+  getAppDraftWorkflow,
   getAppLatestVersion,
   getAppVersionById,
   getAppPublishedWorkflowMap,
@@ -65,6 +75,7 @@ const createAgentVersion = (resources?: unknown) => ({
 describe('getAppLatestVersion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    existsMock.mockResolvedValue(null);
     findAppByIdMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) });
   });
 
@@ -133,17 +144,51 @@ describe('getAppLatestVersion', () => {
     expect(result.nodes[0].inputs[0].inputList?.[0]).not.toHaveProperty('value');
   });
 
-  it('returns an empty workflow when no published version exists', async () => {
+  it('reads the legacy App workflow when the App has no published Version', async () => {
     findOneMock.mockReturnValue({
       sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) })
     });
 
     const result = await getAppLatestVersion('app-id', {
-      name: 'App without version'
+      name: 'App without version',
+      modules: createAgentVersion().nodes,
+      edges: [],
+      chatConfig: {}
+    } as any);
+
+    expect(result.nodes.map((node) => node.nodeId)).toEqual(['agent-node']);
+    expect(result.resources).toEqual([{ type: 'agent', id: 'legacy-agent-id' }]);
+  });
+
+  it('returns an empty workflow when neither a Version nor legacy workflow exists', async () => {
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) })
+    });
+
+    const result = await getAppLatestVersion('app-id', {
+      name: 'Empty app'
     } as any);
 
     expect(result.nodes).toEqual([]);
     expect(result.resources).toEqual([]);
+  });
+
+  it('still reads the legacy App workflow when only a draft Version exists', async () => {
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) })
+    });
+    existsMock.mockResolvedValue({ _id: '507f1f77bcf86cd799439011' });
+
+    const result = await getAppLatestVersion('app-id', {
+      name: 'App with draft only',
+      modules: createAgentVersion().nodes,
+      edges: [],
+      chatConfig: {}
+    } as any);
+
+    expect(result.nodes.map((node) => node.nodeId)).toEqual(['agent-node']);
+    expect(result.resources).toEqual([{ type: 'agent', id: 'legacy-agent-id' }]);
+    expect(existsMock).not.toHaveBeenCalled();
   });
 
   it('preserves a legacy version config when the current app config differs', async () => {
@@ -248,6 +293,35 @@ describe('getAppDraftVersion', () => {
 
     expect(sessionMock).toHaveBeenCalledWith(session);
     expect(result).toBe(version);
+  });
+});
+
+describe('getAppDraftWorkflow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('reads the legacy App workflow before the zero-Version migration completes', async () => {
+    findOneMock.mockReturnValue({
+      sort: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(undefined) })
+    });
+    findAppByIdMock.mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        name: 'Legacy draft',
+        modules: createAgentVersion().nodes,
+        edges: [],
+        chatConfig: {},
+        resourceRefs: { skillIds: ['legacy-skill'] }
+      })
+    });
+
+    const result = await getAppDraftWorkflow('app-id');
+
+    expect(result.nodes.map((node) => node.nodeId)).toEqual(['agent-node']);
+    expect(result.resources).toEqual([
+      { type: 'agent', id: 'legacy-agent-id' },
+      { type: 'skill', id: 'legacy-skill' }
+    ]);
   });
 });
 

@@ -30,6 +30,8 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 
 const mocks = vi.hoisted(() => ({
   getClientToolPreviewNode: vi.fn()
@@ -201,7 +203,7 @@ describe('beforeUpdateAppFormat', () => {
     });
   });
 
-  it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', async () => {
+  it('保存前移除知识库选择项的编辑态标记并保留展示快照字段', async () => {
     const nodes = [
       {
         nodeId: 'dataset-node',
@@ -234,12 +236,17 @@ describe('beforeUpdateAppFormat', () => {
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
-        datasetId: 'dataset-1'
+        datasetId: 'dataset-1',
+        avatar: 'avatar.png',
+        name: 'Deleted Dataset',
+        vectorModel: {
+          model: 'text-embedding'
+        }
       }
     ]);
   });
 
-  it('保存前兼容旧版单对象知识库选择项', async () => {
+  it('保存前兼容旧版单对象知识库选择项并保留展示快照字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
@@ -265,7 +272,12 @@ describe('beforeUpdateAppFormat', () => {
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
-        datasetId: 'dataset-legacy'
+        datasetId: 'dataset-legacy',
+        avatar: 'avatar.png',
+        name: 'Legacy Dataset',
+        vectorModel: {
+          model: 'text-embedding'
+        }
       }
     ]);
   });
@@ -304,7 +316,7 @@ describe('beforeUpdateAppFormat', () => {
     ]);
   });
 
-  it('保存前统一压缩 Agent datasetParams 中的知识库选择项', async () => {
+  it('保存前移除 Agent datasetParams 中的编辑态标记并保留展示快照字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -336,7 +348,12 @@ describe('beforeUpdateAppFormat', () => {
     expect(nodes[0].inputs[0].value).toMatchObject({
       datasets: [
         {
-          datasetId: 'dataset-1'
+          datasetId: 'dataset-1',
+          avatar: 'avatar.png',
+          name: 'Deleted Dataset',
+          vectorModel: {
+            model: 'text-embedding'
+          }
         }
       ],
       similarity: 0.5,
@@ -411,7 +428,7 @@ describe('beforeUpdateAppFormat', () => {
     await expect(beforeUpdateAppFormat({ nodes, teamId: 'team-1' })).rejects.toThrow();
   });
 
-  it('保存前移除 Agent Skill 的编辑态删除标记和展示快照字段', async () => {
+  it('保存前移除 Agent Skill 的编辑态删除标记并保留展示快照字段', async () => {
     const nodes = [
       {
         flowNodeType: FlowNodeTypeEnum.agent,
@@ -444,10 +461,15 @@ describe('beforeUpdateAppFormat', () => {
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
-        skillId: 'skill-1'
+        skillId: 'skill-1',
+        name: 'Deleted Skill',
+        description: 'Snapshot description',
+        avatar: 'skill-avatar.png'
       },
       {
-        skillId: 'skill-2'
+        skillId: 'skill-2',
+        name: 'Normal Skill',
+        description: ''
       }
     ]);
   });
@@ -565,16 +587,19 @@ describe('checkAppResourceReadPermissions', () => {
     const owner = await getUser(`model-resource-owner-${getNanoid(6)}`);
     const member = await getUser(`model-resource-member-${getNanoid(6)}`, owner.teamId);
     const modelId = String(new Types.ObjectId());
+    const previousHandle = getCachedModelHandle()!;
+    const previousModels = previousHandle.getAllModels();
+    const previousDefaults = getModelTestDefaults();
     const model = {
-      ...global.systemDefaultModel.llm!,
+      ...previousDefaults.llm!,
       modelId,
       model: `model-${modelId}`,
       isActive: true
     };
-    const previousModels = global.systemActiveModelList;
-    const previousModelMap = global.systemModelMap;
-    global.systemActiveModelList = [...previousModels, model];
-    global.systemModelMap = new Map(previousModelMap).set(`id:${modelId}`, model);
+    setModelTestSnapshot({
+      models: [...previousModels, model],
+      revision: previousHandle.revision + 1
+    });
 
     try {
       await MongoResourcePermission.create({
@@ -598,8 +623,11 @@ describe('checkAppResourceReadPermissions', () => {
         })
       ).resolves.toBeUndefined();
     } finally {
-      global.systemActiveModelList = previousModels;
-      global.systemModelMap = previousModelMap;
+      setModelTestSnapshot({
+        models: previousModels,
+        defaultModels: previousDefaults,
+        revision: previousHandle.revision
+      });
     }
   });
 });

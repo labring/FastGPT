@@ -196,7 +196,7 @@ export const LeftHeader = () => {
           {
             icon: 'key' as const,
             type: 'grayBg' as const,
-            label: t('skill:permission_settings'),
+            label: t('common:permission.Permission'),
             onClick: () => setShowPermModal(true)
           }
         ]

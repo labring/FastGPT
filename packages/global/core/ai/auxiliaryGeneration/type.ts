@@ -48,7 +48,7 @@ export const AuxiliaryGenerationSelectedDatasetSchema = z.object({
       description: '知识库使用的向量模型'
     })
   }),
-  isDeleted: BoolSchema.optional()
+  error: z.string().optional()
 });
 export type AuxiliaryGenerationSelectedDatasetType = z.infer<
   typeof AuxiliaryGenerationSelectedDatasetSchema

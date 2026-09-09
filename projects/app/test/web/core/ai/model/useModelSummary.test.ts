@@ -172,4 +172,28 @@ describe('useModelSummary request lifecycle', () => {
     await flush();
     expect(render('a').error).toBe(false);
   });
+  it('passes appId to request and isolates cache between different apps', async () => {
+    const renderWithApp = (modelId?: string, appId?: string) => {
+      mocks.index = 0;
+      return useModelSummary({ modelId, appId });
+    };
+    renderWithApp('a', 'app-1');
+    mocks.effect?.();
+    await flush();
+    expect(mocks.request).toHaveBeenLastCalledWith({
+      modelIds: ['a'],
+      appId: 'app-1',
+      outLinkAuthData: undefined
+    });
+
+    // 切换到 app-2 时，不复用 app-1 的缓存
+    expect(renderWithApp('a', 'app-2').detail).toBeUndefined();
+    mocks.effect?.();
+    await flush();
+    expect(mocks.request).toHaveBeenLastCalledWith({
+      modelIds: ['a'],
+      appId: 'app-2',
+      outLinkAuthData: undefined
+    });
+  });
 });

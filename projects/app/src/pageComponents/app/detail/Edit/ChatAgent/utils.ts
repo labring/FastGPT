@@ -320,6 +320,8 @@ export function agentForm2AppWorkflow(
 
                 return {
                   id: tool.pluginId,
+                  name: tool.name,
+                  avatar: tool.avatar,
                   version: tool.version,
                   source: tool.source,
                   toolConfig: tool.toolConfig,

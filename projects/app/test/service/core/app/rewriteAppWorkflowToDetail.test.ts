@@ -93,9 +93,9 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
     expect(tool.pluginData.error).toContain('Tool deleted');
   });
 
-  it('checks snapshot-external personal tools before loading preview metadata', async () => {
+  it('marks tool as resource_no_permission and preserves snapshot name/avatar when unauthorized', async () => {
     const toolAppId = '507f1f77bcf86cd799439011';
-    authAppByTmbIdMock.mockRejectedValue(new Error('not allowed'));
+    authAppByTmbIdMock.mockRejectedValue(AppErrEnum.unAuthApp);
     const nodes = [
       {
         nodeId: 'agent-1',
@@ -104,7 +104,14 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
         inputs: [
           {
             key: NodeInputKeyEnum.selectedTools,
-            value: [{ id: toolAppId, config: {} }]
+            value: [
+              {
+                id: toolAppId,
+                name: 'Snapshot Tool Name',
+                avatar: 'core/workflow/template/tool',
+                config: {}
+              }
+            ]
           }
         ],
         outputs: []
@@ -127,9 +134,58 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
       isRoot: false
     });
     expect(getClientToolPreviewNodeMock).not.toHaveBeenCalled();
+    expect(tool.name).toBe('Snapshot Tool Name');
+    expect(tool.avatar).toBe('core/workflow/template/tool');
     expect(tool.pluginData).toMatchObject({
-      error: AppErrEnum.unAuthApp,
-      permissionDenied: true
+      error: 'resource_no_permission'
+    });
+  });
+
+  it('marks tool as tool_missing and preserves snapshot name/avatar when external tool is deleted (unExist)', async () => {
+    const toolAppId = '507f1f77bcf86cd799439011';
+    authAppByTmbIdMock.mockRejectedValue(AppErrEnum.unExist);
+    const nodes = [
+      {
+        nodeId: 'agent-1',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [
+              {
+                id: toolAppId,
+                name: 'Snapshot Tool Name',
+                avatar: 'core/workflow/template/tool',
+                config: {}
+              }
+            ]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'owner-tmb',
+      viewerTmbId: 'viewer-tmb',
+      isRoot: false
+    });
+
+    const tool = (nodes[0].inputs[0].value as any)[0];
+    expect(authAppByTmbIdMock).toHaveBeenCalledWith({
+      tmbId: 'viewer-tmb',
+      appId: toolAppId,
+      per: expect.anything(),
+      isRoot: false
+    });
+    expect(getClientToolPreviewNodeMock).not.toHaveBeenCalled();
+    expect(tool.name).toBe('Snapshot Tool Name');
+    expect(tool.avatar).toBe('core/workflow/template/tool');
+    expect(tool.pluginData).toMatchObject({
+      error: 'tool_missing'
     });
   });
 
@@ -728,17 +784,14 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         skillId: String(activeSkill._id),
         name: 'Current Skill Name',
         description: 'Current skill description',
-        avatar: 'current-avatar',
-        isDeleted: false,
-        permissionDenied: false
+        avatar: 'current-avatar'
       },
       {
         skillId: String(deletedSkill._id),
         name: 'Deleted Snapshot',
         description: 'Deleted snapshot description',
         avatar: undefined,
-        isDeleted: true,
-        permissionDenied: false
+        error: 'resource_missing'
       }
     ]);
   });
@@ -1532,9 +1585,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: expect.objectContaining({
           modelId: embeddingModel.modelId,
           model: ''
-        }),
-        isDeleted: false,
-        permissionDenied: false
+        })
       }
     ]);
   });
@@ -1582,9 +1633,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: expect.objectContaining({
           modelId: embeddingModel.modelId,
           model: ''
-        }),
-        isDeleted: false,
-        permissionDenied: false
+        })
       }
     ]);
   });
@@ -1647,7 +1696,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: {
           model: 'text-embedding-3-small'
         },
-        isDeleted: true
+        error: 'resource_missing'
       }
     ]);
   });
@@ -1700,7 +1749,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: {
           model: 'text-embedding-3-small'
         },
-        isDeleted: true
+        error: 'resource_missing'
       }
     ]);
   });

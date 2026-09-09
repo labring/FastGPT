@@ -1,19 +1,25 @@
-import type { AppResource } from '@fastgpt/global/core/app/type';
+import type { AppResource, AppResourcesType } from '@fastgpt/global/core/app/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ClientSession } from '../../../common/mongo';
 import {
   getAppResourceKey,
+  hasAppResource,
   mergeAppResources,
   splitExtractedAppResources
 } from '../../../core/app/resources';
-import { getAppDraftResourceBaseline } from '../../../core/app/version/controller';
+import {
+  getAppDraftResourceBaseline,
+  getAppLatestVersion
+} from '../../../core/app/version/controller';
 import { authDatasetByTmbId } from '../dataset/auth';
 import { authSkillByTmbId } from '../skill/auth';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getMemberModelIds } from '../model/controller';
 import { authAppByTmbId } from './auth';
+import { getModelHandle } from '../../../core/ai/model';
 
 type UnauthorizedAppResource = {
   resource: AppResource;
@@ -39,6 +45,14 @@ export const getUnauthorizedAppResources = async ({
 }) => {
   const normalizedResources = mergeAppResources(resources);
   const modelResources = normalizedResources.filter((resource) => resource.type === 'model');
+  const modelCatalog = await (async () => {
+    if (modelResources.length === 0) return;
+    const handle = await getModelHandle();
+    return {
+      snapshot: { models: handle.getAllModels(), revision: handle.revision },
+      activeModelIds: new Set(handle.getActiveModels().map((model) => model.modelId))
+    };
+  })();
   const permittedModelIds = await (async () => {
     if (modelResources.length === 0) return new Set<string>();
 
@@ -46,7 +60,8 @@ export const getUnauthorizedAppResources = async ({
     const modelIds = await getMemberModelIds({
       teamId,
       tmbId,
-      isTeamOwner: permission.isOwner || isRoot
+      isTeamOwner: permission.isOwner || (isRoot && allowRootCrossTeam),
+      catalogSnapshot: modelCatalog?.snapshot
     });
     return new Set(modelIds);
   })();
@@ -83,8 +98,7 @@ export const getUnauthorizedAppResources = async ({
           return;
         }
 
-        const model = global.systemModelMap?.get(`id:${resource.id}`);
-        if (!model?.isActive) {
+        if (!modelCatalog?.activeModelIds.has(resource.id)) {
           return { resource, error: ModelErrEnum.unExist };
         }
         if (!permittedModelIds.has(resource.id)) {
@@ -153,4 +167,32 @@ export const resolveAppResourcesByPermission = async ({
     ...kept,
     ...added.filter((resource) => !unauthorizedKeys.has(getAppResourceKey(resource)))
   ]);
+};
+
+/**
+ * 校验独立辅助调用点（如问题引导、TTS 音频生成）使用的模型资源。
+ * 目标为 App 时严格校验当前正式 Version 的资源快照；非 App 或动态场景按成员个人模型权限校验。
+ */
+export const authTargetModelResource = async ({
+  targetType,
+  targetId,
+  modelId,
+  tmbId,
+  resources
+}: {
+  targetType: ChatSourceTypeEnum;
+  targetId?: string;
+  modelId: string;
+  tmbId: string;
+  resources?: AppResourcesType;
+}) => {
+  const modelResource = { type: 'model' as const, id: modelId };
+  if (targetType === ChatSourceTypeEnum.app && targetId) {
+    const snapshot = resources ?? (await getAppLatestVersion(targetId)).resources;
+    if (!hasAppResource({ resources: snapshot, resource: modelResource })) {
+      throw ERROR_ENUM.unAuthModel;
+    }
+    return;
+  }
+  await checkAppResourceReadPermissions({ resources: [modelResource], tmbId });
 };
