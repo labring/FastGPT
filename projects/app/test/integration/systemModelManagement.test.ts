@@ -248,9 +248,41 @@ describe('system model management integration: HTTP + MongoDB transactions + run
 
     expect(await MongoAIModel.findById(modelId).lean()).not.toBeNull();
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    // 已提交的外部解绑不属于 MongoDB 事务，遵守已确认的不补偿约定。
-    expect(channels[0].models).toEqual(['unrelated']);
+    // 数据库事务失败时尚未开始外部解绑。
+    expect(channels[0].models).toEqual(['unrelated', 'rollback-delete']);
     expect(getCachedModelHandle()?.revision).toBe(1);
+  });
+
+  it('commits model and permission deletion before unbinding and does not restore them on channel failure', async () => {
+    const { modelId } = await createSystemModel({
+      modelData: createDraft('delete-first'),
+      channelIds: [1, 2]
+    });
+    await MongoResourcePermission.collection.insertOne({
+      resourceType: PerResourceTypeEnum.model,
+      resourceId: new connectionMongo.Types.ObjectId(modelId)
+    });
+    failedChannelId = 2;
+    writeGate = createGate();
+    writeStarted = createGate();
+    const deletion = deleteSystemModels({ modelIds: [modelId] });
+    const rejected = expect(deletion).rejects.toThrow();
+    try {
+      await writeStarted.promise;
+      // 首次渠道写入尚未完成时，数据库和运行时目录已经完成删除。
+      expect(await MongoAIModel.findById(modelId).lean()).toBeNull();
+      expect(await MongoResourcePermission.countDocuments()).toBe(0);
+      expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
+      expect(channels[0].models).toContain('delete-first');
+    } finally {
+      writeGate.resolve();
+      await rejected;
+    }
+    expect(await MongoAIModel.findById(modelId).lean()).toBeNull();
+    expect(await MongoResourcePermission.countDocuments()).toBe(0);
+    expect(await catalogEntity.readSystemModelRevision()).toBe(2);
+    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], ['delete-first']]);
+    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
   });
 
   it('rejects competing writers while a lease is held and preserves both changes after retry', async () => {

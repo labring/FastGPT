@@ -140,21 +140,24 @@ describe('DELETE /api/admin/settings/model/delete', () => {
     expect(mocks.deleteModels).not.toHaveBeenCalled();
   });
 
-  it('does not delete MongoDB records when channel unbinding fails', async () => {
+  it('keeps committed model deletion when channel unbinding fails', async () => {
     mocks.removeModelsFromAIProxyChannels.mockRejectedValueOnce(new Error('unbind failed'));
 
     await expect(handler({ query: { modelId } } as any)).rejects.toThrow('unbind failed');
 
-    expect(mocks.deleteModels).not.toHaveBeenCalled();
-    expect(mocks.deletePermissions).not.toHaveBeenCalled();
-    expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+    expect(mocks.deleteModels).toHaveBeenCalledOnce();
+    expect(mocks.deletePermissions).toHaveBeenCalledOnce();
+    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledOnce();
   });
 
-  it('unbinds channels before starting the MongoDB deletion', async () => {
+  it('unbinds channels after the MongoDB deletion and cache refresh', async () => {
     await handler({ query: { modelId } } as any);
 
-    expect(mocks.removeModelsFromAIProxyChannels.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.deleteModels.mock.invocationCallOrder[0]
+    expect(mocks.deleteModels.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.removeModelsFromAIProxyChannels.mock.invocationCallOrder[0]
+    );
+    expect(mocks.updatedReloadSystemModel.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.removeModelsFromAIProxyChannels.mock.invocationCallOrder[0]
     );
   });
 });

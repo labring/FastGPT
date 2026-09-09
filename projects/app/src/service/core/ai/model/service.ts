@@ -135,15 +135,12 @@ export const createSystemModelsFromTemplates = async ({
   });
 };
 
-/** 按稳定 ID 删除模型与权限，渠道先解绑；跨系统失败不补偿。 */
+/** 按稳定 ID 先事务删除模型与权限并刷新缓存，再解绑渠道；解绑失败不回退删除。 */
 export const deleteSystemModels = async ({ modelIds }: DeleteSystemModelsBody): Promise<void> => {
   const models = await MongoAIModel.find({ _id: { $in: modelIds }, scope: ModelScopeEnum.system })
     .select({ model: 1 })
     .lean();
   if (models.length !== modelIds.length) throw ModelErrEnum.unExist;
-
-  // 外部渠道先解绑，失败时不进入 MongoDB 删除，避免产生新的悬空绑定。
-  await removeModelsFromAIProxyChannels({ models: models.map((model) => model.model) });
 
   await runSystemModelTransaction(async (session) => {
     const result = await MongoAIModel.deleteMany(
@@ -162,6 +159,9 @@ export const deleteSystemModels = async ({ modelIds }: DeleteSystemModelsBody): 
   });
 
   await updatedReloadSystemModel();
+
+  // 模型删除已经提交；渠道解绑失败向调用方报错，但不恢复模型、权限和缓存。
+  await removeModelsFromAIProxyChannels({ models: models.map((model) => model.model) });
 };
 
 /** 校验并导入 canonical 模型配置，保留已安装实例身份。 */

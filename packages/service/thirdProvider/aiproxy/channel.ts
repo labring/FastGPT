@@ -180,7 +180,7 @@ export const replaceModelInAIProxyChannels = async ({
 /**
  * 从全部 AI Proxy 渠道中移除一组不可变模型标识。
  *
- * 删除模型时先执行该外部写入，再删除 MongoDB 记录，避免解绑失败后留下新的悬空渠道绑定。
+ * 删除模型时在 MongoDB 删除提交和缓存刷新后执行；解绑失败不恢复已经删除的模型。
  * 渠道按快照顺序更新且不补偿已成功项，与现有跨系统写入失败语义保持一致。
  */
 export const removeModelsFromAIProxyChannels = async ({ models }: { models: string[] }) => {

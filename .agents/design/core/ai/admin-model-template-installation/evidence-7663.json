@@ -758,5 +758,20 @@
     "dedicatedContainersStopped": true,
     "sharedContainersUntouched": true,
     "result": "passed"
+  },
+  "E38-pro-upstream-merge-and-ci": {
+    "proBranch": "codex/model-handle-cache",
+    "upstream": "f82fdd19",
+    "mergeCommit": "fab34dee",
+    "conflictResolution": "Retained getModelHandle() model access and upstream unavailable-model handling in evaluation and image training/parse paths and tests.",
+    "proTargetedTests": {
+      "files": 4,
+      "tests": 52,
+      "result": "passed"
+    },
+    "proTypecheck": "passed",
+    "rootHead": "b3a0fb001e78ae9d7858d88d2eaac7ba46891754",
+    "remoteChecks": "all required PR checks passed, including builds, workspace tests, Pro, coverage, image preview and CLA",
+    "result": "passed"
   }
 }
