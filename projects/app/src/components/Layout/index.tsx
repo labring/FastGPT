@@ -171,6 +171,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     setLastRoute(router.pathname);
   }, [router.pathname, setLastRoute]);
 
+  // 注销用户 - 自动跳转注销页
   useEffect(() => {
     if (
       userInfo?.team?.accountCancellation &&
@@ -180,7 +181,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     ) {
       router.replace('/account/cancel?view=team');
     }
-  }, [router, router.pathname, userInfo?.team?.accountCancellation]);
+  }, [router, userInfo?.team?.accountCancellation]);
 
   const showPcNavbar = isPc === true && !isHideNavbar;
   const showPhoneNavbar =
@@ -189,27 +190,42 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>
-        {/* Keep a single Auth/children tree so isPc toggles only change chrome, not remount page state. */}
         <Auth>
-          {showPcNavbar && (
-            <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>
-              <Navbar unread={unread} />
-            </Box>
-          )}
           <Box
-            h={'100%'}
-            {...(showPcNavbar ? { ml: navbarWidth, overflow: 'overlay' } : {})}
-            {...(showPhoneNavbar ? { display: 'flex', flexDirection: 'column' } : {})}
+            height={'100%'}
+            {...(showPhoneNavbar
+              ? {
+                  display: 'flex',
+                  flexDirection: 'column'
+                }
+              : {
+                  display: 'block',
+                  overflowY: 'auto'
+                })}
           >
-            <Box {...(showPhoneNavbar ? { flex: '1 0 0', h: 0 } : { h: '100%' })}>{children}</Box>
+            {showPcNavbar && (
+              <Box position="fixed" left={0} top={0} w={navbarWidth} h="100%">
+                <Navbar unread={unread} />
+              </Box>
+            )}
+
+            <Box
+              {...(showPhoneNavbar ? { h: 0, flex: '1 0 0' } : { h: '100%' })}
+              {...(showPcNavbar ? { ml: navbarWidth, overflow: 'overlay' } : {})}
+            >
+              {children}
+            </Box>
+
             {showPhoneNavbar && (
-              <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
+              <Box h="50px" borderTop="1px solid rgba(0,0,0,0.1)">
                 <NavbarPhone unread={unread} />
               </Box>
             )}
           </Box>
         </Auth>
       </Box>
+
+      {/* 各种 Modal */}
       {feConfigs?.isPlus && (
         <>
           <NotSufficientModal />
@@ -224,11 +240,15 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           <SupportBot />
         </>
       )}
+      {/* 企业认证 */}
       <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
-
-      <ManualCopyModal />
+      {/* 活动 */}
       <ActivityAdModal />
+      {/* 无 SSL，手动复制 */}
+      <ManualCopyModal />
+      {/* 商业版激活 */}
       {showProModal && <ProModal isOpen onClose={() => setShowProModal(false)} />}
+      {/* 全局 Loading */}
       <Loading loading={loading} zIndex={999999} />
     </>
   );

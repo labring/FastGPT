@@ -214,77 +214,99 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         flexDirection={'column'}
         isLoading={loadingTools && displayTools.length === 0}
       >
-        <Box px={8} flexShrink={0}>
-          {isPc && (
-            <Flex alignItems={'center'}>
-              <Box
-                mt={8}
-                mb={4}
-                fontSize={'20px'}
-                fontWeight={'medium'}
-                color={'myGray.900'}
-                flex={'1 0 0'}
-              >
-                {t('app:core.module.template.System Tools')}
-              </Box>
-              <Button mr={4} variant={'whiteBase'} onClick={onOpenDebugModal}>
-                {t('app:toolkit_debug_local')}
-              </Button>
-              {feConfigs?.docUrl && (
-                <Button
-                  mr={4}
-                  variant={'whiteBase'}
-                  onClick={() =>
-                    window.open(getDocPath('/plugin/system-tool-development'), '_blank')
-                  }
-                >
-                  {t('app:tool_development')}
-                </Button>
-              )}
-              {canManageTeamPlugins && feConfigs?.enable_team_plugin_upload !== false && (
-                <Box mr={4}>
-                  <MyMenu
-                    trigger="hover"
-                    Button={
-                      <Button leftIcon={<MyIcon name="common/addLight" w={'18px'} />}>
-                        {t('app:install_tool')}
-                      </Button>
-                    }
-                    menuList={[
-                      {
-                        children: [
-                          {
-                            label: t('app:install_from_marketplace'),
-                            onClick: () => router.push('/dashboard/tool/marketplace')
-                          },
-                          {
-                            label: t('app:install_from_file'),
-                            onClick: onOpenImportModal
-                          }
-                        ]
-                      }
-                    ]}
-                  />
-                </Box>
-              )}
-            </Flex>
-          )}
-          {/* Tags */}
-          <Flex mt={2} mb={3} alignItems={'center'}>
-            <Flex alignItems={'start'} flex={'1 0 0'} w={0} mr={[3, 10]}>
-              {!isPc && (
-                <Box mr={2} mt={2}>
-                  {MenuIcon}
-                </Box>
-              )}
+        {!isPc && (
+          <Flex alignItems={'center'} gap={2} px={8} py={4} flexShrink={0}>
+            {MenuIcon}
+            <Box fontSize={'20px'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('app:core.module.template.System Tools')}
+            </Box>
+          </Flex>
+        )}
+        <Flex direction={'column'} flex={1} minH={0} overflowY={isPc ? 'hidden' : 'auto'}>
+          <Box px={8} flexShrink={0}>
+            <Flex alignItems={'center'} flexWrap={'wrap'} gap={[2, 0]}>
               {isPc && (
+                <Box
+                  mt={[0, 8]}
+                  mb={[0, 4]}
+                  fontSize={'20px'}
+                  fontWeight={'medium'}
+                  color={'myGray.900'}
+                  flex={['1 0 calc(100% - 40px)', '1 0 0']}
+                >
+                  {t('app:core.module.template.System Tools')}
+                </Box>
+              )}
+              <Flex
+                w={['100%', 'auto']}
+                flexWrap={'wrap'}
+                gap={[2, 4]}
+                mr={[0, 4]}
+                sx={!isPc ? { '& > *': { flex: '1 0 calc(50% - 4px)', minWidth: 0 } } : undefined}
+              >
+                <Button mr={0} variant={'whiteBase'} onClick={onOpenDebugModal}>
+                  {t('app:toolkit_debug_local')}
+                </Button>
+                {feConfigs?.docUrl && (
+                  <Button
+                    mr={0}
+                    variant={'whiteBase'}
+                    onClick={() =>
+                      window.open(getDocPath('/plugin/system-tool-development'), '_blank')
+                    }
+                  >
+                    {t('app:tool_development')}
+                  </Button>
+                )}
+                {canManageTeamPlugins && feConfigs?.enable_team_plugin_upload !== false && (
+                  <Box mr={0}>
+                    <MyMenu
+                      trigger={isPc ? 'hover' : 'click'}
+                      buttonBoxProps={{ w: ['100%', 'auto'] }}
+                      Button={
+                        <Button
+                          w={['100%', 'auto']}
+                          leftIcon={<MyIcon name="common/addLight" w={'18px'} />}
+                        >
+                          {t('app:install_tool')}
+                        </Button>
+                      }
+                      menuList={[
+                        {
+                          children: [
+                            {
+                              label: t('app:install_from_marketplace'),
+                              onClick: () => router.push('/dashboard/tool/marketplace')
+                            },
+                            {
+                              label: t('app:install_from_file'),
+                              onClick: onOpenImportModal
+                            }
+                          ]
+                        }
+                      ]}
+                    />
+                  </Box>
+                )}
+              </Flex>
+            </Flex>
+            {/* Tags */}
+            <Flex mt={2} mb={3} alignItems={'center'}>
+              <Flex
+                alignItems={'start'}
+                direction={['column', 'row']}
+                gap={[2, 0]}
+                flex={'1 0 0'}
+                w={0}
+                mr={[0, 10]}
+              >
                 <Flex
                   alignItems={'center'}
                   transition={'all 0.3s'}
-                  w={isSearchExpanded ? '320px' : 'auto'}
-                  mr={4}
+                  w={['100%', isSearchExpanded ? '320px' : 'auto']}
+                  mr={[0, 4]}
                 >
-                  {isSearchExpanded ? (
+                  {!isPc || isSearchExpanded ? (
                     <InputGroup>
                       <MyIcon
                         position={'absolute'}
@@ -303,7 +325,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         placeholder={t('common:search_tool')}
                         value={searchText}
                         onChange={(e) => setSearchText(e.target.value)}
-                        autoFocus
+                        autoFocus={isPc}
                         onBlur={() => {
                           if (!searchText) {
                             setIsSearchExpanded(false);
@@ -348,68 +370,74 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     </Flex>
                   )}
                 </Flex>
-              )}
-              <Flex flex={'1'} alignItems={'center'} overflow={'hidden'} mb={-1}>
-                <ToolTagFilterBox
-                  tags={tags}
-                  selectedTagIds={selectedTagIds}
-                  onTagSelect={setSelectedTagIds}
-                />
+                <Flex flex={'1'} maxW={'100%'} alignItems={'center'} overflow={'hidden'} mb={-1}>
+                  <ToolTagFilterBox
+                    tags={tags}
+                    selectedTagIds={selectedTagIds}
+                    onTagSelect={setSelectedTagIds}
+                  />
+                </Flex>
               </Flex>
             </Flex>
-          </Flex>
-        </Box>
+          </Box>
 
-        <Box flex={1} overflowY={'auto'} px={8} pb={6}>
-          {displayTools.length > 0 ? (
-            <Grid
-              gridTemplateColumns={[
-                '1fr',
-                'repeat(2,1fr)',
-                'repeat(2,1fr)',
-                'repeat(3,1fr)',
-                'repeat(4,1fr)'
-              ]}
-              gridGap={5}
-              alignItems={'stretch'}
-            >
-              {displayTools.map((tool) => {
-                return (
-                  <ToolCard
-                    key={getToolListItemKey(tool)}
-                    item={tool}
-                    systemTitle={feConfigs?.systemTitle}
-                    mode="team"
-                    onClickCard={() => setSelectedTool(tool)}
-                    showActionButton={false}
-                    showDeleteButton={canManageTeamPlugins}
-                    showRegistrySourceBadge={feConfigs?.enable_team_plugin_upload === true}
-                    onDelete={() => onDeleteTeamTool(tool)}
-                    isInstallingOrDeleting={deletingTeamTool}
-                  />
-                );
-              })}
-            </Grid>
-          ) : (
-            <VStack>
-              {!loadingTools && (
-                <>
-                  <EmptyTip pb={4} />
-                  {userInfo?.username === 'root' && (
-                    <Button
-                      onClick={() => {
-                        router.push('/config/plugin/tool');
-                      }}
-                      w={'160px'}
-                    >
-                      {t('app:click_to_config')}
-                    </Button>
-                  )}
-                </>
-              )}
-            </VStack>
-          )}
-        </Box>
+          <Box
+            flex={isPc ? 1 : 'none'}
+            minH={0}
+            overflowY={isPc ? 'auto' : 'visible'}
+            px={8}
+            pb={6}
+          >
+            {displayTools.length > 0 ? (
+              <Grid
+                gridTemplateColumns={[
+                  '1fr',
+                  'repeat(2,1fr)',
+                  'repeat(2,1fr)',
+                  'repeat(3,1fr)',
+                  'repeat(4,1fr)'
+                ]}
+                gridGap={5}
+                alignItems={'stretch'}
+              >
+                {displayTools.map((tool) => {
+                  return (
+                    <ToolCard
+                      key={getToolListItemKey(tool)}
+                      item={tool}
+                      systemTitle={feConfigs?.systemTitle}
+                      mode="team"
+                      onClickCard={() => setSelectedTool(tool)}
+                      showActionButton={false}
+                      showDeleteButton={canManageTeamPlugins}
+                      showRegistrySourceBadge={feConfigs?.enable_team_plugin_upload === true}
+                      onDelete={() => onDeleteTeamTool(tool)}
+                      isInstallingOrDeleting={deletingTeamTool}
+                    />
+                  );
+                })}
+              </Grid>
+            ) : (
+              <VStack>
+                {!loadingTools && (
+                  <>
+                    <EmptyTip pb={4} />
+                    {userInfo?.username === 'root' && (
+                      <Button
+                        onClick={() => {
+                          router.push('/config/plugin/tool');
+                        }}
+                        w={'160px'}
+                      >
+                        {t('app:click_to_config')}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </VStack>
+            )}
+          </Box>
+        </Flex>
       </MyBox>
 
       {!!selectedTool && (

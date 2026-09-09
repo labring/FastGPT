@@ -163,7 +163,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         >
           <DateRangePicker
             formLabel={t('common:user.Time')}
-            w={'fit-content'}
+            w={['100%', 'fit-content']}
             flexShrink={0}
             defaultDate={filterProps.dateRange}
             dateRange={filterProps.dateRange}

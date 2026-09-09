@@ -12,6 +12,7 @@
  */
 import { createInterface } from 'readline';
 import { createRequire } from 'module';
+import { inspect } from 'util';
 import * as crypto from 'crypto';
 import { parse } from 'acorn';
 import { simple as walk } from 'acorn-walk';
@@ -602,12 +603,15 @@ rl.on('line', async (line: string) => {
   const { code, variables, timeoutMs } = msg;
   const logs: string[] = [];
   let logSize = 0;
+  let logsTruncated = false;
   const MAX_LOG_SIZE = 1024 * 1024; // 1MB
   const _consoleLog = (...args: any[]) => {
     const line = args.map((a) => (typeof a === 'object' ? _JSONStringify(a) : String(a))).join(' ');
     if (logSize + line.length <= MAX_LOG_SIZE) {
       logs.push(line);
       logSize += line.length;
+    } else {
+      logsTruncated = true;
     }
   };
   const safeConsole = {
@@ -823,9 +827,30 @@ rl.on('line', async (line: string) => {
     });
   } catch (err: any) {
     _workerClearTimeout(timer);
+    // 失败时也返回堆栈、cause 和执行输出；限制诊断长度，避免挤占协议输出额度。
+    const diagnosticLimit = 16 * 1024;
+    const errorDetail = (() => {
+      try {
+        return typeof err === 'string'
+          ? err
+          : inspect(err, { depth: 4, customInspect: false, getters: false });
+      } catch {
+        // 用户可以抛出任意对象，格式化异常不能再次破坏 worker 响应。
+        return 'Unable to format thrown value';
+      }
+    })();
+    const errorText =
+      errorDetail.length > diagnosticLimit
+        ? `${errorDetail.slice(0, diagnosticLimit)}\n[error truncated]`
+        : errorDetail;
+    const logText = logs.join('\n');
+    const consoleDetail =
+      logText || logsTruncated
+        ? `\nConsole output:\n${logText.length > diagnosticLimit ? '[earlier logs truncated]\n' : ''}${logText.slice(-diagnosticLimit)}${logsTruncated ? '\n[log capture limit reached]' : ''}`
+        : '';
     writeLine({
       success: false,
-      message: err?.message ?? String(err),
+      message: `${errorText}${consoleDetail}`,
       ...(timedOut ? { workerRecycle: 'timeout' } : {})
     });
   } finally {

@@ -44,9 +44,11 @@ export const FilterSummaryValue = ({
   </Flex>
 );
 
-export type FilterButtonProps = Omit<FlexProps, 'children' | 'title' | 'value'> & {
+export type FilterButtonProps = Omit<FlexProps, 'children' | 'title' | 'value' | 'maxW'> & {
   title: ReactNode;
   value: ReactNode;
+  /** 桌面端的最大宽度；移动端始终允许撑满容器。 */
+  maxW?: string | number;
 };
 
 /** 测量触发器宽度，让下拉菜单不窄于按钮。 */
@@ -65,15 +67,16 @@ export const useFilterTriggerWidth = (syncKey?: unknown) => {
 };
 
 const FilterButton = forwardRef<HTMLDivElement, FilterButtonProps>(
-  ({ title, value, ...props }, ref) => (
+  ({ title, value, maxW = '240px', ...props }, ref) => (
     <Flex
       ref={ref}
       as={'button'}
       alignItems={'center'}
+      justifyContent={'space-between'}
       gap={2}
       px={3}
-      w={'fit-content'}
-      maxW={'240px'}
+      w={['100%', 'fit-content']}
+      maxW={['100%', maxW]}
       minW={0}
       flexShrink={0}
       h={'36px'}

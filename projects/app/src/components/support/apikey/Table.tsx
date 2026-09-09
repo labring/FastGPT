@@ -461,59 +461,66 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       position={'relative'}
       p={isPublishMode ? 6 : 0}
     >
-      <Flex flexDirection={'column'} alignItems={'stretch'} flexShrink={0}>
-        <Flex
-          minW={0}
-          alignItems={'center'}
-          justifyContent={'space-between'}
-          h={isPublishMode ? 'auto' : '64px'}
-          px={isPublishMode ? 0 : [4, 6]}
-          borderBottom={isPublishMode ? 'none' : '1px solid'}
-          borderColor={'myGray.200'}
+      <Flex
+        flexShrink={0}
+        minW={0}
+        alignItems={'center'}
+        justifyContent={'space-between'}
+        h={isPublishMode ? 'auto' : '64px'}
+        px={isPublishMode ? 0 : [4, 6]}
+        borderBottom={isPublishMode ? 'none' : '1px solid'}
+        borderColor={'myGray.200'}
+      >
+        <Box
+          as={isPublishMode ? undefined : 'h1'}
+          {...(isPublishMode
+            ? {
+                color: 'myGray.900',
+                fontWeight: 'medium',
+                fontSize: 'lg'
+              }
+            : accountTitleTextStyles)}
         >
-          <Box
-            as={isPublishMode ? undefined : 'h1'}
-            {...(isPublishMode
-              ? {
-                  color: 'myGray.900',
-                  fontWeight: 'medium',
-                  fontSize: 'lg'
-                }
-              : accountTitleTextStyles)}
-          >
-            {isPublishMode
-              ? `${t('common:support.openapi.Api manager')}(${apiKeys.length})`
-              : `${t('account:api_key')} (${apiKeys.length})`}
-          </Box>
-          <Flex alignItems={'center'} gap={2} ml={3}>
-            {feConfigs?.docUrl && (
-              <Button
-                as={Link}
-                href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
-                target={'_blank'}
-                size={'sm'}
-                variant={'whitePrimary'}
-                textDecoration={'none'}
-                _hover={{ textDecoration: 'none' }}
-              >
-                {t('apikey:usage_tutorial')}
-              </Button>
-            )}
+          {isPublishMode
+            ? `${t('common:support.openapi.Api manager')}(${apiKeys.length})`
+            : `${t('account:api_key')} (${apiKeys.length})`}
+        </Box>
+        <Flex alignItems={'center'} gap={2} ml={3}>
+          {feConfigs?.docUrl && (
             <Button
               as={Link}
-              href={'/apidoc/systemopenapi'}
+              href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
               target={'_blank'}
               size={'sm'}
-              variant={'primary'}
+              variant={'whitePrimary'}
               textDecoration={'none'}
               _hover={{ textDecoration: 'none' }}
             >
-              {t('apikey:openapi_document')}
+              {t('apikey:usage_tutorial')}
             </Button>
-          </Flex>
+          )}
+          <Button
+            as={Link}
+            href={'/apidoc/systemopenapi'}
+            target={'_blank'}
+            size={'sm'}
+            variant={'primary'}
+            textDecoration={'none'}
+            _hover={{ textDecoration: 'none' }}
+          >
+            {t('apikey:openapi_document')}
+          </Button>
         </Flex>
+      </Flex>
+      <Flex
+        flexDirection={'column'}
+        flex={isPublishMode ? '1 0 0' : ['0 0 auto', '1 0 0']}
+        minH={0}
+        pt={isPublishMode ? 3 : [4, 6]}
+        pb={isPublishMode ? 0 : 6}
+      >
         <Flex
-          pt={isPublishMode ? 3 : 6}
+          flexShrink={0}
           px={isPublishMode ? 0 : [4, 6]}
           alignItems={['stretch', 'flex-end']}
           justifyContent={'space-between'}
@@ -610,36 +617,35 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
             </Button>
           </Flex>
         </Flex>
-      </Flex>
-      <TableContainer
-        mt={3}
-        px={isPublishMode ? 0 : [4, 6]}
-        pb={isPublishMode ? 0 : 6}
-        position={'relative'}
-        flex={isPublishMode ? '1 0 0' : accountContentScrollStyles.flex}
-        h={isPublishMode ? 0 : accountContentScrollStyles.h}
-        minH={0}
-        overflowY={isPublishMode ? 'auto' : accountContentScrollStyles.overflowY}
-      >
-        <Table sx={{ tableLayout: 'fixed' }}>
-          <Thead>
-            <Tr>
-              {tableColumns.map(({ field, width, label }) => (
-                <Th key={field} w={width}>
-                  {label}
-                </Th>
-              ))}
-            </Tr>
-          </Thead>
-          <Tbody fontSize={'sm'}>
-            {apiKeys.map((item) => (
-              <Tr key={item._id}>
-                {tableColumns.map(({ field }) => renderTableCell(field, item))}
+        <TableContainer
+          mt={3}
+          px={isPublishMode ? 0 : [4, 6]}
+          position={'relative'}
+          flex={isPublishMode ? '1 0 0' : accountContentScrollStyles.flex}
+          h={isPublishMode ? 0 : accountContentScrollStyles.h}
+          minH={0}
+          overflowY={isPublishMode ? 'auto' : accountContentScrollStyles.overflowY}
+        >
+          <Table sx={{ tableLayout: 'fixed' }}>
+            <Thead>
+              <Tr>
+                {tableColumns.map(({ field, width, label }) => (
+                  <Th key={field} w={width}>
+                    {label}
+                  </Th>
+                ))}
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
+            </Thead>
+            <Tbody fontSize={'sm'}>
+              {apiKeys.map((item) => (
+                <Tr key={item._id}>
+                  {tableColumns.map(({ field }) => renderTableCell(field, item))}
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </Flex>
 
       {!!editData && (
         <EditKeyModal

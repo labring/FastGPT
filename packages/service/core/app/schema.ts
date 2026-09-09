@@ -53,10 +53,7 @@ const AppSchema = new Schema(
       type: String,
       enum: ['v1', 'v2']
     },
-    avatar: {
-      type: String,
-      default: '/icon/logo.svg'
-    },
+    avatar: String,
     intro: {
       type: String,
       default: ''

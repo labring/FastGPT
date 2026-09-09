@@ -9,6 +9,7 @@ import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/typ
 import type { WorkflowTemplateBasicType } from '../workflow/type';
 import { UserTagsSchema, type SourceMemberType } from '../../support/user/type';
 import z from 'zod';
+import { LOGO_ICON } from '../../common/system/constants';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config.schema';
 import { BoolSchema, NumSchema } from '../../common/zod';
@@ -225,7 +226,7 @@ export type AppStorageSchemaType = z.infer<typeof AppStorageSchemaTypeSchema>;
  * 历史存量数据可能缺少 avatar/intro，但客户端始终接收字符串，避免可空类型向 UI 扩散。
  */
 export const AppSchemaTypeSchema = AppStorageSchemaTypeSchema.extend({
-  avatar: z.string(),
+  avatar: z.preprocess((value) => value ?? undefined, z.string().default(LOGO_ICON)),
   intro: z.string()
 });
 export type AppSchemaType = z.infer<typeof AppSchemaTypeSchema>;

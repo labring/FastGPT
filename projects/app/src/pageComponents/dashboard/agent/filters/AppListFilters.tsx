@@ -18,7 +18,7 @@ type Props = {
 };
 
 /**
- * Agent / Tool 列表 PC 工具栏筛选项：类型、创建者、排序。
+ * Agent / Tool 列表工具栏筛选项：类型、创建者、排序，移动端允许换行。
  */
 const AppListFilters = ({ value, onChange, scene }: Props) => {
   const { t } = useTranslation();
@@ -86,7 +86,7 @@ const AppListFilters = ({ value, onChange, scene }: Props) => {
   );
 
   return (
-    <Flex alignItems={'center'} gap={3} minW={0} flexShrink={0}>
+    <Flex alignItems={'center'} gap={3} minW={0} maxW={'100%'} flexShrink={0} flexWrap={'wrap'}>
       <SingleSelectFilter
         title={t('app:list_filter.type')}
         value={resolveSceneListType(value.type, scene)}

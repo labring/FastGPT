@@ -6,7 +6,6 @@ import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { navbarWidth } from '@/components/Layout';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -64,7 +63,7 @@ const DashboardContainer = ({
   }, [currentTab, hasAppCreatePer, router, userInfo]);
 
   // Template market
-  const { data: templateTags = [], loading: isLoadingTemplatesTags } = useRequest(
+  const { data: templateTags = [] } = useRequest(
     () =>
       currentTab === TabEnum.app_templates && hasAppCreatePer
         ? getTemplateTagList().then((res) => [
@@ -83,7 +82,7 @@ const DashboardContainer = ({
       refreshDeps: [currentTab, hasAppCreatePer, userInfo?.team.isWecomTeam]
     }
   );
-  const { data: templateData, loading: isLoadingTemplates } = useRequest(
+  const { data: templateData } = useRequest(
     () =>
       currentTab === TabEnum.app_templates && hasAppCreatePer
         ? getTemplateMarketItemList({ type: 'all' })
@@ -186,14 +185,11 @@ const DashboardContainer = ({
     [isOpenSidebar, onCloseSidebar, onOpenSidebar]
   );
 
-  const isLoading = isLoadingTemplatesTags || isLoadingTemplates;
-
   return (
     <Box h={'100%'}>
       {/* Side bar */}
       {(isPc || isOpenSidebar) && (
-        <MyBox
-          isLoading={isLoading}
+        <Box
           position={'fixed'}
           left={isPc ? navbarWidth : 0}
           top={0}
@@ -307,7 +303,7 @@ const DashboardContainer = ({
           <Box px={2.5}>
             <TeamPlanStatusCard />
           </Box>
-        </MyBox>
+        </Box>
       )}
 
       <Box h={'100%'} pl={isPc ? `220px` : 0} position={'relative'} bg={'white'}>

@@ -103,7 +103,7 @@ const UsageTable = () => {
       >
         <DateRangePicker
           formLabel={t('common:user.Time')}
-          w={'fit-content'}
+          w={['100%', 'fit-content']}
           flexShrink={0}
           defaultDate={dateRange}
           dateRange={dateRange}
@@ -176,8 +176,8 @@ const UsageTable = () => {
           </Button>
         </Flex>
         <Box
-          pt={[3, 6]}
-          pb={[0, 6]}
+          py={[3, 6]}
+          pt={[4, 6]}
           {...accountContentScrollStyles}
           overflowX={'hidden'}
           display={'flex'}

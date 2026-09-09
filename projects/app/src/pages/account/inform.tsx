@@ -61,7 +61,6 @@ const InformTable = () => {
         minH={['100%', 0]}
         flexDirection="column"
         position="relative"
-        pb={[0, 6]}
       >
         <Flex
           display={['none', 'flex']}
@@ -78,8 +77,7 @@ const InformTable = () => {
         </Flex>
         <Box
           ref={scrollContainerRef}
-          px={[3, 6]}
-          pt={[4, 6]}
+          p={[4, 6]}
           position="relative"
           {...accountContentScrollStyles}
           display="flex"

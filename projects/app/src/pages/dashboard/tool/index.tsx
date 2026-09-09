@@ -94,15 +94,14 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           flexDirection={'column'}
           h={'100%'}
           pr={folderDetail ? [3, 2] : [3, 6]}
-          pl={6}
+          pl={[3, 6]}
           pt={6}
           overflowY={'hidden'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'} gap={3} minW={0}>
-            {!isPc ? (
-              MenuIcon
-            ) : paths.length > 0 ? (
+          <Flex alignItems={'center'} gap={3} minW={0} flexWrap={'wrap'} flexShrink={0}>
+            {!isPc && MenuIcon}
+            {isPc && paths.length > 0 ? (
               <Box flexShrink={0}>
                 <FolderPath
                   paths={paths}
@@ -139,44 +138,51 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            {isPc &&
-              (folderDetail
-                ? folderDetail.permission.hasWritePer &&
-                  folderDetail?.type !== AppTypeEnum.httpPlugin
-                : userInfo?.team.permission.hasAppCreatePer) && (
-                <Flex alignItems={'center'} gap={3}>
-                  <Button
-                    variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                    onClick={() => setEditFolder({})}
-                    px={5}
-                  >
-                    {t('common:Folder')}
-                  </Button>
-                  <Button
-                    variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-                    onClick={onOpenJsonImportModal}
-                    px={5}
-                  >
-                    {t('common:Import')}
-                  </Button>
-                </Flex>
-              )}
+            {(folderDetail
+              ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+              : userInfo?.team.permission.hasAppCreatePer) && (
+              <Flex alignItems={'center'} gap={3}>
+                <Button
+                  variant={'grayBase'}
+                  leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+                  onClick={() => setEditFolder({})}
+                  px={[3, 5]}
+                >
+                  {t('common:Folder')}
+                </Button>
+                <Button
+                  variant={'grayBase'}
+                  leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
+                  onClick={onOpenJsonImportModal}
+                  px={[3, 5]}
+                >
+                  {t('common:Import')}
+                </Button>
+              </Flex>
+            )}
           </Flex>
 
           {!isPc && (
-            <Box mt={2}>
-              {
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  value={searchKey}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_tool')}
-                  maxLength={30}
-                />
-              }
-            </Box>
+            <Flex mt={3} direction={'column'} gap={3}>
+              {paths.length > 0 && (
+                <Box overflowX={'auto'}>
+                  <FolderPath
+                    paths={paths}
+                    forbidLastClick
+                    onClick={(parentId) => {
+                      router.push({ query: { ...router.query, parentId } });
+                    }}
+                  />
+                </Box>
+              )}
+              <SearchInput
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                placeholder={t('app:search_tool')}
+                maxLength={30}
+              />
+              <AppListFilters scene={'tool'} value={listFilters} onChange={setListFilters} />
+            </Flex>
           )}
 
           <MyBox flex={'1 0 0'} minH={0}>

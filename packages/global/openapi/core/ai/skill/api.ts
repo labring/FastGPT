@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LOGO_ICON } from '../../../../common/system/constants';
 import { TeamMemberStatusEnum } from '../../../../support/user/team/constant';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import {
@@ -65,6 +66,11 @@ export const ListSkillsResponseItemSchema = AgentSkillListItemSchema.omit({
   createTime: true,
   updateTime: true
 }).extend({
+  _id: ObjectIdSchema,
+  parentId: ObjectIdSchema.nullable().optional(),
+  avatar: z
+    .preprocess((value) => value ?? undefined, z.string().default(LOGO_ICON))
+    .meta({ description: '技能头像' }),
   source: AgentSkillSourceSchema,
   type: AgentSkillTypeSchema,
   createTime: z.string(),
@@ -265,19 +271,21 @@ export const UpdateSkillCollaboratorResponseSchema = z.undefined().meta({
 export type UpdateSkillCollaboratorResponse = z.infer<typeof UpdateSkillCollaboratorResponseSchema>;
 
 export const GetSkillDetailResponseSchema = z.object({
-  _id: z.string(),
+  _id: ObjectIdSchema,
   source: AgentSkillSourceSchema,
   type: AgentSkillTypeSchema.optional(),
-  parentId: z.string().nullable().optional(),
+  parentId: ObjectIdSchema.nullable().optional(),
   inheritPermission: z.boolean().optional(),
   name: z.string(),
   description: z.string(),
   category: z.array(AgentSkillCategorySchema),
-  avatar: z.string().optional(),
+  avatar: z
+    .preprocess((value) => value ?? undefined, z.string().default(LOGO_ICON))
+    .meta({ description: '技能头像' }),
   creationStatus: AgentSkillCreationStatusSchema.optional(),
   creationError: z.string().optional(),
-  teamId: z.string().optional(),
-  tmbId: z.string().optional(),
+  teamId: ObjectIdSchema.optional(),
+  tmbId: ObjectIdSchema.optional(),
   currentVersionId: z.string().optional(),
   createTime: z.string(),
   updateTime: z.string(),

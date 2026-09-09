@@ -163,6 +163,7 @@ const Team = () => {
         {/* table */}
         <Box
           py={6}
+          pt={[4, 6]}
           px={teamTab === TeamTabEnum.org ? 6 : 0}
           flex={['0 0 auto', '1 0 0']}
           display={'flex'}
