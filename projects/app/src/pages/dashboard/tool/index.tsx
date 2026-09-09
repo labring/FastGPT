@@ -245,7 +245,7 @@ function ContextRender() {
   return (
     <DashboardContainer>
       {({ MenuIcon }) => (
-        <AppListContextProvider>
+        <AppListContextProvider showPaginationTip={false}>
           <MyTools MenuIcon={MenuIcon} />
         </AppListContextProvider>
       )}

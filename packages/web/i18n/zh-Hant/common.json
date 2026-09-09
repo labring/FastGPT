@@ -921,6 +921,7 @@
   "move.confirm": "確認移動",
   "move_success": "移動成功",
   "move_to": "移動至",
+  "move_to_root": "移動至根目錄",
   "n_agent_amount": "{{amount}} 個 Agent",
   "n_ai_points": "{{amount}} 積分",
   "n_app_registration_amount": "{{amount}} 個應用程式備案",

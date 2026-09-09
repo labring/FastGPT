@@ -921,6 +921,7 @@
   "move.confirm": "Confirm move",
   "move_success": "Moved Successfully",
   "move_to": "Move to",
+  "move_to_root": "Move to root",
   "n_agent_amount": "{{amount}} Agent limit",
   "n_ai_points": "{{amount}} points",
   "n_app_registration_amount": "{{amount}} app registrations",

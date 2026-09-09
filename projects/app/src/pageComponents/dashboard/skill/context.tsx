@@ -143,6 +143,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         isPc
       ],
       pageSize,
+      showPaginationTip: false,
       throttleWait: 500,
       refreshOnWindowFocus: false
     }

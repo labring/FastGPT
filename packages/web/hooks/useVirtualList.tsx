@@ -236,9 +236,8 @@ export function useVirtualList<
 ) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const { data, total, setData, setTotal, isLoading, fetchData, refreshList } = useScrollPagination(
-    api,
-    {
+  const { data, total, setData, setTotal, isLoading, error, fetchData, refreshList } =
+    useScrollPagination(api, {
       refreshDeps,
       pageSize,
       params,
@@ -247,11 +246,10 @@ export function useVirtualList<
       disabled,
       showNoMoreTip,
       throttleWait
-    }
-  );
+    });
 
   const noMore = data.length >= total;
-  const isEmpty = total === 0 && !isLoading;
+  const isEmpty = total === 0 && !isLoading && !error;
   const loadText = isLoading
     ? t('common:is_requesting')
     : noMore
@@ -270,14 +268,14 @@ export function useVirtualList<
   useThrottleEffect(
     () => {
       const container = containerRef.current;
-      if (!container || noMore || isLoading || data.length === 0) return;
+      if (!container || noMore || isLoading || error || data.length === 0) return;
 
       const { scrollTop, scrollHeight, clientHeight } = container;
       if (scrollTop + clientHeight >= scrollHeight - loadMoreThreshold) {
         fetchData({ init: false, ScrollContainerRef: containerRef });
       }
     },
-    [data.length, fetchData, isLoading, noMore, scroll],
+    [data, error, fetchData, noMore, scroll],
     { wait: 50 }
   );
 
@@ -289,13 +287,14 @@ export function useVirtualList<
       data.length === 0 ||
       data.length >= total ||
       isLoading ||
+      error ||
       container.scrollHeight > container.clientHeight + loadMoreThreshold
     ) {
       return;
     }
 
     fetchData({ init: false, ScrollContainerRef: containerRef });
-  }, [data.length, fetchData, isLoading, total]);
+  }, [data, error, fetchData, isLoading, total]);
 
   const scroll2Top = useMemoizedFn(() => {
     if (containerRef.current) {
