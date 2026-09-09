@@ -20,6 +20,7 @@ const originalEnv = {
   FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
   STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
   SYNC_INDEX: process.env.SYNC_INDEX,
+  DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: process.env.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
   SOMARK_API_KEY: process.env.SOMARK_API_KEY,
@@ -69,6 +70,10 @@ describe('serviceEnv', () => {
     vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
     vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalEnv.STORAGE_DOWNLOAD_URL_MODE);
     vi.stubEnv('SYNC_INDEX', originalEnv.SYNC_INDEX);
+    vi.stubEnv(
+      'DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED',
+      originalEnv.DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED
+    );
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
     vi.stubEnv('SOMARK_API_KEY', originalEnv.SOMARK_API_KEY);
@@ -167,6 +172,22 @@ describe('serviceEnv', () => {
 
     vi.stubEnv('SYSTEM_MIGRATION_BATCH_SIZE', 'not-a-number');
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
+  it('disables default team basic permissions by default and supports enabling them', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED', undefined);
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: false }
+    });
+
+    vi.stubEnv('DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED', 'true');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: { DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED: true }
+    });
   });
 
   it('reads the optional SoMark API key', async () => {
