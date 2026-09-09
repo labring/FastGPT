@@ -13,7 +13,7 @@ import {
   prepareDraftSystemModelForTest,
   submitCreatedSystemModel,
   submitUpdatedSystemModel
-} from '@/pageComponents/account/model/submit';
+} from '@/pageComponents/model/submit';
 import {
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
@@ -47,6 +47,25 @@ describe('admin model submit controllers', () => {
     expect(mocks.putSystemModel).not.toHaveBeenCalled();
     expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
     expect(mocks.postSystemModel.mock.calls[0]?.[0].modelData).not.toHaveProperty('modelId');
+  });
+
+  it.each([undefined, null, Number.NaN])(
+    'defaults an empty quote limit for draft tests: %s',
+    (quoteMaxToken) => {
+      const draft = { ...modelData, name: ' ', config: { ...modelData.config, quoteMaxToken } };
+      const prepared = prepareDraftSystemModelForTest(draft as typeof modelData);
+      expect(prepared).toMatchObject({ name: modelData.model, config: { quoteMaxToken: 12800 } });
+      expect(draft.config.quoteMaxToken).toBe(quoteMaxToken);
+    }
+  );
+
+  it('preserves an explicitly zero quote limit for draft tests', () => {
+    expect(
+      prepareDraftSystemModelForTest({
+        ...modelData,
+        config: { ...modelData.config, quoteMaxToken: 0 }
+      })
+    ).toMatchObject({ config: { quoteMaxToken: 0 } });
   });
 
   it('preserves the complete current draft when preparing a channel test', () => {

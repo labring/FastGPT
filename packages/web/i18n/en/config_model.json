@@ -1,4 +1,7 @@
 {
+  "max_response_tokens": "Maximum response Tokens",
+  "voices_array_required": "Voices must be a non-empty array with label and value in each item",
+  "select_model_provider_placeholder": "Select a provider",
   "aipoint_usage": "AI points",
   "all": "All",
   "api_key": "API key",
@@ -50,8 +53,8 @@
   "mapping": "Model Mapping",
   "mapping_tip": "Enter valid JSON to map model names before requests are sent to the endpoint. For example:\n{\n  \"gpt-4o\": \"gpt-4o-test\"\n}\nWhen FastGPT requests gpt-4o, the endpoint receives gpt-4o-test instead.",
   "maxToken_tip": "Model max_tokens parameter",
-  "rerank_max_token": "Max Token Limit",
-  "rerank_max_token_tip": "Token limit per rerank request (query + single document). Documents exceeding the limit will be automatically split.",
+  "rerank_max_token": "Max Tokens Limit",
+  "rerank_max_token_tip": "Tokens limit per rerank request (query + single document). Documents exceeding the limit will be automatically split.",
   "max_rpm": "Max RPM (Requests Per Minute)",
   "max_temperature_tip": "If the model temperature parameter is not filled in, it means that the model does not support the temperature parameter.",
   "max_tpm": "Max TPM (Tokens Per Minute)",
@@ -120,7 +123,7 @@
   "model.censor": "Censor check",
   "model.censor_tip": "If sensitive verification is required, turn on this switch",
   "model.charsPointsPrice": "Chars Price",
-  "model.charsPointsPrice_tip": "Combine the model input and output for Token billing. If the language model is configured with input and output billing separately, the input and output will be calculated separately.",
+  "model.charsPointsPrice_tip": "Combine the model input and output for Tokens billing. If the language model is configured with input and output billing separately, the input and output will be calculated separately.",
   "model.defaultConfig": "Additional Body parameters",
   "model.defaultConfig_tip": "Each request will carry this additional Body parameter.",
   "model.default_config": "Body extra fields",
@@ -204,6 +207,7 @@
   "model_channel_empty": "No channels are associated with this model.",
   "remove_channel_association": "Remove association",
   "associate": "Associate",
+  "associate_success": "Channels associated successfully",
   "included_models": "Includes {{count}} models",
   "selected_model_count": "{{count}} models selected"
 }

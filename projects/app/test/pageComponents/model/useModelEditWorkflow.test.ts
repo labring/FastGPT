@@ -52,7 +52,7 @@ vi.mock('next/router', () => ({
   useRouter: () => ({ pathname: '/config/model', query: {}, push: vi.fn() })
 }));
 
-import { useModelEditWorkflow } from '@/pageComponents/account/model/useModelEditWorkflow';
+import { useModelEditWorkflow } from '@/pageComponents/model/useModelEditWorkflow';
 
 describe('useModelEditWorkflow draft test wiring', () => {
   const model: AdminSystemModelListItem = {

@@ -2,8 +2,6 @@ import { getModelTestDefaults } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import {
@@ -1292,9 +1290,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       teamId: user.teamId,
       tmbId: user.tmbId
     });
-    const resolvedEmbeddingModel = (await getModelHandle()).getEmbeddingModelData(
-      getDatasetModelReference(dataset, 'embedding')
-    );
     const datasetParamsInput = {
       key: NodeInputKeyEnum.datasetParams,
       value: {
@@ -1342,8 +1337,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         name: 'Current Dataset Name',
         avatar: '/icon/current-dataset.svg',
         vectorModel: expect.objectContaining({
-          modelId: resolvedEmbeddingModel.modelId,
-          model: resolvedEmbeddingModel.model
+          modelId: embeddingModel.modelId,
+          model: ''
         }),
         isDeleted: false
       }
@@ -1360,9 +1355,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       teamId: user.teamId,
       tmbId: user.tmbId
     });
-    const resolvedEmbeddingModel = (await getModelHandle()).getEmbeddingModelData(
-      getDatasetModelReference(dataset, 'embedding')
-    );
     const datasetSelectInput = {
       key: NodeInputKeyEnum.datasetSelectList,
       value: {
@@ -1393,8 +1385,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         name: 'Legacy Dataset Name',
         avatar: '/icon/legacy-dataset.svg',
         vectorModel: expect.objectContaining({
-          modelId: resolvedEmbeddingModel.modelId,
-          model: resolvedEmbeddingModel.model
+          modelId: embeddingModel.modelId,
+          model: ''
         }),
         isDeleted: false
       }

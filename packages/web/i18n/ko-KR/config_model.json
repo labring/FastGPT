@@ -1,4 +1,7 @@
 {
+  "max_response_tokens": "최대 응답 Tokens",
+  "voices_array_required": "음색은 각 항목에 label과 value가 있는 비어 있지 않은 배열이어야 합니다",
+  "select_model_provider_placeholder": "공급자를 선택하세요",
   "aipoint_usage": "AI 포인트",
   "all": "전체",
   "api_key": "API 키",
@@ -204,6 +207,7 @@
   "model_channel_empty": "현재 모델에 구성된 채널이 없습니다.",
   "remove_channel_association": "연결 해제",
   "associate": "연결",
+  "associate_success": "채널이 성공적으로 연결되었습니다",
   "included_models": "모델 {{count}}개 포함",
   "selected_model_count": "모델 {{count}}개 선택됨"
 }

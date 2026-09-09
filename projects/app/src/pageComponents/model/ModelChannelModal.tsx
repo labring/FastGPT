@@ -19,6 +19,7 @@ import {
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -27,6 +28,18 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useLockFn } from 'ahooks';
 import { useMemo, useState } from 'react';
+
+/** 固定行内基线，并禁用 Chakra 默认的勾选图标动画。 */
+const channelCheckboxStyles = {
+  verticalAlign: 'middle',
+  '&, & *': {
+    animation: 'none !important',
+    transition: 'none !important'
+  },
+  '& .chakra-checkbox__control': {
+    transform: 'none !important'
+  }
+};
 
 export type ModelChannelModalModel = {
   model: string;
@@ -47,6 +60,7 @@ export const ModelChannelSelector = ({
   channels,
   selectedChannelIds,
   onChange,
+  onCreate,
   showCurrentModel = true,
   showSelectedModelCount = false,
   showTest = true
@@ -55,6 +69,7 @@ export const ModelChannelSelector = ({
   channels: AdminModelChannel[];
   selectedChannelIds: number[];
   onChange: (channelIds: number[]) => void;
+  onCreate?: () => void;
   showCurrentModel?: boolean;
   showSelectedModelCount?: boolean;
   showTest?: boolean;
@@ -109,10 +124,26 @@ export const ModelChannelSelector = ({
           )}
         </Flex>
       )}
-      {showSelectedModelCount && (
-        <Box mb={3} flexShrink={0} minH="20px" fontWeight="500">
-          {t('config_model:selected_model_count', { count: models.length })}
-        </Box>
+      {(showSelectedModelCount || onCreate) && (
+        <Flex alignItems="center" gap={3} mb={3} flexShrink={0}>
+          {showSelectedModelCount && (
+            <Box fontWeight="500">
+              {t('config_model:selected_model_count', { count: models.length })}
+            </Box>
+          )}
+          {onCreate && (
+            <Button
+              size="sm"
+              variant="primaryOutline"
+              leftIcon={<MyIcon name="common/addLight" w="16px" />}
+              ml="auto"
+              flexShrink={0}
+              onClick={onCreate}
+            >
+              {t('config_model:create_channel')}
+            </Button>
+          )}
+        </Flex>
       )}
 
       <TableContainer
@@ -143,6 +174,7 @@ export const ModelChannelSelector = ({
                 <Th px={6} border={0}>
                   <HStack spacing={2}>
                     <Checkbox
+                      sx={channelCheckboxStyles}
                       isChecked={isAllSelected}
                       isIndeterminate={selectedChannelCount > 0 && !isAllSelected}
                       onChange={() =>
@@ -191,11 +223,19 @@ export const ModelChannelSelector = ({
                     onClick={() => toggleChannel(channel.id)}
                   >
                     <Td px={6}>
-                      <Checkbox
-                        isChecked={selectedIds.has(channel.id)}
+                      {/* 仅复选框区域拦截冒泡，单元格空白仍由行处理点击。 */}
+                      <Box
+                        display="inline-flex"
+                        verticalAlign="middle"
+                        alignItems="center"
                         onClick={(event) => event.stopPropagation()}
-                        onChange={() => toggleChannel(channel.id)}
-                      />
+                      >
+                        <Checkbox
+                          sx={channelCheckboxStyles}
+                          isChecked={selectedIds.has(channel.id)}
+                          onChange={() => toggleChannel(channel.id)}
+                        />
+                      </Box>
                     </Td>
                     <Td px={6} fontWeight="500">
                       <Box noOfLines={1}>{channel.name}</Box>
@@ -269,9 +309,9 @@ const ModelChannelModal = ({
 }) => {
   const { t } = useClientTranslation('config_model');
   const [selection, setSelection] = useState(selectedChannelIds);
-  const { runAsync: confirmRequest, loading: confirming } = useRequest(async () =>
-    onConfirm(selection)
-  );
+  const { runAsync: confirmRequest, loading: confirming } = useRequest(async () => {
+    await onConfirm(selection);
+  });
   const confirm = useLockFn(confirmRequest);
 
   return (

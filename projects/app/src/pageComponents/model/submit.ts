@@ -2,6 +2,7 @@ import type {
   SystemModelDataType,
   SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model.schema';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { postSystemModel, putSystemModel } from '@/web/core/ai/config';
 import { UpdateSystemModelBodySchema } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/pricing';
@@ -11,11 +12,17 @@ export const prepareDraftSystemModelForTest = (
   modelData: SystemModelDocumentDataType
 ): SystemModelDocumentDataType => {
   const model = modelData.model.trim();
-  return {
-    ...modelData,
-    model,
-    name: modelData.name || model
-  };
+  const draft = { ...modelData, model, name: modelData.name?.trim() || model };
+  if (draft.type === ModelTypeEnum.llm) {
+    draft.config = {
+      ...draft.config,
+      quoteMaxToken:
+        draft.config.quoteMaxToken == null || Number.isNaN(draft.config.quoteMaxToken)
+          ? Math.floor(draft.config.maxContext * 0.8)
+          : draft.config.quoteMaxToken
+    };
+  }
+  return draft;
 };
 
 /** 新建模型只调用创建接口，入参类型从结构上排除 modelId。 */

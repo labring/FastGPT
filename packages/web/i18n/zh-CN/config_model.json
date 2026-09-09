@@ -1,4 +1,7 @@
 {
+  "max_response_tokens": "最大响应 Tokens",
+  "voices_array_required": "音色必须是非空数组，且每项包含 label 和 value",
+  "select_model_provider_placeholder": "请选择提供商",
   "aipoint_usage": "积分消耗",
   "all": "全部",
   "api_key": "API 密钥",
@@ -50,11 +53,11 @@
   "mapping": "模型映射",
   "mapping_tip": "需填写一个有效 Json。可在向实际地址发送请求时，对模型进行映射。例如：\n{\n  \"gpt-4o\": \"gpt-4o-test\"\n}\n当 FastGPT 请求 gpt-4o 模型时，会向实际地址发送 gpt-4o-test 的模型，而不是 gpt-4o。",
   "maxToken_tip": "模型 max_tokens 参数",
-  "rerank_max_token": "最大 Token 限制",
+  "rerank_max_token": "最大 Tokens",
   "rerank_max_token_tip": "Rerank 阶段单次请求的 token 上限（query + 单个文档），超出限制的文档会被自动切分",
   "max_rpm": "最大RPM (每分钟请求数)",
   "max_temperature_tip": "模型 temperature 参数，不填则代表模型不支持 temperature 参数。",
-  "max_tpm": "最大TPM (每分钟Token数)",
+  "max_tpm": "最大TPM (每分钟Tokens数)",
   "model": "模型",
   "model_count": "模型数量",
   "model_error_rate": "失败率",
@@ -120,7 +123,7 @@
   "model.censor": "启用敏感校验",
   "model.censor_tip": "如果需要进行敏感校验，则开启该开关",
   "model.charsPointsPrice": "模型综合价格",
-  "model.charsPointsPrice_tip": "将模型输入和输出合并起来进行 Token 计费，语言模型如果单独配置了输入和输出计费，则按输入和输出分别计算",
+  "model.charsPointsPrice_tip": "将模型输入和输出合并起来进行 Tokens 计费，语言模型如果单独配置了输入和输出计费，则按输入和输出分别计算",
   "model.defaultConfig": "额外 Body 参数",
   "model.defaultConfig_tip": "每次请求时候，都会携带该额外 Body 参数",
   "model.default_config": "Body 额外字段",
@@ -204,6 +207,7 @@
   "model_channel_empty": "当前模型暂未配置渠道",
   "remove_channel_association": "取消关联",
   "associate": "关联",
+  "associate_success": "关联渠道成功",
   "included_models": "包含 {{count}} 个模型",
-  "selected_model_count": "已选 {{count}} 个模型"
+  "selected_model_count": "已选择 {{count}} 个模型"
 }

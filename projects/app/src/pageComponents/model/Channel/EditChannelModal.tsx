@@ -33,12 +33,14 @@ const CompactLabelStyles: BoxProps = {
 const EditChannelModal = ({
   defaultConfig,
   fixedModel,
+  fixedModels,
   allowEmptyModels = false,
   onClose,
   onSuccess
 }: {
   defaultConfig: ChannelInfoType;
   fixedModel?: { model: string; avatar?: string };
+  fixedModels?: { model: string; avatar?: string }[];
   allowEmptyModels?: boolean;
   onClose: () => void;
   onSuccess: (createdChannelId?: number) => unknown | Promise<unknown>;
@@ -51,7 +53,8 @@ const EditChannelModal = ({
     loading: loadingModels
   } = useAdminModelConfig();
   const isEdit = defaultConfig.id !== 0;
-  const isCompactCreate = !isEdit && !!fixedModel;
+  const currentModels = fixedModels ?? (fixedModel ? [fixedModel] : []);
+  const isCompactCreate = !isEdit && currentModels.length > 0;
 
   const { register, handleSubmit, control, setValue } = useForm({
     defaultValues: defaultConfig
@@ -148,7 +151,7 @@ const EditChannelModal = ({
         </>
       }
     >
-      {isCompactCreate && fixedModel ? (
+      {isCompactCreate ? (
         <Flex direction="column" gap={4}>
           <Flex alignItems="center" gap={8}>
             <FormLabel required {...CompactLabelStyles}>
@@ -209,10 +212,16 @@ const EditChannelModal = ({
                 }
               />
             </HStack>
-            <HStack spacing={1.5} minW={0}>
-              <MyAvatar src={fixedModel.avatar} w="18px" flexShrink={0} />
-              <Box noOfLines={1}>{fixedModel.model}</Box>
-            </HStack>
+            {currentModels.length > 1 ? (
+              <Box>{t('config_model:selected_model_count', { count: currentModels.length })}</Box>
+            ) : (
+              currentModels.map((model) => (
+                <HStack key={model.model} spacing={1.5} minW={0}>
+                  <MyAvatar src={model.avatar} w="18px" flexShrink={0} />
+                  <Box noOfLines={1}>{model.model}</Box>
+                </HStack>
+              ))
+            )}
           </Flex>
 
           <Box>

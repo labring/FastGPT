@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
   reRankRecall: vi.fn(),
   aiTranscriptions: vi.fn(),
   getAIApi: vi.fn(),
-  debug: vi.fn()
+  debug: vi.fn(),
+  withTemporaryModelChannelBinding: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
@@ -28,6 +29,9 @@ vi.mock('@fastgpt/service/core/ai/audio/transcriptions', () => ({
   aiTranscriptions: mocks.aiTranscriptions
 }));
 vi.mock('@fastgpt/service/core/ai/config', () => ({ getAIApi: mocks.getAIApi }));
+vi.mock('@fastgpt/service/thirdProvider/aiproxy/channel', () => ({
+  withTemporaryModelChannelBinding: (options: { run: () => Promise<unknown> }) => options.run()
+}));
 vi.mock('@fastgpt/service/common/logger', () => ({
   LogCategories: { MODULE: { AI: { MODEL: 'model' } } },
   getLogger: () => ({ debug: mocks.debug, info: vi.fn() })

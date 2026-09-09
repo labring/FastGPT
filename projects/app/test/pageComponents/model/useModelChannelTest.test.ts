@@ -33,7 +33,7 @@ vi.mock('@fastgpt/web/i18n/useClientTranslation', () => ({
   useClientTranslation: () => ({ t: mocks.translate })
 }));
 
-import { useModelChannelTest } from '@/pageComponents/account/model/useModelChannelTest';
+import { useModelChannelTest } from '@/pageComponents/model/useModelChannelTest';
 
 describe('useModelChannelTest', () => {
   const channels = [

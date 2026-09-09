@@ -18,7 +18,8 @@ import {
   getAdminAIProxyChannelItems,
   getAIProxyChannelList,
   removeModelsFromAIProxyChannels,
-  replaceModelInAIProxyChannels
+  replaceModelInAIProxyChannels,
+  withTemporaryModelChannelBinding
 } from '../../../thirdProvider/aiproxy/channel';
 
 const channels = [
@@ -325,5 +326,113 @@ describe('removeModelsFromAIProxyChannels', () => {
     );
 
     expect(mocks.put).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('withTemporaryModelChannelBinding', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getAIProxyAdminConfig.mockReturnValue({
+      baseUrl: 'https://aiproxy.example.com',
+      token: 'admin-token'
+    });
+    mocks.get.mockResolvedValue({ data: { success: true, data: channels } });
+    mocks.put.mockResolvedValue({ data: { success: true } });
+  });
+
+  const mockDraftBindingSnapshots = () => {
+    mocks.get.mockResolvedValueOnce({ data: { success: true, data: channels } }).mockResolvedValue({
+      data: {
+        success: true,
+        data: [channels[0], { ...channels[1], models: ['draft-model'] }]
+      }
+    });
+  };
+
+  it('restores the original channel set after a draft test', async () => {
+    mockDraftBindingSnapshots();
+    await expect(
+      withTemporaryModelChannelBinding({
+        model: 'draft-model',
+        channelId: 2,
+        run: async () => 'tested'
+      })
+    ).resolves.toBe('tested');
+
+    expect(mocks.put).toHaveBeenNthCalledWith(
+      1,
+      'https://aiproxy.example.com/api/channel/2',
+      expect.objectContaining({ models: ['draft-model'] }),
+      expect.any(Object)
+    );
+    expect(mocks.put).toHaveBeenNthCalledWith(
+      2,
+      'https://aiproxy.example.com/api/channel/2',
+      expect.objectContaining({ models: [] }),
+      expect.any(Object)
+    );
+  });
+
+  it('restores the original channel set when the draft test fails', async () => {
+    mockDraftBindingSnapshots();
+    await expect(
+      withTemporaryModelChannelBinding({
+        model: 'draft-model',
+        channelId: 2,
+        run: async () => Promise.reject(new Error('test failed'))
+      })
+    ).rejects.toThrow('test failed');
+
+    expect(mocks.put).toHaveBeenCalledTimes(2);
+    expect(mocks.put).toHaveBeenLastCalledWith(
+      'https://aiproxy.example.com/api/channel/2',
+      expect.objectContaining({ models: [] }),
+      expect.any(Object)
+    );
+  });
+
+  it('only removes its temporary binding and preserves latest unrelated configuration', async () => {
+    mocks.get
+      .mockResolvedValueOnce({ data: { success: true, data: channels } })
+      .mockResolvedValueOnce({
+        data: {
+          success: true,
+          data: [
+            { ...channels[0], models: ['existing-model', 'draft-model'] },
+            { ...channels[1], name: 'updated-channel', models: ['draft-model', 'other-model'] }
+          ]
+        }
+      });
+    await withTemporaryModelChannelBinding({
+      model: 'draft-model',
+      channelId: 2,
+      run: async () => undefined
+    });
+    expect(mocks.put).toHaveBeenCalledTimes(2);
+    expect(mocks.put).toHaveBeenLastCalledWith(
+      'https://aiproxy.example.com/api/channel/2',
+      expect.objectContaining({ name: 'updated-channel', models: ['other-model'] }),
+      expect.any(Object)
+    );
+  });
+
+  it('rejects a missing channel before running the model test', async () => {
+    const run = vi.fn();
+    await expect(
+      withTemporaryModelChannelBinding({ model: 'draft-model', channelId: 999, run })
+    ).rejects.toThrow('AI Proxy channel does not exist: 999');
+    expect(run).not.toHaveBeenCalled();
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
+  it('does not rewrite an already bound target channel', async () => {
+    await withTemporaryModelChannelBinding({
+      model: 'existing-model',
+      channelId: 1,
+      run: async () => undefined
+    });
+
+    expect(mocks.get).toHaveBeenCalledOnce();
+    expect(mocks.put).not.toHaveBeenCalled();
   });
 });

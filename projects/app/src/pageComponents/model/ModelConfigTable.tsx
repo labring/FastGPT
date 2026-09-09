@@ -146,16 +146,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     () => getModelProviders(i18n.language),
     [getModelProviders, i18n.language]
   );
-  const defaultModels = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(adminConfig?.defaultModelIds ?? {}).map(([key, modelId]) => [
-          key,
-          systemModelList.find((model) => model.modelId === modelId)
-        ])
-      ),
-    [adminConfig?.defaultModelIds, systemModelList]
-  );
 
   const isRoot = userInfo?.username === 'root';
 
@@ -489,10 +479,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             </Button>
             <AddModel
               installedModels={systemModelList}
-              defaultModels={defaultModels}
               channels={channelList}
               providers={modelProviders}
-              defaultProvider={modelProviders[0]?.id ?? 'OpenAI'}
               onSuccess={refreshModels}
               isDisabled={channelMutationLoading}
               w={['100%', 'auto']}
@@ -799,6 +787,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             await runChannelMutation(() =>
               putReplaceSystemModelChannels({ modelId: channelModel.modelId, channelIds })
             );
+            toast({ status: 'success', title: t('config_model:associate_success') });
             setChannelModel(undefined);
             await refreshModels().catch(() => {});
           }}

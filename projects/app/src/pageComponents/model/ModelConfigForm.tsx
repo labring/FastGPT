@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/core/ai/pricing';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -18,8 +19,9 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useLockFn } from 'ahooks';
-import React, { useEffect, useMemo, type MutableRefObject } from 'react';
+import React, { useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import {
+  useController,
   useForm,
   useWatch,
   type Control,
@@ -60,6 +62,33 @@ const MultilineInputStyles = {
 
 const defaultResponseFormatOptions = ['text', 'json_schema', 'json_object'];
 
+/**
+ * 删除表单控件产生的 NaN，避免 JSON 序列化把嵌套 NaN 变成 null 后再被接口 schema 拒绝。
+ * 数组中的 NaN 使用 null 保留位置，模型配置对象中的 NaN 则直接视为未填写。
+ */
+const removeNaNValues = (value: unknown): void => {
+  if (!value || typeof value !== 'object') return;
+
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => {
+      if (typeof item === 'number' && Number.isNaN(item)) {
+        value[index] = null;
+      } else {
+        removeNaNValues(item);
+      }
+    });
+    return;
+  }
+
+  Object.entries(value).forEach(([key, item]) => {
+    if (typeof item === 'number' && Number.isNaN(item)) {
+      delete (value as Record<string, unknown>)[key];
+    } else {
+      removeNaNValues(item);
+    }
+  });
+};
+
 const Section = ({
   title,
   children,
@@ -88,18 +117,20 @@ const Field = ({
   label,
   tip,
   children,
-  colSpan = 1
+  colSpan = 1,
+  required = false
 }: {
   label: string;
   tip?: string;
   children: React.ReactNode;
   colSpan?: number | number[];
+  required?: boolean;
 }) => (
   <GridItem colSpan={colSpan}>
     <Flex alignItems={'center'} gap={1} mb={2}>
-      <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
+      <FormLabel required={required} fontSize={'12px'} fontWeight={'500'}>
         {label}
-      </Box>
+      </FormLabel>
       {tip && <QuestionTip label={tip} />}
     </Flex>
     {children}
@@ -130,25 +161,32 @@ const SwitchField = ({
 
 const ProviderField = React.memo(function ProviderField({
   control,
-  setValue,
   providerList,
   t
 }: {
   control: Control<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
   providerList: { label: React.ReactNode; value: string }[];
   t: ReturnType<typeof useClientTranslation>['t'];
 }) {
-  const provider = useWatch({
+  const {
+    field: { value, onChange, onBlur, ref },
+    fieldState,
+    formState: { isSubmitted }
+  } = useController({
     control,
-    name: 'provider'
+    name: 'provider',
+    rules: { required: true }
   });
 
   return (
-    <Field label={t('common:model.provider')}>
+    <Field label={t('common:model.provider')} required>
       <MySelect
-        value={provider}
-        onChange={(value) => setValue('provider', value, { shouldDirty: true })}
+        value={value}
+        placeholder={t('config_model:select_model_provider_placeholder')}
+        onChange={onChange}
+        onBlur={onBlur}
+        ref={ref}
+        isInvalid={isSubmitted && !!fieldState.error}
         list={providerList}
         {...InputStyles}
         maxW={['100%', '360px']}
@@ -210,12 +248,14 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
   control,
   setValue,
   label,
-  tip
+  tip,
+  onDraftChange
 }: {
   control: Control<SystemModelDocumentDataType>;
   setValue: UseFormSetValue<SystemModelDocumentDataType>;
   label: string;
   tip: string;
+  onDraftChange?: () => void;
 }) {
   const defaultConfig = useWatch({
     control,
@@ -228,6 +268,7 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
         value={JSON.stringify(defaultConfig, null, 2)}
         resize
         onChange={(e) => {
+          onDraftChange?.();
           if (!e) {
             setValue('config.defaultConfig', {}, { shouldDirty: true });
             return;
@@ -247,35 +288,55 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
 
 const VoicesField = React.memo(function VoicesField({
   control,
-  setValue,
-  t
+  t,
+  onDraftChange
 }: {
   control: Control<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
   t: ReturnType<typeof useClientTranslation>['t'];
+  onDraftChange?: () => void;
 }) {
-  const voices = useWatch({
+  const [isValidJson, setIsValidJson] = useState(true);
+  const { field, fieldState } = useController({
     control,
-    name: 'config.voices'
+    name: 'config.voices',
+    rules: {
+      validate: (value) =>
+        (isValidJson &&
+          Array.isArray(value) &&
+          value.length > 0 &&
+          value.every(
+            (voice) => voice && typeof voice.label === 'string' && typeof voice.value === 'string'
+          )) ||
+        t('config_model:voices_array_required')
+    }
   });
 
   return (
     <Field
       label={t('config_model:model.voices')}
+      required
       tip={t('config_model:model.voices_tip')}
       colSpan={[1, 2]}
     >
       <JsonEditor
-        value={JSON.stringify(voices, null, 2)}
+        value={JSON.stringify(field.value, null, 2)}
         onChange={(e) => {
+          onDraftChange?.();
           try {
-            setValue('config.voices', JSON.parse(e), { shouldDirty: true });
-          } catch (error) {
-            console.error(error);
+            const value = JSON.parse(e);
+            setIsValidJson(true);
+            field.onChange(value);
+          } catch {
+            setIsValidJson(false);
           }
         }}
         {...MultilineInputStyles}
       />
+      {fieldState.error && (
+        <Box color="red.500" fontSize="sm">
+          {fieldState.error.message}
+        </Box>
+      )}
     </Field>
   );
 });
@@ -316,6 +377,7 @@ const ModelConfigForm = ({
   const { t } = useClientTranslation('config_model');
   const { feConfigs } = useSystemStore();
   const initialModelData = normalizeModelPricingForRead(modelData);
+  const [hasJsonDraftChanges, setHasJsonDraftChanges] = useState(false);
 
   const {
     control,
@@ -326,7 +388,14 @@ const ModelConfigForm = ({
     formState: { isDirty }
   } = useForm<SystemModelDocumentDataType>({
     defaultValues: {
-      ...initialModelData,
+      // 空白草稿的引用上限不向输入框写入 NaN，保持视觉上未填写。
+      ...(initialModelData.type === ModelTypeEnum.llm &&
+      Number.isNaN(initialModelData.config.quoteMaxToken)
+        ? {
+            ...initialModelData,
+            config: { ...initialModelData.config, quoteMaxToken: undefined }
+          }
+        : initialModelData),
       priceTiers: (() => {
         if (modelData.type !== ModelTypeEnum.llm) return undefined;
         const tiers = initialModelData.priceTiers ?? [];
@@ -396,7 +465,13 @@ const ModelConfigForm = ({
 
   const { runAsync: submitModelRequest, loading: submittingModel } = useRequest(
     async (data: SystemModelDocumentDataType) => {
+      data.name = data.name?.trim() || data.model;
       if (data.type === ModelTypeEnum.llm) {
+        // 数字输入留空会产生 NaN；仅未填写时按上下文计算，保留显式填写的 0。
+        if (data.config.quoteMaxToken == null || Number.isNaN(data.config.quoteMaxToken)) {
+          data.config.quoteMaxToken = Math.floor(data.config.maxContext * 0.8);
+        }
+
         // 空数字输入会被 react-hook-form 解析为 NaN；显式转成协议允许的 null，
         // 避免依赖 JSON.stringify 将 NaN 隐式转换成 null。
         if (Number.isNaN(data.config.maxTemperature)) {
@@ -436,11 +511,10 @@ const ModelConfigForm = ({
       }
 
       const modelData = data as Record<string, unknown>;
+      removeNaNValues(modelData);
       for (const key of Object.keys(modelData)) {
         const val = modelData[key];
-        if (val === null || val === undefined || Number.isNaN(val)) {
-          delete modelData[key];
-        }
+        if (val === null || val === undefined) delete modelData[key];
       }
 
       return onSubmit(normalizeModelPricingForSave(data));
@@ -459,8 +533,8 @@ const ModelConfigForm = ({
   }, [onSubmittingChange, submittingModel]);
 
   useEffect(() => {
-    onDirtyChange?.(isDirty);
-  }, [isDirty, onDirtyChange]);
+    onDirtyChange?.(isDirty || hasJsonDraftChanges);
+  }, [hasJsonDraftChanges, isDirty, onDirtyChange]);
 
   const CustomApi = useMemo(
     () => (
@@ -495,10 +569,12 @@ const ModelConfigForm = ({
           <Grid flex={'1 0 0'} templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
             <Field
               label={t('config_model:model.model_id')}
+              required
               tip={t('config_model:model.model_id_tip')}
             >
               <Input
                 {...register('model', { required: true })}
+                autoFocus={!isModelIdReadOnly && !modelData.model?.trim()}
                 {...InputStyles}
                 isReadOnly={isModelIdReadOnly}
                 bg={isModelIdReadOnly ? 'myGray.50' : 'white'}
@@ -506,14 +582,9 @@ const ModelConfigForm = ({
               />
             </Field>
             <Field label={t('config_model:model.alias')} tip={t('config_model:model.alias_tip')}>
-              <Input {...register('name', { required: true })} {...InputStyles} />
+              <Input {...register('name')} {...InputStyles} />
             </Field>
-            <ProviderField
-              control={control}
-              setValue={setValue}
-              providerList={providerList}
-              t={t}
-            />
+            <ProviderField control={control} providerList={providerList} t={t} />
             <SwitchField
               label={t('config_model:model.active')}
               field={'isActive'}
@@ -528,7 +599,7 @@ const ModelConfigForm = ({
       {isLLMModel && (
         <Section title={t('config_model:model.params_config_section')}>
           <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
-            <Field label={t('common:core.ai.Max context')}>
+            <Field label={t('common:core.ai.Max context')} required>
               <MyNumberInput
                 register={register}
                 isRequired
@@ -538,11 +609,13 @@ const ModelConfigForm = ({
             </Field>
 
             <Field
-              label={t('common:core.chat.response.module maxToken')}
+              label={t('config_model:max_response_tokens')}
+              required
               tip={t('config_model:maxToken_tip')}
             >
               <MyNumberInput
                 register={register}
+                isRequired
                 name="config.maxResponse"
                 min={2000}
                 {...NumberInputStyles}
@@ -552,7 +625,6 @@ const ModelConfigForm = ({
             <Field label={t('config_model:model.max_quote')}>
               <MyNumberInput
                 register={register}
-                isRequired
                 name="config.quoteMaxToken"
                 {...NumberInputStyles}
               />
@@ -597,7 +669,7 @@ const ModelConfigForm = ({
               field={'config.normalization'}
               register={register}
             />
-            <Field label={t('config_model:batch_size')}>
+            <Field label={t('config_model:batch_size')} required>
               <MyNumberInput
                 register={register}
                 isRequired
@@ -609,6 +681,7 @@ const ModelConfigForm = ({
             </Field>
             <Field
               label={t('config_model:model.default_token')}
+              required
               tip={t('config_model:model.default_token_tip')}
             >
               <MyNumberInput
@@ -618,7 +691,7 @@ const ModelConfigForm = ({
                 {...NumberInputStyles}
               />
             </Field>
-            <Field label={t('common:core.ai.Max context')}>
+            <Field label={t('common:core.ai.Max context')} required>
               <MyNumberInput
                 register={register}
                 isRequired
@@ -635,11 +708,13 @@ const ModelConfigForm = ({
           <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
             <Field
               label={t('config_model:rerank_max_token')}
+              required
               tip={t('config_model:rerank_max_token_tip')}
             >
               <MyNumberInput
                 register={register}
                 name="config.maxToken"
+                isRequired
                 min={1000}
                 {...NumberInputStyles}
               />
@@ -776,9 +851,16 @@ const ModelConfigForm = ({
                     ? t('config_model:model.rerank_default_config_tip')
                     : t('config_model:model.default_config_tip')
               }
+              onDraftChange={() => setHasJsonDraftChanges(true)}
             />
           )}
-          {isTTSModel && <VoicesField control={control} setValue={setValue} t={t} />}
+          {isTTSModel && (
+            <VoicesField
+              control={control}
+              t={t}
+              onDraftChange={() => setHasJsonDraftChanges(true)}
+            />
+          )}
           {CustomApi}
           <SwitchField
             label={t('config_model:model.test_mode')}

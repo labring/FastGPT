@@ -31,6 +31,7 @@ import {
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { withTemporaryModelChannelBinding } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -77,33 +78,40 @@ async function handler(
   const headers: Record<string, string> = channelId ? { 'Aiproxy-Channel': String(channelId) } : {};
   logger.debug('Test model', { model: modelData.model, type: modelData.type, channelId });
 
-  if (modelData.type === 'llm') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testLLMModel({ model: modelData, headers, teamId })
-    );
-  }
-  if (modelData.type === 'embedding') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testEmbeddingModel({ model: modelData, headers })
-    );
-  }
-  if (modelData.type === 'tts') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testTTSModel({ model: modelData, headers })
-    );
-  }
-  if (modelData.type === 'stt') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testSTTModel({ model: modelData, headers })
-    );
-  }
-  if (modelData.type === 'rerank') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testReRankModel({ model: modelData, headers })
-    );
-  }
+  const runTest = async () => {
+    if (modelData.type === 'llm') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testLLMModel({ model: modelData, headers, teamId })
+      );
+    }
+    if (modelData.type === 'embedding') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testEmbeddingModel({ model: modelData, headers })
+      );
+    }
+    if (modelData.type === 'tts') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testTTSModel({ model: modelData, headers })
+      );
+    }
+    if (modelData.type === 'stt') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testSTTModel({ model: modelData, headers })
+      );
+    }
+    if (modelData.type === 'rerank') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testReRankModel({ model: modelData, headers })
+      );
+    }
 
-  return Promise.reject('Model type not supported');
+    return Promise.reject('Model type not supported');
+  };
+
+  // 草稿尚未持久化，测试时临时加入 AI Proxy 的目标渠道，结束后恢复原绑定。
+  return req.method === 'POST' && channelId
+    ? withTemporaryModelChannelBinding({ model: modelData.model, channelId, run: runTest })
+    : runTest();
 }
 
 export default NextAPI(handler);

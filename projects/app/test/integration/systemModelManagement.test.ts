@@ -2,6 +2,7 @@ import { getCachedModelHandle, publishModelHandle } from '@fastgpt/service/core/
 
 import { createServer, type Server } from 'node:http';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { type CreateSystemModelBody } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 
@@ -185,7 +186,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
 
     await expect(
       createSystemModel({ modelData: createDraft('duplicate'), channelIds: [2] })
-    ).rejects.toThrow('Model already exists');
+    ).rejects.toThrow(ModelErrEnum.alreadyExists);
 
     expect(requests).toEqual([]);
     expect(channels[1].models).toEqual([]);

@@ -255,3 +255,51 @@ export const appendModelsToAIProxyChannels = async ({
     }
   });
 };
+
+/**
+ * 为未落库的模型测试临时建立渠道绑定，并在测试完成后恢复原绑定集合。
+ * AI Proxy 通过渠道的 models 字段选择实际连接，草稿模型尚未进入该字段时即使请求
+ * 带有 Aiproxy-Channel 也会被判定为模型不存在，因此测试期间必须短暂补齐绑定。
+ */
+export const withTemporaryModelChannelBinding = async <T>({
+  model,
+  channelId,
+  run
+}: {
+  model: string;
+  channelId: number;
+  run: () => Promise<T>;
+}): Promise<T> => {
+  return withAIProxyChannelMutation(async ({ signal, assertValid }) => {
+    const { channels, baseUrl, headers } = await getAIProxyChannels();
+    const channel = channels.find((item) => item.id === channelId);
+    if (!channel) throw new Error(`AI Proxy channel does not exist: ${channelId}`);
+    if (channel.models.includes(model)) return run();
+
+    /** 在同一租约内只修改目标渠道，恢复时保留最新快照中的其他配置。 */
+    const writeModels = async (target: AIProxyChannel, models: string[]) => {
+      const payload = getChannelUpdateData(target, models);
+      assertValid();
+      const { data } = await axiosWithoutSSRF.put(`${baseUrl}/api/channel/${channelId}`, payload, {
+        headers,
+        signal,
+        timeout: 30000
+      });
+      AIProxyMutationResponseSchema.parse(data);
+    };
+
+    await writeModels(channel, [...channel.models, model]);
+    try {
+      return await run();
+    } finally {
+      const { channels: latestChannels } = await getAIProxyChannels();
+      const latest = latestChannels.find((item) => item.id === channelId);
+      if (latest?.models.includes(model)) {
+        await writeModels(
+          latest,
+          latest.models.filter((item) => item !== model)
+        );
+      }
+    }
+  });
+};

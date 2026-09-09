@@ -66,7 +66,7 @@ export const createSystemModel = async ({
     model: modelData.model
   });
   if (existingModel) {
-    throw new UserError(`Model already exists: ${modelData.model}`);
+    throw new UserError(ModelErrEnum.alreadyExists);
   }
 
   await appendModelsToAIProxyChannels({ channelIds, models: [modelData.model] });

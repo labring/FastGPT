@@ -1,4 +1,7 @@
 {
+  "max_response_tokens": "最大回應 Tokens",
+  "voices_array_required": "音色必須是非空陣列，且每項包含 label 和 value",
+  "select_model_provider_placeholder": "請選擇提供商",
   "aipoint_usage": "積分消耗",
   "all": "全部",
   "api_key": "API 金鑰",
@@ -50,11 +53,11 @@
   "mapping": "模型對映",
   "mapping_tip": "請輸入有效的 JSON，以便在向實際端點傳送請求前對應模型名稱。例如：\n{\n  \"gpt-4o\": \"gpt-4o-test\"\n}\n當 FastGPT 請求 gpt-4o 時，實際端點會收到 gpt-4o-test。",
   "maxToken_tip": "模型 max_tokens 參數",
-  "rerank_max_token": "最大 Token 限制",
+  "rerank_max_token": "最大 Tokens",
   "rerank_max_token_tip": "Rerank 階段單次請求的 token 上限（query + 單個文件），超出限制的文件會被自動切分",
   "max_rpm": "最大RPM (每分鐘請求數)",
   "max_temperature_tip": "模型 temperature 參數，不填則代表模型不支援 temperature 參數。",
-  "max_tpm": "最大TPM (每分鐘Token數)",
+  "max_tpm": "最大TPM (每分鐘Tokens數)",
   "model": "模型",
   "model_count": "模型數量",
   "model_error_rate": "失敗率",
@@ -120,7 +123,7 @@
   "model.censor": "啟用敏感校驗",
   "model.censor_tip": "如果需要進行敏感校驗，則開啟該開關",
   "model.charsPointsPrice": "模型綜合價格",
-  "model.charsPointsPrice_tip": "將模型輸入和輸出合併起來進行 Token 計費，語言模型如果單獨設定了輸入和輸出計費，則按輸入和輸出分別計算",
+  "model.charsPointsPrice_tip": "將模型輸入和輸出合併起來進行 Tokens 計費，語言模型如果單獨設定了輸入和輸出計費，則按輸入和輸出分別計算",
   "model.defaultConfig": "額外 Body 參數",
   "model.defaultConfig_tip": "每次請求時候，都會攜帶該額外 Body 參數",
   "model.default_config": "Body 額外欄位",
@@ -204,6 +207,7 @@
   "model_channel_empty": "目前模型暫未設定渠道",
   "remove_channel_association": "取消關聯",
   "associate": "關聯",
+  "associate_success": "關聯渠道成功",
   "included_models": "包含 {{count}} 個模型",
   "selected_model_count": "已選 {{count}} 個模型"
 }

@@ -8,10 +8,10 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
-const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
-const ChannelTable = dynamic(() => import('@/pageComponents/account/model/Channel'));
-const ChannelLog = dynamic(() => import('@/pageComponents/account/model/Log'));
-const ModelDashboard = dynamic(() => import('@/pageComponents/account/model/ModelDashboard'));
+const ModelConfigTable = dynamic(() => import('@/pageComponents/model/ModelConfigTable'));
+const ChannelTable = dynamic(() => import('@/pageComponents/model/Channel'));
+const ChannelLog = dynamic(() => import('@/pageComponents/model/Log'));
+const ModelDashboard = dynamic(() => import('@/pageComponents/model/ModelDashboard'));
 
 type TabType = 'config' | 'channel' | 'channel_log' | 'account_model';
 

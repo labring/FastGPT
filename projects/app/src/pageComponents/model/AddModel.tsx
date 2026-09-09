@@ -34,6 +34,7 @@ import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag'
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useLockFn } from 'ahooks';
@@ -50,23 +51,15 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 
 const EditChannelModal = dynamic(() => import('./Channel/EditChannelModal'), { ssr: false });
 
-/**
- * 通过持久化字段白名单生成空白模型草稿。
- *
- * 默认模型只贡献同类型能力参数，实例身份字段（尤其 modelId）不会进入创建状态。
- */
+/** 空白模型只使用固定默认值；数值草稿的 NaN 表示未填写，提交时再补齐引用上限。 */
 export const createBlankSystemModelData = ({
-  type,
-  provider,
-  defaultModel
+  type
 }: {
   type: ModelTypeEnum;
-  provider: string;
-  defaultModel?: SystemModelDataType;
 }): SystemModelDocumentDataType => {
   const base = {
     scope: ModelScopeEnum.system as ModelScopeEnum.system,
-    provider,
+    provider: '',
     model: '',
     name: '',
     charsPointsPrice: 0,
@@ -74,15 +67,14 @@ export const createBlankSystemModelData = ({
   };
 
   if (type === ModelTypeEnum.llm) {
-    const typedDefault = defaultModel?.type === ModelTypeEnum.llm ? defaultModel : undefined;
     return {
       ...base,
       type,
       config: {
-        maxContext: typedDefault?.config.maxContext ?? 32000,
-        maxResponse: typedDefault?.config.maxResponse ?? 4000,
-        quoteMaxToken: typedDefault?.config.quoteMaxToken ?? 20000,
-        maxTemperature: typedDefault?.config.maxTemperature,
+        maxContext: 64000,
+        maxResponse: 16000,
+        quoteMaxToken: Number.NaN,
+        maxTemperature: undefined,
         vision: false,
         audio: false,
         video: false
@@ -90,23 +82,22 @@ export const createBlankSystemModelData = ({
     };
   }
   if (type === ModelTypeEnum.embedding) {
-    const typedDefault = defaultModel?.type === ModelTypeEnum.embedding ? defaultModel : undefined;
     return {
       ...base,
       type,
       config: {
-        defaultToken: typedDefault?.config.defaultToken ?? 512,
-        maxToken: typedDefault?.config.maxToken ?? 8192,
-        weight: typedDefault?.config.weight ?? 0
+        batchSize: 1,
+        defaultToken: 512,
+        maxToken: 8192,
+        weight: 0
       }
     };
   }
   if (type === ModelTypeEnum.tts) {
-    const typedDefault = defaultModel?.type === ModelTypeEnum.tts ? defaultModel : undefined;
-    return { ...base, type, config: { voices: typedDefault?.config.voices ?? [] } };
+    return { ...base, type, config: { voices: [] } };
   }
   if (type === ModelTypeEnum.stt) return { ...base, type, config: {} };
-  return { ...base, type: ModelTypeEnum.rerank, config: {} };
+  return { ...base, type: ModelTypeEnum.rerank, config: { maxToken: 8000 } };
 };
 
 export const AddModelButton = ({
@@ -261,15 +252,17 @@ export const BlankModelCreateModal = ({
   const [showAssociateChannel, setShowAssociateChannel] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [draftModel, setDraftModel] = useState('');
+  const [isFormDirty, setIsFormDirty] = useState(false);
   const modelFormGetValuesRef = useRef<ModelConfigFormGetValues | null>(null);
   const modelData = useMemo(() => createModelData(selectedType), [createModelData, selectedType]);
+  const { openConfirm: openLeaveConfirm, ConfirmModal: LeaveConfirmModal } = useConfirm();
 
   const { testingChannelIds, testModelChannel: handleTestModelChannel } = useModelChannelTest({
     target: { source: 'draft', getModelData: () => modelFormGetValuesRef.current?.() },
     channels
   });
 
-  const goToChannelManagement = () => {
+  const navigateToChannelManagement = () => {
     onClose();
     void router.push(
       {
@@ -279,6 +272,20 @@ export const BlankModelCreateModal = ({
       undefined,
       { shallow: true }
     );
+  };
+
+  const goToChannelManagement = () => {
+    if (!isFormDirty && selectedChannelIds.size === 0) {
+      navigateToChannelManagement();
+      return;
+    }
+
+    openLeaveConfirm({
+      title: t('config_model:confirm_go_to_channel_management'),
+      customContent: t('config_model:unsaved_model_config_leave_tip'),
+      confirmButtonVariant: 'dangerFill',
+      onConfirm: navigateToChannelManagement
+    })();
   };
 
   return (
@@ -298,16 +305,22 @@ export const BlankModelCreateModal = ({
               <Button variant="whiteBase" size="md" onClick={onClose}>
                 {t('common:Cancel')}
               </Button>
-              <Button size="md" onClick={() => setStep('config')}>
+              <Button key="next-step" type="button" size="md" onClick={() => setStep('config')}>
                 {t('config_model:next_step')}
               </Button>
             </>
           ) : (
             <>
-              <Button variant="whiteBase" size="md" onClick={onClose}>
-                {t('common:Cancel')}
+              <Button type="button" variant="whiteBase" size="md" onClick={() => setStep('type')}>
+                {t('config_model:previous_step')}
               </Button>
-              <Button size="md" type="submit" form={createFormId} isLoading={submitting}>
+              <Button
+                key="create-model"
+                size="md"
+                type="submit"
+                form={createFormId}
+                isLoading={submitting}
+              >
                 {t('common:Confirm')}
               </Button>
             </>
@@ -347,6 +360,7 @@ export const BlankModelCreateModal = ({
               )
             }}
             onSubmittingChange={setSubmitting}
+            onDirtyChange={setIsFormDirty}
             onSuccess={() => {
               onClose();
               void Promise.resolve(onSuccess()).catch(() => {});
@@ -402,6 +416,8 @@ export const BlankModelCreateModal = ({
           onClose={() => setShowCreateChannel(false)}
         />
       )}
+
+      <LeaveConfirmModal />
     </>
   );
 };
@@ -410,12 +426,14 @@ const TemplateCreateModal = ({
   installedModels,
   channels,
   onClose,
-  onSuccess
+  onSuccess,
+  onRefresh
 }: {
   installedModels: SystemModelDataType[];
   channels: AdminModelChannel[];
   onClose: () => void;
   onSuccess: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const [step, setStep] = useState<1 | 2>(1);
@@ -424,6 +442,7 @@ const TemplateCreateModal = ({
   const [typeFilter, setTypeFilter] = useState<ModelTypeEnum | ''>('');
   const [templateSearch, setTemplateSearch] = useState('');
   const [selectedChannelIds, setSelectedChannelIds] = useState<number[]>([]);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
   const {
     data,
     error,
@@ -734,6 +753,27 @@ const TemplateCreateModal = ({
           showCurrentModel={false}
           showSelectedModelCount
           showTest={false}
+          onCreate={() => setShowCreateChannel(true)}
+        />
+      )}
+
+      {showCreateChannel && (
+        <EditChannelModal
+          defaultConfig={{ ...defaultChannel, models: [] }}
+          fixedModels={selectedTemplates.map((model) => ({
+            model: model.model,
+            avatar: providerMap.get(model.provider)?.avatar
+          }))}
+          allowEmptyModels
+          onSuccess={async (createdChannelId) => {
+            if (createdChannelId !== undefined) {
+              setSelectedChannelIds((current) =>
+                current.includes(createdChannelId) ? current : [...current, createdChannelId]
+              );
+            }
+            await Promise.resolve(onRefresh?.()).catch(() => {});
+          }}
+          onClose={() => setShowCreateChannel(false)}
         />
       )}
     </MyModal>
@@ -743,32 +783,23 @@ const TemplateCreateModal = ({
 /** 聚合“从模板新建”和“从空白新建”的完整添加模型交互。 */
 const AddModel = ({
   installedModels,
-  defaultModels,
   channels,
   providers,
-  defaultProvider,
   onSuccess,
   buttonBoxProps,
   ...buttonProps
 }: {
   installedModels: SystemModelDataType[];
-  defaultModels?: Partial<Record<ModelTypeEnum, SystemModelDataType>>;
   channels: AdminModelChannel[];
   providers: ModelProviderItemType[];
-  defaultProvider: string;
   onSuccess: () => Promise<void>;
   buttonBoxProps?: BoxProps;
 } & ButtonProps) => {
   const [showBlankCreate, setShowBlankCreate] = useState(false);
   const [showTemplateCreate, setShowTemplateCreate] = useState(false);
   const getBlankModelData = useCallback(
-    (type: ModelTypeEnum) =>
-      createBlankSystemModelData({
-        type,
-        provider: defaultModels?.[type]?.provider ?? defaultProvider,
-        defaultModel: defaultModels?.[type] ?? installedModels.find((model) => model.type === type)
-      }),
-    [defaultModels, defaultProvider, installedModels]
+    (type: ModelTypeEnum) => createBlankSystemModelData({ type }),
+    []
   );
 
   return (
@@ -794,6 +825,7 @@ const AddModel = ({
           channels={channels}
           onClose={() => setShowTemplateCreate(false)}
           onSuccess={onSuccess}
+          onRefresh={onSuccess}
         />
       )}
     </>
