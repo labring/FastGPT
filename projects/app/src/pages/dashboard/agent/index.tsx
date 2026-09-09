@@ -47,12 +47,10 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const {
     paths,
     parentId,
-    myApps,
     appType,
     loadMyApps,
     onUpdateApp,
     setMoveAppId,
-    isFetchingApps,
     folderDetail,
     refetchFolderDetail,
     searchKey,
@@ -114,7 +112,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           pr={folderDetail ? [3, 2] : [3, 6]}
           pl={6}
           pt={6}
-          overflowY={'auto'}
+          overflowY={'hidden'}
           overflowX={'hidden'}
         >
           {/* Only shown on pc root page */}
@@ -197,7 +195,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             </Box>
           )}
 
-          <MyBox flex={'1 0 0'} isLoading={myApps.length === 0 && isFetchingApps}>
+          <MyBox flex={'1 0 0'} minH={0}>
             <List />
           </MyBox>
         </Flex>

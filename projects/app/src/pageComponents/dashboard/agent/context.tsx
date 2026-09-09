@@ -2,27 +2,29 @@ import React, { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
+import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
+import { getAppDetailById, getMyAppsV2, putAppById } from '@/web/core/app/api';
+import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
 import { type AppDetailType, type AppListItemType } from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import {
-  type GetResourceFolderListProps,
   type ParentIdType,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useTranslation } from 'next-i18next';
 import { usePersistedFilters } from '@fastgpt/web/hooks/usePersistedFilters';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { buildFilterStorageKey } from '@/web/common/filter/storageKey';
-import { getTeamMembers } from '@/web/support/user/team/api';
 import { getDashboardAppListScene, resolveDashboardAppListTypes } from './utils/appListTypes';
 import {
   AppListFiltersStoreSchema,
+  buildAppListRequest,
   defaultAppListFilters,
   defaultAppListFiltersStore,
   resolveSceneListType,
@@ -30,14 +32,20 @@ import {
   type AppListFilterType,
   type AppListFilterScene
 } from './filters/utils';
+import {
+  getGridRequestPageSize,
+  useResponsiveGridPageSize
+} from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
   parentId?: string | null;
   appType: AppTypeEnum | 'all';
   myApps: AppListItemType[];
-  loadMyApps: () => Promise<AppListItemType[]>;
+  loadMyApps: () => Promise<void>;
   isFetchingApps: boolean;
+  isEmpty: boolean;
+  ScrollData: ScrollListType;
   folderDetail: AppDetailType | undefined | null;
   paths: ParentTreePathItemType[];
   onUpdateApp: (id: string, data: UpdateAppBodyType) => Promise<any>;
@@ -49,15 +57,19 @@ type AppListContextType = {
   setListFilters: (
     next: AppListFilterType | ((prev: AppListFilterType) => AppListFilterType)
   ) => void;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const AppListContext = createContext<AppListContextType>({
   parentId: undefined,
   myApps: [],
-  loadMyApps: async function (): Promise<AppListItemType[]> {
+  loadMyApps: async function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
   isFetchingApps: false,
+  isEmpty: false,
+  ScrollData: () => <></>,
   folderDetail: undefined,
   paths: [],
   onUpdateApp: function (id: string, data: UpdateAppBodyType): Promise<any> {
@@ -77,7 +89,9 @@ export const AppListContext = createContext<AppListContextType>({
   listFilters: defaultAppListFilters,
   setListFilters: function (): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -127,41 +141,38 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const sort = applyToolbarFilters ? listFilters.sort : undefined;
   const persistedTmbIds =
     applyToolbarFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
+  );
 
   const {
-    data = [],
-    runAsync: loadMyApps,
-    loading: isFetchingApps
-  } = useRequest(
-    async () => {
+    data: myApps = [],
+    isLoading: isFetchingApps,
+    isEmpty,
+    ScrollData,
+    fetchData
+  } = useScrollPagination(
+    async ({ offset = 0, pageSize = 50 }) => {
       const formatType = resolveDashboardAppListTypes({
         pathname: router.pathname,
         type: appType
       });
       const fetchApps = (tmbIds?: string[]) =>
-        getMyApps({
-          parentId,
-          type: formatType,
-          searchKey,
-          ...(sort ? { sort } : {}),
-          ...(tmbIds !== undefined ? { tmbIds } : {})
-        });
+        getMyAppsV2(
+          buildAppListRequest({
+            parentId,
+            type: formatType,
+            searchKey,
+            offset,
+            pageSize: getGridRequestPageSize(pageSize, offset),
+            sort,
+            tmbIds
+          })
+        );
 
-      // 已选创建者先按当前活跃成员校验，避免离职/失效 ID 把列表一直筛空。
-      if (!persistedTmbIds?.length) {
-        return fetchApps(persistedTmbIds);
-      }
-
-      const selectedMembers = await getTeamMembers({
-        tmbIds: persistedTmbIds,
-        status: 'active',
-        offset: 0,
-        pageSize: persistedTmbIds.length
-      });
-      return fetchApps(selectedMembers.list.map((item) => String(item.tmbId)));
+      return fetchApps(persistedTmbIds);
     },
     {
-      manual: false,
       refreshDeps: [
         searchKey,
         parentId,
@@ -170,12 +181,15 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
         persistedTmbIds === undefined ? 'none' : persistedTmbIds.join(','),
         router.pathname,
         feConfigs.isPlus,
-        isPc
+        isPc,
+        pageSize
       ],
+      pageSize,
       throttleWait: 500,
       refreshOnWindowFocus: true
     }
   );
+  const loadMyApps = useCallback(() => fetchData({ init: true }), [fetchData]);
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
@@ -212,23 +226,31 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     [moveAppId, onUpdateApp]
   );
 
-  const getAppFolderList = useCallback(
-    ({ parentId }: GetResourceFolderListProps) => {
+  const getAppFolderList = useCallback<SelectOneResourceServer>(
+    ({ parentId, offset, pageSize }, cancelToken) => {
       const folderType = isAgentPage ? AppTypeEnum.folder : AppTypeEnum.toolFolder;
 
-      return getMyApps({
-        parentId,
-        type: folderType
-      }).then((res) =>
-        res
-          .filter((item) => item.permission.hasWritePer)
-          .map((item) => ({
-            id: item._id,
-            name: item.name
-          }))
-      );
+      return getMyAppsV2(
+        {
+          parentId,
+          type: folderType,
+          offset,
+          pageSize,
+          excludeAppId: moveAppId
+        },
+        cancelToken
+      ).then(({ list, total }) => ({
+        total,
+        list: list.map((item) => ({
+          id: item._id,
+          name: item.name,
+          avatar: FolderImgUrl,
+          isFolder: true,
+          disabled: !item.permission.hasWritePer
+        }))
+      }));
     },
-    [isAgentPage]
+    [isAgentPage, moveAppId]
   );
 
   useEffect(() => {
@@ -238,10 +260,12 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: AppListContextType = {
     parentId,
     appType,
-    myApps: data,
+    myApps,
     loadMyApps,
+    ScrollData,
     refetchFolderDetail,
     isFetchingApps,
+    isEmpty,
     folderDetail,
     paths,
     onUpdateApp,
@@ -249,7 +273,9 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     searchKey,
     setSearchKey,
     listFilters,
-    setListFilters
+    setListFilters,
+    columnCount,
+    pageSize
   };
   return (
     <AppListContext.Provider value={contextValue}>

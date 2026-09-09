@@ -13,6 +13,8 @@ import {
   GetAppDetailResponseSchema,
   ListAppBodySchema,
   ListAppResponseSchema,
+  ListAppV2BodySchema,
+  ListAppV2ResponseSchema,
   TransitionWorkflowBodySchema,
   TransitionWorkflowResponseSchema,
   UpdateAppBodySchema,
@@ -39,6 +41,30 @@ export const AppCommonPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: ListAppResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/listV2': {
+    post: {
+      summary: '分页获取应用列表',
+      description: '分页获取当前团队下当前用户可读的应用或文件夹列表',
+      tags: [DevApiTagsMap.appCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ListAppV2BodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功获取分页应用列表',
+          content: {
+            'application/json': {
+              schema: ListAppV2ResponseSchema
             }
           }
         }

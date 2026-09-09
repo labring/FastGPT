@@ -9,6 +9,7 @@ import {
   getMultiSelectFilterSummary,
   mergeRememberedFilterOptions,
   syncSelectedFilterValues,
+  syncSelectedFilterValuesForRequest,
   toggleMultiSelectFilterValue,
   toMultiSelectFilterQuery
 } from '../../../../components/common/TagFilter/multiSelectFilterUtils';
@@ -135,6 +136,46 @@ describe('multiSelectFilter helpers', () => {
       mode: 'all',
       values: []
     });
+  });
+
+  it('only clears persisted values after the matching request and preserves user selections', () => {
+    const value = { mode: 'selected' as const, values: ['me'] };
+
+    expect(
+      syncSelectedFilterValuesForRequest({
+        value,
+        validValues: [],
+        selectedIdsKey: 'me',
+        requestKey: 'me'
+      })
+    ).toEqual({ mode: 'all', values: [] });
+    expect(
+      syncSelectedFilterValuesForRequest({
+        value,
+        validValues: [],
+        selectedIdsKey: 'me',
+        requestKey: 'me',
+        userSelectedIdsKey: 'me'
+      })
+    ).toBeNull();
+    expect(
+      syncSelectedFilterValuesForRequest({
+        value: { mode: 'selected', values: ['latest'] },
+        validValues: [],
+        selectedIdsKey: 'latest',
+        requestKey: 'old',
+        userSelectedIdsKey: 'latest'
+      })
+    ).toBeNull();
+    expect(
+      syncSelectedFilterValuesForRequest({
+        value: { mode: 'selected', values: ['latest'] },
+        validValues: [],
+        selectedIdsKey: 'latest',
+        requestKey: 'latest',
+        userSelectedIdsKey: 'latest'
+      })
+    ).toBeNull();
   });
 
   it('keeps selected options that disappeared from the current list', () => {

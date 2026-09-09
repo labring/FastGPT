@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSkillList } from '@/web/core/skill/api';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { getSkillListV2 } from '@/web/core/skill/api';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
@@ -20,25 +20,22 @@ export const useSkillSelectData = () => {
   const parentId: ParentIdType = navStack.length > 0 ? navStack[navStack.length - 1].id : null;
 
   const {
-    data: skillList = [],
-    loading: isLoadingSkillList,
-    refreshAsync: refreshSkillList
-  } = useRequest(
-    async () => {
-      const { list } = await getSkillList({
-        source: 'mine',
-        parentId,
-        searchKey: searchKey || undefined,
-        withAppCount: false
-      });
-      return list;
+    data: skillList,
+    isLoading: isLoadingSkillList,
+    total,
+    ScrollData,
+    refreshList: refreshSkillList
+  } = useScrollPagination(getSkillListV2, {
+    params: {
+      source: 'mine',
+      parentId,
+      searchKey: searchKey || undefined,
+      withAppCount: false
     },
-    {
-      manual: false,
-      refreshDeps: [parentId, searchKey],
-      throttleWait: 300
-    }
-  );
+    pageSize: 50,
+    refreshDeps: [parentId, searchKey],
+    throttleWait: 300
+  });
 
   const onEnterFolder = useCallback((item: SkillSelectItemType) => {
     setNavStack((prev) => [...prev, { id: item._id, name: item.name }]);
@@ -64,7 +61,9 @@ export const useSkillSelectData = () => {
 
   return {
     skillList,
+    total,
     isLoadingSkillList,
+    ScrollData,
     searchKey,
     setSearchKey,
     paths,

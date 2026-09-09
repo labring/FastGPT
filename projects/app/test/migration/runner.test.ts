@@ -207,26 +207,24 @@ describe('system migration runner', () => {
       ),
       createMigration('20260903_runner_retry_later', laterTask)
     ];
+    // 与生产默认比例一致地拉开 lease 余量（heartbeat 10ms / lease 2s），
+    // 避免 CI 调度或 Mongo 延迟超过 80ms 时被误判失权而提前接管。
+    const timing = {
+      scanIntervalMs: 10,
+      heartbeatIntervalMs: 10,
+      leaseDurationMs: 2_000,
+      blockingPollIntervalMs: 10
+    };
     const runner = createSystemMigrationRunner({
       migrations,
       runnerId: 'runner-retry',
-      timing: {
-        scanIntervalMs: 10,
-        heartbeatIntervalMs: 10,
-        leaseDurationMs: 80,
-        blockingPollIntervalMs: 10
-      },
+      timing,
       logger
     });
     const observerRunner = createSystemMigrationRunner({
       migrations,
       runnerId: 'runner-observer',
-      timing: {
-        scanIntervalMs: 10,
-        heartbeatIntervalMs: 10,
-        leaseDurationMs: 80,
-        blockingPollIntervalMs: 10
-      },
+      timing,
       logger
     });
     let restartedRunner: ReturnType<typeof createSystemMigrationRunner> | undefined;
@@ -269,27 +267,23 @@ describe('system migration runner', () => {
 
       runner.stop();
       observerRunner.stop();
-      // failed 是终态，重启节点只执行一次即时扫描；等待旧 lease 过期后再启动才能接管。
-      await new Promise((resolve) => setTimeout(resolve, 100));
       restartedRunner = createSystemMigrationRunner({
         migrations,
         runnerId: 'runner-after-restart',
-        timing: {
-          scanIntervalMs: 10,
-          heartbeatIntervalMs: 10,
-          leaseDurationMs: 80,
-          blockingPollIntervalMs: 10
-        },
+        timing,
         logger
       });
       await restartedRunner.start();
+      // 旧 lease 过期前 claim 会被拒且队列自动暂停；每轮轮询手动 tick 重试 claim，
+      // lease 一过期（Mongo 服务端时间）即被本节点接管并重试成功，不再依赖固定等待时长。
       await vi.waitFor(
         async () => {
+          await restartedRunner.tick();
           expect((await MongoSystemMigrationState.findById(migrations[0].id).lean())?.status).toBe(
             SystemMigrationStatusEnum.succeeded
           );
         },
-        { timeout: 2_000 }
+        { timeout: 5_000 }
       );
 
       const retriedState = await MongoSystemMigrationState.findById(migrations[0].id).lean();
@@ -524,7 +518,7 @@ describe('system migration runner', () => {
     const timing = {
       scanIntervalMs: 10,
       heartbeatIntervalMs: 15,
-      leaseDurationMs: 80,
+      leaseDurationMs: 2_000,
       blockingPollIntervalMs: 10
     };
     const firstRunner = createSystemMigrationRunner({

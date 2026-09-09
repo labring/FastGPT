@@ -12,6 +12,7 @@ import type {
 } from '@fastgpt/global/support/permission/collaborator';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
+import type { RolePerMapType } from '@fastgpt/global/support/permission/type';
 import { MongoResourcePermission } from '../schema';
 import { pickCollaboratorIdFields } from '../utils';
 
@@ -71,6 +72,7 @@ type FindResourceKeysByCollaboratorsPermissionProps = {
   permission: PermissionValueType;
   matchLogic: ResourcePermissionMatchLogic;
   personalPermissionPriority: boolean;
+  rolePerMap?: RolePerMapType;
 };
 
 const withSession = (session?: ClientSession) => (session ? { session } : undefined);
@@ -196,7 +198,8 @@ export const resourcePermissionRepo = {
     orgIds,
     permission,
     matchLogic,
-    personalPermissionPriority
+    personalPermissionPriority,
+    rolePerMap = CommonRolePerMap
   }: FindResourceKeysByCollaboratorsPermissionProps) => {
     if (permission === OwnerPermissionVal) {
       throw new Error('Owner permission must be checked through owner authorization');

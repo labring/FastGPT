@@ -7,7 +7,8 @@ import React, {
 } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSkillList, getSkillFolderPath, getSkillDetail } from '@/web/core/skill/api';
+import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
+import { getSkillListV2, getSkillFolderPath, getSkillDetail } from '@/web/core/skill/api';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
@@ -24,6 +25,10 @@ import {
   toListTmbIds,
   type ResourceListFilterType
 } from '@/pageComponents/dashboard/agent/filters/utils';
+import {
+  getGridRequestPageSize,
+  useResponsiveGridPageSize
+} from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 
 export type SkillListItemType = Omit<
   ListSkillsResponse['list'][number],
@@ -37,7 +42,9 @@ export type SkillListItemType = Omit<
 type SkillListContextType = {
   skills: SkillListItemType[];
   isFetchingSkills: boolean;
+  isEmpty: boolean;
   refreshSkills: () => void;
+  ScrollData: ScrollListType;
   searchKey: string;
   setSearchKey: Dispatch<SetStateAction<string>>;
   parentId: string | null;
@@ -47,14 +54,18 @@ type SkillListContextType = {
   };
   listFilters: ResourceListFilterType;
   setListFilters: (next: ResourceListFilterType) => void;
+  columnCount: number;
+  pageSize: number;
 };
 
 export const SkillListContext = createContext<SkillListContextType>({
   skills: [],
   isFetchingSkills: false,
+  isEmpty: false,
   refreshSkills: () => {
     throw new Error('Function not implemented.');
   },
+  ScrollData: () => <></>,
   searchKey: '',
   setSearchKey: () => {
     throw new Error('Function not implemented.');
@@ -65,7 +76,9 @@ export const SkillListContext = createContext<SkillListContextType>({
   listFilters: defaultAppListFiltersStore.skill,
   setListFilters: () => {
     throw new Error('Function not implemented.');
-  }
+  },
+  columnCount: 1,
+  pageSize: 50
 });
 
 const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -92,28 +105,35 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const applyToolbarFilters = isPc;
   const tmbIds =
     applyToolbarFilters && feConfigs.isPlus ? toListTmbIds(listFilters.creator) : undefined;
+  const { columnCount, pageSize } = useResponsiveGridPageSize(
+    parentId ? { base: 1, sm: 2, md: 2, lg: 3 } : { base: 1, sm: 2, md: 2, lg: 3, xl: 4 }
+  );
 
   const {
-    data,
-    refresh: refreshSkills,
-    loading: isFetchingSkills
-  } = useRequest(
-    () =>
-      getSkillList({
+    data: skills = [],
+    isLoading: isFetchingSkills,
+    isEmpty,
+    ScrollData,
+    fetchData
+  } = useScrollPagination(
+    ({ offset = 0, pageSize = 50 }) =>
+      getSkillListV2({
         source: 'mine',
         searchKey,
         parentId,
+        offset,
+        pageSize: getGridRequestPageSize(pageSize, offset),
         ...(applyToolbarFilters ? { sort: listFilters.sort } : {}),
         ...(tmbIds !== undefined ? { tmbIds } : {})
-      }).then((res) =>
-        res.list.map((item) => ({
+      }).then((res) => ({
+        list: res.list.map((item) => ({
           ...item,
           createTime: new Date(item.createTime),
           updateTime: new Date(item.updateTime)
-        }))
-      ),
+        })),
+        total: res.total
+      })),
     {
-      manual: false,
       refreshDeps: [
         searchKey,
         parentId,
@@ -122,10 +142,12 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         feConfigs.isPlus,
         isPc
       ],
+      pageSize,
       throttleWait: 500,
       refreshOnWindowFocus: false
     }
   );
+  const refreshSkills = () => fetchData({ init: true });
 
   // 加载面包屑路径（仅在文件夹内时请求）
   const { data: paths = [] } = useRequest(
@@ -153,16 +175,20 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const contextValue: SkillListContextType = {
-    skills: data || [],
+    skills,
     isFetchingSkills,
+    isEmpty,
     refreshSkills,
+    ScrollData,
     searchKey,
     setSearchKey,
     parentId,
     paths,
     folderDetail,
     listFilters,
-    setListFilters
+    setListFilters,
+    columnCount,
+    pageSize
   };
 
   return <SkillListContext.Provider value={contextValue}>{children}</SkillListContext.Provider>;

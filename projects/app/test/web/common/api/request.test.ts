@@ -243,9 +243,10 @@ describe('request utils', () => {
     });
 
     it('should handle first request', () => {
-      const result = checkMaxQuantity({ url: 'test', maxQuantity: 2 });
+      const cancelToken = new AbortController();
+      const result = checkMaxQuantity({ url: 'test', maxQuantity: 2, cancelToken });
       expect(result.id).toBeDefined();
-      expect(result.abortSignal).toBeDefined();
+      expect(result.abortSignal).toBe(cancelToken.signal);
       expect(maxQuantityMap['test']?.length).toBe(1);
     });
 

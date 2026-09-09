@@ -49,8 +49,6 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     useSkillSandboxOperationGuard();
 
   const {
-    skills,
-    isFetchingSkills,
     refreshSkills,
     searchKey,
     setSearchKey,
@@ -72,6 +70,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   });
 
   const onNavigate = (targetParentId: ParentIdType) => {
+    setSearchKey('');
     router.push({
       query: {
         ...router.query,
@@ -94,7 +93,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           pr={[3, 6]}
           pl={6}
           pt={6}
-          overflowY={'auto'}
+          overflowY={'hidden'}
           overflowX={'hidden'}
         >
           <Flex alignItems={'center'} gap={3} minW={0}>
@@ -173,7 +172,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             </Box>
           )}
 
-          <MyBox flex={'1 0 0'} isLoading={skills.length === 0 && isFetchingSkills}>
+          <MyBox flex={'1 0 0'} minH={0}>
             <List
               onClickCreate={
                 hasCreatePer

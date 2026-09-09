@@ -28,6 +28,7 @@ type UseVirtualListProps<TParams extends PaginationType> = {
   showErrorToast?: boolean;
   disabled?: boolean;
   showNoMoreTip?: boolean;
+  throttleWait?: number;
 };
 
 type VirtualListProps = {
@@ -39,7 +40,7 @@ const loadMoreThreshold = 100;
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 type VirtualScrollWindowOptions = {
-  containerRef: RefObject<HTMLElement>;
+  containerRef: RefObject<HTMLElement | null>;
   syncWindow: (options?: { usePreload?: boolean }) => void;
   listenToWindow?: boolean;
 };
@@ -219,7 +220,7 @@ export function useVirtualList<
   TParams extends PaginationType,
   TData extends PaginationResponseType
 >(
-  api: (data: TParams) => Promise<TData>,
+  api: (data: TParams, cancelToken?: AbortController) => Promise<TData>,
   {
     refreshDeps,
     itemHeight,
@@ -229,7 +230,8 @@ export function useVirtualList<
     EmptyTip,
     showErrorToast = true,
     disabled = false,
-    showNoMoreTip = true
+    showNoMoreTip = true,
+    throttleWait
   }: UseVirtualListProps<TParams>
 ) {
   const { t } = useTranslation();
@@ -243,7 +245,8 @@ export function useVirtualList<
       EmptyTip,
       showErrorToast,
       disabled,
-      showNoMoreTip
+      showNoMoreTip,
+      throttleWait
     }
   );
 

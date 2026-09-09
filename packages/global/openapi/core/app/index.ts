@@ -10,6 +10,7 @@ import { AppTemplatePath } from './template';
 import { AppPermissionPath } from './permission';
 import { ToolPath } from './tool';
 import { AppEvaluationPath } from './evaluation';
+import { ToolSetPath } from './toolSet';
 
 export const AppPath: OpenAPIPath = {
   ...AppCommonPath,
@@ -18,6 +19,7 @@ export const AppPath: OpenAPIPath = {
   ...AppVersionPath,
   ...AppTemplatePath,
   ...AppEvaluationPath,
+  ...ToolSetPath,
   ...AppLogPath,
   ...PublishChannelPath,
   ...McpToolsPath,

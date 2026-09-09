@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -17,6 +17,7 @@ import { useSkillSandboxOperationGuard } from '@/components/core/skill/useSkillS
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getSkillDetail } from '@/web/core/skill/api';
+import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 
 const ImportSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/ImportSkillModal'));
 const CreateSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/CreateSkillModal'));
@@ -105,9 +106,19 @@ const SkillSelectModal = ({
     paths,
     parentId,
     refreshSkillList,
+    ScrollData,
     onEnterFolder,
     onUpdateParentId
   } = useSkillSelectData();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { gridRef, renderVirtualGridItems } = useVirtualGridList({
+    list: skillList,
+    listKey: `skill-select-${parentId}-${searchKey}`,
+    scrollContainerRef,
+    defaultColumnCount: 2,
+    estimatedRowHeight: 54,
+    estimatedRowGap: 12
+  });
   const isAtLimit = selectedSkills.length >= MAX_SKILL_COUNT;
   const showEmptyActions =
     !isLoadingSkillList &&
@@ -167,7 +178,7 @@ const SkillSelectModal = ({
           title: t('common:load_failed')
         });
       } finally {
-        refreshSkillList().catch(() => {});
+        refreshSkillList();
       }
     },
     [isAtLimit, onAddSkill, refreshSkillList, selectedSkills, t, toast]
@@ -242,43 +253,55 @@ const SkillSelectModal = ({
               </Box>
             )}
 
-            <MyBox isLoading={isLoadingSkillList} flex={'1 0 0'} w={'full'} minH={0}>
-              <Box overflow={'overlay'} h={'100%'} w={'full'}>
-                {skillList.length > 0 ? (
-                  <Grid
-                    gridTemplateColumns={['minmax(0, 1fr)', 'repeat(2, minmax(0, 1fr))']}
-                    columnGap={6}
-                    rowGap={3}
-                    w={'full'}
-                  >
-                    {skillList.map((item) => (
-                      <SkillCard
-                        key={item._id}
-                        item={item}
-                        isSelected={selectedSkills.some((s) => s.skillId === item._id)}
-                        isAtLimit={isAtLimit}
-                        onAdd={() =>
-                          onAddSkill({
-                            skillId: item._id,
-                            name: item.name,
-                            description: item.description,
-                            avatar: item.avatar,
-                            isDeleted: false
-                          })
-                        }
-                        onRemove={() => onRemoveSkill(item._id)}
-                        onOpenFolder={() => onEnterFolder(item)}
-                      />
-                    ))}
-                  </Grid>
-                ) : (
+            <MyBox
+              isLoading={isLoadingSkillList && skillList.length === 0}
+              flex={'1 0 0'}
+              w={'full'}
+              minH={0}
+            >
+              <ScrollData
+                ScrollContainerRef={scrollContainerRef}
+                flex={1}
+                minH={0}
+                isLoading={isLoadingSkillList}
+                showLoadingOverlay={false}
+              >
+                <Grid
+                  ref={gridRef}
+                  gridTemplateColumns={['minmax(0, 1fr)', 'repeat(2, minmax(0, 1fr))']}
+                  columnGap={6}
+                  rowGap={3}
+                  w={'full'}
+                  px={1}
+                >
+                  {renderVirtualGridItems((item) => (
+                    <SkillCard
+                      key={item._id}
+                      item={item}
+                      isSelected={selectedSkills.some((s) => s.skillId === item._id)}
+                      isAtLimit={isAtLimit}
+                      onAdd={() =>
+                        onAddSkill({
+                          skillId: item._id,
+                          name: item.name,
+                          description: item.description,
+                          avatar: item.avatar,
+                          isDeleted: false
+                        })
+                      }
+                      onRemove={() => onRemoveSkill(item._id)}
+                      onOpenFolder={() => onEnterFolder(item)}
+                    />
+                  ))}
+                </Grid>
+                {skillList.length === 0 && !isLoadingSkillList && (
                   <EmptyTip
                     text={
                       hasSkillCreatePer ? t('skill:no_skills') : t('skill:no_skills_no_permission')
                     }
                   />
                 )}
-              </Box>
+              </ScrollData>
             </MyBox>
           </>
         )}
@@ -364,6 +387,7 @@ const SkillCard = React.memo(function SkillCard({
       }
     >
       <Grid
+        data-virtual-item=""
         alignItems={'center'}
         gridTemplateColumns={'auto minmax(0, 1fr) auto'}
         columnGap={2}
@@ -373,7 +397,7 @@ const SkillCard = React.memo(function SkillCard({
         px={3}
         _hover={{ bg: 'myWhite.600' }}
         borderRadius={'sm'}
-        h={'100%'}
+        h={'54px'}
       >
         {isFolder ? (
           <MyIcon name={'common/folderFill'} w={'1.75rem'} color={'myGray.500'} flexShrink={0} />

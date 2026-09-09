@@ -1,4 +1,4 @@
-import { getMyApps, getAppBasicInfoByIds } from '@/web/core/app/api';
+import { getAppBasicInfoByIds, getMyAppsV2 } from '@/web/core/app/api';
 import { Box, Button, Grid, GridItem, HStack, VStack, Flex, Checkbox } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -18,6 +18,7 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { MAX_QUICK_APP_COUNT } from './constants';
+import { useVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 
 type Props = {
   selectedIds: string[];
@@ -42,35 +43,33 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
   const [parentId, setParentId] = useState<ParentIdType>('');
 
   const {
-    data: appData = { apps: [], paths: [] as { parentId: string; parentName: string }[] },
-    loading: isFetching
-  } = useRequest(
-    async () => {
-      const [apps, paths] = await Promise.all([
-        getMyApps({
-          parentId,
-          searchKey: searchAppName,
-          type: [
-            AppTypeEnum.folder,
-            AppTypeEnum.simple,
-            AppTypeEnum.chatAgent,
-            AppTypeEnum.workflow
-          ]
-        }),
-        searchAppName.trim()
-          ? Promise.resolve([])
-          : getAppFolderPath({ sourceId: parentId, type: 'current' })
-      ]);
-      return { apps, paths };
+    scrollDataList,
+    totalData,
+    ScrollList,
+    isLoading: loadingApps
+  } = useVirtualList(getMyAppsV2, {
+    params: {
+      parentId,
+      searchKey: searchAppName,
+      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow]
     },
+    pageSize: 50,
+    itemHeight: 40,
+    refreshDeps: [parentId, searchAppName],
+    throttleWait: 500
+  });
+  const availableApps = scrollDataList.map(({ data }) => data);
+  const isFetching = loadingApps && totalData.length === 0;
+  const { data: paths = [] } = useRequest(
+    () =>
+      searchAppName.trim()
+        ? Promise.resolve([])
+        : getAppFolderPath({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
-      throttleWait: 500,
       refreshDeps: [parentId, searchAppName]
     }
   );
-  const availableApps = appData.apps;
-  const paths = appData.paths;
 
   const availableAppsMap = useMemo(() => {
     const map = new Map<string, App>();
@@ -235,15 +234,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                   )}
                 </Box>
 
-                <VStack
-                  align="stretch"
-                  spacing={1.5}
-                  flex={1}
-                  px={4}
-                  overflowY="auto"
-                  h={0}
-                  minH={0}
-                >
+                <ScrollList flex={1} px={4} minH={0}>
                   {availableApps.length === 0 && !isFetching && (
                     <EmptyTip text={t('common:folder.empty')} />
                   )}
@@ -305,7 +296,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                       </Flex>
                     </Box>
                   ))}
-                </VStack>
+                </ScrollList>
               </Flex>
             </GridItem>
 

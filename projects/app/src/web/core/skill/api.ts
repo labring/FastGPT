@@ -36,21 +36,29 @@ import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import type {
   ChangeSkillOwnerBody,
-  ChangeSkillOwnerResponse
+  ChangeSkillOwnerResponse,
+  ListSkillsV2Query
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
   POST<ListSkillsResponse>('/core/ai/skill/list', data);
 
+export const getSkillListV2 = (data: ListSkillsV2Query, cancelToken?: AbortController) =>
+  POST<ListSkillsResponse>('/core/ai/skill/listV2', data, { cancelToken });
+
+/** 获取当前筛选条件下的全部 Skill，供需要跨页遍历资源的选择器使用。 */
+export const getAllSkillList = (data: Omit<ListSkillsQuery, 'page' | 'pageSize'>) =>
+  getSkillList(data).then((res) => res.list);
+
 /** 获取 Skill 文件夹列表（用于移动弹窗） */
 export const getSkillFolderList = ({ parentId }: GetResourceFolderListProps) =>
-  getSkillList({
+  getAllSkillList({
     source: 'mine',
     type: AgentSkillTypeEnum.folder,
     parentId: parentId ?? null
   }).then((res) =>
-    res.list
+    res
       .filter((item) => item.permission.hasWritePer)
       .map((item) => ({ id: item._id, name: item.name }))
   );

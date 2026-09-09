@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -169,16 +169,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:llm_model_not_config')
           });
-          if (router.pathname !== '/admin/config/modelProvider') {
-            router.push('/admin/config/modelProvider?modelTab=config');
+          if (router.pathname !== '/config/model') {
+            router.push('/config/model?modelTab=config');
           }
         } else if (!activeModels.some((model) => model.type === ModelTypeEnum.embedding)) {
           toast({
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          if (router.pathname !== '/admin/config/modelProvider') {
-            router.push('/admin/config/modelProvider?modelTab=config');
+          if (router.pathname !== '/config/model') {
+            router.push('/config/model?modelTab=config');
           }
         }
       })
@@ -206,43 +206,33 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     }
   }, [router, router.pathname, userInfo?.team?.accountCancellation]);
 
+  const showPcNavbar = isPc === true && !isHideNavbar;
+  const showPhoneNavbar =
+    isPc === false && !(phoneUnShowLayoutRoute[router.pathname] || isChatPage);
+
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>
-        {isPc === true && (
-          <>
-            {isHideNavbar ? (
-              <Auth>{children}</Auth>
-            ) : (
-              <Auth>
-                <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>
-                  <Navbar unread={unread} />
-                </Box>
-                <Box h={'100%'} ml={navbarWidth} overflow={'overlay'}>
-                  {children}
-                </Box>
-              </Auth>
+        {/* Keep a single Auth/children tree so isPc toggles only change chrome, not remount page state. */}
+        <Auth>
+          {showPcNavbar && (
+            <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>
+              <Navbar unread={unread} />
+            </Box>
+          )}
+          <Box
+            h={'100%'}
+            {...(showPcNavbar ? { ml: navbarWidth, overflow: 'overlay' } : {})}
+            {...(showPhoneNavbar ? { display: 'flex', flexDirection: 'column' } : {})}
+          >
+            <Box {...(showPhoneNavbar ? { flex: '1 0 0', h: 0 } : { h: '100%' })}>{children}</Box>
+            {showPhoneNavbar && (
+              <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
+                <NavbarPhone unread={unread} />
+              </Box>
             )}
-          </>
-        )}
-        {isPc === false && (
-          <>
-            {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
-              <Auth>{children}</Auth>
-            ) : (
-              <Auth>
-                <Flex h={'100%'} flexDirection={'column'}>
-                  <Box flex={'1 0 0'} h={0}>
-                    {children}
-                  </Box>
-                  <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
-                    <NavbarPhone unread={unread} />
-                  </Box>
-                </Flex>
-              </Auth>
-            )}
-          </>
-        )}
+          </Box>
+        </Auth>
       </Box>
       {feConfigs?.isPlus && (
         <>
