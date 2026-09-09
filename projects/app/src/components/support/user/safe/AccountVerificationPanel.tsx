@@ -635,11 +635,9 @@ export const AccountVerificationPanel = ({
           ) : (
             <VStack spacing={3} px={4}>
               <Text color="myGray.600" fontSize="sm" textAlign="center">
-                {t(
-                  createFailed
-                    ? 'common:password_wechat_load_failed'
-                    : 'common:password_wechat_expired'
-                )}
+                {createFailed
+                  ? t('common:password_wechat_load_failed')
+                  : t('common:password_wechat_expired')}
               </Text>
               <Button size="sm" onClick={retryCreate}>
                 {t('common:password_verification_retry')}
