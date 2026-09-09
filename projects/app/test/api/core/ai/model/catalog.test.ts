@@ -101,6 +101,26 @@ describe('GET /api/core/ai/model/catalog', () => {
     expect(result.data?.providers[0].provider).toBe('provider');
   });
 
+  it.each(['authentication', 'permission query'])(
+    'rejects %s failure even when the client has the current cached version',
+    async (stage) => {
+      const failure = new Error(`Injected ${stage} failure`);
+      if (stage === 'authentication') {
+        mocks.authUserPer.mockRejectedValueOnce(failure);
+      } else {
+        mocks.getMemberModelCatalogPermission.mockRejectedValueOnce(failure);
+      }
+
+      await expect(
+        handler({ query: { version: '3:catalog-version:permission-version' } } as any)
+      ).rejects.toBe(failure);
+      expect(getCachedModelHandle()?.getActiveModels()).toHaveLength(1);
+      if (stage === 'authentication') {
+        expect(mocks.getMemberModelCatalogPermission).not.toHaveBeenCalled();
+      }
+    }
+  );
+
   it('returns only the version when the client cache is current', async () => {
     const result = await handler({
       query: { version: '1:catalog-version:permission-version' }

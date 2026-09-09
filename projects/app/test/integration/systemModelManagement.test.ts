@@ -462,6 +462,35 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await MongoAIModel.countDocuments()).toBe(1);
   });
 
+  it('rolls back MongoDB after successful channel writes and deduplicates external bindings on retry', async () => {
+    const beforeDefaults = await MongoAIDefaultModel.findOne().lean();
+    // 在真实事务已增加 revision 后注入模型写入失败；HTTP 渠道写入已经完成。
+    vi.spyOn(MongoAIModel, 'create').mockImplementationOnce(() => {
+      throw new Error('Injected model insert failure');
+    });
+    const input = { modelData: createDraft('retry-after-db-failure'), channelIds: [1, 2] };
+
+    await expect(createSystemModel(input)).rejects.toThrow('Injected model insert failure');
+
+    expect(await MongoAIModel.countDocuments()).toBe(0);
+    expect(await MongoAIDefaultModel.findOne().lean()).toEqual(beforeDefaults);
+    expect(await catalogEntity.readSystemModelRevision()).toBe(0);
+    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
+    expect(channels.map(({ models }) => models)).toEqual([
+      ['unrelated', 'retry-after-db-failure'],
+      ['retry-after-db-failure']
+    ]);
+
+    await createSystemModel(input);
+
+    expect(await MongoAIModel.countDocuments()).toBe(1);
+    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
+    expect(channels.map(({ models }) => models)).toEqual([
+      ['unrelated', 'retry-after-db-failure'],
+      ['retry-after-db-failure']
+    ]);
+  });
+
   it('rejects concurrent duplicate creation through the real unique index with one committed revision', async () => {
     const results = await Promise.allSettled([
       createSystemModel({ modelData: createDraft('concurrent'), channelIds: [] }),
