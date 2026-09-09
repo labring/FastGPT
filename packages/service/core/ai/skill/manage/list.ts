@@ -21,6 +21,8 @@ import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
+import { getCurrentResourceReferenceCounts } from '../../../app/currentResourceRefs';
+import { findSkillAndAllChildren } from './folder';
 
 type TeamPermission = {
   isOwner: boolean;
@@ -67,6 +69,7 @@ export const listReadableAgentSkills = async ({
   page,
   pageSize,
   withAppCount,
+  referenceScope,
   sort,
   tmbIds,
   creationStatus,
@@ -242,10 +245,43 @@ export const listReadableAgentSkills = async ({
   const total = dbTotal ?? formatSkills.length;
   const pagedSkills = formatSkills;
 
-  const nonFolderSkills =
-    withAppCount !== false ? pagedSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];
-  const appCountMap = new Map<string, number>();
-  if (nonFolderSkills.length > 0) {
+  const appCountMap = await (async () => {
+    if (withAppCount === false) return new Map<string, number>();
+
+    if (referenceScope === 'current') {
+      const resourceGroups = new Map<string, string[]>();
+      await Promise.all(
+        pagedSkills.map(async (skill) => {
+          const skillId = String(skill._id);
+          if (skill.type !== AgentSkillTypeEnum.folder) {
+            resourceGroups.set(skillId, [skillId]);
+            return;
+          }
+
+          const descendants = await findSkillAndAllChildren({
+            teamId,
+            skillId,
+            fields: '_id type'
+          });
+          resourceGroups.set(
+            skillId,
+            descendants
+              .filter((item) => item.type !== AgentSkillTypeEnum.folder)
+              .map((item) => String(item._id))
+          );
+        })
+      );
+      return getCurrentResourceReferenceCounts({
+        teamId,
+        resourceType: 'skill',
+        resourceGroups
+      });
+    }
+
+    const nonFolderSkills = pagedSkills.filter((skill) => skill.type !== AgentSkillTypeEnum.folder);
+    const publishedCountMap = new Map<string, number>();
+    if (nonFolderSkills.length === 0) return publishedCountMap;
+
     const skillIdStrings = nonFolderSkills.map((skill) => String(skill._id));
     const counts = await MongoApp.aggregate<{ _id: string; count: number }>([
       {
@@ -264,10 +300,9 @@ export const listReadableAgentSkills = async ({
         }
       }
     ]);
-    counts.forEach((item) => {
-      appCountMap.set(String(item._id), item.count);
-    });
-  }
+    counts.forEach((item) => publishedCountMap.set(String(item._id), item.count));
+    return publishedCountMap;
+  })();
 
   const listWithAppCount = pagedSkills.map((skill) => ({
     ...skill,

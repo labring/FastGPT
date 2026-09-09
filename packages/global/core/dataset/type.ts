@@ -326,7 +326,8 @@ export const DatasetListItemSchema = z.object({
   }),
   inheritPermission: z.boolean().meta({ description: '继承权限' }),
   private: z.boolean().optional().meta({ description: '是否私有' }),
-  sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' })
+  sourceMember: SourceMemberSchema.optional().meta({ description: '来源成员' }),
+  appCount: z.number().int().nonnegative().optional().meta({ description: '当前草稿关联应用数量' })
 });
 export type DatasetListItemType = z.infer<typeof DatasetListItemSchema>;
 

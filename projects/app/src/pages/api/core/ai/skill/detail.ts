@@ -13,11 +13,17 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildAppSkillRefMongoQuery } from '@fastgpt/service/core/app/resourceRefs';
+import { getCurrentResourceReferenceCounts } from '@fastgpt/service/core/app/currentResourceRefs';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { findSkillAndAllChildren } from '@fastgpt/service/core/ai/skill/manage/folder';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetSkillDetailQuery>
 ): Promise<GetSkillDetailResponse> {
-  const { skillId } = parseApiInput({ req, querySchema: GetSkillDetailQuerySchema }).query;
+  const { skillId, referenceScope } = parseApiInput({
+    req,
+    querySchema: GetSkillDetailQuerySchema
+  }).query;
 
   if (!skillId || !isValidObjectId(skillId)) {
     return Promise.reject(SkillErrEnum.invalidSkillId);
@@ -31,11 +37,34 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  const appCount = await MongoApp.countDocuments({
-    teamId: new Types.ObjectId(String(teamId)),
-    deleteTime: null,
-    ...buildAppSkillRefMongoQuery(skill._id.toString())
-  });
+  const appCount = await (async () => {
+    if (referenceScope !== 'current') {
+      return MongoApp.countDocuments({
+        teamId: new Types.ObjectId(String(teamId)),
+        deleteTime: null,
+        ...buildAppSkillRefMongoQuery(skill._id.toString())
+      });
+    }
+
+    const resourceIds =
+      skill.type === AgentSkillTypeEnum.folder
+        ? await findSkillAndAllChildren({
+            teamId,
+            skillId,
+            fields: '_id type'
+          }).then((items) =>
+            items
+              .filter((item) => item.type !== AgentSkillTypeEnum.folder)
+              .map((item) => String(item._id))
+          )
+        : [skillId];
+    const counts = await getCurrentResourceReferenceCounts({
+      teamId,
+      resourceType: 'skill',
+      resourceGroups: new Map([[skillId, resourceIds]])
+    });
+    return counts.get(skillId) ?? 0;
+  })();
 
   return {
     _id: skill._id,

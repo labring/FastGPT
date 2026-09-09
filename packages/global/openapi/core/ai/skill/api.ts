@@ -28,6 +28,7 @@ const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox ins
 const NullableParentIdSchema = z.string().nullable().optional().meta({
   description: '父级目录 ID'
 });
+export const AppReferenceScopeSchema = z.enum(['published', 'current']);
 
 const createListSkillsQuerySchema = () =>
   z.object({
@@ -44,6 +45,9 @@ const createListSkillsQuerySchema = () =>
     page: z.coerce.number().int().positive().optional().describe('页码'),
     pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
     withAppCount: z.boolean().optional().describe('是否返回引用应用数量'),
+    referenceScope: AppReferenceScopeSchema.optional().describe(
+      '应用引用统计口径，published 为最新发布版本，current 为当前草稿'
+    ),
     sort: z.enum(AppListSortEnum).optional().describe('列表排序，缺省按最近修改倒序'),
     tmbIds: z.array(ObjectIdSchema).optional().describe('按创建者筛选；空数组返回空列表')
   });
@@ -147,7 +151,8 @@ export const DeleteSkillResponseSchema = z.void();
 export type DeleteSkillResponse = z.infer<typeof DeleteSkillResponseSchema>;
 
 export const GetSkillDetailQuerySchema = z.object({
-  skillId: IdSchema
+  skillId: IdSchema,
+  referenceScope: AppReferenceScopeSchema.optional()
 });
 export type GetSkillDetailQuery = z.infer<typeof GetSkillDetailQuerySchema>;
 
@@ -371,7 +376,8 @@ export const SkillDebugChatBodySchema = z.object({
 export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;
 
 export const ListAppsBySkillIdQuerySchema = z.object({
-  skillId: IdSchema
+  skillId: IdSchema,
+  referenceScope: AppReferenceScopeSchema.optional()
 });
 export type ListAppsBySkillIdQuery = z.infer<typeof ListAppsBySkillIdQuerySchema>;
 

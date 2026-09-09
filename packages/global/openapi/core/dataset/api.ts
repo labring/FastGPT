@@ -10,6 +10,8 @@ import {
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
 import { AppListSortEnum } from '../../../core/app/constants';
+import { BoolSchema } from '../../../common/zod';
+import { ReferencedAppsResponseSchema } from '../../../core/app/type';
 import {
   CollaboratorListSchema,
   CollaboratorUpdateListSchema,
@@ -214,6 +216,9 @@ export const GetDatasetListBodySchema = z
     }),
     tmbIds: z.array(ObjectIdSchema).optional().meta({
       description: '按创建者筛选；空数组返回空列表'
+    }),
+    withAppCount: BoolSchema.optional().meta({
+      description: '是否返回知识库及文件夹的当前草稿关联应用数量'
     })
   })
   .meta({
@@ -241,6 +246,12 @@ export type GetDatasetListResponse = z.infer<typeof GetDatasetListResponseSchema
 
 export const GetDatasetListV2ResponseSchema = PaginationResponseSchema(DatasetListItemSchema);
 export type GetDatasetListV2Response = z.infer<typeof GetDatasetListV2ResponseSchema>;
+
+export const GetDatasetReferencedAppsQuerySchema = z.object({
+  datasetId: ObjectIdSchema.meta({ description: '知识库 ID' })
+});
+export type GetDatasetReferencedAppsQuery = z.infer<typeof GetDatasetReferencedAppsQuerySchema>;
+export type GetDatasetReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
 
 /* ============================================================================
  * API: 获取知识库路径

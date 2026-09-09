@@ -10,7 +10,8 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import {
   AppListSortEnum,
   appListSortMongoMap,
-  AppTypeEnum
+  AppTypeEnum,
+  ToolTypeList
 } from '@fastgpt/global/core/app/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -29,6 +30,8 @@ import {
   type ListAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { Types } from '@fastgpt/service/common/mongo';
+import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
+import { getCurrentResourceReferenceCounts } from '@fastgpt/service/core/app/currentResourceRefs';
 
 /*
   获取 APP 列表权限
@@ -41,7 +44,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 */
 
 async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppResponseType> {
-  const { parentId, type, searchKey, sort, tmbIds } = parseApiInput({
+  const { parentId, type, searchKey, sort, tmbIds, withRelatedAppCount } = parseApiInput({
     req,
     bodySchema: ListAppBodySchema
   }).body;
@@ -191,8 +194,53 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     })
     .filter((app) => app.permission.hasReadPer);
 
-  const list = await addSourceMember({ list: formatApps });
-  return ListAppResponseSchema.parse(list);
+  const list = await addSourceMember({
+    list: formatApps
+  });
+
+  const relatedAppCountMap = await (async () => {
+    if (!withRelatedAppCount || list.length === 0) return new Map<string, number>();
+
+    const resourceGroups = new Map<string, string[]>();
+    await Promise.all(
+      list.map(async (app) => {
+        const appId = String(app._id);
+        if (ToolTypeList.includes(app.type)) {
+          resourceGroups.set(appId, [appId]);
+          return;
+        }
+        if (app.type !== AppTypeEnum.toolFolder) return;
+
+        const descendants = await findAppAndAllChildren({
+          teamId,
+          appId,
+          fields: '_id type'
+        });
+        resourceGroups.set(
+          appId,
+          descendants
+            .filter((item) => ToolTypeList.includes(item.type))
+            .map((item) => String(item._id))
+        );
+      })
+    );
+
+    return getCurrentResourceReferenceCounts({
+      teamId,
+      resourceType: 'tool',
+      resourceGroups
+    });
+  })();
+
+  const listWithRelatedAppCount = list.map((app) => ({
+    ...app,
+    ...(withRelatedAppCount &&
+    (ToolTypeList.includes(app.type) || app.type === AppTypeEnum.toolFolder)
+      ? { relatedAppCount: relatedAppCountMap.get(String(app._id)) ?? 0 }
+      : {})
+  }));
+
+  return ListAppResponseSchema.parse(listWithRelatedAppCount);
 }
 
 export default NextAPI(handler);
