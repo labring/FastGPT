@@ -7,6 +7,7 @@ import {
   AppResourceRefsSchema,
   AppScheduledTriggerConfigTypeSchema,
   AppSchemaTypeSchema,
+  ReferencedAppsResponseSchema,
   type AppDetailType,
   type AppListItemType
 } from '../../../../core/app/type';
@@ -313,7 +314,10 @@ export const ListAppBodySchema = z
       .meta({
         example: ['68ad85a7463006c963799a06'],
         description: '按创建者筛选。缺省不过滤；空数组表示无选中创建者，返回空列表'
-      })
+      }),
+    withRelatedAppCount: BoolSchema.optional().meta({
+      description: '是否返回工具及工具文件夹的当前草稿关联应用数量'
+    })
   })
   .meta({
     example: {
@@ -356,7 +360,13 @@ export const AppListItemSchema = z
     inheritPermission: BoolSchema.optional().meta({ description: '是否继承父级权限' }),
     private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
-    hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' })
+    hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
+    relatedAppCount: z
+      .number()
+      .int()
+      .nonnegative()
+      .optional()
+      .meta({ description: '工具或工具文件夹的当前草稿关联应用数量' })
   })
   .meta({
     description: '应用列表项'
@@ -371,6 +381,12 @@ export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchem
   description: '应用列表(分页)'
 });
 export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
+
+export const GetToolReferencedAppsQuerySchema = z.object({
+  toolId: AppIdSchema.meta({ description: '工具应用 ID' })
+});
+export type GetToolReferencedAppsQuery = z.infer<typeof GetToolReferencedAppsQuerySchema>;
+export type GetToolReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
 
 /* ============================================================================
  * API: 获取应用详情

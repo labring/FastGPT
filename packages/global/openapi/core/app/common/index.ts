@@ -11,6 +11,7 @@ import {
   GetAppBasicInfoResponseSchema,
   GetAppDetailQuerySchema,
   GetAppDetailResponseSchema,
+  GetToolReferencedAppsQuerySchema,
   ListAppBodySchema,
   ListAppResponseSchema,
   ListAppV2BodySchema,
@@ -21,6 +22,7 @@ import {
   UpdateAppQuerySchema,
   UpdateAppResponseSchema
 } from './api';
+import { ReferencedAppsResponseSchema } from '../../../../core/app/type';
 
 export const AppCommonPath: OpenAPIPath = {
   '/core/app/list': {
@@ -65,6 +67,26 @@ export const AppCommonPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: ListAppV2ResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/appsByToolId': {
+    get: {
+      summary: '获取引用工具的应用',
+      description: '获取当前草稿引用指定工具的应用，并隐藏当前用户无权查看的应用详情',
+      tags: [DevApiTagsMap.appCommon],
+      requestParams: {
+        query: GetToolReferencedAppsQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回关联应用',
+          content: {
+            'application/json': {
+              schema: ReferencedAppsResponseSchema
             }
           }
         }

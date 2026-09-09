@@ -20,6 +20,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     page,
     pageSize,
     withAppCount,
+    referenceScope,
     sort,
     tmbIds,
     offset
@@ -62,6 +63,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     page: isSkillIdsQuery ? undefined : page,
     pageSize: isSkillIdsQuery ? undefined : pageSize,
     withAppCount,
+    referenceScope,
     sort,
     tmbIds
   });

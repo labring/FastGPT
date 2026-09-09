@@ -17,6 +17,7 @@ import {
   GetDatasetListResponseSchema,
   GetDatasetListV2BodySchema,
   GetDatasetListV2ResponseSchema,
+  GetDatasetReferencedAppsQuerySchema,
   GetDatasetPathsQuerySchema,
   UpdateDatasetBodySchema,
   ResumeDatasetInheritPermissionBodySchema,
@@ -32,6 +33,7 @@ import {
   UpdateDatasetCollaboratorResponseSchema,
   PostDatasetSyncBodySchema
 } from './api';
+import { ReferencedAppsResponseSchema } from '../../../core/app/type';
 
 export const DatasetPath: OpenAPIPath = {
   '/core/dataset/create': {
@@ -133,6 +135,26 @@ export const DatasetPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetDatasetListV2ResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/apps': {
+    get: {
+      summary: '获取引用知识库的应用',
+      description: '获取当前草稿引用指定知识库的应用，并隐藏当前用户无权查看的应用详情',
+      tags: [DevApiTagsMap.datasetCommon],
+      requestParams: {
+        query: GetDatasetReferencedAppsQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回关联应用',
+          content: {
+            'application/json': {
+              schema: ReferencedAppsResponseSchema
             }
           }
         }

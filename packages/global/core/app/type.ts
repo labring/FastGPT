@@ -7,7 +7,7 @@ import { StoreEdgeItemTypeSchema } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/type';
 import type { WorkflowTemplateBasicType } from '../workflow/type';
-import { UserTagsSchema, type SourceMemberType } from '../../support/user/type';
+import { SourceMemberSchema, UserTagsSchema, type SourceMemberType } from '../../support/user/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config.schema';
@@ -246,7 +246,26 @@ export type AppListItemType = {
   private?: boolean;
   sourceMember: SourceMemberType;
   hasInteractiveNode?: boolean;
+  relatedAppCount?: number;
 };
+
+export const ReferencedAppItemSchema = z.object({
+  _id: ObjectIdSchema.meta({ description: '应用 ID' }),
+  name: z.string().meta({ description: '应用名称' }),
+  avatar: z.string().meta({ description: '应用头像' }),
+  intro: z.string().meta({ description: '应用介绍' }),
+  tmbId: ObjectIdSchema.meta({ description: '创建者团队成员 ID' }),
+  type: z.enum(AppTypeEnum).meta({ description: '应用类型' }),
+  updateTime: z.coerce.date().meta({ description: '更新时间' }),
+  sourceMember: SourceMemberSchema.meta({ description: '创建者信息' })
+});
+export type ReferencedAppItem = z.infer<typeof ReferencedAppItemSchema>;
+
+export const ReferencedAppsResponseSchema = z.object({
+  list: z.array(ReferencedAppItemSchema).meta({ description: '当前用户可读的关联应用' }),
+  hiddenCount: z.number().int().nonnegative().meta({ description: '无权查看的关联应用数量' })
+});
+export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
 
 export type AppDetailType = AppSchemaType & {
   permission: AppPermission;

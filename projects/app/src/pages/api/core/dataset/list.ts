@@ -24,9 +24,12 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
+import { getCurrentResourceReferenceCounts } from '@fastgpt/service/core/app/currentResourceRefs';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
-  const { parentId, type, searchKey, sort, tmbIds } = parseApiInput({
+  const { parentId, type, searchKey, sort, tmbIds, withAppCount } = parseApiInput({
     req,
     bodySchema: GetDatasetListBodySchema
   }).body;
@@ -153,7 +156,47 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return addSourceMember({ list: formatDatasets });
+  const appCountMap = await (async () => {
+    if (!withAppCount || formatDatasets.length === 0) return new Map<string, number>();
+
+    const resourceGroups = new Map<string, string[]>();
+    await Promise.all(
+      formatDatasets.map(async (dataset) => {
+        const datasetId = String(dataset._id);
+        if (dataset.type !== DatasetTypeEnum.folder) {
+          resourceGroups.set(datasetId, [datasetId]);
+          return;
+        }
+
+        const descendants = await findDatasetAndAllChildren({
+          teamId,
+          datasetId,
+          fields: '_id type'
+        });
+        resourceGroups.set(
+          datasetId,
+          descendants
+            .filter((item) => item.type !== DatasetTypeEnum.folder)
+            .map((item) => String(item._id))
+        );
+      })
+    );
+
+    return getCurrentResourceReferenceCounts({
+      teamId,
+      resourceType: 'dataset',
+      resourceGroups
+    });
+  })();
+
+  const listWithAppCount = formatDatasets.map((dataset) => ({
+    ...dataset,
+    ...(withAppCount ? { appCount: appCountMap.get(String(dataset._id)) ?? 0 } : {})
+  }));
+
+  return addSourceMember({
+    list: listWithAppCount
+  });
 }
 
 export default NextAPI(handler);
