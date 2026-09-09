@@ -6,7 +6,13 @@ import type {
   GetAppDetailResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getFakeUsers } from '@test/datas/users';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getFakeUsers, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
@@ -50,5 +56,56 @@ describe('get app detail api', () => {
     expect(res.code).toBe(200);
     expect(res.data.nodes.map((node) => node.nodeId)).toEqual(['start-1']);
     expect(res.data).not.toHaveProperty('modules');
+  });
+
+  it('does not expose workflow configuration to a read-only collaborator', async () => {
+    const owner = await getUser(`detail-owner-${getNanoid(6)}`);
+    const reader = await getUser(`detail-reader-${getNanoid(6)}`, owner.teamId);
+    const appId = await onCreateApp({
+      name: 'private workflow config',
+      intro: '',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'start-1',
+          flowNodeType: 'workflowStart',
+          name: 'Start',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {
+        instruction: 'private instruction',
+        scheduledTriggerConfig: {
+          cronString: '0 9 * * *',
+          timezone: 'Asia/Shanghai',
+          defaultPrompt: 'private prompt'
+        }
+      }
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.app,
+      teamId: owner.teamId,
+      resourceId: appId,
+      tmbId: reader.tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      {
+        auth: reader,
+        headers: {},
+        query: { appId }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.nodes).toEqual([]);
+    expect(res.data.edges).toEqual([]);
+    expect(res.data.chatConfig).toEqual({});
   });
 });

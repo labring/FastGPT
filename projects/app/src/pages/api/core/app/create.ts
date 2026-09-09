@@ -187,7 +187,8 @@ export const onCreateApp = async ({
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
   const resources = extractAppResources({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig
+    chatConfig: normalizedWorkflow.chatConfig,
+    models: modelHandle.getAllModels()
   });
   if (!AppFolderTypeList.includes(type!)) {
     await checkAppResourceReadPermissions({
@@ -198,7 +199,7 @@ export const onCreateApp = async ({
   }
 
   // 工具集节点可能已编码 JSON Schema；只清理旧节点字段，保留嵌套 schema 的存储格式。
-  const storageNodes = storageModules?.map((node) => {
+  const sanitizedStorageNodes = storageNodes?.map((node) => {
     const storageNode = { ...node } as typeof node & { toolDescription?: unknown };
     delete storageNode.toolDescription;
     return storageNode;
@@ -250,7 +251,7 @@ export const onCreateApp = async ({
           {
             tmbId,
             appId,
-            nodes: storageNodes ?? normalizedWorkflow.nodes,
+            nodes: sanitizedStorageNodes ?? normalizedWorkflow.nodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
             versionName: name,

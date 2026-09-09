@@ -39,7 +39,6 @@
   "permission.des.manage": "에이전트 스킬 및 협업자를 관리할 수 있습니다",
   "permission.des.read": "에이전트 스킬을 볼 수 있습니다",
   "permission.des.write": "에이전트 스킬을 편집할 수 있습니다",
-  "permission_settings": "권한 설정",
   "related_apps_hidden": "권한으로 인해 {{count}}개 앱이 더 숨겨져 있습니다",
   "related_count": "연관 앱",
   "sandbox_auto_enabled_for_skill": "스킬은 가상 머신 런타임에 의존합니다. 가상 머신이 자동으로 활성화되었습니다.",

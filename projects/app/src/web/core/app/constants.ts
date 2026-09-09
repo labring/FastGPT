@@ -14,7 +14,6 @@ export const defaultApp: AppDetailType = {
   intro: '',
   updateTime: new Date(),
   nodes: [],
-  modules: [],
   chatConfig: {},
   teamId: '',
   tmbId: '',

@@ -43,6 +43,10 @@ vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
       getModelProviders: () => []
     })
 }));
+vi.mock('use-context-selector', () => ({
+  useContextSelector: (_: unknown, select: (value: { appId?: string }) => unknown) => select({})
+}));
+vi.mock('@/pageComponents/app/detail/context', () => ({ AppContext: {} }));
 
 describe('AIModelSelector lazy directory', () => {
   beforeEach(() => {
@@ -87,6 +91,7 @@ describe('AIModelSelector lazy directory', () => {
     });
     expect(mocks.detail).toHaveBeenLastCalledWith({
       modelId: 'chosen',
+      appId: undefined,
       outLinkAuthData: undefined
     });
     selector.props.onOpenFunc();

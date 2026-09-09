@@ -39,7 +39,6 @@
   "permission.des.manage": "Can manage Agent Skill and collaborators",
   "permission.des.read": "Can view Agent Skill",
   "permission.des.write": "Can edit Agent Skill",
-  "permission_settings": "Permission Settings",
   "related_apps_hidden": "{{count}} more app(s) hidden due to permissions",
   "related_count": "Related Apps",
   "sandbox_auto_enabled_for_skill": "Skills depend on the virtual machine runtime. Virtual machine has been enabled for you.",

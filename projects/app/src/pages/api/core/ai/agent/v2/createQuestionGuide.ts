@@ -18,9 +18,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { hasAppResource } from '@fastgpt/service/core/app/resources';
-import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
 
 async function handler(
   req: ApiRequestProps<CreateQuestionGuideV2BodyType>,
@@ -91,14 +89,13 @@ async function handler(
     }
     return modelHandle.getDefaultModelData('llm');
   })();
-  const modelResource = { type: 'model' as const, id: qgModelData.modelId };
-  if (appWorkflow) {
-    if (!hasAppResource({ resources: appWorkflow.resources, resource: modelResource })) {
-      throw ERROR_ENUM.unAuthModel;
-    }
-  } else {
-    await checkAppResourceReadPermissions({ resources: [modelResource], tmbId });
-  }
+  await authTargetModelResource({
+    targetType: resolvedSourceType,
+    targetId: resolvedSourceId,
+    modelId: qgModelData.modelId,
+    tmbId,
+    resources: appWorkflow?.resources
+  });
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,

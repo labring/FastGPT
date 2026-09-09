@@ -11,11 +11,7 @@ import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { hasAppResource } from '@fastgpt/service/core/app/resources';
-import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
 
 /*
 1. get tts from chatItem store
@@ -52,13 +48,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       modelId: ttsConfig.modelId,
       model: ttsConfig.model
     });
-    const modelResource = { type: 'model' as const, id: ttsModel.modelId };
-    if (resolvedSourceType === ChatSourceTypeEnum.app) {
-      const { resources } = await getAppLatestVersion(resolvedSourceId);
-      if (!hasAppResource({ resources, resource: modelResource })) throw ERROR_ENUM.unAuthModel;
-    } else {
-      await checkAppResourceReadPermissions({ resources: [modelResource], tmbId });
-    }
+    await authTargetModelResource({
+      targetType: resolvedSourceType,
+      targetId: resolvedSourceId,
+      modelId: ttsModel.modelId,
+      tmbId
+    });
     const voiceData = ttsModel.config.voices.find((item) => item.value === ttsConfig.voice);
 
     if (!voiceData) {

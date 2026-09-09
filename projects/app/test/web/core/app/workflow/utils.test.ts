@@ -476,8 +476,8 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
     });
 
-    expect(result.tool.map((issue) => issue.code)).toContain('tool_no_permission');
-    expect(result.tool[0]?.message).toBe('当前账号无权限访问该资源');
+    expect(result.tool.map((issue) => issue.code)).toContain('resource_no_permission');
+    expect(result.tool[0]?.message).toBe('无权限访问该资源，请检查权限');
   });
 
   it('reports permission error when pluginData error is translated message', () => {
@@ -492,8 +492,8 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
     });
 
-    expect(result.tool.map((issue) => issue.code)).toContain('tool_no_permission');
-    expect(result.tool[0]?.message).toBe('当前账号无权限访问该资源');
+    expect(result.tool.map((issue) => issue.code)).toContain('resource_no_permission');
+    expect(result.tool[0]?.message).toBe('无权限访问该资源，请检查权限');
   });
 
   it('reports missing tool when pluginData error is appUnExist', () => {
@@ -766,8 +766,8 @@ describe('checkWorkflowNodeIssues', () => {
           label: '知识库',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: [
-            { datasetId: 'd1', name: 'ok', isDeleted: false },
-            { datasetId: 'd2', name: 'gone', isDeleted: true }
+            { datasetId: 'd1', name: 'ok' },
+            { datasetId: 'd2', name: 'gone', error: 'resource_missing' }
           ]
         }
       ]
@@ -778,7 +778,7 @@ describe('checkWorkflowNodeIssues', () => {
           key: NodeInputKeyEnum.skills,
           label: '技能',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
-          value: [{ skillId: 's2', name: 'gone', isDeleted: true }]
+          value: [{ skillId: 's2', name: 'gone', error: 'resource_missing' }]
         }
       ]
     });
@@ -802,12 +802,12 @@ describe('checkWorkflowNodeIssues', () => {
           key: NodeInputKeyEnum.datasetSelectList,
           label: '知识库',
           renderTypeList: [FlowNodeInputTypeEnum.custom],
-          value: [{ datasetId: 'd1', name: 'no-perm', permissionDenied: true }]
+          value: [{ datasetId: 'd1', name: 'no-perm', error: 'resource_no_permission' }]
         }
       ]
     });
     const toolNode = makeNode('tool', FlowNodeTypeEnum.appModule, {
-      pluginData: { permissionDenied: true } as any
+      pluginData: { error: 'resource_no_permission' } as any
     });
 
     const result = checkWorkflowNodeIssues({
@@ -831,8 +831,8 @@ describe('checkWorkflowNodeIssues', () => {
           renderTypeList: [FlowNodeInputTypeEnum.custom],
           value: {
             datasets: [
-              { datasetId: 'd1', name: 'no-perm', permissionDenied: true },
-              { datasetId: 'd2', name: 'gone', isDeleted: true }
+              { datasetId: 'd1', name: 'no-perm', error: 'resource_no_permission' },
+              { datasetId: 'd2', name: 'gone', error: 'resource_missing' }
             ]
           }
         }

@@ -6,6 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 type DatasetCardProps = {
@@ -37,85 +38,99 @@ const DatasetCard = React.memo(function DatasetCard({
 }: DatasetCardProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const isDeleted = !!dataset.isDeleted;
-  const permissionDenied = !!dataset.permissionDenied;
-  const isUnavailable = isDeleted || permissionDenied;
+  const hasError = !!dataset.error;
+  const isUnavailable = hasError;
   const hasPreviewButton = !isUnavailable;
   const hasDeleteButton = !!onDelete;
   const hasController = hasPreviewButton || hasDeleteButton;
 
+  const errorText =
+    dataset.error === 'resource_no_permission'
+      ? t('common:core.workflow.check.resource_no_permission')
+      : dataset.error
+        ? t('common:dataset_deleted')
+        : '';
+  const tooltipLabel = errorText || dataset.name;
+
   return (
-    <Flex
-      overflow={'hidden'}
-      alignItems={'center'}
-      userSelect={'none'}
-      {...cardProps}
-      {...flexProps}
-      border={flexProps?.border || cardProps.border}
-      borderColor={isUnavailable ? 'red.600' : flexProps?.borderColor}
-      _hover={{
-        ...flexProps?._hover,
-        borderColor: isUnavailable ? 'red.600' : 'primary.300',
-        '& .dataset-card-controller': {
-          display: 'flex'
-        }
-      }}
-    >
-      <Avatar src={dataset.avatar} w={'1.5rem'} borderRadius={'sm'} />
-      <Box
-        ml={2}
-        flex={'1 1 auto'}
-        w={0}
-        minW={0}
-        className={'textEllipsis'}
-        fontSize={'sm'}
-        color={isUnavailable ? 'red.600' : 'myGray.900'}
+    <MyTooltip label={tooltipLabel} showOnlyWhenOverflow={!hasError}>
+      <Flex
+        overflow={'hidden'}
+        alignItems={'center'}
+        userSelect={'none'}
+        {...cardProps}
+        {...flexProps}
+        border={flexProps?.border || cardProps.border}
+        borderColor={isUnavailable ? 'red.600' : flexProps?.borderColor}
+        _hover={{
+          ...flexProps?._hover,
+          borderColor: isUnavailable ? 'red.600' : 'primary.300',
+          '& .dataset-card-controller': {
+            display: 'flex'
+          },
+          '& .unHoverStyle': {
+            display: onDelete ? 'none' : undefined
+          }
+        }}
       >
-        {isDeleted ? t('common:dataset_deleted') : dataset.name}
-      </Box>
-
-      {permissionDenied && (
-        <MyTag colorSchema="red" type="fill" className="unHoverStyle" flexShrink={0}>
-          <MyIcon name="common/error" w="14px" mr={1} />
-          <Box color="red.600" maxW="150px" className="textEllipsis">
-            {t('common:core.workflow.check.resource_no_permission')}
-          </Box>
-        </MyTag>
-      )}
-
-      {hasController && (
+        <Avatar src={dataset.avatar} w={'1.5rem'} borderRadius={'sm'} />
         <Box
-          className="dataset-card-controller"
           ml={2}
-          flexShrink={0}
-          display={['flex', 'none']}
-          alignItems={'center'}
+          flex={'1 1 auto'}
+          w={0}
+          minW={0}
+          className={'textEllipsis'}
+          fontSize={'sm'}
+          color={isUnavailable ? 'red.600' : 'myGray.900'}
         >
-          {hasPreviewButton && (
-            <MyIconButton
-              icon={'common/viewLight'}
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push({
-                  pathname: '/dataset/detail',
-                  query: {
-                    datasetId: dataset.datasetId
-                  }
-                });
-              }}
-            />
-          )}
-          {hasDeleteButton && (
-            <MyDeleteIconButton
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.(dataset.datasetId);
-              }}
-            />
-          )}
+          {dataset.name || 'Invalid'}
         </Box>
-      )}
-    </Flex>
+
+        {errorText && (
+          <MyTag colorSchema="red" type="fill" className="unHoverStyle" flexShrink={0}>
+            <MyIcon name="common/error" w="14px" mr={1} />
+            <MyTooltip label={errorText} showOnlyWhenOverflow>
+              <Box color="red.600" maxW="150px" className="textEllipsis">
+                {errorText}
+              </Box>
+            </MyTooltip>
+          </MyTag>
+        )}
+
+        {hasController && (
+          <Box
+            className="dataset-card-controller"
+            ml={2}
+            flexShrink={0}
+            display={['flex', 'none']}
+            alignItems={'center'}
+          >
+            {hasPreviewButton && (
+              <MyIconButton
+                icon={'common/viewLight'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push({
+                    pathname: '/dataset/detail',
+                    query: {
+                      datasetId: dataset.datasetId
+                    }
+                  });
+                }}
+              />
+            )}
+            {hasDeleteButton && (
+              <MyDeleteIconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete?.(dataset.datasetId);
+                }}
+              />
+            )}
+          </Box>
+        )}
+      </Flex>
+    </MyTooltip>
   );
 });
 

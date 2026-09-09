@@ -28,6 +28,7 @@ import { type ClientSession } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteAppSandboxes } from '../ai/sandbox/interface/resource/sourceCleanup';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
+import { StoredSelectedDatasetSchema } from '@fastgpt/global/core/workflow/type/io';
 import {
   StoredSelectedAgentSkillItemTypeSchema,
   type AppFormEditFormType
@@ -42,25 +43,21 @@ const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 /**
  * 在更新应用前，对工作流节点数据进行格式化和安全处理。
  * 主要职责：
- * 1. 知识库：统一数据结构为 { datasetId: string }[]。
- * 2. Skill: 统一数据结构为 { skillId: string }[]。
- * 2. 敏感信息（如 Header Secret、密码类型输入、系统工具手动配置的密钥）进行加密存储。
+ * 1. 知识库：移除编辑态状态并保留展示快照（datasetId, avatar, name, vectorModel）。
+ * 2. Skill: 移除编辑态状态并保留展示快照（skillId, avatar, name, description）。
+ * 3. 密钥输入：清理敏感信息。
  */
 export const beforeUpdateAppFormat = async ({
   nodes,
   teamId
 }: {
   nodes?: StoreNodeItemType[];
-  teamId: string;
+  teamId?: string;
 }) => {
   if (!nodes) return;
 
-  const StoredSelectedDatasetSchema = z.object({
-    datasetId: z.string()
-  });
-
   /**
-   * 格式化数据集选择值，保存阶段只保留 datasetId，移除编辑态快照字段。
+   * 格式化数据集选择值，保存阶段保留展示快照（datasetId, avatar, name, vectorModel），移除编辑态临时字段。
    * 引用模式由调用处判断并跳过，避免把 [nodeId, key] 误压缩成空数组。
    * 未配置的草稿节点按空数组保存，仍由发布/运行前的工作流校验提示必填。
    * 兼容历史单选格式 { datasetId }，避免旧应用再次保存时丢失知识库配置。
@@ -73,7 +70,12 @@ export const beforeUpdateAppFormat = async ({
       .parse(value);
 
     const datasetList = Array.isArray(datasets) ? datasets : [datasets];
-    return datasetList.map(({ datasetId }) => ({ datasetId }));
+    return datasetList.map(({ datasetId, avatar, name, vectorModel }) => ({
+      datasetId,
+      ...(avatar ? { avatar } : {}),
+      ...(name ? { name } : {}),
+      ...(vectorModel ? { vectorModel } : {})
+    }));
   };
 
   nodes.forEach((node) => {

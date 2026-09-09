@@ -1,10 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
+  findOne: vi.fn(),
   find: vi.fn(),
   getAppVersionById: vi.fn(),
   getAppLatestVersion: vi.fn(),
@@ -14,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/app/schema', () => ({
   MongoApp: {
     findById: mocks.findById,
+    findOne: mocks.findOne,
     find: mocks.find
   }
 }));
@@ -137,7 +140,7 @@ describe('getClientToolPreviewNode', () => {
       const appId = '507f1f77bcf86cd799439011';
       const businessValue = { requestSchema: { nested: [{ customJsonSchema: 'data' }] } };
       const toolSetKey = source === 'mcp' ? 'mcpToolSet' : 'httpToolSet';
-      mocks.findById.mockReturnValueOnce({
+      mocks.findOne.mockReturnValueOnce({
         lean: vi.fn().mockResolvedValue({
           _id: appId,
           teamId: '507f1f77bcf86cd799439012',
@@ -342,20 +345,38 @@ describe('getClientToolPreviewNode', () => {
         ]
       };
       const original = structuredClone(app);
-      mocks.findById.mockReturnValueOnce({ lean: async () => app });
-      mocks.find.mockReturnValueOnce({
-        lean: async () => [
+      mocks.findOne.mockReturnValueOnce({ lean: async () => app });
+      mocks.getAppVersionById.mockResolvedValueOnce({
+        nodes: [
           {
-            name: tool.name,
-            modules: [
-              {
-                inputs: [
-                  { value: { ...tool, url: 'https://example.com/mcp', headerSecret: headers } }
-                ]
+            flowNodeType: 'toolSet',
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://example.com/mcp',
+                headerSecret: headers,
+                toolList: [tool]
               }
-            ]
+            },
+            inputs: [
+              {
+                key: 'options',
+                label: 'Options',
+                renderTypeList: ['input'],
+                value: businessValue
+              },
+              {
+                key: NodeInputKeyEnum.toolSetData,
+                label: 'User field',
+                renderTypeList: ['input'],
+                value: 'ordinary-value'
+              }
+            ],
+            outputs: []
           }
-        ]
+        ],
+        edges: [],
+        chatConfig: {},
+        resources: []
       });
       const preview = await getClientToolPreviewNode({ appId, versionId: '' });
       expect(preview.toolConfig).toEqual({
@@ -393,7 +414,7 @@ describe('getClientToolPreviewNode', () => {
       ]
     };
     const original = structuredClone(app);
-    mocks.findById.mockReturnValueOnce({ lean: async () => app });
+    mocks.findOne.mockReturnValueOnce({ lean: async () => app });
     const preview = await getClientToolPreviewNode({ appId, versionId: '' });
     expect(preview.toolConfig?.mcpToolSet).toMatchObject({ toolId: appId });
     expect(getRuntimeSchemaFieldPaths(preview)).toEqual([]);
@@ -402,7 +423,7 @@ describe('getClientToolPreviewNode', () => {
 
   it('hydrates legacy MCP toolset data under toolConfig', async () => {
     const appId = '507f1f77bcf86cd799439031';
-    mocks.findById.mockReturnValueOnce({
+    mocks.findOne.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue({
         _id: appId,
         teamId: '507f1f77bcf86cd799439032',
@@ -413,26 +434,30 @@ describe('getClientToolPreviewNode', () => {
         modules: [{ flowNodeType: 'toolSet', inputs: [] }]
       })
     });
-    mocks.find.mockReturnValueOnce({
-      lean: vi.fn().mockResolvedValue([
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [
         {
-          name: 'search',
-          modules: [
-            {
-              inputs: [
+          flowNodeType: 'toolSet',
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://mcp.example.com',
+              headerSecret: {},
+              toolList: [
                 {
-                  value: {
-                    name: 'search',
-                    description: 'Search tool',
-                    inputSchema: { type: 'object' },
-                    url: 'https://mcp.example.com'
-                  }
+                  name: 'search',
+                  description: 'Search tool',
+                  inputSchema: { type: 'object' }
                 }
               ]
             }
-          ]
+          }
         }
-      ])
+      ],
+      edges: [],
+      chatConfig: {},
+      resources: []
     });
 
     const result = await getClientToolPreviewNode({ appId, lang: 'en' });
@@ -482,7 +507,7 @@ describe('getClientToolPreviewNode', () => {
 
   it('applies defaultToAgentGenerated over a workflow plugin input selection', async () => {
     const appId = '507f1f77bcf86cd799439011';
-    mocks.findById.mockReturnValueOnce({
+    mocks.findOne.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue({
         _id: appId,
         teamId: '507f1f77bcf86cd799439012',
@@ -570,7 +595,7 @@ describe('getClientToolPreviewNode', () => {
 
   it('defaults an ordinary workflow user question to Agent generation', async () => {
     const appId = '507f1f77bcf86cd799439021';
-    mocks.findById.mockReturnValueOnce({
+    mocks.findOne.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue({
         _id: appId,
         teamId: '507f1f77bcf86cd799439022',
@@ -601,7 +626,7 @@ describe('getClientToolPreviewNode', () => {
 
   it('defaults an ordinary workflow user question to Agent generation', async () => {
     const appId = '507f1f77bcf86cd799439021';
-    mocks.findById.mockReturnValueOnce({
+    mocks.findOne.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue({
         _id: appId,
         teamId: '507f1f77bcf86cd799439022',
@@ -628,5 +653,18 @@ describe('getClientToolPreviewNode', () => {
       defaultToAgentGenerated: true
     });
     expect(getToolConfigStatus({ tool: result }).status).not.toBe('waitingForConfig');
+  });
+
+  it('rejects with unExist when app is soft-deleted or does not exist', async () => {
+    const appId = '507f1f77bcf86cd799439099';
+    mocks.findOne.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue(null)
+    });
+
+    await expect(getClientToolPreviewNode({ appId })).rejects.toBe(PluginErrEnum.unExist);
+    expect(mocks.findOne).toHaveBeenCalledWith({
+      _id: appId,
+      deleteTime: null
+    });
   });
 });

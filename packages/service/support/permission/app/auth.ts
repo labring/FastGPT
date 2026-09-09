@@ -55,7 +55,7 @@ export const authAppByTmbId = async ({
   const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
   const app = await (async () => {
-    const app = await MongoApp.findOne({ _id: appId }).lean();
+    const app = await MongoApp.findOne({ _id: appId, deleteTime: null }).lean();
 
     if (!app) {
       return Promise.reject(AppErrEnum.unExist);

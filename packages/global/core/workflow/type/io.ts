@@ -24,11 +24,32 @@ export const SelectedDatasetSchema = z.object({
       description: '知识库使用的向量模型（兼容历史数据）'
     })
   }),
-  isDeleted: BoolSchema.optional(),
-  /** 实体存在但不在当前版本资源快照内（保存时被无权限丢弃），运行时 assertWorkflowResource 会拒绝。 */
-  permissionDenied: BoolSchema.optional()
+  /** 资源异常状态码（如 resource_missing, resource_no_permission），正常时为 undefined */
+  error: z.string().optional()
 });
 export type SelectedDatasetType = z.infer<typeof SelectedDatasetSchema>;
+
+export const StoredSelectedDatasetSchema = z.object({
+  datasetId: z.string().meta({
+    description: '知识库 ID'
+  }),
+  avatar: z.string().optional().meta({
+    description: '知识库头像快照'
+  }),
+  name: z.string().optional().meta({
+    description: '知识库名称快照'
+  }),
+  vectorModel: z
+    .object({
+      modelId: z.string().optional(),
+      model: z.string().optional()
+    })
+    .optional()
+    .meta({
+      description: '知识库向量模型快照'
+    })
+});
+export type StoredSelectedDatasetType = z.infer<typeof StoredSelectedDatasetSchema>;
 
 // Dynamic input field configuration
 export const CustomFieldConfigTypeSchema = z.object({

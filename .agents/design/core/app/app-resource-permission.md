@@ -34,12 +34,12 @@
 
 保留但废弃：
 
-- `modules / edges / chatConfig`：保留已有数据并在 Schema 标记 deprecated；新代码不再读取或写入。
+- `modules / edges / chatConfig`：保留已有数据并在 Schema 标记 deprecated；新代码仅在 App 没有正式 Version 的迁移窗口读取，不再写入。
 - `resourceRefs`：保留已有数据并在 Schema 标记 deprecated；仅供旧版本兼容和迁移核对。
 
 新建 App 不再主动写这些旧字段。文件夹没有工作流，不写 Version；历史文件夹已有的旧字段也不由本次迁移清理。
 
-旧字段不是双写副本，也不是 Version 缺失时的常规运行回退。只有“该 App 一条 Version 都没有”的迁移分支可以把它们作为一次性源数据补建 Version，避免两份事实长期漂移。
+旧字段不是双写副本。只有“该 App 没有正式 Version”的迁移窗口允许正式运行读取旧图，同时迁移会把它作为一次性源数据补建正式 Version；已有草稿或自动保存 Version 不能替代旧代码实际运行的 App 图。正式 Version 建立后永久停止 fallback，避免两份事实长期漂移。
 
 `pluginData.nodeVersion` 与 `publishedVersionId` 的职责不得混用：正式运行只看 `publishedVersionId`（或等价的最新正式 Version 查询），不看 `nodeVersion`。
 
@@ -49,20 +49,20 @@
 
 | 场景 | 读谁 |
 | --- | --- |
-| 正式 Chat / OutLink / MCP 调 App / 定时任务 | `publishedVersionId` 对应 Version；没有指针则 `isPublish: true` + `time: -1` |
+| 正式 Chat / OutLink / MCP 调 App / 定时任务 | `publishedVersionId` 对应 Version；没有指针则 `isPublish: true` + `time: -1`；没有正式 Version 时在迁移窗口读取 App 旧图 |
 | 子 App / 工具钉死 `versionId` | `getAppVersionById`，只读那一条 |
 | 打开编辑器、复制工作流 | 该 App `time` 最新 Version（含 autoSave） |
 | Skill/资源反查（哪些 App 在用） | 查 **当前正式 Version**：`_id ∈ publishedVersionId` 且 `resources.$elemMatch`。禁止对所有 `isPublish: true` 做 elemMatch，否则旧正式版会把已删引用算进去 |
 
 Test/Debug：仍用请求体 nodes，服务端 `extract` + 按当前操作人鉴权，不读已发布快照，不接受客户端传 `resources`。
 
-不要用 `apps.modules` 补运行快照。不要用最新正式 Version 的 `resources` 去跑另一条 Version 的 nodes。
+已有正式 Version 时不要用 `apps.modules` 补运行快照。不要用最新正式 Version 的 `resources` 去跑另一条 Version 的 nodes。
 
-编辑器详情 `GET /core/app/detail`、创建 `POST /core/app/create`、画布和工具编辑都直接用 `nodes`，与 Version 同名。不要再把 Version.nodes 映射成 App.modules。`apps.modules` 只作为零 Version 迁移源和回滚依据保留。
+编辑器详情 `GET /core/app/detail`、创建 `POST /core/app/create`、画布和工具编辑都直接用 `nodes`，与 Version 同名。不要再把 Version.nodes 映射成 App.modules。`apps.modules` 只作为无正式 Version 迁移窗口的兼容读源、迁移源和回滚依据保留。
 
 API 契约向后兼容：
 - `CreateAppBodySchema` 主规范使用 `nodes`，同时保留 `@deprecated modules?: any[]` 并通过 `migrateCreateAppBodyWorkflow` 预处理自动映射归一化为 `nodes`，防止破坏已有前端调用方（如模板市场创建、JSON 导入等）而造成不必要的大范围级联修改。
-- `AppDetailType` 在继承 `nodes` 的同时保留 `@deprecated modules?: AppVersionSchemaType['nodes']` 别名。
+- 兼容只覆盖创建输入；详情响应和 `AppDetailType` 只输出 `nodes`，不再暴露 `modules`。
 
 应用列表的 `hasInteractiveNode`（评测选应用过滤表单输入 / 用户选择）只扫当前 `publishedVersionId` 对应 Version 的 `nodes`，不读 `apps.modules`。
 
@@ -127,7 +127,7 @@ API 契约向后兼容：
 
 ## 6. 迁移
 
-本节只约束本设计中的 4163 App 资源迁移，不改变注册表中其他已发布系统迁移的既有语义。若 4163 后续接入自动系统迁移框架，应作为新的、只回填的任务追加到注册表末尾，不能修改已经发布任务。
+本节只约束本设计中的 App 资源迁移，不改变注册表中其他已发布系统迁移的既有语义。该迁移以 `20260909_backfill_app_resource_snapshots` 作为永久任务 ID、首次发布版本为 4.17.0，并作为新的只回填任务追加到注册表末尾，不能修改已经发布任务。
 
 ### 6.1 4163（资源）
 
@@ -139,10 +139,11 @@ API 契约向后兼容：
 - 已有合法 `resources` 直接跳过；迁移只回填缺失或结构非法的快照，重复执行不会改变已迁 Version 和旧字段。
 - 历史 Version 中已经存在的静态资源（包括模型）直接回填为该 Version 的授权快照，不追溯校验历史发布人或当前 App owner 的个人权限，避免升级破坏既有正式应用。迁移只验证资源结构；实体缺失或停用仍由编辑器提示和运行时按需报错。
 
-### 6.2 补 Version（仅零条记录）
+### 6.2 补正式 Version
 
-- `app_versions` 里该 `appId` **一条都没有**：才用 App 的 `modules/edges/chatConfig` 建一条 `isPublish: true`，并写出 `resources`、`publishedVersionId`。
-- **只要有任意 Version（含 MCP/HTTP 那一条、仅 autoSave）**：不把 App 图拷进 Version。
+- `app_versions` 里该 `appId` **没有 `isPublish: true` 的记录**：用 App 的 `modules/edges/chatConfig` 建一条正式 Version，并写出 `resources`、`publishedVersionId`。
+- 已有草稿或 autoSave Version 时保留原记录，不覆盖、不提升为正式版；新建的正式 Version 仍以旧代码实际运行的 App 图为源。
+- 已有正式 Version 时不把 App 图拷进 Version，只回填或修复 `publishedVersionId`。
 
 ### 6.3 保留旧字段并在 Schema 废弃
 
@@ -155,6 +156,18 @@ API 契约向后兼容：
 **MCP/HTTP**：已有 Version，不新建、不覆盖；最多校验与旧 `apps.modules` 是否一致。
 
 **类型转换**：必须写 Version；旧 App 图虽然保留，但不能继续作为转换结果的事实来源。
+
+### 6.4 自动迁移执行契约
+
+- 恢复策略使用分批断点续跑。App 和 Version 数量没有固定上界，分别按不可变 ObjectId `_id` 固定扫描上界并推进游标；每批使用全局 `SYSTEM_MIGRATION_BATCH_SIZE`，内存只保留当前批次和有限状态。
+- 阶段固定为 `versions`、`apps`、`validation`。任务位于当前注册表末尾，依赖此前的模型引用迁移先补齐工作流 `modelId`，再从 Version 工作流生成完整资源快照。
+- 任务非阻塞启动并使用 `onFailure: continue`。新版本对缺失 `resources` 保留运行时提取兼容，对没有正式 Version 的 App 临时读取旧图；旧版本仍可读取保留的 App 图和 `resourceRefs`，因此任务失败不影响节点 readiness，也不要求停机升级。
+- Version 快照使用读取字段 compare-and-set，只在该 Version 的 `nodes/edges/chatConfig/resourceRefs/resources` 未变化时回填；已有合法快照保持不变。批次重放会再次计算同一确定性结果，不产生额外记录。
+- App 正式指针只在扫描时读取的 `publishedVersionId` 未变化时回填。无正式 Version App 的补 Version 与指针写入在同一 Mongo 事务内完成，并在事务内再次确认仍无正式 Version，避免业务并发发布或进程退出留下孤立迁移版本；已有草稿不影响补建。
+- 非阻塞失败记录只保存 `appId` 或 `versionId`、阶段和截断后的原始原因。重试时先重放上次失败记录，完整错误快照持久化成功后才推进对应 checkpoint。
+- 主快照完成后尾扫新增记录；最终校验全部 Version 均有合法 `resources`，所有非文件夹 App 均有正式 Version，且正式指针指向自身 Version。仍有异常时任务保持 failed，管理员修复数据后重试。
+- checkpoint 只保存各阶段固定上界、最后完成游标、进度计数和完成标志。业务写入成功但 checkpoint 前退出时，重放会跳过已完成写入，因此最终结果只返回可稳定恢复的扫描计数，不展示无法精确恢复的更新计数。
+- 成功结果不写 i18n key、业务正文或完整错误栈。
 
 ## 7. 保存增量鉴权
 
@@ -185,7 +198,7 @@ kept      = extracted 中已在 baseline 出现的部分（不重新鉴权）
 无权限的新增引用留在 nodes 里，不写入 `resources`，保存成功。草稿允许 `nodes` 比 `resources` 多。
 
 - 指向**已删除/不存在**实体的新增引用与无权限同口径：保存/自动保存不阻断，丢弃出 `resources`、留在 nodes；发布时被 §7.2 阻断。
-- 编辑器对快照外新增引用的无权限资源标记 `permissionDenied`，在 workflow check 中通过 `resource_no_permission` 标出并定位到错误节点；已删除/不可用资源通过 `resource_missing` 定位。进入工作流编辑器时延迟执行 `scheduleEntryCheck`，若存在错误节点自动 `fitView` 定位并高亮该节点。
+- 编辑器对快照外新增引用的无权限资源标记 `error: 'resource_no_permission'`，在 workflow check 中标出并定位到错误节点；已删除/不可用资源通过 `error: 'resource_missing'` 定位。进入工作流编辑器时延迟执行 `scheduleEntryCheck`，若存在错误节点自动 `fitView` 定位并高亮该节点。
 - `kept`（已在 baseline 里的资源）不做存在性检查、不重验权限：引用从节点移除后 extract 自然不再产出，本版 `resources` 自动剔除；被删引用由编辑器轮询 / workflow check 标出并定位，提示用户移除节点。
 
 ### 7.2 保存并发布：阻断
@@ -245,7 +258,7 @@ app_versions.resources $elemMatch { type, id }
 1. **读容错**：`getAppLatestVersion` / `getAppVersionById` 对缺 `resources` 改为 extract，去掉该错误码；`[]` 保持空。
 2. **指针**：发布/创建写入 `publishedVersionId`；4163 回填。
 3. **反查改查正式 Version**。
-4. **零 Version 补建正式 Version**。
+4. **无正式 Version App 补建正式 Version**。
 5. 编辑器/复制/Chat 回退改读 Version；类型转换/MCP 更新只写 Version。
 6. 旧 App 图和 `resourceRefs` 停止读写并在 Schema 标记 deprecated，但保留原数据。
 7. 将 `model` 纳入增量资源鉴权，并在所有模型运行入口接入静态快照 / 动态运行人校验。
@@ -278,8 +291,8 @@ app_versions.resources $elemMatch { type, id }
 3. 4163 只回填，不清理旧表字段；旧字段在 Schema 标记 deprecated 并保留回滚能力。
 4. `model` 是标准 ACL 资源。发布前按操作人授权，发布后以 Version 快照作为 App 权限，不再校验人的模型权限。
 5. `model` 与其他资源统一按 `type + id` 标识；快照不保存 `modelType`，模型类型由模型实体和具体调用点的 typed getter 校验。
-6. API 契约向后兼容：`CreateAppBodySchema` 与 `AppDetailType` 保留对 `modules` 的向后兼容解析和别名支持，防止向周边业务页面（Dashboard、模板市场、JSON 导入等）过度扩散破坏性修改。
-7. 资源无权限与已删除严格区分：编辑器与工作流校验保留 `permissionDenied` 状态并独立报出 `resource_no_permission`，配合工作流加载时的 `scheduleEntryCheck` 自动定位（`fitView`）至错误节点，与已删除实体的 `resource_missing` 区分对待。
+6. API 契约向后兼容：`CreateAppBodySchema` 保留对 `modules` 创建输入的兼容解析；详情响应和 `AppDetailType` 统一使用 `nodes`，不继续输出旧字段。
+7. 资源无权限与已删除严格区分：编辑器与工作流校验统一使用 `error` 状态并独立报出 `resource_no_permission`，配合工作流加载时的 `scheduleEntryCheck` 自动定位（`fitView`）至错误节点，与已删除实体的 `resource_missing` 区分对待。
 8. 技能目录权限继承：技能资源列表（`listReadableAgentSkills`）严格保留基于目录的权限继承机制（`skill.inheritPermission && skill.parentId`），与应用资源快照重构相互解耦，不破坏既有目录权限体系。
 
 ---
@@ -297,3 +310,155 @@ type AppResource =
 - `model` 进入标准资源鉴权并与其他资源统一使用 `type + id`；静态模型写入快照，动态模型输入不写入静态快照并在运行时按运行人鉴权。
 - 提取器只解析、归一化、合并、去重、稳定排序，不访问数据库。
 - 动态资源 ID 保存阶段不确定则不虚构记录。
+
+---
+
+## 13. 表单应用（Agent & AgentV2）发布校验与提示对齐
+
+### 13.1 现状与问题
+在表单式应用（Agent 与 AgentV2）中，若引用的工具、技能、知识库等资源被卸载、删除或操作者无权限，点击发布时出现提示 UI 不一致：
+- **Agent**：前端 `Header.tsx` 捕获到工作流图中的工具异常，但直接写死弹窗 `app.error.publish_unExist_app`（“发布失败，请检查工具配置是否正确”）；
+- **AgentV2**：工作流未将工具展开为独立节点，且通用校验器 `workflowCheck.ts` 未对未开放的 Agent 节点进行工具校验，导致请求直接穿透到后端 `/api/core/app/version/publish` 接口，后端 ACL 鉴权失败返回 `unAuthApp`，前端弹窗 `code_error.app_error.un_auth_app`（“无权操作该应用”）。
+
+### 13.2 对齐方案与设计决策
+1. **统一前端拦截**：在 `Header.tsx` 的 `checkData` 发布前阶段，统一调用表单资源检查函数 `checkAppFormResourceIssues`，对 `appForm.selectedTools`、`appForm.selectedAgentSkills`、`appForm.dataset.datasets` 进行有效性与权限扫描，若存在异常立即在前端阻断发布。
+2. **优先显示具体原因**：
+   - 提取具体错误原因（无权限优先提示 `core.workflow.check.resource_no_permission` 或 `tool_no_permission`，已下线提示 `tool_offline`，已删除提示 `tool_missing` / `resource_missing`）；
+   - 在后续 `checkWorkflowBeforeRunOrPublish` 检查中，若发现其他错误（如模型未配置、模型不可用），优先取 `firstIssue.message`，兜底才使用通用文案。
+3. **工作流校验器边界保护**：保持 `workflowCheck.ts` 不变，不提前引入对未开放的 Agent 节点的工作流校验，改动完全收敛在表单层 `FormComponent` 中。
+
+---
+
+## 14. 资源可用性状态模型统一重构（收敛为统一的 `error`）
+
+### 14.1 动机与设计原则
+在应用工作流与表单视图中，引用的外部资源（Tool、Skill、Dataset）在编辑态存在多种可用性异常（无权限、已删除、加载失败、已下线）。
+历史代码中分别采用了多套互不连贯的字段：
+- **Tool**：使用 `pluginData.error: string`，并叠加了本次新增的 `permissionDenied: boolean`；
+- **Skill**：使用 `isDeleted: boolean`，并叠加了 `permissionDenied: boolean`；
+- **Dataset**：使用 `isDeleted: boolean`，并叠加了 `permissionDenied: boolean`。
+
+这导致了：
+1. **字段多义性与互斥 Bug**：同一个对象同时存在多个独立的布尔与错误码字段，在 UI 渲染层容易漏掉互斥判断，导致同一个卡片同时渲染多个互相挤压的错误 Tag；
+2. **逻辑冗余分裂**：前端组件与校验器必须不断编写 `isDeleted || permissionDenied || error` 的多分支判断。
+
+由于知识库与技能在持久化（保存至 MongoDB）时仅保留 `{ datasetId }` 和 `{ skillId }`，`isDeleted` 与 `permissionDenied` **纯属服务端读取详情（`rewriteAppWorkflowToDetail`）时附加的只读视图状态（View State）**，因此不需要数据库迁移与字段兼容包袱，直接进行彻底的干净重构。
+
+### 14.2 统一状态模型
+全面废除 `isDeleted` 与 `permissionDenied` 字段，统一收敛为单一事实来源：`error?: string`。
+
+统一的错误码规范（与 `workflowCheck` 统一）：
+- `resource_no_permission`：资源存在，但不在当前快照且当前查看者无权限（展示文案：“无权限访问该资源，请检查权限”）；
+- `resource_missing`：引用的资源已删除或不存在（展示文案：“引用的知识库或技能已删除或不可用，请删除”）；
+- `tool_offline`：引用工具已下线（展示文案：“引用工具已下线，请删除”）；
+- `tool_load_failed`：工具加载或解析失败（展示文案：“工具加载失败，请稍后重试”）；
+- `undefined`：资源正常可用。
+
+### 14.3 涉及范围
+1. **类型定义（Global Types）**：
+   - `SelectedDatasetSchema`：移除 `isDeleted`、`permissionDenied`，增加 `error: z.string().optional()`；
+   - `SelectedAgentSkillItemTypeSchema`：移除 `isDeleted`、`permissionDenied`，增加 `error: z.string().optional()`；
+   - `SelectedToolItemType` / `FlowNodeItemType`：`pluginData` 中移除 `permissionDenied`，统一使用标准错误码；
+   - `FlowNodeInputItemType`：移除 `permissionDenied`。
+2. **服务端数据装配（Service Core）**：
+   - `packages/service/core/app/utils.ts`：
+     - `loadToolNode`：快照外无权限时直接返回 `{ success: false, error: 'resource_no_permission' }`，移除 `permissionDenied`；
+     - `loadAgentSkill`：快照外无权限返回 `error: 'resource_no_permission'`，已删除/不存在返回 `error: 'resource_missing'`，移除 `isDeleted` 和 `permissionDenied`；
+     - `formatSelectedDatasetValue`：快照外无权限返回 `error: 'resource_no_permission'`，已删除/不存在返回 `error: 'resource_missing'`，移除 `isDeleted` 和 `permissionDenied`。
+3. **前端 UI 组件（Web Components）**：
+   - `DatasetCard.tsx`：仅依赖 `dataset.error` 判断 `isUnavailable` 与错误文案渲染；
+   - `ChatAgent/EditForm.tsx` / `NodeAgent/index.tsx`：技能卡片仅依赖 `skill.error` 渲染单个错误 Tag；
+   - `ToolSelect.tsx`：工具卡片仅依赖 `tool.pluginData?.error`（或下线状态）渲染单个错误 Tag，不再存在双标签 Bug；
+   - `DatasetSelectModal.tsx` / `SkillSelectModal.tsx`：通过 `!item.error` 过滤有效项。
+4. **校验层（Workflow & Form Check）**：
+   - `workflowCheck.ts`：统一通过 `item.error === 'resource_no_permission'` 和 `item.error === 'resource_missing'` 报告 issue；
+   - `checkAppForm.ts`：统一通过 `tool.pluginData?.error`、`skill.error`、`dataset.error` 进行表单级发布前阻断与文案提取。
+5. **单元测试回归（Tests）**：
+   - 更新 `rewriteAppWorkflowToDetail.test.ts`、`checkAppForm.test.ts`、`workflow/utils.test.ts`、`controller.test.ts` 等单测断言。
+
+---
+
+## 15. 软删除资源鉴权修正与工具快照名称对齐
+
+### 15.1 已删除资源误判为“无权限”问题根因与修复
+1. **核心鉴权增加 `deleteTime: null`**：
+   - 知识库与应用在软删除时标记 `deleteTime: new Date()` 并清理对应的 ACL 权限记录。
+   - `authAppByTmbId`（`packages/service/support/permission/app/auth.ts`）、`authDatasetByTmbId`（`packages/service/support/permission/dataset/auth.ts`）以及 `getClientToolPreviewNode`（`packages/service/core/app/tool/utils/client.ts`）此前在底层 `findOne` 时未携带 `deleteTime: null` 过滤条件，导致软删除记录被查出并在随后的 ACL 检查中因无权限记录而误抛 `AppErrEnum.unAuthApp` / `DatasetErrEnum.unAuthDataset`。
+   - 统一在底层查询中加入 `{ deleteTime: null }`，软删除资源立即拒绝并抛出 `unExist`，确保底层鉴权不将“已删除”误判为“无权限”。
+2. **快照工具鉴权错误细分**：
+   - `packages/service/core/app/utils.ts` 中的 `authSnapshotExternalTool` 改为返回 `'resource_no_permission' | 'tool_missing' | undefined`；
+   - 精确捕获 `AppErrEnum.unExist` 与 `PluginErrEnum.unExist` 并返回 `'tool_missing'`，其他鉴权异常返回 `'resource_no_permission'`；
+   - 错误提示统一使用 `common:core.workflow.check.tool_missing`（“该工具不存在或已被删除”）。
+
+### 15.2 Agent 与 AgentV2 无权限工具名称展示对齐（纯快照机制）
+1. **Schema 扩展**：
+   - `packages/global/core/app/tool/type.ts` 的 `AgentToolBaseSchema` 与 `CanonicalAvailableAgentToolSchema`（`packages/global/core/workflow/migration/schema.ts`）补充可选字段 `name?: string` 与 `avatar?: string`，保证快照元数据在 Zod 校验和规范化迁移时不被剥离。
+2. **AgentV2 序列化保存快照**：
+   - `projects/app/src/pageComponents/app/detail/Edit/ChatAgent/utils.ts` 的 `agentForm2AppWorkflow` 将 `tool.name` 与 `tool.avatar` 保存到 `inputs[selectedTools]` 中（与技能快照机制对齐）。
+3. **详情回填回退快照**：
+   - `packages/service/core/app/utils.ts` 的 `rewriteAppWorkflowToDetail` 在外部工具加载失败时，回退使用快照 `tool.name ?? 'Invalid'` 与 `tool.avatar ?? ''`，不再硬编码 `Invalid`；
+   - `projects/app/src/pageComponents/app/detail/Edit/SimpleApp/utils.ts` 的 `appWorkflow2Form` 优先使用最新名称（`node.pluginData?.name ?? node.name`），无权限或加载失败时回退至节点快照。
+
+### 15.3 工具错误解析统一收敛（废弃并移除 `formatToolError`）
+1. **完全废弃并移除 `formatToolError`**：
+   - 经审查确认，`pro` 仓库与主仓库中 `formatToolError` 无外部依赖，且与 `workflowCheck` 的错误码解析逻辑高度重复、文案定义割裂；
+   - 彻底从 `@fastgpt/global/core/app/utils.ts` 中删除 `formatToolError` 及无用 imports；
+2. **统一由 `getToolErrorMessage` 负责**：
+   - 统一由 `@/web/core/workflow/workflowCheck` 的 `getToolErrorMessage({ status, error, t })` 负责工具下线状态（`status === PluginStatusEnum.Offline`）、已知错误码（`resource_no_permission`、`tool_missing`）以及具体未知报错的格式化；
+   - 工具不存在/已删除/已下线文案全面统一收敛为：“该工具不存在或已被删除”（`common:core.workflow.check.tool_missing`）；
+   - `ToolSelect.tsx`、`NodeCard.tsx` 以及 `checkAppForm.ts` 全面切换至 `getToolErrorMessage`。
+3. **表单发布校验收敛**：
+   - `checkAppForm.ts` 直接使用 `getToolErrorMessage` 解析工具问题，彻底消除冗余常量与条件分支；
+   - 统一遍历 `dataset.datasets` 与 `selectedAgentSkills`，收敛为单一资源数组处理 `{ error?: 'resource_no_permission' | 'resource_missing' }`。
+
+### 15.4 Agent 技能快照保存与资源机制对齐（纯快照机制）
+1. **统一纯快照机制**：
+   - Skill 与 Tool 机制完全对齐，统一依赖节点快照，不单独为 Skill 开辟数据库回查旁路；
+   - 修复此前 `StoredSelectedAgentSkillItemTypeSchema` 仅 pick `skillId` 导致保存时剥离快照的问题，调整为保留可选的 `name`、`avatar`、`description` 字段；
+   - 应用保存时，快照元数据持久化到工作流节点；加载详情时，未授权或已删除的 Skill 直接使用节点快照中的 `name` 与 `avatar`。
+
+### 15.5 外部引用资源统一解析驱动与知识库快照对齐
+1. **统一通用资源解析驱动（`resolveSnapshotResource`）**：
+   - 在 `packages/service/core/app/utils.ts` 中抽象通用驱动器 `resolveSnapshotResource`，统一负责外部引用资源（Skill、Dataset）的四步标准流程：
+     1. 快照基线检查（`hasSnapshotResource`，已发布 Version 快照内无需重鉴权）；
+     2. 动态鉴权/DB 查最新（统一携带 `deleteTime: null` 过滤软删除）；
+     3. 异常归一化（无权限映射为 `resource_no_permission`，软删除/未找到映射为 `resource_missing`）；
+     4. 现场组装（成功返回 live 详细信息，失败统一通过 `formatFallback` 回退快照元数据）。
+2. **知识库存储快照与展示名称对齐**：
+   - 在 `packages/global/core/workflow/type/io.ts` 导出 `StoredSelectedDatasetSchema`，保存时保留展示快照（`datasetId`、`name?`、`avatar?`、`vectorModel?`），仅剥离编辑态临时状态；
+   - 修复 `packages/service/core/app/controller.ts` 的 `formatDatasetSelectValue`，不再将知识库过度压缩为纯 `datasetId`；
+   - 统一缺失/未保存快照时的回退名称为 `Invalid`，与 Skill（`skill.name ?? 'Invalid'`）和 Tool（`tool.name ?? 'Invalid'`）保持完全一致；
+   - 调整 `projects/app/src/components/core/app/DatasetCard.tsx`，与 `SkillCard.tsx` 和 `ToolSelect.tsx` 全面收敛：外层包裹 `<MyTooltip label={tooltipLabel} showOnlyWhenOverflow={!hasError}>`（异常时悬浮显示错误提示，正常时溢出显示名称），内部直接渲染 `{dataset.name || 'Invalid'}`，状态统一由右侧红色 Tag 独立呈现。
+
+---
+
+## 16. 模型选择器组件与应用资源基线适配
+
+### 16.1 现状与问题定义
+在应用资源权限重构中，`model` 已作为资源快照（`{ type: 'model', id }`）纳入应用基线体系。应用内已保存的模型属于当前应用已授权资产，无论是调试运行还是版本保存，均以基线资源为准，不要求协作者个人拥有该模型的调用权限。
+
+然而，模型选择器收起态使用的展示接口 `/api/core/ai/model/summary` 原先仅校验当前操作人的个人模型权限，导致：
+- **已授权模型收起态误报“无权限”**：应用中原作者已配置好的模型（如 `qwen3.5-flash`），协作者打开应用后调试运行完全正常，但界面选择器卡片上却错误显示红字 `No permission to use {{model}}`，造成体验与权限认知割裂。
+
+### 16.2 方案定位：“只读保活，选配受控”（Graceful Read & Restricted Selection）
+针对上述问题，确立了以最小改动面为核心的收敛原则：**对应用已有合法资产保证展示与运行正常（只读保活），但对协作者无权访问的模型不赋予主动挑选能力（选配受控）**。
+
+具体落地拆解如下：
+
+#### 1. 后端轻量基线感知（仅改动 summary 接口）
+- **接口扩展**：在 `/api/core/ai/model/summary` 中增加可选参数 `appId`；
+- **基线校验**：若传入 `appId`，接口校验当前用户对该应用的只读权限（`authApp`），并提取该应用的草稿资源基线。只要待查询模型属于当前应用基线，即视作在当前应用范围内已获授权，状态返回为 `active`；
+- **个人目录完全不侵入**：`/api/core/ai/model/catalog` 保持不变，严格反映用户自身的模型权限。
+
+#### 2. 底层基础设施零侵入
+- 全局单例 `useUserModelStore`、`modelData.ts`、`useModelQuery`、`useModelList` 等核心底层完全不改动、不传递 `appId`，彻底杜绝全局 Store 切片与并发时序竞争；
+- `modelSummaryLoader` 与 `useModelSummary` 的缓存 Key 追加 `appId` 维度进行应用间展示缓存隔离。
+
+#### 3. 前端模型选择器（AIModelSelector）极简适配
+- **收起态只读保活**：`AIModelSelector` 从上下文（`AppContext`）或属性获取 `appId` 并透传至 `useModelSummary`，根据接口返回的 `active` 正常渲染模型名称与图标，彻底消除红字报错；
+- **展开态选配受控**：下拉候选列表 100% 沿用当前用户的个人模型目录（`modelList`），不进行任何人工基线补齐。协作者无权限的模型不会出现在候选菜单中，无法主动选配；
+- **零额外状态维护**：组件不维护任何额外的基线模型引用或下拉选项合成逻辑，代码纯粹无副作用。
+
+#### 4. 详情刷新平滑过渡（Stale-While-Revalidate）
+- **根因消除**：在 `useModelSummary` 中通过 `targetKey` 对齐当前模型身份与应用维度；
+- **平滑过渡**：当打开下拉菜单或触发后台状态校验时，若在途请求正在重新验证相同模型，界面继续展示上一帧已有的有效详情，直到新响应返回后再平滑更新，彻底杜绝下拉展开或二次校验时瞬间闪烁 `Requesting models`（模型请求中）的问题。

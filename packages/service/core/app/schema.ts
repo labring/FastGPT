@@ -8,6 +8,21 @@ import {
 
 export const AppCollectionName = 'apps';
 
+export const chatConfigType = {
+  welcomeText: String,
+  welcomeConfig: Object,
+  variables: Array,
+  questionGuide: Object,
+  ttsConfig: Object,
+  whisperConfig: Object,
+  scheduledTriggerConfig: Object,
+  chatInputGuide: Object,
+  fileSelectConfig: Object,
+  entryPoints: Array,
+  instruction: String,
+  autoExecute: Object
+};
+
 // schema
 const AppSchema = new Schema(
   {
@@ -67,7 +82,7 @@ const AppSchema = new Schema(
     },
     /** @deprecated 仅供旧版本兼容和回滚，正常工作流使用 app_versions.chatConfig */
     chatConfig: {
-      type: Object,
+      type: chatConfigType,
       default: undefined
     },
     /** @deprecated 仅供旧版本兼容、回滚和资源迁移核对 */

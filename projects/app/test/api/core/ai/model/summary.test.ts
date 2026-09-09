@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   authOutLink: vi.fn(),
   findMember: vi.fn(),
-  permission: vi.fn()
+  permission: vi.fn(),
+  authApp: vi.fn(),
+  getAppDraftResourceBaseline: vi.fn()
 }));
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
@@ -19,6 +21,10 @@ vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
 }));
 vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
   getMemberModelCatalogPermission: mocks.permission
+}));
+vi.mock('@fastgpt/service/support/permission/app/auth', () => ({ authApp: mocks.authApp }));
+vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+  getAppDraftResourceBaseline: mocks.getAppDraftResourceBaseline
 }));
 
 describe('POST /api/core/ai/model/summary', () => {
@@ -107,4 +113,44 @@ describe('POST /api/core/ai/model/summary', () => {
       expect(mocks.authUserPer).not.toHaveBeenCalled();
     }
   );
+  it('treats models in app draft baseline as permitted when appId is provided', async () => {
+    const appId = '68ad85a7463006c963799a05';
+    mocks.authApp.mockResolvedValue({ app: { _id: appId } });
+    mocks.getAppDraftResourceBaseline.mockResolvedValue([
+      { type: 'model', id: 'forbidden' },
+      { type: 'model', id: 'forbidden-disabled' }
+    ]);
+    const result = await handler({
+      body: {
+        appId,
+        modelIds: ['active', 'forbidden', 'forbidden-disabled']
+      }
+    } as any);
+    expect(mocks.authApp).toHaveBeenCalledWith({
+      req: expect.anything(),
+      authToken: true,
+      appId,
+      per: expect.anything()
+    });
+    expect(mocks.getAppDraftResourceBaseline).toHaveBeenCalledWith(appId);
+    expect(result.models).toEqual([
+      { modelId: 'active', name: 'Model', avatar: 'logo.svg', status: 'active' },
+      { modelId: 'forbidden', name: 'Model', avatar: 'logo.svg', status: 'active' },
+      { modelId: 'forbidden-disabled', name: 'Model', avatar: 'logo.svg', status: 'disabled' }
+    ]);
+  });
+  it('falls back to user permissions if authApp fails', async () => {
+    const appId = '68ad85a7463006c963799a05';
+    mocks.authApp.mockRejectedValue(new Error('unAuthApp'));
+    const result = await handler({
+      body: {
+        appId,
+        modelIds: ['active', 'forbidden']
+      }
+    } as any);
+    expect(result.models).toEqual([
+      { modelId: 'active', name: 'Model', avatar: 'logo.svg', status: 'active' },
+      { modelId: 'forbidden', name: 'Model', avatar: 'logo.svg', status: 'forbidden' }
+    ]);
+  });
 });

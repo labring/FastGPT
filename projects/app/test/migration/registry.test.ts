@@ -24,7 +24,7 @@ describe('validateSystemMigrationRegistry', () => {
       onFailure: SystemMigrationFailurePolicyEnum.stop,
       progressSteps: [{ key: 'members' }, { key: 'validation' }]
     });
-    expect(systemMigrations.slice(2, -1).map((migration) => migration.id)).toEqual([
+    expect(systemMigrations.slice(2, -2).map((migration) => migration.id)).toEqual([
       '20260903_backfill_model_permissions',
       '20260903_backfill_dataset_model_references',
       '20260903_backfill_evaluation_model_references',
@@ -34,10 +34,10 @@ describe('validateSystemMigrationRegistry', () => {
       '20260905_backfill_resource_owner_acl',
       '20260908_cleanup_legacy_invited_members'
     ]);
-    expect(systemMigrations.slice(2, -1).every((migration) => !migration.blockStartup)).toBe(true);
+    expect(systemMigrations.slice(2, -2).every((migration) => !migration.blockStartup)).toBe(true);
     expect(
       systemMigrations
-        .slice(2, -1)
+        .slice(2, -2)
         .every((migration) => migration.onFailure === SystemMigrationFailurePolicyEnum.continue)
     ).toBe(true);
     expect(systemMigrations[1]).toMatchObject({
@@ -46,12 +46,19 @@ describe('validateSystemMigrationRegistry', () => {
       blockStartup: true,
       onFailure: SystemMigrationFailurePolicyEnum.stop
     });
-    expect(systemMigrations.at(-1)).toMatchObject({
+    expect(systemMigrations.at(-2)).toMatchObject({
       id: '20260907_migrate_dataset_tags_v2',
       version: '4.17.0',
       blockStartup: true,
       onFailure: SystemMigrationFailurePolicyEnum.stop,
       progressSteps: [{ key: 'datasets' }, { key: 'collections' }, { key: 'validation' }]
+    });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20260909_backfill_app_resource_snapshots',
+      version: '4.17.0',
+      blockStartup: false,
+      onFailure: SystemMigrationFailurePolicyEnum.continue,
+      progressSteps: [{ key: 'versions' }, { key: 'apps' }, { key: 'validation' }]
     });
   });
 
