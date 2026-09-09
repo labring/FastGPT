@@ -58,6 +58,7 @@ _open_guard = False
 _path_guard = False
 _logs = []
 _log_size = 0
+_logs_truncated = False
 _MAX_LOG_SIZE = 1024 * 1024
 _timeout_stage = 0
 _audit_hook_installed = False
@@ -84,6 +85,28 @@ _PROTECTED_BUILTINS = _FORBIDDEN_BUILTINS | frozenset({
 def _write_result(payload):
     sys.stdout.write(_original_json_dumps({'type': 'result', **payload}, ensure_ascii=False, default=str) + '\n')
     sys.stdout.flush()
+
+
+def _format_execution_error(error):
+    """返回异常链、traceback 和失败前输出；限制诊断长度，避免覆盖原始错误。"""
+    diagnostic_limit = 16 * 1024
+    try:
+        detail = ''.join(_tb.format_exception(type(error), error, error.__traceback__)).rstrip()
+    except Exception:
+        # 异常对象的格式化也可能报错，此时仍返回合法的失败响应。
+        detail = type(error).__name__ + ': unable to format exception'
+    if len(detail) > diagnostic_limit:
+        # 保留异常类型及原因开头，超长异常消息也不能把它们从诊断中挤掉。
+        detail = detail[:diagnostic_limit] + '\n[error truncated]'
+    logs = '\n'.join(_logs)
+    if logs or _logs_truncated:
+        detail += '\nConsole output:\n'
+        if len(logs) > diagnostic_limit:
+            detail += '[earlier logs truncated]\n'
+        detail += logs[-diagnostic_limit:]
+        if _logs_truncated:
+            detail += '\n[log capture limit reached]'
+    return detail
 
 
 def _init_request_limits(limits):
@@ -585,11 +608,13 @@ def _init_task_tmpdir(path):
 
 
 def _safe_print(*args, **kwargs):
-    global _log_size
+    global _log_size, _logs_truncated
     line = ' '.join(str(a) for a in args)
     if _log_size + len(line) <= _MAX_LOG_SIZE:
         _logs.append(line)
         _log_size += len(line)
+    else:
+        _logs_truncated = True
 
 
 def _timeout_handler(signum, frame):
@@ -755,12 +780,13 @@ def _call_main(user_main, variables):
 
 
 def _run_task(msg):
-    global _allowed_modules, _builtins_proxy, _request_count, _logs, _log_size, _timeout_stage
+    global _allowed_modules, _builtins_proxy, _request_count, _logs, _log_size, _logs_truncated, _timeout_stage
     _allowed_modules = set(msg.get('allowedModules', []))
     _init_request_limits(msg.get('requestLimits'))
     _request_count = 0
     _logs = []
     _log_size = 0
+    _logs_truncated = False
     _timeout_stage = 0
 
     code = msg.get('code', '')
@@ -837,7 +863,7 @@ def _run_task(msg):
         _write_result({'success': True, 'data': {'codeReturn': result, 'log': '\n'.join(_logs)}})
     except (Exception, SystemExit) as e:
         signal.alarm(0)
-        _write_result({'success': False, 'message': str(e)})
+        _write_result({'success': False, 'message': _format_execution_error(e)})
     finally:
         _restore_modules(snapshots)
         _builtins.__import__ = _original_import
