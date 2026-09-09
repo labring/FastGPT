@@ -241,6 +241,7 @@ describe('user account OpenAPI contracts', () => {
       avatar: '/icon/avatar.svg',
       timezone: 'Asia/Shanghai',
       contact: null,
+      hasPassword: true,
       team: {
         userId: objectIdLike,
         teamId: objectIdLike,
