@@ -26,16 +26,22 @@ const getPasswordChangeSessionDataId = (sessionId: string) =>
 /** 创建绑定当前用户和当前登录 Session 的一次性改密 Session，原始值只返回给前端。 */
 export const createPasswordChangeSession = async ({
   userId,
-  loginSessionId
-}: PasswordChangeSessionData): Promise<PasswordChangeSession> => {
+  loginSessionId,
+  session
+}: PasswordChangeSessionData & { session?: ClientSession }): Promise<PasswordChangeSession> => {
   const sessionId = randomBytes(32).toString('base64url');
   const expiredAt = new Date(Date.now() + TmpDataExpireTime[TmpDataEnum.PasswordChangeSession]);
 
-  await MongoTmpData.create({
-    dataId: getPasswordChangeSessionDataId(sessionId),
-    data: { userId, loginSessionId },
-    expireAt: expiredAt
-  });
+  await MongoTmpData.create(
+    [
+      {
+        dataId: getPasswordChangeSessionDataId(sessionId),
+        data: { userId, loginSessionId },
+        expireAt: expiredAt
+      }
+    ],
+    { session }
+  );
 
   return { sessionId, expiredAt: expiredAt.toISOString() };
 };
