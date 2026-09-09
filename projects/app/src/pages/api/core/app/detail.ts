@@ -51,8 +51,7 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
       avatar: app.avatar,
       intro: app.intro ?? '',
       modules: [],
-      edges: [],
-      chatConfig: undefined
+      edges: []
     });
   }
 
