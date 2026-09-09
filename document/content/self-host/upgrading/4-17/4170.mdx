@@ -24,6 +24,10 @@ SANDBOX_DISABLE_SECCOMP=true
 
 该配置只关闭 seccomp，chroot、`no_new_privs` 和 UID/GID 降权仍保持启用。关闭后不再从内核层阻断网络、创建进程、线程和执行二进制等系统调用，不建议在支持 seccomp 的环境中使用。
 
+### 新建团队默认创建权限（可选）
+
+设置 `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED=true` 后，新建团队时会为默认全员组授予应用、Skill 和知识库创建权限。默认值为 `false`，仅影响新建团队，不会修改已有团队权限。FastGPT Pro 请在 FastGPT 和 Admin 服务中保持该配置一致，以覆盖各自的团队创建入口，包括企业微信授权建队。
+
 ## 🚀 新增内容
 
 1. FastGPT SSO Service 新增 LDAP 成员与组织架构同步，并补充不同 SSO Provider 的独立环境变量模板和配置文档。
@@ -76,4 +80,4 @@ SANDBOX_DISABLE_SECCOMP=true
 3. 协作者查询接口可按需返回团队成员登录用户名，并通过批量查询避免逐成员请求。
 4. FastGPT Pro 优化集群镜像构建缓存，使用代理缓存和带缓存的 Runner 降低重复拉取与构建开销。
 5. 修复部署脚本的访问地址与宿主机端口配置混淆问题，支持独立配置 FastGPT 和 Sandbox Proxy 的宿主机端口，避免误用反向代理的公网端口。
-6. Code Sandbox 在 Worker 响应解析或处理失败时记录完整异常，并向调用方返回具体错误类型和原因，便于排查代码执行问题。
+6. Code Sandbox 在 JS 或 Python 代码执行失败时返回异常堆栈、异常链和已捕获的 console/print 输出，并记录到 warn 级别的响应日志。错误详情和输出各限制为 16K 字符，超限明确标记截断；Worker 响应解析失败时补充 worker ID、响应长度和已捕获的 stderr。进程被强制终止时，尚未发送的输出仍可能丢失。
