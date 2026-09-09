@@ -170,7 +170,7 @@
 - E28：路由配置及请求函数18例通过；另用实际SDK+本地HTTP服务验证默认路由、模型配置覆盖、用户Key覆盖模型配置且不污染原配置。真实50ms超时约56ms拒绝，关闭该次SDK重试以隔离超时行为。`routing-tests.log`、`routing-http-results.json`。
 - E29：隔离应用连通开始节点和AI节点，root正常发布成功，真实调试API逐节点执行取得协议服务响应。AI节点记录实际别名、8输入/5输出token及0.018积分，与阶梯价格一致。停用相同模型再次执行返回明确disabled错误，不自动回退；已恢复启用。`workflow-publish-valid.json`、`workflow-run-active.json`、`workflow-run-disabled.json`。
 - E30：核对生产监听注册，仅系统配置、训练及应用模板保留Change Stream。模型全局/私有缓存/旧getter AST检查覆盖主仓与存在的Pro checkout；搜索中的表单watch不是数据库监听。
-- 本轮可持久保存的无凭证摘要：[evidence-7663.json](./evidence-7663.json)。当前主仓提交eada22abf2的13项CI通过；本轮新增测试与验收证据随后提交到 `install-model`。
+- 本轮可持久保存的无凭证摘要：[evidence-7663.json](./evidence-7663.json)。本轮验收提交已推送到 `install-model`，对应 PR #7663 的 build、test、Pro、coverage 与 CLA 检查全部通过。
 
 - E31：额外数据库fastgpt_pr7663_training及pgvector:0.8.0-pg15专用容器，运行实际App generateVector队列函数。成功任务写1条Mongo数据和2条pgvector记录后删除任务；停用embedding再处理新任务，明确disabled错误、retryCount从5到4，数据/向量数量不变。使用项目NODE_ENV=test分块路径执行同一分块实现，其他业务逻辑和HTTP/存储均真实；不把此项宣称为Bun worker兼容测试或Pro完整服务验收。首轮夹具billId解构错误、未初始化Redis已修正；最终重跑无这些错误。训练专用数据库已删除，容器及匿名卷已移除，Redis DB10清空；浏览器验收库保留。证据已收入evidence-7663.json。
 - E32：非LLM价格回归补充执行 `submit.test.ts` 14例与 `pricing.test.ts` 43例，全部通过。打开 `pr7663-api-embedding` 编辑窗口核对上游表单没有价格输入，因此非LLM `charsPointsPrice` 以提交/API路径验证，不将不可编辑字段宣称为浏览器通过。`non-llm-price-tests.log`。
