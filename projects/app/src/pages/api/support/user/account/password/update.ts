@@ -13,6 +13,7 @@ import { consumePasswordChangeSessionInTransaction } from '@fastgpt/service/supp
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { delUserAllSession } from '@fastgpt/service/support/user/session';
+import { withUserLock } from '@fastgpt/service/support/user/lock';
 import { NextAPI } from '@/service/middleware/entry';
 
 /** 使用当前登录 Session 和一次性改密 Session 更新密码，并仅保留发起请求的 Session。 */
@@ -24,27 +25,29 @@ async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<Update
   });
   if (!sessionId || isRoot) return Promise.reject(ERROR_ENUM.unAuthorization);
 
-  await consumePasswordChangeSessionInTransaction({
-    sessionId: body.passwordChangeSession,
-    userId,
-    loginSessionId: sessionId,
-    newPassword: body.newPsw,
-    handler: async (session) => {
-      const updateResult = await MongoUser.updateOne(
-        { _id: userId },
-        {
-          $set: {
-            password: body.newPsw,
-            passwordUpdateTime: new Date()
-          }
-        },
-        { session }
-      );
-      if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
-    }
-  });
+  await withUserLock(userId, async () => {
+    await consumePasswordChangeSessionInTransaction({
+      sessionId: body.passwordChangeSession,
+      userId,
+      loginSessionId: sessionId,
+      newPassword: body.newPsw,
+      handler: async (session) => {
+        const updateResult = await MongoUser.updateOne(
+          { _id: userId },
+          {
+            $set: {
+              password: body.newPsw,
+              passwordUpdateTime: new Date()
+            }
+          },
+          { session }
+        );
+        if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
+      }
+    });
 
-  await delUserAllSession(userId, [sessionId]);
+    await delUserAllSession(userId, [sessionId]);
+  });
   void addAuditLog({
     tmbId,
     teamId,

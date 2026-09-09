@@ -11,12 +11,21 @@ import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
 import updatePasswordApi from '@/pages/api/support/user/account/password/update';
 import { Call } from '@test/utils/request';
 
+const mocks = vi.hoisted(() => ({
+  withUserLock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/user/lock', () => ({
+  withUserLock: mocks.withUserLock
+}));
+
 describe('password/update API', () => {
   let testUser: any;
   let testTeam: any;
   let testTmb: any;
 
   beforeEach(async () => {
+    mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
     testUser = await MongoUser.create({
       username: 'password-update-user',
       password: hashStr('old-password')
@@ -65,6 +74,7 @@ describe('password/update API', () => {
     );
 
     expect(response.code).toBe(200);
+    expect(mocks.withUserLock).toHaveBeenCalledWith(String(testUser._id), expect.any(Function));
     expect(await MongoUser.exists({ _id: testUser._id, password: body.newPsw })).toBeTruthy();
     const updatedUser = await MongoUser.findById(testUser._id).lean();
     expect(updatedUser?.passwordUpdateTime).toBeInstanceOf(Date);
