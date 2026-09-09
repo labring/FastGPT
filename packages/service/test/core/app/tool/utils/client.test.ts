@@ -437,27 +437,24 @@ describe('getClientToolPreviewNode', () => {
         teamId: '507f1f77bcf86cd799439014',
         type: AppTypeEnum.mcpToolSet,
         name: 'MCP Tools',
-        avatar: 'mcp.svg'
-      })
-    });
-    mocks.getAppVersionById.mockResolvedValueOnce({
-      nodes: [
-        {
-          toolConfig: {
-            mcpToolSet: {
-              toolList: [
-                {
-                  name: 'search',
-                  description: 'MCP search tool',
-                  inputSchema: { type: 'object', properties: {} }
-                }
-              ]
+        avatar: 'mcp.svg',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'MCP search tool',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
             }
           }
-        }
-      ],
-      edges: [],
-      chatConfig: {}
+        ]
+      })
     });
 
     const result = await getClientToolPreviewNode({
