@@ -149,7 +149,7 @@ After adding the channel, click Token -> Add Token, fill in the name, and config
 
 ![](../../../public/imgs/Ollama-oneapi2.png)
 
-Edit the FastGPT docker-compose.yml file: comment out AI Proxy, set OPENAI_BASE_URL to your OneAPI address (default http://address:port/v1 -- /v1 is required), and set KEY to your OneAPI token.
+FastGPT routes model requests through AI Proxy. Keep `AIPROXY_API_ENDPOINT` and `AIPROXY_API_TOKEN` configured. In Admin, add an OpenAI-compatible model provider with your OneAPI endpoint (`http://address:port/v1`) and OneAPI token, then associate the models.
 
 ![](../../../public/imgs/Ollama-oneapi3.png)
 
@@ -157,7 +157,7 @@ Then [jump to section 5](#5-model-addition-and-usage) to add and use models.
 
 ### 4. Direct Integration
 
-If you don't want to use AI Proxy or OneAPI, you can connect directly. Edit the FastGPT docker-compose.yml: comment out AI Proxy code, set OPENAI_BASE_URL to your Ollama address (default http://address:port/v1 -- /v1 is required), and set KEY to any value (Ollama has no authentication by default; if you've enabled it, use the correct key). Everything else is the same as the OneAPI approach -- just add your model in FastGPT. This example uses Docker-deployed Ollama; for host-installed Ollama, use http://[host IP]:[port].
+To use Ollama without OneAPI, configure its OpenAI-compatible endpoint (`http://address:port/v1`) as a model provider in Admin. Ollama does not require authentication by default; if you enabled authentication, supply the corresponding key. FastGPT still routes requests through AI Proxy, so keep `AIPROXY_API_ENDPOINT` and `AIPROXY_API_TOKEN` configured. For a host deployment, use the host IP; for a container deployment, use an address reachable from AI Proxy.
 
 ![](../../../public/imgs/Ollama-direct1.png)
 

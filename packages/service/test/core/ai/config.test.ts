@@ -39,6 +39,22 @@ describe('AI config defaults', () => {
     expect(openaiBaseKey).toBe('aiproxy-token');
   });
 
+  it('ignores invalid legacy environment values when AIProxy is configured', async () => {
+    vi.stubEnv('OPENAI_BASE_URL', 'not-a-url');
+    vi.stubEnv('CHAT_API_KEY', '');
+
+    const { getAIApi, getAxiosConfig } = await importConfig();
+    const { ai, requestMeta } = getAIApi();
+
+    expect(ai.baseURL).toBe('http://aiproxy:3000/v1');
+    expect(ai.apiKey).toBe('aiproxy-token');
+    expect(requestMeta.usedUserOpenAIKey).toBe(false);
+    expect(getAxiosConfig()).toEqual({
+      baseUrl: 'http://aiproxy:3000/v1',
+      authorization: 'Bearer aiproxy-token'
+    });
+  });
+
   it('normalizes trailing slashes from AI Proxy endpoint', async () => {
     vi.stubEnv('AIPROXY_API_ENDPOINT', 'http://aiproxy:3000///');
 
@@ -93,7 +109,7 @@ describe('AI config user OpenAI account', () => {
     global.systemEnv = originalSystemEnv;
   });
 
-  it('should ignore user baseUrl when user key is missing', async () => {
+  it('uses AIProxy when the user key is missing, ignoring legacy system overrides', async () => {
     const { getAIApi, getAxiosConfig } = await importConfig();
 
     expect(
@@ -103,8 +119,8 @@ describe('AI config user OpenAI account', () => {
         } as any
       })
     ).toEqual({
-      baseUrl: 'https://system.example.com/v1',
-      authorization: 'Bearer system-key'
+      baseUrl: 'http://aiproxy:3000/v1',
+      authorization: 'Bearer aiproxy-token'
     });
     expect(
       getAIApi({
@@ -114,7 +130,7 @@ describe('AI config user OpenAI account', () => {
       }).requestMeta
     ).toEqual({
       usedUserOpenAIKey: false,
-      baseUrl: 'https://system.example.com/v1'
+      baseUrl: 'http://aiproxy:3000/v1'
     });
   });
 

@@ -21,7 +21,9 @@ upgradeTags:
 - `AIPROXY_API_ENDPOINT`：可访问的 AI Proxy 服务根地址，例如 `http://aiproxy:3000`，不要附加 `/v1`。
 - `AIPROXY_API_TOKEN`：与 AI Proxy 服务端配置一致的非空管理员 Token。
 
-缺少任一配置会导致启动校验失败。旧的 `OPENAI_BASE_URL`、`CHAT_API_KEY`，以及单模型的 `requestUrl/requestAuth` 都不能替代这两个必填项。升级前请确认 AI Proxy 可访问，且管理员 Token 可以访问渠道管理接口；不要把模型服务商的 API Key 当作 AI Proxy 管理员 Token。
+**从 V4.17.0 起，`OPENAI_BASE_URL` 和 `CHAT_API_KEY` 已弃用并移除，配置后不再生效。** 请从部署环境中删除这两个变量，改用上述 AI Proxy 配置，并在管理员的模型渠道中维护模型服务商地址和密钥。旧的 `systemEnv.oneapiUrl/chatApiKey` 覆盖配置也不再生效。
+
+缺少任一 AI Proxy 配置会导致启动校验失败，单模型的 `requestUrl/requestAuth` 不能替代这两个必填项。升级前请确认 AI Proxy 可访问，且管理员 Token 可以访问渠道管理接口；不要把模型服务商的 API Key 当作 AI Proxy 管理员 Token。
 
 ### Code Sandbox seccomp 兼容配置（可选）
 

@@ -21,7 +21,9 @@ Starting with V4.17.0, you must deploy or connect to AI Proxy. Configure these v
 - `AIPROXY_API_ENDPOINT`: A reachable AI Proxy service root URL, such as `http://aiproxy:3000`. Do not append `/v1`.
 - `AIPROXY_API_TOKEN`: A nonempty administrator token matching the AI Proxy server configuration.
 
-Startup validation fails if either setting is missing. The legacy `OPENAI_BASE_URL` and `CHAT_API_KEY` settings, as well as per-model `requestUrl/requestAuth`, do not replace these required settings. Before upgrading, verify that AI Proxy is reachable and that the administrator token can access its provider management APIs. Do not use a model service provider's API key as the AI Proxy administrator token.
+**As of V4.17.0, `OPENAI_BASE_URL` and `CHAT_API_KEY` are deprecated and removed. These settings no longer take effect.** Remove them from your deployment environment and use the AI Proxy settings above. Manage model provider endpoints and keys in Admin. The legacy `systemEnv.oneapiUrl/chatApiKey` overrides also no longer take effect.
+
+Startup validation fails if either AI Proxy setting is missing. Per-model `requestUrl/requestAuth` cannot replace these required settings. Before upgrading, verify that AI Proxy is reachable and that the administrator token can access its provider management APIs. Do not use a model service provider's API key as the AI Proxy administrator token.
 
 ### Code Sandbox seccomp compatibility setting (optional)
 

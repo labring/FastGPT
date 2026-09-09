@@ -25,8 +25,8 @@ export const getAIApi = (props?: { userKey?: OpenaiAccountType; timeout?: number
   const { userKey, timeout } = props || {};
   const userOpenAIAccount = getUserOpenAIAccount(userKey);
 
-  const baseUrl = userOpenAIAccount?.baseUrl || global?.systemEnv?.oneapiUrl || openaiBaseUrl;
-  const apiKey = userOpenAIAccount?.key || global?.systemEnv?.chatApiKey || openaiBaseKey;
+  const baseUrl = userOpenAIAccount?.baseUrl || openaiBaseUrl;
+  const apiKey = userOpenAIAccount?.key || openaiBaseKey;
 
   return {
     ai: new OpenAI({
@@ -46,8 +46,8 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   const { userKey } = props || {};
   const userOpenAIAccount = getUserOpenAIAccount(userKey);
 
-  const baseUrl = userOpenAIAccount?.baseUrl || global?.systemEnv?.oneapiUrl || openaiBaseUrl;
-  const apiKey = userOpenAIAccount?.key || global?.systemEnv?.chatApiKey || openaiBaseKey;
+  const baseUrl = userOpenAIAccount?.baseUrl || openaiBaseUrl;
+  const apiKey = userOpenAIAccount?.key || openaiBaseKey;
 
   return {
     baseUrl,
