@@ -106,6 +106,7 @@ const ModelProvider = () => {
           flexDirection={'column'}
           gap={4}
           py={6}
+          pt={[4, 6]}
         >
           {modelTab === 'model' && <ValidModelTable Tab={Tab} />}
           {modelTab === 'config' && <ModelConfigTable Tab={Tab} />}

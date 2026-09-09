@@ -158,7 +158,7 @@ async function handler(
     })();
     return {
       _id: dataset._id,
-      avatar: dataset.avatar ?? '',
+      avatar: dataset.avatar,
       name: dataset.name,
       intro: dataset.intro ?? '',
       type: dataset.type,

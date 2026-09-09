@@ -6,6 +6,7 @@ import { ParentIdSchema } from '../../../common/parentFolder/type';
 import {
   ChunkSettingsSchema,
   DatasetItemSchema,
+  DatasetSchema,
   DatasetListItemSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
@@ -40,9 +41,9 @@ export const CreateDatasetBodySchema = z.object({
     example: '这是一个用于存储产品文档的知识库',
     description: '知识库简介'
   }),
-  avatar: z.string().meta({
+  avatar: z.string().optional().meta({
     example: '/imgs/dataset/avatar.png',
-    description: '知识库头像'
+    description: '知识库头像，可不传，返回时使用默认图标'
   }),
   vectorModelId: z.string().optional().meta({
     description: '向量模型 ID，不传则使用默认向量模型'
@@ -97,9 +98,9 @@ export const CreateDatasetWithFilesBodySchema = z.object({
         example: '我的知识库',
         description: '知识库名称'
       }),
-      avatar: z.string().meta({
+      avatar: z.string().optional().meta({
         example: '/imgs/dataset/avatar.png',
-        description: '知识库头像'
+        description: '知识库头像，可不传，返回时使用默认图标'
       }),
       parentId: ParentIdSchema.meta({
         example: '68ad85a7463006c963799a05',
@@ -141,7 +142,7 @@ export const CreateDatasetWithFilesResponseSchema = z.object({
     example: '我的知识库',
     description: '知识库名称'
   }),
-  avatar: z.string().meta({
+  avatar: DatasetSchema.shape.avatar.meta({
     example: '/imgs/dataset/avatar.png',
     description: '知识库头像'
   }),

@@ -340,6 +340,7 @@ describe('POST /api/core/app/list', () => {
       tmbId: user.tmbId,
       updateTime: new Date('2024-01-01T00:00:00.000Z')
     });
+    expect((await MongoApp.findById(app._id).lean())?.avatar).toBeUndefined();
     await MongoApp.collection.updateOne(
       { _id: new Types.ObjectId(String(app._id)) },
       { $set: { avatar: null }, $unset: { intro: '' } }
@@ -355,7 +356,7 @@ describe('POST /api/core/app/list', () => {
 
     expect(res.code).toBe(200);
     expect(res.data.list).toContainEqual(
-      expect.objectContaining({ name: 'Legacy App', avatar: '', intro: '' })
+      expect.objectContaining({ name: 'Legacy App', avatar: '/icon/logo.svg', intro: '' })
     );
   });
 });

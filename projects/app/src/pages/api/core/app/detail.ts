@@ -48,7 +48,7 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
   if (!app.permission.hasWritePer) {
     return GetAppDetailResponseSchema.parse({
       ...app,
-      avatar: app.avatar ?? '',
+      avatar: app.avatar,
       intro: app.intro ?? '',
       modules: [],
       edges: [],
@@ -58,7 +58,7 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
 
   return GetAppDetailResponseSchema.parse({
     ...app,
-    avatar: app.avatar ?? '',
+    avatar: app.avatar,
     intro: app.intro ?? '',
     modules: workflow.nodes,
     edges: workflow.edges,

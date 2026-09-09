@@ -118,7 +118,7 @@ const Dataset = () => {
           overflowY={'hidden'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'} gap={3} minW={0}>
+          <Flex alignItems={'center'} gap={3} minW={0} flexWrap={'wrap'} flexShrink={0}>
             <Box flexShrink={0}>
               <FolderPath
                 paths={paths}

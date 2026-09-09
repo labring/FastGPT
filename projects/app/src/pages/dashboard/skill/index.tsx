@@ -91,15 +91,14 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           flexDirection={'column'}
           h={'100%'}
           pr={[3, 6]}
-          pl={6}
+          pl={[3, 6]}
           pt={6}
           overflowY={'hidden'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'} gap={3} minW={0}>
-            {!isPc ? (
-              MenuIcon
-            ) : paths.length > 0 ? (
+          <Flex alignItems={'center'} gap={3} minW={0} flexWrap={'wrap'} flexShrink={0}>
+            {!isPc && MenuIcon}
+            {isPc && paths.length > 0 ? (
               <Box>
                 <FolderPath
                   paths={paths}
@@ -138,7 +137,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                       leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
                       onClick={() => setEditFolder({})}
                       isDisabled={!canCreateFolder}
-                      px={5}
+                      px={[3, 5]}
                     >
                       {t('common:Folder')}
                     </Button>
@@ -151,7 +150,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         setShowImportModal(true);
                       }
                     }}
-                    px={5}
+                    px={[3, 5]}
                   >
                     {t('common:Import')}
                   </Button>
@@ -161,15 +160,20 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           </Flex>
 
           {!isPc && (
-            <Box mt={2}>
+            <Flex mt={3} direction={'column'} gap={3}>
+              {paths.length > 0 && (
+                <Box overflowX={'auto'}>
+                  <FolderPath paths={paths} forbidLastClick onClick={onNavigate} />
+                </Box>
+              )}
               <SearchInput
-                maxW={['auto', '250px']}
                 value={searchKey}
                 onChange={(e) => setSearchKey(e.target.value)}
                 placeholder={t('skill:search_skill')}
                 maxLength={30}
               />
-            </Box>
+              <ResourceListFilters value={listFilters} onChange={setListFilters} />
+            </Flex>
           )}
 
           <MyBox flex={'1 0 0'} minH={0}>

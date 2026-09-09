@@ -5,7 +5,10 @@ import type {
   GetSkillDetailQuery,
   GetSkillDetailResponse
 } from '@fastgpt/global/core/ai/skill/api';
-import { GetSkillDetailQuerySchema } from '@fastgpt/global/core/ai/skill/api';
+import {
+  GetSkillDetailQuerySchema,
+  GetSkillDetailResponseSchema
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -37,7 +40,7 @@ async function handler(
     ...buildAppSkillRefMongoQuery(skill._id.toString())
   });
 
-  return {
+  return GetSkillDetailResponseSchema.parse({
     _id: skill._id,
     source: skill.source,
     type: skill.type,
@@ -56,7 +59,7 @@ async function handler(
     updateTime: skill.updateTime?.toISOString() || new Date().toISOString(),
     permission,
     appCount
-  };
+  });
 }
 
 export default NextAPI(handler);

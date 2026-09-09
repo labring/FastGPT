@@ -86,7 +86,13 @@ const Info = () => {
 
   return (
     <AccountContainer>
-      <Box {...accountPageRootStyles} overflowY={['visible', 'auto']} py={[3, 6]} px={[5, 6]}>
+      <Box
+        {...accountPageRootStyles}
+        overflowY={['visible', 'auto']}
+        py={[3, 6]}
+        pt={[4, 6]}
+        px={[5, 6]}
+      >
         {isPc ? (
           <Flex w={'100%'} alignItems={'flex-start'}>
             <Box flex={'0 0 330px'}>

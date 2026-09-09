@@ -20,6 +20,7 @@ import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permissio
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetDatasetListBodySchema,
+  GetDatasetListResponseSchema,
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
@@ -47,7 +48,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   ]);
 
   if (Array.isArray(tmbIds) && tmbIds.length === 0) {
-    return [];
+    return GetDatasetListResponseSchema.parse([]);
   }
 
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
@@ -153,7 +154,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return addSourceMember({ list: formatDatasets });
+  return GetDatasetListResponseSchema.parse(await addSourceMember({ list: formatDatasets }));
 }
 
 export default NextAPI(handler);

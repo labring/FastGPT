@@ -346,7 +346,7 @@ export const AppListItemSchema = z
     parentId: ParentIdSchema.meta({ description: '父级应用/文件夹 ID' }),
     tmbId: ObjectIdSchema.meta({ description: '创建者团队成员 ID' }),
     name: z.string().meta({ example: '客服应用', description: '应用名称' }),
-    avatar: z.string().meta({ description: '应用头像' }),
+    avatar: AppSchemaTypeSchema.shape.avatar.meta({ description: '应用头像' }),
     intro: z.string().meta({ description: '应用介绍' }),
     type: z.enum(AppTypeEnum).meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
     createTime: z.coerce.date().meta({ description: '创建时间' }),
@@ -399,7 +399,7 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     description: '应用编排版本，v2 表示当前工作流编排结构'
   }),
   name: z.string().meta({ example: '客服应用', description: '应用名称' }),
-  avatar: z.string().meta({ description: '应用头像' }),
+  avatar: AppSchemaTypeSchema.shape.avatar.meta({ description: '应用头像' }),
   intro: z.string().meta({ description: '应用介绍' }),
   templateId: z.string().optional().meta({
     example: 'template-simple-chat',
