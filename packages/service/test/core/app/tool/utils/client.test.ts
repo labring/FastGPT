@@ -203,7 +203,6 @@ describe('getClientToolPreviewNode', () => {
       intro: 'Weather query',
       author: 'FastGPT',
       tags: [],
-      toolDescription: 'Weather query',
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
@@ -281,6 +280,7 @@ describe('getClientToolPreviewNode', () => {
     expect(result.toolConfig?.httpTool).toEqual({
       toolId: 'http-507f1f77bcf86cd799439011/search'
     });
+    expect(result.intro).toBe('Search tool');
     expect(result.inputs[0]?.key).toBe('q');
     expect((result as any).jsonSchema).toBeUndefined();
     expect(getRuntimeSchemaFieldPaths(result)).toEqual([]);
@@ -428,6 +428,41 @@ describe('getClientToolPreviewNode', () => {
     });
     expect(JSON.stringify(result.toolConfig)).not.toContain('inputSchema');
     expect(getRuntimeSchemaFieldPaths(result)).toEqual([]);
+  });
+
+  it('uses the MCP tool description for a standalone tool preview', async () => {
+    mocks.findById.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue({
+        _id: '507f1f77bcf86cd799439013',
+        teamId: '507f1f77bcf86cd799439014',
+        type: AppTypeEnum.mcpToolSet,
+        name: 'MCP Tools',
+        avatar: 'mcp.svg',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'search',
+                    description: 'MCP search tool',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      })
+    });
+
+    const result = await getClientToolPreviewNode({
+      appId: 'mcp-507f1f77bcf86cd799439013/search',
+      lang: 'en'
+    });
+
+    expect(result.intro).toBe('MCP search tool');
   });
 
   it('applies defaultToAgentGenerated over a workflow plugin input selection', async () => {

@@ -212,7 +212,6 @@ export const getAgentRuntimeTools = async ({
       avatar: toolDetail.avatar,
       name: toolDetail.name,
       intro: toolDetail.intro,
-      toolDescription: toolDetail.toolDescription,
       version: versionId ?? '',
       inputs,
       outputs: appendErrorOutput(schemaOutputs),
@@ -473,7 +472,6 @@ export const getAgentRuntimeTools = async ({
     toolId,
     inputs,
     name,
-    toolDescription,
     intro,
     jsonSchema,
     fixedInputBindings
@@ -481,12 +479,11 @@ export const getAgentRuntimeTools = async ({
     toolId: string;
     inputs: FlowNodeInputItemType[];
     name: string;
-    toolDescription?: string;
     intro?: string;
     jsonSchema?: JSONSchemaInputType;
     fixedInputBindings?: Record<string, unknown>;
   }) => {
-    const description = [name, toolDescription || intro].filter(Boolean).join(': ');
+    const description = [name, intro].filter(Boolean).join(': ');
     // 仅数字开头的工具名需要补前缀，避免破坏 runtime 使用原始 tool id 反查工具。
     const formatToolId = /^\d/.test(toolId) ? `t${toolId}` : toolId;
 
@@ -689,7 +686,6 @@ export const getAgentRuntimeTools = async ({
             toolId: runtimeId,
             inputs,
             name: child.name,
-            toolDescription: child.toolDescription,
             intro: child.intro,
             jsonSchema: child.jsonSchema,
             fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })
@@ -793,7 +789,6 @@ export const getAgentRuntimeTools = async ({
             toolId: runtimeToolId,
             inputs,
             name: toolNode.name,
-            toolDescription: toolNode.toolDescription,
             intro: toolNode.intro,
             jsonSchema: toolNode.jsonSchema,
             fixedInputBindings: filterToolConfiguredParams({ params: configuredParams, inputs })

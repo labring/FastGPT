@@ -23,7 +23,6 @@ const createToolNode = (overrides: Record<string, any> = {}) =>
     avatar: 'tool-avatar',
     flowNodeType: FlowNodeTypeEnum.tool,
     intro: 'Search intro',
-    toolDescription: 'Search data',
     inputs: [
       {
         key: 'q',

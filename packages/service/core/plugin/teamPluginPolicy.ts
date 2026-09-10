@@ -243,7 +243,6 @@ const buildDeletedToolPlaceholder = ({
   intro: '',
   author: '',
   tags: [],
-  toolDescription: '',
   userGuide: undefined,
   pluginOrder: 0,
   originCost: 0,

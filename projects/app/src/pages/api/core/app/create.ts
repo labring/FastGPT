@@ -191,6 +191,13 @@ export const onCreateApp = async ({
     });
   }
 
+  // 工具集节点可能已编码 JSON Schema；只清理旧节点字段，保留嵌套 schema 的存储格式。
+  const storageNodes = storageModules?.map((node) => {
+    const storageNode = { ...node } as typeof node & { toolDescription?: unknown };
+    delete storageNode.toolDescription;
+    return storageNode;
+  });
+
   const create = async (session: ClientSession) => {
     const resourceRefs = extractAppResourceRefsFromNodes(normalizedWorkflow.nodes);
     const _avatar = await (async () => {
@@ -221,7 +228,7 @@ export const onCreateApp = async ({
           intro,
           teamId,
           tmbId,
-          modules: storageModules ?? normalizedWorkflow.nodes,
+          modules: storageNodes ?? normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
           type,
@@ -242,7 +249,7 @@ export const onCreateApp = async ({
           {
             tmbId,
             appId,
-            nodes: storageModules ?? normalizedWorkflow.nodes,
+            nodes: storageNodes ?? normalizedWorkflow.nodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
             versionName: name,

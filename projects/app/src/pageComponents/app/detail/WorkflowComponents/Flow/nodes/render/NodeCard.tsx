@@ -15,6 +15,7 @@ import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/system
 import {
   getToolRawId,
   isDebugToolSource,
+  mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { formatToolError } from '@fastgpt/global/core/app/utils';
@@ -134,6 +135,7 @@ const NodeCard = (props: Props) => {
     inputs,
     rtDoms,
     pluginId,
+    flowNodeType,
     colorSchema
   } = props;
 
@@ -455,7 +457,7 @@ const NodeCard = (props: Props) => {
                     <NodeStatusBadge status={nodeTemplate?.status} error={error} />
                   </Flex>
 
-                  <NodeIntro nodeId={nodeId} intro={intro} />
+                  <NodeIntro nodeId={nodeId} intro={intro} flowNodeType={flowNodeType} />
                 </Box>
               )}
             </Box>
@@ -702,13 +704,16 @@ NodeTitleSection.displayName = 'NodeTitleSection';
 // 节点介绍组件
 const NodeIntro = React.memo(function NodeIntro({
   nodeId,
-  intro = ''
+  intro = '',
+  flowNodeType
 }: {
   nodeId: string;
   intro?: string;
+  flowNodeType: FlowNodeTypeEnum;
 }) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const [isIntroEditing, setIsIntroEditing] = useState(false);
 
   const handleSave = useCallback(
     (newVal: string) => {
@@ -734,6 +739,7 @@ const NodeIntro = React.memo(function NodeIntro({
         type={'textarea'}
         maxLength={500}
         placeholder={t('app:node_not_intro')}
+        onEditingChange={setIsIntroEditing}
         fontSize={'sm'}
         lineHeight={'short'}
         color={'myGray.500'}
@@ -741,6 +747,19 @@ const NodeIntro = React.memo(function NodeIntro({
         py={'3px'}
         px={'6px'}
       />
+      {isIntroEditing && flowNodeType === FlowNodeTypeEnum.toolSet && (
+        <Flex
+          alignItems={'center'}
+          gap={'0.25rem'}
+          py={'0.25rem'}
+          px={0}
+          fontSize={'xs'}
+          color={'myGray.500'}
+        >
+          <MyIcon name={'common/info'} w={'14px'} />
+          {t('app:toolset_intro_tips')}
+        </Flex>
+      )}
     </Box>
   );
 });
@@ -814,7 +833,11 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
                 template.colorSchema ?? getColorSchemaByFlowNodeType(template.flowNodeType),
               name: node.name,
               intro: node.intro,
-              avatar: node.avatar
+              avatar: node.avatar,
+              toolConfig: mergeToolSetChildDescriptions({
+                savedToolConfig: node.toolConfig,
+                templateToolConfig: template.toolConfig
+              })
             }
           });
         }
@@ -919,7 +942,6 @@ const MenuRender = React.memo(function MenuRender({
             pluginId: node.data.pluginId
           }),
           intro: node.data.intro,
-          toolDescription: node.data.toolDescription,
           showStatus: node.data.showStatus,
 
           version: node.data.version,

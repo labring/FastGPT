@@ -2,6 +2,7 @@ import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
 
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -20,6 +21,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   isSystemOrCommercialToolId,
+  mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
 import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -279,8 +281,19 @@ export async function rewriteAppWorkflowToDetail({
           node.hasTokenFee = preview.hasTokenFee;
           node.hasSystemSecret = preview.hasSystemSecret;
 
-          node.toolConfig = preview.toolConfig;
-          node.toolDescription = preview.toolDescription;
+          const { source } = splitCombineToolId(toolId);
+          if (
+            (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) &&
+            node.intro !== '' &&
+            !node.intro
+          ) {
+            node.intro = preview.intro;
+          }
+
+          node.toolConfig = mergeToolSetChildDescriptions({
+            savedToolConfig: node.toolConfig,
+            templateToolConfig: preview.toolConfig
+          });
 
           // Latest version
           if (!node.version) {

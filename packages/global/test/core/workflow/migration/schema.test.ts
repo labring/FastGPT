@@ -117,6 +117,48 @@ describe('workflow migration boundary', () => {
     expect(result.nodes[0].inputs[1]).not.toHaveProperty('isToolParam');
   });
 
+  it('keeps node and input descriptions', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'chat-1',
+          flowNodeType: 'chatNode',
+          name: 'Chat',
+          intro: 'Node intro',
+          inputs: [
+            {
+              key: 'query',
+              label: 'Query',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              toolDescription: 'Input description'
+            }
+          ],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0]).toMatchObject({ intro: 'Node intro' });
+    expect(result.nodes[0].inputs[0].toolDescription).toBe('Input description');
+  });
+
+  it('cleans null legacy node tool descriptions', async () => {
+    const result = await migrateWorkflowToCurrent({
+      nodes: [
+        {
+          nodeId: 'chat-1',
+          flowNodeType: 'chatNode',
+          name: 'Chat',
+          toolDescription: null,
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    expect(result.nodes[0]).not.toHaveProperty('toolDescription');
+  });
+
   it('keeps legacy file inputs manual', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [

@@ -23,7 +23,10 @@ export const SubAppRuntimeSchema = z.object({
   id: z.string(),
   name: z.string(),
   avatar: z.string().optional(),
-  toolDescription: z.string().optional(),
+  toolDescription: z.string().optional().meta({
+    description: '已废弃：节点作为工具被调用时的能力说明',
+    deprecated: true
+  }),
   version: z.string().optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
   inputs: z.custom<RuntimeNodeItemType['inputs']>().optional(),
@@ -35,5 +38,6 @@ export type SubAppRuntimeType = z.infer<typeof SubAppRuntimeSchema>;
 export type GetSubAppInfoFnType = (id: string) => {
   name: string;
   avatar: string;
+  /** @deprecated Unused now in favor of `intro` in node data. */
   toolDescription: string;
 };

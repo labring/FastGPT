@@ -511,6 +511,65 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
   });
 });
 
+describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
+  it('保留工具集节点已编辑的子工具描述', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'systemTool-toolset',
+      pluginId: 'systemTool-toolset',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'Tool set',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: 'v2',
+      isLatestVersion: true,
+      toolConfig: {
+        systemToolSet: {
+          toolId: 'systemTool-toolset',
+          toolList: [
+            { toolId: 'search', name: 'Search', description: 'Definition description' },
+            { toolId: 'blank', name: 'Blank', description: 'Definition blank description' },
+            { toolId: 'new', name: 'New', description: 'New definition description' }
+          ]
+        }
+      }
+    });
+    const nodes = [
+      {
+        nodeId: 'tool-set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        pluginId: 'systemTool-toolset',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          systemToolSet: {
+            toolId: 'systemTool-toolset',
+            toolList: [
+              { toolId: 'search', name: 'Search', description: 'Custom description' },
+              { toolId: 'blank', name: 'Blank', description: '' },
+              { toolId: 'removed', name: 'Removed', description: 'Removed description' }
+            ]
+          }
+        }
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].toolConfig?.systemToolSet?.toolList).toEqual([
+      { toolId: 'search', name: 'Search', description: 'Custom description' },
+      { toolId: 'blank', name: 'Blank', description: '' },
+      { toolId: 'new', name: 'New', description: 'New definition description' }
+    ]);
+  });
+});
+
 describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
   it('保留候选类型并由画布按工具上下文处理用户问题', async () => {
     const userQuestion = {
@@ -708,6 +767,88 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         { label: '2', value: '2' }
       ]
     });
+  });
+
+  it.each([
+    ['mcp-app-1/search', 'MCP search description'],
+    ['http-app-1/search', 'HTTP search description']
+  ])('补齐 %s 工具节点的空 intro', async (pluginId, description) => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: pluginId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'tool-avatar',
+      intro: description,
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    for (const [originalIntro, expectedIntro] of [
+      [undefined, description],
+      ['', ''],
+      ['  ', '  ']
+    ] as const) {
+      const nodes = [
+        {
+          nodeId: 'tool',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          pluginId,
+          intro: originalIntro,
+          inputs: [],
+          outputs: []
+        } as StoreNodeItemType
+      ];
+
+      await rewriteAppWorkflowToDetail({
+        nodes,
+        teamId: 'team-1',
+        ownerTmbId: 'tmb-1',
+        isRoot: false
+      });
+
+      expect(nodes[0].intro).toBe(expectedIntro);
+    }
+  });
+
+  it.each([
+    ['mcp-app-1/search', 'Saved MCP description'],
+    ['http-app-1/search', 'Saved HTTP description']
+  ])('保留 %s 工具节点已有 intro', async (pluginId, originalIntro) => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: pluginId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'tool-avatar',
+      intro: 'Remote description',
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId,
+        intro: originalIntro,
+        inputs: [],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].intro).toBe(originalIntro);
   });
 
   it('刷新最新工具节点时保留 agentGenerated 推荐并显式保存手动类型', async () => {
