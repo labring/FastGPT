@@ -7,7 +7,8 @@ const originalEnv = {
   STORAGE_EXTERNAL_ENDPOINT: process.env.STORAGE_EXTERNAL_ENDPOINT,
   STORAGE_S3_CDN_ENDPOINT: process.env.STORAGE_S3_CDN_ENDPOINT,
   STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
-  STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: process.env.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
+  STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: process.env.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS,
+  FILE_URL_EXPIRED_HOURS: process.env.FILE_URL_EXPIRED_HOURS
 };
 
 const loadConstants = async () => {
@@ -23,6 +24,7 @@ describe('s3 storage constants', () => {
     vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', undefined);
     vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', undefined);
     vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', undefined);
+    vi.stubEnv('FILE_URL_EXPIRED_HOURS', undefined);
   });
 
   afterEach(() => {
@@ -34,6 +36,7 @@ describe('s3 storage constants', () => {
       'STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS',
       originalEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
     );
+    vi.stubEnv('FILE_URL_EXPIRED_HOURS', originalEnv.FILE_URL_EXPIRED_HOURS);
     vi.restoreAllMocks();
   });
 
@@ -198,6 +201,8 @@ describe('s3 storage constants', () => {
   });
 
   it('keeps internal presigned previews for server-side storage access', async () => {
+    vi.stubEnv('FILE_URL_EXPIRED_HOURS', '0.5');
+
     const { S3BaseBucket } = await vi.importActual<
       typeof import('@fastgpt/service/common/s3/buckets/base')
     >('@fastgpt/service/common/s3/buckets/base');
@@ -219,5 +224,52 @@ describe('s3 storage constants', () => {
       responseContentType: 'text/markdown; charset=utf-8'
     });
     expect(result.url).toContain('response-content-type=text%2Fmarkdown%3B%20charset%3Dutf-8');
+  });
+
+  it('defaults the internal presigned preview lifetime to one hour', async () => {
+    const { S3BaseBucket } = await vi.importActual<
+      typeof import('@fastgpt/service/common/s3/buckets/base')
+    >('@fastgpt/service/common/s3/buckets/base');
+    const storage = createVitestStorageMock({
+      vi,
+      bucketName: 'fastgpt-private',
+      baseUrl: 'https://s3.example.com'
+    });
+    const bucket = new S3BaseBucket(storage, undefined);
+
+    await bucket.createPreviewUrl({ key: 'dataset/team/aaa.md' });
+
+    expect(storage.generatePresignedGetUrl).toHaveBeenCalledWith({
+      key: 'dataset/team/aaa.md',
+      expiredSeconds: 3600
+    });
+  });
+
+  it('signs external download short links with FILE_URL_EXPIRED_HOURS', async () => {
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
+    vi.stubEnv('FILE_URL_EXPIRED_HOURS', '0.5');
+
+    const [{ S3BaseBucket }, { verifyS3DownloadAccess }] = await Promise.all([
+      vi.importActual<typeof import('@fastgpt/service/common/s3/buckets/base')>(
+        '@fastgpt/service/common/s3/buckets/base'
+      ),
+      vi.importActual<typeof import('@fastgpt/service/common/s3/accessLink')>(
+        '@fastgpt/service/common/s3/accessLink'
+      )
+    ]);
+    const storage = createVitestStorageMock({
+      vi,
+      bucketName: 'fastgpt-private',
+      baseUrl: 'https://s3.example.com'
+    });
+    const bucket = new S3BaseBucket(storage, undefined);
+
+    const result = await bucket.createExternalUrl({ key: 'dataset/team/aaa.md' });
+    const { expiresAt } = await verifyS3DownloadAccess(result.url.split('/').pop() || '');
+
+    // 短链过期时间按 15 分钟分桶向上取整，不会缩短请求时长。
+    const ttlMs = expiresAt.getTime() - Date.now();
+    expect(ttlMs).toBeGreaterThanOrEqual(30 * 60 * 1000);
+    expect(ttlMs).toBeLessThanOrEqual(45 * 60 * 1000);
   });
 });

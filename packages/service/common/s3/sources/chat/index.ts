@@ -18,6 +18,7 @@ import { createUploadConstraints } from '../../utils/uploadConstraints';
 import { encodeS3ObjectKeySegment } from '../../keySanitizer';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLogger, LogCategories } from '../../../logger';
+import { serviceEnv } from '../../../../env';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 const getChatFileScope = ({
@@ -110,7 +111,13 @@ export class S3ChatSource extends S3PrivateBucket {
     external: boolean;
     filename?: string;
   }) {
-    const { key, expiredHours = 1, external = false, filename } = params; // 默认一个小时
+    // 未显式指定时使用 FILE_URL_EXPIRED_HOURS 提供的系统默认有效期。
+    const {
+      key,
+      expiredHours = serviceEnv.FILE_URL_EXPIRED_HOURS,
+      external = false,
+      filename
+    } = params;
     const fileMetadata =
       external && isOpaqueS3FileKey(key) && !filename
         ? await this.getFileMetadata(key).catch((error) => {

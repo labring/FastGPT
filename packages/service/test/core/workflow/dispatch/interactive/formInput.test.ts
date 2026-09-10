@@ -94,8 +94,7 @@ describe('dispatchFormInput', () => {
     });
     expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
       key: 'chat/files/upload.png',
-      external: true,
-      expiredHours: 1
+      external: true
     });
   });
 

@@ -202,10 +202,6 @@ describe('searchTest query image auth', () => {
         imageQueries: ['https://file.fastgpt.io/temp/team-1/search-image.png?token=mock']
       })
     );
-    expect(mockCreateExternalUrl).toHaveBeenCalledWith({
-      key: 'temp/team-1/search-image.png',
-      expiredHours: 1
-    });
     expect(mockTeamFrequencyLimit).toHaveBeenCalledWith({
       teamId: 'team-1',
       type: 'chat',

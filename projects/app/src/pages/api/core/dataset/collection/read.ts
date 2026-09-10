@@ -76,7 +76,6 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
       return (
         await getS3DatasetSource().createGetDatasetFileURL({
           key: collection.fileId,
-          expiredHours: 1,
           external: true
         })
       ).url;

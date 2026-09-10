@@ -210,7 +210,6 @@ export async function authDatasetData({
         ? (
             await getS3DatasetSource().createGetDatasetFileURL({
               key: datasetData.imageId,
-              expiredHours: 1,
               external: true
             })
           ).url

@@ -4,7 +4,7 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { addMinutes } from 'date-fns';
+import { addHours } from 'date-fns';
 import {
   GetTrainingDataDetailBodySchema,
   GetTrainingDataDetailResponseSchema,
@@ -13,6 +13,7 @@ import {
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
+import { serviceEnv } from '@fastgpt/service/env';
 
 async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailResponse> {
   const { collectionId, dataId } = parseApiInput({
@@ -44,7 +45,7 @@ async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailRespo
       ? await createS3DownloadAccessUrl({
           objectKey: data.imageId,
           bucketName: S3Buckets.private,
-          expiredTime: addMinutes(new Date(), 30)
+          expiredTime: addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
         })
       : undefined;
 

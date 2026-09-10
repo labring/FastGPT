@@ -83,10 +83,8 @@ export async function handler(
   // 搜索主链路只接收模型可读图片 URL；temp key 的鉴权和临时 URL 生成固定在入口层完成。
   const validQueryImageUrls = await Promise.all(
     validQueryImageKeys.map(async (key) => {
-      const { url } = await getS3DatasetSource().createExternalUrl({
-        key,
-        expiredHours: 1
-      });
+      // 未显式指定时按 FILE_URL_EXPIRED_HOURS 签发预览链接。
+      const { url } = await getS3DatasetSource().createExternalUrl({ key });
       return url;
     })
   );

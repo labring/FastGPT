@@ -236,6 +236,12 @@ export const serviceEnv = createEnv({
     STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
       description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
     }),
+    // FastGPT 自行签发的文件访问短链默认有效期。知识库图片/文件和对话（含工具生成文件）的
+    // 预览、下载链接在未单独指定有效期时使用该值，单独指定长期有效期的导出/引用链路不受影响。
+    FILE_URL_EXPIRED_HOURS: NumSchema.positive().default(1).meta({
+      description:
+        '文件访问链接默认有效期（小时），支持小数（0.5 表示 30 分钟）。作用于知识库图片/文件和对话（工具生成）文件的预览、下载短链'
+    }),
     STORAGE_S3_ENDPOINT: UrlSchema.default('http://localhost:9000'),
     STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),
     STORAGE_ACCESS_KEY_ID: z.string().default('minioadmin'),
