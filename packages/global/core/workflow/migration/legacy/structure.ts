@@ -7,7 +7,7 @@ import {
 import { PluginStatusEnum } from '../../../plugin/type';
 import { normalizeVariableValueType } from '../../../app/variable/utils';
 
-const inputTypes = new Set(Object.values(FlowNodeInputTypeEnum));
+const inputTypes = new Set<string>(Object.values(FlowNodeInputTypeEnum));
 const outputTypes = new Set(Object.values(FlowNodeOutputTypeEnum));
 const nodeTypes = new Set(Object.values(FlowNodeTypeEnum));
 const legacyNodeTypes = new Set(['userGuide', 'pluginConfig']);
@@ -245,7 +245,7 @@ export const migrateLegacyWorkflowStructureData = ({
             .map(normalizeInputType)
             .filter(
               (type): type is FlowNodeInputTypeEnum =>
-                typeof type === 'string' && inputTypes.has(type as FlowNodeInputTypeEnum)
+                typeof type === 'string' && inputTypes.has(type)
             )
         : [];
       // 与历史 dataClean 保持一致：旧输入缺少有效渲染方式时回退为 reference，避免 canonical 数据进入不可渲染状态。
@@ -253,10 +253,7 @@ export const migrateLegacyWorkflowStructureData = ({
         renderTypeList.length > 0 ? renderTypeList : [FlowNodeInputTypeEnum.reference];
       // 选中类型也可能已被移除；在严格校验前清理，由后续迁移选择有效的默认类型。
       const selectedType = normalizeInputType(input.selectedType);
-      if (
-        typeof selectedType === 'string' &&
-        inputTypes.has(selectedType as FlowNodeInputTypeEnum)
-      ) {
+      if (typeof selectedType === 'string' && inputTypes.has(selectedType)) {
         input.selectedType = selectedType;
       } else {
         delete input.selectedType;
