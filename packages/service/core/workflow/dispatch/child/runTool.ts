@@ -15,15 +15,18 @@ import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getHTTPToolList, runHTTPTool } from '../../../app/http';
-import {
-  decodeHttpToolSetNodesFromStorage,
-  decodeMcpToolSetNodesFromStorage
-} from '../../../app/jsonSchemaStorage';
+import { getWorkflowContext } from '../../utils/context';
+import { getWorkflowResourceContext } from '../../utils/context';
+import { getAppVersionById } from '../../../app/version/controller';
 import {
   HttpToolSetRuntimeConfigSchema,
   McpToolSetRuntimeConfigSchema
 } from '@fastgpt/global/core/workflow/type/node';
-import { getWorkflowContext } from '../../utils/context';
+import {
+  filterWorkflowToolList,
+  isWorkflowResourceError,
+  loadWorkflowAppResource
+} from '../../utils/resource';
 import {
   getToolNameCandidates,
   getToolRawId,
@@ -35,8 +38,6 @@ import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { computedSystemToolUsage } from '../../../app/tool/runtime/utils';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { authAppByTmbId } from '../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowAppId } from '../utils/source';
 import {
   assertTeamPluginSourceAccess,
@@ -76,6 +77,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   } = props;
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+  const resourceContext = getWorkflowResourceContext();
 
   const { uid: uId, chatId = '' } = props;
   const appId = getWorkflowAppId(runningAppInfo);
@@ -114,15 +116,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
      * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前工作流执行身份
      * 重新校验父工具集权限，避免脏数据或绕过保存接口的跨用户工具集引用被执行。
      */
-    const authRuntimeToolset = async (parentId: string) => {
-      return (
-        await authAppByTmbId({
-          tmbId: runningAppInfo.tmbId,
-          appId: parentId,
-          per: ReadPermissionVal
-        })
-      ).app;
-    };
+    const authRuntimeToolset = async (parentId: string, toolName?: string) =>
+      loadWorkflowAppResource({
+        tmbId: runningAppInfo.tmbId,
+        appId: parentId,
+        type: 'tool',
+        toolName
+      });
 
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
@@ -283,12 +283,17 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
-      const app = await authRuntimeToolset(parentId);
+      const app = await authRuntimeToolset(parentId, toolName);
+      const workflow = await getAppVersionById({ appId: parentId, app });
       const mcpToolSet = McpToolSetRuntimeConfigSchema.safeParse(
-        decodeMcpToolSetNodesFromStorage(app.modules)[0]?.toolConfig?.mcpToolSet
+        workflow.nodes[0]?.toolConfig?.mcpToolSet
       ).data;
-      const mcpToolList = await getMCPChildren(app);
-      if (!mcpToolSet && !mcpToolList.length) throw new Error('MCP tool set is missing');
+      const mcpToolList = filterWorkflowToolList({
+        context: resourceContext,
+        appId: parentId,
+        tools: await getMCPChildren(app, workflow)
+      });
+      if (!mcpToolSet || !mcpToolList.length) throw new Error('MCP tool set is missing');
       const mcpTool = getToolNameCandidates(toolName)
         .map((name) => mcpToolList.find((tool) => tool.name === name))
         .find(Boolean);
@@ -328,12 +333,21 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
       }
-      const app = await authRuntimeToolset(parentId);
+      const app = await authRuntimeToolset(parentId, toolName);
+      const workflow = await getAppVersionById({
+        appId: parentId,
+        versionId: version,
+        app
+      });
       const toolSetData = HttpToolSetRuntimeConfigSchema.safeParse(
-        decodeHttpToolSetNodesFromStorage(app.modules)[0]?.toolConfig?.httpToolSet
+        workflow.nodes[0]?.toolConfig?.httpToolSet
       ).data;
-      const toolList = await getHTTPToolList(app);
-      if (!toolSetData && !toolList.length) {
+      const toolList = filterWorkflowToolList({
+        context: resourceContext,
+        appId: parentId,
+        tools: await getHTTPToolList(app, workflow)
+      });
+      if (!toolSetData || !toolList.length) {
         throw new Error('HTTP tool set not found');
       }
 
@@ -420,6 +434,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
     }
   } catch (error) {
+    if (isWorkflowResourceError(error)) throw error;
     if (systemToolId) {
       pushTrack.runSystemTool({
         teamId: runningUserInfo.teamId,

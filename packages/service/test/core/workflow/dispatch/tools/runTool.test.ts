@@ -52,21 +52,15 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
   })
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  LogCategories: {
-    MODULE: {
-      APP: {
-        TOOL: 'tool'
-      },
-      AI: {
-        LLM: 'llm'
-      }
-    }
-  },
-  getLogger: vi.fn(() => ({
-    error: vi.fn()
-  }))
-}));
+vi.mock('@fastgpt/service/common/logger', () => {
+  const logCategories = new Proxy({}, { get: () => logCategories });
+  return {
+    LogCategories: logCategories,
+    getLogger: vi.fn(() => ({
+      error: vi.fn()
+    }))
+  };
+});
 
 vi.mock('@fastgpt/service/common/middle/tracks/utils', () => ({
   pushTrack: {
@@ -90,7 +84,8 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
-  getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} }))
+  getWorkflowContext: vi.fn(() => ({ mcpClientMemory: {} })),
+  getWorkflowResourceContext: vi.fn(() => undefined)
 }));
 
 const createRunToolProps = (
@@ -141,6 +136,13 @@ describe('dispatchRunTool runtime toolset auth', () => {
         modules: []
       }
     });
+    getAppVersionByIdMock.mockImplementation(({ app }: { app?: any }) =>
+      Promise.resolve({
+        nodes: app?.modules ?? [],
+        edges: app?.edges ?? [],
+        chatConfig: app?.chatConfig
+      })
+    );
     getHTTPToolListMock.mockResolvedValue([]);
     getMCPChildrenMock.mockResolvedValue([]);
     getSystemToolRuntimeMock.mockResolvedValue({
@@ -213,7 +215,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
-    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(runHTTPToolMock).not.toHaveBeenCalled();
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });
@@ -267,7 +268,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
-    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(runHTTPToolMock).toHaveBeenCalledWith(
       expect.objectContaining({
         baseUrl: 'https://example.com',
@@ -339,7 +339,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
       expect(rejected.error?.[NodeOutputKeyEnum.errorText]).toContain('validation failed');
     }
     expect(runHTTPToolMock).not.toHaveBeenCalled();
-    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(tool).toEqual(original);
   });
 
@@ -417,7 +416,6 @@ describe('dispatchRunTool runtime toolset auth', () => {
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
-    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
     expect(mcpToolCallMock).not.toHaveBeenCalled();
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
   });

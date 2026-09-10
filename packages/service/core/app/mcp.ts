@@ -6,22 +6,17 @@ import {
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import {
-  SecretValueTypeSchema,
-  StoreSecretValueTypeSchema,
-  type StoreSecretValueType
-} from '@fastgpt/global/common/secret/type';
+import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { MongoApp } from './schema';
-import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
+import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
@@ -423,46 +418,27 @@ export class MCPClient {
 }
 
 /** Read the current or legacy MCP child tools from a toolset app. */
-export const getMCPChildren = async (app: AppSchemaType): Promise<McpChildToolType[]> => {
+export const getMCPChildren = async (
+  app: AppSchemaType,
+  workflow?: AppPublishedWorkflow
+): Promise<McpChildToolType[]> => {
   if (app.type !== AppTypeEnum.mcpToolSet) return [];
 
+  const nodes = decodeMcpToolSetNodesFromStorage(
+    (workflow ?? (await getAppLatestVersion(String(app._id), app))).nodes
+  );
+  const node = nodes[0];
+  if (!node) return [];
+
   const id = String(app._id);
-  const modules = decodeMcpToolSetNodesFromStorage(app.modules);
-  const toolSet = McpToolSetRuntimeConfigSchema.safeParse(modules[0]?.toolConfig?.mcpToolSet).data;
 
-  if (toolSet) {
-    return (
-      toolSet.toolList.map((item) => ({
-        ...item,
-        id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-        avatar: app.avatar
-      })) ?? []
-    );
-  } else {
-    // Old mcp toolset
-    const children = await MongoApp.find({
-      teamId: app.teamId,
-      parentId: id
-    }).lean();
+  const toolSet = McpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.mcpToolSet).data;
 
-    return children.map((item) => {
-      const node = item.modules[0];
-      const toolData: McpToolDataType = node.inputs[0].value;
-      const { headerSecret, ...toolConfig } = toolData;
-      const normalizedHeaders = (() => {
-        if (!headerSecret) return undefined;
-        // 旧版本同时存在命名请求头映射和单个密钥；映射优先，避免重复包装 Authorization。
-        const headerMap = StoreSecretValueTypeSchema.safeParse(headerSecret);
-        if (headerMap.success) return headerMap.data;
-        return { Authorization: SecretValueTypeSchema.parse(headerSecret) };
-      })();
+  if (!toolSet) return [];
 
-      return {
-        avatar: app.avatar,
-        id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-        ...toolConfig,
-        ...(normalizedHeaders ? { headerSecret: normalizedHeaders } : {})
-      };
-    });
-  }
+  return toolSet.toolList.map((item) => ({
+    ...item,
+    id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
+    avatar: app.avatar
+  }));
 };

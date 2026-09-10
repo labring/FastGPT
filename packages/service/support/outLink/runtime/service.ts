@@ -25,6 +25,7 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { getAppLatestVersion } from '../../../core/app/version/controller';
+import { loadWorkflowResourceContext } from '../../../core/workflow/utils/resource';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
 import {
@@ -270,10 +271,11 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
 
   try {
     // Load the published app and its latest workflow config in parallel.
-    const [app, { nodes, chatConfig, edges }] = await Promise.all([
+    const [app, workflowVersion] = await Promise.all([
       MongoApp.findById(outLinkConfig.appId).lean(),
       getAppLatestVersion(outLinkConfig.appId)
     ]);
+    const { nodes, chatConfig, edges, resources } = workflowVersion;
 
     if (!nodes || !chatConfig || !app) {
       return Promise.reject('Invalid chat');
@@ -407,6 +409,10 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       uid: chatUserId || outLinkConfig.tmbId,
       chatId: preparedRound.chatId,
       responseChatItemId: preparedRound.responseChatItemId,
+      resourceContext: await loadWorkflowResourceContext({
+        resources,
+        teamId: app.teamId
+      }),
       variables,
       histories,
       query: workflowQuery,

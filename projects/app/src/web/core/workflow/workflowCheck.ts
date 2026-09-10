@@ -185,7 +185,9 @@ type WorkflowCheckMessageCode =
   | 'tool_load_failed'
   | 'tool_no_permission'
   | 'model_unavailable'
-  | 'model_required';
+  | 'model_required'
+  | 'resource_missing'
+  | 'resource_no_permission';
 
 /** issue.code -> 设计稿固定文案 code。表外 code 映射到最接近的已有文案。 */
 const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessageCode> = {
@@ -212,6 +214,8 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   model_unavailable: 'model_unavailable',
   model_required: 'model_required',
   tool_offline: 'tool_missing',
+  resource_missing: 'resource_missing',
+  resource_no_permission: 'resource_no_permission',
   loop_run_missing_break: 'if_else_incomplete',
   variable_update_incomplete: 'code_input_incomplete'
 };
@@ -223,7 +227,9 @@ export const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<string>([
   'tool_load_failed',
   'tool_no_permission',
   'tool_offline',
-  'model_unavailable'
+  'model_unavailable',
+  'resource_missing',
+  'resource_no_permission'
 ]);
 
 export type WorkflowCheckUIStatus = 'pending_improve' | 'pending_handle';
@@ -255,7 +261,9 @@ const workflowCheckMessageFallback: Record<
   tool_no_permission: () => '当前账号无权限访问该资源',
   model_unavailable: ({ nodeName, inputName } = {}) =>
     `节点「${nodeName ?? ''}」的「${inputName ?? ''}」模型不可用`,
-  model_required: ({ inputName } = {}) => `未配置[${inputName ?? ''}]模型`
+  model_required: ({ inputName } = {}) => `未配置[${inputName ?? ''}]模型`,
+  resource_missing: () => '引用的知识库或技能已删除或不可用，请删除',
+  resource_no_permission: () => '无权限访问该资源，请检查权限'
 };
 
 const PLUGIN_DATA_PERMISSION_ERROR_CODES = new Set<string>([
@@ -271,14 +279,16 @@ const PLUGIN_DATA_MISSING_ERROR_CODES = new Set<string>([
 /** pluginData.error 可能是 statusText 或 getErrText 翻译后的 message，需两种都识别。 */
 const resolvePluginDataErrorIssueCode = (error: string): WorkflowCheckMessageCode => {
   if (
+    error === 'resource_no_permission' ||
     PLUGIN_DATA_PERMISSION_ERROR_CODES.has(error) ||
     error === ERROR_RESPONSE[AppErrEnum.unAuthApp]?.message ||
     error === ERROR_RESPONSE[PluginErrEnum.unAuth]?.message
   ) {
-    return 'tool_no_permission';
+    return 'resource_no_permission';
   }
 
   if (
+    error === 'resource_missing' ||
     PLUGIN_DATA_MISSING_ERROR_CODES.has(error) ||
     error === ERROR_RESPONSE[AppErrEnum.unExist]?.message ||
     error === ERROR_RESPONSE[PluginErrEnum.unExist]?.message ||
@@ -344,6 +354,10 @@ const translateWorkflowCheckIssueMessage = (
         ...params,
         defaultValue: workflowCheckMessageFallback.model_required(params)
       });
+    case 'resource_missing':
+      return t('common:core.workflow.check.resource_missing', params);
+    case 'resource_no_permission':
+      return t('common:core.workflow.check.resource_no_permission', params);
   }
 };
 
@@ -639,6 +653,56 @@ export const checkWorkflowNodeIssues = ({
       });
     }
 
+    // ACL 由保存/发布服务端按资源快照做差量校验；前端同步展示服务端返回的资源级标记，
+    // 并提示已删除或不可用的实体。
+    const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
+    const addResourceIssues = (value: unknown, inputKey: string) => {
+      if (!Array.isArray(value)) return;
+      if (
+        value.some(
+          (item) => item && (item as { error?: string }).error === 'resource_no_permission'
+        )
+      ) {
+        addIssue({
+          node,
+          code: 'resource_no_permission',
+          message: getWorkflowCheckIssueMessage('resource_no_permission', t),
+          inputKey
+        });
+      }
+      if (
+        value.some(
+          (item) =>
+            item &&
+            (item as { error?: string }).error &&
+            (item as { error?: string }).error !== 'resource_no_permission'
+        )
+      ) {
+        addIssue({
+          node,
+          code: 'resource_missing',
+          message: getWorkflowCheckIssueMessage('resource_missing', t),
+          inputKey
+        });
+      }
+    };
+
+    [NodeInputKeyEnum.datasetSelectList, NodeInputKeyEnum.skills].forEach((key) =>
+      addResourceIssues(inputMap.get(key)?.value, key)
+    );
+
+    if (
+      data.flowNodeType === FlowNodeTypeEnum.agent &&
+      datasetParamsInput?.value &&
+      typeof datasetParamsInput.value === 'object' &&
+      !Array.isArray(datasetParamsInput.value)
+    ) {
+      addResourceIssues(
+        (datasetParamsInput.value as { datasets?: unknown }).datasets,
+        NodeInputKeyEnum.datasetParams
+      );
+    }
+
     // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活。
     // 普通必填参数为空由下面的通用必填校验单独提示，不能复用整体工具配置状态。
     const systemInputConfig = inputMap.get(NodeInputKeyEnum.systemInputConfig);
@@ -711,7 +775,6 @@ export const checkWorkflowNodeIssues = ({
         });
       }
 
-      const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
       if (
         data.flowNodeType === FlowNodeTypeEnum.agent &&
         datasetParamsInput?.value &&

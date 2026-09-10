@@ -17,6 +17,7 @@ import type {
 } from '@fastgpt/global/core/app/formEdit/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 const { getClientToolPreviewNodeMock, authAppByTmbIdMock } = vi.hoisted(() => ({
   getClientToolPreviewNodeMock: vi.fn(),
@@ -42,6 +43,11 @@ vi.mock('@fastgpt/service/support/permission/app/auth', async (importOriginal) =
 const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/utils');
 
 describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
+  beforeEach(() => {
+    getClientToolPreviewNodeMock.mockReset();
+    authAppByTmbIdMock.mockReset();
+  });
+
   it('keeps the baseline invalid placeholder and error detail', async () => {
     getClientToolPreviewNodeMock.mockRejectedValue(new Error('Tool deleted'));
     const nodes = [
@@ -85,6 +91,45 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
     });
     expect(tool.inputs).toEqual([{ key: 'query', mode: 'agentGenerated' }]);
     expect(tool.pluginData.error).toContain('Tool deleted');
+  });
+
+  it('checks snapshot-external personal tools before loading preview metadata', async () => {
+    const toolAppId = '507f1f77bcf86cd799439011';
+    authAppByTmbIdMock.mockRejectedValue(new Error('not allowed'));
+    const nodes = [
+      {
+        nodeId: 'agent-1',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        name: 'Agent',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.selectedTools,
+            value: [{ id: toolAppId, config: {} }]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'owner-tmb',
+      viewerTmbId: 'viewer-tmb',
+      isRoot: false
+    });
+
+    const tool = (nodes[0].inputs[0].value as any)[0];
+    expect(authAppByTmbIdMock).toHaveBeenCalledWith({
+      tmbId: 'viewer-tmb',
+      appId: toolAppId,
+      per: expect.anything(),
+      isRoot: false
+    });
+    expect(getClientToolPreviewNodeMock).not.toHaveBeenCalled();
+    expect(tool.pluginData).toMatchObject({
+      error: 'resource_no_permission'
+    });
   });
 
   it('普通节点不投影 customVariable 输入', async () => {
@@ -670,7 +715,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       nodes,
       teamId: user.teamId,
       ownerTmbId: user.tmbId,
-      isRoot: false
+      isRoot: false,
+      resources: [{ type: 'skill', id: String(activeSkill._id) }]
     });
 
     const rewrittenSkills = nodes[0].inputs.find((input) => input.key === NodeInputKeyEnum.skills)
@@ -681,14 +727,14 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         skillId: String(activeSkill._id),
         name: 'Current Skill Name',
         description: 'Current skill description',
-        avatar: 'current-avatar',
-        isDeleted: false
+        avatar: 'current-avatar'
       },
       {
         skillId: String(deletedSkill._id),
         name: 'Deleted Snapshot',
         description: 'Deleted snapshot description',
-        isDeleted: true
+        avatar: undefined,
+        error: 'resource_missing'
       }
     ]);
   });
@@ -1415,7 +1461,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       nodes,
       teamId: user.teamId,
       ownerTmbId: user.tmbId,
-      isRoot: false
+      isRoot: false,
+      resources: [{ type: 'dataset', id: String(dataset._id) }]
     });
 
     expect(datasetSelectInput.value).toEqual(referenceValue);
@@ -1465,7 +1512,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       nodes,
       teamId: user.teamId,
       ownerTmbId: user.tmbId,
-      isRoot: false
+      isRoot: false,
+      resources: [{ type: 'dataset', id: String(dataset._id) }]
     });
 
     const rewrittenDatasetParams = nodes[0].inputs.find(
@@ -1480,8 +1528,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: expect.objectContaining({
           modelId: embeddingModel.modelId,
           model: ''
-        }),
-        isDeleted: false
+        })
       }
     ]);
   });
@@ -1515,7 +1562,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       nodes,
       teamId: user.teamId,
       ownerTmbId: user.tmbId,
-      isRoot: false
+      isRoot: false,
+      resources: [{ type: 'dataset', id: String(dataset._id) }]
     });
 
     expect(
@@ -1528,8 +1576,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: expect.objectContaining({
           modelId: embeddingModel.modelId,
           model: ''
-        }),
-        isDeleted: false
+        })
       }
     ]);
   });
@@ -1592,7 +1639,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: {
           model: 'text-embedding-3-small'
         },
-        isDeleted: true
+        error: 'resource_missing'
       }
     ]);
   });
@@ -1645,7 +1692,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: {
           model: 'text-embedding-3-small'
         },
-        isDeleted: true
+        error: 'resource_missing'
       }
     ]);
   });

@@ -81,5 +81,11 @@
   "migrations.20260905_backfill_resource_owner_acl.datasets": "检查知识库所有者权限",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "检查 Agent Skill 所有者权限",
   "migrations.20260905_backfill_resource_owner_acl.validation": "校验资源所有者权限",
-  "migrations.20260905_backfill_resource_owner_acl.result": "已检查 {{appsProcessedCount}} 个应用、{{datasetsProcessedCount}} 个知识库和 {{agentSkillsProcessedCount}} 个技能。补齐所有者权限：{{appsUpdatedCount}} 个应用、{{datasetsUpdatedCount}} 个知识库和 {{agentSkillsUpdatedCount}} 个技能。"
+  "migrations.20260905_backfill_resource_owner_acl.result": "已检查 {{appsProcessedCount}} 个应用、{{datasetsProcessedCount}} 个知识库和 {{agentSkillsProcessedCount}} 个技能。补齐所有者权限：{{appsUpdatedCount}} 个应用、{{datasetsUpdatedCount}} 个知识库和 {{agentSkillsUpdatedCount}} 个技能。",
+  "migrations.20260909_backfill_app_resource_snapshots.name": "回填应用资源快照",
+  "migrations.20260909_backfill_app_resource_snapshots.description": "为历史应用版本回填资源快照和正式版本指针，并为没有版本的应用补建正式版本。",
+  "migrations.20260909_backfill_app_resource_snapshots.versions": "回填应用版本资源快照",
+  "migrations.20260909_backfill_app_resource_snapshots.apps": "回填应用正式版本指针",
+  "migrations.20260909_backfill_app_resource_snapshots.validation": "校验应用资源迁移结果",
+  "migrations.20260909_backfill_app_resource_snapshots.result": "已检查并迁移 {{versionsProcessedCount}} 个应用版本和 {{appsProcessedCount}} 个应用。"
 }

@@ -31,6 +31,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 
 const mockGetSystemToolRunTimeNodeFromSystemToolset = vi.fn();
 vi.mock('@fastgpt/service/core/workflow/utils', () => ({

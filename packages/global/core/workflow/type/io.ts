@@ -24,7 +24,8 @@ export const SelectedDatasetSchema = z.object({
       description: '知识库使用的向量模型（兼容历史数据）'
     })
   }),
-  isDeleted: BoolSchema.optional()
+  /** 资源异常状态码（如 resource_missing, resource_no_permission），正常时为 undefined */
+  error: z.string().optional()
 });
 export type SelectedDatasetType = z.infer<typeof SelectedDatasetSchema>;
 

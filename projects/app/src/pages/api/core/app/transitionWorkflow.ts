@@ -14,7 +14,7 @@ import {
   type TransitionWorkflowBodyType,
   type TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
 
 async function handler(
   req: ApiRequestProps<TransitionWorkflowBodyType>
@@ -30,6 +30,7 @@ async function handler(
     authToken: true,
     per: OwnerPermissionVal
   });
+  const draftWorkflow = await getAppDraftWorkflow(app._id);
   if (createNew) {
     const { appId } = await mongoSessionRun(async (session) => {
       // Copy avatar
@@ -45,9 +46,9 @@ async function handler(
         name: app.name + ' Copy',
         avatar,
         type: AppTypeEnum.workflow,
-        modules: decodeToolSetNodesFromStorage(app.modules),
-        edges: app.edges,
-        chatConfig: app.chatConfig,
+        nodes: draftWorkflow.nodes,
+        edges: draftWorkflow.edges,
+        chatConfig: draftWorkflow.chatConfig,
         teamId: app.teamId,
         tmbId,
         session
@@ -65,10 +66,12 @@ async function handler(
   await mongoSessionRun(async (session) => {
     await onUpdateAppWorkflow({
       appId,
-      modules: decodeToolSetNodesFromStorage(app.modules),
-      edges: app.edges,
-      chatConfig: app.chatConfig,
+      nodes: draftWorkflow.nodes,
+      edges: draftWorkflow.edges,
+      chatConfig: draftWorkflow.chatConfig,
+      resources: draftWorkflow.resources,
       teamId,
+      tmbId,
       session
     });
   });

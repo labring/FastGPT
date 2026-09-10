@@ -4,8 +4,11 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { GetMcpChildrenResponseSchema } from '@fastgpt/global/openapi/core/app/mcpTools/api';
 
-const mocks = vi.hoisted(() => ({ authApp: vi.fn() }));
+const mocks = vi.hoisted(() => ({ authApp: vi.fn(), getAppLatestVersion: vi.fn() }));
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({ authApp: mocks.authApp }));
+vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+  getAppLatestVersion: mocks.getAppLatestVersion
+}));
 import handler from '@/pages/api/core/app/tool/getToolSetChildren';
 
 const appId = '507f1f77bcf86cd799439011';
@@ -53,6 +56,7 @@ describe('getToolSetChildren', () => {
       const app = createToolset(type);
       const original = structuredClone(app);
       mocks.authApp.mockResolvedValueOnce({ app });
+      mocks.getAppLatestVersion.mockResolvedValueOnce({ nodes: app.modules });
       const result = await Call(handler, { query: { appId, searchKey: ' search[1] ' } });
       expect(result.code).toBe(200);
       expect(result.data).toEqual({
@@ -76,7 +80,9 @@ describe('getToolSetChildren', () => {
   it.each([undefined, '', '   ', 'missing'])(
     'handles empty and nonmatching searches: %j',
     async (searchKey) => {
-      mocks.authApp.mockResolvedValueOnce({ app: createToolset(AppTypeEnum.httpToolSet) });
+      const app = createToolset(AppTypeEnum.httpToolSet);
+      mocks.authApp.mockResolvedValueOnce({ app });
+      mocks.getAppLatestVersion.mockResolvedValueOnce({ nodes: app.modules });
       const result = await Call(handler, { query: { appId, searchKey } });
       expect(result.code).toBe(200);
       expect(result.data.tools).toHaveLength(searchKey === 'missing' ? 0 : 1);

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
   find: vi.fn(),
   getAppVersionById: vi.fn(),
+  getAppLatestVersion: vi.fn(),
   getSystemToolDetail: vi.fn()
 }));
 
@@ -19,6 +20,7 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppVersionById: mocks.getAppVersionById,
+  getAppLatestVersion: mocks.getAppLatestVersion,
   checkIsLatestVersion: vi.fn()
 }));
 
@@ -58,6 +60,19 @@ const getRuntimeSchemaFieldPaths = (value: unknown, path = '$'): string[] => {
 describe('getClientToolPreviewNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    const getWorkflowFromApp = (app: any) => ({
+      versionId: '507f1f77bcf86cd799439099',
+      versionName: app?.name,
+      nodes: app?.modules ?? [],
+      edges: app?.edges ?? [],
+      chatConfig: app?.chatConfig
+    });
+    mocks.getAppVersionById.mockImplementation(({ app }: { app?: any }) =>
+      Promise.resolve(getWorkflowFromApp(app))
+    );
+    mocks.getAppLatestVersion.mockImplementation((appId: string, app?: any) =>
+      Promise.resolve(getWorkflowFromApp(app))
+    );
   });
 
   it.each(['mcp', 'http'] as const)(
@@ -328,19 +343,37 @@ describe('getClientToolPreviewNode', () => {
       };
       const original = structuredClone(app);
       mocks.findById.mockReturnValueOnce({ lean: async () => app });
-      mocks.find.mockReturnValueOnce({
-        lean: async () => [
+      mocks.getAppVersionById.mockResolvedValueOnce({
+        nodes: [
           {
-            name: tool.name,
-            modules: [
-              {
-                inputs: [
-                  { value: { ...tool, url: 'https://example.com/mcp', headerSecret: headers } }
-                ]
+            flowNodeType: 'toolSet',
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://example.com/mcp',
+                headerSecret: headers,
+                toolList: [tool]
               }
-            ]
+            },
+            inputs: [
+              {
+                key: 'options',
+                label: 'Options',
+                renderTypeList: ['input'],
+                value: businessValue
+              },
+              {
+                key: NodeInputKeyEnum.toolSetData,
+                label: 'User field',
+                renderTypeList: ['input'],
+                value: 'ordinary-value'
+              }
+            ],
+            outputs: []
           }
-        ]
+        ],
+        edges: [],
+        chatConfig: {},
+        resources: []
       });
       const preview = await getClientToolPreviewNode({ appId, versionId: '' });
       expect(preview.toolConfig).toEqual({
@@ -398,26 +431,30 @@ describe('getClientToolPreviewNode', () => {
         modules: [{ flowNodeType: 'toolSet', inputs: [] }]
       })
     });
-    mocks.find.mockReturnValueOnce({
-      lean: vi.fn().mockResolvedValue([
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [
         {
-          name: 'search',
-          modules: [
-            {
-              inputs: [
+          flowNodeType: 'toolSet',
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://mcp.example.com',
+              headerSecret: {},
+              toolList: [
                 {
-                  value: {
-                    name: 'search',
-                    description: 'Search tool',
-                    inputSchema: { type: 'object' },
-                    url: 'https://mcp.example.com'
-                  }
+                  name: 'search',
+                  description: 'Search tool',
+                  inputSchema: { type: 'object' }
                 }
               ]
             }
-          ]
+          }
         }
-      ])
+      ],
+      edges: [],
+      chatConfig: {},
+      resources: []
     });
 
     const result = await getClientToolPreviewNode({ appId, lang: 'en' });

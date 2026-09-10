@@ -4,6 +4,9 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton, { MyDeleteIconButton } from '@fastgpt/web/components/common/Icon/button';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 
 type DatasetCardProps = {
@@ -26,7 +29,7 @@ const cardProps: FlexProps = {
 };
 
 /**
- * 单个已选知识库卡片，仅消费后端补齐的 isDeleted 状态来展示正常态或删除态。
+ * 单个已选知识库卡片，展示后端补齐的删除态和当前操作者无权限态。
  */
 const DatasetCard = React.memo(function DatasetCard({
   dataset,
@@ -35,10 +38,22 @@ const DatasetCard = React.memo(function DatasetCard({
 }: DatasetCardProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const isDeleted = !!dataset.isDeleted;
-  const hasPreviewButton = !isDeleted;
+  const hasError = !!dataset.error;
+  const isMissing = dataset.error === 'resource_missing';
+  const isUnavailable = hasError;
+  const hasPreviewButton = !isUnavailable;
   const hasDeleteButton = !!onDelete;
   const hasController = hasPreviewButton || hasDeleteButton;
+
+  const errorText = (() => {
+    if (dataset.error === 'resource_no_permission') {
+      return t('common:core.workflow.check.resource_no_permission');
+    }
+    if (dataset.error) {
+      return t('common:dataset_deleted');
+    }
+    return '';
+  })();
 
   return (
     <Flex
@@ -48,27 +63,43 @@ const DatasetCard = React.memo(function DatasetCard({
       {...cardProps}
       {...flexProps}
       border={flexProps?.border || cardProps.border}
-      borderColor={isDeleted ? 'red.600' : flexProps?.borderColor}
+      borderColor={isUnavailable ? 'red.600' : flexProps?.borderColor}
       _hover={{
         ...flexProps?._hover,
-        borderColor: isDeleted ? 'red.600' : 'primary.300',
+        borderColor: isUnavailable ? 'red.600' : 'primary.300',
         '& .dataset-card-controller': {
           display: 'flex'
         }
       }}
     >
       <Avatar src={dataset.avatar} w={'1.5rem'} borderRadius={'sm'} />
-      <Box
-        ml={2}
-        flex={'1 1 auto'}
-        w={0}
-        minW={0}
-        className={'textEllipsis'}
-        fontSize={'sm'}
-        color={isDeleted ? 'red.600' : 'myGray.900'}
+      <MyTooltip
+        label={isMissing ? t('common:dataset_deleted') : dataset.name}
+        showOnlyWhenOverflow
       >
-        {isDeleted ? t('common:dataset_deleted') : dataset.name}
-      </Box>
+        <Box
+          ml={2}
+          flex={'1 1 auto'}
+          w={0}
+          minW={0}
+          className={'textEllipsis'}
+          fontSize={'sm'}
+          color={isUnavailable ? 'red.600' : 'myGray.900'}
+        >
+          {isMissing ? t('common:dataset_deleted') : dataset.name}
+        </Box>
+      </MyTooltip>
+
+      {dataset.error && (
+        <MyTag colorSchema="red" type="fill" className="unHoverStyle" flexShrink={0}>
+          <MyIcon name="common/error" w="14px" mr={1} />
+          <MyTooltip label={errorText} showOnlyWhenOverflow>
+            <Box color="red.600" maxW="150px" className="textEllipsis">
+              {errorText}
+            </Box>
+          </MyTooltip>
+        </MyTag>
+      )}
 
       {hasController && (
         <Box

@@ -88,7 +88,7 @@ const TemplateCreatePanel = ({ type }: { type: AppTypeEnum | 'all' }) => {
         avatar: templateDetail.avatar,
         name: templateDetail.name,
         type: appType,
-        modules: templateDetail.workflow.nodes || [],
+        nodes: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig || {},
         templateId: templateDetail.templateId

@@ -81,5 +81,11 @@
   "migrations.20260905_backfill_resource_owner_acl.datasets": "Checking dataset owner permissions",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "Checking agent skill owner permissions",
   "migrations.20260905_backfill_resource_owner_acl.validation": "Validating resource owner permissions",
-  "migrations.20260905_backfill_resource_owner_acl.result": "Checked {{appsProcessedCount}} apps, {{datasetsProcessedCount}} datasets, and {{agentSkillsProcessedCount}} skills. Backfilled owner permissions for {{appsUpdatedCount}} apps, {{datasetsUpdatedCount}} datasets, and {{agentSkillsUpdatedCount}} skills."
+  "migrations.20260905_backfill_resource_owner_acl.result": "Checked {{appsProcessedCount}} apps, {{datasetsProcessedCount}} datasets, and {{agentSkillsProcessedCount}} skills. Backfilled owner permissions for {{appsUpdatedCount}} apps, {{datasetsUpdatedCount}} datasets, and {{agentSkillsUpdatedCount}} skills.",
+  "migrations.20260909_backfill_app_resource_snapshots.name": "Backfill App resource snapshots",
+  "migrations.20260909_backfill_app_resource_snapshots.description": "Backfill resource snapshots and published Version pointers for historical Apps, and create a published Version for Apps that have no Version.",
+  "migrations.20260909_backfill_app_resource_snapshots.versions": "Backfill App Version resource snapshots",
+  "migrations.20260909_backfill_app_resource_snapshots.apps": "Backfill App published Version pointers",
+  "migrations.20260909_backfill_app_resource_snapshots.validation": "Validate App resource migration",
+  "migrations.20260909_backfill_app_resource_snapshots.result": "Checked and migrated {{versionsProcessedCount}} App Versions and {{appsProcessedCount}} Apps."
 }

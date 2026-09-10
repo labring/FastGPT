@@ -1,9 +1,6 @@
 import FolderPath from '@/components/common/folder/Path';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
 import { getAppFolderPath } from '@/web/core/app/api/app';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -11,7 +8,6 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
@@ -28,7 +24,7 @@ import { AppContext, TabEnum } from '../../context';
 import PublishHistories from '../../PublishHistoriesSlider';
 import RouteTab from '../../RouteTab';
 import SaveButton from '../../Workflow/components/SaveButton';
-import { checkAgentSkillSandboxUnavailable } from '../ChatAgent/utils';
+import { checkAppFormBeforePublish } from './checkAppForm';
 import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
 import {
   compareSimpleAppSnapshot,
@@ -247,67 +243,23 @@ const Header = ({
               isDisabled={isShowHistories}
               onClickSave={onClickSave}
               checkData={async () => {
-                if (
-                  checkAgentSkillSandboxUnavailable({
-                    appForm,
-                    showSandbox,
-                    enableSandbox
-                  })
-                ) {
+                const error = await checkAppFormBeforePublish({
+                  appForm,
+                  form2WorkflowFn,
+                  showSandbox,
+                  enableSandbox,
+                  t
+                });
+
+                if (error) {
                   toast({
-                    title: t('skill:sandbox_skill_unavailable_toast'),
+                    title: error,
                     status: 'warning'
                   });
                   return false;
                 }
 
-                if (appForm.aiSettings.useAgentSandbox) {
-                  if (!showSandbox) {
-                    toast({
-                      title: t('skill:sandbox_system_not_configured_toast'),
-                      status: 'warning'
-                    });
-                    return false;
-                  }
-                  if (!enableSandbox) {
-                    toast({
-                      title: t('app:sandbox_free_not_support'),
-                      status: 'warning'
-                    });
-                    return false;
-                  }
-                }
-
-                const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
-
-                const toolNodeIds = new Set(
-                  storeEdges
-                    .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
-                    .map((edge) => edge.target)
-                );
-                const nodes = storeNodes.map((item) =>
-                  storeNode2FlowNode({
-                    item,
-                    t,
-                    isTool: toolNodeIds.has(item.nodeId)
-                  })
-                );
-                const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
-
-                const checkResults = checkWorkflowBeforeRunOrPublish({
-                  nodes,
-                  edges,
-                  models: await getWorkflowModelDetails(nodes),
-                  t
-                });
-
-                if (checkResults.hasError) {
-                  toast({
-                    title: t('app:app.error.publish_unExist_app'),
-                    status: 'warning'
-                  });
-                }
-                return !checkResults.hasError;
+                return true;
               }}
             />
           </Flex>

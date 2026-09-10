@@ -24,6 +24,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { getWorkflowCheckIssueMessage } from '@/web/core/workflow/workflowCheck';
 
 const ToolSelect = ({
   generatedSelectedTools,
@@ -92,9 +93,12 @@ const ToolSelect = ({
           // 即将下架/已下架
           const status = item.pluginData?.status || item.status;
           const isOffline = status === PluginStatusEnum.Offline;
-          const toolError =
-            formatToolError(item.pluginData?.error) ||
-            (isOffline ? 'common:error.tool_not_exist' : undefined);
+          const rawError = item.pluginData?.error || (isOffline ? 'tool_offline' : undefined);
+          const toolError = rawError
+            ? getWorkflowCheckIssueMessage(rawError, t) ||
+              (formatToolError(rawError) ? t(formatToolError(rawError) as any) : rawError)
+            : undefined;
+          const hasToolError = !!toolError;
 
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
@@ -102,7 +106,7 @@ const ToolSelect = ({
           return (
             <MyTooltip
               key={getToolIdentityKey(item.pluginId || item.id, item.source)}
-              label={item.intro}
+              label={toolError || item.intro}
             >
               <Grid
                 overflow={'hidden'}
@@ -116,10 +120,10 @@ const ToolSelect = ({
                 bg={'white'}
                 borderRadius={'6px'}
                 border={'base'}
-                borderColor={toolError ? 'red.600' : 'myGray.200'}
+                borderColor={hasToolError ? 'red.600' : 'myGray.200'}
                 userSelect={'none'}
                 _hover={{
-                  borderColor: toolError ? 'red.600' : 'primary.300',
+                  borderColor: hasToolError ? 'red.600' : 'primary.300',
                   '.delete': {
                     display: 'flex'
                   },
@@ -153,7 +157,7 @@ const ToolSelect = ({
                     <MyTag colorSchema="red" type="fill" className="unHoverStyle">
                       <MyIcon name={'common/error'} w={'14px'} mr={1} />
                       <Box color={'red.600'} maxW={'150px'} className="textEllipsis">
-                        {t(toolError as any)}
+                        {toolError}
                       </Box>
                     </MyTag>
                   )}
@@ -163,7 +167,7 @@ const ToolSelect = ({
                     </MyTag>
                   )}
                   {isDebugTool && <DebugToolTag className="unHoverStyle" />}
-                  {!toolError && (
+                  {!hasToolError && (
                     <MyIconButton
                       className="hoverStyle"
                       display={'none'}

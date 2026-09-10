@@ -24,11 +24,13 @@ import { mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
 export const getSubapps = async ({
   tmbId,
   tools,
-  lang
+  lang,
+  dynamic = false
 }: {
   tmbId: string;
   tools: AgentToolType[];
   lang?: localeType;
+  dynamic?: boolean;
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -42,7 +44,8 @@ export const getSubapps = async ({
   const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
-    lang
+    lang,
+    dynamic
   });
   formatTools.forEach((tool) => {
     if (tool.promptReference) {
@@ -60,6 +63,7 @@ export const getSubapps = async ({
       name: tool.name,
       avatar: tool.avatar,
       version: tool.version,
+      dynamic: tool.dynamic,
       toolConfig: tool.toolConfig,
       inputs: tool.inputs,
       agentGeneratedInputKeys: tool.agentGeneratedInputKeys,
@@ -93,6 +97,7 @@ export type ToolDispatchContext = Pick<
   | 'retainDatasetCite'
   | 'maxRunTimes'
   | 'workflowDispatchDeep'
+  | 'dynamicDataset'
   | 'params'
   | 'stream'
   | 'nodeResponseSink'
@@ -183,6 +188,7 @@ export const getExecuteTool = ({
 
     const {
       response,
+      assistantMessages,
       usages = [],
       interactive,
       stop = false,
@@ -190,6 +196,7 @@ export const getExecuteTool = ({
       errorMessage
     } = await (async (): Promise<{
       response: string;
+      assistantMessages?: DispatchSubAppResponse['assistantMessages'];
       usages?: ChatNodeUsageType[];
       interactive?: DispatchSubAppResponse['interactive'];
       stop?: boolean;
@@ -231,6 +238,7 @@ export const getExecuteTool = ({
               version: tool.version,
               toolConfig: tool.toolConfig
             },
+            dynamic: tool.dynamic,
             params: requestParams,
             runningUserInfo,
             runningAppInfo,
@@ -250,37 +258,41 @@ export const getExecuteTool = ({
         } else if (tool.type === 'workflow') {
           const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
 
-          const { response, usages, interactive, nodeResponse, errorMessage } = await dispatchApp({
-            app: {
-              name: tool.name,
-              avatar: tool.avatar,
-              id: tool.id,
-              version: tool.version
-            },
-            userChatInput: userChatInput,
-            customAppVariables: params,
-            checkIsStopping,
-            lang,
-            requestOrigin,
-            mode,
-            timezone,
-            externalProvider,
-            chatId,
-            responseChatItemId,
-            uid,
-            runningAppInfo,
-            runningUserInfo,
-            retainDatasetCite,
-            maxRunTimes,
-            workflowDispatchDeep,
-            nodeResponseSink,
-            nodeResponseParentId: callId,
-            variableState,
-            lastInteractive
-          });
+          const { response, assistantMessages, usages, interactive, nodeResponse, errorMessage } =
+            await dispatchApp({
+              app: {
+                name: tool.name,
+                avatar: tool.avatar,
+                id: tool.id,
+                version: tool.version
+              },
+              dynamic: tool.dynamic,
+              userChatInput: userChatInput,
+              customAppVariables: params,
+              checkIsStopping,
+              lang,
+              requestOrigin,
+              mode,
+              timezone,
+              externalProvider,
+              chatId,
+              responseChatItemId,
+              uid,
+              runningAppInfo,
+              runningUserInfo,
+              retainDatasetCite,
+              maxRunTimes,
+              workflowDispatchDeep,
+              nodeResponseSink,
+              nodeResponseParentId: callId,
+              variableState,
+              lastInteractive,
+              useResourceSnapshot: true
+            });
 
           return {
             response,
+            assistantMessages,
             usages,
             interactive,
             nodeResponse,
@@ -313,7 +325,7 @@ export const getExecuteTool = ({
             };
           })();
           const customAppVariables = filterAgentWorkflowRuntimeParams(requestParams);
-          const { response, usages, interactive, nodeResponse, errorMessage } =
+          const { response, assistantMessages, usages, interactive, nodeResponse, errorMessage } =
             await dispatchPlugin({
               app: {
                 name: tool.name,
@@ -322,6 +334,7 @@ export const getExecuteTool = ({
                 version: tool.version,
                 ...(systemToolId ? { systemToolId } : {})
               },
+              dynamic: tool.dynamic,
               userChatInput: '',
               customAppVariables,
               checkIsStopping,
@@ -341,11 +354,13 @@ export const getExecuteTool = ({
               nodeResponseSink,
               nodeResponseParentId: callId,
               variableState,
-              lastInteractive
+              lastInteractive,
+              useResourceSnapshot: tool.type !== 'commercialTool'
             });
 
           return {
             response,
+            assistantMessages,
             usages,
             interactive,
             nodeResponse,
@@ -391,6 +406,7 @@ export const getExecuteTool = ({
 
     return {
       response,
+      assistantMessages,
       usages,
       interactive,
       stop,

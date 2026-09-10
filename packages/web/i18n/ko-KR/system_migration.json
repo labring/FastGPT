@@ -81,5 +81,11 @@
   "migrations.20260905_backfill_resource_owner_acl.datasets": "지식 베이스 소유자 권한 확인 중",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "Agent Skill 소유자 권한 확인 중",
   "migrations.20260905_backfill_resource_owner_acl.validation": "리소스 소유자 권한 검증 중",
-  "migrations.20260905_backfill_resource_owner_acl.result": "앱 {{appsProcessedCount}}개, 지식 베이스 {{datasetsProcessedCount}}개, 스킬 {{agentSkillsProcessedCount}}개를 확인했습니다. 소유자 권한 보완: 앱 {{appsUpdatedCount}}개, 지식 베이스 {{datasetsUpdatedCount}}개, 스킬 {{agentSkillsUpdatedCount}}개."
+  "migrations.20260905_backfill_resource_owner_acl.result": "앱 {{appsProcessedCount}}개, 지식 베이스 {{datasetsProcessedCount}}개, 스킬 {{agentSkillsProcessedCount}}개를 확인했습니다. 소유자 권한 보완: 앱 {{appsUpdatedCount}}개, 지식 베이스 {{datasetsUpdatedCount}}개, 스킬 {{agentSkillsUpdatedCount}}개.",
+  "migrations.20260909_backfill_app_resource_snapshots.name": "앱 리소스 스냅샷 백필",
+  "migrations.20260909_backfill_app_resource_snapshots.description": "기존 앱 버전에 리소스 스냅샷과 게시 버전 포인터를 백필하고, 버전이 없는 앱에는 게시 버전을 생성합니다.",
+  "migrations.20260909_backfill_app_resource_snapshots.versions": "앱 버전 리소스 스냅샷 백필",
+  "migrations.20260909_backfill_app_resource_snapshots.apps": "앱 게시 버전 포인터 백필",
+  "migrations.20260909_backfill_app_resource_snapshots.validation": "앱 리소스 마이그레이션 검증",
+  "migrations.20260909_backfill_app_resource_snapshots.result": "앱 버전 {{versionsProcessedCount}}개와 앱 {{appsProcessedCount}}개를 확인하고 마이그레이션했습니다."
 }

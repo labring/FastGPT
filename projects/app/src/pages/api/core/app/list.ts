@@ -18,9 +18,10 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
+import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
+import { Types } from '@fastgpt/service/common/mongo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ListAppBodySchema,
@@ -28,7 +29,6 @@ import {
   type ListAppBodyType,
   type ListAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
-import { Types } from '@fastgpt/service/common/mongo';
 
 /*
   获取 APP 列表权限
@@ -143,12 +143,15 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
 
   const myApps = await MongoApp.find(
     { ...findAppsQuery, deleteTime: null },
-    '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules',
+    '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId',
     { limit }
   )
     .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
     .lean();
 
+  const interactiveAppIds = await getInteractiveAppIdSet(myApps);
+
+  // Add app permission and filter apps by read permission
   const formatApps = myApps
     .map((app) => {
       const { Per, privateApp } = (() => {
@@ -174,10 +177,8 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
           privateApp: isPrivateResourceByCollaborators({ resourceClbs })
         };
       })();
-      const { modules, ...rest } = app;
-      const hasInteractiveNode = modules?.some((item) =>
-        [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
-      );
+
+      const { publishedVersionId: _publishedVersionId, ...rest } = app;
       return {
         ...rest,
         avatar: app.avatar,
@@ -186,7 +187,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
         parentId: app.parentId,
         permission: Per,
         private: privateApp,
-        hasInteractiveNode
+        hasInteractiveNode: interactiveAppIds.has(String(app._id))
       };
     })
     .filter((app) => app.permission.hasReadPer);

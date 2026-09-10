@@ -11,6 +11,7 @@ import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
 
 /*
 1. get tts from chatItem store
@@ -28,7 +29,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       throw new Error('model reference or voice not found');
     }
 
-    const { teamId, tmbId, authType } = await authChatTargetCrud({
+    const {
+      teamId,
+      tmbId,
+      authType,
+      sourceType: resolvedSourceType,
+      sourceId: resolvedSourceId
+    } = await authChatTargetCrud({
       req,
       authToken: true,
       authApiKey: true,
@@ -40,6 +47,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     const ttsModel = modelHandle.getTTSModelData({
       modelId: ttsConfig.modelId,
       model: ttsConfig.model
+    });
+    await authTargetModelResource({
+      targetType: resolvedSourceType,
+      targetId: resolvedSourceId,
+      modelId: ttsModel.modelId,
+      tmbId
     });
     const voiceData = ttsModel.config.voices.find((item) => item.value === ttsConfig.voice);
 

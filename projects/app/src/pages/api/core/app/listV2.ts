@@ -19,7 +19,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import {
   findResourceKeysByCollaboratorsPermission,
@@ -123,7 +123,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   const [myApps, total] = await Promise.all([
     MongoApp.find(
       findAppsQuery,
-      '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules'
+      '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId'
     )
       .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
       .skip(skip)
@@ -132,11 +132,14 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     MongoApp.countDocuments(findAppsQuery)
   ]);
 
-  const pageRoleList = await getResourcePermissionsByResourceIds({
-    resourceType: PerResourceTypeEnum.app,
-    teamId,
-    resourceIds: myApps.map((app) => String(app._id))
-  });
+  const [pageRoleList, interactiveAppIds] = await Promise.all([
+    getResourcePermissionsByResourceIds({
+      resourceType: PerResourceTypeEnum.app,
+      teamId,
+      resourceIds: myApps.map((app) => String(app._id))
+    }),
+    getInteractiveAppIdSet(myApps)
+  ]);
   const roleListMap = new Map<string, (typeof pageRoleList)[number][]>();
   pageRoleList.forEach((item) => {
     const resourceId = String(item.resourceId);
@@ -171,10 +174,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
         privateApp: isPrivateResourceByCollaborators({ resourceClbs })
       };
     })();
-    const { modules, ...rest } = app;
-    const hasInteractiveNode = modules?.some((item) =>
-      [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
-    );
+    const { publishedVersionId: _publishedVersionId, ...rest } = app;
     return {
       ...rest,
       avatar: app.avatar,
@@ -183,7 +183,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
       parentId: app.parentId,
       permission: Per,
       private: privateApp,
-      hasInteractiveNode
+      hasInteractiveNode: interactiveAppIds.has(String(app._id))
     };
   });
 

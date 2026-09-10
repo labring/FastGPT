@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo } from 'react';
 // 工作流工具函数层
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
 import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { createContext, useContextSelector } from 'use-context-selector';
+import { useReactFlow } from 'reactflow';
+import type { Node, Edge } from 'reactflow';
+import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   checkWorkflowBeforeRunOrPublish,
   checkWorkflowNodeIssues
@@ -24,11 +29,6 @@ import type {
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useTranslation } from 'next-i18next';
-import { type ReactNode, useCallback, useEffect, useMemo } from 'react';
-import { useReactFlow } from 'reactflow';
-import { createContext, useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import { WorkflowActionsContext } from './workflowActionsContext';
@@ -348,12 +348,33 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         ) || [];
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
+      // 进入编辑器后延迟校验并定位到第一个错误节点；ReactFlow 渲染后再 fitView 才有效。
+      const scheduleEntryCheck = (checkNodes: Node[], checkEdges: Edge[]) => {
+        if (!isInit) return;
+        window.setTimeout(() => {
+          const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+            nodes: checkNodes,
+            edges: checkEdges,
+            t
+          });
+          onSyncWorkflowCheckIssues(issueMap);
+          if (hasError && firstErrorNodeId) {
+            const errorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
+            onUpdateNodeError(firstErrorNodeId, true);
+            if (errorNode) {
+              fitView({ nodes: [errorNode], padding: 0.3 });
+            }
+          }
+        }, 300);
+      };
+
       // 有历史记录，直接用历史记录覆盖
       if (isInit && past.length > 0) {
         const firstPast = past[0];
         setNodes(firstPast.nodes);
         setEdges(firstPast.edges);
         setAppDetail((state) => ({ ...state, chatConfig: firstPast.chatConfig }));
+        scheduleEntryCheck(firstPast.nodes, firstPast.edges);
         return;
       }
       // 初始化一个历史记录
@@ -373,8 +394,20 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       setNodes(nodes);
       setEdges(edges);
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
+      scheduleEntryCheck(nodes, edges);
     },
-    [appDetail.chatConfig, past, setAppDetail, setEdges, setNodes, setPast, t]
+    [
+      appDetail.chatConfig,
+      past,
+      setAppDetail,
+      setEdges,
+      setNodes,
+      setPast,
+      t,
+      fitView,
+      onSyncWorkflowCheckIssues,
+      onUpdateNodeError
+    ]
   );
 
   const contextValue = useMemo(() => {

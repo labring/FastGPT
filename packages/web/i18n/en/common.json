@@ -671,6 +671,8 @@
   "core.workflow.check.tool_no_permission": "Current account has no permission to access this resource",
   "core.workflow.check.model_unavailable": "The model for \"{{inputName}}\" in node \"{{nodeName}}\" is unavailable",
   "core.workflow.check.model_required_short": "No model configured for [{{inputName}}]",
+  "core.workflow.check.resource_missing": "Referenced knowledge base or skill has been deleted or is unavailable, please remove it",
+  "core.workflow.check.resource_no_permission": "No permission to access this resource, please check permissions",
   "core.workflow.check.user_select_empty": "Configure at least one option",
   "core.workflow.check.user_select_value_empty": "Option cannot be empty",
   "core.workflow.debug.Done": "Debugging Completed",

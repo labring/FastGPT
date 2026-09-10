@@ -167,11 +167,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
           return Promise.reject(new ToastHandledError('Debug tool cannot be published'));
         }
         await postPublishApp(appId, data);
-        setAppDetail((state) => ({
-          ...state,
-          ...data,
-          modules: data.nodes || state.modules
-        }));
         reloadAppLatestVersion();
       } catch (error: any) {
         if (error.statusText == AppErrEnum.unExist) {
