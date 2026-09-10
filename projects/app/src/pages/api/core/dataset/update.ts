@@ -63,7 +63,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       avatar,
       intro,
       agentModelId,
+      agentModel,
       vlmModelId,
+      vlmModel,
       websiteConfig,
       externalReadUrl,
       apiDatasetServer,
@@ -107,11 +109,17 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       })
     : undefined;
 
-  const agentModelData = modelHandle.getLLMModelData({ modelId: agentModelId }, { optional: true });
+  const agentModelData = modelHandle.getLLMModelData(
+    { modelId: agentModelId, model: agentModel },
+    { optional: true }
+  );
+  // 新 ID（包括显式清空）优先，只有未传 ID 才兼容旧名称。
+  const vlmReference = vlmModelId !== undefined ? { modelId: vlmModelId } : { model: vlmModel };
+  const vlmValue = vlmModelId !== undefined ? vlmModelId : vlmModel;
   // undefined 表示不修改；显式 null/空字符串才是清空请求。
-  const clearVlmModel = vlmModelId !== undefined && isEmptyModelValue(vlmModelId);
+  const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
   if (clearVlmModel && !permission.hasWritePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
-  const vlmModelData = modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
+  const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
 
   if (isMove) {
     if (parentId) {

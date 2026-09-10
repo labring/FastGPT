@@ -411,9 +411,17 @@ export const UpdateDatasetBodySchema = z.object({
   agentModelId: z.string().trim().min(1, '文本理解模型不可清空').optional().meta({
     description: '知识库 Agent 模型 ID；未传不修改，不允许清空'
   }),
+  agentModel: z.string().trim().min(1, '文本理解模型不可清空').optional().meta({
+    description: '旧版知识库 Agent 模型标识，仅未传 agentModelId 时使用',
+    deprecated: true
+  }),
   vlmModelId: z.string().trim().nullable().optional().meta({
     description: '视觉语言模型 ID；未传不修改，null 或空字符串表示清空',
     example: null
+  }),
+  vlmModel: z.string().trim().nullable().optional().meta({
+    description: '旧版视觉语言模型标识，仅未传 vlmModelId 时使用；null 或空字符串表示清空',
+    deprecated: true
   }),
   websiteConfig: z
     .object({
