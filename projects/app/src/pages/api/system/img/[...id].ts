@@ -1,3 +1,4 @@
+import { NextAPI } from '@/service/middleware/entry';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import path from 'path';
 
@@ -9,7 +10,7 @@ import { storageDownloadUrlMode } from '@fastgpt/service/common/s3/config/consta
 import { handleS3ProxyDownload, handleS3ProxyRouteError } from '@/service/common/s3/proxy';
 
 // get the models available to the system
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { id } = req.query as { id: string[] };
 
@@ -52,3 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleS3ProxyRouteError({ res, error });
   }
 }
+
+export default NextAPI(handler, {
+  csrf: false
+});

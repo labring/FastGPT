@@ -1,3 +1,4 @@
+import { NextAPI } from '@/service/middleware/entry';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { Readable } from 'stream';
@@ -5,7 +6,7 @@ import { authSystemAdmin, authUserPer } from '@fastgpt/service/support/permissio
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { appEnv } from '@/env';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { path = [], ...query } = req.query as any;
     const pathSegments = Array.isArray(path) ? path : [path];
@@ -73,6 +74,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default NextAPI(handler);
 
 export const config = {
   api: {

@@ -1,4 +1,5 @@
 /* @deprecated 仅兼容旧 */
+import { NextAPI } from '@/service/middleware/entry';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
@@ -16,7 +17,7 @@ export function jwtVerifyS3ObjectKey(token: string) {
   return verifyToken<S3ObjectKeyTokenPayload>(token, isS3ObjectKeyTokenPayload);
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { jwt } = req.query as { jwt: string };
 
@@ -53,3 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default NextAPI(handler, {
+  csrf: false
+});

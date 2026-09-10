@@ -1,3 +1,4 @@
+import { NextAPI } from '@/service/middleware/entry';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -11,7 +12,7 @@ const endPathMap: Record<string, boolean> = {
   'api/dashboardv2': true
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await authSystemAdmin({ req });
     const { baseUrl, token } = getAIProxyAdminConfig();
@@ -88,6 +89,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default NextAPI(handler);
 
 export const config = {
   api: {
