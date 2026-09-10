@@ -96,7 +96,7 @@ export const DatasetSelectModal = ({
   const { datasets, paths } = data;
 
   // The vector model of the first selected dataset
-  const activeVectorModel = availableSelectedDatasets[0]?.vectorModel?.model;
+  const activeVectorModelId = availableSelectedDatasets[0]?.vectorModel?.modelId;
 
   // Check if a dataset is selected
   const isDatasetSelected = useCallback(
@@ -109,20 +109,20 @@ export const DatasetSelectModal = ({
   // Check if a dataset is disabled (vector model mismatch)
   const isDatasetDisabled = (item: DatasetListItemType) => {
     if (!isSelectableDataset(item)) return true;
-    return !!activeVectorModel && activeVectorModel !== item.vectorModel.model;
+    return !!activeVectorModelId && activeVectorModelId !== item.vectorModel.modelId;
   };
 
   // Cache compatible datasets by vector model to avoid repeated filtering
   const compatibleDatasetsByModel = useMemo(() => {
     const visibleDatasets = datasets.filter(isSelectableDataset);
 
-    const targetModel = activeVectorModel || visibleDatasets[0]?.vectorModel?.model;
-    if (!targetModel) {
+    const targetModelId = activeVectorModelId ?? visibleDatasets[0]?.vectorModel?.modelId;
+    if (!targetModelId) {
       return [];
     }
 
-    return visibleDatasets.filter((item) => item.vectorModel.model === targetModel);
-  }, [datasets, activeVectorModel]);
+    return visibleDatasets.filter((item) => item.vectorModel.modelId === targetModelId);
+  }, [datasets, activeVectorModelId]);
 
   // Check if all compatible datasets are selected
   const isAllSelected = useMemo(() => {
@@ -143,7 +143,9 @@ export const DatasetSelectModal = ({
       if (!isSelectableDataset(item)) {
         return toast({
           status: 'warning',
-          title: t('dataset:index_model_unavailable')
+          title: item.vectorModel
+            ? t('common:model_disabled', { model: item.vectorModel.name })
+            : t('common:model_delisted')
         });
       }
       if (isDatasetDisabled(item)) {
@@ -373,7 +375,17 @@ export const DatasetSelectModal = ({
                               ) : (
                                 <>
                                   {t('app:Index')}:{' '}
-                                  {item.vectorModel?.name ?? t('dataset:index_model_unavailable')}
+                                  {item.vectorModel?.isActive ? (
+                                    item.vectorModel.name
+                                  ) : (
+                                    <Box as="span" color="red.500" fontWeight="500">
+                                      {item.vectorModel
+                                        ? t('common:model_disabled', {
+                                            model: item.vectorModel.name
+                                          })
+                                        : t('common:model_delisted')}
+                                    </Box>
+                                  )}
                                 </>
                               )}
                             </Box>

@@ -1,5 +1,9 @@
+import { getCachedModelHandle, publishModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { setModelTestSnapshot, getModelTestDefaults } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const pluginMocks = vi.hoisted(() => ({ listModels: vi.fn() }));
 const reloadMocks = vi.hoisted(() => ({
@@ -7,7 +11,6 @@ const reloadMocks = vi.hoisted(() => ({
   updateFastGPTConfigBuffer: vi.fn(),
   delay: vi.fn()
 }));
-const cronMocks = vi.hoisted(() => ({ setCron: vi.fn() }));
 
 vi.mock('@fastgpt/service/core/app/provider/controller', async (importOriginal) => {
   const actual =
@@ -37,18 +40,15 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
   delay: reloadMocks.delay
 }));
-vi.mock('@fastgpt/service/common/system/cron', () => ({
-  setCron: cronMocks.setCron
-}));
-
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import * as modelEntity from '@fastgpt/service/core/ai/config/entity';
+import { preloadModelProviders } from '@fastgpt/service/core/app/provider/controller';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
 import {
-  cronRefreshModels,
   loadInstalledModels,
   loadSystemModels,
-  syncPreinstalledSystemModels,
+  refreshModelHandle,
   updatedReloadSystemModel
 } from '@fastgpt/service/core/ai/config/utils';
 
@@ -78,34 +78,20 @@ describe('loadSystemModels', () => {
 
   beforeEach(async () => {
     pluginMocks.listModels.mockReset().mockResolvedValue([]);
+    vi.mocked(preloadModelProviders).mockReset().mockResolvedValue(undefined);
     reloadMocks.clearAllMyModelsCache.mockReset().mockResolvedValue(undefined);
     reloadMocks.updateFastGPTConfigBuffer.mockReset().mockResolvedValue(undefined);
     reloadMocks.delay.mockReset().mockResolvedValue(undefined);
-    cronMocks.setCron.mockReset();
     await Promise.all([
       MongoAIModel.deleteMany({}),
       MongoAIDefaultModel.deleteMany({}),
       legacyCollection.deleteMany({})
     ]);
-    global.systemModelList = undefined as never;
-    global.systemActiveModelList = undefined as never;
-    global.systemModelMap = undefined as never;
-    global.systemDefaultModel = undefined as never;
+    publishModelHandle(undefined);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it('refreshes plugin model templates every thirty minutes', async () => {
-    cronRefreshModels();
-
-    expect(cronMocks.setCron).toHaveBeenCalledWith('*/30 * * * *', expect.any(Function));
-
-    const refresh = cronMocks.setCron.mock.calls[0]?.[1];
-    expect(refresh).toBeTypeOf('function');
-    await refresh?.();
-    expect(pluginMocks.listModels).toHaveBeenCalledOnce();
   });
 
   it('does not run the legacy migration during startup model loading', async () => {
@@ -124,7 +110,7 @@ describe('loadSystemModels', () => {
 
     await loadSystemModels();
 
-    expect(global.systemModelList).toEqual([]);
+    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
     await expect(MongoAIModel.findById(legacy.insertedId).lean()).resolves.toBeNull();
     await expect(legacyCollection.findOne({ _id: legacy.insertedId })).resolves.not.toBeNull();
   });
@@ -147,29 +133,41 @@ describe('loadSystemModels', () => {
     ]);
 
     await expect(loadSystemModels()).resolves.toBeUndefined();
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
-    await expect(MongoAIModel.findOne({ model: pluginLlm.model })).resolves.not.toBeNull();
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
     await expect(legacyCollection.countDocuments()).resolves.toBe(2);
-    expect(global.systemModelList).toMatchObject([{ model: pluginLlm.model }]);
+    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
     expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
   });
 
-  it('blocks startup before publishing a cache when the plugin request fails', async () => {
-    pluginMocks.listModels.mockRejectedValue(new Error('plugin unavailable'));
-
-    await expect(loadSystemModels()).rejects.toThrow('plugin unavailable');
-    expect(global.systemModelList).toBeUndefined();
+  it('does not request model templates while reloading installed models', async () => {
+    await expect(loadSystemModels()).resolves.toBeUndefined();
+    expect(pluginMocks.listModels).not.toHaveBeenCalled();
+    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
   });
 
-  it('preinstalls templates during initial model loading', async () => {
+  it('rejects startup when required Plugin Provider metadata cannot be loaded', async () => {
+    const failure = new Error('Plugin Provider unavailable');
+    await MongoAIModel.create(pluginLlmDocument);
+    vi.mocked(preloadModelProviders).mockRejectedValueOnce(failure);
+
+    await expect(loadSystemModels()).rejects.toBe(failure);
+
+    expect(preloadModelProviders).toHaveBeenCalledOnce();
+    expect(pluginMocks.listModels).not.toHaveBeenCalled();
+    expect(getCachedModelHandle()?.revision).toBeUndefined();
+    expect(getCachedModelHandle()?.getAllModels()).toBeUndefined();
+  });
+
+  it('does not preinstall templates during initial model loading', async () => {
     pluginMocks.listModels.mockResolvedValue([pluginLlm]);
 
     await expect(legacyCollection.countDocuments()).resolves.toBe(0);
 
     await loadSystemModels();
 
-    await expect(MongoAIModel.findOne({ model: 'plugin-llm' }).lean()).resolves.toBeTruthy();
-    expect(global.systemModelList).toMatchObject([{ model: 'plugin-llm' }]);
+    await expect(MongoAIModel.findOne({ model: 'plugin-llm' }).lean()).resolves.toBeNull();
+    expect(pluginMocks.listModels).not.toHaveBeenCalled();
+    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
   });
 
   it('does not invalidate member model caches during initial startup', async () => {
@@ -178,27 +176,6 @@ describe('loadSystemModels', () => {
     await loadSystemModels();
 
     expect(reloadMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
-  });
-
-  it('retries after another instance wins a preinstall duplicate-key race', async () => {
-    await MongoAIModel.create(pluginLlmDocument);
-    const bulkWrite = vi.spyOn(MongoAIModel, 'bulkWrite').mockRejectedValueOnce({ code: 11000 });
-
-    await expect(
-      syncPreinstalledSystemModels({ pluginDocuments: [pluginLlmDocument] })
-    ).resolves.toBeUndefined();
-    expect(bulkWrite).toHaveBeenCalledTimes(2);
-    await expect(MongoAIModel.countDocuments({ model: pluginLlmDocument.model })).resolves.toBe(1);
-  });
-
-  it('rethrows the last write error after three retries still fail', async () => {
-    const writeError = new Error('write failed');
-    const bulkWrite = vi.spyOn(MongoAIModel, 'bulkWrite').mockRejectedValue(writeError);
-
-    await expect(
-      syncPreinstalledSystemModels({ pluginDocuments: [pluginLlmDocument] })
-    ).rejects.toBe(writeError);
-    expect(bulkWrite).toHaveBeenCalledTimes(4);
   });
 
   it('leaves legacy records untouched when loading existing ai_models data', async () => {
@@ -226,7 +203,7 @@ describe('loadSystemModels', () => {
 
     await expect(MongoAIModel.findOne({ model: 'legacy-llm' })).resolves.toBeNull();
     await expect(legacyCollection.countDocuments()).resolves.toBe(1);
-    expect(global.systemModelList).toMatchObject([{ model: 'installed-llm' }]);
+    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([{ model: 'installed-llm' }]);
   });
 
   it('does not inspect legacy data during a template hot refresh', async () => {
@@ -258,19 +235,15 @@ describe('loadSystemModels', () => {
     expect(reloadMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
   });
 
-  it('invalidates member caches when a hot refresh adds an active model', async () => {
-    pluginMocks.listModels.mockResolvedValue([pluginLlm]);
+  it('invalidates member caches when a hot refresh sees a newly installed active model', async () => {
     await loadSystemModels();
     reloadMocks.clearAllMyModelsCache.mockClear();
 
-    pluginMocks.listModels.mockResolvedValue([
-      pluginLlm,
-      {
-        ...pluginLlm,
-        model: 'plugin-llm-2',
-        name: 'Plugin LLM 2'
-      }
-    ]);
+    await MongoAIModel.create({
+      ...pluginLlmDocument,
+      model: 'installed-llm-2',
+      name: 'Installed LLM 2'
+    });
 
     await loadSystemModels(true);
 
@@ -288,53 +261,60 @@ describe('loadSystemModels', () => {
       config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
     });
 
-    await loadInstalledModels({ pluginDocuments: [] });
+    await loadInstalledModels();
 
     expect(pluginMocks.listModels).not.toHaveBeenCalled();
-    expect(global.systemModelList).toMatchObject([
-      { modelId: String(model._id), model: 'installed-llm', isCustom: true }
+    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([
+      { modelId: String(model._id), model: 'installed-llm' }
     ]);
+    expect(getCachedModelHandle()?.getAllModels()?.[0]).not.toHaveProperty('isCustom');
   });
 
-  it('rejects a database model whose type conflicts with a same-name plugin template', async () => {
-    await MongoAIModel.create({
-      type: ModelTypeEnum.embedding,
+  it('does not synthesize an empty price tier for legacy active models during startup', async () => {
+    await MongoAIModel.collection.insertOne({
+      type: ModelTypeEnum.llm,
       provider: 'OpenAI',
-      model: pluginLlmDocument.model,
-      name: 'Conflicting embedding',
+      model: 'legacy-zero-price-llm',
+      name: 'Legacy zero price LLM',
       scope: 'system',
       isActive: true,
-      config: { defaultToken: 512, maxToken: 8192, weight: 100 }
+      inputPrice: 0,
+      outputPrice: 0,
+      config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
     });
 
-    await expect(loadInstalledModels({ pluginDocuments: [pluginLlmDocument] })).rejects.toThrow(
-      'System model type does not match plugin template'
-    );
+    await loadInstalledModels();
+
+    expect(getCachedModelHandle()?.getAllModels()).toHaveLength(1);
+    expect(getCachedModelHandle()?.getAllModels()[0].priceTiers).toEqual([]);
   });
 
-  it('accepts a database model when one of multiple same-name templates matches its type', async () => {
-    await MongoAIModel.create(pluginLlmDocument);
+  it('resolves inactive legacy model pricing with progressive fallback for admin display', async () => {
+    await MongoAIModel.collection.insertOne({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      model: 'inactive-legacy-priced-llm',
+      name: 'Inactive legacy priced LLM',
+      scope: 'system',
+      isActive: false,
+      priceTiers: [],
+      inputPrice: 0,
+      outputPrice: 0,
+      charsPointsPrice: 2,
+      config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
+    });
 
-    await expect(
-      loadInstalledModels({
-        pluginDocuments: [
-          pluginLlmDocument,
-          {
-            type: ModelTypeEnum.embedding,
-            provider: 'OpenAI',
-            model: pluginLlmDocument.model,
-            name: 'Same-name embedding',
-            scope: 'system',
-            isActive: true,
-            config: { defaultToken: 512, maxToken: 8192, weight: 100 }
-          }
-        ]
-      })
-    ).resolves.toBeUndefined();
+    await loadInstalledModels();
+
+    expect(getCachedModelHandle()?.getAllModels()).toHaveLength(1);
+    expect(getCachedModelHandle()?.getAllModels()[0].priceTiers).toEqual([
+      { minInputTokens: 0, inputPrice: 2, outputPrice: 2 }
+    ]);
+    expect(getCachedModelHandle()?.getActiveModels()).toEqual([]);
   });
 
-  it('orders all cached models by the plugin array and derives the active list', async () => {
-    const pluginModels = [
+  it('keeps the MongoDB newest-first order and derives the active list', async () => {
+    const installedModels = [
       {
         type: ModelTypeEnum.llm,
         provider: 'OpenAI',
@@ -361,30 +341,29 @@ describe('loadSystemModels', () => {
       }
     ];
     await MongoAIModel.create([
-      { ...pluginModels[2], scope: 'system' },
-      { ...pluginModels[1], scope: 'system' },
-      { ...pluginModels[0], scope: 'system' },
+      { ...installedModels[0], scope: 'system' },
+      { ...installedModels[1], scope: 'system' },
+      { ...installedModels[2], scope: 'system' },
       {
-        ...pluginModels[0],
+        ...installedModels[0],
         model: 'custom-model',
         name: 'Custom model',
         scope: 'system'
       }
     ]);
 
-    await loadInstalledModels({ pluginDocuments: pluginModels });
+    await loadInstalledModels();
 
-    expect(global.systemModelList.map((model) => model.model)).toEqual([
-      'plugin-first',
-      'plugin-second',
-      'plugin-third',
-      'custom-model'
-    ]);
-    expect(global.systemActiveModelList.map((model) => model.model)).toEqual([
-      'plugin-first',
-      'plugin-third',
-      'custom-model'
-    ]);
+    expect(
+      getCachedModelHandle()
+        ?.getAllModels()
+        .map((model) => model.model)
+    ).toEqual(['custom-model', 'plugin-third', 'plugin-second', 'plugin-first']);
+    expect(
+      getCachedModelHandle()
+        ?.getActiveModels()
+        .map((model) => model.model)
+    ).toEqual(['custom-model', 'plugin-third', 'plugin-first']);
   });
 
   it('loads configured system defaults from ai_default_models', async () => {
@@ -402,16 +381,201 @@ describe('loadSystemModels', () => {
       defaultModelIds: { llm: String(model._id) }
     });
 
-    await loadInstalledModels({ pluginDocuments: [] });
+    await loadInstalledModels();
 
-    expect(global.systemConfiguredDefaultModelIds).toEqual({ llm: String(model._id) });
-    expect(global.systemDefaultModel.llm?.modelId).toBe(String(model._id));
+    expect(getCachedModelHandle()?.configuredDefaultModelIds).toEqual({ llm: String(model._id) });
+    expect(getModelTestDefaults().llm?.modelId).toBe(String(model._id));
   });
 
   it('reloads the model catalog without changing the system init buffer', async () => {
-    await updatedReloadSystemModel({ pluginDocuments: [] });
+    await updatedReloadSystemModel();
 
     expect(reloadMocks.updateFastGPTConfigBuffer).not.toHaveBeenCalled();
-    expect(reloadMocks.delay).toHaveBeenCalledWith(1000);
+    expect(reloadMocks.delay).not.toHaveBeenCalled();
+    expect(getCachedModelHandle()?.revision).toBe(0);
+  });
+});
+
+describe('refreshModelHandle', () => {
+  beforeEach(async () => {
+    await Promise.all([MongoAIModel.deleteMany({}), MongoAIDefaultModel.deleteMany({})]);
+    publishModelHandle(undefined);
+    reloadMocks.clearAllMyModelsCache.mockReset().mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('loads the committed revision and its model configuration before resolving', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 2 });
+    setModelTestSnapshot({ revision: 1 });
+
+    await refreshModelHandle();
+
+    expect(getCachedModelHandle()?.revision).toBe(2);
+    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([{ model: 'plugin-llm' }]);
+  });
+
+  it('keeps the current snapshot when its revision is already current', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 2 });
+    await loadInstalledModels();
+    const snapshot = getCachedModelHandle()?.getAllModels();
+
+    await refreshModelHandle();
+
+    expect(getCachedModelHandle()?.getAllModels()).toBe(snapshot);
+    expect(getCachedModelHandle()?.revision).toBe(2);
+  });
+
+  it('reloads again when an in-flight snapshot predates the revision required by the read barrier', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 1 });
+    const oldSnapshot = await modelEntity.readSystemModelSnapshot();
+    let releaseOldSnapshot = () => {};
+    const oldSnapshotGate = new Promise<void>((resolve) => {
+      releaseOldSnapshot = resolve;
+    });
+    const snapshotReader = vi
+      .spyOn(modelEntity, 'readSystemModelSnapshot')
+      .mockImplementationOnce(async () => {
+        await oldSnapshotGate;
+        return oldSnapshot;
+      });
+    const inFlightLoad = loadInstalledModels();
+
+    await modelEntity.runSystemModelTransaction(async (session) => {
+      await MongoAIModel.updateOne(
+        { model: 'plugin-llm' },
+        { $set: { name: 'Revision two model' } },
+        { session }
+      );
+    });
+
+    const revisionReader = vi.spyOn(modelEntity, 'readSystemModelRevision');
+    let barrierFinished = false;
+    const barrier = refreshModelHandle().then(() => {
+      barrierFinished = true;
+    });
+
+    try {
+      // 读屏障先于测试 await 注册 continuation；权威读取完成后它已加入旧的在途加载。
+      await expect(revisionReader.mock.results[0].value).resolves.toBe(2);
+      expect(snapshotReader).toHaveBeenCalledOnce();
+      expect(barrierFinished).toBe(false);
+    } finally {
+      releaseOldSnapshot();
+      await Promise.all([inFlightLoad, barrier]);
+    }
+
+    expect(snapshotReader).toHaveBeenCalledTimes(2);
+    expect(getCachedModelHandle()?.revision).toBe(2);
+    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([
+      { model: 'plugin-llm', name: 'Revision two model' }
+    ]);
+  });
+
+  it('uses the local snapshot after a reload failure without publishing a new revision', async () => {
+    await MongoAIModel.create(pluginLlmDocument);
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 1 });
+    await loadInstalledModels();
+    const snapshot = getCachedModelHandle()?.getAllModels();
+    await MongoAIDefaultModel.updateOne({ scope: 'system' }, { $inc: { catalogRevision: 1 } });
+    // 持久化的不合法类型使真实目录解析失败，而不是伪造加载器的行为。
+    await MongoAIModel.updateOne({ model: 'plugin-llm' }, { $set: { type: 'invalid' } });
+
+    await expect(refreshModelHandle()).resolves.toBeUndefined();
+
+    expect(getCachedModelHandle()?.revision).toBe(1);
+    expect(getCachedModelHandle()?.getAllModels()).toBe(snapshot);
+  });
+
+  it('immediately falls back on revision read failure, including a valid empty catalog', async () => {
+    await loadInstalledModels();
+    const snapshot = getCachedModelHandle()?.getAllModels();
+    vi.spyOn(modelEntity, 'readSystemModelRevision').mockRejectedValue(new Error('DB unavailable'));
+
+    await expect(refreshModelHandle()).resolves.toBeUndefined();
+    expect(getCachedModelHandle()?.getAllModels()).toBe(snapshot);
+    expect(snapshot).toEqual([]);
+    expect(getCachedModelHandle()?.revision).toBe(0);
+  });
+
+  it('still rejects a failed initial read without a previously published snapshot', async () => {
+    const error = new Error('DB unavailable');
+    vi.spyOn(modelEntity, 'readSystemModelRevision').mockRejectedValue(error);
+    await expect(refreshModelHandle()).rejects.toBe(error);
+    expect(getCachedModelHandle()?.revision).toBeUndefined();
+  });
+
+  it('bounds the combined revision read and shared reload wait to five seconds', async () => {
+    await loadInstalledModels();
+    const localSnapshot = getCachedModelHandle()?.getAllModels();
+    const nextSnapshot = { models: [], defaultModelIds: {}, revision: 1 };
+    let completeReload = () => {};
+    const gate = new Promise<typeof nextSnapshot>((resolve) => {
+      completeReload = () => resolve(nextSnapshot);
+    });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.spyOn(modelEntity, 'readSystemModelRevision').mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(1), 3000))
+    );
+    const reader = vi.spyOn(modelEntity, 'readSystemModelSnapshot').mockReturnValue(gate);
+    let done = false;
+    const requests = Promise.all([refreshModelHandle(), refreshModelHandle()]).then(() => {
+      done = true;
+    });
+    try {
+      await vi.advanceTimersByTimeAsync(4999);
+      expect(done).toBe(false);
+      expect(reader).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1);
+      await requests;
+      expect(getCachedModelHandle()?.getAllModels()).toBe(localSnapshot);
+      expect(getCachedModelHandle()?.revision).toBe(0);
+    } finally {
+      // race 不取消共享加载；释放后正常发布完整的新版本，避免测试遗留挂起的 single-flight。
+      completeReload();
+      await loadInstalledModels();
+    }
+    expect(getCachedModelHandle()?.revision).toBe(1);
+    expect(reader).toHaveBeenCalledOnce();
+  });
+
+  it('times out a hung revision read without manufacturing an initial snapshot', async () => {
+    let releaseRevision = () => {};
+    const gate = new Promise<number>((resolve) => {
+      releaseRevision = () => resolve(0);
+    });
+    vi.spyOn(modelEntity, 'readSystemModelRevision').mockReturnValue(gate);
+    vi.spyOn(modelEntity, 'readSystemModelSnapshot').mockResolvedValue({
+      models: [],
+      defaultModelIds: {},
+      revision: 0
+    });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const request = expect(refreshModelHandle()).rejects.toThrow('Model catalog refresh timed out');
+    await vi.advanceTimersByTimeAsync(5000);
+    await request;
+    expect(getCachedModelHandle()?.revision).toBeUndefined();
+    releaseRevision();
+    await loadInstalledModels();
+  });
+
+  it('does not fail an already committed write and retries at the next read barrier', async () => {
+    await MongoAIDefaultModel.create({ scope: 'system', catalogRevision: 1 });
+    await MongoAIModel.create({ ...pluginLlmDocument, type: 'invalid' });
+
+    await expect(updatedReloadSystemModel()).resolves.toBeUndefined();
+    expect(getCachedModelHandle()?.revision).toBeUndefined();
+
+    await MongoAIModel.updateOne({ model: 'plugin-llm' }, { $set: { type: ModelTypeEnum.llm } });
+    await refreshModelHandle();
+
+    expect(getCachedModelHandle()?.revision).toBe(1);
+    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([{ model: 'plugin-llm' }]);
   });
 });

@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
 import { deepRagSearch, defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
@@ -8,7 +10,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import type { NextApiResponse } from 'next';
-import { getLLMModelData } from '@fastgpt/service/core/ai/model';
 import { getDatasetSearchAuxiliaryModels } from '@fastgpt/service/core/dataset/search/auxiliaryModels';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -23,7 +24,6 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
-import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 import { findFirstDatasetSearchVlmModel } from '@fastgpt/service/core/dataset/search/vlm';
 
 export async function handler(
@@ -91,19 +91,28 @@ export async function handler(
     })
   );
 
-  const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels({
-    usingReRank,
-    rerankModelId,
-    rerankModel,
-    datasetSearchUsingExtensionQuery,
-    datasetSearchExtensionModelId,
-    datasetSearchExtensionModel
-  });
+  const modelHandle = await getModelHandle();
+  const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
+    {
+      usingReRank,
+      rerankModelId,
+      rerankModel,
+      datasetSearchUsingExtensionQuery,
+      datasetSearchExtensionModelId,
+      datasetSearchExtensionModel
+    },
+    modelHandle
+  );
   const deepSearchModelData = datasetDeepSearch
-    ? getLLMModelData({ modelId: datasetDeepSearchModelId, model: datasetDeepSearchModel })
+    ? modelHandle.getLLMModelData({
+        modelId: datasetDeepSearchModelId,
+        model: datasetDeepSearchModel
+      })
     : undefined;
-  const embeddingModelData = getDatasetEmbeddingModel(dataset);
-  const vlmModelData = findFirstDatasetSearchVlmModel([dataset]);
+  const embeddingModelData = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(dataset, 'embedding')
+  );
+  const vlmModelData = findFirstDatasetSearchVlmModel([dataset], modelHandle);
 
   const searchData = {
     histories: [],

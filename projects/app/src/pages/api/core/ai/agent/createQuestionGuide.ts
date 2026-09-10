@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { NextApiResponse } from 'next';
 
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
@@ -9,7 +10,7 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { authOutLinkInit } from '@fastgpt/service/support/outLink/runtime/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { getDefaultLLMModelData } from '@fastgpt/service/core/ai/model';
+
 import {
   CreateQuestionGuideBodySchema,
   CreateQuestionGuideResponseSchema,
@@ -30,8 +31,8 @@ async function handler(
     authToken: true,
     authApiKey: true
   });
-
-  const qgModel = getDefaultLLMModelData();
+  const modelHandle = await getModelHandle();
+  const qgModel = modelHandle.getDefaultModelData('llm');
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages: messages as ChatCompletionMessageParam[],

@@ -53,8 +53,7 @@ const DatasetCard = React.memo(function DatasetCard({
         ...flexProps?._hover,
         borderColor: isDeleted ? 'red.600' : 'primary.300',
         '& .dataset-card-controller': {
-          opacity: 1,
-          pointerEvents: 'auto'
+          display: 'flex'
         }
       }}
     >
@@ -76,10 +75,8 @@ const DatasetCard = React.memo(function DatasetCard({
           className="dataset-card-controller"
           ml={2}
           flexShrink={0}
-          display={'flex'}
+          display={['flex', 'none']}
           alignItems={'center'}
-          opacity={[1, 0]}
-          pointerEvents={['auto', 'none']}
         >
           {hasPreviewButton && (
             <MyIconButton

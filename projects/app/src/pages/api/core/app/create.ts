@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
@@ -41,7 +42,6 @@ import {
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
-import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -174,11 +174,12 @@ export const onCreateApp = async ({
     edges: edges ?? [],
     chatConfig
   });
+  const modelHandle = await getModelHandle();
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
-    models: global.systemActiveModelList,
-    defaultModelIds: getSystemDefaultModelIds(),
+    models: modelHandle.getActiveModels(),
+    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: normalizedWorkflow.nodes, teamId });
@@ -316,11 +317,12 @@ export const onUpdateAppWorkflow = async ({
     edges: edges ?? [],
     chatConfig
   });
+  const modelHandle = await getModelHandle();
   formatModels({
     nodes: workflow.nodes,
     chatConfig: workflow.chatConfig,
-    models: global.systemActiveModelList,
-    defaultModelIds: getSystemDefaultModelIds(),
+    models: modelHandle.getActiveModels(),
+    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });

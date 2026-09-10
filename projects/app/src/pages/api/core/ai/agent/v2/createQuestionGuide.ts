@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { NextApiResponse } from 'next';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
@@ -7,7 +8,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { getDefaultLLMModelData, getLLMModelData } from '@fastgpt/service/core/ai/model';
+
 import {
   CreateQuestionGuideResponseSchema,
   CreateQuestionGuideV2BodySchema,
@@ -67,10 +68,10 @@ async function handler(
     field: 'obj value time'
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
-
+  const modelHandle = await getModelHandle();
   const qgModelData = (() => {
     if (inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined) {
-      return getLLMModelData({
+      return modelHandle.getLLMModelData({
         modelId: inputQuestionGuide.modelId,
         model: inputQuestionGuide.model
       });
@@ -79,12 +80,12 @@ async function handler(
       persistedQuestionGuide?.modelId !== undefined ||
       persistedQuestionGuide?.model !== undefined
     ) {
-      return getLLMModelData({
+      return modelHandle.getLLMModelData({
         modelId: persistedQuestionGuide.modelId,
         model: persistedQuestionGuide.model
       });
     }
-    return getDefaultLLMModelData();
+    return modelHandle.getDefaultModelData('llm');
   })();
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({

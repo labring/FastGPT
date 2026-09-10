@@ -3,7 +3,7 @@ title: API Documentation Introduction
 description: Introduction to FastGPT API Documentation
 ---
 
-Starting with `4.15.0`, FastGPT API documentation is generated automatically with `zod-openapi` (some legacy endpoints have not been migrated, so they are not shown). You can view the latest endpoint status by opening the API documentation URL. The manually edited endpoint descriptions in the left sidebar of this documentation are no longer updated.
+Starting with `4.15.0`, FastGPT API documentation is generated automatically with `zod-openapi`. You can view the latest endpoint status by opening the API documentation URL. The manually edited endpoint descriptions in the left sidebar of this documentation are no longer updated.
 
 FastGPT API documentation is split into two sets:
 
@@ -44,11 +44,25 @@ You can find API Keys in two places:
 
 An API Key acts as the current account's access credential within the current team. In other words, any resource the account can access in that team can also be operated through the API Key.
 
-### How to Find the BaseURL
+### API key usage
 
-**Note: BaseURL is not an endpoint URL. It is the root URL for all endpoints, and requesting the BaseURL directly does nothing.**
+- Authenticate with an API Key. When calling `chat/completions`, pass `appId` in the request body whenever possible.
+- For OpenAI SDK compatibility, you can also use `Authorization: Bearer <apiKey>-<appId>`. In this case, you can omit `body.appId`.
+- The `appId` precedence is: `body.appId` > the `appId` in `<apiKey>-<appId>` > the `appId` associated with the API Key (legacy compatibility).
+- Some SDKs require adding `v1` to the `BaseURL`. If you get a 404 error, try adding `v1` and retry.
+- To proxy a team member's identity through `authProxy`, the team owner must enable `authProxy` when creating or editing the key. The proxied member must still have permission to access the target app and session. (FastGPT >= v4.15.0)
 
-![](../../public/imgs/fastgpt-api-baseurl.png)
+### How to find the app ID (appId)
+
+Open the app details page and find `appId` in the URL in your browser's address bar.
+
+![](../../public/imgs/appid.png)
+
+### How to find Dataset and Collection IDs
+
+| Dataset ID (datasetId)                  | Collection ID (collectionId)               |
+| --------------------------------------- | ------------------------------------------ |
+| ![](../../public/imgs/getDatasetId.png) | ![](../../public/imgs/getCollectionId.png) |
 
 ### Basic Configuration
 

@@ -1,6 +1,8 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { setModelTestSnapshot } from './modelCache';
 
 export default async function setupModels() {
+  // 测试静态目录对应空数据库的初始修订号；目录集成测试显式写入并刷新真实快照。
   const llmModel = {
     modelId: '68ad85a7463006c963799a68',
     type: ModelTypeEnum.llm,
@@ -10,7 +12,6 @@ export default async function setupModels() {
     isActive: true,
     isDefault: true,
     scope: 'system' as const,
-    isCustom: false,
     requestUrl: undefined,
     requestAuth: undefined,
     provider: 'OpenAI',
@@ -34,7 +35,6 @@ export default async function setupModels() {
     isActive: true,
     isDefault: true,
     scope: 'system' as const,
-    isCustom: false,
     requestUrl: undefined,
     requestAuth: undefined,
     provider: 'OpenAI',
@@ -46,16 +46,14 @@ export default async function setupModels() {
     }
   };
 
-  global.systemDefaultModel = {
-    llm: llmModel,
-    embedding: embeddingModel
-  };
-  global.systemModelList = [llmModel, embeddingModel];
-  global.systemActiveModelList = [llmModel, embeddingModel];
-  global.systemModelMap = new Map([
-    [`id:${llmModel.modelId}`, llmModel],
-    [`model:${llmModel.model}`, llmModel],
-    [`id:${embeddingModel.modelId}`, embeddingModel],
-    [`model:${embeddingModel.model}`, embeddingModel]
-  ]);
+  setModelTestSnapshot({
+    models: [llmModel, embeddingModel],
+    revision: 0,
+    defaultModels: {
+      llm: llmModel,
+      embedding: embeddingModel
+    },
+    configuredDefaultModelIds: {},
+    version: 'test-catalog'
+  });
 }

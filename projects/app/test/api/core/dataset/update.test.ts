@@ -8,8 +8,81 @@ import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RebuildEmbeddingBodySchema } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
 
 describe('update dataset', () => {
+  it.each(['legacy', 'id', 'invalid-id', 'invalid-name', 'clear-id', 'clear-legacy'] as const)(
+    'resolves legacy model updates without overriding canonical selections (%s)',
+    async (mode) => {
+      const owner = (await getFakeUsers(1)).members[0];
+      const previousModels = getCachedModelHandle()!.getAllModels();
+      const llm = getModelTestDefaults().llm!;
+      setModelTestSnapshot({
+        models: previousModels.map((model) =>
+          model.modelId === llm.modelId
+            ? { ...llm, config: { ...llm.config, vision: true } }
+            : model
+        )
+      });
+      try {
+        const dataset = await MongoDataset.create({
+          teamId: owner.teamId,
+          tmbId: owner.tmbId,
+          name: 'legacy-update',
+          type: DatasetTypeEnum.dataset,
+          agentModelId: 'original-agent',
+          vlmModelId: 'original-vlm',
+          vlmModel: 'original-name'
+        });
+        const body: UpdateDatasetBody = {
+          id: String(dataset._id),
+          agentModel: llm.model,
+          vlmModel: llm.model
+        };
+        if (mode === 'id') {
+          Object.assign(body, {
+            agentModelId: llm.modelId,
+            vlmModelId: llm.modelId,
+            agentModel: 'missing-legacy',
+            vlmModel: 'missing-legacy'
+          });
+        } else if (mode === 'invalid-id') {
+          body.agentModelId = 'missing-id';
+        } else if (mode === 'invalid-name') {
+          body.agentModel = 'missing-legacy';
+        } else if (mode === 'clear-id') {
+          body.vlmModelId = null;
+        } else if (mode === 'clear-legacy') {
+          body.vlmModel = '';
+        }
+        const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+          auth: owner,
+          body
+        });
+        const updated = await MongoDataset.findById(dataset._id).lean();
+        if (mode === 'invalid-id' || mode === 'invalid-name') {
+          expect(res.code).not.toBe(200);
+          expect(updated).toMatchObject({
+            agentModelId: 'original-agent',
+            vlmModelId: 'original-vlm'
+          });
+        } else {
+          expect(res.code).toBe(200);
+          expect(updated?.agentModelId).toBe(llm.modelId);
+          if (mode === 'clear-id' || mode === 'clear-legacy') {
+            expect(updated).not.toHaveProperty('vlmModelId');
+            expect(updated).not.toHaveProperty('vlmModel');
+          } else {
+            expect(updated?.vlmModelId).toBe(llm.modelId);
+          }
+        }
+      } finally {
+        setModelTestSnapshot({ models: previousModels });
+      }
+    }
+  );
+
   it.each([null, '', '   '])(
     'clears only the VLM including its legacy field (%s)',
     async (vlmModelId) => {

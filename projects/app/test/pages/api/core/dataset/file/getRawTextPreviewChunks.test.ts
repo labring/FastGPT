@@ -20,8 +20,10 @@ vi.mock('@fastgpt/service/core/dataset/read', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
-  getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
+  getModelHandle: async () => ({
+    getEmbeddingModelData: vi.fn(() => ({ modelId: 'embedding-id', config: {} })),
+    getLLMModelData: vi.fn(() => ({ modelId: 'llm-id', config: {} }))
+  })
 }));
 
 vi.mock('@fastgpt/global/core/dataset/training/utils', () => ({

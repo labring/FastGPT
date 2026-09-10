@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 
@@ -5,7 +6,7 @@ import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
-import { getTTSModelData } from '@fastgpt/service/core/ai/model';
+
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { GetChatSpeechBodySchema } from '@fastgpt/global/openapi/core/chat/record/api';
@@ -35,8 +36,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       sourceId,
       outLinkAuthData
     });
-
-    const ttsModel = getTTSModelData({ modelId: ttsConfig.modelId, model: ttsConfig.model });
+    const modelHandle = await getModelHandle();
+    const ttsModel = modelHandle.getTTSModelData({
+      modelId: ttsConfig.modelId,
+      model: ttsConfig.model
+    });
     const voiceData = ttsModel.config.voices.find((item) => item.value === ttsConfig.voice);
 
     if (!voiceData) {

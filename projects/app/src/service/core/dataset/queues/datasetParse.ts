@@ -1,3 +1,6 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+
 /* Dataset collection source parse, not max size. */
 
 import { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -18,11 +21,6 @@ import { checkTeamAiPointsAndLock } from './utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
-import {
-  findDatasetAgentModel,
-  getDatasetEmbeddingModel,
-  findDatasetVlmModel
-} from '@fastgpt/service/core/dataset/model';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
@@ -243,9 +241,18 @@ export const datasetParseQueue = async (): Promise<any> => {
 
       try {
         // 解析阶段只严格校验向量模型；辅助模型仅取分块元数据，不校验启用或可调用状态。
-        const embeddingModelData = getDatasetEmbeddingModel(dataset);
-        const agentModelData = findDatasetAgentModel(dataset);
-        const vlmModelData = findDatasetVlmModel(dataset);
+        const modelHandle = await getModelHandle();
+        const embeddingModelData = modelHandle.getEmbeddingModelData(
+          getDatasetModelReference(dataset, 'embedding')
+        );
+        const agentModelData = modelHandle.findModelData(
+          getDatasetModelReference(dataset, 'agent'),
+          { type: 'llm' }
+        );
+        const vlmModelData = modelHandle.findModelData(getDatasetModelReference(dataset, 'vlm'), {
+          type: 'llm',
+          vision: true
+        });
         const vlmModelConfigured = !isEmptyModelValue(
           getModelReferenceValue({ modelId: dataset.vlmModelId, model: dataset.vlmModel })
         );

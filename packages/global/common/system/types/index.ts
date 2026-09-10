@@ -171,9 +171,6 @@ export type SystemEnvType = {
   hnswEfSearch: number;
   hnswMaxScanTuples: number;
 
-  oneapiUrl?: string;
-  chatApiKey?: string;
-
   customPdfParse?: customPdfParseType;
   fileUrlWhitelist?: string[];
   customDomain?: customDomainType;

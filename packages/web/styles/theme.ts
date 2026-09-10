@@ -728,6 +728,13 @@ const Modal = modalMultiStyle({
 });
 
 const Table = tableMultiStyle({
+  baseStyle: {
+    table: {
+      'thead, thead tr, thead th, thead td': {
+        borderBottom: 'none'
+      }
+    }
+  },
   sizes: {
     md: defineStyle({
       table: {
@@ -737,7 +744,7 @@ const Table = tableMultiStyle({
         tr: {
           bg: 'myGray.100',
           fontSize: 'sm',
-          borderBottom: 'base',
+          borderBottom: 'none',
           th: {
             borderBottom: 'none',
             overflow: 'hidden',
@@ -819,7 +826,7 @@ const Table = tableMultiStyle({
             letterSpacing: '0.5px',
             textTransform: 'none',
             borderRadius: 'none !important',
-            borderBottom: '1px solid',
+            borderBottom: 'none',
             borderColor: 'myGray.200',
             '&:not(:first-of-type)': {
               borderLeft: '1px solid',

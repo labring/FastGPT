@@ -1,3 +1,4 @@
+import { getModelHandle } from '../../../core/ai/model';
 import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { MongoUsage } from './schema';
 import { type ClientSession } from '../../../common/mongo';
@@ -13,7 +14,6 @@ import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoUsageItem } from './usageItemSchema';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { getDefaultSTTModelData } from '../../../core/ai/model';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.USAGE);
 
@@ -170,7 +170,7 @@ export const pushChatItemUsage = ({
 };
 
 /** 记录 STT 音频用量；source 由调用方显式指定，区分 API 与各 outLink 渠道。 */
-export const pushWhisperUsage = ({
+export const pushWhisperUsage = async ({
   teamId,
   tmbId,
   duration,
@@ -181,7 +181,8 @@ export const pushWhisperUsage = ({
   duration: number;
   source: UsageSourceEnum;
 }) => {
-  const whisperModel = getDefaultSTTModelData();
+  const modelHandle = await getModelHandle();
+  const whisperModel = modelHandle.getDefaultModelData('stt');
 
   const { totalPoints, modelId } = formatModelChars2Points({
     model: whisperModel,

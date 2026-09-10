@@ -14,7 +14,6 @@ const createModel = (
   provider: 'test',
   scope: 'system' as const,
   isActive: true,
-  isCustom: false,
   config: { maxContext: 1000, maxResponse: 100, quoteMaxToken: 500 }
 });
 
@@ -45,12 +44,14 @@ const mockModels: Record<string, SystemModelDataType> = {
 };
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  findModelData: (reference: { modelId?: string; model?: string }) => {
-    if (reference.modelId) {
-      return Object.values(mockModels).find((model) => model.modelId === reference.modelId);
+  getModelHandle: async () => ({
+    findModelData: (reference: { modelId?: string; model?: string }) => {
+      if (reference.modelId) {
+        return Object.values(mockModels).find((model) => model.modelId === reference.modelId);
+      }
+      return reference.model ? mockModels[reference.model] : undefined;
     }
-    return reference.model ? mockModels[reference.model] : undefined;
-  }
+  })
 }));
 
 describe('formatModelChars2Points', () => {

@@ -1,3 +1,4 @@
+import { getModelTestDefaults } from '@test/modelCache';
 import { describe, expect, it } from 'vitest';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -24,7 +25,7 @@ describe('dataset training controller', () => {
         tmbId: root.tmbId,
         datasetId: '507f1f77bcf86cd799439011',
         collectionId: '507f1f77bcf86cd799439012',
-        vectorModel: global.systemDefaultModel.embedding!,
+        vectorModel: getModelTestDefaults().embedding!,
         vlmModelConfigured: true,
         billId: 'test',
         mode,
@@ -42,7 +43,7 @@ describe('dataset training controller', () => {
         tmbId: root.tmbId,
         datasetId: '507f1f77bcf86cd799439011',
         collectionId: '507f1f77bcf86cd799439012',
-        vectorModel: global.systemDefaultModel.embedding!,
+        vectorModel: getModelTestDefaults().embedding!,
         mode: TrainingModeEnum.imageParse,
         billId: 'test',
         data: [{ q: 'source text' }]

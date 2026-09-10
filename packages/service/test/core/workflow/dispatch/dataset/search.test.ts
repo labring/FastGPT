@@ -42,43 +42,45 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   filterDatasetsByTmbId: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getDefaultLLMModelData: vi.fn(),
-  getDefaultRerankModelData: vi.fn(),
-  getEmbeddingModelData: vi.fn(() => ({
-    modelId: '68ad85a7463006c963799a01',
-    model: 'embedding-model',
-    name: 'Embedding Model',
-    type: 'embedding',
-    config: {}
-  })),
-  getLLMModelData: vi.fn(() => ({
-    modelId: '68ad85a7463006c963799a02',
-    model: 'gpt-query',
-    name: 'gpt-query name',
-    type: 'llm',
-    config: {}
-  })),
-  getRerankModelData: vi.fn(() => undefined),
-  getVlmModelData: vi.fn(() => ({
-    modelId: '68ad85a7463006c963799a03',
-    model: 'vision-model',
-    name: 'gpt-vision name',
-    type: 'llm',
-    config: { vision: true }
-  })),
-  getOptionalVlmModelData: vi.fn(({ modelId, model }) =>
-    modelId || model
-      ? {
-          modelId: '68ad85a7463006c963799a03',
-          model: 'vision-model',
-          name: 'gpt-vision name',
-          type: 'llm',
-          config: { vision: true }
-        }
-      : undefined
-  )
-}));
+vi.mock('@fastgpt/service/core/ai/model', () => {
+  const handle = {
+    getDefaultModelData: vi.fn(),
+    getEmbeddingModelData: vi.fn(() => ({
+      modelId: '68ad85a7463006c963799a01',
+      model: 'embedding-model',
+      name: 'Embedding Model',
+      type: 'embedding',
+      config: {}
+    })),
+    getLLMModelData: vi.fn(() => ({
+      modelId: '68ad85a7463006c963799a02',
+      model: 'gpt-query',
+      name: 'gpt-query name',
+      type: 'llm',
+      config: {}
+    })),
+    getRerankModelData: vi.fn(() => undefined),
+    getVlmModelData: vi.fn(() => ({
+      modelId: '68ad85a7463006c963799a03',
+      model: 'vision-model',
+      name: 'gpt-vision name',
+      type: 'llm',
+      config: { vision: true }
+    })),
+    getOptionalVlmModelData: vi.fn(({ modelId, model }) =>
+      modelId || model
+        ? {
+            modelId: '68ad85a7463006c963799a03',
+            model: 'vision-model',
+            name: 'gpt-vision name',
+            type: 'llm',
+            config: { vision: true }
+          }
+        : undefined
+    )
+  };
+  return { getModelHandle: async () => handle };
+});
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
@@ -99,26 +101,24 @@ describe('dispatchDatasetSearch', () => {
     } as any);
 
   it('executes and bills the fallback auxiliary models when configured models are unavailable', async () => {
-    vi.mocked(modelGetters.getLLMModelData).mockImplementationOnce(() => {
+    vi.mocked((await modelGetters.getModelHandle()).getLLMModelData).mockImplementationOnce(() => {
       throw new UserError(ModelErrEnum.unExist);
     });
-    vi.mocked(modelGetters.getRerankModelData).mockImplementationOnce(() => {
-      throw new UserError(ModelErrEnum.unConfigured);
-    });
-    vi.mocked(modelGetters.getDefaultLLMModelData).mockReturnValueOnce({
-      modelId: 'fallback-llm',
-      model: 'fallback-llm',
-      name: 'Fallback LLM',
-      type: 'llm',
-      config: {}
-    } as any);
-    vi.mocked(modelGetters.getDefaultRerankModelData).mockReturnValueOnce({
-      modelId: 'fallback-rerank',
-      model: 'fallback-rerank',
-      name: 'Fallback Rerank',
-      type: 'rerank',
-      config: {}
-    } as any);
+    vi.mocked((await modelGetters.getModelHandle()).getRerankModelData).mockImplementationOnce(
+      () => {
+        throw new UserError(ModelErrEnum.unConfigured);
+      }
+    );
+    vi.mocked((await modelGetters.getModelHandle()).getDefaultModelData).mockImplementation(
+      (slot) =>
+        ({
+          modelId: `fallback-${slot}`,
+          model: `fallback-${slot}`,
+          name: `Fallback ${slot}`,
+          type: slot,
+          config: {}
+        }) as any
+    );
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 0,
@@ -154,13 +154,15 @@ describe('dispatchDatasetSearch', () => {
   });
 
   it('still fails immediately when the embedding model is unavailable', async () => {
-    vi.mocked(modelGetters.getEmbeddingModelData).mockImplementationOnce(() => {
-      throw new UserError(ModelErrEnum.unExist);
-    });
+    vi.mocked((await modelGetters.getModelHandle()).getEmbeddingModelData).mockImplementationOnce(
+      () => {
+        throw new UserError(ModelErrEnum.unExist);
+      }
+    );
     const result = await runSearch({ usingReRank: true, datasetSearchUsingExtensionQuery: true });
     expect(result.error).toBeDefined();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
-    expect(modelGetters.getDefaultLLMModelData).not.toHaveBeenCalled();
+    expect((await modelGetters.getModelHandle()).getDefaultModelData).not.toHaveBeenCalled();
   });
   beforeEach(() => {
     vi.clearAllMocks();
@@ -215,7 +217,8 @@ describe('dispatchDatasetSearch', () => {
     } as any);
     expect(getDatasetSearchVlmModelMock).toHaveBeenCalledWith({
       teamId: 'team_1',
-      datasetIds: ['first', 'second']
+      datasetIds: ['first', 'second'],
+      modelHandle: await modelGetters.getModelHandle()
     });
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({ vlmModel: undefined })

@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import {
   updateDatasetDataSystemIndexes,
   updateDatasetDataByIndexes
@@ -18,7 +20,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
+
 import { addHours } from 'date-fns';
 
 async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {
@@ -44,7 +46,10 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
   });
 
   const dataset = collection.dataset;
-  const vectorModel = getDatasetEmbeddingModel(dataset);
+  const modelHandle = await getModelHandle();
+  const vectorModel = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(dataset, 'embedding')
+  );
   const nextQ = q ?? datasetData.q ?? '';
   const nextA = a ?? datasetData.a ?? '';
   const pushUpdateDataAuditLog = () => {

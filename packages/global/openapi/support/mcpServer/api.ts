@@ -1,3 +1,4 @@
+import { requiredAlternatives } from '../../../common/zod/openapi';
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 
@@ -199,5 +200,6 @@ export const McpAuthProxySchema = z
   })
   .refine(({ username, tmbId }) => !!username || !!tmbId, {
     message: 'authProxy.username or authProxy.tmbId is required'
-  });
+  })
+  .meta(requiredAlternatives([['username'], ['tmbId']]));
 export type McpAuthProxyType = z.infer<typeof McpAuthProxySchema>;

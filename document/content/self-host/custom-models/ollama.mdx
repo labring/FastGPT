@@ -149,7 +149,7 @@ docker run -it --network [ FastGPT 网络 ] --name 容器名 intel/oneapi-hpckit
 
 ![](../../../public/imgs/Ollama-oneapi2.png)
 
-修改部署 FastGPT 的 docker-compose.yml 文件，在其中将 AI Proxy 的使用注释，在 OPENAI_BASE_URL 中加入自己的 OneAPI 开放地址，默认是 http://地址:端口/v1，v1 必须填写。KEY 中填写自己在 OneAPI 的令牌。
+FastGPT 统一通过 AI Proxy 调用模型。保留 `AIPROXY_API_ENDPOINT` 和 `AIPROXY_API_TOKEN` 配置，在管理员的模型渠道中新增 OpenAI 协议渠道，将地址设为 OneAPI 开放地址（`http://地址:端口/v1`），密钥填写 OneAPI 令牌，再关联对应模型。
 
 ![](../../../public/imgs/Ollama-oneapi3.png)
 
@@ -157,7 +157,7 @@ docker run -it --network [ FastGPT 网络 ] --name 容器名 intel/oneapi-hpckit
 
 ### 4. 直接接入
 
-如果你既不想使用 AI Proxy，也不想使用 OneAPI，也可以选择直接接入，修改部署 FastGPT 的 docker-compose.yml 文件，在其中将 AI Proxy 的使用注释，采用和 OneAPI 的类似配置。注释掉 AIProxy 相关代码，在 OPENAI_BASE_URL 中加入自己的 Ollama 开放地址，默认是 http://地址:端口/v1，强调:v1 必须填写。在 KEY 中随便填入，因为 Ollama 默认没有鉴权，如果开启鉴权，请自行填写。其他操作和在 OneAPI 中加入 Ollama 一致，只需在 FastGPT 中加入自己的模型即可使用。此处演示采用的是 Docker 部署 Ollama 的效果，主机 Ollama 需要修改代理地址为 http://[主机 IP]:[端口]
+无需 OneAPI 时，可在管理员的模型渠道中配置 Ollama 的 OpenAI 兼容接口，地址为 `http://地址:端口/v1`。Ollama 默认不需要鉴权；如果已开启鉴权，请填写对应密钥。FastGPT 仍通过 AI Proxy 调用该渠道，保留 `AIPROXY_API_ENDPOINT` 和 `AIPROXY_API_TOKEN` 配置。主机部署使用主机 IP，容器部署使用 AI Proxy 可访问的容器地址。
 
 ![](../../../public/imgs/Ollama-direct1.png)
 

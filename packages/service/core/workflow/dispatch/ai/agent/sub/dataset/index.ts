@@ -1,7 +1,7 @@
+import { getModelHandle } from '../../../../../../ai/model';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getEmbeddingModelData } from '../../../../../../ai/model';
 import { createLLMResponse } from '../../../../../../ai/llm/request';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
@@ -220,12 +220,16 @@ export const dispatchAgentDatasetSearch = async ({
       datasetIds[0],
       'vectorModelId vectorModel vlmModelId vlmModel'
     ).lean();
-    const vectorModel = getEmbeddingModelData({
+    const modelHandle = await getModelHandle();
+    const vectorModel = modelHandle.getEmbeddingModelData({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel
     });
-    const vlmModelData = await getDatasetSearchVlmModel({ teamId, datasetIds });
-    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(datasetParams);
+    const vlmModelData = await getDatasetSearchVlmModel({ teamId, datasetIds, modelHandle });
+    const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
+      datasetParams,
+      modelHandle
+    );
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],

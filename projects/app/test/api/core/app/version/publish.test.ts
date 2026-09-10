@@ -1,3 +1,5 @@
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import handler from '@/pages/api/core/app/version/publish';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
@@ -23,11 +25,13 @@ import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('publish optional model defaults', () => {
-  let previousModels: typeof global.systemActiveModelList;
-  let previousDefaults: typeof global.systemDefaultModel;
+  let previousModels: ReturnType<
+    NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+  >;
+  let previousDefaults: ReturnType<typeof getModelTestDefaults>;
   beforeEach(() => {
-    previousModels = global.systemActiveModelList;
-    previousDefaults = global.systemDefaultModel;
+    previousModels = getCachedModelHandle()!.getActiveModels();
+    previousDefaults = getModelTestDefaults();
     const llm = previousDefaults.llm!;
     const rerank: RerankSystemModelDataType = {
       ...llm,
@@ -43,12 +47,12 @@ describe('publish optional model defaults', () => {
       type: ModelTypeEnum.tts,
       config: { voices: [{ label: 'Voice', value: 'voice' }] }
     };
-    global.systemActiveModelList = [llm, rerank, tts];
-    global.systemDefaultModel = { llm, rerank, tts };
+    setModelTestSnapshot({ models: [llm, rerank, tts] });
+    setModelTestSnapshot({ defaultModels: { llm, rerank, tts } });
   });
   afterEach(() => {
-    global.systemActiveModelList = previousModels;
-    global.systemDefaultModel = previousDefaults;
+    setModelTestSnapshot({ models: previousModels });
+    setModelTestSnapshot({ defaultModels: previousDefaults });
   });
 
   const makeBody = (enabled: boolean, value?: string | null): PublishAppBodyType => ({
@@ -109,8 +113,8 @@ describe('publish optional model defaults', () => {
       modelId: '68ad85a7463006c963799a02',
       model: 'available-model'
     };
-    global.systemActiveModelList = [restrictedModel, availableModel];
-    global.systemDefaultModel = { llm: restrictedModel };
+    setModelTestSnapshot({ models: [restrictedModel, availableModel] });
+    setModelTestSnapshot({ defaultModels: { llm: restrictedModel } });
     await MongoResourcePermission.create({
       teamId: owner.teamId,
       tmbId: owner.tmbId,
@@ -159,7 +163,7 @@ describe('publish optional model defaults', () => {
 
   it('rejects publishing when no permitted fallback exists', async () => {
     const { member, app, restrictedModel } = await createRestrictedModelScenario();
-    global.systemActiveModelList = [restrictedModel];
+    setModelTestSnapshot({ models: [restrictedModel] });
     const result = await Call(handler, {
       auth: member,
       query: { appId: String(app._id) },
@@ -239,7 +243,7 @@ describe('publish optional model defaults', () => {
       teamId: root.teamId,
       tmbId: root.tmbId
     });
-    global.systemActiveModelList = [];
+    setModelTestSnapshot({ models: [] });
     const result = await Call<PublishAppBodyType, { appId: string }, undefined>(handler, {
       auth: root,
       query: { appId: String(app._id) },

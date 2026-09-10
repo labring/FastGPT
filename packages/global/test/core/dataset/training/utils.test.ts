@@ -37,7 +37,6 @@ const createMockLLMModel = (
   name: 'Test Model',
   modelId: '68ad85a7463006c963799a01',
   scope: 'system' as const,
-  isCustom: false,
   config: {
     maxContext: 8000,
     maxResponse: 2000,
@@ -58,7 +57,6 @@ const createMockEmbeddingModel = (
   name: 'Test Embedding',
   modelId: '68ad85a7463006c963799a02',
   scope: 'system' as const,
-  isCustom: false,
   config: {
     defaultToken: 512,
     maxToken: 1024,

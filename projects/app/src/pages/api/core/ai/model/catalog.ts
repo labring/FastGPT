@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
 import { authModelViewer } from '@/service/core/ai/model/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -22,8 +24,15 @@ export async function handler(
   }).query;
 
   const catalogIdentity = await authModelViewer({ req, outLinkAuthData });
-  const permission = await getMemberModelCatalogPermission(catalogIdentity);
-  const version = `3:${global.systemModelCatalogVersion}:${permission.version}`;
+  const modelHandle = await getModelHandle();
+  const activeModels = modelHandle.getActiveModels();
+  const configuredDefaults = modelHandle.configuredDefaultModelIds;
+  const providers = getModelProviderMetadata().providers;
+  const permission = await getMemberModelCatalogPermission({
+    ...catalogIdentity,
+    catalogSnapshot: { models: activeModels, revision: modelHandle.revision }
+  });
+  const version = `3:${modelHandle.version}:${permission.version}`;
 
   if (clientVersion === version) {
     return GetModelCatalogResponseSchema.parse({ version });
@@ -31,18 +40,16 @@ export async function handler(
 
   const permittedModelIds = new Set(permission.modelIds);
   // 权限结果只决定可见性，目录顺序始终继承 plugin 排好的 active 模型列表。
-  const models = global.systemActiveModelList.filter((model) =>
-    permittedModelIds.has(model.modelId)
-  );
+  const models = activeModels.filter((model) => permittedModelIds.has(model.modelId));
 
   return GetModelCatalogResponseSchema.parse({
     version,
     data: {
       models: models.map(desensitizeSystemModel),
-      providers: global.ModelProviderRawCache,
+      providers,
       defaultModelIds: resolveEffectiveDefaultModelIds({
         models,
-        configuredDefaults: global.systemConfiguredDefaultModelIds
+        configuredDefaults
       })
     }
   });

@@ -1,7 +1,7 @@
+import { getModelTestDefaults } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import {
@@ -1282,7 +1282,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
 
   it('刷新 ChatAgent 的知识库参数快照信息', async () => {
     const user = await getUser(`agent-dataset-params-${getNanoid(6)}`);
-    const embeddingModel = global.systemDefaultModel.embedding;
+    const embeddingModel = getModelTestDefaults().embedding;
     const dataset = await MongoDataset.create({
       name: 'Current Dataset Name',
       avatar: '/icon/current-dataset.svg',
@@ -1290,7 +1290,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       teamId: user.teamId,
       tmbId: user.tmbId
     });
-    const resolvedEmbeddingModel = getDatasetEmbeddingModel(dataset);
     const datasetParamsInput = {
       key: NodeInputKeyEnum.datasetParams,
       value: {
@@ -1338,8 +1337,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         name: 'Current Dataset Name',
         avatar: '/icon/current-dataset.svg',
         vectorModel: expect.objectContaining({
-          modelId: resolvedEmbeddingModel.modelId,
-          model: resolvedEmbeddingModel.model
+          modelId: embeddingModel.modelId,
+          model: ''
         }),
         isDeleted: false
       }
@@ -1348,7 +1347,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
 
   it('兼容旧版单对象知识库选择项并补齐详情快照', async () => {
     const user = await getUser(`legacy-single-dataset-detail-${getNanoid(6)}`);
-    const embeddingModel = global.systemDefaultModel.embedding;
+    const embeddingModel = getModelTestDefaults().embedding;
     const dataset = await MongoDataset.create({
       name: 'Legacy Dataset Name',
       avatar: '/icon/legacy-dataset.svg',
@@ -1356,7 +1355,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       teamId: user.teamId,
       tmbId: user.tmbId
     });
-    const resolvedEmbeddingModel = getDatasetEmbeddingModel(dataset);
     const datasetSelectInput = {
       key: NodeInputKeyEnum.datasetSelectList,
       value: {
@@ -1387,8 +1385,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         name: 'Legacy Dataset Name',
         avatar: '/icon/legacy-dataset.svg',
         vectorModel: expect.objectContaining({
-          modelId: resolvedEmbeddingModel.modelId,
-          model: resolvedEmbeddingModel.model
+          modelId: embeddingModel.modelId,
+          model: ''
         }),
         isDeleted: false
       }

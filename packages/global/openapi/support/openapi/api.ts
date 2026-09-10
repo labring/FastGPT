@@ -1,3 +1,4 @@
+import { requiredAlternatives } from '../../../common/zod/openapi';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { getErrorResponse } from '../../type';
@@ -156,7 +157,8 @@ export const UpdateApiKeyBodySchema = CreateApiKeyBodySchema.partial()
     {
       message: 'name, limit, authProxy or tags is required'
     }
-  );
+  )
+  .meta(requiredAlternatives([['name'], ['limit'], ['authProxy'], ['tags']]));
 export type UpdateApiKeyBodyType = z.infer<typeof UpdateApiKeyBodySchema>;
 
 export const UpdateApiKeyResponseSchema = z.undefined().meta({

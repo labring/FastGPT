@@ -17,8 +17,11 @@ export const SelectedDatasetSchema = z.object({
     description: '可选知识库名称'
   }),
   vectorModel: z.object({
+    modelId: z.string().optional().meta({
+      description: '知识库绑定的向量模型 ID'
+    }),
     model: z.string().meta({
-      description: '知识库使用的向量模型'
+      description: '知识库使用的向量模型（兼容历史数据）'
     })
   }),
   isDeleted: BoolSchema.optional()
