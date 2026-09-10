@@ -455,7 +455,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
   it('keeps JSON import atomic and distinguishes legacy no-ID records from deliberate empty configuration', async () => {
     const { modelId } = await createSystemModel({
       modelData: createDraft('json-original'),
-      channelIds: []
+      channelIds: [1]
     });
     const before = await MongoAIModel.find({}).lean();
     await expect(
@@ -490,9 +490,19 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(imported?.priceTiers).toEqual(
       expect.arrayContaining([expect.objectContaining({ inputPrice: 0, outputPrice: 2 })])
     );
+    await MongoResourcePermission.collection.insertOne({
+      resourceType: PerResourceTypeEnum.model,
+      resourceId: new connectionMongo.Types.ObjectId(modelId)
+    });
+    const channelsBeforeImport = structuredClone(channels);
+    requests = [];
     await importSystemModels({ config: [] });
-    expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({ isActive: false });
-    expect(await MongoAIModel.countDocuments()).toBe(1);
+    expect(await MongoAIModel.findById(modelId).lean()).toBeNull();
+    expect(await MongoAIModel.countDocuments()).toBe(0);
+    expect(await MongoResourcePermission.countDocuments()).toBe(0);
+    expect(channels).toEqual(channelsBeforeImport);
+    expect(channels[0].models).toContain('json-original');
+    expect(requests).toEqual([]);
   });
 
   it('rolls back MongoDB after successful channel writes and deduplicates external bindings on retry', async () => {

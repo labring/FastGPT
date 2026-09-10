@@ -139,7 +139,7 @@ describe('admin settings model updateWithJson api', () => {
     });
   });
 
-  it('updates matching IDs, creates external models by model and disables omitted records', async () => {
+  it('updates matching IDs, creates external models by model and deletes omitted records', async () => {
     const oldModel = await MongoAIModel.create(buildStoredLlm('old-model'));
     const existingModel = await MongoAIModel.create(buildStoredLlm('test-llm'));
 
@@ -151,8 +151,7 @@ describe('admin settings model updateWithJson api', () => {
     );
 
     expect(res.code).toBe(200);
-    const disabledModel = await MongoAIModel.findById(oldModel._id).lean();
-    expect(disabledModel?.isActive).toBe(false);
+    expect(await MongoAIModel.findById(oldModel._id).lean()).toBeNull();
     const updatedModel = await MongoAIModel.findOne({ model: 'test-llm' }).lean();
     expect(String(updatedModel?._id)).toBe(String(existingModel._id));
     expect(updatedModel).toMatchObject({
@@ -269,7 +268,7 @@ describe('admin settings model updateWithJson api', () => {
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
-  it('ignores old records without modelId and does not disable all models', async () => {
+  it('ignores old records without modelId and does not delete all models', async () => {
     const existing = await MongoAIModel.create(buildStoredLlm('existing-model'));
     const res = await callUpdateWithJson(
       JSON.stringify([{ ...buildStoredLlm('legacy-model'), scope: undefined }])

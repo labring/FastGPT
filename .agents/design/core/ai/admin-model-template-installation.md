@@ -153,6 +153,7 @@
 - LLM 保存时清除历史价格字段；非 LLM 继续使用 `charsPointsPrice`。不新增独立价格迁移任务。
 - 输入、输出独立计费；输入价为零不跳过输出计费。
 - JSON 导出保留原有价格字段及稳定 `modelId`，不转换、不回写数据库，剥离内部和未知字段。
+- JSON 配置导入会事务删除文件中缺失的系统模型及其权限，保留 AIProxy 渠道和模型关联；空数组删除全部系统模型，全部缺少 modelId 的旧配置仍忽略。
 - JSON 导入与编辑器共享 `normalizeModelPricingForRead`、`normalizeModelPricingForSave`；混合旧字段按历史读取规则解释，纯新格式空阶梯表示免费。
 - JSON 按本地 `modelId` 命中时保留数据库中的 `model`、`type`；外部 ID 按非空 `model` 安装或匹配。
 - 完整配置更新清除被省略的可清理字段，不能让旧请求配置或旧价格重新生效。

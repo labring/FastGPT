@@ -165,7 +165,7 @@ export const deleteSystemModels = async ({ modelIds }: DeleteSystemModelsBody): 
   await removeModelsFromAIProxyChannels({ models: models.map((model) => model.model) });
 };
 
-/** 校验并导入 canonical 模型配置，保留已安装实例身份。 */
+/** 替换系统模型配置，保留命中实例身份；事务删除缺失模型及权限，不修改 AI Proxy 渠道关联。 */
 export const importSystemModels = async ({
   config
 }: ParsedSystemModelsWithJsonBody): Promise<void> => {
@@ -175,7 +175,7 @@ export const importSystemModels = async ({
       ? [{ record, modelId: modelId.trim() }]
       : [];
   });
-  // 非空旧配置全部缺少 modelId 时按“过滤旧数据”处理，不能意外停用全部现有模型。
+  // 非空旧配置全部缺少 modelId 时按“过滤旧数据”处理，不能意外删除全部现有模型。
   if (config.length > 0 && latestRecords.length === 0) return;
 
   const assertNoDuplicateIds = (models: Array<{ modelId: string }>) => {
@@ -258,11 +258,23 @@ export const importSystemModels = async ({
     }
     const configuredModels = resolvedModels.map((model) => model.model);
 
-    await MongoAIModel.updateMany(
-      { scope: ModelScopeEnum.system, model: { $nin: configuredModels } },
-      { $set: { isActive: false } },
-      { session }
-    );
+    const removedModelIds = existingModels
+      .filter(({ model }) => !configuredModels.includes(model))
+      .map(({ _id }) => _id);
+    if (removedModelIds.length > 0) {
+      // 配置替换只删除本地模型和权限，保留渠道配置供后续重新导入使用。
+      await MongoAIModel.deleteMany(
+        { _id: { $in: removedModelIds }, scope: ModelScopeEnum.system },
+        { session }
+      );
+      await MongoResourcePermission.deleteMany(
+        {
+          resourceType: PerResourceTypeEnum.model,
+          resourceId: { $in: removedModelIds }
+        },
+        { session }
+      );
+    }
 
     if (importedModels.length === 0) return;
     await MongoAIModel.bulkWrite(
