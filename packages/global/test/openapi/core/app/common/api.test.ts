@@ -5,6 +5,7 @@ import {
   CreateAppBodySchema,
   CreateAppRequestBodySchema,
   OpenAPIAppChatConfigSchema,
+  OpenAPIAppScheduledTriggerConfigSchema,
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
@@ -43,6 +44,10 @@ describe('CreateAppBodySchema', () => {
         chatConfig: {}
       }).success
     ).toBe(true);
+  });
+
+  it('preserves empty scheduled trigger compatibility', () => {
+    expect(OpenAPIAppScheduledTriggerConfigSchema.parse({})).toBeUndefined();
   });
 
   it('normalizes null optional chat config fields', () => {

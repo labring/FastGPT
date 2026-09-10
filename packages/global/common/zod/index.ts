@@ -23,4 +23,4 @@ export const UrlSchema = z.string().url().transform(stripUrlTrailingSlash);
 
 /** 将可选字段中的显式 null 归一为 undefined，保持 schema 输出类型的可选语义。 */
 export const optionalNullToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((value) => (value === null ? undefined : value), schema.optional());
+  z.preprocess((value) => (value === null ? undefined : value), schema.optional()).optional();

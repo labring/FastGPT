@@ -17,6 +17,10 @@ import {
 import { AppChatConfigInputSchema } from '../../app/common/api';
 import { optionalNullToUndefined } from '../../../../common/zod';
 
+/** 带默认值的字段仅归一空值，保留原 Schema 的必填输出类型和默认值。 */
+const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((value) => value ?? undefined, schema);
+
 const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((input, ctx) => {
   if (input.key !== NodeInputKeyEnum.selectedTools || input.value === undefined) return;
 
@@ -65,10 +69,10 @@ const WebCompletionsSchema = z.object({
 
 // completions 接口实际上并没有用完所有字段，所以这里就取局部即可
 const ChatCompletionCreateParamsSchema = z.object({
-  messages: optionalNullToUndefined(z.array(ChatCompletionMessageParamSchema).default([])).meta({
+  messages: nullishToUndefined(z.array(ChatCompletionMessageParamSchema).default([])).meta({
     description: '消息列表'
   }),
-  stream: optionalNullToUndefined(z.boolean().default(false)).meta({
+  stream: nullishToUndefined(z.boolean().default(false)).meta({
     description: '是否流式返回'
   })
 });
@@ -100,10 +104,10 @@ export const CompletionsPropsSchema = WebCompletionsSchema.extend({
   authProxy: optionalNullToUndefined(ChatCompletionAuthProxySchema).meta({
     description: 'API Key 代理调用身份'
   }),
-  variables: optionalNullToUndefined(z.record(z.string(), z.any()).default({})).meta({
+  variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     description: '全局变量或插件输入'
   }),
-  responseChatItemId: optionalNullToUndefined(
+  responseChatItemId: nullishToUndefined(
     z
       .string()
       .default(() => getNanoid())
@@ -111,13 +115,13 @@ export const CompletionsPropsSchema = WebCompletionsSchema.extend({
         description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个'
       })
   ),
-  detail: optionalNullToUndefined(z.boolean().default(false)).meta({
+  detail: nullishToUndefined(z.boolean().default(false)).meta({
     description: '是否返回详细信息，包括 reasoning_content, tool_calls, usage 等'
   }),
-  retainDatasetCite: optionalNullToUndefined(z.boolean().default(false)).meta({
+  retainDatasetCite: nullishToUndefined(z.boolean().default(false)).meta({
     description: '是否保留数据集引用'
   }),
-  showSkillReferences: optionalNullToUndefined(z.boolean().default(false)).meta({
+  showSkillReferences: nullishToUndefined(z.boolean().default(false)).meta({
     description: '是否显示技能引用'
   })
 }).superRefine(({ outLinkAuthData }, ctx) => {
@@ -235,7 +239,7 @@ export const ChatTestPropsSchema = z.object({
     example: {},
     description: '当前格式的聊天配置'
   }),
-  variables: optionalNullToUndefined(z.record(z.string(), z.any()).default({})).meta({
+  variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     example: {},
     description: '全局变量或插件输入'
   }),

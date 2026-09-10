@@ -62,7 +62,7 @@ const preprocessListAppType = (value: unknown) => {
 };
 
 export const OpenAPIAppScheduledTriggerConfigSchema = optionalNullToUndefined(
-  z.preprocess(emptyObjectToUndefined, AppScheduledTriggerConfigTypeSchema)
+  z.preprocess(emptyObjectToUndefined, AppScheduledTriggerConfigTypeSchema.optional())
 ).meta({
   description: '应用定时触发配置'
 });

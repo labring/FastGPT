@@ -6,7 +6,32 @@ import {
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { openAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
+
+describe('CompletionsPropsSchema defaults', () => {
+  it.each([undefined, null])('preserves defaults for empty fields: %j', (value) => {
+    const result = CompletionsPropsSchema.parse({
+      messages: value,
+      stream: value,
+      variables: value,
+      detail: value,
+      retainDatasetCite: value,
+      showSkillReferences: value,
+      responseChatItemId: value
+    });
+    expect(result).toMatchObject({
+      messages: [],
+      stream: false,
+      variables: {},
+      detail: false,
+      retainDatasetCite: false,
+      showSkillReferences: false
+    });
+    expect(result.responseChatItemId).toEqual(expect.any(String));
+    expectTypeOf(result.stream).toEqualTypeOf<boolean>();
+    expectTypeOf(result.variables).toEqualTypeOf<Record<string, any>>();
+  });
+});
 
 describe('CompletionsPropsSchema chatId', () => {
   it.each([{ input: undefined }, { input: null }, { input: '' }, { input: '   ' }])(
