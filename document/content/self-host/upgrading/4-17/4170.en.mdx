@@ -28,6 +28,12 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 
 Set `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED=true` to grant the default all-members group permission to create Apps, Skills, and Datasets when a team is created. The default is `false`. This setting only affects new teams; it does not change permissions for existing teams. For FastGPT Pro, configure it consistently in the FastGPT and Admin services to cover their team creation paths, including WeCom authorization.
 
+## Deprecation notice
+
+### Custom model request URLs
+
+Custom model request URLs will be deprecated in a future release. They are still supported in this version. Switch to model providers to manage your models.
+
 ## 🚀 New
 
 1. Added LDAP member and organizational structure sync to FastGPT SSO Service, along with separate environment variable templates and configuration guides for each SSO provider.

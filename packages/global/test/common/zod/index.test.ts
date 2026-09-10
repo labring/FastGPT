@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BoolSchema } from '@fastgpt/global/common/zod';
+import { BoolSchema, optionalNullToUndefined } from '@fastgpt/global/common/zod';
 import {
   FlowNodeInputItemTypeSchema,
   FlowNodeOutputItemTypeSchema
@@ -9,6 +9,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import z from 'zod';
 
 describe('BoolSchema', () => {
   it('should accept boolean values directly', () => {
@@ -57,5 +58,18 @@ describe('BoolSchema', () => {
     expect(output.required).toBe(true);
     expect(output.invalid).toBe(false);
     expect(output.invalidCondition?.({ inputs: [], llmModelMap: {} })).toBe(true);
+  });
+});
+
+describe('optionalNullToUndefined', () => {
+  const schema = optionalNullToUndefined(z.union([z.boolean(), z.number(), z.string()]));
+
+  it('normalizes null and undefined to undefined', () => {
+    expect(schema.parse(null)).toBeUndefined();
+    expect(schema.parse(undefined)).toBeUndefined();
+  });
+
+  it.each([false, 0, ''])('preserves valid falsy values: %j', (value) => {
+    expect(schema.parse(value)).toBe(value);
   });
 });

@@ -28,6 +28,12 @@ SANDBOX_DISABLE_SECCOMP=true
 
 设置 `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED=true` 后，新建团队时会为默认全员组授予应用、Skill 和知识库创建权限。默认值为 `false`，仅影响新建团队，不会修改已有团队权限。FastGPT Pro 请在 FastGPT 和 Admin 服务中保持该配置一致，以覆盖各自的团队创建入口，包括企业微信授权建队。
 
+## 弃用说明
+
+### 模型自定义请求地址
+
+模型自定义请求地址将于未来版本弃用，当前版本仍兼容，请都改成渠道进行模型管理。
+
 ## 🚀 新增内容
 
 1. FastGPT SSO Service 新增 LDAP 成员与组织架构同步，并补充不同 SSO Provider 的独立环境变量模板和配置文档。

@@ -32,6 +32,34 @@ describe('AppChatConfigTypeSchema', () => {
     });
   });
 
+  it('should normalize null optional chat config fields to undefined', () => {
+    const result = AppChatConfigTypeSchema.parse({
+      welcomeText: null,
+      welcomeConfig: null,
+      variables: null,
+      autoExecute: null,
+      questionGuide: null,
+      ttsConfig: null,
+      whisperConfig: null,
+      scheduledTriggerConfig: null,
+      chatInputGuide: null,
+      fileSelectConfig: null,
+      instruction: null
+    });
+
+    expect(result.welcomeText).toBeUndefined();
+    expect(result.welcomeConfig).toBeUndefined();
+    expect(result.variables).toBeUndefined();
+    expect(result.autoExecute).toBeUndefined();
+    expect(result.questionGuide).toBeUndefined();
+    expect(result.ttsConfig).toBeUndefined();
+    expect(result.whisperConfig).toBeUndefined();
+    expect(result.scheduledTriggerConfig).toBeUndefined();
+    expect(result.chatInputGuide).toBeUndefined();
+    expect(result.fileSelectConfig).toBeUndefined();
+    expect(result.instruction).toBeUndefined();
+  });
+
   it('should fill option label with value when variable option label is missing', () => {
     const result = AppChatConfigTypeSchema.parse({
       variables: [
