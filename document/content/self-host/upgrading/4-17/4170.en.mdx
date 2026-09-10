@@ -67,6 +67,7 @@ Custom model request URLs will be deprecated in a future release. They are still
 8. Standardized shared interactions for table selection, date ranges, numeric inputs, long-list scrolling, and dialogs to improve bulk actions and long-content display.
 9. Added pagination to App, Dataset, and Skill lists and related resource selectors. Improved virtual scrolling, loading skeletons, and folder navigation for teams with large resource lists.
 10. Model summaries, details, and candidate lists now load where needed. Selectors load candidates when opened and distinguish loading, load failures, and unavailable models.
+11. Unified tool descriptions: Tool Nodes and child tools in toolkits now use the tool description for tool calling. Child tool descriptions can be edited directly, and saved custom or intentionally empty descriptions are preserved when tool definitions sync.
 
 ## 🐛 Fixes
 
@@ -89,6 +90,7 @@ Custom model request URLs will be deprecated in a future release. They are still
 17. Added compatibility for historical team members without names, Apps with `questionGuide` set to `null`, and empty Dataset model references to prevent validation failures when reading legacy data.
 18. Fixed rounded corners and routing for Workflow connections between closely spaced Nodes, and restored the default favicon when the configured icon is `/`.
 19. Plugin Workflow template avatars now retain the original URL returned by the plugin, preventing URL rewriting from breaking image display.
+20. Fixed paginated lists showing an empty state and continuing to load after a request failed. Improved virtual-list and organization-table scrolling, and added an option to move folders to the root.
 
 ## 🛠️ Code improvements
 
