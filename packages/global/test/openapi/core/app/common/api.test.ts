@@ -1,8 +1,10 @@
 import {
+  AppChatConfigInputSchema,
   AppQuestionGuideInputSchema,
   AppTTSConfigInputSchema,
   CreateAppBodySchema,
   CreateAppRequestBodySchema,
+  OpenAPIAppChatConfigSchema,
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
@@ -41,6 +43,24 @@ describe('CreateAppBodySchema', () => {
         chatConfig: {}
       }).success
     ).toBe(true);
+  });
+
+  it('normalizes null optional chat config fields', () => {
+    const responseConfig = OpenAPIAppChatConfigSchema.parse({
+      variables: null,
+      questionGuide: null,
+      scheduledTriggerConfig: null
+    });
+    const inputConfig = AppChatConfigInputSchema.parse({
+      questionGuide: null,
+      ttsConfig: null
+    });
+
+    expect(responseConfig.variables).toBeUndefined();
+    expect(responseConfig.questionGuide).toBeUndefined();
+    expect(responseConfig.scheduledTriggerConfig).toBeUndefined();
+    expect(inputConfig.questionGuide).toBeUndefined();
+    expect(inputConfig.ttsConfig).toBeUndefined();
   });
 
   it('preserves legacy chat model references until the post-deploy backfill finishes', () => {

@@ -15,9 +15,7 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { AppChatConfigInputSchema } from '../../app/common/api';
-
-const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((v) => v ?? undefined, schema);
+import { optionalNullToUndefined } from '../../../../common/zod';
 
 const ChatTestNodeInputSchema = OpenAPIFlowNodeInputItemTypeSchema.superRefine((input, ctx) => {
   if (input.key !== NodeInputKeyEnum.selectedTools || input.value === undefined) return;
@@ -53,35 +51,35 @@ const WebCompletionsSchema = z.object({
     .meta({
       description: '会话 ID；未传入或传入空字符串时自动生成新会话 ID'
     }),
-  appId: nullishToUndefined(ObjectIdSchema.optional()).meta({
+  appId: optionalNullToUndefined(ObjectIdSchema).meta({
     description:
       '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
   }),
-  customUid: nullishToUndefined(z.string().max(1024).optional()).meta({
+  customUid: optionalNullToUndefined(z.string().max(1024)).meta({
     description: '自定义用户ID(分享链接)'
   }),
-  metadata: nullishToUndefined(z.record(z.string(), z.any()).optional()).meta({
+  metadata: optionalNullToUndefined(z.record(z.string(), z.any())).meta({
     description: '元数据'
   })
 });
 
 // completions 接口实际上并没有用完所有字段，所以这里就取局部即可
 const ChatCompletionCreateParamsSchema = z.object({
-  messages: nullishToUndefined(z.array(ChatCompletionMessageParamSchema).default([])).meta({
+  messages: optionalNullToUndefined(z.array(ChatCompletionMessageParamSchema).default([])).meta({
     description: '消息列表'
   }),
-  stream: nullishToUndefined(z.boolean().default(false)).meta({
+  stream: optionalNullToUndefined(z.boolean().default(false)).meta({
     description: '是否流式返回'
   })
 });
 
 export const ChatCompletionAuthProxySchema = z
   .object({
-    username: nullishToUndefined(z.string().trim().min(1).max(128).optional()).meta({
+    username: optionalNullToUndefined(z.string().trim().min(1).max(128)).meta({
       example: 'user@example.com',
       description: 'API Key 代理调用的团队成员用户名'
     }),
-    tmbId: nullishToUndefined(ObjectIdSchema.optional()).meta({
+    tmbId: optionalNullToUndefined(ObjectIdSchema).meta({
       description: 'API Key 代理调用的团队成员 ID'
     })
   })
@@ -96,16 +94,16 @@ export type ChatCompletionAuthProxy = z.infer<typeof ChatCompletionAuthProxySche
 
 export const CompletionsPropsSchema = WebCompletionsSchema.extend({
   ...ChatCompletionCreateParamsSchema.shape,
-  outLinkAuthData: nullishToUndefined(OutLinkChatAuthSchema.optional()).meta({
+  outLinkAuthData: optionalNullToUndefined(OutLinkChatAuthSchema).meta({
     description: '外链鉴权数据。share 模式传 shareId/outLinkUid。'
   }),
-  authProxy: nullishToUndefined(ChatCompletionAuthProxySchema.optional()).meta({
+  authProxy: optionalNullToUndefined(ChatCompletionAuthProxySchema).meta({
     description: 'API Key 代理调用身份'
   }),
-  variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
+  variables: optionalNullToUndefined(z.record(z.string(), z.any()).default({})).meta({
     description: '全局变量或插件输入'
   }),
-  responseChatItemId: nullishToUndefined(
+  responseChatItemId: optionalNullToUndefined(
     z
       .string()
       .default(() => getNanoid())
@@ -113,13 +111,13 @@ export const CompletionsPropsSchema = WebCompletionsSchema.extend({
         description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个'
       })
   ),
-  detail: nullishToUndefined(z.boolean().default(false)).meta({
+  detail: optionalNullToUndefined(z.boolean().default(false)).meta({
     description: '是否返回详细信息，包括 reasoning_content, tool_calls, usage 等'
   }),
-  retainDatasetCite: nullishToUndefined(z.boolean().default(false)).meta({
+  retainDatasetCite: optionalNullToUndefined(z.boolean().default(false)).meta({
     description: '是否保留数据集引用'
   }),
-  showSkillReferences: nullishToUndefined(z.boolean().default(false)).meta({
+  showSkillReferences: optionalNullToUndefined(z.boolean().default(false)).meta({
     description: '是否显示技能引用'
   })
 }).superRefine(({ outLinkAuthData }, ctx) => {
@@ -237,7 +235,7 @@ export const ChatTestPropsSchema = z.object({
     example: {},
     description: '当前格式的聊天配置'
   }),
-  variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
+  variables: optionalNullToUndefined(z.record(z.string(), z.any()).default({})).meta({
     example: {},
     description: '全局变量或插件输入'
   }),

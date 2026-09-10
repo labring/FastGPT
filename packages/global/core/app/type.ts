@@ -12,7 +12,7 @@ import z from 'zod';
 import { LOGO_ICON } from '../../common/system/constants';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config.schema';
-import { BoolSchema, NumSchema } from '../../common/zod';
+import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../common/zod';
 import { VariableItemTypeSchema } from './variable/type';
 
 // tts
@@ -115,37 +115,37 @@ export const AppWelcomeConfigTypeSchema = z.object({
 export type AppWelcomeConfigType = z.infer<typeof AppWelcomeConfigTypeSchema>;
 
 export const AppChatConfigTypeSchema = z.object({
-  welcomeText: z.string().optional().meta({
+  welcomeText: optionalNullToUndefined(z.string()).meta({
     description: '新会话开始时展示给用户的欢迎语'
   }),
-  welcomeConfig: AppWelcomeConfigTypeSchema.optional().meta({
+  welcomeConfig: optionalNullToUndefined(AppWelcomeConfigTypeSchema).meta({
     description: '开场白配置'
   }),
-  variables: z.array(VariableItemTypeSchema).optional().meta({
+  variables: optionalNullToUndefined(z.array(VariableItemTypeSchema)).meta({
     description: '应用启动对话前需要用户填写的变量列表'
   }),
-  autoExecute: AppAutoExecuteConfigTypeSchema.optional().meta({
+  autoExecute: optionalNullToUndefined(AppAutoExecuteConfigTypeSchema).meta({
     description: '自动执行配置'
   }),
-  questionGuide: AppQGConfigTypeSchema.optional().meta({
+  questionGuide: optionalNullToUndefined(AppQGConfigTypeSchema).meta({
     description: '问题引导配置'
   }),
-  ttsConfig: AppTTSConfigTypeSchema.optional().meta({
+  ttsConfig: optionalNullToUndefined(AppTTSConfigTypeSchema).meta({
     description: '语音播报配置'
   }),
-  whisperConfig: AppWhisperConfigTypeSchema.optional().meta({
+  whisperConfig: optionalNullToUndefined(AppWhisperConfigTypeSchema).meta({
     description: '语音输入配置'
   }),
-  scheduledTriggerConfig: AppScheduledTriggerConfigTypeSchema.optional().meta({
+  scheduledTriggerConfig: optionalNullToUndefined(AppScheduledTriggerConfigTypeSchema).meta({
     description: '定时触发配置'
   }),
-  chatInputGuide: ChatInputGuideConfigTypeSchema.optional().meta({
+  chatInputGuide: optionalNullToUndefined(ChatInputGuideConfigTypeSchema).meta({
     description: '对话输入引导配置'
   }),
-  fileSelectConfig: AppFileSelectConfigTypeSchema.optional().meta({
+  fileSelectConfig: optionalNullToUndefined(AppFileSelectConfigTypeSchema).meta({
     description: '对话文件选择配置'
   }),
-  instruction: z.string().optional().meta({
+  instruction: optionalNullToUndefined(z.string()).meta({
     description: '应用对话页展示给用户的使用说明'
   })
 });
