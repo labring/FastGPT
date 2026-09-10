@@ -1,4 +1,3 @@
-import type { oas31 } from 'zod-openapi';
 import { z } from 'zod';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '../../../core/dataset/constants';
 import { ApiDatasetServerSchema } from '../../../core/dataset/apiDataset/type';
@@ -572,8 +571,8 @@ export const SearchDatasetTestBodySchema = z
     message: 'text or queryImageUrls is required'
   })
   .meta({
-    override: ({ jsonSchema }: { jsonSchema: oas31.SchemaObject }) => {
-      jsonSchema.anyOf = [
+    override: {
+      anyOf: [
         {
           required: ['text'],
           properties: { text: { type: 'string', minLength: 1, example: 'FastGPT 是什么' } }
@@ -584,7 +583,7 @@ export const SearchDatasetTestBodySchema = z
             queryImageUrls: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } }
           }
         }
-      ];
+      ]
     }
   });
 export type SearchDatasetTestBody = z.infer<typeof SearchDatasetTestBodySchema>;

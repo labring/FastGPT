@@ -1,4 +1,3 @@
-import type { oas31 } from 'zod-openapi';
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetCollectionTypeEnum, TrainingModeEnum } from '../../../../core/dataset/constants';
@@ -54,12 +53,12 @@ export const UpdateTrainingDataBodySchema = z
     }
   })
   .meta({
-    override: ({ jsonSchema }: { jsonSchema: oas31.SchemaObject }) => {
-      jsonSchema.anyOf = [
+    override: {
+      anyOf: [
         { required: ['dataId'] },
         { required: ['datasetId'], not: { required: ['collectionId'] } },
         { required: ['collectionId'], not: { required: ['datasetId'] } }
-      ];
+      ]
     }
   });
 export type UpdateTrainingDataBody = z.infer<typeof UpdateTrainingDataBodySchema>;
