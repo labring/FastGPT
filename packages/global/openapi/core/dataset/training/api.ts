@@ -1,3 +1,4 @@
+import type { oas31 } from 'zod-openapi';
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetCollectionTypeEnum, TrainingModeEnum } from '../../../../core/dataset/constants';
@@ -50,6 +51,15 @@ export const UpdateTrainingDataBodySchema = z
         path: ['collectionId'],
         message: 'collectionId and datasetId cannot be used together without dataId'
       });
+    }
+  })
+  .meta({
+    override: ({ jsonSchema }: { jsonSchema: oas31.SchemaObject }) => {
+      jsonSchema.anyOf = [
+        { required: ['dataId'] },
+        { required: ['datasetId'], not: { required: ['collectionId'] } },
+        { required: ['collectionId'], not: { required: ['datasetId'] } }
+      ];
     }
   });
 export type UpdateTrainingDataBody = z.infer<typeof UpdateTrainingDataBodySchema>;
