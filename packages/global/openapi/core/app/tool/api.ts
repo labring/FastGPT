@@ -48,7 +48,6 @@ export const GetToolSetChildrenResponseSchema = z.object({
 export type GetToolSetChildrenResponseType = z.infer<typeof GetToolSetChildrenResponseSchema>;
 
 const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.extend({
-  /** @deprecated Unused now in favor of `intro` in node data. */
   toolDescription: NodeTemplateListItemTypeSchema.shape.toolDescription.meta({
     description: '已废弃：节点作为工具被调用时的能力说明',
     deprecated: true

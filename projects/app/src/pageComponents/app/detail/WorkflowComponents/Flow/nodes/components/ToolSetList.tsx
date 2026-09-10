@@ -84,6 +84,7 @@ const ToolSetList = ({
               <Flex gap={'4px'}>
                 {editingIndex === index ? (
                   <Textarea
+                    className="nodrag"
                     width="full"
                     autoFocus
                     value={editingDescription}

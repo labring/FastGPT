@@ -179,7 +179,6 @@ export const FlowNodeCommonTypeSchema = z.object({
   colorSchema: z.enum(NodeColorSchemaEnum).optional(), // color schema
   name: z.string(), // name
   intro: z.string().optional(), // template list intro
-  /** @deprecated Unused now in favor of `intro` in node data. */
   toolDescription: z.string().optional().meta({
     description: '已废弃：节点作为工具被调用时的能力说明',
     deprecated: true
@@ -286,7 +285,6 @@ export const NodeTemplateListItemTypeSchema = z.object({
   avatar: z.string().optional(),
   name: z.string(),
   intro: z.string().optional(), // template list intro
-  /** @deprecated Unused now in favor of `intro` in node data. */
   toolDescription: z.string().optional().meta({
     description: '已废弃：节点作为工具被调用时的能力说明',
     deprecated: true

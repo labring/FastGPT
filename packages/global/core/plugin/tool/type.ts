@@ -22,7 +22,6 @@ export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.exte
       name: z.string(),
       avatar: z.string().optional(),
       intro: z.string().optional(),
-      /** @deprecated Unused now in favor of `intro` in node data. */
       toolDescription: z.string().optional().meta({
         description: '已废弃：节点作为工具被调用时的能力说明',
         deprecated: true

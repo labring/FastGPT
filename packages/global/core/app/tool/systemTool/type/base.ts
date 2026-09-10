@@ -48,7 +48,6 @@ export const SystemToolListItemSchema = z.object({
   intro: z.string().meta({ description: '工具的简介' }),
   author: z.string().meta({ description: '工具的作者' }),
   tags: z.array(z.string()).meta({ description: '工具的标签' }),
-  /** @deprecated Unused now in favor of `intro` in node data. */
   toolDescription: z.string().optional().meta({
     description: '已废弃：节点作为工具被调用时的能力说明',
     deprecated: true
@@ -83,7 +82,6 @@ export const SystemToolChildDetailSchema = z.object({
   name: z.string(),
   status: PluginStatusSchema.meta({ description: '工具的状态' }),
   description: z.string().optional(),
-  /** @deprecated Unused now in favor of `intro` in node data. */
   toolDescription: z.string().optional().meta({
     description: '已废弃：节点作为工具被调用时的能力说明',
     deprecated: true
