@@ -10,6 +10,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useTranslation } from 'next-i18next';
 
 export type SelectOneResourceItemType = GetResourceListItemResponse & {
@@ -65,7 +66,10 @@ const SelectOneResource = ({
     pageSize: 50,
     params: { parentId: currentParentId },
     refreshDeps: [currentParentId],
-    showNoMoreTip: false
+    showNoMoreTip: false,
+    EmptyTip: (
+      <EmptyTip text={t('common:folder.empty')} flex={1} mt={0} py={0} justifyContent={'center'} />
+    )
   });
   const isAutoHeight = h === 'auto';
 
@@ -80,6 +84,9 @@ const SelectOneResource = ({
   };
 
   const enterFolder = (item: ResourcePathItemType) => {
+    if (selectFolder) {
+      onSelect();
+    }
     setPath((state) => (state[state.length - 1]?.id === item.id ? state : [...state, item]));
   };
 
@@ -125,6 +132,9 @@ const SelectOneResource = ({
                 if (index === 0) {
                   selectRoot();
                   return;
+                }
+                if (selectFolder) {
+                  onSelect();
                 }
                 setPath((state) => state.slice(0, index + 1));
               }}

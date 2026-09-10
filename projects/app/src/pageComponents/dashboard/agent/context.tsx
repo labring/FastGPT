@@ -192,7 +192,6 @@ const AppListContextProvider = ({
       ],
       pageSize,
       throttleWait: 500,
-      refreshOnWindowFocus: true,
       showPaginationTip
     }
   );
