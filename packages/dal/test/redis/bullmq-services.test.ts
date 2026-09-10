@@ -25,11 +25,13 @@ describe('BullMQ business services', () => {
   it('allows queue binding injection while keeping queue contracts in the service class', async () => {
     const queue = {
       add: vi.fn().mockResolvedValue({ id: 'job-1' }),
+      addBulk: vi.fn().mockResolvedValue([{ id: 'job-1' }]),
       getJob: vi.fn().mockResolvedValue(null)
     };
     const binding = {
       getQueue: vi.fn(() => queue),
       getWorker: vi.fn(),
+      getFlowProducer: vi.fn(),
       getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
     } as unknown as BullMQBinding;
     const service = new AppDeleteMQService(binding);
@@ -47,11 +49,65 @@ describe('BullMQ business services', () => {
         removeOnFail: { age: 30 * 24 * 60 * 60 }
       }
     });
-    expect(queue.add).toHaveBeenCalledWith('delete_app', data, {
-      jobId: 'team-1-app-1',
-      delay: 1000
-    });
+    expect(queue.add).toHaveBeenCalledWith(
+      'delete_app',
+      { ...data, jobType: 'root' },
+      {
+        jobId: 'team-1-app-1',
+        delay: 1000
+      }
+    );
     expect(queue.getJob).toHaveBeenCalledWith('team-1-app-1');
+  });
+
+  it('adds one task Flow with retry options on every node', async () => {
+    const flowProducer = {
+      addBulk: vi.fn().mockResolvedValue([{ job: { id: 'task-1' } }])
+    };
+    const binding = {
+      getQueue: vi.fn(),
+      getWorker: vi.fn(),
+      getFlowProducer: vi.fn(() => flowProducer),
+      getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+    } as unknown as BullMQBinding;
+    const service = new AppDeleteMQService(binding);
+
+    await expect(
+      service.addFlows([
+        {
+          name: 'delete_app_task',
+          queueName: 'appDelete',
+          data: { jobType: 'task' },
+          opts: { jobId: 'task-1' },
+          children: [
+            {
+              name: 'delete_app_step',
+              queueName: 'appDelete',
+              data: { jobType: 'step' },
+              opts: { jobId: 'task-1:step:app-1' }
+            }
+          ]
+        }
+      ])
+    ).resolves.toEqual([{ job: { id: 'task-1' } }]);
+
+    expect(flowProducer.addBulk).toHaveBeenCalledWith([
+      expect.objectContaining({
+        opts: expect.objectContaining({
+          jobId: 'task-1',
+          attempts: 10,
+          removeOnComplete: true
+        }),
+        children: [
+          expect.objectContaining({
+            opts: expect.objectContaining({
+              jobId: 'task-1:step:app-1',
+              attempts: 10
+            })
+          })
+        ]
+      })
+    ]);
   });
 
   it('uses failed-job recovery for Dataset deletion jobs', async () => {

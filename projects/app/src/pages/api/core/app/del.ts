@@ -54,13 +54,10 @@ async function handler(req: NextApiRequest): Promise<DeleteAppResponseType> {
       teamId,
       appIds: deleteAppsList.map((app) => app._id)
     });
-
-    // Add to delete queue for async cleanup
-    await addAppDeleteJob({
-      teamId,
-      appId
-    });
   });
+
+  // Add the task Flow after the soft-delete transaction commits.
+  await addAppDeleteJob({ teamId, appId });
 
   (async () => {
     addAuditLog({

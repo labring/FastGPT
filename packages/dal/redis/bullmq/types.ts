@@ -1,6 +1,9 @@
 import type {
   ConnectionOptions,
+  FlowJob,
+  FlowProducer,
   Job,
+  JobNode,
   JobSchedulerJson,
   Processor,
   Queue,
@@ -42,7 +45,10 @@ export type WorkerListenerSnapshot = {
 
 export type {
   ConnectionOptions,
+  FlowJob,
+  FlowProducer,
   Job,
+  JobNode,
   JobSchedulerJson,
   Processor,
   Queue,
