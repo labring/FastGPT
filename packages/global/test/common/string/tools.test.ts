@@ -31,8 +31,22 @@ describe('string tools', () => {
 
   it('should normalize text formatting', () => {
     const input = '  你 好 \r\n\r\n\r\nfoo\x00bar  ';
-    expect(simpleText(input)).toBe('你 好 \n\nfoo bar');
-    expect(simpleText('a   b')).toBe('a   b');
+    expect(simpleText(input)).toBe('你好 \n\nfoo bar');
+    expect(simpleText('a   b')).toBe('a b');
+  });
+
+  it('should collapse blanks between chinese characters', () => {
+    expect(simpleText('中文  中文')).toBe('中文中文');
+    expect(simpleText('中文\t中文')).toBe('中文中文');
+    // 全角空格
+    expect(simpleText('中文　中文')).toBe('中文中文');
+  });
+
+  it('should keep brackets and line indentation while normalizing blanks', () => {
+    expect(simpleText('参考 [[ 知识库 ]] 一节')).toBe('参考 [[ 知识库 ]] 一节');
+    expect(simpleText('{"matrix": [[]]}')).toBe('{"matrix": [[]]}');
+    expect(simpleText('中文 ]中文')).toBe('中文 ]中文');
+    expect(simpleText('def f():\n    return 1')).toBe('def f():\n    return 1');
   });
 
   it('should replace sensitive text', () => {
