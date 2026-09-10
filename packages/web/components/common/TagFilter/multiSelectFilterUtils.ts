@@ -28,7 +28,7 @@ export const createMultiSelectFilter = <T extends string>(
 });
 
 /**
- * 点某一项：从「全部」进入已选，或在已选里增删。清空最后一项后仍是 selected，列表按空数组筛空。
+ * 点某一项：从「全部」进入已选，或在已选里增删。取消所有勾选回到「全部」。
  */
 export const toggleMultiSelectFilterValue = <T extends string>(
   current: MultiSelectFilterValue<T>,
@@ -38,14 +38,17 @@ export const toggleMultiSelectFilterValue = <T extends string>(
   const nextValues = selected.includes(value)
     ? selected.filter((item) => item !== value)
     : [...selected, value];
+  if (nextValues.length === 0) {
+    return createMultiSelectFilter<T>();
+  }
   return { mode: 'selected', values: nextValues };
 };
 
-/** 全部不传该字段；已选含空数组，调用方按空结果处理。 */
+/** 全部不传该字段；无选中项也视为全部不传。 */
 export const toMultiSelectFilterQuery = <T extends string>(
   value?: MultiSelectFilterValue<T>
 ): T[] | undefined => {
-  if (value?.mode !== 'selected') return undefined;
+  if (value?.mode !== 'selected' || value.values.length === 0) return undefined;
   return value.values;
 };
 
@@ -111,7 +114,7 @@ export const mergeRememberedFilterOptions = <T extends string>(
 };
 
 /**
- * 触发器文案：全部、未选择、可选的「只选自己」纯文本，其余为第一项名字 +N。
+ * 触发器文案：全部（含未选任何项）、可选的「只选自己」纯文本，其余为第一项名字 +N。
  */
 export const getMultiSelectFilterSummary = <T extends string>({
   mode,
@@ -126,15 +129,11 @@ export const getMultiSelectFilterSummary = <T extends string>({
   currentValue?: T;
   labels: {
     all: string;
-    unselected: string;
     selectedSelf?: string;
   };
 }): MultiSelectFilterSummary => {
-  if (mode !== 'selected') {
+  if (mode !== 'selected' || values.length === 0) {
     return { text: labels.all, extraCount: 0, chip: false };
-  }
-  if (values.length === 0) {
-    return { text: labels.unselected, extraCount: 0, chip: false };
   }
   if (values.length === 1 && currentValue && values[0] === currentValue && labels.selectedSelf) {
     return { text: labels.selectedSelf, extraCount: 0, chip: false };

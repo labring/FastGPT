@@ -50,9 +50,10 @@ const FilterSearchInput = ({ value, placeholder, onChange }: Props) => (
       w={0}
       minW={0}
       h={'100%'}
-      px={1}
+      px={0}
       variant={'unstyled'}
-      fontSize={'sm'}
+      fontSize={'xs'}
+      lineHeight={'16px'}
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}

@@ -175,8 +175,7 @@ const TagMultiSelect = ({
     values: selectedTags.map((tag) => tag._id),
     options: selectedTags.map((tag) => ({ value: tag._id, label: tag.name })),
     labels: {
-      all: placeholder || t('apikey:tags'),
-      unselected: placeholder || t('apikey:tags')
+      all: placeholder || t('apikey:tags')
     }
   });
 
