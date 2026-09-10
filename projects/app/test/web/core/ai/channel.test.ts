@@ -2,13 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
+  useRequestInterceptor: vi.fn(),
   useResponseInterceptor: vi.fn()
 }));
 
 vi.mock('axios', () => ({
   default: {
     create: () => ({
-      interceptors: { response: { use: mocks.useResponseInterceptor } },
+      interceptors: {
+        request: { use: mocks.useRequestInterceptor },
+        response: { use: mocks.useResponseInterceptor }
+      },
       request: mocks.request
     })
   }

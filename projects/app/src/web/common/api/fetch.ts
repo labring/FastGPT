@@ -26,6 +26,10 @@ import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/Opt
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
+import {
+  FASTGPT_WEB_REQUEST_HEADER,
+  FASTGPT_WEB_REQUEST_VALUE
+} from '@fastgpt/global/common/system/constants';
 import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 
 type StreamFetchProps = {
@@ -545,7 +549,10 @@ function $resumefetch({
       const req = new Request(getWebReqUrl(url));
 
       await fetchEventSource(req, {
-        headers: getLanguageRequestHeaders(),
+        headers: {
+          ...getLanguageRequestHeaders(),
+          [FASTGPT_WEB_REQUEST_HEADER]: FASTGPT_WEB_REQUEST_VALUE
+        },
         signal: signal,
         async onopen(res) {
           clearTimeout(timer);

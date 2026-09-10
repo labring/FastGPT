@@ -55,11 +55,32 @@ describe('web request CSRF guard', () => {
     );
   });
 
-  it('does not require the Web header without a login Cookie', () => {
-    expect(isValidWebRequest(request({}))).toBe(true);
-    expect(isValidWebRequest(request({ cookie: 'NEXT_LOCALE=en' }))).toBe(true);
-  });
+  it('only applies to GET browser requests and skips service authentication', async () => {
+    const createResponse = () => ({
+      writableEnded: false,
+      writableFinished: false,
+      status: vi.fn(() => ({ json: vi.fn() }))
+    });
 
+    for (const req of [
+      {
+        method: 'POST',
+        headers: { cookie: 'fastgpt_token=session-1' }
+      },
+      {
+        method: 'GET',
+        headers: { cookie: 'fastgpt_token=session-1', authorization: 'Bearer api-key' }
+      },
+      {
+        method: 'GET',
+        headers: { cookie: 'fastgpt_token=session-1', rootkey: 'root-key' }
+      }
+    ]) {
+      const res = createResponse();
+      await checkCsrf({ req: req as any, res: res as any });
+      expect(res.status).not.toHaveBeenCalled();
+    }
+  });
   it('supports standard Headers and rejects an empty Web header', () => {
     const headers = new Headers({
       cookie: 'fastgpt_token=session-1',

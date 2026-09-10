@@ -21,16 +21,6 @@ const getHeader = (headers: RequestHeaders, name: string) => {
   return Array.isArray(value) ? value.join(',') : value;
 };
 
-/** 解析跨域白名单；未配置时返回 undefined，以保留默认允许所有跨域的兼容行为。 */
-export const parseAllowedOrigins = (value?: string) => {
-  if (!value?.trim()) return undefined;
-
-  return value
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-};
-
 const hasCookie = (cookie: string | undefined, name: string) =>
   cookie?.split(';').some((item) => item.trim().startsWith(`${name}=`)) ?? false;
 
@@ -46,11 +36,21 @@ export const isValidWebRequest = (req: WebRequest) => {
 };
 
 /**
- * 在 API handler 执行前校验登录 Cookie 请求的 Web 标记。
- * CSRF 配置由 NextAPI 决定；该函数只负责校验失败时写入 403 响应。
+ * 在 API handler 执行前校验浏览器登录请求的 Web 标记。
+ * 只拦截 GET 的 Cookie 登录请求，服务间通过 rootkey 或 Authorization 鉴权的请求保持兼容。
+ * CSRF 配置由 NextAPI 决定；该函数只负责判断请求是否适用以及校验失败时写入 403 响应。
  */
 export async function checkCsrf({ req, res }: CsrfCheckOptions) {
   if (res.writableEnded || res.writableFinished) return;
+
+  if (
+    req.method !== 'GET' ||
+    req.headers.rootkey ||
+    req.headers.authorization ||
+    !shouldValidateWebRequest({ headers: req.headers })
+  ) {
+    return;
+  }
 
   if (isValidWebRequest({ headers: req.headers })) {
     return;
