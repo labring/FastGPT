@@ -67,7 +67,9 @@ const SelectOneResource = ({
     params: { parentId: currentParentId },
     refreshDeps: [currentParentId],
     showNoMoreTip: false,
-    EmptyTip: <EmptyTip text={t('common:folder.empty')} />
+    EmptyTip: (
+      <EmptyTip text={t('common:folder.empty')} flex={1} mt={0} py={0} justifyContent={'center'} />
+    )
   });
   const isAutoHeight = h === 'auto';
 
