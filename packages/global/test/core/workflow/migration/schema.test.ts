@@ -47,6 +47,41 @@ describe('workflow input schema boundaries', () => {
 });
 
 describe('workflow migration boundary', () => {
+  it.each(['datasetTagFilter', 'unknownInputType', 123, null])(
+    'cleans invalid selected types before schema validation: %j',
+    (selectedType) => {
+      const input = {
+        key: 'collectionFilterMatch',
+        label: 'Filter',
+        selectedType,
+        renderTypeList: ['datasetTagFilter', FlowNodeInputTypeEnum.reference],
+        value: { tags: ['legacy'] }
+      };
+      const source = {
+        nodes: [
+          {
+            nodeId: 'dataset-search',
+            flowNodeType: 'datasetSearchNode',
+            name: 'Dataset search',
+            inputs: [input],
+            outputs: []
+          }
+        ]
+      };
+      const snapshot = structuredClone(source);
+      const result = migrateWorkflowToCurrent(source);
+
+      expect(result.nodes[0].inputs[0]).toMatchObject({
+        key: input.key,
+        selectedType: FlowNodeInputTypeEnum.reference,
+        value: input.value
+      });
+      expect(result.nodes[0].inputs[0].renderTypeList).not.toContain('datasetTagFilter');
+      expect(source).toEqual(snapshot);
+      expect(migrateWorkflowToCurrent(result)).toEqual(result);
+    }
+  );
+
   it('maps the legacy default field and keeps an explicit current default', async () => {
     const result = await migrateWorkflowToCurrent({
       nodes: [

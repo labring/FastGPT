@@ -1,3 +1,4 @@
+import { requiredAlternatives } from '../../common/zod/openapi';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from './controller';
@@ -27,7 +28,10 @@ export const CollaboratorTargetSchema = z
   .refine(({ tmbId, groupId, orgId }) => [tmbId, groupId, orgId].filter(Boolean).length === 1, {
     message: 'tmbId, groupId or orgId is required, and only one can be provided'
   })
-  .meta({ description: '协作者目标；团队成员、成员组和组织节点必须且只能指定一个' });
+  .meta({
+    ...requiredAlternatives([['tmbId'], ['groupId'], ['orgId']], true),
+    description: '协作者目标；团队成员、成员组和组织节点必须且只能指定一个'
+  });
 export type CollaboratorTargetType = z.infer<typeof CollaboratorTargetSchema>;
 
 export const CollaboratorItemSchema = CollaboratorTargetSchema.safeExtend({
@@ -36,6 +40,7 @@ export const CollaboratorItemSchema = CollaboratorTargetSchema.safeExtend({
     description: '权限角色值'
   })
 }).meta({
+  ...requiredAlternatives([['tmbId'], ['groupId'], ['orgId']], true),
   description: '协作者权限配置'
 }) as z.ZodType<CollaboratorItemType>;
 

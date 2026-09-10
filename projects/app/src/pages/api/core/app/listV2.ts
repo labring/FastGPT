@@ -177,7 +177,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     );
     return {
       ...rest,
-      avatar: app.avatar ?? '',
+      avatar: app.avatar,
       intro: app.intro ?? '',
       createTime: app.createTime ?? new Types.ObjectId(String(app._id)).getTimestamp(),
       parentId: app.parentId,

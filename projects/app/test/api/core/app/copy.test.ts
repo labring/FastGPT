@@ -1,3 +1,5 @@
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getModelTestDefaults } from '@test/modelCache';
 import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -134,8 +136,10 @@ describe('Copy', () => {
     expect(res4.code).toBe(200);
     const copiedApp = await MongoApp.findById(res4.data?.appId).lean();
     const expectedFallbackModelId =
-      global.systemDefaultModel.llm?.modelId ??
-      global.systemActiveModelList.find((model) => model.type === ModelTypeEnum.llm)?.modelId;
+      getModelTestDefaults().llm?.modelId ??
+      getCachedModelHandle()
+        ?.getActiveModels()
+        .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
     expect(copiedApp?.modules[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,

@@ -1,3 +1,4 @@
+import { requiredAlternatives } from '../../../../common/zod/openapi';
 import z from 'zod';
 import {
   FlowNodeTemplateTypeSchema,
@@ -199,6 +200,7 @@ export const GetPreviewNodeQueryOpenAPISchema = GetPreviewNodeBaseQuerySchema.ex
       '是否获取最新版本 ID，与 versionId 必须二选一。只能传 true，表示返回最新版节点数据并带上具体 version'
   })
 }).meta({
+  ...requiredAlternatives([['versionId'], ['getLatestVersion']], true),
   description:
     'OpenAPI 文档参数模型。运行时仍由 GetPreviewNodeQuerySchema 校验 versionId/getLatestVersion 的二选一约束。'
 });

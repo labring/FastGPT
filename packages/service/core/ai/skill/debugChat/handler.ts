@@ -1,3 +1,4 @@
+import { getModelHandle } from '../../model';
 import type { NodeApiRequest, NodeApiResponse } from '../../../../types/http';
 import {
   DispatchNodeResponseKeyEnum,
@@ -31,7 +32,7 @@ import { getLocale } from '../../../../common/middle/i18n';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { getLLMModelData, findModelData } from '../../model';
+
 import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import { prepareWorkflowFileQuery } from '../../../workflow/utils/fileLimits';
@@ -118,7 +119,8 @@ export async function handleSkillDebugChat(
       skillId,
       per: WritePermissionVal
     });
-    const modelData = getLLMModelData({ modelId });
+    const modelHandle = await getModelHandle();
+    const modelData = modelHandle.getLLMModelData({ modelId });
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
       return ChatWorkflowSseResponseSchema.parse('');
@@ -257,7 +259,7 @@ export async function handleSkillDebugChat(
 
       if (item.model && (item.inputTokens !== undefined || item.outputTokens !== undefined)) {
         try {
-          const usageModel = findModelData({ model: item.model });
+          const usageModel = modelHandle.findModelData({ model: item.model });
           if (!usageModel) return item;
           const { totalPoints } = formatModelChars2Points({
             model: usageModel,

@@ -1,3 +1,9 @@
+import {
+  getModelTestDefaults,
+  getModelTestMap,
+  setModelTestMap,
+  addModelTestModel
+} from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DatasetCollectionDataProcessModeEnum,
@@ -39,7 +45,7 @@ import { datasetParseQueue } from '@/service/core/dataset/queues/datasetParse';
 const createTask = async ({
   agentModelId,
   vlmModelId,
-  vectorModelId = global.systemDefaultModel.embedding!.modelId,
+  vectorModelId = getModelTestDefaults().embedding!.modelId,
   paragraphChunkAIMode = ParagraphChunkAIModeEnum.forbid,
   imageIndex = false,
   autoIndexes = false
@@ -97,18 +103,18 @@ describe('datasetParseQueue model validation', () => {
   it.each(['missing', 'disabled', 'wrong-type', 'unconfigured'])(
     'does not block parsing on %s auxiliary models',
     async (state) => {
-      const previousMap = global.systemModelMap;
-      global.systemModelMap = new Map(previousMap);
+      const previousMap = getModelTestMap();
+      setModelTestMap(new Map(previousMap));
       if (state === 'disabled') {
         const model = {
-          ...global.systemDefaultModel.llm!,
+          ...getModelTestDefaults().llm!,
           modelId: 'aux-model',
           isActive: false,
-          config: { ...global.systemDefaultModel.llm!.config, vision: true }
+          config: { ...getModelTestDefaults().llm!.config, vision: true }
         };
-        global.systemModelMap.set('id:aux-model', model);
+        addModelTestModel(model);
       } else if (state === 'wrong-type') {
-        global.systemModelMap.set('id:aux-model', global.systemDefaultModel.embedding!);
+        addModelTestModel(getModelTestDefaults().embedding!);
       }
       try {
         const { task, collection } = await createTask({
@@ -128,7 +134,7 @@ describe('datasetParseQueue model validation', () => {
         expect(mocks.usage).not.toHaveBeenCalled();
         expect(global.datasetParseQueueLen).toBe(0);
       } finally {
-        global.systemModelMap = previousMap;
+        setModelTestMap(previousMap);
       }
     }
   );
@@ -164,7 +170,7 @@ describe('datasetParseQueue model validation', () => {
 
   it('retries a paragraph request failure and bills the subsequent success', async () => {
     const { task, collection } = await createTask({
-      agentModelId: global.systemDefaultModel.llm!.modelId,
+      agentModelId: getModelTestDefaults().llm!.modelId,
       paragraphChunkAIMode: ParagraphChunkAIModeEnum.force
     });
     mocks.paragraph.mockRejectedValueOnce(new Error('temporary failure')).mockResolvedValue({

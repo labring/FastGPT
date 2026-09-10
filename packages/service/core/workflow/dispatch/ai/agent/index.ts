@@ -1,3 +1,4 @@
+import { getModelHandle } from '../../../../ai/model';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
@@ -14,7 +15,7 @@ import { getAgentDatasetParams, getSubapps } from './sub/utils';
 import { useUserContext } from './adapter/userContext';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { getLLMModelData } from '../../../../ai/model';
+
 import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
@@ -110,7 +111,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     lang,
     histories,
     query,
-    chatConfig,
     lastInteractive,
     runningAppInfo,
     runningUserInfo,
@@ -136,7 +136,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
-  const agentModel = getLLMModelData({ modelId, model });
+  const modelHandle = await getModelHandle();
+  const agentModel = modelHandle.getLLMModelData({ modelId, model });
   // 旧 params.model 仅保留给兼容读取；Agent 请求链使用规范化 modelData。
   props.params.model = agentModel.model;
   props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.config.vision);

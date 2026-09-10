@@ -3,7 +3,11 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
-import { ListSkillsQuerySchema, type ListSkillsQuery } from '@fastgpt/global/core/ai/skill/api';
+import {
+  ListSkillsQuerySchema,
+  ListSkillsResponseSchema,
+  type ListSkillsQuery
+} from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { listReadableAgentSkills } from '@fastgpt/service/core/ai/skill/manage';
 
@@ -48,7 +52,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
       : [])
   ]);
 
-  return listReadableAgentSkills({
+  const response = await listReadableAgentSkills({
     teamId,
     tmbId,
     teamPer,
@@ -64,6 +68,14 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
     withAppCount,
     sort,
     tmbIds
+  });
+  return ListSkillsResponseSchema.parse({
+    ...response,
+    list: response.list.map((skill) => ({
+      ...skill,
+      createTime: new Date(skill.createTime).toISOString(),
+      updateTime: new Date(skill.updateTime).toISOString()
+    }))
   });
 }
 

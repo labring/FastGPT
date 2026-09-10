@@ -42,7 +42,13 @@ const BillAndInvoice = () => {
             {t('account:bills_and_invoices')}
           </Box>
         </Flex>
-        <Flex flex={['0 0 auto', '1 0 0']} minH={0} flexDirection={'column'} py={[2, 6]}>
+        <Flex
+          flex={['0 0 auto', '1 0 0']}
+          minH={0}
+          flexDirection={'column'}
+          py={[2, 6]}
+          pt={[4, 6]}
+        >
           <Flex
             px={[2, 6]}
             justifyContent={'space-between'}

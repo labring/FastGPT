@@ -133,7 +133,6 @@ const createMockModelData = (
   name: 'GPT-4',
   isActive: true,
   scope: 'system' as const,
-  isCustom: false,
   ...overrides,
   config: {
     maxContext: 128000,
@@ -251,10 +250,6 @@ describe('createLLMResponse', () => {
     });
 
     it('should use user key and default OpenAI baseUrl when only user key is provided', async () => {
-      const modelData = createMockModelData({
-        requestUrl: 'https://model.example.com/v1/chat/completions',
-        requestAuth: 'model-key'
-      });
       const createMock = vi.fn().mockResolvedValue(mockTextResponse);
       mockGetAIApi.mockReturnValue(
         createMockAIApiResult(

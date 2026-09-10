@@ -12,6 +12,7 @@ import {
 
 async function handler(req: ApiRequestProps): Promise<GetSystemModelConfigJsonResponse> {
   await authSystemAdmin({ req });
+
   const models = await MongoAIModel.find({ scope: ModelScopeEnum.system }).lean();
 
   return GetSystemModelConfigJsonResponseSchema.parse(

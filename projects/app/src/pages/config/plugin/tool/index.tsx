@@ -136,6 +136,7 @@ const ToolProvider = () => {
         <Flex
           h={['auto', '64px']}
           py={[6, 0]}
+          pt={[4, 0]}
           flexShrink={0}
           px={6}
           alignItems={['stretch', 'center']}
@@ -205,6 +206,7 @@ const ToolProvider = () => {
           flex={'1 0 0'}
           minH={['calc(100dvh - 78px)', 0]}
           py={6}
+          pt={[4, 6]}
           display={'flex'}
           flexDirection={'column'}
           isLoading={loadingTools}

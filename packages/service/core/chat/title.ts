@@ -1,3 +1,4 @@
+import { getModelHandle } from '../ai/model';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
@@ -7,7 +8,7 @@ import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtim
 import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
-import { getDefaultChatTitleModelData } from '../ai/model';
+
 import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from './source';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -96,7 +97,8 @@ const generateChatTitleFromQuestion = async ({
   question: string;
   teamId: string;
 }): Promise<string | undefined> => {
-  const titleModel = getDefaultChatTitleModelData();
+  const modelHandle = await getModelHandle();
+  const titleModel = modelHandle.getDefaultModelData('chatTitleLLM');
   if (!titleModel?.model) return question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
   const questionForTitle = question.slice(0, CHAT_TITLE_QUESTION_MAX_LENGTH);
   const userPrompt = `Generate a title for the following source text. Do not answer it.

@@ -4,6 +4,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
 import { getAIProxyAdminConfig } from '@fastgpt/service/thirdProvider/aiproxy/config';
+import { withAIProxyChannelMutation } from '@fastgpt/service/thirdProvider/aiproxy/lease';
 
 // 特殊路径映射，标记需要在末尾保留斜杠的路径
 const endPathMap: Record<string, boolean> = {
@@ -31,7 +32,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const headers: Record<string, string> = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      if (key === 'cookie' || key === 'host' || key === 'origin' || key === 'connection') continue;
+      const lowerKey = key.toLowerCase();
+      // 管理端凭证只能由服务端注入，避免客户端 Authorization 与 AIProxy token 合并。
+      if (
+        lowerKey === 'authorization' ||
+        lowerKey === 'cookie' ||
+        lowerKey === 'host' ||
+        lowerKey === 'origin' ||
+        lowerKey === 'connection'
+      ) {
+        continue;
+      }
       if (value) {
         headers[key] = Array.isArray(value) ? value.join(', ') : value;
       }
@@ -46,7 +57,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: req.method === 'GET' || req.method === 'HEAD' ? null : (req as any)
     });
 
-    const response = await fetch(request);
+    const mutatesChannel =
+      !['GET', 'HEAD', 'OPTIONS'].includes(req.method ?? '') &&
+      /^\/api\/channels?(?:\/|$)/.test(basePath);
+    const response = mutatesChannel
+      ? await withAIProxyChannelMutation(async ({ signal, assertValid }) => {
+          assertValid();
+          return fetch(request, { signal: AbortSignal.any([signal, AbortSignal.timeout(30000)]) });
+        })
+      : await fetch(request);
 
     response.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();

@@ -8,12 +8,13 @@ import {
   findResourceKeysByCollaboratorsPermission,
   getResourcePermissionsByTeam
 } from '../resourcePermissionService';
-import { isProVersion } from '../../../common/system/constants';
 import { getTmpData, setTmpData } from '../../tmpData/controller';
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import { MongoTmpData } from '../../tmpData/schema';
 import type { ClientSession } from '../../../common/mongo';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { getModelHandle } from '../../../core/ai/model';
 
 const myModelsCacheFilter = {
   dataId: { $regex: new RegExp(`^${TmpDataEnum.MyModels}--`) }
@@ -45,6 +46,7 @@ export const getMemberModelCatalogPermission = async ({
   teamId,
   tmbId,
   isTeamOwner,
+  catalogSnapshot,
   includeInactive = false
 }: {
   teamId: string;
@@ -52,8 +54,19 @@ export const getMemberModelCatalogPermission = async ({
   isTeamOwner: boolean;
   /** 仅供目录展示停用状态；执行权限调用仍保持 active 模型范围。 */
   includeInactive?: boolean;
+  /** 调用方传入同一快照，避免权限计算期间混用目录版本。 */
+  catalogSnapshot?: { models: SystemModelDataType[]; revision: number };
 }) => {
-  const catalogModels = includeInactive ? global.systemModelList : global.systemActiveModelList;
+  const snapshot =
+    catalogSnapshot ??
+    (await (async () => {
+      const handle = await getModelHandle();
+      return { models: handle.getAllModels(), revision: handle.revision };
+    })());
+  const catalogModels = includeInactive
+    ? snapshot.models
+    : snapshot.models.filter((model) => model.isActive);
+  const catalogRevision = snapshot.revision;
   if (isTeamOwner) {
     const modelIds = catalogModels.map((model) => model.modelId);
     return { modelIds, version: hashStr([...modelIds].sort().join('\n')) };
@@ -66,7 +79,7 @@ export const getMemberModelCatalogPermission = async ({
         type: TmpDataEnum.MyModels,
         metadata: cacheMetadata
       });
-  if (cachedModels) {
+  if (cachedModels && (cachedModels.data.catalogRevision ?? 0) === catalogRevision) {
     return {
       modelIds: cachedModels.data.modelIds,
       version: cachedModels.data.version
@@ -125,7 +138,8 @@ export const getMemberModelCatalogPermission = async ({
         teamId,
         tmbId,
         modelIds,
-        version
+        version,
+        catalogRevision
       }
     }).catch(() => {});
 

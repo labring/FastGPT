@@ -33,7 +33,7 @@ const ResourceListFilters = ({ value, onChange }: Props) => {
   );
 
   return (
-    <Flex alignItems={'center'} gap={3} minW={0} flexShrink={0}>
+    <Flex alignItems={'center'} gap={3} minW={0} maxW={'100%'} flexShrink={0} flexWrap={'wrap'}>
       {!!feConfigs.isPlus && (
         <TeamMemberFilter
           title={t('app:list_filter.creator')}

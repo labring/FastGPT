@@ -92,12 +92,14 @@ const EditableTagItem = React.memo(function EditableTagItem({
   }, [tag, onCommit, onCancelNew, onExitEdit, initialTag]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 外部编辑状态变化需同步至本地编辑会话
     setIsSelfEditing(isEditing);
   }, [isEditing]);
 
   useEffect(() => {
     if (isSelfEditing) return;
     // sync from props when not editing
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 非编辑状态接收外部标签更新，编辑期间保留本地草稿
     setTag(initialTag);
   }, [initialTag, isSelfEditing]);
 
@@ -174,7 +176,8 @@ const EditableTagItem = React.memo(function EditableTagItem({
   );
 });
 
-const SaveTagForAppSubPanel = ({
+/** 加载完整收藏列表后编辑标签归属，搜索结果仅用于展示，不作为保存数据源。 */
+export const SaveTagForAppSubPanel = ({
   tag,
   onClose,
   onRefresh
@@ -204,7 +207,7 @@ const SaveTagForAppSubPanel = ({
   );
 
   // load all favourites for checked state and saving
-  const { data: favouriteApps = [] } = useRequest(
+  const { data: favouriteApps } = useRequest(
     async () => {
       return await getFavouriteApps({ name: '' });
     },
@@ -216,6 +219,8 @@ const SaveTagForAppSubPanel = ({
   const [localAllFavourites, setLocalAllFavourites] = useState<ChatFavouriteAppType[]>([]);
 
   useEffect(() => {
+    // 未加载和成功返回空列表含义不同，不能用每次新建的空数组驱动同步。
+    if (favouriteApps === undefined) return;
     setLocalAllFavourites(favouriteApps);
   }, [favouriteApps]);
 
@@ -235,6 +240,7 @@ const SaveTagForAppSubPanel = ({
 
   const toggleAppChecked = useCallback(
     (appId: string) => {
+      if (favouriteApps === undefined) return;
       setLocalAllFavourites((prev) =>
         (prev || []).map((item) => {
           if (item.appId !== appId) return item;
@@ -249,12 +255,13 @@ const SaveTagForAppSubPanel = ({
         })
       );
     },
-    [tag.id]
+    [favouriteApps, tag.id]
   );
 
   // save apps (update tags) via updateFavouriteApps
   const { loading: isSaving, runAsync: saveApps } = useRequest(
     async () => {
+      if (favouriteApps === undefined) return;
       await updateFavouriteAppTags(
         localAllFavourites.map((item) => ({ id: item._id, tags: item.favouriteTags }))
       );
@@ -309,7 +316,7 @@ const SaveTagForAppSubPanel = ({
             <Button
               variant="primary"
               isLoading={isSaving}
-              isDisabled={isSearching}
+              isDisabled={isSearching || favouriteApps === undefined}
               onClick={() => saveApps()}
             >
               {t('chat:setting.favourite.save_category_for_app_button')}
@@ -344,6 +351,7 @@ const SaveTagForAppSubPanel = ({
               onClick={() => toggleAppChecked(fav.appId)}
             >
               <Checkbox
+                isDisabled={favouriteApps === undefined}
                 isChecked={isAppChecked(fav.appId)}
                 onChange={(e) => {
                   e.stopPropagation();

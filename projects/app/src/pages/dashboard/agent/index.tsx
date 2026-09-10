@@ -110,17 +110,16 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           flexDirection={'column'}
           h={'100%'}
           pr={folderDetail ? [3, 2] : [3, 6]}
-          pl={6}
+          pl={[3, 6]}
           pt={6}
           overflowY={'hidden'}
           overflowX={'hidden'}
         >
           {/* Only shown on pc root page */}
           {!folderDetail && isPc && hasCreatePer && <TemplateCreatePanel type={appType} />}
-          <Flex alignItems={'center'} gap={3} minW={0}>
-            {!isPc ? (
-              MenuIcon
-            ) : paths.length > 0 ? (
+          <Flex alignItems={'center'} gap={3} minW={0} flexWrap={'wrap'} flexShrink={0}>
+            {!isPc && MenuIcon}
+            {paths.length > 0 && isPc ? (
               <Box flexShrink={0}>
                 <FolderPath
                   paths={paths}
@@ -157,15 +156,15 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            {isPc && hasCreatePer && (
-              <Flex alignItems={'center'} gap={3}>
+            {hasCreatePer && (
+              <Flex alignItems={'center'} gap={[2, 3]}>
                 <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
                   <Button
                     variant={'grayBase'}
                     leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
                     onClick={() => setEditFolder({})}
                     isDisabled={!canCreateFolder}
-                    px={5}
+                    px={[3, 5]}
                   >
                     {t('common:Folder')}
                   </Button>
@@ -174,7 +173,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   variant={'grayBase'}
                   leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
                   onClick={onOpenJsonImportModal}
-                  px={5}
+                  px={[3, 5]}
                 >
                   {t('common:Import')}
                 </Button>
@@ -182,17 +181,26 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
             )}
           </Flex>
           {!isPc && (
-            <Box mt={2}>
-              {
-                <SearchInput
-                  maxW={['auto', '250px']}
-                  value={searchKey}
-                  onChange={(e) => setSearchKey(e.target.value)}
-                  placeholder={t('app:search_app')}
-                  maxLength={30}
-                />
-              }
-            </Box>
+            <Flex mt={3} direction={'column'} gap={3}>
+              {paths.length > 0 && (
+                <Box overflowX={'auto'}>
+                  <FolderPath
+                    paths={paths}
+                    forbidLastClick
+                    onClick={(parentId) => {
+                      router.push({ query: { ...router.query, parentId } });
+                    }}
+                  />
+                </Box>
+              )}
+              <SearchInput
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                placeholder={t('app:search_agent')}
+                maxLength={30}
+              />
+              <AppListFilters scene={'agent'} value={listFilters} onChange={setListFilters} />
+            </Flex>
           )}
 
           <MyBox flex={'1 0 0'} minH={0}>

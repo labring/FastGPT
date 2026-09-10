@@ -21,6 +21,10 @@ export const DatasetCollectionPath: OpenAPIPath = {
   ...DatasetCollectionCreatePath,
   '/core/dataset/collection/delete': {
     post: {
+      'x-required-parameter-alternatives': [
+        [{ in: 'query', name: 'id' }],
+        [{ in: 'body', name: 'collectionIds' }]
+      ],
       summary: '删除集合',
       description: '删除一个或多个集合及其子集合，支持通过 query.id 或 body.collectionIds 指定',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],

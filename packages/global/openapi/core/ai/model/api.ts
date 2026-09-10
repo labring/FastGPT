@@ -23,7 +23,6 @@ const MyModelBaseSchema = z.object({
   scope: z.literal(ModelScopeEnum.system).meta({ description: '模型实例作用域' }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
-  isCustom: z.boolean().meta({ description: '模型是否不在内置模板中' }),
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
   charsPointsPrice: z.number().optional().meta({ description: '按字符计费的积分单价' }),
   priceTiers: z.array(ModelPriceTierSchema).optional().meta({ description: '分段价格配置' }),

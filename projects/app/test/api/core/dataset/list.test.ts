@@ -194,7 +194,7 @@ describe('POST /api/core/dataset/list', () => {
 
     expect(res.code).toBe(200);
     expect(res.data.list).toContainEqual(
-      expect.objectContaining({ name: 'Legacy Dataset', avatar: '', intro: '' })
+      expect.objectContaining({ name: 'Legacy Dataset', avatar: '/icon/logo.svg', intro: '' })
     );
   });
 });

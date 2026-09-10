@@ -85,7 +85,6 @@ describe('system model response filtering', () => {
       model: 'gpt-test',
       name: 'GPT test',
       scope: 'system' as const,
-      isCustom: false,
       requestUrl: 'https://provider.example/v1',
       requestAuth: 'model-secret',
       config: {
@@ -122,7 +121,6 @@ describe('system model response filtering', () => {
       model: 'configured-model',
       name: 'Configured model',
       scope: 'system' as const,
-      isCustom: false,
       requestUrl: 'https://provider.example/v1',
       requestAuth: 'configured-secret',
       config: {

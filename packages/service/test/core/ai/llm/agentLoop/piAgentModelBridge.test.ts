@@ -13,7 +13,6 @@ const createLlmModel = (overrides = {}) => ({
   name: 'Plain Model',
   isActive: true,
   scope: 'system' as const,
-  isCustom: false,
   requestUrl: 'https://api.example.com/v1/chat/completions',
   requestAuth: 'model-key',
   ...overrides,

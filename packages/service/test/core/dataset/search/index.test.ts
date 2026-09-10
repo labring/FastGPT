@@ -24,7 +24,6 @@ const embeddingModel: EmbeddingSystemModelDataType = {
   name: 'Embedding model',
   modelId: '68ad85a7463006c963799a01',
   scope: 'system' as const,
-  isCustom: false,
   type: ModelTypeEnum.embedding,
   config: {
     defaultToken: 512,
@@ -38,7 +37,6 @@ const extensionModel: LLMSystemModelDataType = {
   name: 'Query extension model',
   modelId: '68ad85a7463006c963799a02',
   scope: 'system' as const,
-  isCustom: false,
   type: ModelTypeEnum.llm,
   config: {
     maxContext: 32000,

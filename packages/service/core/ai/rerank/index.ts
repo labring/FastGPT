@@ -1,5 +1,6 @@
+import { getModelHandle } from '../model';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
-import { getDefaultRerankModelData } from '../model';
+
 import { getAxiosConfig } from '../config';
 import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
@@ -29,7 +30,7 @@ type ReRankCallResult = {
 };
 
 export async function reRankRecall({
-  model = getDefaultRerankModelData(),
+  model: inputModel,
   query,
   documents,
   headers
@@ -39,6 +40,8 @@ export async function reRankRecall({
   documents: { id: string; text: string }[];
   headers?: Record<string, string>;
 }): Promise<ReRankCallResult> {
+  const model = inputModel ?? (await getModelHandle()).getDefaultModelData('rerank');
+
   if (!model) {
     return Promise.reject(new UserError(ModelErrEnum.unExist));
   }

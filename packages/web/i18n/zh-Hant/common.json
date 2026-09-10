@@ -916,6 +916,7 @@
   "invalid_value": "無效值",
   "model_disabled": "{{model}}已停用",
   "model_delisted": "該模型已下架",
+  "model_id_already_exists": "模型 ID 已存在",
   "month_text": "個月",
   "move.confirm": "確認移動",
   "move_success": "移動成功",

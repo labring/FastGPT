@@ -70,6 +70,7 @@ export function getI18nInformLevel(level: string): string {
   return i18nT('common:UnKnow');
 }
 
+/** 写入单条审计并在内部重试、记录最终失败；调用方可直接调用，无需等待或捕获异常。 */
 export function addAuditLog<T extends AuditEventEnum>({
   teamId,
   tmbId,
@@ -111,6 +112,8 @@ export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
       event,
       metadata: params
     });
+  }).catch((error) => {
+    logger.error('Audit log write failed', { error, teamId, tmbId, event });
   });
 }
 

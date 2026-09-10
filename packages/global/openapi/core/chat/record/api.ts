@@ -6,11 +6,7 @@ import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } fr
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigInputSchema } from '../../app/common/api';
 import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
-import {
-  createOutLinkChatTargetInputSchema,
-  refineRequiredChatTargetInput,
-  transformChatAuthTargetInput
-} from '../api';
+import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../api';
 
 const GetRecordTypeSchema = z.enum([
   GetChatTypeEnum.normal,
@@ -169,9 +165,10 @@ const GetRecordPropsSchema = {
     description: '是否包含已删除的记录'
   })
 };
-export const GetPaginationRecordsBodyRawSchema = PaginationSchema.extend(
-  createOutLinkChatTargetInputSchema(GetRecordPropsSchema).shape
-).superRefine(refineRequiredChatTargetInput);
+export const GetPaginationRecordsBodyRawSchema = createOutLinkChatTargetInputSchema({
+  ...PaginationSchema.shape,
+  ...GetRecordPropsSchema
+});
 export const GetPaginationRecordsBodySchema = GetPaginationRecordsBodyRawSchema.transform(
   transformChatAuthTargetInput
 );
@@ -190,9 +187,10 @@ export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecor
  * Method: POST
  * Description: 获取对话（v2）
  * ============================================================================ */
-export const GetRecordsV2BodyRawSchema = LinkedPaginationSchema(
-  createOutLinkChatTargetInputSchema(GetRecordPropsSchema).shape
-).superRefine(refineRequiredChatTargetInput);
+export const GetRecordsV2BodyRawSchema = createOutLinkChatTargetInputSchema({
+  ...LinkedPaginationSchema().shape,
+  ...GetRecordPropsSchema
+});
 export const GetRecordsV2BodySchema = GetRecordsV2BodyRawSchema.transform(
   transformChatAuthTargetInput
 );

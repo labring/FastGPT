@@ -1,6 +1,6 @@
+import { getModelProviderMetadata } from '../../app/provider/controller';
 import type { SystemDefaultModelType } from '../type';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoAIModel } from './schema';
 import {
   type EmbeddingSystemModelDataType,
   type LLMSystemModelDataType,
@@ -12,21 +12,17 @@ import {
   type SystemModelDataType,
   type SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model.schema';
-import { debounce } from 'lodash-es';
 import { getModelProvider } from '../../../core/app/provider/controller';
-import { findModelData } from '../model';
-import { delay, retryFn } from '@fastgpt/global/common/system/utils';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
-import { setCron } from '../../../common/system/cron';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { findSystemDefaultModelIds } from '../defaultModel/entity';
-import { MongoAIDefaultModel } from '../defaultModel/schema';
+import { readSystemModelSnapshot, readSystemModelRevision } from './entity';
+import { withTimeout } from '@fastgpt/global/common/system/utils';
+import { createModelHandle, getCachedModelHandle, publishModelHandle } from './handle';
 
 /**
  * 插件模型协议为了便于声明，将不同模型类型的能力字段平铺在顶层；数据库 canonical
@@ -150,11 +146,8 @@ export const desensitizeSystemDefaultModels = (defaultModels: SystemDefaultModel
 export const getPluginSystemModelDocuments = async (): Promise<SystemModelDocumentDataType[]> =>
   pluginClient.listModels().then((models) => models.map((model) => flatModelToDocumentData(model)));
 
-let modelTemplateSnapshot: SystemModelDocumentDataType[] | undefined;
-
 /**
- * 拉取并校验完整插件模型模板，返回候选快照但不立即发布。
- * 候选模板会在数据库实例也成功加载后，与 active 模型缓存一起原子发布。
+ * 实时拉取并校验完整插件模型模板。模板只服务于管理员主动创建模型，不进入运行时缓存。
  */
 export const refreshModelTemplates = async (): Promise<SystemModelDocumentDataType[]> => {
   return getPluginSystemModelDocuments();
@@ -182,56 +175,24 @@ export const assertSystemModelTypesMatchPluginTemplates = ({
 };
 
 /**
- * 当前版本的自动预装兼容策略：只物化插件中存在但数据库缺失的系统模型。
- * 模板消失不会在这里删除或停用实例；PR2 可将本函数替换为显式模板安装。
- */
-export const syncPreinstalledSystemModels = async ({
-  pluginDocuments
-}: {
-  pluginDocuments: SystemModelDocumentDataType[];
-}) => {
-  if (pluginDocuments.length === 0) return;
-
-  await retryFn(
-    () =>
-      MongoAIModel.bulkWrite(
-        pluginDocuments.map((document) => ({
-          updateOne: {
-            filter: { scope: ModelScopeEnum.system, model: document.model },
-            update: { $setOnInsert: document },
-            upsert: true
-          }
-        })),
-        { ordered: false }
-      ),
-    3
-  );
-};
-
-/**
  * 只读取数据库安装实例并原子发布运行时模型快照，不执行插件请求、历史迁移或自动预装。
  */
-export const loadInstalledModels = async ({
-  pluginDocuments = modelTemplateSnapshot,
+const publishInstalledModels = async ({
   language = 'en',
   skipPermissionCacheInvalidation = false
 }: {
-  pluginDocuments?: SystemModelDocumentDataType[];
   language?: string;
   /** 启动阶段只发布初始快照，避免重启时删除仍然有效的成员目录缓存。 */
   skipPermissionCacheInvalidation?: boolean;
 } = {}) => {
-  if (!pluginDocuments) {
-    return Promise.reject(new Error('Model template snapshot is not initialized'));
-  }
-
   const getPermissionCacheSignature = (models: SystemModelDataType[]) =>
     models
       .map((model) => `${model.modelId}:${model.model}`)
       .sort()
       .join('\n');
-  const previousPermissionCacheSignature = global.systemActiveModelList
-    ? getPermissionCacheSignature(global.systemActiveModelList)
+  const previousHandle = getCachedModelHandle();
+  const previousPermissionCacheSignature = previousHandle
+    ? getPermissionCacheSignature(previousHandle.getActiveModels())
     : undefined;
 
   const _systemModelList: SystemModelDataType[] = [];
@@ -243,37 +204,29 @@ export const loadInstalledModels = async ({
     _systemModelMap.set(`id:${modelData.modelId}`, modelData);
     _systemModelMap.set(`model:${modelData.model}`, modelData);
 
-    if (modelData.isActive) {
-      if (modelData.type === ModelTypeEnum.llm) {
-        modelData.priceTiers = getRuntimeResolvedPriceTiers(modelData);
-      }
+    // 管理列表包含停用模型，统一解析价格可避免旧字段或单档双零在列表中显示错误。
+    if (modelData.type === ModelTypeEnum.llm) {
+      modelData.priceTiers = getRuntimeResolvedPriceTiers(modelData);
     }
   };
 
   try {
-    const [dbModels, configuredDefaultModelIds] = await Promise.all([
-      MongoAIModel.find({ scope: ModelScopeEnum.system }).lean(),
-      findSystemDefaultModelIds()
-    ]);
+    const {
+      models: dbModels,
+      defaultModelIds: configuredDefaultModelIds,
+      revision
+    } = await readSystemModelSnapshot();
     const dbDocuments = dbModels.map((dbModel) => SystemModelDocumentDataSchema.parse(dbModel));
-    assertSystemModelTypesMatchPluginTemplates({ models: dbDocuments, pluginDocuments });
-    const getPluginModelKey = (model: Pick<SystemModelDocumentDataType, 'model' | 'type'>) =>
-      `${model.type}:${model.model}`;
-    const pluginDocumentMap = new Map(
-      pluginDocuments.map((model) => [getPluginModelKey(model), model])
-    );
 
     dbModels.forEach((dbModel, index) => {
       const dbDocument = dbDocuments[index];
-      const pluginDocument = pluginDocumentMap.get(getPluginModelKey(dbDocument));
 
       const provider = getModelProvider(dbDocument.provider, language);
       const runtimeModel = SystemModelDataSchema.parse({
         ...dbDocument,
         modelId: String(dbModel._id),
         provider: provider.id,
-        avatar: provider.avatar,
-        isCustom: !pluginDocument
+        avatar: provider.avatar
       });
 
       pushModel(runtimeModel);
@@ -321,19 +274,7 @@ export const loadInstalledModels = async ({
       (model): model is RerankSystemModelDataType => model.type === ModelTypeEnum.rerank
     );
 
-    // Plugin 数组是内置模型展示顺序的唯一来源；MongoDB 自然顺序不具备业务语义。
-    const pluginModelOrder = new Map(
-      pluginDocuments.map((model, index) => [getPluginModelKey(model), index])
-    );
-    _systemModelList.sort((a, b) => {
-      const orderA = pluginModelOrder.get(getPluginModelKey(a));
-      const orderB = pluginModelOrder.get(getPluginModelKey(b));
-      if (orderA !== undefined && orderB !== undefined) return orderA - orderB;
-      if (orderA !== undefined) return -1;
-      if (orderB !== undefined) return 1;
-      return a.modelId.localeCompare(b.modelId);
-    });
-    // Active 列表从已排序的全量缓存派生，避免管理员与成员目录维护两套顺序语义。
+    // Active 列表沿用 MongoDB 的新建时间倒序；后续可由持久化 order 字段接管排序。
     const _systemActiveModelList = _systemModelList.filter((model) => model.isActive);
 
     // Default model check
@@ -384,21 +325,24 @@ export const loadInstalledModels = async ({
       await clearAllMyModelsCache();
     }
 
-    // Set global value
+    // 完整目录与内容版本一起发布，不暴露多次赋值的半成品。
     {
-      modelTemplateSnapshot = pluginDocuments;
-      global.systemModelList = _systemModelList;
-      global.systemActiveModelList = _systemActiveModelList;
-      global.systemModelMap = _systemModelMap;
-      global.systemDefaultModel = _systemDefaultModel;
-      global.systemConfiguredDefaultModelIds = configuredDefaultModelIds;
-      global.systemModelCatalogVersion = hashStr(
+      const version = hashStr(
         JSON.stringify({
           schemaVersion: 1,
-          // 模型顺序属于目录内容；plugin 调整顺序后必须触发客户端缓存更新。
+          // 模型顺序属于目录内容；安装实例变化后必须触发客户端缓存更新。
           models: _systemActiveModelList.map(desensitizeSystemModel),
-          providers: global.ModelProviderRawCache,
+          providers: getModelProviderMetadata().providers,
           defaultModelIds: configuredDefaultModelIds
+        })
+      );
+      publishModelHandle(
+        createModelHandle({
+          models: _systemModelList,
+          defaultModels: _systemDefaultModel,
+          configuredDefaultModelIds,
+          revision,
+          version
         })
       );
     }
@@ -416,30 +360,65 @@ export const loadInstalledModels = async ({
   }
 };
 
+let modelReload: Promise<void> | undefined;
+
+/** 同一进程只允许一个加载器发布目录，避免慢的旧加载覆盖较新的快照。 */
+export const loadInstalledModels = (options?: Parameters<typeof publishInstalledModels>[0]) => {
+  if (!modelReload) {
+    modelReload = publishInstalledModels(options).finally(() => {
+      modelReload = undefined;
+    });
+  }
+  return modelReload;
+};
+
+let modelRefresh: Promise<void> | undefined;
+
 /**
- * 编排模型启动或模板热刷新。旧表迁移由阻塞系统升级任务负责；本函数只负责插件模板、
- * 自动预装和运行时快照，不会以 ai_models 是否为空推断迁移状态。
- * 任一步失败都会向启动链路抛错并终止进程。
+ * 尽力读取最新目录，版本检查与快照加载总共最多等待 5 秒。
+ * 失败或超时沿用已成功发布的本地快照（包括空目录）；首次加载没有快照时仍报错。
+ * race 不取消底层加载，迟到的完整快照仍可正常发布，不能伪造修订号或清空旧缓存。
  */
-export const loadSystemModels = async (refresh = false, language = 'en') => {
-  if (!refresh && global.systemModelList) return;
+export const refreshModelHandle = async () => {
+  const refresh = async () => {
+    const requiredRevision = await readSystemModelRevision();
+    while (!getCachedModelHandle() || getCachedModelHandle()!.revision < requiredRevision) {
+      await loadInstalledModels();
+    }
+  };
 
   try {
-    const isInitialLoad = !global.systemModelList;
-    await preloadModelProviders();
-    const pluginDocuments = await refreshModelTemplates();
-    if (isInitialLoad) {
-      await syncPreinstalledSystemModels({ pluginDocuments });
-      await loadInstalledModels({
-        pluginDocuments,
-        language,
-        skipPermissionCacheInvalidation: isInitialLoad
-      });
-      return;
-    }
+    modelRefresh ??= refresh().finally(() => {
+      modelRefresh = undefined;
+    });
+    await withTimeout(modelRefresh, 5000, 'Model catalog refresh timed out');
+  } catch (error) {
+    const handle = getCachedModelHandle();
+    if (!handle) throw error;
+    getLogger(LogCategories.MODULE.AI.CONFIG).warn(
+      'Using local model catalog after refresh failure',
+      {
+        error,
+        revision: handle.revision
+      }
+    );
+  }
+};
 
-    await syncPreinstalledSystemModels({ pluginDocuments });
-    await loadInstalledModels({ pluginDocuments, language });
+/**
+ * 启动依赖 Plugin Provider 元数据；模板 listModels 不参与已安装实例的加载和运行。
+ * 历史模型迁移由阻塞升级任务负责。
+ */
+export const loadSystemModels = async (refresh = false, language = 'en') => {
+  if (!refresh && getCachedModelHandle()) return;
+
+  try {
+    const isInitialLoad = !getCachedModelHandle();
+    await preloadModelProviders();
+    await loadInstalledModels({
+      language,
+      skipPermissionCacheInvalidation: isInitialLoad
+    });
   } catch (error) {
     getLogger(LogCategories.MODULE.AI.CONFIG).error('System models orchestration failed', {
       error
@@ -448,70 +427,12 @@ export const loadSystemModels = async (refresh = false, language = 'en') => {
   }
 };
 
-/** 根据稳定模型 ID 恢复内置插件模板；自定义模型没有可恢复的模板。 */
-export const getSystemModelConfig = async (
-  modelId: string
-): Promise<SystemModelDocumentDataType> => {
-  const modelData = findModelData({ modelId });
-  if (!modelData) return Promise.reject(ModelErrEnum.unExist);
-  if (modelData.isCustom) return Promise.reject('Custom model not data');
-
-  // Read file
-  const modelDefaultConfig = await getPluginSystemModelDocuments().then((models) =>
-    models.find((item) => item.model === modelData.model && item.type === modelData.type)
-  );
-  if (!modelDefaultConfig) return Promise.reject(ModelErrEnum.unExist);
-
-  return {
-    ...modelDefaultConfig,
-    provider: modelData.provider
-  };
-};
-
-export const watchSystemModelUpdate = () => {
-  const changeStream = MongoAIModel.watch();
-
-  return changeStream.on(
-    'change',
-    debounce(async () => {
-      try {
-        // 数据库事件只重建安装实例快照，不触发插件请求、repair 或自动预装。
-        await loadInstalledModels();
-      } catch {}
-    }, 500)
-  );
-};
-
-/** 默认模型配置变化时只重建模型目录，不推进 getInitData 版本。 */
-export const watchSystemDefaultModelUpdate = () => {
-  const changeStream = MongoAIDefaultModel.watch();
-
-  return changeStream.on(
-    'change',
-    debounce(async () => {
-      try {
-        await loadInstalledModels();
-      } catch {}
-    }, 500)
-  );
-};
-
-// 更新完模型后，需要重载缓存
-export const updatedReloadSystemModel = async ({
-  pluginDocuments
-}: {
-  pluginDocuments?: SystemModelDocumentDataType[];
-} = {}) => {
-  const templates = pluginDocuments ?? (await refreshModelTemplates());
-  // 管理员写入后只重建安装实例快照，不隐式执行全量预装。
-  await loadInstalledModels({ pluginDocuments: templates });
-  // 模型目录拥有独立版本，不能污染 getInitData.bufferId。
-  // 延迟1秒，等待其他节点通过 change stream 刷新。
-  await delay(1000);
-};
-export const cronRefreshModels = async () => {
-  setCron('*/30 * * * *', async () => {
-    // 模板刷新成功后才执行自动预装和运行时快照发布；失败时保留旧快照。
-    await loadSystemModels(true);
+/** 写入已提交后尽力刷新本节点，失败保留诊断；后续模型读屏障负责重试，不能误报写入失败。 */
+export const updatedReloadSystemModel = async () => {
+  await refreshModelHandle().catch((error) => {
+    getLogger(LogCategories.MODULE.AI.CONFIG).warn(
+      'Model write committed; catalog refresh pending',
+      { error }
+    );
   });
 };

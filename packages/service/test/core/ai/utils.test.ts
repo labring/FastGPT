@@ -19,7 +19,6 @@ const mockModel = (maxResponse: number, maxTemperature?: number) =>
     type: ModelTypeEnum.llm,
     scope: 'system' as const,
     isActive: true,
-    isCustom: false,
     config: {
       maxContext: 8192,
       maxResponse,

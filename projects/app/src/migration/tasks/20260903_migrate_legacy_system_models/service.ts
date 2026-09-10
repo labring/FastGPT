@@ -20,15 +20,24 @@ export type BootstrapAIModelsResult = {
 };
 
 /**
- * 将旧 system_models 中尚不存在的模型确定性追加到 ai_models。
+ * 读取旧表与 system scope 新表数量。源记录数用于在空源场景跳过 Plugin 请求；
+ * 目标记录数仅用于诊断，不决定任务是否执行。
+ */
+export const inspectLegacySystemModelMigration = async () => {
+  const legacyCollection = MongoAIModel.db.collection(LegacySystemModelCollectionName);
+  const [sourceCount, targetCount] = await Promise.all([
+    legacyCollection.countDocuments(),
+    MongoAIModel.countDocuments({ scope: ModelScopeEnum.system })
+  ]);
+
+  return { sourceCount, targetCount };
+};
+
+/**
+ * 将旧 system_models 确定性合并到 ai_models。
  *
- * 目标表已经存在同名 system 模型时，保留它的 _id 以维持已回填的业务引用，其余
- * canonical 字段整体以旧表转换结果覆盖。这是因为启动阶段会先自动预装插件模型，
- * 预装值不能遮蔽升级前用户在 system_models 中的配置和激活状态。只有旧表独有模型
- * 才沿用旧 _id 插入；ai_models 独有的预装模型不删除。
- *
- * 现有且有效的默认模型优先，旧表默认标记只补齐缺失或无效槽位。整个追加过程可
- * 重复执行，是否需要执行只由 Runner 的迁移状态决定。
+ * 同名模型保留新表 `_id`，其余 canonical 字段以旧表为准；旧表独有模型沿用旧 `_id`
+ * 新增，新表独有模型保留。模型与默认配置在同一事务内写入，整体可幂等重放。
  */
 export const bootstrapAIModelsFromLegacy = async ({
   pluginDocuments
@@ -78,10 +87,14 @@ export const bootstrapAIModelsFromLegacy = async ({
   });
 
   return mongoSessionRun(async (session) => {
-    const [targetRecords, existingDefaultModel] = await Promise.all([
-      MongoAIModel.collection.find({ scope: ModelScopeEnum.system }, { session }).toArray(),
-      MongoAIDefaultModel.collection.findOne({ scope: ModelScopeEnum.system }, { session })
-    ]);
+    // 同一 MongoDB 事务 session 内串行执行，避免驱动不支持的并行事务操作。
+    const targetRecords = await MongoAIModel.collection
+      .find({ scope: ModelScopeEnum.system }, { session })
+      .toArray();
+    const existingDefaultModel = await MongoAIDefaultModel.collection.findOne(
+      { scope: ModelScopeEnum.system },
+      { session }
+    );
     const targetModels = targetRecords.map((record) => ({
       _id: record._id,
       document: SystemModelDocumentDataSchema.parse(record)
@@ -106,7 +119,6 @@ export const bootstrapAIModelsFromLegacy = async ({
       }
       return {
         _id: resolvedId,
-        // 同名时只复用新表 ID，其余字段以升级前的旧表数据为准。
         document,
         defaultFlags,
         shouldInsert: !sameModel,
@@ -190,9 +202,7 @@ export const bootstrapAIModelsFromLegacy = async ({
     return {
       status: 'migrated',
       sourceCount: records.length,
-      // 最终表数量包含升级前已经存在的模型，以及本次从旧表追加的模型。
       targetCount: finalModelsById.size,
-      // 同名目标也代表该旧模型已成功落到新结构；这里不再把“新增数”冒充“迁移成功数”。
       migratedCount: resolvedCandidates.length
     };
   });

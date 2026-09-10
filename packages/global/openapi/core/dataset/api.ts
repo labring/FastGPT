@@ -6,6 +6,7 @@ import { ParentIdSchema } from '../../../common/parentFolder/type';
 import {
   ChunkSettingsSchema,
   DatasetItemSchema,
+  DatasetSchema,
   DatasetListItemSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
@@ -40,9 +41,9 @@ export const CreateDatasetBodySchema = z.object({
     example: '这是一个用于存储产品文档的知识库',
     description: '知识库简介'
   }),
-  avatar: z.string().meta({
+  avatar: z.string().optional().meta({
     example: '/imgs/dataset/avatar.png',
-    description: '知识库头像'
+    description: '知识库头像，可不传，返回时使用默认图标'
   }),
   vectorModelId: z.string().optional().meta({
     description: '向量模型 ID，不传则使用默认向量模型'
@@ -97,9 +98,9 @@ export const CreateDatasetWithFilesBodySchema = z.object({
         example: '我的知识库',
         description: '知识库名称'
       }),
-      avatar: z.string().meta({
+      avatar: z.string().optional().meta({
         example: '/imgs/dataset/avatar.png',
-        description: '知识库头像'
+        description: '知识库头像，可不传，返回时使用默认图标'
       }),
       parentId: ParentIdSchema.meta({
         example: '68ad85a7463006c963799a05',
@@ -141,7 +142,7 @@ export const CreateDatasetWithFilesResponseSchema = z.object({
     example: '我的知识库',
     description: '知识库名称'
   }),
-  avatar: z.string().meta({
+  avatar: DatasetSchema.shape.avatar.meta({
     example: '/imgs/dataset/avatar.png',
     description: '知识库头像'
   }),
@@ -410,9 +411,17 @@ export const UpdateDatasetBodySchema = z.object({
   agentModelId: z.string().trim().min(1, '文本理解模型不可清空').optional().meta({
     description: '知识库 Agent 模型 ID；未传不修改，不允许清空'
   }),
+  agentModel: z.string().trim().min(1, '文本理解模型不可清空').optional().meta({
+    description: '旧版知识库 Agent 模型标识，仅未传 agentModelId 时使用',
+    deprecated: true
+  }),
   vlmModelId: z.string().trim().nullable().optional().meta({
     description: '视觉语言模型 ID；未传不修改，null 或空字符串表示清空',
     example: null
+  }),
+  vlmModel: z.string().trim().nullable().optional().meta({
+    description: '旧版视觉语言模型标识，仅未传 vlmModelId 时使用；null 或空字符串表示清空',
+    deprecated: true
   }),
   websiteConfig: z
     .object({
@@ -560,6 +569,22 @@ export const SearchDatasetTestBodySchema = z
   })
   .refine((data) => !!data.text.trim() || data.queryImageUrls.length > 0, {
     message: 'text or queryImageUrls is required'
+  })
+  .meta({
+    override: {
+      anyOf: [
+        {
+          required: ['text'],
+          properties: { text: { type: 'string', minLength: 1, example: 'FastGPT 是什么' } }
+        },
+        {
+          required: ['queryImageUrls'],
+          properties: {
+            queryImageUrls: { type: 'array', minItems: 1, items: { type: 'string', minLength: 1 } }
+          }
+        }
+      ]
+    }
   });
 export type SearchDatasetTestBody = z.infer<typeof SearchDatasetTestBodySchema>;
 

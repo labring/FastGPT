@@ -19,8 +19,6 @@ import { getTeamMembers, putTransferTeamOwnership } from '@/web/support/user/tea
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from './context';
 
 export function TransferOwnershipModal({
   onSuccess,
@@ -31,7 +29,6 @@ export function TransferOwnershipModal({
 }) {
   const { t } = useClientTranslation('account_team');
   const { userInfo, initUserInfo } = useUserStore();
-  const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 
   const [searchKey, setSearchKey] = useState('');
   const [selectedMember, setSelectedMember] = useState<TeamMemberItemType | null>(null);
@@ -72,12 +69,6 @@ export function TransferOwnershipModal({
 
       // Refresh user info to get updated permissions
       await initUserInfo();
-
-      // Try to switch to another team if available
-      const otherTeams = myTeams.filter((t) => t.teamId !== userInfo?.team.teamId);
-      if (otherTeams.length > 0) {
-        await onSwitchTeam(otherTeams[0].teamId);
-      }
     },
     {
       onSuccess,

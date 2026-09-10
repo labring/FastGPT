@@ -1,7 +1,6 @@
+import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
-import { getDefaultEmbeddingModelData } from '../ai/model';
-import { desensitizeSystemModel } from '../ai/config/utils';
-import { getDatasetEmbeddingModel } from '../dataset/model';
+
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -17,6 +16,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
+import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
@@ -171,9 +171,14 @@ export async function rewriteAppWorkflowToDetail({
       value: hasSavedValue ? savedInput.value : normalizedInput.value
     });
   };
+  type DatasetLoadResult = {
+    datasets: SelectedDatasetType[];
+    errors: string[];
+  };
+
   const formatSelectedDatasetValue = async (
     value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot
-  ): Promise<SelectedDatasetType[] | undefined> => {
+  ): Promise<DatasetLoadResult | undefined> => {
     const loadDatasetInfo = async (
       snapshot: SelectedDatasetSnapshot
     ): Promise<SelectedDatasetType> => {
@@ -182,13 +187,24 @@ export async function rewriteAppWorkflowToDetail({
         _id: datasetId,
         ...(!isRoot && teamId && { teamId })
       }).lean();
-
       if (dataset && !dataset.deleteTime) {
+        const { dataset: accessibleDataset } = await authDatasetByTmbId({
+          tmbId: ownerTmbId,
+          datasetId,
+          per: ReadPermissionVal,
+          isRoot
+        });
+        const modelReference = getDatasetModelReference(accessibleDataset, 'embedding');
+
         return {
-          datasetId: String(dataset._id),
-          avatar: dataset.avatar,
-          name: dataset.name,
-          vectorModel: getDatasetEmbeddingModel(dataset),
+          datasetId: String(accessibleDataset._id),
+          avatar: accessibleDataset.avatar,
+          name: accessibleDataset.name,
+          // 详情接口只返回知识库绑定的模型引用，不因模型停用或下架阻断应用详情。
+          vectorModel: {
+            modelId: modelReference.modelId ?? undefined,
+            model: modelReference.model ?? ''
+          },
           isDeleted: false
         };
       }
@@ -198,14 +214,20 @@ export async function rewriteAppWorkflowToDetail({
         datasetId,
         avatar: defaultDeletedDatasetAvatar,
         name: snapshot.name || '',
-        vectorModel: snapshot.vectorModel || desensitizeSystemModel(getDefaultEmbeddingModelData()),
+        vectorModel: snapshot.vectorModel || { model: '' },
         isDeleted: true
       };
     };
 
     if (!value) return;
     const datasets = Array.isArray(value) ? value : [value];
-    return Promise.all(datasets.map(loadDatasetInfo));
+    const results = await Promise.allSettled(datasets.map(loadDatasetInfo));
+    return {
+      datasets: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
+      errors: results.flatMap((result) =>
+        result.status === 'rejected' ? [getErrText(result.reason, '', lang)] : []
+      )
+    };
   };
 
   await Promise.all(
@@ -416,31 +438,44 @@ export async function rewriteAppWorkflowToDetail({
         node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode ||
         node.flowNodeType === FlowNodeTypeEnum.agent
       ) {
+        const datasetErrors: string[] = [];
         await Promise.all(
           node.inputs.map(async (input) => {
             if (nodeInputIsReference(input)) return;
-            // Agent
-            if (input.key === NodeInputKeyEnum.datasetSelectList) {
-              const datasets = await formatSelectedDatasetValue(input.value);
-              if (datasets) {
-                input.value = datasets;
+            try {
+              // Agent
+              if (input.key === NodeInputKeyEnum.datasetSelectList) {
+                const result = await formatSelectedDatasetValue(input.value);
+                if (result) {
+                  input.value = result.datasets;
+                  datasetErrors.push(...result.errors);
+                }
               }
-            }
-            // workflow
-            if (input.key === NodeInputKeyEnum.datasetParams) {
-              const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
-              if (datasetParams?.datasets) {
-                const datasets = await formatSelectedDatasetValue(datasetParams.datasets);
-                if (!datasets) return;
+              // workflow
+              if (input.key === NodeInputKeyEnum.datasetParams) {
+                const datasetParams = input.value as AppFormEditFormType['dataset'] | undefined;
+                if (datasetParams?.datasets) {
+                  const result = await formatSelectedDatasetValue(datasetParams.datasets);
+                  if (!result) return;
 
-                input.value = {
-                  ...datasetParams,
-                  datasets
-                };
+                  input.value = {
+                    ...datasetParams,
+                    datasets: result.datasets
+                  };
+                  datasetErrors.push(...result.errors);
+                }
               }
+            } catch (error) {
+              datasetErrors.push(getErrText(error, '', lang));
             }
           })
         );
+        if (datasetErrors.length > 0) {
+          node.pluginData = {
+            ...node.pluginData,
+            error: [node.pluginData?.error, ...datasetErrors].filter(Boolean).join('\n')
+          };
+        }
       }
     })
   );

@@ -1,10 +1,11 @@
+import { getModelHandle } from '../../../../ai/model';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getQuoteTemplate } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { getLLMModelData } from '../../../../ai/model';
+
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
@@ -65,8 +66,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let aiChatVideo = rawAiChatVideo;
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
-
-  const modelConstantsData = getLLMModelData({ modelId, model });
+  const modelHandle = await getModelHandle();
+  const modelConstantsData = modelHandle.getLLMModelData({ modelId, model });
 
   try {
     aiChatVision = modelConstantsData.config.vision && aiChatVision;

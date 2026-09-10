@@ -360,15 +360,15 @@ describe('system migration runner', () => {
     let retryRunner: ReturnType<typeof createSystemMigrationRunner> | undefined;
     try {
       await runner.start();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.failed
-        );
-        // 测试环境不启用 Mongo 事务，需等状态和独立错误明细都完成写入。
-        await expect(getMigrationFailedRecordCounts([migration.id])).resolves.toEqual([
-          { migrationId: migration.id, stageKey: 'migrating', count: 1 }
-        ]);
-      });
+      // 非阻塞失败会结束本轮 tick。测试未启用事务，failed + 旧明细数量并不代表
+      // context.fail 的“删除旧快照 -> 插入新快照”已完成，必须等待实际执行结束。
+      await runner.tick();
+      expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+        SystemMigrationStatusEnum.failed
+      );
+      await expect(getMigrationFailedRecordCounts([migration.id])).resolves.toEqual([
+        { migrationId: migration.id, stageKey: 'migrating', count: 1 }
+      ]);
 
       const state = await MongoSystemMigrationState.findById(migration.id).lean();
       expect(state?.lastError).toMatchObject({
@@ -387,7 +387,6 @@ describe('system migration runner', () => {
       const [storedFailedRecord] = await getMigrationFailedRecords(migration.id);
       expect(storedFailedRecord?.reason).toEqual({ message: 'missing modelId' });
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
       await runner.tick();
       expect(executions).toBe(1);
       expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
@@ -401,15 +400,13 @@ describe('system migration runner', () => {
         logger
       });
       await retryRunner.start();
-      await vi.waitFor(async () => {
-        expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
-          SystemMigrationStatusEnum.succeeded
-        );
-      });
+      // 同样等待成功状态与失败明细清理全部结束，再验证恢复结果。
+      await retryRunner.tick();
+      expect((await MongoSystemMigrationState.findById(migration.id).lean())?.status).toBe(
+        SystemMigrationStatusEnum.succeeded
+      );
       expect(executions).toBe(2);
-      await vi.waitFor(async () => {
-        await expect(getMigrationFailedRecords(migration.id)).resolves.toEqual([]);
-      });
+      await expect(getMigrationFailedRecords(migration.id)).resolves.toEqual([]);
     } finally {
       runner.stop();
       retryRunner?.stop();

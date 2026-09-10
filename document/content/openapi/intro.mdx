@@ -3,7 +3,7 @@ title: API 文档介绍
 description: FastGPT API 文档介绍
 ---
 
-从 `4.15.0` 开始，FastGPT API 文档均采用 `zod-openapi` 自动生成的方式（部分旧接口未改造，所以不显示）。可通过访问 API 文档地址查看最新的接口情况，**该文档里左侧手动编辑的接口说明不再更新。**
+从 `4.15.0` 开始，FastGPT API 文档均采用 `zod-openapi` 自动生成的方式。可通过访问 API 文档地址查看最新的接口情况，**该文档里左侧手动编辑的接口说明不再更新。**
 
 FastGPT API 文档一共分成两套：
 
@@ -44,11 +44,25 @@ FastGPT OpenAPI 接口允许你使用 API Key 进行鉴权，从而操作 FastGP
 
 API 密钥相当于当前账号，在当前团队下的访问凭证。也就是，在该团队下有权限的资源，都可以通过 API 密钥进行操作。
 
-### 如何查看 BaseURL
+### 密钥使用规范
 
-**注意：BaseURL 不是接口地址，而是所有接口的根地址，直接请求 BaseURL 是没有用的。**
+- 使用 API Key 鉴权。调用 `chat/completions` 时，推荐在请求体中传入 `appId`。
+- 为兼容 OpenAI SDK，也支持 `Authorization: Bearer <apiKey>-<appId>`，此时可以不传 `body.appId`。
+- `appId` 的优先级为：`body.appId` > `<apiKey>-<appId>` 中的 `appId` > API Key 关联的 `appId`（旧版兼容）。
+- 部分 SDK 需要在 `BaseURL` 后添加 `v1` 路径。如果出现 404，可补充 `v1` 后重试。
+- 如需通过 `authProxy` 代理团队成员身份，需要团队所有者在创建或编辑密钥时开启 `authProxy`；代理身份仍需具备目标应用和会话的访问权限。（FastGPT >= v4.15.0）
 
-![](../../public/imgs/fastgpt-api-baseurl.png)
+### 如何获取应用 ID（appId）
+
+打开应用详情，可在浏览器地址栏的 URL 中获取 `appId`。
+
+![](../../public/imgs/appid.png)
+
+### 如何获取知识库 ID 和文件集合 ID
+
+| 知识库 ID（datasetId）                  | 文件集合 ID（collectionId）                |
+| --------------------------------------- | ------------------------------------------ |
+| ![](../../public/imgs/getDatasetId.png) | ![](../../public/imgs/getCollectionId.png) |
 
 ### 基本配置
 

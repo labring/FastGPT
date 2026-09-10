@@ -35,7 +35,7 @@ vi.mock('@fastgpt/service/core/dataset/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getEmbeddingModelData: mocks.getEmbeddingModelData
+  getModelHandle: async () => ({ getEmbeddingModelData: mocks.getEmbeddingModelData })
 }));
 
 vi.mock('@/service/core/dataset/data/utils', () => ({

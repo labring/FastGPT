@@ -1,3 +1,4 @@
+import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/dataset/createWithFiles';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -23,11 +24,13 @@ describe('create dataset with files VLM selection', () => {
         tmbId: owner.tmbId,
         permission: TeamDatasetCreatePermissionVal
       });
-      const previous = global.systemDefaultModel;
-      global.systemDefaultModel = {
-        ...previous,
-        datasetImageLLM: { ...previous.llm!, config: { ...previous.llm!.config, vision: true } }
-      };
+      const previous = getModelTestDefaults();
+      setModelTestSnapshot({
+        defaultModels: {
+          ...previous,
+          datasetImageLLM: { ...previous.llm!, config: { ...previous.llm!.config, vision: true } }
+        }
+      });
       try {
         const result = await Call<
           CreateDatasetWithFilesBody,
@@ -43,7 +46,7 @@ describe('create dataset with files VLM selection', () => {
           vlmModelId === undefined ? previous.llm!.modelId : undefined
         );
       } finally {
-        global.systemDefaultModel = previous;
+        setModelTestSnapshot({ defaultModels: previous });
       }
     }
   );

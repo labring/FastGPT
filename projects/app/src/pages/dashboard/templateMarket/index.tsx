@@ -81,12 +81,11 @@ const TemplateMarket = ({
       ...tag,
       templates: templateList.filter((template) => template.tags.includes(tag.typeId))
     }));
-    // 移动端不展示分类筛选，也不能继续按持久化 tagIds 把列表筛空。
-    if (!isPc || categoryFilter.mode !== 'selected') return groups;
+    if (categoryFilter.mode !== 'selected') return groups;
     if (categoryFilter.tagIds.length === 0) return [];
     const selected = new Set(categoryFilter.tagIds);
     return groups.filter((item) => selected.has(item.typeId));
-  }, [categoryFilter, isPc, selectableTags, templateList]);
+  }, [categoryFilter, selectableTags, templateList]);
 
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest(
     async (template: AppTemplateListItemType) => {
@@ -267,25 +266,22 @@ const TemplateMarket = ({
 
   const searchedTemplates = useMemo(() => {
     return templateList.filter((template) => {
-      if (isPc && categoryFilter.mode === 'selected') {
+      if (categoryFilter.mode === 'selected') {
         if (categoryFilter.tagIds.length === 0) return false;
         if (!template.tags.some((tag) => categoryFilter.tagIds.includes(tag))) return false;
       }
       return `${template.name}${template.intro}`.includes(searchKey);
     });
-  }, [categoryFilter, isPc, searchKey, templateList]);
+  }, [categoryFilter, searchKey, templateList]);
 
   return (
     <MyBox ref={containerRef} h={'100%'} isLoading={isCreating}>
       <Flex flexDirection={'column'} h={'100%'} py={6}>
-        <Flex alignItems={'center'} px={6} mb={5}>
-          {isPc ? (
-            <Box fontSize={'lg'} color={'myGray.900'} fontWeight={'medium'} flexShrink={0}>
-              {t('app:template_market')}
-            </Box>
-          ) : (
-            MenuIcon
-          )}
+        <Flex alignItems={'center'} gap={3} px={6} mb={5} flexShrink={0}>
+          {!isPc && MenuIcon}
+          <Box fontSize={'lg'} color={'myGray.900'} fontWeight={'medium'} flexShrink={0}>
+            {t('app:template_market')}
+          </Box>
           <Box flex={1} />
           {isPc && (
             <Flex alignItems={'center'} gap={3} flexShrink={0}>
@@ -305,19 +301,24 @@ const TemplateMarket = ({
             </Flex>
           )}
         </Flex>
-        {!isPc && (
-          <Box px={6} mb={5}>
-            <SearchInput
-              h={9}
-              bg={'white'}
-              placeholder={t('app:templateMarket.Search_template')}
-              value={searchKey}
-              onChange={(e) => setSearchKey(e.target.value)}
-            />
-          </Box>
-        )}
+        <Box flex={'1 1 0'} minH={0} px={6} overflow={'auto'}>
+          {!isPc && (
+            <Flex mb={5} direction={'column'} gap={3}>
+              <SearchInput
+                h={9}
+                bg={'white'}
+                placeholder={t('app:templateMarket.Search_template')}
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+              />
+              <TemplateCategoryFilter
+                tags={selectableTags}
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+              />
+            </Flex>
+          )}
 
-        <Box flex={'1 0 0'} px={6} overflow={'auto'}>
           {searchKey ? (
             <>
               <Box fontSize={'lg'} color={'myGray.900'} mb={4}>

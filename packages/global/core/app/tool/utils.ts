@@ -226,7 +226,7 @@ export const getToolNameCandidates = (toolName?: string) => {
   return candidates;
 };
 
-/** 返回工具集子工具的有效描述；主动保存空字符串时保留空值。 */
+/** 返回工具集子工具的有效描述；主动保存空字符串时保留空字符串。 */
 export const getToolSetChildDescription = (
   savedDescription?: string | null | false | 0,
   definitionDescription = ''

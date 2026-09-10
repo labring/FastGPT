@@ -51,6 +51,15 @@ export const UpdateTrainingDataBodySchema = z
         message: 'collectionId and datasetId cannot be used together without dataId'
       });
     }
+  })
+  .meta({
+    override: {
+      anyOf: [
+        { required: ['dataId'] },
+        { required: ['datasetId'], not: { required: ['collectionId'] } },
+        { required: ['collectionId'], not: { required: ['datasetId'] } }
+      ]
+    }
   });
 export type UpdateTrainingDataBody = z.infer<typeof UpdateTrainingDataBodySchema>;
 

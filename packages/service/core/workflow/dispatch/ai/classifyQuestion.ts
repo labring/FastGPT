@@ -1,3 +1,4 @@
+import { getModelHandle } from '../../../ai/model';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -8,7 +9,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import { getLLMModelData } from '../../../ai/model';
+
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
@@ -47,8 +48,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
-
-  const cqModel = getLLMModelData({ modelId, model });
+  const modelHandle = await getModelHandle();
+  const cqModel = modelHandle.getLLMModelData({ modelId, model });
 
   const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });
   const chatHistories = getHistories(history, histories);

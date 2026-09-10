@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
@@ -14,12 +16,13 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import { findDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
+
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetDatasetListBodySchema,
+  GetDatasetListResponseSchema,
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
@@ -47,7 +50,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   ]);
 
   if (Array.isArray(tmbIds) && tmbIds.length === 0) {
-    return [];
+    return GetDatasetListResponseSchema.parse([]);
   }
 
   const [roleList, myGroupMap, myOrgSet] = await Promise.all([
@@ -108,8 +111,13 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     return { updateTime: -1, _id: -1 };
   })();
   const myDatasets = await MongoDataset.find(findDatasetQuery).sort(datasetSort).lean();
+  const modelHandle = await getModelHandle();
   const formatDatasets = myDatasets
     .map((dataset) => {
+      const vectorModel = modelHandle.findModelData(
+        getDatasetModelReference(dataset, 'embedding'),
+        { type: 'embedding' }
+      );
       const { Per, privateDataset } = (() => {
         const getPer = (datasetId: string) => {
           const tmbRole = myRoles.find(
@@ -139,10 +147,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
         name: dataset.name,
         intro: dataset.intro,
         type: dataset.type,
-        vectorModel: (() => {
-          const vectorModel = findDatasetEmbeddingModel(dataset);
-          return vectorModel ? desensitizeSystemModel(vectorModel) : undefined;
-        })(),
+        vectorModel: vectorModel ? desensitizeSystemModel(vectorModel) : undefined,
         inheritPermission: dataset.inheritPermission,
         tmbId: dataset.tmbId,
         createTime: dataset.createTime ?? new Types.ObjectId(String(dataset._id)).getTimestamp(),
@@ -153,7 +158,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return addSourceMember({ list: formatDatasets });
+  return GetDatasetListResponseSchema.parse(await addSourceMember({ list: formatDatasets }));
 }
 
 export default NextAPI(handler);

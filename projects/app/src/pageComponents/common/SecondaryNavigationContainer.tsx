@@ -62,9 +62,9 @@ const SecondaryNavigationContainer = <ValueType extends string>({
           >
             <SideTabs<ValueType>
               flex={1}
-              mx={'auto'}
-              mt={4}
-              w={'198px'}
+              px={2.5}
+              pt={4}
+              w={'100%'}
               minH={0}
               overflowY={'auto'}
               list={tabs}

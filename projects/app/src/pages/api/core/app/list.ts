@@ -180,7 +180,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
       );
       return {
         ...rest,
-        avatar: app.avatar ?? '',
+        avatar: app.avatar,
         intro: app.intro ?? '',
         createTime: app.createTime ?? new Types.ObjectId(String(app._id)).getTimestamp(),
         parentId: app.parentId,

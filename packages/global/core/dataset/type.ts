@@ -26,6 +26,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
 import { NumSchema } from '../../common/zod';
+import { LOGO_ICON } from '../../common/system/constants';
 
 /* ===== Chunk ===== */
 export const ChunkSettingsSchema = z.object({
@@ -75,7 +76,9 @@ export const DatasetSchema = z
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     inheritPermission: z.boolean().meta({ description: '继承权限' }),
 
-    avatar: z.string().meta({ description: '头像' }),
+    avatar: z
+      .preprocess((value) => value ?? undefined, z.string().default(LOGO_ICON))
+      .meta({ description: '头像' }),
     name: z.string().meta({ description: '名称' }),
     intro: z.string().meta({ description: '简介' }),
     type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
@@ -306,7 +309,7 @@ export type CollectionTrainingStatusType = z.infer<typeof CollectionTrainingStat
 /* ================= dataset ===================== */
 export const DatasetSimpleItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
-  avatar: z.string().meta({ description: '头像' }),
+  avatar: DatasetSchema.shape.avatar,
   name: z.string().meta({ description: '名称' }),
   vectorModel: EmbeddingSystemModelDataSchema.meta({ description: '向量模型' })
 });
@@ -314,7 +317,7 @@ export type DatasetSimpleItemType = z.infer<typeof DatasetSimpleItemSchema>;
 export const DatasetListItemSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '数据集 ID' }),
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
-  avatar: z.string().meta({ description: '头像' }),
+  avatar: DatasetSchema.shape.avatar,
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
   name: z.string().meta({ description: '名称' }),

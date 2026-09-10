@@ -1,7 +1,8 @@
+import { getModelHandle } from '../../../../ai/model';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '../../../types/runtime';
-import { getLLMModelData } from '../../../../ai/model';
+
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
@@ -41,7 +42,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     histories,
     chatConfig,
     lastInteractive,
-    runningUserInfo,
     runningAppInfo,
     externalProvider,
     responseChatItemId,
@@ -76,7 +76,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const toolModel = getLLMModelData({ modelId, model });
+    const modelHandle = await getModelHandle();
+    const toolModel = modelHandle.getLLMModelData({ modelId, model });
     const useVision = aiChatVision && toolModel.config.vision;
     const useAudio = aiChatAudio && toolModel.config.audio;
     const useVideo = aiChatVideo && toolModel.config.video;

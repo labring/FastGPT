@@ -385,7 +385,7 @@ const FailedRecordsModal = ({
         minH: '520px',
         display: 'flex',
         flexDirection: 'column',
-        p: 5,
+        px: 5,
         overflowY: 'auto'
       }}
     >
@@ -456,10 +456,13 @@ const SystemMigrationsPage = () => {
 
   return (
     <ConfigContainer>
-      <Flex h={'100%'} minH={0} flexDirection={'column'} bg={'myGray.25'}>
+      <Flex h={['auto', '100%']} minH={0} flexDirection={'column'} bg={'myGray.25'}>
         <Flex
           px={[4, 7]}
           py={5}
+          pt={[4, 5]}
+          flexShrink={0}
+          flexDirection={['column', 'row']}
           bg={'white'}
           borderBottom={'1px solid'}
           borderColor={'myGray.200'}
@@ -477,6 +480,7 @@ const SystemMigrationsPage = () => {
           </Box>
           <Flex flexShrink={0} flexDirection={'column'} alignItems={'flex-end'} gap={1.5}>
             <Button
+              display={['none', 'inline-flex']}
               size={'sm'}
               variant={'whiteBase'}
               leftIcon={<MyIcon name={'common/refresh'} w={4} />}
@@ -496,7 +500,14 @@ const SystemMigrationsPage = () => {
           </Flex>
         </Flex>
 
-        <Box flex={1} minH={0} overflowY={'auto'} px={[4, 7]} py={5}>
+        <Box
+          flex={['0 0 auto', '1 1 0%']}
+          minH={0}
+          overflowY={['visible', 'auto']}
+          px={[4, 7]}
+          py={5}
+          pt={[4, 5]}
+        >
           {data ? (
             <Box maxW={'1040px'} mx={'auto'}>
               <SimpleGrid columns={[2, 4]} spacing={3} mb={6}>

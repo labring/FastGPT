@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Box,
   CircularProgress,
@@ -12,6 +12,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { MyPhotoSlider } from '@fastgpt/web/components/common/Image/PhotoView';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { postGetSearchTestImagePreviewUrls } from '@/web/core/dataset/api/file';
+import { useMemoizedFn } from 'ahooks';
 
 export type ImagePreviewTokenItemType = {
   key?: string;
@@ -52,7 +53,8 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
   });
 };
 
-const ImagePreview = React.memo(function ImagePreview({
+/** 展示单张图片；每次资源生命周期至多刷新一次签名 URL，旧请求不能更新新图片。 */
+export const ImagePreview = React.memo(function ImagePreview({
   image,
   datasetId,
   cachedPreviewUrl,
@@ -66,91 +68,80 @@ const ImagePreview = React.memo(function ImagePreview({
   onPreviewExpired?: () => void;
 }) {
   const { t } = useSafeTranslation();
-  const [previewUrl, setPreviewUrl] = useState(
-    () => getDirectPreviewUrl(image) || cachedPreviewUrl
-  );
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [hasRefreshed, setHasRefreshed] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const directPreviewUrl = getDirectPreviewUrl(image);
+  const [preview, setPreview] = useState<{
+    url: string;
+    status: 'loading' | 'ready' | 'expired';
+  }>(() => {
+    const url = directPreviewUrl || cachedPreviewUrl || '';
+    return { url, status: url ? 'ready' : image.key && datasetId ? 'loading' : 'expired' };
+  });
+  const requestScopeRef = useRef({ active: false, attempted: false, pending: false });
 
-  useEffect(() => {
-    setPreviewUrl(getDirectPreviewUrl(image) || cachedPreviewUrl || '');
-    setLoadFailed(false);
-    setHasRefreshed(false);
-    setIsRefreshing(false);
-  }, [cachedPreviewUrl, image]);
+  const notifyPreviewReady = useMemoizedFn((url: string) => onPreviewUrlChange?.(url));
+  const notifyPreviewExpired = useMemoizedFn(() => onPreviewExpired?.());
 
-  useEffect(() => {
-    if (!image.key || !datasetId || hasRefreshed || (previewUrl && !loadFailed)) return;
+  /** 刷新资格保存在 ref 中，展示状态变化不会清理仍在进行的请求。 */
+  const refreshPreview = useMemoizedFn(async () => {
+    const scope = requestScopeRef.current;
+    if (!scope.active || scope.pending) return;
+    if (scope.attempted || !image.key || !datasetId) {
+      setPreview({ url: '', status: 'expired' });
+      notifyPreviewExpired();
+      return;
+    }
 
-    let canceled = false;
-    setHasRefreshed(true);
-    setIsRefreshing(true);
-
-    withTimeout(
-      postGetSearchTestImagePreviewUrls({
-        datasetId,
-        keys: [image.key]
-      }),
+    scope.attempted = true;
+    scope.pending = true;
+    setPreview({ url: '', status: 'loading' });
+    const imageKey = image.key;
+    const nextUrl = await withTimeout(
+      postGetSearchTestImagePreviewUrls({ datasetId, keys: [imageKey] }),
       PREVIEW_URL_TIMEOUT_MS
     )
-      .then((res) => {
-        const nextPreviewUrl = res.find((item) => item.key === image.key)?.previewUrl;
-        if (!canceled) {
-          if (nextPreviewUrl) {
-            setPreviewUrl(nextPreviewUrl);
-            onPreviewUrlChange?.(nextPreviewUrl);
-            setLoadFailed(false);
-          } else {
-            onPreviewExpired?.();
-          }
-        }
-      })
-      .catch(() => {
-        if (!canceled) {
-          onPreviewExpired?.();
-        }
-      })
-      .finally(() => {
-        if (!canceled) {
-          setIsRefreshing(false);
-        }
-      });
+      .then((items) => items.find((item) => item.key === imageKey)?.previewUrl ?? '')
+      .catch(() => '');
+    if (!scope.active) return;
+    scope.pending = false;
 
+    // 先完成本地状态，再回写父缓存；缓存回传不重置刷新资格。
+    setPreview({ url: nextUrl, status: nextUrl ? 'ready' : 'expired' });
+    if (nextUrl) notifyPreviewReady(nextUrl);
+    else notifyPreviewExpired();
+  });
+
+  const initializePreview = useMemoizedFn(() => {
+    const url = directPreviewUrl || cachedPreviewUrl || '';
+    if (url) setPreview({ url, status: 'ready' });
+    else void refreshPreview();
+  });
+
+  useEffect(() => {
+    const scope = { active: true, attempted: false, pending: false };
+    requestScopeRef.current = scope;
+    initializePreview();
     return () => {
-      canceled = true;
+      scope.active = false;
     };
-  }, [
-    datasetId,
-    hasRefreshed,
-    image.key,
-    loadFailed,
-    onPreviewExpired,
-    onPreviewUrlChange,
-    previewUrl
-  ]);
+    // cachedPreviewUrl 是请求结果的缓存回传；只有资源本身变化才开启新生命周期。
+  }, [datasetId, image.key, directPreviewUrl, initializePreview]);
 
-  if (previewUrl && !loadFailed) {
+  if (preview.status === 'ready') {
     return (
       <Box
         as={'img'}
-        src={previewUrl}
+        src={preview.url}
         alt={image.name || ''}
         w={'80px'}
         h={'80px'}
         objectFit={'cover'}
         borderRadius={'sm'}
-        onError={() => {
-          setLoadFailed(true);
-          if (!image.key || !datasetId || hasRefreshed) {
-            onPreviewExpired?.();
-          }
-        }}
+        onError={() => void refreshPreview()}
       />
     );
   }
 
-  if (image.key && datasetId && (!hasRefreshed || isRefreshing)) {
+  if (preview.status === 'loading') {
     return (
       <Flex
         w={'80px'}

@@ -15,7 +15,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getSystemDefaultModelIds } from '@fastgpt/service/core/ai/model';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime,
@@ -47,18 +47,19 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
 
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
+  const modelHandle = await getModelHandle();
   const models = await (async () => {
-    if (!isPublish) return global.systemActiveModelList;
+    if (!isPublish) return modelHandle.getActiveModels();
     // 与客户端 catalog 使用相同身份和权限规则，不能用应用所有者替代当前发布者。
     const identity = await authModelViewer({ req });
     const permittedIds = new Set(await getMemberModelIds(identity));
-    return global.systemActiveModelList.filter((model) => permittedIds.has(model.modelId));
+    return modelHandle.getActiveModels().filter((model) => permittedIds.has(model.modelId));
   })();
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
     models,
-    defaultModelIds: getSystemDefaultModelIds(),
+    defaultModelIds: modelHandle.getSystemDefaultModelIds(),
     modelReferencePolicy: isPublish ? 'validate' : 'preserve'
   });
   await beforeUpdateAppFormat({

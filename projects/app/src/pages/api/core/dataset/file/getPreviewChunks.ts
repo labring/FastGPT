@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
@@ -12,10 +14,7 @@ import {
   maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import {
-  getDatasetAgentModel,
-  getDatasetEmbeddingModel
-} from '@fastgpt/service/core/dataset/model';
+
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -73,11 +72,11 @@ async function handler(
   if (fileAuthRes && String(fileAuthRes.tmbId) !== String(tmbId) && !fileAuthRes.isRoot) {
     return Promise.reject(CommonErrEnum.unAuthFile);
   }
-
+  const modelHandle = await getModelHandle();
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
-    llmModel: getDatasetAgentModel(dataset),
-    vectorModel: getDatasetEmbeddingModel(dataset)
+    llmModel: modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent')),
+    vectorModel: modelHandle.getEmbeddingModelData(getDatasetModelReference(dataset, 'embedding'))
   });
 
   const { rawText } = await readDatasetSourceRawText({
@@ -99,7 +98,9 @@ async function handler(
     chunkSize: formatChunkSettings.chunkSize,
     paragraphChunkDeep: formatChunkSettings.paragraphChunkDeep,
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
-    maxSize: getLLMMaxChunkSize(getDatasetAgentModel(dataset)),
+    maxSize: getLLMMaxChunkSize(
+      modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'))
+    ),
     overlapRatio,
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
     maxChunks: maxPreviewChunkCount

@@ -37,7 +37,7 @@ const ModelProvider = () => {
             {t('common:model.provider_title')}
           </Box>
         </Flex>
-        <Box flex={['0 0 auto', '1 0 0']} minH={0} py={6}>
+        <Box flex={['0 0 auto', '1 0 0']} minH={0} py={6} pt={[4, 6]}>
           <ModelTable permissionConfig contentPx={6} />
         </Box>
       </Flex>

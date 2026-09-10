@@ -20,7 +20,7 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { BoolSchema, NumSchema } from '../../../../common/zod';
+import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
@@ -61,11 +61,11 @@ const preprocessListAppType = (value: unknown) => {
   return isAppType(value) ? value : undefined;
 };
 
-export const OpenAPIAppScheduledTriggerConfigSchema = z
-  .preprocess(emptyObjectToUndefined, AppScheduledTriggerConfigTypeSchema.optional())
-  .meta({
-    description: '应用定时触发配置'
-  });
+export const OpenAPIAppScheduledTriggerConfigSchema = optionalNullToUndefined(
+  z.preprocess(emptyObjectToUndefined, AppScheduledTriggerConfigTypeSchema.optional())
+).meta({
+  description: '应用定时触发配置'
+});
 
 const OpenAPIAppQGConfigSchema = z.object({
   open: BoolSchema.meta({
@@ -151,13 +151,13 @@ const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
   });
 
 export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
-  variables: z.array(OpenAPIVariableItemSchema).optional().meta({
+  variables: optionalNullToUndefined(z.array(OpenAPIVariableItemSchema)).meta({
     description: '应用启动对话前需要用户填写的变量列表'
   }),
-  questionGuide: OpenAPIAppQGConfigSchema.optional().meta({
+  questionGuide: optionalNullToUndefined(OpenAPIAppQGConfigSchema).meta({
     description: '问题引导配置'
   }),
-  scheduledTriggerConfig: OpenAPIAppScheduledTriggerConfigSchema.optional().meta({
+  scheduledTriggerConfig: OpenAPIAppScheduledTriggerConfigSchema.meta({
     description: '定时触发配置'
   })
 }).meta({
@@ -166,10 +166,10 @@ export const OpenAPIAppChatConfigSchema = AppChatConfigTypeSchema.extend({
 
 /** 普通客户端新写入稳定 modelId，同时在迁移期接收存量 model 配置。 */
 export const AppChatConfigInputSchema = OpenAPIAppChatConfigSchema.extend({
-  questionGuide: AppQuestionGuideInputSchema.optional().meta({
+  questionGuide: optionalNullToUndefined(AppQuestionGuideInputSchema).meta({
     description: '问题引导配置'
   }),
-  ttsConfig: AppTTSConfigInputSchema.optional().meta({
+  ttsConfig: optionalNullToUndefined(AppTTSConfigInputSchema).meta({
     description: '语音播报配置'
   })
 });
@@ -346,7 +346,7 @@ export const AppListItemSchema = z
     parentId: ParentIdSchema.meta({ description: '父级应用/文件夹 ID' }),
     tmbId: ObjectIdSchema.meta({ description: '创建者团队成员 ID' }),
     name: z.string().meta({ example: '客服应用', description: '应用名称' }),
-    avatar: z.string().meta({ description: '应用头像' }),
+    avatar: AppSchemaTypeSchema.shape.avatar.meta({ description: '应用头像' }),
     intro: z.string().meta({ description: '应用介绍' }),
     type: z.enum(AppTypeEnum).meta({ example: AppTypeEnum.workflow, description: '应用类型' }),
     createTime: z.coerce.date().meta({ description: '创建时间' }),
@@ -399,7 +399,7 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     description: '应用编排版本，v2 表示当前工作流编排结构'
   }),
   name: z.string().meta({ example: '客服应用', description: '应用名称' }),
-  avatar: z.string().meta({ description: '应用头像' }),
+  avatar: AppSchemaTypeSchema.shape.avatar.meta({ description: '应用头像' }),
   intro: z.string().meta({ description: '应用介绍' }),
   templateId: z.string().optional().meta({
     example: 'template-simple-chat',

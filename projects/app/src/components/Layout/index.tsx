@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -132,6 +132,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   // 仅 root 使用管理员模型列表检查一次系统模型配置，不触发用户模型目录加载。
   useEffect(() => {
     if (userInfo?.username !== 'root') return;
+    // 模型配置页会自行加载同一份数据；这里跳过，避免首屏重复请求。
+    if (router.pathname === '/config/model') return;
 
     const identity = `${userInfo.team.teamId}:${userInfo.team.tmbId}:${modelLoginGeneration}`;
     if (checkedModelIdentityRef.current === identity) return;
@@ -164,13 +166,14 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           checkedModelIdentityRef.current = undefined;
         }
       });
-  }, [modelLoginGeneration, router, t, toast, userInfo]);
+  }, [modelLoginGeneration, router, router.pathname, t, toast, userInfo]);
 
   // Route watch
   useEffect(() => {
     setLastRoute(router.pathname);
   }, [router.pathname, setLastRoute]);
 
+  // 注销用户 - 自动跳转注销页
   useEffect(() => {
     if (
       userInfo?.team?.accountCancellation &&
@@ -180,46 +183,51 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     ) {
       router.replace('/account/cancel?view=team');
     }
-  }, [router, router.pathname, userInfo?.team?.accountCancellation]);
+  }, [router, userInfo?.team?.accountCancellation]);
+
+  const showPcNavbar = isPc === true && !isHideNavbar;
+  const showPhoneNavbar =
+    isPc === false && !(phoneUnShowLayoutRoute[router.pathname] || isChatPage);
 
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>
-        {isPc === true && (
-          <>
-            {isHideNavbar ? (
-              <Auth>{children}</Auth>
-            ) : (
-              <Auth>
-                <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>
-                  <Navbar unread={unread} />
-                </Box>
-                <Box h={'100%'} ml={navbarWidth} overflow={'overlay'}>
-                  {children}
-                </Box>
-              </Auth>
+        <Auth>
+          <Box
+            height={'100%'}
+            {...(showPhoneNavbar
+              ? {
+                  display: 'flex',
+                  flexDirection: 'column'
+                }
+              : {
+                  display: 'block',
+                  overflowY: 'auto'
+                })}
+          >
+            {showPcNavbar && (
+              <Box position="fixed" left={0} top={0} w={navbarWidth} h="100%">
+                <Navbar unread={unread} />
+              </Box>
             )}
-          </>
-        )}
-        {isPc === false && (
-          <>
-            {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
-              <Auth>{children}</Auth>
-            ) : (
-              <Auth>
-                <Flex h={'100%'} flexDirection={'column'}>
-                  <Box flex={'1 0 0'} h={0}>
-                    {children}
-                  </Box>
-                  <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
-                    <NavbarPhone unread={unread} />
-                  </Box>
-                </Flex>
-              </Auth>
+
+            <Box
+              {...(showPhoneNavbar ? { h: 0, flex: '1 0 0' } : { h: '100%' })}
+              {...(showPcNavbar ? { ml: navbarWidth, overflow: 'overlay' } : {})}
+            >
+              {children}
+            </Box>
+
+            {showPhoneNavbar && (
+              <Box h="50px" borderTop="1px solid rgba(0,0,0,0.1)">
+                <NavbarPhone unread={unread} />
+              </Box>
             )}
-          </>
-        )}
+          </Box>
+        </Auth>
       </Box>
+
+      {/* 各种 Modal */}
       {feConfigs?.isPlus && (
         <>
           <NotSufficientModal />
@@ -234,11 +242,15 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           <SupportBot />
         </>
       )}
+      {/* 企业认证 */}
       <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
-
-      <ManualCopyModal />
+      {/* 活动 */}
       <ActivityAdModal />
+      {/* 无 SSL，手动复制 */}
+      <ManualCopyModal />
+      {/* 商业版激活 */}
       {showProModal && <ProModal isOpen onClose={() => setShowProModal(false)} />}
+      {/* 全局 Loading */}
       <Loading loading={loading} zIndex={999999} />
     </>
   );

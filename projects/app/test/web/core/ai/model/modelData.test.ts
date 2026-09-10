@@ -134,6 +134,29 @@ describe('catalog consumers', () => {
     ).toBeUndefined();
   });
 
+  it('skips an unavailable cached or system default model before using the first candidate', async () => {
+    const unavailableDefaults = models.map((model) =>
+      model.modelId === 'business' || model.modelId === 'system'
+        ? { ...model, isActive: false }
+        : model
+    );
+    mocks.catalog.mockResolvedValueOnce({
+      version: 'v2',
+      data: {
+        models: unavailableDefaults,
+        providers: [],
+        defaultModelIds: { llm: 'system' }
+      }
+    });
+
+    expect(
+      await getModelDefault({
+        modelType: ModelTypeEnum.llm,
+        businessDefaultModelId: 'business'
+      })
+    ).toMatchObject({ modelId: 'first' });
+  });
+
   it('propagates network failure and retries instead of treating it as an empty catalog', async () => {
     mocks.catalog.mockRejectedValueOnce(new Error('offline'));
     await expect(getModelDetail({ modelId: 'first' })).rejects.toThrow('offline');

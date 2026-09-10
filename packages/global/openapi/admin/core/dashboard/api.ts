@@ -4,6 +4,10 @@ import { UsageSourceEnum } from '../../../../support/wallet/usage/constants';
 // Common query schema
 export const GetDataChartsQuerySchema = z.object({
   startTime: z.string().meta({ description: '查询起始时间（ISO 8601 格式）' }),
+  granularity: z.enum(['day', 'month', 'quarter']).optional().meta({
+    description: '统计颗粒度，默认按天',
+    example: 'month'
+  }),
   sources: z.array(z.enum(UsageSourceEnum)).optional().meta({ description: '使用来源筛选' })
 });
 export type GetDataChartsQueryType = z.infer<typeof GetDataChartsQuerySchema>;
@@ -27,7 +31,9 @@ export const OrderAmountSchema = z.object({
 });
 export const PayAmountSchema = z.object({
   date: z.string().meta({ description: '数据点日期' }),
-  totalCount: z.number().meta({ description: '支付总金额' })
+  totalCount: z
+    .number()
+    .meta({ description: '成功订单实付总金额（元），实付字段缺失时使用订单面值', example: 30000 })
 });
 export const PayTeamSchema = z.object({
   date: z.string().meta({ description: '数据点日期' }),
@@ -79,7 +85,9 @@ export type GetCostFormDataResponseType = z.infer<typeof GetCostFormDataResponse
 // Get user stats response
 export const GetUserStatsResponseSchema = z.object({
   usersCount: z.number().meta({ description: '用户总数' }),
-  rechargeCount: z.number().meta({ description: '充值总数' })
+  rechargeCount: z
+    .number()
+    .meta({ description: '成功订单实付总金额（元），实付字段缺失时使用订单面值', example: 30000 })
 });
 export type GetUserStatsResponseType = z.infer<typeof GetUserStatsResponseSchema>;
 

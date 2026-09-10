@@ -1,3 +1,4 @@
+import { requiredAlternatives } from '../../../../../common/zod/openapi';
 import z from 'zod';
 import {
   CollaboratorListSchema,
@@ -30,6 +31,7 @@ const TeamCollaboratorTargetDescription =
  * ============================================================================ */
 
 export const DeleteTeamCollaboratorQuerySchema = CollaboratorTargetSchema.meta({
+  ...requiredAlternatives([['tmbId'], ['groupId'], ['orgId']], true),
   description: TeamCollaboratorTargetDescription
 });
 export type DeleteTeamCollaboratorQueryType = z.infer<typeof DeleteTeamCollaboratorQuerySchema>;
@@ -74,6 +76,7 @@ export const UpdateTeamCollaboratorOneBodySchema = CollaboratorTargetSchema.safe
     description: '权限角色值'
   })
 }).meta({
+  ...requiredAlternatives([['tmbId'], ['groupId'], ['orgId']], true),
   description: TeamCollaboratorTargetDescription,
   example: {
     tmbId: '68ad85a7463006c963799a06',

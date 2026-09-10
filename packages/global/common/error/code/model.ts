@@ -4,7 +4,8 @@ import { i18nT } from '../../i18n/utils';
 /* model: 513000 */
 export enum ModelErrEnum {
   unExist = 'modelUnExist',
-  unConfigured = 'modelUnConfigured'
+  unConfigured = 'modelUnConfigured',
+  alreadyExists = 'modelAlreadyExists'
 }
 
 const modelErrList = [
@@ -15,6 +16,10 @@ const modelErrList = [
   {
     statusText: ModelErrEnum.unConfigured,
     message: i18nT('common:not_model_config')
+  },
+  {
+    statusText: ModelErrEnum.alreadyExists,
+    message: i18nT('common:model_id_already_exists')
   }
 ];
 

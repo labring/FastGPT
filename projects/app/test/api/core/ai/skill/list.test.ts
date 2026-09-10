@@ -1,3 +1,5 @@
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/list';
 import handlerV2 from '@/pages/api/core/ai/skill/listV2';
@@ -66,6 +68,10 @@ describe('POST /api/core/ai/skill/list', () => {
       body: { source: 'mine', parentId: null, withAppCount: false }
     });
 
+    expect(result.data.list.every((item) => item.avatar === '/icon/logo.svg')).toBe(true);
+    expect(
+      await MongoAgentSkills.countDocuments({ teamId: owner.teamId, avatar: { $exists: true } })
+    ).toBe(0);
     expect(result.data.list.map((item) => item.name)).toEqual([
       'Newest folder',
       'Newer skill',
@@ -475,9 +481,9 @@ describe('POST /api/core/ai/skill/list', () => {
       resourceRefs: { skillIds: [String(publishedSkill._id)] }
     });
 
-    const legacyModel = global.systemActiveModelList.find(
-      (model) => model.type === ModelTypeEnum.llm
-    )!;
+    const legacyModel = getCachedModelHandle()
+      ?.getActiveModels()
+      .find((model) => model.type === ModelTypeEnum.llm)!;
     const draftNode = createSkillNode(draftSkill);
     draftNode.inputs.push({
       key: NodeInputKeyEnum.aiModel,
