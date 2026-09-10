@@ -88,6 +88,20 @@ describe('dataset tag filter options', () => {
         (item) => item.value
       )
     ).toEqual(['$in']);
+    expect(
+      getTagFilterOpsByCondition({ tagType: DatasetCollectionTagTypeEnum.array }).map(
+        (item) => item.value
+      )
+    ).toEqual([
+      '$is',
+      '$isNot',
+      '$contains',
+      '$notContains',
+      '$in',
+      '$notIn',
+      '$empty',
+      '$notEmpty'
+    ]);
   });
 });
 
@@ -103,6 +117,12 @@ describe('serializeDatasetTagFilterValue', () => {
           value: ['open']
         },
         {
+          tag: 'category',
+          tagType: DatasetCollectionTagTypeEnum.array,
+          op: '$contains',
+          value: ['AI', 'dev']
+        },
+        {
           field: DatasetTagFilterFieldEnum.createTime,
           op: '$gte',
           value: '2026-03-01T08:00:00'
@@ -112,12 +132,20 @@ describe('serializeDatasetTagFilterValue', () => {
           op: '$in',
           value: 'id-1, id-2, id-1'
         },
-        { tag: 'incomplete' }
+        { tag: 'incomplete' },
+        {
+          tag: 'emptyArray',
+          tagType: DatasetCollectionTagTypeEnum.array,
+          op: '$contains',
+          value: []
+        }
       ]
     });
 
     expect(JSON.parse(result ?? '')).toEqual({
-      tags: { $or: [{ status: { $in: ['open'] } }] },
+      tags: {
+        $or: [{ status: { $in: ['open'] } }, { category: { $contains: ['AI', 'dev'] } }]
+      },
       createTime: { $gte: expect.any(String) },
       collectionIds: ['id-1', 'id-2']
     });

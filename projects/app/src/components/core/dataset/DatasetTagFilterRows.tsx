@@ -24,7 +24,7 @@ import {
   type WorkflowTagFilterOption
 } from '@fastgpt/global/core/dataset/workflowTagFilter';
 import type { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
-import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getAllTags } from '@/web/core/dataset/api/collection';
 import { ReferSelector } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/Reference';
 import {
@@ -157,6 +157,63 @@ const valueCellJoinedStyles = {
   borderColor: 'myGray.200'
 };
 
+/**
+ * 根据过滤条件行的字段类型和操作符，推导出可接受的工作流引用变量类型。
+ * - number 标签：只允许数字类型变量 (number)
+ * - datetime 标签 / createTime 属性：允许时间格式字符串 (string) 与毫秒时间戳 (number)
+ * - collectionId 属性：允许 ID 列表 (arrayString) 或字符串 (string)
+ * - array 标签：
+ *   - $in / $notIn / $is / $isNot：集合运算，只允许数组 (arrayString)
+ *   - $contains / $notContains：允许单个元素 (string) 或子数组 (arrayString)
+ */
+export const getTagFilterAllowedValueTypes = (
+  condition: DatasetTagFilterCondition
+): WorkflowIOValueTypeEnum[] => {
+  if (condition.field === DatasetTagFilterFieldEnum.createTime) {
+    return [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number];
+  }
+  if (condition.field === DatasetTagFilterFieldEnum.collectionId) {
+    return [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.string];
+  }
+
+  if (condition.tagType === DatasetCollectionTagTypeEnum.datetime) {
+    return [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number];
+  }
+  if (condition.tagType === DatasetCollectionTagTypeEnum.number) {
+    return [WorkflowIOValueTypeEnum.number];
+  }
+  if (condition.tagType === DatasetCollectionTagTypeEnum.array) {
+    if (condition.op === '$contains' || condition.op === '$notContains') {
+      return [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.arrayString];
+    }
+    return [WorkflowIOValueTypeEnum.arrayString];
+  }
+
+  return [];
+};
+
+/**
+ * 判断变量输出类型是否与当前条件行允许的目标类型兼容。
+ * 兜底类型 any / arrayAny 支持宽松兼容。
+ */
+export const isTagFilterValueTypeCompatible = (
+  itemValueType?: WorkflowIOValueTypeEnum,
+  allowedTypes: WorkflowIOValueTypeEnum[] = []
+): boolean => {
+  if (allowedTypes.length === 0) return true;
+  if (!itemValueType || itemValueType === WorkflowIOValueTypeEnum.any) return true;
+  return allowedTypes.some((allowed) => {
+    if (itemValueType === allowed) return true;
+    if (
+      allowed === WorkflowIOValueTypeEnum.arrayString &&
+      itemValueType === WorkflowIOValueTypeEnum.arrayAny
+    ) {
+      return true;
+    }
+    return false;
+  });
+};
+
 const TagFilterValueCell = ({
   condition,
   option,
@@ -172,6 +229,20 @@ const TagFilterValueCell = ({
   const isCollectionId = condition.field === DatasetTagFilterFieldEnum.collectionId;
   const isReference =
     isCollectionId || condition.valueMode === DatasetTagFilterValueModeEnum.reference;
+
+  const filteredReferenceList = useMemo(() => {
+    const allowedTypes = getTagFilterAllowedValueTypes(condition);
+    if (allowedTypes.length === 0) return referenceList;
+
+    return referenceList
+      .map((group) => ({
+        ...group,
+        children: group.children.filter((child) =>
+          isTagFilterValueTypeCompatible(child.valueType, allowedTypes)
+        )
+      }))
+      .filter((group) => group.children.length > 0);
+  }, [condition, referenceList]);
 
   const literalInput = (() => {
     if (!condition.tagType) {
@@ -301,7 +372,7 @@ const TagFilterValueCell = ({
         {isReference ? (
           <ReferSelector
             placeholder={t('common:select_reference_variable')}
-            list={referenceList}
+            list={filteredReferenceList}
             value={
               Array.isArray(condition.value)
                 ? (condition.value as ReferenceItemValueType)

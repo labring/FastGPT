@@ -1,5 +1,6 @@
 import { MongoDatasetCollection } from './schema';
 import type { ClientSession } from '../../../common/mongo';
+import { MongoDatasetCollectionTags } from '../tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
@@ -175,9 +176,29 @@ export async function ensureDatasetTagMigrationCarrier({
   const existing = await findDefaultTag();
   if (existing) return existing;
 
+  const legacyTags = await MongoDatasetCollectionTags.find({ teamId, datasetId }, 'tag', {
+    session
+  }).lean();
+  const initialOptions = [
+    ...new Set(
+      legacyTags
+        .map((t) => (typeof t.tag === 'string' ? t.tag.trim() : ''))
+        .filter((tag): tag is string => Boolean(tag))
+    )
+  ];
+
   try {
     const [created] = await MongoDatasetCollectionTagsV2.create(
-      [{ teamId, datasetId, tag: DEFAULT_TAG, tagType: 'array', fromMigration: true }],
+      [
+        {
+          teamId,
+          datasetId,
+          tag: DEFAULT_TAG,
+          tagType: 'array',
+          options: initialOptions,
+          fromMigration: true
+        }
+      ],
       { session }
     );
     return created.toObject ? created.toObject() : created;
@@ -256,6 +277,11 @@ export const createOrGetCollectionTags = async ({
   if (defaultValues.length > 0) {
     const defaultTag = await ensureDatasetTagMigrationCarrier({ datasetId, teamId, session });
     result.push({ tagId: String(defaultTag._id), value: [...new Set(defaultValues)] });
+    await MongoDatasetCollectionTagsV2.updateOne(
+      { _id: defaultTag._id, teamId, datasetId },
+      { $addToSet: { options: { $each: defaultValues } } },
+      { session }
+    );
   }
 
   result.push(...normalizedObjectInputs.map(({ tagId, value }) => ({ tagId: tagId!, value })));

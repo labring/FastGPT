@@ -13,6 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { SingleDateTimePicker } from '@fastgpt/web/components/common/DateTimePicker';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import {
@@ -206,9 +207,18 @@ export const TagNameSelect = ({
           borderColor={isOpen ? 'primary.600' : 'myGray.200'}
           boxShadow={isOpen ? 'focus' : 'none'}
         >
-          <Box color={selected ? 'myGray.900' : 'myGray.500'} noOfLines={1}>
-            {selected?.label || t('dataset:tag.select_tag')}
-          </Box>
+          <MyTooltip label={selected?.label || ''} showOnlyWhenOverflow shouldWrapChildren={false}>
+            <Box
+              flex={1}
+              minW={0}
+              color={selected ? 'myGray.900' : 'myGray.500'}
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              whiteSpace={'nowrap'}
+            >
+              {selected?.label || t('dataset:tag.select_tag')}
+            </Box>
+          </MyTooltip>
           <MyIcon
             name={'core/chat/chevronDown'}
             w={'16px'}
@@ -273,7 +283,17 @@ export const TagNameSelect = ({
                         handleClose();
                       }}
                     >
-                      <Box noOfLines={1}>{opt.label}</Box>
+                      <MyTooltip label={opt.label} showOnlyWhenOverflow shouldWrapChildren={false}>
+                        <Box
+                          flex={1}
+                          minW={0}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
+                        >
+                          {opt.label}
+                        </Box>
+                      </MyTooltip>
                     </Flex>
                   );
                 })
@@ -329,11 +349,23 @@ const ArraySelectedChip = ({
     fontSize={'sm'}
     lineHeight={'20px'}
     letterSpacing={'0.25px'}
-    flexShrink={0}
+    flex={'0 1 auto'}
+    minW={0}
+    maxW={'100%'}
+    overflow={'hidden'}
   >
-    <Box maxW={'120px'} noOfLines={1}>
-      {opt}
-    </Box>
+    <MyTooltip label={opt} showOnlyWhenOverflow shouldWrapChildren={false}>
+      <Box
+        flex={1}
+        maxW={'120px'}
+        minW={0}
+        overflow={'hidden'}
+        textOverflow={'ellipsis'}
+        whiteSpace={'nowrap'}
+      >
+        {opt}
+      </Box>
+    </MyTooltip>
     {onRemove && (
       <Flex
         as={'button'}
@@ -342,6 +374,7 @@ const ArraySelectedChip = ({
         justifyContent={'center'}
         w={'16px'}
         h={'16px'}
+        flexShrink={0}
         cursor={'pointer'}
         color={'myGray.500'}
         _hover={{ color: 'myGray.700' }}
@@ -463,7 +496,7 @@ export const ArrayTagSelect = ({
       }}
       placement={'bottom-start'}
       closeOnBlur
-      matchWidth
+      matchWidth={!joined}
       gutter={4}
     >
       <PopoverTrigger>
@@ -530,7 +563,9 @@ export const ArrayTagSelect = ({
       </PopoverTrigger>
       <Portal>
         <PopoverContent
-          w={joined ? 'full' : '370px'}
+          w={joined ? '240px' : '370px'}
+          minW={joined ? 'full' : undefined}
+          maxW={'360px'}
           p={1.5}
           bg={'white'}
           borderRadius={'sm'}
@@ -538,6 +573,7 @@ export const ArrayTagSelect = ({
           border={'1px solid'}
           borderColor={'myGray.200'}
           _focusVisible={{ outline: 'none' }}
+          zIndex={1500}
         >
           <Flex direction={'column'} w={'full'} gap={1}>
             <Input
@@ -579,9 +615,20 @@ export const ArrayTagSelect = ({
                 <Box fontSize={'xs'} color={'myGray.500'} flexShrink={0}>
                   {t('dataset:tag.create_option')}
                 </Box>
-                <Box fontSize={'xs'} fontWeight={'medium'} color={'myGray.600'} noOfLines={1}>
-                  {search.trim()}
-                </Box>
+                <MyTooltip label={search.trim()} showOnlyWhenOverflow shouldWrapChildren={false}>
+                  <Box
+                    flex={1}
+                    minW={0}
+                    fontSize={'xs'}
+                    fontWeight={'medium'}
+                    color={'myGray.600'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {search.trim()}
+                  </Box>
+                </MyTooltip>
               </Flex>
             )}
 
@@ -627,8 +674,7 @@ export const ArrayTagSelect = ({
                     >
                       <Checkbox
                         isChecked={isChecked}
-                        onChange={() => handleToggleOption(opt)}
-                        onClick={(e) => e.stopPropagation()}
+                        pointerEvents={'none'}
                         size={'sm'}
                         borderRadius={'xs'}
                         icon={<MyIcon name={'common/check'} w={'10px'} />}
@@ -637,9 +683,20 @@ export const ArrayTagSelect = ({
                           '.chakra-checkbox__control:not([data-checked]) svg': { opacity: 0 }
                         }}
                       />
-                      <Box fontSize={'xs'} fontWeight={'medium'} color={'myGray.600'} noOfLines={1}>
-                        {opt}
-                      </Box>
+                      <MyTooltip label={opt} showOnlyWhenOverflow shouldWrapChildren={false}>
+                        <Box
+                          flex={1}
+                          minW={0}
+                          fontSize={'xs'}
+                          fontWeight={'medium'}
+                          color={'myGray.600'}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
+                        >
+                          {opt}
+                        </Box>
+                      </MyTooltip>
                     </Flex>
                   );
                 })

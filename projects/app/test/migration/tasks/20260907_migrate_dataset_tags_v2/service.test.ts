@@ -102,7 +102,11 @@ describe('dataset tag v2 migration service', () => {
       datasetId,
       fromMigration: true
     });
-    expect(carrier).toMatchObject({ tag: 'default_tag', tagType: 'array' });
+    expect(carrier).toMatchObject({
+      tag: 'default_tag',
+      tagType: 'array',
+      options: ['legacy-name']
+    });
     expect(
       (await MongoDatasetCollection.collection.findOne({ _id: collection.insertedId }))?.tags
     ).toEqual([
@@ -139,5 +143,42 @@ describe('dataset tag v2 migration service', () => {
       tagType: 'array',
       fromMigration: true
     });
+  });
+
+  it('backfills legacy definitions and collection values into carrier options', async () => {
+    await MongoDatasetCollectionTags.insertMany([
+      { teamId, datasetId, tag: 'legacy-doc' },
+      { teamId, datasetId, tag: 'legacy-faq' }
+    ]);
+    const carrier = await MongoDatasetCollectionTagsV2.create({
+      teamId,
+      datasetId,
+      tag: 'default_tag',
+      tagType: 'string',
+      options: ['preset-1'],
+      fromMigration: true
+    });
+    await MongoDatasetCollection.collection.insertOne({
+      teamId,
+      tmbId,
+      datasetId,
+      name: 'file-1',
+      type: 'file',
+      tags: [{ tagId: String(carrier._id), value: ['used-tag', 'legacy-doc'] }]
+    });
+
+    await expect(migrateDatasetTagDefinitions({ datasetId, teamId })).resolves.toMatchObject({
+      migratedCount: 1
+    });
+
+    const updatedCarrier = await MongoDatasetCollectionTagsV2.findById(carrier._id).lean();
+    expect(updatedCarrier).toMatchObject({
+      tag: 'default_tag',
+      tagType: 'array',
+      fromMigration: true
+    });
+    expect(new Set(updatedCarrier?.options)).toEqual(
+      new Set(['preset-1', 'legacy-doc', 'legacy-faq', 'used-tag'])
+    );
   });
 });

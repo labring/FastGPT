@@ -132,6 +132,8 @@ const tagFilterOperators: Record<WorkflowTagFilterTagType, TagFilterOperator[]> 
   [DatasetCollectionTagTypeEnum.array]: [
     { labelKey: 'workflow:tag_filter_op_is', value: '$is' },
     { labelKey: 'workflow:tag_filter_op_is_not', value: '$isNot' },
+    { labelKey: 'workflow:tag_filter_op_contains', value: '$contains' },
+    { labelKey: 'workflow:tag_filter_op_not_contains', value: '$notContains' },
     { labelKey: 'workflow:tag_filter_op_in', value: '$in' },
     { labelKey: 'workflow:tag_filter_op_not_in', value: '$notIn' },
     ...emptyValueOperators
@@ -279,7 +281,12 @@ const buildTagConditionObject = (
   if (isTagFilterOpWithoutValue(op)) {
     return { [tag]: { [op]: true } };
   }
-  if (condition.value === undefined || condition.value === null || condition.value === '') {
+  if (
+    condition.value === undefined ||
+    condition.value === null ||
+    condition.value === '' ||
+    (Array.isArray(condition.value) && condition.value.length === 0)
+  ) {
     return;
   }
   return { [tag]: { [op]: condition.value } };

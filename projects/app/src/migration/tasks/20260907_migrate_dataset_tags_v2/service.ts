@@ -118,12 +118,61 @@ export const migrateDatasetTagDefinitions = async ({
     }
 
     if (carrier) {
+      const carrierIdStr = String(carrier._id);
+      const [legacyTags, usedValues] = await Promise.all([
+        MongoDatasetCollectionTags.collection
+          .find({ teamId, datasetId }, { projection: { tag: 1 }, session: activeSession })
+          .toArray(),
+        MongoDatasetCollection.collection
+          .aggregate(
+            [
+              {
+                $match: {
+                  teamId,
+                  datasetId,
+                  'tags.tagId': { $in: [carrier._id, carrierIdStr] }
+                }
+              },
+              { $unwind: '$tags' },
+              {
+                $match: {
+                  $expr: {
+                    $in: [{ $toString: '$tags.tagId' }, [carrierIdStr]]
+                  }
+                }
+              },
+              { $unwind: '$tags.value' },
+              {
+                $group: {
+                  _id: null,
+                  values: { $addToSet: '$tags.value' }
+                }
+              }
+            ],
+            { session: activeSession }
+          )
+          .toArray()
+      ]);
+
+      const legacyTagNames = legacyTags
+        .map((t) => t.tag)
+        .filter((t): t is string => typeof t === 'string' && t.trim().length > 0);
+      const usedTagNames = ((usedValues[0]?.values as unknown[]) ?? []).filter(
+        (v): v is string => typeof v === 'string' && v.trim().length > 0
+      );
+      const existingOptions = Array.isArray(carrier.options)
+        ? carrier.options.filter((o: unknown): o is string => typeof o === 'string')
+        : [];
+
+      const mergedOptions = [...new Set([...existingOptions, ...legacyTagNames, ...usedTagNames])];
+
       await MongoDatasetCollectionTagsV2.collection.updateOne(
         { _id: carrier._id, teamId, datasetId },
         {
           $set: {
             tagType: DatasetCollectionTagTypeEnum.array,
-            fromMigration: true
+            fromMigration: true,
+            options: mergedOptions
           }
         },
         { session: activeSession }
@@ -200,6 +249,19 @@ export const migrateCollectionTagValues = async ({
     if (result.matchedCount !== 1) {
       throw new Error('Collection tags changed concurrently during migration');
     }
+
+    if (migratedValues.length > 0) {
+      await MongoDatasetCollectionTagsV2.collection.updateOne(
+        {
+          _id: new Types.ObjectId(carrierId),
+          teamId: collection.teamId,
+          datasetId: collection.datasetId
+        },
+        { $addToSet: { options: { $each: migratedValues } } },
+        { session: activeSession }
+      );
+    }
+
     return { migratedCount: 1 };
   };
 
