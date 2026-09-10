@@ -10,6 +10,10 @@ import {
 } from '@/global/aiproxy/type';
 import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import {
+  FASTGPT_WEB_REQUEST_HEADER,
+  FASTGPT_WEB_REQUEST_VALUE
+} from '@fastgpt/global/common/system/constants';
 
 interface ResponseDataType {
   success: boolean;
@@ -62,6 +66,15 @@ const instance = axios.create({
   headers: {
     'content-type': 'application/json'
   }
+});
+
+/* 请求拦截 */
+instance.interceptors.request.use((config) => {
+  config.headers ??= {} as typeof config.headers;
+  if (config.method?.toUpperCase() === 'GET') {
+    config.headers[FASTGPT_WEB_REQUEST_HEADER] = FASTGPT_WEB_REQUEST_VALUE;
+  }
+  return config;
 });
 
 /* 响应拦截 */

@@ -16,6 +16,10 @@ import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 import { getLanguageRequestHeaders } from '@fastgpt/web/i18n/utils';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { isLogoutInProgress } from '@/web/support/user/logoutState';
+import {
+  FASTGPT_WEB_REQUEST_HEADER,
+  FASTGPT_WEB_REQUEST_VALUE
+} from '@fastgpt/global/common/system/constants';
 
 type ConfigType = {
   headers?: { [key: string]: string };
@@ -143,8 +147,11 @@ function requestFinish({ signId, url }: { signId?: string; url: string }) {
  */
 function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   const languageHeaders = getLanguageRequestHeaders();
+  config.headers ??= {} as InternalAxiosRequestConfig['headers'];
+  if (config.method?.toUpperCase() === 'GET') {
+    config.headers[FASTGPT_WEB_REQUEST_HEADER] = FASTGPT_WEB_REQUEST_VALUE;
+  }
   if (Object.keys(languageHeaders).length > 0) {
-    config.headers ??= {} as InternalAxiosRequestConfig['headers'];
     Object.assign(config.headers, languageHeaders);
   }
 
