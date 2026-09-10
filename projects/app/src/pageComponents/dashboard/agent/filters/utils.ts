@@ -110,7 +110,7 @@ export const resolveSceneListType = (
   return allowed.some((item) => item === type) ? type : 'all';
 };
 
-/** 转成列表接口的 tmbIds：全部不传，已选含空数组。 */
+/** 转成列表接口的 tmbIds：全部或未选任何项不传，其余传所选项。 */
 export const toListTmbIds = (creator?: AppListFilterType['creator']): string[] | undefined =>
   toMultiSelectFilterQuery(creator ? { mode: creator.mode, values: creator.tmbIds } : undefined);
 

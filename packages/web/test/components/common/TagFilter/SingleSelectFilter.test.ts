@@ -85,7 +85,7 @@ describe('filterSelectOptionsBySearch', () => {
 });
 
 describe('multiSelectFilter helpers', () => {
-  const labels = { all: '全部', unselected: '未选择', selectedSelf: '我创建的' };
+  const labels = { all: '全部', selectedSelf: '我创建的' };
   const options = [
     { value: 'me', label: '张延' },
     { value: 'u2', label: '一二三' }
@@ -100,7 +100,7 @@ describe('multiSelectFilter helpers', () => {
       chip: false
     });
     expect(getMultiSelectFilterSummary({ ...base, mode: 'selected', values: [] })).toEqual({
-      text: '未选择',
+      text: '全部',
       extraCount: 0,
       chip: false
     });
@@ -121,9 +121,9 @@ describe('multiSelectFilter helpers', () => {
   it('toggles from all into selected and maps query values', () => {
     const selected = toggleMultiSelectFilterValue(createMultiSelectFilter(), 'me');
     expect(selected).toEqual({ mode: 'selected', values: ['me'] });
-    expect(toggleMultiSelectFilterValue(selected, 'me')).toEqual({ mode: 'selected', values: [] });
+    expect(toggleMultiSelectFilterValue(selected, 'me')).toEqual({ mode: 'all', values: [] });
     expect(toMultiSelectFilterQuery({ mode: 'all', values: ['me'] })).toBeUndefined();
-    expect(toMultiSelectFilterQuery({ mode: 'selected', values: [] })).toEqual([]);
+    expect(toMultiSelectFilterQuery({ mode: 'selected', values: [] })).toBeUndefined();
     expect(syncSelectedFilterValues({ mode: 'all', values: ['me'] }, ['me'])).toBeNull();
     expect(syncSelectedFilterValues({ mode: 'selected', values: ['me'] }, ['me', 'u2'])).toBeNull();
     expect(

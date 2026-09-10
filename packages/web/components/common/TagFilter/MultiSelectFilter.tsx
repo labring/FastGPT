@@ -27,17 +27,15 @@ import {
 
 export type MultiSelectFilterLabels = {
   all: string;
-  unselected: string;
   selectedSelf?: string;
 };
 
-/** 多选筛选通用文案：全部 / 未选择。页面专用文案仍自己传 labels。 */
+/** 多选筛选通用文案：全部。页面专用文案仍自己传 labels。 */
 export const useCommonFilterLabels = () => {
   const { t } = useTranslation();
   return useMemo(
     () => ({
-      all: t('common:All'),
-      unselected: t('common:filter_unselected')
+      all: t('common:All')
     }),
     [t]
   );
@@ -100,6 +98,7 @@ function MultiSelectFilter<T extends string>({
     [options, searchKey, shouldFilterLocal]
   );
   const selectedSet = useMemo(() => new Set(value.values), [value.values]);
+  const isAll = value.mode !== 'selected' || value.values.length === 0;
   const summary = getMultiSelectFilterSummary({
     mode: value.mode,
     values: value.values,
@@ -125,7 +124,8 @@ function MultiSelectFilter<T extends string>({
         py={'6px'}
         cursor={'pointer'}
         borderRadius={'xs'}
-        fontSize={'sm'}
+        fontSize={'xs'}
+        lineHeight={'16px'}
         _hover={{ bg: 'myGray.05' }}
         onClick={() => onChange(toggleMultiSelectFilterValue(value, item.value))}
       >
@@ -188,9 +188,10 @@ function MultiSelectFilter<T extends string>({
               py={'6px'}
               cursor={'pointer'}
               borderRadius={'xs'}
-              bg={value.mode === 'all' ? 'myGray.05' : 'transparent'}
-              color={value.mode === 'all' ? 'primary.700' : 'myGray.600'}
-              fontSize={'sm'}
+              bg={isAll ? 'myGray.05' : 'transparent'}
+              color={isAll ? 'primary.700' : 'myGray.600'}
+              fontSize={'xs'}
+              lineHeight={'16px'}
               fontWeight={'medium'}
               _hover={{ bg: 'myGray.05' }}
               onClick={() => onChange(createMultiSelectFilter<T>())}
