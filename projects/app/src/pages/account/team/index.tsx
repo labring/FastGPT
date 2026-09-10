@@ -166,9 +166,10 @@ const Team = () => {
           pt={[4, 6]}
           px={teamTab === TeamTabEnum.org ? 6 : 0}
           flex={['0 0 auto', '1 0 0']}
+          minH={0}
           display={'flex'}
           flexDirection={'column'}
-          overflow={teamTab === TeamTabEnum.org ? ['visible', 'auto'] : ['visible', 'hidden']}
+          overflow={['visible', 'hidden']}
         >
           {teamTab === TeamTabEnum.member && <MemberTable Tabs={Tabs} />}
           {teamTab === TeamTabEnum.org && <OrgManage Tabs={Tabs} />}

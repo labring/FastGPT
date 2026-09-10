@@ -921,6 +921,7 @@
   "move.confirm": "确认移动",
   "move_success": "移动成功",
   "move_to": "移动到",
+  "move_to_root": "移动到根目录",
   "n_agent_amount": "{{amount}} 个 Agent",
   "n_ai_points": "{{amount}} 积分",
   "n_app_registration_amount": "{{amount}} 个应用备案",

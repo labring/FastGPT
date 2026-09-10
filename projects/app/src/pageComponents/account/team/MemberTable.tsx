@@ -286,7 +286,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
       <MyBox isLoading={isLoading} flex={['0 0 auto', '1 0 0']} h={['auto', 0]} minH={0}>
         <MemberScrollData px={6} h={['auto', '100%']} overflowY={['visible', 'auto']}>
-          <TableContainer overflow={'unset'} fontSize={'sm'}>
+          <TableContainer overflow={'unset'} fontSize={'sm'} flexShrink={0}>
             <Table overflow={'unset'}>
               <Thead>
                 <Tr bgColor={'white !important'}>

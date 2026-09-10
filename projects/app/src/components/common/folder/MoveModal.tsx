@@ -24,6 +24,7 @@ type Props = {
 const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint }: Props) => {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<ParentIdType>();
+  const [isAtRoot, setIsAtRoot] = useState(true);
   const hasSelection = selectedId !== undefined;
 
   const onSelect = (item?: SelectOneResourceItemType) => {
@@ -34,10 +35,10 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
     setSelectedId(item.id === rootId ? null : item.id);
   };
 
-  const { runAsync: onConfirmSelect, loading: confirming } = useRequest(
-    () => {
-      if (!hasSelection) return Promise.reject('');
-      return onConfirm(selectedId);
+  const { runAsync: onConfirmMove, loading: confirming } = useRequest(
+    (parentId: ParentIdType) => {
+      if (parentId === undefined) return Promise.reject('');
+      return onConfirm(parentId);
     },
     {
       onSuccess: onClose,
@@ -58,10 +59,20 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
       }}
       footer={
         <>
+          {isAtRoot && (
+            <Button variant={'primary'} isLoading={confirming} onClick={() => onConfirmMove(null)}>
+              {t('common:move_to_root')}
+            </Button>
+          )}
+          <Box flex={1} />
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
-          <Button isLoading={confirming} isDisabled={!hasSelection} onClick={onConfirmSelect}>
+          <Button
+            isLoading={confirming}
+            isDisabled={!hasSelection}
+            onClick={() => onConfirmMove(selectedId)}
+          >
             {t('common:Confirm')}
           </Button>
         </>
@@ -85,6 +96,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
           server={server}
           value={selectedId}
           onSelect={onSelect}
+          onCurrentParentIdChange={(parentId) => setIsAtRoot(parentId === null)}
           selectFolder
           disabledIds={[moveResourceId]}
           maxH={'100%'}

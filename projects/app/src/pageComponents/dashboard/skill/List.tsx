@@ -581,6 +581,8 @@ const List = ({
       ScrollContainerRef={scrollContainerRef}
       h={'full'}
       minH={0}
+      pr={[3, 6]}
+      mr={[-3, -6]}
       showLoadingOverlay={false}
     >
       <>

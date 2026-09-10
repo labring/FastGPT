@@ -918,6 +918,7 @@
   "move.confirm": "이동 확인",
   "move_success": "이동되었습니다",
   "move_to": "다음으로 이동",
+  "move_to_root": "루트로 이동",
   "n_agent_amount": "{{amount}}개 에이전트 한도",
   "n_ai_points": "{{amount}} 포인트",
   "n_app_registration_amount": "{{amount}}개 앱 등록",

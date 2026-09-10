@@ -156,9 +156,16 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
             <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={onPathClick} />
           )}
         </Box>
-        <Flex flex={['0 0 auto', '1 0 0']} h={['auto', 0]} w={'100%'} gap={'4'}>
-          <MemberScrollData flex="1" isLoading={isLoading}>
-            <TableContainer>
+        <Flex flex={['0 0 auto', '1 0 0']} h={['auto', 0]} minH={0} w={'100%'} gap={'4'}>
+          <MemberScrollData
+            flex={['0 0 auto', '1 0 0']}
+            h={['auto', '100%']}
+            minH={0}
+            overflowY={['visible', 'auto']}
+            isLoading={isLoading}
+          >
+            {/* 禁用 flex 压缩：否则容器会被压到可用高度并用 overflow-y:hidden 裁掉剩余行，父级无法滚动 */}
+            <TableContainer flexShrink={0}>
               <Table>
                 <Thead>
                   <Tr bg={'white !important'}>
