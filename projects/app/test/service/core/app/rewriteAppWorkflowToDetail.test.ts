@@ -128,8 +128,7 @@ describe('rewriteAppWorkflowToDetail - current workflow tool inputs', () => {
     });
     expect(getClientToolPreviewNodeMock).not.toHaveBeenCalled();
     expect(tool.pluginData).toMatchObject({
-      error: AppErrEnum.unAuthApp,
-      permissionDenied: true
+      error: 'resource_no_permission'
     });
   });
 
@@ -728,17 +727,14 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         skillId: String(activeSkill._id),
         name: 'Current Skill Name',
         description: 'Current skill description',
-        avatar: 'current-avatar',
-        isDeleted: false,
-        permissionDenied: false
+        avatar: 'current-avatar'
       },
       {
         skillId: String(deletedSkill._id),
         name: 'Deleted Snapshot',
         description: 'Deleted snapshot description',
         avatar: undefined,
-        isDeleted: true,
-        permissionDenied: false
+        error: 'resource_missing'
       }
     ]);
   });
@@ -1532,9 +1528,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: expect.objectContaining({
           modelId: embeddingModel.modelId,
           model: ''
-        }),
-        isDeleted: false,
-        permissionDenied: false
+        })
       }
     ]);
   });
@@ -1582,9 +1576,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: expect.objectContaining({
           modelId: embeddingModel.modelId,
           model: ''
-        }),
-        isDeleted: false,
-        permissionDenied: false
+        })
       }
     ]);
   });
@@ -1647,7 +1639,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: {
           model: 'text-embedding-3-small'
         },
-        isDeleted: true
+        error: 'resource_missing'
       }
     ]);
   });
@@ -1700,7 +1692,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         vectorModel: {
           model: 'text-embedding-3-small'
         },
-        isDeleted: true
+        error: 'resource_missing'
       }
     ]);
   });

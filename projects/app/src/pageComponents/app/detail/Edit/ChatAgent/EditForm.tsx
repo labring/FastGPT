@@ -16,6 +16,7 @@ import React, { useCallback, useMemo } from 'react';
 
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import SkillCard from '@/components/core/app/SkillCard';
 import { useWelcomeTextFoldState } from '@/components/core/app/useAppEditorUIState';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
@@ -381,90 +382,9 @@ const EditForm = ({
             gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
             gridGap={[2, 4]}
           >
-            {selectedAgentSkills.map((item) => {
-              const isDeleted = !!item.isDeleted;
-              const permissionDenied = !!item.permissionDenied;
-              const isUnavailable = isDeleted || permissionDenied;
-
-              return (
-                <MyTooltip
-                  key={item.skillId}
-                  label={
-                    permissionDenied
-                      ? t('common:core.workflow.check.resource_no_permission')
-                      : isDeleted
-                        ? t('skill:skill_deleted_click_remove_tip')
-                        : item.description
-                  }
-                >
-                  <Flex
-                    overflow={'hidden'}
-                    alignItems={'center'}
-                    p={2.5}
-                    bg={'white'}
-                    boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                    borderRadius={'md'}
-                    border={'base'}
-                    borderColor={isUnavailable ? 'red.600' : undefined}
-                    userSelect={'none'}
-                    _hover={{
-                      borderColor: isUnavailable ? 'red.600' : 'primary.300',
-                      '.delete': {
-                        display: 'flex'
-                      },
-                      '.hoverStyle': {
-                        display: 'flex'
-                      },
-                      '.unHoverStyle': {
-                        display: 'none'
-                      }
-                    }}
-                  >
-                    {item.avatar ? (
-                      <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
-                    ) : (
-                      <MyIcon name={'core/skill/default'} w={'1.5rem'} h={'1.5rem'} />
-                    )}
-                    <Box
-                      flex={'1 0 0'}
-                      ml={2}
-                      className={'textEllipsis'}
-                      fontSize={'sm'}
-                      color={'myGray.900'}
-                    >
-                      {item.name}
-                    </Box>
-                    {permissionDenied && (
-                      <MyTag colorSchema="red" type="fill" className="unHoverStyle">
-                        <MyIcon name={'common/error'} w={'14px'} mr={1} />
-                        <Box color={'red.600'} maxW={'150px'} className="textEllipsis">
-                          {t('common:core.workflow.check.resource_no_permission')}
-                        </Box>
-                      </MyTag>
-                    )}
-                    {!permissionDenied && isDeleted && (
-                      <MyTag colorSchema="red" type="fill" className="unHoverStyle">
-                        <MyIcon name={'common/error'} w={'14px'} mr={1} />
-                        <Box color={'red.600'} maxW={'120px'} className="textEllipsis">
-                          {t('skill:skill_deleted')}
-                        </Box>
-                      </MyTag>
-                    )}
-                    <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
-                      <MyIconButton
-                        icon="delete"
-                        hoverBg="red.50"
-                        hoverColor="red.600"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRemoveAgentSkill(item.skillId);
-                        }}
-                      />
-                    </Box>
-                  </Flex>
-                </MyTooltip>
-              );
-            })}
+            {selectedAgentSkills.map((item) => (
+              <SkillCard key={item.skillId} skill={item} onDelete={onRemoveAgentSkill} />
+            ))}
           </Grid>
 
           {isOpenSkillSelect && (
@@ -728,8 +648,7 @@ const EditForm = ({
             name: item.name,
             avatar: item.avatar,
             vectorModel: item.vectorModel,
-            isDeleted: item.isDeleted,
-            permissionDenied: item.permissionDenied
+            error: item.error
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {

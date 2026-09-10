@@ -30,6 +30,8 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 
 const mocks = vi.hoisted(() => ({
   getClientToolPreviewNode: vi.fn()
@@ -565,16 +567,19 @@ describe('checkAppResourceReadPermissions', () => {
     const owner = await getUser(`model-resource-owner-${getNanoid(6)}`);
     const member = await getUser(`model-resource-member-${getNanoid(6)}`, owner.teamId);
     const modelId = String(new Types.ObjectId());
+    const previousHandle = getCachedModelHandle()!;
+    const previousModels = previousHandle.getAllModels();
+    const previousDefaults = getModelTestDefaults();
     const model = {
-      ...global.systemDefaultModel.llm!,
+      ...previousDefaults.llm!,
       modelId,
       model: `model-${modelId}`,
       isActive: true
     };
-    const previousModels = global.systemActiveModelList;
-    const previousModelMap = global.systemModelMap;
-    global.systemActiveModelList = [...previousModels, model];
-    global.systemModelMap = new Map(previousModelMap).set(`id:${modelId}`, model);
+    setModelTestSnapshot({
+      models: [...previousModels, model],
+      revision: previousHandle.revision + 1
+    });
 
     try {
       await MongoResourcePermission.create({
@@ -598,8 +603,11 @@ describe('checkAppResourceReadPermissions', () => {
         })
       ).resolves.toBeUndefined();
     } finally {
-      global.systemActiveModelList = previousModels;
-      global.systemModelMap = previousModelMap;
+      setModelTestSnapshot({
+        models: previousModels,
+        defaultModels: previousDefaults,
+        revision: previousHandle.revision
+      });
     }
   });
 });

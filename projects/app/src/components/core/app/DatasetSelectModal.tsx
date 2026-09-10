@@ -57,9 +57,9 @@ export const DatasetSelectModal = ({
   // Current selected datasets, initialized with defaultSelectedDatasets
   const [selectedDatasets, setSelectedDatasets] =
     useState<SelectedDatasetType[]>(defaultSelectedDatasets);
-  // 已删除知识库只在弹窗确认时被写回移除；关闭弹窗不影响外部配置。
+  // 异常/删除知识库只在弹窗确认时被写回移除；关闭弹窗不影响外部配置。
   const availableSelectedDatasets = useMemo(
-    () => selectedDatasets.filter((dataset) => !dataset.isDeleted),
+    () => selectedDatasets.filter((dataset) => !dataset.error),
     [selectedDatasets]
   );
   const hasDeletedSelectedDatasets = availableSelectedDatasets.length !== selectedDatasets.length;
@@ -160,8 +160,7 @@ export const DatasetSelectModal = ({
           datasetId: item._id,
           avatar: item.avatar,
           name: item.name,
-          vectorModel: item.vectorModel,
-          isDeleted: false
+          vectorModel: item.vectorModel
         }
       ]);
     } else {
@@ -416,8 +415,7 @@ export const DatasetSelectModal = ({
                               datasetId: item._id,
                               avatar: item.avatar,
                               name: item.name,
-                              vectorModel: item.vectorModel,
-                              isDeleted: false
+                              vectorModel: item.vectorModel
                             }));
                             setSelectedDatasets((prev) => [...prev, ...newSelections]);
                           } else {

@@ -335,3 +335,62 @@ type AppResource =
 - [x] 2. 改造 `projects/app/src/pageComponents/app/detail/Edit/FormComponent/Header.tsx`：在 `checkData` 中接入表单级资源检查，并在 `checkResults.hasError` 时优先展示具体 `issue.message`。
 - [x] 3. 编写单测 `projects/app/test/pageComponents/app/detail/Edit/FormComponent/checkAppForm.test.ts`，验证各类异常场景与正常场景。
 - [x] 4. 运行单测验证修改结果。
+
+---
+
+## 15. 资源可用性状态模型统一重构（收敛为统一的 `error`）
+
+### 15.1 动机与设计原则
+在应用工作流与表单视图中，引用的外部资源（Tool、Skill、Dataset）在编辑态存在多种可用性异常（无权限、已删除、加载失败、已下线）。
+历史代码中分别采用了多套互不连贯的字段：
+- **Tool**：使用 `pluginData.error: string`，并叠加了本次新增的 `permissionDenied: boolean`；
+- **Skill**：使用 `isDeleted: boolean`，并叠加了 `permissionDenied: boolean`；
+- **Dataset**：使用 `isDeleted: boolean`，并叠加了 `permissionDenied: boolean`。
+
+这导致了：
+1. **字段多义性与互斥 Bug**：同一个对象同时存在多个独立的布尔与错误码字段，在 UI 渲染层容易漏掉互斥判断，导致同一个卡片同时渲染多个互相挤压的错误 Tag；
+2. **逻辑冗余分裂**：前端组件与校验器必须不断编写 `isDeleted || permissionDenied || error` 的多分支判断。
+
+由于知识库与技能在持久化（保存至 MongoDB）时仅保留 `{ datasetId }` 和 `{ skillId }`，`isDeleted` 与 `permissionDenied` **纯属服务端读取详情（`rewriteAppWorkflowToDetail`）时附加的只读视图状态（View State）**，因此不需要数据库迁移与字段兼容包袱，直接进行彻底的干净重构。
+
+### 15.2 统一状态模型
+全面废除 `isDeleted` 与 `permissionDenied` 字段，统一收敛为单一事实来源：`error?: string`。
+
+统一的错误码规范（与 `workflowCheck` 统一）：
+- `resource_no_permission`：资源存在，但不在当前快照且当前查看者无权限（展示文案：“无权限访问该资源，请检查权限”）；
+- `resource_missing`：引用的资源已删除或不存在（展示文案：“引用的知识库或技能已删除或不可用，请删除”）；
+- `tool_offline`：引用工具已下线（展示文案：“引用工具已下线，请删除”）；
+- `tool_load_failed`：工具加载或解析失败（展示文案：“工具加载失败，请稍后重试”）；
+- `undefined`：资源正常可用。
+
+### 15.3 涉及范围
+1. **类型定义（Global Types）**：
+   - `SelectedDatasetSchema`：移除 `isDeleted`、`permissionDenied`，增加 `error: z.string().optional()`；
+   - `SelectedAgentSkillItemTypeSchema`：移除 `isDeleted`、`permissionDenied`，增加 `error: z.string().optional()`；
+   - `SelectedToolItemType` / `FlowNodeItemType`：`pluginData` 中移除 `permissionDenied`，统一使用标准错误码；
+   - `FlowNodeInputItemType`：移除 `permissionDenied`。
+2. **服务端数据装配（Service Core）**：
+   - `packages/service/core/app/utils.ts`：
+     - `loadToolNode`：快照外无权限时直接返回 `{ success: false, error: 'resource_no_permission' }`，移除 `permissionDenied`；
+     - `loadAgentSkill`：快照外无权限返回 `error: 'resource_no_permission'`，已删除/不存在返回 `error: 'resource_missing'`，移除 `isDeleted` 和 `permissionDenied`；
+     - `formatSelectedDatasetValue`：快照外无权限返回 `error: 'resource_no_permission'`，已删除/不存在返回 `error: 'resource_missing'`，移除 `isDeleted` 和 `permissionDenied`。
+3. **前端 UI 组件（Web Components）**：
+   - `DatasetCard.tsx`：仅依赖 `dataset.error` 判断 `isUnavailable` 与错误文案渲染；
+   - `ChatAgent/EditForm.tsx` / `NodeAgent/index.tsx`：技能卡片仅依赖 `skill.error` 渲染单个错误 Tag；
+   - `ToolSelect.tsx`：工具卡片仅依赖 `tool.pluginData?.error`（或下线状态）渲染单个错误 Tag，不再存在双标签 Bug；
+   - `DatasetSelectModal.tsx` / `SkillSelectModal.tsx`：通过 `!item.error` 过滤有效项。
+4. **校验层（Workflow & Form Check）**：
+   - `workflowCheck.ts`：统一通过 `item.error === 'resource_no_permission'` 和 `item.error === 'resource_missing'` 报告 issue；
+   - `checkAppForm.ts`：统一通过 `tool.pluginData?.error`、`skill.error`、`dataset.error` 进行表单级发布前阻断与文案提取。
+5. **单元测试回归（Tests）**：
+   - 更新 `rewriteAppWorkflowToDetail.test.ts`、`checkAppForm.test.ts`、`workflow/utils.test.ts`、`controller.test.ts` 等单测断言。
+
+---
+
+## 16. 资源错误状态收敛重构 TODO
+
+- [x] 1. 调整 `@fastgpt/global` 中的 Schema 与类型定义（`SelectedDatasetSchema`、`SelectedAgentSkillItemTypeSchema` 等），去除 `isDeleted` 和 `permissionDenied`，统一使用 `error?: string`。
+- [x] 2. 改造 `packages/service/core/app/utils.ts` 中的 `loadToolNode`、`loadAgentSkill`、`formatSelectedDatasetValue`，统一输出标准错误代码（`resource_no_permission` / `resource_missing` / `tool_load_failed` 等）。
+- [x] 3. 改造前端 UI 组件（`DatasetCard.tsx`、`EditForm.tsx`、`NodeAgent`、`ToolSelect.tsx`、选择弹窗等），全面使用 `error` 替代 `isDeleted` 与 `permissionDenied`。
+- [x] 4. 改造校验逻辑（`workflowCheck.ts` 与 `checkAppForm.ts`），统一按 `error` 提取问题与提示。
+- [x] 5. 调整受影响的单元测试并执行局部测试验证。

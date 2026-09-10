@@ -18,7 +18,6 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { extractAppResources } from '@fastgpt/service/core/app/resources';
 import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
 import { formatModels } from '@fastgpt/global/core/workflow/utils';
-import { getMemberModelIds } from '@fastgpt/service/support/permission/model/controller';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import {
   PublishAppBodySchema,
@@ -46,17 +45,10 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
 
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
   const modelHandle = await getModelHandle();
-  const models = await (async () => {
-    if (!isPublish) return modelHandle.getActiveModels();
-    // 与客户端 catalog 使用相同身份和权限规则，不能用应用所有者替代当前发布者。
-    const identity = await authModelViewer({ req });
-    const permittedIds = new Set(await getMemberModelIds(identity));
-    return modelHandle.getActiveModels().filter((model) => permittedIds.has(model.modelId));
-  })();
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
-    models,
+    models: modelHandle.getActiveModels(),
     defaultModelIds: modelHandle.getSystemDefaultModelIds(),
     modelReferencePolicy: isPublish ? 'validate' : 'preserve'
   });
@@ -66,7 +58,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
   const extracted = extractAppResources({
     nodes: normalizedWorkflow.nodes,
-    chatConfig: normalizedWorkflow.chatConfig
+    chatConfig: normalizedWorkflow.chatConfig,
+    models: modelHandle.getAllModels()
   });
   if (autoSave) {
     await mongoSessionRun(async (session) => {

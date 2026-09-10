@@ -2,7 +2,6 @@ import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
 
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -138,8 +137,7 @@ export async function rewriteAppWorkflowToDetail({
     if (await authSnapshotExternalTool({ id, resourceType })) {
       return {
         success: false,
-        error: AppErrEnum.unAuthApp,
-        permissionDenied: true
+        error: 'resource_no_permission'
       };
     }
 
@@ -154,14 +152,12 @@ export async function rewriteAppWorkflowToDetail({
 
       return {
         success: true,
-        data: preview,
-        permissionDenied: false
+        data: preview
       };
     } catch (error) {
       return {
         success: false,
-        error: getErrText(error, '', lang),
-        permissionDenied: false
+        error: getErrText(error, '', lang)
       };
     }
   };
@@ -198,19 +194,16 @@ export async function rewriteAppWorkflowToDetail({
         skillId: String(skill._id),
         name: skill.name,
         description: skill.description,
-        avatar: skill.avatar,
-        isDeleted: false,
-        permissionDenied: false
+        avatar: skill.avatar
       };
     } catch (error) {
-      const permissionDenied = error === SkillErrEnum.unAuthSkill;
+      const isNoPermission = error === SkillErrEnum.unAuthSkill;
       return {
         skillId: selectedSkill.skillId,
         name: selectedSkill.name ?? 'Invalid',
         description: selectedSkill.description ?? '',
         avatar: selectedSkill.avatar,
-        isDeleted: !permissionDenied,
-        permissionDenied
+        error: isNoPermission ? 'resource_no_permission' : 'resource_missing'
       };
     }
   };
@@ -259,7 +252,7 @@ export async function rewriteAppWorkflowToDetail({
       const datasetId = String(snapshot.datasetId);
       const resourceInSnapshot = hasSnapshotResource('dataset', datasetId);
       let dataset;
-      let permissionDenied = false;
+      let isNoPermission = false;
 
       try {
         dataset =
@@ -277,7 +270,7 @@ export async function rewriteAppWorkflowToDetail({
                 ...(!isRoot && teamId && { teamId })
               }).lean();
       } catch (error) {
-        permissionDenied = error === DatasetErrEnum.unAuthDataset;
+        isNoPermission = error === DatasetErrEnum.unAuthDataset;
       }
       if (dataset && !dataset.deleteTime) {
         const modelReference = getDatasetModelReference(dataset, 'embedding');
@@ -290,9 +283,7 @@ export async function rewriteAppWorkflowToDetail({
           vectorModel: {
             modelId: modelReference.modelId ?? undefined,
             model: modelReference.model ?? ''
-          },
-          isDeleted: false,
-          permissionDenied
+          }
         };
       }
 
@@ -302,8 +293,7 @@ export async function rewriteAppWorkflowToDetail({
         avatar: defaultDeletedDatasetAvatar,
         name: snapshot.name || '',
         vectorModel: snapshot.vectorModel || { model: '' },
-        isDeleted: !permissionDenied,
-        ...(permissionDenied ? { permissionDenied: true } : {})
+        error: isNoPermission ? 'resource_no_permission' : 'resource_missing'
       };
     };
 
@@ -359,8 +349,7 @@ export async function rewriteAppWorkflowToDetail({
             diagram: preview.diagram,
             userGuide: preview.userGuide,
             courseUrl: preview.courseUrl,
-            readmeUrl: preview.readmeUrl,
-            ...(result.permissionDenied ? { permissionDenied: true } : {})
+            readmeUrl: preview.readmeUrl
           };
           node.versionLabel = preview.versionLabel;
           node.isLatestVersion = preview.isLatestVersion;
@@ -406,8 +395,7 @@ export async function rewriteAppWorkflowToDetail({
           }
         } else {
           node.pluginData = {
-            error: result.error,
-            ...(result.permissionDenied ? { permissionDenied: true } : {})
+            error: result.error
           };
         }
       }
@@ -484,9 +472,6 @@ export async function rewriteAppWorkflowToDetail({
                     (tool.toolConfig?.httpToolSet && 'toolId' in tool.toolConfig.httpToolSet)
                       ? data.toolConfig
                       : (tool.toolConfig ?? data.toolConfig),
-                  ...(result.permissionDenied
-                    ? { pluginData: { ...data.pluginData, permissionDenied: true } }
-                    : {}),
                   inputs: mergedInputs
                 };
               } else {
@@ -509,8 +494,7 @@ export async function rewriteAppWorkflowToDetail({
                   outputs: [],
                   configStatus: 'invalid' as const,
                   pluginData: {
-                    error: result.error,
-                    ...(result.permissionDenied ? { permissionDenied: true } : {})
+                    error: result.error
                   }
                 };
               }

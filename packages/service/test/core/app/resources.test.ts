@@ -12,6 +12,7 @@ import {
   resolveStoredAppResources,
   splitExtractedAppResources
 } from '@fastgpt/service/core/app/resources';
+import { getModelTestDefaults } from '@test/modelCache';
 
 const createInput = (key: string, value: unknown, reference = false) => ({
   key,
@@ -144,6 +145,21 @@ describe('extractAppResources', () => {
     });
 
     expect(resources).toEqual([]);
+  });
+
+  it('projects a legacy model name through an explicitly supplied catalog', () => {
+    const llm = getModelTestDefaults().llm!;
+    const resources = extractAppResources({
+      nodes: [
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [createInput(NodeInputKeyEnum.aiModelId, llm.model)]
+        })
+      ],
+      models: [llm]
+    });
+
+    expect(resources).toEqual([{ type: 'model', id: llm.modelId }]);
   });
 
   it('records selected workflow apps as tool resources', () => {

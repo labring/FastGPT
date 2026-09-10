@@ -279,14 +279,16 @@ const PLUGIN_DATA_MISSING_ERROR_CODES = new Set<string>([
 /** pluginData.error 可能是 statusText 或 getErrText 翻译后的 message，需两种都识别。 */
 const resolvePluginDataErrorIssueCode = (error: string): WorkflowCheckMessageCode => {
   if (
+    error === 'resource_no_permission' ||
     PLUGIN_DATA_PERMISSION_ERROR_CODES.has(error) ||
     error === ERROR_RESPONSE[AppErrEnum.unAuthApp]?.message ||
     error === ERROR_RESPONSE[PluginErrEnum.unAuth]?.message
   ) {
-    return 'tool_no_permission';
+    return 'resource_no_permission';
   }
 
   if (
+    error === 'resource_missing' ||
     PLUGIN_DATA_MISSING_ERROR_CODES.has(error) ||
     error === ERROR_RESPONSE[AppErrEnum.unExist]?.message ||
     error === ERROR_RESPONSE[PluginErrEnum.unExist]?.message ||
@@ -651,22 +653,16 @@ export const checkWorkflowNodeIssues = ({
       });
     }
 
-    // 详情接口只会为当前操作者确认过的快照外资源设置 permissionDenied；
-    // 快照内历史资源不会重新鉴权，因此不会因协作者当前权限变化而误阻断。
-    if (data.pluginData?.permissionDenied) {
-      addIssue({
-        node,
-        code: 'resource_no_permission',
-        message: getWorkflowCheckIssueMessage('resource_no_permission', t)
-      });
-    }
-
     // ACL 由保存/发布服务端按资源快照做差量校验；前端同步展示服务端返回的资源级标记，
     // 并提示已删除或不可用的实体。
     const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
     const addResourceIssues = (value: unknown, inputKey: string) => {
       if (!Array.isArray(value)) return;
-      if (value.some((item) => item && (item as { permissionDenied?: boolean }).permissionDenied)) {
+      if (
+        value.some(
+          (item) => item && (item as { error?: string }).error === 'resource_no_permission'
+        )
+      ) {
         addIssue({
           node,
           code: 'resource_no_permission',
@@ -674,7 +670,14 @@ export const checkWorkflowNodeIssues = ({
           inputKey
         });
       }
-      if (value.some((item) => item && (item as { isDeleted?: boolean }).isDeleted)) {
+      if (
+        value.some(
+          (item) =>
+            item &&
+            (item as { error?: string }).error &&
+            (item as { error?: string }).error !== 'resource_no_permission'
+        )
+      ) {
         addIssue({
           node,
           code: 'resource_missing',

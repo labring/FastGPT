@@ -53,9 +53,7 @@ describe('checkAppFormResourceIssues', () => {
       {
         skillId: 'skill-1',
         name: 'Skill 1',
-        description: '',
-        isDeleted: false,
-        permissionDenied: false
+        description: ''
       }
     ];
     appForm.dataset.datasets = [
@@ -63,9 +61,7 @@ describe('checkAppFormResourceIssues', () => {
         datasetId: 'dataset-1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { model: 'text-embedding-3-small' },
-        isDeleted: false,
-        permissionDenied: false
+        vectorModel: { model: 'text-embedding-3-small' }
       }
     ];
 
@@ -74,11 +70,11 @@ describe('checkAppFormResourceIssues', () => {
   });
 
   describe('tool checks', () => {
-    it('should return resource_no_permission when tool has permissionDenied', () => {
+    it('should return resource_no_permission when tool has resource_no_permission error', () => {
       const appForm = getDefaultAppForm();
       appForm.selectedTools = [
         createMockTool({
-          pluginData: { permissionDenied: true }
+          pluginData: { error: 'resource_no_permission' }
         })
       ];
 
@@ -86,7 +82,7 @@ describe('checkAppFormResourceIssues', () => {
       expect(result).toBe('无权限访问该资源，请检查权限');
     });
 
-    it('should return tool_no_permission when tool has permission error code', () => {
+    it('should return resource_no_permission when tool has permission error code unAuthApp', () => {
       const appForm = getDefaultAppForm();
       appForm.selectedTools = [
         createMockTool({
@@ -95,7 +91,7 @@ describe('checkAppFormResourceIssues', () => {
       ];
 
       const result = checkAppFormResourceIssues({ appForm, t: mockT });
-      expect(result).toBe('当前账号无权限访问该资源');
+      expect(result).toBe('无权限访问该资源，请检查权限');
     });
 
     it('should return tool_missing when tool has unExist error', () => {
@@ -136,15 +132,14 @@ describe('checkAppFormResourceIssues', () => {
   });
 
   describe('skill checks', () => {
-    it('should return resource_no_permission when skill has permissionDenied', () => {
+    it('should return resource_no_permission when skill has error resource_no_permission', () => {
       const appForm = getDefaultAppForm();
       appForm.selectedAgentSkills = [
         {
           skillId: 'skill-1',
           name: 'Skill 1',
           description: '',
-          isDeleted: false,
-          permissionDenied: true
+          error: 'resource_no_permission'
         }
       ];
 
@@ -152,15 +147,14 @@ describe('checkAppFormResourceIssues', () => {
       expect(result).toBe('无权限访问该资源，请检查权限');
     });
 
-    it('should return resource_missing when skill isDeleted', () => {
+    it('should return resource_missing when skill has error resource_missing', () => {
       const appForm = getDefaultAppForm();
       appForm.selectedAgentSkills = [
         {
           skillId: 'skill-1',
           name: 'Skill 1',
           description: '',
-          isDeleted: true,
-          permissionDenied: false
+          error: 'resource_missing'
         }
       ];
 
@@ -170,7 +164,7 @@ describe('checkAppFormResourceIssues', () => {
   });
 
   describe('dataset checks', () => {
-    it('should return resource_no_permission when dataset has permissionDenied', () => {
+    it('should return resource_no_permission when dataset has error resource_no_permission', () => {
       const appForm = getDefaultAppForm();
       appForm.dataset.datasets = [
         {
@@ -178,8 +172,7 @@ describe('checkAppFormResourceIssues', () => {
           name: 'Dataset 1',
           avatar: '',
           vectorModel: { model: 'text-embedding-3-small' },
-          isDeleted: false,
-          permissionDenied: true
+          error: 'resource_no_permission'
         }
       ];
 
@@ -187,7 +180,7 @@ describe('checkAppFormResourceIssues', () => {
       expect(result).toBe('无权限访问该资源，请检查权限');
     });
 
-    it('should return resource_missing when dataset isDeleted', () => {
+    it('should return resource_missing when dataset has error resource_missing', () => {
       const appForm = getDefaultAppForm();
       appForm.dataset.datasets = [
         {
@@ -195,8 +188,7 @@ describe('checkAppFormResourceIssues', () => {
           name: 'Dataset 1',
           avatar: '',
           vectorModel: { model: 'text-embedding-3-small' },
-          isDeleted: true,
-          permissionDenied: false
+          error: 'resource_missing'
         }
       ];
 
@@ -252,7 +244,7 @@ describe('checkAppFormResourceIssues', () => {
       const appForm = getDefaultAppForm();
       appForm.selectedTools = [
         createMockTool({
-          pluginData: { permissionDenied: true }
+          pluginData: { error: 'resource_no_permission' }
         })
       ];
 

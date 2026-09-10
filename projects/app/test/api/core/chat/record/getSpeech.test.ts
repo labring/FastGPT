@@ -4,7 +4,7 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 const mocks = vi.hoisted(() => ({
   authChatTargetCrud: vi.fn(),
-  getAppLatestVersion: vi.fn(),
+  authTargetModelResource: vi.fn(),
   getTTSModelData: vi.fn(),
   text2Speech: vi.fn(),
   jsonRes: vi.fn()
@@ -13,11 +13,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/service/support/permission/auth/chat', () => ({
   authChatTargetCrud: mocks.authChatTargetCrud
 }));
-vi.mock('@fastgpt/service/core/app/version/controller', () => ({
-  getAppLatestVersion: mocks.getAppLatestVersion
+vi.mock('@fastgpt/service/support/permission/app/resource', () => ({
+  authTargetModelResource: mocks.authTargetModelResource
 }));
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getTTSModelData: mocks.getTTSModelData
+  getModelHandle: async () => ({ getTTSModelData: mocks.getTTSModelData })
 }));
 vi.mock('@fastgpt/service/core/ai/audio/speech', () => ({ text2Speech: mocks.text2Speech }));
 vi.mock('@fastgpt/service/common/response', () => ({ jsonRes: mocks.jsonRes }));
@@ -35,7 +35,7 @@ describe('getSpeech model resource permission', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: '65f000000000000000000071'
     });
-    mocks.getAppLatestVersion.mockResolvedValue({ resources: [] });
+    mocks.authTargetModelResource.mockRejectedValue(ERROR_ENUM.unAuthModel);
     mocks.getTTSModelData.mockReturnValue({
       modelId: 'model-id',
       config: { voices: [{ label: 'Voice', value: 'voice-id' }] }

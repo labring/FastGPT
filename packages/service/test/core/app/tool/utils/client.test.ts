@@ -343,19 +343,37 @@ describe('getClientToolPreviewNode', () => {
       };
       const original = structuredClone(app);
       mocks.findById.mockReturnValueOnce({ lean: async () => app });
-      mocks.find.mockReturnValueOnce({
-        lean: async () => [
+      mocks.getAppVersionById.mockResolvedValueOnce({
+        nodes: [
           {
-            name: tool.name,
-            modules: [
-              {
-                inputs: [
-                  { value: { ...tool, url: 'https://example.com/mcp', headerSecret: headers } }
-                ]
+            flowNodeType: 'toolSet',
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://example.com/mcp',
+                headerSecret: headers,
+                toolList: [tool]
               }
-            ]
+            },
+            inputs: [
+              {
+                key: 'options',
+                label: 'Options',
+                renderTypeList: ['input'],
+                value: businessValue
+              },
+              {
+                key: NodeInputKeyEnum.toolSetData,
+                label: 'User field',
+                renderTypeList: ['input'],
+                value: 'ordinary-value'
+              }
+            ],
+            outputs: []
           }
-        ]
+        ],
+        edges: [],
+        chatConfig: {},
+        resources: []
       });
       const preview = await getClientToolPreviewNode({ appId, versionId: '' });
       expect(preview.toolConfig).toEqual({
@@ -413,26 +431,30 @@ describe('getClientToolPreviewNode', () => {
         modules: [{ flowNodeType: 'toolSet', inputs: [] }]
       })
     });
-    mocks.find.mockReturnValueOnce({
-      lean: vi.fn().mockResolvedValue([
+    mocks.getAppVersionById.mockResolvedValueOnce({
+      nodes: [
         {
-          name: 'search',
-          modules: [
-            {
-              inputs: [
+          flowNodeType: 'toolSet',
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            mcpToolSet: {
+              url: 'https://mcp.example.com',
+              headerSecret: {},
+              toolList: [
                 {
-                  value: {
-                    name: 'search',
-                    description: 'Search tool',
-                    inputSchema: { type: 'object' },
-                    url: 'https://mcp.example.com'
-                  }
+                  name: 'search',
+                  description: 'Search tool',
+                  inputSchema: { type: 'object' }
                 }
               ]
             }
-          ]
+          }
         }
-      ])
+      ],
+      edges: [],
+      chatConfig: {},
+      resources: []
     });
 
     const result = await getClientToolPreviewNode({ appId, lang: 'en' });

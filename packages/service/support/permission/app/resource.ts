@@ -19,6 +19,7 @@ import { authSkillByTmbId } from '../skill/auth';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getMemberModelIds } from '../model/controller';
 import { authAppByTmbId } from './auth';
+import { getModelHandle } from '../../../core/ai/model';
 
 type UnauthorizedAppResource = {
   resource: AppResource;
@@ -44,6 +45,14 @@ export const getUnauthorizedAppResources = async ({
 }) => {
   const normalizedResources = mergeAppResources(resources);
   const modelResources = normalizedResources.filter((resource) => resource.type === 'model');
+  const modelCatalog = await (async () => {
+    if (modelResources.length === 0) return;
+    const handle = await getModelHandle();
+    return {
+      snapshot: { models: handle.getAllModels(), revision: handle.revision },
+      activeModelIds: new Set(handle.getActiveModels().map((model) => model.modelId))
+    };
+  })();
   const permittedModelIds = await (async () => {
     if (modelResources.length === 0) return new Set<string>();
 
@@ -51,7 +60,8 @@ export const getUnauthorizedAppResources = async ({
     const modelIds = await getMemberModelIds({
       teamId,
       tmbId,
-      isTeamOwner: permission.isOwner || (isRoot && allowRootCrossTeam)
+      isTeamOwner: permission.isOwner || (isRoot && allowRootCrossTeam),
+      catalogSnapshot: modelCatalog?.snapshot
     });
     return new Set(modelIds);
   })();
@@ -88,8 +98,7 @@ export const getUnauthorizedAppResources = async ({
           return;
         }
 
-        const model = global.systemModelMap?.get(`id:${resource.id}`);
-        if (!model?.isActive) {
+        if (!modelCatalog?.activeModelIds.has(resource.id)) {
           return { resource, error: ModelErrEnum.unExist };
         }
         if (!permittedModelIds.has(resource.id)) {

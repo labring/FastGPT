@@ -87,24 +87,20 @@ export const checkAppFormResourceIssues = ({
   // 1. 检查选中的工具（Agent & AgentV2 均使用）
   for (const tool of appForm.selectedTools || []) {
     const isOffline = (tool.status ?? tool.pluginData?.status) === PluginStatusEnum.Offline;
-    const permissionDenied = !!tool.pluginData?.permissionDenied;
     const error = tool.pluginData?.error;
-
-    // 优先检查无权限（对应卡片上的 resource_no_permission 标签）
-    if (permissionDenied) {
-      return getWorkflowCheckIssueMessage('resource_no_permission', t);
-    }
 
     if (error) {
       if (
+        error === 'resource_no_permission' ||
         PLUGIN_DATA_PERMISSION_ERROR_CODES.has(error) ||
         error === ERROR_RESPONSE[AppErrEnum.unAuthApp]?.message ||
         error === ERROR_RESPONSE[PluginErrEnum.unAuth]?.message
       ) {
-        return getWorkflowCheckIssueMessage('tool_no_permission', t);
+        return getWorkflowCheckIssueMessage('resource_no_permission', t);
       }
 
       if (
+        error === 'resource_missing' ||
         PLUGIN_DATA_MISSING_ERROR_CODES.has(error) ||
         error === ERROR_RESPONSE[AppErrEnum.unExist]?.message ||
         error === ERROR_RESPONSE[PluginErrEnum.unExist]?.message ||
@@ -127,20 +123,20 @@ export const checkAppFormResourceIssues = ({
 
   // 2. 检查选中的技能（AgentV2 专有）
   for (const skill of appForm.selectedAgentSkills || []) {
-    if (skill.permissionDenied) {
+    if (skill.error === 'resource_no_permission') {
       return getWorkflowCheckIssueMessage('resource_no_permission', t);
     }
-    if (skill.isDeleted) {
+    if (skill.error) {
       return getWorkflowCheckIssueMessage('resource_missing', t);
     }
   }
 
   // 3. 检查知识库
   for (const dataset of appForm.dataset?.datasets || []) {
-    if (dataset.permissionDenied) {
+    if (dataset.error === 'resource_no_permission') {
       return getWorkflowCheckIssueMessage('resource_no_permission', t);
     }
-    if (dataset.isDeleted) {
+    if (dataset.error) {
       return getWorkflowCheckIssueMessage('resource_missing', t);
     }
   }

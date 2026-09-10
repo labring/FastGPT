@@ -24,6 +24,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { getWorkflowCheckIssueMessage } from '@/web/core/workflow/workflowCheck';
 
 const ToolSelect = ({
   generatedSelectedTools,
@@ -92,11 +93,12 @@ const ToolSelect = ({
           // 即将下架/已下架
           const status = item.pluginData?.status || item.status;
           const isOffline = status === PluginStatusEnum.Offline;
-          const toolError =
-            formatToolError(item.pluginData?.error) ||
-            (isOffline ? 'common:error.tool_not_exist' : undefined);
-          const permissionDenied = !!item.pluginData?.permissionDenied;
-          const hasToolError = !!toolError || permissionDenied;
+          const rawError = item.pluginData?.error || (isOffline ? 'tool_offline' : undefined);
+          const toolError = rawError
+            ? getWorkflowCheckIssueMessage(rawError, t) ||
+              (formatToolError(rawError) ? t(formatToolError(rawError) as any) : rawError)
+            : undefined;
+          const hasToolError = !!toolError;
 
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
@@ -104,11 +106,7 @@ const ToolSelect = ({
           return (
             <MyTooltip
               key={getToolIdentityKey(item.pluginId || item.id, item.source)}
-              label={
-                permissionDenied
-                  ? t('common:core.workflow.check.resource_no_permission')
-                  : item.intro
-              }
+              label={toolError || item.intro}
             >
               <Grid
                 overflow={'hidden'}
@@ -155,19 +153,11 @@ const ToolSelect = ({
                       </MyTag>
                     </MyTooltip>
                   )}
-                  {permissionDenied && (
-                    <MyTag colorSchema="red" type="fill" className="unHoverStyle">
-                      <MyIcon name="common/error" w="14px" mr={1} />
-                      <Box color="red.600" maxW="150px" className="textEllipsis">
-                        {t('common:core.workflow.check.resource_no_permission')}
-                      </Box>
-                    </MyTag>
-                  )}
                   {toolError && (
                     <MyTag colorSchema="red" type="fill" className="unHoverStyle">
                       <MyIcon name={'common/error'} w={'14px'} mr={1} />
                       <Box color={'red.600'} maxW={'150px'} className="textEllipsis">
-                        {t(toolError as any)}
+                        {toolError}
                       </Box>
                     </MyTag>
                   )}

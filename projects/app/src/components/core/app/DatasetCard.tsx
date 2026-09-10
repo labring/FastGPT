@@ -38,12 +38,22 @@ const DatasetCard = React.memo(function DatasetCard({
 }: DatasetCardProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const isDeleted = !!dataset.isDeleted;
-  const permissionDenied = !!dataset.permissionDenied;
-  const isUnavailable = isDeleted || permissionDenied;
+  const hasError = !!dataset.error;
+  const isMissing = dataset.error === 'resource_missing';
+  const isUnavailable = hasError;
   const hasPreviewButton = !isUnavailable;
   const hasDeleteButton = !!onDelete;
   const hasController = hasPreviewButton || hasDeleteButton;
+
+  const errorText = (() => {
+    if (dataset.error === 'resource_no_permission') {
+      return t('common:core.workflow.check.resource_no_permission');
+    }
+    if (dataset.error) {
+      return t('common:dataset_deleted');
+    }
+    return '';
+  })();
 
   return (
     <Flex
@@ -64,7 +74,7 @@ const DatasetCard = React.memo(function DatasetCard({
     >
       <Avatar src={dataset.avatar} w={'1.5rem'} borderRadius={'sm'} />
       <MyTooltip
-        label={isDeleted ? t('common:dataset_deleted') : dataset.name}
+        label={isMissing ? t('common:dataset_deleted') : dataset.name}
         showOnlyWhenOverflow
       >
         <Box
@@ -76,19 +86,16 @@ const DatasetCard = React.memo(function DatasetCard({
           fontSize={'sm'}
           color={isUnavailable ? 'red.600' : 'myGray.900'}
         >
-          {isDeleted ? t('common:dataset_deleted') : dataset.name}
+          {isMissing ? t('common:dataset_deleted') : dataset.name}
         </Box>
       </MyTooltip>
 
-      {permissionDenied && (
+      {dataset.error && (
         <MyTag colorSchema="red" type="fill" className="unHoverStyle" flexShrink={0}>
           <MyIcon name="common/error" w="14px" mr={1} />
-          <MyTooltip
-            label={t('common:core.workflow.check.resource_no_permission')}
-            showOnlyWhenOverflow
-          >
+          <MyTooltip label={errorText} showOnlyWhenOverflow>
             <Box color="red.600" maxW="150px" className="textEllipsis">
-              {t('common:core.workflow.check.resource_no_permission')}
+              {errorText}
             </Box>
           </MyTooltip>
         </MyTag>

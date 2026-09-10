@@ -10,6 +10,7 @@ import { splitCombineToolId, splitToolsetToolPluginId } from '@fastgpt/global/co
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
@@ -50,7 +51,11 @@ const getStringValue = (value: unknown) => {
  * 把节点/对话配置里的模型引用收成稳定标识。
  * 新写入只保留 modelId；解析失败时保留现场 ID，提取器只记录不鉴权。
  */
-export const resolveSystemModelId = (value: unknown, modelType?: AppResourceModelType) => {
+export const resolveSystemModelId = (
+  value: unknown,
+  modelType?: AppResourceModelType,
+  models: readonly SystemModelDataType[] = []
+) => {
   const rawValue =
     getStringValue(value) ??
     getStringValue(getObjectValue(value, 'modelId')) ??
@@ -58,13 +63,17 @@ export const resolveSystemModelId = (value: unknown, modelType?: AppResourceMode
   if (!rawValue || /^\{\{.*\}\}$/.test(rawValue)) return;
 
   const resolved =
-    global.systemModelMap?.get(`id:${rawValue}`) ?? global.systemModelMap?.get(`model:${rawValue}`);
+    models.find((model) => model.modelId === rawValue) ??
+    models.find((model) => model.model === rawValue);
   if (resolved && (!modelType || resolved.type === modelType)) return resolved.modelId;
   return rawValue;
 };
 
-const getModelId = (value: unknown, modelType: AppResourceModelType) =>
-  resolveSystemModelId(value, modelType);
+const getModelId = (
+  value: unknown,
+  modelType: AppResourceModelType,
+  models: readonly SystemModelDataType[]
+) => resolveSystemModelId(value, modelType, models);
 
 /** 资源快照统一按 type + id 去重。 */
 export const getAppResourceKey = (resource: AppResource) => `${resource.type}:${resource.id}`;
@@ -210,10 +219,13 @@ export const normalizeAppToolResource = (toolId: unknown) => {
 /** 从工作流节点和对话配置提取稳定、扁平的资源快照。 */
 export const extractAppResources = ({
   nodes = [],
-  chatConfig
+  chatConfig,
+  models = []
 }: {
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
+  /** 调用方持有的同一模型目录快照，仅用于把 legacy 名称投影为稳定 modelId。 */
+  models?: readonly SystemModelDataType[];
 }): AppResourcesType => {
   const resources: AppResource[] = [];
   const addResource = (resource: AppResource) => resources.push(resource);
@@ -252,7 +264,7 @@ export const extractAppResources = ({
 
   const addModels = (value: unknown, modelType: AppResourceModelType) => {
     getValueList(value).forEach((item) => {
-      const id = getModelId(item, modelType);
+      const id = getModelId(item, modelType, models);
       if (id) addResource({ type: 'model', id });
     });
   };
@@ -336,12 +348,14 @@ export const resolveStoredAppResources = ({
   resources,
   nodes,
   chatConfig,
-  resourceRefs
+  resourceRefs,
+  models = []
 }: {
   resources?: unknown;
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
   resourceRefs?: unknown;
+  models?: readonly SystemModelDataType[];
 }): AppResourcesType => {
   if (Array.isArray(resources)) {
     const parsed = AppResourcesSchema.safeParse(resources);
@@ -351,7 +365,8 @@ export const resolveStoredAppResources = ({
 
   const extracted = extractAppResources({
     nodes: nodes ?? [],
-    chatConfig
+    chatConfig,
+    models
   });
   return mergeAppResources([
     ...extracted,
