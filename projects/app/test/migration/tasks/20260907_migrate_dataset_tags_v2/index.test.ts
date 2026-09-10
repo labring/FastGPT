@@ -87,7 +87,11 @@ describe('migrateDatasetTagsV2', () => {
       datasetId: ids.datasetId,
       fromMigration: true
     });
-    expect(carrier).toMatchObject({ tag: 'default_tag', tagType: 'array' });
+    expect(carrier).toMatchObject({
+      tag: 'default_tag',
+      tagType: 'array',
+      options: ['legacy']
+    });
     expect(
       (await MongoDatasetCollection.collection.findOne({ _id: ids.collectionId }))?.tags
     ).toEqual([{ tagId: String(carrier?._id), value: ['legacy'] }]);

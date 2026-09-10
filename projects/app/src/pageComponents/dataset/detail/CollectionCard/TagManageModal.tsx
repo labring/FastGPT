@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Button, Flex, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -13,14 +13,12 @@ import {
   updateDatasetCollectionTag
 } from '@/web/core/dataset/api/collection';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  DatasetCollectionTagTypeEnum,
-  DatasetCollectionTagTypeMap,
-  type DatasetTagType
-} from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SaveActionIcon, TagActionButton, TagTableContainer, TagTableHeader } from './TagCommon';
 
 const TAG_TABLE_COLUMNS = 'minmax(0, 1fr) 180px 100px';
@@ -32,6 +30,18 @@ const OPTION_LIST_MAX_H =
   OPTION_ROW_HEIGHT * OPTION_LIST_MAX_ROWS +
   OPTION_ROW_GAP * (OPTION_LIST_MAX_ROWS - 1) +
   OPTION_LIST_PADDING * 2;
+
+type DraftOptionItem = {
+  id: string;
+  original: string;
+  value: string;
+};
+
+const createDraftItem = (value = '', original = ''): DraftOptionItem => ({
+  id: getNanoid(),
+  original,
+  value
+});
 
 const normalizeTagOptions = (nextOptions: string[]) => [
   ...new Set(nextOptions.map((option) => option.trim()).filter(Boolean))
@@ -50,32 +60,61 @@ const TagOptionManagePopover = ({
   onSave
 }: {
   options: string[];
-  onSave: (options: string[]) => Promise<void>;
+  onSave: (data: {
+    options: string[];
+    renames?: Array<{ from: string; to: string }>;
+  }) => Promise<void>;
 }) => {
   const { t } = useTranslation();
-  const [draftOptions, setDraftOptions] = useState(options);
+  const [draftList, setDraftList] = useState<DraftOptionItem[]>(() =>
+    options.map((opt) => createDraftItem(opt, opt))
+  );
   const savedOptionsRef = useRef(options);
-  const draftOptionsRef = useRef(draftOptions);
+  const draftListRef = useRef(draftList);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    draftOptionsRef.current = draftOptions;
-  }, [draftOptions]);
+    draftListRef.current = draftList;
+  }, [draftList]);
 
   const resetDraft = (nextOptions: string[]) => {
-    setDraftOptions(nextOptions);
+    const list = nextOptions.map((opt) => createDraftItem(opt, opt));
+    setDraftList(list);
     savedOptionsRef.current = nextOptions;
   };
 
-  const persistOptions = async (nextOptions: string[]) => {
-    const normalizedOptions = normalizeTagOptions(nextOptions);
-    if (isSameTagOptions(normalizedOptions, savedOptionsRef.current)) return;
+  const persistOptions = async (currentList: DraftOptionItem[]) => {
+    const currentValues = currentList.map((item) => item.value.trim()).filter(Boolean);
+    const normalizedOptions = normalizeTagOptions(currentValues);
+
+    const renames: Array<{ from: string; to: string }> = [];
+    for (const item of currentList) {
+      const from = item.original.trim();
+      const to = item.value.trim();
+      if (from && to && from !== to) {
+        renames.push({ from, to });
+      }
+    }
+
+    if (isSameTagOptions(normalizedOptions, savedOptionsRef.current) && renames.length === 0) {
+      return;
+    }
 
     try {
-      await onSave(normalizedOptions);
+      await onSave({
+        options: normalizedOptions,
+        renames: renames.length > 0 ? renames : undefined
+      });
       savedOptionsRef.current = normalizedOptions;
+      // 保存成功后更新 original，后续编辑基于最新值做映射
+      setDraftList((prev) =>
+        prev.map((item) => ({
+          ...item,
+          original: item.value.trim()
+        }))
+      );
     } catch {
-      setDraftOptions(savedOptionsRef.current);
+      resetDraft(savedOptionsRef.current);
     }
   };
 
@@ -86,35 +125,35 @@ const TagOptionManagePopover = ({
   };
 
   const handleAddOption = () => {
-    setDraftOptions((prev) => {
-      if (prev.length > 0 && !prev[prev.length - 1]?.trim()) {
+    setDraftList((prev) => {
+      if (prev.length > 0 && !prev[prev.length - 1]?.value.trim()) {
         focusOption(prev.length - 1);
         return prev;
       }
-      const next = [...prev, ''];
+      const next = [...prev, createDraftItem('', '')];
       focusOption(next.length - 1);
       return next;
     });
   };
 
   const handleUpdateOption = (index: number, value: string) => {
-    setDraftOptions((prev) => {
+    setDraftList((prev) => {
       const next = [...prev];
-      next[index] = value;
+      next[index] = { ...next[index], value };
       return next;
     });
   };
 
   const handleRemoveOption = (index: number) => {
-    const next = draftOptionsRef.current.filter((_, i) => i !== index);
-    setDraftOptions(next);
+    const next = draftListRef.current.filter((_, i) => i !== index);
+    setDraftList(next);
     void persistOptions(next);
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    const currentDraft = draftOptionsRef.current;
+    const currentDraft = draftListRef.current;
     void persistOptions(currentDraft);
     if (index === currentDraft.length - 1) {
       handleAddOption();
@@ -139,7 +178,7 @@ const TagOptionManagePopover = ({
       borderColor={'myGray.200'}
       onOpenFunc={() => resetDraft(options)}
       onCloseFunc={() => {
-        void persistOptions(draftOptionsRef.current);
+        void persistOptions(draftListRef.current);
       }}
       Trigger={
         <TagActionButton
@@ -169,7 +208,7 @@ const TagOptionManagePopover = ({
             </Box>
           </Flex>
 
-          {draftOptions.length > 0 && (
+          {draftList.length > 0 && (
             <Flex
               maxH={`${OPTION_LIST_MAX_H}px`}
               overflowY={'auto'}
@@ -177,13 +216,13 @@ const TagOptionManagePopover = ({
               gap={`${OPTION_ROW_GAP}px`}
               p={1}
             >
-              {draftOptions.map((opt, index) => (
-                <Flex key={index} gap={1} alignItems={'center'} w={'full'}>
+              {draftList.map((item, index) => (
+                <Flex key={item.id} gap={1} alignItems={'center'} w={'full'}>
                   <Input
                     ref={(el) => {
                       inputRefs.current[index] = el;
                     }}
-                    value={opt}
+                    value={item.value}
                     flex={1}
                     minW={0}
                     h={`${OPTION_ROW_HEIGHT}px`}
@@ -201,7 +240,7 @@ const TagOptionManagePopover = ({
                     }}
                     onChange={(e) => handleUpdateOption(index, e.target.value)}
                     onBlur={() => {
-                      void persistOptions(draftOptionsRef.current);
+                      void persistOptions(draftListRef.current);
                     }}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                   />
@@ -310,12 +349,21 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   const { runAsync: onSaveTagOptions } = useRequest(
-    ({ tag, options }: { tag: DatasetTagType; options: string[] }) =>
+    ({
+      tag,
+      options,
+      renames
+    }: {
+      tag: DatasetTagType;
+      options: string[];
+      renames?: Array<{ from: string; to: string }>;
+    }) =>
       updateDatasetCollectionTag({
         datasetId: datasetDetail._id,
         tagId: tag._id,
         tag: tag.tag,
-        options
+        options,
+        renames
       }),
     {
       onSuccess: loadAllDatasetTags,
@@ -323,14 +371,28 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
     }
   );
 
-  const tagTypeOptions = [
-    DatasetCollectionTagTypeEnum.array,
-    DatasetCollectionTagTypeEnum.number,
-    DatasetCollectionTagTypeEnum.datetime
-  ].map((tagType) => ({
-    label: t(DatasetCollectionTagTypeMap[tagType].label),
-    value: tagType
-  }));
+  const tagTypeMap = useMemo<Record<DatasetCollectionTagTypeEnum, string>>(
+    () => ({
+      [DatasetCollectionTagTypeEnum.string]: t('dataset:core.dataset.tags.string'),
+      [DatasetCollectionTagTypeEnum.number]: t('dataset:core.dataset.tags.number'),
+      [DatasetCollectionTagTypeEnum.datetime]: t('dataset:core.dataset.tags.date'),
+      [DatasetCollectionTagTypeEnum.array]: t('dataset:core.dataset.tags.array')
+    }),
+    [t]
+  );
+
+  const tagTypeOptions = useMemo(
+    () =>
+      [
+        DatasetCollectionTagTypeEnum.array,
+        DatasetCollectionTagTypeEnum.number,
+        DatasetCollectionTagTypeEnum.datetime
+      ].map((tagType) => ({
+        label: tagTypeMap[tagType],
+        value: tagType
+      })),
+    [tagTypeMap]
+  );
 
   const submitNewTag = async () => {
     const tag = newTag?.trim();
@@ -498,11 +560,11 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                     )}
                   </Box>
                   <Flex px={6} alignItems={'center'} gap={1}>
-                    <Box>{t(DatasetCollectionTagTypeMap[tagType].label)}</Box>
+                    <Box>{tagTypeMap[tagType]}</Box>
                     {tagType === DatasetCollectionTagTypeEnum.array && (
                       <TagOptionManagePopover
                         options={tag.options ?? []}
-                        onSave={(nextOptions) => onSaveTagOptions({ tag, options: nextOptions })}
+                        onSave={(data) => onSaveTagOptions({ tag, ...data })}
                       />
                     )}
                   </Flex>

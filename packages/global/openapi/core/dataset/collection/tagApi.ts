@@ -52,7 +52,18 @@ export const UpdateDatasetCollectionTagBodySchema = z.object({
   tag: z.string().trim().min(1).meta({ description: '新标签名称' }),
   options: DatasetCollectionTagOptionsSchema.optional().meta({
     description: '选项类标签的预设选项，传入时覆盖原有选项'
-  })
+  }),
+  renames: z
+    .array(
+      z.object({
+        from: z.string().trim().min(1).meta({ description: '旧选项值' }),
+        to: z.string().trim().min(1).meta({ description: '新选项值' })
+      })
+    )
+    .optional()
+    .meta({
+      description: '重命名的预设选项映射列表，用于同步更新知识库中集合的相应打标值'
+    })
 });
 export type UpdateDatasetCollectionTagParams = z.infer<typeof UpdateDatasetCollectionTagBodySchema>;
 
@@ -107,7 +118,8 @@ const BatchSetCollectionTagItemSchema = z.object({
     description: 'add：必填标签值。remove：省略则移除整个标签；array 传入 string[] 时只移除这些选项'
   }),
   append: z.boolean().optional().meta({
-    description: '仅 number 类型的 add 生效：true 时把值累加到已有数字，缺省或 false 为覆盖'
+    description:
+      '仅 array 类型的 add 生效：true 时将选项追加到已有选项列表中（去重），缺省或 false 为覆盖'
   })
 });
 export type BatchSetCollectionTagItem = z.infer<typeof BatchSetCollectionTagItemSchema>;

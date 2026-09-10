@@ -81,7 +81,6 @@ const datasetErr = [
     statusText: DatasetErrEnum.noApiServer,
     message: i18nT('common:core.dataset.error.noApiServer')
   },
-<<<<<<< HEAD
   {
     statusText: DatasetErrEnum.externalChunkFailed,
     message: i18nT('dataset:chunk_error.failed')

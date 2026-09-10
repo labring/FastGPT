@@ -130,7 +130,7 @@ const CollectionTagBatchModal = ({
     patchOnTagChange: (tagDoc) => ({
       append:
         (tagDoc?.tagType ?? DatasetCollectionTagTypeEnum.string) ===
-        DatasetCollectionTagTypeEnum.number
+        DatasetCollectionTagTypeEnum.array
     }),
     onRowDeleted: () => {
       toast({
@@ -257,7 +257,9 @@ const CollectionTagBatchModal = ({
       return {
         tagId: row.tagId,
         value: row.value as CollectionTagValueType['value'],
-        ...(tagType === DatasetCollectionTagTypeEnum.number ? { append: Boolean(row.append) } : {})
+        ...(tagType === DatasetCollectionTagTypeEnum.array
+          ? { append: Boolean(row.append ?? true) }
+          : {})
       };
     });
 
@@ -266,7 +268,7 @@ const CollectionTagBatchModal = ({
 
   const renderAddValueExtra = (row: TagRowType, selectedTag?: DatasetTagType) => {
     const tagType = selectedTag?.tagType ?? DatasetCollectionTagTypeEnum.string;
-    if (tagType === DatasetCollectionTagTypeEnum.number) {
+    if (tagType === DatasetCollectionTagTypeEnum.array) {
       return (
         <Flex gap={'16px'} h={'16px'} alignItems={'center'}>
           {(
@@ -275,7 +277,7 @@ const CollectionTagBatchModal = ({
               { label: t('dataset:tag.overwrite'), append: false }
             ] as const
           ).map((item) => {
-            const checked = Boolean(row.append) === item.append;
+            const checked = (row.append ?? true) === item.append;
             return (
               <Flex
                 key={item.label}
@@ -320,7 +322,7 @@ const CollectionTagBatchModal = ({
       );
     }
     if (
-      tagType === DatasetCollectionTagTypeEnum.array ||
+      tagType === DatasetCollectionTagTypeEnum.number ||
       tagType === DatasetCollectionTagTypeEnum.datetime
     ) {
       return (

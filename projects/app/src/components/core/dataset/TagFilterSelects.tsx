@@ -11,6 +11,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import {
   DatasetTagFilterFieldEnum,
@@ -158,16 +159,22 @@ export const TagFilterFieldSelect = ({
           >
             <Flex w={'100%'} minW={0} alignItems={'center'}>
               {selectedLabel ? (
-                <Box
-                  px={'4px'}
-                  py={'2px'}
-                  bg={'myGray.100'}
-                  borderRadius={'xs'}
-                  color={'myGray.900'}
-                  noOfLines={1}
-                >
-                  {selectedLabel}
-                </Box>
+                <MyTooltip label={selectedLabel} showOnlyWhenOverflow shouldWrapChildren={false}>
+                  <Box
+                    px={'4px'}
+                    py={'2px'}
+                    bg={'myGray.100'}
+                    borderRadius={'xs'}
+                    color={'myGray.900'}
+                    maxW={'100%'}
+                    minW={0}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {selectedLabel}
+                  </Box>
+                </MyTooltip>
               ) : (
                 <Box color={'myGray.500'} noOfLines={1}>
                   {t('workflow:tag_filter_select_tag')}
@@ -265,7 +272,21 @@ export const TagFilterFieldSelect = ({
                         _hover={{ bg: selected ? 'primary.50' : 'myGray.50' }}
                         onClick={() => handleSelect(item.value)}
                       >
-                        {item.label}
+                        <MyTooltip
+                          label={item.label}
+                          showOnlyWhenOverflow
+                          shouldWrapChildren={false}
+                        >
+                          <Box
+                            flex={1}
+                            minW={0}
+                            overflow={'hidden'}
+                            textOverflow={'ellipsis'}
+                            whiteSpace={'nowrap'}
+                          >
+                            {item.label}
+                          </Box>
+                        </MyTooltip>
                       </Flex>
                     );
                   })
