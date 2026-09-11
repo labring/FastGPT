@@ -462,7 +462,7 @@ const EditForm = ({
         {/* tool choice */}
         <Box {...BoxStyles}>
           <ToolSelect
-            selectedModel={selectedModel!}
+            selectedModel={selectedModel}
             selectedTools={appForm.selectedTools}
             fileSelectConfig={appForm.chatConfig.fileSelectConfig}
             onAddTool={(e) => {
