@@ -115,8 +115,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     }
   })();
 
-  // 表单文件预览使用系统默认签名有效期（FILE_URL_EXPIRED_HOURS）。
-  const getPreviewUrl = createChatFilePreviewUrlGetter();
+  const getPreviewUrl = createChatFilePreviewUrlGetter({ expiredHours: 1 });
   const userMaxFileAmount =
     getWorkflowFileContext()?.limits.maxFileAmount ?? DEFAULT_FORM_FILE_INPUT_MAX_FILES;
   const fileRegistrar = getWorkflowFileRegistrar();

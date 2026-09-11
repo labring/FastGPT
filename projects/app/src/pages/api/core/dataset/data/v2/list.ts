@@ -19,7 +19,6 @@ import {
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
-import { serviceEnv } from '@fastgpt/service/env';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse> {
   const { searchText = '', collectionId } = parseApiInput({
@@ -61,15 +60,9 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
 
   await Promise.all(
     list.map(async (item) => {
-      item.q = await replaceS3KeyToPreviewUrl(
-        item.q,
-        addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
-      );
+      item.q = await replaceS3KeyToPreviewUrl(item.q, addHours(new Date(), 1));
       if (item.a) {
-        item.a = await replaceS3KeyToPreviewUrl(
-          item.a,
-          addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
-        );
+        item.a = await replaceS3KeyToPreviewUrl(item.a, addHours(new Date(), 1));
       }
     })
   );
@@ -107,7 +100,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
           ? await createS3DownloadAccessUrl({
               objectKey: item.imageId,
               bucketName: S3Buckets.private,
-              expiredTime: addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
+              expiredTime: addHours(new Date(), 1)
             })
           : undefined;
 

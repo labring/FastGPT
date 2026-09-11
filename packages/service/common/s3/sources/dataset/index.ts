@@ -27,7 +27,6 @@ import { getS3RawTextSource } from '../rawText';
 import { getS3UploadContentDisposition, encodeS3Filename } from '../../filename';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { createS3FileSource } from '../../../file/read/source';
-import { serviceEnv } from '../../../../env';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -39,13 +38,9 @@ export class S3DatasetSource extends S3PrivateBucket {
     this.rawTextSource = getS3RawTextSource();
   }
 
-  // 下载链接；未显式传入 expiredHours 时使用 FILE_URL_EXPIRED_HOURS 默认时长。
+  // 下载链接
   async createGetDatasetFileURL(params: CreateGetDatasetFileURLParams) {
-    const {
-      key,
-      expiredHours = serviceEnv.FILE_URL_EXPIRED_HOURS,
-      external
-    } = CreateGetDatasetFileURLParamsSchema.parse(params);
+    const { key, expiredHours, external } = CreateGetDatasetFileURLParamsSchema.parse(params);
     const fileMetadata = await this.getFileMetadata(key).catch((error) => {
       if (error === CommonErrEnum.fileNotFound) return undefined;
       throw error;

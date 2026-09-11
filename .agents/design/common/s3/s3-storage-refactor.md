@@ -112,7 +112,6 @@ Mongo 是跨实例一致性的必要状态，不使用进程内缓存。性能�
 | `STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS` | 302 临时 S3 URL TTL，默认 300 秒 |
 | `FILE_DOMAIN` | 完整 FastGPT 文件 API 域名，同时影响上传和下载 URL |
 | `FILE_DOWNLOAD_PUBLIC_URL_PREFIX` | 可选下载短链公开前缀，只影响下载 |
-| `FILE_URL_EXPIRED_HOURS` | 文件访问短链默认有效期（小时，支持小数），默认 `1`；调用方未指定有效期时的统一默认值，导出/引用/插件等显式长期链接不受影响 |
 | `STORAGE_EXTERNAL_ENDPOINT` / `STORAGE_S3_CDN_ENDPOINT` | `short-redirect` 使用的客户端可访问地址 |
 
 使用 nginx 缩短公开下载路径时，可配置：

@@ -63,7 +63,6 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MULTIPART_OBJECT_MARKER_METADATA_KEY } from '@fastgpt/global/common/file/constants';
 import { randomUUID } from 'node:crypto';
 import { decodeS3Filename, encodeS3Filename, getS3UploadContentDisposition } from '../filename';
-import { serviceEnv } from '../../../env';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -1006,14 +1005,12 @@ export class S3BaseBucket {
    * 该方法只负责存储层签名，不做 team/app/dataset/user 的业务归属校验。任何 API 边界或
    * 用户可控 key 调用到这里前，必须先使用对应 S3 source 的 key helper 校验 key
    * 属于当前已鉴权资源。
-   *
-   * 未显式传入 `expiredHours` 时，按 FILE_URL_EXPIRED_HOURS 签发默认时长。
    */
   async createExternalUrl(params: createPreviewUrlParams) {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
     const { key, expiredHours, responseContentType, filename } = parsed;
-    const expires = (expiredHours ?? serviceEnv.FILE_URL_EXPIRED_HOURS) * 60 * 60; // 秒；未指定时取 FILE_URL_EXPIRED_HOURS
+    const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return {
       bucket: this.bucketName,
@@ -1032,7 +1029,7 @@ export class S3BaseBucket {
     const parsed = CreateGetPresignedUrlParamsSchema.parse(params);
 
     const { key, expiredHours, responseContentType } = parsed;
-    const expires = (expiredHours ?? serviceEnv.FILE_URL_EXPIRED_HOURS) * 60 * 60; // 秒；未指定时取 FILE_URL_EXPIRED_HOURS
+    const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
     return await this.client.generatePresignedGetUrl({
       key,

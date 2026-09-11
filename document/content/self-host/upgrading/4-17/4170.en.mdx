@@ -39,16 +39,6 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 
 Set `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED=true` to grant the default all-members group permission to create Apps, Skills, and Datasets when a team is created. The default is `false`. This setting only affects new teams; it does not change permissions for existing teams. For FastGPT Pro, configure it consistently in the FastGPT and Admin services to cover their team creation paths, including WeCom authorization.
 
-### File access link lifetime (optional)
-
-V4.17.0 adds the `FILE_URL_EXPIRED_HOURS` environment variable to configure the default lifetime of file access short links. The default is `1` (hour), and fractions are allowed, for example `0.5` means 30 minutes.
-
-It applies to dataset image/file, dataset data detail and edit, search test image, and chat (including tool-generated) file preview and download links. Links that declare their own long lifetime are unaffected, such as data exports, data quotes, plugin uploads, and sandbox file previews.
-
-```dotenv
-FILE_URL_EXPIRED_HOURS=24
-```
-
 ## Deprecation notice
 
 ### Custom model request URLs

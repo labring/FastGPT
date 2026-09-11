@@ -7,7 +7,6 @@ import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createS3DownloadAccessUrls } from '@fastgpt/service/common/s3/accessLink';
-import { serviceEnv } from '@fastgpt/service/env';
 import {
   GetSearchTestImagePreviewUrlsBodySchema,
   GetSearchTestImagePreviewUrlsResponseSchema,
@@ -37,7 +36,7 @@ async function handler(
     authorizedKeys.map((key) => ({
       objectKey: key,
       bucketName: S3Buckets.private,
-      expiredTime: addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
+      expiredTime: addHours(new Date(), 1)
     }))
   );
   const result = authorizedKeys.map((key, index) => ({
