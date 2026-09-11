@@ -140,8 +140,16 @@ export class S3DatasetSource extends S3PrivateBucket {
   }
 
   async getDatasetFileRawText(params: GetDatasetFileContentParams) {
-    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId, datasetId } =
-      GetDatasetFileContentParamsSchema.parse(params);
+    const {
+      fileId,
+      teamId,
+      tmbId,
+      customPdfParse,
+      pdfParseConfig,
+      getFormatText,
+      usageId,
+      datasetId
+    } = GetDatasetFileContentParamsSchema.parse(params);
 
     if (!isAuthorizedDatasetFileS3Key({ key: fileId, datasetId })) {
       return Promise.reject('Invalid dataset file key');
@@ -149,6 +157,7 @@ export class S3DatasetSource extends S3PrivateBucket {
 
     const rawTextBuffer = await this.rawTextSource.getRawTextBuffer({
       customPdfParse,
+      pdfParseConfig,
       sourceId: fileId
     });
     if (rawTextBuffer) {
@@ -166,6 +175,7 @@ export class S3DatasetSource extends S3PrivateBucket {
       tmbId,
       source,
       customPdfParse,
+      pdfParseConfig,
       usageId,
       getFormatText,
       imageKeyOptions: {
@@ -177,7 +187,8 @@ export class S3DatasetSource extends S3PrivateBucket {
       sourceId: fileId,
       sourceName: filename,
       text: rawText,
-      customPdfParse
+      customPdfParse,
+      pdfParseConfig
     });
 
     return {

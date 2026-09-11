@@ -8,6 +8,7 @@ import {
   DatasetItemSchema,
   DatasetSchema,
   DatasetListItemSchema,
+  PdfParseConfigSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
 import { AppListSortEnum } from '../../../core/app/constants';
@@ -72,6 +73,9 @@ export const CreateDatasetBodySchema = z.object({
   }),
   apiDatasetServer: ApiDatasetServerSchema.optional().meta({
     description: '第三方知识库服务器配置(API/飞书/语雀/钉钉)'
+  }),
+  pdfParseConfig: PdfParseConfigSchema.optional().meta({
+    description: '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
   })
 });
 
@@ -111,6 +115,10 @@ export const CreateDatasetWithFilesBodySchema = z.object({
       vlmModelId: z.string().nullable().optional().meta({
         description: '视觉语言模型 ID；未传沿用默认，null 或空字符串表示不设置',
         example: ''
+      }),
+      pdfParseConfig: PdfParseConfigSchema.optional().meta({
+        description:
+          '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
       })
     })
     .meta({ description: '知识库参数' }),
@@ -443,6 +451,10 @@ export const UpdateDatasetBodySchema = z.object({
   }),
   chunkSettings: ChunkSettingsSchema.optional().meta({
     description: '分块配置'
+  }),
+  pdfParseConfig: PdfParseConfigSchema.optional().meta({
+    description:
+      '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效;编辑后仅对新解析的文件生效'
   })
 });
 export type UpdateDatasetBody = z.infer<typeof UpdateDatasetBodySchema>;

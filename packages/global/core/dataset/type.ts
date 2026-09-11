@@ -64,6 +64,27 @@ export const ChunkSettingsSchema = z.object({
 });
 export type ChunkSettingsType = z.infer<typeof ChunkSettingsSchema>;
 
+/* ===== Pdf parse config ===== */
+// 外部文档解析服务开关,整体校验、整体存取;仅当 collection 的 customPdfParse=true
+// 且系统配置了 customPdfParse.url 时生效。缺失字段由读取层用固定默认值补全。
+export const PdfParseConfigSchema = z
+  .object({
+    keep_header_footer: z.boolean().optional().meta({
+      description: '是否保留页眉页脚,默认删除'
+    }),
+    keep_appendix: z.boolean().optional().meta({
+      description: '是否保留附录,默认删除首个附录标题后的内容'
+    }),
+    image_analysis: z.boolean().optional().meta({
+      description: '是否保留图片识别(含印章)结果,默认关闭'
+    }),
+    chart_analysis: z.boolean().optional().meta({
+      description: '是否保留图表转表格结果(同时保留原图片),默认关闭'
+    })
+  })
+  .meta({ description: '外部文档解析配置' });
+export type PdfParseConfigType = z.infer<typeof PdfParseConfigSchema>;
+
 /* ===== Dataset ===== */
 export const DatasetSchema = z
   .object({
@@ -98,6 +119,8 @@ export const DatasetSchema = z
       .optional()
       .meta({ description: '网站配置' }),
     chunkSettings: ChunkSettingsSchema.optional().meta({ description: '分块配置' }),
+
+    pdfParseConfig: PdfParseConfigSchema.optional().meta({ description: '外部文档解析配置' }),
 
     apiDatasetServer: ApiDatasetServerSchema.optional().meta({ description: 'API 服务器配置' }),
 
