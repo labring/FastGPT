@@ -151,9 +151,8 @@ const DatasetParamsModal = ({
           onChange={setCurrentTabType}
         />
         {currentTabType === SearchSettingTabEnum.searchMode && (
-          <Box mt={3} overflowX="auto">
+          <Box mt={3}>
             <LeftRadio<DatasetSearchModeEnum>
-              minW="max-content"
               py={2.5}
               gridGap={4}
               list={[
