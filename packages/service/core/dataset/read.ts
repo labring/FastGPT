@@ -2,6 +2,7 @@ import {
   ChunkTriggerConfigTypeEnum,
   DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import type { PdfParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '../../common/string/textSplitter';
 import { readFileContentBySource } from '../../common/file/read/utils';
@@ -18,6 +19,28 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
 import { createExternalHttpFileSource } from '../../common/file/read/source';
 import { getTeamFileSizeLimitBytes } from '../../support/permission/fileLimit';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+
+// 外部文档解析开关的固定默认值(产品口径:页眉页脚/附录/图片识别/图转表默认均关闭)
+export const DefaultPdfParseConfig: PdfParseConfigType = {
+  keep_header_footer: false,
+  keep_appendix: false,
+  image_analysis: false,
+  chart_analysis: false
+};
+
+/**
+ * 从 dataset 取解析配置,缺失字段用固定默认值补全为完整四个 boolean,
+ * 避免不同解析引擎对缺失字段的不同兜底行为。
+ */
+export const getDatasetPdfParseConfig = (
+  dataset?: Pick<DatasetSchemaType, 'pdfParseConfig'> | null
+): PdfParseConfigType => ({
+  keep_header_footer: dataset?.pdfParseConfig?.keep_header_footer ?? false,
+  keep_appendix: dataset?.pdfParseConfig?.keep_appendix ?? false,
+  image_analysis: dataset?.pdfParseConfig?.image_analysis ?? false,
+  chart_analysis: dataset?.pdfParseConfig?.chart_analysis ?? false
+});
 
 const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'indexes', 'metadata']);
 
@@ -54,6 +77,7 @@ export const readFileRawTextByUrl = async ({
   tmbId,
   url,
   customPdfParse,
+  pdfParseConfig,
   getFormatText,
   datasetId,
   usageId,
@@ -63,6 +87,7 @@ export const readFileRawTextByUrl = async ({
   tmbId: string;
   url: string;
   customPdfParse?: boolean;
+  pdfParseConfig?: PdfParseConfigType;
   getFormatText?: boolean;
   relatedId: string; // externalFileId / apiFileId
   datasetId: string;
@@ -90,6 +115,7 @@ export const readFileRawTextByUrl = async ({
   const { rawText } = await retryFn(() =>
     readFileContentBySource({
       customPdfParse,
+      pdfParseConfig,
       usageId,
       getFormatText,
       source,
@@ -119,6 +145,7 @@ export const readDatasetSourceRawText = async ({
   externalFileId,
   apiDatasetServer,
   customPdfParse,
+  pdfParseConfig,
   getFormatText,
   usageId,
   datasetId
@@ -128,6 +155,8 @@ export const readDatasetSourceRawText = async ({
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
   customPdfParse?: boolean;
+  /** 外部文档解析开关;建议传入 getDatasetPdfParseConfig(dataset) 补全后的完整配置 */
+  pdfParseConfig?: PdfParseConfigType;
   getFormatText?: boolean;
 
   selector?: string; // link selector
@@ -154,6 +183,7 @@ export const readDatasetSourceRawText = async ({
       fileId: sourceId,
       getFormatText,
       customPdfParse,
+      pdfParseConfig,
       usageId,
       datasetId
     });
@@ -186,6 +216,7 @@ export const readDatasetSourceRawText = async ({
       relatedId: externalFileId,
       datasetId,
       customPdfParse,
+      pdfParseConfig,
       usageId
     });
     return {
@@ -198,6 +229,7 @@ export const readDatasetSourceRawText = async ({
       teamId,
       tmbId,
       customPdfParse,
+      pdfParseConfig,
       datasetId,
       usageId
     });
@@ -218,6 +250,7 @@ export const readApiServerFileContent = async ({
   teamId,
   tmbId,
   customPdfParse,
+  pdfParseConfig,
   datasetId,
   usageId
 }: {
@@ -226,6 +259,7 @@ export const readApiServerFileContent = async ({
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  pdfParseConfig?: PdfParseConfigType;
   datasetId: string;
   usageId?: string;
 }): Promise<{
@@ -237,6 +271,7 @@ export const readApiServerFileContent = async ({
     tmbId,
     apiFileId,
     customPdfParse,
+    pdfParseConfig,
     datasetId,
     usageId
   });
