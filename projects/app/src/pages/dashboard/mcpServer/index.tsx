@@ -1,20 +1,9 @@
 'use client';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import React, { useState } from 'react';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { deleteMcpServer, getMcpServerList } from '@/web/support/mcp/api';
@@ -64,7 +53,14 @@ const McpServer = () => {
     <>
       <DashboardContainer>
         {({ MenuIcon }) => (
-          <MyBox isLoading={isLoading} h={'100%'} p={6}>
+          <MyBox
+            isLoading={isLoading}
+            h={'100%'}
+            p={6}
+            display="flex"
+            flexDirection="column"
+            minH={0}
+          >
             {isPc ? (
               <Flex alignItems={'flex-end'} justifyContent={'space-between'}>
                 <Box>
@@ -105,7 +101,7 @@ const McpServer = () => {
             )}
 
             {/* table */}
-            <TableContainer mt={4} bg={'white'} borderRadius={'md'}>
+            <FixedTableContainer flex="1 1 0" maxH="none" mt={4} bg={'white'} borderRadius={'md'}>
               <Table>
                 <Thead>
                   <Tr borderBottom={'base'}>
@@ -164,7 +160,7 @@ const McpServer = () => {
                 </Tbody>
               </Table>
               {mcpServerList.length === 0 && <EmptyTip />}
-            </TableContainer>
+            </FixedTableContainer>
           </MyBox>
         )}
       </DashboardContainer>

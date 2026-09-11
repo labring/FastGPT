@@ -3,6 +3,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/pricing';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
 import {
   getRuntimeResolvedPriceTiers,
@@ -398,11 +399,11 @@ const ModelConfigForm = ({
         : initialModelData),
       priceTiers: (() => {
         if (modelData.type !== ModelTypeEnum.llm) return undefined;
-        const tiers = initialModelData.priceTiers ?? [];
+        const tiers = (initialModelData.priceTiers ?? []).slice(0, MAX_MODEL_PRICE_TIERS);
         if (tiers.length === 0) return [emptyPriceTier];
 
         const last = tiers[tiers.length - 1];
-        if (!last.maxInputTokens) return tiers;
+        if (tiers.length >= MAX_MODEL_PRICE_TIERS || !last.maxInputTokens) return tiers;
 
         return [
           ...tiers,

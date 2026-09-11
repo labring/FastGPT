@@ -1,20 +1,9 @@
 'use client';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import DashboardContainer from '../../../pageComponents/dashboard/Container';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
-import {
-  Box,
-  Button,
-  Flex,
-  IconButton,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
@@ -193,12 +182,21 @@ const Evaluation = () => {
           <Flex h={'full'} bg={'white'} p={6} flexDirection="column">
             {renderHeader(MenuIcon)}
 
-            <TableContainer
+            <FixedTableContainer
+              maxH="none"
               ref={scrollContainerRef}
               mt={3}
               fontSize={'sm'}
               flex={'1 0 0'}
-              overflowY="auto"
+              footer={
+                <>
+                  {total >= pageSize && (
+                    <Flex mt={4} justifyContent="center">
+                      <Pagination />
+                    </Flex>
+                  )}
+                </>
+              }
             >
               <Table variant={'simple'}>
                 <Thead>
@@ -277,12 +275,7 @@ const Evaluation = () => {
                   })}
                 </Tbody>
               </Table>
-            </TableContainer>
-            {total >= pageSize && (
-              <Flex mt={4} justifyContent="center">
-                <Pagination />
-              </Flex>
-            )}
+            </FixedTableContainer>
           </Flex>
         )}
       </DashboardContainer>

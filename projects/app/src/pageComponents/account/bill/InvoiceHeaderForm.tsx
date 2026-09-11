@@ -240,7 +240,7 @@ const InvoiceHeaderForm = () => {
       >
         <Flex w={'100%'} justify={'center'} flexDir={'column'} align={'center'}>
           <InvoiceHeaderSingleForm inputForm={inputForm} />
-          <Flex w={'100%'} justify={'center'} mt={'3rem'}>
+          <Flex w={'100%'} justify={'center'} mt={4}>
             <Button
               w={['100%', 'auto']}
               variant={'primary'}

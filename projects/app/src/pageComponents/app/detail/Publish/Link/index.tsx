@@ -1,9 +1,9 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import {
   Flex,
   Box,
   Button,
-  TableContainer,
   Table,
   Thead,
   Tr,
@@ -79,8 +79,18 @@ const Share = ({
   );
 
   return (
-    <MyBox h={'100%'} isLoading={isFetching} position={'relative'} p={6} minH={'50vh'}>
-      <Flex justifyContent={'space-between'} flexDirection="row">
+    <MyBox
+      h={'100%'}
+      minH={0}
+      minW={0}
+      display={'flex'}
+      flexDirection={'column'}
+      overflow={'hidden'}
+      isLoading={isFetching}
+      position={'relative'}
+      p={6}
+    >
+      <Flex flexShrink={0} justifyContent={'space-between'} flexDirection="row">
         <HStack>
           <Box>
             <Flex alignItems={'center'}>
@@ -123,7 +133,7 @@ const Share = ({
           {t('common:core.app.share.Create link')}
         </Button>
       </Flex>
-      <TableContainer mt={3}>
+      <FixedTableContainer mt={3} flex={'1 1 0'} h={0} maxH="none">
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
           <Thead>
             <Tr>
@@ -168,11 +178,12 @@ const Share = ({
                     {t('common:core.app.outLink.Select Mode')}
                   </Button>
                   <MyMenu
+                    strategy="fixed"
                     Button={
                       <IconButton
                         icon={<MyIcon name={'more'} w={'14px'} />}
                         name={'more'}
-                        variant={'whiteBase'}
+                        variant={'whitePrimary'}
                         size={'sm'}
                         aria-label={''}
                       />
@@ -225,11 +236,11 @@ const Share = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+        {shareChatList.length === 0 && !isFetching && (
+          <EmptyTip text={t('common:core.app.share.Not share link')} />
+        )}
+      </FixedTableContainer>
 
-      {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip text={t('common:core.app.share.Not share link')} />
-      )}
       {!!editLinkData && (
         <EditLinkModal
           appId={appId}

@@ -7,7 +7,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Box,
   Flex,
   Button,
@@ -34,7 +33,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ChannelLogListItemType } from '@/global/aiproxy/type';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import ModelTabHeader from '../ModelTabHeader';
-import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
@@ -120,7 +119,6 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     },
     scrollContainerRef
   });
-  const { headerContainerRef, headerTableWidth } = useFixedTableHeader(scrollContainerRef);
 
   const formatData = useMemo<LogDetailType[]>(() => {
     return data.map((item) => {
@@ -210,89 +208,99 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           flexDirection={'column'}
           isLoading={isLoading}
         >
-          <TableContainer ref={headerContainerRef} flexShrink={0} overflowX="hidden" px={6}>
-            <Table
-              minW="970px"
-              sx={{
-                tableLayout: 'fixed',
-                width: `${headerTableWidth} !important`
-              }}
-            >
-              <colgroup>
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '200px' }} />
-                <col style={{ width: '140px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '180px' }} />
-                <col style={{ width: '100px' }} />
-              </colgroup>
-              <Thead>
-                <Tr>
-                  <Th>{t('config_model:channel_name')}</Th>
-                  <Th>{t('config_model:model')}</Th>
-                  <Th>{t('config_model:model_tokens')}</Th>
-                  <Th>{t('config_model:duration')}</Th>
-                  <Th>{t('config_model:channel_status')}</Th>
-                  <Th>{t('config_model:request_at')}</Th>
-                  <Th></Th>
-                </Tr>
-              </Thead>
-            </Table>
-          </TableContainer>
-          <TableContainer
-            ref={scrollContainerRef}
-            flex={['0 0 auto', '1 0 0']}
-            h={['auto', '100%']}
-            minH={0}
-            overflowY={['visible', 'auto']}
-            px={6}
-            fontSize={'sm'}
-          >
-            <Table minW="970px" sx={{ tableLayout: 'fixed' }}>
-              <colgroup>
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '200px' }} />
-                <col style={{ width: '140px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '180px' }} />
-                <col style={{ width: '100px' }} />
-              </colgroup>
-              <Tbody>
-                {formatData.map((item, index) => (
-                  <Tr key={index}>
-                    <Td>{item.channelName}</Td>
-                    <Td>{item.model}</Td>
-                    <Td>
-                      {item.usage?.input_tokens} / {item.usage?.output_tokens}
-                    </Td>
-                    <Td color={item.duration > 10 ? 'red.600' : ''}>{item.duration.toFixed(2)}s</Td>
-                    <Td color={item.code === 200 ? 'green.600' : 'red.600'}>
-                      {item.code}
-                      {item.content && <QuestionTip label={item.content} />}
-                    </Td>
-                    <Td>{item.request_at}</Td>
-                    <Td>
-                      <Button
-                        leftIcon={<MyIcon name={'menu'} w={'1rem'} />}
-                        size={'sm'}
-                        variant={'outline'}
-                        onClick={() => setLogDetail(item)}
-                      >
-                        {t('config_model:detail')}
-                      </Button>
-                    </Td>
+          <FixedTableLayout
+            horizontalScroll
+            scrollMode="normal"
+            bodyRef={scrollContainerRef}
+            rootProps={{ flex: '1 0 0', h: 0 }}
+            headerProps={{ px: 4 }}
+            bodyProps={{
+              flex: '1 1 0',
+              h: 0,
+              overflowY: 'auto',
+              px: 4,
+              fontSize: 'sm'
+            }}
+            renderHeader={({ headerTableWidth }) => (
+              <Table
+                minW="970px"
+                sx={{
+                  tableLayout: 'fixed',
+                  width: `${headerTableWidth} !important`
+                }}
+              >
+                <colgroup>
+                  <col style={{ width: '150px' }} />
+                  <col style={{ width: '200px' }} />
+                  <col style={{ width: '140px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '180px' }} />
+                  <col style={{ width: '100px' }} />
+                </colgroup>
+                <Thead>
+                  <Tr>
+                    <Th>{t('config_model:channel_name')}</Th>
+                    <Th>{t('config_model:model')}</Th>
+                    <Th>{t('config_model:model_tokens')}</Th>
+                    <Th>{t('config_model:duration')}</Th>
+                    <Th>{t('config_model:channel_status')}</Th>
+                    <Th>{t('config_model:request_at')}</Th>
+                    <Th></Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
-          {total > pageSize && (
-            <Flex flexShrink={0} mt={3} px={6} justifyContent={'center'}>
-              <Pagination />
-            </Flex>
-          )}
+                </Thead>
+              </Table>
+            )}
+            renderBody={() => (
+              <Table minW="970px" sx={{ tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '150px' }} />
+                  <col style={{ width: '200px' }} />
+                  <col style={{ width: '140px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '100px' }} />
+                  <col style={{ width: '180px' }} />
+                  <col style={{ width: '100px' }} />
+                </colgroup>
+                <Tbody>
+                  {formatData.map((item, index) => (
+                    <Tr key={index}>
+                      <Td>{item.channelName}</Td>
+                      <Td>{item.model}</Td>
+                      <Td>
+                        {item.usage?.input_tokens} / {item.usage?.output_tokens}
+                      </Td>
+                      <Td color={item.duration > 10 ? 'red.600' : ''}>
+                        {item.duration.toFixed(2)}s
+                      </Td>
+                      <Td color={item.code === 200 ? 'green.600' : 'red.600'}>
+                        {item.code}
+                        {item.content && <QuestionTip label={item.content} />}
+                      </Td>
+                      <Td>{item.request_at}</Td>
+                      <Td>
+                        <Button
+                          leftIcon={<MyIcon name={'menu'} w={'1rem'} />}
+                          size={'sm'}
+                          variant={'outline'}
+                          onClick={() => setLogDetail(item)}
+                        >
+                          {t('config_model:detail')}
+                        </Button>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            )}
+            footer={
+              total > pageSize ? (
+                <Flex flexShrink={0} mt={3} px={6} justifyContent={'center'}>
+                  <Pagination />
+                </Flex>
+              ) : undefined
+            }
+          />
         </MyBox>
       </MyBox>
 

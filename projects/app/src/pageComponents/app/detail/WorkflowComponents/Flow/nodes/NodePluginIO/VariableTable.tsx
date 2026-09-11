@@ -1,6 +1,7 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
+import { Table, Thead, Tbody, Tr, Th, Td, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -18,9 +19,11 @@ const VariableTable = ({
   const showToolColumn = variables.some((item) => item.isTool);
 
   return (
-    <TableContainer
+    <FixedTableContainer
+      bodyBg="white"
+      flush
+      className="nodrag nowheel"
       borderRadius={'md'}
-      overflow={'hidden'}
       border={'1px solid'}
       borderColor={'myGray.200'}
     >
@@ -72,7 +75,7 @@ const VariableTable = ({
           ))}
         </Tbody>
       </Table>
-    </TableContainer>
+    </FixedTableContainer>
   );
 };
 

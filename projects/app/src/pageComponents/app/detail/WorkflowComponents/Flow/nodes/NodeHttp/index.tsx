@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -14,7 +15,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Button,
   IconButton,
   useDisclosure,
@@ -496,27 +496,60 @@ const RenderForm = ({
   const draftValuesRef = React.useRef<Record<number, PropsArrType>>({});
 
   const list = useMemo(() => (input.value || []) as PropsArrType[], [input.value]);
+  const latestListRef = useRef(list);
+  const inputRef = useRef(input);
+  const pendingListRef = useRef<PropsArrType[] | undefined>();
+  const pendingFrameRef = useRef<number | undefined>(undefined);
   const [rowKeys, setRowKeys] = useState<string[]>(() =>
     Array.from({ length: list.length + 1 }, (_, index) => `http-param-${index}`)
   );
 
   useEffect(() => {
     draftValuesRef.current = {};
-  }, [input.value]);
+    latestListRef.current = list;
+    inputRef.current = input;
+  }, [input, list]);
+
+  useEffect(
+    () => () => {
+      if (pendingFrameRef.current !== undefined) {
+        cancelAnimationFrame(pendingFrameRef.current);
+      }
+      pendingFrameRef.current = undefined;
+      pendingListRef.current = undefined;
+    },
+    []
+  );
 
   const updateListAndNode = useCallback(
     (nextList: PropsArrType[]) => {
       onChangeNode({
         nodeId,
         type: 'updateInput',
-        key: input.key,
+        key: inputRef.current.key,
         value: {
-          ...input,
+          ...inputRef.current,
           value: nextList
         }
       });
     },
-    [input, nodeId, onChangeNode]
+    [nodeId, onChangeNode]
+  );
+
+  const scheduleListUpdate = useCallback(
+    (update: (currentList: PropsArrType[]) => PropsArrType[]) => {
+      // 让浏览器先完成下一个输入框的 focus，再回写 ReactFlow 节点，避免失焦更新打断点击。
+      pendingListRef.current = update(pendingListRef.current ?? latestListRef.current);
+      if (pendingFrameRef.current !== undefined) return;
+
+      pendingFrameRef.current = requestAnimationFrame(() => {
+        pendingFrameRef.current = undefined;
+        const nextList = pendingListRef.current;
+        pendingListRef.current = undefined;
+        if (nextList) updateListAndNode(nextList);
+      });
+    },
+    [updateListAndNode]
   );
 
   const handleRowBlur = useCallback(
@@ -528,6 +561,14 @@ const RenderForm = ({
         [field]: value
       } as PropsArrType;
       draftValuesRef.current[index] = nextItem;
+
+      if (
+        index < list.length &&
+        currentItem.key === nextItem.key &&
+        currentItem.value === nextItem.value
+      ) {
+        return;
+      }
 
       if (
         nextItem.key &&
@@ -554,13 +595,23 @@ const RenderForm = ({
           nextKeys.push(`http-param-${nextKeyIndex}`);
           return nextKeys;
         });
-        updateListAndNode([...list, nextItem]);
+        scheduleListUpdate((currentList) => {
+          const nextList = [...currentList];
+          if (index === nextList.length) {
+            nextList.push(nextItem);
+          } else {
+            nextList[index] = nextItem;
+          }
+          return nextList;
+        });
         return;
       }
 
-      updateListAndNode(list.map((item, itemIndex) => (itemIndex === index ? nextItem : item)));
+      scheduleListUpdate((currentList) =>
+        currentList.map((item, itemIndex) => (itemIndex === index ? nextItem : item))
+      );
     },
-    [list, t, toast, updateListAndNode]
+    [list, scheduleListUpdate, t, toast]
   );
 
   const handleDelete = useCallback(
@@ -573,9 +624,11 @@ const RenderForm = ({
         }
         return nextKeys.filter((_, itemIndex) => itemIndex !== index);
       });
-      updateListAndNode(list.filter((_, itemIndex) => itemIndex !== index));
+      scheduleListUpdate((currentList) =>
+        currentList.filter((_, itemIndex) => itemIndex !== index)
+      );
     },
-    [list, setRowKeys, updateListAndNode]
+    [list, scheduleListUpdate, setRowKeys]
   );
 
   const Render = useMemo(() => {
@@ -588,8 +641,12 @@ const RenderForm = ({
         borderBottom={'none'}
         bg={'white'}
       >
-        <TableContainer overflowY={'visible'} overflowX={'hidden'}>
-          <Table w={'full'} style={{ tableLayout: 'fixed' }}>
+        <FixedTableContainer flush className="nodrag nowheel">
+          <Table
+            w={'full'}
+            style={{ tableLayout: 'fixed' }}
+            sx={{ 'thead, thead tr, thead th': { borderRadius: '0 !important' } }}
+          >
             <colgroup>
               <col style={{ width: HTTP_PARAM_NAME_COLUMN_WIDTH }} />
               <col />
@@ -672,7 +729,7 @@ const RenderForm = ({
               ))}
             </Tbody>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       </Box>
     );
   }, [

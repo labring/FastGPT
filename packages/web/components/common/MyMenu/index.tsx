@@ -44,6 +44,8 @@ export type Props = {
   Button: React.ReactNode;
   buttonBoxProps?: BoxProps;
   menuListProps?: MenuListProps;
+  /** 滚动容器内的菜单使用 fixed 定位，避免弹层撑大滚动范围。 */
+  strategy?: 'absolute' | 'fixed';
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
 
@@ -205,6 +207,7 @@ const MyMenu = ({
   Button,
   buttonBoxProps,
   menuListProps,
+  strategy = 'absolute',
   menuList,
   placement = 'bottom-start'
 }: Props) => {
@@ -237,6 +240,7 @@ const MyMenu = ({
 
   return (
     <Menu
+      strategy={strategy}
       offset={computeOffset}
       isOpen={isOpen}
       autoSelect={false}

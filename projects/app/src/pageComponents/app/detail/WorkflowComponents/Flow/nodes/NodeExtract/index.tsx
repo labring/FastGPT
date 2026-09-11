@@ -1,16 +1,6 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Flex
-} from '@chakra-ui/react';
+import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, Flex } from '@chakra-ui/react';
 import { type NodeProps } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
@@ -83,31 +73,40 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             </Button>
           </Flex>
 
-          <TableContainer borderRadius={'md'} overflow={'auto'} borderWidth={'1px'} mt={2}>
+          <FixedTableContainer
+            bodyBg="white"
+            flush
+            className="nodrag nowheel"
+            borderRadius={'md'}
+            borderWidth={'1px'}
+            mt={2}
+          >
             <Table variant={'workflow'}>
               <Thead>
                 <Tr>
-                  <Th>{t('common:item_name')}</Th>
-                  <Th>{t('common:item_description')}</Th>
-                  <Th>{t('common:required')}</Th>
-                  <Th></Th>
+                  <Th pl={'24px !important'} pr={'8px !important'}>
+                    {t('common:item_name')}
+                  </Th>
+                  <Th px={'8px !important'}>{t('common:item_description')}</Th>
+                  <Th px={'8px !important'}>{t('common:required')}</Th>
+                  <Th w={'80px'} pl={'8px !important'} pr={'24px !important'}></Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {extractKeys.map((item, index) => (
                   <Tr key={index}>
-                    <Td>
+                    <Td pl={'24px !important'} pr={'8px !important'}>
                       <Flex alignItems={'center'} maxW={'300px'} className={'textEllipsis'}>
                         <MyIcon name={'checkCircle'} w={'14px'} mr={1} color={'myGray.600'} />
                         {item.key}
                       </Flex>
                     </Td>
-                    <Td>
+                    <Td px={'8px !important'}>
                       <Box maxW={'300px'} whiteSpace={'pre-wrap'}>
                         {item.desc}
                       </Box>
                     </Td>
-                    <Td>
+                    <Td px={'8px !important'}>
                       {item.required ? (
                         <Flex alignItems={'center'}>
                           <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
@@ -116,8 +115,8 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                         '-'
                       )}
                     </Td>
-                    <Td>
-                      <Flex>
+                    <Td w={'80px'} pl={'8px !important'} pr={'24px !important'}>
+                      <Flex w={'max-content'}>
                         <MyIconButton
                           icon={'common/settingLight'}
                           onClick={() => {
@@ -151,7 +150,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 ))}
               </Tbody>
             </Table>
-          </TableContainer>
+          </FixedTableContainer>
         </Box>
       )
     }),

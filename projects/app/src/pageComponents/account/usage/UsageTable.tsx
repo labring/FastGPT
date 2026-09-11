@@ -1,15 +1,5 @@
-import {
-  Box,
-  Button,
-  Flex,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
+import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
@@ -156,7 +146,22 @@ const UsageTableList = ({
           onConfirm={exportUsage}
         />
       </Flex>
-      <TableContainer ref={scrollContainerRef} {...accountContentScrollStyles} mt={3} px={[3, 6]}>
+      <FixedTableContainer
+        horizontalScroll
+        maxH="none"
+        ref={scrollContainerRef}
+        {...accountContentScrollStyles}
+        mt={3}
+        px={[3, 4]}
+        footer={
+          <>
+            <Flex mt={3} justifyContent={'center'}>
+              <Pagination />
+            </Flex>
+          </>
+        }
+        h={['60dvh', 0]}
+      >
         <Table>
           <Thead>
             <Tr>
@@ -195,10 +200,7 @@ const UsageTableList = ({
         {!isLoading && usages.length === 0 && (
           <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
         )}
-      </TableContainer>
-      <Flex mt={3} justifyContent={'center'}>
-        <Pagination />
-      </Flex>
+      </FixedTableContainer>
 
       {!!usageDetail && (
         <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />

@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
   Box,
   Button,
@@ -5,7 +6,6 @@ import {
   HStack,
   Input,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -531,7 +531,42 @@ const LogTable = ({
         />
       </Flex>
 
-      <TableContainer ref={scrollContainerRef} mt={[2, 4]} flex={'1 0 0'} overflowY={'auto'}>
+      <FixedTableContainer
+        maxH="none"
+        ref={scrollContainerRef}
+        mt={[2, 4]}
+        flex={'1 0 0'}
+        footer={
+          <>
+            <FloatingActionBar
+              pb={0}
+              Controler={
+                <HStack>
+                  <Button
+                    variant={'whiteDanger'}
+                    onClick={() =>
+                      openConfirmDelete({
+                        onConfirm: () => handleDelete(chatIds),
+                        customContent: t('app:confirm_delete_chats', {
+                          n: chatIds.length
+                        })
+                      })()
+                    }
+                  >
+                    {t('common:Delete')} ({chatIds.length})
+                  </Button>
+                </HStack>
+              }
+            >
+              {total > pageSize && (
+                <Flex justifyContent={'center'}>
+                  <Pagination />
+                </Flex>
+              )}
+            </FloatingActionBar>
+          </>
+        }
+      >
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
@@ -586,34 +621,7 @@ const LogTable = ({
           </Tbody>
         </Table>
         {logs.length === 0 && !isLoading && <EmptyTip text={t('app:logs_empty')}></EmptyTip>}
-      </TableContainer>
-
-      <FloatingActionBar
-        pb={0}
-        Controler={
-          <HStack>
-            <Button
-              variant={'whiteDanger'}
-              onClick={() =>
-                openConfirmDelete({
-                  onConfirm: () => handleDelete(chatIds),
-                  customContent: t('app:confirm_delete_chats', {
-                    n: chatIds.length
-                  })
-                })()
-              }
-            >
-              {t('common:Delete')} ({chatIds.length})
-            </Button>
-          </HStack>
-        }
-      >
-        {total > pageSize && (
-          <Flex justifyContent={'center'}>
-            <Pagination />
-          </Flex>
-        )}
-      </FloatingActionBar>
+      </FixedTableContainer>
 
       {!!detailLogData && (
         <DetailLogsModal

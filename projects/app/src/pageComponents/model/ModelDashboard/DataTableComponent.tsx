@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Table, TableContainer, Thead, Tbody, Tr, Th, Td, Button } from '@chakra-ui/react';
+import { Table, Thead, Tbody, Tr, Th, Td, Button } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -9,7 +9,7 @@ import type { DashboardDataItemType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
-import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 export type DashboardDataEntry = {
   timestamp: number;
@@ -54,7 +54,6 @@ const DataTableComponent = ({
   const showBilling = !!feConfigs?.isPlus;
   const [sortField, setSortField] = useState<SortFieldType>('totalCalls');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
 
   // Create a mapping from channel ID to channel name
   const channelIdToNameMap = useMemo(() => {
@@ -280,112 +279,119 @@ const DataTableComponent = ({
 
   return (
     <MyBox h={'100%'} minH={0} display="flex" flexDirection="column" overflow="hidden">
-      <TableContainer ref={headerContainerRef} flexShrink={0} overflowX="hidden">
-        <Table
-          minW={tableMinWidth}
-          sx={{
-            tableLayout: 'fixed',
-            width: `${headerTableWidth} !important`
-          }}
-        >
-          <colgroup>
-            <col style={{ width: '160px' }} />
-            {showChannelColumn && <col style={{ width: '140px' }} />}
-            <col style={{ width: '120px' }} />
-            <col style={{ width: '120px' }} />
-            {showBilling && <col style={{ width: '110px' }} />}
-            <col style={{ width: '160px' }} />
-            <col style={{ width: '160px' }} />
-            <col style={{ width: '120px' }} />
-            <col style={{ width: '160px' }} />
-          </colgroup>
-          <Thead>
-            <Tr userSelect={'none'}>
-              <Th>{t('config_model:dashboard_model')}</Th>
-              {showChannelColumn && <Th>{t('config_model:dashboard_channel')}</Th>}
-              <Th
-                cursor="pointer"
-                onClick={() => handleSort('totalCalls')}
-                _hover={{ color: 'primary.600' }}
-              >
-                {t('config_model:total_call_volume')} {getSortIcon('totalCalls')}
-              </Th>
-              <Th
-                cursor="pointer"
-                onClick={() => handleSort('errorCalls')}
-                _hover={{ color: 'primary.600' }}
-              >
-                {t('config_model:volunme_of_failed_calls')} {getSortIcon('errorCalls')}
-              </Th>
-              {showBilling && (
+      <FixedTableLayout
+        horizontalScroll
+        scrollMode="normal"
+        bodyProps={{ fontSize: 'sm' }}
+        renderHeader={({ headerTableWidth }) => (
+          <Table
+            minW={tableMinWidth}
+            sx={{
+              tableLayout: 'fixed',
+              width: `${headerTableWidth} !important`
+            }}
+          >
+            <colgroup>
+              <col style={{ width: '160px' }} />
+              {showChannelColumn && <col style={{ width: '140px' }} />}
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '120px' }} />
+              {showBilling && <col style={{ width: '110px' }} />}
+              <col style={{ width: '160px' }} />
+              <col style={{ width: '160px' }} />
+              <col style={{ width: '120px' }} />
+              <col style={{ width: '160px' }} />
+            </colgroup>
+            <Thead>
+              <Tr userSelect={'none'}>
+                <Th>{t('config_model:dashboard_model')}</Th>
+                {showChannelColumn && <Th>{t('config_model:dashboard_channel')}</Th>}
                 <Th
                   cursor="pointer"
-                  onClick={() => handleSort('totalCost')}
+                  onClick={() => handleSort('totalCalls')}
                   _hover={{ color: 'primary.600' }}
                 >
-                  {t('config_model:aipoint_usage')} {getSortIcon('totalCost')}
+                  {t('config_model:total_call_volume')} {getSortIcon('totalCalls')}
                 </Th>
-              )}
-              <Th>{t('config_model:avg_response_time')}</Th>
-              <Th>{t('config_model:avg_ttfb')}</Th>
-              <Th
-                cursor="pointer"
-                onClick={() => handleSort('cacheHitRate')}
-                _hover={{ color: 'primary.600' }}
-              >
-                {t('config_model:cache_hit_rate')} {getSortIcon('cacheHitRate')}
-              </Th>
-              <Th></Th>
-            </Tr>
-          </Thead>
-        </Table>
-      </TableContainer>
-      <TableContainer ref={bodyContainerRef} flex="1 1 0" minH={0} overflowY="auto" fontSize={'sm'}>
-        <Table minW={tableMinWidth} sx={{ tableLayout: 'fixed' }}>
-          <colgroup>
-            <col style={{ width: '160px' }} />
-            {showChannelColumn && <col style={{ width: '140px' }} />}
-            <col style={{ width: '120px' }} />
-            <col style={{ width: '120px' }} />
-            {showBilling && <col style={{ width: '110px' }} />}
-            <col style={{ width: '160px' }} />
-            <col style={{ width: '160px' }} />
-            <col style={{ width: '120px' }} />
-            <col style={{ width: '160px' }} />
-          </colgroup>
-          <Tbody>
-            {tableData.map((item, index) => (
-              <Tr key={index}>
-                <Td>{item.model}</Td>
-                {showChannelColumn && <Td>{item.channelName}</Td>}
-                <Td color={'primary.700'}>{formatNumber(item.totalCalls).toLocaleString()}</Td>
-                <Td color={'red.700'}>{formatNumber(item.errorCalls)}</Td>
-                {showBilling && <Td>{formatNumber(item.totalCost).toLocaleString()}</Td>}
-                <Td color={item.avgResponseTime > 10 ? 'yellow.700' : ''}>
-                  {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}` : '-'}
-                </Td>
-                <Td>{item.avgTtfb > 0 ? `${item.avgTtfb.toFixed(2)}` : '-'}</Td>
-                <Td>
-                  {isLLMModel(item.model)
-                    ? `${formatNumber(item.cacheHitRate).toLocaleString()}`
-                    : '-'}
-                </Td>
-                <Td>
-                  <Button
-                    leftIcon={<MyIcon name={'menu'} w={'1rem'} />}
-                    size={'sm'}
-                    variant={'whiteBase'}
-                    onClick={() => onViewDetail(item.model)}
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSort('errorCalls')}
+                  _hover={{ color: 'primary.600' }}
+                >
+                  {t('config_model:volunme_of_failed_calls')} {getSortIcon('errorCalls')}
+                </Th>
+                {showBilling && (
+                  <Th
+                    cursor="pointer"
+                    onClick={() => handleSort('totalCost')}
+                    _hover={{ color: 'primary.600' }}
                   >
-                    {t('config_model:detail')}
-                  </Button>
-                </Td>
+                    {t('config_model:aipoint_usage')} {getSortIcon('totalCost')}
+                  </Th>
+                )}
+                <Th>{t('config_model:avg_response_time')}</Th>
+                <Th>{t('config_model:avg_ttfb')}</Th>
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSort('cacheHitRate')}
+                  _hover={{ color: 'primary.600' }}
+                >
+                  {t('config_model:cache_hit_rate')} {getSortIcon('cacheHitRate')}
+                </Th>
+                <Th></Th>
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
-      {tableData.length === 0 && <EmptyTip text={t('config_model:dashboard_no_data')} />}
+            </Thead>
+          </Table>
+        )}
+        renderBody={() => (
+          <>
+            <Table minW={tableMinWidth} sx={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '160px' }} />
+                {showChannelColumn && <col style={{ width: '140px' }} />}
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+                {showBilling && <col style={{ width: '110px' }} />}
+                <col style={{ width: '160px' }} />
+                <col style={{ width: '160px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '160px' }} />
+              </colgroup>
+              <Tbody>
+                {tableData.map((item, index) => (
+                  <Tr key={index}>
+                    <Td>{item.model}</Td>
+                    {showChannelColumn && <Td>{item.channelName}</Td>}
+                    <Td color={'primary.700'}>{formatNumber(item.totalCalls).toLocaleString()}</Td>
+                    <Td color={'red.700'}>{formatNumber(item.errorCalls)}</Td>
+                    {showBilling && <Td>{formatNumber(item.totalCost).toLocaleString()}</Td>}
+                    <Td color={item.avgResponseTime > 10 ? 'yellow.700' : ''}>
+                      {item.avgResponseTime > 0 ? `${item.avgResponseTime.toFixed(2)}` : '-'}
+                    </Td>
+                    <Td>{item.avgTtfb > 0 ? `${item.avgTtfb.toFixed(2)}` : '-'}</Td>
+                    <Td>
+                      {isLLMModel(item.model)
+                        ? `${formatNumber(item.cacheHitRate).toLocaleString()}`
+                        : '-'}
+                    </Td>
+                    <Td>
+                      <Button
+                        leftIcon={<MyIcon name={'menu'} w={'1rem'} />}
+                        size={'sm'}
+                        variant={'whiteBase'}
+                        onClick={() => onViewDetail(item.model)}
+                      >
+                        {t('config_model:detail')}
+                      </Button>
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+            {tableData.length === 0 && <EmptyTip text={t('config_model:dashboard_no_data')} />}
+          </>
+        )}
+      />
     </MyBox>
   );
 };

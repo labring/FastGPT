@@ -1,15 +1,5 @@
-import {
-  Box,
-  Button,
-  Flex,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
+import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   GetDatasetTrainingErrorBody,
@@ -596,8 +586,8 @@ const TrainingErrorList = ({
   return (
     <>
       {scope.type === 'collection' ? (
-        <MyBox ref={collectionScrollRef} h={'400px'} overflowY={'auto'} isLoading={listLoading}>
-          <TableContainer fontSize={'12px'}>
+        <MyBox h={'400px'} overflow={'hidden'} isLoading={listLoading}>
+          <FixedTableContainer ref={collectionScrollRef} h="100%" maxH="none" fontSize={'12px'}>
             <Table variant={'simple'}>
               <Thead>
                 <Tr>
@@ -632,8 +622,8 @@ const TrainingErrorList = ({
                 ))}
               </Tbody>
             </Table>
-          </TableContainer>
-          {total === 0 && !listLoading && <EmptyTip text={t('dataset:training_error_empty')} />}
+            {total === 0 && !listLoading && <EmptyTip text={t('dataset:training_error_empty')} />}
+          </FixedTableContainer>
         </MyBox>
       ) : (
         <ScrollData
