@@ -410,7 +410,8 @@ describe('markdown 字符串处理函数测试', () => {
       const text = `before ![alt](data:image/png;base64,${base64Data}) after`;
       const result = await parseMarkdownBase64Images(text);
 
-      expect(result).toBe('before  after');
+      // 图片被删除后留下的多余空白由 simpleText 压缩成一个空格
+      expect(result).toBe('before after');
       expect(result).not.toContain('data:image/png;base64');
     });
 
