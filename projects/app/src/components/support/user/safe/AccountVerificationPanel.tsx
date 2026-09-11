@@ -42,10 +42,9 @@ type Props = {
   purpose: CaptchaVerificationPurpose;
   createCodeVerification: (captcha: string) => Promise<void>;
   submitCodeVerification: (code: string) => Promise<VerificationSubmitResult>;
-  createOldPasswordVerification?: () => Promise<string>;
+  createOldPasswordVerification?: () => Promise<void>;
   submitOldPasswordVerification?: (params: {
     password: string;
-    preLoginCode: string;
   }) => Promise<VerificationSubmitResult>;
   createWechatVerification?: () => Promise<WechatVerificationMaterial>;
   submitWechatVerification?: (code: string) => Promise<VerificationSubmitResult>;
@@ -83,7 +82,6 @@ export const AccountVerificationPanel = ({
   const [codeSending, setCodeSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
-  const [preLoginCode, setPreLoginCode] = useState<string>();
   const [wechatQR, setWechatQR] = useState<WechatVerificationMaterial>();
   const [wechatNow, setWechatNow] = useState(() => Date.now());
   const [creating, setCreating] = useState(false);
@@ -127,7 +125,7 @@ export const AccountVerificationPanel = ({
       if (method === 'oldPassword') {
         if (!createOldPasswordVerification)
           throw new Error('Old password verification is unavailable');
-        setPreLoginCode(await createOldPasswordVerification());
+        await createOldPasswordVerification();
       } else {
         if (!createWechatVerification) throw new Error('WeChat verification is unavailable');
         setWechatQR(await createWechatVerification());
@@ -268,22 +266,17 @@ export const AccountVerificationPanel = ({
   );
 
   const submitOldPassword = async () => {
-    if (method !== 'oldPassword' || !oldPassword || !preLoginCode || !submitOldPasswordVerification)
-      return;
+    if (method !== 'oldPassword' || !oldPassword || !submitOldPasswordVerification) return;
     setSubmitting(true);
     try {
       handleResult(
         await submitOldPasswordVerification({
-          password: hashStr(oldPassword),
-          preLoginCode
+          password: hashStr(oldPassword)
         })
       );
     } catch (error) {
-      // 预登录材料在密码校验前即被一次性消费，失败后必须重新创建才能再次尝试。
       setOldPassword('');
-      setPreLoginCode(undefined);
       showVerificationFailure(error);
-      void createBoundVerification();
     } finally {
       setSubmitting(false);
     }
@@ -570,7 +563,7 @@ export const AccountVerificationPanel = ({
             <Center h="104px">
               <Spinner color="primary.600" />
             </Center>
-          ) : createFailed || !preLoginCode ? (
+          ) : createFailed ? (
             <Center h="104px">
               <Button w="100%" onClick={retryCreate}>
                 {t('common:password_verification_retry')}

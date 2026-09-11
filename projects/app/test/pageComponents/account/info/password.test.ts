@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { canManagePasswordFromAccountInfo } from '@/pageComponents/account/info/password';
 
 describe('canManagePasswordFromAccountInfo', () => {
-  it('does not expose password management for root', () => {
-    expect(canManagePasswordFromAccountInfo({ isPlus: true, username: 'root' })).toBe(false);
+  it('exposes password management for root accounts', () => {
+    expect(canManagePasswordFromAccountInfo({ isPlus: true, username: 'root' })).toBe(true);
   });
 
   it('does not expose password management for WeCom users', () => {

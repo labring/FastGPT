@@ -144,6 +144,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     isPlus: feConfigs?.isPlus,
     username: userInfo?.username
   });
+  const isRoot = userInfo?.username === 'root';
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
 
@@ -234,6 +235,17 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     if (canManagePassword && passwordChangeSession?.required === false) onOpenUpdatePsw();
   }, [canManagePassword, onOpenUpdatePsw, passwordChangeSession]);
 
+  const handlePasswordAction = useCallback(() => {
+    if (isRoot) {
+      toast({
+        status: 'info',
+        title: t('account_info:root_password_change_tip')
+      });
+      return;
+    }
+    onOpenUpdatePsw();
+  }, [isRoot, onOpenUpdatePsw, t, toast]);
+
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,
     {
@@ -278,7 +290,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             <Box flex={1}>
               {userInfo?.hasPassword ? '*****' : t('account_info:password_not_set')}
             </Box>
-            <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
+            <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={handlePasswordAction}>
               {userInfo?.hasPassword ? t('account_info:change') : t('account_info:set_password')}
             </Button>
           </Flex>

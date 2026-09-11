@@ -41,17 +41,23 @@ describe('password API contracts', () => {
     ).toThrow();
   });
 
-  it('requires a bounded password digest and pre-login code', () => {
+  it('requires a bounded password digest for old-password verification', () => {
     expect(
       SensitiveAccountVerificationBodySchema.parse({
         method: 'oldPassword',
-        payload: { password: 'a'.repeat(64), preLoginCode: 'pre-login-code' }
+        payload: { password: 'a'.repeat(64) }
       })
     ).toMatchObject({ method: 'oldPassword' });
     expect(() =>
       SensitiveAccountVerificationBodySchema.parse({
         method: 'oldPassword',
-        payload: { password: 'plain-text', preLoginCode: 'pre-login-code' }
+        payload: { password: 'plain-text' }
+      })
+    ).toThrow();
+    expect(() =>
+      SensitiveAccountVerificationBodySchema.parse({
+        method: 'oldPassword',
+        payload: { password: 'a'.repeat(64), preLoginCode: 'unused' }
       })
     ).toThrow();
   });

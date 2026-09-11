@@ -2,12 +2,13 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
   UpdatePasswordBodySchema,
-  UpdatePasswordResponseSchema,
   type UpdatePasswordBody,
   type UpdatePasswordResponse
 } from '@fastgpt/global/openapi/support/user/account/password/api';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { serviceEnv } from '@fastgpt/service/env';
+import { assertPasswordUpdateRateLimit } from '@fastgpt/service/common/rateLimit/interface/accountVerification';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { consumePasswordChangeSessionInTransaction } from '@fastgpt/service/support/user/account/password/service';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -24,6 +25,11 @@ async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<Update
     authToken: true
   });
   if (!sessionId || isRoot) return Promise.reject(ERROR_ENUM.unAuthorization);
+
+  await assertPasswordUpdateRateLimit({
+    account: userId,
+    limit: serviceEnv.PASSWORD_LOGIN_MINUTE_LIMIT_COUNT
+  });
 
   await withUserLock(userId, async () => {
     await consumePasswordChangeSessionInTransaction({
@@ -54,8 +60,6 @@ async function handler(req: ApiRequestProps<UpdatePasswordBody>): Promise<Update
     event: AuditEventEnum.CHANGE_PASSWORD,
     params: {}
   });
-
-  return UpdatePasswordResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

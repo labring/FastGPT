@@ -122,8 +122,7 @@ export const CreatePasswordVerificationResponseSchema = z.discriminatedUnion('me
     maskedTarget: z.string().meta({ description: '验证码接收目标脱敏值' })
   }),
   z.object({
-    method: z.literal('oldPassword'),
-    preLoginCode: z.string().min(1).meta({ description: '绑定当前密码验证的短期材料' })
+    method: z.literal('oldPassword')
   }),
   z.object({
     method: z.literal('wechat'),
@@ -148,8 +147,7 @@ const OldPasswordVerificationConsumeSchema = z
     method: z.literal('oldPassword'),
     payload: z
       .object({
-        password: z.string().length(64),
-        preLoginCode: z.string().min(1).max(128)
+        password: z.string().length(64)
       })
       .strict()
   })

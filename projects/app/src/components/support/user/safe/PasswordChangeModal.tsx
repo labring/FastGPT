@@ -179,7 +179,6 @@ const PasswordChangeModal = ({
   const createOldPasswordVerification = useCallback(async () => {
     const result = await createPasswordVerification({ method: 'oldPassword', payload: {} });
     if (result.method !== 'oldPassword') throw new Error('Verification method mismatch');
-    return result.preLoginCode;
   }, []);
 
   const createWechatVerification = useCallback(async (): Promise<WechatVerificationMaterial> => {
@@ -219,10 +218,10 @@ const PasswordChangeModal = ({
   );
 
   const submitOldPasswordVerification = useCallback(
-    ({ password, preLoginCode }: { password: string; preLoginCode: string }) =>
+    ({ password }: { password: string }) =>
       submitPasswordVerification({
         method: 'oldPassword',
-        payload: { password, preLoginCode }
+        payload: { password }
       }),
     [submitPasswordVerification]
   );
