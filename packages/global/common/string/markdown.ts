@@ -89,9 +89,14 @@ export const htmlTable2Md = (content: string): string => {
       });
       const chunks: string[] = [];
 
+      // 表头行可能比后面的数据行窄（首行只有标题单元格），列数不足会让分隔行
+      // 少于数据列，Markdown 渲染时多出来的列会被丢弃，这里和数据行一样补齐。
       const headerCells = tableData[0]
         .slice(0, maxColumns)
         .map((cell) => (cell === '^^' ? ' ' : cell || ' '));
+      while (headerCells.length < maxColumns) {
+        headerCells.push(' ');
+      }
       const headerRow = '| ' + headerCells.join(' | ') + ' |';
       chunks.push(headerRow);
 
