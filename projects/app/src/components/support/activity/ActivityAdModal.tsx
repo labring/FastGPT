@@ -22,7 +22,13 @@ import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/
 const CLOSED_AD_KEY = 'logout-activity-ad';
 const CLOSED_AD_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-const ActivityAdModal = () => {
+const ActivityAdModal = ({
+  enabled = true,
+  onFinish
+}: {
+  enabled?: boolean;
+  onFinish?: () => void;
+}) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -45,14 +51,18 @@ const ActivityAdModal = () => {
 
   const { data } = useRequest(
     async () => {
-      if (!feConfigs?.isPlus || !userInfo || isCancellationRestricted) return;
+      if (!enabled || !feConfigs?.isPlus || !userInfo || isCancellationRestricted) return;
       return getActivityAd();
     },
     {
       manual: false,
       onSuccess(res) {
         const shouldShowAd = (() => {
-          if (!res?.id) return false;
+          if (!enabled) return false;
+          if (!res?.id) {
+            onFinish?.();
+            return false;
+          }
           if (!closedData) return true;
 
           try {
@@ -72,9 +82,14 @@ const ActivityAdModal = () => {
 
         if (res?.activityAdImage && shouldShowAd) {
           onOpen();
+        } else {
+          onFinish?.();
         }
       },
-      refreshDeps: [isCancellationRestricted, userInfo]
+      onError() {
+        if (enabled) onFinish?.();
+      },
+      refreshDeps: [enabled, isCancellationRestricted, userInfo]
     }
   );
 
@@ -83,7 +98,8 @@ const ActivityAdModal = () => {
       setClosedData(JSON.stringify({ timestamp: Date.now(), adId: data.id }));
     }
     onClose();
-  }, [data, onClose, setClosedData]);
+    onFinish?.();
+  }, [data, onClose, onFinish, setClosedData]);
 
   const handleJoin = useCallback(() => {
     if (data?.activityAdLink) {
@@ -92,6 +108,7 @@ const ActivityAdModal = () => {
         handleClose();
       } else {
         window.open(data.activityAdLink, '_blank');
+        handleClose();
       }
     }
   }, [data, handleClose, router]);

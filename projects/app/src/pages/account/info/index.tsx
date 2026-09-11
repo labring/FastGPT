@@ -23,7 +23,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
-import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 import {
   StandardSubLevelEnum,
@@ -79,6 +78,9 @@ const EnterpriseAuthStatusRow = dynamic(
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
+const MemberNameModal = dynamic(() => import('@/pageComponents/account/info/MemberNameModal'), {
+  ssr: false
+});
 
 const Info = () => {
   const { isPc } = useSystem();
@@ -130,7 +132,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs, initd } = useSystemStore();
   const { t } = useClientTranslation('account_info');
-  const { userInfo, updateUserInfo, teamPlanStatus, initUserInfo } = useUserStore();
+  const { userInfo, updateUserInfo, teamPlanStatus } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: {
       avatar: userInfo?.avatar ?? undefined,
@@ -163,6 +165,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     isOpen: isOpenUpdateContact,
     onClose: onCloseUpdateContact,
     onOpen: onOpenUpdateContact
+  } = useDisclosure();
+  const {
+    isOpen: isOpenMemberName,
+    onClose: onCloseMemberName,
+    onOpen: onOpenMemberName
   } = useDisclosure();
 
   const onClickSave = useCallback(
@@ -384,19 +391,16 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             <Input
               flex={'1 0 0'}
               disabled={isSyncMember}
-              defaultValue={userInfo?.team?.memberName || 'Member'}
+              readOnly
+              value={userInfo?.team?.memberName || 'Member'}
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
               h={'36px'}
               transform={['none', 'translateX(-11px)']}
               maxLength={100}
-              onBlur={async (e) => {
-                const val = e.target.value;
-                if (val === userInfo?.team?.memberName) return;
-                try {
-                  await putUpdateMemberName(val);
-                  initUserInfo();
-                } catch {}
+              cursor={isSyncMember ? 'not-allowed' : 'pointer'}
+              onClick={() => {
+                if (!isSyncMember) onOpenMemberName();
               }}
             />
           </Flex>
@@ -445,6 +449,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         <UpdatePswModal onClose={onCloseUpdatePsw} onSuccess={onCloseUpdatePsw} />
       )}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
+      {isOpenMemberName && (
+        <MemberNameModal
+          memberName={userInfo?.team?.memberName || ''}
+          onClose={onCloseMemberName}
+        />
+      )}
     </Box>
   );
 };
