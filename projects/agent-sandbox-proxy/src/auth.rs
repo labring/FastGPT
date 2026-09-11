@@ -8,6 +8,9 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use tracing::{debug, error};
 
+#[cfg(test)]
+use crate::error::AuthError;
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct WsLimits {
     pub max_message_bytes: usize,
@@ -106,8 +109,12 @@ pub fn get_proxy_secret() -> &'static str {
     })
 }
 
-/// 在代理层边缘进行本地 JWT 验签防刷，直接在第一道闸口过滤非法请求
-pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
+/**
+ * 在代理层边缘进行本地 JWT 验签防刷，直接在第一道闸口过滤非法请求。
+ *
+ * 返回底层 `jsonwebtoken::errors::Error`，由 `AuthError::Jwt` 承接，不在此处做字符串拼接。
+ */
+pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
     let secret = get_proxy_secret();
     let decoding_key = DecodingKey::from_secret(secret.as_bytes());
 
@@ -115,8 +122,7 @@ pub fn verify_jwt_ticket(ticket: &str) -> Result<Claims, String> {
     let mut validation = Validation::new(Algorithm::HS256);
     validation.leeway = 5;
 
-    let token_data = decode::<Claims>(ticket, &decoding_key, &validation)
-        .map_err(|err| format!("JWT signature validation failed: {}", err))?;
+    let token_data = decode::<Claims>(ticket, &decoding_key, &validation)?;
 
     Ok(token_data.claims)
 }
@@ -299,6 +305,8 @@ pub async fn invalidate_cached_preview_sandbox_address(session_id: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::StatusCode;
+    use axum::response::IntoResponse;
     use jsonwebtoken::{EncodingKey, Header, encode};
     use std::time::{SystemTime, UNIX_EPOCH};
     fn init_test_secret(secret: &str) {
@@ -376,7 +384,10 @@ mod tests {
 
         let res = verify_jwt_ticket(&token);
         assert!(res.is_err());
-        assert!(res.unwrap_err().contains("JWT signature validation failed"));
+        assert!(matches!(
+            res.unwrap_err().kind(),
+            jsonwebtoken::errors::ErrorKind::InvalidSignature
+        ));
     }
 
     #[test]
@@ -410,8 +421,61 @@ mod tests {
 
         let res = verify_jwt_ticket(&token);
         assert!(res.is_err());
-        let err = res.unwrap_err();
-        assert!(err.contains("ExpiredSignature") || err.contains("validation failed"));
+        assert!(matches!(
+            res.unwrap_err().kind(),
+            jsonwebtoken::errors::ErrorKind::ExpiredSignature
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_auth_error_into_response_masks_details() {
+        use axum::body::to_bytes;
+
+        // 1. Missing ticket -> 401 Unauthorized
+        let res = AuthError::MissingTicket.into_response();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            res.headers().get("x-content-type-options").unwrap(),
+            "nosniff"
+        );
+        let body = to_bytes(res.into_body(), 1024).await.unwrap();
+        assert_eq!(&body[..], b"Unauthorized");
+
+        // 2. JWT validation error (e.g. invalid signature) -> 401 Unauthorized
+        let decoding_key = DecodingKey::from_secret(b"secret-key-at-least-32-bytes-long");
+        let validation = Validation::new(Algorithm::HS256);
+        let jwt_err =
+            decode::<Claims>("invalid.jwt.token", &decoding_key, &validation).unwrap_err();
+        let res = AuthError::Jwt(jwt_err).into_response();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        let body = to_bytes(res.into_body(), 1024).await.unwrap();
+        assert_eq!(&body[..], b"Unauthorized");
+
+        // 3. Channel mismatch -> 401 Unauthorized
+        let res = AuthError::ChannelMismatch {
+            expected: "terminal",
+            actual: "fs".to_string(),
+        }
+        .into_response();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        let body = to_bytes(res.into_body(), 1024).await.unwrap();
+        assert_eq!(&body[..], b"Unauthorized");
+
+        // 4. Permission denied -> 401 Unauthorized
+        let res = AuthError::PermissionDenied {
+            channel: "terminal",
+        }
+        .into_response();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+        let body = to_bytes(res.into_body(), 1024).await.unwrap();
+        assert_eq!(&body[..], b"Unauthorized");
+
+        // 5. Resolution failed -> 403 Forbidden
+        let res = AuthError::ResolutionFailed("Sensitive internal address details".to_string())
+            .into_response();
+        assert_eq!(res.status(), StatusCode::FORBIDDEN);
+        let body = to_bytes(res.into_body(), 1024).await.unwrap();
+        assert_eq!(&body[..], b"Forbidden");
     }
 
     #[test]

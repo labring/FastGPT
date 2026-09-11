@@ -12,7 +12,7 @@ use axum::{
     response::Response,
 };
 
-use crate::{auth::SandboxAddress, relay::build_http_preview_url};
+use crate::{auth::SandboxAddress, error::PreviewError, relay::build_http_preview_url};
 
 static PREVIEW_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     reqwest::Client::builder()
@@ -33,28 +33,6 @@ const FORWARDED_RESPONSE_HEADERS: [HeaderName; 5] = [
     ETAG,
 ];
 
-pub fn preview_error_response(status: StatusCode, message: &'static str) -> Response<Body> {
-    let mut response = Response::new(Body::from(message));
-    *response.status_mut() = status;
-    response.headers_mut().insert(
-        CONTENT_TYPE,
-        axum::http::HeaderValue::from_static("text/plain; charset=utf-8"),
-    );
-    response.headers_mut().insert(
-        CACHE_CONTROL,
-        axum::http::HeaderValue::from_static("private, no-store"),
-    );
-    response.headers_mut().insert(
-        REFERRER_POLICY,
-        axum::http::HeaderValue::from_static("no-referrer"),
-    );
-    response.headers_mut().insert(
-        X_CONTENT_TYPE_OPTIONS,
-        axum::http::HeaderValue::from_static("nosniff"),
-    );
-    response
-}
-
 /**
  * Proxies one authenticated public preview request to the fixed IDE agent preview service.
  *
@@ -66,25 +44,29 @@ pub async fn proxy_preview_file(
     path: &str,
     method: &Method,
     request_headers: &HeaderMap,
-) -> Result<Response<Body>, String> {
+) -> Result<Response<Body>, PreviewError> {
     let sandbox_url = address
         .sandbox_url
         .as_deref()
         .filter(|url| !url.is_empty())
-        .ok_or_else(|| "Sandbox endpoint is missing".to_string())?;
+        .ok_or(PreviewError::MissingCredentials(
+            "Sandbox endpoint is missing",
+        ))?;
     let agent_token = address
         .agent_token
         .as_deref()
         .filter(|token| !token.is_empty())
-        .ok_or_else(|| "Agent token is missing".to_string())?;
-    let target_url = build_http_preview_url(sandbox_url, path)?;
+        .ok_or(PreviewError::MissingCredentials("Agent token is missing"))?;
+    let target_url = build_http_preview_url(sandbox_url, path)
+        .map_err(|err| PreviewError::InvalidRequest(err.to_string()))?;
 
     let is_head = method == Method::HEAD;
     let reqwest_method = if is_head {
         reqwest::Method::GET
     } else {
-        reqwest::Method::from_bytes(method.as_str().as_bytes())
-            .map_err(|error| format!("Invalid preview method: {error}"))?
+        reqwest::Method::from_bytes(method.as_str().as_bytes()).map_err(|error| {
+            PreviewError::InvalidRequest(format!("Invalid preview method: {error}"))
+        })?
     };
     let mut request = PREVIEW_CLIENT
         .request(reqwest_method, target_url)
@@ -101,9 +83,10 @@ pub async fn proxy_preview_file(
     let upstream = request
         .send()
         .await
-        .map_err(|error| format!("Failed to connect sandbox preview service: {error}"))?;
-    let status = StatusCode::from_u16(upstream.status().as_u16())
-        .map_err(|error| format!("Invalid upstream status: {error}"))?;
+        .map_err(|error| PreviewError::UpstreamConnect(error.to_string()))?;
+    let status = StatusCode::from_u16(upstream.status().as_u16()).map_err(|error| {
+        PreviewError::UpstreamConnect(format!("Invalid upstream status: {error}"))
+    })?;
     if matches!(
         status,
         StatusCode::UNAUTHORIZED
@@ -111,7 +94,7 @@ pub async fn proxy_preview_file(
             | StatusCode::SERVICE_UNAVAILABLE
             | StatusCode::GATEWAY_TIMEOUT
     ) {
-        return Err(format!("Sandbox preview upstream returned {status}"));
+        return Err(PreviewError::UpstreamStatus(status));
     }
     let upstream_headers = upstream.headers().clone();
     let body = if is_head {
@@ -141,10 +124,6 @@ pub async fn proxy_preview_file(
     );
 
     Ok(response)
-}
-
-pub fn bad_gateway_response() -> Response<Body> {
-    preview_error_response(StatusCode::BAD_GATEWAY, "Sandbox preview is unavailable")
 }
 
 #[cfg(test)]
@@ -235,11 +214,12 @@ mod tests {
         )
         .await;
 
-        assert!(
-            response
-                .unwrap_err()
-                .contains("Sandbox endpoint is missing")
-        );
+        assert!(matches!(
+            response,
+            Err(PreviewError::MissingCredentials(
+                "Sandbox endpoint is missing"
+            ))
+        ));
     }
 
     #[tokio::test]
@@ -304,6 +284,9 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert!(error.contains("503 Service Unavailable"));
+        assert!(matches!(
+            error,
+            PreviewError::UpstreamStatus(StatusCode::SERVICE_UNAVAILABLE)
+        ));
     }
 }

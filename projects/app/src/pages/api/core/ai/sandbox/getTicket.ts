@@ -74,7 +74,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
       permission: ticketPermission
     },
     secret,
-    { expiresIn: TICKET_EXPIRES_IN }
+    { algorithm: 'HS256', expiresIn: TICKET_EXPIRES_IN }
   );
 
   return SandboxGetTicketResponseSchema.parse({ ticket, workspaceRoot, sessionWorkDirectory });

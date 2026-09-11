@@ -2,7 +2,7 @@ use axum::{
     Router,
     body::Body,
     extract::{Path, Query, ws::WebSocketUpgrade},
-    http::{HeaderMap, Method, StatusCode},
+    http::{HeaderMap, Method},
     response::{IntoResponse, Response},
     routing::get,
 };
@@ -11,6 +11,7 @@ use std::net::SocketAddr;
 use tracing::{error, info};
 
 mod auth;
+mod error;
 mod preview;
 mod relay;
 
@@ -18,7 +19,8 @@ use auth::{
     invalidate_cached_preview_sandbox_address, resolve_cached_preview_sandbox_address,
     resolve_sandbox_address,
 };
-use preview::{bad_gateway_response, preview_error_response, proxy_preview_file};
+use error::{AuthError, PreviewError};
+use preview::proxy_preview_file;
 use relay::handle_relay;
 
 const DEFAULT_PORT: u16 = 1006;
@@ -111,52 +113,53 @@ async fn health_check() -> &'static str {
     "OK"
 }
 
-/// 统一授权与地址置换辅助函数
+/**
+ * 统一授权与地址置换辅助函数。
+ *
+ * 验证 WebSocket ticket 并向 FastGPT 主站置换出真实的沙盒物理端点寻址信息。
+ * 错误收敛为领域级 `AuthError`，在 API 边界统一转换为安全响应，避免底层细节泄露。
+ */
 async fn verify_and_resolve_auth(
     ticket_opt: Option<String>,
     expected_channel: &'static str,
-) -> Result<(auth::SandboxAddress, auth::Claims), (StatusCode, String)> {
-    let ticket = match ticket_opt {
-        Some(t) if !t.is_empty() => t,
-        _ => {
-            error!("[Auth] Ticket missing in WebSocket upgrade request.");
-            return Err((
-                StatusCode::UNAUTHORIZED,
-                "Unauthorized: ticket is required".to_string(),
-            ));
-        }
-    };
+) -> Result<(auth::SandboxAddress, auth::Claims), AuthError> {
+    let ticket = ticket_opt
+        .filter(|t| !t.is_empty())
+        .ok_or(AuthError::MissingTicket)?;
 
-    let claims = verify_ticket_for_channel(&ticket, expected_channel).map_err(|err| {
-        error!("[Auth] Local JWT verification failed: {}", err);
-        (StatusCode::UNAUTHORIZED, format!("Unauthorized: {}", err))
-    })?;
-
-    let address = resolve_sandbox_address(&ticket).await.map_err(|err| {
-        error!("[Auth] Ticket resolution failed: {}", err);
-        (StatusCode::FORBIDDEN, format!("Forbidden: {}", err))
-    })?;
+    let claims = verify_ticket_for_channel(&ticket, expected_channel)?;
+    let address = resolve_sandbox_address(&ticket)
+        .await
+        .map_err(AuthError::ResolutionFailed)?;
 
     Ok((address, claims))
 }
 
+/**
+ * 校验 Ticket 对应的频道 (fs/terminal) 及写权限要求。
+ */
 fn verify_ticket_for_channel(
     ticket: &str,
     expected_channel: &'static str,
-) -> Result<auth::Claims, String> {
+) -> Result<auth::Claims, AuthError> {
     let claims = auth::verify_jwt_ticket(ticket)?;
     if claims.channel != expected_channel {
-        return Err("ticket channel mismatch".to_string());
+        return Err(AuthError::ChannelMismatch {
+            expected: expected_channel,
+            actual: claims.channel,
+        });
     }
     if expected_channel == "terminal" && claims.permission != "write" {
-        return Err("terminal ticket requires write permission".to_string());
+        return Err(AuthError::PermissionDenied {
+            channel: expected_channel,
+        });
     }
     Ok(claims)
 }
 
-fn verify_preview_session_id(sandbox_id: &str, session_id: &str) -> Result<(), String> {
+fn verify_preview_session_id(sandbox_id: &str, session_id: &str) -> Result<(), PreviewError> {
     let Some((source_prefix, sandbox_hash)) = sandbox_id.split_once('-') else {
-        return Err("invalid preview session id".to_string());
+        return Err(PreviewError::InvalidSessionId("invalid sandbox id format"));
     };
     let hash_bytes = sandbox_hash.as_bytes();
     let session_bytes = session_id.as_bytes();
@@ -171,85 +174,64 @@ fn verify_preview_session_id(sandbox_id: &str, session_id: &str) -> Result<(), S
             .iter()
             .all(|byte| byte.is_ascii_alphanumeric())
     {
-        return Err("invalid preview session id".to_string());
+        return Err(PreviewError::InvalidSessionId("invalid session format"));
     }
     Ok(())
 }
 
-async fn fs_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) -> impl IntoResponse {
-    match verify_and_resolve_auth(query.ticket, "fs").await {
-        Ok((address, claims)) => {
-            info!(
-                "[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (FS)..."
-            );
-            let ws_limits = address.ws_limits;
-            ws.max_message_size(ws_limits.max_message_bytes)
-                .max_frame_size(ws_limits.max_frame_bytes)
-                .on_upgrade(move |socket| handle_relay(socket, address, claims, false))
-                .into_response()
-        }
-        Err((status, err_msg)) => (status, err_msg).into_response(),
-    }
+async fn fs_handler(
+    ws: WebSocketUpgrade,
+    Query(query): Query<WsQuery>,
+) -> Result<Response, AuthError> {
+    let (address, claims) = verify_and_resolve_auth(query.ticket, "fs").await?;
+    info!("[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (FS)...");
+    let ws_limits = address.ws_limits;
+    Ok(ws
+        .max_message_size(ws_limits.max_message_bytes)
+        .max_frame_size(ws_limits.max_frame_bytes)
+        .on_upgrade(move |socket| handle_relay(socket, address, claims, false))
+        .into_response())
 }
 
-async fn terminal_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) -> impl IntoResponse {
-    match verify_and_resolve_auth(query.ticket, "terminal").await {
-        Ok((address, claims)) => {
-            info!(
-                "[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (TERMINAL)..."
-            );
-            let ws_limits = address.ws_limits;
-            ws.max_message_size(ws_limits.max_message_bytes)
-                .max_frame_size(ws_limits.max_frame_bytes)
-                .on_upgrade(move |socket| handle_relay(socket, address, claims, true))
-                .into_response()
-        }
-        Err((status, err_msg)) => (status, err_msg).into_response(),
-    }
+async fn terminal_handler(
+    ws: WebSocketUpgrade,
+    Query(query): Query<WsQuery>,
+) -> Result<Response, AuthError> {
+    let (address, claims) = verify_and_resolve_auth(query.ticket, "terminal").await?;
+    info!(
+        "[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (TERMINAL)..."
+    );
+    let ws_limits = address.ws_limits;
+    Ok(ws
+        .max_message_size(ws_limits.max_message_bytes)
+        .max_frame_size(ws_limits.max_frame_bytes)
+        .on_upgrade(move |socket| handle_relay(socket, address, claims, true))
+        .into_response())
 }
 
 async fn preview_handler(
     Path(params): Path<PreviewPath>,
     method: Method,
     headers: HeaderMap,
-) -> Response<Body> {
-    if let Err(error) = verify_preview_session_id(&params.sandbox_id, &params.session_id) {
-        error!("[Preview] Session validation failed: {}", error);
-        return preview_error_response(StatusCode::UNAUTHORIZED, "Unauthorized preview session");
-    }
+) -> Result<Response<Body>, PreviewError> {
+    verify_preview_session_id(&params.sandbox_id, &params.session_id)?;
     let preview_credential = format!("{}:{}", params.sandbox_id, params.session_id);
 
-    let address = match resolve_cached_preview_sandbox_address(&preview_credential).await {
-        Ok(address) => address,
-        Err(error) => {
-            error!("[Preview] Session resolution failed: {}", error);
-            return preview_error_response(
-                StatusCode::FORBIDDEN,
-                "Preview session resolution failed",
-            );
-        }
-    };
+    let address = resolve_cached_preview_sandbox_address(&preview_credential)
+        .await
+        .map_err(PreviewError::ResolutionFailed)?;
 
     match proxy_preview_file(&address, &params.path, &method, &headers).await {
-        Ok(response) => response,
+        Ok(response) => Ok(response),
         Err(first_error) => {
             error!("[Preview] Cached upstream request failed: {}", first_error);
             invalidate_cached_preview_sandbox_address(&preview_credential).await;
 
-            let fresh_address =
-                match resolve_cached_preview_sandbox_address(&preview_credential).await {
-                    Ok(address) => address,
-                    Err(error) => {
-                        error!("[Preview] Upstream re-resolution failed: {}", error);
-                        return bad_gateway_response();
-                    }
-                };
-            proxy_preview_file(&fresh_address, &params.path, &method, &headers)
+            let fresh_address = resolve_cached_preview_sandbox_address(&preview_credential)
                 .await
-                .unwrap_or_else(|error| {
-                    error!("[Preview] Upstream retry failed: {}", error);
-                    bad_gateway_response()
-                })
+                .map_err(PreviewError::ResolutionFailed)?;
+
+            proxy_preview_file(&fresh_address, &params.path, &method, &headers).await
         }
     }
 }
@@ -271,21 +253,33 @@ mod tests {
 
     #[test]
     fn rejects_invalid_preview_session_ids() {
-        assert!(verify_preview_session_id("short", "a12345678901234567890123").is_err());
-        assert!(verify_preview_session_id("0123456789abcdef", "a12345678901234567890123").is_err());
-        assert!(
-            verify_preview_session_id("other-0123456789abcdef", "a12345678901234567890123")
-                .is_err()
-        );
-        assert!(
-            verify_preview_session_id("app-0123456789abcdef", "A12345678901234567890123").is_err()
-        );
-        assert!(
-            verify_preview_session_id("app-0123456789abcdef", "a1234567890123456789012-").is_err()
-        );
-        assert!(
-            verify_preview_session_id("app-0123456789abcdeG", "a12345678901234567890123").is_err()
-        );
-        assert!(verify_ticket_for_channel("a12345678901234567890123", "fs").is_err());
+        assert!(matches!(
+            verify_preview_session_id("short", "a12345678901234567890123"),
+            Err(PreviewError::InvalidSessionId(_))
+        ));
+        assert!(matches!(
+            verify_preview_session_id("0123456789abcdef", "a12345678901234567890123"),
+            Err(PreviewError::InvalidSessionId(_))
+        ));
+        assert!(matches!(
+            verify_preview_session_id("other-0123456789abcdef", "a12345678901234567890123"),
+            Err(PreviewError::InvalidSessionId(_))
+        ));
+        assert!(matches!(
+            verify_preview_session_id("app-0123456789abcdef", "A12345678901234567890123"),
+            Err(PreviewError::InvalidSessionId(_))
+        ));
+        assert!(matches!(
+            verify_preview_session_id("app-0123456789abcdef", "a1234567890123456789012-"),
+            Err(PreviewError::InvalidSessionId(_))
+        ));
+        assert!(matches!(
+            verify_preview_session_id("app-0123456789abcdeG", "a12345678901234567890123"),
+            Err(PreviewError::InvalidSessionId(_))
+        ));
+        assert!(matches!(
+            verify_ticket_for_channel("a12345678901234567890123", "fs"),
+            Err(AuthError::Jwt(_))
+        ));
     }
 }
