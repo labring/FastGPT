@@ -22,7 +22,10 @@ export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.exte
       name: z.string(),
       avatar: z.string().optional(),
       intro: z.string().optional(),
-      toolDescription: z.string().optional(),
+      toolDescription: z.string().optional().meta({
+        description: '已废弃：节点作为工具被调用时的能力说明',
+        deprecated: true
+      }),
       version: z.string(),
       tags: z.array(z.string()).nullish(),
       associatedPluginId: z.string().optional(),

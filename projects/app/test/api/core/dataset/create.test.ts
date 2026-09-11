@@ -1,3 +1,4 @@
+import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import createHandler from '@/pages/api/core/dataset/create';
 import type {
   CreateDatasetBody,
@@ -24,14 +25,16 @@ describe('create dataset', () => {
         tmbId: owner.tmbId,
         permission: TeamDatasetCreatePermissionVal
       });
-      const previousDefaults = global.systemDefaultModel;
-      global.systemDefaultModel = {
-        ...previousDefaults,
-        datasetImageLLM: {
-          ...previousDefaults.llm!,
-          config: { ...previousDefaults.llm!.config, vision: true }
+      const previousDefaults = getModelTestDefaults();
+      setModelTestSnapshot({
+        defaultModels: {
+          ...previousDefaults,
+          datasetImageLLM: {
+            ...previousDefaults.llm!,
+            config: { ...previousDefaults.llm!.config, vision: true }
+          }
         }
-      };
+      });
       try {
         const res = await Call<CreateDatasetBody, Record<string, never>, CreateDatasetResponse>(
           createHandler,
@@ -52,7 +55,7 @@ describe('create dataset', () => {
           vlmModelId === undefined ? previousDefaults.llm!.modelId : undefined
         );
       } finally {
-        global.systemDefaultModel = previousDefaults;
+        setModelTestSnapshot({ defaultModels: previousDefaults });
       }
     }
   );

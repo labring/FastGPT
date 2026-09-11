@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { getDefaultLLMModelData, getDefaultRerankModelData } from '@fastgpt/service/core/ai/model';
+const mockGetDefaultModelData = vi.hoisted(() => vi.fn());
 
 const mockAuthDataset = vi.hoisted(() => vi.fn());
 const mockCheckTeamAIPoints = vi.hoisted(() => vi.fn());
@@ -40,13 +40,14 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getDefaultLLMModelData: vi.fn(),
-  getDefaultRerankModelData: vi.fn(),
-  getRerankModelData: mockGetRerankModelData,
-  getEmbeddingModelData: mockGetEmbeddingModelData,
-  getLLMModelData: mockGetLLMModelData,
-  findModelData: mockGetOptionalVlmModelData,
-  getOptionalVlmModelData: mockGetOptionalVlmModelData
+  getModelHandle: async () => ({
+    getDefaultModelData: mockGetDefaultModelData,
+    getRerankModelData: mockGetRerankModelData,
+    getEmbeddingModelData: mockGetEmbeddingModelData,
+    getLLMModelData: mockGetLLMModelData,
+    findModelData: mockGetOptionalVlmModelData,
+    getOptionalVlmModelData: mockGetOptionalVlmModelData
+  })
 }));
 
 vi.mock('@fastgpt/service/support/user/audit/util', () => ({
@@ -81,18 +82,12 @@ describe('searchTest query image auth', () => {
     mockGetRerankModelData.mockImplementationOnce(() => {
       throw new UserError(ModelErrEnum.unConfigured);
     });
-    vi.mocked(getDefaultLLMModelData).mockReturnValueOnce({
-      modelId: 'default-query',
-      name: 'Default query',
-      model: 'default-query',
+    mockGetDefaultModelData.mockImplementation((slot) => ({
+      modelId: slot === 'llm' ? 'default-query' : 'default-rerank',
+      name: 'Default model',
+      model: slot === 'llm' ? 'default-query' : 'default-rerank',
       config: {}
-    } as any);
-    vi.mocked(getDefaultRerankModelData).mockReturnValueOnce({
-      modelId: 'default-rerank',
-      name: 'Default rerank',
-      model: 'default-rerank',
-      config: {}
-    } as any);
+    }));
     await handler(
       {
         body: {

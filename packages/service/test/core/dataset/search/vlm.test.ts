@@ -1,9 +1,11 @@
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getModelTestMap, setModelTestMap } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   getDatasetSearchVlmModel,
-  findFirstDatasetSearchVlmModel
+  findFirstDatasetSearchVlmModel as resolveModels
 } from '../../../../core/dataset/search/vlm';
 
 const findMock = vi.hoisted(() => vi.fn());
@@ -11,8 +13,11 @@ vi.mock('@fastgpt/service/core/dataset/schema', () => ({
   MongoDataset: { find: findMock }
 }));
 
+const findFirstDatasetSearchVlmModel = (input: Parameters<typeof resolveModels>[0]) =>
+  resolveModels(input, getCachedModelHandle()!);
+
 describe('dataset search VLM selection', () => {
-  let originalMap: typeof global.systemModelMap;
+  let originalMap: ReturnType<typeof getModelTestMap>;
   const activeModel: SystemModelDataType = {
     modelId: 'active-id',
     model: 'active-vision',
@@ -26,7 +31,7 @@ describe('dataset search VLM selection', () => {
   };
 
   beforeEach(() => {
-    originalMap = global.systemModelMap;
+    originalMap = getModelTestMap();
     const models = [
       activeModel,
       { ...activeModel, modelId: 'second-id', model: 'second-vision' },
@@ -38,17 +43,19 @@ describe('dataset search VLM selection', () => {
         config: { ...activeModel.config, vision: false }
       }
     ];
-    global.systemModelMap = new Map(
-      models.flatMap((model) => [
-        [`id:${model.modelId}`, model],
-        [`model:${model.model}`, model]
-      ])
+    setModelTestMap(
+      new Map(
+        models.flatMap((model) => [
+          [`id:${model.modelId}`, model],
+          [`model:${model.model}`, model]
+        ])
+      )
     );
     findMock.mockReset();
   });
 
   afterEach(() => {
-    global.systemModelMap = originalMap;
+    setModelTestMap(originalMap);
   });
 
   it('skips empty, deleted, disabled and non-vision models, then stops at the first usable one', () => {

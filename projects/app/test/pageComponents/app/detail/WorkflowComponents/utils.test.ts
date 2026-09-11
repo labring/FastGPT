@@ -33,7 +33,6 @@ describe('WorkflowComponents utils', () => {
             parentNodeId: 'parent1',
             name: 'Node 1',
             intro: 'Intro 1',
-            toolDescription: 'Tool desc',
             avatar: 'avatar1',
             flowNodeType: FlowNodeTypeEnum.userInput,
             showStatus: true,
@@ -78,7 +77,6 @@ describe('WorkflowComponents utils', () => {
         parentNodeId: 'parent1',
         name: 'Node 1',
         intro: 'Intro 1',
-        toolDescription: 'Tool desc',
         avatar: 'avatar1',
         flowNodeType: FlowNodeTypeEnum.userInput,
         position: { x: 100, y: 100 }

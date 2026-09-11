@@ -16,11 +16,19 @@ vi.mock('../../hooks/useToast', () => ({
 }));
 
 vi.mock('../../components/common/MyBox', () => ({
-  default: () => null
+  default: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
+    function MockMyBox({ children, ...props }, ref) {
+      return React.createElement('div', { ...props, ref }, children);
+    }
+  )
 }));
 
 vi.mock('@chakra-ui/react', () => ({
-  Box: () => null
+  Box: React.forwardRef<HTMLDivElement, React.PropsWithChildren<Record<string, unknown>>>(
+    function MockBox({ children, ...props }, ref) {
+      return React.createElement('div', { ...props, ref }, children);
+    }
+  )
 }));
 
 vi.mock('../../hooks/useRequest', async () => {
@@ -52,32 +60,39 @@ type RequestRecord = {
   params: ListParams;
   controller?: AbortController;
   resolve: (response: ListResponse) => void;
+  reject: (error: unknown) => void;
 };
 
 type HarnessProps = {
   query: string;
   api: (params: ListParams, controller?: AbortController) => Promise<ListResponse>;
   onState: (state: ReturnType<typeof useScrollPagination<ListParams, ListResponse>>) => void;
+  showPaginationTip?: boolean;
 };
 
-const Harness = ({ query, api, onState }: HarnessProps) => {
+const Harness = ({ query, api, onState, showPaginationTip = true }: HarnessProps) => {
   const state = useScrollPagination(api, {
     pageSize: 10,
     params: { query },
     refreshDeps: [query],
-    showErrorToast: false
+    showErrorToast: false,
+    showPaginationTip
   });
 
   useEffect(() => onState(state), [onState, state]);
 
-  return null;
+  return React.createElement(
+    state.ScrollData,
+    { 'data-testid': 'scroll-data' },
+    React.createElement('span', { 'data-testid': 'scroll-content' })
+  );
 };
 
 const createDeferredApi = () => {
   const requests: RequestRecord[] = [];
   const api = vi.fn((params: ListParams, controller?: AbortController) => {
-    return new Promise<ListResponse>((resolve) => {
-      requests.push({ params, controller, resolve });
+    return new Promise<ListResponse>((resolve, reject) => {
+      requests.push({ params, controller, resolve, reject });
     });
   });
 
@@ -138,5 +153,59 @@ describe('useScrollPagination', () => {
 
     expect(onState.mock.lastCall?.[0].data).toEqual(['second']);
     root.unmount();
+  });
+
+  it('exposes request errors and allows an explicit refresh retry', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const root = createRoot(document.createElement('div'));
+
+    await renderHarness(root, { query: 'retry', api, onState });
+
+    await act(async () => {
+      requests[0].reject(new Error('request failed'));
+      await Promise.resolve();
+    });
+
+    expect(onState.mock.lastCall?.[0].error).toBeInstanceOf(Error);
+
+    await act(async () => {
+      onState.mock.lastCall?.[0].refreshList();
+      await Promise.resolve();
+    });
+
+    expect(requests).toHaveLength(2);
+    root.unmount();
+  });
+
+  it('hides both pagination footer states when disabled', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(
+        React.createElement(Harness, {
+          query: 'without-footer',
+          api,
+          onState,
+          showPaginationTip: false
+        })
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      requests[0].resolve({ list: ['one'], total: 1 });
+      await Promise.resolve();
+    });
+
+    const scrollData = document.querySelector('[data-testid="scroll-data"]');
+    expect(scrollData?.textContent).not.toContain('common:request_end');
+    expect(scrollData?.textContent).not.toContain('common:request_more');
+    root.unmount();
+    host.remove();
   });
 });

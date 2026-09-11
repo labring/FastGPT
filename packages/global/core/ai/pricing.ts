@@ -1,4 +1,5 @@
-import type { ModelPriceTierType, PriceType } from './model.schema';
+import type { ModelPriceTierType, PriceType, SystemModelDocumentDataType } from './model.schema';
+import { ModelTypeEnum } from './constants';
 
 const isValidNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);
@@ -68,37 +69,70 @@ export const sanitizeModelPriceTiers = (tiers?: ModelPriceTierType[]): ModelPric
 
 // 计算模型价格梯度
 export const getRuntimeResolvedPriceTiers = (config?: PriceType): ModelPriceTierType[] => {
-  // 格式化梯度
+  /** 最终只剩一档双零价格时视为空计费，保存与运行时加载共用该语义。 */
+  const removeEmptySingleTier = (tiers: ModelPriceTierType[]) => {
+    const [onlyTier] = tiers;
+    return tiers.length === 1 && onlyTier.inputPrice === 0 && onlyTier.outputPrice === 0
+      ? []
+      : tiers;
+  };
+
+  // 新梯度为空或只有一档双零时继续向旧字段回退，兼容迁移前后的混合数据。
   if (Array.isArray(config?.priceTiers)) {
-    return sanitizeModelPriceTiers(config.priceTiers);
+    const priceTiers = removeEmptySingleTier(sanitizeModelPriceTiers(config.priceTiers));
+    if (priceTiers.length > 0) return priceTiers;
   }
 
   // 旧版的价格计费字段
-  const hasLegacyIOPrice = isValidNumber(config?.inputPrice) && config.inputPrice > 0;
+  const hasLegacyIOPrice = isValidNumber(config?.inputPrice) || isValidNumber(config?.outputPrice);
 
   if (hasLegacyIOPrice) {
-    return [
-      {
-        minInputTokens: 0,
-        inputPrice: getSafePrice(config?.inputPrice),
-        outputPrice: getSafePrice(config?.outputPrice)
-      }
-    ];
+    const legacyPriceTiers = removeEmptySingleTier(
+      sanitizeModelPriceTiers([
+        {
+          minInputTokens: 0,
+          inputPrice: getSafePrice(config?.inputPrice),
+          outputPrice: getSafePrice(config?.outputPrice)
+        }
+      ])
+    );
+    if (legacyPriceTiers.length > 0) return legacyPriceTiers;
   }
 
-  if (isValidNumber(config?.charsPointsPrice) || config?.charsPointsPrice === undefined) {
+  if (isValidNumber(config?.charsPointsPrice)) {
     const comprehensivePrice = getSafePrice(config?.charsPointsPrice);
 
-    return [
-      {
-        minInputTokens: 0,
-        inputPrice: comprehensivePrice,
-        outputPrice: comprehensivePrice
-      }
-    ];
+    const comprehensivePriceTiers = removeEmptySingleTier(
+      sanitizeModelPriceTiers([
+        {
+          minInputTokens: 0,
+          inputPrice: comprehensivePrice,
+          outputPrice: comprehensivePrice
+        }
+      ])
+    );
+    if (comprehensivePriceTiers.length > 0) return comprehensivePriceTiers;
   }
 
   return [];
+};
+
+/** 编辑打开和 JSON 导入共用：将历史 LLM 计费转换为阶梯并移除旧字段，非 LLM 保持不变。 */
+export const normalizeModelPricingForRead = (
+  modelData: SystemModelDocumentDataType
+): SystemModelDocumentDataType => {
+  if (modelData.type !== ModelTypeEnum.llm) return modelData;
+  const { inputPrice: _input, outputPrice: _output, charsPointsPrice: _chars, ...data } = modelData;
+  return { ...data, priceTiers: getRuntimeResolvedPriceTiers(modelData) };
+};
+
+/** 编辑保存和导入落库共用：只认转换/编辑后的新阶梯，免费配置不能再次回退旧字段。 */
+export const normalizeModelPricingForSave = (
+  modelData: SystemModelDocumentDataType
+): SystemModelDocumentDataType => {
+  if (modelData.type !== ModelTypeEnum.llm) return modelData;
+  const { inputPrice: _input, outputPrice: _output, charsPointsPrice: _chars, ...data } = modelData;
+  return { ...data, priceTiers: getRuntimeResolvedPriceTiers({ priceTiers: data.priceTiers }) };
 };
 
 export const calculateModelPrice = ({

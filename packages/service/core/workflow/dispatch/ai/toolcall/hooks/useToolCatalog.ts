@@ -18,7 +18,7 @@ export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool =>
   compileToolRuntime({
     toolId: item.nodeId,
     name: item.name,
-    description: item.toolDescription || item.intro,
+    description: item.intro,
     inputs: item.inputs,
     jsonSchema: item.jsonSchema
   }).modelTool;

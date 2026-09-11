@@ -1,3 +1,4 @@
+import { requiredAlternatives } from '../../../../common/zod/openapi';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
@@ -91,6 +92,7 @@ export const ChatCompletionAuthProxySchema = z
     message: 'authProxy.username or authProxy.tmbId is required'
   })
   .meta({
+    ...requiredAlternatives([['username'], ['tmbId']]),
     description:
       'API Key 代理调用身份。仅开启 authProxy 的团队级 API Key 可用，username 与 tmbId 同时传入时必须指向同一团队成员'
   });

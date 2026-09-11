@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addDays } from 'date-fns';
@@ -6,11 +8,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import {
-  getDatasetAgentModel,
-  getDatasetEmbeddingModel,
-  getDatasetVlmModel
-} from '@fastgpt/service/core/dataset/model';
+
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import path from 'node:path';
@@ -49,9 +47,14 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
       authApiKey: true
     });
     const dataset = collection.dataset;
-    const vectorModelData = getDatasetEmbeddingModel(dataset);
-    const agentModelData = getDatasetAgentModel(dataset);
-    const vlmModelData = getDatasetVlmModel(dataset);
+    const modelHandle = await getModelHandle();
+    const vectorModelData = modelHandle.getEmbeddingModelData(
+      getDatasetModelReference(dataset, 'embedding')
+    );
+    const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
+    const vlmModelData = modelHandle.getVlmModelData(getDatasetModelReference(dataset, 'vlm'), {
+      optional: true
+    });
     const { availableVlmModel, supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability(
       {
         vectorModel: vectorModelData,

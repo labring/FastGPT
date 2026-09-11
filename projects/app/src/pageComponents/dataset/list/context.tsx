@@ -157,7 +157,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
       ],
       pageSize,
       throttleWait: 300,
-      refreshOnWindowFocus: false
+      refreshOnWindowFocus: false,
+      showPaginationTip: false
     }
   );
   const loadMyDatasets = useCallback(() => fetchData({ init: true }), [fetchData]);

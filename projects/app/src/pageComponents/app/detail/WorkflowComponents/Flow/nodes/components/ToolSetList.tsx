@@ -1,7 +1,8 @@
-import React from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import React, { useCallback, useRef, useState } from 'react';
+import { Box, Flex, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 type ToolSetListItemType = {
   name: string;
@@ -21,12 +22,32 @@ export const getNodeToolSetList = (tool: Pick<FlowNodeTemplateType, 'toolConfig'
 
 const ToolSetList = ({
   toolList,
-  title
+  title,
+  onSaveDescription
 }: {
   toolList: ToolSetListItemType[];
   title?: React.ReactNode;
+  onSaveDescription: (index: number, description: string) => void;
 }) => {
   const { t } = useTranslation();
+  const [editingIndex, setEditingIndex] = useState<number>();
+  const [editingDescription, setEditingDescription] = useState('');
+  const isCancellingRef = useRef(false);
+
+  const handleSave = useCallback(() => {
+    if (editingIndex === undefined) return;
+    if (isCancellingRef.current) {
+      isCancellingRef.current = false;
+      return;
+    }
+
+    onSaveDescription(editingIndex, editingDescription);
+    setEditingIndex(undefined);
+  }, [editingDescription, editingIndex, onSaveDescription]);
+  const handleCancel = useCallback(() => {
+    isCancellingRef.current = true;
+    setEditingIndex(undefined);
+  }, []);
 
   return (
     <>
@@ -37,14 +58,20 @@ const ToolSetList = ({
             key={`${tool.name}-${index}`}
             borderBottom={'1px solid'}
             borderColor={'myGray.200'}
-            alignItems={'center'}
             py={2}
             px={3}
           >
-            <Box w={'20px'} fontSize={'14px'} color={'myGray.500'} fontWeight={'medium'}>
+            <Box
+              fontSize={'14px'}
+              color={'myGray.500'}
+              fontWeight={'medium'}
+              style={{
+                fontVariantNumeric: 'tabular-nums'
+              }}
+            >
               {index + 1 < 10 ? `0${index + 1}` : index + 1}
             </Box>
-            <Box maxW={'full'} pl={2} position="relative" width="400px">
+            <Box pl={2} position="relative" width={'full'}>
               <Box
                 fontSize={'14px'}
                 color={'myGray.900'}
@@ -54,17 +81,55 @@ const ToolSetList = ({
               >
                 {tool.name}
               </Box>
-              <Box
-                fontSize={'12px'}
-                color={'myGray.500'}
-                whiteSpace="nowrap"
-                overflow="hidden"
-                textOverflow="ellipsis"
-              >
-                {tool.description || t('app:tools_no_description')}
-              </Box>
+              <Flex gap={'4px'}>
+                {editingIndex === index ? (
+                  <Textarea
+                    className="nodrag"
+                    width="full"
+                    autoFocus
+                    value={editingDescription}
+                    onChange={(event) => setEditingDescription(event.target.value)}
+                    onBlur={handleSave}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Escape') return;
+                      event.preventDefault();
+                      handleCancel();
+                    }}
+                    minH={'28px'}
+                    py={1}
+                    px={2}
+                    mt={0.5}
+                    fontSize={'12px'}
+                    lineHeight={'short'}
+                    resize={'vertical'}
+                    rows={6}
+                  />
+                ) : (
+                  <Box width="392px" fontSize={'12px'} color={'myGray.500'} overflow="hidden">
+                    {tool.description || t('app:tools_no_description')}
+                  </Box>
+                )}
+                {editingIndex !== index && (
+                  <>
+                    <Box flex={1} />
+                    <MyIconButton
+                      size={'3'}
+                      width={'20px'}
+                      height={'20px'}
+                      flex={0}
+                      alignSelf={'center'}
+                      icon={'edit'}
+                      tip={t('common:Edit')}
+                      onClick={() => {
+                        isCancellingRef.current = false;
+                        setEditingDescription(tool.description ?? '');
+                        setEditingIndex(index);
+                      }}
+                    />
+                  </>
+                )}
+              </Flex>
             </Box>
-            <Box flex={1} />
           </Flex>
         ))}
       </Box>

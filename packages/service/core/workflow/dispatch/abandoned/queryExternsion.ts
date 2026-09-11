@@ -1,3 +1,4 @@
+import { getModelHandle } from '../../../ai/model';
 /* Abandoned */
 
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -5,7 +6,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getDefaultEmbeddingModelData, getLLMModelData } from '../../../../core/ai/model';
+
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
@@ -35,9 +36,9 @@ export const dispatchQueryExtension = async ({
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
-
-  const queryExtensionModel = getLLMModelData({ modelId, model });
-  const embeddingModel = getDefaultEmbeddingModelData();
+  const modelHandle = await getModelHandle();
+  const queryExtensionModel = modelHandle.getLLMModelData({ modelId, model });
+  const embeddingModel = modelHandle.getDefaultModelData('embedding');
   const chatHistories = getHistories(history, histories);
 
   const { extensionQueries, inputTokens, outputTokens, embeddingTokens } = await queryExtension({

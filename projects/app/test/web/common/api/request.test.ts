@@ -14,7 +14,9 @@ import {
 } from '../../../../src/web/common/api/request';
 import {
   FASTGPT_LANGUAGE_HEADER,
-  FASTGPT_SHARE_LANGUAGE_HEADER
+  FASTGPT_SHARE_LANGUAGE_HEADER,
+  FASTGPT_WEB_REQUEST_HEADER,
+  FASTGPT_WEB_REQUEST_VALUE
 } from '@fastgpt/global/common/system/constants';
 import {
   LANG_KEY,
@@ -214,6 +216,13 @@ describe('request utils', () => {
     });
   });
 
+  describe('web request header', () => {
+    it('adds the Web header to requests even without language headers', () => {
+      const config = startInterceptors({ headers: {}, method: 'GET' } as any);
+
+      expect(config.headers?.[FASTGPT_WEB_REQUEST_HEADER]).toBe(FASTGPT_WEB_REQUEST_VALUE);
+    });
+  });
   describe('raw request body', () => {
     it('should send File without mutating its readonly properties', async () => {
       const file = new File(['skill package'], 'skill.zip', { type: 'application/octet-stream' });

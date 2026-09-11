@@ -94,7 +94,13 @@ export const AppListContext = createContext<AppListContextType>({
   pageSize: 50
 });
 
-const AppListContextProvider = ({ children }: { children: ReactNode }) => {
+const AppListContextProvider = ({
+  children,
+  showPaginationTip = true
+}: {
+  children: ReactNode;
+  showPaginationTip?: boolean;
+}) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { parentId = null, type: queryType = 'all' } = router.query as {
@@ -186,7 +192,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
       ],
       pageSize,
       throttleWait: 500,
-      refreshOnWindowFocus: true
+      showPaginationTip
     }
   );
   const loadMyApps = useCallback(() => fetchData({ init: true }), [fetchData]);

@@ -23,7 +23,6 @@ const embeddingModel = {
   type: 'embedding' as const,
   scope: 'system' as const,
   isActive: true,
-  isCustom: false,
   config: { defaultToken: 100, maxToken: 100, weight: 0 }
 };
 

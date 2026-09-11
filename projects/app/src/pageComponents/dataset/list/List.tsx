@@ -419,6 +419,8 @@ function List() {
       ScrollContainerRef={scrollContainerRef}
       h={'full'}
       minH={0}
+      pr={folderDetail ? [3, 2] : [3, 6]}
+      mr={folderDetail ? [-3, -2] : [-3, -6]}
       showLoadingOverlay={false}
     >
       <>

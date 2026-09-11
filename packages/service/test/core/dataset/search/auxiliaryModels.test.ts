@@ -1,3 +1,10 @@
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import {
+  getModelTestMap,
+  getModelTestDefaults,
+  setModelTestMap,
+  setModelTestSnapshot
+} from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
@@ -5,8 +12,11 @@ import type {
   RerankSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import * as modelGetters from '../../../../core/ai/model';
-import { getDatasetSearchAuxiliaryModels } from '../../../../core/dataset/search/auxiliaryModels';
+
+import { getDatasetSearchAuxiliaryModels as resolveModels } from '../../../../core/dataset/search/auxiliaryModels';
+
+const getDatasetSearchAuxiliaryModels = (input: Parameters<typeof resolveModels>[0]) =>
+  resolveModels(input, getCachedModelHandle()!);
 
 describe('getDatasetSearchAuxiliaryModels', () => {
   const llm: LLMSystemModelDataType = {
@@ -31,12 +41,12 @@ describe('getDatasetSearchAuxiliaryModels', () => {
     isCustom: false,
     config: {}
   };
-  let previousMap: typeof global.systemModelMap;
-  let previousDefaults: typeof global.systemDefaultModel;
+  let previousMap: ReturnType<typeof getModelTestMap>;
+  let previousDefaults: ReturnType<typeof getModelTestDefaults>;
 
   beforeEach(() => {
-    previousMap = global.systemModelMap;
-    previousDefaults = global.systemDefaultModel;
+    previousMap = getModelTestMap();
+    previousDefaults = getModelTestDefaults();
     const models = [
       llm,
       rerank,
@@ -45,18 +55,20 @@ describe('getDatasetSearchAuxiliaryModels', () => {
       { ...llm, modelId: 'disabled-llm', model: 'disabled-llm', isActive: false },
       { ...rerank, modelId: 'disabled-rerank', model: 'disabled-rerank', isActive: false }
     ];
-    global.systemModelMap = new Map(
-      models.flatMap((model) => [
-        [`id:${model.modelId}`, model],
-        [`model:${model.model}`, model]
-      ])
+    setModelTestMap(
+      new Map(
+        models.flatMap((model) => [
+          [`id:${model.modelId}`, model],
+          [`model:${model.model}`, model]
+        ])
+      )
     );
-    global.systemDefaultModel = { llm, rerank };
+    setModelTestSnapshot({ defaultModels: { llm, rerank } });
   });
 
   afterEach(() => {
-    global.systemModelMap = previousMap;
-    global.systemDefaultModel = previousDefaults;
+    setModelTestMap(previousMap);
+    setModelTestSnapshot({ defaultModels: previousDefaults });
     vi.restoreAllMocks();
   });
 
@@ -93,25 +105,28 @@ describe('getDatasetSearchAuxiliaryModels', () => {
   );
 
   it('does not resolve defaults for disabled features', () => {
-    const llmSpy = vi.spyOn(modelGetters, 'getDefaultLLMModelData');
-    const rerankSpy = vi.spyOn(modelGetters, 'getDefaultRerankModelData');
+    const getDefaultModelData = vi.fn();
     expect(
-      getDatasetSearchAuxiliaryModels({
-        usingReRank: false,
-        datasetSearchUsingExtensionQuery: false
-      })
+      resolveModels(
+        {
+          usingReRank: false,
+          datasetSearchUsingExtensionQuery: false
+        },
+        { ...getCachedModelHandle()!, getDefaultModelData }
+      )
     ).toEqual({ rerankModelData: undefined, extensionModelData: undefined });
-    expect(llmSpy).not.toHaveBeenCalled();
-    expect(rerankSpy).not.toHaveBeenCalled();
+    expect(getDefaultModelData).not.toHaveBeenCalled();
   });
 
   it.each(['missing', 'disabled'])(
     'skips the optional enhancement when default models are also %s',
     (state) => {
-      global.systemDefaultModel =
-        state === 'missing'
-          ? {}
-          : { llm: { ...llm, isActive: false }, rerank: { ...rerank, isActive: false } };
+      setModelTestSnapshot({
+        defaultModels:
+          state === 'missing'
+            ? {}
+            : { llm: { ...llm, isActive: false }, rerank: { ...rerank, isActive: false } }
+      });
       expect(
         getDatasetSearchAuxiliaryModels({
           usingReRank: true,
@@ -124,11 +139,16 @@ describe('getDatasetSearchAuxiliaryModels', () => {
   it.each([new Error('unexpected failure'), new UserError('unAuth')])(
     'does not swallow unrelated errors (%s)',
     (error) => {
-      vi.spyOn(modelGetters, 'getLLMModelData').mockImplementationOnce(() => {
-        throw error;
-      });
       expect(() =>
-        getDatasetSearchAuxiliaryModels({ datasetSearchUsingExtensionQuery: true })
+        resolveModels(
+          { datasetSearchUsingExtensionQuery: true },
+          {
+            ...getCachedModelHandle()!,
+            getLLMModelData: () => {
+              throw error;
+            }
+          }
+        )
       ).toThrow(error);
     }
   );

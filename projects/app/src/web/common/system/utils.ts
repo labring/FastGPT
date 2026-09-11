@@ -3,6 +3,10 @@ import type {
   FastGPTRegisterMethodType
 } from '@fastgpt/global/common/system/types';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import {
+  FASTGPT_WEB_REQUEST_HEADER,
+  FASTGPT_WEB_REQUEST_VALUE
+} from '@fastgpt/global/common/system/constants';
 
 /**
  * 获取真实支持的自助注册方式，兼容过滤旧配置中被混入的 sync 团队模式。
@@ -35,17 +39,15 @@ export const downloadFetch = async ({
   body?: Record<string, any>;
   waitResponse?: boolean;
 }) => {
-  if (body || waitResponse) {
+  const shouldFetch = body || waitResponse || url.startsWith('/api');
+  if (shouldFetch) {
     const response = await fetch(getWebReqUrl(url), {
       method: body ? 'POST' : 'GET',
-      ...(body
-        ? {
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-          }
-        : {})
+      headers: {
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        [FASTGPT_WEB_REQUEST_HEADER]: FASTGPT_WEB_REQUEST_VALUE
+      },
+      ...(body ? { body: JSON.stringify(body) } : {})
     });
 
     if (!response.ok) {

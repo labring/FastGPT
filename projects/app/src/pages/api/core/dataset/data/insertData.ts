@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 /*
   insert one data to dataset (immediately insert)
   manual input or mark data
@@ -22,7 +24,6 @@ import {
   type InsertDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 
 async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   const { collectionId, q, a, indexes, metadata } = parseApiInput({
@@ -55,8 +56,10 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     ...item,
     text: simpleText(item.text)
   }));
-
-  const vectorModelData = getDatasetEmbeddingModel(dataset);
+  const modelHandle = await getModelHandle();
+  const vectorModelData = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(dataset, 'embedding')
+  );
 
   await hasSameValue({
     teamId,

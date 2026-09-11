@@ -37,6 +37,7 @@ export function useScrollPagination<
     showErrorToast = true,
     disabled = false,
     showNoMoreTip = true,
+    showPaginationTip = true,
 
     ...props
   }: {
@@ -48,6 +49,7 @@ export function useScrollPagination<
     showErrorToast?: boolean;
     disabled?: boolean;
     showNoMoreTip?: boolean;
+    showPaginationTip?: boolean;
   } & Parameters<typeof useRequest>[1]
 ) {
   const { t } = useTranslation();
@@ -57,6 +59,7 @@ export function useScrollPagination<
   const [total, setTotal] = useState(0);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
+  const [error, setError] = useState<Error | null>(null);
   const requestedOffsetRef = useRef<number>();
   const requestControllerRef = useRef<AbortController>();
   const requestIdRef = useRef(0);
@@ -102,6 +105,7 @@ export function useScrollPagination<
       } else if (init) {
         setFalse();
       }
+      setError(null);
 
       if (init && !silent) {
         setData([]);
@@ -157,6 +161,7 @@ export function useScrollPagination<
         if (requestController.signal.aborted || requestId !== requestIdRef.current) return;
 
         requestedOffsetRef.current = undefined;
+        setError(error instanceof Error ? error : new Error(String(error)));
         if (showErrorToast) {
           toast({
             title: t(getErrText(error, t('common:core.chat.error.data_error'))),
@@ -209,7 +214,7 @@ export function useScrollPagination<
       // Watch scroll position
       useThrottleEffect(
         () => {
-          if (!ref?.current || noMore || isLoading || data.length === 0) return;
+          if (!ref?.current || noMore || isLoading || error || data.length === 0) return;
           const { scrollTop, scrollHeight, clientHeight } = ref.current;
 
           if (
@@ -220,7 +225,7 @@ export function useScrollPagination<
             loadData({ init: false, ScrollContainerRef: ref });
           }
         },
-        [scroll],
+        [error, scroll],
         { wait: 50 }
       );
 
@@ -241,6 +246,7 @@ export function useScrollPagination<
           )}
           {children}
           {scrollLoadType === 'bottom' &&
+            showPaginationTip &&
             !isEmpty &&
             !(isLoading && data.length === 0) &&
             (showNoMoreTip || !noMore) && (
@@ -284,6 +290,7 @@ export function useScrollPagination<
   return {
     ScrollData,
     isLoading,
+    error,
     total: Math.max(total, data.length),
     isEmpty,
     data,

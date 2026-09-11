@@ -97,6 +97,34 @@ describe('admin system tool update handler', () => {
     );
   });
 
+  it('保存系统工具配置', async () => {
+    mocks.findOne.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      customConfig: {
+        name: 'Weather',
+        intro: 'Weather intro',
+        version: '1.0.0'
+      }
+    });
+
+    await handler(
+      {
+        body: {
+          id: 'systemTool-weather',
+          tags: ['weather']
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mocks.updateOne.mock.calls[0][1].customConfig).toEqual({
+      name: 'Weather',
+      intro: 'Weather intro',
+      version: '1.0.0',
+      tags: ['weather']
+    });
+  });
+
   it('为新建的子工具写入与父工具一致的密钥', async () => {
     const secretsVal = { apiKey: 'plain-value' };
 

@@ -179,7 +179,10 @@ export const FlowNodeCommonTypeSchema = z.object({
   colorSchema: z.enum(NodeColorSchemaEnum).optional(), // color schema
   name: z.string(), // name
   intro: z.string().optional(), // template list intro
-  toolDescription: z.string().optional(), // tool description
+  toolDescription: z.string().optional().meta({
+    description: '已废弃：节点作为工具被调用时的能力说明',
+    deprecated: true
+  }),
   showStatus: BoolSchema.optional(), // chatting response step status
 
   version: z.string().optional(), // version
@@ -282,6 +285,10 @@ export const NodeTemplateListItemTypeSchema = z.object({
   avatar: z.string().optional(),
   name: z.string(),
   intro: z.string().optional(), // template list intro
+  toolDescription: z.string().optional().meta({
+    description: '已废弃：节点作为工具被调用时的能力说明',
+    deprecated: true
+  }),
   isTool: BoolSchema.optional(),
   hasToolInput: BoolSchema.optional(),
 

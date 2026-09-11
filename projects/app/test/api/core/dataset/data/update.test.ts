@@ -55,8 +55,8 @@ vi.mock('@fastgpt/service/core/dataset/utils', () => ({
   replaceS3KeyToPreviewUrl: mockReplaceS3KeyToPreviewUrl
 }));
 
-vi.mock('@fastgpt/service/core/dataset/model', () => ({
-  getDatasetEmbeddingModel: vi.fn(() => mockEmbeddingModel)
+vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getModelHandle: async () => ({ getEmbeddingModelData: vi.fn(() => mockEmbeddingModel) })
 }));
 
 import handler from '@/pages/api/core/dataset/data/update';

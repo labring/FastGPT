@@ -1,3 +1,4 @@
+import { getModelHandle } from '../../../ai/model';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -13,7 +14,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import { getNodeErrResponse, getHistories } from '../utils';
-import { getLLMModelData } from '../../../ai/model';
+
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -55,8 +56,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   if (!content) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
-
-  const extractModel = getLLMModelData({ modelId, model });
+  const modelHandle = await getModelHandle();
+  const extractModel = modelHandle.getLLMModelData({ modelId, model });
   const chatHistories = getHistories(history, histories);
 
   const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });

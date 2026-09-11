@@ -1,3 +1,5 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { createDatasetDataIndex } from '@/service/core/dataset/data/dataIndex';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { NextAPI } from '@/service/middleware/entry';
@@ -12,7 +14,6 @@ import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/a
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 
 async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> {
   const { dataId, type, text } = parseApiInput({
@@ -27,8 +28,10 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     dataId,
     per: WritePermissionVal
   });
-
-  const embeddingModel = getDatasetEmbeddingModel(collection.dataset);
+  const modelHandle = await getModelHandle();
+  const embeddingModel = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(collection.dataset, 'embedding')
+  );
   const { index, tokens } = await createDatasetDataIndex({
     data: datasetData,
     type,

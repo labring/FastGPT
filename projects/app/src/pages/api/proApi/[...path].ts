@@ -1,3 +1,4 @@
+import { NextAPI } from '@/service/middleware/entry';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
@@ -5,7 +6,7 @@ import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
 import { FASTGPT_PRO_TOKEN_HEADER } from '@fastgpt/global/common/system/constants';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { path = [], ...query } = req.query as any;
     const requestPath = `/api/${path?.join('/')}?${new URLSearchParams(query).toString()}`;
@@ -66,6 +67,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export default NextAPI(handler);
 
 export const config = {
   api: {

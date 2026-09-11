@@ -55,10 +55,8 @@ export const serviceEnv = createEnv({
     CODE_SANDBOX_TOKEN: z.string().default('codesandbox'),
 
     // AI Proxy
-    AIPROXY_API_ENDPOINT: UrlSchema.optional(),
-    AIPROXY_API_TOKEN: z.string().optional(),
-    OPENAI_BASE_URL: UrlSchema.default('https://api.openai.com/v1'),
-    CHAT_API_KEY: z.string().optional(),
+    AIPROXY_API_ENDPOINT: UrlSchema,
+    AIPROXY_API_TOKEN: z.string().trim().min(1),
 
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
@@ -296,6 +294,9 @@ export const serviceEnv = createEnv({
     CHECK_INTERNAL_IP: BoolSchema.default(false).meta({ description: '是否启用内网 IP 检查' }),
     AUTH_COOKIE_SECURE: BoolSchema.default(false).meta({
       description: '是否强制为登录 Cookie 添加 Secure 属性，仅允许通过 HTTPS 传输'
+    }),
+    CSRF_ENABLED: BoolSchema.default(true).meta({
+      description: '是否启用 CSRF Web 请求标记校验'
     }),
     TRUSTED_PROXY_ENABLE: BoolSchema.default(false).meta({
       description:

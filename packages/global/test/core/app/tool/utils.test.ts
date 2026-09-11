@@ -4,9 +4,11 @@ import {
   getToolIdentityKey,
   getToolNameCandidates,
   getToolRawId,
+  getToolSetChildDescription,
   hasDebugToolInNodes,
   hasDebugToolInSelectedTools,
   isTeamPluginSource,
+  mergeToolSetChildDescriptions,
   parseDebugToolSource,
   parseTeamPluginSource,
   parseToolsetToolId,
@@ -16,6 +18,98 @@ import {
 } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+
+describe('tool set child descriptions', () => {
+  it('uses definitions for falsy values except an explicitly empty description', () => {
+    expect(getToolSetChildDescription(undefined, 'Definition description')).toBe(
+      'Definition description'
+    );
+    expect(getToolSetChildDescription(null, 'Definition description')).toBe(
+      'Definition description'
+    );
+    expect(getToolSetChildDescription(false, 'Definition description')).toBe(
+      'Definition description'
+    );
+    expect(getToolSetChildDescription(0, 'Definition description')).toBe('Definition description');
+    expect(getToolSetChildDescription('', 'Definition description')).toBe('');
+    expect(getToolSetChildDescription('  ', 'Definition description')).toBe('  ');
+    expect(getToolSetChildDescription(' Custom description ', 'Definition description')).toBe(
+      ' Custom description '
+    );
+  });
+
+  it('preserves saved system descriptions by tool id and external descriptions by name', () => {
+    const savedToolConfig = {
+      systemToolSet: {
+        toolId: 'system-tool-set',
+        toolList: [
+          { toolId: 'search', name: 'Old search', description: 'Custom system description' },
+          { toolId: 'removed', name: 'Removed', description: 'Removed description' }
+        ]
+      },
+      mcpToolSet: {
+        url: 'https://example.com/mcp',
+        toolList: [
+          { name: 'search', description: 'Custom MCP description' },
+          { name: 'blank', description: '  ' }
+        ]
+      },
+      httpToolSet: {
+        toolList: [
+          { name: 'search', description: 'Custom HTTP description' },
+          { name: 'blank', description: '' }
+        ]
+      }
+    } as any;
+    const templateToolConfig = {
+      systemToolSet: {
+        toolId: 'system-tool-set',
+        toolList: [
+          { toolId: 'search', name: 'New search', description: 'System default' },
+          { toolId: 'new', name: 'New', description: 'New system default' }
+        ]
+      },
+      mcpToolSet: {
+        url: 'https://example.com/mcp',
+        toolList: [
+          { name: 'search', description: 'MCP default' },
+          { name: 'blank', description: 'Blank MCP default' },
+          { name: 'new', description: 'New MCP default' }
+        ]
+      },
+      httpToolSet: {
+        toolList: [
+          { name: 'search', description: 'HTTP default' },
+          { name: 'blank', description: 'Blank HTTP default' },
+          { name: 'new', description: 'New HTTP default' }
+        ]
+      }
+    } as any;
+
+    expect(mergeToolSetChildDescriptions({ savedToolConfig, templateToolConfig })).toMatchObject({
+      systemToolSet: {
+        toolList: [
+          { toolId: 'search', description: 'Custom system description' },
+          { toolId: 'new', description: 'New system default' }
+        ]
+      },
+      mcpToolSet: {
+        toolList: [
+          { name: 'search', description: 'Custom MCP description' },
+          { name: 'blank', description: '  ' },
+          { name: 'new', description: 'New MCP default' }
+        ]
+      },
+      httpToolSet: {
+        toolList: [
+          { name: 'search', description: 'Custom HTTP description' },
+          { name: 'blank', description: '' },
+          { name: 'new', description: 'New HTTP default' }
+        ]
+      }
+    });
+  });
+});
 
 describe('shouldUseLegacyToolDescriptionFallback', () => {
   it('only enables fallback for workflow, system and commercial tools', () => {

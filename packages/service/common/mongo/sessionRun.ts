@@ -23,7 +23,10 @@ export class MongoTransactionConflictError extends Error {
  * driver 会因 TransientTransactionError 重跑事务回调，并会单独处理
  * UnknownTransactionCommitResult；ACL 写入冲突会用新 session 重试，业务错误保持原样抛出。
  */
-export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) => Promise<T>) => {
+export const mongoSessionRun = async <T = unknown>(
+  fn: (session: ClientSession) => Promise<T>,
+  options?: Parameters<ClientSession['withTransaction']>[1]
+) => {
   let conflictRetries = 0;
 
   while (true) {
@@ -31,7 +34,8 @@ export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) 
 
     try {
       return await session.withTransaction(() => fn(session), {
-        maxCommitTimeMS: timeout
+        maxCommitTimeMS: timeout,
+        ...options
       });
     } catch (error) {
       if (error instanceof MongoTransactionConflictError && conflictRetries < maxConflictRetries) {

@@ -19,7 +19,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 - MongoDB: Stores all data except vectors
 - PostgreSQL/Milvus/Oceanbase/SeekDB: Stores vector data
-- AIProxy: Aggregates various AI APIs with multi-model support (for any model issues, test with OneAPI first)
+- AI Proxy: Required for proxying model requests and managing providers in the Admin interface.
 
 </Alert>
 
@@ -376,10 +376,14 @@ rs.status()
 
 ### How to Change API Address and Key
 
-By default, OneAPI connection address and key are configured. Modify the environment variables in the fastgpt container in `docker-compose.yml`:
+Starting with V4.17.0, **you must deploy or connect to AI Proxy** and set these environment variables in the FastGPT container:
 
-`OPENAI_BASE_URL` (API endpoint, must include /v1)
-`CHAT_API_KEY` (API credentials)
+- `AIPROXY_API_ENDPOINT`: The AI Proxy service root URL reachable from FastGPT, such as `http://aiproxy:3000`. Do not append `/v1`; FastGPT adds the path required by each API.
+- `AIPROXY_API_TOKEN`: A nonempty AI Proxy administrator token that matches the administrator credentials configured on the AI Proxy server.
+
+Startup validation fails if either setting is missing. `OPENAI_BASE_URL` and `CHAT_API_KEY` do not replace these required settings. AI Proxy is still required when a model uses `requestUrl/requestAuth`. Configure model service endpoints and keys in the Admin provider settings.
+
+To update the AI Proxy connection, edit the FastGPT container's environment variables in `docker-compose.yml`. Commercial Admin services that share App/Service configuration also need both variables.
 
 After modifying, restart:
 

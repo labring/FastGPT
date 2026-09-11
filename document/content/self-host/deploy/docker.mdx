@@ -19,7 +19,7 @@ import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCo
 
 - MongoDB：用于存储除了向量外的各类数据
 - PostgreSQL/Milvus/Oceanbase/SeekDB：存储向量数据
-- AIProxy: 聚合各类 AI API，支持多模型调用（任何模型问题，先自行通过 OneAPI 测试校验）
+- AI Proxy：必需的模型服务，负责模型请求代理和管理员渠道管理。
 
 </Alert>
 
@@ -361,9 +361,14 @@ rs.status()
 
 ### 如何修改 API 地址和密钥
 
-默认是写了 OneAPi 的连接地址和密钥，可以通过修改 `docker-compose.yml` 中，fastgpt 容器的环境变量实现。
+从 V4.17.0 起，**必须部署或接入 AI Proxy**，并在 FastGPT 容器中配置以下环境变量：
 
-`OPENAI_BASE_URL`（API 接口的地址，需要加/v1）`CHAT_API_KEY`（API 接口的凭证）。
+- `AIPROXY_API_ENDPOINT`：FastGPT 可访问的 AI Proxy 服务根地址，例如 `http://aiproxy:3000`，不要附加 `/v1`；FastGPT 会按接口补充路径。
+- `AIPROXY_API_TOKEN`：AI Proxy 管理员 Token，必须与 AI Proxy 服务端的管理员凭证一致，不能为空。
+
+缺少上述任一配置会导致启动校验失败。`OPENAI_BASE_URL` 和 `CHAT_API_KEY` 不能替代这两个必填项；即使模型配置了 `requestUrl/requestAuth`，也不能省略 AI Proxy。模型服务商的地址和密钥在管理员渠道配置中维护。
+
+可以通过修改 `docker-compose.yml` 中 FastGPT 容器的环境变量更新 AI Proxy 连接配置；商业版 Admin 服务若复用 App/Service 配置，也需要设置这两个变量。
 
 修改完后重启：
 

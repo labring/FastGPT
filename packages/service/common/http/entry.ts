@@ -122,6 +122,9 @@ export const createApiEntry = <
 
             try {
               await Promise.all(beforeCallback.map((item) => item(req as Request, res)));
+              if (res.writableEnded || res.writableFinished) {
+                return;
+              }
 
               let response = null;
               for await (const handler of args) {

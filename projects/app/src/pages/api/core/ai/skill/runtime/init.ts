@@ -26,7 +26,7 @@ import {
  *
  * 该接口只负责启动、恢复或复用沙盒；runtime 升级判断和触发由 getStatus/upgrade 承担。
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -100,3 +100,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
   }
 }
+
+export default handler;

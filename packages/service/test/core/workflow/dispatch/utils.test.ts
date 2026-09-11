@@ -1055,6 +1055,7 @@ describe('rewriteRuntimeWorkFlow', () => {
 
     expect(nodes.find((n) => n.nodeId === 'ts2')).toBeUndefined();
     expect(nodes.find((n) => n.nodeId === 'ts20')).toMatchObject({
+      intro: 'desc',
       toolConfig: {
         mcpTool: {
           toolId: 'mcp-mcp-app-1/tool1'
@@ -1209,9 +1210,67 @@ describe('rewriteRuntimeWorkFlow', () => {
         ])
       );
       expect(nodes.find((n) => n.nodeId === 'ts41')).toBeDefined();
+      expect(nodes.find((n) => n.nodeId === 'ts40')?.intro).toBe('desc1');
+      expect(nodes.find((n) => n.nodeId === 'ts41')?.intro).toBe('desc2');
       expect(edges.filter((e) => e.target === 'ts40' || e.target === 'ts41').length).toBe(2);
     }
   );
+
+  it('should prefer saved MCP and HTTP toolSet child descriptions', async () => {
+    const mcpToolSetNode = makeNode('mcpToolSet', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'mcp-app-1',
+      name: 'MCP ToolSet',
+      toolConfig: {
+        mcpToolSet: {
+          toolList: [{ name: 'search', description: 'Saved MCP description' }]
+        }
+      }
+    } as any);
+    const httpToolSetNode = makeNode('httpToolSet', FlowNodeTypeEnum.toolSet, {
+      pluginId: 'http-app-1',
+      name: 'HTTP ToolSet',
+      toolConfig: {
+        httpToolSet: {
+          toolList: [{ name: 'search', description: 'Saved HTTP description' }]
+        }
+      }
+    } as any);
+    const nodes = [mcpToolSetNode, httpToolSetNode];
+    const edges: RuntimeEdgeItemType[] = [];
+
+    mockMongoAppFindOne.mockImplementation(({ _id }: { _id: string }) => ({
+      lean: vi.fn().mockResolvedValue(
+        _id === 'mcp-app-1'
+          ? {
+              _id,
+              modules: [
+                { toolConfig: { mcpToolSet: { url: 'https://mcp.example.com', toolList: [] } } }
+              ]
+            }
+          : { _id }
+      )
+    }));
+    mockGetMCPChildren.mockResolvedValue([
+      { name: 'search', description: 'Default MCP description', inputSchema: {} }
+    ]);
+    mockGetHTTPToolList.mockResolvedValue([
+      {
+        name: 'search',
+        description: 'Default HTTP description',
+        path: '/search',
+        method: 'GET'
+      }
+    ]);
+
+    await rewriteRuntimeWorkFlow({ teamId: 'team1', nodes, edges });
+
+    expect(nodes.find((node) => node.nodeId === 'mcpToolSet0')?.intro).toBe(
+      'Saved MCP description'
+    );
+    expect(nodes.find((node) => node.nodeId === 'httpToolSet0')?.intro).toBe(
+      'Saved HTTP description'
+    );
+  });
 
   // Helper: route MongoApp.find responses by the toolsetId it queries, since
   // parseMcpTool and parseHttpTool may both hit MongoApp.find in parallel.
@@ -1345,6 +1404,57 @@ describe('rewriteRuntimeWorkFlow', () => {
         FlowNodeInputTypeEnum.reference
       ]
     });
+  });
+
+  it('should preserve saved intro for standalone MCP and HTTP tool nodes', async () => {
+    const mcpToolNode = makeNode('mcp1', FlowNodeTypeEnum.tool, {
+      intro: 'Saved MCP intro',
+      toolConfig: { mcpTool: { toolId: 'mcp-toolset-1/toolA' } }
+    } as any);
+    const httpToolNode = makeNode('http1', FlowNodeTypeEnum.tool, {
+      intro: 'Saved HTTP intro',
+      toolConfig: { httpTool: { toolId: 'http-toolset-1/toolB' } }
+    } as any);
+    setupFindByIdMap({
+      'toolset-1': {
+        _id: 'toolset-1',
+        modules: [
+          {
+            toolConfig: {
+              mcpToolSet: {
+                url: 'https://mcp.example.com',
+                toolList: [
+                  {
+                    name: 'toolA',
+                    description: 'Remote MCP intro',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              },
+              httpToolSet: {
+                toolList: [
+                  {
+                    name: 'toolB',
+                    description: 'Remote HTTP intro',
+                    inputSchema: { type: 'object', properties: {} },
+                    requestSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    await rewriteRuntimeWorkFlow({
+      teamId: 'team1',
+      nodes: [mcpToolNode, httpToolNode],
+      edges: []
+    });
+
+    expect(mcpToolNode.intro).toBe('Saved MCP intro');
+    expect(httpToolNode.intro).toBe('Saved HTTP intro');
   });
 
   it('should use the remote default only when a saved tool input has no selection', async () => {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, type BoxProps, Flex } from '@chakra-ui/react';
 import {
   type GetResourceFolderListProps,
@@ -10,6 +10,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useTranslation } from 'next-i18next';
 
 export type SelectOneResourceItemType = GetResourceListItemResponse & {
@@ -29,6 +30,7 @@ const SelectOneResource = ({
   server,
   value,
   onSelect,
+  onCurrentParentIdChange,
   maxH = ['80vh', '600px'],
   h = '100%',
   selectFolder = false,
@@ -37,6 +39,7 @@ const SelectOneResource = ({
   server: SelectOneResourceServer;
   value?: ParentIdType;
   onSelect: (e?: SelectOneResourceItemType) => any;
+  onCurrentParentIdChange?: (parentId: ParentIdType) => void;
   maxH?: BoxProps['maxH'];
   h?: BoxProps['h'];
   selectFolder?: boolean;
@@ -55,11 +58,18 @@ const SelectOneResource = ({
   const [path, setPath] = useState<ResourcePathItemType[]>([rootItem]);
   const currentParentId = path[path.length - 1]?.id === rootId ? null : path[path.length - 1]?.id;
 
+  useEffect(() => {
+    onCurrentParentIdChange?.(currentParentId);
+  }, [currentParentId, onCurrentParentIdChange]);
+
   const { data, ScrollData } = useScrollPagination(server, {
     pageSize: 50,
     params: { parentId: currentParentId },
     refreshDeps: [currentParentId],
-    showNoMoreTip: false
+    showNoMoreTip: false,
+    EmptyTip: (
+      <EmptyTip text={t('common:folder.empty')} flex={1} mt={0} py={0} justifyContent={'center'} />
+    )
   });
   const isAutoHeight = h === 'auto';
 
@@ -68,12 +78,15 @@ const SelectOneResource = ({
 
   const selectRoot = () => {
     if (selectFolder) {
-      onSelect(value === null ? undefined : rootItem);
+      onSelect();
     }
     setPath([rootItem]);
   };
 
   const enterFolder = (item: ResourcePathItemType) => {
+    if (selectFolder) {
+      onSelect();
+    }
     setPath((state) => (state[state.length - 1]?.id === item.id ? state : [...state, item]));
   };
 
@@ -111,13 +124,7 @@ const SelectOneResource = ({
               px={1.5}
               py={0.5}
               borderRadius={'sm'}
-              color={
-                selectFolder && item.id === rootId && value === null
-                  ? 'primary.600'
-                  : index === path.length - 1
-                    ? 'myGray.900'
-                    : 'myGray.500'
-              }
+              color={index === path.length - 1 ? 'myGray.900' : 'myGray.500'}
               fontSize={'xs'}
               cursor={'pointer'}
               _hover={{ bg: 'myGray.100', color: 'primary.600' }}
@@ -125,6 +132,9 @@ const SelectOneResource = ({
                 if (index === 0) {
                   selectRoot();
                   return;
+                }
+                if (selectFolder) {
+                  onSelect();
                 }
                 setPath((state) => state.slice(0, index + 1));
               }}

@@ -153,6 +153,24 @@ describe('markdown 字符串处理函数测试', () => {
       expect(result).toContain('| D |'); // 自动填充空列
     });
 
+    it('应该在表头列数少于数据行时补齐表头和分隔行', () => {
+      const html = `
+        <table>
+          <tr><td>季度报表</td></tr>
+          <tr><td>Q1</td><td>Q2</td><td>Q3</td></tr>
+          <tr><td>1</td><td>2</td><td>3</td></tr>
+        </table>
+      `;
+      const lines = htmlTable2Md(html).trim().split('\n');
+      const countColumns = (line: string) => line.split('|').length - 2;
+
+      expect(lines[0]).toContain('季度报表');
+      expect(countColumns(lines[0])).toBe(3);
+      expect(lines[1]).toBe('| --- | --- | --- |');
+      expect(lines[2]).toBe('| Q1 | Q2 | Q3 |');
+      expect(lines[3]).toBe('| 1 | 2 | 3 |');
+    });
+
     it('应该处理无效的表格 HTML', () => {
       const invalidHtml = '<table><tr>invalid</tr></table>';
       const result = htmlTable2Md(invalidHtml);

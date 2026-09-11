@@ -1,7 +1,7 @@
+import { getModelTestDefaults } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { getDatasetEmbeddingModel } from '@fastgpt/service/core/dataset/model';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import {
@@ -511,6 +511,65 @@ describe('rewriteAppWorkflowToDetail - workflow tool inputs', () => {
   });
 });
 
+describe('rewriteAppWorkflowToDetail - tool set descriptions', () => {
+  it('保留工具集节点已编辑的子工具描述', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'systemTool-toolset',
+      pluginId: 'systemTool-toolset',
+      flowNodeType: FlowNodeTypeEnum.toolSet,
+      name: 'Tool set',
+      avatar: '',
+      intro: '',
+      inputs: [],
+      outputs: [],
+      version: 'v2',
+      isLatestVersion: true,
+      toolConfig: {
+        systemToolSet: {
+          toolId: 'systemTool-toolset',
+          toolList: [
+            { toolId: 'search', name: 'Search', description: 'Definition description' },
+            { toolId: 'blank', name: 'Blank', description: 'Definition blank description' },
+            { toolId: 'new', name: 'New', description: 'New definition description' }
+          ]
+        }
+      }
+    });
+    const nodes = [
+      {
+        nodeId: 'tool-set',
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        pluginId: 'systemTool-toolset',
+        inputs: [],
+        outputs: [],
+        toolConfig: {
+          systemToolSet: {
+            toolId: 'systemTool-toolset',
+            toolList: [
+              { toolId: 'search', name: 'Search', description: 'Custom description' },
+              { toolId: 'blank', name: 'Blank', description: '' },
+              { toolId: 'removed', name: 'Removed', description: 'Removed description' }
+            ]
+          }
+        }
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].toolConfig?.systemToolSet?.toolList).toEqual([
+      { toolId: 'search', name: 'Search', description: 'Custom description' },
+      { toolId: 'blank', name: 'Blank', description: '' },
+      { toolId: 'new', name: 'New', description: 'New definition description' }
+    ]);
+  });
+});
+
 describe('rewriteAppWorkflowToDetail - tool call inputs', () => {
   it('保留候选类型并由画布按工具上下文处理用户问题', async () => {
     const userQuestion = {
@@ -708,6 +767,88 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         { label: '2', value: '2' }
       ]
     });
+  });
+
+  it.each([
+    ['mcp-app-1/search', 'MCP search description'],
+    ['http-app-1/search', 'HTTP search description']
+  ])('补齐 %s 工具节点的空 intro', async (pluginId, description) => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: pluginId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'tool-avatar',
+      intro: description,
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    for (const [originalIntro, expectedIntro] of [
+      [undefined, description],
+      ['', ''],
+      ['  ', '  ']
+    ] as const) {
+      const nodes = [
+        {
+          nodeId: 'tool',
+          flowNodeType: FlowNodeTypeEnum.tool,
+          pluginId,
+          intro: originalIntro,
+          inputs: [],
+          outputs: []
+        } as StoreNodeItemType
+      ];
+
+      await rewriteAppWorkflowToDetail({
+        nodes,
+        teamId: 'team-1',
+        ownerTmbId: 'tmb-1',
+        isRoot: false
+      });
+
+      expect(nodes[0].intro).toBe(expectedIntro);
+    }
+  });
+
+  it.each([
+    ['mcp-app-1/search', 'Saved MCP description'],
+    ['http-app-1/search', 'Saved HTTP description']
+  ])('保留 %s 工具节点已有 intro', async (pluginId, originalIntro) => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: pluginId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'tool-avatar',
+      intro: 'Remote description',
+      inputs: [],
+      outputs: [],
+      version: '',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId,
+        intro: originalIntro,
+        inputs: [],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].intro).toBe(originalIntro);
   });
 
   it('刷新最新工具节点时保留 agentGenerated 推荐并显式保存手动类型', async () => {
@@ -1282,7 +1423,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
 
   it('刷新 ChatAgent 的知识库参数快照信息', async () => {
     const user = await getUser(`agent-dataset-params-${getNanoid(6)}`);
-    const embeddingModel = global.systemDefaultModel.embedding;
+    const embeddingModel = getModelTestDefaults().embedding;
     const dataset = await MongoDataset.create({
       name: 'Current Dataset Name',
       avatar: '/icon/current-dataset.svg',
@@ -1290,7 +1431,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       teamId: user.teamId,
       tmbId: user.tmbId
     });
-    const resolvedEmbeddingModel = getDatasetEmbeddingModel(dataset);
     const datasetParamsInput = {
       key: NodeInputKeyEnum.datasetParams,
       value: {
@@ -1338,8 +1478,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         name: 'Current Dataset Name',
         avatar: '/icon/current-dataset.svg',
         vectorModel: expect.objectContaining({
-          modelId: resolvedEmbeddingModel.modelId,
-          model: resolvedEmbeddingModel.model
+          modelId: embeddingModel.modelId,
+          model: ''
         }),
         isDeleted: false
       }
@@ -1348,7 +1488,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
 
   it('兼容旧版单对象知识库选择项并补齐详情快照', async () => {
     const user = await getUser(`legacy-single-dataset-detail-${getNanoid(6)}`);
-    const embeddingModel = global.systemDefaultModel.embedding;
+    const embeddingModel = getModelTestDefaults().embedding;
     const dataset = await MongoDataset.create({
       name: 'Legacy Dataset Name',
       avatar: '/icon/legacy-dataset.svg',
@@ -1356,7 +1496,6 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       teamId: user.teamId,
       tmbId: user.tmbId
     });
-    const resolvedEmbeddingModel = getDatasetEmbeddingModel(dataset);
     const datasetSelectInput = {
       key: NodeInputKeyEnum.datasetSelectList,
       value: {
@@ -1387,8 +1526,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         name: 'Legacy Dataset Name',
         avatar: '/icon/legacy-dataset.svg',
         vectorModel: expect.objectContaining({
-          modelId: resolvedEmbeddingModel.modelId,
-          model: resolvedEmbeddingModel.model
+          modelId: embeddingModel.modelId,
+          model: ''
         }),
         isDeleted: false
       }

@@ -1,3 +1,5 @@
+import type { getModelTestMap } from '@test/modelCache';
+import { getModelTestDefaults, setModelTestMap } from '@test/modelCache';
 import { handler } from '@/pages/api/core/ai/model/summary';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -30,21 +32,23 @@ describe('POST /api/core/ai/model/summary', () => {
     });
     mocks.permission.mockResolvedValue({ modelIds: ['active', 'disabled'], version: 'p' });
     const base = {
-      ...global.systemDefaultModel.llm!,
+      ...getModelTestDefaults().llm!,
       name: 'Model',
       avatar: 'logo.svg',
       type: ModelTypeEnum.llm,
       isActive: true,
       requestAuth: 'secret',
       requestUrl: 'private',
-      config: { ...global.systemDefaultModel.llm!.config, defaultConfig: { private: true } }
+      config: { ...getModelTestDefaults().llm!.config, defaultConfig: { private: true } }
     };
-    global.systemModelMap = new Map([
-      ['id:active', { ...base, modelId: 'active' }],
-      ['id:disabled', { ...base, modelId: 'disabled', isActive: false }],
-      ['id:forbidden', { ...base, modelId: 'forbidden' }],
-      ['id:forbidden-disabled', { ...base, modelId: 'forbidden-disabled', isActive: false }]
-    ]) as typeof global.systemModelMap;
+    setModelTestMap(
+      new Map([
+        ['id:active', { ...base, modelId: 'active' }],
+        ['id:disabled', { ...base, modelId: 'disabled', isActive: false }],
+        ['id:forbidden', { ...base, modelId: 'forbidden' }],
+        ['id:forbidden-disabled', { ...base, modelId: 'forbidden-disabled', isActive: false }]
+      ]) as ReturnType<typeof getModelTestMap>
+    );
   });
   it('returns all four states in requested order with only display fields', async () => {
     const result = await handler({
@@ -62,7 +66,11 @@ describe('POST /api/core/ai/model/summary', () => {
       teamId: 'team',
       tmbId: 'member',
       isTeamOwner: false,
-      includeInactive: true
+      includeInactive: true,
+      catalogSnapshot: expect.objectContaining({
+        revision: expect.any(Number),
+        models: expect.any(Array)
+      })
     });
   });
   it('authenticates before looking up even deleted model IDs', async () => {
@@ -85,7 +93,11 @@ describe('POST /api/core/ai/model/summary', () => {
       teamId: 'link-team',
       tmbId: 'link-member',
       isTeamOwner: true,
-      includeInactive: true
+      includeInactive: true,
+      catalogSnapshot: expect.objectContaining({
+        revision: expect.any(Number),
+        models: expect.any(Array)
+      })
     });
   });
   it.each([[], [''], Array(101).fill('active')])(

@@ -134,11 +134,10 @@ export const SystemModelDocumentDataSchema = z.discriminatedUnion('type', [
 ]);
 export type SystemModelDocumentDataType = z.infer<typeof SystemModelDocumentDataSchema>;
 
-/** 运行时模型数据。avatar 与 isCustom 都由 provider/plugin 信息派生。 */
+/** 运行时模型数据。modelId 来自 MongoDB `_id`，avatar 由 provider 派生。 */
 const RuntimeSystemModelFields = {
   modelId: z.string(),
-  avatar: z.string().optional(),
-  isCustom: z.boolean()
+  avatar: z.string().optional()
 };
 
 export const LLMSystemModelDataSchema =

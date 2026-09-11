@@ -23,6 +23,7 @@ const PopoverConfirm = ({
   type,
   Trigger,
   placement = 'auto',
+  closeOnBlur = true,
   offset,
   modifiers,
   onConfirm,
@@ -34,6 +35,7 @@ const PopoverConfirm = ({
   type?: 'info' | 'delete';
   Trigger: React.ReactNode;
   placement?: PlacementWithLogical;
+  closeOnBlur?: boolean;
   offset?: [number, number];
   modifiers?: PopoverProps['modifiers'];
   onConfirm: () => Promise<any> | any;
@@ -73,7 +75,7 @@ const PopoverConfirm = ({
       placement={placement}
       offset={offset}
       modifiers={modifiers}
-      closeOnBlur={true}
+      closeOnBlur={closeOnBlur}
       trigger={'click'}
       openDelay={100}
       closeDelay={100}
@@ -139,9 +141,10 @@ const PopoverConfirm = ({
             isLoading={loading}
             variant={map.variant}
             size="sm"
-            onClick={async (e) => {
+            onClick={(e) => {
               e.stopPropagation();
-              await onclickConfirm();
+              // useRequest 已展示失败提示；保留确认框重试，不把拒绝继续抛给浏览器事件。
+              void onclickConfirm().catch(() => {});
             }}
           >
             {confirmText || t('common:Confirm')}

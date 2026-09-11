@@ -1,3 +1,4 @@
+import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/core/dataset/training/rebuildEmbedding';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -11,11 +12,8 @@ import {
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import {
-  getEmbeddingModelData,
-  getLLMModelData,
-  getVlmModelData
-} from '@fastgpt/service/core/ai/model';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+vi.unmock('@fastgpt/service/core/ai/model');
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
@@ -64,8 +62,8 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       ...global.systemEnv,
       vectorMaxProcess: 1
     };
-    agentModel = global.systemDefaultModel.llm;
-    const defaultEmbeddingModel = global.systemDefaultModel.embedding;
+    agentModel = getModelTestDefaults().llm;
+    const defaultEmbeddingModel = getModelTestDefaults().embedding;
     visionEmbeddingModel = {
       ...defaultEmbeddingModel,
       modelId: '507f1f77bcf86cd799439012',
@@ -98,17 +96,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     };
 
     [visionEmbeddingModel, textOnlyEmbeddingModel, datasetVlmModel].forEach((model) => {
-      global.systemModelMap.set(`id:${model.modelId}`, model);
-      global.systemModelMap.set(`model:${model.model}`, model);
-    });
-
-    // 全局测试环境会固定 mock embedding 模型；本组用例需要验证按 ID 切换后的真实能力。
-    vi.mocked(getEmbeddingModelData).mockImplementation(({ modelId, model }) => {
-      const modelData = global.systemModelMap.get(modelId ? `id:${modelId}` : `model:${model}`) as
-        | EmbeddingSystemModelDataType
-        | undefined;
-      if (!modelData) throw new Error('模型不存在');
-      return modelData;
+      addModelTestModel(model);
     });
   });
 
@@ -129,10 +117,12 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       ]
     });
 
-    expect(getEmbeddingModelData({ modelId: visionEmbeddingModel.modelId })).toEqual(
-      visionEmbeddingModel
+    expect(
+      (await getModelHandle()).getEmbeddingModelData({ modelId: visionEmbeddingModel.modelId })
+    ).toEqual(visionEmbeddingModel);
+    expect((await getModelHandle()).getLLMModelData({ modelId: agentModel.modelId })).toEqual(
+      agentModel
     );
-    expect(getLLMModelData({ modelId: agentModel.modelId })).toEqual(agentModel);
 
     const res = await Call(handler, {
       auth: root,
@@ -216,7 +206,9 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       imageId: 'dataset/team/main.png'
     });
 
-    expect(getVlmModelData({ modelId: datasetVlmModel.modelId })).toEqual(datasetVlmModel);
+    expect((await getModelHandle()).getVlmModelData({ modelId: datasetVlmModel.modelId })).toEqual(
+      datasetVlmModel
+    );
 
     const res = await Call(handler, {
       auth: root,

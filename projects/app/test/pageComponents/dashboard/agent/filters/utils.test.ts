@@ -42,7 +42,7 @@ describe('app list filter helpers', () => {
 
   it('maps creator filter to list tmbIds', () => {
     expect(toListTmbIds({ mode: 'all', tmbIds: ['me'] })).toBeUndefined();
-    expect(toListTmbIds({ mode: 'selected', tmbIds: [] })).toEqual([]);
+    expect(toListTmbIds({ mode: 'selected', tmbIds: [] })).toBeUndefined();
     expect(toListTmbIds({ mode: 'selected', tmbIds: ['me'] })).toEqual(['me']);
   });
 

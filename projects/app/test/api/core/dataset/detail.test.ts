@@ -1,3 +1,9 @@
+import {
+  getModelTestMap,
+  getModelTestDefaults,
+  setModelTestMap,
+  addModelTestModel
+} from '@test/modelCache';
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/dataset/detail';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -15,16 +21,16 @@ describe('GET /api/core/dataset/detail', () => {
     'returns model IDs for selector state without exposing legacy fallback fields (%s)',
     async (state) => {
       const owner = await getUser(`dataset-model-display-${getNanoid(6)}`);
-      const originalMap = global.systemModelMap;
+      const originalMap = getModelTestMap();
       const disabledModel = {
-        ...global.systemDefaultModel.llm!,
+        ...getModelTestDefaults().llm!,
         modelId: '68ad85a7463006c963799a77',
         model: 'disabled-vision',
         isActive: false,
-        config: { ...global.systemDefaultModel.llm!.config, vision: true }
+        config: { ...getModelTestDefaults().llm!.config, vision: true }
       };
-      global.systemModelMap = new Map(originalMap);
-      global.systemModelMap.set(`id:${disabledModel.modelId}`, disabledModel);
+      setModelTestMap(new Map(originalMap));
+      addModelTestModel(disabledModel);
       const modelConfig = (() => {
         if (state === 'deleted-legacy') return { vlmModel: 'deleted-vision' };
         if (state === 'deleted-id')
@@ -61,7 +67,7 @@ describe('GET /api/core/dataset/detail', () => {
           expect(result.data.vlmModel).toBeUndefined();
         }
       } finally {
-        global.systemModelMap = originalMap;
+        setModelTestMap(originalMap);
       }
     }
   );

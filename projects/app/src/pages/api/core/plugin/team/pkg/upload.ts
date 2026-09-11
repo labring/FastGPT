@@ -40,7 +40,7 @@ const parseUploadError = (error: unknown, lang: string) => {
   return error.message;
 };
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse) {
   const lang = getLocale(req);
   const filepaths: string[] = [];
 
@@ -97,3 +97,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     multer.clearDiskTempFiles(filepaths);
   }
 }
+
+export default handler;

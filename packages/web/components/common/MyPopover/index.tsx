@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Popover,
+  PopoverAnchor,
   PopoverTrigger,
   PopoverContent,
   useDisclosure,
@@ -24,6 +25,8 @@ interface Props extends PopoverContentProps {
   closeOnBlur?: boolean;
   usePortal?: boolean;
   flip?: boolean;
+  /** hover 模式下仅由 Trigger 控制开关；鼠标进入浮层不会保持打开。 */
+  closeOnTriggerLeave?: boolean;
 }
 
 const MyPopover = ({
@@ -38,6 +41,7 @@ const MyPopover = ({
   closeOnBlur = false,
   usePortal = true,
   flip = true,
+  closeOnTriggerLeave = false,
   onBackdropClick,
   ...props
 }: Props) => {
@@ -52,30 +56,42 @@ const MyPopover = ({
     </PopoverContent>
   );
 
+  const triggerOnlyHover = trigger === 'hover' && closeOnTriggerLeave;
+  const handleOpen = () => {
+    onOpen();
+    onOpenFunc?.();
+  };
+  const handleClose = () => {
+    onClose();
+    onCloseFunc?.();
+  };
+
   return (
     <Popover
       isOpen={isOpen}
       initialFocusRef={firstFieldRef}
-      onOpen={() => {
-        onOpen();
-        onOpenFunc?.();
-      }}
-      onClose={() => {
-        onClose();
-        onCloseFunc?.();
-      }}
+      onOpen={handleOpen}
+      onClose={handleClose}
       placement={placement}
       offset={offset}
       flip={flip}
       closeOnBlur={closeOnBlur}
-      trigger={trigger}
+      trigger={triggerOnlyHover ? undefined : trigger}
       openDelay={100}
       closeDelay={100}
       isLazy
       lazyBehavior="unmount"
       autoFocus={false}
     >
-      <PopoverTrigger>{Trigger}</PopoverTrigger>
+      {triggerOnlyHover ? (
+        <PopoverAnchor>
+          <Box display="inline-block" onMouseEnter={handleOpen} onMouseLeave={handleClose}>
+            {Trigger}
+          </Box>
+        </PopoverAnchor>
+      ) : (
+        <PopoverTrigger>{Trigger}</PopoverTrigger>
+      )}
       {isOpen && onBackdropClick && (
         <Portal>
           <Box position="fixed" zIndex={1000} inset={0} onClick={() => onBackdropClick()} />

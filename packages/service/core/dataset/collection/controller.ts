@@ -1,3 +1,5 @@
+import { getModelHandle } from '../../ai/model';
+import { getDatasetModelReference } from '../model';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
@@ -19,7 +21,7 @@ import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getDatasetAgentModel, getDatasetEmbeddingModel, getDatasetVlmModel } from '../model';
+
 import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getFullTextStore } from '../data/textStore';
@@ -57,9 +59,14 @@ export const createCollectionAndInsertData = async ({
   billId?: string;
   session?: ClientSession;
 }): Promise<CreateCollectionWithResultResponseType> => {
-  const agentModelData = getDatasetAgentModel(dataset);
-  const embeddingModelData = getDatasetEmbeddingModel(dataset);
-  const vlmModelData = getDatasetVlmModel(dataset);
+  const modelHandle = await getModelHandle();
+  const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
+  const embeddingModelData = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(dataset, 'embedding')
+  );
+  const vlmModelData = modelHandle.getVlmModelData(getDatasetModelReference(dataset, 'vlm'), {
+    optional: true
+  });
 
   // Adapter 4.9.0
   if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {

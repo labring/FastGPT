@@ -1,3 +1,4 @@
+import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
 import type { NextApiResponse } from 'next';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -38,7 +39,7 @@ async function handler(
         feConfigs: global.feConfigs,
         subPlans,
         systemVersion: global.systemVersion,
-        aiproxyChannels: global.aiproxyChannelsCache
+        aiproxyChannels: getModelProviderMetadata().aiproxyChannels
       };
     } catch {
       const referer = req.headers.referer;
@@ -46,7 +47,7 @@ async function handler(
         return {
           feConfigs: global.feConfigs,
           subPlans,
-          aiproxyChannels: global.aiproxyChannelsCache
+          aiproxyChannels: getModelProviderMetadata().aiproxyChannels
         };
       }
 
@@ -54,14 +55,14 @@ async function handler(
       if (bufferId && unAuthBufferId === bufferId) {
         return {
           bufferId: unAuthBufferId,
-          aiproxyChannels: global.aiproxyChannelsCache
+          aiproxyChannels: getModelProviderMetadata().aiproxyChannels
         };
       }
 
       return {
         bufferId: unAuthBufferId,
         feConfigs: global.feConfigs,
-        aiproxyChannels: global.aiproxyChannelsCache
+        aiproxyChannels: getModelProviderMetadata().aiproxyChannels
       };
     }
   })();

@@ -421,7 +421,6 @@ export class SystemToolRepo {
         id: pluginId,
         name: dbTool.customConfig.name,
         status: getVisiblePluginStatus({ status: dbTool.status, source: toolSource }),
-        toolDescription: dbTool.customConfig.toolDescription ?? dbTool.customConfig.intro ?? '',
         version: appVersion.versionId,
         versionLabel: appVersion.versionName,
         intro: dbTool.customConfig.intro ?? '',
@@ -562,9 +561,6 @@ export class SystemToolRepo {
       tags: dbTool?.customConfig?.tags ?? tool.tags ?? [],
       source: tool.source,
       userGuide: dbTool?.customConfig?.userGuide,
-      toolDescription:
-        dbTool?.customConfig?.toolDescription ??
-        (childPluginId ? child!.toolDescription : tool.toolDescription),
       // courseUrl: dbTool?.customConfig?.courseUrl ?? tool.tutorialUrl,
       courseUrl: tool.tutorialUrl,
       readmeUrl: tool.readmeUrl,
@@ -616,8 +612,6 @@ export class SystemToolRepo {
         intro: exactDbTool.customConfig.intro ?? '',
         author: exactDbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
         tags: exactDbTool.customConfig.tags ?? [],
-        toolDescription:
-          exactDbTool.customConfig.toolDescription ?? exactDbTool.customConfig.intro ?? '',
         userGuide: exactDbTool.customConfig.userGuide,
         pluginOrder: exactDbTool.pluginOrder ?? 0,
         originCost: exactDbTool.originCost ?? 0,
@@ -684,7 +678,6 @@ export class SystemToolRepo {
             source: isIsolatedSource ? source : undefined
           }),
           description: parseI18nString(item.description, lang),
-          toolDescription: childConfig?.customConfig?.toolDescription ?? item.toolDescription,
           icon: childIcon,
           currentCost: childConfig?.currentCost ?? 0,
           systemKeyCost: childConfig?.systemKeyCost ?? 0
@@ -702,7 +695,6 @@ export class SystemToolRepo {
         avatar: child.icon ?? parent.avatar,
         name: child.name,
         intro: child.description ?? '',
-        toolDescription: child.toolDescription ?? '',
         status: child.status,
         currentCost: child.currentCost,
         systemKeyCost: child.systemKeyCost

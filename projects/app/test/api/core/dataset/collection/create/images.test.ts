@@ -83,9 +83,11 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   createCollectionAndInsertData: mockCreateCollectionAndInsertData
 }));
 
-vi.mock('@fastgpt/service/core/dataset/model', () => ({
-  getDatasetEmbeddingModel: mockGetDatasetEmbeddingModel,
-  getDatasetVlmModel: mockGetDatasetVlmModel
+vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getModelHandle: async () => ({
+    getEmbeddingModelData: mockGetDatasetEmbeddingModel,
+    getVlmModelData: mockGetDatasetVlmModel
+  })
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {

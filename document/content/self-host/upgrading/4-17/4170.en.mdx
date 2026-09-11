@@ -14,6 +14,17 @@ Starting with V4.17.0, tasks registered with the system upgrade manager run auto
 
 Migration tasks process `100` records per batch by default. For larger deployments, set `SYSTEM_MIGRATION_BATCH_SIZE` to a value from `50` to `1000`.
 
+### AI Proxy (required)
+
+Starting with V4.17.0, you must deploy or connect to AI Proxy. Configure these variables for FastGPT App and any commercial Admin service that shares App/Service configuration:
+
+- `AIPROXY_API_ENDPOINT`: A reachable AI Proxy service root URL, such as `http://aiproxy:3000`. Do not append `/v1`.
+- `AIPROXY_API_TOKEN`: A nonempty administrator token matching the AI Proxy server configuration.
+
+**As of V4.17.0, `OPENAI_BASE_URL` and `CHAT_API_KEY` are deprecated and removed. These settings no longer take effect.** Remove them from your deployment environment and use the AI Proxy settings above. Manage model provider endpoints and keys in Admin. The legacy `systemEnv.oneapiUrl/chatApiKey` overrides also no longer take effect.
+
+Startup validation fails if either AI Proxy setting is missing. Per-model `requestUrl/requestAuth` cannot replace these required settings. Before upgrading, verify that AI Proxy is reachable and that the administrator token can access its provider management APIs. Do not use a model service provider's API key as the AI Proxy administrator token.
+
 ### Code Sandbox seccomp compatibility setting (optional)
 
 Code Sandbox continues to enable seccomp by default. If the host kernel does not support application-level seccomp, process pool initialization fails. If you accept the reduced syscall isolation, explicitly configure Code Sandbox with:

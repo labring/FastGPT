@@ -1,3 +1,4 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
@@ -33,12 +34,7 @@ import { isEqual } from 'lodash-es';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import {
-  getEmbeddingModelData,
-  getLLMModelData,
-  getOptionalLLMModelData,
-  getOptionalVlmModelData
-} from '@fastgpt/service/core/ai/model';
+
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
@@ -67,7 +63,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       avatar,
       intro,
       agentModelId,
+      agentModel,
       vlmModelId,
+      vlmModel,
       websiteConfig,
       externalReadUrl,
       apiDatasetServer,
@@ -96,26 +94,32 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   });
 
   let targetName = '';
-
+  const modelHandle = await getModelHandle();
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,
-        llmModel: getLLMModelData({
+        llmModel: modelHandle.getLLMModelData({
           modelId: dataset.agentModelId,
           model: dataset.agentModel
         }),
-        vectorModel: getEmbeddingModelData({
+        vectorModel: modelHandle.getEmbeddingModelData({
           modelId: dataset.vectorModelId,
           model: dataset.vectorModel
         })
       })
     : undefined;
 
-  const agentModelData = getOptionalLLMModelData({ modelId: agentModelId });
+  const agentModelData = modelHandle.getLLMModelData(
+    { modelId: agentModelId, model: agentModel },
+    { optional: true }
+  );
+  // 新 ID（包括显式清空）优先，只有未传 ID 才兼容旧名称。
+  const vlmReference = vlmModelId !== undefined ? { modelId: vlmModelId } : { model: vlmModel };
+  const vlmValue = vlmModelId !== undefined ? vlmModelId : vlmModel;
   // undefined 表示不修改；显式 null/空字符串才是清空请求。
-  const clearVlmModel = vlmModelId !== undefined && isEmptyModelValue(vlmModelId);
+  const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
   if (clearVlmModel && !permission.hasWritePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
-  const vlmModelData = getOptionalVlmModelData({ modelId: vlmModelId });
+  const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
 
   if (isMove) {
     if (parentId) {

@@ -1,3 +1,5 @@
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/list';
 import handlerV2 from '@/pages/api/core/ai/skill/listV2';
@@ -479,9 +481,9 @@ describe('POST /api/core/ai/skill/list', () => {
       resourceRefs: { skillIds: [String(publishedSkill._id)] }
     });
 
-    const legacyModel = global.systemActiveModelList.find(
-      (model) => model.type === ModelTypeEnum.llm
-    )!;
+    const legacyModel = getCachedModelHandle()
+      ?.getActiveModels()
+      .find((model) => model.type === ModelTypeEnum.llm)!;
     const draftNode = createSkillNode(draftSkill);
     draftNode.inputs.push({
       key: NodeInputKeyEnum.aiModel,

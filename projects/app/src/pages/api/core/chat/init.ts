@@ -197,7 +197,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       hasBeenRead: chat?.hasBeenRead,
       app: {
         chatConfig: appChatConfig,
-        chatModels: getChatModelNameListByModules(nodes),
+        chatModels: await getChatModelNameListByModules(nodes),
         name: app.name,
         avatar: app.avatar ?? '',
         intro: app.intro ?? '',

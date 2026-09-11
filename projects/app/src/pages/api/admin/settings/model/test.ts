@@ -1,12 +1,15 @@
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelData } from '@fastgpt/service/core/ai/model';
+
 import {
   type EmbeddingSystemModelDataType,
   type LLMSystemModelDataType,
   type RerankSystemModelDataType,
   type STTSystemModelDataType,
+  type SystemModelDataType,
   type TTSSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
@@ -20,60 +23,95 @@ import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   TestAdminSystemModelQuerySchema,
+  TestDraftAdminSystemModelBodySchema,
   TestAdminSystemModelResponseSchema,
+  type TestDraftAdminSystemModelBody,
   type TestAdminSystemModelQuery,
   type TestAdminSystemModelResponse
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { withTemporaryModelChannelBinding } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
 async function handler(
-  req: ApiRequestProps<Record<string, never>, TestAdminSystemModelQuery>
+  req: ApiRequestProps<TestDraftAdminSystemModelBody, TestAdminSystemModelQuery>
 ): Promise<TestAdminSystemModelResponse> {
   const { teamId } = await authSystemAdmin({ req });
-  const { modelId, channelId } = parseApiInput({
-    req,
-    querySchema: TestAdminSystemModelQuerySchema
-  }).query;
-  const modelData = findModelData({ modelId });
-  if (!modelData) return Promise.reject(ModelErrEnum.unExist);
 
-  if (channelId) {
-    delete modelData.requestUrl;
-    delete modelData.requestAuth;
-  }
+  const { modelData, channelId } = await (async () => {
+    if (req.method === 'POST') {
+      const { modelData: draftModelData, channelId } = parseApiInput({
+        req,
+        bodySchema: TestDraftAdminSystemModelBodySchema
+      }).body;
+
+      return {
+        modelData: {
+          ...draftModelData,
+          modelId: 'draft-model-test',
+          requestUrl: undefined,
+          requestAuth: undefined
+        } as SystemModelDataType,
+        channelId
+      };
+    }
+
+    const { modelId, channelId } = parseApiInput({
+      req,
+      querySchema: TestAdminSystemModelQuerySchema
+    }).query;
+    const modelHandle = await getModelHandle();
+    const installedModel = modelHandle.findModelData({ modelId });
+    if (!installedModel) throw ModelErrEnum.unExist;
+
+    return {
+      // 显式渠道只覆盖本次测试的连接配置，不能修改全局运行时模型缓存。
+      modelData: channelId
+        ? { ...installedModel, requestUrl: undefined, requestAuth: undefined }
+        : installedModel,
+      channelId
+    };
+  })();
 
   const headers: Record<string, string> = channelId ? { 'Aiproxy-Channel': String(channelId) } : {};
-  logger.debug('Test model', modelData);
+  logger.debug('Test model', { model: modelData.model, type: modelData.type, channelId });
 
-  if (modelData.type === 'llm') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testLLMModel({ model: modelData, headers, teamId })
-    );
-  }
-  if (modelData.type === 'embedding') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testEmbeddingModel({ model: modelData, headers })
-    );
-  }
-  if (modelData.type === 'tts') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testTTSModel({ model: modelData, headers })
-    );
-  }
-  if (modelData.type === 'stt') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testSTTModel({ model: modelData, headers })
-    );
-  }
-  if (modelData.type === 'rerank') {
-    return TestAdminSystemModelResponseSchema.parse(
-      await testReRankModel({ model: modelData, headers })
-    );
-  }
+  const runTest = async () => {
+    if (modelData.type === 'llm') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testLLMModel({ model: modelData, headers, teamId })
+      );
+    }
+    if (modelData.type === 'embedding') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testEmbeddingModel({ model: modelData, headers })
+      );
+    }
+    if (modelData.type === 'tts') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testTTSModel({ model: modelData, headers })
+      );
+    }
+    if (modelData.type === 'stt') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testSTTModel({ model: modelData, headers })
+      );
+    }
+    if (modelData.type === 'rerank') {
+      return TestAdminSystemModelResponseSchema.parse(
+        await testReRankModel({ model: modelData, headers })
+      );
+    }
 
-  return Promise.reject('Model type not supported');
+    return Promise.reject('Model type not supported');
+  };
+
+  // 草稿尚未持久化，测试时临时加入 AI Proxy 的目标渠道，结束后恢复原绑定。
+  return req.method === 'POST' && channelId
+    ? withTemporaryModelChannelBinding({ model: modelData.model, channelId, run: runTest })
+    : runTest();
 }
 
 export default NextAPI(handler);
@@ -122,11 +160,14 @@ const testTTSModel = async ({
   model: TTSSystemModelDataType;
   headers: Record<string, string>;
 }) => {
+  const voice = model.config.voices[0]?.value;
+  if (!voice) throw new UserError('TTS model test requires at least one voice');
+
   const { ai } = getAIApi({ timeout: 10000 });
   await ai.audio.speech.create(
     {
       model: model.model,
-      voice: model.config.voices[0]?.value as any,
+      voice: voice as any,
       input: 'Hi',
       response_format: 'mp3',
       speed: 1
