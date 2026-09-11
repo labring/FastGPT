@@ -1,6 +1,8 @@
 import z from 'zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { UserStatusEnum } from '../../../../support/user/constant';
+import { IntSchema } from '../../../../common/zod';
+import { UserImportLocaleSchema } from '../../../../support/user/import/type';
 
 export const UserItemSchema = z.object({
   _id: z.string().meta({ description: '用户ID' }),
@@ -54,3 +56,57 @@ export const UpdateUserBodySchema = z.object({
 export const DeleteUserBodySchema = z.object({
   username: z.string().min(1).meta({ description: '用户名' })
 });
+
+export const UserImportTaskStatusSchema = z.enum([
+  'queued',
+  'validating',
+  'writing',
+  'completed',
+  'completed_with_errors',
+  'failed'
+]);
+export const CreateUserImportBodySchema = z.object({
+  locale: UserImportLocaleSchema.default('en').meta({
+    description: '导入结果语言',
+    example: 'zh-CN'
+  })
+});
+export type CreateUserImportBodyType = z.infer<typeof CreateUserImportBodySchema>;
+
+export const CreateUserImportResponseSchema = z.object({
+  taskId: z.string().meta({ description: '导入任务 ID' })
+});
+export type CreateUserImportResponseType = z.infer<typeof CreateUserImportResponseSchema>;
+
+export const GetUserImportQuerySchema = z.object({
+  taskId: z.string().min(1).optional().meta({ description: '导入任务 ID' })
+});
+export type GetUserImportQueryType = z.infer<typeof GetUserImportQuerySchema>;
+
+export const GetUserImportResponseSchema = z.object({
+  taskId: z.string(),
+  status: UserImportTaskStatusSchema,
+  processedRows: IntSchema,
+  totalRows: IntSchema.optional(),
+  validRows: IntSchema.optional(),
+  successCount: IntSchema,
+  failedCount: IntSchema,
+  errorFileAvailable: z.boolean().optional(),
+  stoppedEarly: z.boolean().optional(),
+  taskErrorCode: z.string().optional(),
+  taskErrorMessage: z
+    .string()
+    .optional()
+    .meta({ description: '按任务语言翻译的任务级错误，不包含逐行数据', example: '缺少用户名列' })
+});
+export type GetUserImportResponseType = z.infer<typeof GetUserImportResponseSchema>;
+
+export const UserImportResultQuerySchema = z.object({
+  taskId: z.string().min(1).meta({ description: '导入任务 ID' })
+});
+export type UserImportResultQueryType = z.infer<typeof UserImportResultQuerySchema>;
+
+export const UserImportTemplateQuerySchema = z.object({
+  locale: UserImportLocaleSchema.default('en').meta({ description: '模板语言', example: 'zh-CN' })
+});
+export type UserImportTemplateQueryType = z.infer<typeof UserImportTemplateQuerySchema>;

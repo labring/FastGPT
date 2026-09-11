@@ -1,5 +1,6 @@
 import { type ErrType } from '../errorCode';
 import { i18nT } from '../../i18n/utils';
+import { userImportErrorKeys } from '../../../support/user/import/constants';
 /* team: 503000 */
 export enum UserErrEnum {
   notUser = 'notUser',
@@ -59,17 +60,34 @@ const errList = [
     statusText: UserErrEnum.registrationMethodNotSupported,
     message: i18nT('common:error.registration_method_not_supported'),
     httpStatus: 403
-  }
+  },
+  ...(
+    [
+      ['USER_IMPORT_NOT_ALLOWED_IN_SYNC_MODE', 400],
+      ['USER_IMPORT_ALREADY_RUNNING', 409],
+      ['IMPORT_ERROR_FILE_NOT_FOUND', 404],
+      ['USER_IMPORT_ONLY_XLSX', 400],
+      ['USER_IMPORT_INVALID_XLSX', 400],
+      ['USER_IMPORT_TEAM_MODE_LOCKED', 409]
+    ] as const
+  ).map(([statusText, httpStatus]) => ({
+    statusText,
+    message: userImportErrorKeys[statusText],
+    httpStatus
+  }))
 ];
-export default errList.reduce((acc, cur, index) => {
-  return {
-    ...acc,
-    [cur.statusText]: {
-      code: 503000 + index,
-      statusText: cur.statusText,
-      message: cur.message,
-      data: null,
-      ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
-    }
-  };
-}, {} as ErrType<`${UserErrEnum}`>);
+export default errList.reduce(
+  (acc, cur, index) => {
+    return {
+      ...acc,
+      [cur.statusText]: {
+        code: 503000 + index,
+        statusText: cur.statusText,
+        message: cur.message,
+        data: null,
+        ...(cur.httpStatus !== undefined ? { httpStatus: cur.httpStatus } : {})
+      }
+    };
+  },
+  {} as ErrType<`${UserErrEnum}` | (typeof errList)[number]['statusText']>
+);

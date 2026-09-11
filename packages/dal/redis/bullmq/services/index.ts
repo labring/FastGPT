@@ -12,4 +12,5 @@ export * from './s3FileDelete';
 export * from './skillCreate';
 export * from './skillDelete';
 export * from './teamDelete';
+export * from './userImport';
 export * from './wechat';
