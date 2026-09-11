@@ -16,7 +16,13 @@ type FormType = {
   confirmPsw: string;
 };
 
-const ResetPswModal = () => {
+const ResetPswModal = ({
+  enabled = true,
+  onFinish
+}: {
+  enabled?: boolean;
+  onFinish?: () => void;
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
@@ -38,7 +44,7 @@ const ResetPswModal = () => {
     loading: isFetching
   } = useRequest(
     async () => {
-      if (!userInfo?._id) {
+      if (!enabled || !userInfo?._id) {
         return false;
       }
       if (isAccountCancellationPending) {
@@ -48,7 +54,13 @@ const ResetPswModal = () => {
     },
     {
       manual: false,
-      refreshDeps: [userInfo?._id, isAccountCancellationPending]
+      refreshDeps: [enabled, userInfo?._id, isAccountCancellationPending],
+      onSuccess(res) {
+        if (enabled && !res) onFinish?.();
+      },
+      onError() {
+        if (enabled) onFinish?.();
+      }
     }
   );
 
@@ -73,7 +85,7 @@ const ResetPswModal = () => {
     }
   };
 
-  return passwordExpired ? (
+  return enabled && passwordExpired ? (
     <MyModal isOpen iconSrc="/imgs/modal/password.svg" title={t('common:user.reset_password')}>
       <ModalBody>
         <HStack p="3" color="primary.600" bgColor="primary.50" borderRadius="md">

@@ -1,7 +1,8 @@
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
 import {
-  AcceptInvitationLinkBodySchema,
+  AcceptInvitationWithMemberNameBodySchema,
+  AcceptInvitationWithMemberNameResponseSchema,
   CreateInvitationLinkBodySchema,
   CreateInvitationLinkResponseSchema,
   ForbidInvitationLinkBodySchema,
@@ -13,21 +14,26 @@ import {
 const TeamInvitationLinkTags = [DevApiTagsMap.teamInvitationLink];
 
 export const TeamInvitationLinkPath: OpenAPIPath = {
-  '/proApi/support/user/team/invitationLink/accept': {
+  '/proApi/support/user/team/invitationLink/acceptWithMemberName': {
     post: {
-      summary: '接受团队邀请链接',
-      description: '当前用户接受邀请链接并加入对应团队',
+      summary: '接受团队邀请链接并设置成员名',
+      description: '当前用户设置目标团队成员名并接受邀请链接',
       tags: [...TeamInvitationLinkTags],
       requestBody: {
         content: {
           'application/json': {
-            schema: AcceptInvitationLinkBodySchema
+            schema: AcceptInvitationWithMemberNameBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '接受邀请成功'
+          description: '接受邀请成功并返回目标团队成员信息',
+          content: {
+            'application/json': {
+              schema: AcceptInvitationWithMemberNameResponseSchema
+            }
+          }
         }
       }
     }

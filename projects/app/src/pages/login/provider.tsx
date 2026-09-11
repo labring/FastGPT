@@ -17,7 +17,6 @@ import {
   getMsclkid,
   onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
-import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
@@ -51,19 +50,6 @@ const provider = () => {
       const decodeLastRoute = validateRedirectUrl(lastRoute);
 
       const navigateTo = await (async () => {
-        if (res.user.team.status !== 'active') {
-          if (decodeLastRoute.includes('/account/team?invitelinkid=')) {
-            const id = decodeLastRoute.split('invitelinkid=')[1];
-            await postAcceptInvitationLink(id);
-            return '/dashboard/agent';
-          } else {
-            toast({
-              status: 'warning',
-              title: t('common:not_active_team')
-            });
-          }
-        }
-
         return decodeLastRoute;
       })();
 
@@ -82,7 +68,7 @@ const provider = () => {
         router.replace(targetRoute);
       }
     },
-    [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo, t, toast]
+    [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo]
   );
 
   const authProps = useCallback(

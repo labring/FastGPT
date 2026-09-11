@@ -10,7 +10,13 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 const Markdown = dynamic(() => import('@/components/Markdown'), { ssr: false });
 
-const SystemMsgModal = () => {
+const SystemMsgModal = ({
+  enabled = true,
+  onFinish
+}: {
+  enabled?: boolean;
+  onFinish?: () => void;
+}) => {
   const { t } = useTranslation();
   const { userInfo, systemMsgReadId, setSysMsgReadId } = useUserStore();
 
@@ -18,18 +24,24 @@ const SystemMsgModal = () => {
 
   const { data } = useRequest(
     async () => {
-      if (!userInfo?._id) {
+      if (!enabled || !userInfo?._id) {
         return;
       }
       return getSystemMsgModalData();
     },
     {
-      refreshDeps: [systemMsgReadId, userInfo?._id],
+      refreshDeps: [enabled, systemMsgReadId, userInfo?._id],
       manual: false,
       onSuccess(res) {
+        if (!enabled) return;
         if (res?.content && (!systemMsgReadId || res.id !== systemMsgReadId)) {
           onOpen();
+        } else {
+          onFinish?.();
         }
+      },
+      onError() {
+        if (enabled) onFinish?.();
       }
     }
   );
@@ -43,7 +55,8 @@ const SystemMsgModal = () => {
     });
 
     onClose();
-  }, [data, onClose, setSysMsgReadId]);
+    onFinish?.();
+  }, [data, onClose, onFinish, setSysMsgReadId]);
 
   return isOpen ? (
     <MyModal isOpen iconSrc={LOGO_ICON} title={t('common:support.user.inform.System message')}>
