@@ -280,6 +280,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       toolCalls,
       usage,
       seconds,
+      firstTokenTime,
       error
     }) => {
       const agentCallUsage = usage
@@ -303,6 +304,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         toolCalls,
         usages: normalizeAgentLoopUsages([agentCallUsage]),
         seconds,
+        firstTokenTime,
         error
       });
     },

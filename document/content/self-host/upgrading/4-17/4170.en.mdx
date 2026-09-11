@@ -25,6 +25,14 @@ Starting with V4.17.0, you must deploy or connect to AI Proxy. Configure these v
 
 Startup validation fails if either AI Proxy setting is missing. Per-model `requestUrl/requestAuth` cannot replace these required settings. Before upgrading, verify that AI Proxy is reachable and that the administrator token can access its provider management APIs. Do not use a model service provider's API key as the AI Proxy administrator token.
 
+### CSRF protection
+
+This release adds an environment variable to protect CSRF tools from HTML tags.
+
+```dotenv
+CSRF_ENABLED=true
+```
+
 ### Code Sandbox seccomp compatibility setting (optional)
 
 Code Sandbox continues to enable seccomp by default. If the host kernel does not support application-level seccomp, process pool initialization fails. If you accept the reduced syscall isolation, explicitly configure Code Sandbox with:
@@ -54,6 +62,7 @@ Custom model request URLs will be deprecated in a future release. They are still
 5. Added text-to-speech (TTS) settings to Agent V2, with the same configuration UI as Chat Agent. You can turn speech output off, use browser or model-based speech, select a voice, adjust playback speed, and preview the audio.
 6. Added time to first token to AI Chat Node response details, measured from the model request until the first answer or reasoning content arrives.
 7. Extended team ownership transfer to multi-team mode. Owners can select a team member as the new owner and must type a confirmation before transferring ownership.
+8. Added CSRF protection to prevent external systems, especially HTML tags, from sending requests with cookies.
 
 ## ⚙️ Improvements
 
@@ -68,6 +77,7 @@ Custom model request URLs will be deprecated in a future release. They are still
 9. Added pagination to App, Dataset, and Skill lists and related resource selectors. Improved virtual scrolling, loading skeletons, and folder navigation for teams with large resource lists.
 10. Model summaries, details, and candidate lists now load where needed. Selectors load candidates when opened and distinguish loading, load failures, and unavailable models.
 11. Unified tool descriptions: Tool Nodes and child tools in toolkits now use the tool description for tool calling. Child tool descriptions can be edited directly, and saved custom or intentionally empty descriptions are preserved when tool definitions sync.
+12. Added table support for separately scrolling headers and content, including virtual scrolling.
 
 ## 🐛 Fixes
 
@@ -91,7 +101,6 @@ Custom model request URLs will be deprecated in a future release. They are still
 18. Fixed rounded corners and routing for Workflow connections between closely spaced Nodes, and restored the default favicon when the configured icon is `/`.
 19. Plugin Workflow template avatars now retain the original URL returned by the plugin, preventing URL rewriting from breaking image display.
 20. Fixed paginated lists showing an empty state and continuing to load after a request failed. Improved virtual-list and organization-table scrolling, and added an option to move folders to the root.
-
 21. Fixed missing columns when converting HTML tables to Markdown if the header had fewer columns than the data rows. Headers are now padded to preserve all table content.
 
 ## 🛠️ Code improvements

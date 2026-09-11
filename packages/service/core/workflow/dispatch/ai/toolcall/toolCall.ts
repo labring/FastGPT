@@ -22,6 +22,7 @@ import { createToolCallToolProvider } from './toolProvider';
 
 type ResponseType = {
   requestIds: string[];
+  firstTokenTime?: number;
   error?: string;
   toolDispatchFlowResponses: AgentLoopCoreToolRunFlowResponse[];
   toolCallInputTokens: number;
@@ -173,6 +174,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
 
   return {
     requestIds: outputSummary.requestIds,
+    firstTokenTime: outputSummary.firstTokenTime,
     error: outputSummary.errorText,
     toolDispatchFlowResponses: runtimeEnvironment.toolRunResponses,
     toolCallInputTokens: outputSummary.inputTokens,

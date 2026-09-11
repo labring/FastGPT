@@ -25,6 +25,14 @@ upgradeTags:
 
 缺少任一 AI Proxy 配置会导致启动校验失败，单模型的 `requestUrl/requestAuth` 不能替代这两个必填项。升级前请确认 AI Proxy 可访问，且管理员 Token 可以访问渠道管理接口；不要把模型服务商的 API Key 当作 AI Proxy 管理员 Token。
 
+### CSRF 防御
+
+本版本新增了环境变量用于防御 HTML 标签的 CSRF 工具。
+
+```dotenv
+CSRF_ENABLED=true
+```
+
 ### Code Sandbox seccomp 兼容配置（可选）
 
 Code Sandbox 默认继续启用 seccomp。若宿主机内核不支持应用内 seccomp，进程池初始化会失败；确认可以接受系统调用隔离能力降低后，可为 Code Sandbox 显式设置：
@@ -54,6 +62,7 @@ SANDBOX_DISABLE_SECCOMP=true
 5. Agent V2 新增语音播报（TTS）配置，支持关闭播报、浏览器播报或模型播报，并可选择音色、调整语速和试听；配置样式与 Chat Agent 保持一致。
 6. AI 对话节点的响应详情新增首 Token 响应时间，统计从发起模型请求到收到首个正文或思考内容的耗时。
 7. 团队所有者转让扩展到多团队模式，支持选择团队成员作为新所有者，并通过输入确认降低误操作风险。
+8. CSRF 防御，避免外部系统（尤其是 HTML 标签）携带 Cookie 直接请求接口。
 
 ## ⚙️ 优化
 
@@ -91,7 +100,6 @@ SANDBOX_DISABLE_SECCOMP=true
 17. 兼容历史团队成员缺失名称、应用 `questionGuide` 为 `null` 以及知识库模型引用为空的情况，避免读取旧数据时校验失败。
 18. 修复工作流连线在节点间距较小时的圆角与路径展示异常，以及站点图标配置为 `/` 时未使用默认图标的问题。
 19. 插件工作流模板头像保留插件返回的原始 URL，避免地址被重写后无法正确展示。
-
 20. 修复 HTML 表格转 Markdown 时，表头列数少于数据行导致部分列无法显示的问题；转换时自动补齐表头，保留完整表格内容。
 
 ## 🛠️ 代码优化

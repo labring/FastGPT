@@ -209,5 +209,6 @@
   "associate": "Associate",
   "associate_success": "Channels associated successfully",
   "included_models": "Includes {{count}} models",
-  "selected_model_count": "{{count}} models selected"
+  "selected_model_count": "{{count}} models selected",
+  "official_website": "Official website"
 }

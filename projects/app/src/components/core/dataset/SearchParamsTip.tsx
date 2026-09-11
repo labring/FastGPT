@@ -42,16 +42,8 @@ const SearchParamsTip = ({
       borderRadius={'lg'}
       borderWidth={'1px'}
       borderColor={'primary.1'}
+      horizontalScroll
       sx={{
-        '& thead > tr': {
-          borderBottom: 'none !important'
-        },
-        '& thead > tr > th': {
-          borderBottom: 'none !important'
-        },
-        '& tbody > tr:first-of-type > td, & tbody > tr:first-of-type > th': {
-          borderTop: 'none !important'
-        },
         '&::-webkit-scrollbar': {
           height: '6px',
           borderRadius: '4px'
