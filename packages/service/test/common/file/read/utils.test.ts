@@ -8,6 +8,7 @@ const {
   mockSomarkParsePDF,
   mockDoc2xParsePDF,
   mockTextinParsePDF,
+  mockSangforParseDocument,
   mockUploadImage2S3Bucket,
   mockGetImageBuffer,
   mockCreatePdfParseUsage,
@@ -52,6 +53,10 @@ const {
     pages: 1,
     text: 'textin-parsed-text'
   }),
+  mockSangforParseDocument: vi.fn().mockResolvedValue({
+    pages: 2,
+    text: 'sangfor-parsed-text'
+  }),
   mockUploadImage2S3Bucket: vi.fn().mockResolvedValue('https://s3.example.com/uploaded-image.png'),
   mockGetImageBuffer: vi.fn().mockResolvedValue({
     buffer: Buffer.from('image-bytes'),
@@ -59,7 +64,9 @@ const {
   }),
   mockCreatePdfParseUsage: vi.fn(),
   mockEnv: {
-    PARSE_FILE_TIMEOUT_SECONDS: 600
+    PARSE_FILE_TIMEOUT_SECONDS: 600,
+    DOCUMENT_PARSE_PROVIDER: '' as '' | 'sangfor',
+    SANGFOR_PARSE_EXTENSIONS: 'pdf'
   }
 }));
 
@@ -93,17 +100,18 @@ vi.mock('@fastgpt/service/thirdProvider/textin', () => ({
   }))
 }));
 
+vi.mock('@fastgpt/service/thirdProvider/sangfor', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/thirdProvider/sangfor')>()),
+  parseFromSangfor: mockSangforParseDocument
+}));
+
 vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
   createPdfParseUsage: mockCreatePdfParseUsage
 }));
 
-vi.mock('@fastgpt/service/common/s3/utils', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('@fastgpt/service/common/s3/utils')>();
-  return {
-    ...mod,
-    uploadImage2S3Bucket: mockUploadImage2S3Bucket
-  };
-});
+vi.mock('@fastgpt/service/common/s3/utils', () => ({
+  uploadImage2S3Bucket: mockUploadImage2S3Bucket
+}));
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBuffer: mockGetImageBuffer
@@ -126,6 +134,8 @@ describe('readFileContentByBuffer', () => {
     vi.clearAllMocks();
     global.systemEnv = {} as any;
     mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 600;
+    mockEnv.DOCUMENT_PARSE_PROVIDER = '';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf';
   });
 
   it('should parse a txt buffer', async () => {
@@ -278,6 +288,123 @@ describe('readFileContentByBuffer', () => {
       expect.anything(),
       expect.objectContaining({ timeout: 1200000 })
     );
+  });
+
+  it('should use Sangfor for a configured document type', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf,docx';
+    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    const buffer = Buffer.from('docx content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'docx',
+      buffer,
+      encoding: 'utf-8',
+      customPdfParse: false
+    });
+
+    expect(result.rawText).toBe('sangfor-parsed-text');
+    expect(mockSangforParseDocument).toHaveBeenCalledWith({
+      fileBuffer: buffer,
+      extension: 'docx',
+      imageKeyOptions: undefined
+    });
+    expect(mockCreatePdfParseUsage).toHaveBeenCalledWith({
+      teamId,
+      tmbId,
+      pages: 2,
+      usageId: undefined
+    });
+  });
+
+  it('should let Sangfor override the original PDF providers when enabled', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    global.systemEnv = {
+      customPdfParse: { url: 'http://sangfor-parser.test/parse', somarkApiKey: 'sk-test' }
+    } as any;
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'PDF',
+      buffer: Buffer.from('pdf content'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+
+    expect(result.rawText).toBe('sangfor-parsed-text');
+    expect(mockSangforParseDocument).toHaveBeenCalled();
+    expect(mockSomarkParsePDF).not.toHaveBeenCalled();
+  });
+
+  it('should not fall back to another parser when Sangfor fails', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'docx';
+    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    mockSangforParseDocument.mockRejectedValueOnce(new Error('[sangfor] parse failed'));
+
+    await expect(
+      readFileContentByBuffer({
+        teamId,
+        tmbId,
+        extension: 'docx',
+        buffer: Buffer.from('docx content'),
+        encoding: 'utf-8'
+      })
+    ).rejects.toThrow('[sangfor] parse failed');
+
+    expect(mockReadRawContentFromBuffer).not.toHaveBeenCalled();
+    expect(mockAxiosPost).not.toHaveBeenCalled();
+  });
+
+  it('continues the original parser chain when the custom parser URL is absent', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'docx';
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'docx',
+      buffer: Buffer.from('docx'),
+      encoding: 'utf-8'
+    });
+
+    expect(result.rawText).toBe('parsed-docx-content');
+    expect(mockSangforParseDocument).not.toHaveBeenCalled();
+    expect(mockReadRawContentFromBuffer).toHaveBeenCalled();
+  });
+
+  it('preserves structured Excel output when the extension is not selected', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'xlsx',
+      buffer: Buffer.from('xlsx'),
+      encoding: 'utf-8',
+      getFormatText: false
+    });
+    expect(result.rawText).toBe('q,a\nquestion,answer');
+    expect(result.tableInfo).toEqual({ sheetCount: 1, mergedCellCount: 0 });
+    expect(mockSangforParseDocument).not.toHaveBeenCalled();
+  });
+
+  it('continues the original PDF provider chain when PDF is not selected', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'docx';
+    global.systemEnv.customPdfParse = { somarkApiKey: 'sk-test' };
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'PDF',
+      buffer: Buffer.from('pdf'),
+      encoding: 'utf-8',
+      customPdfParse: true
+    });
+    expect(result.rawText).toBe('somark-parsed-text');
+    expect(mockSangforParseDocument).not.toHaveBeenCalled();
   });
 
   it('should report enhanced PDF usage to the caller without creating usage directly', async () => {
@@ -786,10 +913,58 @@ describe('readFileContentBySource', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.systemEnv = {} as any;
+    mockEnv.DOCUMENT_PARSE_PROVIDER = '';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'pdf';
     mockReadRawContentFromSource.mockResolvedValue({
       rawText: 'source-content',
       formatText: 'source-content'
     });
+  });
+
+  it.each(['file.xlsx', 'file.csv', 'unknown'])(
+    'keeps unselected sources in the worker without materializing them (%s)',
+    async (filename) => {
+      mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+      const source = {
+        kind: 's3' as const,
+        sizeBytes: 10,
+        metadata: { filename },
+        materialize: vi.fn()
+      };
+      await readFileContentBySource({ teamId, tmbId, source });
+      expect(mockReadRawContentFromSource).toHaveBeenCalledWith({
+        source,
+        imageKeyOptions: undefined
+      });
+      expect(source.materialize).not.toHaveBeenCalled();
+      expect(mockSangforParseDocument).not.toHaveBeenCalled();
+    }
+  );
+
+  it('selects Sangfor from declared source metadata', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = '.PDF';
+    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    const materialized = {
+      buffer: Buffer.from('pdf-content'),
+      metadata: { filename: 'file.PDF' }
+    };
+    const source = {
+      kind: 's3' as const,
+      sizeBytes: 10,
+      metadata: { filename: 'file.PDF' },
+      materialize: vi.fn().mockResolvedValue(materialized)
+    };
+    await expect(readFileContentBySource({ teamId, tmbId, source })).resolves.toMatchObject({
+      rawText: 'sangfor-parsed-text'
+    });
+    expect(source.materialize).toHaveBeenCalledTimes(1);
+    expect(mockSangforParseDocument).toHaveBeenCalledWith({
+      fileBuffer: materialized.buffer,
+      extension: 'pdf',
+      imageKeyOptions: undefined
+    });
+    expect(mockReadRawContentFromSource).not.toHaveBeenCalled();
   });
 
   it('系统解析直接把轻量 source 交给 worker，不在入口提前物化', async () => {
