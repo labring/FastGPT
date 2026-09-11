@@ -6,6 +6,7 @@ import { AppTypeEnum } from './constants';
 import appErrList from '../../common/error/code/app';
 import pluginErrList from '../../common/error/code/plugin';
 import { i18nT } from '../../common/i18n/utils';
+import { DatasetTagFilterVersionEnum } from '../dataset/workflowTagFilter';
 
 const deletedPluginErrorList = new Set([
   'plugin.team_not_installed',
@@ -34,6 +35,7 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: false,
       datasetSearchExtensionBg: '',
+      [NodeInputKeyEnum.collectionFilterVersion]: DatasetTagFilterVersionEnum.structured,
       [NodeInputKeyEnum.authTmbId]: false
     },
     selectedTools: [],

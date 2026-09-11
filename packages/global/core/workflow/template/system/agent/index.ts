@@ -12,13 +12,14 @@ import {
   NodeInputKeyEnum
 } from '../../../constants';
 import {
+  Input_Template_Dataset_Tag_Filter_Version,
+  Input_Template_File_Link,
   Input_Template_SettingAiModel,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput
 } from '../../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
 import { i18nT } from '../../../../../common/i18n/utils';
-import { Input_Template_File_Link } from '../../input';
 import { Output_Template_Error_Message } from '../../output';
 import { DatasetSearchModeEnum } from '../../../../dataset/constants';
 
@@ -246,6 +247,15 @@ export const AgentNode: FlowNodeTemplateType = {
       label: '',
       valueType: WorkflowIOValueTypeEnum.boolean,
       value: false
+    },
+    Input_Template_Dataset_Tag_Filter_Version,
+    {
+      key: NodeInputKeyEnum.collectionFilterMatch,
+      renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+      label: i18nT('workflow:tag_filter'),
+      valueType: WorkflowIOValueTypeEnum.string,
+      isPro: true,
+      description: i18nT('workflow:tag_filter_description')
     }
   ],
   outputs: [

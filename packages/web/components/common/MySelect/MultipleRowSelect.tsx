@@ -230,6 +230,7 @@ export const MultipleRowSelect = ({
           size={'lg'}
           fontSize={'sm'}
           textAlign={'left'}
+          overflow={'hidden'}
           _active={{
             transform: 'none'
           }}
@@ -243,13 +244,15 @@ export const MultipleRowSelect = ({
               }
             : {})}
         >
-          <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
+          {/* data-preserve-width：避免外层 width:auto 冲掉触发器截断 */}
+          <Flex alignItems={'center'} minW={0} w={'100%'} overflow={'hidden'} data-preserve-width>
             <Box
-              flex="1 1 0"
+              data-preserve-width
+              flex={'1 1 0'}
               minW={0}
-              overflow="hidden"
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
+              overflow={'hidden'}
+              textOverflow={'ellipsis'}
+              whiteSpace={'nowrap'}
             >
               {label ?? placeholder}
             </Box>

@@ -811,7 +811,7 @@ POST   /api/core/dataset/collection/create/link         # 链接导入
 POST   /api/core/dataset/collection/create/text         # 文本导入
 POST   /api/core/dataset/collection/create/images       # 图片导入
 PUT    /api/core/dataset/collection/update              # 更新集合
-GET    /api/core/dataset/collection/list                # 集合列表
+POST   /api/core/dataset/collection/listV2              # 集合列表
 GET    /api/core/dataset/collection/detail              # 集合详情
 POST   /api/core/dataset/collection/sync                # 同步集合
 GET    /api/core/dataset/collection/export              # 导出集合
@@ -893,9 +893,9 @@ MongoDatasetData.find(query, fields, {
 
 ### 3. 分页优化
 ```typescript
-// 使用 scrollList 而非传统分页
-// 避免深度分页性能问题
-GET /api/core/dataset/collection/scrollList?lastId=xxx&limit=20
+// 使用 offset 分页，避免深度 pageNum 分页性能问题
+POST /api/core/dataset/collection/listV2
+{ datasetId, offset, pageSize }
 ```
 
 ### 4. 缓存策略

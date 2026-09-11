@@ -2,6 +2,7 @@ import type { Processor } from '@fastgpt/dal/redis/bullmq';
 import { addDatasetDeleteJob, type DatasetDeleteJobData } from './index';
 import { delDatasetRelevantData, findDatasetAndAllChildren } from '../controller';
 import { MongoDatasetCollectionTags } from '../tag/schema';
+import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { removeDatasetSyncJobScheduler } from '../datasetSync';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoDataset } from '../schema';
@@ -88,6 +89,11 @@ const deleteDatasets = async ({
 
   // delete collection.tags
   await MongoDatasetCollectionTags.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  });
+
+  await MongoDatasetCollectionTagsV2.deleteMany({
     teamId,
     datasetId: { $in: datasetIds }
   });

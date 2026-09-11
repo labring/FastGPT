@@ -91,7 +91,7 @@ describe('dataset multipart file source lifecycle', () => {
     vi.clearAllMocks();
     source.materialize.mockReset();
     mockResolveFormData.mockResolvedValue({
-      data: { datasetId },
+      data: { datasetId, tags: [{ tag: 'score', value: 10 }] },
       fileMetadata: {
         path: '/tmp/source.csv',
         originalname: 'source.csv',
@@ -140,6 +140,13 @@ describe('dataset multipart file source lifecycle', () => {
         mockParseDatasetImportFile.mock.invocationCallOrder[0]
       );
       expect(mockCleanupPendingDatasetFile).not.toHaveBeenCalled();
+      expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createCollectionParams: expect.objectContaining({
+            tags: [{ tag: 'score', value: 10 }]
+          })
+        })
+      );
     }
   );
 

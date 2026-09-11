@@ -16,6 +16,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
+import { datasetSearchUsesLegacyFilter } from '@/web/core/workflow/datasetSearchNodeUpgrade';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -90,6 +91,12 @@ const RenderList: Record<
   },
   [FlowNodeInputTypeEnum.password]: {
     Component: CommonInputForm
+  },
+  [FlowNodeInputTypeEnum.datasetTagFilter]: {
+    Component: dynamic(() => import('./templates/DatasetTagFilter')),
+    LableRightComponent: dynamic(() =>
+      import('./templates/DatasetTagFilter').then((mod) => mod.DatasetTagFilterLogic)
+    )
   },
 
   [FlowNodeInputTypeEnum.agentGenerated]: undefined,
@@ -261,6 +268,10 @@ const RenderInput = ({
                 nodeId={nodeId}
                 input={input}
                 RightComponent={RenderComponent?.LableRightComponent}
+                rightInline={
+                  renderType === FlowNodeInputTypeEnum.datasetTagFilter &&
+                  !datasetSearchUsesLegacyFilter(filterProInputs)
+                }
                 isTool={isTool}
               />
             )}

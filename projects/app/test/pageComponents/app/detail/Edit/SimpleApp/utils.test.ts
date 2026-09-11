@@ -22,6 +22,19 @@ const getModelInputs = ({ modelId, model }: { modelId?: string; model?: string }
     );
 };
 
+const getFormWithDataset = () => {
+  const form = getDefaultAppForm();
+  form.dataset.datasets = [
+    {
+      datasetId: 'dataset-id',
+      avatar: 'dataset.svg',
+      name: 'Dataset',
+      vectorModel: { model: 'embedding-model' }
+    }
+  ];
+  return form;
+};
+
 describe('form2AppWorkflow model reference', () => {
   it('defaults search enhancements off and preserves explicitly enabled saved settings', () => {
     const empty = appWorkflow2Form({ nodes: [], chatConfig: {} });
@@ -139,15 +152,7 @@ describe('form2AppWorkflow model reference', () => {
   });
 
   it('preserves empty dataset model IDs instead of falling back to legacy fields', () => {
-    const form = getDefaultAppForm();
-    form.dataset.datasets = [
-      {
-        datasetId: 'dataset-id',
-        avatar: 'dataset.svg',
-        name: 'Dataset',
-        vectorModel: { model: 'embedding-model' }
-      }
-    ];
+    const form = getFormWithDataset();
     form.dataset.rerankModelId = '';
     form.dataset.rerankModel = 'legacy-rerank';
     form.dataset.datasetSearchExtensionModelId = '';
@@ -171,5 +176,62 @@ describe('form2AppWorkflow model reference', () => {
         })
       ])
     );
+  });
+
+  it('round-trips collectionFilterMatch through the dataset search node', () => {
+    const form = getFormWithDataset();
+    form.dataset.collectionFilterMatch = {
+      logic: 'AND',
+      conditions: [{ tag: 'price', tagType: 'number', op: '$gte', value: 10 }]
+    };
+
+    const workflow = form2AppWorkflow(form, (key: string) => key);
+    const input = workflow.nodes
+      .flatMap((node) => node.inputs)
+      .find((item) => item.key === NodeInputKeyEnum.collectionFilterMatch);
+
+    expect(input).toMatchObject({
+      key: NodeInputKeyEnum.collectionFilterMatch,
+      renderTypeList: ['datasetTagFilter', 'reference'],
+      value: form.dataset.collectionFilterMatch
+    });
+    expect(
+      appWorkflow2Form({ nodes: workflow.nodes, chatConfig: form.chatConfig }).dataset
+        .collectionFilterMatch
+    ).toEqual(form.dataset.collectionFilterMatch);
+  });
+
+  it('preserves the explicit legacy filter marker until the user upgrades it', () => {
+    const form = getFormWithDataset();
+    form.dataset[NodeInputKeyEnum.collectionFilterVersion] = 'legacy';
+    form.dataset.collectionFilterMatch = '{"tags":{"$and":["legacy"]}}';
+
+    const workflow = form2AppWorkflow(form, (key: string) => key);
+    const datasetNode = workflow.nodes.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
+    );
+    expect(datasetNode).toBeTruthy();
+    expect(
+      datasetNode?.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterVersion)
+        ?.value
+    ).toBe('legacy');
+    expect(appWorkflow2Form({ nodes: workflow.nodes, chatConfig: {} }).dataset).toMatchObject({
+      [NodeInputKeyEnum.collectionFilterVersion]: 'legacy',
+      collectionFilterMatch: form.dataset.collectionFilterMatch
+    });
+
+    const unversionedNode = {
+      ...datasetNode!,
+      inputs: datasetNode!.inputs
+        .filter((input) => input.key !== NodeInputKeyEnum.collectionFilterVersion)
+        .map((input) =>
+          input.key === NodeInputKeyEnum.collectionFilterMatch
+            ? { ...input, value: undefined }
+            : input
+        )
+    };
+    expect(appWorkflow2Form({ nodes: [unversionedNode], chatConfig: {} }).dataset).toMatchObject({
+      [NodeInputKeyEnum.collectionFilterVersion]: 'structured'
+    });
   });
 });

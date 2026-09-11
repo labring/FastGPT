@@ -10,7 +10,9 @@ import {
   CollectionTrainingStatusEnum,
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
-  ParagraphChunkAIModeEnum
+  ParagraphChunkAIModeEnum,
+  DatasetCollectionTagTypeEnum,
+  DatasetCollectionTagTypeMap
 } from './constants';
 import {
   ApiDatasetServerSchema,
@@ -27,6 +29,59 @@ import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
 import { NumSchema } from '../../common/zod';
 import { LOGO_ICON } from '../../common/system/constants';
+
+/* ===== Tag Type ===== */
+/** 标签类型枚举 */
+export { DatasetCollectionTagTypeEnum, DatasetCollectionTagTypeMap };
+export type DatasetCollectionTagType = `${DatasetCollectionTagTypeEnum}`;
+
+/** 选项类标签的预设选项，空选项由前端草稿过滤后再提交。 */
+export const DatasetCollectionTagOptionsSchema = z
+  .array(z.string().trim().min(1))
+  .meta({ description: '选项类标签的预设选项' });
+
+/** 旧字符串标签承载记录首次创建时使用的默认名称；身份只由 fromMigration 标识。 */
+export const DEFAULT_TAG = 'default_tag';
+
+/** Collection 标签值字段：string/number 存对应值，datetime 存 UTC 毫秒时间戳，array 存 string 数组 */
+export const CollectionTagValueFieldSchema = z.union([z.string(), z.number(), z.array(z.string())]);
+
+/** Collection API 的兼容标签输入/展示格式：旧标签名或带名称和值的新格式。 */
+export const CollectionTagLabelSchema = z.union([
+  z.string(),
+  z.object({
+    tag: z.string(),
+    value: CollectionTagValueFieldSchema
+  })
+]);
+export type CollectionTagLabelType = z.infer<typeof CollectionTagLabelSchema>;
+
+/** Collection 标签值类型（新格式） */
+export const CollectionTagValueSchema = z.object({
+  tagId: z.string().meta({ description: '引用 dataset_collection_tags_v2._id' }),
+  value: CollectionTagValueFieldSchema.meta({
+    description:
+      '标签值。string/number 类型存对应值，datetime 类型存 UTC 毫秒时间戳，array 类型存 string 数组'
+  })
+});
+export type CollectionTagValueType = z.infer<typeof CollectionTagValueSchema>;
+
+/** 详情页按标签值筛选的单条条件。同一标签多值为 OR，不同标签由调用方做 AND。 */
+export const CollectionTagFilterItemSchema = z.object({
+  tagId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '标签 ID'
+  }),
+  values: z
+    .array(z.union([z.string().min(1), z.number().finite()]))
+    .min(1)
+    .meta({
+      example: ['PRD'],
+      description:
+        '选中的标签值。文本/选项为字符串，数字为数值，日期为 UTC 毫秒时间戳。同一标签多值为 OR'
+    })
+});
+export type CollectionTagFilterItem = z.infer<typeof CollectionTagFilterItemSchema>;
 
 /* ===== Chunk ===== */
 export const ChunkSettingsSchema = z.object({
@@ -137,7 +192,10 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   parentId: ParentIdSchema.meta({ description: '父级 ID' }),
   name: z.string().meta({ description: '名称' }),
   type: z.enum(DatasetCollectionTypeEnum).meta({ description: '集合类型' }),
-  tags: z.array(z.string()).optional().meta({ description: '标签' }),
+  tags: z
+    .array(z.union([z.string(), CollectionTagValueSchema]))
+    .optional()
+    .meta({ description: '标签。支持混合格式：String(ObjectId) 旧格式 | { tagId, value } 新格式' }),
 
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
@@ -168,7 +226,14 @@ export const DatasetCollectionTagsSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '标签 ID' }),
   teamId: ObjectIdSchema.meta({ description: '团队 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
-  tag: z.string().meta({ description: '标签' })
+  tag: z.string().meta({ description: '标签' }),
+  tagType: z.enum(DatasetCollectionTagTypeEnum).default(DatasetCollectionTagTypeEnum.string).meta({
+    description: '标签类型：string(默认)/number/datetime/array'
+  }),
+  options: DatasetCollectionTagOptionsSchema.optional(),
+  fromMigration: z.boolean().optional().meta({
+    description: '标识该记录是旧标签迁移/旧格式输入创建的 default_tag 承载记录'
+  })
 });
 export type DatasetCollectionTagsSchemaType = z.infer<typeof DatasetCollectionTagsSchema>;
 
@@ -356,7 +421,14 @@ export type DatasetItemType = z.infer<typeof DatasetItemSchema>;
 /* ================= tag ===================== */
 export const DatasetTagSchema = z.object({
   _id: ObjectIdSchema.meta({ description: '标签 ID' }),
-  tag: z.string().meta({ description: '标签' })
+  tag: z.string().meta({ description: '标签' }),
+  tagType: z.enum(DatasetCollectionTagTypeEnum).default(DatasetCollectionTagTypeEnum.string).meta({
+    description: '标签类型：string(默认)/number/datetime/array'
+  }),
+  options: DatasetCollectionTagOptionsSchema.optional(),
+  fromMigration: z.boolean().optional().meta({
+    description: '是否为旧标签数据的系统承载定义'
+  })
 });
 export type DatasetTagType = z.infer<typeof DatasetTagSchema>;
 
@@ -368,6 +440,11 @@ export type TagUsageType = z.infer<typeof TagUsageSchema>;
 
 /* ================= collection ===================== */
 export const DatasetCollectionItemSchema = CollectionWithDatasetSchema.extend({
+  // 详情接口的 tags 由 collectionTagsToTagLabel 解析为标签名格式（string | { tag, value }），区别于存储格式（string | { tagId, value }）
+  tags: z
+    .array(CollectionTagLabelSchema)
+    .optional()
+    .meta({ description: '标签。string 为标签名；新格式为 { tag, value }' }),
   sourceName: z.string().meta({ description: '来源名称' }),
   sourceId: z.string().optional().meta({ description: '来源 ID' }),
   file: z
