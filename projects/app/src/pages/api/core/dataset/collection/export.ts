@@ -16,7 +16,8 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
-import { addDays } from 'date-fns';
+import { serviceEnv } from '@fastgpt/service/env';
+import { addHours } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
@@ -125,8 +126,14 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
     try {
       const [sanitizedQ, sanitizedA] = await Promise.all([
-        replaceS3KeyToPreviewUrl(sanitizeCsvField(doc.q || ''), addDays(new Date(), 90)),
-        replaceS3KeyToPreviewUrl(sanitizeCsvField(doc.a || ''), addDays(new Date(), 90))
+        replaceS3KeyToPreviewUrl(
+          sanitizeCsvField(doc.q || ''),
+          addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
+        ),
+        replaceS3KeyToPreviewUrl(
+          sanitizeCsvField(doc.a || ''),
+          addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
+        )
       ]);
 
       write(`\n${sanitizedQ},${sanitizedA}`);
