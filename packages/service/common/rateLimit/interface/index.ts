@@ -5,7 +5,8 @@ export {
   assertCaptchaVerificationCreateRateLimit,
   assertCodeVerificationConsumeRateLimit,
   assertPasswordVerificationConsumeRateLimit,
-  assertPasswordVerificationCreateRateLimit
+  assertPasswordVerificationCreateRateLimit,
+  assertPasswordUpdateRateLimit
 } from './accountVerification';
 export {
   assertEnterpriseAuthVerifyAmountRateLimit,

@@ -17,10 +17,7 @@ import type {
   SendAuthCodeBodyType,
   SendAuthCodeResponseType
 } from '@fastgpt/global/openapi/support/user/inform/api';
-import type {
-  UpdatePasswordByCodeBodyType,
-  UpdatePasswordByOldBodyType
-} from '@fastgpt/global/openapi/support/user/account/password/api';
+import type { UpdatePasswordByCodeBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { UpdateContactBodyType } from '@fastgpt/global/openapi/support/user/account/update/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
@@ -93,17 +90,9 @@ export const postFindPassword = ({
     ...props,
     password: hashStr(password)
   });
-export const updatePasswordByOld = ({ oldPsw, newPsw }: UpdatePasswordByOldBodyType) =>
-  POST('/support/user/account/updatePasswordByOld', {
-    oldPsw: hashStr(oldPsw),
-    newPsw: hashStr(newPsw)
-  });
-export const resetPassword = (newPsw: string) =>
-  POST('/support/user/account/resetExpiredPsw', {
-    newPsw: hashStr(newPsw)
-  });
 // Check the whether password has expired
-export const getCheckPswExpired = () => GET<boolean>('/support/user/account/checkPswExpired');
+export const getCheckPswExpired = () =>
+  GET<boolean>('/support/user/account/password/checkPswExpired');
 
 /* ===== notification account ===== */
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>

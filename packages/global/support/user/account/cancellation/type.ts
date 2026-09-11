@@ -2,9 +2,12 @@ import { z } from 'zod';
 import {
   AccountCancellationStatus as AccountCancellationStatusValues,
   AccountCancellationReminder as AccountCancellationReminderValues,
-  AccountCancellationUnavailableReason as AccountCancellationUnavailableReasonValues,
-  accountCancellationAllowedMethods
+  AccountCancellationUnavailableReason as AccountCancellationUnavailableReasonValues
 } from './constants';
+import type {
+  AccountExternalVerificationMethod,
+  OAuthAccountVerificationProvider
+} from '../verification/type';
 
 export const AccountCancellationStatusSchema = z.enum(AccountCancellationStatusValues);
 export type AccountCancellationStatus = z.infer<typeof AccountCancellationStatusSchema>;
@@ -19,11 +22,6 @@ export const AccountCancellationSummarySchema = z.object({
   scheduledCancelAt: z.union([z.date(), z.iso.datetime({ offset: true })]).optional()
 });
 export type AccountCancellationSummary = z.infer<typeof AccountCancellationSummarySchema>;
-
-export const AccountCancellationAllowedMethodSchema = z.enum(accountCancellationAllowedMethods);
-export type AccountCancellationAllowedMethod = z.infer<
-  typeof AccountCancellationAllowedMethodSchema
->;
 
 export const AccountCancellationReminderSchema = z.enum(AccountCancellationReminderValues);
 export type AccountCancellationReminder = z.infer<typeof AccountCancellationReminderSchema>;
@@ -46,14 +44,12 @@ export type TeamAccountCancellationSummary = {
   scheduledCancelAt?: Date | string;
 };
 
-export type AccountCancellationOAuthProvider = 'github' | 'google' | 'microsoft' | 'wecom' | 'sso';
-
 export type AccountCancellationVerificationCapabilities = {
   emailCode: boolean;
   phoneCode: boolean;
   accountCancellation?: boolean;
   wechat: boolean;
-  oauth: Record<AccountCancellationOAuthProvider, boolean>;
+  oauth: Record<OAuthAccountVerificationProvider, boolean>;
 };
 
 export type AccountCancellationResolverInput = {
@@ -64,7 +60,7 @@ export type AccountCancellationResolverInput = {
 export type AccountCancellationResolveResult =
   | {
       status: 'supported';
-      method: AccountCancellationAllowedMethod;
+      method: AccountExternalVerificationMethod;
       accountKind: string;
       unsupportedReason?: undefined;
     }

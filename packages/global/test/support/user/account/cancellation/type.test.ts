@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AccountCancellationAllowedMethodSchema,
   AccountCancellationReminderSchema,
   AccountCancellationStatusSchema,
   AccountCancellationUnavailableReasonSchema,
@@ -9,9 +8,10 @@ import {
 import {
   AccountCancellationReminder,
   AccountCancellationStatus,
-  AccountCancellationUnavailableReason,
-  accountCancellationAllowedMethods
+  AccountCancellationUnavailableReason
 } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { AccountExternalVerificationMethodSchema } from '@fastgpt/global/support/user/account/verification/type';
+import { accountExternalVerificationMethods } from '@fastgpt/global/support/user/account/verification/constants';
 
 describe('account cancellation schemas', () => {
   it('accepts and rejects cancellation statuses', () => {
@@ -42,10 +42,10 @@ describe('account cancellation schemas', () => {
       )
     ).toBe(true);
     expect(
-      accountCancellationAllowedMethods.every(
-        (value) => AccountCancellationAllowedMethodSchema.safeParse(value).success
+      accountExternalVerificationMethods.every(
+        (value) => AccountExternalVerificationMethodSchema.safeParse(value).success
       )
     ).toBe(true);
-    expect(AccountCancellationAllowedMethodSchema.safeParse('oauth/unknown').success).toBe(false);
+    expect(AccountExternalVerificationMethodSchema.safeParse('oauth/unknown').success).toBe(false);
   });
 });

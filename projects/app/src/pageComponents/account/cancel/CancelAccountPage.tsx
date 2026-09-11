@@ -3,16 +3,26 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import type { AccountCancellationStatusResponse } from '@fastgpt/global/openapi/support/user/account/cancellation/api';
+import type { OAuthAccountVerificationProvider } from '@fastgpt/global/support/user/account/verification/type';
+import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constants';
+import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  AccountVerificationPanel,
+  type VerificationSubmitResult,
+  type WechatVerificationMaterial
+} from '@/components/support/user/safe/AccountVerificationPanel';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   cancelAccountCancellation,
-  getAccountCancellationStatus
+  createAccountCancellationVerification,
+  getAccountCancellationStatus,
+  submitAccountCancellation
 } from '@/web/support/user/account/cancellation/api';
 import { AccountCancellationPageLayout } from './AccountCancellationPageLayout';
 import { CancelPendingPanel } from './CancelPendingPanel';
 import { MemberPendingPanel } from './MemberPendingPanel';
-import { VerificationPanel } from './VerificationPanel';
 
 const CancelAccountPage = () => {
   const { t } = useTranslation();
@@ -53,6 +63,64 @@ const CancelAccountPage = () => {
     setUserInfo(null);
     void router.replace('/login?lastRoute=/account/cancel');
   }, [router, setUserInfo, t, toast]);
+
+  const createCodeVerification = useCallback(async (captcha: string) => {
+    const result = await createAccountCancellationVerification({
+      method: 'code',
+      payload: { captcha }
+    });
+    if (result.method !== 'code') throw new Error('Verification method mismatch');
+  }, []);
+
+  const submitCodeVerification = useCallback(
+    async (code: string): Promise<VerificationSubmitResult> => {
+      const result = await submitAccountCancellation({ method: 'code', payload: { code } });
+      if (result.status === 'pending') {
+        onSubmitted();
+        return 'verified';
+      }
+      return result.status === 'verificationExpired' ? 'expired' : 'pending';
+    },
+    [onSubmitted]
+  );
+
+  const createWechatVerification = useCallback(async (): Promise<WechatVerificationMaterial> => {
+    const result = await createAccountCancellationVerification({ method: 'wechat', payload: {} });
+    if (result.method !== 'wechat') throw new Error('Verification method mismatch');
+    return result;
+  }, []);
+
+  const submitWechatVerification = useCallback(
+    async (code: string): Promise<VerificationSubmitResult> => {
+      const result = await submitAccountCancellation({ method: 'wechat', payload: { code } });
+      if (result.status === 'pending') {
+        onSubmitted();
+        return 'verified';
+      }
+      return result.status === 'verificationExpired' ? 'expired' : 'pending';
+    },
+    [onSubmitted]
+  );
+
+  const startOAuthVerification = useCallback(async () => {
+    const method = status?.status === 'none' ? status.verificationMethod : undefined;
+    if (!method || !method.startsWith('oauth/'))
+      throw new Error('OAuth verification is unavailable');
+    const callbackUrl = `${window.location.origin}/login/provider`;
+    const result = await createAccountCancellationVerification({
+      method,
+      payload: { callbackUrl, isWecomWorkTerminal: checkIsWecomTerminal() }
+    });
+    if (result.method !== method) throw new Error('Verification method mismatch');
+    const provider = method.slice('oauth/'.length) as OAuthAccountVerificationProvider;
+    useSystemStore.getState().setLoginStore({
+      provider: provider as OAuthEnum,
+      lastRoute: '/account/cancel?confirmed=1',
+      state: result.state,
+      flow: 'accountCancellation'
+    });
+    return { url: result.url };
+  }, [status]);
 
   const onCancel = async () => {
     setCanceling(true);
@@ -109,7 +177,18 @@ const CancelAccountPage = () => {
       );
     }
     if (isVerificationView) {
-      return <VerificationPanel method={status.verificationMethod!} onSubmitted={onSubmitted} />;
+      return (
+        <AccountVerificationPanel
+          method={status.verificationMethod!}
+          username={userInfo?.username ?? ''}
+          purpose="unsubscribe"
+          createCodeVerification={createCodeVerification}
+          submitCodeVerification={submitCodeVerification}
+          createWechatVerification={createWechatVerification}
+          submitWechatVerification={submitWechatVerification}
+          startOAuthVerification={startOAuthVerification}
+        />
+      );
     }
     return <Spinner color="primary.600" />;
   })();
