@@ -13,7 +13,7 @@ import path from 'path';
 import { getFileS3Key } from '../../common/s3/utils';
 import { S3ChatSource } from '../../common/s3/sources/chat';
 import { readFileContentBySource } from '../../common/file/read/utils';
-import { addDays, addHours } from 'date-fns';
+import { addDays } from 'date-fns';
 import { replaceS3KeyToPreviewUrl } from '../dataset/utils';
 import { serviceEnv } from '../../env';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
@@ -681,7 +681,7 @@ export const getFileContentByUrl = async ({
 
   const replacedText = await replaceS3KeyToPreviewUrl(
     rawText,
-    addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
+    addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
   );
   const resolvedFilename = sourceMetadata?.filename || filename;
 

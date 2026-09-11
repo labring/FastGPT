@@ -234,6 +234,10 @@ export const serviceEnv = createEnv({
     STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
       description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
     }),
+    // 聊天记录中持久化文件访问短链的有效期。
+    FILE_URL_EXPIRED_DAYS: NumSchema.positive().default(90).meta({
+      description: '聊天记录中文件访问短链有效期（天），支持小数'
+    }),
     STORAGE_S3_ENDPOINT: UrlSchema.default('http://localhost:9000'),
     STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),
     STORAGE_ACCESS_KEY_ID: z.string().default('minioadmin'),

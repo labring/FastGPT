@@ -6,7 +6,7 @@ import {
 import { serviceEnv } from '../../../env';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
-import { addHours } from 'date-fns';
+import { addDays } from 'date-fns';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 import { matchDatasetDataMarkdownImages } from './utils';
 
@@ -89,7 +89,7 @@ export const formatDatasetDataValues = async (
   );
   const previewUrlMap = await createS3KeysPreviewUrlMap({
     objectKeys: [...markdownObjectKeys, ...imageObjectKeys],
-    expiredTime: addHours(new Date(), serviceEnv.FILE_URL_EXPIRED_HOURS)
+    expiredTime: addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
   });
 
   return normalizedItems.map(({ q, a, imageId }) => {
