@@ -209,5 +209,6 @@
   "associate": "关联",
   "associate_success": "关联渠道成功",
   "included_models": "包含 {{count}} 个模型",
-  "selected_model_count": "已选择 {{count}} 个模型"
+  "selected_model_count": "已选择 {{count}} 个模型",
+  "official_website": "官网地址"
 }

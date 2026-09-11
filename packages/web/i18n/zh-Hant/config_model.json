@@ -209,5 +209,6 @@
   "associate": "關聯",
   "associate_success": "關聯渠道成功",
   "included_models": "包含 {{count}} 個模型",
-  "selected_model_count": "已選 {{count}} 個模型"
+  "selected_model_count": "已選 {{count}} 個模型",
+  "official_website": "官方網站"
 }
