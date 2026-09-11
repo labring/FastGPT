@@ -3,6 +3,7 @@ import {
   getS3ObjectKeysFromMarkdownTexts,
   replaceS3KeysWithPreviewUrlMap
 } from '../../../core/dataset/utils';
+import { serviceEnv } from '../../../env';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addDays } from 'date-fns';
@@ -88,7 +89,7 @@ export const formatDatasetDataValues = async (
   );
   const previewUrlMap = await createS3KeysPreviewUrlMap({
     objectKeys: [...markdownObjectKeys, ...imageObjectKeys],
-    expiredTime: addDays(new Date(), 90)
+    expiredTime: addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
   });
 
   return normalizedItems.map(({ q, a, imageId }) => {

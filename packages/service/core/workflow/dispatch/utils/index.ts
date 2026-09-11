@@ -674,7 +674,7 @@ export const rewriteRuntimeWorkFlow = async ({
                 toolSetId,
                 toolsetName: toolSetNode.name,
                 avatar: toolSetNode.avatar,
-                tool: runtimeTool,
+                tool: runtimeTool
               })
             );
             nodes.push(newToolNode);

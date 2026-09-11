@@ -167,7 +167,7 @@ export const filterDatasetsByTmbId = async ({
  *
  * ```typescript
  * const datasetQuoteText = '![image.png](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/aZos7D-214afce5-4d42-4356-9e05-8164d51c59ae.png)';
- * const replacedText = await replaceS3KeyToPreviewUrl(datasetQuoteText, addDays(new Date(), 90))
+ * const replacedText = await replaceS3KeyToPreviewUrl(datasetQuoteText, expiredTime)
  * console.log(replacedText)
  * // '![image.png](http://localhost:3000/api/system/file/d/alias.exp.sig)'
  * ```

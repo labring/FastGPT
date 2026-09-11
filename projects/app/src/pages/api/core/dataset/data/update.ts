@@ -20,7 +20,6 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-
 import { addHours } from 'date-fns';
 
 async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {
