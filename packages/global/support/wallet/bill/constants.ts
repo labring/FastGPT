@@ -7,6 +7,13 @@ export enum BillTypeEnum {
   extraPoints = 'extraPoints',
   activityGift = 'activityGift'
 }
+
+/** 账单筛选中独立展示的套餐类型，顺序同时用于界面；其余类型归入“其他”。 */
+export const packageBillTypes = [
+  BillTypeEnum.standSubPlan,
+  BillTypeEnum.extraPoints,
+  BillTypeEnum.extraDatasetSub
+];
 export const billTypeMap = {
   [BillTypeEnum.balance]: {
     label: i18nT('common:support.wallet.subscription.type.balance')

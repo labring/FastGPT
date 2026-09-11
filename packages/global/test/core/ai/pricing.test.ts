@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateModelPrice,
   getRuntimeResolvedPriceTiers,
+  MAX_MODEL_PRICE_TIERS,
   sanitizeModelPriceTiers
 } from '@fastgpt/global/core/ai/pricing';
 
@@ -19,6 +20,19 @@ describe('sanitizeModelPriceTiers', () => {
 
   it('should return empty array for empty array', () => {
     expect(sanitizeModelPriceTiers([])).toEqual([]);
+  });
+
+  it('should cap the number of price tiers', () => {
+    const result = sanitizeModelPriceTiers(
+      Array.from({ length: MAX_MODEL_PRICE_TIERS + 1 }, (_, index) => ({
+        maxInputTokens: (index + 1) * 10,
+        inputPrice: index + 1,
+        outputPrice: index + 1
+      }))
+    );
+
+    expect(result).toHaveLength(MAX_MODEL_PRICE_TIERS);
+    expect(result.at(-1)?.maxInputTokens).toBe(MAX_MODEL_PRICE_TIERS * 10);
   });
 
   it('should always push first tier with minInputTokens: 0 and prices', () => {

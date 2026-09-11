@@ -1,17 +1,5 @@
 import { getTestModel } from '@/web/core/ai/config';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Box,
-  Flex,
-  Button,
-  HStack
-} from '@chakra-ui/react';
+import { Table, Thead, Tbody, Tr, Th, Td, Box, Flex, Button, HStack } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useEffect, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -24,7 +12,7 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
-import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 type ModelTestItem = {
   label: React.ReactNode;
@@ -184,7 +172,6 @@ const ModelTest = ({
   );
 
   const isTesting = isAnyModelLoading || testingOneModel;
-  const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
 
   return (
     <MyModal
@@ -208,83 +195,82 @@ const ModelTest = ({
       }
     >
       <Flex flex={'1 0 0'} h={0} minH={0} flexDirection="column" overflow="hidden">
-        <TableContainer ref={headerContainerRef} flexShrink={0} overflowX="hidden">
-          <Table
-            minW="800px"
-            sx={{
-              tableLayout: 'fixed',
-              width: `${headerTableWidth} !important`
-            }}
-          >
-            <colgroup>
-              <col />
-              <col />
-              <col style={{ width: '280px' }} />
-              <col style={{ width: '80px' }} />
-            </colgroup>
-            <Thead>
-              <Tr>
-                <Th>{t('config_model:model_name')}</Th>
-                <Th>{t('config_model:model.model_id')}</Th>
-                <Th>{t('config_model:channel_status')}</Th>
-                <Th></Th>
-              </Tr>
-            </Thead>
-          </Table>
-        </TableContainer>
-        <TableContainer
-          ref={bodyContainerRef}
-          flex={'1 0 0'}
-          h={0}
-          minH={0}
-          overflowY={'auto'}
-          fontSize={'sm'}
-        >
-          <Table minW="800px" sx={{ tableLayout: 'fixed' }}>
-            <colgroup>
-              <col />
-              <col />
-              <col style={{ width: '280px' }} />
-              <col style={{ width: '80px' }} />
-            </colgroup>
-            <Tbody>
-              {testModelList.map((item) => {
-                const data = statusMap.current[item.status];
-                return (
-                  <Tr key={item.model}>
-                    <Td>{item.label}</Td>
-                    <Td>{item.model}</Td>
-                    <Td>
-                      <Flex alignItems={'center'}>
-                        <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema as any}>
-                          {data.label}
-                        </MyTag>
-                        {item.message && <QuestionTip label={item.message} />}
-                        {item.status === 'success' && item.duration && (
-                          <Box fontSize={'sm'} color={'myGray.500'}>
-                            {t('config_model:request_duration', {
-                              duration: item.duration.toFixed(2)
-                            })}
-                          </Box>
+        <FixedTableLayout
+          horizontalScroll
+          scrollMode="normal"
+          rootProps={{ flex: '1 0 0', h: 0 }}
+          bodyProps={{ flex: '1 0 0', h: 0, fontSize: 'sm' }}
+          renderHeader={({ headerTableWidth }) => (
+            <Table
+              minW="800px"
+              sx={{
+                tableLayout: 'fixed',
+                width: `${headerTableWidth} !important`
+              }}
+            >
+              <colgroup>
+                <col />
+                <col />
+                <col style={{ width: '280px' }} />
+                <col style={{ width: '80px' }} />
+              </colgroup>
+              <Thead>
+                <Tr>
+                  <Th>{t('config_model:model_name')}</Th>
+                  <Th>{t('config_model:model.model_id')}</Th>
+                  <Th>{t('config_model:channel_status')}</Th>
+                  <Th></Th>
+                </Tr>
+              </Thead>
+            </Table>
+          )}
+          renderBody={() => (
+            <Table minW="800px" sx={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col />
+                <col />
+                <col style={{ width: '280px' }} />
+                <col style={{ width: '80px' }} />
+              </colgroup>
+              <Tbody>
+                {testModelList.map((item) => {
+                  const data = statusMap.current[item.status];
+                  return (
+                    <Tr key={item.model}>
+                      <Td>{item.label}</Td>
+                      <Td>{item.model}</Td>
+                      <Td>
+                        <Flex alignItems={'center'}>
+                          <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema as any}>
+                            {data.label}
+                          </MyTag>
+                          {item.message && <QuestionTip label={item.message} />}
+                          {item.status === 'success' && item.duration && (
+                            <Box fontSize={'sm'} color={'myGray.500'}>
+                              {t('config_model:request_duration', {
+                                duration: item.duration.toFixed(2)
+                              })}
+                            </Box>
+                          )}
+                        </Flex>
+                      </Td>
+                      <Td>
+                        {(!isAnyModelLoading || item.loading) && (
+                          <MyIconButton
+                            isLoading={item.loading}
+                            icon={'core/chat/sendLight'}
+                            tip={t('config_model:model.test_model')}
+                            onClick={() => onTestOneModel(item.modelId)}
+                          />
                         )}
-                      </Flex>
-                    </Td>
-                    <Td>
-                      {(!isAnyModelLoading || item.loading) && (
-                        <MyIconButton
-                          isLoading={item.loading}
-                          icon={'core/chat/sendLight'}
-                          tip={t('config_model:model.test_model')}
-                          onClick={() => onTestOneModel(item.modelId)}
-                        />
-                      )}
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </Tbody>
-          </Table>
-        </TableContainer>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          )}
+        />
       </Flex>
     </MyModal>
   );

@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useState } from 'react';
 import {
   Box,
@@ -11,7 +12,6 @@ import {
   ModalFooter,
   Switch,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -363,7 +363,7 @@ const EditMcpModal = ({
                 {t('dashboard_mcp:manage_app')}
               </Button>
             </Flex>
-            <TableContainer mt={2} position={'relative'}>
+            <FixedTableContainer mt={2} position={'relative'}>
               <Table>
                 <Thead>
                   <Tr>
@@ -414,7 +414,7 @@ const EditMcpModal = ({
                 </Tbody>
               </Table>
               {apps.length === 0 && <EmptyTip />}
-            </TableContainer>
+            </FixedTableContainer>
           </Box>
         </ModalBody>
         <ModalFooter>

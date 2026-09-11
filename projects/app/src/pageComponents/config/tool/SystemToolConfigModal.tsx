@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
@@ -15,7 +16,6 @@ import {
   Th,
   Tbody,
   Td,
-  TableContainer,
   Tabs,
   TabList,
   TabPanels,
@@ -716,7 +716,7 @@ const SystemToolConfigModal = ({
 
   const toolListSection = isFolder && (
     <VerticalField label={t('app:toolkit_tool_list')}>
-      <TableContainer border={'1px solid'} borderColor={'myGray.200'} borderRadius={'6px'}>
+      <FixedTableContainer border={'1px solid'} borderColor={'myGray.200'} borderRadius={'6px'}>
         <Table size="sm">
           <Thead bg={'myGray.25'}>
             <Tr>
@@ -763,7 +763,7 @@ const SystemToolConfigModal = ({
             })}
           </Tbody>
         </Table>
-      </TableContainer>
+      </FixedTableContainer>
     </VerticalField>
   );
 

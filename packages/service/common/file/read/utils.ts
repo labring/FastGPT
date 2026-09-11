@@ -6,6 +6,7 @@ import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { useSomarkServer } from '../../../thirdProvider/somark';
+import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfor';
 import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
 import { getImageBuffer } from '../image/utils';
@@ -349,6 +350,22 @@ const readFileContent = async ({
       formatText: text
     };
   };
+  // Sangfor service
+  const parseDocumentFromSangfor = async (): Promise<ReadFileResponse> => {
+    const { buffer, extension: materializedExtension } = await getMaterializedFile();
+    const { text, pages } = await parseFromSangfor({
+      fileBuffer: buffer,
+      extension: materializedExtension,
+      imageKeyOptions
+    });
+
+    reportPdfParseUsage(pages);
+
+    return {
+      rawText: text,
+      formatText: text
+    };
+  };
   // Custom read file service
   const pdfParseFn = async (): Promise<ReadFileResponse> => {
     if (!customPdfParse) return systemParse();
@@ -364,6 +381,8 @@ const readFileContent = async ({
   logger.debug('Start parsing file', { extension });
 
   const parseResult = await (async () => {
+    if (useSangforParse(extension)) return await parseDocumentFromSangfor();
+
     if (extension === 'pdf') {
       return await pdfParseFn();
     }

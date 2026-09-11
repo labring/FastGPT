@@ -1,5 +1,6 @@
 import { Box, Button, Flex, Input, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/pricing';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useCallback, useState } from 'react';
 import {
@@ -10,6 +11,7 @@ import {
   type UseFormRegister,
   type UseFormSetValue
 } from 'react-hook-form';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 const PriceInputStyles = {
   bg: 'transparent',
@@ -103,7 +105,7 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
       if (typeof lowerBound === 'number' && value <= lowerBound) return;
 
       const tiers = getValues('priceTiers') ?? [];
-      if (index !== tiers.length - 1) return;
+      if (index !== tiers.length - 1 || tiers.length >= MAX_MODEL_PRICE_TIERS) return;
 
       appendPriceTier(emptyPriceTier as never);
       if (!inputEl) return;
@@ -156,208 +158,256 @@ const ModelPriceTiersTable = React.memo(function ModelPriceTiersTable({
         }
       }}
     >
-      <Table
-        size="sm"
-        boxShadow="none"
-        sx={{
-          th: { borderBottom: 'none', verticalAlign: 'middle' },
-          td: { borderBottom: 'none', verticalAlign: 'middle' }
-        }}
-      >
-        <Thead bg="#FBFBFC" h="32px">
-          <Tr>
-            <Th
-              textTransform="none"
-              px={3}
-              py="4px"
-              h="32px"
-              fontSize="12px"
-              borderRight="1px solid"
-              borderColor="myGray.200"
-            >
-              {t('common:model.price_tier_range')}
-            </Th>
-            <Th
-              px={3}
-              py="4px"
-              h="32px"
-              w="100px"
-              fontSize="12px"
-              borderRight="1px solid"
-              borderColor="myGray.200"
-            >
-              {t('common:model.input_price')}
-            </Th>
-            <Th
-              px={3}
-              py="4px"
-              h="32px"
-              w="100px"
-              fontSize="12px"
-              borderRight="1px solid"
-              borderColor="myGray.200"
-            >
-              {t('common:model.output_price')}
-            </Th>
-            <Th
-              px={3}
-              py="4px"
-              h="32px"
-              w="64px"
-              maxW="64px"
-              textAlign="center"
-              whiteSpace="nowrap"
-            >
-              {t('config_model:model.action')}
-            </Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {priceTierFields.map((field, index) => {
-            const currentTier = watchedPriceTiers?.[index];
-            const previousTier = watchedPriceTiers?.[index - 1];
-            const previousTierMax =
-              index === 0
-                ? 0
-                : typeof previousTier?.maxInputTokens === 'number' &&
-                    Number.isFinite(previousTier.maxInputTokens)
-                  ? previousTier.maxInputTokens
-                  : 0;
-            const lowerBound = index === 0 ? 0 : previousTierMax;
-            const isLastTier = index === priceTierFields.length - 1;
-            const isInvalidMaxInput =
-              invalidMaxInputMap[index] ??
-              (typeof currentTier?.maxInputTokens === 'number' &&
-                currentTier.maxInputTokens <= lowerBound);
-            const isEmptyAction =
-              !currentTier?.maxInputTokens && !currentTier?.inputPrice && !currentTier?.outputPrice;
-            const maxInputTokensRegister = register(`priceTiers.${index}.maxInputTokens`, {
-              min: lowerBound,
-              setValueAs: getOptionalNumber
-            });
-            const inputPriceRegister = register(`priceTiers.${index}.inputPrice`, {
-              setValueAs: getOptionalNumber
-            });
-            const outputPriceRegister = register(`priceTiers.${index}.outputPrice`, {
-              setValueAs: getOptionalNumber
-            });
-
-            return (
-              <Tr key={field.id}>
-                <Td
+      <FixedTableLayout
+        scrollMode="normal"
+        rootProps={{ h: 'auto', maxH: '320px' }}
+        headerProps={{ bg: '#FBFBFC' }}
+        bodyProps={{ flex: '1 1 auto', overflow: 'auto' }}
+        renderHeader={({ headerTableWidth }) => (
+          <Table
+            size="sm"
+            boxShadow="none"
+            sx={{
+              tableLayout: 'fixed',
+              width: `${headerTableWidth} !important`,
+              th: { borderBottom: 'none', verticalAlign: 'middle' },
+              td: { borderBottom: 'none', verticalAlign: 'middle' }
+            }}
+          >
+            <colgroup>
+              <col />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '64px' }} />
+            </colgroup>
+            <Thead bg="#FBFBFC" h="32px">
+              <Tr>
+                <Th
+                  textTransform="none"
                   px={3}
-                  py="2.5px"
-                  borderTop="1px solid"
+                  py="4px"
+                  h="32px"
+                  fontSize="12px"
                   borderRight="1px solid"
                   borderColor="myGray.200"
                 >
-                  <Flex gap={1} alignItems="center" color="myGray.700" whiteSpace="nowrap">
-                    <Input
-                      type="number"
-                      step="any"
-                      min={lowerBound}
-                      value={String(lowerBound)}
-                      disabled
-                      _disabled={{ bg: 'myGray.50', color: 'myGray.500', cursor: 'not-allowed' }}
-                      {...PriceInputStyles}
-                    />
-                    <Box>{` < ${t('common:Input')} <= `}</Box>
-                    <Input
-                      type="number"
-                      step="any"
-                      min={lowerBound}
-                      placeholder={isLastTier ? t('config_model:price_tier_open_ended') : ''}
-                      {...maxInputTokensRegister}
-                      {...PriceInputStyles}
-                      onChange={(event) => {
-                        maxInputTokensRegister.onChange(event);
-                        const nextValue = getOptionalNumber(event.target.value);
-                        setInvalidMaxInputMap((state) => ({
-                          ...state,
-                          [index]: typeof nextValue === 'number' ? nextValue <= lowerBound : false
-                        }));
-                      }}
-                      onBlur={(event) => {
-                        maxInputTokensRegister.onBlur(event);
-                        const nextValue = getOptionalNumber(event.target.value);
-                        setInvalidMaxInputMap((state) => ({
-                          ...state,
-                          [index]: typeof nextValue === 'number' ? nextValue <= lowerBound : false
-                        }));
-                        ensureNextEmptyPriceTier(index, nextValue, event.currentTarget, lowerBound);
-                      }}
-                      isInvalid={isInvalidMaxInput}
-                      {...(isInvalidMaxInput ? InvalidPriceInputStyles : {})}
-                    />
-                  </Flex>
-                </Td>
-                <Td
-                  px={0}
-                  py="2.5px"
-                  borderTop="1px solid"
+                  {t('common:model.price_tier_range')}
+                </Th>
+                <Th
+                  px={3}
+                  py="4px"
+                  h="32px"
+                  w="100px"
+                  fontSize="12px"
                   borderRight="1px solid"
                   borderColor="myGray.200"
                 >
-                  <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
-                    <Input
-                      type="number"
-                      step={0.01}
-                      {...inputPriceRegister}
-                      {...PriceInputStyles}
-                      {...BorderlessPriceInputStyles}
-                      {...FixedPriceValueInputStyles}
-                    />
-                    <Box flexShrink={0} color="myGray.500">
-                      {t('common:support.wallet.subscription.point')}
-                    </Box>
-                  </Flex>
-                </Td>
-                <Td
-                  px={0}
-                  py="2.5px"
-                  borderTop="1px solid"
+                  {t('common:model.input_price')}
+                </Th>
+                <Th
+                  px={3}
+                  py="4px"
+                  h="32px"
+                  w="100px"
+                  fontSize="12px"
                   borderRight="1px solid"
                   borderColor="myGray.200"
                 >
-                  <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
-                    <Input
-                      type="number"
-                      step={0.01}
-                      {...outputPriceRegister}
-                      {...PriceInputStyles}
-                      {...BorderlessPriceInputStyles}
-                      {...FixedPriceValueInputStyles}
-                    />
-                    <Box flexShrink={0} color="myGray.500">
-                      {t('common:support.wallet.subscription.point')}
-                    </Box>
-                  </Flex>
-                </Td>
-                <Td
+                  {t('common:model.output_price')}
+                </Th>
+                <Th
+                  px={3}
+                  py="4px"
+                  h="32px"
                   w="64px"
                   maxW="64px"
-                  px={0}
-                  py="2.5px"
-                  borderTop="1px solid"
-                  borderColor="myGray.200"
+                  textAlign="center"
+                  whiteSpace="nowrap"
                 >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    color={isEmptyAction ? 'myGray.400' : 'primary.600'}
-                    fontWeight="600"
-                    onClick={() => clearPriceTier(index)}
-                    isDisabled={priceTierFields.length === 1 && isEmptyAction}
-                    _hover={{ bg: 'transparent' }}
-                  >
-                    {t('config_model:clear')}
-                  </Button>
-                </Td>
+                  {t('config_model:model.action')}
+                </Th>
               </Tr>
-            );
-          })}
-        </Tbody>
-      </Table>
+            </Thead>
+          </Table>
+        )}
+        renderBody={() => (
+          <Table
+            size="sm"
+            w="100%"
+            boxShadow="none"
+            sx={{
+              tableLayout: 'fixed',
+              th: { borderBottom: 'none', verticalAlign: 'middle' },
+              td: { borderBottom: 'none', verticalAlign: 'middle' }
+            }}
+          >
+            <colgroup>
+              <col />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '100px' }} />
+              <col style={{ width: '64px' }} />
+            </colgroup>
+            <Tbody>
+              {priceTierFields.map((field, index) => {
+                const currentTier = watchedPriceTiers?.[index];
+                const previousTier = watchedPriceTiers?.[index - 1];
+                const previousTierMax =
+                  index === 0
+                    ? 0
+                    : typeof previousTier?.maxInputTokens === 'number' &&
+                        Number.isFinite(previousTier.maxInputTokens)
+                      ? previousTier.maxInputTokens
+                      : 0;
+                const lowerBound = index === 0 ? 0 : previousTierMax;
+                const isLastTier = index === priceTierFields.length - 1;
+                const isInvalidMaxInput =
+                  invalidMaxInputMap[index] ??
+                  (typeof currentTier?.maxInputTokens === 'number' &&
+                    currentTier.maxInputTokens <= lowerBound);
+                const isEmptyAction =
+                  !currentTier?.maxInputTokens &&
+                  !currentTier?.inputPrice &&
+                  !currentTier?.outputPrice;
+                const maxInputTokensRegister = register(`priceTiers.${index}.maxInputTokens`, {
+                  min: lowerBound,
+                  setValueAs: getOptionalNumber
+                });
+                const inputPriceRegister = register(`priceTiers.${index}.inputPrice`, {
+                  setValueAs: getOptionalNumber
+                });
+                const outputPriceRegister = register(`priceTiers.${index}.outputPrice`, {
+                  setValueAs: getOptionalNumber
+                });
+
+                return (
+                  <Tr key={field.id}>
+                    <Td
+                      px={3}
+                      py="2.5px"
+                      borderTop="1px solid"
+                      borderRight="1px solid"
+                      borderColor="myGray.200"
+                    >
+                      <Flex gap={1} alignItems="center" color="myGray.700" whiteSpace="nowrap">
+                        <Input
+                          type="number"
+                          step="any"
+                          min={lowerBound}
+                          value={String(lowerBound)}
+                          disabled
+                          _disabled={{
+                            bg: 'myGray.50',
+                            color: 'myGray.500',
+                            cursor: 'not-allowed'
+                          }}
+                          {...PriceInputStyles}
+                        />
+                        <Box>{` < ${t('common:Input')} <= `}</Box>
+                        <Input
+                          type="number"
+                          step="any"
+                          min={lowerBound}
+                          placeholder={isLastTier ? t('config_model:price_tier_open_ended') : ''}
+                          {...maxInputTokensRegister}
+                          {...PriceInputStyles}
+                          onChange={(event) => {
+                            maxInputTokensRegister.onChange(event);
+                            const nextValue = getOptionalNumber(event.target.value);
+                            setInvalidMaxInputMap((state) => ({
+                              ...state,
+                              [index]:
+                                typeof nextValue === 'number' ? nextValue <= lowerBound : false
+                            }));
+                          }}
+                          onBlur={(event) => {
+                            maxInputTokensRegister.onBlur(event);
+                            const nextValue = getOptionalNumber(event.target.value);
+                            setInvalidMaxInputMap((state) => ({
+                              ...state,
+                              [index]:
+                                typeof nextValue === 'number' ? nextValue <= lowerBound : false
+                            }));
+                            ensureNextEmptyPriceTier(
+                              index,
+                              nextValue,
+                              event.currentTarget,
+                              lowerBound
+                            );
+                          }}
+                          isInvalid={isInvalidMaxInput}
+                          {...(isInvalidMaxInput ? InvalidPriceInputStyles : {})}
+                        />
+                      </Flex>
+                    </Td>
+                    <Td
+                      px={0}
+                      py="2.5px"
+                      borderTop="1px solid"
+                      borderRight="1px solid"
+                      borderColor="myGray.200"
+                    >
+                      <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
+                        <Input
+                          type="number"
+                          step={0.01}
+                          {...inputPriceRegister}
+                          {...PriceInputStyles}
+                          {...BorderlessPriceInputStyles}
+                          {...FixedPriceValueInputStyles}
+                        />
+                        <Box flexShrink={0} color="myGray.500">
+                          {t('common:support.wallet.subscription.point')}
+                        </Box>
+                      </Flex>
+                    </Td>
+                    <Td
+                      px={0}
+                      py="2.5px"
+                      borderTop="1px solid"
+                      borderRight="1px solid"
+                      borderColor="myGray.200"
+                    >
+                      <Flex justifyContent="center" alignItems="center" gap={1} px={3}>
+                        <Input
+                          type="number"
+                          step={0.01}
+                          {...outputPriceRegister}
+                          {...PriceInputStyles}
+                          {...BorderlessPriceInputStyles}
+                          {...FixedPriceValueInputStyles}
+                        />
+                        <Box flexShrink={0} color="myGray.500">
+                          {t('common:support.wallet.subscription.point')}
+                        </Box>
+                      </Flex>
+                    </Td>
+                    <Td
+                      w="64px"
+                      maxW="64px"
+                      px={0}
+                      py="2.5px"
+                      borderTop="1px solid"
+                      borderColor="myGray.200"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        color={isEmptyAction ? 'myGray.400' : 'primary.600'}
+                        fontWeight="600"
+                        onClick={() => clearPriceTier(index)}
+                        isDisabled={priceTierFields.length === 1 && isEmptyAction}
+                        _hover={{ bg: 'transparent' }}
+                      >
+                        {t('config_model:clear')}
+                      </Button>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
+        )}
+      />
     </Box>
   );
 });

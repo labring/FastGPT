@@ -30,7 +30,6 @@ import FocusPlugin from '../../Textarea/PromptEditor/plugins/FocusPlugin';
 import VariableLabelPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin';
 import { VariableLabelNode } from '../../Textarea/PromptEditor/plugins/VariableLabelPlugin/node';
 import VariableLabelPickerPlugin from '../../Textarea/PromptEditor/plugins/VariableLabelPickerPlugin';
-import { useDeepCompareEffect } from 'ahooks';
 
 export default function Editor({
   h = 40,
@@ -42,7 +41,7 @@ export default function Editor({
   placeholder = '',
   updateTrigger,
   tabIndex,
-  resetOnValueChange = true
+  resetOnValueChange: _resetOnValueChange = true
 }: {
   h?: number;
   variables: EditorVariablePickerType[];
@@ -55,7 +54,7 @@ export default function Editor({
   tabIndex?: number;
   resetOnValueChange?: boolean;
 }) {
-  const [key, setKey] = useState(getNanoid(6));
+  const [key, _setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
   const [focus, setFocus] = useState(false);
   const editorOutputRef = useRef(value);
@@ -68,17 +67,6 @@ export default function Editor({
       console.error('Lexical errror', error);
     }
   };
-
-  // 本地失焦回写时两者已同步，外部替换值不一致时强制重建 Lexical。
-  useDeepCompareEffect(() => {
-    if (value !== editorOutputRef.current) {
-      editorOutputRef.current = value;
-      setKey(getNanoid(6));
-      return;
-    }
-    if (!resetOnValueChange || focus) return;
-    setKey(getNanoid(6));
-  }, [resetOnValueChange, value, variables.length]);
 
   return (
     <Flex

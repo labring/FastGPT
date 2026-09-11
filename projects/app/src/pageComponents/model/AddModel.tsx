@@ -11,7 +11,6 @@ import {
   HStack,
   Radio,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -28,6 +27,7 @@ import type {
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
 import { i18nT, parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
@@ -614,128 +614,139 @@ const TemplateCreateModal = ({
                 minH={0}
                 mt={4}
               >
-                <Table w="100%" size="sm" sx={{ tableLayout: 'fixed' }}>
-                  <TemplateTableColumns />
-                  <Thead>
-                    <Tr h="40px" bg="myGray.100">
-                      <Th px={3}>
-                        <HStack spacing={2}>
-                          <Checkbox
-                            isChecked={isAllVisibleSelected}
-                            isIndeterminate={
-                              !isAllVisibleSelected &&
-                              visibleTemplateKeys.some((key) => selectedKeys.has(key))
-                            }
-                            onChange={toggleSelectAllVisible}
-                          />
-                          <Box>{t('common:Select_all')}</Box>
-                        </HStack>
-                      </Th>
-                      <Th px={4}>{t('config_model:model.model_id')}</Th>
-                      <Th px={4}>{t('common:model.model_type')}</Th>
-                    </Tr>
-                  </Thead>
-                </Table>
-                <TableContainer
-                  ref={templateListContainerRef}
-                  flex="1 1 0"
-                  minH={0}
-                  overflowY="auto"
-                >
-                  <Table w="100%" size="sm" sx={{ tableLayout: 'fixed' }}>
-                    <TemplateTableColumns />
-                    <Tbody>
-                      {templateTopPlaceholderHeight > 0 && (
-                        <Tr h={`${templateTopPlaceholderHeight}px`} aria-hidden>
-                          <Td
-                            colSpan={3}
-                            h={`${templateTopPlaceholderHeight}px`}
-                            p={0}
-                            border={0}
-                          />
-                        </Tr>
-                      )}
-                      {virtualTemplates.map(({ data: model }) => {
-                        const key = `${model.type}:${model.model}`;
-                        const typeLabel = modelTypeList.find(
-                          (item) => item.value === model.type
-                        )?.label;
-                        const provider = providerMap.get(model.provider);
-                        const contextToken =
-                          model.type === ModelTypeEnum.llm
-                            ? model.config.maxContext
-                            : model.type === ModelTypeEnum.embedding ||
-                                model.type === ModelTypeEnum.rerank
-                              ? model.config.maxToken
-                              : undefined;
-                        return (
-                          <Tr
-                            key={key}
-                            h="80px"
-                            cursor="pointer"
-                            _hover={{ bg: 'myGray.25' }}
-                            onClick={() => toggleKey(key)}
-                          >
-                            <Td px={3}>
-                              <Checkbox isChecked={selectedKeys.has(key)} pointerEvents="none" />
-                            </Td>
-                            <Td px={4} fontSize="sm">
-                              <HStack>
-                                <Avatar src={provider?.avatar} w="1.2rem" borderRadius="50%" />
-                                <Flex alignItems="center" gap={1} minW={0}>
-                                  <Box color="myGray.900" fontWeight="500" noOfLines={1}>
-                                    {model.model}
-                                  </Box>
-                                  {model.testMode && <TestModeBetaTag />}
-                                </Flex>
-                              </HStack>
-                              <ModelCapabilityTags
-                                mt={2}
-                                contextToken={contextToken}
-                                showVision={
-                                  (model.type === ModelTypeEnum.llm ||
-                                    model.type === ModelTypeEnum.embedding) &&
-                                  !!model.config.vision
+                <FixedTableLayout
+                  scrollMode="virtual"
+                  bodyRef={templateListContainerRef}
+                  rootProps={{ flex: '1 1 0', minH: 0 }}
+                  renderHeader={({ headerTableWidth }) => (
+                    <Table
+                      w="100%"
+                      size="sm"
+                      sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
+                    >
+                      <TemplateTableColumns />
+                      <Thead>
+                        <Tr h="40px" bg="myGray.100">
+                          <Th px={3}>
+                            <HStack spacing={2}>
+                              <Checkbox
+                                isChecked={isAllVisibleSelected}
+                                isIndeterminate={
+                                  !isAllVisibleSelected &&
+                                  visibleTemplateKeys.some((key) => selectedKeys.has(key))
                                 }
-                                showVideo={model.type === ModelTypeEnum.llm && !!model.config.video}
-                                showAudio={model.type === ModelTypeEnum.llm && !!model.config.audio}
-                                showReasoning={
-                                  model.type === ModelTypeEnum.llm && !!model.config.reasoning
-                                }
+                                onChange={toggleSelectAllVisible}
                               />
-                            </Td>
-                            <Td px={4}>
-                              <MyTag
-                                type="borderFill"
-                                colorSchema={modelTypeTagColorMap[model.type]}
-                                py={0.5}
-                              >
-                                {typeLabel ? t(typeLabel) : model.type}
-                              </MyTag>
+                              <Box>{t('common:Select_all')}</Box>
+                            </HStack>
+                          </Th>
+                          <Th px={4}>{t('config_model:model.model_id')}</Th>
+                          <Th px={4}>{t('common:model.model_type')}</Th>
+                        </Tr>
+                      </Thead>
+                    </Table>
+                  )}
+                  bodyProps={{ flex: '1 1 0', minH: 0, overflowY: 'auto' }}
+                  renderBody={() => (
+                    <Table w="100%" size="sm" sx={{ tableLayout: 'fixed' }}>
+                      <TemplateTableColumns />
+                      <Tbody>
+                        {templateTopPlaceholderHeight > 0 && (
+                          <Tr h={`${templateTopPlaceholderHeight}px`} aria-hidden>
+                            <Td
+                              colSpan={3}
+                              h={`${templateTopPlaceholderHeight}px`}
+                              p={0}
+                              border={0}
+                            />
+                          </Tr>
+                        )}
+                        {virtualTemplates.map(({ data: model }) => {
+                          const key = `${model.type}:${model.model}`;
+                          const typeLabel = modelTypeList.find(
+                            (item) => item.value === model.type
+                          )?.label;
+                          const provider = providerMap.get(model.provider);
+                          const contextToken =
+                            model.type === ModelTypeEnum.llm
+                              ? model.config.maxContext
+                              : model.type === ModelTypeEnum.embedding ||
+                                  model.type === ModelTypeEnum.rerank
+                                ? model.config.maxToken
+                                : undefined;
+                          return (
+                            <Tr
+                              key={key}
+                              h="80px"
+                              cursor="pointer"
+                              _hover={{ bg: 'myGray.25' }}
+                              onClick={() => toggleKey(key)}
+                            >
+                              <Td px={3}>
+                                <Checkbox isChecked={selectedKeys.has(key)} pointerEvents="none" />
+                              </Td>
+                              <Td px={4} fontSize="sm">
+                                <HStack>
+                                  <Avatar src={provider?.avatar} w="1.2rem" borderRadius="50%" />
+                                  <Flex alignItems="center" gap={1} minW={0}>
+                                    <Box color="myGray.900" fontWeight="500" noOfLines={1}>
+                                      {model.model}
+                                    </Box>
+                                    {model.testMode && <TestModeBetaTag />}
+                                  </Flex>
+                                </HStack>
+                                <ModelCapabilityTags
+                                  mt={2}
+                                  contextToken={contextToken}
+                                  showVision={
+                                    (model.type === ModelTypeEnum.llm ||
+                                      model.type === ModelTypeEnum.embedding) &&
+                                    !!model.config.vision
+                                  }
+                                  showVideo={
+                                    model.type === ModelTypeEnum.llm && !!model.config.video
+                                  }
+                                  showAudio={
+                                    model.type === ModelTypeEnum.llm && !!model.config.audio
+                                  }
+                                  showReasoning={
+                                    model.type === ModelTypeEnum.llm && !!model.config.reasoning
+                                  }
+                                />
+                              </Td>
+                              <Td px={4}>
+                                <MyTag
+                                  type="borderFill"
+                                  colorSchema={modelTypeTagColorMap[model.type]}
+                                  py={0.5}
+                                >
+                                  {typeLabel ? t(typeLabel) : model.type}
+                                </MyTag>
+                              </Td>
+                            </Tr>
+                          );
+                        })}
+                        {templateBottomPlaceholderHeight > 0 && (
+                          <Tr h={`${templateBottomPlaceholderHeight}px`} aria-hidden>
+                            <Td
+                              colSpan={3}
+                              h={`${templateBottomPlaceholderHeight}px`}
+                              p={0}
+                              border={0}
+                            />
+                          </Tr>
+                        )}
+                        {!loading && templates.length === 0 && (
+                          <Tr>
+                            <Td colSpan={3} border={0}>
+                              <EmptyTip py={8} text={t('config_model:no_available_templates')} />
                             </Td>
                           </Tr>
-                        );
-                      })}
-                      {templateBottomPlaceholderHeight > 0 && (
-                        <Tr h={`${templateBottomPlaceholderHeight}px`} aria-hidden>
-                          <Td
-                            colSpan={3}
-                            h={`${templateBottomPlaceholderHeight}px`}
-                            p={0}
-                            border={0}
-                          />
-                        </Tr>
-                      )}
-                      {!loading && templates.length === 0 && (
-                        <Tr>
-                          <Td colSpan={3} border={0}>
-                            <EmptyTip py={8} text={t('config_model:no_available_templates')} />
-                          </Td>
-                        </Tr>
-                      )}
-                    </Tbody>
-                  </Table>
-                </TableContainer>
+                        )}
+                      </Tbody>
+                    </Table>
+                  )}
+                />
               </Flex>
             </Flex>
           )}

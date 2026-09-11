@@ -36,6 +36,7 @@
   "time": "time",
   "total_amount": "lump sum",
   "type": "type",
+  "package_type": "Package type",
   "unit_code": "unified credit code",
   "wecom_not_pay_tip": "Not paid, payment address will be redirected soon",
   "status": "state",

@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -9,7 +10,6 @@ import {
   ModalBody,
   ModalFooter,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Textarea,
@@ -209,7 +209,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
           borderWidth={'1px'}
           borderBottom={'none'}
         >
-          <TableContainer overflowY={'visible'} overflowX={'unset'}>
+          <FixedTableContainer flush>
             <Table>
               <Thead>
                 <Tr>
@@ -313,7 +313,7 @@ const SchemaConfigModal = ({ onClose }: { onClose: () => void }) => {
                 </Tr>
               </Tbody>
             </Table>
-          </TableContainer>
+          </FixedTableContainer>
         </Box>
       </ModalBody>
 

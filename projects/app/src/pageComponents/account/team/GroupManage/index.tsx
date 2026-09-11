@@ -1,10 +1,10 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import {
   Box,
   Button,
   Flex,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -118,10 +118,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
         flex={['0 0 auto', '1 0 0']}
         h={['auto', 0]}
         minH={0}
-        overflowY={['visible', 'auto']}
+        overflow={'hidden'}
         isLoading={isLoadingGroups}
       >
-        <TableContainer overflow={'unset'} fontSize={'sm'}>
+        <FixedTableContainer h={['60dvh', '100%']} maxH="none" fontSize={'sm'}>
           <Table overflow={'unset'}>
             <Thead>
               <Tr bg={'white !important'}>
@@ -223,7 +223,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               ))}
             </Tbody>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       </MyBox>
 
       <ConfirmDeleteGroupModal />

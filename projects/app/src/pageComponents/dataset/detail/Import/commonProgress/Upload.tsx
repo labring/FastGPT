@@ -1,17 +1,6 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useRef } from 'react';
-import {
-  Box,
-  TableContainer,
-  Table,
-  Thead,
-  Tr,
-  Th,
-  Td,
-  Tbody,
-  Flex,
-  Button,
-  IconButton
-} from '@chakra-ui/react';
+import { Box, Table, Thead, Tr, Th, Td, Tbody, Flex, Button, IconButton } from '@chakra-ui/react';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -216,8 +205,25 @@ const Upload = () => {
   );
 
   return (
-    <Box h={'100%'} overflow={'auto'}>
-      <TableContainer>
+    <Box h={'100%'} overflow={'hidden'}>
+      <FixedTableContainer
+        h="100%"
+        maxH="none"
+        footer={
+          <Flex justifyContent={'flex-end'} mt={4}>
+            <Button
+              isLoading={isLoading}
+              onClick={processParamsForm.handleSubmit((data) => startUpload(data))}
+            >
+              {totalFilesCount > 0 &&
+                `${t('dataset:total_num_files', {
+                  total: totalFilesCount
+                })} | `}
+              {buttonText}
+            </Button>
+          </Flex>
+        }
+      >
         <Table variant={'simple'} fontSize={'sm'} draggable={false}>
           <Thead draggable={false}>
             <Tr bg={'myGray.100'} mb={2}>
@@ -282,20 +288,7 @@ const Upload = () => {
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
-
-      <Flex justifyContent={'flex-end'} mt={4}>
-        <Button
-          isLoading={isLoading}
-          onClick={processParamsForm.handleSubmit((data) => startUpload(data))}
-        >
-          {totalFilesCount > 0 &&
-            `${t('dataset:total_num_files', {
-              total: totalFilesCount
-            })} | `}
-          {buttonText}
-        </Button>
-      </Flex>
+      </FixedTableContainer>
     </Box>
   );
 };

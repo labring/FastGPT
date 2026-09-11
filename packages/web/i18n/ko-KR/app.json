@@ -6,6 +6,7 @@
   "Custom_params": "입력 파라미터",
   "Delete_all": "전체 어휘집 삭제",
   "Edit_tool": "도구 편집",
+  "Edit_tool_description": "도구 설명 편집",
   "Filed_is_deprecated": "이 필드는 더 이상 사용되지 않습니다",
   "HTTPTools_Create_Type": "생성 유형",
   "HTTPTools_Create_Type_Tip": "선택 후에는 수정할 수 없습니다",

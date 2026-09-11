@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import {
   getInvoiceBillsList,
   type invoiceBillDataType,
@@ -9,7 +10,6 @@ import {
   Checkbox,
   Flex,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -198,7 +198,7 @@ const ApplyInvoiceModal = ({
           <Box fontWeight={500} fontSize={'1rem'} pb={'0.75rem'}>
             {t('account_bill:support_wallet_apply_invoice')}
           </Box>
-          <TableContainer minH={'50vh'}>
+          <FixedTableContainer h={'50vh'} maxH="none">
             <Table>
               <Thead>
                 <Tr>
@@ -268,7 +268,7 @@ const ApplyInvoiceModal = ({
                 </Box>
               </Flex>
             )}
-          </TableContainer>
+          </FixedTableContainer>
         </>
       )}
     </MyModal>

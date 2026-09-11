@@ -1,20 +1,9 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getInvoiceRecords } from '@/web/support/wallet/bill/invoice/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useRef, useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  FormLabel,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { Box, Button, Flex, FormLabel, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { type InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -49,14 +38,31 @@ const InvoiceTable = () => {
       display={'flex'}
       flexDirection={'column'}
     >
-      <TableContainer ref={scrollContainerRef} {...accountContentScrollStyles} px={[2, 6]}>
+      <FixedTableContainer
+        maxH="none"
+        ref={scrollContainerRef}
+        {...accountContentScrollStyles}
+        px={[2, 4]}
+        footer={
+          <>
+            {total >= pageSize && (
+              <Flex mt={3} justifyContent={'center'}>
+                <Pagination />
+              </Flex>
+            )}
+          </>
+        }
+        h={['60dvh', 0]}
+      >
         <Table>
           <Thead h="3rem">
             <Tr>
               <Th w={'20%'}>#</Th>
               <Th w={'20%'}>{t('account_bill:time')}</Th>
               <Th w={'20%'}>{t('account_bill:support_wallet_amount')}</Th>
-              <Th w={'20%'}>{t('account_bill:status')}</Th>
+              <Th w={'20%'} minW={'160px'}>
+                {t('account_bill:status')}
+              </Th>
               <Th w={'20%'}></Th>
             </Tr>
           </Thead>
@@ -68,11 +74,12 @@ const InvoiceTable = () => {
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
                 <Td>{t('account_bill:yuan', { amount: formatStorePrice2Read(item.amount) })}</Td>
-                <Td>
+                <Td minW={'160px'}>
                   <Flex
                     px={'0.75rem'}
                     py={'0.38rem'}
-                    w={'4.25rem'}
+                    w={'fit-content'}
+                    whiteSpace={'nowrap'}
                     h={'1.75rem'}
                     bg={item.status === 1 ? 'blue.50' : 'green.50'}
                     rounded={'md'}
@@ -80,7 +87,7 @@ const InvoiceTable = () => {
                     align={'center'}
                     color={item.status === 1 ? 'blue.600' : 'green.600'}
                   >
-                    <MyIcon name="point" w={'6px'} h={'6px'} />
+                    <MyIcon name="point" w={'6px'} h={'6px'} flexShrink={0} />
                     <Box ml={'0.25rem'}>
                       {item.status === 1
                         ? t('account_bill:submitted')
@@ -124,12 +131,8 @@ const InvoiceTable = () => {
             </Box>
           </Flex>
         )}
-      </TableContainer>
-      {total >= pageSize && (
-        <Flex mt={3} justifyContent={'center'}>
-          <Pagination />
-        </Flex>
-      )}
+      </FixedTableContainer>
+
       {!!invoiceDetailData && (
         <InvoiceDetailModal invoice={invoiceDetailData} onClose={() => setInvoiceDetailData('')} />
       )}

@@ -11,7 +11,6 @@ import {
   Input,
   Switch,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -30,6 +29,7 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -291,65 +291,95 @@ const AIChatSettingsModal = ({
             />
           </SettingRow>
 
-          <TableContainer borderRadius={'sm'} borderWidth={'1px'} borderColor={'myGray.200'}>
-            <Table variant={'bordered'}>
-              <Thead>
-                <Tr>
-                  <Th>
-                    <HStack spacing={1}>
-                      <Box>{t('app:ai_point_price')}</Box>
-                      <ModelPriceModal>
-                        {({ onOpen }) => (
-                          <QuestionTip label={t('app:look_ai_point_price')} onClick={onOpen} />
-                        )}
-                      </ModelPriceModal>
-                    </HStack>
-                  </Th>
-                  <Th>{t('common:core.ai.Max context')}</Th>
-                  <Th>
-                    <HStack spacing={1}>
-                      <Box>{t('common:core.ai.Support tool')}</Box>
-                      <QuestionTip label={t('common:core.module.template.AI support tool tip')} />
-                    </HStack>
-                  </Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                <Tr>
-                  <Td>
-                    {!!selectedModel && (
-                      <PriceLine
-                        config={selectedModel}
-                        unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
-                        priceKey={'input'}
-                        fontSize={'mini'}
-                      />
-                    )}
-                  </Td>
-                  <Td rowSpan={2}>
-                    {selectedModel ? `${Math.round(selectedModel.config.maxContext / 1000)}K` : '—'}
-                  </Td>
-                  <Td rowSpan={2}>
-                    {selectedModel?.config.toolChoice || selectedModel?.config.functionCall
-                      ? t('common:support')
-                      : t('common:not_support')}
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Td>
-                    {!!selectedModel && (
-                      <PriceLine
-                        config={selectedModel}
-                        unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
-                        priceKey={'output'}
-                        fontSize={'mini'}
-                      />
-                    )}
-                  </Td>
-                </Tr>
-              </Tbody>
-            </Table>
-          </TableContainer>
+          <FixedTableLayout
+            scrollMode="normal"
+            rootProps={{
+              h: 'auto',
+              borderRadius: 'sm',
+              borderWidth: '1px',
+              borderColor: 'myGray.200',
+              overflow: 'hidden'
+            }}
+            bodyProps={{ flex: '1 1 auto', overflowX: 'auto' }}
+            renderHeader={({ headerTableWidth }) => (
+              <Table
+                variant={'bordered'}
+                sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
+              >
+                <colgroup>
+                  <col style={{ width: '40%' }} />
+                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '30%' }} />
+                </colgroup>
+                <Thead>
+                  <Tr>
+                    <Th>
+                      <HStack spacing={1}>
+                        <Box>{t('app:ai_point_price')}</Box>
+                        <ModelPriceModal>
+                          {({ onOpen }) => (
+                            <QuestionTip label={t('app:look_ai_point_price')} onClick={onOpen} />
+                          )}
+                        </ModelPriceModal>
+                      </HStack>
+                    </Th>
+                    <Th>{t('common:core.ai.Max context')}</Th>
+                    <Th>
+                      <HStack spacing={1}>
+                        <Box>{t('common:core.ai.Support tool')}</Box>
+                        <QuestionTip label={t('common:core.module.template.AI support tool tip')} />
+                      </HStack>
+                    </Th>
+                  </Tr>
+                </Thead>
+              </Table>
+            )}
+            renderBody={() => (
+              <Table variant={'bordered'} w={'100%'} sx={{ tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '40%' }} />
+                  <col style={{ width: '30%' }} />
+                  <col style={{ width: '30%' }} />
+                </colgroup>
+                <Tbody>
+                  <Tr>
+                    <Td>
+                      {!!selectedModel && (
+                        <PriceLine
+                          config={selectedModel}
+                          unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                          priceKey={'input'}
+                          fontSize={'mini'}
+                        />
+                      )}
+                    </Td>
+                    <Td rowSpan={2}>
+                      {selectedModel
+                        ? `${Math.round(selectedModel.config.maxContext / 1000)}K`
+                        : '—'}
+                    </Td>
+                    <Td rowSpan={2}>
+                      {selectedModel?.config.toolChoice || selectedModel?.config.functionCall
+                        ? t('common:support')
+                        : t('common:not_support')}
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>
+                      {!!selectedModel && (
+                        <PriceLine
+                          config={selectedModel}
+                          unitLabel={t('common:support.wallet.subscription.point') + ' / 1K Tokens'}
+                          priceKey={'output'}
+                          fontSize={'mini'}
+                        />
+                      )}
+                    </Td>
+                  </Tr>
+                </Tbody>
+              </Table>
+            )}
+          />
 
           {showMaxHistoriesSlider && (
             <SettingRow

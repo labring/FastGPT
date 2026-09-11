@@ -1,5 +1,6 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo } from 'react';
-import { Flex, Box, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import { Flex, Box, Table, Thead, Tbody, Tr, Th, Td } from '@chakra-ui/react';
 import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
 import dayjs from 'dayjs';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
@@ -100,7 +101,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
         <FormLabel flex={'0 0 80px'} mb={1}>
           {t('account_usage:billing_module')}
         </FormLabel>
-        <TableContainer fontSize={'sm'}>
+        <FixedTableContainer horizontalScroll fontSize={'sm'} maxH="none">
           <Table>
             <Thead>
               <Tr>
@@ -133,7 +134,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
               ))}
             </Tbody>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       </Box>
     </MyModal>
   );

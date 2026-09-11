@@ -1,4 +1,5 @@
 'use client';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useState } from 'react';
 import {
   Box,
@@ -12,7 +13,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Center,
   Fade
 } from '@chakra-ui/react';
@@ -463,7 +463,7 @@ const CreateAppsPage = () => {
                   borderWidth={'1px'}
                   position={'relative'}
                 >
-                  <TableContainer maxH={360} minH={200} overflowY={'auto'}>
+                  <FixedTableContainer maxH={360} minH={200}>
                     <Table bg={'white'}>
                       <Thead bg={'myGray.50'}>
                         <Tr>
@@ -506,7 +506,7 @@ const CreateAppsPage = () => {
                         ))}
                       </Tbody>
                     </Table>
-                  </TableContainer>
+                  </FixedTableContainer>
                   {(!mcpToolList || mcpToolList.length === 0) && (
                     <Center
                       position={'absolute'}

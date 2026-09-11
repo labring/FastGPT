@@ -1,17 +1,5 @@
-import React, { useState } from 'react';
-import {
-  Flex,
-  TableContainer,
-  Table,
-  Thead,
-  Tr,
-  Th,
-  Td,
-  Tbody,
-  Progress,
-  IconButton,
-  Box
-} from '@chakra-ui/react';
+import React from 'react';
+import { Flex, Table, Thead, Tr, Th, Td, Tbody, Progress, IconButton, Box } from '@chakra-ui/react';
 import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -31,7 +19,8 @@ export const RenderUploadFiles = ({
 
   return files.length > 0 ? (
     <>
-      <TableContainer mt={5}>
+      {/* 文件列表与下一步按钮共用导入页的外层滚动，不单独限制表格高度。 */}
+      <Box mt={5}>
         <Table variant={'simple'} fontSize={'sm'} draggable={false}>
           <Thead draggable={false}>
             <Tr bg={'myGray.100'} mb={2}>
@@ -113,7 +102,7 @@ export const RenderUploadFiles = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+      </Box>
     </>
   ) : null;
 };

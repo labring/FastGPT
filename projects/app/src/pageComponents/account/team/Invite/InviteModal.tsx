@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getInvitationLinkList, putForbidInvitationLink } from '@/web/support/user/team/api';
@@ -10,7 +11,6 @@ import {
   Grid,
   HStack,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -101,7 +101,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
           </HStack>
           <Button onClick={onOpenCreate}>{t('account_team:create_invitation_link')}</Button>
         </Flex>
-        <TableContainer overflowY={'auto'}>
+        <FixedTableContainer horizontalScroll>
           <Table fontSize={'sm'} overflow={'unset'}>
             <Thead>
               <Tr bgColor={'white !important'}>
@@ -242,7 +242,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
             )}
           </Table>
           {!invitationLinkList?.length && <EmptyTip />}
-        </TableContainer>
+        </FixedTableContainer>
       </MyModal>
       {isOpenCreate && (
         <CreateInvitationModal

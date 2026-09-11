@@ -1,20 +1,9 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useState } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  Box,
-  Button,
-  Flex,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  HStack
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Table, Thead, Tbody, Tr, Th, Td, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
@@ -68,7 +57,7 @@ const RenderToolInput = ({
       </HStack>
 
       <Box borderRadius={'md'} overflow={'hidden'} border={'base'}>
-        <TableContainer>
+        <FixedTableContainer flush className="nodrag nowheel">
           <Table bg={'white'}>
             <Thead>
               <Tr>
@@ -118,7 +107,7 @@ const RenderToolInput = ({
               ))}
             </Tbody>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       </Box>
 
       {!!editField && (

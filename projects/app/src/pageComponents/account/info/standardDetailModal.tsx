@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo } from 'react';
 import {
   ModalBody,
@@ -8,7 +9,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   ModalCloseButton,
   HStack,
   Box,
@@ -73,7 +73,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody px={[4, 8]} py={[2, 6]}>
-        <TableContainer mt={2} position={'relative'} minH={'300px'}>
+        <FixedTableContainer mt={2} position={'relative'} minH={'300px'}>
           <Table>
             <Thead>
               <Tr>
@@ -140,7 +140,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
             </Tbody>
           </Table>
           <Loading loading={isLoading} fixed={false} />
-        </TableContainer>
+        </FixedTableContainer>
         {!isWecomTeam && (
           <HStack mt={4} color={'primary.700'}>
             <MyIcon name={'infoRounded'} w={'1rem'} />

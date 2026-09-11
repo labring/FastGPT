@@ -1,6 +1,7 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { ModelStatusLabel } from '@/components/Select/ModelStatusLabel';
 import { useModelSummary } from '@/web/core/ai/model/useModelSummary';
-import { Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
@@ -36,7 +37,7 @@ const SearchParamsTip = ({
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
 
   return (
-    <TableContainer
+    <FixedTableContainer
       bg={'primary.50'}
       borderRadius={'lg'}
       borderWidth={'1px'}
@@ -115,7 +116,7 @@ const SearchParamsTip = ({
           </Tr>
         </Tbody>
       </Table>
-    </TableContainer>
+    </FixedTableContainer>
   );
 };
 

@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import {
   Box,
@@ -9,7 +10,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Link,
   Input,
   IconButton,
@@ -617,14 +617,14 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
             </Button>
           </Flex>
         </Flex>
-        <TableContainer
+        <FixedTableContainer
+          maxH="none"
           mt={3}
-          px={isPublishMode ? 0 : [4, 6]}
+          px={isPublishMode ? 0 : 4}
           position={'relative'}
           flex={isPublishMode ? '1 0 0' : accountContentScrollStyles.flex}
-          h={isPublishMode ? 0 : accountContentScrollStyles.h}
+          h={isPublishMode ? 0 : ['60dvh', 0]}
           minH={0}
-          overflowY={isPublishMode ? 'auto' : accountContentScrollStyles.overflowY}
         >
           <Table sx={{ tableLayout: 'fixed' }}>
             <Thead>
@@ -644,7 +644,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               ))}
             </Tbody>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       </Flex>
 
       {!!editData && (

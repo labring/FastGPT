@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -16,7 +17,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Switch,
   Accordion,
   AccordionItem,
@@ -645,7 +645,7 @@ const CustomParamsTable = ({
       borderBottom={'none'}
       bg={'white'}
     >
-      <TableContainer overflowY={'visible'} overflowX={'auto'}>
+      <FixedTableContainer flush>
         <Table size={'sm'}>
           <Thead>
             <Tr bg={'myGray.50'} h={8}>
@@ -689,7 +689,7 @@ const CustomParamsTable = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+      </FixedTableContainer>
     </Box>
   );
 };
@@ -709,7 +709,7 @@ const ParamsTable = ({
 
   return (
     <Box borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom={'none'}>
-      <TableContainer overflowY={'visible'} overflowX={'unset'}>
+      <FixedTableContainer flush>
         <Table size={'sm'}>
           <Thead>
             <Tr bg={'myGray.50'} h={8}>
@@ -775,7 +775,7 @@ const ParamsTable = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+      </FixedTableContainer>
     </Box>
   );
 };

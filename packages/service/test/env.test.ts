@@ -25,6 +25,9 @@ const originalEnv = {
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
   SOMARK_API_KEY: process.env.SOMARK_API_KEY,
+  DOCUMENT_PARSE_PROVIDER: process.env.DOCUMENT_PARSE_PROVIDER,
+  SANGFOR_PARSE_EXTENSIONS: process.env.SANGFOR_PARSE_EXTENSIONS,
+  SANGFOR_PARSE_TIMEOUT_SECONDS: process.env.SANGFOR_PARSE_TIMEOUT_SECONDS,
   PRO_URL: process.env.PRO_URL,
   PRO_TOKEN: process.env.PRO_TOKEN,
   VITEST: process.env.VITEST,
@@ -79,6 +82,9 @@ describe('serviceEnv', () => {
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
     vi.stubEnv('SOMARK_API_KEY', originalEnv.SOMARK_API_KEY);
+    vi.stubEnv('DOCUMENT_PARSE_PROVIDER', originalEnv.DOCUMENT_PARSE_PROVIDER);
+    vi.stubEnv('SANGFOR_PARSE_EXTENSIONS', originalEnv.SANGFOR_PARSE_EXTENSIONS);
+    vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', originalEnv.SANGFOR_PARSE_TIMEOUT_SECONDS);
     vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
     vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
     vi.stubEnv('VITEST', originalEnv.VITEST);
@@ -223,6 +229,66 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: {
         SOMARK_API_KEY: 'sk-somark-test'
+      }
+    });
+  });
+
+  it('reads the Sangfor document parsing configuration', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('DOCUMENT_PARSE_PROVIDER', 'sangfor');
+    vi.stubEnv('SANGFOR_PARSE_EXTENSIONS', 'pdf,docx');
+    vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', '45');
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        SANGFOR_PARSE_EXTENSIONS: 'pdf,docx',
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 45
+      }
+    });
+  });
+
+  it('defaults Sangfor parsing to PDF with a 10 minute timeout', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('DOCUMENT_PARSE_PROVIDER', 'sangfor');
+    vi.stubEnv('SANGFOR_PARSE_EXTENSIONS', undefined);
+    vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', undefined);
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        DOCUMENT_PARSE_PROVIDER: 'sangfor',
+        SANGFOR_PARSE_EXTENSIONS: 'pdf',
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 600
+      }
+    });
+  });
+
+  it('defaults DOCUMENT_PARSE_PROVIDER to empty', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('DOCUMENT_PARSE_PROVIDER', undefined);
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        DOCUMENT_PARSE_PROVIDER: ''
+      }
+    });
+  });
+
+  it('accepts the maximum Sangfor timeout of 7200 seconds', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('SANGFOR_PARSE_TIMEOUT_SECONDS', '7200');
+
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        SANGFOR_PARSE_TIMEOUT_SECONDS: 7200
       }
     });
   });
