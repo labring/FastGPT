@@ -14,9 +14,6 @@ type State = {
   enterpriseAuthNoticeReadTeamIds: string[];
   setEnterpriseAuthNoticeRead: (teamId: string) => void;
 
-  isUpdateNotification: boolean;
-  setIsUpdateNotification: (val: boolean) => void;
-
   userInfo: UserType | null;
   isTeamAdmin: boolean;
   initUserInfo: () => Promise<UserType | null>;
@@ -46,13 +43,6 @@ export const useUserStore = create<State>()(
           set((state) => {
             if (state.enterpriseAuthNoticeReadTeamIds.includes(teamId)) return;
             state.enterpriseAuthNoticeReadTeamIds.push(teamId);
-          });
-        },
-
-        isUpdateNotification: true,
-        setIsUpdateNotification(val: boolean) {
-          set((state) => {
-            state.isUpdateNotification = val;
           });
         },
 
@@ -119,8 +109,7 @@ export const useUserStore = create<State>()(
         name: 'userStore',
         partialize: (state) => ({
           systemMsgReadId: state.systemMsgReadId,
-          enterpriseAuthNoticeReadTeamIds: state.enterpriseAuthNoticeReadTeamIds,
-          isUpdateNotification: state.isUpdateNotification
+          enterpriseAuthNoticeReadTeamIds: state.enterpriseAuthNoticeReadTeamIds
         })
       }
     )

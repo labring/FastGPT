@@ -72,6 +72,12 @@ const createTestRoot = () => {
   return { host, root: createRoot(host) };
 };
 
+const waitForPaginationEffects = async () => {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  });
+};
+
 const renderHarness = async (root: Root, version: number) => {
   await act(async () => {
     root.render(React.createElement(Harness, { version }));
@@ -95,8 +101,7 @@ describe('useVirtualList', () => {
   it('stops automatic pagination after a failed request', async () => {
     const { host, root } = createTestRoot();
     await renderHarness(root, 0);
-
-    mocks.paginationState.fetchData.mockClear();
+    await waitForPaginationEffects();
     mocks.paginationState.isLoading = true;
     await renderHarness(root, 1);
 

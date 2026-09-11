@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Flex, Link, Text } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -49,7 +49,13 @@ const BenefitItem = ({ children }: { children: React.ReactNode }) => (
   </Flex>
 );
 
-const EnterpriseAuthNoticeModal = () => {
+const EnterpriseAuthNoticeModal = ({
+  enabled = true,
+  onFinish
+}: {
+  enabled?: boolean;
+  onFinish?: () => void;
+}) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -66,20 +72,20 @@ const EnterpriseAuthNoticeModal = () => {
     hasTeamManagePer: userInfo?.team?.permission?.hasManagePer
   });
   const shouldCheckEnterpriseAuthNotice =
-    router.pathname === '/dashboard/agent' &&
+    enabled &&
     !!feConfigs?.show_enterprise_auth &&
     !!teamId &&
     canCheckEnterpriseAuthNotice &&
     !isAccountCancellationPending &&
     !enterpriseAuthNoticeReadTeamIds?.includes(teamId);
-  const { data: enterpriseAuthStatus } = useQuery(
-    ['getEnterpriseAuthNoticeStatus', teamId],
-    getEnterpriseAuthStatus,
-    {
-      enabled: shouldCheckEnterpriseAuthNotice,
-      staleTime: 30000
-    }
-  );
+  const {
+    data: enterpriseAuthStatus,
+    isError: enterpriseAuthStatusError,
+    isFetched: enterpriseAuthStatusFetched
+  } = useQuery(['getEnterpriseAuthNoticeStatus', teamId], getEnterpriseAuthStatus, {
+    enabled: shouldCheckEnterpriseAuthNotice,
+    staleTime: 30000
+  });
   const canShowEnterpriseAuthNotice = canManageEnterpriseAuth({
     statusCanManage: enterpriseAuthStatus?.canManage,
     isTeamOwner: userInfo?.team?.permission?.isOwner,
@@ -100,6 +106,24 @@ const EnterpriseAuthNoticeModal = () => {
     ]
   );
 
+  useEffect(() => {
+    if (!enabled) return;
+    if (!shouldCheckEnterpriseAuthNotice) {
+      onFinish?.();
+      return;
+    }
+    if (enterpriseAuthStatusFetched && (enterpriseAuthStatusError || !showEnterpriseAuthNotice)) {
+      onFinish?.();
+    }
+  }, [
+    enabled,
+    enterpriseAuthStatusError,
+    enterpriseAuthStatusFetched,
+    onFinish,
+    shouldCheckEnterpriseAuthNotice,
+    showEnterpriseAuthNotice
+  ]);
+
   const markAsRead = useCallback(() => {
     if (teamId) {
       setEnterpriseAuthNoticeRead(teamId);
@@ -109,18 +133,20 @@ const EnterpriseAuthNoticeModal = () => {
   const onClose = useCallback(() => {
     markAsRead();
     setIsClosed(true);
-  }, [markAsRead]);
+    onFinish?.();
+  }, [markAsRead, onFinish]);
 
   const onClickCertificationLink = useCallback(
     async (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       markAsRead();
+      onFinish?.();
       await router.push(certificationHref);
     },
-    [markAsRead, router]
+    [markAsRead, onFinish, router]
   );
 
-  if (!showEnterpriseAuthNotice || isClosed) return null;
+  if (!enabled || !showEnterpriseAuthNotice || isClosed) return null;
 
   return (
     <MyModal
