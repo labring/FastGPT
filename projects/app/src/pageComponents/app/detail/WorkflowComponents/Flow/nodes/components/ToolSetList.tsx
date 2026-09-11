@@ -1,8 +1,10 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Box, Flex, Textarea } from '@chakra-ui/react';
+import React, { useCallback, useState } from 'react';
+import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 
 type ToolSetListItemType = {
   name: string;
@@ -30,23 +32,18 @@ const ToolSetList = ({
   onSaveDescription: (index: number, description: string) => void;
 }) => {
   const { t } = useTranslation();
-  const [editingIndex, setEditingIndex] = useState<number>();
-  const [editingDescription, setEditingDescription] = useState('');
-  const isCancellingRef = useRef(false);
+  const [editingItem, setEditingItem] = useState<{
+    index: number;
+    description: string;
+  } | null>(null);
 
   const handleSave = useCallback(() => {
-    if (editingIndex === undefined) return;
-    if (isCancellingRef.current) {
-      isCancellingRef.current = false;
-      return;
-    }
-
-    onSaveDescription(editingIndex, editingDescription);
-    setEditingIndex(undefined);
-  }, [editingDescription, editingIndex, onSaveDescription]);
+    if (!editingItem) return;
+    onSaveDescription(editingItem.index, editingItem.description);
+    setEditingItem(null);
+  }, [editingItem, onSaveDescription]);
   const handleCancel = useCallback(() => {
-    isCancellingRef.current = true;
-    setEditingIndex(undefined);
+    setEditingItem(null);
   }, []);
 
   return (
@@ -82,57 +79,77 @@ const ToolSetList = ({
                 {tool.name}
               </Box>
               <Flex gap={'4px'}>
-                {editingIndex === index ? (
-                  <Textarea
-                    className="nodrag"
-                    width="full"
-                    autoFocus
-                    value={editingDescription}
-                    onChange={(event) => setEditingDescription(event.target.value)}
-                    onBlur={handleSave}
-                    onKeyDown={(event) => {
-                      if (event.key !== 'Escape') return;
-                      event.preventDefault();
-                      handleCancel();
-                    }}
-                    minH={'28px'}
-                    py={1}
-                    px={2}
-                    mt={0.5}
-                    fontSize={'12px'}
-                    lineHeight={'short'}
-                    resize={'vertical'}
-                    rows={6}
-                  />
-                ) : (
-                  <Box width="392px" fontSize={'12px'} color={'myGray.500'} overflow="hidden">
+                <MyTooltip
+                  shouldWrapChildren={false}
+                  hasArrow
+                  label={
+                    <Box
+                      maxH={'300px'}
+                      overflowY={'auto'}
+                      whiteSpace={'pre-wrap'}
+                      wordBreak={'break-word'}
+                    >
+                      {tool.description || t('app:tools_no_description')}
+                    </Box>
+                  }
+                  maxW={'400px'}
+                >
+                  <Box width={'392px'} fontSize={'12px'} color={'myGray.500'} noOfLines={3}>
                     {tool.description || t('app:tools_no_description')}
                   </Box>
-                )}
-                {editingIndex !== index && (
-                  <>
-                    <Box flex={1} />
-                    <MyIconButton
-                      size={'3'}
-                      width={'20px'}
-                      height={'20px'}
-                      flex={0}
-                      alignSelf={'center'}
-                      icon={'edit'}
-                      tip={t('common:Edit')}
-                      onClick={() => {
-                        isCancellingRef.current = false;
-                        setEditingDescription(tool.description ?? '');
-                        setEditingIndex(index);
-                      }}
-                    />
-                  </>
-                )}
+                </MyTooltip>
+                <MyIconButton
+                  size={'3'}
+                  width={'20px'}
+                  height={'20px'}
+                  flex={0}
+                  alignSelf={'center'}
+                  icon={'edit'}
+                  tip={t('common:Edit')}
+                  onClick={() => {
+                    setEditingItem({ index, description: tool.description ?? '' });
+                  }}
+                />
               </Flex>
             </Box>
           </Flex>
         ))}
       </Box>
+      {editingItem && (
+        <MyModal
+          isOpen
+          isCentered
+          onClose={handleCancel}
+          title={t('app:Edit_tool_description')}
+          w={['90vw', '600px']}
+          footer={
+            <>
+              <Button variant={'whiteBase'} onClick={handleCancel}>
+                {t('common:Cancel')}
+              </Button>
+              <Button onClick={handleSave}>{t('common:Save')}</Button>
+            </>
+          }
+        >
+          <Textarea
+            className="nodrag"
+            autoFocus
+            value={editingItem.description}
+            placeholder={t('app:tools_no_description')}
+            onChange={(event) =>
+              setEditingItem((item) => (item ? { ...item, description: event.target.value } : item))
+            }
+            onKeyDown={(event) => {
+              if (event.key !== 'Escape') return;
+              event.preventDefault();
+              handleCancel();
+            }}
+            minH={'160px'}
+            resize={'vertical'}
+            rows={6}
+          />
+        </MyModal>
+      )}
     </>
   );
 };
