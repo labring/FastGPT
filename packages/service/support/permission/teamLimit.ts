@@ -8,6 +8,7 @@ import { AppTypeEnum, ToolTypeList, AppFolderTypeList } from '@fastgpt/global/co
 import { MongoTeamMember } from '../user/team/teamMemberSchema';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { getVectorCountByTeamId } from '../../common/vectorDB/controller';
+import { ReadPreference } from '../../common/mongo';
 import { serviceEnv } from '../../env';
 
 export const checkTeamAIPoints = async (teamId: string) => {
@@ -28,7 +29,9 @@ export const checkTeamAIPoints = async (teamId: string) => {
 export const checkTeamMemberLimit = async (teamId: string, newCount: number) => {
   const [{ standard }, memberCount] = await Promise.all([
     getTeamStandPlan({
-      teamId
+      teamId,
+      // 成员上限属于强一致的权限校验，不能接受从库复制延迟导致放行超额成员。
+      readPreference: ReadPreference.PRIMARY
     }),
     MongoTeamMember.countDocuments({
       teamId,
