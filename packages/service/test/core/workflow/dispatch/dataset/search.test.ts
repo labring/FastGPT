@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  RetrievalTraceBranchNameEnum,
+  RetrievalTraceStageNameEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
@@ -228,6 +232,15 @@ describe('dispatchDatasetSearch', () => {
   });
 
   it('adds query extension as a child node response of dataset search', async () => {
+    const retrievalTrace = {
+      branches: [
+        {
+          name: RetrievalTraceBranchNameEnum.text,
+          stages: [{ name: RetrievalTraceStageNameEnum.textFusion, count: 1 }]
+        }
+      ],
+      pipeline: [{ name: RetrievalTraceStageNameEnum.mergedCandidates, count: 1 }]
+    };
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [
         {
@@ -241,6 +254,7 @@ describe('dispatchDatasetSearch', () => {
       reRankInputTokens: 0,
       usingSimilarityFilter: true,
       usingReRank: false,
+      retrievalTrace,
       queryExtensionResult: {
         llmModel: 'gpt-query',
         requestId: 'req_query_extension',
@@ -277,6 +291,7 @@ describe('dispatchDatasetSearch', () => {
 
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse).not.toHaveProperty('queryExtensionResult');
+    expect(nodeResponse?.retrievalTrace).toEqual(retrievalTrace);
     expect(nodeResponse?.childrenResponses).toEqual([
       expect.objectContaining({
         id: 'req_query_extension',

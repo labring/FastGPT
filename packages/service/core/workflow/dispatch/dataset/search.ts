@@ -190,7 +190,8 @@ export async function dispatchDatasetSearch(
       usingReRank: searchUsingReRank,
       queryExtensionResult,
       imageCaptionResult,
-      deepSearchResult
+      deepSearchResult,
+      retrievalTrace
     } = useDeepSearch
       ? await deepRagSearch({
           ...searchData,
@@ -339,6 +340,7 @@ export async function dispatchDatasetSearch(
         }),
         searchUsingReRank,
         deepSearchResult,
+        retrievalTrace,
         ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
         // Results
         quoteList: searchRes

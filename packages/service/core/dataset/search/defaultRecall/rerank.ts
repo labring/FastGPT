@@ -1,4 +1,7 @@
-import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  RetrievalTraceStageStatusEnum,
+  SearchScoreTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { RerankSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { reRankRecall } from '../../../../core/ai/rerank';
@@ -68,12 +71,14 @@ export const reRankSearchResults = async ({
   results: SearchDataResponseItemType[];
   inputTokens: number;
   usingReRank: boolean;
+  status: RetrievalTraceStageStatusEnum;
 }> => {
   if (!usingReRank || !query || textRecallResults.length === 0) {
     return {
       results: textRecallResults,
       inputTokens: 0,
-      usingReRank: false
+      usingReRank: false,
+      status: RetrievalTraceStageStatusEnum.skipped
     };
   }
 
@@ -88,7 +93,8 @@ export const reRankSearchResults = async ({
       return {
         results: reRankResults,
         inputTokens,
-        usingReRank: true
+        usingReRank: true,
+        status: RetrievalTraceStageStatusEnum.applied
       };
     }
 
@@ -98,13 +104,15 @@ export const reRankSearchResults = async ({
         { weight: rerankWeight, list: reRankResults }
       ]),
       inputTokens,
-      usingReRank: true
+      usingReRank: true,
+      status: RetrievalTraceStageStatusEnum.applied
     };
   } catch {
     return {
       results: textRecallResults,
       inputTokens: 0,
-      usingReRank: false
+      usingReRank: false,
+      status: RetrievalTraceStageStatusEnum.fallback
     };
   }
 };

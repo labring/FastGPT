@@ -7,7 +7,11 @@ import { countPromptTokens } from '../../../../../../../common/string/tiktoken/i
 import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  RetrievalTraceStageNameEnum,
+  RetrievalTraceStageStatusEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '../../../../../../dataset/schema';
 import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
 import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
@@ -42,6 +46,14 @@ type DatasetSearchParams = {
   datasetParams?: AppFormEditFormType['dataset'];
 };
 
+type ChunkSelectionResult = {
+  status: RetrievalTraceStageStatusEnum;
+  ids: string[];
+  usage?: ChatNodeUsageType;
+  requestId?: string;
+  seconds?: number;
+};
+
 /**
  * 格式化知识库搜索结果为引用文本
  */
@@ -64,7 +76,8 @@ const formatDatasetSearchResponse = (searchResults: SearchDataResponseItemType[]
 
 /**
  * 调用 LLM 自动选择最相关的分块
- * @returns 选中的分块 ID 列表和 usage
+ * 返回选择结果及执行状态。低于阈值时标记 skipped；请求或结果异常时标记 fallback，
+ * 让调用方能够区分“没有过滤”和“过滤失败后保留原候选”。
  */
 const selectRelevantChunksByLLM = async ({
   query,
@@ -78,22 +91,17 @@ const selectRelevantChunksByLLM = async ({
   model: LLMSystemModelDataType;
   userKey?: OpenaiAccountType;
   teamId: string;
-}): Promise<
-  | {
-      ids: string[];
-      usage: ChatNodeUsageType;
-      requestId: string;
-      seconds: number;
-    }
-  | undefined
-> => {
+}): Promise<ChunkSelectionResult> => {
   const threshold = calculateCompressionThresholds(model.config.maxContext).datasetSearchSelection;
   const searchResponseText = chunks.map((item) => `${item.q}\n${item.a || ''}`).join('\n');
   const estimatedTokens = await countPromptTokens(searchResponseText);
 
   // 超过一定阈值才进行裁切
   if (estimatedTokens <= threshold) {
-    return;
+    return {
+      status: RetrievalTraceStageStatusEnum.skipped,
+      ids: []
+    };
   }
 
   const chunkSummaries = chunks
@@ -157,12 +165,24 @@ ${chunkSummaries}
     };
     const seconds = +((Date.now() - llmStartTime) / 1000).toFixed(2);
 
-    return { ids, usage, requestId: response.requestId, seconds };
+    return {
+      status:
+        ids.length > 0
+          ? RetrievalTraceStageStatusEnum.applied
+          : RetrievalTraceStageStatusEnum.fallback,
+      ids,
+      usage,
+      requestId: response.requestId,
+      seconds
+    };
   } catch (error) {
     getLogger(LogCategories.MODULE.AI.AGENT).error('[Agent Dataset Search] AI selection failed', {
       error
     });
-    return;
+    return {
+      status: RetrievalTraceStageStatusEnum.fallback,
+      ids: []
+    };
   }
 };
 
@@ -258,7 +278,8 @@ export const dispatchAgentDatasetSearch = async ({
       usingSimilarityFilter,
       usingReRank: searchUsingReRank,
       queryExtensionResult,
-      imageCaptionResult
+      imageCaptionResult,
+      retrievalTrace
     } = await defaultSearchDatasetData(searchData);
 
     // count bill results
@@ -370,24 +391,35 @@ export const dispatchAgentDatasetSearch = async ({
       userKey,
       teamId
     });
-    if (pickResults) {
-      if (pickResults.ids.length > 0) {
-        searchResults = searchResults.filter((item) => pickResults.ids.includes(item.id));
-      }
-      // 将 AI 分块选择记录为知识库搜索子调用，requestId 跟随 child nodeResponse 展示。
-      if (pickResults.usage) {
-        usages.push(pickResults.usage);
-        childrenResponses.push(
-          createChunkSelectionChildNodeResponse({
-            requestIds: [pickResults.requestId],
-            usage: pickResults.usage,
-            modelName: llmModel.name,
-            seconds: pickResults.seconds,
-            selectedChunkIds: pickResults.ids
-          })
-        );
-      }
+    if (pickResults.status === RetrievalTraceStageStatusEnum.applied) {
+      searchResults = searchResults.filter((item) => pickResults.ids.includes(item.id));
     }
+    // 将 AI 分块选择记录为知识库搜索子调用，requestId 跟随 child nodeResponse 展示。
+    if (pickResults.usage && pickResults.requestId && pickResults.seconds !== undefined) {
+      usages.push(pickResults.usage);
+      childrenResponses.push(
+        createChunkSelectionChildNodeResponse({
+          requestIds: [pickResults.requestId],
+          usage: pickResults.usage,
+          modelName: llmModel.name,
+          seconds: pickResults.seconds,
+          selectedChunkIds: pickResults.ids
+        })
+      );
+    }
+    const agentRetrievalTrace = retrievalTrace
+      ? {
+          ...retrievalTrace,
+          pipeline: [
+            ...retrievalTrace.pipeline,
+            {
+              name: RetrievalTraceStageNameEnum.llmSelection,
+              count: searchResults.length,
+              status: pickResults.status
+            }
+          ]
+        }
+      : undefined;
     const formattedResponse = formatDatasetSearchResponse(searchResults);
 
     const nodeResponse: DispatchSubAppResponse['nodeResponse'] = {
@@ -410,6 +442,7 @@ export const dispatchAgentDatasetSearch = async ({
         reRankInputTokens
       }),
       searchUsingReRank,
+      retrievalTrace: agentRetrievalTrace,
       ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
       // Results
       quoteList: searchResults

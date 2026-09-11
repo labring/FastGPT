@@ -1,7 +1,15 @@
 import {
   DatasetSearchModeEnum,
-  DatasetSearchModeMap
+  DatasetSearchModeMap,
+  RetrievalTraceBranchNameEnum,
+  RetrievalTraceStageNameEnum,
+  RetrievalTraceStageStatusEnum,
+  SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import type {
+  RetrievalTraceBranchType,
+  RetrievalTraceStageType
+} from '@fastgpt/global/core/dataset/type';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import type { SearchDatasetDataProps, SearchDatasetDataResponse } from '../type';
 import { formatDatasetDataValues } from '../../data/controller';
@@ -13,7 +21,8 @@ import {
   filterSearchResultsByScore,
   removeDuplicateSearchResults
 } from './result';
-import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
+import { countRecallLimit, filterDatasetDataByMaxTokens, buildRetrievalTraceStage } from './utils';
+import { isImageEmbeddingModel } from '../../../ai/model';
 
 /**
  * 执行默认知识库召回主流程。
@@ -28,7 +37,7 @@ import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
  * 4. 精排与过滤阶段：rerank 只作用于用户文本召回，避免文本 rerank 误伤视觉相似结果；最终统一做
  *    去重、相似度阈值过滤和 token 上限裁剪。
  * 5. 输出阶段：只在返回前把 chunk 内容里的内部图片 key 替换为预览 URL，避免动态 URL 干扰中间去重
- *    和召回融合。
+ *    和召回融合。最后汇总各阶段候选量作为召回链路追踪一并返回。
  */
 export async function searchDatasetData(
   props: SearchDatasetDataProps
@@ -121,7 +130,8 @@ export async function searchDatasetData(
   const {
     results: textRerankRecallResults,
     inputTokens: reRankInputTokens,
-    usingReRank: finalUsingReRank
+    usingReRank: finalUsingReRank,
+    status: rerankStatus
   } = await reRankSearchResults({
     usingReRank,
     textRecallResults,
@@ -183,6 +193,111 @@ export async function searchDatasetData(
 
   pushTrack.datasetSearch({ datasetIds, teamId });
 
+  // Step 9: 召回本身是并行分支，只有 text/image 各自融合后才进入公共过滤链。
+  // 分支和合并后 pipeline 分开记录，避免把互不相邻的候选数量误读成前后淘汰关系。
+  const branches: RetrievalTraceBranchType[] = [];
+
+  if (hasTextQuery) {
+    const textStages: RetrievalTraceStageType[] = [];
+    if (embeddingLimit > 0) {
+      textStages.push(
+        buildRetrievalTraceStage({
+          name: RetrievalTraceStageNameEnum.textEmbeddingRecall,
+          data: textEmbeddingRecallResults,
+          scoreType: SearchScoreTypeEnum.embedding
+        })
+      );
+    }
+    if (fullTextLimit > 0) {
+      textStages.push(
+        buildRetrievalTraceStage({
+          name: RetrievalTraceStageNameEnum.textFullTextRecall,
+          data: textFullTextRecallResults
+        })
+      );
+    }
+    textStages.push(
+      buildRetrievalTraceStage({
+        name: RetrievalTraceStageNameEnum.textFusion,
+        data: textRecallResults
+      }),
+      buildRetrievalTraceStage({
+        name: RetrievalTraceStageNameEnum.rerank,
+        data: textRerankRecallResults,
+        status: rerankStatus,
+        scoreType:
+          rerankStatus === RetrievalTraceStageStatusEnum.applied
+            ? SearchScoreTypeEnum.reRank
+            : undefined
+      })
+    );
+    branches.push({ name: RetrievalTraceBranchNameEnum.text, stages: textStages });
+  }
+
+  const hasImageQuery = imageQueries.some((query) => query.trim());
+  if (hasImageQuery) {
+    const imageStages: RetrievalTraceStageType[] = [];
+    if (embeddingLimit > 0 && imageCaptionQueries.queries.length > 0) {
+      imageStages.push(
+        buildRetrievalTraceStage({
+          name: RetrievalTraceStageNameEnum.imageCaptionEmbeddingRecall,
+          data: imageCaptionEmbeddingRecallResults,
+          scoreType: SearchScoreTypeEnum.embedding
+        })
+      );
+    }
+    if (fullTextLimit > 0 && imageCaptionQueries.queries.length > 0) {
+      imageStages.push(
+        buildRetrievalTraceStage({
+          name: RetrievalTraceStageNameEnum.imageCaptionFullTextRecall,
+          data: imageCaptionFullTextRecallResults
+        })
+      );
+    }
+    if (embeddingLimit > 0 && isImageEmbeddingModel(model)) {
+      imageStages.push(
+        buildRetrievalTraceStage({
+          name: RetrievalTraceStageNameEnum.imageVectorRecall,
+          data: imageVectorRecallResults,
+          scoreType: SearchScoreTypeEnum.embedding
+        })
+      );
+    }
+    imageStages.push(
+      buildRetrievalTraceStage({
+        name: RetrievalTraceStageNameEnum.imageFusion,
+        data: imageRecallResults
+      })
+    );
+    branches.push({ name: RetrievalTraceBranchNameEnum.image, stages: imageStages });
+  }
+
+  // 只记录统计量，最终命中已由 searchRes 返回，无需在 trace 中复制 chunk 内容。
+  const retrievalTrace: SearchDatasetDataResponse['retrievalTrace'] = {
+    branches,
+    pipeline: [
+      buildRetrievalTraceStage({
+        name: RetrievalTraceStageNameEnum.mergedCandidates,
+        data: rrfConcatResults
+      }),
+      buildRetrievalTraceStage({
+        name: RetrievalTraceStageNameEnum.deduplicate,
+        data: filterSameDataResults
+      }),
+      buildRetrievalTraceStage({
+        name: RetrievalTraceStageNameEnum.similarityFilter,
+        data: scoreFilter,
+        status: usingSimilarityFilter
+          ? RetrievalTraceStageStatusEnum.applied
+          : RetrievalTraceStageStatusEnum.skipped
+      }),
+      buildRetrievalTraceStage({
+        name: RetrievalTraceStageNameEnum.maxTokensFilter,
+        data: filterMaxTokensResult
+      })
+    ]
+  };
+
   return {
     searchRes: finalResult,
     embeddingTokens,
@@ -192,6 +307,7 @@ export async function searchDatasetData(
     similarity,
     usingReRank: finalUsingReRank,
     usingSimilarityFilter,
-    imageCaptionResult
+    imageCaptionResult,
+    retrievalTrace
   };
 }
