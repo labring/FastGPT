@@ -26,6 +26,7 @@ export type AgentLoopResultBase = {
   completeMessages: ChatCompletionMessageParam[];
   assistantMessages: ChatCompletionMessageParam[];
   requestIds: string[];
+  firstTokenTime?: number;
   contextCheckpoint?: string;
   finishReason: CompletionFinishReason;
   usages: AgentLoopUsage[];

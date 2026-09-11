@@ -75,6 +75,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
       outputTokens: number;
       totalPoints: number;
     };
+    firstTokenTime?: number;
     seconds: number;
     error?: unknown;
   }) => void;
@@ -412,6 +413,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
     // 2. Request LLM
     const requestStartTime = Date.now();
+    let firstTokenTime: number | undefined;
     onLLMRequestStart?.({
       requestIndex: runTimes,
       modelName: modelData.name
@@ -440,8 +442,14 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       userKey,
       teamId,
       isAborted,
-      onReasoning,
-      onStreaming,
+      onReasoning: (event) => {
+        firstTokenTime ??= Date.now();
+        onReasoning?.(event);
+      },
+      onStreaming: (event) => {
+        firstTokenTime ??= Date.now();
+        onStreaming?.(event);
+      },
       onToolCall,
       onToolParam
     });
@@ -466,6 +474,10 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         totalPoints
       },
       seconds: +((Date.now() - requestStartTime) / 1000).toFixed(2),
+      firstTokenTime:
+        firstTokenTime === undefined
+          ? undefined
+          : +((firstTokenTime - requestStartTime) / 1000).toFixed(2),
       error: error ?? responseEmptyTip
     });
     // 请求后赋值操作

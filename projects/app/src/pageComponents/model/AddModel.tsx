@@ -617,7 +617,16 @@ const TemplateCreateModal = ({
                 <FixedTableLayout
                   scrollMode="virtual"
                   bodyRef={templateListContainerRef}
-                  rootProps={{ flex: '1 1 0', minH: 0 }}
+                  rootProps={{
+                    flex: '1 1 0',
+                    minH: 0,
+                    px: 0,
+                    sx: {
+                      '& [data-fixed-table-header]': {
+                        bg: 'myGray.100'
+                      }
+                    }
+                  }}
                   renderHeader={({ headerTableWidth }) => (
                     <Table
                       w="100%"
@@ -626,7 +635,7 @@ const TemplateCreateModal = ({
                     >
                       <TemplateTableColumns />
                       <Thead>
-                        <Tr h="40px" bg="myGray.100">
+                        <Tr h="40px">
                           <Th px={3}>
                             <HStack spacing={2}>
                               <Checkbox

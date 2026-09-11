@@ -51,6 +51,7 @@ export type AgentLoopEvent =
       reasoningText?: string;
       toolCalls?: ChatCompletionMessageToolCall[];
       usages?: AgentLoopUsage[];
+      firstTokenTime?: number;
       seconds: number;
       error?: unknown;
     }

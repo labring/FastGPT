@@ -108,7 +108,7 @@ const ModelLinkedChannels = ({
           </Table>
         )}
         renderBody={() => (
-          <Table size="sm" sx={{ tableLayout: 'fixed', width: '100%' }}>
+          <Table size="sm" sx={{ tableLayout: 'fixed' }}>
             <ChannelTableColumns />
             <Tbody color="myGray.600">
               {linkedChannels.map((channel) => {

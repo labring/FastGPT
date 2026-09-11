@@ -179,7 +179,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       assistantResponses = [], // FastGPT 持久化到 assistant.value 的响应。
       finish_reason,
       error,
-      requestIds
+      requestIds,
+      firstTokenTime
     } = await (async () => {
       const adaptMessages = buildAgentLoopCoreRequestMessages({
         messages,
@@ -219,7 +220,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       toolDetail,
       nodeId,
       finishReason: finish_reason || 'stop',
-      requestIds
+      requestIds,
+      firstTokenTime
     });
 
     if (error) {

@@ -13,6 +13,7 @@ import {
 export type AgentLoopCoreOutputSummary<TChildrenResponse = unknown> = {
   status: AgentLoopCoreResult<TChildrenResponse>['status'];
   requestIds: string[];
+  firstTokenTime?: number;
   completeMessages: AgentLoopCoreResult<TChildrenResponse>['completeMessages'];
   assistantResponses: AgentLoopCoreResult<TChildrenResponse>['assistantResponses'];
   finishReason: AgentLoopCoreResult<TChildrenResponse>['finishReason'];
@@ -77,6 +78,7 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
   return {
     status: result.status,
     requestIds: result.requestIds,
+    firstTokenTime: result.firstTokenTime,
     completeMessages: result.completeMessages,
     assistantResponses: result.assistantResponses,
     finishReason: result.finishReason,
