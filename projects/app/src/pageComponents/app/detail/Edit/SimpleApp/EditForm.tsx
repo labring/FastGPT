@@ -303,37 +303,35 @@ const EditForm = ({
 
         {/* tool choice */}
         <Box {...BoxStyles}>
-          {selectedModel && (
-            <ToolSelect
-              selectedModel={selectedModel}
-              selectedTools={appForm.selectedTools}
-              fileSelectConfig={appForm.chatConfig.fileSelectConfig}
-              onAddTool={(e) => {
-                setAppForm((state) => ({
-                  ...state,
-                  selectedTools: [e, ...(state.selectedTools || [])]
-                }));
-              }}
-              onUpdateTool={(e) => {
-                setAppForm((state) => ({
-                  ...state,
-                  selectedTools:
-                    state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
-                }));
-              }}
-              onRemoveTool={(id, source) => {
-                setAppForm((state) => ({
-                  ...state,
-                  selectedTools:
-                    state.selectedTools?.filter(
-                      (item) =>
-                        getToolIdentityKey(item.pluginId, item.source) !==
-                        getToolIdentityKey(id, source)
-                    ) || []
-                }));
-              }}
-            />
-          )}
+          <ToolSelect
+            selectedModel={selectedModel}
+            selectedTools={appForm.selectedTools}
+            fileSelectConfig={appForm.chatConfig.fileSelectConfig}
+            onAddTool={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools: [e, ...(state.selectedTools || [])]
+              }));
+            }}
+            onUpdateTool={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools:
+                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
+              }));
+            }}
+            onRemoveTool={(id, source) => {
+              setAppForm((state) => ({
+                ...state,
+                selectedTools:
+                  state.selectedTools?.filter(
+                    (item) =>
+                      getToolIdentityKey(item.pluginId, item.source) !==
+                      getToolIdentityKey(id, source)
+                  ) || []
+              }));
+            }}
+          />
         </Box>
 
         {/* dataset */}

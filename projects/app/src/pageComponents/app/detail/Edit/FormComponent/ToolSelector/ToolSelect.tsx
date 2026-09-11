@@ -35,7 +35,7 @@ const ToolSelect = ({
   onRemoveTool
 }: {
   generatedSelectedTools?: SelectedToolItemType[];
-  selectedModel: MyLLMModelItemType;
+  selectedModel?: MyLLMModelItemType;
   selectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
   onAddTool: (tool: SelectedToolItemType) => void;
@@ -79,6 +79,7 @@ const ToolSelect = ({
           size={'sm'}
           fontSize={'sm'}
           onClick={onOpenToolsSelect}
+          isDisabled={!selectedModel}
         >
           {t('common:Choose')}
         </Button>
@@ -190,7 +191,7 @@ const ToolSelect = ({
         })}
       </Grid>
 
-      {isOpenToolsSelect && (
+      {isOpenToolsSelect && selectedModel && (
         <ToolSelectModal
           generatedSelectedTools={generatedSelectedTools}
           selectedTools={selectedTools}
