@@ -7,7 +7,7 @@
  */
 
 import type { CSSProperties } from 'react';
-import { Fragment, useMemo, useState, useTransition, useRef } from 'react';
+import React, { Fragment, useEffect, useMemo, useState, useTransition, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
@@ -37,7 +37,6 @@ import { textToEditorState, editorStateToText } from './utils';
 import { MaxLengthPlugin } from './plugins/MaxLengthPlugin';
 import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
-import { useDeepCompareEffect } from 'ahooks';
 import MarkdownPlugin from './plugins/MarkdownPlugin';
 import MyIcon from '../../Icon';
 import ListExitPlugin from './plugins/ListExitPlugin';
@@ -165,12 +164,11 @@ export default function Editor({
     }
   };
 
-  // 技能菜单和标签状态由插件内部同步；不能因 selectedSkills 变化重建编辑器，
-  // 否则 @ 插入瞬间会销毁 SkillNode，并误触发工具移除监听。
-  useDeepCompareEffect(() => {
-    if (focus && value === editorOutputRef.current) return;
+  // 变量插件会同步 props；仅在外部文本值变化时重建编辑器。
+  useEffect(() => {
+    if (value === editorOutputRef.current) return;
     setKey(getNanoid(6));
-  }, [value, variables, variableLabels]);
+  }, [value]);
 
   const showFullScreenIcon = useMemo(() => {
     return showOpenModal && scrollHeight > maxH;
@@ -259,6 +257,7 @@ export default function Editor({
             <KeyDownPlugin onKeyDown={onKeyDown} />
             <OnBlurPlugin onBlur={onBlur} />
             <OnChangePlugin
+              ignoreSelectionChange
               onChange={(editorState, editor) => {
                 editorOutputRef.current = editorStateToText(editor);
                 const rootElement = editor.getRootElement();

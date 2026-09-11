@@ -112,6 +112,7 @@ export default function Editor({
         <HistoryPlugin />
         <FocusPlugin focus={focus} setFocus={setFocus} />
         <OnChangePlugin
+          ignoreSelectionChange
           onChange={(editorState: EditorState, editor: LexicalEditor) => {
             editorOutputRef.current = editorStateToText(editor);
             if (!onChange) return;
