@@ -627,10 +627,13 @@ const TrainingErrorList = ({
         </MyBox>
       ) : (
         <ScrollData
-          maxH={'60vh'}
+          h={'100%'}
+          flex={'1 1 0'}
+          minH={0}
           pr={1}
           ScrollContainerRef={datasetScrollRef}
           isLoading={listLoading}
+          showLoadingOverlay
         >
           <Flex flexDir={'column'} gap={4}>
             {datasetGroups.map((group, index) => (
@@ -714,7 +717,7 @@ const TrainingErrorList = ({
       )}
 
       {showFooter && (
-        <Flex justifyContent={'flex-end'} gap={3} mt={6}>
+        <Flex justifyContent={'flex-end'} gap={3} mt={6} flexShrink={0}>
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>
