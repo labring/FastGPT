@@ -6,6 +6,7 @@
   "Custom_params": "輸入參數",
   "Delete_all": "清除所有詞彙",
   "Edit_tool": "編輯工具",
+  "Edit_tool_description": "編輯工具描述",
   "Filed_is_deprecated": "該字段已棄用",
   "HTTPTools_Create_Type": "創建方式",
   "HTTPTools_Create_Type_Tip": "選擇後不支持修改",

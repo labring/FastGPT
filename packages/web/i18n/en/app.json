@@ -6,6 +6,7 @@
   "Custom_params": "input parameters",
   "Delete_all": "Clear All Lexicon",
   "Edit_tool": "Edit tool",
+  "Edit_tool_description": "Edit tool description",
   "Filed_is_deprecated": "This field is deprecated",
   "HTTPTools_Create_Type": "Create Type",
   "HTTPTools_Create_Type_Tip": "Modification is not supported after selection",
