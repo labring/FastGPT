@@ -8,10 +8,12 @@ import PasswordChangeModal from './PasswordChangeModal';
 /** 仅在确有存储密码且已过期时开启不可关闭的统一改密流程；注销期间不触发改密。 */
 const ResetExpiredPswModal = () => {
   const { userInfo } = useUserStore();
-  const isAccountCancellationPending = accountCancellationActiveStatuses.includes(
-    userInfo?.team?.accountCancellation
-      ?.status as (typeof accountCancellationActiveStatuses)[number]
-  );
+  const accountCancellationStatus = userInfo?.team?.accountCancellation?.status;
+  const isAccountCancellationPending =
+    accountCancellationStatus !== undefined &&
+    accountCancellationActiveStatuses.includes(
+      accountCancellationStatus as (typeof accountCancellationActiveStatuses)[number]
+    );
   const { data: passwordExpired = false, runAsync: checkPasswordExpired } = useRequest(
     async () => {
       if (!userInfo?._id || isAccountCancellationPending) return false;

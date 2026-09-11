@@ -7,8 +7,7 @@ import {
   PasswordAuthorizationBodySchema,
   PasswordAuthorizationResponseSchema,
   UpdatePasswordBodySchema,
-  UpdatePasswordByCodeBodySchema,
-  UpdatePasswordResponseSchema
+  UpdatePasswordByCodeBodySchema
 } from './api';
 import { LoginSuccessResponseSchema } from '../login/api';
 
@@ -55,8 +54,7 @@ export const PasswordPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '密码设置成功',
-          content: { 'application/json': { schema: UpdatePasswordResponseSchema } }
+          description: '密码设置成功'
         }
       }
     }

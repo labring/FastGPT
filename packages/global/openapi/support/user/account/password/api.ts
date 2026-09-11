@@ -4,10 +4,9 @@ import {
   AccountContactUsernameSchema,
   AccountPasswordSchema,
   AccountVerificationMethodSchema,
-  ShortAuthStringSchema,
-  type OAuthAccountVerificationMethod
+  ShortAuthStringSchema
 } from '../../../../../support/user/account/verification/type';
-import { oauthAccountVerificationMethods } from '../../../../../support/user/account/verification/constants';
+import { createOAuthVerificationSchemaTuple } from '../../../../../support/user/account/verification/constants';
 
 /* ============================================================================
  * API: 安全修改密码
@@ -26,9 +25,6 @@ export const CheckPswExpiredResponseSchema = z.boolean().meta({
 export type CheckPswExpiredResponseType = z.infer<typeof CheckPswExpiredResponseSchema>;
 
 const DateTimeSchema = z.iso.datetime({ offset: true });
-const createOAuthVerificationSchemaTuple = <Schema extends z.ZodType>(
-  createSchema: (method: OAuthAccountVerificationMethod) => Schema
-) => oauthAccountVerificationMethods.map(createSchema) as [Schema, Schema, Schema, Schema, Schema];
 
 const OAuthCreatePayloadSchema = z
   .object({
@@ -227,9 +223,6 @@ export const UpdatePasswordBodySchema = z
   })
   .strict();
 export type UpdatePasswordBody = z.infer<typeof UpdatePasswordBodySchema>;
-
-export const UpdatePasswordResponseSchema = z.undefined().meta({ description: '密码设置成功' });
-export type UpdatePasswordResponse = z.infer<typeof UpdatePasswordResponseSchema>;
 
 // ===== Find Password (update by code) =====
 export const UpdatePasswordByCodeBodySchema = z.object({

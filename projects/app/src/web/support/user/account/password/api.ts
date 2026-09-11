@@ -4,8 +4,7 @@ import type {
   CreatePasswordVerificationBody,
   CreatePasswordVerificationResponse,
   PasswordAuthorizationBody,
-  PasswordAuthorizationResponse,
-  UpdatePasswordResponse
+  PasswordAuthorizationResponse
 } from '@fastgpt/global/openapi/support/user/account/password/api';
 
 export const createPasswordVerification = (body: CreatePasswordVerificationBody) =>
@@ -25,7 +24,7 @@ export const updatePassword = ({
   newPassword: string;
   passwordChangeSession: string;
 }) =>
-  POST<UpdatePasswordResponse>('/support/user/account/password/update', {
+  POST<void>('/support/user/account/password/update', {
     newPsw: hashStr(newPassword),
     passwordChangeSession
   });

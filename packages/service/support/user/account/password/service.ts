@@ -47,19 +47,17 @@ export const createPasswordChangeSession = async ({
 };
 
 /**
- * 在同一 Mongo 事务中校验并消费改密 Session，同时执行密码更新。
- * 改密 Session 绑定当前登录端且只在密码更新成功后删除，避免并发重放和失败误消费。
+ * 在同一 Mongo 事务中校验改密 Session、更新密码并消费 Session。
+ * 只有密码更新和凭证删除都成功，事务才会提交，避免凭证被提前消费或重复使用。
  */
-export const consumePasswordChangeSessionInTransaction = async <T>({
+export const updatePasswordWithChangeSession = async ({
   sessionId,
   userId,
   loginSessionId,
-  newPassword,
-  handler
+  newPassword
 }: PasswordChangeSessionData & {
   sessionId: string;
   newPassword: string;
-  handler: (session: ClientSession) => Promise<T>;
 }) =>
   mongoSessionRun(async (session) => {
     const dataId = getPasswordChangeSessionDataId(sessionId);
@@ -75,7 +73,19 @@ export const consumePasswordChangeSessionInTransaction = async <T>({
     if (!record) throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
 
     await assertNewPasswordDiffersFromCurrent({ userId, newPassword, session });
-    const result = await handler(session);
+
+    const updateResult = await MongoUser.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          password: newPassword,
+          passwordUpdateTime: new Date()
+        }
+      },
+      { session }
+    );
+    if (updateResult.matchedCount !== 1) throw new Error('Failed to update password');
+
     const deleted = await MongoTmpData.deleteOne(
       {
         dataId,
@@ -88,8 +98,6 @@ export const consumePasswordChangeSessionInTransaction = async <T>({
     if (deleted.deletedCount !== 1) {
       throw new UserError(UserErrEnum.passwordChangeAuthorizationInvalid);
     }
-
-    return result;
   });
 
 /** 拒绝将当前持久化密码再次设置为新密码。Schema setter 负责沿用现有双层哈希协议。 */
