@@ -36,6 +36,7 @@
   "time": "時間",
   "total_amount": "總金額",
   "type": "類型",
+  "package_type": "套餐類型",
   "unit_code": "統一信用代碼",
   "wecom_not_pay_tip": "未支付，即將跳轉支付地址",
   "status": "狀態",

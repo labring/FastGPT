@@ -1,11 +1,12 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useState } from 'react';
 import {
   Box,
   Button,
+  IconButton,
   Flex,
   Link,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -70,8 +71,17 @@ const Wechat = ({
   };
 
   return (
-    <Box position={'relative'} p={6} minH={'50vh'}>
-      <Flex justifyContent={'space-between'}>
+    <Box
+      h={'100%'}
+      minH={0}
+      minW={0}
+      display={'flex'}
+      flexDirection={'column'}
+      overflow={'hidden'}
+      position={'relative'}
+      p={6}
+    >
+      <Flex flexShrink={0} justifyContent={'space-between'}>
         <Flex alignItems={'center'}>
           <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'lg'}>
             {t('publish:wechat.title')}
@@ -107,7 +117,7 @@ const Wechat = ({
         </Button>
       </Flex>
 
-      <TableContainer mt={3}>
+      <FixedTableContainer mt={3} flex={'1 1 0'} h={0} maxH="none">
         <Table variant={'simple'} w={'100%'} fontSize={'sm'}>
           <Thead>
             <Tr>
@@ -171,10 +181,15 @@ const Wechat = ({
                     </Button>
                   )}
                   <MyMenu
+                    strategy="fixed"
                     Button={
-                      <Button size={'smSquare'} variant={'whiteBase'}>
-                        <MyIcon name={'more'} w={'14px'} />
-                      </Button>
+                      <IconButton
+                        icon={<MyIcon name={'more'} w={'14px'} />}
+                        name={'more'}
+                        variant={'whitePrimary'}
+                        size={'sm'}
+                        aria-label={'more'}
+                      />
                     }
                     menuList={[
                       {
@@ -216,11 +231,10 @@ const Wechat = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
-
-      {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip text={t('common:core.app.share.Not share link')} />
-      )}
+        {shareChatList.length === 0 && !isFetching && (
+          <EmptyTip text={t('common:core.app.share.Not share link')} />
+        )}
+      </FixedTableContainer>
 
       {editData && (
         <WechatEditModal

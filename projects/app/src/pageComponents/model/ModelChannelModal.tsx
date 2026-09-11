@@ -10,7 +10,6 @@ import {
   Flex,
   HStack,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -23,7 +22,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useLockFn } from 'ahooks';
@@ -76,7 +75,6 @@ export const ModelChannelSelector = ({
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const selectedIds = useMemo(() => new Set(selectedChannelIds), [selectedChannelIds]);
-  const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
   const selectedChannelCount = channels.filter((channel) => selectedIds.has(channel.id)).length;
   const isAllSelected = channels.length > 0 && selectedChannelCount === channels.length;
   const testModel = showTest && models.length === 1 ? models[0] : undefined;
@@ -146,16 +144,15 @@ export const ModelChannelSelector = ({
         </Flex>
       )}
 
-      <TableContainer
-        borderRadius="12px"
-        flex="1 1 0"
-        minH={0}
-        display="flex"
-        flexDirection="column"
-        gap={2}
-        overflow="hidden"
-      >
-        <TableContainer ref={headerContainerRef} flexShrink={0} overflowX="hidden">
+      <FixedTableLayout
+        scrollMode="normal"
+        rootProps={{
+          borderRadius: '12px',
+          flex: '1 1 0',
+          gap: 2,
+          overflow: 'hidden'
+        }}
+        renderHeader={({ headerTableWidth }) => (
           <Table
             sx={{
               tableLayout: 'fixed',
@@ -201,8 +198,9 @@ export const ModelChannelSelector = ({
               </Tr>
             </Thead>
           </Table>
-        </TableContainer>
-        <TableContainer ref={bodyContainerRef} flex="1 1 0" minH={0} overflowY="auto">
+        )}
+        bodyProps={{ flex: '1 1 0', minH: 0, overflowY: 'auto' }}
+        renderBody={() => (
           <Table sx={{ tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: '120px' }} />
@@ -283,8 +281,8 @@ export const ModelChannelSelector = ({
               )}
             </Tbody>
           </Table>
-        </TableContainer>
-      </TableContainer>
+        )}
+      />
     </>
   );
 };

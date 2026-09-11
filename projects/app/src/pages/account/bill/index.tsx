@@ -2,7 +2,10 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import dynamic from 'next/dynamic';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { packageBillTypes, billTypeMap } from '@fastgpt/global/support/wallet/bill/constants';
+import type { GetBillListQueryType } from '@fastgpt/global/openapi/support/wallet/bill/api';
+import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import ApplyInvoiceModal from '@/pageComponents/account/bill/ApplyInvoiceModal';
 import { useRouter } from 'next/router';
@@ -25,6 +28,18 @@ const BillAndInvoice = () => {
 
   const [isOpenInvoiceModal, setIsOpenInvoiceModal] = useState(false);
   const [recordsRefreshKey, setRecordsRefreshKey] = useState(0);
+  const [billType, setBillType] = useState<GetBillListQueryType['type']>();
+  const billTypeOptions = useMemo(
+    () => [
+      { label: t('account_bill:all'), value: undefined },
+      ...packageBillTypes.map((value) => ({
+        label: t(billTypeMap[value].label),
+        value
+      })),
+      { label: t('common:Other'), value: 'other' as const }
+    ],
+    [t]
+  );
 
   return (
     <AccountContainer>
@@ -84,7 +99,22 @@ const BillAndInvoice = () => {
               ></FillRowTabs>
             </Box>
             {invoiceTab !== InvoiceTabEnum.invoiceHeader && (
-              <Flex mt={[3, 0]} w={['100%', 'auto']} justifyContent={'flex-end'}>
+              <Flex
+                mt={[3, 0]}
+                w={['100%', 'auto']}
+                justifyContent={'flex-end'}
+                alignItems={'center'}
+                gap={3}
+              >
+                {invoiceTab === InvoiceTabEnum.bill && (
+                  <SingleSelectFilter
+                    title={t('account_bill:package_type')}
+                    value={billType}
+                    options={billTypeOptions}
+                    onChange={setBillType}
+                    maxW={'260px'}
+                  />
+                )}
                 <Button
                   w={['100%', 'auto']}
                   variant={'primary'}
@@ -106,7 +136,9 @@ const BillAndInvoice = () => {
             minH={0}
             overflow={['visible', 'hidden']}
           >
-            {invoiceTab === InvoiceTabEnum.bill && <BillTable key={recordsRefreshKey} />}
+            {invoiceTab === InvoiceTabEnum.bill && (
+              <BillTable key={recordsRefreshKey} billType={billType} />
+            )}
             {invoiceTab === InvoiceTabEnum.invoice && <InvoiceTable key={recordsRefreshKey} />}
             {invoiceTab === InvoiceTabEnum.invoiceHeader && <InvoiceHeaderForm />}
           </Box>

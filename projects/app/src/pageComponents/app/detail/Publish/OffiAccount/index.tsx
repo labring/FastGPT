@@ -1,9 +1,10 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import {
   Flex,
   Box,
   Button,
-  TableContainer,
+  IconButton,
   Table,
   Thead,
   Tr,
@@ -72,8 +73,17 @@ const OffiAccount = ({
   const [showShareLink, setShowShareLink] = useState<string | null>(null);
 
   return (
-    <Box position={'relative'} p={6} minH={'50vh'}>
-      <Flex justifyContent={'space-between'} flexDirection="row">
+    <Box
+      h={'100%'}
+      minH={0}
+      minW={0}
+      display={'flex'}
+      flexDirection={'column'}
+      overflow={'hidden'}
+      position={'relative'}
+      p={6}
+    >
+      <Flex flexShrink={0} justifyContent={'space-between'} flexDirection="row">
         <HStack>
           <Box color={'myGray.900'} fontWeight={'medium'} fontSize={'lg'}>
             {t('publish:official_account.title')}
@@ -114,7 +124,7 @@ const OffiAccount = ({
           {t('common:add_new')}
         </Button>
       </Flex>
-      <TableContainer mt={3}>
+      <FixedTableContainer mt={3} flex={'1 1 0'} h={0} maxH="none">
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
           <Thead>
             <Tr>
@@ -162,14 +172,14 @@ const OffiAccount = ({
                     {t('publish:request_address')}
                   </Button>
                   <MyMenu
+                    strategy="fixed"
                     Button={
-                      <MyIcon
+                      <IconButton
+                        icon={<MyIcon name={'more'} w={'14px'} />}
                         name={'more'}
-                        _hover={{ bg: 'myGray.100' }}
-                        cursor={'pointer'}
-                        borderRadius={'md'}
-                        w={'14px'}
-                        p={2}
+                        variant={'whitePrimary'}
+                        size={'sm'}
+                        aria-label={'more'}
                       />
                     }
                     menuList={[
@@ -217,7 +227,10 @@ const OffiAccount = ({
             ))}
           </Tbody>
         </Table>
-      </TableContainer>
+        {shareChatList.length === 0 && !isFetching && (
+          <EmptyTip text={t('common:core.app.share.Not share link')}> </EmptyTip>
+        )}
+      </FixedTableContainer>
       {editOffiAccountData && (
         <OffiAccountEditModal
           appId={appId}
@@ -230,9 +243,6 @@ const OffiAccount = ({
           onClose={() => setEditOffiAccountData(undefined)}
           isEdit={isEdit}
         />
-      )}
-      {shareChatList.length === 0 && !isFetching && (
-        <EmptyTip text={t('common:core.app.share.Not share link')}> </EmptyTip>
       )}
       <Loading loading={isFetching} fixed={false} />
       {showShareLinkModalOpen && (

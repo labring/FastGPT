@@ -1,5 +1,6 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
-import { Box, Flex, Table, Thead, Tr, Th, Td, TableContainer, Tbody } from '@chakra-ui/react';
+import { Box, Flex, Table, Thead, Tr, Th, Td, Tbody } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
   VariableInputEnum,
@@ -97,7 +98,7 @@ const VariableEdit = ({
       />
       {/* Form render */}
       {formatVariables.length > 0 && (
-        <TableContainer mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'}>
+        <FixedTableContainer bodyBg="white" flush mt={2} borderRadius={'md'} borderWidth={'1px'}>
           <Table variant={'workflow'} w={'100%'} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr>
@@ -147,7 +148,7 @@ const VariableEdit = ({
               )}
             </DndDrag>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       )}
 
       {/* Edit modal */}

@@ -1,3 +1,4 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { deleteCustomDomain, listCustomDomain } from '@/web/support/customDomain/api';
 import {
@@ -5,7 +6,6 @@ import {
   Button,
   Flex,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -108,12 +108,14 @@ const CustomDomain = () => {
               </Button>
             )}
           </Flex>
-          <TableContainer
+          <FixedTableContainer
+            maxH="none"
             {...accountContentScrollStyles}
             display="flex"
             flexDirection="column"
             position="relative"
             p={[4, 6]}
+            h={['60dvh', 0]}
           >
             {loadingCustomDomainList ? <MyLoading fixed={false} /> : null}
             <Table>
@@ -202,7 +204,7 @@ const CustomDomain = () => {
                 />
               </Flex>
             )}
-          </TableContainer>
+          </FixedTableContainer>
         </Flex>
       </AccountContainer>
       <ConfirmModal />

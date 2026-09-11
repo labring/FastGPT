@@ -1,24 +1,13 @@
 import { ChannelStautsMap } from '@/global/aiproxy/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/core/ai/model/api';
-import {
-  Box,
-  Button,
-  HStack,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { Box, Button, HStack, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
-import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
 const ChannelTableColumns = () => (
@@ -52,7 +41,6 @@ const ModelLinkedChannels = ({
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const linkedChannels = channels.filter((channel) => selectedIds.has(channel.id));
-  const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
 
   return (
     <Box>
@@ -85,22 +73,19 @@ const ModelLinkedChannels = ({
         </Button>
       </HStack>
 
-      <TableContainer
-        maxH="220px"
-        border="1px solid"
-        borderColor="myGray.200"
-        borderRadius="12px"
-        display="flex"
-        flexDirection="column"
-        overflow="hidden"
-      >
-        <TableContainer
-          ref={headerContainerRef}
-          flexShrink={0}
-          overflowX="hidden"
-          bg="myGray.100"
-          borderTopRadius="12px"
-        >
+      <FixedTableLayout
+        scrollMode="normal"
+        rootProps={{
+          h: 'auto',
+          maxH: '220px',
+          border: '1px solid',
+          borderColor: 'myGray.200',
+          borderRadius: '12px',
+          overflow: 'hidden'
+        }}
+        headerProps={{ bg: 'myGray.100', borderTopRadius: '12px' }}
+        bodyProps={{ flex: '1 1 auto', minH: 0, overflowY: 'auto' }}
+        renderHeader={({ headerTableWidth }) => (
           <Table size="sm" sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}>
             <ChannelTableColumns />
             <Thead>
@@ -120,9 +105,8 @@ const ModelLinkedChannels = ({
               </Tr>
             </Thead>
           </Table>
-        </TableContainer>
-
-        <TableContainer ref={bodyContainerRef} flex="1 1 auto" minH={0} overflowY="auto">
+        )}
+        renderBody={() => (
           <Table size="sm" sx={{ tableLayout: 'fixed' }}>
             <ChannelTableColumns />
             <Tbody color="myGray.600">
@@ -178,8 +162,8 @@ const ModelLinkedChannels = ({
               )}
             </Tbody>
           </Table>
-        </TableContainer>
-      </TableContainer>
+        )}
+      />
     </Box>
   );
 };

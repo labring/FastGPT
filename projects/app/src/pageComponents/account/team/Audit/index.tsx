@@ -1,4 +1,5 @@
-import { Box, Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
+import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useMemo, useCallback, useRef, useState } from 'react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -113,15 +114,24 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
         display={'flex'}
         flexDirection={'column'}
       >
-        <TableContainer
+        <FixedTableContainer
+          horizontalScroll
+          maxH="none"
           ref={scrollContainerRef}
-          px={6}
+          px={4}
           flex={['0 0 auto', '1 0 0']}
-          h={['auto', 0]}
+          h={['60dvh', 0]}
           minH={0}
-          overflowX={['auto', 'hidden']}
-          overflowY={['visible', 'auto']}
           fontSize={'sm'}
+          footer={
+            <>
+              {total > pageSize && (
+                <Flex flexShrink={0} mt={3} px={6} justifyContent={'center'}>
+                  <Pagination />
+                </Flex>
+              )}
+            </>
+          }
         >
           <Table w={'100%'} minW={['900px', '100%']} sx={{ tableLayout: 'fixed' }}>
             <Thead>
@@ -169,12 +179,7 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
               })}
             </Tbody>
           </Table>
-        </TableContainer>
-        {total > pageSize && (
-          <Flex flexShrink={0} mt={3} px={6} justifyContent={'center'}>
-            <Pagination />
-          </Flex>
-        )}
+        </FixedTableContainer>
       </MyBox>
     </>
   );

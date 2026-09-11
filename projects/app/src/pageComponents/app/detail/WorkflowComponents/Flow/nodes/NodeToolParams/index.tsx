@@ -1,21 +1,10 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import React, { useMemo, useState } from 'react';
 import Container from '../../components/Container';
-import {
-  Button,
-  Box,
-  Flex,
-  FormLabel,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { Button, Box, Flex, FormLabel, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -56,7 +45,7 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             )}
           </Flex>
           <Box borderRadius={'md'} overflow={'hidden'} border={'base'}>
-            <TableContainer>
+            <FixedTableContainer flush className="nodrag nowheel">
               <Table bg={'white'}>
                 <Thead>
                   <Tr>
@@ -111,7 +100,7 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   ))}
                 </Tbody>
               </Table>
-            </TableContainer>
+            </FixedTableContainer>
           </Box>
         </Container>
       </NodeCard>

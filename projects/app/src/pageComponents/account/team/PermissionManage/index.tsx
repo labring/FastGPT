@@ -1,10 +1,10 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import {
   Box,
   Checkbox,
   HStack,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -266,10 +266,10 @@ function PermissionManage({
         flex={['0 0 auto', '1 0 0']}
         h={['auto', 0]}
         minH={0}
-        overflowY={['visible', 'auto']}
+        overflow={'hidden'}
         isLoading={addLoading || deleteLoading}
       >
-        <TableContainer fontSize={'sm'}>
+        <FixedTableContainer h={['60dvh', '100%']} maxH="none" fontSize={'sm'}>
           <Table>
             <Thead>
               <Tr bg={'white !important'}>
@@ -509,7 +509,7 @@ function PermissionManage({
               </>
             </Tbody>
           </Table>
-        </TableContainer>
+        </FixedTableContainer>
       </MyBox>
     </>
   );

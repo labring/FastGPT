@@ -15,7 +15,6 @@ import {
   HStack,
   ModalBody,
   Table,
-  TableContainer,
   Tbody,
   Td,
   Th,
@@ -24,7 +23,7 @@ import {
   useDisclosure,
   type FlexProps
 } from '@chakra-ui/react';
-import { ModelTypeEnum, modelTypeList } from '@fastgpt/global/core/ai/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   formatModelProviders,
   getModelProviderFromCache,
@@ -33,20 +32,22 @@ import {
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
+import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import dynamic from 'next/dynamic';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import ModelListFilters from '../ModelListFilters';
 import ModelCapabilityTags from '../ModelCapabilityTags';
 import PriceTiersLabel from '../PriceTiersLabel';
 import TestModeBetaTag from '../TestModeBetaTag';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
+const modelRowHeight = 80;
 
 const ModelTable = ({
   permissionConfig = false,
@@ -66,14 +67,17 @@ const ModelTable = ({
     () => formatModelProviders(publicCatalog?.providers ?? []),
     [publicCatalog?.providers]
   );
-  const getModelProvider = permissionConfig
-    ? getMemberModelProvider
-    : (provider?: string, language?: string) =>
-        getModelProviderFromCache({
-          cache: publicProviderCache.ModelProviderMapCache,
-          provider,
-          language
-        });
+  const getModelProvider = useCallback(
+    (provider?: string, language?: string) =>
+      permissionConfig
+        ? getMemberModelProvider(provider, language)
+        : getModelProviderFromCache({
+            cache: publicProviderCache.ModelProviderMapCache,
+            provider,
+            language
+          }),
+    [permissionConfig, getMemberModelProvider, publicProviderCache.ModelProviderMapCache]
+  );
   const { userInfo } = useUserStore();
   const modelPermissionConfigHint = permissionConfig
     ? t('common:model.permission_config_hint')
@@ -84,33 +88,16 @@ const ModelTable = ({
   };
 
   const [provider, setProvider] = useState<string | ''>('');
-  const providerList = useMemo<
-    { label: string; value: string | ''; searchText?: string; avatar?: string }[]
-  >(() => {
-    const providers = getModelProviderListFromCache(
-      permissionConfig ? memberModelProviders : publicProviderCache.ModelProviderListCache,
-      i18n.language
-    );
-
-    return [
-      { label: t('common:All'), value: '' },
-      ...providers.map((item) => ({
-        label: item.name,
-        avatar: item.avatar,
-        searchText: item.name,
-        value: item.id
-      }))
-    ];
-  }, [i18n.language, memberModelProviders, permissionConfig, publicProviderCache, t]);
+  const providers = useMemo(
+    () =>
+      getModelProviderListFromCache(
+        permissionConfig ? memberModelProviders : publicProviderCache.ModelProviderListCache,
+        i18n.language
+      ),
+    [i18n.language, memberModelProviders, permissionConfig, publicProviderCache]
+  );
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
-  const selectModelTypeList = useMemo<{ label: string; value: ModelTypeEnum | '' }[]>(
-    () => [
-      { label: t('common:All'), value: '' },
-      ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
-    ],
-    [t]
-  );
 
   const [search, setSearch] = useState('');
 
@@ -243,8 +230,7 @@ const ModelTable = ({
     const filterList = formatList.filter((item) => {
       const providerFilter = provider ? item.providerId === provider : true;
 
-      const regx = new RegExp(search, 'i');
-      const nameFilter = search ? regx.test(item.name) : true;
+      const nameFilter = item.name.toLowerCase().includes(search.trim().toLowerCase());
 
       return providerFilter && nameFilter;
     });
@@ -264,17 +250,17 @@ const ModelTable = ({
     search
   ]);
 
-  const filterProviderList = useMemo(() => {
-    const allProviderIds: string[] = [
-      ...llmModelList,
-      ...embeddingModelList,
-      ...ttsModelList,
-      ...sttModelList,
-      ...reRankModelList
-    ].map((model) => model.provider);
-
-    return providerList.filter((item) => allProviderIds.includes(item.value) || item.value === '');
-  }, [ttsModelList, llmModelList, embeddingModelList, sttModelList, reRankModelList, providerList]);
+  const {
+    containerRef,
+    virtualDataList,
+    topPlaceholderHeight,
+    bottomPlaceholderHeight,
+    scrollToTop
+  } = useStaticVirtualList({ data: modelList, itemHeight: modelRowHeight, overscan: 10 });
+  useEffect(() => {
+    scrollToTop();
+  }, [modelType, provider, search, scrollToTop]);
+  const tableColumnCount = permissionConfig && userInfo?.team.permission.hasManagePer ? 4 : 3;
 
   const {
     selectedItems,
@@ -291,178 +277,208 @@ const ModelTable = ({
 
   return (
     <Flex flexDirection={'column'} h={contentPx === undefined ? '100%' : ['auto', '100%']} minW={0}>
-      <Flex
+      <ModelListFilters
         px={contentPx}
-        flexDirection={['column', 'row']}
-        gap={[3, 6]}
-        alignItems={['stretch', 'flex-start']}
-      >
-        <SingleSelectFilter
-          title={t('common:model.provider')}
-          value={provider}
-          options={filterProviderList}
-          onChange={setProvider}
-          showSearch
-          maxW={'240px'}
-          listSize={'lg'}
-        />
-        <SingleSelectFilter
-          title={t('common:model.model_type')}
-          value={modelType}
-          options={selectModelTypeList}
-          onChange={setModelType}
-        />
-        <Box
-          ml={[0, 'auto']}
-          w={'100%'}
-          maxW={['100%', '200px']}
-          flex={['none', '0 0 200px']}
-          flexShrink={0}
-        >
-          <SearchInput
-            bg={'myGray.25'}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('common:model.search_name_placeholder')}
-          />
-        </Box>
-      </Flex>
-      <TableContainer
-        mt={5}
-        px={contentPx}
-        flex={contentPx === undefined ? '1 0 0' : ['0 0 auto', '1 0 0']}
-        h={contentPx === undefined ? 0 : ['auto', 0]}
-        w={'100%'}
-        maxW={'100%'}
-        overflowY={contentPx === undefined ? 'auto' : ['visible', 'auto']}
-        overflowX={'auto'}
-      >
-        <Table>
-          <Thead>
-            <Tr color={'myGray.600'}>
-              <Th fontSize={'xs'}>
-                <HStack>
-                  {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                    <Checkbox
-                      mr={1}
-                      isChecked={isSelecteAll}
-                      onChange={selectAllTrigger}
-                    ></Checkbox>
-                  )}
-                  <Box>{t('common:model.name')}</Box>
-                </HStack>
-              </Th>
-              <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
-              <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
+        providers={providers}
+        models={remoteModels}
+        provider={provider}
+        onProviderChange={setProvider}
+        modelType={modelType}
+        onModelTypeChange={setModelType}
+        search={search}
+        onSearchChange={setSearch}
+      />
+      <FixedTableLayout
+        horizontalScroll
+        scrollMode="virtual"
+        bodyRef={containerRef}
+        rootProps={{
+          mt: 5,
+          px: contentPx,
+          flex: contentPx === undefined ? '1 0 0' : ['0 0 auto', '1 0 0'],
+          h: contentPx === undefined ? 0 : ['70dvh', 0],
+          w: '100%',
+          maxW: '100%'
+        }}
+        bodyProps={{
+          flex: '1 1 0',
+          overflowY: 'auto',
+          overflowX: 'auto'
+        }}
+        renderHeader={({ headerTableWidth }) => (
+          <Table
+            w={'100%'}
+            minW={permissionConfig ? '950px' : '790px'}
+            sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
+          >
+            <colgroup>
+              <col style={{ width: '360px' }} />
+              <col style={{ width: '160px' }} />
+              <col style={{ width: '300px' }} />
               {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
+                <col style={{ width: '160px' }} />
               )}
-            </Tr>
-          </Thead>
-          <Tbody>
-            {modelList.map((item) => (
-              <Tr
-                key={`${item.providerId}-${item.typeLabel}-${item.name}`}
-                _hover={{ bg: 'myGray.50' }}
-                {...getRowSelectionProps(item, {
-                  isDisabled: !permissionConfig || !userInfo?.team.permission.hasManagePer
-                })}
-              >
-                <Td fontSize={'sm'}>
+            </colgroup>
+            <Thead>
+              <Tr color={'myGray.600'}>
+                <Th fontSize={'xs'}>
                   <HStack>
                     {permissionConfig && userInfo?.team.permission.hasManagePer && (
                       <Checkbox
                         mr={1}
-                        isChecked={isSelected(item)}
-                        onChange={() => toggleSelect(item)}
+                        isChecked={isSelecteAll}
+                        onChange={selectAllTrigger}
                       ></Checkbox>
                     )}
-                    <Avatar src={item.avatar} w={'1.2rem'} />
-                    <Flex alignItems={'center'} gap={1} minW={0}>
-                      <CopyBox value={item.name} data-row-action color={'myGray.900'}>
-                        {item.name}
-                      </CopyBox>
-                      {item.testMode && <TestModeBetaTag />}
-                    </Flex>
+                    <Box>{t('common:model.name')}</Box>
                   </HStack>
-                  <ModelCapabilityTags
-                    mt={2}
-                    contextToken={item.contextToken}
-                    showVision={!!item.vision}
-                    showVideo={!!item.video}
-                    showAudio={!!item.audio}
-                    showReasoning={!!item.reasoning}
-                  />
-                </Td>
-                <Td>
-                  <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
-                </Td>
-                <Td fontSize={'sm'}>{item.priceLabel}</Td>
+                </Th>
+                <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
+                <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
                 {permissionConfig && userInfo?.team.permission.hasManagePer && (
-                  <Td fontSize={'sm'}>
-                    <LazyCollaboratorProvider
-                      selectedHint={modelPermissionConfigHint}
-                      defaultRole={ReadRoleVal}
-                      onGetCollaboratorList={() =>
-                        getModelCollaborators(getPermissionModelId(item.modelId))
-                      }
-                      onUpdateCollaborators={({ collaborators }) =>
-                        updateModelCollaborators({
-                          collaborators,
-                          modelIds: [getPermissionModelId(item.modelId)]
-                        })
-                      }
-                      permission={userInfo?.team.permission!}
-                    >
-                      {({ onOpenManageModal }) => (
-                        <MyIconButton
-                          icon={'edit'}
-                          size="1rem"
-                          hoverColor={'blue.500'}
-                          w="min-content"
-                          data-row-action
-                          onClick={onOpenManageModal}
-                        />
-                      )}
-                    </LazyCollaboratorProvider>
-                  </Td>
+                  <Th fontSize={'xs'}>{t('common:permission.Permission config')}</Th>
                 )}
               </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
-
-      <FloatingActionBar
-        activedStyles={{
-          borderRadius: 'md',
-          boxShadow: 'md'
-        }}
-        Controler={
-          <LazyCollaboratorProvider
-            selectedHint={modelPermissionConfigHint}
-            defaultRole={ReadRoleVal}
-            onGetCollaboratorList={() =>
-              Promise.resolve({
-                clbs: []
-              })
-            }
-            onUpdateCollaborators={({ collaborators }) =>
-              updateModelCollaborators({
-                collaborators,
-                modelIds: selectedItems.map((item) => getPermissionModelId(item.modelId))
-              })
-            }
-            permission={userInfo?.team.permission!}
+            </Thead>
+          </Table>
+        )}
+        renderBody={() => (
+          <Table
+            w={'100%'}
+            minW={permissionConfig ? '950px' : '790px'}
+            sx={{ tableLayout: 'fixed' }}
           >
-            {({ onOpenManageModal }) => (
-              <Button variant={'whiteBase'} onClick={onOpenManageModal}>
-                {t('common:permission.Permission config')}
-              </Button>
-            )}
-          </LazyCollaboratorProvider>
+            <colgroup>
+              <col style={{ width: '360px' }} />
+              <col style={{ width: '160px' }} />
+              <col style={{ width: '300px' }} />
+              {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                <col style={{ width: '160px' }} />
+              )}
+            </colgroup>
+            <Tbody>
+              {topPlaceholderHeight > 0 && (
+                <Tr aria-hidden>
+                  <Td colSpan={tableColumnCount} h={`${topPlaceholderHeight}px`} p={0} border={0} />
+                </Tr>
+              )}
+              {virtualDataList.map(({ data: item }) => (
+                <Tr
+                  key={`${item.providerId}-${item.typeLabel}-${item.name}`}
+                  h={`${modelRowHeight}px`}
+                  sx={{ '& > td': { py: 2, whiteSpace: 'nowrap' } }}
+                  _hover={{ bg: 'myGray.50' }}
+                  {...getRowSelectionProps(item, {
+                    isDisabled: !permissionConfig || !userInfo?.team.permission.hasManagePer
+                  })}
+                >
+                  <Td fontSize={'sm'}>
+                    <HStack>
+                      {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                        <Checkbox
+                          mr={1}
+                          isChecked={isSelected(item)}
+                          onChange={() => toggleSelect(item)}
+                        ></Checkbox>
+                      )}
+                      <Avatar src={item.avatar} w={'1.2rem'} />
+                      <Flex alignItems={'center'} gap={1} minW={0}>
+                        <CopyBox value={item.name} data-row-action color={'myGray.900'}>
+                          {item.name}
+                        </CopyBox>
+                        {item.testMode && <TestModeBetaTag />}
+                      </Flex>
+                    </HStack>
+                    <ModelCapabilityTags
+                      mt={2}
+                      contextToken={item.contextToken}
+                      showVision={!!item.vision}
+                      showVideo={!!item.video}
+                      showAudio={!!item.audio}
+                      showReasoning={!!item.reasoning}
+                    />
+                  </Td>
+                  <Td>
+                    <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
+                  </Td>
+                  <Td fontSize={'sm'}>{item.priceLabel}</Td>
+                  {permissionConfig && userInfo?.team.permission.hasManagePer && (
+                    <Td fontSize={'sm'}>
+                      <LazyCollaboratorProvider
+                        selectedHint={modelPermissionConfigHint}
+                        defaultRole={ReadRoleVal}
+                        onGetCollaboratorList={() =>
+                          getModelCollaborators(getPermissionModelId(item.modelId))
+                        }
+                        onUpdateCollaborators={({ collaborators }) =>
+                          updateModelCollaborators({
+                            collaborators,
+                            modelIds: [getPermissionModelId(item.modelId)]
+                          })
+                        }
+                        permission={userInfo?.team.permission!}
+                      >
+                        {({ onOpenManageModal }) => (
+                          <MyIconButton
+                            icon={'edit'}
+                            size="1rem"
+                            hoverColor={'blue.500'}
+                            w="min-content"
+                            data-row-action
+                            onClick={onOpenManageModal}
+                          />
+                        )}
+                      </LazyCollaboratorProvider>
+                    </Td>
+                  )}
+                </Tr>
+              ))}
+              {bottomPlaceholderHeight > 0 && (
+                <Tr aria-hidden>
+                  <Td
+                    colSpan={tableColumnCount}
+                    h={`${bottomPlaceholderHeight}px`}
+                    p={0}
+                    border={0}
+                  />
+                </Tr>
+              )}
+            </Tbody>
+          </Table>
+        )}
+        footer={
+          <FloatingActionBar
+            activedStyles={{
+              borderRadius: 'md',
+              boxShadow: 'md'
+            }}
+            Controler={
+              <LazyCollaboratorProvider
+                selectedHint={modelPermissionConfigHint}
+                defaultRole={ReadRoleVal}
+                onGetCollaboratorList={() =>
+                  Promise.resolve({
+                    clbs: []
+                  })
+                }
+                onUpdateCollaborators={({ collaborators }) =>
+                  updateModelCollaborators({
+                    collaborators,
+                    modelIds: selectedItems.map((item) => getPermissionModelId(item.modelId))
+                  })
+                }
+                permission={userInfo?.team.permission!}
+              >
+                {({ onOpenManageModal }) => (
+                  <Button variant={'whiteBase'} onClick={onOpenManageModal}>
+                    {t('common:permission.Permission config')}
+                  </Button>
+                )}
+              </LazyCollaboratorProvider>
+            }
+          ></FloatingActionBar>
         }
-      ></FloatingActionBar>
+      />
     </Flex>
   );
 };

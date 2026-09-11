@@ -1,15 +1,5 @@
-import {
-  Box,
-  Button,
-  Flex,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
+import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   GetDatasetTrainingErrorBody,
@@ -596,8 +586,8 @@ const TrainingErrorList = ({
   return (
     <>
       {scope.type === 'collection' ? (
-        <MyBox ref={collectionScrollRef} h={'400px'} overflowY={'auto'} isLoading={listLoading}>
-          <TableContainer fontSize={'12px'}>
+        <MyBox h={'400px'} overflow={'hidden'} isLoading={listLoading}>
+          <FixedTableContainer ref={collectionScrollRef} h="100%" maxH="none" fontSize={'12px'}>
             <Table variant={'simple'}>
               <Thead>
                 <Tr>
@@ -632,15 +622,18 @@ const TrainingErrorList = ({
                 ))}
               </Tbody>
             </Table>
-          </TableContainer>
-          {total === 0 && !listLoading && <EmptyTip text={t('dataset:training_error_empty')} />}
+            {total === 0 && !listLoading && <EmptyTip text={t('dataset:training_error_empty')} />}
+          </FixedTableContainer>
         </MyBox>
       ) : (
         <ScrollData
-          maxH={'60vh'}
+          h={'100%'}
+          flex={'1 1 0'}
+          minH={0}
           pr={1}
           ScrollContainerRef={datasetScrollRef}
           isLoading={listLoading}
+          showLoadingOverlay
         >
           <Flex flexDir={'column'} gap={4}>
             {datasetGroups.map((group, index) => (
@@ -724,7 +717,7 @@ const TrainingErrorList = ({
       )}
 
       {showFooter && (
-        <Flex justifyContent={'flex-end'} gap={3} mt={6}>
+        <Flex justifyContent={'flex-end'} gap={3} mt={6} flexShrink={0}>
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:Cancel')}
           </Button>

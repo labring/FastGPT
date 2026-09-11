@@ -1,8 +1,8 @@
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useState, useRef, useMemo } from 'react';
 import {
   Box,
   Flex,
-  TableContainer,
   Table,
   Thead,
   Tr,
@@ -242,13 +242,46 @@ const CollectionCard = () => {
         />
 
         {/* collection table */}
-        <TableContainer
+        <FixedTableContainer
+          maxH="none"
           ref={scrollContainerRef}
           mt={3}
-          overflowY={'auto'}
           fontSize={'sm'}
           flex={'1 0 0'}
           h={0}
+          footer={
+            <>
+              <FloatingActionBar
+                pt={4}
+                Controler={
+                  <HStack>
+                    <Button
+                      variant={'whiteBase'}
+                      onClick={() =>
+                        openDeleteConfirm({
+                          onConfirm: () =>
+                            onDelCollection(selectedItems.map((e) => e._id)).then(() =>
+                              setSelectedItems([])
+                            ),
+                          customContent: t('dataset:confirm_delete_collection', {
+                            num: selectedItems.length
+                          })
+                        })()
+                      }
+                    >
+                      {t('dataset:batch_delete')}
+                    </Button>
+                  </HStack>
+                }
+              >
+                {total > pageSize && (
+                  <Flex justifyContent={'center'}>
+                    <Pagination />
+                  </Flex>
+                )}
+              </FloatingActionBar>
+            </>
+          }
         >
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
@@ -502,37 +535,7 @@ const CollectionCard = () => {
           </Table>
 
           {total === 0 && <EmptyCollectionTip />}
-        </TableContainer>
-
-        <FloatingActionBar
-          pt={4}
-          Controler={
-            <HStack>
-              <Button
-                variant={'whiteBase'}
-                onClick={() =>
-                  openDeleteConfirm({
-                    onConfirm: () =>
-                      onDelCollection(selectedItems.map((e) => e._id)).then(() =>
-                        setSelectedItems([])
-                      ),
-                    customContent: t('dataset:confirm_delete_collection', {
-                      num: selectedItems.length
-                    })
-                  })()
-                }
-              >
-                {t('dataset:batch_delete')}
-              </Button>
-            </HStack>
-          }
-        >
-          {total > pageSize && (
-            <Flex justifyContent={'center'}>
-              <Pagination />
-            </Flex>
-          )}
-        </FloatingActionBar>
+        </FixedTableContainer>
 
         <ConfirmDeleteModal />
         <ConfirmSyncModal />

@@ -26,7 +26,7 @@ const TrainingErrorEditView = ({
   });
 
   return (
-    <Flex flexDirection={'column'} gap={4}>
+    <Flex flexDirection={'column'} gap={4} h={'100%'}>
       {editChunk?.imagePreviewUrl && (
         <Box>
           <FormLabel>{t('file:image')}</FormLabel>
@@ -56,8 +56,8 @@ const TrainingErrorEditView = ({
           <MyTextarea {...register('a')} minH={200} />
         </Box>
       )}
-      <Flex justifyContent={'flex-end'} gap={4}>
-        <Button variant={'outline'} onClick={onCancel}>
+      <Flex justifyContent={'flex-end'} gap={4} mt={'auto'} flexShrink={0}>
+        <Button variant={'whiteBase'} onClick={onCancel}>
           {t('common:Cancel')}
         </Button>
         <Button isLoading={loading} variant={'primary'} onClick={handleSubmit(onSave)}>

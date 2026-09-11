@@ -14,7 +14,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Box,
   Button,
   HStack,
@@ -37,7 +36,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ModelTabHeader from '../ModelTabHeader';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useFixedTableHeader } from '@fastgpt/web/hooks/useFixedTableHeader';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useLockFn, useSet } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
@@ -135,7 +134,6 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const isLoading =
     loadingChannelList || loadingUpdateChannel || loadingDeleteChannel || channelMutationLoading;
-  const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableHeader();
 
   return (
     <>
@@ -159,168 +157,172 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         flexDirection="column"
         isLoading={isLoading}
       >
-        <TableContainer ref={headerContainerRef} flexShrink={0} overflowX="hidden" px={6}>
-          <Table
-            sx={{
-              tableLayout: 'fixed',
-              width: `${headerTableWidth} !important`
-            }}
-          >
-            <colgroup>
-              <col />
-              <col />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '140px' }} />
-              <col style={{ width: '120px' }} />
-            </colgroup>
-            <Thead>
-              <Tr>
-                <Th>{t('common:Name')}</Th>
-                <Th>{t('config_model:channel_type')}</Th>
-                <Th>{t('config_model:model_count')}</Th>
-                <Th>{t('config_model:model.active')}</Th>
-                <Th>
-                  <HStack spacing={1} alignItems="center">
-                    <Box>{t('config_model:channel_priority')}</Box>
-                    <QuestionTip label={t('config_model:channel_priority_tip')} />
-                  </HStack>
-                </Th>
-                <Th>{t('common:Operation')}</Th>
-              </Tr>
-            </Thead>
-          </Table>
-        </TableContainer>
-        <TableContainer
-          ref={bodyContainerRef}
-          h={['auto', '100%']}
-          flex={['0 0 auto', '1 1 0']}
-          minH={0}
-          overflowY={['visible', 'auto']}
-          px={6}
-          fontSize={'sm'}
-        >
-          <Table sx={{ tableLayout: 'fixed' }}>
-            <colgroup>
-              <col />
-              <col />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '120px' }} />
-              <col style={{ width: '140px' }} />
-              <col style={{ width: '120px' }} />
-            </colgroup>
-            <Tbody>
-              {!loadingChannelList && channelList.length === 0 && (
+        <FixedTableLayout
+          scrollMode="normal"
+          rootProps={{ flex: '1 0 0', h: 0 }}
+          headerProps={{ px: 4 }}
+          bodyProps={{
+            h: 0,
+            flex: '1 1 0',
+            overflowY: 'auto',
+            px: 4,
+            fontSize: 'sm'
+          }}
+          renderHeader={({ headerTableWidth }) => (
+            <Table
+              sx={{
+                tableLayout: 'fixed',
+                width: `${headerTableWidth} !important`
+              }}
+            >
+              <colgroup>
+                <col />
+                <col />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '120px' }} />
+              </colgroup>
+              <Thead>
                 <Tr>
-                  <Td colSpan={6} borderBottom={0}>
-                    <EmptyTip text={t('config_model:channel_list_empty')} />
-                  </Td>
+                  <Th>{t('common:Name')}</Th>
+                  <Th>{t('config_model:channel_type')}</Th>
+                  <Th>{t('config_model:model_count')}</Th>
+                  <Th>{t('config_model:model.active')}</Th>
+                  <Th>
+                    <HStack spacing={1} alignItems="center">
+                      <Box>{t('config_model:channel_priority')}</Box>
+                      <QuestionTip label={t('config_model:channel_priority_tip')} />
+                    </HStack>
+                  </Th>
+                  <Th>{t('common:Operation')}</Th>
                 </Tr>
-              )}
-              {channelList.map((item) => {
-                const providerData = aiproxyChannels.find(
-                  (channel) => channel.channelId === item.type
-                ) || {
-                  name: 'Invalid provider',
-                  avatar: 'model/huggingface'
-                };
-                return (
-                  <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
-                    <Td>{item.name}</Td>
-                    <Td>
-                      <HStack>
-                        <Avatar src={providerData.avatar} w={'1rem'} />
-                        <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
-                      </HStack>
-                    </Td>
-                    <Td>{item.models.length}</Td>
-                    <Td>
-                      <Flex w={'32px'} justifyContent={'center'}>
-                        {updatingChannelIds.has(item.id) ? (
-                          <Spinner size={'sm'} color={'primary.600'} />
-                        ) : (
-                          <Switch
-                            size={'sm'}
-                            cursor={'pointer'}
-                            isDisabled={channelMutationLoading}
-                            isChecked={item.status === ChannelStatusEnum.ChannelStatusEnabled}
-                            onChange={(e) =>
-                              updateChannelStatus({
-                                channelId: item.id,
-                                channelName: item.name,
-                                status: e.target.checked
-                                  ? ChannelStatusEnum.ChannelStatusEnabled
-                                  : ChannelStatusEnum.ChannelStatusDisabled
-                              })
-                            }
-                            colorScheme={'myBlue'}
-                          />
-                        )}
-                      </Flex>
-                    </Td>
-                    <Td>
-                      <MyNumberInput
-                        defaultValue={item.priority || 1}
-                        min={1}
-                        max={100}
-                        h={'32px'}
-                        w={'80px'}
-                        isDisabled={channelMutationLoading}
-                        onBlur={(e) => {
-                          const val = (() => {
-                            if (!e) return 1;
-                            return e;
-                          })();
-                          updateChannel({
-                            ...item,
-                            priority: val
-                          });
-                        }}
-                      />
-                    </Td>
-                    <Td>
-                      <HStack spacing={2} justifyContent={'flex-end'}>
-                        <MyIconButton
-                          icon={'core/chat/sendLight'}
-                          tip={t('config_model:model_test')}
-                          onClick={() =>
-                            setTestModelData({
-                              channelId: item.id,
-                              models: item.models
-                            })
-                          }
-                        />
-                        <MyIconButton
-                          icon={'common/settingLight'}
-                          tip={t('config_model:edit')}
-                          pointerEvents={channelMutationLoading ? 'none' : undefined}
-                          opacity={channelMutationLoading ? 0.5 : 1}
-                          onClick={() => setEditChannel(item)}
-                        />
-                        <MyIconButton
-                          icon={'delete'}
-                          tip={t('common:Delete')}
-                          hoverColor={'red.500'}
-                          hoverBg={'red.50'}
-                          pointerEvents={channelMutationLoading ? 'none' : undefined}
-                          opacity={channelMutationLoading ? 0.5 : 1}
-                          onClick={() =>
-                            openConfirm({
-                              onConfirm: () => onDeleteChannel(item.id),
-                              customContent: t('config_model:confirm_delete_channel', {
-                                name: item.name
-                              })
-                            })()
-                          }
-                        />
-                      </HStack>
+              </Thead>
+            </Table>
+          )}
+          renderBody={() => (
+            <Table sx={{ tableLayout: 'fixed' }}>
+              <colgroup>
+                <col />
+                <col />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '120px' }} />
+                <col style={{ width: '140px' }} />
+                <col style={{ width: '120px' }} />
+              </colgroup>
+              <Tbody>
+                {!loadingChannelList && channelList.length === 0 && (
+                  <Tr>
+                    <Td colSpan={6} borderBottom={0}>
+                      <EmptyTip text={t('config_model:channel_list_empty')} />
                     </Td>
                   </Tr>
-                );
-              })}
-            </Tbody>
-          </Table>
-        </TableContainer>
+                )}
+                {channelList.map((item) => {
+                  const providerData = aiproxyChannels.find(
+                    (channel) => channel.channelId === item.type
+                  ) || {
+                    name: 'Invalid provider',
+                    avatar: 'model/huggingface'
+                  };
+                  return (
+                    <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
+                      <Td>{item.name}</Td>
+                      <Td>
+                        <HStack>
+                          <Avatar src={providerData.avatar} w={'1rem'} />
+                          <Box>{parseI18nString(providerData.name, i18n.language)}</Box>
+                        </HStack>
+                      </Td>
+                      <Td>{item.models.length}</Td>
+                      <Td>
+                        <Flex w={'32px'} justifyContent={'center'}>
+                          {updatingChannelIds.has(item.id) ? (
+                            <Spinner size={'sm'} color={'primary.600'} />
+                          ) : (
+                            <Switch
+                              size={'sm'}
+                              cursor={'pointer'}
+                              isDisabled={channelMutationLoading}
+                              isChecked={item.status === ChannelStatusEnum.ChannelStatusEnabled}
+                              onChange={(e) =>
+                                updateChannelStatus({
+                                  channelId: item.id,
+                                  channelName: item.name,
+                                  status: e.target.checked
+                                    ? ChannelStatusEnum.ChannelStatusEnabled
+                                    : ChannelStatusEnum.ChannelStatusDisabled
+                                })
+                              }
+                              colorScheme={'myBlue'}
+                            />
+                          )}
+                        </Flex>
+                      </Td>
+                      <Td>
+                        <MyNumberInput
+                          defaultValue={item.priority || 1}
+                          min={1}
+                          max={100}
+                          h={'32px'}
+                          w={'80px'}
+                          isDisabled={channelMutationLoading}
+                          onBlur={(e) => {
+                            const val = (() => {
+                              if (!e) return 1;
+                              return e;
+                            })();
+                            updateChannel({
+                              ...item,
+                              priority: val
+                            });
+                          }}
+                        />
+                      </Td>
+                      <Td>
+                        <HStack spacing={2} justifyContent={'flex-end'}>
+                          <MyIconButton
+                            icon={'core/chat/sendLight'}
+                            tip={t('config_model:model_test')}
+                            onClick={() =>
+                              setTestModelData({
+                                channelId: item.id,
+                                models: item.models
+                              })
+                            }
+                          />
+                          <MyIconButton
+                            icon={'common/settingLight'}
+                            tip={t('config_model:edit')}
+                            pointerEvents={channelMutationLoading ? 'none' : undefined}
+                            opacity={channelMutationLoading ? 0.5 : 1}
+                            onClick={() => setEditChannel(item)}
+                          />
+                          <MyIconButton
+                            icon={'delete'}
+                            tip={t('common:Delete')}
+                            hoverColor={'red.500'}
+                            hoverBg={'red.50'}
+                            pointerEvents={channelMutationLoading ? 'none' : undefined}
+                            opacity={channelMutationLoading ? 0.5 : 1}
+                            onClick={() =>
+                              openConfirm({
+                                onConfirm: () => onDeleteChannel(item.id),
+                                customContent: t('config_model:confirm_delete_channel', {
+                                  name: item.name
+                                })
+                              })()
+                            }
+                          />
+                        </HStack>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          )}
+        />
       </MyBox>
 
       {!!editChannel && (

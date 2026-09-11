@@ -3,6 +3,7 @@ import { Box, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type { ModelPriceTierType, PriceType } from '@fastgpt/global/core/ai/model.schema';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 const getTierLowerBoundLabel = (tier: ModelPriceTierType) => String(tier.minInputTokens ?? 0);
 
@@ -76,108 +77,148 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
       }}
     >
       <Box borderRadius={'md'} overflow={'hidden'} border={'base'}>
-        <Table
-          size={'sm'}
-          boxShadow={'none'}
-          sx={{
-            tableLayout: 'fixed',
-            th: {
-              borderBottom: 'none',
-              verticalAlign: 'middle'
-            },
-            td: {
-              borderBottom: 'none',
-              verticalAlign: 'middle'
-            }
-          }}
-        >
-          <Thead>
-            <Tr bg={'#F8FAFC'}>
-              <Th
-                textTransform={'none'}
-                w={'210px'}
-                py={2}
-                textAlign={'center'}
-                borderRight={'1px solid'}
-                borderColor={'myGray.200'}
-                whiteSpace={'nowrap'}
-              >
-                {t('common:model.price_tier_range')}
-              </Th>
-              <Th
-                textTransform={'none'}
-                p={2}
-                py={2}
-                textAlign={'center'}
-                borderRight={'1px solid'}
-                borderColor={'myGray.200'}
-                whiteSpace={'nowrap'}
-              >
-                {t('common:model.input_price')}
-              </Th>
-              <Th
-                textTransform={'none'}
-                p={2}
-                py={2}
-                textAlign={'center'}
-                borderColor={'myGray.200'}
-                whiteSpace={'nowrap'}
-              >
-                {t('common:model.output_price')}
-              </Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {tiers.map((tier, index) => (
-              <Tr key={`${tier.minInputTokens ?? 1}-${tier.maxInputTokens ?? 'open'}-${index}`}>
-                <Td
-                  px={3}
-                  py={2}
-                  color={'myGray.700'}
-                  borderTop={'1px solid'}
-                  borderRight={'1px solid'}
-                  borderColor={'myGray.200'}
-                  whiteSpace={'nowrap'}
-                >
-                  <Flex
-                    gap={1}
-                    alignItems={'center'}
-                    justifyContent={'center'}
-                    color={'myGray.700'}
+        <FixedTableLayout
+          horizontalScroll
+          scrollMode="normal"
+          rootProps={{ h: 'auto', maxH: '280px' }}
+          bodyProps={{ flex: '1 1 auto', overflow: 'auto' }}
+          renderHeader={({ headerTableWidth }) => (
+            <Table
+              size={'sm'}
+              boxShadow={'none'}
+              minW={'400px'}
+              sx={{
+                tableLayout: 'fixed',
+                width: `${headerTableWidth} !important`,
+                th: {
+                  borderBottom: 'none',
+                  verticalAlign: 'middle'
+                },
+                td: {
+                  borderBottom: 'none',
+                  verticalAlign: 'middle'
+                }
+              }}
+            >
+              <colgroup>
+                <col style={{ width: '210px' }} />
+                <col />
+                <col />
+              </colgroup>
+              <Thead>
+                <Tr bg={'#F8FAFC'}>
+                  <Th
+                    textTransform={'none'}
+                    w={'210px'}
+                    py={2}
+                    textAlign={'center'}
+                    borderRight={'1px solid'}
+                    borderColor={'myGray.200'}
                     whiteSpace={'nowrap'}
                   >
-                    <Box>{`${getTierLowerBoundLabel(tier)} < `}</Box>
-                    <Box>{t('common:Input')}</Box>
-                    {typeof tier.maxInputTokens === 'number' ? (
-                      <Box>{` <= ${tier.maxInputTokens}`}</Box>
-                    ) : null}
-                  </Flex>
-                </Td>
-                <Td
-                  px={3}
-                  py={2}
-                  textAlign={'center'}
-                  borderTop={'1px solid'}
-                  borderRight={'1px solid'}
-                  borderColor={'myGray.200'}
-                  whiteSpace={'nowrap'}
-                >
-                  {`${tier.inputPrice} ${t('common:support.wallet.subscription.point')}`}
-                </Td>
-                <Td
-                  px={3}
-                  py={2}
-                  textAlign={'center'}
-                  borderTop={'1px solid'}
-                  borderColor={'myGray.200'}
-                  whiteSpace={'nowrap'}
-                >
-                  {`${tier.outputPrice} ${t('common:support.wallet.subscription.point')}`}
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
+                    {t('common:model.price_tier_range')}
+                  </Th>
+                  <Th
+                    textTransform={'none'}
+                    p={2}
+                    py={2}
+                    textAlign={'center'}
+                    borderRight={'1px solid'}
+                    borderColor={'myGray.200'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {t('common:model.input_price')}
+                  </Th>
+                  <Th
+                    textTransform={'none'}
+                    p={2}
+                    py={2}
+                    textAlign={'center'}
+                    borderColor={'myGray.200'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {t('common:model.output_price')}
+                  </Th>
+                </Tr>
+              </Thead>
+            </Table>
+          )}
+          renderBody={() => (
+            <Table
+              size={'sm'}
+              boxShadow={'none'}
+              minW={'400px'}
+              w={'100%'}
+              sx={{
+                tableLayout: 'fixed',
+                th: {
+                  borderBottom: 'none',
+                  verticalAlign: 'middle'
+                },
+                td: {
+                  borderBottom: 'none',
+                  verticalAlign: 'middle'
+                }
+              }}
+            >
+              <colgroup>
+                <col style={{ width: '210px' }} />
+                <col />
+                <col />
+              </colgroup>
+              <Tbody>
+                {tiers.map((tier, index) => (
+                  <Tr key={`${tier.minInputTokens ?? 1}-${tier.maxInputTokens ?? 'open'}-${index}`}>
+                    <Td
+                      px={3}
+                      py={2}
+                      color={'myGray.700'}
+                      borderTop={'1px solid'}
+                      borderRight={'1px solid'}
+                      borderColor={'myGray.200'}
+                      whiteSpace={'nowrap'}
+                    >
+                      <Flex
+                        gap={1}
+                        alignItems={'center'}
+                        justifyContent={'center'}
+                        color={'myGray.700'}
+                        whiteSpace={'nowrap'}
+                      >
+                        <Box>{`${getTierLowerBoundLabel(tier)} < `}</Box>
+                        <Box>{t('common:Input')}</Box>
+                        {typeof tier.maxInputTokens === 'number' ? (
+                          <Box>{` <= ${tier.maxInputTokens}`}</Box>
+                        ) : null}
+                      </Flex>
+                    </Td>
+                    <Td
+                      px={3}
+                      py={2}
+                      textAlign={'center'}
+                      borderTop={'1px solid'}
+                      borderRight={'1px solid'}
+                      borderColor={'myGray.200'}
+                      whiteSpace={'nowrap'}
+                    >
+                      {`${tier.inputPrice} ${t('common:support.wallet.subscription.point')}`}
+                    </Td>
+                    <Td
+                      px={3}
+                      py={2}
+                      textAlign={'center'}
+                      borderTop={'1px solid'}
+                      borderColor={'myGray.200'}
+                      whiteSpace={'nowrap'}
+                    >
+                      {`${tier.outputPrice} ${t('common:support.wallet.subscription.point')}`}
+                    </Td>
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          )}
+        />
       </Box>
     </Box>
   );
