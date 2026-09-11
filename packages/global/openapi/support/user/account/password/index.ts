@@ -61,7 +61,7 @@ export const PasswordPath: OpenAPIPath = {
       }
     }
   },
-  '/support/user/account/checkPswExpired': {
+  '/support/user/account/password/checkPswExpired': {
     get: {
       summary: '检查密码是否过期',
       description: '无密码账号和 root 返回 false；其他账号按密码更新时间规则判断',

@@ -12,7 +12,12 @@ import updatePasswordApi from '@/pages/api/support/user/account/password/update'
 import { Call } from '@test/utils/request';
 
 const mocks = vi.hoisted(() => ({
-  withUserLock: vi.fn()
+  withUserLock: vi.fn(),
+  assertPasswordUpdateRateLimit: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/rateLimit/interface/accountVerification', () => ({
+  assertPasswordUpdateRateLimit: mocks.assertPasswordUpdateRateLimit
 }));
 
 vi.mock('@fastgpt/service/support/user/lock', () => ({
@@ -26,6 +31,7 @@ describe('password/update API', () => {
 
   beforeEach(async () => {
     mocks.withUserLock.mockImplementation((_userId: string, fn: () => Promise<unknown>) => fn());
+    mocks.assertPasswordUpdateRateLimit.mockResolvedValue(undefined);
     testUser = await MongoUser.create({
       username: 'password-update-user',
       password: hashStr('old-password')
@@ -74,10 +80,30 @@ describe('password/update API', () => {
     );
 
     expect(response.code).toBe(200);
+    expect(mocks.assertPasswordUpdateRateLimit).toHaveBeenCalledWith({
+      account: String(testUser._id),
+      limit: expect.any(Number)
+    });
     expect(mocks.withUserLock).toHaveBeenCalledWith(String(testUser._id), expect.any(Function));
     expect(await MongoUser.exists({ _id: testUser._id, password: body.newPsw })).toBeTruthy();
     const updatedUser = await MongoUser.findById(testUser._id).lean();
     expect(updatedUser?.passwordUpdateTime).toBeInstanceOf(Date);
+  });
+
+  it('rejects password updates after the per-user rate limit is reached', async () => {
+    const body = await getBody();
+    mocks.assertPasswordUpdateRateLimit.mockRejectedValueOnce(new Error('rate limited'));
+
+    const response = await Call<UpdatePasswordBody, Record<string, never>, undefined>(
+      updatePasswordApi,
+      { body, auth: getAuth() }
+    );
+
+    expect(response.code).toBe(500);
+    expect(mocks.withUserLock).not.toHaveBeenCalled();
+    expect(
+      await MongoUser.exists({ _id: testUser._id, password: hashStr('old-password') })
+    ).toBeTruthy();
   });
 
   it('consumes the session after a successful password update', async () => {

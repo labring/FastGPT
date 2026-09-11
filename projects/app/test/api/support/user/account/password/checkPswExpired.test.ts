@@ -9,7 +9,7 @@ import { Call } from '@test/utils/request';
 const originalPasswordExpiredMonth = process.env.PASSWORD_EXPIRED_MONTH;
 const loadCheckPswExpiredApi = async () => {
   vi.resetModules();
-  return import('@/pages/api/support/user/account/checkPswExpired');
+  return import('@/pages/api/support/user/account/password/checkPswExpired');
 };
 
 describe('checkPswExpired API', () => {

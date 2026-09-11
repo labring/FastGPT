@@ -1,3 +1,4 @@
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -6,8 +7,8 @@ const accountVerificationRateLimitStatusTexts = new Set<string>([
   UserErrEnum.verifyCodeTooFrequently
 ]);
 const legacyAccountVerificationRateLimitErrors = new Set([
-  'common:error.send_auth_code_too_frequently',
-  'common:error.verify_code_too_frequently'
+  i18nT('common:error.send_auth_code_too_frequently'),
+  i18nT('common:error.verify_code_too_frequently')
 ]);
 const verificationCodeError = 'common:error.code_error';
 

@@ -178,7 +178,7 @@ const provider = () => {
             loginStore?.flow === 'passwordChange'
               ? t('common:password_verification_failed')
               : loginStore?.flow === 'accountCancellation'
-                ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+                ? t('account_info:account_cancellation_verification_failed')
                 : getErrText(error, t('common:support.user.login.error'))
         });
         setTimeout(() => {
@@ -213,7 +213,7 @@ const provider = () => {
           loginStore?.flow === 'passwordChange'
             ? t('common:password_verification_failed')
             : loginStore?.flow === 'accountCancellation'
-              ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+              ? t('account_info:account_cancellation_verification_failed')
               : t('common:support.user.login.Provider error')
       });
       router.replace(errorRedirectPage);
@@ -241,7 +241,7 @@ const provider = () => {
             loginStore?.flow === 'passwordChange'
               ? t('common:password_verification_failed')
               : loginStore?.flow === 'accountCancellation'
-                ? t('account_info:account_cancellation_verification_failed', '身份验证失败，请重试')
+                ? t('account_info:account_cancellation_verification_failed')
                 : t('common:support.user.login.security_failed')
         });
         setTimeout(() => {

@@ -91,7 +91,8 @@ export const postFindPassword = ({
     password: hashStr(password)
   });
 // Check the whether password has expired
-export const getCheckPswExpired = () => GET<boolean>('/support/user/account/checkPswExpired');
+export const getCheckPswExpired = () =>
+  GET<boolean>('/support/user/account/password/checkPswExpired');
 
 /* ===== notification account ===== */
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
