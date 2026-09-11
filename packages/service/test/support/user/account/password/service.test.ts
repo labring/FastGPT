@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
   PASSWORD_CHANGE_SESSION_TTL_SECONDS,
-  consumePasswordChangeSessionInTransaction,
+  updatePasswordWithChangeSession,
   createPasswordChangeSession
 } from '@fastgpt/service/support/user/account/password/service';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -25,12 +25,11 @@ describe('password change session service', () => {
 
   it('rejects a missing, expired, mismatched, or reused session', async () => {
     await expect(
-      consumePasswordChangeSessionInTransaction({
+      updatePasswordWithChangeSession({
         sessionId: 'missing',
         userId: 'user-1',
         loginSessionId: 'login-1',
-        newPassword: 'new',
-        handler: async () => undefined
+        newPassword: 'new'
       })
     ).rejects.toThrow(UserErrEnum.passwordChangeAuthorizationInvalid);
   });

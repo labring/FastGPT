@@ -56,6 +56,18 @@ const isOAuthMethod = (
 ): method is Extract<AccountVerificationMethod, `oauth/${string}`> => method.startsWith('oauth/');
 
 /**
+ * 根据 OAuth 验证方式返回展示名称；未知提供商回退到系统配置的 SSO 名称。
+ */
+const getOAuthProviderLabel = (method: AccountVerificationMethod, ssoTitle?: string) => {
+  const provider = method.slice('oauth/'.length).toLowerCase();
+  if (provider === 'github') return 'GitHub';
+  if (provider === 'google') return 'Google';
+  if (provider === 'microsoft') return 'Microsoft';
+  if (provider === 'wecom') return 'WeCom';
+  return ssoTitle ?? 'SSO';
+};
+
+/**
  * 渲染账号验证方式并承接验证交互；业务 API 和验证成功后的动作由调用方通过适配器提供。
  * `pending` 仅表示当前轮询仍需继续，`expired` 表示二维码等一次性材料需要重新创建。
  */
@@ -115,8 +127,6 @@ export const AccountVerificationPanel = ({
     [getVerificationErrorTitle, isAccountCancellation, t, toast]
   );
 
-  const handleResult = useCallback((result: VerificationSubmitResult) => result === 'verified', []);
-
   const createBoundVerification = useCallback(async () => {
     if (method !== 'oldPassword' && method !== 'wechat') return;
     setCreating(true);
@@ -171,7 +181,6 @@ export const AccountVerificationPanel = ({
         const result = await submitWechatVerification(wechatQR.code);
         if (disposed) return;
         if (result === 'verified') {
-          handleResult(result);
           disposed = true;
         } else if (result === 'expired') {
           setWechatQR(undefined);
@@ -199,7 +208,6 @@ export const AccountVerificationPanel = ({
     };
   }, [
     createBoundVerification,
-    handleResult,
     showVerificationFailure,
     submitWechatVerification,
     wechatExpired,
@@ -248,32 +256,23 @@ export const AccountVerificationPanel = ({
         return;
       setSubmitting(true);
       try {
-        handleResult(await submitCodeVerification(verificationCode));
+        await submitCodeVerification(verificationCode);
       } catch (error) {
         showVerificationFailure(error);
       } finally {
         setSubmitting(false);
       }
     },
-    [
-      handleResult,
-      isAccountCancellation,
-      method,
-      showVerificationFailure,
-      submitCodeVerification,
-      submitting
-    ]
+    [isAccountCancellation, method, showVerificationFailure, submitCodeVerification, submitting]
   );
 
   const submitOldPassword = async () => {
     if (method !== 'oldPassword' || !oldPassword || !submitOldPasswordVerification) return;
     setSubmitting(true);
     try {
-      handleResult(
-        await submitOldPasswordVerification({
-          password: hashStr(oldPassword)
-        })
-      );
+      await submitOldPasswordVerification({
+        password: hashStr(oldPassword)
+      });
     } catch (error) {
       setOldPassword('');
       showVerificationFailure(error);
@@ -438,14 +437,7 @@ export const AccountVerificationPanel = ({
       );
     }
 
-    const cancellationProvider = method.slice('oauth/'.length).toLowerCase();
-    const cancellationProviderLabel = (() => {
-      if (cancellationProvider === 'github') return 'GitHub';
-      if (cancellationProvider === 'google') return 'Google';
-      if (cancellationProvider === 'microsoft') return 'Microsoft';
-      if (cancellationProvider === 'wecom') return 'WeCom';
-      return feConfigs.sso?.title ?? 'SSO';
-    })();
+    const cancellationProviderLabel = getOAuthProviderLabel(method, feConfigs.sso?.title);
 
     return (
       <VStack w="100%" align="stretch" spacing={0}>
@@ -642,14 +634,7 @@ export const AccountVerificationPanel = ({
     );
   }
 
-  const provider = method.slice('oauth/'.length).toLowerCase();
-  const providerLabel = (() => {
-    if (provider === 'github') return 'GitHub';
-    if (provider === 'google') return 'Google';
-    if (provider === 'microsoft') return 'Microsoft';
-    if (provider === 'wecom') return 'WeCom';
-    return feConfigs.sso?.title ?? 'SSO';
-  })();
+  const providerLabel = getOAuthProviderLabel(method, feConfigs.sso?.title);
 
   return (
     <Box>

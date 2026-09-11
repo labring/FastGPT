@@ -14,6 +14,10 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import {
+  AccountExternalVerificationMethodSchema,
+  OAuthAccountVerificationMethodSchema
+} from '@fastgpt/global/support/user/account/verification/type';
+import {
   getBdVId,
   getFastGPTSem,
   getMsclkid,
@@ -97,7 +101,7 @@ const provider = () => {
             throw new Error('OAuth cancellation callback is incomplete');
           }
           const result = await submitAccountCancellation({
-            method: `oauth/${loginStore.provider}` as any,
+            method: AccountExternalVerificationMethodSchema.parse(`oauth/${loginStore.provider}`),
             payload: {
               callbackUrl: `${window.location.origin}/login/provider`,
               code: props.code,
@@ -125,7 +129,7 @@ const provider = () => {
           const result = await authorizePasswordChange({
             source: 'accountVerification',
             verification: {
-              method: `oauth/${loginStore.provider}` as any,
+              method: OAuthAccountVerificationMethodSchema.parse(`oauth/${loginStore.provider}`),
               payload: {
                 callbackUrl: `${window.location.origin}/login/provider`,
                 code: props.code,

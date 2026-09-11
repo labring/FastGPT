@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { AccountExternalVerificationMethodSchema } from '../../../../../support/user/account/verification/type';
-import { oauthAccountVerificationMethods } from '../../../../../support/user/account/verification/constants';
-import type { OAuthAccountVerificationMethod } from '../../../../../support/user/account/verification/type';
+import { createOAuthVerificationSchemaTuple } from '../../../../../support/user/account/verification/constants';
 import { AccountCancellationUnavailableReasonSchema } from '../../../../../support/user/account/cancellation/type';
 
 /* ============================================================================
@@ -74,10 +73,6 @@ const OAuthCreatePayloadSchema = z.object({
     .meta({ description: 'OAuth 回调地址', example: 'https://example.com/login/provider' }),
   isWecomWorkTerminal: z.boolean().optional().meta({ description: '是否来自企业微信工作台' })
 });
-
-const createOAuthVerificationSchemaTuple = <Schema extends z.ZodType>(
-  createSchema: (method: OAuthAccountVerificationMethod) => Schema
-) => oauthAccountVerificationMethods.map(createSchema) as [Schema, Schema, Schema, Schema, Schema];
 
 export const CreateAccountCancellationVerificationBodySchema = z.discriminatedUnion('method', [
   CodeVerificationCreateSchema,

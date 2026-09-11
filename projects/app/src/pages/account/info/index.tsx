@@ -64,7 +64,7 @@ const StandDetailModal = dynamic(
   { ssr: false }
 );
 const ConversionModal = dynamic(() => import('@/pageComponents/account/info/ConversionModal'));
-const UpdatePswModal = dynamic(() => import('@/pageComponents/account/info/UpdatePswModal'));
+const UpdatePswModal = dynamic(() => import('@/components/support/user/safe/PasswordChangeModal'));
 const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 const EnterpriseAuthStatusRowHeight = '32px';
@@ -441,7 +441,9 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       {isOpenConversionModal && (
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
-      {canManagePassword && isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
+      {canManagePassword && isOpenUpdatePsw && (
+        <UpdatePswModal onClose={onCloseUpdatePsw} onSuccess={onCloseUpdatePsw} />
+      )}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
     </Box>
   );
