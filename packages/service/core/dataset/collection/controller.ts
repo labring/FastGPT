@@ -153,7 +153,10 @@ export const bulkUpdateCollectionsParent = async ({
   if (updates.length === 0) return { successIds, failedIds };
 
   try {
-    const result = await MongoDatasetCollection.bulkWrite(
+    // 已 resolve 的 BulkWriteResult 不含 writeErrors；mongoose 只在 mongoose.results[i] 标记未执行的 op（cast/校验失败），成功为 null
+    const result: {
+      mongoose?: { validationErrors?: Error[]; results?: Array<unknown | null> };
+    } = await MongoDatasetCollection.bulkWrite(
       updates.map((item) => ({
         updateOne: {
           filter: { _id: item._id, teamId },
@@ -166,13 +169,8 @@ export const bulkUpdateCollectionsParent = async ({
       { ordered: false }
     );
 
-    const failedIndexes = new Set(
-      ((result as unknown as { writeErrors?: Array<{ index: number }> }).writeErrors ?? []).map(
-        (item) => item.index
-      )
-    );
     updates.forEach((item, index) => {
-      if (failedIndexes.has(index)) failedIds.push(item._id);
+      if (result.mongoose?.results?.[index]) failedIds.push(item._id);
       else successIds.push(item._id);
     });
   } catch (error) {
