@@ -321,6 +321,11 @@ describe('createApiDatasetCollection', () => {
       expect.objectContaining({ updates: [] })
     );
     expect(result).toEqual({ successCount: 0, failedCount: 0 });
+    // 校正未失败：不得出现校正失败告警（防止把 warn 写成无条件）
+    expect(mockLoggerWarn).not.toHaveBeenCalledWith(
+      'Create api file collection parent update failed',
+      expect.anything()
+    );
   });
 
   it('T3-8 550 个平铺文件按 200 分批事务', async () => {
@@ -406,6 +411,11 @@ describe('createApiDatasetCollection', () => {
     const result = await call({ apiFiles: files });
 
     expect(result).toEqual({ successCount: 350, failedCount: 200 });
+    // 文件批事务失败必须留下服务端信号，否则整批静默丢失
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      'Create api file collection batch failed',
+      expect.objectContaining({ datasetId: 'dataset-id', batchSize: 200 })
+    );
   });
 
   it('T3-13 校正失败不阻断后续 file 批次', async () => {
@@ -425,6 +435,11 @@ describe('createApiDatasetCollection', () => {
     expect(correctionUpdates()).toHaveLength(1);
     expect(result.failedCount).toBe(1);
     expect(mockCreateCollectionAndInsertData).toHaveBeenCalled();
+    // 校正失败必须记 WARN（设计文档 §3.2.2.1 步骤 9 / §3.2.4），否则 40k 规模下无人可查
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      'Create api file collection parent update failed',
+      expect.objectContaining({ datasetId: 'dataset-id', failedCount: 1 })
+    );
   });
 
   it('T3-14 空输入：不写任何数据', async () => {
@@ -452,5 +467,109 @@ describe('createApiDatasetCollection', () => {
     expect(typeof result.successCount).toBe('number');
     expect(typeof result.failedCount).toBe('number');
     expect(() => CreateApiCollectionV2ResponseSchema.parse(result)).not.toThrow();
+  });
+
+  it('T3-17 folder 批内部分落库：落库分支的子级照常挂载，失败分支的子树跳过', async () => {
+    setServerTree({
+      top: [apiFile('land', 'folder', true), apiFile('fail', 'folder', true)],
+      land: [apiFile('land-child', 'folder', true)],
+      fail: [apiFile('fail-child', 'folder', true)],
+      'land-child': [apiFile('land-file', 'file')],
+      'fail-child': [apiFile('fail-file', 'file')]
+    });
+    // T2 的部分落库：同一批里 land 成功、fail 失败（recovery 重查后的 split）
+    mockBulkInsertCollections.mockImplementation(async ({ docs }: any) => {
+      const ids = docs.map((doc: any) => doc.apiFileId);
+      if (ids.includes('fail')) {
+        return { successApiFileIds: ['land'], failedApiFileIds: ['fail'] };
+      }
+      return { successApiFileIds: ids, failedApiFileIds: [] };
+    });
+
+    const result = await call({ apiFiles: [apiFile('top', 'folder', true)] });
+
+    // 落库分支：子 folder 与 file 正常挂到 land 之下
+    const land = findFolder('land');
+    expect(land).toBeDefined();
+    expect(String(findFolder('land-child').parentId)).toBe(String(land._id));
+    expect(createdFileParams()).toHaveLength(1);
+    expect(createdFileParams()[0].apiFileId).toBe('land-file');
+    expect(createdFileParams()[0].parentId).toBe(String(findFolder('land-child')._id));
+
+    // 失败分支：fail-child 连提交都没有（父级未落库 -> 整棵跳过），fail-file 也不创建
+    expect(findFolder('fail-child')).toBeUndefined();
+    expect(createdFileParams().find((p: any) => p.apiFileId === 'fail-file')).toBeUndefined();
+
+    // top + land + land-child + land-file 成功；fail + fail-child + fail-file 失败
+    expect(result).toEqual({ successCount: 4, failedCount: 3 });
+  });
+
+  it('T3-18 已存在节点的新父级本轮失败：保留原父级（不重挂），同批落库的父级仍校正', async () => {
+    setServerTree({
+      p: [apiFile('q', 'folder', true), apiFile('n', 'folder', true)],
+      q: [apiFile('ex-q', 'file')],
+      n: [apiFile('ex-n', 'file')]
+    });
+    mockCollectionFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue([
+        { _id: 'EXQ', apiFileId: 'ex-q', apiFileParentId: 'q', parentId: 'STALE' },
+        { _id: 'EXN', apiFileId: 'ex-n', apiFileParentId: null, parentId: 'STALE' }
+      ])
+    });
+    // 同层 folder 批：n 落库、q 失败
+    mockBulkInsertCollections.mockImplementation(async ({ docs }: any) => {
+      const ids = docs.map((doc: any) => doc.apiFileId);
+      if (ids.includes('q')) {
+        return { successApiFileIds: ['n'], failedApiFileIds: ['q'] };
+      }
+      return { successApiFileIds: ids, failedApiFileIds: [] };
+    });
+
+    const result = await call({ apiFiles: [apiFile('p', 'folder', true)] });
+
+    // q 未落库 -> ex-q 的校正被跳过，保留原父级；不得凭空重挂
+    const updates = correctionUpdates();
+    expect(updates).toHaveLength(1);
+    expect(updates[0]._id).toBe('EXN');
+    expect(String(updates[0].parentId)).toBe(String(findFolder('n')._id));
+    expect(updates[0].apiFileParentId).toBe('n');
+    expect(updates.find((u: any) => u._id === 'EXQ')).toBeUndefined();
+
+    // 已存在节点不重建
+    expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
+    // p + n 成功；q 失败
+    expect(result).toEqual({ successCount: 2, failedCount: 1 });
+  });
+
+  it('T3-19 校正失败日志有界：只采样前 10 条失败 id', async () => {
+    const fileIds = Array.from({ length: 12 }, (_, i) => `f${i}`);
+    setServerTree({ p: fileIds.map((id) => apiFile(id, 'file')) });
+    mockCollectionFind.mockReturnValue({
+      lean: vi.fn().mockResolvedValue(
+        fileIds.map((apiFileId, i) => ({
+          _id: `EX${i}`,
+          apiFileId,
+          apiFileParentId: 'p',
+          parentId: 'STALE'
+        }))
+      )
+    });
+    mockBulkUpdateCollectionsParent.mockImplementation(async ({ updates }: any) => ({
+      successIds: [],
+      failedIds: updates.map((u: any) => u._id)
+    }));
+
+    const result = await call({ apiFiles: [apiFile('p', 'folder', true)] });
+
+    expect(correctionUpdates()).toHaveLength(12);
+    expect(result.failedCount).toBe(12);
+    // 40k 规模下 failedIds 可能上万条，日志只带 count + 前 10 条样本
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      'Create api file collection parent update failed',
+      expect.objectContaining({
+        failedCount: 12,
+        failedIdsSample: ['EX0', 'EX1', 'EX2', 'EX3', 'EX4', 'EX5', 'EX6', 'EX7', 'EX8', 'EX9']
+      })
+    );
   });
 });
