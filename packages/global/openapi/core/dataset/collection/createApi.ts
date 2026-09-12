@@ -145,6 +145,13 @@ export const CreateApiCollectionV2BodySchema = ApiCreateCollectionBaseSchema.ext
 });
 export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2BodySchema>;
 
+// 创建结果计数：folder 与 file 均按 1 计；幂等跳过与仅做层级校正的节点不计入任一字段
+export const CreateApiCollectionV2ResponseSchema = z.object({
+  successCount: z.number().meta({ description: '本次新建的 collection 数' }),
+  failedCount: z.number().meta({ description: '写入失败或被级联跳过的节点数' })
+});
+export type CreateApiCollectionV2ResponseType = z.infer<typeof CreateApiCollectionV2ResponseSchema>;
+
 /* ============================================================================
  * API: 上传图片集创建集合
  * Route: POST /core/dataset/collection/create/images
