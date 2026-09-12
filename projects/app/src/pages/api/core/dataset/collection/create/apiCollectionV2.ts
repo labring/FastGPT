@@ -217,6 +217,15 @@ export const createApiDatasetCollection = async ({
   // 若产品改为「用户显式摆放优先」，在此处跳过 parentId 指向自建文件夹的节点即可（见设计文档 §3.2.2.1 取舍说明）
   const correctionResult = await bulkUpdateCollectionsParent({ teamId, updates: corrections });
   failedCount += correctionResult.failedIds.length;
+  if (correctionResult.failedIds.length) {
+    // 40k 文件规模下 failedIds 可能极长，只带前 10 条做样本，完整数量见 failedCount
+    logger.warn('Create api file collection parent update failed', {
+      teamId,
+      datasetId: String(dataset._id),
+      failedCount: correctionResult.failedIds.length,
+      failedIdsSample: correctionResult.failedIds.slice(0, 10)
+    });
+  }
 
   // 6. file 分段事务写入
   const fileNodes = nodes.filter((node) => node.type !== 'folder');
