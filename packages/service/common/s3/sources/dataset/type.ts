@@ -1,4 +1,5 @@
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
+import { PdfParseConfigSchema } from '@fastgpt/global/core/dataset/type';
 import { ReadStream } from 'fs';
 import z from 'zod';
 
@@ -29,6 +30,7 @@ export const GetDatasetFileContentParamsSchema = z.object({
   tmbId: ObjectIdSchema,
   fileId: z.string().nonempty(), // 这是 ObjectKey
   customPdfParse: z.boolean().optional(),
+  pdfParseConfig: PdfParseConfigSchema.optional(),
   getFormatText: z.boolean().optional(), // 数据类型都尽可能转化成 markdown 格式
   datasetId: ObjectIdSchema,
   usageId: ObjectIdSchema.optional()

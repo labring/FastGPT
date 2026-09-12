@@ -1,4 +1,5 @@
 import { isAfter } from 'date-fns';
+import { createHash } from 'node:crypto';
 import type { ClientSession } from 'mongoose';
 import { buffer as consumeStreamToBuffer } from 'node:stream/consumers';
 import type { Readable } from 'node:stream';
@@ -299,9 +300,29 @@ export const getFileS3Key = {
     };
   },
 
-  rawText: ({ hash, customPdfParse }: { hash: string; customPdfParse?: boolean }) => {
+  rawText: ({
+    hash,
+    customPdfParse,
+    pdfParseConfig
+  }: {
+    hash: string;
+    customPdfParse?: boolean;
+    pdfParseConfig?: Record<string, unknown>;
+  }) => {
+    // 解析配置纳入缓存 key,避免同文件不同开关共享缓存;未传配置保持旧 key 格式
+    const configSuffix = pdfParseConfig
+      ? `-${createHash('md5')
+          .update(
+            JSON.stringify(pdfParseConfig, (_key, value) =>
+              value instanceof Object && !Array.isArray(value)
+                ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
+                : value
+            )
+          )
+          .digest('hex')}`
+      : '';
     return encodeS3ObjectKey(
-      [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}`].join('/')
+      [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}${configSuffix}`].join('/')
     );
   }
 };

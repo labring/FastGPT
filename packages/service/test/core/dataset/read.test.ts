@@ -29,7 +29,11 @@ vi.mock('@fastgpt/service/core/dataset/apiDataset', () => ({
   })
 }));
 
-import { readDatasetSourceRawText, readFileRawTextByUrl } from '@fastgpt/service/core/dataset/read';
+import {
+  getDatasetPdfParseConfig,
+  readDatasetSourceRawText,
+  readFileRawTextByUrl
+} from '@fastgpt/service/core/dataset/read';
 
 describe('readDatasetSourceRawText', () => {
   beforeEach(() => {
@@ -167,5 +171,29 @@ describe('readFileRawTextByUrl', () => {
         source: expect.objectContaining({ maxSizeBytes: 999 })
       })
     );
+  });
+});
+
+describe('getDatasetPdfParseConfig', () => {
+  const allDisabled = {
+    keep_header_footer: false,
+    keep_appendix: false,
+    image_analysis: false,
+    chart_analysis: false
+  };
+
+  it('为空数据集/空配置补全四布尔默认值', () => {
+    expect(getDatasetPdfParseConfig(undefined)).toEqual(allDisabled);
+    expect(getDatasetPdfParseConfig(null)).toEqual(allDisabled);
+    expect(getDatasetPdfParseConfig({})).toEqual(allDisabled);
+  });
+
+  it('保留已配置字段,仅补全缺失字段', () => {
+    expect(getDatasetPdfParseConfig({ pdfParseConfig: { keep_header_footer: true } })).toEqual({
+      keep_header_footer: true,
+      keep_appendix: false,
+      image_analysis: false,
+      chart_analysis: false
+    });
   });
 });

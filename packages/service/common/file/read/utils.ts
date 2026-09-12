@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
+import type { PdfParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
@@ -33,6 +34,7 @@ export const readFileContentByBuffer = async ({
   buffer,
   encoding,
   customPdfParse = false,
+  pdfParseConfig,
   usageId,
   getFormatText = true,
   imageKeyOptions,
@@ -46,6 +48,7 @@ export const readFileContentByBuffer = async ({
   encoding: string;
 
   customPdfParse?: boolean;
+  pdfParseConfig?: PdfParseConfigType;
   usageId?: string;
   getFormatText?: boolean;
   imageKeyOptions?: {
@@ -62,6 +65,7 @@ export const readFileContentByBuffer = async ({
     buffer,
     encoding,
     customPdfParse,
+    pdfParseConfig,
     usageId,
     getFormatText,
     imageKeyOptions,
@@ -77,6 +81,7 @@ export const readFileContentBySource = async ({
   tmbId,
   source,
   customPdfParse = false,
+  pdfParseConfig,
   usageId,
   getFormatText = true,
   imageKeyOptions,
@@ -86,6 +91,7 @@ export const readFileContentBySource = async ({
   tmbId: string;
   source: FileSource;
   customPdfParse?: boolean;
+  pdfParseConfig?: PdfParseConfigType;
   usageId?: string;
   getFormatText?: boolean;
   imageKeyOptions?: {
@@ -101,6 +107,7 @@ export const readFileContentBySource = async ({
     source,
     encoding: source.metadata.encoding ?? '',
     customPdfParse,
+    pdfParseConfig,
     usageId,
     getFormatText,
     imageKeyOptions,
@@ -115,6 +122,7 @@ const readFileContent = async ({
   source,
   encoding: initialEncoding,
   customPdfParse,
+  pdfParseConfig,
   usageId,
   getFormatText,
   imageKeyOptions,
@@ -127,6 +135,7 @@ const readFileContent = async ({
   source?: FileSource;
   encoding: string;
   customPdfParse: boolean;
+  pdfParseConfig?: PdfParseConfigType;
   usageId?: string;
   getFormatText: boolean;
   imageKeyOptions?: {
@@ -235,6 +244,14 @@ const readFileContent = async ({
     data.append('file', buffer, {
       filename: `file.${materializedExtension}`
     });
+    // 外部解析服务契约:四个开关逐个以独立表单字段下发,值统一转字符串(服务端自行 str→bool)
+    if (pdfParseConfig) {
+      Object.entries(pdfParseConfig).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          data.append(key, String(value));
+        }
+      });
+    }
     const { data: response } = await axios.post<{
       pages: number;
       markdown: string;
@@ -356,7 +373,8 @@ const readFileContent = async ({
     const { text, pages } = await parseFromSangfor({
       fileBuffer: buffer,
       extension: materializedExtension,
-      imageKeyOptions
+      imageKeyOptions,
+      pdfParseConfig
     });
 
     reportPdfParseUsage(pages);
