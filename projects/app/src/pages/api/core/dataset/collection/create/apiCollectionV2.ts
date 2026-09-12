@@ -211,6 +211,7 @@ export const createApiDatasetCollection = async ({
   }
 
   // 5. 校正已存在节点的层级
+  // 必须在上面 folder 逐层落库的循环之后调用：idMap 在该循环里才补入新 folder 的 _id
   const corrections = buildCorrections();
 
   // 取舍：以 server 层级为准，挂在自建（无 apiFileId）文件夹下的节点会被重挂到 server 真实父级。

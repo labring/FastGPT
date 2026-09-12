@@ -157,7 +157,7 @@ export const bulkUpdateCollectionsParent = async ({
         updateOne: {
           filter: { _id: item._id, teamId },
           update: {
-            // schema 的 parentId 声明为 string（ObjectIdSchema），传 hex 串由 mongoose 转回 ObjectId
+            // 模型类型侧 parentId 是 string（global DatasetCollectionSchemaType.ParentIdSchema），mongoose schema 侧是 Schema.Types.ObjectId，传 hex 串由驱动转回 ObjectId
             $set: { parentId: String(item.parentId), apiFileParentId: item.apiFileParentId }
           }
         }
