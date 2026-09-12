@@ -36,6 +36,8 @@ export const ToolTypeList = [
 ];
 export const AppTypeList = [AppTypeEnum.simple, AppTypeEnum.chatAgent, AppTypeEnum.workflow];
 
+export const ENTRY_POINT_VARIABLE_KEY = 'system_entryPoint';
+
 export enum AppListSortEnum {
   updateTimeDesc = 'updateTimeDesc',
   createTimeDesc = 'createTimeDesc',
