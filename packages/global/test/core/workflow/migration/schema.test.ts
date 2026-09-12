@@ -647,6 +647,7 @@ describe('workflow migration boundary', () => {
           ],
           [NodeInputKeyEnum.chatInputGuide, { open: true, customUrl: 'https://example.com' }],
           [NodeInputKeyEnum.autoExecute, { open: true, defaultPrompt: 'Run automatically' }],
+          [NodeInputKeyEnum.entryPoints, [{ id: 'knowledge', name: 'Knowledge Q&A' }]],
           [NodeInputKeyEnum.instruction, 'Legacy instruction']
         ].map(([key, value]) => ({
           key,
@@ -678,6 +679,7 @@ describe('workflow migration boundary', () => {
         scheduledTriggerConfig: { cronString: '0 0 * * *', timezone: 'UTC', defaultPrompt: 'Run' },
         chatInputGuide: { open: true, customUrl: 'https://example.com' },
         autoExecute: { open: true, defaultPrompt: 'Run automatically' },
+        entryPoints: [{ id: 'knowledge', name: 'Knowledge Q&A' }],
         instruction: ''
       }
     });

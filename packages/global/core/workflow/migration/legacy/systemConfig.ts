@@ -1,6 +1,7 @@
 import type {
   AppAutoExecuteConfigType,
   AppChatConfigType,
+  EntryPointItemType,
   AppQGConfigType,
   AppScheduledTriggerConfigType,
   AppTTSConfigType,
@@ -143,6 +144,10 @@ export function migrateSystemConfigToChatConfig(input: LegacyWorkflowDataInput) 
         systemConfigNode,
         NodeInputKeyEnum.autoExecute
       )
+    ],
+    [
+      'entryPoints',
+      getSystemConfigInputValue<EntryPointItemType[]>(systemConfigNode, NodeInputKeyEnum.entryPoints)
     ]
   ];
   configValues.forEach(([key, value]) => {

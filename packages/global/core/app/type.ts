@@ -114,6 +114,30 @@ export const AppWelcomeConfigTypeSchema = z.object({
 });
 export type AppWelcomeConfigType = z.infer<typeof AppWelcomeConfigTypeSchema>;
 
+export const EntryPointItemTypeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  icon: z.string().optional()
+});
+export type EntryPointItemType = z.infer<typeof EntryPointItemTypeSchema>;
+
+export const EntryPointItemsTypeSchema = z.array(EntryPointItemTypeSchema).superRefine((items, ctx) => {
+  const seenNames = new Map<string, number>();
+  items.forEach((item, index) => {
+    const normalizedName = item.name.trim();
+    const previousIndex = seenNames.get(normalizedName);
+    if (previousIndex !== undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [index, 'name'],
+        message: 'Entry point names must be unique'
+      });
+      return;
+    }
+    seenNames.set(normalizedName, index);
+  });
+});
+
 export const AppChatConfigTypeSchema = z.object({
   welcomeText: optionalNullToUndefined(z.string()).meta({
     description: '新会话开始时展示给用户的欢迎语'
@@ -144,6 +168,9 @@ export const AppChatConfigTypeSchema = z.object({
   }),
   fileSelectConfig: optionalNullToUndefined(AppFileSelectConfigTypeSchema).meta({
     description: '对话文件选择配置'
+  }),
+  entryPoints: optionalNullToUndefined(EntryPointItemsTypeSchema).meta({
+    description: '应用对话页的功能入口列表'
   }),
   instruction: optionalNullToUndefined(z.string()).meta({
     description: '应用对话页展示给用户的使用说明'
