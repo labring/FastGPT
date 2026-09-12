@@ -124,7 +124,9 @@ const workflowResult = {
   nodeResponseSummary: {
     citeCollectionIds: [],
     errorCount: 0,
-    totalPoints: 3
+    totalPoints: 3,
+    inputTokens: 100,
+    outputTokens: 20
   }
 };
 

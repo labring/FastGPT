@@ -50,6 +50,15 @@ const ChatLogSchema = new Schema({
     type: Number,
     default: 0
   },
+  // 累计 token 消耗，口径与 totalPoints 一致：只统计根节点响应
+  totalInputTokens: {
+    type: Number,
+    default: 0
+  },
+  totalOutputTokens: {
+    type: Number,
+    default: 0
+  },
   goodFeedbackCount: {
     type: Number,
     default: 0

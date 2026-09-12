@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Flex, Skeleton } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
@@ -8,6 +8,8 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 export type usageFormType = {
   date: string;
   totalPoints: number;
+  inputTokens?: number;
+  outputTokens?: number;
 };
 
 type RechartsComponents = {
@@ -20,21 +22,26 @@ type RechartsComponents = {
   Tooltip: any;
 };
 
+const POINTS_COLOR = '#5E8FFF';
+const TOTAL_TOKENS_COLOR = '#5E8FFF';
+const INPUT_TOKENS_COLOR = '#38A169';
+const OUTPUT_TOKENS_COLOR = '#D69E2E';
+
+const tooltipBoxStyles = {
+  bg: 'white',
+  p: 3,
+  borderRadius: 'md',
+  border: '0.5px solid',
+  borderColor: 'myGray.200',
+  boxShadow: '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
+} as const;
+
 const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
   const data = payload?.[0]?.payload as usageFormType;
   const { t } = useClientTranslation('account_usage');
   if (active && data) {
     return (
-      <Box
-        bg={'white'}
-        p={3}
-        borderRadius={'md'}
-        border={'0.5px solid'}
-        borderColor={'myGray.200'}
-        boxShadow={
-          '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)'
-        }
-      >
+      <Box {...tooltipBoxStyles}>
         <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
           {data.date}
         </Box>
@@ -45,6 +52,41 @@ const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) =
     );
   }
   return null;
+};
+
+const TokenTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
+  const data = payload?.[0]?.payload as usageFormType;
+  const { t } = useClientTranslation('account_usage');
+  if (!active || !data) return null;
+
+  const input = Number(data.inputTokens) || 0;
+  const output = Number(data.outputTokens) || 0;
+
+  return (
+    <Box {...tooltipBoxStyles}>
+      <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
+        {data.date}
+      </Box>
+      <Flex alignItems={'center'} gap={2} mb={1}>
+        <Box w={2} h={2} borderRadius={'full'} bg={TOTAL_TOKENS_COLOR} flexShrink={0} />
+        <Box fontSize={'14px'} color={'myGray.600'}>
+          {`${t('account_usage:total_tokens')}: ${formatNumber(input + output)}`}
+        </Box>
+      </Flex>
+      <Flex alignItems={'center'} gap={2} mb={1}>
+        <Box w={2} h={2} borderRadius={'full'} bg={INPUT_TOKENS_COLOR} flexShrink={0} />
+        <Box fontSize={'12px'} color={'myGray.600'}>
+          {`${t('account_usage:input_tokens')}: ${formatNumber(input)}`}
+        </Box>
+      </Flex>
+      <Flex alignItems={'center'} gap={2}>
+        <Box w={2} h={2} borderRadius={'full'} bg={OUTPUT_TOKENS_COLOR} flexShrink={0} />
+        <Box fontSize={'12px'} color={'myGray.600'}>
+          {`${t('account_usage:output_tokens')}: ${formatNumber(output)}`}
+        </Box>
+      </Flex>
+    </Box>
+  );
 };
 
 const DashboardChart = ({
@@ -89,14 +131,38 @@ const DashboardChart = ({
     };
   }, []);
 
+  const tokenChartData = useMemo(
+    () =>
+      totalPoints.map((d) => ({ ...d, totalTokens: (d.inputTokens || 0) + (d.outputTokens || 0) })),
+    [totalPoints]
+  );
+
+  const totalInputTokens = useMemo(
+    () => totalPoints.reduce((acc, curr) => acc + (curr.inputTokens || 0), 0),
+    [totalPoints]
+  );
+  const totalOutputTokens = useMemo(
+    () => totalPoints.reduce((acc, curr) => acc + (curr.outputTokens || 0), 0),
+    [totalPoints]
+  );
+
+  const formatTokenYAxis = (value: number): string => {
+    if (value >= 1000000) return `${value / 1000000}M`;
+    if (value >= 1000) return `${value / 1000}K`;
+    return String(value);
+  };
+
   // 加载状态
   if (isLoading) {
     return (
       <Box>
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
-          <Box color={'black'}>{`${t('account_usage:total_usage')}:`}</Box>
+          <Box color={'black'}>{t('account_usage:total_usage')}</Box>
           <Box color={'primary.600'} ml={2}>
-            {`${formatNumber(totalUsage)} ${t('account_usage:points')}`}
+            {t('account_usage:usage_summary', {
+              points: formatNumber(totalUsage),
+              tokens: totalInputTokens + totalOutputTokens
+            })}
           </Box>
         </Flex>
         <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
@@ -112,9 +178,12 @@ const DashboardChart = ({
     return (
       <Box>
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
-          <Box color={'black'}>{`${t('account_usage:total_usage')}:`}</Box>
+          <Box color={'black'}>{t('account_usage:total_usage')}</Box>
           <Box color={'primary.600'} ml={2}>
-            {`${formatNumber(totalUsage)} ${t('account_usage:points')}`}
+            {t('account_usage:usage_summary', {
+              points: formatNumber(totalUsage),
+              tokens: totalInputTokens + totalOutputTokens
+            })}
           </Box>
         </Flex>
         <Box minH={'424px'} py={4} bg={'red.50'} borderRadius={'md'} p={3}>
@@ -130,12 +199,17 @@ const DashboardChart = ({
 
   const { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } = recharts;
 
+  const axisTick = { fontSize: '12px', color: '#667085', fontWeight: '500' };
+
   return (
     <>
       <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
-        <Box color={'black'}>{`${t('account_usage:total_usage')}:`}</Box>
+        <Box color={'black'}>{t('account_usage:total_usage')}</Box>
         <Box color={'primary.600'} ml={2}>
-          {`${formatNumber(totalUsage)} ${t('account_usage:points')}`}
+          {t('account_usage:usage_summary', {
+            points: formatNumber(totalUsage),
+            tokens: totalInputTokens + totalOutputTokens
+          })}
         </Box>
       </Flex>
       <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
@@ -148,21 +222,63 @@ const DashboardChart = ({
             padding={{ left: 40, right: 40 }}
             tickMargin={10}
             tickSize={0}
-            tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
+            tick={axisTick}
           />
-          <YAxis
-            axisLine={false}
-            tickSize={0}
-            tickMargin={12}
-            tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
-          />
+          <YAxis axisLine={false} tickSize={0} tickMargin={12} tick={axisTick} />
           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
           <Tooltip content={<CustomTooltip />} />
           <Line
             type="monotone"
             dataKey="totalPoints"
-            stroke="#5E8FFF"
+            stroke={POINTS_COLOR}
             strokeWidth={2.5}
+            dot={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+      <Flex mb={4} mt={8} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
+        {`Tokens`}
+      </Flex>
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart data={tokenChartData} margin={{ top: 10, right: 30, left: -12, bottom: 0 }}>
+          <XAxis
+            dataKey="date"
+            padding={{ left: 40, right: 40 }}
+            tickMargin={10}
+            tickSize={0}
+            tick={axisTick}
+          />
+          <YAxis
+            axisLine={false}
+            tickSize={0}
+            tickMargin={12}
+            tick={axisTick}
+            tickFormatter={formatTokenYAxis}
+          />
+          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+          <Tooltip content={<TokenTooltip />} />
+          <Line
+            type="monotone"
+            dataKey="totalTokens"
+            name={t('account_usage:total_tokens')}
+            stroke={TOTAL_TOKENS_COLOR}
+            strokeWidth={2.5}
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="inputTokens"
+            name={t('account_usage:input_tokens')}
+            stroke={INPUT_TOKENS_COLOR}
+            strokeWidth={2}
+            dot={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="outputTokens"
+            name={t('account_usage:output_tokens')}
+            stroke={OUTPUT_TOKENS_COLOR}
+            strokeWidth={2}
             dot={false}
           />
         </LineChart>

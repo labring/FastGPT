@@ -244,6 +244,8 @@ export const UserStatsDataPointSchema = z.object({
       newUserCount: NumSchema.meta({ example: 30, description: '新用户数' }),
       retentionUserCount: NumSchema.meta({ example: 70, description: '留存用户数' }),
       points: NumSchema.meta({ example: 1500, description: '积分消耗' }),
+      inputTokens: NumSchema.meta({ example: 50000, description: '输入 Token 消耗' }),
+      outputTokens: NumSchema.meta({ example: 20000, description: '输出 Token 消耗' }),
       sourceCountMap: z.record(z.string(), NumSchema).meta({
         example: { api: 50, web: 30, mobile: 20 },
         description: '各来源用户数量'
@@ -263,7 +265,9 @@ export const ChatStatsDataPointSchema = z.object({
       chatItemCount: NumSchema.meta({ example: 500, description: '消息总数' }),
       chatCount: NumSchema.meta({ example: 100, description: '对话会话总数' }),
       errorCount: NumSchema.meta({ example: 5, description: '报错消息数量' }),
-      points: NumSchema.meta({ example: 800, description: '积分消耗' })
+      points: NumSchema.meta({ example: 800, description: '积分消耗' }),
+      inputTokens: NumSchema.meta({ example: 30000, description: '输入 Token 消耗' }),
+      outputTokens: NumSchema.meta({ example: 10000, description: '输出 Token 消耗' })
     })
     .meta({
       description: '当前时间桶内的对话统计汇总'
@@ -317,6 +321,14 @@ export const GetTotalDataResponseSchema = z.object({
   totalPoints: NumSchema.meta({
     example: 15000,
     description: '总积分消耗'
+  }),
+  totalInputTokens: NumSchema.meta({
+    example: 500000,
+    description: '总输入 Token 消耗'
+  }),
+  totalOutputTokens: NumSchema.meta({
+    example: 200000,
+    description: '总输出 Token 消耗'
   })
 });
 export type getTotalDataResponse = z.infer<typeof GetTotalDataResponseSchema>;
