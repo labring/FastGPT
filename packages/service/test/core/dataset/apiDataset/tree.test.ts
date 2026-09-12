@@ -3,12 +3,12 @@ import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/consta
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { buildApiFileTree } from '../../../../core/dataset/apiDataset/tree';
 
-/** 造一个 listFiles 返回的 server 节点；rawId 与 id 一致即可，遍历只用 id */
+/** 造一个 listFiles 返回的 server 节点；name 刻意与 id 不同，用于断言 name 被原样透传 */
 const file = (id: string, type: 'file' | 'folder', hasChild = false): APIFileItemType => ({
   id,
   rawId: id,
   parentId: '',
-  name: id,
+  name: `name-${id}`,
   type,
   hasChild,
   updateTime: new Date(),
@@ -35,7 +35,7 @@ describe('buildApiFileTree', () => {
 
   /**
    * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（正常场景）: 4 层树 l1>l2>l3>l4(file)，父先子后返回且 depth / serverParentId 逐层正确
+   * 思路（正常场景）: 4 层树 l1>l2>l3>l4(file)，父先子后返回，name / depth / serverParentId 逐层正确
    */
   it('T1-1: 4 层树父先子后返回，depth 与 serverParentId 逐层正确', async () => {
     mockFourLevelTree(listFiles);
@@ -43,12 +43,12 @@ describe('buildApiFileTree', () => {
     const nodes = await buildApiFileTree({ request, seeds: [file('l1', 'folder', true)] });
 
     expect(
-      nodes.map((node) => [node.serverId, node.type, node.depth, node.serverParentId])
+      nodes.map((node) => [node.serverId, node.name, node.type, node.depth, node.serverParentId])
     ).toEqual([
-      ['l1', 'folder', 0, null],
-      ['l2', 'folder', 1, 'l1'],
-      ['l3', 'folder', 2, 'l2'],
-      ['l4', 'file', 3, 'l3']
+      ['l1', 'name-l1', 'folder', 0, null],
+      ['l2', 'name-l2', 'folder', 1, 'l1'],
+      ['l3', 'name-l3', 'folder', 2, 'l2'],
+      ['l4', 'name-l4', 'file', 3, 'l3']
     ]);
     expect(listFiles.mock.calls.map((call) => call[0])).toEqual([
       { parentId: 'l1' },
@@ -59,9 +59,9 @@ describe('buildApiFileTree', () => {
 
   /**
    * 被测函数名: buildApiFileTree  等级: 3-High
-   * 思路（回归场景）: 同 4 层树，folder 必须一并保留（旧实现只 push file，folder 数为 0）
+   * 思路（回归场景）: 同 4 层树，folder 节点必须与 file 一并保留
    */
-  it('T1-2: 遍历结果保留 folder 节点（D3 修复，旧实现为 0）', async () => {
+  it('T1-2: 4 层树中的 folder 节点一并保留', async () => {
     mockFourLevelTree(listFiles);
 
     const nodes = await buildApiFileTree({ request, seeds: [file('l1', 'folder', true)] });
@@ -88,7 +88,7 @@ describe('buildApiFileTree', () => {
     expect(nodes[0]).toMatchObject({
       serverId: RootCollectionId,
       type: 'folder',
-      name: RootCollectionId,
+      name: `name-${RootCollectionId}`,
       depth: 0,
       serverParentId: null
     });
@@ -110,7 +110,7 @@ describe('buildApiFileTree', () => {
         serverId: 'empty-folder',
         serverParentId: null,
         type: 'folder',
-        name: 'empty-folder',
+        name: 'name-empty-folder',
         depth: 0,
         hasChild: false
       }
