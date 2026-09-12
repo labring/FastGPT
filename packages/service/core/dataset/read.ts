@@ -259,6 +259,7 @@ export const rawText2Chunks = async ({
 }: {
   rawText: string;
   imageIdList?: string[];
+  chunkTimeoutMs?: number;
 
   chunkTriggerType?: ChunkTriggerConfigTypeEnum;
   chunkTriggerMinSize?: number; // maxSize from agent model, not store
@@ -405,7 +406,7 @@ export const rawText2Chunks = async ({
       url: serviceEnv.SANGFOR_CHUNK_URL,
       key: serviceEnv.SANGFOR_CHUNK_KEY,
       chunkSize,
-      timeoutMs: serviceEnv.SANGFOR_CHUNK_TIMEOUT_MINUTES * 60 * 1000
+      timeoutMs: chunkTimeoutMs ?? serviceEnv.SANGFOR_CHUNK_TIMEOUT_MINUTES * 60 * 1000
     });
   }
 
