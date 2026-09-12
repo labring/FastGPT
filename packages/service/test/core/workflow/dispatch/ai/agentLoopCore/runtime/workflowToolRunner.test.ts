@@ -236,20 +236,19 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
 
     const result = await runTool({ call });
 
-    // runTool 使用子图快照，不应污染父流程共享的 runtimeNodes/runtimeEdges。
-    expect(runtimeNodes[0]).toEqual({
-      nodeId: 'search',
-      inputs: [
-        {
-          key: 'q',
-          value: 'old',
-          renderTypeList: ['input', 'agentGenerated'],
-          selectedType: 'agentGenerated'
-        }
-      ]
-    });
+    // 入口 agent 参数不得写回父图；isEntry / 边 status 等副作用需要回写。
+    expect(runtimeNodes[0].inputs).toEqual([
+      {
+        key: 'q',
+        value: 'old',
+        renderTypeList: ['input', 'agentGenerated'],
+        selectedType: 'agentGenerated'
+      }
+    ]);
+    expect(runtimeNodes[0].isEntry).toBe(true);
     expect(runtimeEdges[0]).toEqual({
-      target: 'search'
+      target: 'search',
+      status: 'active'
     });
     expect(runWorkflowTool).toHaveBeenCalledWith({
       runtimeNodes: [
@@ -337,6 +336,90 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
+    // 交互恢复同样隔离执行；入口 inputs 仍不得被写回父图。
+    expect(runtimeNodes[0].inputs).toEqual([
+      {
+        key: 'q',
+        value: 'old',
+        renderTypeList: ['input', 'agentGenerated'],
+        selectedType: 'agentGenerated'
+      }
+    ]);
+  });
+
+  it('syncs non-entry side effects from isolated tool run back to parent', async () => {
+    const runtimeNodes = [
+      {
+        nodeId: 'tool_entry',
+        inputs: [
+          {
+            key: 'q',
+            value: 'default',
+            renderTypeList: ['input', 'agentGenerated'],
+            selectedType: 'agentGenerated'
+          }
+        ],
+        outputs: [{ id: 'out1', key: 'out1', value: undefined }]
+      },
+      {
+        nodeId: 'other_node',
+        inputs: [{ key: 'x', value: 'keep' }],
+        outputs: [{ id: 'var1', key: 'var1', value: 'before' }]
+      }
+    ];
+    const runtimeEdges = [
+      {
+        source: 'a',
+        sourceHandle: 's',
+        target: 'tool_entry',
+        targetHandle: 't',
+        status: 'waiting'
+      }
+    ];
+    const runWorkflowTool = vi.fn(async ({ runtimeNodes: nodes, runtimeEdges: edges }) => {
+      // 模拟变量更新节点写非入口节点 output，以及交互相关 runtime 状态变更。
+      nodes[1].outputs[0].value = 'after-update';
+      nodes[1].inputs[0].value = 'mutated-input';
+      nodes[1].isEntry = true;
+      edges[0].status = 'active';
+      return {
+        toolResponses: 'ok',
+        assistantResponses: [],
+        flowUsages: [],
+        flowResponses: []
+      };
+    });
+    const { runTool } = createRunner({
+      runtimeNodes,
+      runtimeEdges,
+      runWorkflowTool,
+      getToolInfo: () => ({
+        type: 'user',
+        name: 'Tool',
+        avatar: 'tool-avatar',
+        rawData: {
+          nodeId: 'tool_entry'
+        }
+      })
+    });
+
+    await runTool({
+      call: createCall({
+        id: 'call_1',
+        name: 'tool_entry',
+        args: '{"q":"from-agent"}'
+      })
+    });
+
+    // 入口 agent 参数不得粘在父图上。
+    expect(runtimeNodes[0].inputs).toEqual([
+      expect.objectContaining({ key: 'q', value: 'default' })
+    ]);
+    // 非入口节点的 inputs/outputs/isEntry 与边 status 需要回写。
+    expect(runtimeNodes[1].outputs[0].value).toBe('after-update');
+    expect(runtimeNodes[1].inputs[0].value).toBe('mutated-input');
+    expect(runtimeNodes[1].isEntry).toBe(true);
+    expect(runtimeEdges[0].status).toBe('active');
   });
 
   it('does not retain omitted agent-generated params across same-turn tool calls', async () => {

@@ -305,13 +305,60 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
 };
 
 /**
+ * 将工具隔离子图上的副作用回写到父 runtime graph。
+ *
+ * 隔离保证本次 agent 注入的入口参数不会污染父图；回写保证变量更新写入的
+ * 节点 outputs、交互节点 isEntry，以及边 status 等仍能传递给父流程和后续恢复。
+ * 入口节点的 inputs 刻意不同步，避免同轮第二次调用残留上一次的 agent 参数。
+ */
+export const syncIsolatedWorkflowToolRuntimeSideEffects = ({
+  parentNodes,
+  parentEdges,
+  isolatedNodes,
+  isolatedEdges,
+  entryNodeIds
+}: {
+  parentNodes: RuntimeNodeItemType[];
+  parentEdges: RuntimeEdgeItemType[];
+  isolatedNodes: RuntimeNodeItemType[];
+  isolatedEdges: RuntimeEdgeItemType[];
+  entryNodeIds: string[];
+}) => {
+  const entryNodeIdSet = new Set(entryNodeIds);
+  const isolatedNodeMap = new Map(isolatedNodes.map((node) => [node.nodeId, node]));
+
+  parentNodes.forEach((parentNode) => {
+    const isolatedNode = isolatedNodeMap.get(parentNode.nodeId);
+    if (!isolatedNode) return;
+
+    parentNode.isEntry = isolatedNode.isEntry;
+    parentNode.outputs = cloneDeep(isolatedNode.outputs);
+
+    if (!entryNodeIdSet.has(parentNode.nodeId)) {
+      parentNode.inputs = cloneDeep(isolatedNode.inputs);
+    }
+  });
+
+  const getEdgeKey = (edge: RuntimeEdgeItemType) =>
+    `${edge.source ?? ''}-${edge.sourceHandle ?? ''}-${edge.target ?? ''}-${edge.targetHandle ?? ''}`;
+
+  const isolatedEdgeMap = new Map(isolatedEdges.map((edge) => [getEdgeKey(edge), edge]));
+
+  parentEdges.forEach((parentEdge, index) => {
+    const isolatedEdge = isolatedEdgeMap.get(getEdgeKey(parentEdge)) ?? isolatedEdges[index];
+    if (!isolatedEdge) return;
+    parentEdge.status = isolatedEdge.status;
+  });
+};
+
+/**
  * 创建 workflow 子工具执行器。
  *
  * ToolCall 和未来的简化 Agent 都可以把“某个 runtime node 作为工具入口运行”的能力交给这里。
  * 节点外壳只负责提供实际 runWorkflow 函数、展示信息和缓存/流式回调。
  *
- * runTool 每次执行使用子图快照，避免同一轮内多次调用时污染共享 runtimeNodes 的 inputs。
- * 交互恢复仍复用并修改父流程 runtime graph（与历史行为一致）。
+ * runTool / runInteractiveTool 均使用子图快照隔离执行，结束后将 outputs、isEntry、边 status
+ * 等副作用显式回写到父 runtime graph；入口节点 inputs 不同步，以避免同轮参数残留。
  */
 export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknown>({
   runtimeNodes,
@@ -350,21 +397,27 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
       };
     }
 
+    const entryNodeIds = [toolInfo.rawData.nodeId];
     const startParams = parseJsonArgs(call.function.arguments) ?? {};
     // 与 dataset_search 一致：隔离本次 tool 的 runtime 状态，避免入口参数残留到同轮后续调用。
     const isolatedRuntimeNodes = cloneDeep(runtimeNodes);
     const isolatedRuntimeEdges = cloneDeep(runtimeEdges);
-    initAgentLoopCoreWorkflowToolNodes(
-      isolatedRuntimeNodes,
-      [toolInfo.rawData.nodeId],
-      startParams
-    );
-    initAgentLoopCoreWorkflowToolEdges(isolatedRuntimeEdges, [toolInfo.rawData.nodeId]);
+    initAgentLoopCoreWorkflowToolNodes(isolatedRuntimeNodes, entryNodeIds, startParams);
+    initAgentLoopCoreWorkflowToolEdges(isolatedRuntimeEdges, entryNodeIds);
 
     const toolRunResponse = await runWorkflowTool({
       runtimeNodes: isolatedRuntimeNodes,
       runtimeEdges: isolatedRuntimeEdges
     });
+
+    syncIsolatedWorkflowToolRuntimeSideEffects({
+      parentNodes: runtimeNodes,
+      parentEdges: runtimeEdges,
+      isolatedNodes: isolatedRuntimeNodes,
+      isolatedEdges: isolatedRuntimeEdges,
+      entryNodeIds
+    });
+
     const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);
 
     /**
@@ -385,15 +438,26 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
   }: AgentLoopChildrenInteractiveParams<TChildrenResponse>) => {
     const entryNodeIds = (childrenResponse as { entryNodeIds?: string[] }).entryNodeIds ?? [];
 
-    // 交互恢复沿用原 toolCallId，最终仍由统一 tool_run_end 落 SSE 和运行详情。
-    initAgentLoopCoreWorkflowToolNodes(runtimeNodes, entryNodeIds);
-    initAgentLoopCoreWorkflowToolEdges(runtimeEdges, entryNodeIds);
+    // 交互恢复同样走隔离 + 回写，保证与 runTool 一致，且不把入口 inputs 写回父图。
+    const isolatedRuntimeNodes = cloneDeep(runtimeNodes);
+    const isolatedRuntimeEdges = cloneDeep(runtimeEdges);
+    initAgentLoopCoreWorkflowToolNodes(isolatedRuntimeNodes, entryNodeIds);
+    initAgentLoopCoreWorkflowToolEdges(isolatedRuntimeEdges, entryNodeIds);
 
     const toolRunResponse = await runWorkflowTool({
-      runtimeNodes,
-      runtimeEdges,
+      runtimeNodes: isolatedRuntimeNodes,
+      runtimeEdges: isolatedRuntimeEdges,
       lastInteractive: childrenResponse
     });
+
+    syncIsolatedWorkflowToolRuntimeSideEffects({
+      parentNodes: runtimeNodes,
+      parentEdges: runtimeEdges,
+      isolatedNodes: isolatedRuntimeNodes,
+      isolatedEdges: isolatedRuntimeEdges,
+      entryNodeIds
+    });
+
     const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);
 
     cacheToolFlowResponse?.({
