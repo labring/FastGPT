@@ -1,5 +1,6 @@
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
 import { EntryPointItemsTypeSchema } from '@fastgpt/global/core/app/type';
+import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
 import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
@@ -26,7 +27,7 @@ export const getEntryPointRuntimeVariables = ({
   entryPoints = [],
   inputVariables = {}
 }: {
-  entryPoints?: unknown;
+  entryPoints?: EntryPointItemType[];
   inputVariables?: Record<string, unknown>;
 }): Partial<Record<typeof ENTRY_POINT_VARIABLE_KEY, string>> => {
   const selectedEntryPoint = inputVariables[ENTRY_POINT_VARIABLE_KEY];

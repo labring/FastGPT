@@ -4,6 +4,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
 import {
   getEntryPointRuntimeVariables,
   getWorkflowFileVariableInputs,
@@ -70,13 +71,16 @@ describe('WorkflowVariableState', () => {
     ).toEqual({});
     expect(
       getEntryPointRuntimeVariables({
-        entryPoints: [{ id: 'knowledge', name: 'Knowledge Q&A' }, null],
+        entryPoints: [
+          { id: 'knowledge', name: 'Knowledge Q&A' },
+          null
+        ] as unknown as EntryPointItemType[],
         inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Knowledge Q&A' }
       })
     ).toEqual({});
     expect(
       getEntryPointRuntimeVariables({
-        entryPoints: { id: 'knowledge', name: 'Knowledge Q&A' },
+        entryPoints: { id: 'knowledge', name: 'Knowledge Q&A' } as unknown as EntryPointItemType[],
         inputVariables: { [ENTRY_POINT_VARIABLE_KEY]: 'Knowledge Q&A' }
       })
     ).toEqual({});
