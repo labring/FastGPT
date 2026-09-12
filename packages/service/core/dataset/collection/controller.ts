@@ -13,7 +13,8 @@ import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
-import type { ClientSession } from '../../../common/mongo';
+import type { Types, ClientSession } from '../../../common/mongo';
+import { getLogger, LogCategories } from '../../../common/logger';
 import { createOrGetCollectionTags } from './utils';
 import { rawText2Chunks } from '../read';
 import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
@@ -43,6 +44,136 @@ import type {
   CreateCollectionWithResultResponseType,
   ApiCreateDatasetCollectionParams
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+
+const logger = getLogger(LogCategories.MODULE.DATASET);
+
+/** folder 骨架按层 insertMany 的批大小 */
+export const API_FILE_FOLDER_BATCH_SIZE = 500;
+/** file 单个事务覆盖的节点数上限 */
+export const API_FILE_FILE_BATCH_SIZE = 200;
+
+export type BulkInsertCollectionDoc = {
+  /** 调用方预生成的 ObjectId，以便同轮后续节点直接引用 */
+  _id: Types.ObjectId;
+  name: string;
+  type: DatasetCollectionTypeEnum;
+  apiFileId: string;
+  apiFileParentId?: string | null;
+  parentId: Types.ObjectId | null;
+};
+
+/**
+ * 分批 insertMany 建 folder 骨架，不走事务。
+ * 批失败时按 _id 回查实际落库情况：insertMany 非原子，整批标记失败会漏掉已落库文档，
+ * 后续重新导入又会因 apiFileId 已存在而跳过它们。
+ */
+export const bulkInsertCollections = async ({
+  teamId,
+  tmbId,
+  datasetId,
+  docs
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  docs: BulkInsertCollectionDoc[];
+}): Promise<{ successApiFileIds: string[]; failedApiFileIds: string[] }> => {
+  const successApiFileIds: string[] = [];
+  const failedApiFileIds: string[] = [];
+  if (docs.length === 0) return { successApiFileIds, failedApiFileIds };
+
+  for (let i = 0; i < docs.length; i += API_FILE_FOLDER_BATCH_SIZE) {
+    const batch = docs.slice(i, i + API_FILE_FOLDER_BATCH_SIZE);
+
+    try {
+      // 不写 tags：folder 沿用旧行为不带标签（走 createOneCollection 的旧代码也没传），schema default 为 []
+      await MongoDatasetCollection.insertMany(
+        batch.map((doc) => ({
+          ...doc,
+          teamId,
+          tmbId,
+          datasetId
+        })),
+        { ordered: false }
+      );
+      successApiFileIds.push(...batch.map((doc) => doc.apiFileId));
+    } catch (error) {
+      const landed = await MongoDatasetCollection.find(
+        { teamId, _id: { $in: batch.map((doc) => doc._id) } },
+        '_id'
+      ).lean();
+      const landedIds = new Set(landed.map((item) => String(item._id)));
+
+      for (const doc of batch) {
+        if (landedIds.has(String(doc._id))) successApiFileIds.push(doc.apiFileId);
+        else failedApiFileIds.push(doc.apiFileId);
+      }
+
+      logger.warn('Bulk insert folder batch failed', {
+        teamId,
+        datasetId,
+        batchSize: batch.length,
+        landedSize: landed.length,
+        error
+      });
+    }
+  }
+
+  return { successApiFileIds, failedApiFileIds };
+};
+
+export type BulkUpdateCollectionParentItem = {
+  _id: string;
+  parentId: Types.ObjectId;
+  apiFileParentId: string;
+};
+
+/** 批量校正已存在节点的层级；按目标值直接 $set，重复执行天然幂等。不抛异常。 */
+export const bulkUpdateCollectionsParent = async ({
+  teamId,
+  updates
+}: {
+  teamId: string;
+  updates: BulkUpdateCollectionParentItem[];
+}): Promise<{ successIds: string[]; failedIds: string[] }> => {
+  const successIds: string[] = [];
+  const failedIds: string[] = [];
+  if (updates.length === 0) return { successIds, failedIds };
+
+  try {
+    const result = await MongoDatasetCollection.bulkWrite(
+      updates.map((item) => ({
+        updateOne: {
+          filter: { _id: item._id, teamId },
+          update: {
+            // schema 的 parentId 声明为 string（ObjectIdSchema），传 hex 串由 mongoose 转回 ObjectId
+            $set: { parentId: String(item.parentId), apiFileParentId: item.apiFileParentId }
+          }
+        }
+      })),
+      { ordered: false }
+    );
+
+    const failedIndexes = new Set(
+      ((result as unknown as { writeErrors?: Array<{ index: number }> }).writeErrors ?? []).map(
+        (item) => item.index
+      )
+    );
+    updates.forEach((item, index) => {
+      if (failedIndexes.has(index)) failedIds.push(item._id);
+      else successIds.push(item._id);
+    });
+  } catch (error) {
+    logger.warn('Bulk update collection parent failed', {
+      teamId,
+      count: updates.length,
+      error
+    });
+    failedIds.push(...updates.map((item) => item._id));
+  }
+
+  return { successIds, failedIds };
+};
 
 export const createCollectionAndInsertData = async ({
   dataset,
