@@ -236,21 +236,42 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
 
     const result = await runTool({ call });
 
+    // runTool 使用子图快照，不应污染父流程共享的 runtimeNodes/runtimeEdges。
     expect(runtimeNodes[0]).toEqual({
       nodeId: 'search',
-      isEntry: true,
       inputs: [
         {
           key: 'q',
+          value: 'old',
           renderTypeList: ['input', 'agentGenerated'],
-          selectedType: 'agentGenerated',
-          value: 'FastGPT'
+          selectedType: 'agentGenerated'
         }
       ]
     });
     expect(runtimeEdges[0]).toEqual({
-      target: 'search',
-      status: 'active'
+      target: 'search'
+    });
+    expect(runWorkflowTool).toHaveBeenCalledWith({
+      runtimeNodes: [
+        {
+          nodeId: 'search',
+          isEntry: true,
+          inputs: [
+            {
+              key: 'q',
+              renderTypeList: ['input', 'agentGenerated'],
+              selectedType: 'agentGenerated',
+              value: 'FastGPT'
+            }
+          ]
+        }
+      ],
+      runtimeEdges: [
+        {
+          target: 'search',
+          status: 'active'
+        }
+      ]
     });
     expect(result.response).toBe(JSON.stringify({ answer: 'workflow ok' }, null, 2));
     expect(result.usages).toEqual([usage]);
@@ -316,5 +337,77 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       interactive: undefined,
       stop: false
     });
+  });
+
+  it('does not retain omitted agent-generated params across same-turn tool calls', async () => {
+    const runtimeNodes = [
+      {
+        nodeId: 'mcp_tool',
+        inputs: [
+          {
+            key: 'query',
+            value: '',
+            renderTypeList: ['input', 'agentGenerated'],
+            selectedType: 'agentGenerated'
+          },
+          {
+            key: 'filter',
+            value: '',
+            renderTypeList: ['input', 'agentGenerated'],
+            selectedType: 'agentGenerated'
+          }
+        ]
+      }
+    ];
+    const runtimeEdges = [{ target: 'mcp_tool' }];
+    const runWorkflowTool = vi.fn().mockResolvedValue({
+      toolResponses: 'ok',
+      assistantResponses: [],
+      flowUsages: [],
+      flowResponses: []
+    });
+    const { runTool } = createRunner({
+      runtimeNodes,
+      runtimeEdges,
+      runWorkflowTool,
+      getToolInfo: () => ({
+        type: 'user',
+        name: 'MCP tool',
+        avatar: 'tool-avatar',
+        rawData: {
+          nodeId: 'mcp_tool'
+        }
+      })
+    });
+
+    await runTool({
+      call: createCall({
+        id: 'call_1',
+        name: 'mcp_tool',
+        args: '{"query":"A","filter":"x"}'
+      })
+    });
+    await runTool({
+      call: createCall({
+        id: 'call_2',
+        name: 'mcp_tool',
+        args: '{"query":"B"}'
+      })
+    });
+
+    expect(runWorkflowTool).toHaveBeenCalledTimes(2);
+    expect(runWorkflowTool.mock.calls[0][0].runtimeNodes[0].inputs).toEqual([
+      expect.objectContaining({ key: 'query', value: 'A' }),
+      expect.objectContaining({ key: 'filter', value: 'x' })
+    ]);
+    // 第二次 LLM 未传 filter 时，应回退节点默认值，而不是残留第一次的 "x"。
+    expect(runWorkflowTool.mock.calls[1][0].runtimeNodes[0].inputs).toEqual([
+      expect.objectContaining({ key: 'query', value: 'B' }),
+      expect.objectContaining({ key: 'filter', value: '' })
+    ]);
+    expect(runtimeNodes[0].inputs).toEqual([
+      expect.objectContaining({ key: 'query', value: '' }),
+      expect.objectContaining({ key: 'filter', value: '' })
+    ]);
   });
 });

@@ -310,8 +310,8 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
  * ToolCall 和未来的简化 Agent 都可以把“某个 runtime node 作为工具入口运行”的能力交给这里。
  * 节点外壳只负责提供实际 runWorkflow 函数、展示信息和缓存/流式回调。
  *
- * 已知问题：普通 Workflow Tool 的首次执行和交互恢复都会复用并修改父流程的 runtime graph。
- * 当前保留原有状态传递行为，后续需要通过子流程快照和显式同步完成隔离。
+ * runTool 每次执行使用子图快照，避免同一轮内多次调用时污染共享 runtimeNodes 的 inputs。
+ * 交互恢复仍复用并修改父流程 runtime graph（与历史行为一致）。
  */
 export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknown>({
   runtimeNodes,
@@ -351,12 +351,19 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
     }
 
     const startParams = parseJsonArgs(call.function.arguments) ?? {};
-    initAgentLoopCoreWorkflowToolNodes(runtimeNodes, [toolInfo.rawData.nodeId], startParams);
-    initAgentLoopCoreWorkflowToolEdges(runtimeEdges, [toolInfo.rawData.nodeId]);
+    // 与 dataset_search 一致：隔离本次 tool 的 runtime 状态，避免入口参数残留到同轮后续调用。
+    const isolatedRuntimeNodes = cloneDeep(runtimeNodes);
+    const isolatedRuntimeEdges = cloneDeep(runtimeEdges);
+    initAgentLoopCoreWorkflowToolNodes(
+      isolatedRuntimeNodes,
+      [toolInfo.rawData.nodeId],
+      startParams
+    );
+    initAgentLoopCoreWorkflowToolEdges(isolatedRuntimeEdges, [toolInfo.rawData.nodeId]);
 
     const toolRunResponse = await runWorkflowTool({
-      runtimeNodes,
-      runtimeEdges
+      runtimeNodes: isolatedRuntimeNodes,
+      runtimeEdges: isolatedRuntimeEdges
     });
     const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);
 
