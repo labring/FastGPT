@@ -1,11 +1,10 @@
 ---
 title: 'V4.17.1'
 description: 'FastGPT V4.17.1 release notes'
-releaseTime: '2026-09-12'
+upgradeTags:
+  - IN PROGRESS
 ---
 
-## 🚀 Updates
+## 🐛 Fixes
 
-1. Isolated workflow tool runtime state to prevent tool calls from interfering with one another and improve stability during concurrent execution.
-2. Restored interactive node memory so user interaction data is preserved when workflow tools run.
-3. Improved data passing and streaming responses for workflow tool calls, fixing state handling issues in sub-workflows and tool nodes.
+1. Tool calls now run with isolated workflow tool runtime state, preventing calls from interfering with one another and improving stability during concurrent execution.
