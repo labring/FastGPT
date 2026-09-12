@@ -26,7 +26,7 @@ const createExternalOutputSnapshot = ({
   nodes.forEach((node) => {
     if (childrenSet.has(node.nodeId)) return;
 
-    node.outputs.forEach((output) => {
+    (node.outputs ?? []).forEach((output) => {
       snapshot.set(
         getOutputSnapshotKey({ nodeId: node.nodeId, outputId: output.id }),
         cloneDeep(output.value)
@@ -83,8 +83,10 @@ const syncExternalNodeOutputs = ({
     const sourceNode = sourceNodesMap.get(targetNode.nodeId);
     if (!sourceNode) return;
 
-    const sourceOutputMap = new Map(sourceNode.outputs.map((output) => [output.id, output]));
-    targetNode.outputs.forEach((targetOutput) => {
+    const sourceOutputMap = new Map(
+      (sourceNode.outputs ?? []).map((output) => [output.id, output])
+    );
+    (targetNode.outputs ?? []).forEach((targetOutput) => {
       const sourceOutput = sourceOutputMap.get(targetOutput.id);
       if (!sourceOutput) return;
 
