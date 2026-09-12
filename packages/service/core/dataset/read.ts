@@ -405,7 +405,7 @@ export const rawText2Chunks = async ({
       url: serviceEnv.SANGFOR_CHUNK_URL,
       key: serviceEnv.SANGFOR_CHUNK_KEY,
       chunkSize,
-      timeoutMs: serviceEnv.SANGFOR_CHUNK_TIMEOUT_MINUTES
+      timeoutMs: serviceEnv.SANGFOR_CHUNK_TIMEOUT_MINUTES * 60 * 1000
     });
   }
 
