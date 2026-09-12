@@ -399,7 +399,9 @@ describe('pushChatRecords', () => {
           nodeResponseSummary: {
             citeCollectionIds: [],
             errorCount: 0,
-            totalPoints: 15
+            totalPoints: 15,
+            inputTokens: 0,
+            outputTokens: 0
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -423,7 +425,9 @@ describe('pushChatRecords', () => {
             citeCollectionIds: ['collection-summary'],
             errorCount: 1,
             lastError: 'summary error',
-            totalPoints: 9
+            totalPoints: 9,
+            inputTokens: 120,
+            outputTokens: 34
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -442,6 +446,8 @@ describe('pushChatRecords', () => {
       expect(aiItem?.citeCollectionIds).toEqual(['collection-summary']);
       expect(log?.errorCount).toBe(1);
       expect(log?.totalPoints).toBe(9);
+      expect(log?.totalInputTokens).toBe(120);
+      expect(log?.totalOutputTokens).toBe(34);
       expect(responseCount).toBe(0);
     });
 

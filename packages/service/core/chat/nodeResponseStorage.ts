@@ -36,6 +36,9 @@ export type NodeResponseWriteSummary = {
   errorCount: number;
   lastError?: string;
   totalPoints: number;
+  // 根节点 token 消耗，用于 app chat log 的累计 token 统计
+  inputTokens: number;
+  outputTokens: number;
 };
 
 type ChatItemResponseRowLike = {
@@ -489,13 +492,15 @@ export class WorkflowNodeResponseWriter {
       const contribution: NodeResponseWriteSummary = {
         citeCollectionIds: [],
         errorCount: 0,
-        totalPoints: 0
+        totalPoints: 0,
+        inputTokens: 0,
+        outputTokens: 0
       };
 
       // citeCollectionIds 用于保存聊天记录引用来源；内联 children 里的搜索节点也要兼容收集。
       contribution.citeCollectionIds.push(...collectCiteCollectionIds(row.data));
 
-      // 保存历史统计保持旧逻辑口径：只按根节点累计错误数和积分。
+      // 保存历史统计保持旧逻辑口径：只按根节点累计错误数、积分和 token。
       if (!row.data.parentId) {
         const errorText = row.data.errorText || row.data.error;
         if (errorText) {
@@ -503,13 +508,17 @@ export class WorkflowNodeResponseWriter {
           contribution.lastError = String(errorText);
         }
         contribution.totalPoints = row.data.totalPoints || 0;
+        contribution.inputTokens = row.data.inputTokens || 0;
+        contribution.outputTokens = row.data.outputTokens || 0;
       }
 
       const identityKey = getNodeResponseIdentityKey(row.data);
       if (
         contribution.citeCollectionIds.length > 0 ||
         contribution.errorCount > 0 ||
-        contribution.totalPoints !== 0
+        contribution.totalPoints !== 0 ||
+        contribution.inputTokens !== 0 ||
+        contribution.outputTokens !== 0
       ) {
         // 相同展示节点后到的 row 覆盖前一次贡献，保证重试/完成态更新后摘要不重复累计。
         this.summaryContributions.set(identityKey, contribution);
@@ -737,6 +746,8 @@ export class WorkflowNodeResponseWriter {
     let errorCount = 0;
     let lastError: string | undefined;
     let totalPoints = 0;
+    let inputTokens = 0;
+    let outputTokens = 0;
 
     this.summaryContributions.forEach((contribution) => {
       // collectionId 去重，避免同一引用在节点更新或多次搜索中重复记录。
@@ -745,6 +756,8 @@ export class WorkflowNodeResponseWriter {
       });
       errorCount += contribution.errorCount;
       totalPoints += contribution.totalPoints;
+      inputTokens += contribution.inputTokens;
+      outputTokens += contribution.outputTokens;
       if (contribution.lastError) {
         lastError = contribution.lastError;
       }
@@ -754,7 +767,9 @@ export class WorkflowNodeResponseWriter {
       citeCollectionIds: Array.from(citeCollectionIds),
       errorCount,
       lastError,
-      totalPoints
+      totalPoints,
+      inputTokens,
+      outputTokens
     };
   }
 

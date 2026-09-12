@@ -55,6 +55,8 @@ export type UsageListItemType = {
   appName: string;
   source: UsageSchemaType['source'];
   totalPoints: number;
+  inputTokens: number;
+  outputTokens: number;
   list: Omit<UsageItemType, 'itemType'>[];
   sourceMember: SourceMemberType;
 };
