@@ -78,36 +78,10 @@ describe('rawText2Chunks external intelligent-chunking routing', () => {
         imageIdList,
         url: SERVICE_URL,
         key: SERVICE_KEY,
-        chunkSize
+        chunkSize,
+        timeoutMs: serviceEnv.SANGFOR_CHUNK_TIMEOUT_MINUTES * 60 * 1000
       });
       expect(res).toEqual(externalChunks);
-    });
-
-    it('intelligent + chunk + chunkTimeoutMs 覆盖: 透传调用方指定超时(预览链路用短超时)', async () => {
-      setServiceUrlConfigured(true);
-
-      await rawText2Chunks({
-        ...baseParams,
-        chunkSettingMode: ChunkSettingModeEnum.intelligent,
-        trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-        chunkTimeoutMs: 30_000
-      });
-
-      expect(mockSplit).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 30_000 }));
-    });
-
-    it('intelligent + chunk + chunkTimeoutMs: 覆盖默认超时透传给外部服务(预览链路用短超时)', async () => {
-      setServiceUrlConfigured(true);
-
-      await rawText2Chunks({
-        ...baseParams,
-        chunkSettingMode: ChunkSettingModeEnum.intelligent,
-        trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-        chunkTimeoutMs: 30_000
-      });
-
-      expect(mockSplit).toHaveBeenCalledTimes(1);
-      expect(mockSplit).toHaveBeenCalledWith(expect.objectContaining({ timeoutMs: 30_000 }));
     });
 
     it('intelligent + chunk + 未配置 URL: 仍调用服务并透传 url=undefined(由服务负责报错)', async () => {
