@@ -2,11 +2,8 @@ import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import Papa from 'papaparse';
 import XLSX from 'xlsx';
-import {
-  getXlsxParseLimits,
-  readXlsxRawText,
-  XLSX_PARSE_LIMITS
-} from '@fastgpt/service/worker/readFile/extension/xlsx';
+import { readXlsxRawText } from '@fastgpt/service/worker/readFile/extension/xlsx';
+import { getXlsxParseLimits, XLSX_PARSE_LIMITS } from '@fastgpt/service/common/file/xlsxLimits';
 
 describe('readXlsxRawText', () => {
   const updateWorksheetXml = async ({

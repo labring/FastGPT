@@ -1,4 +1,5 @@
 import { type Entry, fromBuffer, type ZipFile } from 'yauzl';
+import { XlsxValidationError } from '../../../common/file/xlsxError';
 
 const maxXlsxEntries = 10_000;
 const maxXmlTagBytes = 64 * 1024;
@@ -235,11 +236,15 @@ const validateRangeCoordinates = ({
   limits: XlsxPreflightLimits;
 }) => {
   if (range.e.r + 1 > limits.maxRows) {
-    throw new Error(`XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`);
+    throw new XlsxValidationError(
+      `XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`,
+      { code: 'ROWS_LIMIT' }
+    );
   }
   if (range.e.c + 1 > limits.maxColumns) {
-    throw new Error(
-      `XLSX worksheet "${path}" exceeds the maximum column limit of ${limits.maxColumns}`
+    throw new XlsxValidationError(
+      `XLSX worksheet "${path}" exceeds the maximum column limit of ${limits.maxColumns}`,
+      { code: 'COLUMNS_LIMIT' }
     );
   }
 };
@@ -297,8 +302,9 @@ const createWorksheetInspector = ({
       if (name === 'row') {
         rowElementCount += 1;
         if (rowElementCount > limits.maxRows) {
-          throw new Error(
-            `XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`
+          throw new XlsxValidationError(
+            `XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`,
+            { code: 'ROWS_LIMIT' }
           );
         }
         const rowReference = getTagAttribute({ tag, name: 'r' });
@@ -309,8 +315,9 @@ const createWorksheetInspector = ({
         currentRow = rowNumber - 1;
         currentColumn = -1;
         if (currentRow + 1 > limits.maxRows) {
-          throw new Error(
-            `XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`
+          throw new XlsxValidationError(
+            `XLSX worksheet "${path}" exceeds the maximum row limit of ${limits.maxRows}`,
+            { code: 'ROWS_LIMIT' }
           );
         }
         return;

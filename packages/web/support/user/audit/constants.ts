@@ -12,6 +12,16 @@ export const adminAuditLogMap = {
     typeLabel: i18nT('account_team:admin_add_user'),
     params: {} as { name?: string; userName: string }
   },
+  [AdminAuditEventEnum.ADMIN_IMPORT_USERS]: {
+    content: i18nT('account_team:log_admin_import_users'),
+    typeLabel: i18nT('account_team:admin_import_users'),
+    params: {} as {
+      successCount: number;
+      failedCount: number;
+      teamMode: 'single' | 'multi';
+      stoppedEarly: boolean;
+    }
+  },
   [AdminAuditEventEnum.ADMIN_UPDATE_USER]: {
     content: i18nT('account_team:log_admin_update_user'),
     typeLabel: i18nT('account_team:admin_update_user'),
