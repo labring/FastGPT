@@ -94,24 +94,36 @@ export const bulkInsertCollections = async ({
       );
       successApiFileIds.push(...batch.map((doc) => doc.apiFileId));
     } catch (error) {
-      const landed = await MongoDatasetCollection.find(
-        { teamId, _id: { $in: batch.map((doc) => doc._id) } },
-        '_id'
-      ).lean();
-      const landedIds = new Set(landed.map((item) => String(item._id)));
+      try {
+        const landed = await MongoDatasetCollection.find(
+          { teamId, _id: { $in: batch.map((doc) => doc._id) } },
+          '_id'
+        ).lean();
+        const landedIds = new Set(landed.map((item) => String(item._id)));
 
-      for (const doc of batch) {
-        if (landedIds.has(String(doc._id))) successApiFileIds.push(doc.apiFileId);
-        else failedApiFileIds.push(doc.apiFileId);
+        for (const doc of batch) {
+          if (landedIds.has(String(doc._id))) successApiFileIds.push(doc.apiFileId);
+          else failedApiFileIds.push(doc.apiFileId);
+        }
+
+        logger.warn('Bulk insert folder batch failed', {
+          teamId,
+          datasetId,
+          batchSize: batch.length,
+          landedSize: landed.length,
+          error
+        });
+      } catch (recoveryError) {
+        // 回查自身也会失败（如 DB 不可达），此时无法判定落库情况，整批按失败上报
+        logger.warn('Bulk insert folder batch failed and recovery query failed', {
+          teamId,
+          datasetId,
+          batchSize: batch.length,
+          error,
+          recoveryError
+        });
+        failedApiFileIds.push(...batch.map((doc) => doc.apiFileId));
       }
-
-      logger.warn('Bulk insert folder batch failed', {
-        teamId,
-        datasetId,
-        batchSize: batch.length,
-        landedSize: landed.length,
-        error
-      });
     }
   }
 
