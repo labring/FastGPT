@@ -572,4 +572,51 @@ describe('createApiDatasetCollection', () => {
       })
     );
   });
+
+  it('T3-20 根哨兵 scope：server 根级 folder/file 的本地父级是哨兵行（与同步路径收敛）', async () => {
+    setServerTree({
+      'dingtalk-root': [apiFile('root-folder', 'folder', true), apiFile('root-file', 'file')],
+      'root-folder': [apiFile('deep-file', 'file')]
+    });
+
+    const dataset = createDataset({
+      dingtalkServer: {
+        appKey: 'ding-app',
+        userId: 'user-id',
+        rootNodeId: 'dingtalk-root'
+      }
+    });
+
+    await createApiDatasetCollection({
+      datasetId: 'dataset-id',
+      apiFiles: [apiFile(RootCollectionId, 'folder', true, 'ROOT_FOLDER')],
+      customPdfParse: false,
+      trainingType: 'chunk',
+      teamId: 'team-id',
+      tmbId: 'tmb-id',
+      dataset
+    } as any);
+
+    const sentinel = findFolder(RootCollectionId);
+    expect(sentinel).toBeTruthy();
+    // 哨兵自身落在 dataset 根（没有请求体父级）
+    expect(sentinel.parentId).toBeNull();
+
+    // server 根级 folder 挂在哨兵行之下，直系 server 父级记为哨兵 id
+    expect(String(findFolder('root-folder').parentId)).toBe(String(sentinel._id));
+    expect(findFolder('root-folder').apiFileParentId).toBe(RootCollectionId);
+
+    // server 根级 file 同样挂在哨兵行之下，而不是 dataset 根
+    const rootFileParams = createdFileParams().find(
+      (params: any) => params.apiFileId === 'root-file'
+    );
+    expect(rootFileParams.parentId).toBe(String(sentinel._id));
+    expect(rootFileParams.apiFileParentId).toBe(RootCollectionId);
+    // 子级 file 的父级是 root-folder 行
+    const deepFileParams = createdFileParams().find(
+      (params: any) => params.apiFileId === 'deep-file'
+    );
+    expect(deepFileParams.parentId).toBe(String(findFolder('root-folder')._id));
+    expect(deepFileParams.apiFileParentId).toBe('root-folder');
+  });
 });
