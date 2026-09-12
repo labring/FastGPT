@@ -207,11 +207,15 @@ const getChatDataLog = async ({
 
   const errorCount = nodeResponseSummary?.errorCount ? 1 : 0;
   const totalPoints = nodeResponseSummary?.totalPoints ?? 0;
+  const totalInputTokens = nodeResponseSummary?.inputTokens ?? 0;
+  const totalOutputTokens = nodeResponseSummary?.outputTokens ?? 0;
 
   return {
     fifteenMinutesAgo,
     errorCount,
     totalPoints,
+    totalInputTokens,
+    totalOutputTokens,
     now
   };
 };
@@ -397,7 +401,14 @@ export const finalizeChatRound = async (props: Props) => {
   // App 统计日志不是主链路强依赖，失败只记录日志，不影响 chat item 和 chat 主数据保存。
   if (chatSource.sourceType === ChatSourceTypeEnum.app) {
     try {
-      const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+      const {
+        fifteenMinutesAgo,
+        errorCount,
+        totalPoints,
+        totalInputTokens,
+        totalOutputTokens,
+        now
+      } = await getChatDataLog({
         nodeResponseSummary: props.nodeResponseSummary
       });
       const userId = String(outLinkUid || tmbId);
@@ -421,6 +432,8 @@ export const finalizeChatRound = async (props: Props) => {
             chatItemCount: 1,
             errorCount,
             totalPoints,
+            totalInputTokens,
+            totalOutputTokens,
             totalResponseTime: durationSeconds
           },
           $set: {
@@ -632,7 +645,14 @@ export const pushChatRecords = async (props: Props) => {
     // Create app chat data log
     if (chatSource.sourceType === ChatSourceTypeEnum.app) {
       try {
-        const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+        const {
+          fifteenMinutesAgo,
+          errorCount,
+          totalPoints,
+          totalInputTokens,
+          totalOutputTokens,
+          now
+        } = await getChatDataLog({
           nodeResponseSummary
         });
         const userId = String(outLinkUid || tmbId);
@@ -656,6 +676,8 @@ export const pushChatRecords = async (props: Props) => {
               chatItemCount: 1,
               errorCount,
               totalPoints,
+              totalInputTokens,
+              totalOutputTokens,
               totalResponseTime: durationSeconds
             },
             $set: {
@@ -1035,9 +1057,10 @@ export const updateInteractiveChat = async ({
   }
 
   try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-      nodeResponseSummary: props.nodeResponseSummary
-    });
+    const { fifteenMinutesAgo, errorCount, totalPoints, totalInputTokens, totalOutputTokens, now } =
+      await getChatDataLog({
+        nodeResponseSummary: props.nodeResponseSummary
+      });
 
     await MongoAppChatLog.updateOne(
       {
@@ -1051,6 +1074,8 @@ export const updateInteractiveChat = async ({
           chatItemCount: 1,
           errorCount,
           totalPoints,
+          totalInputTokens,
+          totalOutputTokens,
           totalResponseTime: durationSeconds
         },
         $set: {

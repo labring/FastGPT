@@ -971,7 +971,9 @@ describe('WorkflowNodeResponseWriter', () => {
       citeCollectionIds: ['collection-from-dropped-row'],
       errorCount: 1,
       lastError: 'root failed',
-      totalPoints: 8
+      totalPoints: 8,
+      inputTokens: 0,
+      outputTokens: 0
     });
   });
 
@@ -988,6 +990,8 @@ describe('WorkflowNodeResponseWriter', () => {
       makeResponse({
         id: 'root-error',
         totalPoints: 10,
+        inputTokens: 234,
+        outputTokens: 56,
         errorText: 'failed',
         childrenResponses: [
           makeResponse({
@@ -1014,7 +1018,10 @@ describe('WorkflowNodeResponseWriter', () => {
       citeCollectionIds: ['collection-1'],
       errorCount: 1,
       lastError: 'failed',
-      totalPoints: 10
+      totalPoints: 10,
+      // 子节点 token 不计入，口径与 totalPoints 一致：只统计根节点
+      inputTokens: 234,
+      outputTokens: 56
     });
   });
 

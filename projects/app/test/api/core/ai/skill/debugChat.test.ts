@@ -356,7 +356,9 @@ describe('debugChat handler — parameter validation', () => {
       nodeResponseSummary: {
         citeCollectionIds: [],
         errorCount: 0,
-        totalPoints: 0
+        totalPoints: 0,
+        inputTokens: 0,
+        outputTokens: 0
       }
     });
     debugChatMocks.finalizeChatRound.mockResolvedValue(undefined);
