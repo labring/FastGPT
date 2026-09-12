@@ -1521,7 +1521,7 @@ export class WorkflowQueue {
     const nodeOutputs: NodeOutputItemType[] = [];
     this.data.runtimeNodes.forEach((node) => {
       node.outputs.forEach((output) => {
-        if (output.value) {
+        if (output.value !== undefined) {
           nodeOutputs.push({
             nodeId: node.nodeId,
             key: output.key as NodeOutputKeyEnum,
