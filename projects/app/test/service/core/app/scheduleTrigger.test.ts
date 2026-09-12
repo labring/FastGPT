@@ -125,7 +125,9 @@ describe('getScheduleTriggerApp', () => {
       nodeResponseSummary: {
         citeCollectionIds: [],
         errorCount: 0,
-        totalPoints: 0
+        totalPoints: 0,
+        inputTokens: 0,
+        outputTokens: 0
       }
     });
     mocks.preChatRound.mockResolvedValue({
@@ -167,7 +169,9 @@ describe('getScheduleTriggerApp', () => {
       nodeResponseSummary: {
         citeCollectionIds: [],
         errorCount: 0,
-        totalPoints: 0
+        totalPoints: 0,
+        inputTokens: 0,
+        outputTokens: 0
       }
     });
   });

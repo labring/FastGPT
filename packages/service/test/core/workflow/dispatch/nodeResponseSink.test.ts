@@ -10,7 +10,9 @@ const createWriter = () => ({
   getSummary: vi.fn(() => ({
     errorCount: 0,
     citeCollectionIds: [],
-    totalPoints: 0
+    totalPoints: 0,
+    inputTokens: 0,
+    outputTokens: 0
   })),
   getFlatNodeResponses: vi.fn(() => [])
 });

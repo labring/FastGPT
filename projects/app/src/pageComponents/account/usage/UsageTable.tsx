@@ -1,6 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import { formatNumber } from '@fastgpt/global/common/math/tools';
+import { formatNumber, formatTokenCount } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
