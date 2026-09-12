@@ -1,4 +1,5 @@
 import {
+  ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
   DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
@@ -6,6 +7,8 @@ import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '../../common/string/textSplitter';
 import { readFileContentBySource } from '../../common/file/read/utils';
 import { getApiDatasetRequest } from './apiDataset';
+import { splitByExternalChunkService } from './externalChunk';
+import { serviceEnv } from '../../env';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { text2Chunks } from '../../worker/function';
@@ -18,6 +21,9 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
 import { createExternalHttpFileSource } from '../../common/file/read/source';
 import { getTeamFileSizeLimitBytes } from '../../support/permission/fileLimit';
+import { getLogger, LogCategories } from '../../common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
 const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'indexes', 'metadata']);
 
@@ -249,6 +255,8 @@ export const rawText2Chunks = async ({
   backupParse,
   chunkSize = 512,
   imageIdList,
+  chunkSettingMode,
+  useExternalChunk,
   ...splitProps
 }: {
   rawText: string;
@@ -259,6 +267,9 @@ export const rawText2Chunks = async ({
 
   backupParse?: boolean;
   tableParse?: boolean;
+  // 仅主文档解析/导入流程显式开启,配合 chunkSettingMode=auto(智能分块)走外部自研分块服务
+  chunkSettingMode?: ChunkSettingModeEnum;
+  useExternalChunk?: boolean;
 } & TextSplitProps): Promise<
   {
     q: string;
@@ -382,6 +393,43 @@ export const rawText2Chunks = async ({
     if (textLength < chunkTriggerMinSize) {
       return [{ q: rawText, a: '', imageIdList }];
     }
+  }
+
+  // 智能分块: chunkSettingMode=auto 且主解析/导入流程显式开启时,把「文本→chunk」委托给外部自研分块服务。
+  // 未配置 CHUNKING_SERVICE_URL 则保持既有本地分块逻辑(智能分块入口在未配置时本就不对 UI 开放)。
+  const externalChunkUrl = serviceEnv.CHUNKING_SERVICE_URL;
+  const shouldUseExternalChunk = Boolean(
+    useExternalChunk &&
+    chunkSettingMode === ChunkSettingModeEnum.auto &&
+    externalChunkUrl
+  );
+
+  logger.info('Smart chunking decision', {
+    useExternalChunk: Boolean(useExternalChunk),
+    chunkSettingMode,
+    hasServiceUrl: Boolean(serviceEnv.CHUNKING_SERVICE_URL),
+    willUseExternalChunk: shouldUseExternalChunk,
+    textLength: rawText.trim().length,
+    chunkTriggerType,
+    chunkTriggerMinSize,
+    chunkSize
+  });
+
+  if (shouldUseExternalChunk && externalChunkUrl) {
+    const externalChunks = await splitByExternalChunkService({
+      text: rawText,
+      url: externalChunkUrl,
+      key: serviceEnv.CHUNKING_SERVICE_KEY,
+      chunkSize,
+      timeoutMs: serviceEnv.CHUNKING_SERVICE_TIMEOUT * 60 * 1000
+    });
+
+    return externalChunks.map((item) => ({
+      q: item,
+      a: '',
+      indexes: [],
+      imageIdList
+    }));
   }
 
   const { chunks } = await text2Chunks({

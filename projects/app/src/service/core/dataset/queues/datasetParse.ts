@@ -5,6 +5,7 @@ import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
 import { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
+  ChunkSettingModeEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   DatasetSourceReadTypeEnum,
@@ -362,6 +363,10 @@ export const datasetParseQueue = async (): Promise<any> => {
           overlapRatio:
             collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
           customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
+          chunkSettingMode: collection.chunkSettingMode,
+          useExternalChunk:
+            collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+            collection.chunkSettingMode === ChunkSettingModeEnum.auto,
           backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
         });
 
