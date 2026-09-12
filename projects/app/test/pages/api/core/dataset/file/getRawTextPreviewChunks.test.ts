@@ -33,7 +33,9 @@ vi.mock('@fastgpt/global/core/dataset/training/utils', () => ({
     chunkSize: 500,
     paragraphChunkDeep: 1,
     paragraphChunkMinSize: 100,
-    chunkSplitter: ''
+    chunkSplitter: '',
+    chunkSettingMode: 'intelligent',
+    trainingType: 'chunk'
   })),
   getLLMMaxChunkSize: vi.fn(() => 1000),
   minChunkSize: 64,
@@ -102,6 +104,23 @@ describe('getRawTextPreviewChunks', () => {
         chunkSize: 500,
         overlapRatio: 0.2,
         maxChunks: 50_000
+      })
+    );
+  });
+
+  // 预览必须和导入走同一条分块路径，否则智能分块的预览结果与实际入库结果不一致。
+  it('forwards chunkSettingMode and trainingType to chunk splitting', async () => {
+    await callHandler({
+      datasetId,
+      rawText: 'hello world',
+      overlapRatio: 0.2,
+      chunkSize: 500
+    });
+
+    expect(mocks.rawText2Chunks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chunkSettingMode: 'intelligent',
+        trainingType: 'chunk'
       })
     );
   });

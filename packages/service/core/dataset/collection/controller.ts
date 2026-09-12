@@ -1,7 +1,6 @@
 import { getModelHandle } from '../../ai/model';
 import { getDatasetModelReference } from '../model';
 import {
-  ChunkSettingModeEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
@@ -156,9 +155,7 @@ export const createCollectionAndInsertData = async ({
           ? [formatCreateCollectionParams.chunkSplitter]
           : [],
         chunkSettingMode: formatCreateCollectionParams.chunkSettingMode,
-        useExternalChunk:
-          trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
-          formatCreateCollectionParams.chunkSettingMode === ChunkSettingModeEnum.auto,
+        trainingType,
         backupParse
       });
       return {

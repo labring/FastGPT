@@ -209,7 +209,9 @@ export enum ChunkTriggerConfigTypeEnum {
 }
 export enum ChunkSettingModeEnum {
   auto = 'auto',
-  custom = 'custom'
+  custom = 'custom',
+  // 文本→chunk 委托给外部智能分块服务,平台不做本地切分
+  intelligent = 'intelligent'
 }
 
 export enum DataChunkSplitModeEnum {

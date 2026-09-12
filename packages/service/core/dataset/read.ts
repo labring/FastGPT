@@ -1,13 +1,14 @@
 import {
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
+  DatasetCollectionDataProcessModeEnum,
   DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '../../common/string/textSplitter';
 import { readFileContentBySource } from '../../common/file/read/utils';
 import { getApiDatasetRequest } from './apiDataset';
-import { splitByExternalChunkService } from './externalChunk';
+import { chunkByIultmzh } from '../../thirdProvider/sangfor/chunk';
 import { serviceEnv } from '../../env';
 import Papa from 'papaparse';
 import type { ApiDatasetServerType } from '@fastgpt/global/core/dataset/apiDataset/type';
@@ -21,9 +22,6 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { getBackendFileOperationTimeoutMs } from '../../common/file/parseTimeout';
 import { createExternalHttpFileSource } from '../../common/file/read/source';
 import { getTeamFileSizeLimitBytes } from '../../support/permission/fileLimit';
-import { getLogger, LogCategories } from '../../common/logger';
-
-const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
 const datasetCsvColumnTypes = new Set(['q', 'a', 'index', 'indexes', 'metadata']);
 
@@ -256,7 +254,8 @@ export const rawText2Chunks = async ({
   chunkSize = 512,
   imageIdList,
   chunkSettingMode,
-  useExternalChunk,
+  trainingType,
+  chunkTimeoutMs,
   ...splitProps
 }: {
   rawText: string;
@@ -267,9 +266,11 @@ export const rawText2Chunks = async ({
 
   backupParse?: boolean;
   tableParse?: boolean;
-  // 仅主文档解析/导入流程显式开启,配合 chunkSettingMode=auto(智能分块)走外部自研分块服务
+  // chunkSettingMode=intelligent 且训练类型为 chunk 时,「文本→chunk」委托给外部智能分块服务
   chunkSettingMode?: ChunkSettingModeEnum;
-  useExternalChunk?: boolean;
+  trainingType?: DatasetCollectionDataProcessModeEnum;
+  // 覆盖 SANGFOR_CHUNK_TIMEOUT(默认 60 分钟)。交互式预览链路传短超时,避免外部服务慢/不可用时长时间挂住
+  chunkTimeoutMs?: number;
 } & TextSplitProps): Promise<
   {
     q: string;
@@ -395,41 +396,20 @@ export const rawText2Chunks = async ({
     }
   }
 
-  // 智能分块: chunkSettingMode=auto 且主解析/导入流程显式开启时,把「文本→chunk」委托给外部自研分块服务。
-  // 未配置 CHUNKING_SERVICE_URL 则保持既有本地分块逻辑(智能分块入口在未配置时本就不对 UI 开放)。
-  const externalChunkUrl = serviceEnv.CHUNKING_SERVICE_URL;
-  const shouldUseExternalChunk = Boolean(
-    useExternalChunk &&
-    chunkSettingMode === ChunkSettingModeEnum.auto &&
-    externalChunkUrl
-  );
-
-  logger.info('Smart chunking decision', {
-    useExternalChunk: Boolean(useExternalChunk),
-    chunkSettingMode,
-    hasServiceUrl: Boolean(serviceEnv.CHUNKING_SERVICE_URL),
-    willUseExternalChunk: shouldUseExternalChunk,
-    textLength: rawText.trim().length,
-    chunkTriggerType,
-    chunkTriggerMinSize,
-    chunkSize
-  });
-
-  if (shouldUseExternalChunk && externalChunkUrl) {
-    const externalChunks = await splitByExternalChunkService({
+  // 智能分块: chunkSettingMode=intelligent 且训练类型为 chunk 时,把「文本→chunk」委托给 sangfor 智能分块服务。
+  // 未配置服务地址、请求失败、响应异常都由 chunkByIultmzh 抛错,不静默回退本地分块。
+  if (
+    trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+    chunkSettingMode === ChunkSettingModeEnum.intelligent
+  ) {
+    return chunkByIultmzh({
       text: rawText,
-      url: externalChunkUrl,
-      key: serviceEnv.CHUNKING_SERVICE_KEY,
+      imageIdList,
+      url: serviceEnv.SANGFOR_CHUNK_URL,
+      key: serviceEnv.SANGFOR_CHUNK_KEY,
       chunkSize,
-      timeoutMs: serviceEnv.CHUNKING_SERVICE_TIMEOUT * 60 * 1000
+      timeoutMs: chunkTimeoutMs ?? serviceEnv.SANGFOR_CHUNK_TIMEOUT * 60 * 1000
     });
-
-    return externalChunks.map((item) => ({
-      q: item,
-      a: '',
-      indexes: [],
-      imageIdList
-    }));
   }
 
   const { chunks } = await text2Chunks({

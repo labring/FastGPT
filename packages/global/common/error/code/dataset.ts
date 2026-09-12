@@ -15,7 +15,10 @@ export enum DatasetErrEnum {
   notSupportSync = 'notSupportSync',
   sameApiCollection = 'sameApiCollection',
   noApiServer = 'noApiServer',
-  canNotEditAdminPermission = 'canNotEditAdminPermission'
+  canNotEditAdminPermission = 'canNotEditAdminPermission',
+  externalChunkFailed = 'externalChunkFailed',
+  externalChunkInvalidResponse = 'externalChunkInvalidResponse',
+  externalChunkNotConfigured = 'externalChunkNotConfigured'
 }
 const datasetErr = [
   {
@@ -69,6 +72,18 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.noApiServer,
     message: i18nT('common:core.dataset.error.noApiServer')
+  },
+  {
+    statusText: DatasetErrEnum.externalChunkFailed,
+    message: i18nT('dataset:chunk_error.failed')
+  },
+  {
+    statusText: DatasetErrEnum.externalChunkInvalidResponse,
+    message: i18nT('dataset:chunk_error.invalid_response')
+  },
+  {
+    statusText: DatasetErrEnum.externalChunkNotConfigured,
+    message: i18nT('dataset:chunk_error.not_configured')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

@@ -179,16 +179,16 @@ export const serviceEnv = createEnv({
     }),
 
     // ==================== 智能分块 ====================
-    // 配置后，导入文档(文本/PDF/网页)当 chunkSettingMode=auto(智能分块) 时，把「文本→chunk」委托给该服务。
-    // 未配置则保持平台既有本地分块逻辑。
-    CHUNKING_SERVICE_URL: UrlSchema.optional().meta({
-      description: '自研智能分块服务地址(文本→chunk)'
+    // 配置后，导入文档(文本/PDF/网页)当 chunkSettingMode=intelligent(智能分块) 时，把「文本→chunk」委托给 sangfor 服务。
+    // 未配置时智能分块不可用,已启用智能分块的集合导入会显式报错,不影响平台其他分块功能。
+    SANGFOR_CHUNK_URL: UrlSchema.optional().meta({
+      description: 'sangfor 智能分块服务地址'
     }),
-    CHUNKING_SERVICE_KEY: z.string().optional().meta({
-      description: '自研智能分块服务密钥(Bearer Token)'
+    SANGFOR_CHUNK_KEY: z.string().optional().meta({
+      description: 'sangfor 智能分块服务密钥(Bearer Token)'
     }),
-    CHUNKING_SERVICE_TIMEOUT: IntSchema.min(1).default(60).meta({
-      description: '自研智能分块服务超时时间(分钟)'
+    SANGFOR_CHUNK_TIMEOUT: IntSchema.min(1).default(60).meta({
+      description: 'sangfor 智能分块服务超时时间(分钟)'
     }),
 
     // ==================== 数据库与缓存 ====================

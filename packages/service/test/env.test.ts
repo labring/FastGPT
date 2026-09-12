@@ -43,7 +43,8 @@ const originalEnv = {
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX,
   AGENT_SANDBOX_APT_MIRROR: process.env.AGENT_SANDBOX_APT_MIRROR,
   MILVUS_LANGUAGE_IDENTIFIER: process.env.MILVUS_LANGUAGE_IDENTIFIER,
-  MILVUS_ADDRESS: process.env.MILVUS_ADDRESS
+  MILVUS_ADDRESS: process.env.MILVUS_ADDRESS,
+  SANGFOR_CHUNK_URL: process.env.SANGFOR_CHUNK_URL
 };
 
 const importServiceEnv = async () => {
@@ -103,6 +104,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_APT_MIRROR', originalEnv.AGENT_SANDBOX_APT_MIRROR);
     vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', originalEnv.MILVUS_LANGUAGE_IDENTIFIER);
     vi.stubEnv('MILVUS_ADDRESS', originalEnv.MILVUS_ADDRESS);
+    vi.stubEnv('SANGFOR_CHUNK_URL', originalEnv.SANGFOR_CHUNK_URL);
   });
 
   it('clamps DB_MAX_LINK to the supported connection pool range', async () => {
@@ -619,6 +621,23 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).rejects.toThrow(
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE are required when AGENT_SANDBOX_PROVIDER is opensandbox'
     );
+  });
+
+  it('非法 SANGFOR_CHUNK_URL 直接启动校验失败,合法地址去掉尾部斜杠', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('SANGFOR_CHUNK_URL', 'not-a-valid-url');
+    await expect(importServiceEnv()).rejects.toThrow(/SANGFOR_CHUNK_URL/);
+
+    vi.stubEnv('SANGFOR_CHUNK_URL', 'http://chunk-service.example/v1/chunk/');
+    const validEnv = await importServiceEnv();
+    expect(validEnv.serviceEnv.SANGFOR_CHUNK_URL).toBe('http://chunk-service.example/v1/chunk');
+
+    vi.stubEnv('SANGFOR_CHUNK_URL', undefined);
+    const unsetEnv = await importServiceEnv();
+    expect(unsetEnv.serviceEnv.SANGFOR_CHUNK_URL).toBeUndefined();
   });
 });
 
