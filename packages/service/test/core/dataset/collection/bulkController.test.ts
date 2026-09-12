@@ -148,6 +148,32 @@ describe('bulkInsertCollections', () => {
     expect(mockInsertMany).not.toHaveBeenCalled();
     expect(result).toEqual({ successApiFileIds: [], failedApiFileIds: [] });
   });
+
+  /**
+   * 被测函数名: bulkInsertCollections  等级: 3-High
+   * 思路（异常场景）: insertMany 抛错后连回查也失败（如 DB 不可达），无法判定落库情况，
+   * 整批计入失败；函数仍 resolve，且原始错误与回查错误都要落日志
+   */
+  it('T2-9: 回查失败时整批计入失败且不抛异常', async () => {
+    const docs = makeDocs(10);
+    const insertError = new Error('write failed');
+    const recoveryError = new Error('mongo down');
+    mockInsertMany.mockRejectedValueOnce(insertError);
+    mockFind.mockReturnValue({ lean: vi.fn().mockRejectedValue(recoveryError) });
+
+    await expect(bulkInsertCollections({ teamId, tmbId, datasetId, docs })).resolves.toEqual({
+      successApiFileIds: [],
+      failedApiFileIds: docs.map((doc) => doc.apiFileId)
+    });
+    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn.mock.calls[0][1]).toMatchObject({
+      teamId,
+      datasetId,
+      batchSize: 10,
+      error: insertError,
+      recoveryError
+    });
+  });
 });
 
 describe('bulkUpdateCollectionsParent', () => {
