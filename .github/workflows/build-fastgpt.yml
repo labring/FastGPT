@@ -2,6 +2,11 @@ name: Release FastGPT
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image version tag (e.g. v1.0.0)'
+        required: true
+        type: string
   push:
     paths:
       - 'projects/app/**'
@@ -18,12 +23,21 @@ jobs:
       - name: Validate release version
         id: version
         env:
-          VERSION: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
           REF_TYPE: ${{ github.ref_type }}
-          CURRENT_REF: ${{ github.ref }}
+          TAG_VERSION: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [[ "$REF_TYPE" != "tag" || ! "$VERSION" =~ ^v ]]; then
-            echo "::error::Release workflow must run on a tag starting with v. Current ref: ${CURRENT_REF}"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            VERSION="$INPUT_VERSION"
+          elif [[ "$REF_TYPE" == "tag" ]]; then
+            VERSION="$TAG_VERSION"
+          else
+            echo "::error::Workflow must be triggered by a tag or workflow_dispatch. Current event: ${EVENT_NAME}"
+            exit 1
+          fi
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            echo "::error::Version must start with v. Current value: ${VERSION}"
             exit 1
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
