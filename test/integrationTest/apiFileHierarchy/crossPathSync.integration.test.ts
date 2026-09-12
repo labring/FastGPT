@@ -238,7 +238,8 @@ describe('API 文件库：创建路径与同步路径在同一份数据上收敛
     );
     expect(after).toHaveLength(before.length);
     expect((mockState.delCollection.mock.calls[0]?.[0] as any).collections).toHaveLength(0);
-  });
+    // 本用例健康耗时 ~12s（真实内存副本集 + 真实事务），默认 testTimeout: 20000 在饱和宿主上会假红
+  }, 180000);
 
   it('INT-4-2 局部导入：同步只遍历导入根子树，范围外目录不被创建', async () => {
     const kbFolderId = new Types.ObjectId();
@@ -289,5 +290,6 @@ describe('API 文件库：创建路径与同步路径在同一份数据上收敛
     const listedParents = mockState.listFiles.mock.calls.map((call) => call[0].parentId);
     expect(listedParents).toContain('a');
     expect(listedParents).not.toContain('b');
-  });
+    // INT-4-1 超时会级联污染本用例（共用 teamId/datasetId，超时用例的后台写入不被取消），故同样放宽
+  }, 180000);
 });
