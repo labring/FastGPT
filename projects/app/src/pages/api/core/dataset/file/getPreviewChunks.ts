@@ -2,7 +2,6 @@ import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
-import { getBackendFileOperationTimeoutMs } from '@fastgpt/service/common/file/parseTimeout';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -106,7 +105,6 @@ async function handler(
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
     chunkSettingMode: formatChunkSettings.chunkSettingMode,
     trainingType: formatChunkSettings.trainingType,
-    chunkTimeoutMs: getBackendFileOperationTimeoutMs(),
     maxChunks: maxPreviewChunkCount
   });
 

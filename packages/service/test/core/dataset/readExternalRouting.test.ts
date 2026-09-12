@@ -78,8 +78,7 @@ describe('rawText2Chunks external intelligent-chunking routing', () => {
         imageIdList,
         url: SERVICE_URL,
         key: SERVICE_KEY,
-        chunkSize,
-        timeoutMs: serviceEnv.SANGFOR_CHUNK_TIMEOUT * 60 * 1000
+        chunkSize
       });
       expect(res).toEqual(externalChunks);
     });

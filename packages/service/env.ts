@@ -187,7 +187,7 @@ export const serviceEnv = createEnv({
     SANGFOR_CHUNK_KEY: z.string().optional().meta({
       description: 'sangfor 智能分块服务密钥(Bearer Token)'
     }),
-    SANGFOR_CHUNK_TIMEOUT: IntSchema.min(1).default(60).meta({
+    SANGFOR_CHUNK_TIMEOUT_MINUTES: IntSchema.min(1).default(60).meta({
       description: 'sangfor 智能分块服务超时时间(分钟)'
     }),
 

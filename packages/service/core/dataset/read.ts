@@ -255,7 +255,6 @@ export const rawText2Chunks = async ({
   imageIdList,
   chunkSettingMode,
   trainingType,
-  chunkTimeoutMs,
   ...splitProps
 }: {
   rawText: string;
@@ -269,8 +268,6 @@ export const rawText2Chunks = async ({
   // chunkSettingMode=intelligent 且训练类型为 chunk 时,「文本→chunk」委托给外部智能分块服务
   chunkSettingMode?: ChunkSettingModeEnum;
   trainingType?: DatasetCollectionDataProcessModeEnum;
-  // 覆盖 SANGFOR_CHUNK_TIMEOUT(默认 60 分钟)。交互式预览链路传短超时,避免外部服务慢/不可用时长时间挂住
-  chunkTimeoutMs?: number;
 } & TextSplitProps): Promise<
   {
     q: string;
@@ -408,7 +405,7 @@ export const rawText2Chunks = async ({
       url: serviceEnv.SANGFOR_CHUNK_URL,
       key: serviceEnv.SANGFOR_CHUNK_KEY,
       chunkSize,
-      timeoutMs: chunkTimeoutMs ?? serviceEnv.SANGFOR_CHUNK_TIMEOUT * 60 * 1000
+      timeoutMs: serviceEnv.SANGFOR_CHUNK_TIMEOUT_MINUTES
     });
   }
 

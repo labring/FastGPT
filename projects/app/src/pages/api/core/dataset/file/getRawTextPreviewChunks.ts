@@ -5,7 +5,6 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
-import { getBackendFileOperationTimeoutMs } from '@fastgpt/service/common/file/parseTimeout';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize,
@@ -58,7 +57,6 @@ async function handler(
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
     chunkSettingMode: formatChunkSettings.chunkSettingMode,
     trainingType: formatChunkSettings.trainingType,
-    chunkTimeoutMs: getBackendFileOperationTimeoutMs(),
     maxChunks: maxPreviewChunkCount
   });
 
