@@ -209,31 +209,61 @@ describe('bulkUpdateCollectionsParent', () => {
 
   /**
    * 被测函数名: bulkUpdateCollectionsParent  等级: 3-High
-   * 思路（异常场景）: bulkWrite 返回 writeErrors[{index:1}]，只把第 2 条还原为失败
+   * 思路（异常场景）: 真实 mongod。第 2 条 filter 的 _id 不是合法 ObjectId，mongoose 无法 cast，
+   * 该 op 从未执行；此时 bulkWrite 会 resolve（不走 catch），必须从 result.mongoose.results 判定失败，
+   * 否则会把从未执行的 op 报成 successIds（静默假成功）。
    */
-  it('T2-6: 部分失败按 writeErrors.index 还原失败项', async () => {
-    const updates = makeUpdates(2);
-    mockBulkWrite.mockResolvedValue({ writeErrors: [{ index: 1 }] });
+  it('T2-6: 单条 _id cast 失败时未执行的 op 计入 failedIds 而非 successIds', async () => {
+    const { MongoDatasetCollection: RealMongoDatasetCollection } = await vi.importActual<
+      typeof import('@fastgpt/service/core/dataset/collection/schema')
+    >('@fastgpt/service/core/dataset/collection/schema');
+    const realTeamId = String(new Types.ObjectId());
+    const created = await RealMongoDatasetCollection.create({
+      teamId: realTeamId,
+      tmbId: String(new Types.ObjectId()),
+      datasetId: String(new Types.ObjectId()),
+      type: DatasetCollectionTypeEnum.folder,
+      name: 'folder-cast-failure',
+      parentId: null
+    });
+    const updates: BulkUpdateCollectionParentItem[] = [
+      {
+        _id: String(created._id),
+        parentId: new Types.ObjectId(),
+        apiFileParentId: 'api-parent-0'
+      },
+      { _id: 'collection-1', parentId: new Types.ObjectId(), apiFileParentId: 'api-parent-1' }
+    ];
+    // 委托真实模型，走真实驱动语义（cast 失败会 resolve，而不是 reject）
+    mockBulkWrite.mockImplementation((ops, options) =>
+      RealMongoDatasetCollection.bulkWrite(ops, options)
+    );
 
-    const result = await bulkUpdateCollectionsParent({ teamId, updates });
+    const result = await bulkUpdateCollectionsParent({ teamId: realTeamId, updates });
 
-    expect(result.successIds).toEqual([updates[0]._id]);
-    expect(result.failedIds).toEqual([updates[1]._id]);
+    expect(result.successIds).toEqual([String(created._id)]);
+    expect(result.failedIds).toEqual(['collection-1']);
   });
 
   /**
    * 被测函数名: bulkUpdateCollectionsParent  等级: 3-High
-   * 思路（异常场景）: bulkWrite 整体 reject，全部计入失败且函数不抛异常
+   * 思路（异常场景）: 服务端写错误（如物理不可达）使 bulkWrite 整体 reject —— 真实驱动下这是
+   * 「部分 op 已落库」的方向，但整批无法判定，保守地全部计入失败；函数不抛异常且落一条 warn
    */
   it('T2-7: 整体抛错时全部计入失败且不抛异常', async () => {
     const updates = makeUpdates(3);
-    mockBulkWrite.mockRejectedValueOnce(new Error('mongo down'));
+    const bulkError = new Error('mongo down');
+    mockBulkWrite.mockRejectedValueOnce(bulkError);
 
     await expect(bulkUpdateCollectionsParent({ teamId, updates })).resolves.toEqual({
       successIds: [],
       failedIds: updates.map((item) => item._id)
     });
     expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+    expect(mockLogger.warn.mock.calls[0]).toEqual([
+      'Bulk update collection parent failed',
+      { teamId, count: 3, error: bulkError }
+    ]);
   });
 
   /**
