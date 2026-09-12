@@ -103,6 +103,8 @@ async function handler(
     ),
     overlapRatio,
     customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
+    chunkSettingMode: formatChunkSettings.chunkSettingMode,
+    trainingType: formatChunkSettings.trainingType,
     maxChunks: maxPreviewChunkCount
   });
 

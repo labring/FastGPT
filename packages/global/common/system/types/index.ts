@@ -134,6 +134,9 @@ export type FastGPTFeConfigsType = {
   showCustomPdfParse?: boolean;
   customPdfParsePrice?: number;
 
+  // 是否预置了智能分块服务地址(SANGFOR_CHUNK_URL)。未配置时 UI 隐藏「智能分块」入口。
+  show_intelligent_chunking?: boolean;
+
   navbarItems?: NavbarItemType[];
   externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
 

@@ -178,6 +178,19 @@ export const serviceEnv = createEnv({
       description: 'Sangfor 文档解析请求超时时间（秒），默认 10 分钟，最大 2 小时'
     }),
 
+    // ==================== 智能分块 ====================
+    // 配置后，导入文档(文本/PDF/网页)当 chunkSettingMode=intelligent(智能分块) 时，把「文本→chunk」委托给 sangfor 服务。
+    // 未配置时智能分块不可用,已启用智能分块的集合导入会显式报错,不影响平台其他分块功能。
+    SANGFOR_CHUNK_URL: UrlSchema.optional().meta({
+      description: 'sangfor 智能分块服务地址'
+    }),
+    SANGFOR_CHUNK_KEY: z.string().optional().meta({
+      description: 'sangfor 智能分块服务密钥(Bearer Token)'
+    }),
+    SANGFOR_CHUNK_TIMEOUT_MINUTES: IntSchema.min(1).default(60).meta({
+      description: 'sangfor 智能分块服务超时时间(分钟)'
+    }),
+
     // ==================== 数据库与缓存 ====================
     // Redisg
     REDIS_URL: z.string().default('redis://default:mypassword@localhost:6379'),

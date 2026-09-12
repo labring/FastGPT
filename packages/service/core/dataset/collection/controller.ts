@@ -154,6 +154,8 @@ export const createCollectionAndInsertData = async ({
         customReg: formatCreateCollectionParams.chunkSplitter
           ? [formatCreateCollectionParams.chunkSplitter]
           : [],
+        chunkSettingMode: formatCreateCollectionParams.chunkSettingMode,
+        trainingType,
         backupParse
       });
       return {

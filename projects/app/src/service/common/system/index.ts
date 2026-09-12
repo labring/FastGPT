@@ -153,6 +153,7 @@ export async function initSystemConfig() {
       show_coupon: appEnv.SHOW_COUPON,
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
+      show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
       show_batch_eval: licenseData?.functions?.batchEval,
       pluginRemoteDebug,
       payFormUrl: appEnv.PAY_FORM_URL || '',
