@@ -7,7 +7,10 @@ import { MongoDatasetCollection } from '../../../core/dataset/collection/schema'
 import { MongoDataset } from '../../../core/dataset/schema';
 import { MongoResourcePermission } from '../schema';
 import { getCollaboratorId } from '@fastgpt/global/support/permission/utils';
-import { markDatasetCollectionPermissionsSet } from './datasetFlag';
+import {
+  assertDatasetCollectionPermissionEnabled,
+  getDatasetCollectionPermissionEnabled
+} from './datasetSwitch';
 import type { SyncChildrenPermissionResourceType } from '../inheritPermission';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
@@ -61,7 +64,7 @@ export type CollectionCreateResourceType = SyncChildrenPermissionResourceType & 
  * - `inheritPermission=true`（默认）：完整快照 = `merge(父级有效 clbs, [owner])`，
  *   根 collection 父级 = dataset（跨类型覆盖），非根 = 父 collection folder；
  * - `inheritPermission=false`（独立态）：仅 owner 快照（createResourcePermissions 内部父级读空），
- *   并标记所属 dataset 已配置 collection 权限（短路失效）。
+ *   仅允许在 dataset 已启用时创建（关闭态拒绝，避免凭空出现独立态 collection）。
  */
 export async function createCollectionPermission({
   resource,
@@ -84,7 +87,12 @@ export async function createCollectionPermission({
   });
 
   if (resource.inheritPermission === false) {
-    await markDatasetCollectionPermissionsSet({ datasetId: resource.datasetId, session });
+    // 关闭态不允许创建独立态 collection，否则会破坏「关闭态无自定义权限」不变量。
+    await assertDatasetCollectionPermissionEnabled({
+      teamId: resource.teamId,
+      datasetId: resource.datasetId,
+      session
+    });
   }
 }
 
@@ -118,7 +126,12 @@ export async function moveCollectionPermission({
 
   // 保持独立配置：仅更新 parentId，快照与 inheritPermission=false 保持不变
   if (collection.inheritPermission === false) {
-    await markDatasetCollectionPermissionsSet({ datasetId: collection.datasetId, session });
+    // 独立态只可能存在于启用态；断言避免关闭态被隐式开启（关闭态无快照，move 结果会失配）
+    await assertDatasetCollectionPermissionEnabled({
+      teamId,
+      datasetId: collection.datasetId,
+      session
+    });
     await MongoDatasetCollection.updateOne(
       { _id: collection._id },
       { $set: { parentId: targetParentId || null, inheritPermission: false } },
@@ -172,6 +185,13 @@ export async function resumeCollectionInheritPermission({
   >;
   session?: ClientSession;
 }): Promise<void> {
+  // resume 只对独立态有意义，而独立态只存在于启用态；关闭态直接拒绝，不隐式开启开关。
+  await assertDatasetCollectionPermissionEnabled({
+    teamId: collection.teamId,
+    datasetId: collection.datasetId,
+    session
+  });
+
   return resumeResourcePermissionInheritance({
     resource: collection,
     resourceModel: MongoDatasetCollection,
@@ -243,7 +263,7 @@ const buildSnapshotPatches = ({
 /**
  * 将单个 Dataset 的根级继承态 Collection（`parentId: null`）从旧有效 clbs 物化到新有效 clbs，
  * folder 经 `syncResourceTreePermissions` 递归子树。父级来源 = dataset 有效 clbs。
- * 供运行时跨树同步（syncDatasetToCollections）与存量迁移（initCollectionPermission）复用。
+ * 供运行时跨树同步（syncDatasetToCollections）与启用时物化（enableDatasetCollectionPermissions）复用。
  */
 export const syncRootCollections = async ({
   teamId,
@@ -397,6 +417,15 @@ export async function syncDatasetToCollections({
   newEffectiveClbs: CollaboratorItemType[];
   session: ClientSession;
 }): Promise<void> {
+  // 关闭态短路：关闭态不存在自定义 collection 权限，读路径已短路到 dataset 有效权限，
+  // 无需（也不应）写 collection 快照。
+  const collectionPermissionEnabled = await getDatasetCollectionPermissionEnabled({
+    teamId,
+    datasetId,
+    session
+  });
+  if (!collectionPermissionEnabled) return;
+
   // 收集 root dataset + 全部后代 dataset（仅继承态后代的有效 clbs 会随父级变化）
   const datasetNodes = new Map<string, { parentId: string | null; inheritPermission?: boolean }>();
   const collectQueue = [datasetId];

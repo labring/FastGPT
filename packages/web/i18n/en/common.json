@@ -457,6 +457,7 @@
   "core.dataset.error.sameApiCollection": "The same API collection already exists",
   "core.dataset.error.unAuthDataset": "Unauthorized to operate this dataset",
   "core.dataset.error.unAuthDatasetCollection": "Unauthorized to operate this dataset collection",
+  "core.dataset.error.collectionPermissionDisabled": "File-level permission is not enabled for this dataset. Please enable it first",
   "core.dataset.error.unAuthDatasetData": "Unauthorized to operate this dataset data",
   "core.dataset.error.unAuthDatasetFile": "Dataset file authentication failed",
   "core.dataset.error.unCreateCollection": "Unauthorized to create dataset collection",

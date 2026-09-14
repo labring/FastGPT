@@ -26,7 +26,10 @@ export enum DatasetErrEnum {
   tagNotExist = 'tagNotExist',
   tagValueInvalid = 'tagValueInvalid',
   tagValueDatetimeInvalid = 'tagValueDatetimeInvalid',
-  arrayTagValueInvalid = 'arrayTagValueInvalid'
+  arrayTagValueInvalid = 'arrayTagValueInvalid',
+
+  // Collection 级权限（501026+）
+  collectionPermissionDisabled = 'collectionPermissionDisabled'
 }
 const datasetErr = [
   {
@@ -118,6 +121,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.arrayTagValueInvalid,
     message: i18nT('common:core.dataset.error.arrayTagValueInvalid')
+  },
+  {
+    statusText: DatasetErrEnum.collectionPermissionDisabled,
+    message: i18nT('common:core.dataset.error.collectionPermissionDisabled')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

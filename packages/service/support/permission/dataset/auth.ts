@@ -235,17 +235,16 @@ export async function authDatasetCollection({
     String(tmbInfo.teamId) === String(teamId) &&
     (tmbInfo.permission.isOwner || tmbInfo.permission.hasManagePer);
 
-  // 3. 短路：Dataset 未配置 collection 自定义权限（flag 非 true，含旧数据 undefined）→
-  //    Collection 有效权限直接等于 Dataset 有效权限（父 owner 不透传，cap 为 manage）。
-  //    写路径不变量保证：任何产生独立/自定义 collection 权限的操作必 mark flag=true，
-  //    故 flag!==true ⟺ 纯继承，与 listV2/RAG 短路语义一致（避免列表可见但详情拒绝）。
-  const flagSetCollectionPermissions = dataset.hasSetCollectionPermissions;
+  // 3. 短路：Dataset 处于关闭态（默认，含全部存量数据）→ Collection 有效权限直接等于
+  //    Dataset 有效权限（父 owner 不透传，cap 为 manage）。关闭态由「开关是唯一入口」保证不存
+  //    在自定义 collection 权限，与 listV2/RAG 短路语义一致（避免列表可见但详情拒绝）。
+  const datasetCollectionPermissionEnabled = dataset.collectionPermissionEnabled;
 
   // 4. Collection 维度解析：物化快照直读（无父链递归）。
   let role: PermissionValueType;
   if (isTeamOwnerOrAdmin) {
     role = ManageRoleVal;
-  } else if (flagSetCollectionPermissions !== true) {
+  } else if (datasetCollectionPermissionEnabled !== true) {
     const isCollectionOwner = String(collection.tmbId) === String(tmbId);
     const datasetRole = dataset.permission.role;
     // Collection owner 优先：owner 由创建/changeOwner 产生，owner 记录在全量快照中始终为

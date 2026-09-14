@@ -457,6 +457,7 @@
   "core.dataset.error.sameApiCollection": "存在相同的 API 集合",
   "core.dataset.error.unAuthDataset": "無權操作該知識庫",
   "core.dataset.error.unAuthDatasetCollection": "無權操作該知識庫集合",
+  "core.dataset.error.collectionPermissionDisabled": "該知識庫尚未開啟檔案層級權限，請先開啟",
   "core.dataset.error.unAuthDatasetData": "無權操作該知識庫資料",
   "core.dataset.error.unAuthDatasetFile": "知識庫文件辨識失敗",
   "core.dataset.error.unCreateCollection": "無權建立知識庫集合",

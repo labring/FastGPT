@@ -6,7 +6,7 @@ import { MongoDatasetCollection } from '../../../core/dataset/collection/schema'
 import { getResourceOwnedClbs } from '../controller';
 import { updateResourceCollaborators } from '../resourcePermissionService';
 import type { ClientSession } from '../../../common/mongo';
-import { markDatasetCollectionPermissionsSet } from './datasetFlag';
+import { assertDatasetCollectionPermissionEnabled } from './datasetSwitch';
 import { resolveCollectionParentClbs, type CollectionMoveResourceType } from './controller';
 
 /**
@@ -14,8 +14,11 @@ import { resolveCollectionParentClbs, type CollectionMoveResourceType } from './
  * 1. 跨类型父级解析：根 collection（parentId 空）父级 = dataset 有效 clbs；
  * 2. 事务内读取自身当前快照，计算变更集，先授权再写入；
  * 3. `updateResourceCollaborators` 处理冲突翻转（继承态试图改父级协作者 → 独立态）+
- *    replaceResource + syncResourceTreePermissions（folder 递归子树）；
- * 4. 配置即视为"已设置 collection 权限"，置 `hasSetCollectionPermissions=true`。
+ *    replaceResource + syncResourceTreePermissions（folder 递归子树）。
+ *
+ * 前置条件：所属 dataset 必须已启用 collection 级权限（开关是唯一入口，见 datasetSwitch.ts）：
+ * 关闭态不存在 collection 快照，未启用时以 `collectionPermissionDisabled` 拒绝，由前端引导开启；
+ * 本函数不隐式开启开关。
  *
  * @returns 变更集与最终是否发生写入。
  */
@@ -30,6 +33,13 @@ export async function updateCollectionCollaboratorsWithAuth({
   authorize: (changedClbs: ReturnType<typeof getChangedCollaborators>) => void | Promise<void>;
 }) {
   return mongoSessionRun(async (session: ClientSession) => {
+    // 配置是启用态下的操作：关闭态不存在 collection 快照，必须先拒绝而不是隐式开启。
+    await assertDatasetCollectionPermissionEnabled({
+      teamId: collection.teamId,
+      datasetId: collection.datasetId,
+      session
+    });
+
     const parentClbs = await resolveCollectionParentClbs({
       teamId: collection.teamId,
       datasetId: collection.datasetId,
@@ -59,7 +69,6 @@ export async function updateCollectionCollaboratorsWithAuth({
       parentCollaborators: parentClbs,
       session
     });
-    await markDatasetCollectionPermissionsSet({ datasetId: collection.datasetId, session });
 
     return { changedClbs, collaborators, updated: true };
   });

@@ -151,10 +151,10 @@ export const DatasetSchema = z
     createTime: z.coerce.date().meta({ description: '创建时间' }),
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     inheritPermission: z.boolean().meta({ description: '继承权限' }),
-    hasSetCollectionPermissions: z
+    collectionPermissionEnabled: z
       .boolean()
       .optional()
-      .meta({ description: 'collection 级权限短路标记：false=该 dataset 下无独立配置 collection' }),
+      .meta({ description: 'collection 级权限开关：false 表示关闭态（默认，可读性等于 dataset）' }),
 
     avatar: z
       .preprocess((value) => value ?? undefined, z.string().default(LOGO_ICON))

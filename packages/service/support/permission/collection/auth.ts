@@ -151,7 +151,7 @@ export async function getCollectionPermissionMap({
  * 查询以候选集合 `$in` 限定，
  * 查询范围与候选集合同量级，不做团队全量扫描。
  *
- * `hasSetCollectionPermissions !== true`（false 或旧数据 undefined）时短路为 Dataset 级鉴权（纯继承 → 全部可读）。
+ * `collectionPermissionEnabled !== true`（关闭态，含全部存量数据）时短路为 Dataset 级鉴权（全部可读）。
  */
 export async function getReadableCollectionIds({
   collections,
@@ -160,17 +160,17 @@ export async function getReadableCollectionIds({
   groupIds,
   orgIds,
   datasetPermission,
-  hasSetCollectionPermissions
+  collectionPermissionEnabled
 }: {
   collections: CollectionPermissionItemType[];
   tmbId: string;
   teamId: string;
   groupIds: string[];
   orgIds: string[];
-  /** Dataset 有效角色（role 位掩码），仅用于纯继承短路。 */
+  /** Dataset 有效角色（role 位掩码），仅用于关闭态短路。 */
   datasetPermission: PermissionValueType;
-  /** 所属 Dataset 是否配置过 Collection 级权限：`false` 时短路为 Dataset 级鉴权。 */
-  hasSetCollectionPermissions?: boolean;
+  /** 所属 Dataset 是否已启用 Collection 级权限：非 `true`（关闭态）时短路为 Dataset 级鉴权。 */
+  collectionPermissionEnabled?: boolean;
 }): Promise<string[]> {
   if (collections.length === 0) return [];
 
@@ -178,10 +178,10 @@ export async function getReadableCollectionIds({
     datasetPermission != null &&
     new Permission({ role: datasetPermission, isOwner: false }).checkPer(ReadRoleVal);
 
-  // 短路：Dataset 下无任何 Collection 自定义权限（纯继承）→ 调用方已通过 Dataset read 门槛，
-  // 全部 Collection 可读，无需批量权限查询。flag 非 true（含旧数据 undefined）即纯继承，
-  // 依赖写路径不变量：任何产生自定义 collection 权限的写操作必 mark flag=true。
-  if (hasSetCollectionPermissions !== true) {
+  // 短路：Dataset 处于关闭态（默认，含全部存量数据）→ 调用方已通过 Dataset read 门槛，
+  // 全部 Collection 可读，无需批量权限查询。关闭态 ⇒ 不存在自定义 collection 权限，
+  // 由「开关是唯一入口」保证：未启用时所有 collection 写路径都会拒绝。
+  if (collectionPermissionEnabled !== true) {
     return datasetHasRead ? collections.map((item) => String(item._id)) : [];
   }
 
@@ -208,8 +208,8 @@ export async function getReadableCollectionIds({
 /**
  * 判断 Collection 级权限是否可整体短路（无需逐 collection 解析）：
  * - 团队 owner/admin：对该团队全部 dataset 可读；
- * - 普通成员：所有目标 Dataset 均未配置 collection 自定义权限（flag 非 true，含旧数据
- *   undefined），每个 Collection 有效权限 = Dataset 有效权限。
+ * - 普通成员：所有目标 Dataset 均处于**关闭态**（`collectionPermissionEnabled` 非 true，含全部
+ *   存量数据），此时每个 Collection 有效权限 = Dataset 有效权限。
  *
  * 满足时返回 `true`，调用方（RAG 检索 / Collection 列表）可跳过 collection 权限过滤。
  * 前置条件：调用方已按 Dataset read 过滤 `datasetIds`；本函数不做 Dataset read 鉴权。
@@ -232,14 +232,14 @@ export async function canShortCircuitCollectionPermission({
   if (String(info.teamId) !== String(teamId)) return false;
   if (info.permission.isOwner || info.permission.hasManagePer) return true;
 
-  // 普通成员：全部 Dataset 均未配置 collection 自定义权限（flag 非 true，含旧数据 undefined）
-  // 才短路。不变量：任何写路径产生自定义 collection 权限必 mark flag=true，故 flag!==true ⟺ 纯继承。
+  // 普通成员：全部 Dataset 均处于关闭态才短路。关闭态 ⇒ 不存在自定义 collection 权限，
+  // 由「开关是唯一入口」保证：未启用时所有 collection 写路径都会拒绝。
   const datasets = await MongoDataset.find(
     { _id: { $in: datasetIds } },
-    'hasSetCollectionPermissions'
+    'collectionPermissionEnabled'
   ).lean();
   const flags = new Map<string, boolean | undefined>(
-    datasets.map((ds) => [String(ds._id), ds.hasSetCollectionPermissions])
+    datasets.map((ds) => [String(ds._id), ds.collectionPermissionEnabled])
   );
   return datasetIds.every((id) => flags.get(id) !== true);
 }
@@ -250,14 +250,14 @@ export async function canShortCircuitCollectionPermission({
  * 语义：返回 `undefined` 表示「无需 collection 级过滤」（短路 / 全部可读），
  * 返回字符串数组表示「仅这些 file collection 可读」的真子集。
  *  - 团队 owner/admin：`undefined`（无 collection 级过滤，按 dataset 召回）；
- *  - 全部目标 dataset 未配置 collection 自定义权限（flag 非 true，含旧数据 undefined）：
- *    `undefined`（纯继承短路）；
+ *  - 全部目标 dataset 处于关闭态（`collectionPermissionEnabled` 非 true，含全部存量数据）：
+ *    `undefined`（短路）；
  *  - 否则：加载目标 dataset 下 file collection 最小字段，逐 dataset 并行
  *    `getReadableCollectionIds`（候选 `$in` 限定，无 N+1）取并集；并集覆盖全部 file
  *    collection 时仍返回 `undefined`（避免上万 ID 长过滤条件），真子集才返回可读 ID 列表。
  *
  * 前置条件：调用方已按 Dataset read 过滤 `datasetIds`；
- * 纯继承 dataset 在 `getReadableCollectionIds` 内以 ReadRoleVal 短路为「全部可读」。
+ * 关闭态 dataset 在 `getReadableCollectionIds` 内以 ReadRoleVal 短路为「全部可读」。
  */
 export async function resolveReadableCollectionIds({
   teamId,
@@ -273,7 +273,7 @@ export async function resolveReadableCollectionIds({
 }): Promise<string[] | undefined> {
   if (datasetIds.length === 0) return undefined;
 
-  // 团队 owner/admin 或全部纯继承 → 短路，无需 collection 级过滤
+  // 团队 owner/admin 或全部关闭态 → 短路，无需 collection 级过滤
   if (await canShortCircuitCollectionPermission({ teamId, datasetIds, tmbId, tmbInfo })) {
     return undefined;
   }
@@ -287,10 +287,10 @@ export async function resolveReadableCollectionIds({
 
   const datasets = await MongoDataset.find(
     { _id: { $in: datasetIds } },
-    'hasSetCollectionPermissions'
+    'collectionPermissionEnabled'
   ).lean();
   const flagMap = new Map<string, boolean | undefined>(
-    datasets.map((ds) => [String(ds._id), ds.hasSetCollectionPermissions])
+    datasets.map((ds) => [String(ds._id), ds.collectionPermissionEnabled])
   );
 
   // 按 datasetId 分组，逐 dataset 并行解析可读 ID（各 dataset 独立、候选 `$in` 限定）
@@ -315,9 +315,9 @@ export async function resolveReadableCollectionIds({
         teamId,
         groupIds,
         orgIds: Array.from(orgIds),
-        // 前置条件已保证 dataset read 通过；纯继承 dataset 在此短路为全部可读
+        // 前置条件已保证 dataset read 通过；关闭态 dataset 在此短路为全部可读
         datasetPermission: ReadRoleVal,
-        hasSetCollectionPermissions: flagMap.get(datasetId)
+        collectionPermissionEnabled: flagMap.get(datasetId)
       })
     )
   );

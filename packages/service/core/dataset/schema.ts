@@ -144,8 +144,9 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: true
   },
-  // collection 级权限短路标记：false 时该 dataset 下无独立配置的 collection，可读性 == dataset 可读
-  hasSetCollectionPermissions: {
+  // collection 级权限开关（显式、可逆）：关闭态（默认，含存量数据）时 collection 可读性 == dataset 可读，
+  // 不依赖任何 collection ACL 行；启用态逐 collection 解析物化快照（由启用接口负责物化）。
+  collectionPermissionEnabled: {
     type: Boolean,
     default: false
   },

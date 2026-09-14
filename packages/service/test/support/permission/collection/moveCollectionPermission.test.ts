@@ -15,6 +15,7 @@ import {
   syncDatasetToCollections,
   syncRootCollections
 } from '@fastgpt/service/support/permission/collection/controller';
+import { enableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
 import {
   createResourceDefaultCollaborators,
   getResourceOwnedClbs
@@ -156,9 +157,9 @@ const collectionClbs = (teamId: string, collectionId: string) =>
     resourceType: PerResourceTypeEnum.collection
   });
 
-/** 读取 dataset 的 collection 权限短路 flag（undefined = 旧数据，从未置位）。 */
-const datasetFlag = async (datasetId: string) =>
-  (await MongoDataset.findById(datasetId).lean())?.hasSetCollectionPermissions;
+/** 读取 dataset 的 collection 级权限开关（undefined = 旧数据，视为关闭）。 */
+const datasetSwitchState = async (datasetId: string) =>
+  (await MongoDataset.findById(datasetId).lean())?.collectionPermissionEnabled;
 
 describe.sequential('moveCollectionPermission', () => {
   it('recalculates an inheriting collection moved between folders', async () => {
@@ -228,8 +229,8 @@ describe.sequential('moveCollectionPermission', () => {
         [String(users.members[1].tmbId), ReadRoleVal]
       ])
     );
-    // 继承态移动不产生自定义权限 → 短路 flag 不得置位
-    expect(await datasetFlag(String(dataset._id))).not.toBe(true);
+    // 继承态移动不产生自定义权限，开关保持关闭态（move 不再改动开关）
+    expect(await datasetSwitchState(String(dataset._id))).toBe(false);
   });
 
   it('moves an inheriting collection to the dataset root and strips the old folder', async () => {
@@ -272,7 +273,7 @@ describe.sequential('moveCollectionPermission', () => {
     await expect(
       collectionClbs(String(users.owner.teamId), String(child._id)).then(toPermissionMap)
     ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
-    expect(await datasetFlag(String(dataset._id))).not.toBe(true);
+    expect(await datasetSwitchState(String(dataset._id))).toBe(false);
   });
 
   it('moves a root collection into a folder, using the dataset as the old parent', async () => {
@@ -337,12 +338,17 @@ describe.sequential('moveCollectionPermission', () => {
         [String(users.members[1].tmbId), ReadRoleVal]
       ])
     );
-    expect(await datasetFlag(String(dataset._id))).not.toBe(true);
+    expect(await datasetSwitchState(String(dataset._id))).toBe(false);
   });
 
-  it('keeps an independent collection isolated when moved into a folder and marks the flag', async () => {
+  it('keeps an independent collection isolated when moved into a folder with the switch enabled', async () => {
     const users = await getFakeUsers(2);
     const dataset = await createDataset({ user: users.owner });
+    // 独立态只存在于启用态：创建 inheritPermission=false 的 collection 前必须启用开关
+    await enableDatasetCollectionPermissions({
+      teamId: String(users.owner.teamId),
+      datasetId: String(dataset._id)
+    });
     const folder = await createCollection({
       user: users.owner,
       datasetId: String(dataset._id),
@@ -369,13 +375,18 @@ describe.sequential('moveCollectionPermission', () => {
     await expect(
       collectionClbs(String(users.owner.teamId), String(independent._id)).then(toPermissionMap)
     ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
-    // 存在独立 collection → 短路 flag 必须置位
-    expect(await datasetFlag(String(dataset._id))).toBe(true);
+    // 开关由 enable 置位，move 不再改动它
+    expect(await datasetSwitchState(String(dataset._id))).toBe(true);
   });
 
   it('keeps an independent collection isolated when moved back to the dataset root', async () => {
     const users = await getFakeUsers(2);
     const dataset = await createDataset({ user: users.owner });
+    // 独立态只存在于启用态：创建 inheritPermission=false 的 collection 前必须启用开关
+    await enableDatasetCollectionPermissions({
+      teamId: String(users.owner.teamId),
+      datasetId: String(dataset._id)
+    });
     const folder = await createCollection({
       user: users.owner,
       datasetId: String(dataset._id),
@@ -399,7 +410,7 @@ describe.sequential('moveCollectionPermission', () => {
     await expect(
       collectionClbs(String(users.owner.teamId), String(independent._id)).then(toPermissionMap)
     ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
-    expect(await datasetFlag(String(dataset._id))).toBe(true);
+    expect(await datasetSwitchState(String(dataset._id))).toBe(true);
   });
 
   it('propagates the new snapshot to the descendants of a moved folder', async () => {
@@ -457,7 +468,7 @@ describe.sequential('moveCollectionPermission', () => {
     await expect(
       collectionClbs(String(users.owner.teamId), String(child._id)).then(toPermissionMap)
     ).resolves.toEqual(expectedMap);
-    expect(await datasetFlag(String(dataset._id))).not.toBe(true);
+    expect(await datasetSwitchState(String(dataset._id))).toBe(false);
   });
 });
 
@@ -501,6 +512,11 @@ describe.sequential('syncDatasetToCollections', () => {
       { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
       { tmbId: String(users.members[2].tmbId), permission: ReadRoleVal }
     ];
+    // 跨树同步只在启用态生效：关闭态短路，不写 collection 快照
+    await enableDatasetCollectionPermissions({
+      teamId: String(users.owner.teamId),
+      datasetId: String(dataset._id)
+    });
     await mongoSessionRun((session) =>
       syncDatasetToCollections({
         teamId: String(users.owner.teamId),

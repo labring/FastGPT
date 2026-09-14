@@ -29,7 +29,7 @@ describe('collection training status api', () => {
       tmbId: users.owner.tmbId,
       vectorModel: 'test',
       agentModel: 'test',
-      hasSetCollectionPermissions: true
+      collectionPermissionEnabled: true
     });
     const collection = await MongoDatasetCollection.create({
       name: 'writable-collection',

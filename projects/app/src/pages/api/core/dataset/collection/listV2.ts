@@ -172,7 +172,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
       groupIds,
       orgIds,
       datasetPermission: permission.role,
-      hasSetCollectionPermissions: dataset.hasSetCollectionPermissions
+      collectionPermissionEnabled: dataset.collectionPermissionEnabled
     });
     collectionIdFilter =
       readableIds.length > 0

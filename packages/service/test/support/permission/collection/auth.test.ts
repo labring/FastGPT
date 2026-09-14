@@ -20,18 +20,18 @@ describe('collection permission batch resolution', () => {
     const groupId = String(new Types.ObjectId());
     const collections: CollectionPermissionItemType[] = [
       {
-        _id: deniedCollectionId,
+        _id: String(deniedCollectionId),
         teamId: users.owner.teamId,
-        datasetId,
+        datasetId: String(datasetId),
         tmbId: users.owner.tmbId,
         parentId: null,
         inheritPermission: false,
         type: DatasetCollectionTypeEnum.file
       },
       {
-        _id: groupCollectionId,
+        _id: String(groupCollectionId),
         teamId: users.owner.teamId,
-        datasetId,
+        datasetId: String(datasetId),
         tmbId: users.owner.tmbId,
         parentId: null,
         inheritPermission: false,
@@ -80,7 +80,7 @@ describe('collection permission batch resolution', () => {
       groupIds: [groupId],
       orgIds: [],
       datasetPermission: ReadRoleVal,
-      hasSetCollectionPermissions: true
+      collectionPermissionEnabled: true
     });
     expect(new Set(readableIds)).toEqual(
       new Set([String(deniedCollectionId), String(groupCollectionId)])

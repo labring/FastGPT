@@ -211,18 +211,18 @@ describe('authDatasetCollection', () => {
     expect(result.collection._id).toBe(collectionId);
   });
 
-  it('keeps owner for a dataset owner who also owns the collection in pure-inherit mode', async () => {
-    // 非团队 owner/admin，走纯继承短路分支（flag 非 true）
+  it('keeps owner for a dataset owner who also owns the collection in disabled mode', async () => {
+    // 非团队 owner/admin，走关闭态短路分支（collectionPermissionEnabled 非 true）
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',
       permission: { isOwner: false }
     });
-    // 当前用户是 dataset owner（tmbId 匹配），且 dataset 未配置 collection 权限
+    // 当前用户是 dataset owner（tmbId 匹配），且 dataset 处于关闭态
     mockDatasetQuery({
       _id: datasetId,
       teamId: 'team-a',
       tmbId: 'tmb-a',
-      hasSetCollectionPermissions: false
+      collectionPermissionEnabled: false
     });
     // 当前用户也是 collection owner
     mockGetCollectionWithDataset.mockResolvedValue({
@@ -247,7 +247,7 @@ describe('authDatasetCollection', () => {
     expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
   });
 
-  it('caps a dataset owner who does not own the collection to manage in pure-inherit mode', async () => {
+  it('caps a dataset owner who does not own the collection to manage in disabled mode', async () => {
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',
       permission: { isOwner: false }
@@ -256,7 +256,7 @@ describe('authDatasetCollection', () => {
       _id: datasetId,
       teamId: 'team-a',
       tmbId: 'tmb-a',
-      hasSetCollectionPermissions: false
+      collectionPermissionEnabled: false
     });
     // collection owner 是他人，dataset owner 仅从父级继承 manage
     mockGetCollectionWithDataset.mockResolvedValue({

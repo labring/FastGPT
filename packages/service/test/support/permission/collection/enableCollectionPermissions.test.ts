@@ -12,9 +12,9 @@ import { createCollectionPermission } from '@fastgpt/service/support/permission/
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
   analyzeCollectionTree,
-  migrateCollectionPermissions,
-  migrateDatasetCollections
-} from '@fastgpt/service/support/permission/collection/migrate';
+  disableDatasetCollectionPermissions,
+  enableDatasetCollectionPermissions
+} from '@fastgpt/service/support/permission/collection/enable';
 import {
   createResourceDefaultCollaborators,
   getResourceOwnedClbs
@@ -124,8 +124,17 @@ const collectionClbs = (teamId: string, collectionId: string) =>
     resourceType: PerResourceTypeEnum.collection
   });
 
-const datasetFlag = async (datasetId: string) =>
-  (await MongoDataset.findById(datasetId).lean())?.hasSetCollectionPermissions;
+/** 读取 dataset 的 collection 级权限开关。 */
+const datasetSwitchState = async (datasetId: string) =>
+  (await MongoDataset.findById(datasetId).lean())?.collectionPermissionEnabled;
+
+/** 统计一组 collection 的 ACL 行数，用于校验幂等（不产生重复行 / 关闭后无残留）。 */
+const countCollectionAclRows = (teamId: string, collectionIds: string[]) =>
+  MongoResourcePermission.countDocuments({
+    resourceType: PerResourceTypeEnum.collection,
+    teamId,
+    resourceId: { $in: collectionIds }
+  });
 
 describe.sequential('analyzeCollectionTree', () => {
   it('flags an orphan whose parent does not exist or is not a folder', () => {
@@ -196,8 +205,8 @@ describe.sequential('analyzeCollectionTree', () => {
   });
 });
 
-describe.sequential('migrateDatasetCollections', () => {
-  it('materializes owner + dataset ACL onto root collections, propagates subtrees, resets the flag', async () => {
+describe.sequential('enableDatasetCollectionPermissions', () => {
+  it('materializes owner + dataset ACL onto root collections, propagates subtrees and enables the switch', async () => {
     const users = await getFakeUsers(2);
     const dataset = await createDataset({ user: users.owner });
     await setDatasetCollaborators({
@@ -226,72 +235,38 @@ describe.sequential('migrateDatasetCollections', () => {
       parentId: String(rootFolder._id)
     });
 
-    const result = await migrateDatasetCollections({
+    const result = await enableDatasetCollectionPermissions({
       teamId: String(users.owner.teamId),
       datasetId: String(dataset._id)
     });
-    expect(result).toMatchObject({ collectionCount: 3, issues: [] });
+    expect(result).toEqual({ collectionCount: 3 });
 
+    const collectionIds = [String(rootFile._id), String(rootFolder._id), String(child._id)];
     const expectedMap = new Map([
       [String(users.owner.tmbId), OwnerRoleVal],
       [String(users.members[0].tmbId), ReadRoleVal]
     ]);
-    for (const collectionId of [String(rootFile._id), String(rootFolder._id), String(child._id)]) {
+    for (const collectionId of collectionIds) {
       await expect(
         collectionClbs(String(users.owner.teamId), collectionId).then(toPermissionMap)
       ).resolves.toEqual(expectedMap);
     }
-    // 迁移建立纯继承基线：短路 flag 重置为 false
-    expect(await datasetFlag(String(dataset._id))).toBe(false);
+    // 物化成功后才置位开关
+    expect(await datasetSwitchState(String(dataset._id))).toBe(true);
 
-    // 幂等：重复执行结果一致
-    const rerun = await migrateDatasetCollections({
+    // 幂等：重复启用结果一致，且不产生重复 ACL 行（每 collection = owner + dataset reader）
+    const rerun = await enableDatasetCollectionPermissions({
       teamId: String(users.owner.teamId),
       datasetId: String(dataset._id)
     });
-    expect(rerun).toMatchObject({ collectionCount: 3, issues: [] });
-    await expect(
-      collectionClbs(String(users.owner.teamId), String(child._id)).then(toPermissionMap)
-    ).resolves.toEqual(expectedMap);
-    expect(await datasetFlag(String(dataset._id))).toBe(false);
-  });
-
-  it('dryRun validates and reports without writing', async () => {
-    const users = await getFakeUsers(2);
-    const dataset = await createDataset({ user: users.owner });
-    // 先建 collection（此时 dataset 仅 owner，collection 快照 = [owner]）
-    const rootFile = await createCollection({
-      user: users.owner,
-      datasetId: String(dataset._id),
-      name: 'root-file'
-    });
-    // 模拟存量态：dataset 权限已变更但 collection 未物化（旧版本无 collection 权限记录）
-    await setDatasetCollaborators({
-      user: users.owner,
-      datasetId: String(dataset._id),
-      collaborators: [
-        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
-        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
-      ]
-    });
-
-    // 先置 flag=true，dryRun 不应改动任何状态
-    await MongoDataset.updateOne(
-      { _id: dataset._id },
-      { $set: { hasSetCollectionPermissions: true } }
-    );
-
-    const result = await migrateDatasetCollections({
-      teamId: String(users.owner.teamId),
-      datasetId: String(dataset._id),
-      dryRun: true
-    });
-    expect(result).toMatchObject({ collectionCount: 1, issues: [] });
-    expect(await datasetFlag(String(dataset._id))).toBe(true);
-    // 快照未被写入：m1 仍未物化到 collection（仅 owner）
-    await expect(
-      collectionClbs(String(users.owner.teamId), String(rootFile._id)).then(toPermissionMap)
-    ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
+    expect(rerun).toEqual({ collectionCount: 3 });
+    for (const collectionId of collectionIds) {
+      await expect(
+        collectionClbs(String(users.owner.teamId), collectionId).then(toPermissionMap)
+      ).resolves.toEqual(expectedMap);
+    }
+    expect(await countCollectionAclRows(String(users.owner.teamId), collectionIds)).toBe(6);
+    expect(await datasetSwitchState(String(dataset._id))).toBe(true);
   });
 
   it('removes stale ACL records before rebuilding an inheriting collection', async () => {
@@ -312,197 +287,57 @@ describe.sequential('migrateDatasetCollections', () => {
       permission: ReadRoleVal
     });
 
-    await migrateDatasetCollections({
+    await enableDatasetCollectionPermissions({
       teamId: String(users.owner.teamId),
       datasetId: String(dataset._id)
     });
 
+    // 旧 ACL 不参与快照重建：结果 = owner + dataset 派生快照
     await expect(
       collectionClbs(String(users.owner.teamId), String(collection._id)).then(toPermissionMap)
     ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
+    expect(await datasetSwitchState(String(dataset._id))).toBe(true);
   });
 
-  it('preserves configured independent collections while materializing legacy collections', async () => {
-    const users = await getFakeUsers(3);
+  it('preserves an existing independent collection and ensures its owner ACL row exists', async () => {
+    const users = await getFakeUsers(2);
     const dataset = await createDataset({ user: users.owner });
-    await setDatasetCollaborators({
-      user: users.owner,
-      datasetId: String(dataset._id),
-      collaborators: [
-        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
-        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
-      ]
-    });
-    const independent = await createCollection({
-      user: users.owner,
-      datasetId: String(dataset._id),
-      name: 'independent',
-      inheritPermission: false
-    });
-    await mongoSessionRun(async (session) => {
-      await updateResourceCollaborators({
-        resource: {
-          _id: String(independent._id),
-          type: independent.type,
-          teamId: String(independent.teamId),
-          parentId: null,
-          inheritPermission: false
-        },
-        resourceModel: MongoDatasetCollection,
-        resourceType: PerResourceTypeEnum.collection,
-        oldCollaborators: await getResourceOwnedClbs({
-          teamId: String(users.owner.teamId),
-          resourceId: String(independent._id),
-          resourceType: PerResourceTypeEnum.collection,
-          session
-        }),
-        newCollaborators: [
-          { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
-          { tmbId: String(users.members[1].tmbId), permission: ReadRoleVal }
-        ],
-        session
-      });
-    });
-    const legacy = await MongoDatasetCollection.create({
+    // 防御性场景：存量数据可能残留独立态 collection（关闭态写路径不会再产生）。
+    // 直接建库绕过 createCollectionPermission，模拟「独立态有自定义 ACL 但缺 owner 行」。
+    const independent = await MongoDatasetCollection.create({
       teamId: users.owner.teamId,
       tmbId: users.owner.tmbId,
       datasetId: dataset._id,
       type: DatasetCollectionTypeEnum.file,
-      name: 'legacy'
+      name: 'independent-without-owner-acl',
+      inheritPermission: false
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.collection,
+      teamId: users.owner.teamId,
+      resourceId: String(independent._id),
+      tmbId: users.members[0].tmbId,
+      permission: ReadRoleVal
     });
 
-    await migrateDatasetCollections({
+    await enableDatasetCollectionPermissions({
       teamId: String(users.owner.teamId),
       datasetId: String(dataset._id)
     });
 
+    // 独立态保持独立、自定义 ACL 不被清除，owner 行由启用补齐
     await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
       inheritPermission: false
     });
     await expect(
       collectionClbs(String(users.owner.teamId), String(independent._id)).then(toPermissionMap)
-    ).resolves.toEqual(
-      new Map([
-        [String(users.owner.tmbId), OwnerRoleVal],
-        [String(users.members[1].tmbId), ReadRoleVal]
-      ])
-    );
-    await expect(
-      collectionClbs(String(users.owner.teamId), String(legacy._id)).then(toPermissionMap)
     ).resolves.toEqual(
       new Map([
         [String(users.owner.tmbId), OwnerRoleVal],
         [String(users.members[0].tmbId), ReadRoleVal]
       ])
     );
-    expect(await datasetFlag(String(dataset._id))).toBe(true);
-
-    await migrateDatasetCollections({
-      teamId: String(users.owner.teamId),
-      datasetId: String(dataset._id)
-    });
-
-    await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
-      inheritPermission: false
-    });
-    await expect(
-      collectionClbs(String(users.owner.teamId), String(independent._id)).then(toPermissionMap)
-    ).resolves.toEqual(
-      new Map([
-        [String(users.owner.tmbId), OwnerRoleVal],
-        [String(users.members[1].tmbId), ReadRoleVal]
-      ])
-    );
-  });
-
-  it('preserves an independent collection without an ACL record', async () => {
-    const users = await getFakeUsers(1);
-    const dataset = await createDataset({ user: users.owner });
-    const independent = await MongoDatasetCollection.create({
-      teamId: users.owner.teamId,
-      tmbId: users.owner.tmbId,
-      datasetId: dataset._id,
-      type: DatasetCollectionTypeEnum.file,
-      name: 'independent-without-acl',
-      inheritPermission: false
-    });
-    const legacy = await MongoDatasetCollection.create({
-      teamId: users.owner.teamId,
-      tmbId: users.owner.tmbId,
-      datasetId: dataset._id,
-      type: DatasetCollectionTypeEnum.file,
-      name: 'legacy'
-    });
-
-    await migrateDatasetCollections({
-      teamId: String(users.owner.teamId),
-      datasetId: String(dataset._id)
-    });
-
-    await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
-      inheritPermission: false
-    });
-    await expect(
-      collectionClbs(String(users.owner.teamId), String(independent._id))
-    ).resolves.toEqual([]);
-    await expect(
-      collectionClbs(String(users.owner.teamId), String(legacy._id)).then(toPermissionMap)
-    ).resolves.toEqual(new Map([[String(users.owner.tmbId), OwnerRoleVal]]));
-    expect(await datasetFlag(String(dataset._id))).toBe(true);
-  });
-
-  it('processes every dataset in the requested team', async () => {
-    const users = await getFakeUsers(1);
-    const firstDataset = await createDataset({ user: users.owner });
-    const secondDataset = await createDataset({ user: users.owner });
-    await createCollection({
-      user: users.owner,
-      datasetId: String(firstDataset._id),
-      name: 'first'
-    });
-    await createCollection({
-      user: users.owner,
-      datasetId: String(secondDataset._id),
-      name: 'second'
-    });
-
-    await expect(
-      migrateCollectionPermissions({ teamId: String(users.owner.teamId) })
-    ).resolves.toMatchObject({
-      datasetCount: 2,
-      processedDatasetCount: 2,
-      collectionCount: 2,
-      errors: []
-    });
-  });
-
-  it('limits migration to the requested dataset ids', async () => {
-    const users = await getFakeUsers(1);
-    const firstDataset = await createDataset({ user: users.owner });
-    const secondDataset = await createDataset({ user: users.owner });
-    await createCollection({
-      user: users.owner,
-      datasetId: String(firstDataset._id),
-      name: 'first'
-    });
-    await createCollection({
-      user: users.owner,
-      datasetId: String(secondDataset._id),
-      name: 'second'
-    });
-
-    await expect(
-      migrateCollectionPermissions({
-        teamId: String(users.owner.teamId),
-        datasetIds: [String(firstDataset._id)],
-        dryRun: true
-      })
-    ).resolves.toMatchObject({
-      datasetCount: 1,
-      processedDatasetCount: 1,
-      collectionCount: 1,
-      errors: []
-    });
+    expect(await datasetSwitchState(String(dataset._id))).toBe(true);
   });
 
   it('rejects an orphan parentId instead of silently degrading', async () => {
@@ -519,11 +354,13 @@ describe.sequential('migrateDatasetCollections', () => {
     );
 
     await expect(
-      migrateDatasetCollections({
+      enableDatasetCollectionPermissions({
         teamId: String(users.owner.teamId),
         datasetId: String(dataset._id)
       })
     ).rejects.toThrow(/orphan/);
+    // 校验失败时零写入：开关保持关闭态
+    expect(await datasetSwitchState(String(dataset._id))).toBe(false);
   });
 
   it('rejects a folder cycle instead of silently degrading', async () => {
@@ -555,10 +392,94 @@ describe.sequential('migrateDatasetCollections', () => {
     );
 
     await expect(
-      migrateDatasetCollections({
+      enableDatasetCollectionPermissions({
         teamId: String(users.owner.teamId),
         datasetId: String(dataset._id)
       })
     ).rejects.toThrow(/cycle/);
+    expect(await datasetSwitchState(String(dataset._id))).toBe(false);
+  });
+});
+
+describe.sequential('disableDatasetCollectionPermissions', () => {
+  it('clears collection ACL rows, resets every collection to inheriting and makes the switch reversible', async () => {
+    const users = await getFakeUsers(3);
+    const dataset = await createDataset({ user: users.owner });
+    await setDatasetCollaborators({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ]
+    });
+    const rootFolder = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'root-folder',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const child = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'child',
+      parentId: String(rootFolder._id)
+    });
+    // 独立态 collection：关闭必须把全部 collection（含独立态）清理回继承态
+    const independent = await MongoDatasetCollection.create({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      datasetId: dataset._id,
+      type: DatasetCollectionTypeEnum.file,
+      name: 'independent',
+      inheritPermission: false
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.collection,
+      teamId: users.owner.teamId,
+      resourceId: String(independent._id),
+      tmbId: users.members[1].tmbId,
+      permission: ReadRoleVal
+    });
+
+    const teamId = String(users.owner.teamId);
+    const datasetId = String(dataset._id);
+    const collectionIds = [String(rootFolder._id), String(child._id), String(independent._id)];
+
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+    expect(await datasetSwitchState(datasetId)).toBe(true);
+    await expect(MongoDatasetCollection.findById(independent._id).lean()).resolves.toMatchObject({
+      inheritPermission: false
+    });
+
+    const result = await disableDatasetCollectionPermissions({ teamId, datasetId });
+    expect(result).toEqual({ collectionCount: 3 });
+    // 关闭态无残留：全部 collection ACL 行被清除
+    await expect(countCollectionAclRows(teamId, collectionIds)).resolves.toBe(0);
+    for (const collectionId of collectionIds) {
+      await expect(MongoDatasetCollection.findById(collectionId).lean()).resolves.toMatchObject({
+        inheritPermission: true
+      });
+    }
+    expect(await datasetSwitchState(datasetId)).toBe(false);
+
+    // 重复关闭是 no-op
+    const rerun = await disableDatasetCollectionPermissions({ teamId, datasetId });
+    expect(rerun).toEqual({ collectionCount: 3 });
+    await expect(countCollectionAclRows(teamId, collectionIds)).resolves.toBe(0);
+    expect(await datasetSwitchState(datasetId)).toBe(false);
+
+    // 重新启用等价于首次启用：按 dataset 有效 clbs 重建全部快照
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+    const expectedMap = new Map([
+      [String(users.owner.tmbId), OwnerRoleVal],
+      [String(users.members[0].tmbId), ReadRoleVal]
+    ]);
+    for (const collectionId of collectionIds) {
+      await expect(collectionClbs(teamId, collectionId).then(toPermissionMap)).resolves.toEqual(
+        expectedMap
+      );
+    }
+    expect(await datasetSwitchState(datasetId)).toBe(true);
   });
 });
