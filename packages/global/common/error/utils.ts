@@ -57,7 +57,6 @@ export const getErrResponse = (err: any): any => {
 };
 
 export class UserError extends Error {
-  /** message 保留业务机器码供旧调用方判断；displayMessage 可携带含资源名称的具体提示。 */
   constructor(
     message: string,
     readonly displayMessage?: string

@@ -46,6 +46,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -185,6 +186,7 @@ type WorkflowCheckMessageCode =
   | 'tool_load_failed'
   | 'tool_no_permission'
   | 'model_unavailable'
+  | 'model_unavailable_short'
   | 'model_required';
 
 /** issue.code -> 设计稿固定文案 code。表外 code 映射到最接近的已有文案。 */
@@ -210,6 +212,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   tool_load_failed: 'tool_load_failed',
   tool_no_permission: 'tool_no_permission',
   model_unavailable: 'model_unavailable',
+  model_unavailable_short: 'model_unavailable_short',
   model_required: 'model_required',
   tool_offline: 'tool_missing',
   loop_run_missing_break: 'if_else_incomplete',
@@ -254,7 +257,8 @@ const workflowCheckMessageFallback: Record<
   tool_load_failed: () => '工具加载失败，请稍后重试',
   tool_no_permission: () => '当前账号无权限访问该资源',
   model_unavailable: ({ nodeName, inputName } = {}) =>
-    `节点「${nodeName ?? ''}」的「${inputName ?? ''}」模型不可用`,
+    `「${nodeName ?? ''}」的「${inputName ?? ''}」模型不可用`,
+  model_unavailable_short: ({ inputName } = {}) => `「${inputName ?? ''}」模型不可用`,
   model_required: ({ inputName } = {}) => `未配置[${inputName ?? ''}]模型`
 };
 
@@ -338,6 +342,11 @@ const translateWorkflowCheckIssueMessage = (
       return t('common:core.workflow.check.tool_no_permission', params);
     case 'model_unavailable':
       return t('common:core.workflow.check.model_unavailable', params);
+    case 'model_unavailable_short':
+      return t('common:core.workflow.check.model_unavailable_short', {
+        ...params,
+        defaultValue: workflowCheckMessageFallback.model_unavailable_short(params)
+      });
     case 'model_required':
       // 短提示使用独立 key；开发热更新或旧语言资源尚未刷新时也不能沿用带节点名的旧模板。
       return t('common:core.workflow.check.model_required_short', {
@@ -1089,6 +1098,73 @@ export const checkWorkflowNodeIssues = ({
 export const checkWorkflowHasError = (nodeIssueMap: WorkflowCheckNodeIssueMap) =>
   Object.values(nodeIssueMap).some((issues) => issues.some((issue) => issue.level === 'error'));
 
+/** 检查不属于画布节点的聊天配置模型，发布时也必须使用当前成员可用的模型目录。 */
+export const checkWorkflowChatConfigModelIssues = ({
+  chatConfig,
+  models,
+  t
+}: {
+  chatConfig?: AppChatConfigType;
+  models?: WorkflowCheckModel[];
+  t?: TFunction;
+}) => {
+  const issues: WorkflowCheckIssue[] = [];
+  const check = ({
+    config,
+    type,
+    inputName,
+    enabled
+  }: {
+    config?: { modelId?: unknown; model?: unknown };
+    type: ModelTypeEnum;
+    inputName: string;
+    enabled: boolean;
+  }) => {
+    if (!enabled || !config || !models) return;
+    const value = getModelReferenceValue(config);
+    if (isEmptyModelValue(value)) {
+      if (models.some((item) => item.type === type)) return;
+      issues.push({
+        nodeId: '__chat_config__',
+        nodeType: FlowNodeTypeEnum.workflowStart,
+        level: 'error',
+        code: 'model_required',
+        inputKey: inputName,
+        message: getWorkflowCheckIssueMessage('model_required', t, { inputName })
+      });
+      return;
+    }
+    if (Array.isArray(value) || typeof value !== 'string') return;
+    if (
+      models.some((item) => item.type === type && (item.modelId === value || item.model === value))
+    ) {
+      return;
+    }
+    issues.push({
+      nodeId: '__chat_config__',
+      nodeType: FlowNodeTypeEnum.workflowStart,
+      level: 'error',
+      code: 'model_unavailable',
+      inputKey: inputName,
+      message: getWorkflowCheckIssueMessage('model_unavailable_short', t, { inputName })
+    });
+  };
+
+  check({
+    config: chatConfig?.questionGuide,
+    type: ModelTypeEnum.llm,
+    inputName: t?.('common:core.app.Question Guide') ?? 'Question guide',
+    enabled: chatConfig?.questionGuide?.open === true
+  });
+  check({
+    config: chatConfig?.ttsConfig,
+    type: ModelTypeEnum.tts,
+    inputName: t?.('common:core.app.tts.Speech model') ?? 'Speech model',
+    enabled: chatConfig?.ttsConfig?.type === 'model'
+  });
+  return issues;
+};
+
 /** 返回存在 error 的 nodeId 列表；传入 nodeOrder 时按画布节点顺序排列，便于稳定定位第一个错误节点。 */
 export const getWorkflowCheckErrorNodeIds = (
   nodeIssueMap: WorkflowCheckNodeIssueMap,
@@ -1112,21 +1188,25 @@ export const checkWorkflowBeforeRunOrPublish = ({
   nodes,
   edges,
   models,
-  t
+  t,
+  chatConfig
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
   models?: WorkflowCheckModel[];
   t?: TFunction;
+  chatConfig?: AppChatConfigType;
 }) => {
   const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
+  const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, models, t });
   const nodeOrder = nodes.map((node) => node.data.nodeId);
   const errorNodeIds = getWorkflowCheckErrorNodeIds(issueMap, nodeOrder);
 
   return {
     issueMap,
-    hasError: errorNodeIds.length > 0,
+    hasError: errorNodeIds.length > 0 || chatConfigIssues.length > 0,
     firstErrorNodeId: errorNodeIds[0],
-    errorNodeIds
+    errorNodeIds,
+    chatConfigIssues
   };
 };

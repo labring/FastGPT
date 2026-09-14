@@ -66,6 +66,7 @@
   "model_request_times": "요청 횟수",
   "model_test": "모델 테스트",
   "model_channel_test_success": "{{model}} 모델이 {{channel}}에서 성공적으로 실행되었습니다",
+  "model_test_success": "{{model}} 모델 테스트 성공",
   "model_channel_test_failed": "{{model}} 모델이 {{channel}}에서 실행되지 못했습니다: {{reason}}",
   "model_tokens": "입력/출력 토큰",
   "model_ttfb_time": "첫 단어 응답 시간",

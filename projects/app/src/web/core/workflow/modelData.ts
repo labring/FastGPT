@@ -3,9 +3,13 @@ import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/utils';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 /** 校验业务只读取实际引用的模型详情；共享 catalog 在 getter 内处理，不由 Context 预加载下发。 */
-export const getWorkflowModelDetails = async (nodes: { data: FlowNodeItemType }[]) => {
+export const getWorkflowModelDetails = async (
+  nodes: { data: FlowNodeItemType }[],
+  chatConfig?: AppChatConfigType
+) => {
   const references = new Map<string, { modelId?: string; model?: string }>();
   const add = (modelId: unknown, model: unknown) => {
     const value = getModelReferenceValue({ modelId, model });
@@ -39,6 +43,8 @@ export const getWorkflowModelDetails = async (nodes: { data: FlowNodeItemType }[
       inspectConfig(input.value);
     }
   }
+  add(chatConfig?.questionGuide?.modelId, chatConfig?.questionGuide?.model);
+  add(chatConfig?.ttsConfig?.modelId, chatConfig?.ttsConfig?.model);
   const models = await Promise.all([...references.values()].map(getModelDetail));
   return models.filter((model) => model !== undefined);
 };

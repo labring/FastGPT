@@ -66,6 +66,7 @@
   "model_request_times": "Request times",
   "model_test": "Model testing",
   "model_channel_test_success": "{{model}} ran successfully on {{channel}}",
+  "model_test_success": "{{model}} test succeeded",
   "model_channel_test_failed": "{{model}} failed to run on {{channel}}: {{reason}}",
   "model_tokens": "Input/Output tokens",
   "model_ttfb_time": "Response time of first word",

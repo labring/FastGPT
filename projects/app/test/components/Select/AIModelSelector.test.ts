@@ -185,11 +185,11 @@ describe('AIModelSelector lazy directory', () => {
     );
   });
 
-  it('refreshes details only when a successfully loaded catalog is missing the current model', () => {
+  it('keeps the existing detail when a successfully loaded catalog is missing the current model', () => {
     mocks.open = true;
     AIModelSelector({ modelType: ModelTypeEnum.llm, value: 'missing' });
     mocks.effects.forEach((fn) => fn());
-    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect(mocks.refresh).not.toHaveBeenCalled();
     expect(mocks.setFromCatalog).not.toHaveBeenCalled();
   });
 });

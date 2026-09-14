@@ -351,7 +351,16 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     },
     {
       manual: true,
-      successToast: t('common:Success')
+      successToast: undefined,
+      onSuccess: (_, params) => {
+        const model = modelList.find((item) => item.modelId === params[0]?.modelId)?.model;
+        if (model) {
+          toast({
+            status: 'success',
+            title: t('config_model:model_test_success', { model })
+          });
+        }
+      }
     }
   );
   const [updatingModelIds, updatingModelIdsDispatch] = useSet<string>();

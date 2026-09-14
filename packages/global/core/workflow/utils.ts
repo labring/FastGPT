@@ -46,6 +46,12 @@ import { type RuntimeUserPromptType, type UserChatItemType } from '../../core/ch
 import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
+type WorkflowModelFeature = 'query_extension' | 'question_guide' | 'rerank' | 'tts' | 'node_model';
+type WorkflowModelValidationIssue = {
+  code: 'model_unavailable' | 'model_required';
+  feature: WorkflowModelFeature;
+  modelRef?: string;
+};
 
 export const getHandleId = (
   nodeId: string,
@@ -641,16 +647,34 @@ export const formatModels = ({
   defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
   modelReferencePolicy: 'preserve' | 'fallback' | 'validate' | 'import';
 }) => {
-  const missingModels = new Set<string>();
-  let hasUnconfiguredModels = false;
-  /** 空模型和不可用模型分开提示，避免生成“未配置 模型已停用”。 */
+  const validationIssues: WorkflowModelValidationIssue[] = [];
+  /** 发布校验只保留功能级信息，服务端错误作为客户端的兜底提示。 */
+  const addValidationIssue = (issue: WorkflowModelValidationIssue) => {
+    const duplicated = validationIssues.some(
+      (item) =>
+        item.code === issue.code &&
+        item.feature === issue.feature &&
+        item.modelRef === issue.modelRef
+    );
+    if (!duplicated) validationIssues.push(issue);
+  };
   const throwModelValidationErrors = () => {
-    const messages = [
-      ...(hasUnconfiguredModels ? ['存在未配置的模型，请选择模型'] : []),
-      ...(missingModels.size ? [`${Array.from(missingModels).join('、')} 模型不可用`] : [])
-    ];
-    if (modelReferencePolicy === 'validate' && messages.length)
-      throw new Error(messages.join('；'));
+    if (modelReferencePolicy !== 'validate' || validationIssues.length === 0) return;
+    const featureNames: Record<WorkflowModelFeature, string> = {
+      query_extension: 'Query extension',
+      question_guide: 'Question guide',
+      rerank: 'Rerank',
+      tts: 'TTS',
+      node_model: 'Model'
+    };
+    throw new Error(
+      validationIssues
+        .map(
+          (issue) =>
+            `${featureNames[issue.feature]} model ${issue.code === 'model_required' ? 'is not configured' : 'is unavailable'}`
+        )
+        .join('; ')
+    );
   };
   const getFallbackModelId = (type: ModelTypeEnum) => {
     const defaultModelId = defaultModelIds[type];
@@ -668,13 +692,15 @@ export const formatModels = ({
     model,
     type,
     featureEnabled,
-    defaultWhenEmpty = false
+    defaultWhenEmpty = false,
+    feature
   }: {
     modelId?: unknown;
     model?: unknown;
     type: ModelTypeEnum;
     featureEnabled: boolean;
     defaultWhenEmpty?: boolean;
+    feature: WorkflowModelFeature;
   }) => {
     const matchedModelById = !isEmptyModelValue(modelId)
       ? models.find((item) => item.modelId === String(modelId) && item.type === type)
@@ -708,18 +734,23 @@ export const formatModels = ({
       const fallbackModelId = getFallbackModelId(type);
       if (fallbackModelId) return fallbackModelId;
     }
-    if (isEmptyModelValue(value)) hasUnconfiguredModels = true;
-    else missingModels.add(String(value));
+    addValidationIssue({
+      code: isEmptyModelValue(value) ? 'model_required' : 'model_unavailable',
+      feature,
+      ...(isEmptyModelValue(value) ? {} : { modelRef: String(value) })
+    });
     return '';
   };
   const formatChatModelReference = ({
     config,
     type,
-    featureEnabled
+    featureEnabled,
+    feature
   }: {
     config?: { modelId?: unknown; model?: unknown };
     type: ModelTypeEnum;
     featureEnabled: boolean;
+    feature: WorkflowModelFeature;
   }) => {
     if (!config) return;
     if (modelReferencePolicy === 'validate' && !featureEnabled) return;
@@ -744,19 +775,22 @@ export const formatModels = ({
       model: config.model,
       type,
       featureEnabled,
-      defaultWhenEmpty: true
+      defaultWhenEmpty: true,
+      feature
     });
     delete config.model;
   };
   formatChatModelReference({
     config: chatConfig?.questionGuide,
     type: ModelTypeEnum.llm,
-    featureEnabled: chatConfig?.questionGuide?.open === true
+    featureEnabled: chatConfig?.questionGuide?.open === true,
+    feature: 'question_guide'
   });
   formatChatModelReference({
     config: chatConfig?.ttsConfig,
     type: ModelTypeEnum.tts,
-    featureEnabled: chatConfig?.ttsConfig?.type === 'model'
+    featureEnabled: chatConfig?.ttsConfig?.type === 'model',
+    feature: 'tts'
   });
 
   if (!nodes) {
@@ -775,13 +809,15 @@ export const formatModels = ({
     legacyKey,
     modelIdKey,
     type,
-    featureEnabled
+    featureEnabled,
+    feature
   }: {
     config: Record<string, unknown>;
     legacyKey: string;
     modelIdKey: string;
     type: ModelTypeEnum;
     featureEnabled: boolean;
+    feature: WorkflowModelFeature;
   }) => {
     const modelId = config[modelIdKey];
     const model = config[legacyKey];
@@ -802,7 +838,8 @@ export const formatModels = ({
       model,
       type,
       featureEnabled,
-      defaultWhenEmpty: true
+      defaultWhenEmpty: true,
+      feature
     });
     delete config[legacyKey];
   };
@@ -821,6 +858,12 @@ export const formatModels = ({
         legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
           ? ModelTypeEnum.rerank
           : ModelTypeEnum.llm;
+      const feature: WorkflowModelFeature =
+        legacyKey === NodeInputKeyEnum.datasetSearchRerankModel
+          ? 'rerank'
+          : legacyKey === NodeInputKeyEnum.datasetSearchExtensionModel
+            ? 'query_extension'
+            : 'node_model';
       const featureEnabled = (() => {
         const featureKey = (() => {
           if (legacyKey === NodeInputKeyEnum.datasetSearchRerankModel) {
@@ -858,7 +901,8 @@ export const formatModels = ({
             model: legacyInput?.value,
             type,
             featureEnabled,
-            defaultWhenEmpty
+            defaultWhenEmpty,
+            feature
           });
         }
         node.inputs = node.inputs.filter((input) => input.key !== legacyKey);
@@ -868,7 +912,12 @@ export const formatModels = ({
       if (!legacyInput) {
         node.inputs.push({
           ...systemModelInput,
-          value: resolveModelId({ type, featureEnabled, defaultWhenEmpty })
+          value: resolveModelId({
+            type,
+            featureEnabled,
+            defaultWhenEmpty,
+            feature
+          })
         });
         continue;
       }
@@ -878,7 +927,8 @@ export const formatModels = ({
           model: legacyInput.value,
           type,
           featureEnabled,
-          defaultWhenEmpty
+          defaultWhenEmpty,
+          feature
         });
       }
       legacyInput.key = modelIdKey;
@@ -901,14 +951,16 @@ export const formatModels = ({
         legacyKey: NodeInputKeyEnum.datasetSearchRerankModel,
         modelIdKey: NodeInputKeyEnum.datasetSearchRerankModelId,
         type: ModelTypeEnum.rerank,
-        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank])
+        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
+        feature: 'rerank'
       });
       formatNestedModelReference({
         config: datasetParams,
         legacyKey: NodeInputKeyEnum.datasetSearchExtensionModel,
         modelIdKey: NodeInputKeyEnum.datasetSearchExtensionModelId,
         type: ModelTypeEnum.llm,
-        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery])
+        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
+        feature: 'query_extension'
       });
     }
   });

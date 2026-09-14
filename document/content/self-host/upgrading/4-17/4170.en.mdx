@@ -47,6 +47,13 @@ This setting disables only seccomp. chroot, `no_new_privs`, and UID/GID privileg
 
 Set `DEFAULT_TEAM_BASIC_PERMISSIONS_ENABLED=true` to grant the default all-members group permission to create Apps, Skills, and Datasets when a team is created. The default is `false`. This setting only affects new teams; it does not change permissions for existing teams. For FastGPT Pro, configure it consistently in the FastGPT and Admin services to cover their team creation paths, including WeCom authorization.
 
+### Image updates
+
+- Update the fastgpt-app (FastGPT main service) image tag to `v4.17.0`
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to `v4.17.0`
+- Update the fastgpt-plugin image tag to `v1.1.3`
+- Update the fastgpt-code-sandbox image tag to `v4.17.0`
+
 ## Deprecation notice
 
 ### Custom model request URLs

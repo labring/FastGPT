@@ -151,11 +151,11 @@ const AIModelSelector = ({
   );
   const selectedModel = selection?.model;
   const detailState = useModelSummary({ modelId: currentValue, outLinkAuthData });
-  const { refresh: refreshDetail, setFromCatalog } = detailState;
+  const { setFromCatalog } = detailState;
   const normalizedSelectionRef = useRef<string>();
   const checkedCatalogRef = useRef<string>();
 
-  // 目录已确认当前模型时直接复用；只有目录缺少当前 ID 时才查询详情区分异常状态。
+  // 目录已确认当前模型时直接复用；目录缺少当前 ID 时保留收起态已有展示信息。
   useEffect(() => {
     if (!isOpen || loading || catalogError) {
       checkedCatalogRef.current = undefined;
@@ -167,17 +167,7 @@ const AIModelSelector = ({
     checkedCatalogRef.current = key;
     const currentModel = modelList.find((model) => model.modelId === currentValue);
     if (currentModel) setFromCatalog(currentModel);
-    else refreshDetail();
-  }, [
-    catalogError,
-    catalogVersion,
-    currentValue,
-    refreshDetail,
-    setFromCatalog,
-    isOpen,
-    loading,
-    modelList
-  ]);
+  }, [catalogError, catalogVersion, currentValue, setFromCatalog, isOpen, loading, modelList]);
 
   // 完整目录加载后自动把旧 model 值写回 modelId，选择器对外只输出稳定 ID。
   useEffect(() => {
