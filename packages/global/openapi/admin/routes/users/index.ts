@@ -1,12 +1,19 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
+import z from 'zod';
 import {
   GetUsersBodySchema,
   GetUsersResponseSchema,
   AddUserBodySchema,
   AddUserResponseSchema,
   UpdateUserBodySchema,
-  DeleteUserBodySchema
+  DeleteUserBodySchema,
+  CreateUserImportBodySchema,
+  CreateUserImportResponseSchema,
+  GetUserImportQuerySchema,
+  GetUserImportResponseSchema,
+  UserImportResultQuerySchema,
+  UserImportTemplateQuerySchema
 } from './api';
 
 export const AdminUsersPath: OpenAPIPath = {
@@ -103,6 +110,66 @@ export const AdminUsersPath: OpenAPIPath = {
             }
           }
         }
+      }
+    }
+  },
+  '/admin/routes/users/import': {
+    post: {
+      summary: '批量导入用户',
+      description: '上传 XLSX 文件并创建异步用户导入任务',
+      tags: [DevApiTagsMap.adminUsers],
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            schema: CreateUserImportBodySchema.extend({
+              file: z.any().meta({ format: 'binary', description: 'XLSX 用户导入文件' })
+            })
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '任务创建成功',
+          content: {
+            'application/json': { schema: CreateUserImportResponseSchema }
+          }
+        }
+      }
+    },
+    get: {
+      summary: '查询用户导入任务',
+      description: '查询当前管理员最近或指定的用户导入任务',
+      tags: [DevApiTagsMap.adminUsers],
+      requestParams: { query: GetUserImportQuerySchema },
+      responses: {
+        200: {
+          description: '任务状态',
+          content: {
+            'application/json': { schema: GetUserImportResponseSchema }
+          }
+        }
+      }
+    }
+  },
+  '/admin/routes/users/import/template': {
+    get: {
+      summary: '下载用户导入模板',
+      description: '下载中文、繁体中文或英文 XLSX 模板，必填表头标红',
+      tags: [DevApiTagsMap.adminUsers],
+      requestParams: { query: UserImportTemplateQuerySchema },
+      responses: { 200: { description: '用户导入 XLSX 模板' } }
+    }
+  },
+  '/admin/routes/users/import/{taskId}/result': {
+    get: {
+      summary: '下载用户导入错误文件',
+      description: '下载批量导入失败行文件',
+      tags: [DevApiTagsMap.adminUsers],
+      requestParams: {
+        path: UserImportResultQuerySchema
+      },
+      responses: {
+        200: { description: '错误 XLSX 文件' }
       }
     }
   }

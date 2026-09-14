@@ -12,6 +12,7 @@ export enum QueueNames {
   agentSkillDelete = 'agentSkillDelete',
   teamDelete = 'teamDelete',
   accountCancellation = 'accountCancellation',
+  userImport = 'userImport',
 
   // Publish
   wechatPoll = 'wechatPoll',

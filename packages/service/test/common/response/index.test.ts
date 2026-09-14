@@ -90,6 +90,23 @@ describe('processError zod logging', () => {
 });
 
 describe('processError HTTP status mapping', () => {
+  it.each([
+    ['USER_IMPORT_NOT_ALLOWED_IN_SYNC_MODE', 400],
+    ['USER_IMPORT_ALREADY_RUNNING', 409],
+    ['IMPORT_ERROR_FILE_NOT_FOUND', 404],
+    ['USER_IMPORT_ONLY_XLSX', 400],
+    ['USER_IMPORT_INVALID_XLSX', 400],
+    ['USER_IMPORT_TEAM_MODE_LOCKED', 409]
+  ])('maps import error %s to a translation key and HTTP %s', (code, httpStatus) => {
+    expect(processError({ error: new Error(String(code)) })).toMatchObject({
+      statusText: code,
+      message: `account_team:user_import_${code}`,
+      httpStatus
+    });
+    expect(ERROR_RESPONSE[UserErrEnum.account_psw_error].code).toBe(503002);
+    expect(ERROR_RESPONSE[UserErrEnum.registrationMethodNotSupported].code).toBe(503009);
+  });
+
   it('keeps model codes stable while returning specific messages in JSON and SSE', () => {
     const error = new UserError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');
     const processed = processError({ error });

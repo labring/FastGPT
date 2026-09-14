@@ -1,32 +1,10 @@
 import { CUSTOM_SPLIT_SIGN } from '../../../common/string/textSplitter';
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import Papa from 'papaparse';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { filterEmptyTableData, formatMarkdownTableRow } from './utils';
-import { workerEnv } from '../../env';
-import { estimateFileParseMemoryBytes } from '../../fileParseResource';
+import { getXlsxParseLimits, XLSX_PARSE_LIMITS } from '../../../common/file/xlsxLimits';
 import { preflightXlsx } from './xlsxPreflight';
-
-/**
- * XLSX 结构安全预算。行列与单元格限制可按业务规模调整。
- */
-export const XLSX_PARSE_LIMITS = {
-  maxRows: workerEnv.XLSX_PARSE_MAX_ROWS,
-  maxColumns: workerEnv.XLSX_PARSE_MAX_COLUMNS,
-  maxCells: workerEnv.XLSX_PARSE_MAX_CELLS,
-  maxMergedCells: workerEnv.XLSX_PARSE_MAX_MERGED_CELLS
-} as const;
-
-/**
- * 使用调度器对同一 XLSX 输入的内存估算限制解压总量，保留 ZIP 炸弹防护且不引入固定 worker 额度。
- */
-export const getXlsxParseLimits = (fileSizeBytes: number) => ({
-  ...XLSX_PARSE_LIMITS,
-  maxUncompressedBytes: estimateFileParseMemoryBytes({
-    extension: 'xlsx',
-    fileSizeBytes
-  })
-});
 
 /**
  * 将 XLSX 转换为 CSV 原文和 Markdown 表格。
