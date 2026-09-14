@@ -42,15 +42,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     req,
     bodySchema: CreateDatasetWithFilesBodySchema
   }).body;
-  const {
-    parentId,
-    name,
-    avatar,
-    vectorModelId,
-    agentModelId,
-    vlmModelId,
-    inheritPermission
-  } = datasetParams;
+  const { parentId, name, avatar, vectorModelId, agentModelId, vlmModelId, inheritPermission } =
+    datasetParams;
   const modelHandle = await getModelHandle();
   const vectorModelData =
     modelHandle.getEmbeddingModelData({ modelId: vectorModelId }, { optional: true }) ??
