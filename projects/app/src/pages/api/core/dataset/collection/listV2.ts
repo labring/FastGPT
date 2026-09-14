@@ -15,7 +15,10 @@ import {
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { buildCollectionListTagMatch } from '@fastgpt/service/core/dataset/collection/tagFilter';
-import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import {
+  type DatasetCollectionSchemaType,
+  type CollectionTagLabelType
+} from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -292,7 +295,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     TrainingAmountAggregateItem[],
     { _id: string; count: number }[],
     Map<string, CollectionPermission> | undefined,
-    (string[] | undefined)[]
+    (CollectionTagLabelType[] | undefined)[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
       [

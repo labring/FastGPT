@@ -1,4 +1,4 @@
-import { GET, POST, DELETE } from '@/web/common/api/request';
+import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   ParentTreePathItemType,
   ParentIdType
