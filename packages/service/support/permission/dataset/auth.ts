@@ -8,12 +8,17 @@ import {
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoDataset } from '../../../core/dataset/schema';
 import {
+  ManageRoleVal,
   NullPermissionVal,
-  PerResourceTypeEnum
+  OwnerRoleVal,
+  PerResourceTypeEnum,
+  ReadPermissionVal,
+  WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { type AuthModeType, type AuthResponseType } from '../type';
@@ -24,6 +29,7 @@ import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import { resolveCollectionPermission } from '../collection/auth';
 
 export const authDatasetByTmbId = async ({
   tmbId,
@@ -135,7 +141,48 @@ export const authDataset = async ({
   };
 };
 
-// the temporary solution for authDatasetCollection is getting the
+/**
+ * Collection 创建入口的统一鉴权：根目录要求 Dataset write，非根目录要求目标 Folder write。
+ * 非根目录同时校验父 Collection 确实属于请求中的 Dataset，避免跨 Dataset 注入 parentId。
+ */
+export const authDatasetCollectionCreate = async ({
+  datasetId,
+  parentId,
+  ...props
+}: AuthModeType & {
+  datasetId: string;
+  parentId?: ParentIdType;
+}) => {
+  if (!parentId) {
+    return authDataset({
+      ...props,
+      datasetId,
+      per: WritePermissionVal
+    });
+  }
+
+  const result = await authDatasetCollection({
+    ...props,
+    collectionId: parentId,
+    per: WritePermissionVal
+  });
+  if (String(result.collection.datasetId) !== String(datasetId)) {
+    return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+  }
+  const { dataset } = await authDatasetByTmbId({
+    tmbId: result.tmbId,
+    datasetId,
+    per: ReadPermissionVal,
+    isRoot: result.isRoot
+  });
+
+  return {
+    ...result,
+    dataset
+  };
+};
+
+// 先校验 Dataset read 门槛，再按 Collection 维度解析有效权限并校验 per。
 export async function authDatasetCollection({
   collectionId,
   per = NullPermissionVal,
@@ -144,7 +191,7 @@ export async function authDatasetCollection({
   collectionId: string;
   isRoot?: boolean;
 }): Promise<
-  AuthResponseType<DatasetPermission> & {
+  AuthResponseType<CollectionPermission> & {
     collection: CollectionWithDatasetType;
   }
 > {
@@ -155,10 +202,11 @@ export async function authDatasetCollection({
     return Promise.reject(DatasetErrEnum.unExist);
   }
 
+  // 1. Dataset read 门槛：Collection 权限不能绕过 Dataset 权限
   const { dataset } = await authDatasetByTmbId({
     tmbId,
     datasetId: collection.datasetId,
-    per,
+    per: ReadPermissionVal,
     isRoot: isRootFromHeader
   });
 
@@ -167,12 +215,73 @@ export async function authDatasetCollection({
     return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
 
+  // 系统 root 用户：与 Dataset 级 isRoot 语义一致，跳过 Collection 级权限解析。
+  if (isRootFromHeader) {
+    return {
+      userId,
+      teamId,
+      tmbId,
+      collection,
+      permission: new CollectionPermission({ isOwner: true }),
+      isRoot: isRootFromHeader
+    };
+  }
+
+  // 2. 团队 owner/admin 旁路（短路语义）：
+  //    Dataset read 门槛已通过。团队 owner/admin 对该 Dataset 下所有 Collection 视为可读/管理，
+  //    与 listV2 短路保持一致，避免「列表可见但点进去无权限」。
+  const tmbInfo = await getTmbInfoByTmbId({ tmbId });
+  const isTeamOwnerOrAdmin =
+    String(tmbInfo.teamId) === String(teamId) &&
+    (tmbInfo.permission.isOwner || tmbInfo.permission.hasManagePer);
+
+  // 3. 短路：Dataset 未配置 collection 自定义权限（flag 非 true，含旧数据 undefined）→
+  //    Collection 有效权限直接等于 Dataset 有效权限（父 owner 不透传，cap 为 manage）。
+  //    写路径不变量保证：任何产生独立/自定义 collection 权限的操作必 mark flag=true，
+  //    故 flag!==true ⟺ 纯继承，与 listV2/RAG 短路语义一致（避免列表可见但详情拒绝）。
+  const flagSetCollectionPermissions = dataset.hasSetCollectionPermissions;
+
+  // 4. Collection 维度解析：物化快照直读（无父链递归）。
+  let role: PermissionValueType;
+  if (isTeamOwnerOrAdmin) {
+    role = ManageRoleVal;
+  } else if (flagSetCollectionPermissions !== true) {
+    const isCollectionOwner = String(collection.tmbId) === String(tmbId);
+    const datasetRole = dataset.permission.role;
+    // Collection owner 优先：owner 由创建/changeOwner 产生，owner 记录在全量快照中始终为
+    // OwnerRoleVal（merge 时与父级降级后的 manage 按位 OR 后保留全位）。短路分支必须与
+    // 物化快照直读语义一致（flag 仅作性能短路，不改变正确性），故先判 isCollectionOwner；
+    // 否则「同时是 dataset owner 与 collection owner」的用户会拿到 manage 而非 owner。
+    role = isCollectionOwner
+      ? OwnerRoleVal
+      : datasetRole === OwnerRoleVal
+        ? ManageRoleVal
+        : datasetRole;
+  } else {
+    role = await resolveCollectionPermission({
+      collection,
+      tmbId,
+      teamId
+    });
+  }
+
+  const isOwner = String(collection.tmbId) === String(tmbId);
+
+  const permission = new CollectionPermission({
+    role,
+    isOwner
+  });
+
+  if (!permission.checkPer(per)) {
+    return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
+  }
+
   return {
     userId,
     teamId,
     tmbId,
     collection,
-    permission: dataset.permission,
+    permission,
     isRoot: isRootFromHeader
   };
 }

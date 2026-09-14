@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { OwnerPermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  ManageRoleVal,
+  OwnerPermissionVal,
+  OwnerRoleVal,
+  ReadPermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 
 const {
   mockParseHeaderCert,
@@ -8,14 +14,16 @@ const {
   mockFindDataset,
   mockGetTmbInfoByTmbId,
   mockGetTmbPermission,
-  mockIsObjectExists
+  mockIsObjectExists,
+  mockResolveCollectionPermission
 } = vi.hoisted(() => ({
   mockParseHeaderCert: vi.fn(),
   mockGetCollectionWithDataset: vi.fn(),
   mockFindDataset: vi.fn(),
   mockGetTmbInfoByTmbId: vi.fn(),
   mockGetTmbPermission: vi.fn(),
-  mockIsObjectExists: vi.fn()
+  mockIsObjectExists: vi.fn(),
+  mockResolveCollectionPermission: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
@@ -40,6 +48,10 @@ vi.mock('@fastgpt/service/support/permission/controller', () => ({
   getTmbPermission: mockGetTmbPermission
 }));
 
+vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
+  resolveCollectionPermission: mockResolveCollectionPermission
+}));
+
 vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   MongoDatasetData: {
     findById: vi.fn()
@@ -54,7 +66,8 @@ vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
 
 import {
   authDatasetByTmbId,
-  authDatasetCollection
+  authDatasetCollection,
+  authDatasetCollectionCreate
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
 
@@ -81,6 +94,7 @@ describe('authDatasetCollection', () => {
       permission: { isOwner: true }
     });
     mockGetTmbPermission.mockResolvedValue(0);
+    mockResolveCollectionPermission.mockResolvedValue(0);
     mockIsObjectExists.mockResolvedValue(true);
     mockDatasetQuery({
       _id: datasetId,
@@ -195,6 +209,147 @@ describe('authDatasetCollection', () => {
     });
 
     expect(result.collection._id).toBe(collectionId);
+  });
+
+  it('keeps owner for a dataset owner who also owns the collection in pure-inherit mode', async () => {
+    // 非团队 owner/admin，走纯继承短路分支（flag 非 true）
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    // 当前用户是 dataset owner（tmbId 匹配），且 dataset 未配置 collection 权限
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      hasSetCollectionPermissions: false
+    });
+    // 当前用户也是 collection owner
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-a'
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    const result = await authDatasetCollection({
+      req: {} as any,
+      authToken: true,
+      collectionId,
+      per: OwnerPermissionVal
+    });
+
+    // 短路分支必须与物化快照直读语义一致：collection owner 拿到 OwnerRoleVal 而非被 cap 为 manage
+    expect(result.permission.role).toBe(OwnerRoleVal);
+    expect(result.permission.checkPer(OwnerPermissionVal)).toBe(true);
+    // 短路生效：未走物化快照解析
+    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+  });
+
+  it('caps a dataset owner who does not own the collection to manage in pure-inherit mode', async () => {
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      hasSetCollectionPermissions: false
+    });
+    // collection owner 是他人，dataset owner 仅从父级继承 manage
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-other'
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    const result = await authDatasetCollection({
+      req: {} as any,
+      authToken: true,
+      collectionId,
+      per: ReadPermissionVal
+    });
+
+    expect(result.permission.role).toBe(ManageRoleVal);
+    expect(result.permission.checkPer(OwnerPermissionVal)).toBe(false);
+    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+  });
+});
+
+describe('authDatasetCollectionCreate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockParseHeaderCert.mockResolvedValue({
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      userId: 'user-a',
+      isRoot: false
+    });
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-owner',
+      inheritPermission: false
+    });
+  });
+
+  it('requires dataset write permission when creating at the root', async () => {
+    mockGetTmbPermission.mockResolvedValue(WritePermissionVal);
+
+    await expect(
+      authDatasetCollectionCreate({
+        req: {} as any,
+        authToken: true,
+        datasetId
+      })
+    ).resolves.toMatchObject({ dataset: { _id: datasetId } });
+    expect(mockGetCollectionWithDataset).not.toHaveBeenCalled();
+  });
+
+  it('uses the parent collection write permission for nested creation', async () => {
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-owner'
+    });
+    mockGetTmbPermission.mockResolvedValue(WritePermissionVal);
+
+    await expect(
+      authDatasetCollectionCreate({
+        req: {} as any,
+        authToken: true,
+        datasetId,
+        parentId: collectionId
+      })
+    ).resolves.toMatchObject({ collection: { _id: collectionId } });
+  });
+
+  it('rejects a parent collection from another dataset', async () => {
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId: 'another-dataset',
+      tmbId: 'tmb-owner'
+    });
+    mockGetTmbPermission.mockResolvedValue(WritePermissionVal);
+
+    await expect(
+      authDatasetCollectionCreate({
+        req: {} as any,
+        authToken: true,
+        datasetId,
+        parentId: collectionId
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDatasetCollection);
   });
 });
 
