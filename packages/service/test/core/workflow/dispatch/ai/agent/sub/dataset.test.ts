@@ -253,6 +253,16 @@ describe('dispatchAgentDatasetSearch', () => {
         })
       ])
     );
+    expect(JSON.parse(result.response)).toEqual({
+      prompt: expect.stringContaining('[id](CITE)'),
+      cites: [
+        {
+          id: 'chunk_2',
+          sourceName: 'doc.md',
+          content: 'question 2\nanswer 2'
+        }
+      ]
+    });
     expect(result.nodeResponse?.quoteList?.map((item: { id: string }) => item.id)).toEqual([
       'chunk_2'
     ]);

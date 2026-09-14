@@ -1,5 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import React, { useState } from 'react';
+import { useTranslation } from 'next-i18next';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
@@ -45,6 +46,7 @@ const AIChatBubbleContent = ({
   allowedCitationIds,
   onOpenCiteModal
 }: AIChatBubbleContentProps) => {
+  const { t } = useTranslation('workflow');
   const [expandedProcessingPreview, setExpandedProcessingPreview] =
     useState<ExpandedProcessingPreview>();
 
@@ -119,7 +121,7 @@ const AIChatBubbleContent = ({
       <Box key={groupKey}>
         <RenderProcessingCollapse
           isProcessing={isProcessing}
-          label={previewItem ? getProcessingPreviewLabelKey(previewItem.value) : undefined}
+          label={previewItem ? getProcessingPreviewLabelKey(previewItem.value, t) : undefined}
           preview={
             previewItem ? (
               <RenderProcessingPreview value={previewItem.value} showAnimation={isProcessing} />
