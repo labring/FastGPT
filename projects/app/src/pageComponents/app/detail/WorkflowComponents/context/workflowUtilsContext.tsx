@@ -227,17 +227,21 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         return;
       }
 
-      const models = await getWorkflowModelDetails(nodes).catch(() => undefined);
+      const models = await getWorkflowModelDetails(nodes, appDetail.chatConfig).catch(
+        () => undefined
+      );
       if (!models) {
         if (!hideTip) toast({ status: 'error', title: t('common:model_catalog_load_failed') });
         return;
       }
-      const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
-        nodes,
-        edges,
-        models,
-        t
-      });
+      const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
+        checkWorkflowBeforeRunOrPublish({
+          nodes,
+          edges,
+          models,
+          chatConfig: appDetail.chatConfig,
+          t
+        });
 
       if (!hasError) {
         onRemoveError();
@@ -266,7 +270,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
         toast({
           status: 'warning',
-          title: t('common:core.workflow.Check Failed')
+          title: t('common:core.workflow.Check Failed'),
+          description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
+            .filter((issue) => issue.level === 'error')
+            .map((issue) => issue.message)
+            .filter(Boolean)
+            .join('\n')
         });
       }
     },

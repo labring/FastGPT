@@ -54,7 +54,6 @@ export const useModelSummary = ({
   const teamId = useUserStore((state) => state.userInfo?.team?.teamId);
   const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId);
   const loginGeneration = useUserModelStore((state) => state.loginGeneration);
-  const catalogModels = useUserModelStore((state) => state.modelMap);
   const shareId = outLinkAuthData?.shareId;
   const outLinkUid = outLinkAuthData?.outLinkUid;
   const auth = useMemo(
@@ -110,7 +109,7 @@ export const useModelSummary = ({
     return () => {
       active = false;
     };
-  }, [auth, identity, requestKey, modelId, revision, catalogModels]);
+  }, [auth, identity, requestKey, modelId, revision]);
 
   const current = state.key === requestKey ? state : undefined;
   const cached = identity && modelId ? loadDetail.peek({ identity, modelId }) : undefined;

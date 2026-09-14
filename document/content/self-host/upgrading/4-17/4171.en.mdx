@@ -5,6 +5,27 @@ upgradeTags:
   - IN PROGRESS
 ---
 
+## 📦 Upgrade Guide
+
+### Image updates
+
+- Update the AI Proxy image tag to `v0.7.2`
+
+## 🚀 New Features
+
+1. Added Dataset tag management and filtering with typed tag values, Collection tag maintenance, and tag conditions for Dataset searches in Workflows and Agent V2.
+2. Password changes now support third-party authentication, with a unified authorization, verification, and password-update flow.
+3. Agent V2 Dataset search now supports Dataset citations, so chats can display the sources returned by the current search.
+
+## ⚙️ Improvements
+
 ## 🐛 Fixes
 
-1. Tool calls now run with isolated workflow tool runtime state, preventing calls from interfering with one another and improving stability during concurrent execution.
+1. Tool calls now use isolated workflow tool runtime state and restore interactive-node memory, preventing concurrent calls from interfering with one another or losing interactive results.
+2. Fixed invoice-header forms overwriting existing input during data loading and failing to validate required fields consistently.
+3. Hid the custom-title action for temporary chats that have not been saved to history, since their title changes cannot be persisted.
+4. Fixed FastGPT Pro license verification after login and added authentication checks to billing endpoints.
+
+## 🛠️ Code Improvements
+
+1. The model test endpoint can now be called without configuring a channel.

@@ -66,6 +66,7 @@
   "model_request_times": "请求次数",
   "model_test": "模型测试",
   "model_channel_test_success": "{{model}} 在 {{channel}} 运行成功",
+  "model_test_success": "{{model}} 测试成功",
   "model_channel_test_failed": "{{model}} 在 {{channel}} 运行失败: {{reason}}",
   "model_tokens": "输入/输出 Tokens",
   "model_ttfb_time": "首字响应时长",

@@ -66,6 +66,7 @@
   "model_request_times": "請求次數",
   "model_test": "模型測試",
   "model_channel_test_success": "{{model}} 在 {{channel}} 執行成功",
+  "model_test_success": "{{model}} 測試成功",
   "model_channel_test_failed": "{{model}} 在 {{channel}} 執行失敗: {{reason}}",
   "model_tokens": "輸入/輸出 Tokens",
   "model_ttfb_time": "首字響應時長",

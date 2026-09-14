@@ -1,7 +1,8 @@
-import { useToast as uToast, type UseToastOptions } from '@chakra-ui/react';
+import { Box, useToast as uToast, type UseToastOptions } from '@chakra-ui/react';
 import { type CSSProperties } from 'react';
 import { useMemoizedFn } from 'ahooks';
 import { useTranslation } from 'next-i18next';
+import React from 'react';
 
 /**
  * 提供全局统一的 Toast 默认行为；调用处显式传入的 duration 优先级最高。
@@ -31,9 +32,14 @@ export const useToast = (props?: UseToastOptions & { containerStyle?: CSSPropert
         (status === 'error' ? 5000 : status === 'success' ? 3000 : 2000);
 
       toast({
-        ...(options.title && { title: t(options.title as any) }),
-        ...(options.description && { description: t(options.description as any) }),
         ...options,
+        ...(options.title && { title: t(options.title as any) }),
+        ...(options.description && {
+          description:
+            typeof options.description === 'string'
+              ? React.createElement(Box, { whiteSpace: 'pre-wrap' }, t(options.description as any))
+              : options.description
+        }),
         duration
       });
     }

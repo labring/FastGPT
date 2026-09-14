@@ -297,13 +297,22 @@ const Header = ({
                 const checkResults = checkWorkflowBeforeRunOrPublish({
                   nodes,
                   edges,
-                  models: await getWorkflowModelDetails(nodes),
+                  models: await getWorkflowModelDetails(nodes, appForm.chatConfig),
+                  chatConfig: appForm.chatConfig,
                   t
                 });
 
                 if (checkResults.hasError) {
+                  const issueMessages = [
+                    ...Object.values(checkResults.issueMap).flat(),
+                    ...checkResults.chatConfigIssues
+                  ]
+                    .filter((issue) => issue.level === 'error')
+                    .map((issue) => issue.message)
+                    .filter(Boolean);
                   toast({
                     title: t('app:app.error.publish_unExist_app'),
+                    description: issueMessages.join('\n'),
                     status: 'warning'
                   });
                 }

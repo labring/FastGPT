@@ -1392,7 +1392,7 @@ describe('formatModels', () => {
         }
       ];
       expect(() => formatModels({ nodes, models: [], modelReferencePolicy: 'validate' })).toThrow(
-        '存在未配置的模型，请选择模型'
+        'is not configured'
       );
     }
   );
@@ -1496,7 +1496,7 @@ describe('formatModels', () => {
 
     expect(() =>
       formatModels({ nodes: [], chatConfig, models, modelReferencePolicy: 'validate' })
-    ).toThrow('disabled-llm 模型不可用');
+    ).toThrow('unavailable');
   });
 
   it('replaces every static legacy workflow model key and value with modelId', () => {
@@ -1808,7 +1808,7 @@ describe('formatModels', () => {
     ];
 
     expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).toThrow(
-      'disabled-model-id、disabled-rerank 模型不可用'
+      'unavailable'
     );
   });
 

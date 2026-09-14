@@ -92,13 +92,13 @@ describe.each(['rerank', 'query', 'guide', 'tts'] as const)(
       const wrongTypeId =
         feature === 'query' || feature === 'guide' ? 'rerank-default' : 'llm-default';
       const { params } = prepare(true, wrongTypeId);
-      expect(() => formatModels(params)).toThrow('模型不可用');
+      expect(() => formatModels(params)).toThrow('unavailable');
     });
     it.each(['deleted-id', 'disabled-id', 'wrong-type-id'])(
       'rejects a nonempty unavailable model (%s)',
       (value) => {
         const { params } = prepare(true, value);
-        expect(() => formatModels(params)).toThrow('模型不可用');
+        expect(() => formatModels(params)).toThrow('unavailable');
       }
     );
     it.each([undefined, '', 'deleted-id'])(
@@ -114,10 +114,51 @@ describe.each(['rerank', 'query', 'guide', 'tts'] as const)(
     it('fails when an enabled feature has neither a selected model nor a usable default', () => {
       const { params } = prepare(true);
       params.models = [];
-      expect(() => formatModels(params)).toThrow('未配置');
+      expect(() => formatModels(params)).toThrow('is not configured');
     });
   }
 );
+
+it('reports the exact feature for unavailable auxiliary models', () => {
+  const chatConfig = {
+    questionGuide: { open: true, modelId: 'missing-guide' },
+    ttsConfig: { type: 'model' as const, modelId: 'missing-tts' }
+  };
+  const nodes = [
+    {
+      nodeId: 'search',
+      name: '知识库搜索',
+      flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+      outputs: [],
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          value: 'missing-query',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchUsingReRank,
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
+          value: 'missing-rerank',
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        }
+      ]
+    }
+  ];
+
+  expect(() =>
+    formatModels({ nodes, chatConfig, models: [], modelReferencePolicy: 'validate' })
+  ).toThrow('Query extension model is unavailable');
+});
 
 describe('formatModels missing optional model slots', () => {
   it('adds missing model inputs and nested Agent defaults', () => {

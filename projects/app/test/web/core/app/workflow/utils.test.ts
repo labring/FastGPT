@@ -26,6 +26,7 @@ import {
   checkWorkflowNodeIssues,
   checkWorkflowHasError,
   checkWorkflowBeforeRunOrPublish,
+  checkWorkflowChatConfigModelIssues,
   getWorkflowCheckIssueMessage,
   getWorkflowCheckErrorNodeIds
 } from '@/web/core/workflow/workflowCheck';
@@ -2233,6 +2234,48 @@ describe('workflow model validation', () => {
     { modelId: 'llm-id', model: 'gpt-4o', type: ModelTypeEnum.llm },
     { modelId: 'rerank-id', model: 'bge-reranker', type: ModelTypeEnum.rerank }
   ];
+
+  it('reports unavailable chat configuration models with a feature-level message', () => {
+    const issues = checkWorkflowChatConfigModelIssues({
+      chatConfig: {
+        questionGuide: { open: true, modelId: 'missing-llm' }
+      },
+      models,
+      t: ((key: string, params?: { inputName?: string; defaultValue?: string }) => {
+        if (key === 'common:core.app.Question Guide') return 'Question Guide';
+        if (key === 'common:core.workflow.check.model_unavailable_short') {
+          return `${params?.inputName} model unavailable`;
+        }
+        return params?.defaultValue ?? key;
+      }) as any
+    });
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({
+      code: 'model_unavailable',
+      inputKey: 'Question Guide',
+      message: 'Question Guide model unavailable'
+    });
+  });
+
+  it('accepts an empty enabled chat model when a same-type default can be selected', () => {
+    expect(
+      checkWorkflowChatConfigModelIssues({
+        chatConfig: { questionGuide: { open: true } },
+        models
+      })
+    ).toEqual([]);
+  });
+
+  it('reports an enabled chat model as required when no same-type model is available', () => {
+    const issues = checkWorkflowChatConfigModelIssues({
+      chatConfig: { questionGuide: { open: true } },
+      models: []
+    });
+
+    expect(issues).toHaveLength(1);
+    expect(issues[0].code).toBe('model_required');
+  });
   const makeModelNode = (
     inputs: FlowNodeItemType['inputs'],
     flowNodeType = FlowNodeTypeEnum.chatNode

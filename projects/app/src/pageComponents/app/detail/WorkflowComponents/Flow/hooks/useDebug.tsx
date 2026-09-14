@@ -107,12 +107,14 @@ export const useDebug = () => {
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const nodes = getNodes();
 
-    const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
-      nodes,
-      edges,
-      models: await getWorkflowModelDetails(nodes),
-      t: workflowT
-    });
+    const { issueMap, hasError, firstErrorNodeId, chatConfigIssues } =
+      checkWorkflowBeforeRunOrPublish({
+        nodes,
+        edges,
+        models: await getWorkflowModelDetails(nodes, appDetail.chatConfig),
+        chatConfig: appDetail.chatConfig,
+        t: workflowT
+      });
 
     if (!hasError) {
       onRemoveError();
@@ -140,7 +142,12 @@ export const useDebug = () => {
 
     toast({
       status: 'warning',
-      title: t('common:core.workflow.Check Failed')
+      title: t('common:core.workflow.Check Failed'),
+      description: [...Object.values(issueMap).flat(), ...chatConfigIssues]
+        .filter((issue) => issue.level === 'error')
+        .map((issue) => issue.message)
+        .filter(Boolean)
+        .join('\n')
     });
     return Promise.reject();
   }, [

@@ -31,7 +31,6 @@ import {
 } from '@fastgpt/global/openapi/admin/core/ai/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { withTemporaryModelChannelBinding } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -108,10 +107,8 @@ async function handler(
     return Promise.reject('Model type not supported');
   };
 
-  // 草稿尚未持久化，测试时临时加入 AI Proxy 的目标渠道，结束后恢复原绑定。
-  return req.method === 'POST' && channelId
-    ? withTemporaryModelChannelBinding({ model: modelData.model, channelId, run: runTest })
-    : runTest();
+  // AI Proxy completions 接口支持通过请求头选择渠道，无需临时修改渠道模型绑定。
+  return runTest();
 }
 
 export default NextAPI(handler);
