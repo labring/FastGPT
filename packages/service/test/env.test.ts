@@ -623,13 +623,19 @@ describe('serviceEnv', () => {
     );
   });
 
-  it('非法 SANGFOR_CHUNK_URL 直接启动校验失败,合法地址去掉尾部斜杠', async () => {
+  it('非法 SANGFOR_CHUNK_URL 降级为未配置(不阻断启动),合法地址去掉尾部斜杠', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
 
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.stubEnv('SANGFOR_CHUNK_URL', 'not-a-valid-url');
-    await expect(importServiceEnv()).rejects.toThrow(/SANGFOR_CHUNK_URL/);
+    const invalidEnv = await importServiceEnv();
+    expect(invalidEnv.serviceEnv.SANGFOR_CHUNK_URL).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('SANGFOR_CHUNK_URL 格式非法,已按未配置处理')
+    );
+    warnSpy.mockRestore();
 
     vi.stubEnv('SANGFOR_CHUNK_URL', 'http://chunk-service.example/v1/chunk/');
     const validEnv = await importServiceEnv();

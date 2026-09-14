@@ -26,6 +26,18 @@ const defaultableIntSchema = (defaultValue: number) =>
     z.coerce.number<number>().int().nonnegative()
   );
 
+/** 可选 URL:格式非法时降级为未配置(不阻断启动),并打印告警,避免拖垮整个服务启动 */
+const optionalUrlSchema = (name: string) =>
+  z.preprocess((value) => {
+    if (value === undefined || value === '') return undefined;
+    const parsed = UrlSchema.safeParse(value);
+    if (!parsed.success) {
+      console.warn(`[env] ${name} 格式非法,已按未配置处理: ${String(value)}`);
+      return undefined;
+    }
+    return parsed.data;
+  }, UrlSchema.optional());
+
 export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
   server: {
@@ -180,8 +192,8 @@ export const serviceEnv = createEnv({
 
     // ==================== 智能分块 ====================
     // 配置后，导入文档(文本/PDF/网页)当 chunkSettingMode=intelligent(智能分块) 时，把「文本→chunk」委托给 sangfor 服务。
-    // 未配置时智能分块不可用,已启用智能分块的集合导入会显式报错,不影响平台其他分块功能。
-    SANGFOR_CHUNK_URL: UrlSchema.optional().meta({
+    // 未配置或地址格式非法时智能分块不可用,已启用智能分块的集合导入会显式报错,不影响平台其他分块功能。
+    SANGFOR_CHUNK_URL: optionalUrlSchema('SANGFOR_CHUNK_URL').meta({
       description: 'sangfor 智能分块服务地址'
     }),
     SANGFOR_CHUNK_KEY: z.string().optional().meta({
