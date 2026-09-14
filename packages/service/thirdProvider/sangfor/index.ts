@@ -1,11 +1,13 @@
 import FormData from 'form-data';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
+import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import z from 'zod';
 import { axios } from '../../common/api/axios';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { uploadParsedPdfImage, type ParsedPdfImageKeyOptions } from '../../common/file/read/image';
 import { serviceEnv } from '../../env';
+import { appendIultmzhFileParseFields } from './parseConfig';
 
 const SangforParseResponseSchema = z.object({
   pages: z.number().int().nonnegative(),
@@ -31,11 +33,13 @@ export const useSangforParse = (extension: string): boolean => {
 export const parseFromSangfor = async ({
   fileBuffer,
   extension,
-  imageKeyOptions
+  imageKeyOptions,
+  sangforFileParseConfig
 }: {
   fileBuffer: Buffer;
   extension: string;
   imageKeyOptions?: ParsedPdfImageKeyOptions;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
 }) => {
   const { url, key } = global.systemEnv?.customPdfParse ?? {};
   if (!url) {
@@ -45,6 +49,7 @@ export const parseFromSangfor = async ({
   try {
     const form = new FormData();
     form.append('file', fileBuffer, { filename: `file.${extension}` });
+    appendIultmzhFileParseFields(form, sangforFileParseConfig);
     const { data } = await axios.post<unknown>(url, form, {
       timeout: serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS * 1000,
       headers: {

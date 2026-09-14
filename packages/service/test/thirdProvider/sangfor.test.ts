@@ -1,4 +1,5 @@
 import FormData from 'form-data';
+import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock, mockEnv } = vi.hoisted(() => ({
@@ -206,5 +207,31 @@ describe('Sangfor provider', () => {
     ).rejects.toThrow('[sangfor] global.systemEnv.customPdfParse.url is required');
 
     expect(postMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('getDatasetIultmzhFileParseConfig', () => {
+  const allDisabled = {
+    keep_header_footer: false,
+    keep_appendix: false,
+    image_analysis: false,
+    chart_analysis: false
+  };
+
+  it('为空数据集/空配置补全四布尔默认值', () => {
+    expect(getDatasetIultmzhFileParseConfig(undefined)).toEqual(allDisabled);
+    expect(getDatasetIultmzhFileParseConfig(null)).toEqual(allDisabled);
+    expect(getDatasetIultmzhFileParseConfig({})).toEqual(allDisabled);
+  });
+
+  it('保留已配置字段,仅补全缺失字段', () => {
+    expect(
+      getDatasetIultmzhFileParseConfig({ sangforFileParseConfig: { keep_header_footer: true } })
+    ).toEqual({
+      keep_header_footer: true,
+      keep_appendix: false,
+      image_analysis: false,
+      chart_analysis: false
+    });
   });
 });

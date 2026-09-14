@@ -4,6 +4,7 @@ import {
   DatasetCollectionDataProcessModeEnum,
   DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { urlsFetch } from '../../common/string/cheerio';
 import { type TextSplitProps } from '../../common/string/textSplitter';
 import { readFileContentBySource } from '../../common/file/read/utils';
@@ -58,6 +59,7 @@ export const readFileRawTextByUrl = async ({
   tmbId,
   url,
   customPdfParse,
+  sangforFileParseConfig,
   getFormatText,
   datasetId,
   usageId,
@@ -67,6 +69,7 @@ export const readFileRawTextByUrl = async ({
   tmbId: string;
   url: string;
   customPdfParse?: boolean;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   getFormatText?: boolean;
   relatedId: string; // externalFileId / apiFileId
   datasetId: string;
@@ -94,6 +97,7 @@ export const readFileRawTextByUrl = async ({
   const { rawText } = await retryFn(() =>
     readFileContentBySource({
       customPdfParse,
+      sangforFileParseConfig,
       usageId,
       getFormatText,
       source,
@@ -123,6 +127,7 @@ export const readDatasetSourceRawText = async ({
   externalFileId,
   apiDatasetServer,
   customPdfParse,
+  sangforFileParseConfig,
   getFormatText,
   usageId,
   datasetId
@@ -132,6 +137,8 @@ export const readDatasetSourceRawText = async ({
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
   customPdfParse?: boolean;
+  /** 外部文档解析开关;建议传入 getDatasetIultmzhFileParseConfig(dataset) 补全后的完整配置 */
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   getFormatText?: boolean;
 
   selector?: string; // link selector
@@ -158,6 +165,7 @@ export const readDatasetSourceRawText = async ({
       fileId: sourceId,
       getFormatText,
       customPdfParse,
+      sangforFileParseConfig,
       usageId,
       datasetId
     });
@@ -190,6 +198,7 @@ export const readDatasetSourceRawText = async ({
       relatedId: externalFileId,
       datasetId,
       customPdfParse,
+      sangforFileParseConfig,
       usageId
     });
     return {
@@ -202,6 +211,7 @@ export const readDatasetSourceRawText = async ({
       teamId,
       tmbId,
       customPdfParse,
+      sangforFileParseConfig,
       datasetId,
       usageId
     });
@@ -222,6 +232,7 @@ export const readApiServerFileContent = async ({
   teamId,
   tmbId,
   customPdfParse,
+  sangforFileParseConfig,
   datasetId,
   usageId
 }: {
@@ -230,6 +241,7 @@ export const readApiServerFileContent = async ({
   teamId: string;
   tmbId: string;
   customPdfParse?: boolean;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   datasetId: string;
   usageId?: string;
 }): Promise<{
@@ -241,6 +253,7 @@ export const readApiServerFileContent = async ({
     tmbId,
     apiFileId,
     customPdfParse,
+    sangforFileParseConfig,
     datasetId,
     usageId
   });
