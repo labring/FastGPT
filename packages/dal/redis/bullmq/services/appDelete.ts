@@ -1,11 +1,14 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
-import type { Processor, Queue, Worker } from '../types';
+import type { FlowJob, JobNode, Processor, Queue, Worker } from '../types';
 
 export type AppDeleteJobData = {
   teamId: string;
   appId: string;
+  /** Distinguishes task roots, internal Flow steps, and pre-Flow jobs. */
+  jobType?: 'task' | 'step' | 'root' | 'app';
+  taskId?: string;
 };
 
 const appDeleteQueueOptions = {
@@ -19,6 +22,22 @@ const appDeleteQueueOptions = {
     removeOnFail: { age: 30 * 24 * 60 * 60 }
   }
 };
+
+const appDeleteFlowJobOptions = appDeleteQueueOptions.defaultJobOptions;
+
+/** Apply the App deletion queue retry and retention policy to every node in a Flow tree. */
+const applyFlowJobOptions = (flow: FlowJob): FlowJob => ({
+  ...flow,
+  opts: {
+    ...appDeleteFlowJobOptions,
+    ...flow.opts
+  },
+  ...(flow.children
+    ? {
+        children: flow.children.map((child) => applyFlowJobOptions(child))
+      }
+    : {})
+});
 
 /** App 删除队列的业务合同和生命周期入口。 */
 export class AppDeleteMQService {
@@ -40,18 +59,30 @@ export class AppDeleteMQService {
     });
   }
 
-  /** 投递幂等的 App 删除任务，并延迟一秒让请求先完成。 */
+  /** Add a root deletion job and delay it by one second for request completion. */
   addJob(data: AppDeleteJobData) {
     const jobId = `${String(data.teamId)}-${String(data.appId)}`;
     return addOrRequeueFailedJob({
       queue: this.getQueue(),
       name: 'delete_app',
-      data,
+      data: { ...data, jobType: 'root' },
       opts: {
         jobId,
         delay: 1000
       }
     });
+  }
+
+  /** Returns the FlowProducer used to atomically submit deletion task Flows. */
+  getFlowProducer() {
+    return this.binding.getFlowProducer();
+  }
+
+  /** Atomically submits task Flows; callers define step order through the dependency chain. */
+  addFlows(flows: FlowJob[]): Promise<JobNode[]> {
+    if (flows.length === 0) return Promise.resolve([]);
+
+    return this.getFlowProducer().addBulk(flows.map((flow) => applyFlowJobOptions(flow)));
   }
 }
 

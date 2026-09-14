@@ -10,9 +10,11 @@ import { RedisRuntime, type RedisClient } from '../../redis/runtime';
 
 const bullMQMocks = vi.hoisted(() => ({
   queues: [] as Array<{ name: string; options: Record<string, unknown> }>,
+  flowProducers: [] as Array<{ options: Record<string, unknown> }>,
   workers: [] as Array<{ name: string; options: Record<string, unknown> }>,
   closeOrder: [] as string[],
   queueConstructorFailures: 0,
+  flowProducerConstructorFailures: 0,
   workerConstructorFailures: 0,
   onWorkerClose: undefined as (() => void) | undefined
 }));
@@ -71,7 +73,27 @@ vi.mock('bullmq', async () => {
     }
   }
 
+  class MockFlowProducer extends EventEmitter {
+    readonly close = vi.fn(async () => {
+      bullMQMocks.closeOrder.push('flow-producer');
+    });
+    readonly disconnect = vi.fn(async () => undefined);
+    readonly connection = {
+      disconnect: vi.fn(async () => undefined)
+    };
+
+    constructor(readonly options: Record<string, unknown>) {
+      super();
+      if (bullMQMocks.flowProducerConstructorFailures > 0) {
+        bullMQMocks.flowProducerConstructorFailures -= 1;
+        throw new Error('flow producer constructor failed');
+      }
+      bullMQMocks.flowProducers.push(this);
+    }
+  }
+
   return {
+    FlowProducer: MockFlowProducer,
     Queue: MockQueue,
     UnrecoverableError: class UnrecoverableError extends Error {},
     Worker: MockWorker
@@ -102,9 +124,11 @@ const createBullMQRuntime = (options?: Partial<RedisBullMQRuntimeOptions>) => {
 describe('RedisBullMQRuntime', () => {
   beforeEach(() => {
     bullMQMocks.queues.length = 0;
+    bullMQMocks.flowProducers.length = 0;
     bullMQMocks.workers.length = 0;
     bullMQMocks.closeOrder.length = 0;
     bullMQMocks.queueConstructorFailures = 0;
+    bullMQMocks.flowProducerConstructorFailures = 0;
     bullMQMocks.workerConstructorFailures = 0;
     bullMQMocks.onWorkerClose = undefined;
   });
@@ -122,6 +146,16 @@ describe('RedisBullMQRuntime', () => {
     expect(bullMQMocks.workers[0]?.options).toMatchObject({ concurrency: 2 });
   });
 
+  it('creates and reuses one FlowProducer per Runtime', () => {
+    const { redisRuntime, runtime } = createBullMQRuntime();
+
+    const flowProducer = runtime.getFlowProducer();
+
+    expect(runtime.getFlowProducer()).toBe(flowProducer);
+    expect(bullMQMocks.flowProducers).toHaveLength(1);
+    expect(redisRuntime.createQueueConnection).toHaveBeenCalledTimes(1);
+  });
+
   it('releases the Runtime connection when a Queue or Worker constructor fails', async () => {
     const { redisRuntime, runtime } = createBullMQRuntime();
     bullMQMocks.queueConstructorFailures = 1;
@@ -129,15 +163,19 @@ describe('RedisBullMQRuntime', () => {
 
     bullMQMocks.workerConstructorFailures = 1;
     expect(() => runtime.getWorker('worker-failure', vi.fn())).toThrow('worker constructor failed');
+
+    bullMQMocks.flowProducerConstructorFailures = 1;
+    expect(() => runtime.getFlowProducer()).toThrow('flow producer constructor failed');
     await Promise.resolve();
 
-    expect(redisRuntime.releaseConnection).toHaveBeenCalledTimes(2);
+    expect(redisRuntime.releaseConnection).toHaveBeenCalledTimes(3);
   });
 
   it('registers the Redis hook and closes workers before queues', async () => {
     const { redisRuntime, runtime } = createBullMQRuntime();
     const processor = vi.fn();
     const queue = runtime.getQueue('datasetSync');
+    runtime.getFlowProducer();
     const worker = runtime.getWorker('datasetSync', processor);
     const queueError = vi.fn();
     queue.on('error', queueError);
@@ -150,7 +188,11 @@ describe('RedisBullMQRuntime', () => {
     expect(runtime.close()).toBe(closePromise);
     await closePromise;
 
-    expect(bullMQMocks.closeOrder).toEqual(['worker:datasetSync:true', 'queue:datasetSync']);
+    expect(bullMQMocks.closeOrder).toEqual([
+      'worker:datasetSync:true',
+      'flow-producer',
+      'queue:datasetSync'
+    ]);
     expect(worker.listenerCount('error')).toBe(0);
     expect(queue.listenerCount('error')).toBe(1);
     expect(queue.listeners('error')).toContain(queueError);
@@ -181,7 +223,8 @@ describe('RedisBullMQRuntime', () => {
     const redisRuntime = new RedisRuntime({
       redisUrl: 'redis://localhost',
       clientFactory: (options) => {
-        const client = new RuntimeRedisClient(options, clients.length === 0 ? 'queue' : 'worker');
+        const role = clients.length === 0 ? 'queue' : clients.length === 1 ? 'flow' : 'worker';
+        const client = new RuntimeRedisClient(options, role);
         clients.push(client);
         return client as unknown as RedisClient;
       }
@@ -189,14 +232,17 @@ describe('RedisBullMQRuntime', () => {
     const bullMQRuntime = new RedisBullMQRuntime({ redisRuntime });
 
     bullMQRuntime.getQueue('runtime-order');
+    bullMQRuntime.getFlowProducer();
     bullMQRuntime.getWorker('runtime-order', vi.fn());
 
     await redisRuntime.close();
 
     expect(bullMQMocks.closeOrder).toEqual([
       'worker:runtime-order:true',
+      'flow-producer',
       'queue:runtime-order',
       'redis:queue',
+      'redis:flow',
       'redis:worker'
     ]);
     expect(bullMQRuntime.getState()).toBe('closed');

@@ -4,6 +4,7 @@ vi.unmock('@fastgpt/dal/redis/bullmq');
 
 const bullMQMocks = vi.hoisted(() => {
   const queue = { id: 'queue' };
+  const flowProducer = { id: 'flow-producer' };
   const worker = { id: 'worker' };
   const redisRuntime = {
     id: 'redis-runtime',
@@ -11,12 +12,14 @@ const bullMQMocks = vi.hoisted(() => {
   };
   const runtime = {
     getQueue: vi.fn(() => queue),
+    getFlowProducer: vi.fn(() => flowProducer),
     getWorker: vi.fn(() => worker),
     getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
   };
 
   return {
     queue,
+    flowProducer,
     worker,
     redisRuntime,
     runtime,
@@ -38,6 +41,7 @@ describe('DAL BullMQ binding', () => {
   beforeEach(async () => {
     vi.resetModules();
     bullMQMocks.runtime.getQueue.mockClear();
+    bullMQMocks.runtime.getFlowProducer.mockClear();
     bullMQMocks.runtime.getWorker.mockClear();
     bullMQMocks.getRedisBullMQRuntime.mockClear();
     bullMQ = await import('@fastgpt/dal/redis/bullmq');
@@ -77,5 +81,10 @@ describe('DAL BullMQ binding', () => {
         removeOnFail: { count: 0 }
       })
     );
+  });
+
+  it('delegates FlowProducer access to the DAL BullMQ Runtime', () => {
+    expect(bullMQ.bullMQ.getFlowProducer()).toBe(bullMQMocks.flowProducer);
+    expect(bullMQMocks.runtime.getFlowProducer).toHaveBeenCalledTimes(1);
   });
 });

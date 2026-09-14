@@ -1,7 +1,7 @@
 import { getRedisRuntime } from '../runtime';
 import { getRedisBullMQRuntime } from './context';
 import type { QueueNames } from './names';
-import type { Processor, Queue, QueueOptions, Worker, WorkerOptions } from './types';
+import type { FlowProducer, Processor, Queue, QueueOptions, Worker, WorkerOptions } from './types';
 
 const defaultWorkerOpts: Omit<WorkerOptions, 'connection'> = {
   removeOnComplete: {
@@ -58,6 +58,11 @@ export class BullMQBinding {
       ...defaultWorkerOpts,
       ...opts
     });
+  }
+
+  /** Returns the Runtime-owned FlowProducer for atomically creating dependent job trees. */
+  getFlowProducer(): FlowProducer {
+    return this.getRuntime().getFlowProducer();
   }
 }
 

@@ -1,4 +1,4 @@
-import type { Queue, Processor, QueueOptions, Worker, WorkerOptions } from 'bullmq';
+import type { FlowProducer, Processor, Queue, QueueOptions, Worker, WorkerOptions } from 'bullmq';
 import type { RedisRuntime } from '../runtime/connection';
 import {
   DEFAULT_CLOSE_TIMEOUT_MS,
@@ -6,6 +6,7 @@ import {
   silentBullMQLogger
 } from './constants';
 import { BullMQQueueManager } from './queue-manager';
+import { BullMQFlowProducerManager } from './flow-producer-manager';
 import type {
   BullMQRuntimeState,
   BullMQWorkerLifecycleOptions,
@@ -20,6 +21,7 @@ export class RedisBullMQRuntime {
 
   private readonly logger: RedisRuntimeLogger;
   private readonly queueManager: BullMQQueueManager;
+  private readonly flowProducerManager: BullMQFlowProducerManager;
   private readonly workerManager: BullMQWorkerManager;
   private readonly unregisterBeforeCloseHook: () => void;
   private state: BullMQRuntimeState = 'running';
@@ -40,6 +42,11 @@ export class RedisBullMQRuntime {
       restartDelayMs: workerLifecycle.restartDelayMs ?? DEFAULT_RESTART_DELAY_MS
     };
     this.queueManager = new BullMQQueueManager({
+      redisRuntime,
+      logger,
+      closeTimeoutMs
+    });
+    this.flowProducerManager = new BullMQFlowProducerManager({
       redisRuntime,
       logger,
       closeTimeoutMs
@@ -83,6 +90,12 @@ export class RedisBullMQRuntime {
     return this.workerManager.getWorker<DataType, ReturnType>(name, processor, opts);
   }
 
+  /** Returns the Runtime-shared FlowProducer, which owns a dedicated queue connection. */
+  getFlowProducer(): FlowProducer {
+    this.assertRunning();
+    return this.flowProducerManager.getFlowProducer();
+  }
+
   close() {
     if (this.closePromise) return this.closePromise;
 
@@ -101,6 +114,13 @@ export class RedisBullMQRuntime {
         }
 
         // Worker 关闭失败也不能跳过 Queue，否则队列连接会被 Redis Runtime 强制回收。
+        try {
+          await this.flowProducerManager.close();
+        } catch (error) {
+          firstError = error;
+          hasError = true;
+        }
+
         try {
           await this.queueManager.close();
         } catch (error) {
