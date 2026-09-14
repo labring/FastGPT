@@ -32,24 +32,48 @@ const createS3MarkdownKeyRegex = () => {
   );
 };
 
+/** 匹配完整 `<img>` 标签；允许引号属性值内出现尖括号，避免被误判为标签结束。 */
+const createHtmlImageTagRegex = () => /<img\b(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi;
+/** 单个标签内的首个 src；无 g 标志，配合对单个 img 标签的 replace/exec 使用。 */
+const createHtmlImageSrcRegex = () => /(\s+src\s*=\s*)(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;
+
+const getHtmlImageObjectKey = (imageTag: string) => {
+  const srcMatch = createHtmlImageSrcRegex().exec(imageTag);
+  return (srcMatch?.[2] ?? srcMatch?.[3] ?? srcMatch?.[4])?.trim();
+};
+
 const isPreviewUrlS3ObjectKey = (objectKey: string) =>
   previewUrlS3Sources.some((source) => isS3ObjectKey(objectKey, source));
 
 /**
- * 从多段 Markdown 中提取允许签发预览链接的 S3 对象键，并按首次出现顺序去重。
+ * 从多段文本（Markdown 图片语法与 HTML `<img>` 标签）中提取允许签发预览链接的 S3 对象键，
+ * 并按首次出现顺序去重。
  */
-export const getS3ObjectKeysFromMarkdownTexts = (texts: Array<string | undefined>) => {
+export const getS3ObjectKeysFromTexts = (texts: Array<string | undefined>) => {
   const objectKeys = new Set<string>();
 
   for (const text of texts) {
     if (!text || typeof text !== 'string') continue;
 
+    const matches: Array<{ index: number; objectKey: string }> = [];
+
     for (const match of text.matchAll(createS3MarkdownKeyRegex())) {
       const objectKey = match[3] ?? match[4];
       if (objectKey && isPreviewUrlS3ObjectKey(objectKey)) {
-        objectKeys.add(objectKey);
+        matches.push({ index: match.index, objectKey });
       }
     }
+
+    for (const match of text.matchAll(createHtmlImageTagRegex())) {
+      const objectKey = getHtmlImageObjectKey(match[0]);
+      if (objectKey && isPreviewUrlS3ObjectKey(objectKey)) {
+        matches.push({ index: match.index, objectKey });
+      }
+    }
+
+    matches
+      .sort((left, right) => left.index - right.index)
+      .forEach(({ objectKey }) => objectKeys.add(objectKey));
   }
 
   return Array.from(objectKeys);
@@ -88,7 +112,7 @@ export const createS3KeysPreviewUrlMap = async ({
   return previewUrlMap;
 };
 
-/** 使用已签发的 URL 映射替换 Markdown 中的 S3 对象键，不产生额外存储 IO。 */
+/** 使用已签发的 URL 映射替换 Markdown 图片语法与 HTML <img> 标签中的 S3 对象键，不产生额外存储 IO。 */
 export const replaceS3KeysWithPreviewUrlMap = (
   documentQuoteText: string,
   previewUrlMap: ReadonlyMap<string, string>
@@ -112,16 +136,31 @@ export const replaceS3KeysWithPreviewUrlMap = (
     }
   }
 
+  content = content.replace(createHtmlImageTagRegex(), (imageTag) => {
+    return imageTag.replace(
+      createHtmlImageSrcRegex(),
+      (full, prefix: string, doubleQuoted?: string, singleQuoted?: string, unquoted?: string) => {
+        const objectKey = (doubleQuoted ?? singleQuoted ?? unquoted)?.trim();
+        const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
+        if (!previewUrl) return full;
+
+        if (doubleQuoted !== undefined) return `${prefix}"${previewUrl}"`;
+        if (singleQuoted !== undefined) return `${prefix}'${previewUrl}'`;
+        return `${prefix}"${previewUrl}"`;
+      }
+    );
+  });
+
   return content;
 };
 
-/** 批量替换多段 Markdown 中的 S3 对象键，所有唯一 key 共用批量签发请求。 */
+/** 批量替换多段文本中的 S3 对象键，所有唯一 key 共用批量签发请求。 */
 export const replaceS3KeysToPreviewUrls = async (
   documentQuoteTexts: string[],
   expiredTime: Date
 ) => {
   const previewUrlMap = await createS3KeysPreviewUrlMap({
-    objectKeys: getS3ObjectKeysFromMarkdownTexts(documentQuoteTexts),
+    objectKeys: getS3ObjectKeysFromTexts(documentQuoteTexts),
     expiredTime
   });
 

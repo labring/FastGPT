@@ -1,6 +1,6 @@
 import {
   createS3KeysPreviewUrlMap,
-  getS3ObjectKeysFromMarkdownTexts,
+  getS3ObjectKeysFromTexts,
   replaceS3KeysWithPreviewUrlMap
 } from '../../../core/dataset/utils';
 import { serviceEnv } from '../../../env';
@@ -81,14 +81,14 @@ export const formatDatasetDataValues = async (
     ...formatDatasetDataTextValue({ q, a, imageDescMap }),
     imageId
   }));
-  const markdownObjectKeys = getS3ObjectKeysFromMarkdownTexts(
+  const textObjectKeys = getS3ObjectKeysFromTexts(
     normalizedItems.flatMap((item) => (item.imageId ? [] : [item.q, item.a]))
   );
   const imageObjectKeys = normalizedItems.flatMap(({ imageId }) =>
     imageId && isS3ObjectKey(imageId, 'dataset') ? [imageId] : []
   );
   const previewUrlMap = await createS3KeysPreviewUrlMap({
-    objectKeys: [...markdownObjectKeys, ...imageObjectKeys],
+    objectKeys: [...textObjectKeys, ...imageObjectKeys],
     expiredTime: addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
   });
 

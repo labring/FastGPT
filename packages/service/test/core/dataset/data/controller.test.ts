@@ -64,4 +64,25 @@ describe('formatDatasetDataValue', () => {
       }
     ]);
   });
+
+  it('should sign S3 keys inside HTML img tags in q and a', async () => {
+    const result = await formatDatasetDataValues([
+      {
+        q: '<p>before <img alt="cat" src="dataset/team/a.png"> after</p>',
+        a: "<img src='chat/app/b.png' loading='lazy'>"
+      }
+    ]);
+
+    expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
+    expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
+      'dataset/team/a.png',
+      'chat/app/b.png'
+    ]);
+    expect(result).toEqual([
+      {
+        q: '<p>before <img alt="cat" src="https://files.test/dataset/team/a.png"> after</p>',
+        a: "<img src='https://files.test/chat/app/b.png' loading='lazy'>"
+      }
+    ]);
+  });
 });
