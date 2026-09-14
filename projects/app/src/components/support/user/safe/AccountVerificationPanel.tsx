@@ -492,6 +492,7 @@ export const AccountVerificationPanel = ({
             bg="myGray.50"
             borderColor="myGray.200"
             onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder={t('common:support.user.info.verification_code')}
             aria-label={t('common:support.user.info.verification_code')}
             onKeyDown={(event) => {
               if (event.key === 'Enter') void submitCode(code.trim());
