@@ -20176,7 +20176,7 @@ snapshots:
       maxmind: 5.0.1
   "@mdx-js/mdx@3.1.1":
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
       "@types/estree-jsx": 1.0.5
       "@types/hast": 3.0.4
       "@types/mdx": 2.0.13
@@ -20194,12 +20194,12 @@ snapshots:
       rehype-recma: 1.0.0
       remark-mdx: 3.1.1
       remark-parse: 11.0.0
-      remark-rehype: 11.1.2
+      remark-rehype: 11.1.1
       source-map: 0.7.6
       unified: 11.0.5
       unist-util-position-from-estree: 2.0.0
       unist-util-stringify-position: 4.0.0
-      unist-util-visit: 5.1.0
+      unist-util-visit: 5.0.0
       vfile: 6.0.3
     transitivePeerDependencies:
       - supports-color
@@ -24597,7 +24597,7 @@ snapshots:
   esast-util-from-js@2.0.1:
     dependencies:
       "@types/estree-jsx": 1.0.5
-      acorn: 8.18.0
+      acorn: 8.16.0
       esast-util-from-estree: 2.0.0
       vfile-message: 4.0.2
   esbuild@0.25.11:
@@ -25083,7 +25083,7 @@ snapshots:
   estraverse@5.3.0: {}
   estree-util-attach-comments@3.0.0:
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
   estree-util-build-jsx@3.0.1:
     dependencies:
       "@types/estree-jsx": 1.0.5
@@ -25093,7 +25093,7 @@ snapshots:
   estree-util-is-identifier-name@3.0.0: {}
   estree-util-scope@1.0.0:
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
       devlop: 1.1.0
   estree-util-to-js@2.0.0:
     dependencies:
@@ -25102,7 +25102,7 @@ snapshots:
       source-map: 0.7.6
   estree-util-value-to-estree@3.5.0:
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
   estree-util-visit@2.0.0:
     dependencies:
       "@types/estree-jsx": 1.0.5
@@ -25503,7 +25503,7 @@ snapshots:
       tinyexec: 1.0.4
       tinyglobby: 0.2.15
       unist-util-visit: 5.0.0
-      zod: 4.4.3
+      zod: 4.1.12
     optionalDependencies:
       next: 15.5.24(@opentelemetry/api@1.9.0)(@types/node@24.0.13)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       vite: 6.4.3(@types/node@24.0.13)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4)
@@ -25849,7 +25849,7 @@ snapshots:
       unist-util-position: 5.0.0
   hast-util-to-estree@3.1.3:
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
       "@types/estree-jsx": 1.0.5
       "@types/hast": 3.0.4
       comma-separated-tokens: 2.0.3
@@ -27026,7 +27026,7 @@ snapshots:
       d3: 7.9.0
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.13
-      dayjs: 1.11.21
+      dayjs: 1.11.19
       dompurify: 3.4.2
       elkjs: 0.9.3
       katex: 0.16.22
@@ -28795,7 +28795,7 @@ snapshots:
       victory-vendor: 36.9.2
   recma-build-jsx@1.0.0:
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
       estree-util-build-jsx: 3.0.1
       vfile: 6.0.3
   recma-jsx@1.0.1(acorn@8.16.0):
@@ -28808,13 +28808,13 @@ snapshots:
       unified: 11.0.5
   recma-parse@1.0.0:
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
       esast-util-from-js: 2.0.1
       unified: 11.0.5
       vfile: 6.0.3
   recma-stringify@1.0.0:
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
       estree-util-to-js: 2.0.0
       unified: 11.0.5
       vfile: 6.0.3
@@ -28915,7 +28915,7 @@ snapshots:
       vfile: 6.0.3
   rehype-recma@1.0.0:
     dependencies:
-      "@types/estree": 1.0.9
+      "@types/estree": 1.0.6
       "@types/hast": 3.0.4
       hast-util-to-estree: 3.1.3
     transitivePeerDependencies:
