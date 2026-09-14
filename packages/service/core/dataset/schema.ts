@@ -132,7 +132,7 @@ const DatasetSchema = new Schema({
     type: ChunkSettings
   },
   // 外部文档解析服务开关,整体存取;缺失字段由读取层用固定默认值补全
-  pdfParseConfig: {
+  sangforFileParseConfig: {
     type: {
       keep_header_footer: Boolean,
       keep_appendix: Boolean,

@@ -403,7 +403,12 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     }
   });
 
-  const pendingRequests: Array<{ requestId: string; requestIndex: number; startedAt: number }> = [];
+  const pendingRequests: Array<{
+    requestId: string;
+    requestIndex: number;
+    startedAt: number;
+    firstTokenAt?: number;
+  }> = [];
   const maxRunAgentTimes = Math.max(1, runtime.maxRunAgentTimes ?? 100);
   const agent = new Agent({
     initialState: {
@@ -513,6 +518,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     if (event.type === 'message_update') {
       const assistantEvent = event.assistantMessageEvent;
       if (assistantEvent.type === 'text_delta') {
+        const request = pendingRequests[0];
+        if (request) request.firstTokenAt ??= Date.now();
         answerText += assistantEvent.delta;
         runtime.emitEvent?.({
           type: 'answer_delta',
@@ -521,6 +528,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         return;
       }
       if (assistantEvent.type === 'thinking_delta') {
+        const request = pendingRequests[0];
+        if (request) request.firstTokenAt ??= Date.now();
         reasoningText += assistantEvent.delta;
         runtime.emitEvent?.({
           type: 'reasoning_delta',
@@ -642,6 +651,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         toolCalls: messageData.toolCalls,
         usages: [usage],
         seconds: +((Date.now() - request.startedAt) / 1000).toFixed(2),
+        firstTokenTime:
+          request.firstTokenAt === undefined
+            ? undefined
+            : +((request.firstTokenAt - request.startedAt) / 1000).toFixed(2),
         error: event.message.errorMessage
       });
       return;
@@ -700,6 +713,10 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         finishReason: requestFinishReason,
         usages: [],
         seconds: +((Date.now() - request.startedAt) / 1000).toFixed(2),
+        firstTokenTime:
+          request.firstTokenAt === undefined
+            ? undefined
+            : +((request.firstTokenAt - request.startedAt) / 1000).toFixed(2),
         error: requestError
       });
     });

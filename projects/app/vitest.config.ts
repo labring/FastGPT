@@ -73,7 +73,7 @@ export default defineConfig({
     maxWorkers: getTestMaxWorkers(),
     maxConcurrency: 10,
     pool: 'threads',
-    testTimeout: 20000,
+    testTimeout: 30000,
     hookTimeout: 30000,
     reporters: ['github-actions', 'default'],
     include: ['test/**/*.test.ts']

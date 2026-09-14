@@ -209,5 +209,6 @@
   "associate": "연결",
   "associate_success": "채널이 성공적으로 연결되었습니다",
   "included_models": "모델 {{count}}개 포함",
-  "selected_model_count": "모델 {{count}}개 선택됨"
+  "selected_model_count": "모델 {{count}}개 선택됨",
+  "official_website": "공식 웹사이트"
 }

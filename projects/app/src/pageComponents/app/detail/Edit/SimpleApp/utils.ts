@@ -29,6 +29,7 @@ import {
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/workflowTagFilter';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   Input_Template_File_Link,
@@ -121,6 +122,11 @@ export const appWorkflow2Form = ({
         NodeInputKeyEnum.sandboxEntrypoint
       );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+      defaultAppForm.dataset[NodeInputKeyEnum.collectionFilterVersion] =
+        resolveDatasetTagFilterVersion({
+          version: findInputValueByKey(node.inputs, NodeInputKeyEnum.collectionFilterVersion),
+          filterValue: findInputValueByKey(node.inputs, NodeInputKeyEnum.collectionFilterMatch)
+        });
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSelectList
@@ -177,6 +183,10 @@ export const appWorkflow2Form = ({
       defaultAppForm.dataset.authTmbId = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.authTmbId
+      );
+      defaultAppForm.dataset.collectionFilterMatch = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.collectionFilterMatch
       );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
@@ -578,6 +588,25 @@ export function form2AppWorkflow(
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.authTmbId
+        },
+        {
+          key: NodeInputKeyEnum.collectionFilterVersion,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: resolveDatasetTagFilterVersion({
+            version: formData.dataset[NodeInputKeyEnum.collectionFilterVersion],
+            filterValue: formData.dataset.collectionFilterMatch
+          })
+        },
+        {
+          key: NodeInputKeyEnum.collectionFilterMatch,
+          renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+          label: i18nT('workflow:tag_filter'),
+          valueType: WorkflowIOValueTypeEnum.string,
+          isPro: true,
+          description: i18nT('workflow:tag_filter_description'),
+          value: formData.dataset.collectionFilterMatch
         },
         {
           ...Input_Template_UserChatInput,

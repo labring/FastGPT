@@ -20,11 +20,8 @@ import { addMinutes } from 'date-fns';
 import { checkTeamAiPointsAndLock } from './utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
-import {
-  getDatasetPdfParseConfig,
-  rawText2Chunks,
-  readDatasetSourceRawText
-} from '@fastgpt/service/core/dataset/read';
+import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
+import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
@@ -328,7 +325,9 @@ export const datasetParseQueue = async (): Promise<any> => {
           tmbId: data.tmbId,
           customPdfParse: collection.customPdfParse,
           // 解析开关仅对外部解析路径生效;非 customPdfParse 时传 undefined,rawText 缓存沿用旧 key
-          pdfParseConfig: collection.customPdfParse ? getDatasetPdfParseConfig(dataset) : undefined,
+          sangforFileParseConfig: collection.customPdfParse
+            ? getDatasetIultmzhFileParseConfig(dataset)
+            : undefined,
           usageId: data.billId,
           datasetId: data.datasetId,
           ...sourceReadType
@@ -368,6 +367,8 @@ export const datasetParseQueue = async (): Promise<any> => {
           overlapRatio:
             collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
           customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
+          chunkSettingMode: collection.chunkSettingMode,
+          trainingType: collection.trainingType,
           backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
         });
 

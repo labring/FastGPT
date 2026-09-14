@@ -48,9 +48,13 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
     getToolInfo: assistantResponses?.getEventToolInfo,
     metaEventNames: assistantResponses?.metaEventNames
   });
+  let firstTokenTime: number | undefined;
   const wrappedRuntime: AgentLoopRuntime<TChildrenResponse> = {
     ...runtime,
     emitEvent: (event) => {
+      if (event.type === 'llm_request_end' && firstTokenTime === undefined) {
+        firstTokenTime = event.firstTokenTime;
+      }
       assistantEventCollector.emitEvent(event);
       runtime.emitEvent?.(event);
     }
@@ -68,6 +72,7 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
   if (result.status === 'paused') {
     return {
       ...result,
+      firstTokenTime,
       status: 'interactive',
       assistantResponses: assistantResponseValues
     };
@@ -75,6 +80,7 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
 
   return {
     ...result,
+    firstTokenTime,
     assistantResponses: assistantResponseValues
   };
 };

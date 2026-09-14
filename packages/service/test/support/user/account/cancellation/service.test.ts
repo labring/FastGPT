@@ -13,11 +13,11 @@ import {
   withAccountCancellationTeamLock,
   withAccountCancellationUserLock
 } from '@fastgpt/service/support/user/account/cancellation/service';
-import { accountCancellationAllowedMethods } from '@fastgpt/global/support/user/account/cancellation/constants';
+import { accountExternalVerificationMethods } from '@fastgpt/global/support/user/account/verification/constants';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 
 describe('assertAccountCancellationMethod', () => {
-  it.each(accountCancellationAllowedMethods)('accepts %s', (method) => {
+  it.each(accountExternalVerificationMethods)('accepts %s', (method) => {
     expect(() => assertAccountCancellationMethod(method)).not.toThrow();
   });
 

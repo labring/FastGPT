@@ -130,7 +130,8 @@ describe('useAdminModelConfig', () => {
     expect(loaded.systemModelList).toBe(response.models);
     expect(loaded.systemModelList).not.toBe(initial.systemModelList);
     expect(loaded.defaultModelIds).toBe(response.defaultModelIds);
-    expect(loaded.aiproxyChannels).toBe(response.aiproxyChannels);
+    // 非 Plus 环境会对渠道做优先级排序，排序可能返回新数组；这里只校验数据内容。
+    expect(loaded.aiproxyChannels).toEqual(response.aiproxyChannels);
     expect(loaded.getModelProvider('OpenAI', 'zh-CN').name).toBe('开放智能');
     expect(loaded.getModelProviders('en').map((provider) => provider.id)).toEqual(['OpenAI']);
 

@@ -108,10 +108,8 @@ describe('useVirtualList', () => {
     expect(mocks.paginationState.fetchData).not.toHaveBeenCalled();
 
     mocks.paginationState.error = null;
-    await act(async () => {
-      mocks.paginationState.fetchData({ init: false });
-      await Promise.resolve();
-    });
+    // 错误恢复后由 useVirtualList 自动触发分页；不要再手动触发，避免与 effect 竞态导致重复请求。
+    await renderHarness(root, 3);
     expect(mocks.paginationState.fetchData).toHaveBeenCalledTimes(1);
 
     root.unmount();

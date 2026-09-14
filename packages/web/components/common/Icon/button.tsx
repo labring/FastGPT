@@ -32,6 +32,7 @@ const MyIconButton = ({
         color={'myGray.500'}
         rounded={'sm'}
         alignItems={'center'}
+        justifyContent={'center'}
         bg={'transparent'}
         transition={'background 0.1s'}
         cursor={'pointer'}
@@ -47,7 +48,7 @@ const MyIconButton = ({
         sx={{ userSelect: 'none' }}
         {...props}
       >
-        <MyIcon name={isLoading ? 'common/loading' : (icon as any)} w={size} />
+        <MyIcon name={isLoading ? 'common/loading' : (icon as any)} w={size} h={size} />
       </Flex>
     </MyTooltip>
   );

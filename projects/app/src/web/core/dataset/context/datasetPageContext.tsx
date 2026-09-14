@@ -1,13 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
-import { useTranslation } from 'next-i18next';
+import { type ReactNode, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { getDatasetById, getDatasetPaths, putDatasetById } from '../api';
-import {
-  getAllTags,
-  getDatasetCollectionTags,
-  postCreateDatasetCollectionTag
-} from '../api/collection';
+import { getAllTags } from '../api/collection';
 import { getDatasetTrainingQueue } from '../api/training';
 import { defaultDatasetDetail } from '../constants';
 import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
@@ -23,15 +18,9 @@ type DatasetPageContextType = {
   loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
   updateDataset: (data: UpdateDatasetBody) => Promise<void>;
 
-  searchDatasetTagsResult: DatasetTagType[];
   allDatasetTags: DatasetTagType[];
+  isLoadingAllDatasetTags: boolean;
   loadAllDatasetTags: () => Promise<DatasetTagType[]>;
-  checkedDatasetTag: DatasetTagType[];
-  setCheckedDatasetTag: React.Dispatch<SetStateAction<DatasetTagType[]>>;
-  onCreateCollectionTag: (tag: string) => Promise<void>;
-  isCreateCollectionTagLoading: boolean;
-  searchTagKey: string;
-  setSearchTagKey: Dispatch<SetStateAction<string>>;
   paths: ParentTreePathItemType[];
   refetchPaths: () => void;
 
@@ -48,27 +37,15 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   },
   datasetId: '',
   datasetDetail: defaultDatasetDetail,
-  loadDatasetDetail: function (id: string): Promise<DatasetItemType> {
+  loadDatasetDetail: function (_id: string): Promise<DatasetItemType> {
     throw new Error('Function not implemented.');
   },
-  updateDataset: function (data: UpdateDatasetBody): Promise<void> {
+  updateDataset: function (_data: UpdateDatasetBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
-  searchDatasetTagsResult: [],
   allDatasetTags: [],
-  checkedDatasetTag: [],
-  setCheckedDatasetTag: function (): void {
-    throw new Error('Function not implemented.');
-  },
+  isLoadingAllDatasetTags: false,
   loadAllDatasetTags: function (): Promise<DatasetTagType[]> {
-    throw new Error('Function not implemented.');
-  },
-  onCreateCollectionTag: function (tag: string): Promise<void> {
-    throw new Error('Function not implemented.');
-  },
-  isCreateCollectionTagLoading: false,
-  searchTagKey: '',
-  setSearchTagKey: function (value: SetStateAction<string>): void {
     throw new Error('Function not implemented.');
   },
   paths: [],
@@ -82,7 +59,6 @@ export const DatasetPageContextProvider = ({
   children: ReactNode;
   datasetId: string;
 }) => {
-  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   // dataset detail
@@ -105,10 +81,11 @@ export const DatasetPageContextProvider = ({
   };
 
   // dataset tags
-  const [checkedDatasetTag, setCheckedDatasetTag] = useState<DatasetTagType[]>([]);
-  const [searchTagKey, setSearchTagKey] = useState('');
-
-  const { runAsync: loadAllDatasetTags, data: allDatasetTags = [] } = useRequest(
+  const {
+    runAsync: loadAllDatasetTags,
+    data: allDatasetTags = [],
+    loading: isLoadingAllDatasetTags
+  } = useRequest(
     async () => {
       if (!feConfigs?.isPlus || !datasetDetail._id) return [];
 
@@ -118,38 +95,6 @@ export const DatasetPageContextProvider = ({
     {
       manual: false,
       refreshDeps: [datasetDetail._id]
-    }
-  );
-  const { data: searchDatasetTagsResult = [] } = useRequest(
-    async () => {
-      if (!searchTagKey) return allDatasetTags;
-      const { list } = await getDatasetCollectionTags({
-        datasetId: datasetDetail._id,
-        searchText: searchTagKey,
-        offset: 0,
-        pageSize: 15
-      });
-      return list;
-    },
-    {
-      manual: false,
-      throttleWait: 300,
-      refreshDeps: [datasetDetail._id, searchTagKey, allDatasetTags]
-    }
-  );
-  const { runAsync: onCreateCollectionTag, loading: isCreateCollectionTagLoading } = useRequest(
-    (tag: string) =>
-      postCreateDatasetCollectionTag({
-        datasetId: datasetDetail._id,
-        tag
-      }),
-    {
-      refreshDeps: [datasetDetail._id],
-      onSuccess() {
-        loadAllDatasetTags();
-      },
-      successToast: t('common:create_success'),
-      errorToast: t('common:create_failed')
     }
   );
 
@@ -189,15 +134,9 @@ export const DatasetPageContextProvider = ({
     trainingCount,
     refetchDatasetTraining,
 
-    searchDatasetTagsResult,
-    checkedDatasetTag,
-    setCheckedDatasetTag,
     allDatasetTags,
-    loadAllDatasetTags,
-    onCreateCollectionTag,
-    isCreateCollectionTagLoading,
-    searchTagKey,
-    setSearchTagKey
+    isLoadingAllDatasetTags,
+    loadAllDatasetTags
   };
 
   return <DatasetPageContext.Provider value={contextValue}>{children}</DatasetPageContext.Provider>;

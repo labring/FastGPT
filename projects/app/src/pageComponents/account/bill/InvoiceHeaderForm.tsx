@@ -214,7 +214,7 @@ const InvoiceHeaderForm = () => {
     manual: false,
     onSuccess: (data) => {
       console.log(data, '--');
-      inputForm.reset(data);
+      inputForm.reset({ ...inputForm.getValues(), ...data });
     }
   });
 
@@ -239,7 +239,7 @@ const InvoiceHeaderForm = () => {
         overflowY={['visible', 'auto']}
       >
         <Flex w={'100%'} justify={'center'} flexDir={'column'} align={'center'}>
-          <InvoiceHeaderSingleForm inputForm={inputForm} />
+          <InvoiceHeaderSingleForm inputForm={inputForm} required />
           <Flex w={'100%'} justify={'center'} mt={4}>
             <Button
               w={['100%', 'auto']}

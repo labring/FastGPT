@@ -53,7 +53,8 @@ export const GetSystemInitDataResponseSchema = z.object({
       z.object({
         channelId: z.number(),
         name: I18nStringStrictSchema,
-        avatar: z.string()
+        avatar: z.string(),
+        website: z.string().optional()
       })
     )
     .optional()

@@ -281,6 +281,37 @@ describe('computedCollectionChunkSettings', () => {
     });
   });
 
+  describe('intelligent chunkSettingMode', () => {
+    // intelligent 不做参数兜底:UI 选智能分块时会完整发送 auto 参数档,chunkSize/indexSize 直接采用请求值
+    // (chunkSize 作为外部分块服务的 chunk_sizes.text,indexSize 用于给分块结果建索引)。
+    it('keeps request-sent chunkSize/indexSize instead of forcing the auto profile', () => {
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
+        chunkSettingMode: ChunkSettingModeEnum.intelligent,
+        chunkSplitMode: DataChunkSplitModeEnum.paragraph,
+        paragraphChunkDeep: 5,
+        chunkSize: 1000,
+        indexSize: 512,
+        llmModel: defaultLLMModel,
+        vectorModel: defaultVectorModel
+      });
+
+      expect(result.chunkSize).toBe(1000);
+      expect(result.indexSize).toBe(512);
+      expect(result.chunkSplitter).toBeUndefined();
+    });
+
+    it('clamps chunkSize by the LLM max like custom mode', () => {
+      const result = computedCollectionChunkSettings<ChunkSettingsType>({
+        chunkSettingMode: ChunkSettingModeEnum.intelligent,
+        chunkSize: 99999,
+        llmModel: defaultLLMModel,
+        vectorModel: defaultVectorModel
+      });
+
+      expect(result.chunkSize).toBe(getLLMMaxChunkSize(defaultLLMModel));
+    });
+  });
+
   describe('custom chunkSettingMode', () => {
     it('should set paragraphChunkDeep when chunkSplitMode is paragraph', () => {
       const result = computedCollectionChunkSettings<ChunkSettingsType>({

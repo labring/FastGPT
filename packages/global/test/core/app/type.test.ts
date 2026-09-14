@@ -32,6 +32,28 @@ describe('AppChatConfigTypeSchema', () => {
     });
   });
 
+  it('should validate and keep entry point fields', () => {
+    const entryPoints = [
+      { id: 'knowledge', name: 'Knowledge Q&A', icon: '/icons/knowledge.svg' },
+      { id: 'writing', name: 'Writing' }
+    ];
+
+    expect(AppChatConfigTypeSchema.parse({ entryPoints }).entryPoints).toEqual(entryPoints);
+    expect(
+      AppChatConfigTypeSchema.safeParse({
+        entryPoints: [{ id: 'invalid', name: 'Invalid', icon: 1 }]
+      }).success
+    ).toBe(false);
+    expect(
+      AppChatConfigTypeSchema.safeParse({
+        entryPoints: [
+          { id: 'first', name: 'Same name' },
+          { id: 'second', name: ' Same name ' }
+        ]
+      }).success
+    ).toBe(false);
+  });
+
   it('should normalize null optional chat config fields to undefined', () => {
     const result = AppChatConfigTypeSchema.parse({
       welcomeText: null,
@@ -44,6 +66,7 @@ describe('AppChatConfigTypeSchema', () => {
       scheduledTriggerConfig: null,
       chatInputGuide: null,
       fileSelectConfig: null,
+      entryPoints: null,
       instruction: null
     });
 
@@ -57,6 +80,7 @@ describe('AppChatConfigTypeSchema', () => {
     expect(result.scheduledTriggerConfig).toBeUndefined();
     expect(result.chatInputGuide).toBeUndefined();
     expect(result.fileSelectConfig).toBeUndefined();
+    expect(result.entryPoints).toBeUndefined();
     expect(result.instruction).toBeUndefined();
   });
 

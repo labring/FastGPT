@@ -715,6 +715,81 @@ describe('getWorkflowNodeRunParams', () => {
     expect(params[NodeInputKeyEnum.addInputParam]).toEqual({ dynamicName: 'Ada' });
     expect(params.dynamicName).toBe('Ada');
   });
+
+  it('标签过滤条件行会解析行内引用并编成 tags JSON', () => {
+    const variableState = createVariableState({ price: 18 });
+    const node = createNode('search', FlowNodeTypeEnum.datasetSearchNode);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.collectionFilterMatch,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+        valueType: WorkflowIOValueTypeEnum.string,
+        value: {
+          logic: 'AND',
+          conditions: [
+            {
+              tag: 'price',
+              tagType: 'number',
+              op: '$gte',
+              valueMode: 'reference',
+              value: [VARIABLE_NODE_ID, 'price']
+            }
+          ]
+        }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.collectionFilterMatch]).toBe(
+      JSON.stringify({ tags: { $and: [{ price: { $gte: 18 } }] } })
+    );
+    expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it('Agent 嵌套 datasetParams 会解析标签过滤行内引用', () => {
+    const variableState = createVariableState({ price: 18 });
+    const node = createNode('agent', FlowNodeTypeEnum.agent);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.object,
+        value: {
+          datasets: [{ datasetId: 'dataset-1' }],
+          collectionFilterMatch: {
+            logic: 'AND',
+            conditions: [
+              {
+                tag: 'price',
+                tagType: 'number',
+                op: '$gte',
+                valueMode: 'reference',
+                value: [VARIABLE_NODE_ID, 'price']
+              }
+            ]
+          }
+        }
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.datasetParams]).toMatchObject({
+      datasets: [{ datasetId: 'dataset-1' }],
+      collectionFilterMatch: JSON.stringify({ tags: { $and: [{ price: { $gte: 18 } }] } })
+    });
+  });
 });
 
 describe('runWorkflow catchError', () => {

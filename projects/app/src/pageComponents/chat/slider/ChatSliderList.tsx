@@ -235,20 +235,25 @@ const ChatSliderList = () => {
                             }
                           },
 
-                          {
-                            label: t('common:custom_title'),
-                            icon: 'common/customTitleLight',
-                            onClick: () => {
-                              onOpenModal({
-                                defaultVal: item.customTitle || item.title,
-                                onSuccess: (e) =>
-                                  onUpdateHistory({
-                                    chatId: item.id,
-                                    customTitle: e
-                                  })
-                              });
-                            }
-                          },
+                          // 临时会话尚未进入历史记录，自定义标题无法保存。
+                          ...(!item.isTemporary
+                            ? [
+                                {
+                                  label: t('common:custom_title'),
+                                  icon: 'common/customTitleLight',
+                                  onClick: () => {
+                                    onOpenModal({
+                                      defaultVal: item.customTitle || item.title,
+                                      onSuccess: (e) =>
+                                        onUpdateHistory({
+                                          chatId: item.id,
+                                          customTitle: e
+                                        })
+                                    });
+                                  }
+                                }
+                              ]
+                            : []),
                           {
                             label: t('common:Delete'),
                             icon: 'delete',

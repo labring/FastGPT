@@ -44,7 +44,6 @@ export const serviceEnv = createEnv({
 
     // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
     INVOKE_TOKEN_SECRET: z.string().min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters'),
-
     // ==================== 服务地址与集成 ====================
     // 插件
     PLUGIN_BASE_URL: UrlSchema.default('http://localhost:3004'),
@@ -176,6 +175,19 @@ export const serviceEnv = createEnv({
     }),
     SANGFOR_PARSE_TIMEOUT_SECONDS: IntSchema.min(1).max(7200).default(600).meta({
       description: 'Sangfor 文档解析请求超时时间（秒），默认 10 分钟，最大 2 小时'
+    }),
+
+    // ==================== 智能分块 ====================
+    // 配置后，导入文档(文本/PDF/网页)当 chunkSettingMode=intelligent(智能分块) 时，把「文本→chunk」委托给 sangfor 服务。
+    // 未配置时智能分块不可用,已启用智能分块的集合导入会显式报错,不影响平台其他分块功能。
+    SANGFOR_CHUNK_URL: UrlSchema.optional().meta({
+      description: 'sangfor 智能分块服务地址'
+    }),
+    SANGFOR_CHUNK_KEY: z.string().optional().meta({
+      description: 'sangfor 智能分块服务密钥(Bearer Token)'
+    }),
+    SANGFOR_CHUNK_TIMEOUT_MINUTES: IntSchema.min(1).default(60).meta({
+      description: 'sangfor 智能分块服务超时时间(分钟)'
     }),
 
     // ==================== 数据库与缓存 ====================

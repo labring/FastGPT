@@ -81,5 +81,11 @@
   "migrations.20260905_backfill_resource_owner_acl.datasets": "检查知识库所有者权限",
   "migrations.20260905_backfill_resource_owner_acl.agent_skills": "检查 Agent Skill 所有者权限",
   "migrations.20260905_backfill_resource_owner_acl.validation": "校验资源所有者权限",
-  "migrations.20260905_backfill_resource_owner_acl.result": "已检查 {{appsProcessedCount}} 个应用、{{datasetsProcessedCount}} 个知识库和 {{agentSkillsProcessedCount}} 个技能。补齐所有者权限：{{appsUpdatedCount}} 个应用、{{datasetsUpdatedCount}} 个知识库和 {{agentSkillsUpdatedCount}} 个技能。"
+  "migrations.20260905_backfill_resource_owner_acl.result": "已检查 {{appsProcessedCount}} 个应用、{{datasetsProcessedCount}} 个知识库和 {{agentSkillsProcessedCount}} 个技能。补齐所有者权限：{{appsUpdatedCount}} 个应用、{{datasetsUpdatedCount}} 个知识库和 {{agentSkillsUpdatedCount}} 个技能。",
+  "migrations.20260907_migrate_dataset_tags_v2.name": "升级知识库标签数据",
+  "migrations.20260907_migrate_dataset_tags_v2.description": "将历史 Collection 标签迁移为类型化标签，并清理重复标签定义。",
+  "migrations.20260907_migrate_dataset_tags_v2.result": "已检查 {{datasetsProcessedCount}} 个知识库，迁移 {{collectionsMigratedCount}} 个 Collection，删除 {{duplicateDefinitionsDeletedCount}} 个重复标签定义。",
+  "migrations.20260907_migrate_dataset_tags_v2.datasets": "整理知识库标签定义",
+  "migrations.20260907_migrate_dataset_tags_v2.collections": "迁移 Collection 标签值",
+  "migrations.20260907_migrate_dataset_tags_v2.validation": "校验标签迁移结果"
 }

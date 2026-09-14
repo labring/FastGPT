@@ -16,6 +16,7 @@ export type CreateAgentLoopCoreToolCallNodeResponseParams = {
   nodeId: string;
   finishReason: string;
   requestIds: string[];
+  firstTokenTime?: number;
 };
 
 /**
@@ -36,7 +37,8 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   toolDetail,
   nodeId,
   finishReason,
-  requestIds
+  requestIds,
+  firstTokenTime
 }: CreateAgentLoopCoreToolCallNodeResponseParams): Record<string, unknown> => ({
   totalPoints,
   toolCallInputTokens,
@@ -52,5 +54,6 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   toolDetail,
   mergeSignId: nodeId,
   finishReason,
-  llmRequestIds: requestIds
+  llmRequestIds: requestIds,
+  firstTokenTime
 });

@@ -145,7 +145,7 @@ export class S3DatasetSource extends S3PrivateBucket {
       teamId,
       tmbId,
       customPdfParse,
-      pdfParseConfig,
+      sangforFileParseConfig,
       getFormatText,
       usageId,
       datasetId
@@ -157,7 +157,7 @@ export class S3DatasetSource extends S3PrivateBucket {
 
     const rawTextBuffer = await this.rawTextSource.getRawTextBuffer({
       customPdfParse,
-      pdfParseConfig,
+      sangforFileParseConfig,
       sourceId: fileId
     });
     if (rawTextBuffer) {
@@ -175,7 +175,7 @@ export class S3DatasetSource extends S3PrivateBucket {
       tmbId,
       source,
       customPdfParse,
-      pdfParseConfig,
+      sangforFileParseConfig,
       usageId,
       getFormatText,
       imageKeyOptions: {
@@ -188,7 +188,7 @@ export class S3DatasetSource extends S3PrivateBucket {
       sourceName: filename,
       text: rawText,
       customPdfParse,
-      pdfParseConfig
+      sangforFileParseConfig
     });
 
     return {

@@ -78,6 +78,7 @@ const ModelLinkedChannels = ({
         rootProps={{
           h: 'auto',
           maxH: '220px',
+          px: 0,
           border: '1px solid',
           borderColor: 'myGray.200',
           borderRadius: '12px',

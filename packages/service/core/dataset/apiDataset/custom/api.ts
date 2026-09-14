@@ -4,7 +4,7 @@ import type {
   ApiDatasetDetailResponse,
   APIFileServerType
 } from '@fastgpt/global/core/dataset/apiDataset/type';
-import type { PdfParseConfigType } from '@fastgpt/global/core/dataset/type';
+import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { type Method } from 'axios';
 import { createProxyAxios } from '../../../../common/api/axios';
 import { readFileRawTextByUrl } from '../../read';
@@ -171,7 +171,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     tmbId,
     apiFileId,
     customPdfParse,
-    pdfParseConfig,
+    sangforFileParseConfig,
     datasetId,
     usageId
   }: {
@@ -179,7 +179,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     tmbId: string;
     apiFileId: string;
     customPdfParse?: boolean;
-    pdfParseConfig?: PdfParseConfigType;
+    sangforFileParseConfig?: IultmzhFileParseConfigType;
     datasetId: string;
     usageId?: string;
   }): Promise<ApiFileReadContentResponseType> => {
@@ -208,7 +208,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
       const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
         sourceId: previewUrl,
         customPdfParse,
-        pdfParseConfig
+        sangforFileParseConfig
       });
       if (rawTextBuffer) {
         return {
@@ -224,7 +224,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         relatedId: apiFileId,
         datasetId,
         customPdfParse,
-        pdfParseConfig,
+        sangforFileParseConfig,
         usageId,
         getFormatText: true
       });
@@ -236,7 +236,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         sourceName,
         text: rawText,
         customPdfParse,
-        pdfParseConfig
+        sangforFileParseConfig
       });
 
       return {

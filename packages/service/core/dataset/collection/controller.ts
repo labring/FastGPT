@@ -154,6 +154,8 @@ export const createCollectionAndInsertData = async ({
         customReg: formatCreateCollectionParams.chunkSplitter
           ? [formatCreateCollectionParams.chunkSplitter]
           : [],
+        chunkSettingMode: formatCreateCollectionParams.chunkSettingMode,
+        trainingType,
         backupParse
       });
       return {
@@ -299,6 +301,7 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     apiFileParentId
   } = props;
 
+  // Resolve tags: string names → ObjectId, {tag, value} → {tagId, value}
   const collectionTags = await createOrGetCollectionTags({
     tags,
     teamId,

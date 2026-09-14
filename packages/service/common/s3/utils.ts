@@ -303,17 +303,17 @@ export const getFileS3Key = {
   rawText: ({
     hash,
     customPdfParse,
-    pdfParseConfig
+    sangforFileParseConfig
   }: {
     hash: string;
     customPdfParse?: boolean;
-    pdfParseConfig?: Record<string, unknown>;
+    sangforFileParseConfig?: Record<string, unknown>;
   }) => {
     // 解析配置纳入缓存 key,避免同文件不同开关共享缓存;未传配置保持旧 key 格式
-    const configSuffix = pdfParseConfig
+    const configSuffix = sangforFileParseConfig
       ? `-${createHash('md5')
           .update(
-            JSON.stringify(pdfParseConfig, (_key, value) =>
+            JSON.stringify(sangforFileParseConfig, (_key, value) =>
               value instanceof Object && !Array.isArray(value)
                 ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)))
                 : value

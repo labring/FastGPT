@@ -1,255 +1,223 @@
-import { Box, Checkbox, Flex, Input } from '@chakra-ui/react';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import { putDatasetCollectionById } from '@/web/core/dataset/api/collection';
+import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { useTranslation } from 'next-i18next';
-import { useMemo, useRef, useState } from 'react';
-import { useDeepCompareEffect } from 'ahooks';
-import {
-  type DatasetCollectionItemType,
-  type DatasetTagType
-} from '@fastgpt/global/core/dataset/type';
-import { isEqual } from 'lodash-es';
+import { useLayoutEffect, useMemo, useState } from 'react';
+import { type DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import {
+  formatCollectionTagChipText,
+  OVERFLOW_CHIP_GAP_PX,
+  parseCollectionTagParts,
+  TAG_TOOLTIP_PROPS,
+  TagTooltipItem,
+  useOverflowChipCount
+} from './TagCommon';
 
-const TagsPopOver = ({
-  currentCollection,
-  hoverBg = 'myGray.50'
+const TAG_CHIP_PROPS = {
+  colorSchema: 'cyan' as const,
+  type: 'fill' as const,
+  h: '20px',
+  px: 2,
+  flexShrink: 0,
+  fontSize: 'mini',
+  fontWeight: 'medium',
+  borderRadius: 'xs' as const
+};
+
+const OVERFLOW_TAG_CHIP_PROPS = {
+  ...TAG_CHIP_PROPS,
+  borderRadius: 'full' as const
+};
+
+/** 渲染知识库列表中的标签；单个标签成为唯一可见项时允许收缩并展示完整文本。 */
+const TagChip = ({
+  text,
+  name,
+  value,
+  isFlexible = false,
+  withTooltip = false
 }: {
-  currentCollection: DatasetCollectionItemType | DatasetCollectionsListItemType;
-  hoverBg?: string;
+  text: string;
+  name?: string;
+  value?: string;
+  isFlexible?: boolean;
+  withTooltip?: boolean;
 }) => {
-  const { t } = useTranslation();
-  const {
-    searchTagKey,
-    setSearchTagKey,
-    searchDatasetTagsResult,
-    allDatasetTags,
-    onCreateCollectionTag,
-    isCreateCollectionTagLoading
-  } = useContextSelector(DatasetPageContext, (v) => v);
-
-  const [collectionTags, setCollectionTags] = useState<string[]>(currentCollection.tags ?? []);
-  const [checkedTags, setCheckedTags] = useState<DatasetTagType[]>([]);
-  const [showTagManage, setShowTagManage] = useState(false);
-  const [isUpdateLoading, setIsUpdateLoading] = useState(false);
-
-  const tagList = useMemo(
-    () =>
-      (collectionTags
-        ?.map((item) => {
-          const tagObject = allDatasetTags.find((tag) => tag.tag === item);
-          return tagObject ? { _id: tagObject._id, tag: tagObject.tag } : null;
-        })
-        .filter((tag) => tag !== null) as {
-        _id: string;
-        tag: string;
-      }[]) || [],
-    [collectionTags, allDatasetTags]
+  const tagText = (
+    <Box
+      minW={0}
+      overflow={isFlexible ? 'hidden' : undefined}
+      textOverflow="ellipsis"
+      whiteSpace="nowrap"
+    >
+      {text}
+    </Box>
   );
 
-  const [visibleTags, setVisibleTags] = useState<DatasetTagType[]>(tagList);
-  const [overflowTags, setOverflowTags] = useState<DatasetTagType[]>([]);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const tagContent = withTooltip ? (
+    <MyTooltip
+      label={<TagTooltipItem name={name || text} value={value} />}
+      shouldWrapChildren={false}
+      {...TAG_TOOLTIP_PROPS}
+    >
+      {tagText}
+    </MyTooltip>
+  ) : (
+    tagText
+  );
 
-  useDeepCompareEffect(() => {
-    const calculateTags = () => {
-      if (!containerRef.current || !tagList) return;
+  const chip = (
+    <MyTag
+      {...TAG_CHIP_PROPS}
+      data-tag-chip
+      flex={isFlexible ? '0 1 auto' : '0 0 auto'}
+      minW={isFlexible ? 0 : undefined}
+      maxW={isFlexible ? '100%' : undefined}
+      overflow={isFlexible ? 'hidden' : undefined}
+      cursor={withTooltip ? 'pointer' : undefined}
+      _hover={withTooltip ? { bg: '#DBF3FF' } : undefined}
+    >
+      {tagContent}
+    </MyTag>
+  );
 
-      const containerWidth = containerRef.current.offsetWidth;
-      const tagWidth = 11;
-      let totalWidth = 30;
-      let visibleCount = 0;
+  return chip;
+};
 
-      for (let i = 0; i < tagList.length; i++) {
-        const tag = tagList[i];
-        const estimatedWidth = tag.tag.length * tagWidth + 16; // 加上左右 padding 的宽度
-        if (totalWidth + estimatedWidth <= containerWidth) {
-          totalWidth += estimatedWidth;
-          visibleCount++;
-        } else {
-          break;
-        }
+const TagsPopOver = ({
+  currentCollection
+}: {
+  currentCollection: DatasetCollectionItemType | DatasetCollectionsListItemType;
+}) => {
+  const allDatasetTags = useContextSelector(DatasetPageContext, (v) => v.allDatasetTags);
+
+  const chipItems = useMemo(
+    () =>
+      (currentCollection.tags ?? [])
+        .map((item, index) => {
+          const parts = parseCollectionTagParts(item, allDatasetTags);
+          return {
+            id: typeof item === 'string' ? item : `${item.tag}-${index}`,
+            text: formatCollectionTagChipText(item, allDatasetTags),
+            name: parts.name,
+            value: parts.value
+          };
+        })
+        .filter((item) => item.text),
+    [allDatasetTags, currentCollection.tags]
+  );
+
+  const { containerRef, measureRef, visibleCount } = useOverflowChipCount({
+    itemKey: chipItems,
+    itemCount: chipItems.length
+  });
+
+  const [shouldShrinkFirstTag, setShouldShrinkFirstTag] = useState(false);
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) return;
+
+    const calculate = () => {
+      const firstTag = measure.querySelector('[data-tag-chip]') as HTMLElement | null;
+      const overflowChip = container.querySelector('[data-overflow-chip]') as HTMLElement | null;
+      const hasOnlyOneVisibleTag = visibleCount === 1;
+
+      if (!firstTag || !hasOnlyOneVisibleTag) {
+        setShouldShrinkFirstTag(false);
+        return;
       }
 
-      setVisibleTags(tagList.slice(0, visibleCount));
-      setOverflowTags(tagList.slice(visibleCount));
+      const availableWidth =
+        container.offsetWidth -
+        (chipItems.length > 1 ? (overflowChip?.offsetWidth ?? 0) + OVERFLOW_CHIP_GAP_PX : 0);
+      setShouldShrinkFirstTag(firstTag.offsetWidth > availableWidth);
     };
 
-    setTimeout(calculateTags, 100);
-    setCheckedTags(tagList);
+    calculate();
+    const observer = new ResizeObserver(calculate);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [chipItems.length, containerRef, measureRef, visibleCount]);
 
-    window.addEventListener('resize', calculateTags);
+  if (chipItems.length === 0) return null;
 
-    return () => {
-      window.removeEventListener('resize', calculateTags);
-    };
-  }, [tagList]);
+  const visibleTags = chipItems.slice(0, visibleCount);
+  const overflowTags = chipItems.slice(visibleCount);
 
   return (
-    <MyPopover
-      placement={showTagManage ? 'bottom' : 'bottom-end'}
-      hasArrow={false}
-      offset={[2, 2]}
-      w={'180px'}
-      trigger={'hover'}
-      Trigger={
-        <MyBox
-          ref={containerRef}
-          display={'flex'}
-          isLoading={isUpdateLoading}
-          size={'xs'}
-          mt={1}
-          py={0.5}
-          px={0.25}
-          _hover={{
-            bg: hoverBg,
-            borderRadius: '3px'
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowTagManage(true);
-          }}
-          cursor={'pointer'}
-        >
-          <Flex>
-            {visibleTags.map((item, index) => (
-              <Box
-                key={index}
-                h={5}
-                mr={2}
-                px={2}
-                fontSize={'11px'}
-                fontWeight={'500'}
-                bg={'#F0FBFF'}
-                color={'#0884DD'}
-                borderRadius={'xs'}
+    <Flex position={'relative'} w={'100%'} minW={0} h={'20px'}>
+      <Flex
+        ref={measureRef}
+        position={'absolute'}
+        visibility={'hidden'}
+        pointerEvents={'none'}
+        alignItems={'center'}
+        gap={2}
+        whiteSpace={'nowrap'}
+        h={0}
+        overflow={'hidden'}
+      >
+        {chipItems.map((item) => (
+          <TagChip key={item.id} text={item.text} />
+        ))}
+        <MyTag {...OVERFLOW_TAG_CHIP_PROPS} data-overflow-chip>
+          {`+${chipItems.length}`}
+        </MyTag>
+      </Flex>
+      <Flex
+        ref={containerRef}
+        alignItems={'center'}
+        flexWrap={'nowrap'}
+        gap={2}
+        w={'100%'}
+        minW={0}
+        h={'20px'}
+        overflow={'hidden'}
+      >
+        {visibleTags.map((item, index) => (
+          <TagChip
+            key={item.id}
+            text={item.text}
+            name={item.name}
+            value={item.value}
+            isFlexible={index === 0 && shouldShrinkFirstTag}
+            withTooltip={index === 0 && shouldShrinkFirstTag}
+          />
+        ))}
+        {overflowTags.length > 0 && (
+          <MyTooltip
+            label={
+              <Flex
+                direction={'column'}
+                alignItems={'flex-start'}
+                maxH={'240px'}
+                overflowY={'auto'}
               >
-                {item.tag}
-              </Box>
-            ))}
-          </Flex>
-          {overflowTags.length > 0 && (
-            <Box h={5} px={2} bg={'#1118240D'} borderRadius={'33px'} fontSize={'11px'}>
-              {`+${overflowTags.length}`}
-            </Box>
-          )}
-        </MyBox>
-      }
-      onCloseFunc={async () => {
-        setSearchTagKey('');
-
-        setShowTagManage(false);
-        if (isEqual(checkedTags, tagList) || !showTagManage) return;
-        setIsUpdateLoading(true);
-        await putDatasetCollectionById({
-          id: currentCollection._id,
-          tags: checkedTags.map((tag) => tag.tag)
-        });
-        setCollectionTags(checkedTags.map((tag) => tag.tag));
-        setIsUpdateLoading(false);
-      }}
-      display={showTagManage || overflowTags.length > 0 ? 'block' : 'none'}
-    >
-      {({}) => (
-        <>
-          {showTagManage ? (
-            <MyBox isLoading={isCreateCollectionTagLoading} onClick={(e) => e.stopPropagation()}>
-              <Box px={1.5} pt={1.5}>
-                <Input
-                  pl={2}
-                  h={7}
-                  borderRadius={'xs'}
-                  value={searchTagKey}
-                  placeholder={t('dataset:tag.searchOrAddTag')}
-                  onChange={(e) => setSearchTagKey(e.target.value)}
-                />
-              </Box>
-              <Box my={1} px={1.5} maxH={'200px'} overflow={'auto'}>
-                {searchTagKey &&
-                  !searchDatasetTagsResult.map((item) => item.tag).includes(searchTagKey) && (
-                    <Flex
-                      alignItems={'center'}
-                      fontSize={'xs'}
-                      px={1}
-                      cursor={'pointer'}
-                      _hover={{ bg: '#1118240D', color: '#2B5FD9' }}
-                      borderRadius={'xs'}
-                      onClick={() => onCreateCollectionTag(searchTagKey)}
-                    >
-                      <MyIcon name={'common/addLight'} w={'1rem'} />
-                      <Box ml={1} py={1}>
-                        {t('dataset:tag.add') + ` "${searchTagKey}"`}
-                      </Box>
-                    </Flex>
-                  )}
-                {searchDatasetTagsResult?.map((item) => {
-                  const tagsList = checkedTags.map((tag) => tag.tag);
-                  return (
-                    <Flex
-                      alignItems={'center'}
-                      fontSize={'xs'}
-                      px={1}
-                      py={1}
-                      my={1}
-                      key={item._id}
-                      cursor={'pointer'}
-                      color={tagsList.includes(item.tag) ? '#2B5FD9' : 'myGray.600'}
-                      _hover={{
-                        bg: '#1118240D',
-                        color: '#2B5FD9',
-                        ...(tagsList.includes(item.tag) ? {} : { svg: { color: '#F3F3F4' } })
-                      }}
-                      borderRadius={'xs'}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (tagsList.includes(item.tag)) {
-                          setCheckedTags(checkedTags.filter((t) => t.tag !== item.tag));
-                        } else {
-                          setCheckedTags([...checkedTags, item]);
-                        }
-                      }}
-                    >
-                      <Checkbox
-                        isChecked={tagsList.includes(item.tag)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setCheckedTags([...checkedTags, item]);
-                          } else {
-                            setCheckedTags(checkedTags.filter((t) => t._id !== item._id));
-                          }
-                        }}
-                        icon={<MyIcon name={'common/check'} w={'12px'} />}
-                      />
-                      <Box ml={2}>{item.tag}</Box>
-                    </Flex>
-                  );
-                })}
-              </Box>
-            </MyBox>
-          ) : (
-            <Flex gap={1} p={3} flexWrap={'wrap'}>
-              {overflowTags.map((tag, index) => (
-                <Box
-                  key={index}
-                  h={5}
-                  px={2}
-                  fontSize={'11px'}
-                  bg={'#F0FBFF'}
-                  color={'#0884DD'}
-                  borderRadius={'xs'}
-                >
-                  {tag.tag}
-                </Box>
-              ))}
+                {overflowTags.map((item) => (
+                  <TagTooltipItem key={item.id} name={item.name} value={item.value} />
+                ))}
+              </Flex>
+            }
+            shouldWrapChildren={false}
+            {...TAG_TOOLTIP_PROPS}
+          >
+            <Flex
+              cursor={'pointer'}
+              flexShrink={0}
+              borderRadius={'full'}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MyTag {...OVERFLOW_TAG_CHIP_PROPS} data-overflow-chip _hover={{ bg: '#DBF3FF' }}>
+                {`+${overflowTags.length}`}
+              </MyTag>
             </Flex>
-          )}
-        </>
-      )}
-    </MyPopover>
+          </MyTooltip>
+        )}
+      </Flex>
+    </Flex>
   );
 };
 

@@ -84,6 +84,7 @@ const EditChannelModal = ({
     [aiproxyChannels, channelProviderMetas, i18n.language]
   );
 
+  const selectedChannel = aiproxyChannels.find((channel) => channel.channelId === providerType);
   const selectedProvider = useMemo(() => {
     const res = providerList.find((item) => item.value === providerType);
     return res;
@@ -273,17 +274,24 @@ const EditChannelModal = ({
           </Box>
           {/* Proxy URL */}
           <Box mt={4}>
-            <Flex alignItems={'center'}>
-              <FormLabel>{t('config_model:base_url')}</FormLabel>
-              {selectedProvider && (
-                <Flex alignItems={'center'} fontSize={'xs'}>
-                  <Box>{'('}</Box>
-                  <Box mr={1}>{t('config_model:default_url')}:</Box>
-                  <CopyBox value={selectedProvider?.defaultBaseUrl || ''}>
-                    {selectedProvider?.defaultBaseUrl || ''}
-                  </CopyBox>
-                  <Box>{')'}</Box>
-                </Flex>
+            <Flex alignItems={'center'} justifyContent="space-between">
+              <Flex alignItems="center">
+                <FormLabel>{t('config_model:base_url')}</FormLabel>
+                {selectedProvider && (
+                  <Flex alignItems={'center'} fontSize={'xs'}>
+                    <Box>{'('}</Box>
+                    <Box mr={1}>{t('config_model:default_url')}:</Box>
+                    <CopyBox value={selectedProvider?.defaultBaseUrl || ''}>
+                      {selectedProvider?.defaultBaseUrl || ''}
+                    </CopyBox>
+                    <Box>{')'}</Box>
+                  </Flex>
+                )}
+              </Flex>
+              {selectedChannel?.website && (
+                <a href={selectedChannel.website} target="_blank" rel="noreferrer">
+                  {t('config_model:official_website')}
+                </a>
               )}
             </Flex>
             <Input

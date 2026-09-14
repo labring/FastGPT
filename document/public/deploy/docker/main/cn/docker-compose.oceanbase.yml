@@ -215,7 +215,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.16.2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.17.0
     ports:
       - 3000:3000
     networks:
@@ -306,7 +306,7 @@ services:
       TEXTIN_SECRET_CODE:
   fastgpt-code-sandbox:
     container_name: fastgpt-code-sandbox
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.16.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.17.0
     networks:
       - codesandbox
     restart: always
@@ -359,7 +359,7 @@ services:
       timeout: 20s
       retries: 3
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.1.2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.1.3
     container_name: fastgpt-plugin
     restart: always
     networks:

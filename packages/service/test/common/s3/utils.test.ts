@@ -876,7 +876,7 @@ describe('getFileS3Key', () => {
 
 describe('getFileS3Key.rawText', () => {
   const hash = 'abc123def456';
-  const pdfParseConfig = {
+  const sangforFileParseConfig = {
     keep_header_footer: true,
     keep_appendix: false,
     image_analysis: true,
@@ -898,21 +898,21 @@ describe('getFileS3Key.rawText', () => {
       keep_header_footer: true
     };
 
-    expect(getFileS3Key.rawText({ hash, customPdfParse: true, pdfParseConfig })).toBe(
-      getFileS3Key.rawText({ hash, customPdfParse: true, pdfParseConfig: reordered })
+    expect(getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig })).toBe(
+      getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig: reordered })
     );
   });
 
   it('changes the key when config values differ', () => {
-    const flipped = { ...pdfParseConfig, keep_header_footer: false };
+    const flipped = { ...sangforFileParseConfig, keep_header_footer: false };
 
-    expect(getFileS3Key.rawText({ hash, customPdfParse: true, pdfParseConfig })).not.toBe(
-      getFileS3Key.rawText({ hash, customPdfParse: true, pdfParseConfig: flipped })
+    expect(getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig })).not.toBe(
+      getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig: flipped })
     );
   });
 
   it('differs from the legacy key once a config is attached', () => {
-    expect(getFileS3Key.rawText({ hash, customPdfParse: true, pdfParseConfig })).not.toBe(
+    expect(getFileS3Key.rawText({ hash, customPdfParse: true, sangforFileParseConfig })).not.toBe(
       getFileS3Key.rawText({ hash, customPdfParse: true })
     );
   });

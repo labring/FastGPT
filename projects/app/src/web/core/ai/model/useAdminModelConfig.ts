@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getAdminModelConfig } from '@/web/core/ai/config';
 import {
@@ -16,10 +17,15 @@ export const useAdminModelConfig = () => {
     () => request.data?.defaultModelIds ?? {},
     [request.data?.defaultModelIds]
   );
-  const aiproxyChannels = useMemo(
-    () => request.data?.aiproxyChannels ?? [],
-    [request.data?.aiproxyChannels]
-  );
+  const aiproxyChannels = useMemo(() => {
+    const channels = request.data?.aiproxyChannels ?? [];
+    if (useSystemStore.getState().feConfigs.isPlus) return channels;
+    const priorityChannelIds = new Set([57, 58]);
+    return [...channels].sort(
+      (a, b) =>
+        Number(priorityChannelIds.has(b.channelId)) - Number(priorityChannelIds.has(a.channelId))
+    );
+  }, [request.data?.aiproxyChannels]);
   const providerCache = useMemo(
     () => formatModelProviders(request.data?.providers ?? []),
     [request.data?.providers]

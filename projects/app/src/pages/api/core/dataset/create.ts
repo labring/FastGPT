@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     vlmModelId,
     vlmModel,
     apiDatasetServer,
-    pdfParseConfig
+    sangforFileParseConfig
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
   // auth
@@ -97,7 +97,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           avatar,
           type,
           apiDatasetServer,
-          ...(pdfParseConfig && { pdfParseConfig })
+          ...(sangforFileParseConfig && { sangforFileParseConfig })
         }
       ],
       { session, ordered: true }

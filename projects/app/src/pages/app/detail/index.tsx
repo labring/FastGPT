@@ -94,7 +94,8 @@ export async function getServerSideProps(context: any) {
         'publish',
         'apikey',
         'workflow',
-        'skill'
+        'skill',
+        'dataset'
       ]))
     }
   };

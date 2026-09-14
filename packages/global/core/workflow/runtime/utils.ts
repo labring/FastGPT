@@ -419,10 +419,12 @@ export function rewriteNodeOutputByHistories(
       outputs: node.outputs.map((output: FlowNodeOutputItemType) => {
         return {
           ...output,
-          value:
-            interactive?.nodeOutputs?.find(
+          value: (() => {
+            const nodeOutput = interactive.nodeOutputs?.find(
               (item: NodeOutputItemType) => item.nodeId === node.nodeId && item.key === output.key
-            )?.value || output?.value
+            );
+            return nodeOutput ? nodeOutput.value : output.value;
+          })()
         };
       })
     };

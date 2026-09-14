@@ -1,4 +1,7 @@
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
+import { EntryPointItemsTypeSchema } from '@fastgpt/global/core/app/type';
+import type { EntryPointItemType } from '@fastgpt/global/core/app/type';
+import { ENTRY_POINT_VARIABLE_KEY } from '@fastgpt/global/core/app/constants';
 import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import type { ChatDispatchProps, WorkflowVariableStateLike } from '../../types/runtime';
@@ -19,6 +22,26 @@ import { isAbsoluteHttpUrl } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 
 const DEFAULT_VARIABLE_FILE_INPUT_MAX_FILES = 5;
+
+export const getEntryPointRuntimeVariables = ({
+  entryPoints = [],
+  inputVariables = {}
+}: {
+  entryPoints?: EntryPointItemType[];
+  inputVariables?: Record<string, unknown>;
+}): Partial<Record<typeof ENTRY_POINT_VARIABLE_KEY, string>> => {
+  const selectedEntryPoint = inputVariables[ENTRY_POINT_VARIABLE_KEY];
+  const parsedEntryPoints = EntryPointItemsTypeSchema.safeParse(entryPoints);
+  const configuredEntryPoints = parsedEntryPoints.success ? parsedEntryPoints.data : [];
+  if (
+    typeof selectedEntryPoint !== 'string' ||
+    !configuredEntryPoints.some((entryPoint) => entryPoint.name === selectedEntryPoint)
+  ) {
+    return {};
+  }
+
+  return { [ENTRY_POINT_VARIABLE_KEY]: selectedEntryPoint };
+};
 
 type WorkflowVariableRuntimeConfig = VariableItemType & {
   maxFiles: number;

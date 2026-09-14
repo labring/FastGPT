@@ -100,6 +100,7 @@
   "package_expiry_time": "套餐到期时间",
   "package_usage_rules": "套餐使用规则：系统优先使用更高级的套餐，原未用完的套餐将延后生效",
   "password": "密码",
+  "root_password_change_tip": "请修改环境变量中的 DEFAULT_ROOT_PSW 并重启服务即可修改 root 密码。",
   "password_tip": "至少 8 位，且至少包含数字、小写字母、大写字母或特殊字符中的两种，不允许包含空格",
   "password_update_error": "修改密码异常",
   "password_update_success": "修改密码成功",
@@ -125,5 +126,7 @@
   "user_account": "账号",
   "user_team_team_name": "团队",
   "you_can_convert": "您可以兑换",
-  "yuan": "元"
+  "yuan": "元",
+  "password_not_set": "未设置密码",
+  "set_password": "设置"
 }

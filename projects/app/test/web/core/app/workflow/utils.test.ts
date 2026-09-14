@@ -35,10 +35,7 @@ import {
   collectWorkflowStartAutoFillRevertPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/workflowStartAutoFill';
-import type {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -54,9 +51,11 @@ import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http4
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
+import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import commonZh from '@fastgpt/web/i18n/zh-CN/common.json';
 
@@ -2576,6 +2575,87 @@ describe('storeNode2FlowNode', () => {
       node.data.inputs.find((input) => input.key === NodeInputKeyEnum.datasetSearchExtensionModelId)
         ?.value
     ).toBe('saved-model');
+  });
+
+  it.each([
+    {
+      name: 'unversioned node with metadata',
+      version: undefined,
+      filterValue: { logic: 'AND', conditions: [] },
+      expectedVersion: 'legacy',
+      expectedLabel: 'workflow:collection_metadata_filter'
+    },
+    {
+      name: 'unversioned node without metadata',
+      version: undefined,
+      filterValue: undefined,
+      expectedVersion: 'structured',
+      expectedLabel: 'workflow:tag_filter'
+    },
+    {
+      name: 'explicitly structured node with a legacy-shaped value',
+      version: 'structured',
+      filterValue: '{"tags":{"$and":["legacy-shape"]}}',
+      expectedVersion: 'structured',
+      expectedLabel: 'workflow:tag_filter'
+    }
+  ])(
+    'hydrates $name as $expectedVersion',
+    ({ version, filterValue, expectedVersion, expectedLabel }) => {
+      const storeNode = {
+        ...DatasetSearchModule,
+        nodeId: 'dataset-search',
+        position: { x: 0, y: 0 },
+        inputs: DatasetSearchModule.inputs
+          .filter((input) => input.key !== NodeInputKeyEnum.collectionFilterVersion)
+          .map((input) =>
+            input.key === NodeInputKeyEnum.collectionFilterMatch
+              ? { ...input, value: filterValue }
+              : input
+          )
+          .concat(version ? [{ ...Input_Template_Dataset_Tag_Filter_Version, value: version }] : [])
+      } as StoreNodeItemType;
+
+      const result = storeNode2FlowNode({
+        item: storeNode,
+        t: ((key: string) => key) as any
+      });
+
+      expect(
+        result.data.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterVersion)
+          ?.value
+      ).toBe(expectedVersion);
+      expect(
+        result.data.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterMatch)
+      ).toMatchObject({
+        label: expectedLabel
+      });
+    }
+  );
+
+  it('hydrates Agent V2 with an explicit structured marker', () => {
+    const storeNode = {
+      ...AgentNode,
+      nodeId: 'agent',
+      position: { x: 0, y: 0 },
+      inputs: AgentNode.inputs.filter(
+        (input) => input.key !== NodeInputKeyEnum.collectionFilterVersion
+      )
+    } as StoreNodeItemType;
+
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: ((key: string) => key) as any
+    });
+
+    expect(
+      result.data.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterVersion)
+        ?.value
+    ).toBe('structured');
+    expect(
+      result.data.inputs.find((input) => input.key === NodeInputKeyEnum.collectionFilterMatch)
+        ?.label
+    ).toBe('workflow:tag_filter');
   });
 
   it('restores tool set nodes without a source handle', () => {

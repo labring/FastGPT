@@ -133,7 +133,8 @@ export const GetAdminSystemModelListResponseSchema = z.object({
     z.object({
       channelId: z.number(),
       name: z.object({ en: z.string(), 'zh-CN': z.string(), 'zh-Hant': z.string() }),
-      avatar: z.string()
+      avatar: z.string(),
+      website: z.string().optional()
     })
   )
 });

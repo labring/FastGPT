@@ -8,6 +8,7 @@ import { calculateCompressionThresholds } from '../../../../../../ai/llm/compres
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
 import { MongoDataset } from '../../../../../../dataset/schema';
 import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
 import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
@@ -20,6 +21,7 @@ import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import type { DispatchSubAppResponse } from '../../type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchToolSchema } from './utils';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -31,6 +33,7 @@ import {
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
 import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
@@ -43,23 +46,29 @@ type DatasetSearchParams = {
 };
 
 /**
- * 格式化知识库搜索结果为引用文本
+ * 格式化知识库搜索结果为 Agent 工具响应。
+ *
+ * 与简易应用的 dataset search 节点保持同一协议：提示词负责约束模型生成 `[id](CITE)`，
+ * cites 只提供本次检索实际返回的引用内容，避免模型引用不存在的知识块。
  */
 const formatDatasetSearchResponse = (searchResults: SearchDataResponseItemType[]): string => {
   if (searchResults.length === 0) {
     return '未找到相关信息。';
   }
 
-  const chunks = searchResults
-    .map((item, index) => {
-      const sourceName = item.sourceName || `来源${index + 1}`;
-      const content = `${item.q}\n${item.a || ''}`.trim();
-
-      return `【知识片段${index + 1}】\nid: ${item.id}\nsource: ${sourceName}\ncontent: ${content}`;
-    })
-    .join('\n\n');
-
-  return chunks;
+  return JSON.stringify(
+    {
+      prompt: getDatasetSearchToolResponsePrompt(),
+      cites: searchResults.map((item) => ({
+        id: item.id,
+        sourceName: item.sourceName,
+        updateTime: item.updateTime,
+        content: `${item.q}\n${item.a || ''}`.trim()
+      }))
+    },
+    null,
+    2
+  );
 };
 
 /**
@@ -249,6 +258,10 @@ export const dispatchAgentDatasetSearch = async ({
       datasetSearchUsingExtensionQuery: datasetParams.datasetSearchUsingExtensionQuery ?? false,
       datasetSearchExtensionModel: extensionModelData,
       datasetSearchExtensionBg: datasetParams.datasetSearchExtensionBg,
+      collectionFilterMatch: formatCollectionFilterMatchParam({
+        value: datasetParams.collectionFilterMatch
+      }),
+      collectionFilterMode: DatasetTagFilterVersionEnum.structured,
       userKey
     };
     const {

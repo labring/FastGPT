@@ -164,6 +164,29 @@ export const DatasetCollectionSyncResultMap = {
   }
 };
 
+/* ------------ collection tags -------------- */
+export enum DatasetCollectionTagTypeEnum {
+  string = 'string',
+  number = 'number',
+  datetime = 'datetime',
+  array = 'array'
+}
+
+export const DatasetCollectionTagTypeMap = {
+  [DatasetCollectionTagTypeEnum.string]: {
+    label: i18nT('dataset:core.dataset.tags.string')
+  },
+  [DatasetCollectionTagTypeEnum.number]: {
+    label: i18nT('dataset:core.dataset.tags.number')
+  },
+  [DatasetCollectionTagTypeEnum.datetime]: {
+    label: i18nT('dataset:core.dataset.tags.date')
+  },
+  [DatasetCollectionTagTypeEnum.array]: {
+    label: i18nT('dataset:core.dataset.tags.array')
+  }
+};
+
 export enum DatasetCollectionDataProcessModeEnum {
   chunk = 'chunk',
   qa = 'qa',
@@ -209,7 +232,9 @@ export enum ChunkTriggerConfigTypeEnum {
 }
 export enum ChunkSettingModeEnum {
   auto = 'auto',
-  custom = 'custom'
+  custom = 'custom',
+  // 文本→chunk 委托给外部智能分块服务,平台不做本地切分
+  intelligent = 'intelligent'
 }
 
 export enum DataChunkSplitModeEnum {

@@ -2,6 +2,10 @@ import { StoreNodeItemTypeSchema } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { DatasetSearchModeEnum } from '../dataset/constants';
+import {
+  DatasetTagFilterValueSchema,
+  DatasetTagFilterVersionSchema
+} from '../dataset/workflowTagFilter';
 import type { ReasoningEffort } from '../ai/llm/type';
 import { StoreEdgeItemTypeSchema } from '../workflow/type/edge';
 import type { AppPermission } from '../../support/permission/app/controller';
@@ -114,6 +118,32 @@ export const AppWelcomeConfigTypeSchema = z.object({
 });
 export type AppWelcomeConfigType = z.infer<typeof AppWelcomeConfigTypeSchema>;
 
+export const EntryPointItemTypeSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  icon: z.string().optional()
+});
+export type EntryPointItemType = z.infer<typeof EntryPointItemTypeSchema>;
+
+export const EntryPointItemsTypeSchema = z
+  .array(EntryPointItemTypeSchema)
+  .superRefine((items, ctx) => {
+    const seenNames = new Map<string, number>();
+    items.forEach((item, index) => {
+      const normalizedName = item.name.trim();
+      const previousIndex = seenNames.get(normalizedName);
+      if (previousIndex !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [index, 'name'],
+          message: 'Entry point names must be unique'
+        });
+        return;
+      }
+      seenNames.set(normalizedName, index);
+    });
+  });
+
 export const AppChatConfigTypeSchema = z.object({
   welcomeText: optionalNullToUndefined(z.string()).meta({
     description: '新会话开始时展示给用户的欢迎语'
@@ -144,6 +174,9 @@ export const AppChatConfigTypeSchema = z.object({
   }),
   fileSelectConfig: optionalNullToUndefined(AppFileSelectConfigTypeSchema).meta({
     description: '对话文件选择配置'
+  }),
+  entryPoints: optionalNullToUndefined(EntryPointItemsTypeSchema).meta({
+    description: '应用对话页的功能入口列表'
   }),
   instruction: optionalNullToUndefined(z.string()).meta({
     description: '应用对话页展示给用户的使用说明'
@@ -279,7 +312,8 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   datasetSearchExtensionBg: z.string().optional(),
   [NodeInputKeyEnum.authTmbId]: BoolSchema.optional(),
 
-  collectionFilterMatch: z.string().optional()
+  collectionFilterMatch: z.union([z.string(), DatasetTagFilterValueSchema]).optional(),
+  [NodeInputKeyEnum.collectionFilterVersion]: DatasetTagFilterVersionSchema.optional()
 });
 export type AppDatasetSearchParamsType = z.infer<typeof AppDatasetSearchParamsTypeSchema>;
 

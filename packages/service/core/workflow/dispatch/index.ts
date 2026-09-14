@@ -42,7 +42,7 @@ import {
   filterOrphanEdges,
   summarizeRuntimeNodeResponses
 } from './utils/index';
-import { WorkflowVariableState } from './utils/variables';
+import { getEntryPointRuntimeVariables, WorkflowVariableState } from './utils/variables';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
@@ -284,6 +284,10 @@ export async function dispatchWorkFlow({
     variablesConfig: data.chatConfig?.variables,
     inputVariables: data.variables,
     externalVariables: externalProvider.externalWorkflowVariables,
+    runtimeOnlyVariables: getEntryPointRuntimeVariables({
+      entryPoints: data.chatConfig?.entryPoints,
+      inputVariables: data.variables
+    }),
     maxFileAmount: data.maxFileAmount,
     resolveInputFile: async (file) => {
       const ref = await fileRegistrar.registerInputFile({
@@ -1521,7 +1525,7 @@ export class WorkflowQueue {
     const nodeOutputs: NodeOutputItemType[] = [];
     this.data.runtimeNodes.forEach((node) => {
       node.outputs.forEach((output) => {
-        if (output.value) {
+        if (output.value !== undefined) {
           nodeOutputs.push({
             nodeId: node.nodeId,
             key: output.key as NodeOutputKeyEnum,

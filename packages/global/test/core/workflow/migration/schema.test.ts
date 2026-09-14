@@ -47,14 +47,14 @@ describe('workflow input schema boundaries', () => {
 });
 
 describe('workflow migration boundary', () => {
-  it.each(['datasetTagFilter', 'unknownInputType', 123, null])(
+  it.each(['legacyDatasetTagFilter', 'unknownInputType', 123, null])(
     'cleans invalid selected types before schema validation: %j',
     (selectedType) => {
       const input = {
         key: 'collectionFilterMatch',
         label: 'Filter',
         selectedType,
-        renderTypeList: ['datasetTagFilter', FlowNodeInputTypeEnum.reference],
+        renderTypeList: ['legacyDatasetTagFilter', FlowNodeInputTypeEnum.reference],
         value: { tags: ['legacy'] }
       };
       const source = {
@@ -76,7 +76,7 @@ describe('workflow migration boundary', () => {
         selectedType: FlowNodeInputTypeEnum.reference,
         value: input.value
       });
-      expect(result.nodes[0].inputs[0].renderTypeList).not.toContain('datasetTagFilter');
+      expect(result.nodes[0].inputs[0].renderTypeList).not.toContain('legacyDatasetTagFilter');
       expect(source).toEqual(snapshot);
       expect(migrateWorkflowToCurrent(result)).toEqual(result);
     }
@@ -647,6 +647,7 @@ describe('workflow migration boundary', () => {
           ],
           [NodeInputKeyEnum.chatInputGuide, { open: true, customUrl: 'https://example.com' }],
           [NodeInputKeyEnum.autoExecute, { open: true, defaultPrompt: 'Run automatically' }],
+          [NodeInputKeyEnum.entryPoints, [{ id: 'knowledge', name: 'Knowledge Q&A' }]],
           [NodeInputKeyEnum.instruction, 'Legacy instruction']
         ].map(([key, value]) => ({
           key,
@@ -678,6 +679,7 @@ describe('workflow migration boundary', () => {
         scheduledTriggerConfig: { cronString: '0 0 * * *', timezone: 'UTC', defaultPrompt: 'Run' },
         chatInputGuide: { open: true, customUrl: 'https://example.com' },
         autoExecute: { open: true, defaultPrompt: 'Run automatically' },
+        entryPoints: [{ id: 'knowledge', name: 'Knowledge Q&A' }],
         instruction: ''
       }
     });

@@ -29,6 +29,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
   DatasetCollectionDataProcessModeMap
@@ -62,6 +63,8 @@ import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
+const CollectionTagSetModal = dynamic(() => import('./CollectionTagSetModal'));
+const CollectionTagBatchModal = dynamic(() => import('./CollectionTagBatchModal'));
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -77,6 +80,8 @@ const CollectionCard = () => {
   }>();
   const [isTrainingErrorModalOpen, setIsTrainingErrorModalOpen] = useState(false);
   const [hasDatasetTrainingError, setHasDatasetTrainingError] = useState(false);
+  const [tagSetCollection, setTagSetCollection] = useState<DatasetCollectionsListItemType>();
+  const [isBatchTagModalOpen, setIsBatchTagModalOpen] = useState(false);
 
   const {
     collections,
@@ -255,6 +260,13 @@ const CollectionCard = () => {
                 pt={4}
                 Controler={
                   <HStack>
+                    {datasetDetail.permission.hasWritePer &&
+                      datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
+                      feConfigs?.isPlus && (
+                        <Button variant={'whiteBase'} onClick={() => setIsBatchTagModalOpen(true)}>
+                          {t('dataset:tag.batch_edit')}
+                        </Button>
+                      )}
                     <Button
                       variant={'whiteBase'}
                       onClick={() =>
@@ -361,7 +373,7 @@ const CollectionCard = () => {
                           </MyTooltip>
                         </Flex>
                         {feConfigs?.isPlus && !!collection.tags?.length && (
-                          <TagsPopOver currentCollection={collection} hoverBg={'white'} />
+                          <TagsPopOver currentCollection={collection} />
                         )}
                       </Box>
                     </HStack>
@@ -449,16 +461,8 @@ const CollectionCard = () => {
                               ...(collectionCanSync(collection.type)
                                 ? [
                                     {
-                                      label: (
-                                        <Flex alignItems={'center'}>
-                                          <MyIcon
-                                            name={'common/refreshLight'}
-                                            w={'0.9rem'}
-                                            mr={2}
-                                          />
-                                          {t('dataset:collection_sync')}
-                                        </Flex>
-                                      ),
+                                      icon: 'common/refreshLight',
+                                      label: t('dataset:collection_sync'),
                                       onClick: () =>
                                         openSyncConfirm({
                                           onConfirm: () => {
@@ -469,22 +473,14 @@ const CollectionCard = () => {
                                   ]
                                 : []),
                               {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon name={'common/file/move'} w={'0.9rem'} mr={2} />
-                                    {t('common:Move')}
-                                  </Flex>
-                                ),
+                                icon: 'common/file/move',
+                                label: t('common:Move'),
                                 onClick: () =>
                                   setMoveCollectionData({ collectionId: collection._id })
                               },
                               {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon name={'edit'} w={'0.9rem'} mr={2} />
-                                    {t('common:Rename')}
-                                  </Flex>
-                                ),
+                                icon: 'edit',
+                                label: t('common:Rename'),
                                 onClick: () =>
                                   onOpenEditTitleModal({
                                     defaultVal: collection.name,
@@ -494,24 +490,25 @@ const CollectionCard = () => {
                                         name: newName
                                       })
                                   })
-                              }
+                              },
+                              ...(feConfigs?.isPlus &&
+                              datasetDetail.type !== DatasetTypeEnum.websiteDataset
+                                ? [
+                                    {
+                                      icon: 'core/dataset/tag',
+                                      label: t('dataset:tag.set'),
+                                      onClick: () => setTagSetCollection(collection)
+                                    }
+                                  ]
+                                : [])
                             ]
                           },
                           {
                             children: [
                               {
-                                label: (
-                                  <Flex alignItems={'center'}>
-                                    <MyIcon
-                                      mr={1}
-                                      name={'delete'}
-                                      w={'0.9rem'}
-                                      _hover={{ color: 'red.600' }}
-                                    />
-                                    <Box>{t('common:Delete')}</Box>
-                                  </Flex>
-                                ),
                                 type: 'danger',
+                                icon: 'delete',
+                                label: t('common:Delete'),
                                 onClick: () =>
                                   openDeleteConfirm({
                                     onConfirm: () => onDelCollection([collection._id]),
@@ -540,6 +537,29 @@ const CollectionCard = () => {
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
         <EditTitleModal />
+
+        {!!tagSetCollection && (
+          <CollectionTagSetModal
+            collection={tagSetCollection}
+            onClose={() => setTagSetCollection(undefined)}
+            onSuccess={() => {
+              getData(pageNum);
+              setTagSetCollection(undefined);
+            }}
+          />
+        )}
+
+        {isBatchTagModalOpen && (
+          <CollectionTagBatchModal
+            collections={selectedItems}
+            onClose={() => setIsBatchTagModalOpen(false)}
+            onSuccess={() => {
+              getData(pageNum);
+              setSelectedItems([]);
+              setIsBatchTagModalOpen(false);
+            }}
+          />
+        )}
 
         {!!trainingStatesCollection && (
           <TrainingStates

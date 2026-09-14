@@ -1,6 +1,6 @@
 import FormData from 'form-data';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
-import type { PdfParseConfigType } from '@fastgpt/global/core/dataset/type';
+import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
@@ -8,6 +8,7 @@ import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { useSomarkServer } from '../../../thirdProvider/somark';
 import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfor';
+import { appendIultmzhFileParseFields } from '../../../thirdProvider/sangfor/parseConfig';
 import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
 import { getImageBuffer } from '../image/utils';
@@ -34,7 +35,7 @@ export const readFileContentByBuffer = async ({
   buffer,
   encoding,
   customPdfParse = false,
-  pdfParseConfig,
+  sangforFileParseConfig,
   usageId,
   getFormatText = true,
   imageKeyOptions,
@@ -48,7 +49,7 @@ export const readFileContentByBuffer = async ({
   encoding: string;
 
   customPdfParse?: boolean;
-  pdfParseConfig?: PdfParseConfigType;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   usageId?: string;
   getFormatText?: boolean;
   imageKeyOptions?: {
@@ -65,7 +66,7 @@ export const readFileContentByBuffer = async ({
     buffer,
     encoding,
     customPdfParse,
-    pdfParseConfig,
+    sangforFileParseConfig,
     usageId,
     getFormatText,
     imageKeyOptions,
@@ -81,7 +82,7 @@ export const readFileContentBySource = async ({
   tmbId,
   source,
   customPdfParse = false,
-  pdfParseConfig,
+  sangforFileParseConfig,
   usageId,
   getFormatText = true,
   imageKeyOptions,
@@ -91,7 +92,7 @@ export const readFileContentBySource = async ({
   tmbId: string;
   source: FileSource;
   customPdfParse?: boolean;
-  pdfParseConfig?: PdfParseConfigType;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   usageId?: string;
   getFormatText?: boolean;
   imageKeyOptions?: {
@@ -107,7 +108,7 @@ export const readFileContentBySource = async ({
     source,
     encoding: source.metadata.encoding ?? '',
     customPdfParse,
-    pdfParseConfig,
+    sangforFileParseConfig,
     usageId,
     getFormatText,
     imageKeyOptions,
@@ -122,7 +123,7 @@ const readFileContent = async ({
   source,
   encoding: initialEncoding,
   customPdfParse,
-  pdfParseConfig,
+  sangforFileParseConfig,
   usageId,
   getFormatText,
   imageKeyOptions,
@@ -135,7 +136,7 @@ const readFileContent = async ({
   source?: FileSource;
   encoding: string;
   customPdfParse: boolean;
-  pdfParseConfig?: PdfParseConfigType;
+  sangforFileParseConfig?: IultmzhFileParseConfigType;
   usageId?: string;
   getFormatText: boolean;
   imageKeyOptions?: {
@@ -244,14 +245,7 @@ const readFileContent = async ({
     data.append('file', buffer, {
       filename: `file.${materializedExtension}`
     });
-    // 外部解析服务契约:四个开关逐个以独立表单字段下发,值统一转字符串(服务端自行 str→bool)
-    if (pdfParseConfig) {
-      Object.entries(pdfParseConfig).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          data.append(key, String(value));
-        }
-      });
-    }
+    appendIultmzhFileParseFields(data, sangforFileParseConfig);
     const { data: response } = await axios.post<{
       pages: number;
       markdown: string;
@@ -374,7 +368,7 @@ const readFileContent = async ({
       fileBuffer: buffer,
       extension: materializedExtension,
       imageKeyOptions,
-      pdfParseConfig
+      sangforFileParseConfig
     });
 
     reportPdfParseUsage(pages);

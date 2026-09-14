@@ -19,6 +19,11 @@ import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeRespons
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
 import { compileToolRuntime, mergeToolRuntimeParams } from '@fastgpt/global/core/app/tool/runtime';
+import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  createContainerRunStateSnapshot,
+  syncContainerRunState
+} from '../../../../utils/containerRunState';
 
 export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
@@ -310,8 +315,8 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
  * ToolCall 和未来的简化 Agent 都可以把“某个 runtime node 作为工具入口运行”的能力交给这里。
  * 节点外壳只负责提供实际 runWorkflow 函数、展示信息和缓存/流式回调。
  *
- * 已知问题：普通 Workflow Tool 的首次执行和交互恢复都会复用并修改父流程的 runtime graph。
- * 当前保留原有状态传递行为，后续需要通过子流程快照和显式同步完成隔离。
+ * 普通调用和交互恢复均隔离输入、入口和连线状态；本次改变的节点输出显式回写父图。
+ * 全局变量继续使用调用方传入的共享 variableState，不随 runtime graph 复制。
  */
 export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknown>({
   runtimeNodes,
@@ -320,6 +325,61 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
   runWorkflowTool,
   cacheToolFlowResponse
 }: CreateAgentLoopCoreWorkflowToolRunnerParams<TChildrenResponse>) => {
+  /**
+   * 在独立子图上执行，并提交本轮改变的输出值。Workflow Tool 没有容器专属的节点集合，
+   * 工具自身及其他节点的输出都可能被父流程引用，因此保留所有现存节点的输出同步。
+   * 仅同步相对调用开始发生变化的值，避免旧快照覆盖其他调用已更新的无关输出。
+   */
+  const runIsolatedWorkflowTool = async ({
+    entryNodeIds,
+    startParams,
+    lastInteractive
+  }: {
+    entryNodeIds: string[];
+    startParams?: Record<string, any>;
+    lastInteractive?: TChildrenResponse;
+  }) => {
+    const isolatedRuntimeNodes = cloneDeep(runtimeNodes);
+    const isolatedRuntimeEdges = cloneDeep(runtimeEdges);
+    const stateSnapshot = createContainerRunStateSnapshot({
+      nodes: isolatedRuntimeNodes,
+      childrenNodeIdList: []
+    });
+    if (lastInteractive) {
+      const interactive = lastInteractive as {
+        nodeOutputs?: any[];
+        memoryEdges?: RuntimeEdgeItemType[];
+      };
+      const restoredNodes = rewriteNodeOutputByHistories(isolatedRuntimeNodes, interactive as any);
+      isolatedRuntimeNodes.splice(0, isolatedRuntimeNodes.length, ...restoredNodes);
+      if (interactive.memoryEdges?.length) {
+        isolatedRuntimeEdges.splice(
+          0,
+          isolatedRuntimeEdges.length,
+          ...cloneDeep(interactive.memoryEdges)
+        );
+      }
+    }
+    initAgentLoopCoreWorkflowToolNodes(isolatedRuntimeNodes, entryNodeIds, startParams);
+    initAgentLoopCoreWorkflowToolEdges(isolatedRuntimeEdges, entryNodeIds);
+
+    try {
+      return await runWorkflowTool({
+        runtimeNodes: isolatedRuntimeNodes,
+        runtimeEdges: isolatedRuntimeEdges,
+        ...(lastInteractive !== undefined ? { lastInteractive } : {})
+      });
+    } finally {
+      // 暂停或后续执行失败也保留已经发生的输出更新，与全局变量的即时写入语义一致。
+      await syncContainerRunState({
+        sourceNodes: isolatedRuntimeNodes,
+        targetNodes: runtimeNodes,
+        childrenNodeIdList: [],
+        stateSnapshot
+      });
+    }
+  };
+
   const runTool = async ({
     call
   }: {
@@ -351,12 +411,9 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
     }
 
     const startParams = parseJsonArgs(call.function.arguments) ?? {};
-    initAgentLoopCoreWorkflowToolNodes(runtimeNodes, [toolInfo.rawData.nodeId], startParams);
-    initAgentLoopCoreWorkflowToolEdges(runtimeEdges, [toolInfo.rawData.nodeId]);
-
-    const toolRunResponse = await runWorkflowTool({
-      runtimeNodes,
-      runtimeEdges
+    const toolRunResponse = await runIsolatedWorkflowTool({
+      entryNodeIds: [toolInfo.rawData.nodeId],
+      startParams
     });
     const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);
 
@@ -379,12 +436,8 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
     const entryNodeIds = (childrenResponse as { entryNodeIds?: string[] }).entryNodeIds ?? [];
 
     // 交互恢复沿用原 toolCallId，最终仍由统一 tool_run_end 落 SSE 和运行详情。
-    initAgentLoopCoreWorkflowToolNodes(runtimeNodes, entryNodeIds);
-    initAgentLoopCoreWorkflowToolEdges(runtimeEdges, entryNodeIds);
-
-    const toolRunResponse = await runWorkflowTool({
-      runtimeNodes,
-      runtimeEdges,
+    const toolRunResponse = await runIsolatedWorkflowTool({
+      entryNodeIds,
       lastInteractive: childrenResponse
     });
     const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);
