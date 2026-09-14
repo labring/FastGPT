@@ -65,7 +65,7 @@ export const ChunkSettingsSchema = z.object({
 export type ChunkSettingsType = z.infer<typeof ChunkSettingsSchema>;
 
 /* ===== Pdf parse config ===== */
-// 外部文档解析(pdf2text)开关,整体校验、整体存取;仅当 collection 的 customPdfParse=true
+// 外部文档解析服务开关,整体校验、整体存取;仅当 collection 的 customPdfParse=true
 // 且系统配置了 customPdfParse.url 时生效。缺失字段由读取层用固定默认值补全。
 export const PdfParseConfigSchema = z
   .object({
