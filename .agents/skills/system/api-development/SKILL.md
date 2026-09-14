@@ -5,7 +5,7 @@ description: FastGPT API 开发规范。重点强调使用 zod schema 定义入�
 
 # FastGPT API 开发规范
 
-> FastGPT 项目 API 路由开发的标准化指南,确保 API 的一致性、类型安全和文档完整性。
+> AI Platform 项目 API 路由开发的标准化指南,确保 API 的一致性、类型安全和文档完整性。
 
 ## 何时使用此技能
 
@@ -791,4 +791,4 @@ export type UserType = z.infer<typeof UserSchema>;
 
 **Version**: 1.0
 **Last Updated**: 2026-01-27
-**Maintainer**: FastGPT Development Team
+**Maintainer**: AI Platform Development Team

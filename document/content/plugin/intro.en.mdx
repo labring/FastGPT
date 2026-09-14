@@ -3,7 +3,7 @@ title: Plugin System Overview
 description: FastGPT plugin system overview
 ---
 
-> This document applies to FastGPT Plugin v1.0.0 and later.
+> This document applies to AI Platform Plugin v1.0.0 and later.
 
 ## Background
 
@@ -11,20 +11,20 @@ FastGPT capabilities were previously maintained inside the FastGPT main service 
 
 As the number of system tools and community contributions grew, the old structure exposed several problems:
 
-1. System plugins had to be released together with the FastGPT main service, which slowed plugin iteration.
-2. Community contributors needed to run the full FastGPT stack and submit PRs directly to the main repository.
-3. Custom plugins required maintaining a FastGPT fork and manually handling upgrades and merges.
+1. System plugins had to be released together with the AI Platform main service, which slowed plugin iteration.
+2. Community contributors needed to run the full AI Platform stack and submit PRs directly to the main repository.
+3. Custom plugins required maintaining a AI Platform fork and manually handling upgrades and merges.
 4. The Next.js/webpack build model was not suitable for mounting new plugins at runtime.
 
 System plugins have therefore been split into a standalone repository:
 
 [FastGPT Plugin](https://github.com/labring/fastgpt-plugin)
 
-FastGPT Plugin v1.0.0 systematically refactors the plugin project so plugin installation, version management, runtime isolation, and operations configuration share one model.
+AI Platform Plugin v1.0.0 systematically refactors the plugin project so plugin installation, version management, runtime isolation, and operations configuration share one model.
 
 ## Design Goals
 
-The main goals of FastGPT Plugin are:
+The main goals of AI Platform Plugin are:
 
 1. Decoupling and modularization: system tools, model presets, app templates, and future capabilities such as RAG algorithms, Agent strategies, and third-party integrations can evolve independently.
 2. Unified plugin package protocol: `.pkg` files manage plugin installation, updates, and distribution, with extension points reserved for future plugin types.
@@ -52,7 +52,7 @@ The main goals of FastGPT Plugin are:
 fastgpt-plugin/
 ├── apps/
 │   ├── cli/                    # CLI for plugin development, build, check, pack, and debug
-│   ├── server/                 # FastGPT Plugin HTTP service
+│   ├── server/                 # AI Platform Plugin HTTP service
 │   └── debug-runtime-monitor/  # Local runtime monitoring and debugging panel
 ├── packages/
 │   ├── domain/                 # Domain entities, value objects, and port definitions
@@ -61,7 +61,7 @@ fastgpt-plugin/
 │   ├── infrastructure/         # Hono, Mongo, S3, Redis, runtime, logging, metrics, and other implementations
 │   └── shared/                 # Cross-layer pure utilities
 ├── sdk/
-│   ├── client/                 # Client SDK for calling the FastGPT Plugin service
+│   ├── client/                 # Client SDK for calling the AI Platform Plugin service
 │   └── factory/                # Plugin author SDK
 ├── test/                       # Cross-package test utilities and fixtures
 └── docs/                       # Project documentation
@@ -80,7 +80,7 @@ For system tool development, see [System Tool Development Guide](./system-tool-d
 
 ## Repository Responsibilities
 
-The FastGPT Plugin ecosystem mainly involves these repositories:
+The AI Platform Plugin ecosystem mainly involves these repositories:
 
 | Repository                  | Purpose                                                                |
 | --------------------------- | ---------------------------------------------------------------------- |
@@ -93,7 +93,7 @@ The `fastgpt-plugin` repository only provides development, build, check, packagi
 
 ## Marketplace And Usage Boundaries
 
-FastGPT Marketplace is the plugin distribution channel for centrally displaying and distributing official and community plugins. Current boundaries:
+AI Platform Marketplace is the plugin distribution channel for centrally displaying and distributing official and community plugins. Current boundaries:
 
 - Marketplace is a SaaS distribution service and does not provide a private deployment version.
 - Community plugins must first be submitted to the Community Plugins repository, pass basic review, and then enter Marketplace.
@@ -102,7 +102,7 @@ FastGPT Marketplace is the plugin distribution channel for centrally displaying 
 
 ## Plugin Installation And Management
 
-The FastGPT Plugin service is responsible for plugin package management, runtime registration, plugin call forwarding, and system-level configuration. The FastGPT main service invokes plugins through the plugin runtime interface, and the plugin service dispatches each call to the corresponding runtime.
+The AI Platform Plugin service is responsible for plugin package management, runtime registration, plugin call forwarding, and system-level configuration. The AI Platform main service invokes plugins through the plugin runtime interface, and the plugin service dispatches each call to the corresponding runtime.
 
 System plugins can be installed in two main ways:
 

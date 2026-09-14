@@ -354,7 +354,7 @@
   "enterprise_auth_contact_phone": "联系方式",
   "enterprise_auth_contact_phone_placeholder": "请填写您的手机号码，仅用于商务人员联系",
   "enterprise_auth_demand": "您的需求",
-  "enterprise_auth_demand_placeholder": "请描述您及贵司使用FastGPT的场景，以便我们更好地为您提供服务",
+  "enterprise_auth_demand_placeholder": "请描述您及贵司使用AI Platform的场景，以便我们更好地为您提供服务",
   "enterprise_auth_amount_sent_prefix": "已向以上账号成功发起打款，验证金额将由上海银联打入，金额随机，一般实时到账，有效期24小时。若未到账，请",
   "enterprise_auth_contact_business": "联系商务",
   "enterprise_auth_amount_sent_suffix": "。",

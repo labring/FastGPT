@@ -140,7 +140,7 @@ if (isInput && isArrayType(valueType)) {
 
 | 问题 | 决议 |
 | --- | --- |
-| Number 除法遇 0 | **保持旧值** + 运行时 warning 日志（符合 FastGPT 失败降级风格） |
+| Number 除法遇 0 | **保持旧值** + 运行时 warning 日志（符合 AI Platform 失败降级风格） |
 | Boolean negate 旧值非 boolean | 按 `!Boolean(oldValue)` 处理 |
 | Array append 旧值非数组 | 退化为 `[newValue]` |
 | Array append 引用模式下元素类型为 `any` | 允许选任意引用（交由用户保证一致性，与现状 any 类型行为一致） |

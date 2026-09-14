@@ -40,7 +40,7 @@ When a workflow, agent, node, execution, credential, plugin, or knowledge-produc
 1. Search only the official English documentation or current official product UI for n8n and Dify.
 2. Compare the underlying behavior, not just the Chinese label.
 3. Adopt wording only when the concept and user action match FastGPT.
-4. Prefer FastGPT's established term when it is already clear and consistent.
+4. Prefer AI Platform's established term when it is already clear and consistent.
 5. Record the source consulted in the final response only when it materially resolved a terminology decision.
 
 Starting points:

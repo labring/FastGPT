@@ -10,7 +10,7 @@ import { Alert } from '@/components/docs/Alert';
   if your environment requires it.
 </Alert>
 
-OpenSandbox is designed for self-hosted Agent and Skill sandbox runtimes. FastGPT creates sandboxes through OpenSandbox Server, while Agent Sandbox Proxy provides browser access to files, terminals, and previews.
+OpenSandbox is designed for self-hosted Agent and Skill sandbox runtimes. AI Platform creates sandboxes through OpenSandbox Server, while Agent Sandbox Proxy provides browser access to files, terminals, and previews.
 
 ## Docker Compose Configuration
 
@@ -98,7 +98,7 @@ For China Mainland registries, replace `ghcr.io/labring` with `registry.cn-hangz
 `fastgpt-pro` does not provide the Sandbox Editor or WebSocket proxy path, so it does not require `AGENT_SANDBOX_PROXY_SECRET` or `AGENT_SANDBOX_PROXY_URL`. It still requires `AGENT_SANDBOX_PREVIEW_PROXY_URL`.
 
 <Alert icon="⚠️" context="warning">
-  Host the preview proxy on an origin separate from the FastGPT application, using a different
+  Host the preview proxy on an origin separate from the AI Platform application, using a different
   scheme, host, or port. Sandbox HTML may contain user-generated scripts. If previews share the
   application origin, those scripts may be able to access application credentials or APIs.
 </Alert>

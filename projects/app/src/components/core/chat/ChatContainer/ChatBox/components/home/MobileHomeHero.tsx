@@ -13,7 +13,7 @@ const MobileHomeHero = () => {
   return (
     <Flex flexDir="column" alignItems="flex-start" gap={4} pt="107px">
       <Image
-        alt="fastgpt logo"
+        alt="AI Platform logo"
         w="48px"
         maxW="100%"
         src={squareLogo || DEFAULT_LOGO_BANNER_COLLAPSED_URL}

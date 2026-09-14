@@ -11,7 +11,7 @@ description: 当用户需要编写一个单元测试时，触发该 skill，编�
 
 ### packages 测试
 
-packages 里的测试，写在 FastGPT/packages/xxx/test 目录下，子路径对应 packages 的目录结构。例如：
+packages 里的测试，写在 AI Platform/packages/xxx/test 目录下，子路径对应 packages 的目录结构。例如：
 
 `packages/global/common/error/s3.ts`文件，对应的测例文件路径为 `packages/test/global/common/error/s3.test.ts`。
 
@@ -24,7 +24,7 @@ import { s3 } from '@fastgpt/global/common/error/s3';
 
 ### projects 测试
 
-projects 里的测试，写在 FastGPT/projects/app/test 目录下，子路径对应 projects 的目录结构。
+projects 里的测试，写在 AI Platform/projects/app/test 目录下，子路径对应 projects 的目录结构。
 
 `projects/app/src/pages/api/core/dataset/collection/create.ts`文件，对应的测例文件路径为 `projects/app/test/api/core/dataset/collection/create.test.ts`。
 
@@ -37,9 +37,9 @@ projects 里的测试，写在 FastGPT/projects/app/test 目录下，子路径�
 3. 测试文件尽可能不要引入第三方依赖库，使用较为原生的方式进行检查。如果需要引入第三方依赖库，则从对应文件里 export 依赖库给 test 使用。例如：
 
 ```ts
-// FastGPT/packages/service/common/geo/index.ts
+// AI Platform/packages/service/common/geo/index.ts
 import type { NextApiRequest } from 'next';
-// 同时导出一个依赖给 FastGPT/packages/service/test/common/geo/index.test.ts 使用
+// 同时导出一个依赖给 AI Platform/packages/service/test/common/geo/index.test.ts 使用
 export type { NextApiRequest } from 'next';
 ```
 

@@ -13,7 +13,7 @@ import type {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { CreateAppResponseType } from '@fastgpt/global/openapi/core/app/common/api';
 
-/** 将 MCP JSON-RPC 错误中的 FastGPT i18n key 提取出来，交给 useRequest 翻译显示。 */
+/** 将 MCP JSON-RPC 错误中的 AI Platform i18n key 提取出来，交给 useRequest 翻译显示。 */
 const normalizeMcpError = (error: unknown): never => {
   const message = String(getErrText(error));
   const match = message.match(/^MCP error -?\d+: (.+)$/);

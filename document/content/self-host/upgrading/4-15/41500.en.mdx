@@ -223,8 +223,8 @@ You can overwrite your deployment directly with the new OpenSandbox template.
 
 ### 3. Image Changes
 
-- Update fastgpt-app (FastGPT main service) image tag: v4.15.0
-- Update fastgpt-pro (FastGPT commercial edition) image tag: v4.15.0
+- Update fastgpt-app (AI Platform main service) image tag: v4.15.0
+- Update fastgpt-pro (AI Platform commercial edition) image tag: v4.15.0
 - Update fastgpt-code-sandbox image tag: v4.15.0
 - Update fastgpt-plugin image tag: v1.0.0
 - Update aiproxy image tag: v0.6.5
@@ -375,7 +375,7 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 2. Reworked the Agent V2 loop logic to improve stability for multi-step tool calls and orchestration.
 3. Sandbox now supports custom npm and pip sources.
 4. Reworked the plugin system architecture, added plugin-level runtime config, and moved system tool execution to local-pool.
-5. The commercial edition now supports local direct-connect debugging for FastGPT plugins.
+5. The commercial edition now supports local direct-connect debugging for AI Platform plugins.
 6. Reworked the chatbox UI with quick scroll-to-bottom, model-generated chat titles, and smoother streaming output.
 7. Added LLM-generated chat titles.
 8. Added the Loop node and deprecated the legacy batch execution node.

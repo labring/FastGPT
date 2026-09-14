@@ -5,8 +5,8 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "description": "FastGPT SDK for object storage",
-  "author": "FastGPT",
+  "description": "AI Platform SDK for object storage",
+  "author": "AI Platform",
   "repository": {
     "type": "git",
     "url": "https://github.com/labring/FastGPT.git",

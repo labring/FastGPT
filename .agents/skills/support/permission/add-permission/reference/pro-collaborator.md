@@ -1,6 +1,6 @@
 # fastgpt-pro 协作者管理
 
-> fastgpt-pro 在 FastGPT 主仓库的基础权限系统之上，提供"可运营的权限管理能力"。
+> fastgpt-pro 在 AI Platform 主仓库的基础权限系统之上，提供"可运营的权限管理能力"。
 
 ## 1. 架构分层
 
@@ -19,14 +19,14 @@
 │ ├── checkRoleUpdateConflict                                        │
 │ └── mergeCollaboratorList                                          │
 ├────────────────────────────────────────────────────────────────────┤
-│ FastGPT 主仓库基础能力                                             │
+│ AI Platform 主仓库基础能力                                             │
 │ ├── authDataset / authApp                                          │
 │ ├── getTmbPermission                                               │
 │ └── ResourcePermission Schema                                      │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-**一句话概括**：FastGPT 负责"判定权限"，fastgpt-pro 负责"管理权限"。
+**一句话概括**：AI Platform 负责"判定权限"，fastgpt-pro 负责"管理权限"。
 
 ---
 

@@ -18,7 +18,7 @@
 ```mermaid
 flowchart LR
   C["Chat / Workflow / Admin"] --> B["S3BaseBucket"]
-  B --> A["FastGPT access-link adapter"]
+  B --> A["AI Platform access-link adapter"]
   A --> S["storage SDK access-link core"]
   S --> M["Mongo stores"]
   A --> U["/api/system/file/u/:token"]
@@ -35,7 +35,7 @@ flowchart LR
 | 层 | 职责 |
 | --- | --- |
 | SDK core | HMAC、过期分桶、alias 去重、token hash、verify/revoke 状态机和 store port |
-| Service adapter | Mongo schema/store、环境变量、URL builder、日志和 FastGPT 错误映射 |
+| Service adapter | Mongo schema/store、环境变量、URL builder、日志和 AI Platform 错误映射 |
 | App route | HTTP 方法、Zod 入参、上传/下载流、302、状态码和客户端断开处理 |
 | 业务入口 | 在签发前完成 team/app/chat/dataset 等资源鉴权，短链路由不重复业务鉴权 |
 

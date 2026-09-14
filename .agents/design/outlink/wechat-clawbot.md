@@ -1,11 +1,11 @@
 # 微信个人号（ClawBot）设计
 
 > 本文是微信个人号发布渠道、轮询链路和消息回复语义的唯一设计文档。
-> BullMQ/Redis 的通用基础设施边界见 [FastGPT Data Access Layer 设计](../common/dal/data-access-layer.md)。
+> BullMQ/Redis 的通用基础设施边界见 [AI Platform Data Access Layer 设计](../common/dal/data-access-layer.md)。
 
 ## 1. 目标与边界
 
-微信渠道通过 iLink 长轮询接收消息，经 FastGPT OutLink 工作流生成回复，再调用 iLink 发送给用户。
+微信渠道通过 iLink 长轮询接收消息，经 AI Platform OutLink 工作流生成回复，再调用 iLink 发送给用户。
 
 设计目标：
 

@@ -13,7 +13,7 @@
   <a href="./README_ja.md">日本語</a>
 </p>
 
-FastGPT is an AI Agent building platform that provides out-of-the-box capabilities for data processing and model invocation. It also enables workflow orchestration through Flow visualization, allowing you to achieve complex application scenarios!
+AI Platform is an AI Agent building platform that provides out-of-the-box capabilities for data processing and model invocation. It also enables workflow orchestration through Flow visualization, allowing you to achieve complex application scenarios!
 
 </div>
 
@@ -36,7 +36,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## Quick Start
 
-You can quickly start FastGPT using Docker. Run the following command in your terminal and follow the prompts to pull the configuration.
+You can quickly start AI Platform using Docker. Run the following command in your terminal and follow the prompts to pull the configuration.
 
 ```bash
 # Run the command to pull the configuration file
@@ -190,9 +190,9 @@ We warmly welcome contributions in various forms. If you're interested in contri
 
 ## License
 
-This repository follows the [FastGPT Open Source License](./LICENSE).
+This repository follows the [AI Platform Open Source License](./LICENSE).
 
 1. Commercial use as backend services is allowed, but SaaS services are not permitted.
 2. Any commercial services without commercial authorization must retain the relevant copyright information.
-3. Please see [FastGPT Open Source License](./LICENSE) for full details.
+3. Please see [AI Platform Open Source License](./LICENSE) for full details.
 4. Contact: Dennis@sealos.io, [View Commercial Pricing](https://doc.fastgpt.io/guide/version/commercial)

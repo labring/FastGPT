@@ -2,7 +2,7 @@
 
 ## 任务概述
 
-FastGPT 的工具定义来自 JSON Schema 或 NodeIO，并分别被 AgentV2、工作流 ToolCall 和普通工作流执行消费。本设计建立统一编译 seam，将原始定义、持久化配置、模型可见参数和最终执行参数分层，保持现有数据库与公开协议兼容。
+AI Platform 的工具定义来自 JSON Schema 或 NodeIO，并分别被 AgentV2、工作流 ToolCall 和普通工作流执行消费。本设计建立统一编译 seam，将原始定义、持久化配置、模型可见参数和最终执行参数分层，保持现有数据库与公开协议兼容。
 
 ## 数据模型
 

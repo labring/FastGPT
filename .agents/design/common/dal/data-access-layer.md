@@ -127,7 +127,7 @@ configureRedisRuntime({
 - Cache 只接收 logical key，Adapter 统一转换为 `fastgpt:` physical key。
 - 新 key 的动态 segment 使用 RFC3986 编码，不能影响 SCAN glob。
 - 历史 key 使用受限 logical-key 包装保持既有格式，不重新编码。
-- SCAN 只返回 FastGPT keyspace 内的 logical key。
+- SCAN 只返回 AI Platform keyspace 内的 logical key。
 - 未明确批准的数据迁移不得修改既有 physical key、TTL 或 value codec。
 
 ### 5.4 Operation 语义

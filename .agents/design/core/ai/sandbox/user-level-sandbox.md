@@ -293,8 +293,8 @@ HTML 预览和 `sandbox_get_file_url` 不再把文件上传到 S3，而是签发
 最终链路为：
 
 ```text
-FastGPT 创建 Redis preview session
-  -> agent-sandbox-proxy 校验 session 并向 FastGPT 解析 Provider endpoint
+AI Platform 创建 Redis preview session
+  -> agent-sandbox-proxy 校验 session 并向 AI Platform 解析 Provider endpoint
   -> fastgpt-ide-agent:1319 在 FASTGPT_WORKDIR 内流式读取文件
 ```
 
@@ -310,7 +310,7 @@ FastGPT 创建 Redis preview session
 - HTML 资源必须使用 `./assets/...` 等相对路径；`/assets/...` 根路径不保留 preview URL 前缀。
 - preview 与 Workspace 冷归档是独立能力，S3 archive 流程不受影响。
 
-FastGPT、proxy 和包含 1319 preview listener 的 runtime image 必须协调发布，不支持新旧版本混合
+AI Platform、proxy 和包含 1319 preview listener 的 runtime image 必须协调发布，不支持新旧版本混合
 滚动兼容。
 
 ## 10. Provider 与模块边界

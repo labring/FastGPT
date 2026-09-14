@@ -252,7 +252,7 @@ worker → parser
 取得 `FileSource`，再把 source 传入统一解析入口。Workflow 沙箱等非解析消费者在实际需要 Buffer 时显式调用
 `materializeFileSource()`，不进入解析 worker 调度。
 
-内部 FastGPT 文件短链优先在主线程完成授权并还原为 S3 source，避免排队期间短链过期。外链每次 retry 都重新下载，不缓存
+内部 AI Platform 文件短链优先在主线程完成授权并还原为 S3 source，避免排队期间短链过期。外链每次 retry 都重新下载，不缓存
 或复用已 transfer 的 Buffer。
 
 ## 10. Multipart 文件生命周期

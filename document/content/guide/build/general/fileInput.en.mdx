@@ -43,7 +43,7 @@ Unlike multimodal recognition, LLMs currently cannot parse regular documents dir
 
 ### How are uploaded files stored in the database?
 
-In FastGPT's chat history, messages with role=user store their value in this structure:
+In AI Platform's chat history, messages with role=user store their value in this structure:
 
 ```ts
 type UserChatItemValueItemType = {
@@ -69,7 +69,7 @@ The document parsing node does not parse multimodal files such as images, audio,
 In practice, file input has two different handling paths:
 
 1. Document parsing: handles document files such as PDF, Word, Excel, Markdown, and HTML, converts their content to text, and provides that text to the AI.
-2. Multimodal recognition: handles media files such as images, audio, and video. FastGPT converts them into model-readable input, and a model with the corresponding capability reads them.
+2. Multimodal recognition: handles media files such as images, audio, and video. AI Platform converts them into model-readable input, and a model with the corresponding capability reads them.
 
 ### How does the document parsing node work?
 

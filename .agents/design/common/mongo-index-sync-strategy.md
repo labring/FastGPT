@@ -116,7 +116,7 @@ key 匹配规则：
 3. 错误的 Schema 本地废弃声明会在启动时触发清理，因此 name + key 匹配和代码 review 是必须保留的防线。
 4. 启动流程不暴露 Mongoose 全量同步能力；需要诊断时复用 manager 的 inspect/dry-run 能力。
 5. `MONGO_DEPRECATE_INDEX=false` 只关闭废弃索引清理，当前 Schema 缺失的索引仍会创建。
-6. 客户自建索引应显式设置自定义名称，不使用 MongoDB 按 key 生成的默认名称，避免与 FastGPT 系统内置索引重名。
+6. 客户自建索引应显式设置自定义名称，不使用 MongoDB 按 key 生成的默认名称，避免与 AI Platform 系统内置索引重名。
 
 ## 已知暂不处理的历史索引
 

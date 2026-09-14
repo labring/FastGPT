@@ -7,13 +7,13 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 适用场景
 
-系统插件的远程调试功能套件用于把开发者本地运行的 FastGPT 系统插件临时接入 FastGPT 测试环境。它适合系统插件开发、联调和验收，不适合作为生产插件运行时。
+系统插件的远程调试功能套件用于把开发者本地运行的 AI Platform 系统插件临时接入 AI Platform 测试环境。它适合系统插件开发、联调和验收，不适合作为生产插件运行时。
 
 <Alert icon="🤖" context="warning">
 
 系统插件的远程调试功能套件仅商业版支持。
 
-优先推荐在 FastGPT 云服务版本中使用远程调试能力。自部署需要额外维护 Plugin Server、Connection Gateway、Redis、反向代理、TLS 和密钥轮换，运维成本更高。
+优先推荐在 AI Platform 云服务版本中使用远程调试能力。自部署需要额外维护 Plugin Server、Connection Gateway、Redis、反向代理、TLS 和密钥轮换，运维成本更高。
 
 </Alert>
 
@@ -25,7 +25,7 @@ import { Alert } from '@/components/docs/Alert';
 
 | 组件                 | 作用                                                            |
 | -------------------- | --------------------------------------------------------------- |
-| FastGPT 主服务       | 提供开启、刷新、关闭调试通道的页面和 API。                      |
+| AI Platform 主服务       | 提供开启、刷新、关闭调试通道的页面和 API。                      |
 | Plugin Server        | 管理 `connectionKey`、调试 source，并把调试调用转发给 Gateway。 |
 | Connection Gateway   | 维护 CLI WebSocket 长连接、session、mailbox 和调试调用流转。    |
 | Redis                | 保存 Gateway session、source owner 和 mailbox 数据。            |
@@ -128,7 +128,7 @@ JWT_SECRET=replace-with-a-random-jwt-secret-at-least-32-chars
 
 ## 配置 FastGPT 主服务
 
-FastGPT 主服务继续使用常规插件配置：
+AI Platform 主服务继续使用常规插件配置：
 
 ```dotenv
 PLUGIN_BASE_URL=http://fastgpt-plugin:3000
@@ -159,14 +159,14 @@ location /connection-gateway/v1 {
 
 ## 开发者连接
 
-1. 在 FastGPT 插件调试入口开启调试通道，复制页面返回的连接链接。
+1. 在 AI Platform 插件调试入口开启调试通道，复制页面返回的连接链接。
 2. 在本地插件目录运行：
 
 ```bash
 fastgpt-plugin dev --connect '<connectionUrl>'
 ```
 
-连接成功后，本地 CLI 会通过 Gateway 上报插件 metadata。FastGPT 工具列表中会出现当前调试 source 下的本地插件。调试 source 的格式为：
+连接成功后，本地 CLI 会通过 Gateway 上报插件 metadata。AI Platform 工具列表中会出现当前调试 source 下的本地插件。调试 source 的格式为：
 
 ```text
 debug:tmbId:{tmbId}
@@ -182,7 +182,7 @@ curl http://connection-gateway:3000/health
 
 2. 在 FastGPT 页面开启调试通道，确认状态从 `enabled` 变为 `connected`。
 3. 运行本地 `fastgpt-plugin dev`，确认 CLI 显示 WebSocket 已连接。
-4. 在 FastGPT 中选择调试 source 下的工具并触发一次调用，确认结果由本地插件返回。
+4. 在 AI Platform 中选择调试 source 下的工具并触发一次调用，确认结果由本地插件返回。
 
 ## 安全注意事项
 

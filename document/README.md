@@ -1,6 +1,6 @@
 # FastGPT 文档
 
-这是FastGPT的官方文档，采用 fumadoc 框架。
+这是AI Platform的官方文档，采用 fumadoc 框架。
 ## 运行项目
 
 要运行文档，首先需要进行环境变量配置，在文档的根目录下创建`.env.local`文件，填写以下环境变量:
@@ -9,7 +9,7 @@
 FASTGPT_HOME_DOMAIN=https://fastgpt.io # 只填写 origin，不携带路径或查询参数
 ```
 
-你可以在FastGPT项目根目录下执行以下命令来运行文档。
+你可以在AI Platform项目根目录下执行以下命令来运行文档。
 
 ```bash
 pnpm install
@@ -48,7 +48,7 @@ import {Redirect} from '@/components/docs/Redirect' #重定向组件，如果你
 
 import FastGPTLink from '@/components/docs/linkFastGPT'; #FastGPT跳转链接组件，根据域名环境变量和传入的归因参数生成链接
 
-本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">FastGPT</FastGPTLink>。
+本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">AI Platform</FastGPTLink>。
 </Tabs>
 
 ```

@@ -1,6 +1,6 @@
 # 数据库操作规范
 
-FastGPT 使用 MongoDB (Mongoose) 和 PostgreSQL。
+AI Platform 使用 MongoDB (Mongoose) 和 PostgreSQL。
 
 ## 4.1 Model 定义
 

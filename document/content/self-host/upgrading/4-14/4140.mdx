@@ -10,8 +10,8 @@ upgradeTags:
 
 ### 1. 更新镜像：
 
-- 更新 FastGPT 镜像 tag: v4.14.0
-- 更新 FastGPT 商业版镜像 tag: v4.14.0
+- 更新 AI Platform 镜像 tag: v4.14.0
+- 更新 AI Platform 商业版镜像 tag: v4.14.0
 - 更新 fastgpt-plugin 镜像 tag: v0.3.0
 - mcp_server 无需更新
 - Sandbox 无需更新
@@ -31,12 +31,12 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4140' \
 
 ### 3. 安装系统插件至系统
 
-从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 FastGPT 系统需手动安装系统插件。
+从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 AI Platform 系统需手动安装系统插件。
 
 **注意事项**
 
 - 原先手动安装的 js 插件包将会失效，需重新打包安装。
-- 通过插件市场安装，默认会向公开的 FastGPT Marketplace 获取数据进行安装。
+- 通过插件市场安装，默认会向公开的 AI Platform Marketplace 获取数据进行安装。
 - 如果你的 FastGPT 无法访问插件市场，则可以手动访问 [FastGPT 插件市场](https://marketplace.fastgpt.cn/)，先下载 .pkg 文件，再通过文件导入的方式安装到系统里。
 - 除了安装外，还可对工具进行排序、默认安装、标签管理等。
 - 目前插件里仅包含工具，后续将增加触发器，文档解析器，数据分块策略，索引增强策略等。
@@ -48,7 +48,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4140' \
 
 ## 🚀 新增内容
 
-1. 增加插件市场，同时移除自定义插件分组，仅保留自定义标签。本期支持系统工具，可以从 FastGPT Marketplace 统一安装系统工具。后续将支持更多插件类型：工作流触发器，数据源解析方式，数据分块，索引增强策略等。
+1. 增加插件市场，同时移除自定义插件分组，仅保留自定义标签。本期支持系统工具，可以从 AI Platform Marketplace 统一安装系统工具。后续将支持更多插件类型：工作流触发器，数据源解析方式，数据分块，索引增强策略等。
 2. 对话框上传文件移动存储至 S3，并且不会自动过期，完全跟随对话记录删除。安全性更高，签发预览连接仅 1 小时生效，而不是长期。
 3. 全局变量支持时间点/时间范围/对话模型选择类型。
 4. 插件输入支持密码类型。

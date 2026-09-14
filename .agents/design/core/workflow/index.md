@@ -2,14 +2,14 @@
 
 ## 概述
 
-FastGPT 工作流系统是一个基于 Node.js/TypeScript 的可视化工作流引擎，支持拖拽式节点编排、实时执行、并发控制和交互式调试。系统采用队列式执行架构，通过有向图模型实现复杂的业务逻辑编排。
+AI Platform 工作流系统是一个基于 Node.js/TypeScript 的可视化工作流引擎，支持拖拽式节点编排、实时执行、并发控制和交互式调试。系统采用队列式执行架构，通过有向图模型实现复杂的业务逻辑编排。
 
 ## 核心架构
 
 ### 1. 项目结构
 
 ```
-FastGPT/
+AI Platform/
 ├── packages/
 │   ├── global/core/workflow/           # 全局工作流类型和常量
 │   │   ├── constants.ts               # 工作流常量定义

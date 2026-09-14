@@ -19,7 +19,7 @@ If you do not have an app yet, create an internal enterprise app from `Applicati
 
 ![Get App Key and App Secret](/imgs/image-dd4.png)
 
-| FastGPT field | Where to get it in DingTalk                                                                                                                                                                                                                |
+| AI Platform field | Where to get it in DingTalk                                                                                                                                                                                                                |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `App Key`     | Open `Credentials and Basic Information` in the app detail page, then copy `Client ID (formerly AppKey and SuiteKey)`.                                                                                                                     |
 | `App Secret`  | Copy `Client Secret (formerly AppSecret and SuiteSecret)` from the same page.                                                                                                                                                              |
@@ -30,7 +30,7 @@ Notes:
 - `App Secret` is sensitive. Do not share it publicly.
 - `User ID` is not a phone number, display name, or `unionId`.
 - If the member detail page does not show `User ID`, ask the contact administrator to export the member list from `Contacts`; the exported sheet usually contains member `User ID`.
-- We recommend using a dedicated DingTalk member as the FastGPT sync account and granting it read-only access to the target workspace.
+- We recommend using a dedicated DingTalk member as the AI Platform sync account and granting it read-only access to the target workspace.
 - Workspaces that this member cannot access will not appear in FastGPT.
 
 ## 3. Enable DingTalk app permissions
@@ -70,6 +70,6 @@ After creation:
 4. Select online documents or folders to import.
 5. Confirm the import.
 
-When a folder is selected, FastGPT recursively imports supported online documents under that folder.
+When a folder is selected, AI Platform recursively imports supported online documents under that folder.
 
 When DingTalk document content changes, click `Sync` from the imported file menu. FastGPT will read the latest content and update indexes.

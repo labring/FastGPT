@@ -1,6 +1,6 @@
 # 目录说明
 
-该目录为 FastGPT 主项目。
+该目录为 AI Platform 主项目。
 
 - app fastgpt 核心应用。
 - sandbox 沙盒项目，用于运行工作流里的代码执行 （需求python环境为python:3.11，额外安装的包请于requirements.txt填写，在运行时会读取安装。

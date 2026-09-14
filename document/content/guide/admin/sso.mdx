@@ -9,11 +9,11 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 介绍
 
-为了方便地接入**外部成员系统**，FastGPT 提供一套接入外部系统的**标准接口**，以及一个 FastGPT-SSO-Service 镜像作为**适配器**。
+为了方便地接入**外部成员系统**，AI Platform 提供一套接入外部系统的**标准接口**，以及一个 FastGPT-SSO-Service 镜像作为**适配器**。
 
 通过这套标准接口，你可以可以实现：
 
-1. SSO 登录。从外部系统回调后，在 FastGPT 中创建一个用户。
+1. SSO 登录。从外部系统回调后，在 AI Platform 中创建一个用户。
 2. 成员和组织架构同步（下面都简称成员同步）。
 
 **原理**
@@ -271,7 +271,7 @@ fastgpt-sso:
 
     ![](/imgs/sso7.png)
 
-2.  创建一个供 FastGPT 使用的内部应用：
+2.  创建一个供 AI Platform 使用的内部应用：
 
     a. 获取应用的 AgentID 和 Secret
 
@@ -362,7 +362,7 @@ fastgpt-sso:
 
 - `/org/list` 返回企微应用可见范围内的部门。
 - `/user/list` 仍通过“通讯录同步助手”获取成员，但只保留至少属于一个应用可见部门的成员。
-- 成员所属部门会同步过滤为应用可见部门；只属于不可见部门的成员不会同步到 FastGPT。
+- 成员所属部门会同步过滤为应用可见部门；只属于不可见部门的成员不会同步到 AI Platform。
 - 修改企微应用可见范围或镜像版本后，请重新执行一次成员同步；也可以先调用下方接口检查返回结果。
 
 ### 标准 OAuth2.0
@@ -635,7 +635,7 @@ curl -H 'Authorization: Bearer replace-with-a-sync-token' http://fastgpt-sso:300
 
 ![](/imgs/sso18.png)
 
-FastGPT 提供如下标准接口支持：
+AI Platform 提供如下标准接口支持：
 
 1. https://example.com/login/oauth/getAuthURL 获取鉴权重定向地址
 2. https://example.com/login/oauth/getUserInfo?code=xxxxx 消费 code，换取用户信息

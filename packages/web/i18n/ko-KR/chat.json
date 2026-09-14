@@ -296,7 +296,7 @@
   "interactive.user_select.expand_options": "옵션 펼치기",
   "interactive.user_select.selected": "선택됨: {{answer}}",
   "interactive.agent_ask.question_progress": "질문 {{current}} / {{total}}",
-  "interactive.agent_ask.custom_answer": "FastGPT에 생각을 알려주세요",
+  "interactive.agent_ask.custom_answer": "AI Platform에 생각을 알려주세요",
   "interactive.agent_ask.skip": "건너뛰기",
   "interactive.agent_ask.skip_all": "모든 질문 건너뛰기",
   "interactive.agent_ask.unanswered": "미응답",

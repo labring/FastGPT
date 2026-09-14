@@ -11,7 +11,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## Multi-Model Support
 
-FastGPT uses the one-api project to manage model pools, supporting OpenAI, Azure, mainstream domestic models, and local models.
+AI Platform uses the one-api project to manage model pools, supporting OpenAI, Azure, mainstream domestic models, and local models.
 
 See: [Quick OneAPI Deployment on Sealos](../config/model/intro.en.mdx)
 
@@ -61,7 +61,7 @@ After clicking deploy, you'll be redirected to the app management page. Click th
 
 ![](../../../public/imgs/sealos-deploy1.jpg)
 
-After clicking details, you'll see the FastGPT deployment management page. Click the link in the external access address to open the FastGPT service.
+After clicking details, you'll see the AI Platform deployment management page. Click the link in the external access address to open the AI Platform service.
 
 To bind a custom domain or modify deployment parameters, click **Change** in the top right and follow Sealos' instructions.
 
@@ -89,7 +89,7 @@ Sealos uses pay-as-you-go billing based on allocated CPU, memory, and disk. For 
 
 ### Overview
 
-FastGPT Commercial Edition includes 2 apps (fastgpt, fastgpt-plus) and 2 databases. When using multiple API keys, install OneAPI (1 app and 1 database), totaling 3 apps and 3 databases.
+AI Platform Commercial Edition includes 2 apps (fastgpt, fastgpt-plus) and 2 databases. When using multiple API keys, install OneAPI (1 app and 1 database), totaling 3 apps and 3 databases.
 
 ![](../../../public/imgs/onSealos1.png)
 
@@ -97,14 +97,14 @@ Click details on the right to view each app's information.
 
 ### Modifying Config Files and Environment Variables
 
-In Sealos, open **App Launchpad** to see deployed FastGPT apps, and open **Database** to see corresponding databases.
+In Sealos, open **App Launchpad** to see deployed AI Platform apps, and open **Database** to see corresponding databases.
 
-In **App Launchpad**, select FastGPT, click **Change**, and you'll see environment variables and config files.
+In **App Launchpad**, select AI Platform, click **Change**, and you'll see environment variables and config files.
 
 ![](../../../public/imgs/fastgptonsealos1.png)
 
 <Alert icon="🤖" context="success">
-  On Sealos, FastGPT runs 1 service and 2 databases. When pausing or deleting, handle the databases
+  On Sealos, AI Platform runs 1 service and 2 databases. When pausing or deleting, handle the databases
   together. (You can start them during the day and pause at night to save costs.)
 </Alert>
 
@@ -152,7 +152,7 @@ Open Sealos app management -> find the app -> **Change** -> edit environment var
 Add these environment variables to the app:
 
 ```
-SYSTEM_NAME=FastGPT
+SYSTEM_NAME=AI Platform
 SYSTEM_DESCRIPTION=
 SYSTEM_FAVICON=/favicon.ico
 HOME_URL=/dashboard/agent

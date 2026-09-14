@@ -9,7 +9,7 @@ description: FastGPT 接入 Signoz 监控服务
 
 **主要功能:**
 
-- **链路追踪**：跟踪用户请求在 FastGPT 各个服务间的完整调用链路
+- **链路追踪**：跟踪用户请求在 AI Platform 各个服务间的完整调用链路
 - **性能监控**：监控 API 响应时间、吞吐量等关键性能指标
 - **错误追踪**：自动捕获和记录系统异常，便于问题排查
 - **日志聚合**：集中收集和管理应用日志，支持结构化查询
@@ -33,13 +33,13 @@ description: FastGPT 接入 Signoz 监控服务
 
 3. 获取 Signoz 访问地址
 
-变更完成后，等待公网地址就绪，复制该地址，将其填入 FastGPT 中。如果是走内网服务，可以直接复制 4318 端口的内网地址。
+变更完成后，等待公网地址就绪，复制该地址，将其填入 AI Platform 中。如果是走内网服务，可以直接复制 4318 端口的内网地址。
 
 ![alt text](../../../public/imgs/image-113.png)
 
 ## 配置 FastGPT
 
-1. 修改 FastGPT 环境变量
+1. 修改 AI Platform 环境变量
 
 **日志等级枚举**: `trace` | `debug` | `info` | `warning` | `error` | `fatal`
 
@@ -52,7 +52,7 @@ LOG_OTEL_SERVICE_NAME=fastgpt-client # 传递给 OTLP 收集器的服务名称
 LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，不要把 /v1/logs 遗漏了
 ```
 
-2. 重启 FastGPT
+2. 重启 AI Platform
 
 ## 查看效果
 
@@ -76,6 +76,6 @@ LOG_OTEL_URL=http://localhost:4318/v1/logs # 你的 OTLP 收集器的地址，�
 
 1. 调整日志存储时长
 
-Signoz 监控是一个非常占用磁盘的服务，首先不要把 FastGPT debug 日志也存储进来，另外可以将日志存储时长调整为 7 天。如果突然发现 Signoz 数据不增加了，并且内存一直追加，则说明是磁盘满了，需要扩大容量。
+Signoz 监控是一个非常占用磁盘的服务，首先不要把 AI Platform debug 日志也存储进来，另外可以将日志存储时长调整为 7 天。如果突然发现 Signoz 数据不增加了，并且内存一直追加，则说明是磁盘满了，需要扩大容量。
 
 ![alt text](../../../public/imgs/image-119.png)

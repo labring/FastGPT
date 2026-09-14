@@ -5,7 +5,7 @@ description: FastGPT CI workflow 双轨同步。当用户修改或新增 .github
 
 # FastGPT CI Workflow 双轨同步
 
-FastGPT 同时维护两套 CI workflow：
+AI Platform 同时维护两套 CI workflow：
 
 - `.github/workflows/` —— 跑在 **GitHub 托管 runner** 上，发布到 ghcr.io + 阿里云 + Docker Hub，面向开源社区。
 - `.forgejo/workflows/` —— 跑在 **内网 Forgejo + 自建 runner** 上，发布到 Forgejo 自带 registry，面向内网镜像分发。内网环境需要代理、镜像源、自建 registry。

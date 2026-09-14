@@ -1,7 +1,7 @@
 # SigNoz Redis / BullMQ 告警手册
 
 > 本文面向 SigNoz 管理员，记录可直接配置的 Redis/BullMQ 日志告警、阈值和降噪规则。
-> DAL 架构、失败合同和发布约束见 [FastGPT Data Access Layer 设计](../dal/data-access-layer.md)。
+> DAL 架构、失败合同和发布约束见 [AI Platform Data Access Layer 设计](../dal/data-access-layer.md)。
 
 ## 1. 使用前提
 

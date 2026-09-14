@@ -247,7 +247,7 @@ The following services must be reachable. For direct access, open the host ports
 1. Port 3000 by default (FastGPT main service; change the host port with `FASTGPT_PORT`)
 2. Port 9000 (S3 service)
 3. Port 3006 by default (FastGPT Agent Sandbox Proxy service; change the host port with `FASTGPT_SANDBOX_PROXY_PORT`)
-4. Port 3003 (FastGPT SSE MCP server service; you can leave this port closed if you don't need it.)
+4. Port 3003 (AI Platform SSE MCP server service; you can leave this port closed if you don't need it.)
 
 ### 4. Start Containers
 
@@ -263,7 +263,7 @@ docker compose up -d
 
 ### 5. Access FastGPT
 
-Access FastGPT via the port/domain opened in step 3.
+Access AI Platform via the port/domain opened in step 3.
 Login username is `root`, password is the `DEFAULT_ROOT_PSW` set in `docker-compose.yml` environment variables.
 
 If you deploy with the interactive script, it randomly generates `DEFAULT_ROOT_PSW` and prints the login password when it finishes. If you deploy manually, change the default password in `docker-compose.yml` before starting the service. Each container restart automatically updates the root user's password based on `DEFAULT_ROOT_PSW`.
@@ -276,9 +276,9 @@ If you deploy with the interactive script, it randomly generates `DEFAULT_ROOT_P
 
 ### 7. Install System Plugins as Needed
 
-Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment without pre-installed system plugins. All FastGPT systems must manually install system plugins.
+Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment without pre-installed system plugins. All AI Platform systems must manually install system plugins.
 
-- Install via the plugin marketplace — by default it fetches from the public FastGPT Marketplace.
+- Install via the plugin marketplace — by default it fetches from the public AI Platform Marketplace.
 - If your FastGPT can't access the marketplace, visit [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download .pkg files, and import them via file upload.
 - You can also sort tools, set default installations, and manage tags.
 
@@ -288,7 +288,7 @@ Starting from V4.14.0, the fastgpt-plugin image only provides the runtime enviro
 
 ### FastGPT and FastGPT-plugin Version Compatibility
 
-| FastGPT-plugin Version | FastGPT Main Service |
+| FastGPT-plugin Version | AI Platform Main Service |
 | ---------------------- | -------------------- |
 | 1.x                    | 4.15.x               |
 | 0.6.x                  | >= 4.14.11, < 4.15.0 |
@@ -376,7 +376,7 @@ rs.status()
 
 ### How to Change API Address and Key
 
-Starting with V4.17.0, **you must deploy or connect to AI Proxy** and set these environment variables in the FastGPT container:
+Starting with V4.17.0, **you must deploy or connect to AI Proxy** and set these environment variables in the AI Platform container:
 
 - `AIPROXY_API_ENDPOINT`: The AI Proxy service root URL reachable from FastGPT, such as `http://aiproxy:3000`. Do not append `/v1`; FastGPT adds the path required by each API.
 - `AIPROXY_API_TOKEN`: A nonempty AI Proxy administrator token that matches the administrator credentials configured on the AI Proxy server.
@@ -429,7 +429,7 @@ If `container1` needs to connect to `container2`, use `container2:running_port`.
 
 ### relation "modeldata" does not exist
 
-PG database not connected or initialization failed — check logs. FastGPT initializes tables on each PG connection. Errors will appear in the logs.
+PG database not connected or initialization failed — check logs. AI Platform initializes tables on each PG connection. Errors will appear in the logs.
 
 1. Check if the database container started normally
 2. For non-Docker deployments, manually install the pg vector extension

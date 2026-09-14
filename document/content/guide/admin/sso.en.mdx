@@ -9,7 +9,7 @@ If you don't need SSO or member sync, or only need quick login via GitHub, Googl
 
 ## Overview
 
-To simplify integration with **external member systems**, FastGPT provides a set of **standard interfaces** for connecting to external systems, along with a FastGPT-SSO-Service image that serves as an **adapter**.
+To simplify integration with **external member systems**, AI Platform provides a set of **standard interfaces** for connecting to external systems, along with a FastGPT-SSO-Service image that serves as an **adapter**.
 
 Through these standard interfaces, you can:
 
@@ -273,7 +273,7 @@ fastgpt-sso:
 
     ![](/imgs/sso7.png)
 
-2.  Create an internal app for FastGPT:
+2.  Create an internal app for AI Platform:
 
     a. Get the app's AgentID and Secret
 
@@ -615,7 +615,7 @@ Below is the standard interface documentation for SSO and member sync in FastGPT
 
 ![](/imgs/sso18.png)
 
-FastGPT provides the following standard interfaces:
+AI Platform provides the following standard interfaces:
 
 1. https://example.com/login/oauth/getAuthURL - Get the authorization redirect URL
 2. https://example.com/login/oauth/getUserInfo?code=xxxxx - Consume the code and exchange it for user info
@@ -624,7 +624,7 @@ FastGPT provides the following standard interfaces:
 
 ### Get SSO Login Redirect URL
 
-Returns a redirect login URL. FastGPT will automatically redirect to this URL. The redirect_uri is automatically appended to the URL query string.
+Returns a redirect login URL. AI Platform will automatically redirect to this URL. The redirect_uri is automatically appended to the URL query string.
 
 <Tabs items={['Request Example','Response Example']}>
   <Tab value="Request Example" >
@@ -818,8 +818,8 @@ curl example
 
 ## How to Integrate Non-Standard Systems
 
-1. Self-development: Build according to the standard interfaces provided by FastGPT, then enter the deployed service address into fastgpt-pro.
+1. Self-development: Build according to the standard interfaces provided by AI Platform, then enter the deployed service address into fastgpt-pro.
    You can use this template repository as a starting point: [fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template)
-2. Custom development by the FastGPT team:
+2. Custom development by the AI Platform team:
    a. Provide the system's SSO documentation, member and organization retrieval documentation, and an external test address.
    b. In fastgpt-sso-service, add the corresponding provider and environment variables, and write the integration code.

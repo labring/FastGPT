@@ -8,14 +8,14 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 
 ## Object Storage Configuration
 
-This guide covers environment variable configuration for object storage providers supported by FastGPT, including self-hosted MinIO, AWS S3, Cloudflare R2, Alibaba Cloud OSS, and Tencent Cloud COS.
+This guide covers environment variable configuration for object storage providers supported by AI Platform, including self-hosted MinIO, AWS S3, Cloudflare R2, Alibaba Cloud OSS, and Tencent Cloud COS.
 
 FastGPT supports MinIO, AWS S3, Alibaba Cloud OSS, Tencent Cloud COS, and Cloudflare R2. Except for local MinIO development, create `STORAGE_PUBLIC_BUCKET` and `STORAGE_PRIVATE_BUCKET` ahead of time and grant the FastGPT access key read/write permission on both buckets.
 
 ## Access Modes
 
-- Uploads always go through the FastGPT backend proxy.
-- External download URLs are always FastGPT short links. FastGPT no longer returns object storage presigned URLs directly.
+- Uploads always go through the AI Platform backend proxy.
+- External download URLs are always AI Platform short links. AI Platform no longer returns object storage presigned URLs directly.
 - `STORAGE_DOWNLOAD_URL_MODE` supports two modes and defaults to `short-proxy`:
   - `short-proxy`: FastGPT validates the short link and proxies the file stream. No public object storage endpoint is required.
   - `short-redirect`: FastGPT validates the short link, then redirects to a short-lived object storage or CDN URL. File traffic bypasses FastGPT.

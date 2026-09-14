@@ -8,14 +8,14 @@ import FastGPTLink from '@/components/docs/linkFastGPT';
 
 ## 对象存储服务配置介绍
 
-这里提供了 FastGPT 目前支持的对象存储厂商，包括自部署的 MinIO、AWS S3、Cloudflare R2、阿里云 OSS 和腾讯云 COS 的环境变量配置说明
+这里提供了 AI Platform 目前支持的对象存储厂商，包括自部署的 MinIO、AWS S3、Cloudflare R2、阿里云 OSS 和腾讯云 COS 的环境变量配置说明
 
 FastGPT 支持 MinIO、AWS S3、Alibaba Cloud OSS、Tencent Cloud COS 和 Cloudflare R2。除 MinIO 本地开发外，建议提前创建 `STORAGE_PUBLIC_BUCKET` 和 `STORAGE_PRIVATE_BUCKET`，并确保 FastGPT 使用的 Access Key 对两个桶都有读写权限。
 
 ## 访问模式说明
 
-- 上传固定走 FastGPT 后端代理。
-- 对外下载地址固定为 FastGPT 短链，不再直接返回对象存储预签名长链接。
+- 上传固定走 AI Platform 后端代理。
+- 对外下载地址固定为 AI Platform 短链，不再直接返回对象存储预签名长链接。
 - `STORAGE_DOWNLOAD_URL_MODE` 支持两种模式，默认值为 `short-proxy`：
   - `short-proxy`：FastGPT 校验短链并代理文件流，无需配置公网对象存储地址。
   - `short-redirect`：FastGPT 校验短链后 302 到短时效对象存储/CDN 地址，文件流量不经过 FastGPT。

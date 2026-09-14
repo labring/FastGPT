@@ -24,7 +24,7 @@ To add an initialization script to your skill, simply place a Shell script named
 
 ## 2. Smart Deduplication Mechanism
 
-To prevent running environment initialization scripts repeatedly in subsequent conversations (e.g., executing dependency installation packages on every turn would cause severe latency), FastGPT designs a deduplication mechanism for skill scripts.
+To prevent running environment initialization scripts repeatedly in subsequent conversations (e.g., executing dependency installation packages on every turn would cause severe latency), AI Platform designs a deduplication mechanism for skill scripts.
 
 The execution state is stored in the `~/.fastgpt/agent-skill-entrypoints/state.json` file inside the virtual machine.
 

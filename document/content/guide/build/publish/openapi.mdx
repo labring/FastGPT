@@ -5,7 +5,7 @@ description: 通过 API 访问 FastGPT 应用
 
 import { Alert } from '@/components/docs/Alert';
 
-在 FastGPT 中，发布渠道里的 API 入口展示当前登录成员可用的 **APIKey**。APIKey 是团队成员的开放接口调用凭证，不再按应用创建专属密钥。
+在 AI Platform 中，发布渠道里的 API 入口展示当前登录成员可用的 **APIKey**。APIKey 是团队成员的开放接口调用凭证，不再按应用创建专属密钥。
 
 调用当前应用的 `chat/completions` 接口时，推荐在请求体传入 `appId`。如果第三方应用只能配置 OpenAI SDK 风格的密钥，也可以使用 `apiKey-appId` 兼容格式。完整说明可以[查看 OpenAPI 介绍](../../../openapi/intro.mdx)。
 

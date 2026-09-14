@@ -1,7 +1,7 @@
 {
   "name": "@fastgpt/code-sandbox",
   "version": "5.0.0",
-  "description": "FastGPT Code Sandbox - Node + Hono + 统一子进程模型",
+  "description": "AI Platform Code Sandbox - Node + Hono + 统一子进程模型",
   "author": "",
   "private": true,
   "license": "UNLICENSED",

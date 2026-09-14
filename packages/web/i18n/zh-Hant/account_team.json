@@ -354,7 +354,7 @@
   "enterprise_auth_contact_phone": "聯絡方式",
   "enterprise_auth_contact_phone_placeholder": "請填寫您的手機號碼，僅用於商務人員聯繫",
   "enterprise_auth_demand": "您的需求",
-  "enterprise_auth_demand_placeholder": "請描述您及貴司使用FastGPT的場景，以便我們更好地為您提供服務",
+  "enterprise_auth_demand_placeholder": "請描述您及貴司使用AI Platform的場景，以便我們更好地為您提供服務",
   "enterprise_auth_amount_sent_prefix": "已向以上帳號成功發起打款，驗證金額將由上海銀聯打入，金額隨機，一般即時到賬，有效期24小時。若未到賬，請",
   "enterprise_auth_contact_business": "聯絡商務",
   "enterprise_auth_amount_sent_suffix": "。",

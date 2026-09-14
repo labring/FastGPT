@@ -2,7 +2,7 @@
   "name": "@fastgpt-sdk/otel",
   "private": false,
   "version": "0.1.2",
-  "description": "FastGPT SDK for OpenTelemetry observability",
+  "description": "AI Platform SDK for OpenTelemetry observability",
   "type": "module",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
@@ -41,7 +41,7 @@
     "tracing",
     "logging"
   ],
-  "author": "FastGPT",
+  "author": "AI Platform",
   "repository": {
     "type": "git",
     "url": "https://github.com/labring/FastGPT.git",

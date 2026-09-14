@@ -22,7 +22,7 @@
   "application_call": "App Call",
   "assigned_reply": "Assigned Reply",
   "auth_tmb_id": "Auth member",
-  "auth_tmb_id_tip": "When enabled, published Apps filter Dataset results based on the user’s Dataset permissions.\nWhen disabled, FastGPT searches the configured Datasets without permission filtering.",
+  "auth_tmb_id_tip": "When enabled, published Apps filter Dataset results based on the user’s Dataset permissions.\nWhen disabled, AI Platform searches the configured Datasets without permission filtering.",
   "auto_align": "Automatic alignment",
   "can_not_loop": "This node can't loop.",
   "can_not_parallel": "This node cannot be used inside a Parallel Run node",

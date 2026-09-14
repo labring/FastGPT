@@ -43,7 +43,7 @@ description: FastGPT 文件输入功能介绍
 
 ### 上传的文件如何存储在数据库中
 
-FastGPT 的对话记录存储结构中，role=user 的消息，value 值会按以下结构存储：
+AI Platform 的对话记录存储结构中，role=user 的消息，value 值会按以下结构存储：
 
 ```ts
 type UserChatItemValueItemType = {
@@ -69,7 +69,7 @@ type UserChatItemValueItemType = {
 因此，文件输入中要区分两类处理方式：
 
 1. 文档解析：处理 PDF、Word、Excel、Markdown、HTML 等文档文件，将内容转成文本后提供给 AI。
-2. 多模态识别：处理图片、音频、视频等媒体文件，FastGPT 会将其转换为模型可接收的输入，再由支持对应能力的模型读取。
+2. 多模态识别：处理图片、音频、视频等媒体文件，AI Platform 会将其转换为模型可接收的输入，再由支持对应能力的模型读取。
 
 ### 文档解析节点如何工作
 

@@ -118,7 +118,7 @@ SSE 地址使用相同的请求头。SSE 服务会在建立连接时保存代理
 4. 该成员是否仍在发布 MCP server 的团队中。
 5. 该成员是否拥有被调用应用的读取权限。
 
-工具列表只公开工具名称和参数等元数据；FastGPT 会在每次工具执行时重新校验成员状态和应用权限。
+工具列表只公开工具名称和参数等元数据；AI Platform 会在每次工具执行时重新校验成员状态和应用权限。
 
 ## 私有化部署 MCP server 问题
 
@@ -152,7 +152,7 @@ environment:
 
 ### 重启 FastGPT 容器
 
-修改环境变量后，需要重启 FastGPT 服务。启动后，可以在工作台看到 MCP server 服务选项。
+修改环境变量后，需要重启 AI Platform 服务。启动后，可以在工作台看到 MCP server 服务选项。
 
 ```bash
 docker-compose down

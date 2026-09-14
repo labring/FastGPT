@@ -346,7 +346,7 @@
   "enterprise_auth_contact_phone": "연락처",
   "enterprise_auth_contact_phone_placeholder": "전화번호를 입력하세요. 업무 연락용으로만 사용됩니다",
   "enterprise_auth_demand": "요구사항",
-  "enterprise_auth_demand_placeholder": "더 나은 서비스를 제공할 수 있도록 귀사와 FastGPT 사용 방식을 설명해 주세요",
+  "enterprise_auth_demand_placeholder": "더 나은 서비스를 제공할 수 있도록 귀사와 AI Platform 사용 방식을 설명해 주세요",
   "enterprise_auth_amount_sent_prefix": "위 계좌로 이체가 시작되었습니다. 인증 금액은 상하이 유니온페이를 통해 무작위 금액으로 전송되며 보통 실시간으로 도착하고 24시간 동안 유효합니다. 도착하지 않았다면 ",
   "enterprise_auth_contact_business": "영업팀에 문의",
   "enterprise_auth_amount_sent_suffix": "해 주세요.",

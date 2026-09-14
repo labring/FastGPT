@@ -1,7 +1,7 @@
 /**
  * WorkflowPersistenceContext - 工作流持久化层
  * @description 提供数据持久化和自动保存功能
- * @author FastGPT Team
+ * @author AI Platform Team
  * @date 2025-01-18
  */
 

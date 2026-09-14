@@ -354,7 +354,7 @@
   "enterprise_auth_contact_phone": "Contact phone",
   "enterprise_auth_contact_phone_placeholder": "Enter your phone number, only for business contact",
   "enterprise_auth_demand": "Your needs",
-  "enterprise_auth_demand_placeholder": "Describe how you and your company use FastGPT so we can provide better service",
+  "enterprise_auth_demand_placeholder": "Describe how you and your company use AI Platform so we can provide better service",
   "enterprise_auth_amount_sent_prefix": "A transfer has been initiated to the account above. The verification amount will be sent by Shanghai UnionPay, is random, usually arrives in real time, and is valid for 24 hours. If it has not arrived, please ",
   "enterprise_auth_contact_business": "contact sales",
   "enterprise_auth_amount_sent_suffix": ".",

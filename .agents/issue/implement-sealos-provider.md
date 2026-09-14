@@ -5,7 +5,7 @@
 FastGPT 统一通过 `@fastgpt-sdk/sandbox-adapter` 使用 sandbox provider：
 
 ```txt
-FastGPT
+AI Platform
   -> @fastgpt-sdk/sandbox-adapter
     -> OpenSandboxAdapter
        -> OpenSandbox
@@ -35,7 +35,7 @@ FastGPT
 
 OpenSandbox 使用 FastGPT 自己维护的 `fastgpt-agent-sandbox` 镜像。
 
-当前 FastGPT 依赖的 create 能力：
+当前 AI Platform 依赖的 create 能力：
 
 - `image`
 - `entrypoint`
@@ -217,11 +217,11 @@ Skill detail page
 
 ### 4.2 Backend 文件通道
 
-所有浏览器操作都回到 FastGPT API，由后端鉴权后通过 sandbox adapter 操作远端文件系统：
+所有浏览器操作都回到 AI Platform API，由后端鉴权后通过 sandbox adapter 操作远端文件系统：
 
 ```txt
 Browser
-  -> FastGPT API
+  -> AI Platform API
     -> authSandboxSession
     -> getSandboxClient(appId/userId/chatId 或 edit-debug)
     -> ISandbox.execute / readFiles / writeFiles / listDirectory / getFileInfo / moveFiles
@@ -230,7 +230,7 @@ Browser
 
 关键边界：
 
-- 浏览器只知道 FastGPT 的 API，不持有 provider endpoint、proxy target 或 provider path。
+- 浏览器只知道 AI Platform 的 API，不持有 provider endpoint、proxy target 或 provider path。
 - `authSandboxSession` 统一区分普通 chat sandbox 和 Skill `edit-debug` sandbox。
 - `getSandboxClient` 负责确保 sandbox 可用，并刷新本地 `agent_sandbox_instances` 记录。
 - `SandboxEditor` 只处理文件树/文件内容 UI，不承担 provider endpoint 解析。
@@ -256,7 +256,7 @@ Sealos `frameworks/sandbox/fastgpt` runtime 仍可能包含：
 - `codex-gateway`: `1317`
 - `code-server`: `1318`
 
-但它们不是当前 FastGPT Skill 编辑 UI 的首期依赖。当前 Sealos provider 首期需要保证：
+但它们不是当前 AI Platform Skill 编辑 UI 的首期依赖。当前 Sealos provider 首期需要保证：
 
 - Devbox 可创建、恢复、暂停、删除。
 - `execute` 可运行 shell 命令。
@@ -282,7 +282,7 @@ AGENT_SANDBOX_SEALOS_IMAGE          # 可选
 
 ### 5.2 Sandbox 创建
 
-FastGPT 上层继续传统一 create spec。
+AI Platform 上层继续传统一 create spec。
 
 OpenSandbox 使用现有镜像与 entrypoint 逻辑。
 
@@ -324,8 +324,8 @@ Skill 编辑页不再嵌入 provider 页面。前端固定使用 `SandboxEditor`
 4. [x] 修改 `agent-sandbox-adaptor`：SealosDevbox adapter 支持从 `gateway.url` 推导 httpgate endpoint，用于未来端口访问或诊断。
 5. [x] 修改 `agent-sandbox-adaptor`：OpenSandbox adapter 内收 direct endpoint 解析逻辑。
 6. [x] 修改 FastGPT：Skill 编辑页改为 `SandboxEditor` 文件 API 链路，不再依赖 `SandboxIframe`。
-7. [x] 修改 FastGPT：新增 Sealos runtime 配置，避免复用 OpenSandbox image env。
-8. [x] 修改 FastGPT：Sealos provider 不再拒绝所有 create spec，而是只传支持字段。
-9. [x] 修改 FastGPT：新增 provider-aware sandbox 文件 API，覆盖文件树、读写、文件操作和下载。
+7. [x] 修改 AI Platform：新增 Sealos runtime 配置，避免复用 OpenSandbox image env。
+8. [x] 修改 AI Platform：Sealos provider 不再拒绝所有 create spec，而是只传支持字段。
+9. [x] 修改 AI Platform：新增 provider-aware sandbox 文件 API，覆盖文件树、读写、文件操作和下载。
 10. [x] 删除旧 `sandbox-proxy` / `SandboxIframe` 依赖路径。
 11. [ ] 增加集成测试：创建 Devbox、exec、upload/download、listDirectory、getFileInfo、moveFiles，并通过 `SandboxEditor` 相关 API 验证编辑/发布闭环。

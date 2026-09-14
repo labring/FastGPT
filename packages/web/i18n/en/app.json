@@ -295,7 +295,7 @@
   "manual_secret": "Manual secret",
   "mark_count": "Annotation answer count",
   "max_histories_number": "Max histories",
-  "max_histories_number_tip": "The maximum number of previous chat turns included in model context. FastGPT truncates history that exceeds the model context window, so an actual run may include fewer turns than configured.",
+  "max_histories_number_tip": "The maximum number of previous chat turns included in model context. AI Platform truncates history that exceeds the model context window, so an actual run may include fewer turns than configured.",
   "max_tokens": "Max tokens",
   "module.No Modules": "No Plugins Found",
   "modules.Title is required": "Node name cannot be empty",

@@ -16,10 +16,10 @@ description: FastGPT 系统工具开发指南
 
 ## 与旧版机制的区别
 
-1. FastGPT 和 FastGPT Plugin 的部署关系保持外置扩展模式，整体仍然是微服务架构。
+1. AI Platform 和 AI Platform Plugin 的部署关系保持外置扩展模式，整体仍然是微服务架构。
 2. 插件包协议从旧的内置系统工具目录升级为统一 `.pkg` 格式，便于安装、版本管理、热更新和后续扩展其他插件类型。
 3. 插件运行时由服务端统一管理，当前默认运行时是 `local-pool`，每个插件版本拥有独立进程池、队列和运行时配置。
-4. 插件元信息、输入输出 schema、密钥 schema 和图标资源都会进入构建产物，供 FastGPT 页面、工作流和 Agent 调用使用。
+4. 插件元信息、输入输出 schema、密钥 schema 和图标资源都会进入构建产物，供 AI Platform 页面、工作流和 Agent 调用使用。
 5. 工具开发使用 `@fastgpt-plugin/cli` 和 `@fastgpt-plugin/sdk-factory`，不再以旧版 `config.ts`、`versionList` 和 `bun run build:pkg` 作为主要开发方式。
 
 ## 开发前准备
@@ -48,7 +48,7 @@ description: FastGPT 系统工具开发指南
 使用 Claude Code、Codex 或其他 Agent 工具时，可直接复制下面的提示词：
 
 ```plaintext
-请根据以下 FastGPT 官方插件开发 Skill 开发插件：
+请根据以下 AI Platform 官方插件开发 Skill 开发插件：
 
 https://raw.githubusercontent.com/labring/fastgpt-official-plugins/refs/heads/main/.agents/skills/develop-fastgpt-plugin/SKILL.md
 
@@ -348,13 +348,13 @@ pnpx @fastgpt-plugin/cli debug . --run --input-file input.json --secrets-file se
 
 ## 7. 远程调试
 
-远程调试用于把本地正在开发的插件接入 FastGPT 测试环境。FastGPT 页面负责鉴权并生成调试链接，CLI 通过该链接建立 WSS 调试通道；调试插件仅对当前调试者本人可见。
+远程调试用于把本地正在开发的插件接入 AI Platform 测试环境。AI Platform 页面负责鉴权并生成调试链接，CLI 通过该链接建立 WSS 调试通道；调试插件仅对当前调试者本人可见。
 
-使用前确认测试环境已部署 FastGPT Plugin 服务和 Connection Gateway，并且本地开发机可以访问测试环境返回的 Gateway WSS 地址。
+使用前确认测试环境已部署 AI Platform Plugin 服务和 Connection Gateway，并且本地开发机可以访问测试环境返回的 Gateway WSS 地址。
 
 ### 7.1 生成调试链接
 
-1. 登录 FastGPT 测试环境。
+1. 登录 AI Platform 测试环境。
 2. 进入「系统工具」页面，点击「本地调试」。
 
 ![系统工具本地调试入口](/imgs/plugins/system-tool-debug-entry.png)
@@ -374,7 +374,7 @@ pnpx @fastgpt-plugin/cli debug . --run --input-file input.json --secrets-file se
 fastgpt-plugin dev
 ```
 
-启动后，将 FastGPT 页面复制的调试链接粘贴到 TUI 中。CLI 会用链接中的 connection key 换取短期 WSS connect token，并把本地插件挂载到 FastGPT 的调试通道。
+启动后，将 AI Platform 页面复制的调试链接粘贴到 TUI 中。CLI 会用链接中的 connection key 换取短期 WSS connect token，并把本地插件挂载到 AI Platform 的调试通道。
 
 脚本或 Agent 场景可以使用非交互模式：
 
@@ -406,7 +406,7 @@ fastgpt-plugin dev ./plugins/getTime ./plugins/dbops --watch
 
 ### 7.4 在 FastGPT 中验证
 
-CLI 显示远程调试已就绪后，回到 FastGPT 测试环境：
+CLI 显示远程调试已就绪后，回到 AI Platform 测试环境：
 
 1. 在「系统工具」页面查看调试插件。
 2. 在应用、工作流或 Agent 中选择该调试工具。
@@ -419,7 +419,7 @@ CLI 显示远程调试已就绪后，回到 FastGPT 测试环境：
 
 本地终端按 `Ctrl+C` 会关闭当前 CLI 调试会话；再次按 `Ctrl+C` 会强制退出。
 
-FastGPT 页面中的「结束调试」会撤销当前成员的 debug channel，并清理页面上的调试插件入口。调试链接泄露、成员切换或需要重新授权时，优先使用「刷新链接」生成新链接。
+AI Platform 页面中的「结束调试」会撤销当前成员的 debug channel，并清理页面上的调试插件入口。调试链接泄露、成员切换或需要重新授权时，优先使用「刷新链接」生成新链接。
 
 ## 8. 构建、检查和打包
 
@@ -498,7 +498,7 @@ gh repo create --public --source=. --remote=origin --push
 
 商业插件发布到私有仓库，按客户交付流程管理版本、密钥、安装包和验收记录。对外部 API、客户私有地址和账号密钥的处理需要单独记录安全边界。
 
-如无需官方收录，可参考 [上传系统工具](../guide/build/tools/system-plugins/upload_system_tool.mdx) 在自己部署的 FastGPT 中使用。
+如无需官方收录，可参考 [上传系统工具](../guide/build/tools/system-plugins/upload_system_tool.mdx) 在自己部署的 AI Platform 中使用。
 
 ## 常见问题
 

@@ -5,7 +5,7 @@ description: Use MinerU to parse PDF documents with image extraction, layout rec
 
 ## Background
 
-PDF is a relatively complex file format. FastGPT's built-in PDF parser relies on the pdfjs library, which uses logical parsing and cannot effectively handle complex PDF files. When parsing PDFs containing images, tables, formulas, or other non-plain-text content, the results are often poor.
+PDF is a relatively complex file format. AI Platform's built-in PDF parser relies on the pdfjs library, which uses logical parsing and cannot effectively handle complex PDF files. When parsing PDFs containing images, tables, formulas, or other non-plain-text content, the results are often poor.
 
 There are several PDF parsing solutions available. [MinerU](https://github.com/opendatalab/MinerU) uses YOLO, PaddleOCR, and table recognition models for vision-based parsing, effectively extracting images, tables, formulas, and other complex content.
 
@@ -19,7 +19,7 @@ Hardware requirements: 16GB+ GPU VRAM, minimum 16GB+ RAM (32GB+ recommended). Se
 
 Quick Docker installation:
 
-Pull the fastgpt-mineru image --> Create and start the parsing service container --> Add the deployed URL to the FastGPT configuration file
+Pull the fastgpt-mineru image --> Create and start the parsing service container --> Add the deployed URL to the AI Platform configuration file
 
 ```dockerfile
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/fastgpt_ck/mineru:v1

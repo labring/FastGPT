@@ -6,11 +6,11 @@ description: 对 FastGPT 进行开发调试
 import { Alert } from '@/components/docs/Alert';
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
-本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">FastGPT</FastGPTLink>。
+本文档介绍了如何设置开发环境以构建和测试 <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">AI Platform</FastGPTLink>。
 
 ## 前置开发环境
 
-您需要在计算机上安装和配置以下依赖项才能构建 <FastGPTLink campaign="docs_self_host_dev" content="prerequisites_product_link">FastGPT</FastGPTLink>：
+您需要在计算机上安装和配置以下依赖项才能构建 <FastGPTLink campaign="docs_self_host_dev" content="prerequisites_product_link">AI Platform</FastGPTLink>：
 
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/)
@@ -35,7 +35,7 @@ git clone git@github.com:<your_github_username>/FastGPT.git
 
 ### 3. 通过 docker 启动开发环境
 
-若您本地已经通过 docker 启动了 FastGPT，则需要先关闭，否则会有端口冲突。
+若您本地已经通过 docker 启动了 AI Platform，则需要先关闭，否则会有端口冲突。
 
 切换到 `FastGPT/deploy/dev` 目录，执行 `docker compose up -d` 运行 FastGPT 的各种依赖。
 
@@ -116,7 +116,7 @@ docker build -f ./projects/app/Dockerfile -t fastgpt. --build-arg name=app --bui
 
 1. 确保你的代码是 Fork [FastGPT](https://github.com/labring/FastGPT) 仓库
 2. 尽可能少量的提交代码，每次提交仅解决一个问题。
-3. 向 FastGPT 的 main 分支提交一个 PR，提交请求后，FastGPT 团队/社区的其他人将与您一起审查它。
+3. 向 AI Platform 的 main 分支提交一个 PR，提交请求后，AI Platform 团队/社区的其他人将与您一起审查它。
 
 如果遇到问题，比如合并冲突或不知道如何打开拉取请求，请查看 GitHub 的[拉取请求教程](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)，了解如何解决合并冲突和其他问题。一旦您的 PR 被合并，您将自豪地被列为[贡献者表](https://github.com/labring/FastGPT/graphs/contributors)中的一员。
 
@@ -172,9 +172,9 @@ FastGPT 使用了 nextjs 的 page route 作为框架。为了区分好前后端�
 
 ### monorepo
 
-FastGPT 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个部分：
+AI Platform 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个部分：
 
-- projects/app - FastGPT 主项目
+- projects/app - AI Platform 主项目
 - packages/ - 子模块
   - global - 共用代码，通常是放一些前后端都能执行的函数、类型声明、常量。
   - service - 服务端代码
@@ -183,7 +183,7 @@ FastGPT 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个�
 
 ### 领域驱动模式（DDD）
 
-FastGPT 在代码模块划分时，按 DDD 的思想进行划分，主要分为以下几个领域：
+AI Platform 在代码模块划分时，按 DDD 的思想进行划分，主要分为以下几个领域：
 
 - core - 核心功能（知识库，工作流，应用，对话）
 - support - 支撑功能（用户体系，计费，鉴权等）
@@ -204,8 +204,8 @@ FastGPT 在代码模块划分时，按 DDD 的思想进行划分，主要分为�
 │   ├── service                  // 后端子包
 │   └── web                      // 前端子包
 ├── projects
-│   └── app                      // FastGPT 主项目
-├── python                       // 存放一些模型代码，和 FastGPT 本身无关
+│   └── app                      // AI Platform 主项目
+├── python                       // 存放一些模型代码，和 AI Platform 本身无关
 └── scripts                      // 一些自动化脚本
     ├── icon                     // icon预览脚本，可以在顶层 pnpm initIcon(把svg写入到代码中), pnpm previewIcon（预览icon）
     └── postinstall.sh           // chakraUI自定义theme初始化 ts 类型

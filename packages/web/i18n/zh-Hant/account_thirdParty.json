@@ -4,7 +4,7 @@
   "error.no_permission": "請聯絡管理員設定",
   "no_intro": "暫無說明",
   "not_configured": "未設定",
-  "open_api_notice": "您可以填寫 OpenAI 或 OneAPI 金鑰。在雲端平台使用「AI 對話」、「問題分類」和「內容提取」時，系統將使用此金鑰，FastGPT 不會計費。請確認金鑰有權存取所選模型。GPT 模型可選擇 FastAI。",
+  "open_api_notice": "您可以填寫 OpenAI 或 OneAPI 金鑰。在雲端平台使用「AI 對話」、「問題分類」和「內容提取」時，系統將使用此金鑰，AI Platform 不會計費。請確認金鑰有權存取所選模型。GPT 模型可選擇 FastAI。",
   "openai_account_configuration": "OpenAI/OneAPI 帳號",
   "request_address_notice": "請求地址，預設為 openai 官方。可填中轉位址，未自動補全 \"v1\"",
   "third_party_account": "第三方賬號",

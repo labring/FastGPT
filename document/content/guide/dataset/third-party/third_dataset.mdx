@@ -6,12 +6,12 @@ sidebarTag: DEV
 
 import { Alert } from '@/components/docs/Alert';
 
-目前，互联网上拥有各种各样的文档库，例如飞书，语雀等等。 FastGPT 的不同用户可能使用的文档库不同，目前 FastGPT 内置了飞书、语雀文档库，如果需要接入其他文档库，可以参考本节内容。
+目前，互联网上拥有各种各样的文档库，例如飞书，语雀等等。 AI Platform 的不同用户可能使用的文档库不同，目前 AI Platform 内置了飞书、语雀文档库，如果需要接入其他文档库，可以参考本节内容。
 
 
 ## 统一的接口规范
 
-为了实现对不同文档库的统一接入，FastGPT 对第三方文档库进行了接口的规范，共包含 4 个接口内容，可以[查看 API 文件库接口](./api_dataset.mdx)。
+为了实现对不同文档库的统一接入，AI Platform 对第三方文档库进行了接口的规范，共包含 4 个接口内容，可以[查看 API 文件库接口](./api_dataset.mdx)。
 
 所有内置的文档库，都是基于标准的 API 文件库进行扩展。可以参考`FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts`中的代码，进行其他文档库的扩展。一共需要完成 4 个接口开发：
 

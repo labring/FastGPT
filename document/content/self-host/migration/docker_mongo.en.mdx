@@ -11,12 +11,12 @@ description: FastGPT Docker MongoDB migration
 
 ## Overview
 
-How to use mongodump to migrate FastGPT's MongoDB from Environment A to Environment B.
+How to use mongodump to migrate AI Platform's MongoDB from Environment A to Environment B.
 
 Prerequisites:
 
-- Environment A: Your existing FastGPT deployment (e.g., on Alibaba Cloud) that needs to be migrated.
-- Environment B: The new FastGPT deployment (e.g., on Tencent Cloud, or a NAS like Synology/QNAP). Note: NAS deployments may require MongoDB 4.2 or 4.4, while cloud deployments support the default FastGPT MongoDB version.
+- Environment A: Your existing AI Platform deployment (e.g., on Alibaba Cloud) that needs to be migrated.
+- Environment B: The new AI Platform deployment (e.g., on Tencent Cloud, or a NAS like Synology/QNAP). Note: NAS deployments may require MongoDB 4.2 or 4.4, while cloud deployments support the default AI Platform MongoDB version.
 - Environment C: Your local machine, used as a staging area to hold files and coordinate the transfer.
 
 ## 1. Prepare: Access Docker MongoDB [Environment A]
@@ -32,7 +32,7 @@ Confirm you can see the fastgpt database and note the database name for export.
 Create a temporary directory for import/export on both the container and the host, e.g., data/backup [Environment A + Environment C].
 
 #### Create the directory in [Environment A] for the dump operation
-Enter the FastGPT Docker container:
+Enter the AI Platform Docker container:
 ```
 docker exec -it fastgpt sh
 mkdir -p /data/backup
@@ -41,7 +41,7 @@ mkdir -p /data/backup
 Once created, exported MongoDB data will appear in the `data/backup` directory under your local FastGPT installation folder (auto-synced via volume mount). If it doesn't sync automatically, you can manually create the directory and use `docker cp` to copy files out (this rarely happens).
 
 #### Then set up the [Environment C] host directory for syncing uploaded files into the container.
-Navigate to the FastGPT directory, go into the mongo folder, and create a backup subdirectory:
+Navigate to the AI Platform directory, go into the mongo folder, and create a backup subdirectory:
 ```
 mkdir -p /fastgpt/data/backup
 ```
@@ -56,7 +56,7 @@ Enter Environment A and use mongodump to export the MongoDB database.
 #### 2.1 Export
 Run mongodump to export data files to the temporary directory (data/backup).
 
-[The export path is set to /data/backup in the command. Since the FastGPT config already has data persistence set up, the exported files will sync to the host's fastgpt/mongo/data/backup directory.]
+[The export path is set to /data/backup in the command. Since the AI Platform config already has data persistence set up, the exported files will sync to the host's fastgpt/mongo/data/backup directory.]
 
 Single command to export (run on the host, no need to enter the container):
 ```
@@ -110,7 +110,7 @@ After downloading the archive to Environment C, extract it to a custom directory
 ```
 tar -xvzf fastgptbackup-2024-05-03.tar.gz -C user/fastgpt/mongobackup/data
 ```
-The extracted files should be .bson files. Verify the file count matches the source. If they don't match, the new FastGPT environment will have no data after import.
+The extracted files should be .bson files. Verify the file count matches the source. If they don't match, the new AI Platform environment will have no data after import.
 
 <img width="1561" alt="image" src="https://github.com/labring/FastGPT/assets/103937568/cbb8a93c-5834-4a0d-be6c-c45c701f593e" />
 
@@ -172,5 +172,5 @@ Error state:
 <img width="508" alt="iShot_2024-05-09_19 23 13" src="https://github.com/labring/FastGPT/assets/103937568/2e2afc9f-484c-4b63-93ee-1c14aef03de0" />
 
 
-6. After starting the FastGPT container, log in to the web UI. If all your original data is displayed, the migration was successful.
+6. After starting the AI Platform container, log in to the web UI. If all your original data is displayed, the migration was successful.
 <img width="1728" alt="iShot_2024-05-09_19 23 51" src="https://github.com/labring/FastGPT/assets/103937568/846b6157-6b6a-4468-a1d9-c44d681ebf7c" />

@@ -29,9 +29,9 @@ Before translating, read both of these references completely:
 - Read the complete Chinese source and every existing target file.
 - Use `rg` to find how the same product concept is translated elsewhere in `packages/web/i18n/en/`.
 - Inspect call sites for ambiguous labels, actions, state names, errors, or placeholders. Determine whether the text is a button, heading, status, description, toast, or validation message.
-- Follow this evidence order: the FastGPT glossary; feature behavior and UI context; nearby translation style; official n8n or Dify English product language; general technical usage.
+- Follow this evidence order: the AI Platform glossary; feature behavior and UI context; nearby translation style; official n8n or Dify English product language; general technical usage.
 - Match the longest glossary term first. A compound such as `知识库引用` overrides the separate entries for `知识库` and `引用`.
-- Treat forbidden glossary translations as errors. If a needed FastGPT product concept is missing from the glossary, report it instead of inventing a new canonical term.
+- Treat forbidden glossary translations as errors. If a needed AI Platform product concept is missing from the glossary, report it instead of inventing a new canonical term.
 - Never copy competitor terminology merely because it exists. If evidence still conflicts, pause and ask the user about the specific term.
 
 ### 3. Translate locale by locale

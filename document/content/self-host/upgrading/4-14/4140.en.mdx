@@ -10,8 +10,8 @@ upgradeTags:
 
 ### 1. Update Images:
 
-- Update FastGPT image tag: v4.14.0
-- Update FastGPT commercial edition image tag: v4.14.0
+- Update AI Platform image tag: v4.14.0
+- Update AI Platform commercial edition image tag: v4.14.0
 - Update fastgpt-plugin image tag: v0.3.0
 - mcp_server: no update needed
 - Sandbox: no update needed
@@ -32,12 +32,12 @@ This will migrate existing system tools to the latest data table.
 
 ### 3. Install System Plugins
 
-Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment and no longer comes with pre-installed system plugins. All FastGPT systems must manually install system plugins.
+Starting from V4.14.0, the fastgpt-plugin image only provides the runtime environment and no longer comes with pre-installed system plugins. All AI Platform systems must manually install system plugins.
 
 **Important Notes**
 
 - Previously manually installed JS plugin packages will become invalid and need to be repackaged and reinstalled.
-- Installing via the Plugin Marketplace will fetch data from the public FastGPT Marketplace by default.
+- Installing via the Plugin Marketplace will fetch data from the public AI Platform Marketplace by default.
 - If your FastGPT instance cannot access the Plugin Marketplace, you can manually visit the [FastGPT Plugin Marketplace](https://marketplace.fastgpt.cn/), download the .pkg file, and import it into your system.
 - In addition to installation, you can also sort tools, set default installations, manage tags, and more.
 - Currently, the plugin system only includes tools. Triggers, document parsers, data chunking strategies, and index enhancement strategies will be added in future releases.
@@ -49,7 +49,7 @@ In addition to installation, you can also sort tools, set default installations,
 
 ## New Features
 
-1. Added Plugin Marketplace, and removed custom plugin groups (only custom tags are retained). This release supports system tools that can be installed from the FastGPT Marketplace. Future releases will support more plugin types: workflow triggers, data source parsers, data chunking strategies, index enhancement strategies, and more.
+1. Added Plugin Marketplace, and removed custom plugin groups (only custom tags are retained). This release supports system tools that can be installed from the AI Platform Marketplace. Future releases will support more plugin types: workflow triggers, data source parsers, data chunking strategies, index enhancement strategies, and more.
 2. Files uploaded in the chat dialog are now stored in S3 and will not auto-expire -- they are deleted only when the chat record is deleted. Security is improved with signed preview links that expire after 1 hour instead of being long-lived.
 3. Global variables now support time point / time range / chat model selection types.
 4. Plugin input now supports password type.

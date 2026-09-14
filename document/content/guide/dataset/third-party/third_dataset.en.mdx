@@ -6,11 +6,11 @@ sidebarTag: DEV
 
 import { Alert } from '@/components/docs/Alert';
 
-There are many document libraries available online, such as Lark, Yuque, and others. Different FastGPT users may use different document libraries. FastGPT has built-in support for Lark and Yuque, but if you need to integrate other document libraries, follow this guide.
+There are many document libraries available online, such as Lark, Yuque, and others. Different AI Platform users may use different document libraries. AI Platform has built-in support for Lark and Yuque, but if you need to integrate other document libraries, follow this guide.
 
 ## Unified API Specification
 
-To provide a unified interface for different document libraries, FastGPT defines a standard API specification with 4 endpoints. See the [API File Library endpoints](./api_dataset.en.mdx).
+To provide a unified interface for different document libraries, AI Platform defines a standard API specification with 4 endpoints. See the [API File Library endpoints](./api_dataset.en.mdx).
 
 All built-in document libraries are extensions of the standard API File Library. Refer to the code in `FastGPT/packages/service/core/dataset/apiDataset/yuqueDataset/api.ts` to build extensions for other document libraries. You need to implement 4 endpoints:
 

@@ -13,7 +13,7 @@
   <a href="./README_ja.md">日本語</a>
 </p>
 
-FastGPT là nền tảng xây dựng AI Agent cung cấp khả năng sẵn sàng sử dụng cho xử lý dữ liệu và gọi mô hình. Ngoài ra, bạn có thể điều phối workflow thông qua trực quan hóa Flow để đạt được các kịch bản ứng dụng phức tạp!
+AI Platform là nền tảng xây dựng AI Agent cung cấp khả năng sẵn sàng sử dụng cho xử lý dữ liệu và gọi mô hình. Ngoài ra, bạn có thể điều phối workflow thông qua trực quan hóa Flow để đạt được các kịch bản ứng dụng phức tạp!
 
 </div>
 
@@ -36,7 +36,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## Bắt Đầu Nhanh
 
-Bạn có thể khởi động FastGPT nhanh chóng bằng Docker. Chạy lệnh sau trong terminal và làm theo hướng dẫn để tải cấu hình.
+Bạn có thể khởi động AI Platform nhanh chóng bằng Docker. Chạy lệnh sau trong terminal và làm theo hướng dẫn để tải cấu hình.
 
 ```bash
 # Chạy lệnh để tải file cấu hình
@@ -190,9 +190,9 @@ Chúng tôi rất hoan nghênh đóng góp dưới mọi hình thức. Nếu b�
 
 ## Giấy Phép
 
-Kho này tuân thủ [FastGPT Open Source License](./LICENSE).
+Kho này tuân thủ [AI Platform Open Source License](./LICENSE).
 
 1. Cho phép sử dụng thương mại như dịch vụ backend, nhưng không cho phép cung cấp dịch vụ SaaS.
 2. Bất kỳ dịch vụ thương mại nào không có giấy phép thương mại phải giữ lại thông tin bản quyền liên quan.
-3. Xem [FastGPT Open Source License](./LICENSE) để biết đầy đủ chi tiết.
+3. Xem [AI Platform Open Source License](./LICENSE) để biết đầy đủ chi tiết.
 4. Liên hệ: Dennis@sealos.io, [Xem Giá Thương Mại](https://doc.fastgpt.io/guide/version/commercial)

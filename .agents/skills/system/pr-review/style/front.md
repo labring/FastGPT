@@ -1,7 +1,7 @@
 
 # 前端组件开发规范
 
-FastGPT 使用 React + TypeScript + Chakra UI。
+AI Platform 使用 React + TypeScript + Chakra UI。
 
 ## 3.1 组件结构
 

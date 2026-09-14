@@ -58,7 +58,7 @@ This endpoint does not backfill `sourceType` for existing App Chat records.
 
 ### 3. Update environment variables (optional)
 
-Agent Sandbox now supports package registry mirror configuration. When configured, FastGPT writes mirror configuration files for npm, yarn, bun, pip, and uv under the sandbox HOME directory during sandbox initialization. This improves dependency installation stability in private networks or cross-region network environments.
+Agent Sandbox now supports package registry mirror configuration. When configured, AI Platform writes mirror configuration files for npm, yarn, bun, pip, and uv under the sandbox HOME directory during sandbox initialization. This improves dependency installation stability in private networks or cross-region network environments.
 
 ```dotenv
 # npm registry used by npm/yarn/pnpm/bun inside Agent Sandbox
@@ -71,8 +71,8 @@ The configuration is cached by content hash in the sandbox runtime state, so the
 
 ### 4. Update images
 
-- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta6.
-- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0-beta6.
+- Update the fastgpt-app (AI Platform main service) image tag to v4.15.0-beta6.
+- Update the fastgpt-pro (AI Platform commercial edition) image tag to v4.15.0-beta6.
 - Update the fastgpt-plugin image tag to v1.0.0-beta6.
 - Update the aiproxy image tag to v0.6.2.
 
@@ -93,7 +93,7 @@ Risk: trace records written before this upgrade do not have `teamId`, so they ca
 
 ## 🚀 New Features
 
-1. The commercial edition now supports local direct-connect debugging for FastGPT plugins.
+1. The commercial edition now supports local direct-connect debugging for AI Platform plugins.
 
 ## ⚙️ Improvements
 

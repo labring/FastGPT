@@ -101,7 +101,7 @@ function updateUser(id: string, data: UpdateUserData) {
   return db.users.updateOne({ id }, { $set: data });
 }
 
-// ✅ 多参数用对象收拢（FastGPT 规范：超过2个参数必须用对象）
+// ✅ 多参数用对象收拢（AI Platform 规范：超过2个参数必须用对象）
 type CreateItemParams = {
   name: string;
   type: string;

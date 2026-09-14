@@ -139,7 +139,7 @@ export const getChannelProviders = () =>
     >
   >('/channels/type_metas');
 
-/** FastGPT 所有渠道创建入口的统一提交方法，创建前按展示名称检查重复。 */
+/** AI Platform 所有渠道创建入口的统一提交方法，创建前按展示名称检查重复。 */
 export const postCreateChannel = async (data: CreateChannelProps) => {
   const name = data.name.trim();
   const channels = await getChannelList();

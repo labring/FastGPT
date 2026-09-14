@@ -13,7 +13,7 @@ const DesktopHomeHero = () => {
   return (
     <Flex flexDir="column" justifyContent="flex-end" alignItems="center" gap={4}>
       <Image
-        alt="fastgpt logo"
+        alt="AI Platform logo"
         w="224px"
         maxW="100%"
         src={wideLogo || DEFAULT_LOGO_BANNER_URL}

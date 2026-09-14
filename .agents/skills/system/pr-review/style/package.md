@@ -1,6 +1,6 @@
 # 5. 包结构与依赖规范
 
-FastGPT 是一个 monorepo,使用 pnpm workspaces。
+AI Platform 是一个 monorepo,使用 pnpm workspaces。
 
 ## 5.1 包结构
 

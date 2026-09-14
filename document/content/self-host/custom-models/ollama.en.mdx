@@ -7,7 +7,7 @@ description: Deploy your own models using Ollama
 
 ## Installing Ollama
 
-Ollama supports multiple installation methods, but Docker is recommended. If you install Ollama directly on your host machine, you'll need to figure out how to let the FastGPT Docker container access Ollama on the host, which can be tricky.
+Ollama supports multiple installation methods, but Docker is recommended. If you install Ollama directly on your host machine, you'll need to figure out how to let the AI Platform Docker container access Ollama on the host, which can be tricky.
 
 ### Docker Installation (Recommended)
 
@@ -18,7 +18,7 @@ docker pull ollama/ollama
 docker run --rm -d --name ollama -p 11434:11434 ollama/ollama
 ```
 
-If your FastGPT is deployed in Docker, make sure the Ollama container is on the same network as FastGPT. Otherwise, FastGPT may not be able to access it:
+If your AI Platform is deployed in Docker, make sure the Ollama container is on the same network as FastGPT. Otherwise, AI Platform may not be able to access it:
 
 ```bash
 docker run --rm -d --name ollama --network (your FastGPT container network) -p 11434:11434 ollama/ollama
@@ -83,7 +83,7 @@ ollama pull [model name]
 
 ### Test Communication
 
-After installation, verify connectivity by entering the FastGPT container and trying to reach Ollama:
+After installation, verify connectivity by entering the AI Platform container and trying to reach Ollama:
 
 ```bash
 docker exec -it [FastGPT container name] /bin/sh
@@ -107,15 +107,15 @@ ollama ls
 
 ### 2. AI Proxy Integration
 
-If you're using FastGPT's default configuration from [here](../deploy/docker.en.mdx), AI Proxy is enabled by default.
+If you're using AI Platform's default configuration from [here](../deploy/docker.en.mdx), AI Proxy is enabled by default.
 
 ![](../../../public/imgs/Ollama-aiproxy1.png)
 
-Make sure your FastGPT can access the Ollama container. If not, refer to the [installation section](#installing-ollama) above -- check whether the host isn't listening on 0.0.0.0 or the containers aren't on the same network.
+Make sure your AI Platform can access the Ollama container. If not, refer to the [installation section](#installing-ollama) above -- check whether the host isn't listening on 0.0.0.0 or the containers aren't on the same network.
 
 ![](../../../public/imgs/Ollama-aiproxy2.png)
 
-In FastGPT, go to Admin -> Model provider -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI. See details [here](../config/model/intro.en.mdx).
+In AI Platform, go to Admin -> Model provider -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI. See details [here](../config/model/intro.en.mdx).
 
 ![](../../../public/imgs/Ollama-models2.png)
 
@@ -131,7 +131,7 @@ Create an app in Studio and select the model you added. The model name shown is 
 
 ### 3. OneAPI Integration
 
-If you want to use OneAPI, pull the OneAPI image and run it on the same network as FastGPT:
+If you want to use OneAPI, pull the OneAPI image and run it on the same network as AI Platform:
 
 ```bash
 # Pull the OneAPI image
@@ -165,7 +165,7 @@ After completing the setup, [click here](#5-model-addition-and-usage) to add and
 
 ### 5. Model Addition and Usage
 
-In FastGPT, go to Admin -> Model provider -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI.
+In AI Platform, go to Admin -> Model provider -> Model configuration -> Add model. Make sure the model ID matches the model name in OneAPI.
 
 ![](../../../public/imgs/Ollama-models2.png)
 

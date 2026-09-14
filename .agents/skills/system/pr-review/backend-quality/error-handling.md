@@ -91,7 +91,7 @@ async function getUser(userId: string) {
   if (!user) throw new Error('User not found');  // 被框架捕获后返回 500
 }
 
-// ✅ 使用业务错误类（FastGPT 中使用 ERROR_ENUM）
+// ✅ 使用业务错误类（AI Platform 中使用 ERROR_ENUM）
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 async function getUser(userId: string) {

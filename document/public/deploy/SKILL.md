@@ -7,7 +7,7 @@ description: FastGPT Docker Compose self-hosting deployment workflow. Use when a
 
 ## 目标
 
-在一台已有终端访问权限的 Linux、macOS 或 Windows WSL 服务器上，通过 FastGPT 官方交互式脚本生成 Docker Compose 配置，启动服务，确认 FastGPT 可访问，最后把访问地址、账号、密码和下一步动作交给用户。
+在一台已有终端访问权限的 Linux、macOS 或 Windows WSL 服务器上，通过 AI Platform 官方交互式脚本生成 Docker Compose 配置，启动服务，确认 AI Platform 可访问，最后把访问地址、账号、密码和下一步动作交给用户。
 
 ## 工作边界
 

@@ -296,7 +296,7 @@
   "interactive.user_select.expand_options": "展開選項",
   "interactive.user_select.selected": "已選擇：{{answer}}",
   "interactive.agent_ask.question_progress": "問題 {{current}} / {{total}}",
-  "interactive.agent_ask.custom_answer": "告訴 FastGPT 你的想法",
+  "interactive.agent_ask.custom_answer": "告訴 AI Platform 你的想法",
   "interactive.agent_ask.skip": "跳過",
   "interactive.agent_ask.skip_all": "跳過所有題目",
   "interactive.agent_ask.unanswered": "未回答",

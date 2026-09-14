@@ -5,7 +5,7 @@ description: Use Marker to parse PDF documents with image extraction and layout 
 
 ## Background
 
-PDF is a relatively complex file format. FastGPT's built-in PDF parser relies on the pdfjs library, which uses logical parsing and cannot effectively handle complex PDF files. When parsing PDFs containing images, tables, formulas, or other non-plain-text content, the results are often poor.
+PDF is a relatively complex file format. AI Platform's built-in PDF parser relies on the pdfjs library, which uses logical parsing and cannot effectively handle complex PDF files. When parsing PDFs containing images, tables, formulas, or other non-plain-text content, the results are often poor.
 
 There are several PDF parsing solutions available. [Marker](https://github.com/VikParuchuri/marker) uses the Surya model for vision-based parsing, effectively extracting images, tables, formulas, and other complex content.
 
@@ -79,7 +79,7 @@ Note that [Marker](https://github.com/VikParuchuri/marker) is licensed under `GP
 
 ## Legacy Marker Usage
 
-For FastGPT versions before V4.9.0, you can use the following method for Marker parsing.
+For AI Platform versions before V4.9.0, you can use the following method for Marker parsing.
 
 Install and run the Marker service:
 
@@ -88,7 +88,7 @@ docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/
 docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
 ```
 
-Then modify the FastGPT environment variables:
+Then modify the AI Platform environment variables:
 
 ```
 CUSTOM_READ_FILE_URL=http://xxxx.com/v1/parse/file

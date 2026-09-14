@@ -56,7 +56,7 @@ After sending a question about `fastgpt`, you'll see Cursor invoke an MCP tool (
 
 ## Configure Identity Proxy
 
-Identity proxy lets a caller select the team member who executes an MCP tool. FastGPT checks that member's read permission for the target application and attributes chat and runtime records to that member. Use it when a gateway or shared MCP client sends requests on behalf of different team members.
+Identity proxy lets a caller select the team member who executes an MCP tool. AI Platform checks that member's read permission for the target application and attributes chat and runtime records to that member. Use it when a gateway or shared MCP client sends requests on behalf of different team members.
 
 ### Prerequisites
 
@@ -72,7 +72,7 @@ When a request does not include an identity proxy header, the tool continues to 
 
 ### 2. Configure the proxy identity headers
 
-Pass the identity in the MCP transport headers, not in the tool arguments. FastGPT accepts these headers:
+Pass the identity in the MCP transport headers, not in the tool arguments. AI Platform accepts these headers:
 
 | Header                          | Value                      | Description                                                      |
 | ------------------------------- | -------------------------- | ---------------------------------------------------------------- |
@@ -118,7 +118,7 @@ If the tool list loads but a tool call returns an authorization error, check the
 4. The member is still active in the team that published the MCP Server.
 5. The member has read permission for the application being called.
 
-The tool list exposes only metadata such as tool names and parameters. FastGPT rechecks team membership and application permission for every tool call.
+The tool list exposes only metadata such as tool names and parameters. AI Platform rechecks team membership and application permission for every tool call.
 
 ## Self-Hosted MCP Server Setup
 
@@ -152,7 +152,7 @@ environment:
 
 ### Restart FastGPT
 
-Restart FastGPT after changing the environment variable:
+Restart AI Platform after changing the environment variable:
 
 ```bash
 docker-compose down

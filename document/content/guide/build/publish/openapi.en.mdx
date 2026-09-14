@@ -5,7 +5,7 @@ description: Access FastGPT app via API
 
 import { Alert } from '@/components/docs/Alert';
 
-In FastGPT, the API entry under Publish Channels shows **API Keys** available to the current signed-in member. API Keys are member credentials for OpenAPI calls and are no longer created as app-scoped keys.
+In AI Platform, the API entry under Publish Channels shows **API Keys** available to the current signed-in member. API Keys are member credentials for OpenAPI calls and are no longer created as app-scoped keys.
 
 When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](../../../openapi/intro.en.mdx).
 

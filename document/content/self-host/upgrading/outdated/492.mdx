@@ -29,8 +29,8 @@ upgradeTags:
 
 ### 4. 更新镜像
 
-- 更新 FastGPT 镜像 tag: v4.9.2
-- 更新 FastGPT 商业版镜像 tag: v4.9.2
+- 更新 AI Platform 镜像 tag: v4.9.2
+- 更新 AI Platform 商业版镜像 tag: v4.9.2
 - Sandbox 镜像，可以不更新
 - AIProxy 镜像修改为: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.1.4
 
@@ -44,7 +44,7 @@ upgradeTags:
 2. 知识库分块增加自定义分隔符预设值，同时支持自定义换行符分割。
 3. 外部变量改名：自定义变量。并且支持在测试时调试，在分享链接中，该变量直接隐藏。
 4. 集合同步时，支持同步修改标题。
-5. 团队成员管理重构，抽离主流 IM SSO（企微、飞书、钉钉），并支持通过自定义 SSO 接入 FastGPT。同时完善与外部系统的成员同步。
+5. 团队成员管理重构，抽离主流 IM SSO（企微、飞书、钉钉），并支持通过自定义 SSO 接入 AI Platform。同时完善与外部系统的成员同步。
 6. 支持 `oceanbase` 向量数据库。填写环境变量 `OCEANBASE_URL` 即可。
 7. 基于 mistral-ocr 的 PDF 解析示例。
 8. 基于 miner-u 的 PDF 解析示例。
@@ -54,7 +54,7 @@ upgradeTags:
 1. 导出对话日志时，支持导出成员名。
 2. 邀请链接交互。
 3. 无 SSL 证书时复制失败，会提示弹窗用于手动复制。
-4. FastGPT 未内置 ai proxy 渠道时，也能正常展示其名称。
+4. AI Platform 未内置 ai proxy 渠道时，也能正常展示其名称。
 5. 升级 nextjs 版本至 14.2.25。
 6. 工作流节点数组字符串类型，自动适配 string 输入。
 7. 工作流节点数组类型，自动进行 JSON parse 解析 string 输入。

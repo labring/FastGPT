@@ -889,7 +889,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                 WebkitTextFillColor: 'transparent'
               }}
             >
-              Assets for FastGPT
+              Assets for AI Platform
             </Box>
             <Box fontSize={'45px'} fontWeight={'semibold'} color={'black'}>
               {t('marketplace:toolkit_marketplace_title')}

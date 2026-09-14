@@ -3,7 +3,7 @@ title: 插件系统说明
 description: FastGPT 插件系统说明
 ---
 
-> 本文档适用于 FastGPT Plugin v1.0.0 及以上版本的插件系统。
+> 本文档适用于 AI Platform Plugin v1.0.0 及以上版本的插件系统。
 
 ## 背景
 
@@ -11,20 +11,20 @@ description: FastGPT 插件系统说明
 
 随着系统工具数量和社区贡献增加，旧结构暴露出几个问题：
 
-1. 系统插件必须伴随 FastGPT 主服务一起发版，限制了插件迭代速度。
-2. 社区贡献插件需要运行完整 FastGPT 应用，并直接向主仓库提交 PR。
-3. 使用自定义插件需要维护 FastGPT fork，手动处理升级和合并。
+1. 系统插件必须伴随 AI Platform 主服务一起发版，限制了插件迭代速度。
+2. 社区贡献插件需要运行完整 AI Platform 应用，并直接向主仓库提交 PR。
+3. 使用自定义插件需要维护 AI Platform fork，手动处理升级和合并。
 4. Next.js/webpack 构建模型不适合在运行时挂载新插件。
 
 因此，系统插件被拆分到独立仓库：
 
 [FastGPT Plugin](https://github.com/labring/fastgpt-plugin)
 
-FastGPT Plugin v1.0.0 对插件项目进行了系统性重构，目标是让插件的安装、版本管理、运行隔离和运维配置形成统一模型。
+AI Platform Plugin v1.0.0 对插件项目进行了系统性重构，目标是让插件的安装、版本管理、运行隔离和运维配置形成统一模型。
 
 ## 设计目标
 
-FastGPT Plugin 的核心目标：
+AI Platform Plugin 的核心目标：
 
 1. 解耦和模块化：系统工具、模型预设、App 模板等能力可以独立迭代，后续也能扩展 RAG 算法、Agent 策略和第三方接入。
 2. 插件包统一协议：使用 `.pkg` 文件管理插件安装、更新和分发，为后续插件类型预留扩展空间。
@@ -52,7 +52,7 @@ FastGPT Plugin 的核心目标：
 fastgpt-plugin/
 ├── apps/
 │   ├── cli/                    # 插件开发、构建、检查、打包、调试命令行
-│   ├── server/                 # FastGPT Plugin HTTP 服务
+│   ├── server/                 # AI Platform Plugin HTTP 服务
 │   └── debug-runtime-monitor/  # 本地运行时监控调试面板
 ├── packages/
 │   ├── domain/                 # 领域实体、值对象、端口定义
@@ -61,7 +61,7 @@ fastgpt-plugin/
 │   ├── infrastructure/         # Hono、Mongo、S3、Redis、运行时、日志、指标等实现
 │   └── shared/                 # 跨层复用的纯工具函数
 ├── sdk/
-│   ├── client/                 # 调用 FastGPT Plugin 服务的客户端 SDK
+│   ├── client/                 # 调用 AI Platform Plugin 服务的客户端 SDK
 │   └── factory/                # 插件作者侧 SDK
 ├── test/                       # 跨包测试工具与 fixtures
 └── docs/                       # 项目文档
@@ -80,7 +80,7 @@ fastgpt-plugin/
 
 ## 仓库分工
 
-FastGPT Plugin 生态主要涉及以下仓库：
+AI Platform Plugin 生态主要涉及以下仓库：
 
 | 仓库                        | 作用                                           |
 | --------------------------- | ---------------------------------------------- |
@@ -93,7 +93,7 @@ FastGPT Plugin 生态主要涉及以下仓库：
 
 ## 插件市场与使用边界
 
-FastGPT Marketplace 是插件分发渠道，用于集中展示和分发官方及社区插件。当前边界如下：
+AI Platform Marketplace 是插件分发渠道，用于集中展示和分发官方及社区插件。当前边界如下：
 
 - Marketplace 是 SaaS 分发服务，不提供私有化部署版本。
 - 社区插件需要先提交到 Community Plugins 仓库，经基础审核后再进入 Marketplace。
@@ -102,7 +102,7 @@ FastGPT Marketplace 是插件分发渠道，用于集中展示和分发官方及
 
 ## 插件安装与管理
 
-FastGPT Plugin 服务负责插件包管理、运行时注册、插件调用转发和系统级配置管理。FastGPT 主服务通过插件运行时接口调用插件，插件服务负责把调用分发到对应运行时。
+AI Platform Plugin 服务负责插件包管理、运行时注册、插件调用转发和系统级配置管理。AI Platform 主服务通过插件运行时接口调用插件，插件服务负责把调用分发到对应运行时。
 
 系统插件安装主要有两种方式：
 

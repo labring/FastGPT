@@ -21,10 +21,10 @@ FE_DOMAIN=https://fastgpt.example.com
 
 V4.15.4 起，`SYNC_INDEX` 弃用，新增 `MONGO_DEPRECATE_INDEX` 环境变量，用于控制是否清理 Schema 显式标记的废弃索引，默认值为 `true`。设置为 `false` 时只跳过废弃索引清理，不影响当前 Schema 缺失索引的创建。
 
-FastGPT 启动时会自动执行安全的主动同步：
+AI Platform 启动时会自动执行安全的主动同步：
 
-- 创建当前 FastGPT Schema 中缺失的索引。
-- 仅删除对应 Schema 明确标记为废弃、且 name、key 和关键 options 完全匹配的 FastGPT 系统内置历史索引。
+- 创建当前 AI Platform Schema 中缺失的索引。
+- 仅删除对应 Schema 明确标记为废弃、且 name、key 和关键 options 完全匹配的 AI Platform 系统内置历史索引。
 - 保留客户自建索引及其他未声明的索引。
 
 该同步不会调用 Mongoose 的全量 `syncIndexes()`，因此不会按“未在 Schema 中声明”这一条件批量删除索引。

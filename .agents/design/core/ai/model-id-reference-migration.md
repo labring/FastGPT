@@ -521,7 +521,7 @@ const displayModel =
 - 历史模型权限以 `resourceName` 为身份来源；4163 先从完整 `ai_models` 按 provider model 名精确映射，再补 `resourceId = modelId`。
 - `resourceName` 只作为迁移时的旧名称快照保留，不参与运行时权限判断，也不扩展私有模型所有权语义。
 - `getMyModels`、`getMyModel` 和协作者 list/update API 只接收 `modelId`，权限查询只使用 `resourceId`。4163 对无法通过现有 `resourceId` 或 `resourceName` 映射到 `ai_models` 的模型权限执行悬空删除；权限迁移不按模型启停状态过滤，也绝不回退到其他同类型模型。
-- FastGPT Pro 中现有模型协作者 API 需要同步修改，否则 available model 过滤仍会按名称失配。
+- AI Platform Pro 中现有模型协作者 API 需要同步修改，否则 available model 过滤仍会按名称失配。
 - 不在本轮增加“创建者即所有者”、团队成员 groupId、跨成员私有模型授权等规则。
 
 ## 9. 客户端可用模型获取优化
@@ -600,7 +600,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 鉴权的 `getMyModel` 与公开的 `getSystemModels` 分别使用独立最小 Schema，并注册 OpenAPI；不能为了复用直接返回管理员模型详情 DTO。
 - 新增或修改的 API 在边界使用 `parseApiInput`；实体自身的 ObjectId 字段复用 `ObjectIdSchema`，模型引用字段统一使用 `z.string()`。
 - 模型列表响应的通用业务结构放在 `packages/global/core/ai`，OpenAPI 只组合路由请求和响应。
-- FastGPT Pro 至少需要同步 Evaluation 和模型协作者调用方；Pro 的页面布局、渠道页和统计页不随本 PR 进入。
+- AI Platform Pro 至少需要同步 Evaluation 和模型协作者调用方；Pro 的页面布局、渠道页和统计页不随本 PR 进入。
 - 外部 OpenAI 兼容接口继续声明 `model`，不要为了内部 modelId 改坏标准协议。
 - 4163 资源回填由 App 自动升级框架执行，不保留可绕过 lease 的手工写接口；管理端只通过通用升级 API 查看状态、失败数据和触发断点重试。
 
@@ -680,7 +680,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 旧记录迁移时保留 legacy 字段，因此回滚旧镜像仍能读取这些旧记录。
 - 新版本创建的记录只写 modelId，旧镜像无法读取这部分新记录。
 - 资源引用回填在新版本部署完成后执行；普通业务引用在回填前兼容读取 legacy 字段。模型协作者权限只过滤客户端目录，后端执行链暂不鉴权，这是跨越迁移窗口持续生效的已确认临时产品边界，而不是缓存 TTL 或发布窗口内的偶发弱一致性。新写入仍只写 modelId，故不能在会同时处理写请求的新旧应用实例之间长期滚动混跑。
-- FastGPT 与 Pro 滚动发布期间，新 Usage 的 modelId 可能暂时无法被旧侧展示解析；该短窗口仅影响模型归因展示，金额和 token 不受影响，已明确接受，不增加双写。
+- AI Platform 与 Pro 滚动发布期间，新 Usage 的 modelId 可能暂时无法被旧侧展示解析；该短窗口仅影响模型归因展示，金额和 token 不受影响，已明确接受，不增加双写。
 - 如果部署要求新旧实例长期混跑，就必须临时双写 legacy 字段；这与“新保存只有 modelId”的已确认要求冲突，需要另行决策，不能隐式实现。
 
 ## 12. 代码改动分区
@@ -807,7 +807,7 @@ export const GetMyModelsResponseSchema = PaginationResponseSchema(ClientModelIte
 - 数据扫描中，所有启用中的业务配置均存在类型正确且可解析的 modelId；VLM、TTS、问题引导等可选能力按启用状态判断。
 - 代码静态审计中，除 provider 协议、模型配置导入和明确保留的历史展示外，不再把 `model` 当作平台模型身份。
 - Workflow 样本覆盖静态值、引用值、`{{...}}` 动态值、重复 key、缺失模型和错误类型；不能仅凭普通 AI Chat 节点通过就删除运行时兼容。
-- FastGPT 与 FastGPT Pro 的 Evaluation、模型协作者和权限缓存行为同步通过验证。
+- AI Platform 与 AI Platform Pro 的 Evaluation、模型协作者和权限缓存行为同步通过验证。
 - 回滚策略已明确：删除 legacy 字段或旧集合后，旧镜像不再具备读取新数据的能力，不能再把回滚视为无数据风险操作。
 
 ## 15. 实施 TODO

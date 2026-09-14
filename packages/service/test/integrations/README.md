@@ -26,5 +26,5 @@ timeouts and lifecycle recovery use separate budgets because they intentionally 
 state transitions.
 
 The suite includes the multi-Chat and concurrent-command case. Every fixture creates a unique App
-source and is removed through FastGPT's delete lifecycle, including provider runtime, egress
+source and is removed through AI Platform's delete lifecycle, including provider runtime, egress
 sidecar, persistent volume, archive phase, and Mongo record.

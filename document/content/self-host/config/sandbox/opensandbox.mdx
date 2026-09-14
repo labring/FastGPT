@@ -9,7 +9,7 @@ import { Alert } from '@/components/docs/Alert';
   OpenSandbox 方案默认未做网络隔离。如有安全隔离要求，请自行补充网络隔离策略。
 </Alert>
 
-OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。FastGPT 通过 OpenSandbox Server 创建沙盒，并通过 Agent Sandbox Proxy 为浏览器提供文件、终端和预览访问能力。
+OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。AI Platform 通过 OpenSandbox Server 创建沙盒，并通过 Agent Sandbox Proxy 为浏览器提供文件、终端和预览访问能力。
 
 ## Docker Compose 配置
 
@@ -97,7 +97,7 @@ AGENT_SANDBOX_STORAGE_SIZE_GI=1
 `fastgpt-pro` 不提供 Sandbox Editor 和 WebSocket Proxy 链路，因此不要求 `AGENT_SANDBOX_PROXY_SECRET` 和 `AGENT_SANDBOX_PROXY_URL`，但必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。
 
 <Alert icon="⚠️" context="warning">
-  预览代理应部署在与 FastGPT 主站不同的 origin（协议、域名或端口至少一项不同）。Sandbox 中的 HTML
+  预览代理应部署在与 AI Platform 主站不同的 origin（协议、域名或端口至少一项不同）。Sandbox 中的 HTML
   可能包含用户生成的脚本；如果预览地址与主站同源，脚本可能访问主站凭证或接口。
 </Alert>
 

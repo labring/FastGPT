@@ -34,7 +34,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
     throw new Error('Sandbox terminal is only available in edit debug sessions');
   }
 
-  // 1. 复用 FastGPT 现有的多租户与 Session 安全鉴权
+  // 1. 复用 AI Platform 现有的多租户与 Session 安全鉴权
   const {
     uid,
     teamId,

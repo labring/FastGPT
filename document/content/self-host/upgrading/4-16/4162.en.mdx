@@ -15,7 +15,7 @@ V4.16.2 removes `PARSE_FILE_WORKERS`, `PARSE_FILE_WORKER_MEMORY_LIMIT_MB`, `HTML
 
 The hard limit for file parsing Workers is now set automatically based on the available CPU parallelism detected by Node.js. This accounts for container CPU quotas and process affinity and always allows at least one Worker. The number of tasks that can run concurrently is further constrained by the file parsing memory scheduler.
 
-The hard limit for HTML-to-Markdown and text-chunking Workers is the smaller of the available CPU parallelism and 5. Before starting a task, FastGPT checks whether schedulable memory remains outside the system safety reserve. If no memory is available, the task stays queued. FastGPT retries immediately when another task finishes, then checks every 30 seconds if memory is still insufficient, for up to 30 minutes. Workers that remain idle for more than 60 seconds are reclaimed automatically, with at most one retained long-term.
+The hard limit for HTML-to-Markdown and text-chunking Workers is the smaller of the available CPU parallelism and 5. Before starting a task, AI Platform checks whether schedulable memory remains outside the system safety reserve. If no memory is available, the task stays queued. AI Platform retries immediately when another task finishes, then checks every 30 seconds if memory is still insufficient, for up to 30 minutes. Workers that remain idle for more than 60 seconds are reclaimed automatically, with at most one retained long-term.
 
 ### 2. Update images
 
@@ -77,7 +77,7 @@ Follow [Milvus BM25 full-text search configuration and migration](/self-host/mil
 3. Improved the resilience of S3 multipart uploads on unstable networks.
 4. Standardized file upload error messages.
 5. Improved Skill saving by extracting `name` and `description` into structured fields and allowing an empty `description`.
-6. Improved repeated tool call anomaly detection. Instead of checking only the call count and number of tools, FastGPT now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
+6. Improved repeated tool call anomaly detection. Instead of checking only the call count and number of tools, AI Platform now treats more than five consecutive calls to the same tool with the same arguments as a model hallucination.
 7. Preserved complete failed tool responses from Agent tool calls and exposed failure details in `nodeResponse`, `toolResponse`, and streaming events.
 8. Unified sub-workflow output and billing across Workflow Tool, ToolCall, and Agent runs. Commercial tool failures no longer incur call or token fees, while `pluginOutput.error` from personal Workflow Tools remains a business field.
 9. Attributed enhanced PDF parsing charges to the `read_files` tool Node and preserved page-count details. Propagated `usageId` through external-file and API-file Dataset parsing so charges are attributed correctly.
@@ -110,6 +110,6 @@ Follow [Milvus BM25 full-text search configuration and migration](/self-host/mil
 7. Improved memory and concurrency control for file parsing. Queued tasks now retain only a lightweight file source instead of the full Buffer. Trusted S3 files reserve resources based on their known size, while external URLs update their reservation as bytes stream in and enforce both file-size and per-task memory hard limits. This reduces OOM risk during concurrent parsing.
 8. Standardized file parsing input on `FileSource` and materialized file content only after a Worker acquires a run slot and its initial resource reservation:
    - Trusted S3 sources obtain the file size from object metadata and reserve the resources required for both materialization and parsing. The upload stage has already enforced the business file-size limit, so parsing does not repeat that check.
-   - Untrusted external URLs declare only the parser's base reservation when queued. During download, FastGPT enforces the business file-size limit and permanent per-task memory limit, then monotonically increases the soft reservation with the actual byte count. Exhausting currently available capacity blocks subsequent tasks without interrupting a download that is already running.
+   - Untrusted external URLs declare only the parser's base reservation when queued. During download, AI Platform enforces the business file-size limit and permanent per-task memory limit, then monotonically increases the soft reservation with the actual byte count. Exhausting currently available capacity blocks subsequent tasks without interrupting a download that is already running.
    - The wait queue has no task-count or aggregate estimated-resource limit and retains only the 30-minute queue timeout. Failures, timeouts, and Worker exits abort unfinished downloads and release all reservations.
 9. Refactored the model selection data structure.

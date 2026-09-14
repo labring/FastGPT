@@ -12,7 +12,7 @@ upgradeTags:
 ### Configure the required FE_DOMAIN
 
 FastGPT services now validate `FE_DOMAIN` at startup. Set it to the origin clients use to access
-FastGPT, including the scheme, host, and optional port. Use the public client-facing origin in
+AI Platform, including the scheme, host, and optional port. Use the public client-facing origin in
 production; local development can use `http://localhost:3000`.
 
 ```bash
@@ -23,10 +23,10 @@ FE_DOMAIN=https://fastgpt.example.com
 
 Starting with V4.15.4, `SYNC_INDEX` is deprecated and replaced by `MONGO_DEPRECATE_INDEX`. The new variable controls whether indexes explicitly marked as deprecated by a schema are removed and defaults to `true`. Setting it to `false` skips only deprecated-index cleanup; missing current schema indexes are still created.
 
-FastGPT now performs safe index synchronization automatically at startup:
+AI Platform now performs safe index synchronization automatically at startup:
 
-- Creates indexes that are missing from the current FastGPT schemas.
-- Removes only built-in historical FastGPT indexes explicitly marked as deprecated by the corresponding schema and whose name, key, and relevant options match exactly.
+- Creates indexes that are missing from the current AI Platform schemas.
+- Removes only built-in historical AI Platform indexes explicitly marked as deprecated by the corresponding schema and whose name, key, and relevant options match exactly.
 - Preserves custom indexes and any other indexes that are not explicitly declared as deprecated.
 
 This process does not call Mongoose's full `syncIndexes()` operation, so indexes are never removed simply because they are absent from a FastGPT schema.

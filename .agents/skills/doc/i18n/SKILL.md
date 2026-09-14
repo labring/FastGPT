@@ -5,12 +5,12 @@ description: 将 FastGPT 文档从中文翻译为面向北美用户的英文。�
 
 ## 概述
 
-FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标语言。你的任务是将中文文档翻译为自然流畅的北美英文，而非逐字直译。
+AI Platform 文档采用双文件 i18n 方案，中文为源语言，英文为目标语言。你的任务是将中文文档翻译为自然流畅的北美英文，而非逐字直译。
 
 开始翻译前，必须完整阅读并遵守以下共享规则：
 
-- [FastGPT 产品翻译规范](../../system/i18n-translate/references/translation-guidelines.md)
-- [FastGPT 专有名词库](../../system/i18n-translate/references/fastgpt-glossary.json)
+- [AI Platform 产品翻译规范](../../system/i18n-translate/references/translation-guidelines.md)
+- [AI Platform 专有名词库](../../system/i18n-translate/references/fastgpt-glossary.json)
 
 共享词库是产品术语的唯一事实来源，优先级高于现有英文文档、同类产品用词和通用技术习惯。不要在本 Skill 中维护第二套产品词表。
 
@@ -118,7 +118,7 @@ FastGPT 文档采用双文件 i18n 方案，中文为源语言，英文为目标
 
 ### 技术术语
 
-FastGPT 产品概念必须使用共享专有名词库，不得因为现有文档或竞品采用其他叫法而替换。例如：
+AI Platform 产品概念必须使用共享专有名词库，不得因为现有文档或竞品采用其他叫法而替换。例如：
 
 - `知识库` → `Dataset`，不是 `Knowledge Base`
 - `数据集` → `Collection`，不是 `Dataset`

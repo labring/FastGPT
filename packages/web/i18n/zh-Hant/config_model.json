@@ -51,7 +51,7 @@
   "log_request_id_search": "根據 requestId 搜尋",
   "log_status": "狀態",
   "mapping": "模型對映",
-  "mapping_tip": "請輸入有效的 JSON，以便在向實際端點傳送請求前對應模型名稱。例如：\n{\n  \"gpt-4o\": \"gpt-4o-test\"\n}\n當 FastGPT 請求 gpt-4o 時，實際端點會收到 gpt-4o-test。",
+  "mapping_tip": "請輸入有效的 JSON，以便在向實際端點傳送請求前對應模型名稱。例如：\n{\n  \"gpt-4o\": \"gpt-4o-test\"\n}\n當 AI Platform 請求 gpt-4o 時，實際端點會收到 gpt-4o-test。",
   "maxToken_tip": "模型 max_tokens 參數",
   "rerank_max_token": "最大 Tokens",
   "rerank_max_token_tip": "Rerank 階段單次請求的 token 上限（query + 單個文件），超出限制的文件會被自動切分",

@@ -9,7 +9,7 @@ description: FastGPT integration with SigNoz service monitoring
 
 **Key Features:**
 
-- **Distributed Tracing**: Track the complete call chain of user requests across FastGPT services
+- **Distributed Tracing**: Track the complete call chain of user requests across AI Platform services
 - **Performance Monitoring**: Monitor key metrics like API response times and throughput
 - **Error Tracking**: Automatically capture and record system exceptions for troubleshooting
 - **Log Aggregation**: Centrally collect and manage application logs with structured query support
@@ -39,7 +39,7 @@ After the change completes, wait for the public address to be ready, copy it, an
 
 ## Configure FastGPT
 
-1. Update FastGPT environment variables
+1. Update AI Platform environment variables
 
 **Log level options**: `trace` | `debug` | `info` | `warning` | `error` | `fatal`
 
@@ -52,7 +52,7 @@ LOG_OTEL_SERVICE_NAME=fastgpt-client # Service name passed to the OTLP collector
 LOG_OTEL_URL=http://localhost:4318/v1/logs # Your OTLP collector address — don't omit /v1/logs
 ```
 
-2. Restart FastGPT
+2. Restart AI Platform
 
 ## Verify the Setup
 
@@ -76,6 +76,6 @@ After logging in, if `logs` and `traces` are lit up in the COMPLETED steps on th
 
 1. Adjust log retention period
 
-SigNoz monitoring is very disk-intensive. First, avoid storing FastGPT debug logs in SigNoz. Also consider setting the log retention period to 7 days. If SigNoz data stops growing while memory keeps increasing, the disk is full — expand capacity.
+SigNoz monitoring is very disk-intensive. First, avoid storing AI Platform debug logs in SigNoz. Also consider setting the log retention period to 7 days. If SigNoz data stops growing while memory keeps increasing, the disk is full — expand capacity.
 
 ![alt text](../../../public/imgs/image-119.png)

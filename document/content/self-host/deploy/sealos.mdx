@@ -11,7 +11,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ## 多模型支持
 
-FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI、Azure、国内主流模型和本地模型等。
+AI Platform 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI、Azure、国内主流模型和本地模型等。
 
 可参考：[Sealos 快速部署 OneAPI](../config/model/intro.mdx)
 
@@ -89,7 +89,7 @@ Sealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁
 
 ### 简介
 
-FastGPT 商业版共包含了 2 个应用（fastgpt, fastgpt-plus）和 2 个数据库，使用多 API Key 时候需要安装 OneAPI（一个应用和一个数据库），总计 3 个应用和 3 个数据库。
+AI Platform 商业版共包含了 2 个应用（fastgpt, fastgpt-plus）和 2 个数据库，使用多 API Key 时候需要安装 OneAPI（一个应用和一个数据库），总计 3 个应用和 3 个数据库。
 
 ![](../../../public/imgs/onSealos1.png)
 
@@ -104,7 +104,7 @@ FastGPT 商业版共包含了 2 个应用（fastgpt, fastgpt-plus）和 2 个数
 ![](../../../public/imgs/fastgptonsealos1.png)
 
 <Alert icon="🤖" context="success">
-  在 Sealos 上，FastGPT 一共运行了 1 个服务和 2
+  在 Sealos 上，AI Platform 一共运行了 1 个服务和 2
   个数据库，如暂停和删除请注意数据库一同操作。（你可以白天启动，晚上暂停它们，省钱大法）
 </Alert>
 
@@ -152,7 +152,7 @@ FastGPT 商业版共包含了 2 个应用（fastgpt, fastgpt-plus）和 2 个数
 修改应用的环境变量，增加
 
 ```
-SYSTEM_NAME=FastGPT
+SYSTEM_NAME=AI Platform
 SYSTEM_DESCRIPTION=
 SYSTEM_FAVICON=/favicon.ico
 HOME_URL=/dashboard/agent

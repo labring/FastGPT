@@ -1,5 +1,5 @@
 {
-  "account_knowledge_base_cleanup_warning": "If no one on a Free Team signs in for 30 consecutive days, FastGPT automatically removes the Team’s Dataset content.",
+  "account_knowledge_base_cleanup_warning": "If no one on a Free Team signs in for 30 consecutive days, AI Platform automatically removes the Team’s Dataset content.",
   "active": "Active",
   "account_cancellation": "Delete account",
   "account_cancellation_account": "Account to delete",

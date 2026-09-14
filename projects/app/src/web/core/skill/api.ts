@@ -81,7 +81,7 @@ export const postCopySkill = (data: CopySkillBody) =>
 /** 删除 Skill */
 export const deleteSkill = (skillId: string) => DELETE('/core/ai/skill/delete', { skillId });
 
-/** 以原始请求体导入 Skill，文件流不落 FastGPT 本地临时目录。 */
+/** 以原始请求体导入 Skill，文件流不落 AI Platform 本地临时目录。 */
 export const importSkill = ({
   file,
   ...query

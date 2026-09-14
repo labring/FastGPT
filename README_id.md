@@ -13,7 +13,7 @@
   <a href="./README_ja.md">日本語</a>
 </p>
 
-FastGPT adalah platform pembangunan AI Agent yang menyediakan kemampuan siap pakai untuk pemrosesan data dan pemanggilan model. Selain itu, Anda dapat mengorkestrasikan workflow melalui visualisasi Flow untuk mencapai skenario aplikasi yang kompleks!
+AI Platform adalah platform pembangunan AI Agent yang menyediakan kemampuan siap pakai untuk pemrosesan data dan pemanggilan model. Selain itu, Anda dapat mengorkestrasikan workflow melalui visualisasi Flow untuk mencapai skenario aplikasi yang kompleks!
 
 </div>
 
@@ -36,7 +36,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## Mulai Cepat
 
-Anda dapat memulai FastGPT dengan cepat menggunakan Docker. Jalankan perintah berikut di terminal dan ikuti panduan untuk menarik konfigurasi.
+Anda dapat memulai AI Platform dengan cepat menggunakan Docker. Jalankan perintah berikut di terminal dan ikuti panduan untuk menarik konfigurasi.
 
 ```bash
 # Jalankan perintah untuk menarik file konfigurasi
@@ -190,9 +190,9 @@ Kami sangat menyambut kontribusi dalam berbagai bentuk. Jika Anda tertarik berko
 
 ## Lisensi
 
-Repositori ini mengikuti [FastGPT Open Source License](./LICENSE).
+Repositori ini mengikuti [AI Platform Open Source License](./LICENSE).
 
 1. Penggunaan komersial sebagai layanan backend diperbolehkan, tetapi layanan SaaS tidak diperbolehkan.
 2. Setiap layanan komersial tanpa otorisasi komersial harus mempertahankan informasi hak cipta yang relevan.
-3. Silakan lihat [FastGPT Open Source License](./LICENSE) untuk detail lengkap.
+3. Silakan lihat [AI Platform Open Source License](./LICENSE) untuk detail lengkap.
 4. Kontak: Dennis@sealos.io, [Lihat Harga Komersial](https://doc.fastgpt.io/guide/version/commercial)

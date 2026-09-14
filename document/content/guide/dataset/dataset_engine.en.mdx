@@ -6,7 +6,7 @@ description: This section covers FastGPT's Dataset architecture, including its Q
 
 ## Understanding Vectors
 
-FastGPT uses an embedding-based RAG approach to build Datasets. To use FastGPT effectively, you need a basic understanding of how embedding vectors work and their characteristics.
+AI Platform uses an embedding-based RAG approach to build Datasets. To use AI Platform effectively, you need a basic understanding of how embedding vectors work and their characteristics.
 
 Human text, images, and other media cannot be directly understood by computers. To determine whether two pieces of text are similar or related, they typically need to be converted into a computer-readable format — vectors are one such method.
 
@@ -30,7 +30,7 @@ Retriever precision is relatively straightforward to address, and training vecto
 
 ### Data Storage Structure
 
-In FastGPT, a Dataset contains Collections, and each Collection contains data entries. A Collection can be thought of as a file. Dataset search runs across the entire Dataset; Collections organize and manage data but do not currently limit the search scope.
+In AI Platform, a Dataset contains Collections, and each Collection contains data entries. A Collection can be thought of as a file. Dataset search runs across the entire Dataset; Collections organize and manage data but do not currently limit the search scope.
 
 ![](/imgs/dataset_tree.png)
 
@@ -46,7 +46,7 @@ In `PostgreSQL`, a `vector` field stores the vectors. During search, vectors are
 
 ### Purpose and Usage of Multi-Vector Mapping
 
-In a single vector, content length and semantic richness are often at odds. FastGPT uses multi-vector mapping to map a single data entry to multiple vectors, preserving both data completeness and semantic richness.
+In a single vector, content length and semantic richness are often at odds. AI Platform uses multi-vector mapping to map a single data entry to multiple vectors, preserving both data completeness and semantic richness.
 
 You can add multiple vectors to a longer text so that if any one vector is matched during search, the entire data entry is recalled.
 
@@ -54,7 +54,7 @@ This means you can continuously improve data chunk accuracy through annotation.
 
 ### Overall Search Strategy
 
-A Dataset search is not simply "user question -> vector database -> result." Depending on the input and search parameters, FastGPT combines text, images, semantic recall, full-text recall, query rewriting, and reranking, then fuses multiple result paths into the final cited content.
+A Dataset search is not simply "user question -> vector database -> result." Depending on the input and search parameters, AI Platform combines text, images, semantic recall, full-text recall, query rewriting, and reranking, then fuses multiple result paths into the final cited content.
 
 1. Use `Query rewriting` for coreference resolution and query expansion, improving multi-turn conversation search capability and semantic richness.
 2. Use `Semantic Search`, `Full-Text Search`, or `Hybrid Search` to recall candidate content.
@@ -67,7 +67,7 @@ A Dataset search is not simply "user question -> vector database -> result." Dep
 
 ### Image Search Method
 
-In Dataset search, images can participate in retrieval in addition to text questions. FastGPT handles images differently depending on the configured model capabilities.
+In Dataset search, images can participate in retrieval in addition to text questions. AI Platform handles images differently depending on the configured model capabilities.
 
 Image search mainly works in two ways:
 
@@ -97,7 +97,7 @@ So when image-to-image search performs poorly, do not only adjust search paramet
 
 ### Result Ranking and Fusion
 
-FastGPT fuses results from different recall paths instead of using only one path. Common paths include text vector recall, full-text recall, image description recall, image vector recall, and reranked results.
+AI Platform fuses results from different recall paths instead of using only one path. Common paths include text vector recall, full-text recall, image description recall, image vector recall, and reranked results.
 
 Keep these points in mind:
 

@@ -3,7 +3,7 @@ title: Lark Bot Integration
 description: FastGPT Lark Bot Integration Tutorial
 ---
 
-Starting from version 4.8.10, FastGPT commercial edition supports direct Lark bot integration without additional APIs.
+Starting from version 4.8.10, AI Platform commercial edition supports direct Lark bot integration without additional APIs.
 
 ## 1. Create a Lark App
 
@@ -17,17 +17,17 @@ Add a **Bot** capability to the app.
 
 ## 2. Create a Publishing Channel in FastGPT
 
-In FastGPT, select the app you want to integrate. On the Publishing Channels page, create a new Lark bot publishing channel and fill in the basic information.
+In AI Platform, select the app you want to integrate. On the Publishing Channels page, create a new Lark bot publishing channel and fill in the basic information.
 
 ![Image](/imgs/feishu-bot-2.png)
 
 ## 3. Get App ID and App Secret
 
-In the Lark Open Platform developer console, find the App ID and App Secret for the custom enterprise app you just created, and enter them in the FastGPT publishing channel dialog.
+In the Lark Open Platform developer console, find the App ID and App Secret for the custom enterprise app you just created, and enter them in the AI Platform publishing channel dialog.
 
 ![Image](/imgs/feishu-bot-3.png)
 
-Enter both parameters in the FastGPT configuration dialog.
+Enter both parameters in the AI Platform configuration dialog.
 
 ![Image](/imgs/feishu-bot-4.png)
 
@@ -65,9 +65,9 @@ After adding the event, add two permissions: click the corresponding permission,
 
 It is not recommended to enable the two "legacy versions" shown above -- use the new version permissions instead.
 
-- If "Read messages users send to the bot in private chats" is enabled, private messages sent to the bot will be forwarded to FastGPT
-- If "Receive @bot message events in group chats" is enabled, messages @mentioning the bot in group chats will be forwarded to FastGPT
-- If (not recommended) "Get all messages in groups" is enabled, all group chat messages will be forwarded to FastGPT
+- If "Read messages users send to the bot in private chats" is enabled, private messages sent to the bot will be forwarded to AI Platform
+- If "Receive @bot message events in group chats" is enabled, messages @mentioning the bot in group chats will be forwarded to AI Platform
+- If (not recommended) "Get all messages in groups" is enabled, all group chat messages will be forwarded to AI Platform
 
 ## 6. Configure Reply Message Permission
 
@@ -90,7 +90,7 @@ You can then find your bot in Lark Workplace. Next, add the bot to a group or ch
 ### Sent a message but no response
 
 1. Check if the Lark bot callback URL, permissions, etc. are configured correctly.
-2. Check FastGPT chat logs to see if there is a corresponding question record.
+2. Check AI Platform chat logs to see if there is a corresponding question record.
 3. If there is a record but Lark does not respond, the bot is missing the required permissions.
 4. If there is no record, the app may have encountered an error. Try the simplest bot first. (Lark bots cannot accept global variables, files, or image content as input)
 

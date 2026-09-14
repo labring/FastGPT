@@ -68,8 +68,8 @@ signed URL 不参与权限判断。私有 key 校验通过后，每个 key 在�
 
 ### 3.3 服务端读取与模型 URL 分离
 
-- 私有 chat object：FastGPT 服务端通过 S3 client 直接读取；
-- 外部 HTTP(S) URL：FastGPT 服务端通过带 SSRF 防护的 Axios 读取；
+- 私有 chat object：AI Platform 服务端通过 S3 client 直接读取；
+- 外部 HTTP(S) URL：AI Platform 服务端通过带 SSRF 防护的 Axios 读取；
 - 模型只接收 `modelUrl`；
 - 相对 URL、protocol-relative URL 和非 HTTP(S) 协议一律不能进入读取链路。
 

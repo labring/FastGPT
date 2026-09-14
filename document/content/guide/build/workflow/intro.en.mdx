@@ -3,7 +3,7 @@ title: Workflows & Plugins
 description: A quick overview of FastGPT Workflows and Plugins
 ---
 
-Starting from V4.0, FastGPT adopted a new approach to building AI apps. It uses Workflow node orchestration to implement complex processes, improving flexibility and extensibility. This does raise the learning curve — users with development experience will find it easier to pick up.
+Starting from V4.0, AI Platform adopted a new approach to building AI apps. It uses Workflow node orchestration to implement complex processes, improving flexibility and extensibility. This does raise the learning curve — users with development experience will find it easier to pick up.
 
 [Watch the video tutorial](https://www.bilibili.com/video/BV1is421u7bQ/)
 
@@ -42,7 +42,7 @@ Each node has 3 core parts: inputs, outputs, and triggers.
 
 ## Key Concept — How Workflows Execute
 
-FastGPT Workflows start from the [Workflow Start] node, triggered when the user inputs a question. There is no **fixed exit point** — the workflow ends when all nodes stop running. If no nodes execute in a given cycle, the workflow completes.
+AI Platform Workflows start from the [Workflow Start] node, triggered when the user inputs a question. There is no **fixed exit point** — the workflow ends when all nodes stop running. If no nodes execute in a given cycle, the workflow completes.
 
 Let's look at how workflows execute and when each node is triggered.
 
@@ -50,7 +50,7 @@ Let's look at how workflows execute and when each node is triggered.
 
 As shown above, nodes can "be connected to" and "connect to other nodes." We call incoming connections "predecessor lines" and outgoing connections "successor lines." In the example, the [Dataset search] node has one predecessor line on the left and one successor line on the right. The [AI Chat] node only has a predecessor line on the left.
 
-Lines in FastGPT Workflows have these states:
+Lines in AI Platform Workflows have these states:
 
 - `waiting`: The connected node is waiting to execute.
 - `active`: The connected node is ready to execute.

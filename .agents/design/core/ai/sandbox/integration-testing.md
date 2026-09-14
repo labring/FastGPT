@@ -2,24 +2,24 @@
 
 ## 背景
 
-Sandbox 的 provider SDK 已有自己的契约测试，但它无法验证 FastGPT 在真实运行时中的行为：
+Sandbox 的 provider SDK 已有自己的契约测试，但它无法验证 AI Platform 在真实运行时中的行为：
 
 - Agent 准备阶段是否创建真实 App Sandbox，并把用户文件写入 workspace。
 - `runSandboxTools` 的参数校验、命令调度、耗时上报和错误返回是否正确。
 - Mongo lifecycle、Redis lease、preview session、volume manager 与 provider 是否协同工作。
-- provider 资源消失或生命周期中断后，FastGPT 是否能按持久化状态重试和恢复。
-- OpenSandbox runtime 是否使用 FastGPT 的 network policy 并创建 egress sidecar。
+- provider 资源消失或生命周期中断后，AI Platform 是否能按持久化状态重试和恢复。
+- OpenSandbox runtime 是否使用 AI Platform 的 network policy 并创建 egress sidecar。
 
-因此本测试不以 SDK 为目标，而是从 FastGPT 业务入口覆盖 Agent Sandbox 完整链路。
+因此本测试不以 SDK 为目标，而是从 AI Platform 业务入口覆盖 Agent Sandbox 完整链路。
 
 ## 目标
 
 1. 通过 `prepareSandboxToolRuntime` 和 `runSandboxTools` 执行真实 Agent Sandbox 链路。
-2. 覆盖 FastGPT 当前提供的全部八个 Sandbox 指令，并记录每条指令的 wall-clock 耗时。
+2. 覆盖 AI Platform 当前提供的全部八个 Sandbox 指令，并记录每条指令的 wall-clock 耗时。
 3. 对单条指令、超时、生命周期创建和清理分别设置可配置的性能预算。
 4. 注入参数错误、命令失败、命令超时和生命周期中断，验证 runtime 可复用或自动恢复。
 5. 使用与 dev 一致的 OpenSandbox、volume manager、egress、preview proxy、Mongo 和 Redis。
-6. 每个用例独立创建 App source，并通过 FastGPT delete lifecycle 清理所有资源。
+6. 每个用例独立创建 App source，并通过 AI Platform delete lifecycle 清理所有资源。
 
 ## 测试入口
 
@@ -98,11 +98,11 @@ FASTGPT_TEST_MODE=sandbox pnpm test
 
 ## TODO
 
-- [x] 将测试目标从 provider SDK 改为 FastGPT Agent Sandbox 业务链路。
+- [x] 将测试目标从 provider SDK 改为 AI Platform Agent Sandbox 业务链路。
 - [x] 新增独立 Vitest 配置并使用真实 dev Redis。
-- [x] 覆盖全部八个 FastGPT Sandbox 工具及逐条计时预算。
+- [x] 覆盖全部八个 AI Platform Sandbox 工具及逐条计时预算。
 - [x] 覆盖参数错误、命令错误、超时及 runtime 复用。
 - [x] 覆盖 provider 丢失、provision/stop/delete 中断后的持久化重试。
 - [x] 验证 OpenSandbox egress 创建和私网访问阻断。
-- [x] 覆盖多 Chat 与并发命令复用同一 FastGPT source。
+- [x] 覆盖多 Chat 与并发命令复用同一 AI Platform source。
 - [x] 使用本地 dev OpenSandbox 运行全量套件并检查资源清理。

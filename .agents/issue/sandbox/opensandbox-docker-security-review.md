@@ -14,7 +14,7 @@
 
 - OpenSandbox provider 配置要求 `apiKey` 非空。
 - SDK adapter 支持并透传 `networkPolicy`、`extensions`、`resourceLimits`、`timeoutSeconds`。
-- FastGPT OpenSandbox Docker runtime 默认注入宿主机别名 deny policy。
+- AI Platform OpenSandbox Docker runtime 默认注入宿主机别名 deny policy。
 - OpenSandbox workDirectory 和 volume mountPath 固定为 `/workspace`，不再暴露挂载路径配置。
 - shell tool 服务端限制 timeout 为 1 到 600 秒。
 - agent sandbox 镜像改为非 root 用户 `sandbox` 运行，并确保 `/workspace` 可写。
@@ -57,12 +57,12 @@ Pro Helm Chart 在 release namespace 创建一条 `CiliumNetworkPolicy`，通过
 - 攻击者可以影响模型生成的 shell 命令，或能触发 sandbox 的 `execute()`。
 - sandbox 镜像内有 `curl`、`git`、`node`、`python3`、`bun` 等网络和脚本执行工具。
 - sandbox 需要允许访问公网，这是产品需求。
-- 攻击者会尝试访问 FastGPT 内部服务、宿主机端口、OpenSandbox 控制面、volume-manager、MongoDB、Redis、MinIO、PostgreSQL、Docker daemon、容器内密钥和系统路径。
+- 攻击者会尝试访问 AI Platform 内部服务、宿主机端口、OpenSandbox 控制面、volume-manager、MongoDB、Redis、MinIO、PostgreSQL、Docker daemon、容器内密钥和系统路径。
 - 攻击者会尝试通过长时间命令、大量进程、内存分配、磁盘写入造成 DoS。
 
 核心安全目标：
 
-- sandbox 容器不能直接进入 FastGPT 业务网络。
+- sandbox 容器不能直接进入 AI Platform 业务网络。
 - sandbox 容器内不能放业务密钥、Docker socket 或控制面 token。
 - OpenSandbox 控制面不能无鉴权调用。
 - 单个 sandbox 和控制面都需要资源上限。
@@ -357,7 +357,7 @@ pnpm -C sdk/sandbox-adapter exec vitest run tests/integration/OpenSandbox.test.t
 建议：
 
 - 在 `sdk/sandbox-adapter` 导出默认策略或 factory。
-- FastGPT runtime profile 显式引用并启用。
+- AI Platform runtime profile 显式引用并启用。
 - 不要让 SDK adapter 在所有场景无条件注入，避免破坏 SDK 使用方访问 localhost 的预期。
 
 ### P1：部署文档和 YAML 当前不一致
@@ -420,7 +420,7 @@ pnpm -C sdk/sandbox-adapter exec vitest run tests/integration/OpenSandbox.test.t
 export SANDBOX_API_KEY="$(openssl rand -hex 32)"
 ```
 
-2. FastGPT 和 OpenSandbox server 使用同一个 key：
+2. AI Platform 和 OpenSandbox server 使用同一个 key：
 
 ```yaml
 AGENT_SANDBOX_OPENSANDBOX_API_KEY: ${SANDBOX_API_KEY:?Set SANDBOX_API_KEY before docker compose up}

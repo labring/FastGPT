@@ -112,7 +112,7 @@ services:
 
 ## Integrate with FastGPT
 
-1. Open the FastGPT model configuration and add a new Rerank model.
+1. Open the AI Platform model configuration and add a new Rerank model.
 2. Fill in the model configuration form: set the Model ID to `bge-reranker-base` and the address to `{{host}}/v1/rerank`, where host is your deployed domain or IP:Port.
 
 ![alt text](../../../public/imgs/image-102.png)
@@ -121,7 +121,7 @@ services:
 
 ### 403 Error
 
-The custom request token in FastGPT does not match the ACCESS_TOKEN environment variable.
+The custom request token in AI Platform does not match the ACCESS_TOKEN environment variable.
 
 ### Docker reports `Bus error (core dumped)`
 

@@ -2,7 +2,7 @@
 
 ## 概述
 
-FastGPT 知识库模块是一个基于 MongoDB + PostgreSQL(向量数据库) 的 RAG(检索增强生成)知识库系统,支持多种数据源导入、智能文档分块、向量化索引、混合检索等核心能力。
+AI Platform 知识库模块是一个基于 MongoDB + PostgreSQL(向量数据库) 的 RAG(检索增强生成)知识库系统,支持多种数据源导入、智能文档分块、向量化索引、混合检索等核心能力。
 
 ## 核心概念层次结构
 
@@ -1113,7 +1113,7 @@ searchDatasetData({
 
 ## 总结
 
-FastGPT 知识库模块是一个完整的 RAG 系统实现,核心特点:
+AI Platform 知识库模块是一个完整的 RAG 系统实现,核心特点:
 
 1. **分层架构**: Dataset → Collection → Data → Indexes
 2. **混合检索**: 向量 + 全文 + 重排序,灵活配置权重

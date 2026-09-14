@@ -13,7 +13,7 @@
   <a href="./README_ja.md">日本語</a>
 </p>
 
-FastGPT 是一个 AI Agent 构建平台，提供开箱即用的数据处理、模型调用等能力，同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的应用场景。
+AI Platform 是一个 AI Agent 构建平台，提供开箱即用的数据处理、模型调用等能力，同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的应用场景。
 
 </div>
 
@@ -36,7 +36,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 快速开始
 
-可以通过 Docker 快速启动 FastGPT，在终端输入以下命令，根据引导完成输入即可拉取配置。
+可以通过 Docker 快速启动 AI Platform，在终端输入以下命令，根据引导完成输入即可拉取配置。
 
 ```bash
 # 输入命令拉取配置文件
@@ -189,9 +189,9 @@ docker compose up -d
 
 ## 使用协议
 
-本仓库遵循 [FastGPT Open Source License](./LICENSE) 开源协议。
+本仓库遵循 [AI Platform Open Source License](./LICENSE) 开源协议。
 
 1. 允许作为后台服务直接商用，但不允许提供 SaaS 服务。
 2. 未经商业授权，任何形式的商用服务均需保留相关版权信息。
-3. 完整请查看 [FastGPT Open Source License](./LICENSE)
+3. 完整请查看 [AI Platform Open Source License](./LICENSE)
 4. 联系方式：Dennis@sealos.io，[点击查看商业版定价策略](https://doc.fastgpt.io/guide/version/commercial)

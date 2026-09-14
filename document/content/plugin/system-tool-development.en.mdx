@@ -16,10 +16,10 @@ System tool plugins run in the runtime provided by the FastGPT Plugin service. T
 
 ## Differences From The Legacy Mechanism
 
-1. The deployment relationship between FastGPT and FastGPT Plugin remains an external extension model, and the overall architecture is still microservice-based.
+1. The deployment relationship between AI Platform and AI Platform Plugin remains an external extension model, and the overall architecture is still microservice-based.
 2. The plugin package protocol upgrades from the old built-in system tool directory to a unified `.pkg` format, making installation, version management, hot updates, and future plugin type expansion easier.
 3. The plugin runtime is managed by the server. The current default runtime is `local-pool`, where each plugin version has its own process pool, queue, and runtime configuration.
-4. Plugin metadata, input/output schemas, secret schemas, and icon assets are included in build artifacts for use by FastGPT pages, workflows, and Agents.
+4. Plugin metadata, input/output schemas, secret schemas, and icon assets are included in build artifacts for use by AI Platform pages, workflows, and Agents.
 5. Tool development uses `@fastgpt-plugin/cli` and `@fastgpt-plugin/sdk-factory`. The legacy `config.ts`, `versionList`, and `bun run build:pkg` flow is no longer the primary development model.
 
 ## Information To Collect Before Development
@@ -48,7 +48,7 @@ Missing information that affects plugin ID, auth method, billing, or listing sec
 When using Claude Code, Codex, or another agent tool, copy this prompt:
 
 ```plaintext
-Develop a plugin using the following official FastGPT plugin development Skill:
+Develop a plugin using the following official AI Platform plugin development Skill:
 
 https://raw.githubusercontent.com/labring/fastgpt-official-plugins/refs/heads/main/.agents/skills/develop-fastgpt-plugin/SKILL.md
 
@@ -348,13 +348,13 @@ Local debug boundaries:
 
 ## 7. Remote Debugging
 
-Remote debugging connects a locally developed plugin to a FastGPT test environment. The FastGPT page authenticates the user and generates a debug link, while the CLI uses that link to create a WSS debug channel. Debug plugins are visible only to the current debugger.
+Remote debugging connects a locally developed plugin to a AI Platform test environment. The AI Platform page authenticates the user and generates a debug link, while the CLI uses that link to create a WSS debug channel. Debug plugins are visible only to the current debugger.
 
-Before using it, confirm that the test environment has deployed the FastGPT Plugin service and Connection Gateway, and that your local machine can reach the Gateway WSS endpoint returned by the test environment.
+Before using it, confirm that the test environment has deployed the AI Platform Plugin service and Connection Gateway, and that your local machine can reach the Gateway WSS endpoint returned by the test environment.
 
 ### 7.1 Generate A Debug Link
 
-1. Sign in to the FastGPT test environment.
+1. Sign in to the AI Platform test environment.
 2. Go to the System Tools page and click Local Debug.
 
 ![System Tools local debug entry](/imgs/plugins/system-tool-debug-entry.png)
@@ -374,7 +374,7 @@ Run this command in a plugin directory or a workspace that contains multiple plu
 fastgpt-plugin dev
 ```
 
-After startup, paste the debug link copied from FastGPT into the TUI. The CLI exchanges the connection key from the link for a short-lived WSS connect token, then mounts local plugins to the FastGPT debug channel.
+After startup, paste the debug link copied from AI Platform into the TUI. The CLI exchanges the connection key from the link for a short-lived WSS connect token, then mounts local plugins to the AI Platform debug channel.
 
 Scripts and Agents can use non-interactive mode:
 
@@ -406,7 +406,7 @@ fastgpt-plugin dev ./plugins/getTime ./plugins/dbops --watch
 
 ### 7.4 Verify In FastGPT
 
-After the CLI reports that remote debugging is ready, return to the FastGPT test environment:
+After the CLI reports that remote debugging is ready, return to the AI Platform test environment:
 
 1. Check the debug plugin on the System Tools page.
 2. Select the debug tool in an app, workflow, or Agent.
@@ -419,7 +419,7 @@ The debug tool `source` is bound to the currently signed-in member, so other mem
 
 Press `Ctrl+C` in the local terminal to close the current CLI debug session; press `Ctrl+C` again to force exit.
 
-The End Debugging action in FastGPT revokes the current member's debug channel and removes the debug plugin entry from the page. If the debug link is exposed, the signed-in member changes, or authorization needs to be renewed, use Refresh Link to generate a new link.
+The End Debugging action in AI Platform revokes the current member's debug channel and removes the debug plugin entry from the page. If the debug link is exposed, the signed-in member changes, or authorization needs to be renewed, use Refresh Link to generate a new link.
 
 ## 8. Build, Check, And Pack
 
@@ -498,7 +498,7 @@ Official plugins require:
 
 Business plugins are released to private repositories. Manage versions, secrets, installation packages, and acceptance records according to the customer delivery process. Security boundaries for external APIs, customer private addresses, and account secrets should be recorded separately.
 
-If you do not need official inclusion, see [Upload System Tool](../guide/build/tools/system-plugins/upload_system_tool.en.mdx) to use the plugin in your own FastGPT deployment.
+If you do not need official inclusion, see [Upload System Tool](../guide/build/tools/system-plugins/upload_system_tool.en.mdx) to use the plugin in your own AI Platform deployment.
 
 ## FAQ
 

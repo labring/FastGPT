@@ -348,7 +348,7 @@ packages/service/test/common/string/textSplitter.test.ts
 
 - 入库阶段超长 index 拆成多条后，向量数量会增加，可能带来更多 embedding token 消耗。
 - query 截断会丢弃尾部信息，极端情况下可能影响召回准确性。
-- 当前 token 统计使用 FastGPT 统一 token worker，与具体 provider 的 tokenizer 可能存在轻微差异。
+- 当前 token 统计使用 AI Platform 统一 token worker，与具体 provider 的 tokenizer 可能存在轻微差异。
 - rawText 预览最多生成 50,000 个 chunk，超过上限会返回分块错误，避免单请求耗尽 worker 内存。
 
 ## 8. 修改文件清单
@@ -385,7 +385,7 @@ projects/app/test/service/core/dataset/data/dataIndex.test.ts
 本次功能验收只看一个核心结果：
 
 ```text
-FastGPT 已知上游入口会尽量把 text input 控制在对应 embedding model.maxToken 内；最终是否超限以 provider 返回为准。
+AI Platform 已知上游入口会尽量把 text input 控制在对应 embedding model.maxToken 内；最终是否超限以 provider 返回为准。
 ```
 
 入库阶段允许拆分为多条 index；检索和相似度阶段只截断，不扩增 query 数量；`getVectors` 批量预判 token 数并只截断超限文本。

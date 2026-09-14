@@ -9,7 +9,7 @@ status: IMPLEMENTED
 
 ## 任务概述
 
-FastGPT 允许团队管理员从 Marketplace 安装插件，或上传
+AI Platform 允许团队管理员从 Marketplace 安装插件，或上传
 `.pkg` / `.zip` 安装到当前团队。团队插件可以删除和重新安装，系统预装插件继续由
 系统管理员统一管理。
 

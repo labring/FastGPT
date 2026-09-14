@@ -1,0 +1,12 @@
+services:
+  fastgpt-m3e:
+    platform: linux/amd64
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/m3e-large-api:latest
+    container_name: fastgpt-m3e
+    restart: always
+    env_file:
+      - .env.m3e.local
+    ports:
+      - '127.0.0.1:6008:6008'
+    networks:
+      - aiproxy

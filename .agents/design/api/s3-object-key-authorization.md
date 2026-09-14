@@ -2,7 +2,7 @@
 
 ## 背景
 
-FastGPT 的私有对象存储 key 是 bucket 内的全局路径字符串，例如：
+AI Platform 的私有对象存储 key 是 bucket 内的全局路径字符串，例如：
 
 - `chat/<appId>/<uid>/<chatId>/<filename>`
 - `dataset/<datasetId>/<filename>`

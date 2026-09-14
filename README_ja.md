@@ -13,7 +13,7 @@
   <a href="./README_ja.md">日本語</a>
 </p>
 
-FastGPT は AI Agent 構築プラットフォームであり、すぐに使えるデータ処理やモデル呼び出し機能を提供します。また、Flow の可視化によるワークフローオーケストレーションにより、複雑なアプリケーションシナリオを実現できます！
+AI Platform は AI Agent 構築プラットフォームであり、すぐに使えるデータ処理やモデル呼び出し機能を提供します。また、Flow の可視化によるワークフローオーケストレーションにより、複雑なアプリケーションシナリオを実現できます！
 
 </div>
 
@@ -190,9 +190,9 @@ Feishu グループに参加：
 
 ## ライセンス
 
-本リポジトリは [FastGPT Open Source License](./LICENSE) に準拠しています。
+本リポジトリは [AI Platform Open Source License](./LICENSE) に準拠しています。
 
 1. バックエンドサービスとしての商用利用は許可されていますが、SaaS サービスの提供は許可されていません。
 2. 商用ライセンスなしの商用サービスは、関連する著作権情報を保持する必要があります。
-3. 詳細は [FastGPT Open Source License](./LICENSE) をご覧ください。
+3. 詳細は [AI Platform Open Source License](./LICENSE) をご覧ください。
 4. お問い合わせ：Dennis@sealos.io、[商用版の価格を見る](https://doc.fastgpt.io/guide/version/commercial)

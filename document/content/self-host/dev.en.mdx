@@ -6,11 +6,11 @@ description: Develop and debug FastGPT locally
 import { Alert } from '@/components/docs/Alert';
 import FastGPTLink from '@/components/docs/linkFastGPT';
 
-This guide covers how to set up your development environment to build and test <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">FastGPT</FastGPTLink>.
+This guide covers how to set up your development environment to build and test <FastGPTLink campaign="docs_self_host_dev" content="intro_product_link">AI Platform</FastGPTLink>.
 
 ## Prerequisites
 
-Install and configure these dependencies on your machine to build <FastGPTLink campaign="docs_self_host_dev" content="prerequisites_product_link">FastGPT</FastGPTLink>:
+Install and configure these dependencies on your machine to build <FastGPTLink campaign="docs_self_host_dev" content="prerequisites_product_link">AI Platform</FastGPTLink>:
 
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/)
@@ -35,7 +35,7 @@ git clone git@github.com:<your_github_username>/FastGPT.git
 
 ### 3. Start the Development Environment with Docker
 
-If you're already running FastGPT locally via Docker, stop it first to avoid port conflicts.
+If you're already running AI Platform locally via Docker, stop it first to avoid port conflicts.
 
 Navigate to `FastGPT/deploy/dev` and run `docker compose up -d` to start FastGPT's dependencies:
 
@@ -117,7 +117,7 @@ Without Docker, you'd need to manually execute all the run-stage commands from t
 
 1. Make sure your code is forked from the [FastGPT](https://github.com/labring/FastGPT) repository.
 2. Keep commits small and focused — each should address one issue.
-3. Submit a PR to FastGPT's main branch. The FastGPT team and community will review it with you.
+3. Submit a PR to AI Platform's main branch. The AI Platform team and community will review it with you.
 
 If you run into issues like merge conflicts, check GitHub's [pull request tutorial](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests). Once your PR is merged, you'll be listed in the [contributors table](https://github.com/labring/FastGPT/graphs/contributors).
 
@@ -170,13 +170,13 @@ Having trouble? Join the Lark group to connect with developers and users.
 
 ### Next.js
 
-FastGPT uses Next.js page routing. To separate frontend and backend code, directories are split into global, service, and web subdirectories for shared, backend-only, and frontend-only code respectively.
+AI Platform uses Next.js page routing. To separate frontend and backend code, directories are split into global, service, and web subdirectories for shared, backend-only, and frontend-only code respectively.
 
 ### Monorepo
 
-FastGPT uses pnpm workspace for its monorepo structure, with two main parts:
+AI Platform uses pnpm workspace for its monorepo structure, with two main parts:
 
-- projects/app - FastGPT main project
+- projects/app - AI Platform main project
 - packages/ - Submodules
   - global - Shared code: functions, type declarations, and constants usable on both frontend and backend
   - service - Server-side code
@@ -185,7 +185,7 @@ FastGPT uses pnpm workspace for its monorepo structure, with two main parts:
 
 ### Domain-Driven Design (DDD)
 
-FastGPT's code modules follow DDD principles, divided into these domains:
+AI Platform's code modules follow DDD principles, divided into these domains:
 
 - core - Core features (Dataset, workflow, app, conversation)
 - support - Supporting features (user system, billing, authentication, etc.)
@@ -206,8 +206,8 @@ FastGPT's code modules follow DDD principles, divided into these domains:
 │   ├── service                  // Backend subpackage
 │   └── web                      // Frontend subpackage
 ├── projects
-│   └── app                      // FastGPT main project
-├── python                       // Model code, unrelated to FastGPT itself
+│   └── app                      // AI Platform main project
+├── python                       // Model code, unrelated to AI Platform itself
 └── scripts                      // Automation scripts
     ├── icon                     // Icon scripts: pnpm initIcon (write SVG to code), pnpm previewIcon (preview icons)
     └── postinstall.sh           // ChakraUI custom theme TS type initialization

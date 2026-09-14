@@ -233,7 +233,7 @@ FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
 1. 默认 `3000` 端口（FastGPT 主服务；可通过 `FASTGPT_PORT` 修改宿主机端口）
 2. 9000 端口（S3 服务）
 3. 默认 `3006` 端口（FastGPT Agent Sandbox Proxy 服务；可通过 `FASTGPT_SANDBOX_PROXY_PORT` 修改宿主机端口）
-4. 3003 端口（FastGPT SSE MCP server 服务，不需要的话可以不开通。）
+4. 3003 端口（AI Platform SSE MCP server 服务，不需要的话可以不开通。）
 
 ### 4. 启动容器
 
@@ -261,9 +261,9 @@ docker compose up -d
 
 ### 7. 按需安装系统插件
 
-从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 FastGPT 系统需手动安装系统插件。
+从 V4.14.0 版本开始，fastgpt-plugin 镜像仅提供运行环境，不再预装系统插件，所有 AI Platform 系统需手动安装系统插件。
 
-- 通过插件市场安装，默认会向公开的 FastGPT Marketplace 获取数据进行安装。
+- 通过插件市场安装，默认会向公开的 AI Platform Marketplace 获取数据进行安装。
 - 如果你的 FastGPT 无法访问插件市场，则可以手动访问 [FastGPT 插件市场](https://marketplace.fastgpt.cn/)，先下载 .pkg 文件，再通过文件导入的方式安装到系统里。
 - 除了安装外，还可对工具进行排序、默认安装、标签管理等。
 
@@ -273,7 +273,7 @@ docker compose up -d
 
 ### FastGPT 和 FastGPT-plugin 版本对应
 
-| FastGPT-plugin 版本 | FastGPT 主服务       |
+| FastGPT-plugin 版本 | AI Platform 主服务       |
 | ------------------- | -------------------- |
 | 1.x                 | 4.15.x               |
 | 0.6.x               | >= 4.14.11, < 4.15.0 |
@@ -361,7 +361,7 @@ rs.status()
 
 ### 如何修改 API 地址和密钥
 
-从 V4.17.0 起，**必须部署或接入 AI Proxy**，并在 FastGPT 容器中配置以下环境变量：
+从 V4.17.0 起，**必须部署或接入 AI Proxy**，并在 AI Platform 容器中配置以下环境变量：
 
 - `AIPROXY_API_ENDPOINT`：FastGPT 可访问的 AI Proxy 服务根地址，例如 `http://aiproxy:3000`，不要附加 `/v1`；FastGPT 会按接口补充路径。
 - `AIPROXY_API_TOKEN`：AI Proxy 管理员 Token，必须与 AI Proxy 服务端的管理员凭证一致，不能为空。
@@ -414,7 +414,7 @@ docker-compose 端口定义为：`映射端口:运行端口`。
 
 ### relation "modeldata" does not exist
 
-PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会在每次连接上 PG 时进行表初始化，如果报错会有对应日志。
+PG 数据库没有连接上/初始化失败，可以查看日志。AI Platform 会在每次连接上 PG 时进行表初始化，如果报错会有对应日志。
 
 1. 检查数据库容器是否正常启动
 2. 非 docker 部署的，需要手动安装 pg vector 插件

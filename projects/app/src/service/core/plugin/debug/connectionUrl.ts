@@ -21,8 +21,8 @@ const getRequestOrigin = (req: ApiRequestProps) => {
 };
 
 /**
- * 生成给本地 CLI 使用的 FastGPT HTTP 连接入口。
- * CLI 会直接 GET 这个地址，再由 FastGPT 代理向 plugin-server 兑换短期 connectToken。
+ * 生成给本地 CLI 使用的 AI Platform HTTP 连接入口。
+ * CLI 会直接 GET 这个地址，再由 AI Platform 代理向 plugin-server 兑换短期 connectToken。
  */
 export const buildPluginDebugConnectionUrl = ({
   req,
