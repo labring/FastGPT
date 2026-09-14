@@ -176,4 +176,23 @@ describe('agentForm2AppWorkflow model reference', () => {
 
     expect(() => agentForm2AppWorkflow(form, (key: string) => key)).toThrow();
   });
+
+  it('round-trips the structured collection filter in nested agent params', () => {
+    const form = getDefaultAppForm();
+    form.dataset.collectionFilterMatch = {
+      logic: 'AND',
+      conditions: [{ tag: 'price', tagType: 'number', op: '$gte', value: 10 }]
+    };
+    const workflow = agentForm2AppWorkflow(form, (key: string) => key);
+    const datasetParams = workflow.nodes
+      .flatMap((node) => node.inputs)
+      .find((input) => input.key === NodeInputKeyEnum.datasetParams)?.value;
+    expect(datasetParams).toMatchObject({
+      collectionFilterMatch: form.dataset.collectionFilterMatch
+    });
+    expect(
+      appWorkflow2AgentForm({ nodes: workflow.nodes, chatConfig: workflow.chatConfig }).dataset
+        .collectionFilterMatch
+    ).toEqual(form.dataset.collectionFilterMatch);
+  });
 });

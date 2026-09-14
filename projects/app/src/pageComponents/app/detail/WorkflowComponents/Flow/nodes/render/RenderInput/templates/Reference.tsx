@@ -35,6 +35,8 @@ type CommonSelectProps = {
   list: {
     label: string | React.ReactNode;
     value: string;
+    name?: string;
+    avatar?: string;
     children: {
       label: string;
       value: string;
@@ -93,6 +95,8 @@ export const useReference = ({
             </Flex>
           ),
           value: node.nodeId,
+          name: node.name,
+          avatar: node.avatar,
           children: filterSelectableWorkflowNodeOutputs({
             outputs: node.outputs,
             valueType,
@@ -183,17 +187,22 @@ const SingleReferenceSelector = ({
 }: SelectProps<false>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
-      if (!value) return [];
+      if (!value) return undefined;
 
       const firstColumn = list.find((item) => item.value === value[0]);
       if (!firstColumn) {
-        return [];
+        return undefined;
       }
       const secondColumn = firstColumn.children.find((item) => item.value === value[1]);
       if (!secondColumn) {
-        return [];
+        return undefined;
       }
-      return [firstColumn.label, secondColumn.label];
+      const nodeText = firstColumn.name || '';
+      const outputText = secondColumn.label || '';
+      return {
+        avatar: firstColumn.avatar,
+        text: nodeText && outputText ? `${nodeText} > ${outputText}` : nodeText || outputText
+      };
     },
     [list]
   );
@@ -214,17 +223,34 @@ const SingleReferenceSelector = ({
 
   const ItemSelector = useMemo(() => {
     const selectorVal = value as ReferenceItemValueType;
-    const [nodeName, outputName] = getSelectValue(selectorVal);
-    const isValidSelect = nodeName && outputName;
+    const selected = getSelectValue(selectorVal);
 
     return (
       <MultipleRowSelect
         label={
-          isValidSelect ? (
-            <Flex py={1} pl={1} alignItems={'center'} fontSize={'sm'}>
-              {nodeName}
-              <MyIcon name={'common/rightArrowLight'} mx={0.5} w={'12px'} color={'myGray.500'} />
-              {outputName}
+          selected ? (
+            <Flex
+              alignItems={'center'}
+              minW={0}
+              w={'100%'}
+              overflow={'hidden'}
+              fontSize={'sm'}
+              data-preserve-width
+            >
+              {!!selected.avatar && (
+                <Avatar src={selected.avatar} w={'1.05rem'} borderRadius={'xs'} flexShrink={0} />
+              )}
+              <Box
+                data-preserve-width
+                ml={selected.avatar ? 1 : 0}
+                minW={0}
+                flex={1}
+                overflow={'hidden'}
+                textOverflow={'ellipsis'}
+                whiteSpace={'nowrap'}
+              >
+                {selected.text}
+              </Box>
             </Flex>
           ) : (
             <Box fontSize={'sm'} color={'myGray.400'}>

@@ -79,6 +79,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   /** @deprecated */
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
+  [NodeInputKeyEnum.collectionFilterMatch]?: string;
   [NodeInputKeyEnum.authTmbId]?: boolean;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
   [NodeInputKeyEnum.sandboxEntrypoint]?: string;

@@ -12,7 +12,7 @@ import {
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
 } from '../../constants';
-import { Input_Template_UserChatInput } from '../input';
+import { Input_Template_Dataset_Tag_Filter_Version, Input_Template_UserChatInput } from '../input';
 import { DatasetSearchModeEnum } from '../../../dataset/constants';
 import { i18nT } from '../../../../common/i18n/utils';
 import { Output_Template_Error_Message } from '../output';
@@ -34,7 +34,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   isTool: true,
   catchError: false,
   courseUrl: '/guide/build/workflow/nodes/dataset_search',
-  version: '4.9.2',
+  version: '4.17.0',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetSelectList,
@@ -131,14 +131,14 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.arrayString,
       toolDescription: i18nT('workflow:content_to_search')
     },
+    Input_Template_Dataset_Tag_Filter_Version,
     {
       key: NodeInputKeyEnum.collectionFilterMatch,
-      renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
-      label: i18nT('workflow:collection_metadata_filter'),
-
+      renderTypeList: [FlowNodeInputTypeEnum.datasetTagFilter, FlowNodeInputTypeEnum.reference],
+      label: i18nT('workflow:tag_filter'),
       valueType: WorkflowIOValueTypeEnum.string,
       isPro: true,
-      description: i18nT('workflow:filter_description')
+      description: i18nT('workflow:tag_filter_description')
     }
   ],
   outputs: [

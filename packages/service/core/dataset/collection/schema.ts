@@ -43,7 +43,7 @@ const DatasetCollectionSchema = new Schema({
     required: true
   },
   tags: {
-    type: [String],
+    type: [],
     default: []
   },
 
@@ -109,6 +109,10 @@ defineIndex(DatasetCollectionSchema, {
 // Tag filter
 defineIndex(DatasetCollectionSchema, {
   key: { teamId: 1, datasetId: 1, tags: 1 }
+});
+// New format tags.tagId filter
+defineIndex(DatasetCollectionSchema, {
+  key: { teamId: 1, datasetId: 1, 'tags.tagId': 1 }
 });
 // create time filter
 defineIndex(DatasetCollectionSchema, {
