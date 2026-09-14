@@ -1,6 +1,7 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -87,6 +88,8 @@ async function handler(
     selector,
     externalFileId,
     customPdfParse,
+    // 解析开关仅对外部解析路径生效;非 customPdfParse 时传 undefined,rawText 缓存沿用旧 key
+    sangforFileParseConfig: customPdfParse ? getDatasetIultmzhFileParseConfig(dataset) : undefined,
     apiDatasetServer: dataset.apiDatasetServer,
     datasetId
   });

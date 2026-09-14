@@ -125,22 +125,24 @@ export const EntryPointItemTypeSchema = z.object({
 });
 export type EntryPointItemType = z.infer<typeof EntryPointItemTypeSchema>;
 
-export const EntryPointItemsTypeSchema = z.array(EntryPointItemTypeSchema).superRefine((items, ctx) => {
-  const seenNames = new Map<string, number>();
-  items.forEach((item, index) => {
-    const normalizedName = item.name.trim();
-    const previousIndex = seenNames.get(normalizedName);
-    if (previousIndex !== undefined) {
-      ctx.addIssue({
-        code: 'custom',
-        path: [index, 'name'],
-        message: 'Entry point names must be unique'
-      });
-      return;
-    }
-    seenNames.set(normalizedName, index);
+export const EntryPointItemsTypeSchema = z
+  .array(EntryPointItemTypeSchema)
+  .superRefine((items, ctx) => {
+    const seenNames = new Map<string, number>();
+    items.forEach((item, index) => {
+      const normalizedName = item.name.trim();
+      const previousIndex = seenNames.get(normalizedName);
+      if (previousIndex !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [index, 'name'],
+          message: 'Entry point names must be unique'
+        });
+        return;
+      }
+      seenNames.set(normalizedName, index);
+    });
   });
-});
 
 export const AppChatConfigTypeSchema = z.object({
   welcomeText: optionalNullToUndefined(z.string()).meta({

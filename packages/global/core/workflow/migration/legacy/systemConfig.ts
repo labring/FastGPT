@@ -147,7 +147,10 @@ export function migrateSystemConfigToChatConfig(input: LegacyWorkflowDataInput) 
     ],
     [
       'entryPoints',
-      getSystemConfigInputValue<EntryPointItemType[]>(systemConfigNode, NodeInputKeyEnum.entryPoints)
+      getSystemConfigInputValue<EntryPointItemType[]>(
+        systemConfigNode,
+        NodeInputKeyEnum.entryPoints
+      )
     ]
   ];
   configValues.forEach(([key, value]) => {
