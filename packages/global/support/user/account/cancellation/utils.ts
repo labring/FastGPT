@@ -1,8 +1,8 @@
 import {
   accountCancellationWaitDays,
-  AccountCancellationReminder as AccountCancellationReminderValues,
-  accountCancellationAllowedMethods
+  AccountCancellationReminder as AccountCancellationReminderValues
 } from './constants';
+import { accountExternalVerificationMethods } from '../verification/constants';
 import type { AccountCancellationReminder, AccountCancellationSchedule } from './type';
 
 const dayInMilliseconds = 24 * 60 * 60 * 1000;
@@ -140,7 +140,7 @@ export const getAccountCancellationPendingDueCutoff = ({ now }: { now: Date }) =
 };
 
 export const isAccountCancellationMethod = (method: string) =>
-  (accountCancellationAllowedMethods as readonly string[]).includes(method);
+  (accountExternalVerificationMethods as readonly string[]).includes(method);
 
 /**
  * 判断用户名是否由账号注销流程生成，同时兼容已落库的历史匿名用户名格式。

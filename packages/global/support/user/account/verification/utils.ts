@@ -3,21 +3,24 @@ import {
   AccountPhoneUsernameSchema,
   type AccountVerificationCapabilities,
   type AccountVerificationMethod,
+  type AccountVerificationPasswordPolicy,
   type AccountVerificationResolution,
   type RecognizedAccountKind
 } from './type';
 
 /**
- * 根据持久化 username 和部署能力推导唯一验证方式。
- * 当账号没有可用的外部验证方式时，统一降级为密码验证。
+ * 该纯函数只做账号分类和验证方式选择，不读取运行环境。
+ * 只有调用方显式允许且数据库确认存在密码时，才降级为旧密码验证。
  */
 export const resolveAccountVerificationByUsername = ({
   username,
-  capabilities
+  capabilities,
+  allowPasswordFallback,
+  oldPasswordAvailable
 }: {
   username: string;
   capabilities: AccountVerificationCapabilities;
-}): AccountVerificationResolution => {
+} & AccountVerificationPasswordPolicy): AccountVerificationResolution => {
   const normalizedUsername = username.trim();
   if (!normalizedUsername) {
     return {
@@ -97,9 +100,26 @@ export const resolveAccountVerificationByUsername = ({
     }
   };
 
+  const method = candidateMethods.find(isMethodAvailable);
+  if (method) {
+    return {
+      status: 'supported',
+      accountKind,
+      method
+    };
+  }
+
+  if (allowPasswordFallback && oldPasswordAvailable) {
+    return {
+      status: 'supported',
+      accountKind,
+      method: 'oldPassword'
+    };
+  }
+
   return {
-    status: 'supported',
+    status: 'unsupported',
     accountKind,
-    method: candidateMethods.find(isMethodAvailable) ?? 'oldPassword'
+    unsupportedReason: 'no_available_verification_method'
   };
 };

@@ -43,6 +43,7 @@
   "package_expiry_time": "요금제 만료 시간",
   "package_usage_rules": "요금제 사용 규칙: 시스템은 상위 등급의 요금제를 우선 사용하며, 사용하지 않은 기존 요금제는 이후에 적용됩니다.",
   "password": "비밀번호",
+  "root_password_change_tip": "root 비밀번호를 변경하려면 DEFAULT_ROOT_PSW 환경 변수를 수정하고 서비스를 다시 시작하세요.",
   "password_tip": "8자 이상이어야 하며 숫자, 소문자, 대문자, 특수문자 중 두 가지 이상을 포함해야 합니다. 공백은 사용할 수 없습니다",
   "password_update_error": "비밀번호 변경 중 오류가 발생했습니다",
   "password_update_success": "비밀번호가 변경되었습니다",

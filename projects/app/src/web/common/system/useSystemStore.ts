@@ -12,7 +12,8 @@ type LoginStoreType = {
   lastRoute: string;
   state: string;
   lastTmbId?: string;
-  flow?: 'login' | 'accountCancellation';
+  flow?: 'login' | 'accountCancellation' | 'passwordChange';
+  passwordChangeRequired?: boolean;
 };
 
 export type NotSufficientModalType =

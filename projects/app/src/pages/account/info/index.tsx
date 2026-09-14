@@ -49,6 +49,8 @@ import { getIsMemberSyncMode } from '@/web/common/system/utils';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { getAccountCancellationStatus } from '@/web/support/user/account/cancellation/api';
 import { AccountCancellationConfirmModal } from '@/pageComponents/account/cancel/AccountCancellationConfirmModal';
+import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
+import { canManagePasswordFromAccountInfo } from '@/pageComponents/account/info/password';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -62,7 +64,7 @@ const StandDetailModal = dynamic(
   { ssr: false }
 );
 const ConversionModal = dynamic(() => import('@/pageComponents/account/info/ConversionModal'));
-const UpdatePswModal = dynamic(() => import('@/pageComponents/account/info/UpdatePswModal'));
+const UpdatePswModal = dynamic(() => import('@/components/support/user/safe/PasswordChangeModal'));
 const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 const EnterpriseAuthStatusRowHeight = '32px';
@@ -138,6 +140,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const standardPlan = teamPlanStatus?.standard;
   const { isPc } = useSystem();
   const { toast } = useToast();
+  const canManagePassword = canManagePasswordFromAccountInfo({
+    isPlus: feConfigs?.isPlus,
+    username: userInfo?.username
+  });
+  const isRoot = userInfo?.username === 'root';
   const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
   const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
 
@@ -151,6 +158,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
+  const passwordChangeSession = usePasswordChangeStore((state) => state.session);
   const {
     isOpen: isOpenUpdateContact,
     onClose: onCloseUpdateContact,
@@ -222,6 +230,22 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       window.removeEventListener('hashchange', triggerEnterpriseAuthFromHash);
     };
   }, [triggerEnterpriseAuthFromHash]);
+
+  useEffect(() => {
+    if (canManagePassword && passwordChangeSession?.required === false) onOpenUpdatePsw();
+  }, [canManagePassword, onOpenUpdatePsw, passwordChangeSession]);
+
+  const handlePasswordAction = useCallback(() => {
+    if (isRoot) {
+      toast({
+        status: 'info',
+        title: t('account_info:root_password_change_tip')
+      });
+      return;
+    }
+    onOpenUpdatePsw();
+  }, [isRoot, onOpenUpdatePsw, t, toast]);
+
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,
     {
@@ -260,12 +284,14 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Box {...labelStyles}>{t('account_info:user_account')}&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
-        {feConfigs?.isPlus && (
+        {canManagePassword && (
           <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
-            <Box flex={1}>*****</Box>
-            <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
-              {t('account_info:change')}
+            <Box flex={1}>
+              {userInfo?.hasPassword ? '*****' : t('account_info:password_not_set')}
+            </Box>
+            <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={handlePasswordAction}>
+              {userInfo?.hasPassword ? t('account_info:change') : t('account_info:set_password')}
             </Button>
           </Flex>
         )}
@@ -415,7 +441,9 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       {isOpenConversionModal && (
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
-      {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
+      {canManagePassword && isOpenUpdatePsw && (
+        <UpdatePswModal onClose={onCloseUpdatePsw} onSuccess={onCloseUpdatePsw} />
+      )}
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
     </Box>
   );

@@ -15,6 +15,22 @@ const capabilities: AccountVerificationCapabilities = {
   }
 };
 
+const resolve = ({
+  username,
+  capabilities: currentCapabilities = capabilities,
+  oldPasswordAvailable = true
+}: {
+  username: string;
+  capabilities?: AccountVerificationCapabilities;
+  oldPasswordAvailable?: boolean;
+}) =>
+  resolveAccountVerificationByUsername({
+    username,
+    capabilities: currentCapabilities,
+    allowPasswordFallback: true,
+    oldPasswordAvailable
+  });
+
 describe('resolveAccountVerificationByUsername', () => {
   it.each([
     ['user@example.com', 'email', 'code'],
@@ -25,7 +41,7 @@ describe('resolveAccountVerificationByUsername', () => {
     ['microsoft-user', 'microsoft', 'oauth/microsoft'],
     ['tenant-user', 'sso', 'oauth/sso']
   ] as const)('resolves %s to %s verification', (username, accountKind, method) => {
-    expect(resolveAccountVerificationByUsername({ username, capabilities })).toEqual({
+    expect(resolve({ username })).toEqual({
       status: 'supported',
       accountKind,
       method
@@ -33,14 +49,12 @@ describe('resolveAccountVerificationByUsername', () => {
   });
 
   it('prefers SSO over the standalone WeCom provider', () => {
-    expect(
-      resolveAccountVerificationByUsername({ username: 'wecom-user', capabilities })
-    ).toMatchObject({ method: 'oauth/sso' });
+    expect(resolve({ username: 'wecom-user' })).toMatchObject({ method: 'oauth/sso' });
   });
 
   it('falls back to the standalone WeCom provider when SSO is unavailable', () => {
     expect(
-      resolveAccountVerificationByUsername({
+      resolve({
         username: 'wecom-user',
         capabilities: { ...capabilities, oauth: { ...capabilities.oauth, sso: false } }
       })
@@ -52,13 +66,22 @@ describe('resolveAccountVerificationByUsername', () => {
     ['user@example.com', { ...capabilities, emailCode: false }],
     ['git-octocat', { ...capabilities, oauth: { ...capabilities.oauth, github: false } }]
   ] as const)('falls back to password verification for %s', (username, currentCapabilities) => {
-    expect(
-      resolveAccountVerificationByUsername({ username, capabilities: currentCapabilities })
-    ).toMatchObject({ status: 'supported', method: 'oldPassword' });
+    expect(resolve({ username, capabilities: currentCapabilities })).toMatchObject({
+      status: 'supported',
+      method: 'oldPassword'
+    });
+  });
+
+  it('does not expose old-password verification when no password is stored', () => {
+    expect(resolve({ username: 'local', oldPasswordAvailable: false })).toEqual({
+      status: 'unsupported',
+      accountKind: 'local',
+      unsupportedReason: 'no_available_verification_method'
+    });
   });
 
   it('rejects an empty username', () => {
-    expect(resolveAccountVerificationByUsername({ username: '  ', capabilities })).toEqual({
+    expect(resolve({ username: '  ' })).toEqual({
       status: 'unsupported',
       accountKind: 'invalid',
       unsupportedReason: 'empty_username'
