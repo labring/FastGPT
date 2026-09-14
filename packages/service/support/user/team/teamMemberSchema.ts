@@ -77,6 +77,15 @@ defineIndex(TeamMemberSchema, {
   key: { userId: 1, teamId: 1 },
   options: { unique: true, background: true }
 });
+defineIndex(TeamMemberSchema, {
+  key: { teamId: 1, wecomUserId: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: { wecomUserId: { $exists: true } },
+    background: true
+  },
+  deprecated: true
+});
 
 defineIndex(TeamMemberSchema, {
   key: { userId: 1 },
