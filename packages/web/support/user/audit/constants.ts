@@ -1,5 +1,6 @@
 import { AuditEventEnum, AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import type { TeamAuditDetail } from '@fastgpt/global/support/user/audit/type';
 
 export const adminAuditLogMap = {
   [AdminAuditEventEnum.ADMIN_LOGIN]: {
@@ -204,16 +205,6 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:assign_permission'),
     params: {} as { name?: string; objectName: string; permission: string }
   },
-  [AuditEventEnum.TRANSFER_TEAM_OWNERSHIP]: {
-    content: i18nT('account_team:log_transfer_team_ownership'),
-    typeLabel: i18nT('account_team:transfer_team_ownership'),
-    params: {} as {
-      name?: string;
-      teamName: string;
-      oldOwnerName: string;
-      newOwnerName: string;
-    }
-  },
   //APP
   [AuditEventEnum.CREATE_APP]: {
     content: i18nT('account_team:log_create_app'),
@@ -263,6 +254,16 @@ export const auditLogMap = {
       appType: string;
       itemName: string;
       itemValueName: string;
+    }
+  },
+  [AuditEventEnum.TRANSFER_TEAM_OWNERSHIP]: {
+    content: i18nT('account_team:log_transfer_team_ownership'),
+    typeLabel: i18nT('account_team:transfer_team_ownership'),
+    params: {} as {
+      name?: string;
+      teamName: string;
+      oldOwnerName: string;
+      newOwnerName: string;
     }
   },
   [AuditEventEnum.TRANSFER_APP_OWNERSHIP]: {
@@ -396,10 +397,73 @@ export const auditLogMap = {
       newOwnerName: string;
     }
   },
+  [AuditEventEnum.RESUME_INHERIT_PERMISSION]: {
+    content: i18nT('account_team:log_resume_inherit_permission'),
+    typeLabel: i18nT('account_team:resume_inherit_permission'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      targetPath: string;
+      parentDatasetName?: string;
+      oldPermissionSource: string;
+      newPermissionSource: string;
+      affectedResourceCount: number;
+    }
+  },
+  [AuditEventEnum.SYNC_DATASET]: {
+    content: i18nT('account_team:log_sync_dataset'),
+    typeLabel: i18nT('account_team:sync_dataset'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      datasetType: string;
+      result: string;
+      taskId?: string;
+      addedCount?: string;
+      updatedCount?: string;
+      deletedCount?: string;
+      failedCount?: string;
+      details?: TeamAuditDetail[];
+    }
+  },
   [AuditEventEnum.EXPORT_DATASET]: {
     content: i18nT('account_team:log_export_dataset'),
     typeLabel: i18nT('account_team:export_dataset'),
     params: {} as { name?: string; datasetName: string; datasetType: string }
+  },
+  [AuditEventEnum.REBUILD_DATASET_INDEX]: {
+    content: i18nT('account_team:log_rebuild_dataset_index'),
+    typeLabel: i18nT('account_team:rebuild_dataset_index'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      oldModel?: string;
+      newModel: string;
+      count: string;
+      taskId: string;
+      result: string;
+      failureReason?: string;
+      details?: TeamAuditDetail[];
+    }
+  },
+  [AuditEventEnum.EXPORT_DATASET_CONTENT]: {
+    content: i18nT('account_team:log_export_dataset_content'),
+    typeLabel: i18nT('account_team:export_dataset_content'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      collectionName?: string;
+      exportScope: 'collection' | 'chat_quote';
+      objectType: 'data';
+      result: string;
+      count?: string;
+      failureReason?: string;
+      details?: TeamAuditDetail[];
+    }
   },
   [AuditEventEnum.CREATE_DATASET_FOLDER]: {
     content: i18nT('account_team:log_create_dataset_folder'),
@@ -415,6 +479,25 @@ export const auditLogMap = {
       collectionName: string;
       datasetName: string;
       datasetType: string;
+    }
+  },
+  [AuditEventEnum.IMPORT_DATASET_CONTENT]: {
+    content: i18nT('account_team:log_import_dataset_content'),
+    typeLabel: i18nT('account_team:import_dataset_content'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      collectionName: string;
+      sourceType: string;
+      sourceName?: string;
+      trainingType?: string;
+      chunkSize?: string;
+      indexSize?: string;
+      result: string;
+      insertLen: string;
+      taskId?: string;
+      details?: TeamAuditDetail[];
     }
   },
   [AuditEventEnum.UPDATE_COLLECTION]: {
@@ -445,6 +528,95 @@ export const auditLogMap = {
       collectionName: string;
       datasetName: string;
       datasetType: string;
+    }
+  },
+  [AuditEventEnum.RETRY_TRAINING]: {
+    content: i18nT('account_team:log_retry_training'),
+    typeLabel: i18nT('account_team:retry_training'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      collectionName?: string;
+      count: string;
+      taskId: string;
+      result: string;
+      failureReason?: string;
+      details?: TeamAuditDetail[];
+    }
+  },
+  [AuditEventEnum.CLEAN_TRAINING_RECORD]: {
+    content: i18nT('account_team:log_clean_training_record'),
+    typeLabel: i18nT('account_team:clean_training_record'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      collectionName?: string;
+      count: string;
+      result: string;
+    }
+  },
+  [AuditEventEnum.CREATE_DATASET_TAG]: {
+    content: i18nT('account_team:log_create_dataset_tag'),
+    typeLabel: i18nT('account_team:create_dataset_tag'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      tagName: string;
+    }
+  },
+  [AuditEventEnum.RENAME_DATASET_TAG]: {
+    content: i18nT('account_team:log_rename_dataset_tag'),
+    typeLabel: i18nT('account_team:rename_dataset_tag'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      tagId: string;
+      oldName: string;
+      newName: string;
+    }
+  },
+  [AuditEventEnum.DELETE_DATASET_TAG]: {
+    content: i18nT('account_team:log_delete_dataset_tag'),
+    typeLabel: i18nT('account_team:delete_dataset_tag'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      tagId: string;
+      tagName: string;
+      collectionCount?: string;
+    }
+  },
+  [AuditEventEnum.ADD_DATASET_TAGS]: {
+    content: i18nT('account_team:log_add_dataset_tags'),
+    typeLabel: i18nT('account_team:add_dataset_tags'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      tagName: string;
+      count: string;
+      failedCount?: string;
+      result?: string;
+      details?: TeamAuditDetail[];
+    }
+  },
+  [AuditEventEnum.REMOVE_DATASET_TAGS]: {
+    content: i18nT('account_team:log_remove_dataset_tags'),
+    typeLabel: i18nT('account_team:remove_dataset_tags'),
+    params: {} as {
+      name?: string;
+      datasetId: string;
+      datasetName: string;
+      tagName: string;
+      count: string;
+      failedCount?: string;
+      result?: string;
+      details?: TeamAuditDetail[];
     }
   },
   //Data

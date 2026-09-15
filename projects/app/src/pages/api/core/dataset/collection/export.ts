@@ -20,6 +20,9 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
@@ -118,6 +121,50 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     res,
     readStream: cursor
   });
+  let exportedCount = 0;
+  let auditFinished = false;
+  let auditPromise: Promise<void> | undefined;
+  const recordExportAudit = async (
+    result: 'success' | 'failed',
+    failureReason?: string
+  ): Promise<void> => {
+    if (auditFinished) {
+      await auditPromise;
+      return;
+    }
+    auditFinished = true;
+    auditPromise = addAuditLog({
+      teamId: String(userTeamId),
+      tmbId,
+      event: AuditEventEnum.EXPORT_DATASET_CONTENT,
+      params: {
+        datasetId: String(collection.datasetId),
+        datasetName: collection.dataset.name,
+        collectionName: collection.name,
+        exportScope: 'chatItemDataId' in parseBody ? 'chat_quote' : 'collection',
+        objectType: 'data',
+        result,
+        count: String(exportedCount),
+        details: [
+          {
+            resourceId: collectionId,
+            resourceName: collection.name,
+            resourceType: 'collection',
+            action: 'export',
+            result,
+            ...(failureReason ? { failureReason } : {}),
+            processingParams: {
+              objectType: 'data',
+              count: exportedCount,
+              exportScope: 'chatItemDataId' in parseBody ? 'chat_quote' : 'collection'
+            }
+          }
+        ],
+        ...(failureReason ? { failureReason } : {})
+      }
+    });
+    await auditPromise;
+  };
 
   write(`\uFEFFq,a`);
 
@@ -131,8 +178,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       );
 
       write(`\n${sanitizedQ},${sanitizedA}`);
+      exportedCount += 1;
     } catch (error) {
       logger.error(`export usage error`, { error });
+      await recordExportAudit('failed', getErrText(error));
       cursor.destroy();
       return;
     }
@@ -140,13 +189,23 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     cursor.resume();
   });
 
-  cursor.on('end', () => {
+  cursor.on('end', async () => {
     cursor.close();
+    try {
+      await recordExportAudit('success');
+    } catch (error) {
+      logger.error('collection export audit write failed', { error });
+    }
     res.end();
   });
 
-  cursor.on('error', (err) => {
+  cursor.on('error', async (err) => {
     logger.error(`export usage error`, { error: err });
+    try {
+      await recordExportAudit('failed', getErrText(err));
+    } catch (error) {
+      logger.error('collection export audit write failed', { error });
+    }
     res.status(500);
     res.end();
   });

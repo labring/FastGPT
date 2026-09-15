@@ -15,6 +15,7 @@ const foreignDatasetId = '507f1f77bcf86cd799439014';
 vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
   MongoDatasetTraining: {
     findById: vi.fn(),
+    countDocuments: vi.fn(),
     updateOne: vi.fn(),
     updateMany: vi.fn()
   }
@@ -25,20 +26,31 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollection: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/dataset/training/audit', () => ({
+  refreshTrainingAuditTask: vi.fn()
+}));
+
 describe('updateTrainingData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(MongoDatasetTraining.countDocuments).mockResolvedValue(1);
     vi.mocked(authDatasetCollection).mockResolvedValue({
+      teamId: 'team1',
+      tmbId: 'member1',
       collection: {
         _id: collectionId,
+        name: 'Collection',
         teamId: 'team1',
-        datasetId
+        datasetId,
+        dataset: { name: 'Dataset' }
       }
     } as any);
     vi.mocked(authDataset).mockResolvedValue({
       teamId: 'team1',
+      tmbId: 'member1',
       dataset: {
-        _id: datasetId
+        _id: datasetId,
+        name: 'Dataset'
       }
     } as any);
   });
@@ -62,11 +74,12 @@ describe('updateTrainingData', () => {
         collectionId,
         $expr: expect.any(Object)
       }),
-      {
+      expect.objectContaining({
         $unset: { errorMsg: '' },
+        $set: { auditTaskId: expect.any(String) },
         retryCount: 3,
         lockTime: new Date('2000')
-      }
+      })
     );
   });
 
@@ -88,11 +101,12 @@ describe('updateTrainingData', () => {
         datasetId,
         $expr: expect.any(Object)
       }),
-      {
+      expect.objectContaining({
         $unset: { errorMsg: '' },
+        $set: { auditTaskId: expect.any(String) },
         retryCount: 3,
         lockTime: new Date('2000')
-      }
+      })
     );
   });
 
@@ -134,7 +148,8 @@ describe('updateTrainingData', () => {
       q: 'question',
       a: 'answer',
       chunkIndex: 1,
-      lockTime: new Date('2000')
+      lockTime: new Date('2000'),
+      auditTaskId: expect.any(String)
     });
   });
 

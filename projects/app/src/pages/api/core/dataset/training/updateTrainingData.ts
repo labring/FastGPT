@@ -14,6 +14,13 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { randomUUID } from 'node:crypto';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET);
 
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
   const body = parseApiInput({ req, bodySchema: UpdateTrainingDataBodySchema }).body;
@@ -22,7 +29,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
   if (!body.dataId) {
     const retryMatch = await (async () => {
       if (body.collectionId) {
-        const { collection } = await authDatasetCollection({
+        const { collection, teamId, tmbId } = await authDatasetCollection({
           req,
           authToken: true,
           authApiKey: true,
@@ -31,13 +38,16 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
         });
 
         return {
-          teamId: collection.teamId,
+          teamId,
+          tmbId,
           datasetId: collection.datasetId,
-          collectionId: collection._id
+          collectionId: collection._id,
+          datasetName: collection.dataset.name,
+          collectionName: collection.name
         };
       }
 
-      const { teamId, dataset } = await authDataset({
+      const { teamId, tmbId, dataset } = await authDataset({
         req,
         authToken: true,
         authApiKey: true,
@@ -47,21 +57,54 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
 
       return {
         teamId,
-        datasetId: dataset._id
+        datasetId: dataset._id,
+        tmbId,
+        datasetName: dataset.name,
+        collectionName: undefined
       };
     })();
 
-    await MongoDatasetTraining.updateMany(
-      {
-        ...retryMatch,
-        ...finalErrorTrainingMatch
-      },
-      {
-        $unset: { errorMsg: '' },
-        retryCount: 3,
-        lockTime: new Date('2000')
+    const trainingMatch = {
+      teamId: retryMatch.teamId,
+      datasetId: retryMatch.datasetId,
+      ...(retryMatch.collectionId ? { collectionId: retryMatch.collectionId } : {}),
+      ...finalErrorTrainingMatch
+    };
+    const auditTaskId = randomUUID();
+    // 只统计重试范围，不把全量失败训练记录物化到内存；失败项由收口逻辑按需追加到 details
+    const retryCount = await MongoDatasetTraining.countDocuments(trainingMatch);
+
+    await MongoDatasetTraining.updateMany(trainingMatch, {
+      $unset: { errorMsg: '' },
+      $set: { auditTaskId },
+      retryCount: 3,
+      lockTime: new Date('2000')
+    });
+
+    // 重置成功后才写入事件；范围为空时没有实际重试对象，直接记成功终态
+    await addAuditLog({
+      teamId: retryMatch.teamId,
+      tmbId: retryMatch.tmbId,
+      event: AuditEventEnum.RETRY_TRAINING,
+      params: {
+        datasetId: String(retryMatch.datasetId),
+        datasetName: retryMatch.datasetName,
+        ...(retryMatch.collectionName ? { collectionName: retryMatch.collectionName } : {}),
+        count: String(retryCount),
+        taskId: auditTaskId,
+        result: retryCount === 0 ? 'success' : 'processing'
       }
-    );
+    }).catch((error) => {
+      logger.warn('Batch training retry audit create failed', {
+        error,
+        teamId: retryMatch.teamId,
+        auditTaskId
+      });
+    });
+    if (retryCount > 0) {
+      await refreshTrainingAuditTask(auditTaskId);
+    }
+
     return UpdateTrainingDataResponseSchema.parse(undefined);
   }
 
@@ -73,7 +116,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     return Promise.reject('data not found');
   }
 
-  const { collection } = await authDatasetCollection({
+  const { collection, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -96,6 +139,8 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     _id: data._id
   };
 
+  const auditTaskId = randomUUID();
+
   // Add to chunk
   if (data.imageId && q) {
     await MongoDatasetTraining.updateOne(trainingMatch, {
@@ -105,7 +150,8 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       ...(q !== undefined && { q }),
       ...(a !== undefined && { a }),
       ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: new Date('2000')
+      lockTime: new Date('2000'),
+      auditTaskId
     });
   } else {
     await MongoDatasetTraining.updateOne(trainingMatch, {
@@ -114,9 +160,41 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       ...(q !== undefined && { q }),
       ...(a !== undefined && { a }),
       ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: new Date('2000')
+      lockTime: new Date('2000'),
+      auditTaskId
     });
   }
+
+  // 重新入队成功后才写入事件
+  await addAuditLog({
+    teamId: String(collection.teamId),
+    tmbId,
+    event: AuditEventEnum.RETRY_TRAINING,
+    params: {
+      datasetId: String(collection.datasetId),
+      datasetName: collection.dataset.name,
+      collectionName: collection.name,
+      count: '1',
+      taskId: auditTaskId,
+      result: 'processing',
+      details: [
+        {
+          resourceId: String(data._id),
+          resourceName: collection.name,
+          resourceType: 'training_record',
+          action: 'retry',
+          result: 'processing'
+        }
+      ]
+    }
+  }).catch((error) => {
+    logger.warn('Training retry audit create failed', {
+      error,
+      teamId: String(collection.teamId),
+      auditTaskId
+    });
+  });
+  await refreshTrainingAuditTask(auditTaskId);
 
   return UpdateTrainingDataResponseSchema.parse(undefined);
 }
