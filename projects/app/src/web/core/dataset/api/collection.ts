@@ -7,6 +7,7 @@ import type { DatasetCollectionItemType, DatasetTagType } from '@fastgpt/global/
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import type {
   CreateApiCollectionV2BodyType,
+  CreateApiCollectionV2ResponseType,
   ExternalFileCreateDatasetCollectionParams,
   CreateCollectionByFileIdBodyType,
   ReTrainingCollectionBodyType,
@@ -72,7 +73,7 @@ export const postCreateDatasetLinkCollection = (data: CreateLinkCollectionBodyTy
 export const postCreateDatasetTextCollection = (data: CreateTextCollectionBodyType) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);
 export const postCreateDatasetApiDatasetCollection = (data: CreateApiCollectionV2BodyType) =>
-  POST(`/core/dataset/collection/create/apiCollectionV2`, data, {
+  POST<CreateApiCollectionV2ResponseType>(`/core/dataset/collection/create/apiCollectionV2`, data, {
     timeout: 360000
   });
 /** @deprecated */
