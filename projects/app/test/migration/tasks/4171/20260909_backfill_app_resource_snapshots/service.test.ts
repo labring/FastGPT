@@ -1,3 +1,5 @@
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { decodeMcpToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -9,7 +11,7 @@ import {
   buildAppResourceSnapshot,
   validateAppResourceRecords,
   validateAppVersionResourceRecords
-} from '@/migration/tasks/4170/20260909_backfill_app_resource_snapshots/service';
+} from '@/migration/tasks/4171/20260909_backfill_app_resource_snapshots/service';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
@@ -285,5 +287,122 @@ describe('App resource snapshot migration service', () => {
         message: 'App published Version pointer is still missing or invalid'
       })
     ]);
+  });
+
+  it('aggregates legacy MCP child apps into parent published Version and skips child apps', async () => {
+    const parentApp = createApp({
+      name: 'Legacy MCP ToolSet',
+      avatar: '/mcp-parent.png',
+      type: AppTypeEnum.mcpToolSet,
+      modules: []
+    });
+
+    const childApp1 = createApp({
+      name: 'search',
+      intro: 'Search tool',
+      parentId: parentApp._id,
+      modules: [
+        {
+          inputs: [
+            {
+              value: {
+                name: 'search',
+                description: 'Search description',
+                url: 'https://mcp.example.com/sse',
+                headerSecret: { Authorization: { value: 'tok-auth' } },
+                inputSchema: {
+                  type: 'object',
+                  properties: { query: { type: 'string' } },
+                  required: ['query']
+                }
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    const childApp2 = createApp({
+      name: 'fetch',
+      intro: 'Fetch tool',
+      parentId: parentApp._id,
+      modules: [
+        {
+          inputs: [
+            {
+              value: {
+                name: 'fetch',
+                description: 'Fetch description',
+                url: 'https://mcp.example.com/sse',
+                headerSecret: { value: 'single-token' },
+                inputSchema: {
+                  type: 'object',
+                  properties: { url: { type: 'string' } },
+                  required: ['url']
+                }
+              }
+            }
+          ]
+        }
+      ]
+    });
+
+    await MongoApp.collection.insertMany([parentApp, childApp1, childApp2]);
+
+    const batch = [parentApp, childApp1, childApp2];
+    const result = await backfillAppResourceRecords(batch);
+
+    expect(result).toMatchObject({
+      updatedCount: 1,
+      createdVersionCount: 1,
+      failures: []
+    });
+
+    const [migratedParent, parentVersions, child1Versions, child2Versions] = await Promise.all([
+      MongoApp.collection.findOne({ _id: parentApp._id }),
+      MongoAppVersion.collection.find({ appId: parentApp._id }).toArray(),
+      MongoAppVersion.collection.find({ appId: childApp1._id }).toArray(),
+      MongoAppVersion.collection.find({ appId: childApp2._id }).toArray()
+    ]);
+
+    expect(migratedParent?.publishedVersionId).toBeDefined();
+    expect(parentVersions).toHaveLength(1);
+    expect(child1Versions).toHaveLength(0);
+    expect(child2Versions).toHaveLength(0);
+
+    const version = parentVersions[0];
+    expect(String(version._id)).toBe(String(migratedParent?.publishedVersionId));
+    expect(version.isPublish).toBe(true);
+
+    const decodedNodes = decodeMcpToolSetNodesFromStorage(version.nodes);
+    expect(decodedNodes).toHaveLength(1);
+    expect(decodedNodes[0].toolConfig?.mcpToolSet).toMatchObject({
+      url: 'https://mcp.example.com/sse',
+      headerSecret: { Authorization: { value: 'tok-auth' } },
+      toolList: [
+        {
+          name: 'search',
+          description: 'Search description',
+          inputSchema: {
+            type: 'object',
+            properties: { query: { type: 'string' } },
+            required: ['query']
+          }
+        },
+        {
+          name: 'fetch',
+          description: 'Fetch description',
+          inputSchema: {
+            type: 'object',
+            properties: { url: { type: 'string' } },
+            required: ['url']
+          }
+        }
+      ]
+    });
+
+    await expect(
+      validateAppResourceRecords([migratedParent!, childApp1, childApp2])
+    ).resolves.toEqual([]);
   });
 });

@@ -6,7 +6,7 @@ import type {
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { backfillAppResourceSnapshots } from '@/migration/tasks/4170/20260909_backfill_app_resource_snapshots';
+import { backfillAppResourceSnapshots } from '@/migration/tasks/4171/20260909_backfill_app_resource_snapshots';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import * as appResourcePermission from '@fastgpt/service/support/permission/app/resource';

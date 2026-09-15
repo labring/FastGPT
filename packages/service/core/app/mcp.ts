@@ -5,11 +5,20 @@ import {
   StreamableHTTPError
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
+import {
+  McpToolDataTypeSchema,
+  type McpToolConfigType
+} from '@fastgpt/global/core/app/tool/mcpTool/type';
+import {
+  SecretValueTypeSchema,
+  StoreSecretValueTypeSchema,
+  type StoreSecretValueType
+} from '@fastgpt/global/common/secret/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { Types } from '../../common/mongo';
+import { MongoApp } from './schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -417,6 +426,76 @@ export class MCPClient {
   }
 }
 
+/**
+ * 规范化历史单个 token 或 Map 形式的请求头。
+ * 旧版本同时存在命名请求头映射和单个密钥；映射优先，避免重复包装 Authorization。
+ */
+export const normalizeLegacyMcpHeaderSecret = (
+  headerSecret: unknown
+): StoreSecretValueType | undefined => {
+  if (!headerSecret || typeof headerSecret !== 'object') return undefined;
+  if (Object.keys(headerSecret).length === 0) return undefined;
+
+  const headerMap = StoreSecretValueTypeSchema.safeParse(headerSecret);
+  if (headerMap.success && Object.keys(headerMap.data).length > 0) return headerMap.data;
+
+  const singleToken = SecretValueTypeSchema.safeParse(headerSecret);
+  if (singleToken.success && (singleToken.data.value || singleToken.data.secret)) {
+    return { Authorization: singleToken.data };
+  }
+
+  return undefined;
+};
+
+/**
+ * 从历史 MongoApp 子文档列表中聚合出标准 MCP ToolSet 配置。
+ * 用于未迁移历史数据读取和 4171 迁移任务建版。
+ */
+export const parseLegacyMcpChildApps = (
+  children: Array<{
+    name?: string;
+    intro?: string;
+    modules?: Array<{ inputs?: Array<{ value?: unknown }> }>;
+  }>
+): {
+  url?: string;
+  headerSecret?: StoreSecretValueType;
+  toolList: Array<McpToolConfigType & { url?: string; headerSecret?: StoreSecretValueType }>;
+} => {
+  let url: string | undefined;
+  let headerSecret: StoreSecretValueType | undefined;
+  const toolList: Array<McpToolConfigType & { url?: string; headerSecret?: StoreSecretValueType }> =
+    [];
+
+  for (const child of children) {
+    const rawVal = child.modules?.[0]?.inputs?.[0]?.value as any;
+    if (!rawVal || typeof rawVal !== 'object') continue;
+
+    const childHeaderSecret = normalizeLegacyMcpHeaderSecret(rawVal.headerSecret);
+    const name = String(rawVal.name || child.name || '');
+    const description = String(rawVal.description || child.intro || '');
+    const urlVal = typeof rawVal.url === 'string' ? rawVal.url : undefined;
+    const inputSchema = rawVal.inputSchema;
+
+    if (!name) continue;
+
+    if (!url && urlVal) url = urlVal;
+    if (!headerSecret && childHeaderSecret) {
+      headerSecret = childHeaderSecret;
+    }
+
+    toolList.push({
+      name,
+      description,
+      inputSchema,
+      url: urlVal,
+      ...(childHeaderSecret ? { headerSecret: childHeaderSecret } : {})
+    });
+  }
+
+  return { url, headerSecret, toolList };
+};
+
 /** Read the current or legacy MCP child tools from a toolset app. */
 export const getMCPChildren = async (
   app: AppSchemaType,
@@ -424,21 +503,40 @@ export const getMCPChildren = async (
 ): Promise<McpChildToolType[]> => {
   if (app.type !== AppTypeEnum.mcpToolSet) return [];
 
+  const id = String(app._id);
   const nodes = decodeMcpToolSetNodesFromStorage(
-    (workflow ?? (await getAppLatestVersion(String(app._id), app))).nodes
+    (workflow ?? (await getAppLatestVersion(id, app))).nodes
   );
   const node = nodes[0];
-  if (!node) return [];
 
-  const id = String(app._id);
+  const toolSet = McpToolSetRuntimeConfigSchema.safeParse(node?.toolConfig?.mcpToolSet).data;
 
-  const toolSet = McpToolSetRuntimeConfigSchema.safeParse(node.toolConfig?.mcpToolSet).data;
+  if (toolSet) {
+    return (toolSet.toolList ?? []).map((item) => ({
+      ...item,
+      id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
+      avatar: app.avatar,
+      url: toolSet.url,
+      headerSecret: toolSet.headerSecret ?? undefined
+    }));
+  }
 
-  if (!toolSet) return [];
+  // 兜底：未迁移或无 Version 的历史数据，按 parentId 回退查询旧子 App
+  if (!Types.ObjectId.isValid(id)) return [];
 
-  return toolSet.toolList.map((item) => ({
-    ...item,
+  const legacyChildren = await MongoApp.find({
+    teamId: app.teamId,
+    parentId: id
+  }).lean();
+
+  const { url, headerSecret, toolList } = parseLegacyMcpChildApps(legacyChildren as any);
+  return toolList.map((item) => ({
+    name: item.name,
+    description: item.description,
+    inputSchema: item.inputSchema,
     id: `${AppToolSourceEnum.mcp}-${id}/${item.name}`,
-    avatar: app.avatar
+    avatar: app.avatar,
+    url: item.url || url,
+    headerSecret: item.headerSecret || headerSecret
   }));
 };
