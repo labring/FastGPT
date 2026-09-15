@@ -18,7 +18,7 @@ import {
   UpdateDatasetDataResponseSchema,
   type UpdateDatasetDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { addHours } from 'date-fns';
 
@@ -114,14 +114,14 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
 
   pushUpdateDataAuditLog();
 
-  const [responseQ, responseA] = await Promise.all([
-    replaceS3KeyToPreviewUrl(nextQ, addHours(new Date(), 1)),
-    nextA ? replaceS3KeyToPreviewUrl(nextA, addHours(new Date(), 1)) : undefined
-  ]);
+  const [responseQ, responseA] = await replaceS3KeysToPreviewUrls(
+    [nextQ, nextA],
+    addHours(new Date(), 1)
+  );
 
   return UpdateDatasetDataResponseSchema.parse({
     q: responseQ,
-    a: responseA
+    a: nextA ? responseA : undefined
   });
 }
 
