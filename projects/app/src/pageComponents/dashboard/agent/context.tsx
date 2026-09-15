@@ -1,4 +1,4 @@
-import React, { type ReactNode, useCallback, useEffect, useState } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -36,7 +36,10 @@ import {
   getGridRequestPageSize,
   useResponsiveGridPageSize
 } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
+
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
+const BatchActionBar = dynamic(() => import('./BatchActionBar'));
+const BatchDeleteModal = dynamic(() => import('./BatchDeleteModal'));
 
 type AppListContextType = {
   parentId?: string | null;
@@ -59,6 +62,22 @@ type AppListContextType = {
   ) => void;
   columnCount: number;
   pageSize: number;
+
+  // 批量管理状态与方法
+  isBatchMode: boolean;
+  setIsBatchMode: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedAppIds: string[];
+  setSelectedAppIds: React.Dispatch<React.SetStateAction<string[]>>;
+  onToggleSelectApp: (id: string) => void;
+  onSelectAllApps: (checked: boolean) => void;
+  isAllSelected: boolean;
+  isIndeterminate: boolean;
+  selectableApps: AppListItemType[];
+  selectedApps: AppListItemType[];
+  isBatchMoving: boolean;
+  setIsBatchMoving: React.Dispatch<React.SetStateAction<boolean>>;
+  isBatchDeleting: boolean;
+  setIsBatchDeleting: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 export const AppListContext = createContext<AppListContextType>({
@@ -72,10 +91,10 @@ export const AppListContext = createContext<AppListContextType>({
   ScrollData: () => <></>,
   folderDetail: undefined,
   paths: [],
-  onUpdateApp: function (id: string, data: UpdateAppBodyType): Promise<any> {
+  onUpdateApp: function (_id: string, _data: UpdateAppBodyType): Promise<any> {
     throw new Error('Function not implemented.');
   },
-  setMoveAppId: function (value: React.SetStateAction<string | undefined>): void {
+  setMoveAppId: function (_value: React.SetStateAction<string | undefined>): void {
     throw new Error('Function not implemented.');
   },
   appType: 'all',
@@ -83,7 +102,7 @@ export const AppListContext = createContext<AppListContextType>({
     throw new Error('Function not implemented.');
   },
   searchKey: '',
-  setSearchKey: function (value: React.SetStateAction<string>): void {
+  setSearchKey: function (_value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
   },
   listFilters: defaultAppListFilters,
@@ -91,7 +110,34 @@ export const AppListContext = createContext<AppListContextType>({
     throw new Error('Function not implemented.');
   },
   columnCount: 1,
-  pageSize: 50
+  pageSize: 50,
+
+  isBatchMode: false,
+  setIsBatchMode: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  selectedAppIds: [],
+  setSelectedAppIds: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  onToggleSelectApp: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  onSelectAllApps: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  isAllSelected: false,
+  isIndeterminate: false,
+  selectableApps: [],
+  selectedApps: [],
+  isBatchMoving: false,
+  setIsBatchMoving: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  isBatchDeleting: false,
+  setIsBatchDeleting: function (): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const AppListContextProvider = ({
@@ -259,6 +305,101 @@ const AppListContextProvider = ({
     [isAgentPage, moveAppId]
   );
 
+  const [isBatchMode, setIsBatchMode] = useState(false);
+  const [selectedAppIds, setSelectedAppIds] = useState<string[]>([]);
+  const [isBatchMoving, setIsBatchMoving] = useState(false);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+
+  // 在渲染阶段同步校准状态：当离开批量模式，或目录、搜索、筛选发生变化时立即清空已选项，避免 effect 异步级联渲染与状态错乱
+  const [prevBatchState, setPrevBatchState] = useState({
+    parentId,
+    searchKey,
+    listFilters,
+    isBatchMode
+  });
+
+  if (
+    prevBatchState.parentId !== parentId ||
+    prevBatchState.searchKey !== searchKey ||
+    prevBatchState.listFilters !== listFilters ||
+    prevBatchState.isBatchMode !== isBatchMode
+  ) {
+    setPrevBatchState({
+      parentId,
+      searchKey,
+      listFilters,
+      isBatchMode
+    });
+    if (selectedAppIds.length > 0) {
+      setSelectedAppIds([]);
+    }
+  }
+
+  const handleSetIsBatchMode = useCallback((action: React.SetStateAction<boolean>) => {
+    setIsBatchMode((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      if (!next) {
+        setSelectedAppIds([]);
+      }
+      return next;
+    });
+  }, []);
+
+  // 可批量操作的资源（必须具有管理权限或为 Owner）
+  const selectableApps = useMemo(
+    () => myApps.filter((app) => Boolean(app.permission?.hasManagePer || app.permission?.isOwner)),
+    [myApps]
+  );
+  const selectableAppIds = useMemo(() => selectableApps.map((a) => a._id), [selectableApps]);
+
+  const selectedApps = useMemo(
+    () => myApps.filter((app) => selectedAppIds.includes(app._id)),
+    [myApps, selectedAppIds]
+  );
+
+  const isAllSelected = useMemo(
+    () =>
+      selectableAppIds.length > 0 && selectableAppIds.every((id) => selectedAppIds.includes(id)),
+    [selectableAppIds, selectedAppIds]
+  );
+
+  const isIndeterminate = useMemo(
+    () => selectedAppIds.length > 0 && !isAllSelected,
+    [selectedAppIds, isAllSelected]
+  );
+
+  const onToggleSelectApp = useCallback(
+    (id: string) => {
+      if (!selectableAppIds.includes(id)) return;
+      setSelectedAppIds((prev) =>
+        prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      );
+    },
+    [selectableAppIds]
+  );
+
+  const onSelectAllApps = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        setSelectedAppIds(selectableAppIds);
+      } else {
+        setSelectedAppIds([]);
+      }
+    },
+    [selectableAppIds]
+  );
+
+  const onBatchMoveApps = useCallback(
+    async (targetParentId: ParentIdType) => {
+      if (selectedAppIds.length === 0) return;
+      await Promise.all(selectedAppIds.map((id) => putAppById(id, { parentId: targetParentId })));
+      await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyApps()]);
+      setSelectedAppIds([]);
+      setIsBatchMode(false);
+    },
+    [selectedAppIds, refetchFolderDetail, refetchPaths, loadMyApps]
+  );
+
   useEffect(() => {
     setLastAppListRouteType(appType);
   }, [appType, setLastAppListRouteType]);
@@ -281,11 +422,27 @@ const AppListContextProvider = ({
     listFilters,
     setListFilters,
     columnCount,
-    pageSize
+    pageSize,
+
+    isBatchMode,
+    setIsBatchMode: handleSetIsBatchMode,
+    selectedAppIds,
+    setSelectedAppIds,
+    onToggleSelectApp,
+    onSelectAllApps,
+    isAllSelected,
+    isIndeterminate,
+    selectableApps,
+    selectedApps,
+    isBatchMoving,
+    setIsBatchMoving,
+    isBatchDeleting,
+    setIsBatchDeleting
   };
   return (
     <AppListContext.Provider value={contextValue}>
       {children}
+      {isBatchMode && isPc && <BatchActionBar />}
       {!!moveAppId && (
         <MoveModal
           moveResourceId={moveAppId}
@@ -294,6 +451,26 @@ const AppListContextProvider = ({
           onClose={() => setMoveAppId(undefined)}
           onConfirm={onMoveApp}
           moveHint={t('app:move.hint')}
+        />
+      )}
+      {isBatchMoving && (
+        <MoveModal
+          moveResourceIds={selectedAppIds}
+          server={getAppFolderList}
+          title={t('app:move_app')}
+          onClose={() => setIsBatchMoving(false)}
+          onConfirm={onBatchMoveApps}
+          moveHint={t('app:move.hint')}
+        />
+      )}
+      {isBatchDeleting && selectedApps.length > 0 && (
+        <BatchDeleteModal
+          apps={selectedApps}
+          onClose={() => setIsBatchDeleting(false)}
+          onSuccess={() => {
+            setSelectedAppIds([]);
+            loadMyApps();
+          }}
         />
       )}
     </AppListContext.Provider>

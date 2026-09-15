@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button } from '@chakra-ui/react';
@@ -13,7 +13,8 @@ import SelectOneResource, {
 const rootId = 'root';
 
 type Props = {
-  moveResourceId: string;
+  moveResourceId?: string;
+  moveResourceIds?: string[];
   title: string;
   server: SelectOneResourceServer;
   onConfirm: (id: ParentIdType) => Promise<any>;
@@ -21,11 +22,25 @@ type Props = {
   moveHint?: string;
 };
 
-const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint }: Props) => {
+const MoveModal = ({
+  moveResourceId,
+  moveResourceIds,
+  title,
+  server,
+  onConfirm,
+  onClose,
+  moveHint
+}: Props) => {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<ParentIdType>();
   const [isAtRoot, setIsAtRoot] = useState(true);
   const hasSelection = selectedId !== undefined;
+
+  const disabledIds = useMemo(() => {
+    if (moveResourceIds && moveResourceIds.length > 0) return moveResourceIds;
+    if (moveResourceId) return [moveResourceId];
+    return [];
+  }, [moveResourceId, moveResourceIds]);
 
   const onSelect = (item?: SelectOneResourceItemType) => {
     if (!item) {
@@ -98,7 +113,7 @@ const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose, moveHint
           onSelect={onSelect}
           onCurrentParentIdChange={(parentId) => setIsAtRoot(parentId === null)}
           selectFolder
-          disabledIds={[moveResourceId]}
+          disabledIds={disabledIds}
           maxH={'100%'}
         />
       </Box>
