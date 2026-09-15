@@ -23,6 +23,7 @@ import {
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { MongoApp } from '../../../core/app/schema';
 import type { AppPublishedWorkflow } from '../../../core/app/version/controller';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
@@ -751,6 +752,108 @@ describe('getMCPChildren', () => {
     });
 
     const result = await getMCPChildren(app, workflow);
+    expect(result).toEqual([]);
+  });
+
+  it('should query MongoApp for legacy MCP format when parent has no inline toolSet', async () => {
+    const parentId = '65f000000000000000000081';
+    const teamId = '65f000000000000000000082';
+    const app = {
+      _id: parentId,
+      avatar: '/legacy-icon.png',
+      teamId,
+      type: AppTypeEnum.mcpToolSet,
+      modules: [{ inputs: [], outputs: [] }]
+    } as unknown as AppSchemaType;
+
+    const childApps = [
+      {
+        name: 'child_tool_1',
+        intro: 'Child Tool 1 Intro',
+        modules: [
+          {
+            inputs: [
+              {
+                value: {
+                  name: 'child_tool_1',
+                  description: 'Desc 1',
+                  url: 'http://child1.mcp',
+                  headerSecret: { Authorization: { value: 'tok-1' } },
+                  inputSchema: { type: 'object', properties: { q: { type: 'string' } } }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'child_tool_2',
+        intro: 'Child Tool 2 Intro',
+        modules: [
+          {
+            inputs: [
+              {
+                value: {
+                  name: 'child_tool_2',
+                  description: 'Desc 2',
+                  url: 'http://child1.mcp',
+                  headerSecret: { value: 'single-legacy-token' },
+                  inputSchema: { type: 'object', properties: {} }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const findSpy = vi.spyOn(MongoApp, 'find').mockReturnValue({
+      lean: () => Promise.resolve(childApps)
+    } as any);
+
+    const result = await getMCPChildren(app);
+
+    expect(findSpy).toHaveBeenCalledWith({
+      teamId,
+      parentId
+    });
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({
+      name: 'child_tool_1',
+      description: 'Desc 1',
+      id: `mcp-${parentId}/child_tool_1`,
+      avatar: '/legacy-icon.png',
+      url: 'http://child1.mcp',
+      headerSecret: { Authorization: { value: 'tok-1' } },
+      inputSchema: { type: 'object', properties: { q: { type: 'string' } } }
+    });
+    expect(result[1]).toEqual({
+      name: 'child_tool_2',
+      description: 'Desc 2',
+      id: `mcp-${parentId}/child_tool_2`,
+      avatar: '/legacy-icon.png',
+      url: 'http://child1.mcp',
+      headerSecret: { Authorization: { value: 'single-legacy-token' } },
+      inputSchema: { type: 'object', properties: {} }
+    });
+  });
+
+  it('should return empty array for legacy MCP with no children in MongoApp', async () => {
+    const parentId = '65f000000000000000000083';
+    const teamId = '65f000000000000000000084';
+    const app = {
+      _id: parentId,
+      avatar: '/icon.png',
+      teamId,
+      type: AppTypeEnum.mcpToolSet,
+      modules: [{ inputs: [], outputs: [] }]
+    } as unknown as AppSchemaType;
+
+    vi.spyOn(MongoApp, 'find').mockReturnValue({
+      lean: () => Promise.resolve([])
+    } as any);
+
+    const result = await getMCPChildren(app);
     expect(result).toEqual([]);
   });
 });

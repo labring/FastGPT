@@ -1,4 +1,4 @@
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -6,13 +6,18 @@ import {
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
-import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import {
+  decodeToolSetNodesFromStorage,
+  encodeMcpToolSetNodesForStorage
+} from '@fastgpt/service/core/app/jsonSchemaStorage';
 import { resolveStoredAppResources, getLegacySkillIds } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 
 type LegacyResourceRefs = {
   skillIds?: unknown;
@@ -29,6 +34,9 @@ export type AppResourceMigrationRecord = {
   type?: unknown;
   tmbId?: unknown;
   name?: unknown;
+  avatar?: unknown;
+  parentId?: unknown;
+  teamId?: unknown;
   publishedVersionId?: unknown;
 };
 
@@ -202,7 +210,10 @@ export const readAppResourceBatch = (params: {
       publishedVersionId: 1,
       type: 1,
       tmbId: 1,
-      name: 1
+      name: 1,
+      avatar: 1,
+      parentId: 1,
+      teamId: 1
     }
   });
 
@@ -237,7 +248,10 @@ export const readAppResourceRecord = (id: string) =>
         publishedVersionId: 1,
         type: 1,
         tmbId: 1,
-        name: 1
+        name: 1,
+        avatar: 1,
+        parentId: 1,
+        teamId: 1
       }
     }
   ) as Promise<AppResourceMigrationRecord | null>;
@@ -394,12 +408,15 @@ const createMissingPublishedVersion = async (record: AppResourceMigrationRecord)
           publishedVersionId: 1,
           type: 1,
           tmbId: 1,
-          name: 1
+          name: 1,
+          avatar: 1,
+          parentId: 1,
+          teamId: 1
         },
         session
       }
     )) as AppResourceMigrationRecord | null;
-    if (!currentApp || isFolderApp(currentApp.type))
+    if (!currentApp || isFolderApp(currentApp.type) || Boolean(currentApp.parentId))
       return { appUpdated: false, versionCreated: false };
     if (currentApp.tmbId === undefined) throw new Error('App has no tmbId');
 
@@ -413,7 +430,39 @@ const createMissingPublishedVersion = async (record: AppResourceMigrationRecord)
       );
     }
 
-    const snapshot = buildAppResourceSnapshot(currentApp, models);
+    const workflowSnapshot = getWorkflowSnapshot(currentApp, false);
+
+    let mcpModulesOverride: unknown[] | undefined;
+    if (currentApp.type === AppTypeEnum.mcpToolSet) {
+      const hasInlineToolSet = !!(
+        Array.isArray(currentApp.modules) && (currentApp.modules[0] as any)?.toolConfig?.mcpToolSet
+      );
+      if (!hasInlineToolSet) {
+        const legacyChildren = await MongoApp.collection
+          .find(
+            { parentId: currentApp._id as never },
+            { projection: { name: 1, intro: 1, modules: 1 }, session }
+          )
+          .toArray();
+
+        const { url, headerSecret, toolList } = parseLegacyMcpChildApps(legacyChildren as any);
+        if (toolList.length > 0) {
+          const runtimeNode = getMCPToolSetRuntimeNode({
+            url: url || '',
+            toolList,
+            headerSecret,
+            name: typeof currentApp.name === 'string' ? currentApp.name : undefined,
+            avatar: typeof currentApp.avatar === 'string' ? currentApp.avatar : undefined
+          });
+          mcpModulesOverride = [runtimeNode];
+        }
+      }
+    }
+
+    const snapshot = buildAppResourceSnapshot(
+      mcpModulesOverride ? { ...currentApp, modules: mcpModulesOverride } : currentApp,
+      models
+    );
     const authorizedResources = await filterAuthorizedAppResources({
       resources: snapshot.resources,
       tmbId: currentApp.tmbId
@@ -423,7 +472,7 @@ const createMissingPublishedVersion = async (record: AppResourceMigrationRecord)
         tmbId: String(currentApp.tmbId),
         appId: currentApp._id as never,
         time: new Date(),
-        nodes: snapshot.normalizedWorkflow.nodes,
+        nodes: encodeMcpToolSetNodesForStorage(snapshot.normalizedWorkflow.nodes),
         edges: snapshot.normalizedWorkflow.edges,
         chatConfig: snapshot.normalizedWorkflow.chatConfig,
         isPublish: true,
@@ -436,7 +485,7 @@ const createMissingPublishedVersion = async (record: AppResourceMigrationRecord)
       {
         _id: currentApp._id as never,
         publishedVersionId: getSnapshotQueryValue(currentApp.publishedVersionId),
-        ...getWorkflowSnapshot(currentApp, false)
+        ...workflowSnapshot
       },
       { $set: { publishedVersionId: insertResult.insertedId } },
       { session }
@@ -464,6 +513,7 @@ export const backfillAppResourceRecords = async (
 
   for (const record of records) {
     result.legacySkillRefs += getLegacySkillIds(record.resourceRefs).length;
+    if (record.parentId) continue;
     const state = states.get(String(record._id));
     if (!state) continue;
 
@@ -512,6 +562,7 @@ export const validateAppVersionResourceRecords = (records: AppResourceMigrationR
 export const validateAppResourceRecords = async (records: AppResourceMigrationRecord[]) => {
   const states = await readAppVersionStates(records);
   return records.flatMap<AppResourceMigrationFailure>((record) => {
+    if (record.parentId) return [];
     const state = states.get(String(record._id));
     if (!state) return [{ record, message: 'Unable to inspect App Version state' }];
     if (state.latestPublishedVersionId && !state.pointerIsValid) {
