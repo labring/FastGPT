@@ -4,6 +4,7 @@ import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/c
 import { hasContextCheckpoint } from '@fastgpt/global/core/chat/utils';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { buildFlowUsageItems } from '../../../../support/wallet/usage/utils';
 import type { DispatchFlowResponse, RuntimeNodeResponseSummary } from '../type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -892,8 +893,11 @@ export const safePoints = (val: number | undefined | null): number =>
 /**
  * 汇总一次子 workflow 的 usage，并追加到父节点 usage 列表。
  *
- * moduleName 会带上迭代序号，便于 loop/parallelRun 这类重复执行节点在账单详情中区分
- * 每次子流程执行产生的点数。
+ * 逐条落账而不是合成一个金额：token 只挂在每条 usage 上，先求和会永久丢掉子流程的 token。
+ * moduleName 前缀仍带迭代序号，便于 loop/parallelRun 这类重复执行节点在账单详情中区分
+ * 每次子流程执行产生的消耗。
+ *
+ * 返回值仍是子流程点数总和，调用方用它累加父节点 totalPoints，口径不变。
  */
 export const pushSubWorkflowUsage = ({
   usagePush,
@@ -910,7 +914,13 @@ export const pushSubWorkflowUsage = ({
     (acc, usage) => acc + safePoints(usage.totalPoints),
     0
   );
-  usagePush([{ totalPoints: itemUsagePoint, moduleName: `${name}-${iteration}` }]);
+  const usageItems = buildFlowUsageItems({
+    usages: response.flowUsages,
+    moduleNamePrefix: `${name}-${iteration}`
+  });
+  if (usageItems.length > 0) {
+    usagePush(usageItems);
+  }
   return itemUsagePoint;
 };
 

@@ -40,6 +40,11 @@ export const getAppToolOutputError = ({
     - 无错误：返回 单次积分 + 子流程积分（可配置）
   2. 个人插件
     - 返回 子流程积分
+
+  返回值拆成三段是为了让调用方能分别落账：`fixedPoints` 是固定的调用费，本身没有 token；
+  子流程要按 `flowUsages` 逐条落账才能保住 token（token 只挂在每条 usage 上，一旦先求和
+  成数字就永久丢失），`childrenBillable` 决定这些条目的 amount 是否计入。`totalPoints`
+  与原返回值完全一致，调用方继续用它算 nodeResponse.totalPoints。
 */
 export const computedAppToolUsage = async ({
   plugin,
@@ -49,7 +54,7 @@ export const computedAppToolUsage = async ({
   plugin: AppToolRuntimeType;
   childrenUsage: ChatNodeUsageType[];
   error?: boolean;
-}) => {
+}): Promise<{ totalPoints: number; fixedPoints: number; childrenBillable: boolean }> => {
   const { source } = splitCombineToolId(plugin.id);
   const childrenUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
@@ -59,13 +64,20 @@ export const computedAppToolUsage = async ({
     AppToolSourceEnum.systemTool
   ]);
   if (set.has(source as AppToolSourceEnum)) {
-    if (error) return 0;
+    // 报错时子流程不计费，但调用方仍会带着 token 落账，只是 amount 记 0。
+    if (error) return { totalPoints: 0, fixedPoints: 0, childrenBillable: false };
 
     const pluginCurrentCost = plugin.currentCost ?? 0;
 
-    return plugin.hasTokenFee ? pluginCurrentCost + childrenUsages : pluginCurrentCost;
+    return plugin.hasTokenFee
+      ? {
+          totalPoints: pluginCurrentCost + childrenUsages,
+          fixedPoints: pluginCurrentCost,
+          childrenBillable: true
+        }
+      : { totalPoints: pluginCurrentCost, fixedPoints: pluginCurrentCost, childrenBillable: false };
   }
 
   // Personal plugins are charged regardless of whether they are successful or not
-  return childrenUsages;
+  return { totalPoints: childrenUsages, fixedPoints: 0, childrenBillable: true };
 };

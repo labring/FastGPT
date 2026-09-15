@@ -37,6 +37,9 @@ export const AppChatLogSchema = z.object({
   chatItemCount: NumSchema,
   errorCount: NumSchema,
   totalPoints: NumSchema,
+  // 累计 token 消耗（含历史数据缺失，旧记录读不到时为 undefined）
+  totalInputTokens: NumSchema.optional(),
+  totalOutputTokens: NumSchema.optional(),
   goodFeedbackCount: NumSchema,
   badFeedbackCount: NumSchema,
   totalResponseTime: NumSchema,

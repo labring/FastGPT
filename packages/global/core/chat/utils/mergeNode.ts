@@ -21,6 +21,51 @@ export type ChildrenResponseField = (typeof childrenResponseFields)[number];
 export const getChildrenResponses = (item: ChatHistoryItemResType) =>
   childrenResponseFields.flatMap((key) => item[key] || []);
 
+/**
+ * 累计一个响应实例子树消耗的 token。
+ *
+ * 不复用 NODE_RESPONSE_INCREMENT_NUMBER_FIELDS：那张表是「同一响应的多份增量合并」口径，
+ * 本函数是「跨响应实例求和」口径，两者对同名字段的处理正好相反：
+ * - `tokens` / `extensionTokens` 是 input+output 的遗留冗余字段（均已无写入方），累加会翻倍。
+ * - `compressTextAgent` 是同一响应自身 token 的副本（compress.ts 由 includeCompressTextAgent
+ *   同时写 flat 与嵌套），同理不能累加。
+ * - `deepSearchResult` 反过来：它是唯一没有对应 child row 的嵌套 LLM 调用，必须补进来。
+ *
+ * owners 把 response.id 映射到「归谁统计」的 ownerKey，由调用方持有并跨批次传入，因为
+ * 同一个响应既可能内联在父行的 childrenResponses/toolDetail 里、又可能被 sink 写成独立 row：
+ * - 未登记 → 登记给 ownerKey 并计入；
+ * - 已登记给同一 ownerKey → 重新计入（同一逻辑响应后到的 row 覆盖前者，与 points 语义一致，
+ *   interactive 恢复会复用同一个 nodeResponseId，必须让覆盖生效而不是丢弃）；
+ * - 已登记给其它 ownerKey → 整棵子树跳过，避免内联与独立 row 重复累计。
+ */
+export const collectNodeResponseTokens = (
+  response: ChatHistoryItemResType,
+  ownerKey: string,
+  owners: Map<string, string>,
+  total: { inputTokens: number; outputTokens: number }
+) => {
+  if (response.id) {
+    const owner = owners.get(response.id);
+    if (owner !== undefined && owner !== ownerKey) return;
+    owners.set(response.id, ownerKey);
+  }
+
+  total.inputTokens +=
+    (response.inputTokens || 0) +
+    (response.toolCallInputTokens || 0) +
+    (response.embeddingTokens || 0) +
+    (response.reRankInputTokens || 0) +
+    (response.deepSearchResult?.inputTokens || 0);
+  total.outputTokens +=
+    (response.outputTokens || 0) +
+    (response.toolCallOutputTokens || 0) +
+    (response.deepSearchResult?.outputTokens || 0);
+
+  getChildrenResponses(response).forEach((child) =>
+    collectNodeResponseTokens(child, ownerKey, owners, total)
+  );
+};
+
 const NODE_RESPONSE_INCREMENT_NUMBER_FIELDS = [
   'runningTime',
   'totalPoints',
@@ -37,6 +82,24 @@ const NODE_RESPONSE_INCREMENT_NUMBER_FIELDS = [
 
 export const getNodeResponseIdentityKey = (response: ChatHistoryItemResType) =>
   `${response.id || ''}\u0000${response.parentId || ''}`;
+
+/**
+ * 统计一组根响应（含各自内联子树）的 token 总量。
+ *
+ * 与 `collectNodeResponseTokens` 的区别只在归属表的生命周期：这里为整组响应建一次性的
+ * owners，适合「对一份列表算总账」的场景，例如比较写入集与展示集的差额；writer 的汇总
+ * 需要跨 record 批次延续归属，必须自己持有 owners 并传入。
+ */
+export const sumNodeResponseTokens = (responses: ChatHistoryItemResType[]) => {
+  const owners = new Map<string, string>();
+  const total = { inputTokens: 0, outputTokens: 0 };
+
+  responses.forEach((response) =>
+    collectNodeResponseTokens(response, getNodeResponseIdentityKey(response), owners, total)
+  );
+
+  return total;
+};
 
 const isSameNodeResponseIdentity = (
   current: ChatHistoryItemResType,

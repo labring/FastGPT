@@ -302,7 +302,8 @@ export const dispatchAgentDatasetSearch = async ({
             usage: queryExtensionUsage,
             modelName: extensionModelData!.name,
             seconds: queryExtensionResult.seconds,
-            query: queryExtensionResult.query
+            query: queryExtensionResult.query,
+            embeddingTokens: queryExtensionResult.embeddingTokens
           })
         );
 

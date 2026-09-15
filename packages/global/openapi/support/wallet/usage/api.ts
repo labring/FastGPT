@@ -76,6 +76,8 @@ export const UsageListItemSchema = z
       .enum(UsageSourceEnum)
       .meta({ example: UsageSourceEnum.fastgpt, description: '使用来源' }),
     totalPoints: NumSchema.meta({ example: 10.5, description: '本条记录总积分消耗' }),
+    inputTokens: NumSchema.meta({ example: 50000, description: '本条记录输入 Token 消耗' }),
+    outputTokens: NumSchema.meta({ example: 20000, description: '本条记录输出 Token 消耗' }),
     list: z.array(UsageItemSchema).meta({ description: '使用明细列表' }),
     sourceMember: SourceMemberSchema.meta({ description: '产生使用记录的团队成员' })
   })
@@ -107,7 +109,9 @@ export type GetUsageDashboardBodyType = z.infer<typeof GetUsageDashboardBodySche
 export const GetUsageDashboardResponseItemSchema = z
   .object({
     date: z.coerce.date().meta({ example: '2026-01-01T00:00:00.000Z', description: '统计日期' }),
-    totalPoints: NumSchema.meta({ example: 100.5, description: '当天总积分消耗' })
+    totalPoints: NumSchema.meta({ example: 100.5, description: '当天总积分消耗' }),
+    inputTokens: NumSchema.meta({ example: 50000, description: '当天输入 Token 消耗' }),
+    outputTokens: NumSchema.meta({ example: 20000, description: '当天输出 Token 消耗' })
   })
   .meta({ description: '使用趋势统计项' });
 export const GetUsageDashboardResponseSchema = z.array(GetUsageDashboardResponseItemSchema).meta({
