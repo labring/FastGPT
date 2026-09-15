@@ -6,6 +6,7 @@ import type {
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
+  collectNodeResponseTokens,
   getChildrenResponses,
   getNodeResponseIdentityKey,
   mergeNodeResponseDataByIdAndParent
@@ -36,7 +37,14 @@ export type NodeResponseWriteSummary = {
   errorCount: number;
   lastError?: string;
   totalPoints: number;
-  // 根节点 token 消耗，用于 app chat log 的累计 token 统计
+  /**
+   * 本轮全部 LLM/向量/重排调用的 token，用于 app chat log 的累计 token 统计。
+   *
+   * 口径与 totalPoints 刻意不同：容器节点（loop / parallel / 子应用 / ToolCall）
+   * 的 totalPoints 已由模块自身聚合过子节点，只能按根节点取；而没有任何模块把子节点
+   * token 聚合进父节点，所以 token 必须遍历全部响应实例累计，否则容器内部的 LLM 调用
+   * 会全部漏统计。
+   */
   inputTokens: number;
   outputTokens: number;
 };
@@ -155,6 +163,17 @@ const slimNodeResponseData = (response: ChatHistoryItemResType): ChatHistoryItem
     'toolCallOutputTokens'
   ];
   numberKeys.forEach((key) => keepNumber(data, source, key));
+
+  // deepSearchResult 是唯一没有对应 child row 的嵌套 LLM 调用，而这里的白名单会把嵌套
+  // 结构整个丢掉。它不能留在嵌套里（会被裁掉），也不能简单丢弃（会漏统计），所以折算进
+  // 顶层 token 字段——裁掉 deepSearchResult 后统计函数只会读到折算后的这一份，不会翻倍。
+  const deepSearchResult = (source.deepSearchResult || {}) as Record<string, unknown>;
+  (['inputTokens', 'outputTokens'] as const).forEach((key) => {
+    const value = deepSearchResult[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      data[key] = ((data[key] as number) || 0) + value;
+    }
+  });
 
   return data as ChatHistoryItemResType;
 };
@@ -441,6 +460,9 @@ export class WorkflowNodeResponseWriter {
   private failedFlushCount = 0;
   // 按 nodeResponse id + parentId 保存摘要贡献；相同展示节点完成态会覆盖开始态，避免重复累计。
   private readonly summaryContributions = new Map<string, NodeResponseWriteSummary>();
+  // token 的归属表：response.id -> 认领它的 identityKey。同一响应既可能内联在父行 detail 里、
+  // 又被 sink 写成独立 row，也可能跨批次到达，因此必须在 writer 实例上存活而不是每次重建。
+  private readonly tokenResponseOwners = new Map<string, string>();
 
   constructor({
     model,
@@ -486,6 +508,9 @@ export class WorkflowNodeResponseWriter {
    * 详情 rows 写库失败后可以丢弃，但引用来源、根节点错误数和根节点费用仍需要保存到
    * chat 记录/日志中。相同 `id + parentId` 的后续 row 会覆盖前一次贡献，避免节点重试
    * 或完成态更新造成重复累计。
+   *
+   * token 与 points 口径不同，见 NodeResponseWriteSummary 上的说明：points 只按根节点，
+   * token 需要遍历全部响应实例（含内联 children），并按 id 去重。
    */
   private collectSummary(rows: ChatItemResponseStorageRow[]) {
     rows.forEach((row) => {
@@ -500,7 +525,8 @@ export class WorkflowNodeResponseWriter {
       // citeCollectionIds 用于保存聊天记录引用来源；内联 children 里的搜索节点也要兼容收集。
       contribution.citeCollectionIds.push(...collectCiteCollectionIds(row.data));
 
-      // 保存历史统计保持旧逻辑口径：只按根节点累计错误数、积分和 token。
+      // 错误数和积分保持旧逻辑口径：容器节点的 totalPoints 已由模块聚合过子节点，
+      // 按 row 累加会重复计分，所以只能取根节点。
       if (!row.data.parentId) {
         const errorText = row.data.errorText || row.data.error;
         if (errorText) {
@@ -508,11 +534,19 @@ export class WorkflowNodeResponseWriter {
           contribution.lastError = String(errorText);
         }
         contribution.totalPoints = row.data.totalPoints || 0;
-        contribution.inputTokens = row.data.inputTokens || 0;
-        contribution.outputTokens = row.data.outputTokens || 0;
       }
 
       const identityKey = getNodeResponseIdentityKey(row.data);
+
+      // token 反过来：没有任何模块把子节点 token 聚合进父节点，必须遍历子树累计，
+      // 否则 loop/parallel/子应用/ToolCall 内部的 LLM 调用会全部漏统计。
+      // ownerKey 用 identityKey，保证"同一响应内联 + 独立 row"只算一次，而 interactive
+      // 恢复复用同一个 nodeResponseId 时仍能覆盖更新。
+      const tokenTotal = { inputTokens: 0, outputTokens: 0 };
+      collectNodeResponseTokens(row.data, identityKey, this.tokenResponseOwners, tokenTotal);
+      contribution.inputTokens = tokenTotal.inputTokens;
+      contribution.outputTokens = tokenTotal.outputTokens;
+
       if (
         contribution.citeCollectionIds.length > 0 ||
         contribution.errorCount > 0 ||
@@ -738,8 +772,8 @@ export class WorkflowNodeResponseWriter {
   /**
    * 返回 saveChat 使用的运行期摘要。
    *
-   * 摘要来源于 record 阶段，不依赖详情 rows 是否最终写库成功；collectionId 会去重，错误
-   * 和积分沿用旧逻辑只统计根节点贡献。
+   * 摘要来源于 record 阶段，不依赖详情 rows 是否最终写库成功；collectionId 会去重，
+   * 错误和积分沿用旧逻辑只统计根节点贡献，token 则统计全部响应实例（见 collectSummary）。
    */
   getSummary(): NodeResponseWriteSummary {
     const citeCollectionIds = new Set<string>();

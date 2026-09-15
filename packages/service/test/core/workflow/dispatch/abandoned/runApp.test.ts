@@ -85,7 +85,9 @@ describe('abandoned dispatchAppRequest', () => {
         flowUsages: [
           {
             moduleName: 'child model',
-            totalPoints: 5
+            totalPoints: 5,
+            inputTokens: 60,
+            outputTokens: 12
           }
         ],
         assistantResponses: [],
@@ -137,8 +139,10 @@ describe('abandoned dispatchAppRequest', () => {
     expect(parentVariableState.get('shared')).toBe('parent-value');
     expect(usagePush).toHaveBeenCalledWith([
       {
-        moduleName: 'child',
-        totalPoints: 5
+        moduleName: 'child-child model',
+        totalPoints: 5,
+        inputTokens: 60,
+        outputTokens: 12
       }
     ]);
     expect(result.responseData?.totalPoints).toBe(5);

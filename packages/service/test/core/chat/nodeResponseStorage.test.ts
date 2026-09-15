@@ -1019,10 +1019,167 @@ describe('WorkflowNodeResponseWriter', () => {
       errorCount: 1,
       lastError: 'failed',
       totalPoints: 10,
-      // 子节点 token 不计入，口径与 totalPoints 一致：只统计根节点
+      // token 与 points 口径相反：points 只有容器节点自身聚合过子节点、只能取根节点，
+      // 而 token 从不聚合进父节点，必须遍历全部响应实例才不会漏掉嵌套 LLM 调用。
       inputTokens: 234,
       outputTokens: 56
     });
+  });
+
+  it('counts tokens from child rows while keeping points root-only', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: { create: vi.fn().mockResolvedValue(undefined) }
+    });
+
+    await writer.record([
+      // 容器节点：totalPoints 已由模块自身聚合，token 字段不存在
+      makeResponse({ id: 'loop-parent', totalPoints: 10, childResponseCount: 2 }),
+      makeResponse({
+        id: 'loop-child-a',
+        parentId: 'loop-parent',
+        inputTokens: 100,
+        outputTokens: 20
+      }),
+      makeResponse({
+        id: 'loop-child-b',
+        parentId: 'loop-parent',
+        inputTokens: 5,
+        outputTokens: 7
+      })
+    ]);
+
+    expect(writer.getSummary()).toEqual({
+      citeCollectionIds: [],
+      errorCount: 0,
+      totalPoints: 10,
+      lastError: undefined,
+      inputTokens: 105,
+      outputTokens: 27
+    });
+  });
+
+  it('counts toolCall tokens that only live under toolCall* fields', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: { create: vi.fn().mockResolvedValue(undefined) }
+    });
+
+    await writer.record([
+      makeResponse({ id: 'toolcall', toolCallInputTokens: 321, toolCallOutputTokens: 45 })
+    ]);
+
+    const summary = writer.getSummary();
+    expect(summary.inputTokens).toBe(321);
+    expect(summary.outputTokens).toBe(45);
+  });
+
+  it('counts inline children that never become their own row', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: { create: vi.fn().mockResolvedValue(undefined) }
+    });
+
+    // datasetSearch 会把 query extension / image caption 内联在 childrenResponses 里，
+    // writer 不展开它们，只扫行顶层字段会漏。
+    await writer.record([
+      makeResponse({
+        id: 'search',
+        embeddingTokens: 11,
+        reRankInputTokens: 13,
+        childrenResponses: [makeResponse({ id: 'ext', inputTokens: 100, outputTokens: 25 })]
+      })
+    ]);
+
+    const summary = writer.getSummary();
+    expect(summary.inputTokens).toBe(124);
+    expect(summary.outputTokens).toBe(25);
+  });
+
+  it('counts deepSearchResult tokens but not the compressTextAgent duplicate', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: { create: vi.fn().mockResolvedValue(undefined) }
+    });
+
+    await writer.record([
+      makeResponse({
+        id: 'search',
+        inputTokens: 10,
+        outputTokens: 4,
+        deepSearchResult: { model: 'deep', inputTokens: 50, outputTokens: 8 },
+        // compressTextAgent 是同一行自身 flat 字段的副本，累加会翻倍
+        compressTextAgent: { inputTokens: 10, outputTokens: 4, totalPoints: 1 }
+      })
+    ]);
+
+    const summary = writer.getSummary();
+    expect(summary.inputTokens).toBe(60);
+    expect(summary.outputTokens).toBe(12);
+  });
+
+  it('counts a response once when it is both inlined and written as its own row', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: { create: vi.fn().mockResolvedValue(undefined) }
+    });
+
+    // retainInMemory 路径下 toolDetail 内联的响应同时会被 sink 写成独立 row。
+    // 顺序反转也要成立，所以两种到达顺序都断言。
+    await writer.record([
+      makeResponse({
+        id: 'toolcall',
+        toolDetail: [makeResponse({ id: 'tool-detail', inputTokens: 70, outputTokens: 9 })]
+      })
+    ]);
+    await writer.record([
+      makeResponse({ id: 'tool-detail', parentId: 'toolcall', inputTokens: 70, outputTokens: 9 })
+    ]);
+
+    expect(writer.getSummary().inputTokens).toBe(70);
+    expect(writer.getSummary().outputTokens).toBe(9);
+  });
+
+  it('counts an inlined response once when the standalone row arrives first', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: { create: vi.fn().mockResolvedValue(undefined) }
+    });
+
+    await writer.record([
+      makeResponse({ id: 'tool-detail', parentId: 'toolcall', inputTokens: 70, outputTokens: 9 })
+    ]);
+    await writer.record([
+      makeResponse({
+        id: 'toolcall',
+        toolDetail: [makeResponse({ id: 'tool-detail', inputTokens: 70, outputTokens: 9 })]
+      })
+    ]);
+
+    expect(writer.getSummary().inputTokens).toBe(70);
+    expect(writer.getSummary().outputTokens).toBe(9);
+  });
+
+  it('overwrites the same response instance instead of adding it twice', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: { create: vi.fn().mockResolvedValue(undefined) }
+    });
+
+    // interactive 恢复会复用同一个 nodeResponseId，后到的完成态要覆盖开始态。
+    await writer.record([makeResponse({ id: 'chat', inputTokens: 10, outputTokens: 1 })]);
+    await writer.record([makeResponse({ id: 'chat', inputTokens: 40, outputTokens: 6 })]);
+
+    const summary = writer.getSummary();
+    expect(summary.inputTokens).toBe(40);
+    expect(summary.outputTokens).toBe(6);
   });
 
   it('creates a writer through factory and writes rows with default options', async () => {

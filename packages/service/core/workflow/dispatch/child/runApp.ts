@@ -23,6 +23,7 @@ import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../uti
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { getRuntimeNodeResponseSummary } from '../utils';
+import { buildFlowUsageItems } from '../../../../support/wallet/usage/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -200,12 +201,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const { text } = chatValue2RuntimePrompt(assistantResponses);
 
     const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-    props.usagePush([
-      {
-        moduleName: appData.name,
-        totalPoints: usagePoints
-      }
-    ]);
+    // 子应用逐条落账，token 才留得住；moduleName 带上子应用名便于账单归因。
+    props.usagePush(buildFlowUsageItems({ usages: flowUsages, moduleNamePrefix: appData.name }));
     const runtimeSummary = getRuntimeNodeResponseSummary({
       runtimeNodeResponseSummary
     });

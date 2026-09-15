@@ -36,6 +36,7 @@ import {
   computedAppToolUsage,
   getAppToolOutputError
 } from '../../../../../../app/tool/runtime/utils';
+import { buildFlowUsageItems } from '../../../../../../../support/wallet/usage/utils';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -437,17 +438,26 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     : !pluginOutput
       ? 'Run workflow tool failed'
       : pluginOutputError;
+  // 计费工具要把固定调用费与子流程消耗分开落账：固定费没有 token，子流程必须逐条透传，
+  // 否则 token 会在"先求和成金额"这一步永久丢失。billable=false（报错、或该工具不计
+  // 子流程费）时子流程条目记 0 分但保留 token。
   const usages = billingTool
-    ? [
-        {
-          moduleName: app.name,
-          totalPoints: await computedAppToolUsage({
-            plugin: billingTool,
-            childrenUsage: flowUsages,
-            error: !!errorMessage
+    ? await (async () => {
+        const { fixedPoints, childrenBillable } = await computedAppToolUsage({
+          plugin: billingTool,
+          childrenUsage: flowUsages,
+          error: !!errorMessage
+        });
+
+        return [
+          ...(fixedPoints !== 0 ? [{ moduleName: app.name, totalPoints: fixedPoints }] : []),
+          ...buildFlowUsageItems({
+            usages: flowUsages,
+            billable: childrenBillable,
+            moduleNamePrefix: app.name
           })
-        }
-      ]
+        ];
+      })()
     : flowUsages;
 
   return {

@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { sumNodeResponseTokens } from '@fastgpt/global/core/chat/utils/mergeNode';
 import {
   dispatchWorkFlow,
   runWorkflow,
@@ -103,6 +104,47 @@ describe('filterToolCallNodeResponses', () => {
 
     expect(responses.map((response) => response.id)).toEqual(['success', 'nested']);
     expect(responses[1]).not.toHaveProperty('childrenResponses');
+  });
+
+  /**
+   * 工具调用里被过滤掉的错误响应不会入库，app chat log 遍历响应树时看不到它们的 token，
+   * 只能在写入侧补差额。这个用例锁住「不能用长度判断有没有被过滤」：过滤同时发生在顶层和
+   * 嵌套 children 里，只过滤嵌套子响应时顶层长度不变，长度比较会静默漏掉整批 token。
+   */
+  it('loses tokens without changing the top-level length when only nested children are filtered', () => {
+    const written = [
+      {
+        id: 'tool-call',
+        nodeId: 'tool-call',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'ToolCall',
+        toolDetail: [
+          {
+            id: 'tool-ok',
+            nodeId: 'tool-ok',
+            moduleType: FlowNodeTypeEnum.tool,
+            moduleName: 'OK',
+            inputTokens: 10,
+            outputTokens: 5
+          },
+          {
+            id: 'tool-failed',
+            nodeId: 'tool-failed',
+            moduleType: FlowNodeTypeEnum.tool,
+            moduleName: 'Failed',
+            errorText: 'tool failed',
+            inputTokens: 100,
+            outputTokens: 20
+          }
+        ]
+      }
+    ] as any;
+
+    const displayed = filterToolCallNodeResponses(written);
+
+    expect(displayed).toHaveLength(written.length);
+    expect(sumNodeResponseTokens(written)).toEqual({ inputTokens: 110, outputTokens: 25 });
+    expect(sumNodeResponseTokens(displayed)).toEqual({ inputTokens: 10, outputTokens: 5 });
   });
 });
 
