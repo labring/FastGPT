@@ -13,7 +13,9 @@ import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
+import { Types } from '../../../common/mongo';
 import type { ClientSession } from '../../../common/mongo';
+import { getLogger, LogCategories } from '../../../common/logger';
 import { createOrGetCollectionTags } from './utils';
 import { rawText2Chunks } from '../read';
 import { checkDatasetIndexLimit } from '../../../support/permission/teamLimit';
@@ -40,25 +42,171 @@ import type {
   ApiCreateDatasetCollectionParams
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 
-export const createCollectionAndInsertData = async ({
+const logger = getLogger(LogCategories.MODULE.DATASET);
+
+/** folder 骨架按层 insertMany 的批大小 */
+export const API_FILE_FOLDER_BATCH_SIZE = 500;
+/** file 单个事务覆盖的节点数上限 */
+export const API_FILE_FILE_BATCH_SIZE = 200;
+
+export type BulkInsertCollectionDoc = {
+  /** 调用方预生成的 ObjectId，以便同轮后续节点直接引用 */
+  _id: Types.ObjectId;
+  name: string;
+  type: DatasetCollectionTypeEnum;
+  apiFileId: string;
+  apiFileParentId?: string | null;
+  parentId: Types.ObjectId | null;
+};
+
+/**
+ * 分批 insertMany 建 **folder** 骨架，不走事务。
+ * 只适用于 folder：folder 无关联账单/队列，可容忍批级部分失败；file 走 createApiFileCollectionsBatch（全事务）。
+ * 批失败时按 _id 回查实际落库情况：insertMany 非原子，整批标记失败会漏掉已落库文档，
+ * 后续重新导入又会因 apiFileId 已存在而跳过它们。
+ */
+export const bulkInsertFolderCollections = async ({
+  teamId,
+  tmbId,
+  datasetId,
+  docs
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  docs: BulkInsertCollectionDoc[];
+}): Promise<{ successApiFileIds: string[]; failedApiFileIds: string[] }> => {
+  const successApiFileIds: string[] = [];
+  const failedApiFileIds: string[] = [];
+  if (docs.length === 0) return { successApiFileIds, failedApiFileIds };
+
+  for (let i = 0; i < docs.length; i += API_FILE_FOLDER_BATCH_SIZE) {
+    const batch = docs.slice(i, i + API_FILE_FOLDER_BATCH_SIZE);
+
+    try {
+      // 不写 tags：folder 沿用旧行为不带标签（走 createOneCollection 的旧代码也没传），schema default 为 []
+      await MongoDatasetCollection.insertMany(
+        batch.map((doc) => ({
+          ...doc,
+          teamId,
+          tmbId,
+          datasetId
+        })),
+        { ordered: false }
+      );
+      successApiFileIds.push(...batch.map((doc) => doc.apiFileId));
+    } catch (error) {
+      try {
+        const landed = await MongoDatasetCollection.find(
+          { teamId, _id: { $in: batch.map((doc) => doc._id) } },
+          '_id'
+        ).lean();
+        const landedIds = new Set(landed.map((item) => String(item._id)));
+
+        for (const doc of batch) {
+          if (landedIds.has(String(doc._id))) successApiFileIds.push(doc.apiFileId);
+          else failedApiFileIds.push(doc.apiFileId);
+        }
+
+        logger.warn('Bulk insert folder batch failed', {
+          teamId,
+          datasetId,
+          batchSize: batch.length,
+          landedSize: landed.length,
+          error
+        });
+      } catch (recoveryError) {
+        // 回查自身也会失败（如 DB 不可达），此时无法判定落库情况，整批按失败上报
+        logger.warn('Bulk insert folder batch failed and recovery query failed', {
+          teamId,
+          datasetId,
+          batchSize: batch.length,
+          error,
+          recoveryError
+        });
+        failedApiFileIds.push(...batch.map((doc) => doc.apiFileId));
+      }
+    }
+  }
+
+  return { successApiFileIds, failedApiFileIds };
+};
+
+export type BulkUpdateCollectionParentItem = {
+  _id: string;
+  parentId: Types.ObjectId;
+  apiFileParentId: string;
+};
+
+/** 批量校正已存在节点的层级；按目标值直接 $set，重复执行天然幂等。不抛异常。 */
+export const bulkUpdateCollectionsParent = async ({
+  teamId,
+  updates
+}: {
+  teamId: string;
+  updates: BulkUpdateCollectionParentItem[];
+}): Promise<{
+  successIds: string[];
+  failedIds: string[];
+  /**
+   * 实际命中（filter 匹配到文档）的 op 数。可能小于 updates.length：目标行在调用前被删/重建过。
+   * 这种「命中 0 条」不会进 failedIds（驱动不报错），调用方需自行比对并告警。
+   */
+  matchedCount: number;
+}> => {
+  const successIds: string[] = [];
+  const failedIds: string[] = [];
+  if (updates.length === 0) return { successIds, failedIds, matchedCount: 0 };
+
+  let matchedCount = 0;
+  try {
+    // 已 resolve 的 BulkWriteResult 不含 writeErrors；mongoose 只在 mongoose.results[i] 标记未执行的 op（cast/校验失败），成功为 null
+    const result: {
+      matchedCount?: number;
+      mongoose?: { validationErrors?: Error[]; results?: Array<unknown | null> };
+    } = await MongoDatasetCollection.bulkWrite(
+      updates.map((item) => ({
+        updateOne: {
+          filter: { _id: item._id, teamId },
+          update: {
+            // 模型类型侧 parentId 是 string（global DatasetCollectionSchemaType.ParentIdSchema），mongoose schema 侧是 Schema.Types.ObjectId，传 hex 串由驱动转回 ObjectId
+            $set: { parentId: String(item.parentId), apiFileParentId: item.apiFileParentId }
+          }
+        }
+      })),
+      { ordered: false }
+    );
+    matchedCount = result.matchedCount ?? 0;
+
+    updates.forEach((item, index) => {
+      if (result.mongoose?.results?.[index]) failedIds.push(item._id);
+      else successIds.push(item._id);
+    });
+  } catch (error) {
+    logger.warn('Bulk update collection parent failed', {
+      teamId,
+      count: updates.length,
+      error
+    });
+    failedIds.push(...updates.map((item) => item._id));
+  }
+
+  return { successIds, failedIds, matchedCount };
+};
+
+/**
+ * 解析模型数据 + 计算 chunk 设置 + 清理与 trainingType 互斥的字段。
+ * 批量创建时整批复用同一份结果，避免逐文件重复计算。
+ * 导出供单测直接断言计算结果（避免测试复制一份计算逻辑当断言基准）。
+ */
+export const formatCollectionParamsByDataset = async ({
   dataset,
-  rawText,
-  imageIds,
-  createCollectionParams,
-  backupParse = false,
-  billId,
-  session
+  createCollectionParams
 }: {
   dataset: DatasetSchemaType;
-  rawText?: string;
-  imageIds?: string[];
-  createCollectionParams: CreateOneCollectionParams;
-
-  backupParse?: boolean;
-
-  billId?: string;
-  session?: ClientSession;
-}): Promise<CreateCollectionWithResultResponseType> => {
+  /** name 不是公共参数（逐文件不同），故此处不要求 */
+  createCollectionParams: Omit<CreateOneCollectionParams, 'name' | 'session'>;
+}) => {
   const modelHandle = await getModelHandle();
   const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
   const embeddingModelData = modelHandle.getEmbeddingModelData(
@@ -79,9 +227,6 @@ export const createCollectionAndInsertData = async ({
     llmModel: agentModelData,
     vectorModel: embeddingModelData
   });
-
-  const teamId = formatCreateCollectionParams.teamId;
-  const tmbId = formatCreateCollectionParams.tmbId;
 
   // Set default params
   const trainingType =
@@ -124,6 +269,47 @@ export const createCollectionAndInsertData = async ({
   if (trainingType !== DatasetCollectionDataProcessModeEnum.qa) {
     delete formatCreateCollectionParams.qaPrompt;
   }
+
+  return {
+    agentModelData,
+    embeddingModelData,
+    vlmModelData,
+    formatCreateCollectionParams,
+    trainingType,
+    trainingMode
+  };
+};
+
+export const createCollectionAndInsertData = async ({
+  dataset,
+  rawText,
+  imageIds,
+  createCollectionParams,
+  backupParse = false,
+  billId,
+  session
+}: {
+  dataset: DatasetSchemaType;
+  rawText?: string;
+  imageIds?: string[];
+  createCollectionParams: CreateOneCollectionParams;
+
+  backupParse?: boolean;
+
+  billId?: string;
+  session?: ClientSession;
+}): Promise<CreateCollectionWithResultResponseType> => {
+  const {
+    agentModelData,
+    embeddingModelData,
+    vlmModelData,
+    formatCreateCollectionParams,
+    trainingType,
+    trainingMode
+  } = await formatCollectionParamsByDataset({ dataset, createCollectionParams });
+
+  const teamId = formatCreateCollectionParams.teamId;
+  const tmbId = formatCreateCollectionParams.tmbId;
 
   // 1. split chunks or create image chunks
   const {
@@ -191,6 +377,8 @@ export const createCollectionAndInsertData = async ({
     // 3. Create collection
     const { _id: collectionId } = await createOneCollection({
       ...formatCreateCollectionParams,
+      // name 不参与公共参数计算（批量路径下逐文件不同），此处补回
+      name: createCollectionParams.name,
       trainingType,
       chunkSize,
       indexSize,
@@ -206,7 +394,7 @@ export const createCollectionAndInsertData = async ({
       const { usageId: newUsageId } = await createTrainingUsage({
         teamId,
         tmbId,
-        appName: formatCreateCollectionParams.name,
+        appName: createCollectionParams.name,
         billSource: UsageSourceEnum.training,
         vectorModelId: embeddingModelData.modelId!,
         agentModelId: agentModelData.modelId,
@@ -337,6 +525,124 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
 
   return collection;
 }
+
+export type CreateApiFileCollectionItem = {
+  name: string;
+  apiFileId: string;
+  apiFileParentId?: string;
+  parentId?: string;
+  metadata?: Record<string, any>;
+};
+
+/**
+ * 批量创建 apiFile 类型 collection：模型/chunk 设置整批算一次、训练账单建一次、
+ * 解析队列插一次、collection 一次 insertMany。
+ *
+ * 全部写入共用调用方传入的 session：任一失败整批回滚，调用方按「整批失败」计数 ——
+ * 不做部分成功，避免超时后无法判断哪些文件已落库。
+ * 仅适用于走解析队列的路径（无 rawText/imageIds），与 createCollectionAndInsertData 的该分支等价。
+ */
+export const createApiFileCollectionsBatch = async ({
+  dataset,
+  files,
+  createCollectionParams,
+  session
+}: {
+  dataset: DatasetSchemaType;
+  files: CreateApiFileCollectionItem[];
+  createCollectionParams: Omit<
+    CreateOneCollectionParams,
+    'name' | 'apiFileId' | 'apiFileParentId' | 'parentId' | 'session'
+  >;
+  session: ClientSession;
+}): Promise<{ collectionIds: string[] }> => {
+  if (files.length === 0) return { collectionIds: [] };
+
+  const {
+    agentModelData,
+    embeddingModelData,
+    vlmModelData,
+    formatCreateCollectionParams,
+    trainingType
+  } = await formatCollectionParamsByDataset({ dataset, createCollectionParams });
+
+  const teamId = formatCreateCollectionParams.teamId;
+  const tmbId = formatCreateCollectionParams.tmbId;
+
+  // tags 是请求级参数，整批相同：解析一次即可，避免逐文件重复创建标签文档
+  const collectionTags = await createOrGetCollectionTags({
+    tags: formatCreateCollectionParams.tags,
+    teamId,
+    datasetId: String(dataset._id),
+    session
+  });
+
+  // 解析队列路径不在此处切块（切块在 datasetParse 里按 collection 的 chunkSize 做），
+  // 但**必须把计算好的 chunkSize / indexSize 落库**：collection 是这两个值的唯一载体，
+  // 置空会让解析阶段回退到 rawText2Chunks 的默认 512、向量阶段回退到模型最大索引长度，
+  // 而不是本次请求算出来的自动值（chunkAutoChunkSize = 1000）。
+  const chunkSize = formatCreateCollectionParams.chunkSize;
+  const indexSize = formatCreateCollectionParams.indexSize;
+
+  // 配额检查一次覆盖整批：解析队列路径尚无 chunk，predictDataLimitLength 恒为 0，
+  // 用「待创建 collection 数」近似预测增量 —— 每个文件最终至少产生 1 个索引，逐文件检查等价但要多 4w 次查询。
+  // 放在写入之前：超限直接抛出，事务整体回滚，调用方按「整批失败」计数
+  await checkDatasetIndexLimit({
+    teamId,
+    insertLen: files.length
+  });
+
+  // 整个请求共用一份训练账单：appName 取首个文件名，其余数量收敛为后缀
+  const { usageId: billId } = await createTrainingUsage({
+    teamId,
+    tmbId,
+    appName: files.length > 1 ? `${files[0].name} +${files.length - 1}` : files[0].name,
+    billSource: UsageSourceEnum.training,
+    vectorModelId: embeddingModelData.modelId!,
+    agentModelId: agentModelData.modelId,
+    vllmModelId: vlmModelData?.modelId,
+    session
+  });
+
+  // 预生成 _id：解析队列行要引用 collectionId，必须在 insertMany 之前就确定
+  const objectIds = files.map(() => new Types.ObjectId());
+
+  await MongoDatasetCollection.insertMany(
+    files.map((file, index) => ({
+      ...formatCreateCollectionParams,
+      _id: objectIds[index],
+      // 逐文件字段必须写在 ...formatCreateCollectionParams 之后，覆盖请求级同名字段
+      name: file.name,
+      type: DatasetCollectionTypeEnum.apiFile,
+      datasetId: String(dataset._id),
+      parentId: file.parentId ?? null,
+      apiFileId: file.apiFileId,
+      apiFileParentId: file.apiFileParentId,
+      metadata: file.metadata,
+      // 展开的 formatCreateCollectionParams 里是原始 tags，须用解析后的标签文档覆盖
+      tags: collectionTags,
+      trainingType,
+      // 与 createCollectionAndInsertData 的无 rawText/imageIds 分支一致：
+      // 有计算值就写计算值，只有没算出来时才是 undefined
+      chunkSize,
+      indexSize,
+      hashRawText: undefined,
+      rawTextLength: undefined
+    })),
+    { session, ordered: true }
+  );
+
+  await pushDatasetToParseQueue({
+    teamId,
+    tmbId,
+    datasetId: String(dataset._id),
+    collectionId: objectIds.map((id) => String(id)),
+    billId,
+    session
+  });
+
+  return { collectionIds: objectIds.map((id) => String(id)) };
+};
 
 /* delete collection related images/files */
 export const delCollectionRelatedSource = async ({

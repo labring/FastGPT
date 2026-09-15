@@ -4,7 +4,10 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { createApiDatasetCollection } from './apiCollectionV2';
-import { CreateApiCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import {
+  CreateApiCollectionBodySchema,
+  CreateApiCollectionResponseSchema
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps) {
@@ -27,13 +30,15 @@ async function handler(req: ApiRequestProps) {
     apiFileId
   });
 
-  return createApiDatasetCollection({
-    apiFiles: [fileDetail],
-    teamId,
-    tmbId,
-    dataset,
-    ...body
-  });
+  return CreateApiCollectionResponseSchema.parse(
+    await createApiDatasetCollection({
+      apiFiles: [fileDetail],
+      teamId,
+      tmbId,
+      dataset,
+      ...body
+    })
+  );
 }
 
 export default NextAPI(handler);
