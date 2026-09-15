@@ -385,11 +385,12 @@ describe('createApiDatasetCollection', () => {
     const files = Array.from({ length: 550 }, (_, i) => apiFile(`f${i}`, 'file'));
     mockCreateApiFileCollectionsBatch.mockRejectedValue(new Error('batch failed'));
 
-    const result = await call({ apiFiles: files });
+    // 必须 reject 而非返回 200：客户端只在请求失败时才把文件标为失败，
+    // 否则 4w 个文件全部回滚、只剩 folder 骨架，用户仍看到「导入成功」
+    await expect(call({ apiFiles: files })).rejects.toThrow('batch failed');
 
     // 超时/失败后无法判断批内哪些已落库，故全部计入失败（服务端整批回滚）
     expect(mockMongoSessionRun).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ successCount: 0, failedCount: 550 });
     // 整批失败必须留下服务端信号，否则静默丢失
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Create api file collection batch failed',
@@ -414,7 +415,7 @@ describe('createApiDatasetCollection', () => {
     expect(correctionUpdates()).toHaveLength(1);
     expect(result.failedCount).toBe(1);
     expect(mockCreateApiFileCollectionsBatch).toHaveBeenCalled();
-    // 校正失败必须记 WARN（设计文档 §3.2.2.1 步骤 9 / §3.2.4），否则 40k 规模下无人可查
+    // 校正失败必须记 WARN，否则 40k 规模下无人可查
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Create api file collection parent update failed',
       expect.objectContaining({ datasetId: 'dataset-id', failedCount: 1 })

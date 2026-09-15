@@ -1,5 +1,6 @@
 import {
   CreateApiCollectionV2BodySchema,
+  CreateApiCollectionV2ResponseSchema,
   type CreateApiCollectionV2BodyType,
   type CreateApiCollectionV2ResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
@@ -49,12 +50,14 @@ async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
     insertLen: 1
   });
 
-  return createApiDatasetCollection({
-    ...body,
-    teamId,
-    tmbId,
-    dataset
-  });
+  return CreateApiCollectionV2ResponseSchema.parse(
+    await createApiDatasetCollection({
+      ...body,
+      teamId,
+      tmbId,
+      dataset
+    })
+  );
 }
 
 export default NextAPI(handler);
@@ -215,7 +218,7 @@ export const createApiDatasetCollection = async ({
   const corrections = buildCorrections();
 
   // 取舍：以 server 层级为准，挂在自建（无 apiFileId）文件夹下的节点会被重挂到 server 真实父级。
-  // 若产品改为「用户显式摆放优先」，在此处跳过 parentId 指向自建文件夹的节点即可（见设计文档 §3.2.2.1 取舍说明）
+  // 若产品改为「用户显式摆放优先」，在此处跳过 parentId 指向自建文件夹的节点即可
   const correctionResult = await bulkUpdateCollectionsParent({ teamId, updates: corrections });
   failedCount += correctionResult.failedIds.length;
   if (correctionResult.failedIds.length) {
@@ -271,14 +274,17 @@ export const createApiDatasetCollection = async ({
       });
       successCount += writable.length;
     } catch (error) {
-      // 事务已整体回滚，无部分成功：整批计入失败，客户端重试即可（已存在的节点会被幂等跳过）
+      // 事务已整体回滚，无部分成功（含配额不足、模型解析失败、事务超时）：整批计入失败。
+      // 必须抛出让调用方感知 —— 客户端只在请求 reject 时才把文件标为失败，返回 200 会让
+      // 用户看到「导入成功」而实际一个文件都没进去（最坏只剩 folder 骨架）
       logger.warn('Create api file collection batch failed', {
         teamId,
         datasetId: String(dataset._id),
         batchSize: writable.length,
+        succeededCount: successCount,
         error
       });
-      failedCount += writable.length;
+      throw error;
     }
   }
 
