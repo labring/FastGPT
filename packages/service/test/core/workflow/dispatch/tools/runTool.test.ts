@@ -106,7 +106,7 @@ const createRunToolProps = (
       memberName: 'Attacker member',
       contact: '',
       teamId: 'attacker-team',
-      // 调用者与应用创建者不同；工具引用仍应按应用创建者鉴权。
+      // 调用者与应用创建者不同；工具引用按当前运行人鉴权。
       tmbId: 'caller-without-toolset-permission'
     },
     variableState: {
@@ -211,7 +211,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-without-toolset-permission',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
@@ -264,7 +264,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-without-toolset-permission',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
@@ -412,7 +412,7 @@ describe('dispatchRunTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-without-toolset-permission',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });

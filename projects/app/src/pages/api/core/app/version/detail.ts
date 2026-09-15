@@ -13,6 +13,8 @@ import {
   type GetAppVersionDetailResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
 import { normalizeAppVersionWorkflow } from '@fastgpt/service/core/app/version/controller';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
 
 async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponseType> {
   const { versionId, appId } = parseApiInput({
@@ -32,7 +34,12 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
     return Promise.reject('version not found');
   }
 
-  const normalizedWorkflow = normalizeAppVersionWorkflow(result);
+  const normalizedWorkflow = normalizeAppVersionWorkflow(
+    result,
+    AppResourcesSchema.safeParse(result.resources).success
+      ? []
+      : (await getModelHandle()).getAllModels()
+  );
   await rewriteAppWorkflowToDetail({
     nodes: normalizedWorkflow.nodes,
     teamId,

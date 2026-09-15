@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -266,6 +267,48 @@ describe('resolveStoredAppResources', () => {
         resources: [{ type: 'model', id: 'model-1', data: { modelType: 'llm' } }]
       })
     ).toEqual([{ type: 'model', id: 'model-1' }]);
+  });
+
+  it('resolves legacy model names to modelIds using the caller catalog when resources is missing', () => {
+    const models = [
+      {
+        modelId: 'resolved-llm-id',
+        model: 'gpt-4o',
+        name: 'GPT-4o',
+        type: ModelTypeEnum.llm,
+        provider: 'openai',
+        isActive: true,
+        config: {}
+      } as any,
+      {
+        modelId: 'resolved-tts-id',
+        model: 'tts-1',
+        name: 'TTS-1',
+        type: ModelTypeEnum.tts,
+        provider: 'openai',
+        isActive: true,
+        config: {}
+      } as any
+    ];
+
+    expect(
+      resolveStoredAppResources({
+        nodes: [
+          createNode({
+            flowNodeType: FlowNodeTypeEnum.agent,
+            inputs: [createInput(NodeInputKeyEnum.aiModelId, 'gpt-4o')]
+          })
+        ],
+        models,
+        chatConfig: {
+          questionGuide: { open: true, model: 'gpt-4o' } as any,
+          ttsConfig: { type: 'model', model: 'tts-1' } as any
+        }
+      })
+    ).toEqual([
+      { type: 'model', id: 'resolved-llm-id' },
+      { type: 'model', id: 'resolved-tts-id' }
+    ]);
   });
 });
 

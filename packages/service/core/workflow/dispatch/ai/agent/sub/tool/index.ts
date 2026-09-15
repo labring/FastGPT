@@ -136,11 +136,11 @@ export const dispatchTool = async ({
   try {
     /**
      * Agent 工具调用也会按持久化 toolId 解析 HTTP/MCP 父工具集。
-     * 这里必须使用当前运行工作流的 tmbId 做运行时授权，防止绕过保存阶段的脏引用被模型调用执行。
+     * 这里必须使用当前运行用户的 tmbId 做运行时授权，与入口及动态工具鉴权上下文保持一致。
      */
     const authRuntimeToolset = async (parentId: string, toolName?: string) =>
       loadWorkflowAppResource({
-        tmbId: runningAppInfo.tmbId,
+        tmbId: runningUserInfo.tmbId,
         appId: parentId,
         type: 'tool',
         toolName,

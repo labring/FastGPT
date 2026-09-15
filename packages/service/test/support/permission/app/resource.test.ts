@@ -157,8 +157,8 @@ describe('filterAuthorizedAppResources', () => {
   });
 
   it('drops all resources to empty array when member cannot be found or is inactive', async () => {
-    mocks.authAppByTmbId.mockRejectedValue(new Error('Member not found'));
-    mocks.getTmbInfoByTmbId.mockRejectedValue(new Error('Member not found'));
+    mocks.authAppByTmbId.mockRejectedValue('member not exist');
+    mocks.getTmbInfoByTmbId.mockRejectedValue('member not exist');
 
     const resources = [
       { type: 'agent' as const, id: '65f000000000000000000010' },
@@ -171,5 +171,32 @@ describe('filterAuthorizedAppResources', () => {
     });
 
     expect(result).toEqual([]);
+  });
+
+  it('throws when getTmbInfoByTmbId encounters an unexpected or database error', async () => {
+    mocks.getTmbInfoByTmbId.mockRejectedValue(new Error('MongoNetworkError: connection timed out'));
+
+    const resources = [{ type: 'agent' as const, id: '65f000000000000000000010' }];
+
+    await expect(
+      filterAuthorizedAppResources({
+        resources,
+        tmbId: validTmbId
+      })
+    ).rejects.toThrow('MongoNetworkError: connection timed out');
+  });
+
+  it('throws when resource auth encounters an unexpected or database error', async () => {
+    mocks.getTmbInfoByTmbId.mockResolvedValue(undefined);
+    mocks.authAppByTmbId.mockRejectedValue(new Error('MongoTimeoutError: query exceeded limit'));
+
+    const resources = [{ type: 'agent' as const, id: '65f000000000000000000010' }];
+
+    await expect(
+      filterAuthorizedAppResources({
+        resources,
+        tmbId: validTmbId
+      })
+    ).rejects.toThrow('MongoTimeoutError: query exceeded limit');
   });
 });

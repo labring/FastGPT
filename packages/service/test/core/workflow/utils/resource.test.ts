@@ -9,7 +9,12 @@ const mocks = vi.hoisted(() => ({
   mongoDatasetFind: vi.fn(),
   mongoDatasetFindOne: vi.fn(),
   checkAppResourceReadPermissions: vi.fn(),
-  resolveAppResourcesByPermission: vi.fn()
+  resolveAppResourcesByPermission: vi.fn(),
+  getModelHandle: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/ai/model', () => ({
+  getModelHandle: mocks.getModelHandle
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
@@ -52,6 +57,7 @@ describe('workflow resource context', () => {
     );
     mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
     mocks.checkAppResourceReadPermissions.mockResolvedValue(undefined);
+    mocks.getModelHandle.mockResolvedValue({ getAllModels: () => [] });
   });
 
   it('inherits root cross-team permission when creating a child context', async () => {
@@ -123,6 +129,37 @@ describe('workflow resource context', () => {
     });
 
     expect(mocks.checkAppResourceReadPermissions).toHaveBeenCalledOnce();
+  });
+
+  it('checks a legacy model name against the declared modelId', async () => {
+    mocks.getModelHandle.mockResolvedValue({
+      getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }]
+    });
+    const context = await loadWorkflowResourceContext({
+      resources: [{ type: 'model', id: 'resolved-model-id' }]
+    });
+    const node = {
+      flowNodeType: FlowNodeTypeEnum.chatNode,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.aiModelId,
+          value: 'legacy-llm',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+        }
+      ]
+    };
+
+    await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
+      assertWorkflowNodeModelResources({
+        node,
+        params: { [NodeInputKeyEnum.aiModelId]: 'legacy-llm' },
+        tmbId: 'tmb-1'
+      })
+    );
+
+    expect(mocks.checkAppResourceReadPermissions).not.toHaveBeenCalled();
+    expect(mocks.getModelHandle).toHaveBeenCalledOnce();
   });
 
   it('rejects a declared App resource when the entity is unavailable', async () => {

@@ -553,4 +553,3 @@ flowchart TD
 4. **统一复用与错误隔离**：
    - 所有派发分支（`runApp.ts`、`runTool.ts`、`sub/app/index.ts`、`dispatch/utils/index.ts`）统一收敛至 `loadWorkflowAppResource` / `loadWorkflowDatasetResource`；
    - 不引入任何中间层查询缓存，每次执行现场查库，确保多节点或协作修改的数据实时一致性。
-

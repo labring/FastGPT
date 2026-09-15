@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { MongoApp } from '../../app/schema';
 import { MongoDataset } from '../../dataset/schema';
+import { getModelHandle } from '../../ai/model';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
 import {
@@ -107,8 +108,6 @@ const modelFeatureKeyMap = new Map<string, NodeInputKeyEnum>([
   [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearch]
 ]);
 
-const getRuntimeModelId = (value: unknown): string | undefined => resolveSystemModelId(value);
-
 /**
  * 在统一节点调度边界校验实际使用的模型资源。
  *
@@ -124,10 +123,9 @@ export const assertWorkflowNodeModelResources = async ({
   params: Record<string, unknown>;
   tmbId: string;
 }) => {
-  const modelReferences: Array<{ id: string; dynamic: boolean }> = [];
+  const modelReferences: Array<{ value: unknown; dynamic: boolean }> = [];
   const addModel = (value: unknown, dynamic: boolean) => {
-    const id = getRuntimeModelId(value);
-    if (id) modelReferences.push({ id, dynamic });
+    if (value !== undefined && value !== null) modelReferences.push({ value, dynamic });
   };
 
   node.inputs.forEach((input) => {
@@ -167,7 +165,10 @@ export const assertWorkflowNodeModelResources = async ({
 
   const context = getWorkflowResourceContext();
   const permissionResources = new Map<string, AppResource>();
-  modelReferences.forEach(({ id, dynamic }) => {
+  const models = modelReferences.length ? (await getModelHandle()).getAllModels() : [];
+  modelReferences.forEach(({ value, dynamic }) => {
+    const id = resolveSystemModelId(value, undefined, models);
+    if (!id) return;
     if (context && !dynamic) {
       assertWorkflowResource({ context, type: 'model', id });
       return;

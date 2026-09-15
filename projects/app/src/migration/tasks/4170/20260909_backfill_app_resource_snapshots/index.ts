@@ -306,18 +306,28 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
     [VERSION_STAGE_KEY, MongoAppVersion.collection],
     [APP_STAGE_KEY, MongoApp.collection]
   ] as const) {
-    const invalidRecords = await readInvalidAppResourceRecordIds(
-      collection,
-      systemMigrationBatchSize
-    );
-    invalidRecords.forEach((record) =>
-      setFailedRecord(
-        createFailedRecord({
-          stageKey,
-          failure: { record, message: 'Record _id is not an ObjectId' }
-        })
-      )
-    );
+    // 非 ObjectId 记录不在主游标中，必须单独分页扫描，避免只报告首批异常。
+    let invalidLastId: unknown;
+    while (true) {
+      await context.assertActive();
+      const invalidRecords = await readInvalidAppResourceRecordIds(
+        collection,
+        systemMigrationBatchSize,
+        invalidLastId
+      );
+      if (invalidRecords.length === 0) break;
+
+      invalidRecords.forEach((record) =>
+        setFailedRecord(
+          createFailedRecord({
+            stageKey,
+            failure: { record, message: 'Record _id is not an ObjectId' }
+          })
+        )
+      );
+      await reportFailedRecordsIfChanged();
+      invalidLastId = invalidRecords.at(-1)!._id;
+    }
   }
   await reportFailedRecordsIfChanged();
   if (failedRecordMap.size > 0) {
