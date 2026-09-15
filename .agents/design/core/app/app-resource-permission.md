@@ -120,8 +120,9 @@ API 契约向后兼容：
 - 系统 Skill 放行；MCP/HTTP 用父工具集 id + 可选 `toolNames`。
 - `authTmbId` 仍是终端用户数据过滤，和发布快照是两层。
 - 无 `resourceContext` 仅保留非 App 场景：Skill 调试、商业工具主动清空父快照。App 正式运行（含 Pro 评测 / Home Chat）必须带快照。不能裸 `findById`。
-- 入口批量加载实体；root Test/Debug 才允许跨团队，并向下传 `isRoot`。
-- 缺失/软删/跨团队**不在入口 fail-fast**：实体不在快照 map 时，只在用到该资源的节点按需抛错（`loadWorkflowDatasetResource` / `loadWorkflowAppResource` / `assertWorkflowResource`），其余节点照常执行。任何资源加载器都不得把“已声明但实体缺失”降级为静默跳过。编辑器通过 workflow check 标出失效引用并定位到节点（`resource_missing`）。
+- **纯 JIT 实时查库，入口零 DB 查询**：入口 `loadWorkflowResourceContext` 仅在内存中把快照转为白名单字典 `resourceMap`（耗时 ~0ms），彻底移除开局批量查库逻辑（不再生成 `appMap`、`workflowMap`、`datasetMap`、`skillMap` 等内存实体大字典）；root Test/Debug 请求保留跨团队标识向下传递 `isRoot`。
+- **现场核验与单点按需查库**：实体不在入口预取，只有流转到实际使用节点时，才现场调用 `assertWorkflowResource` / `assertWorkflowDatasetResources` 核对白名单，通过后再现场实时查询 MongoDB 单条记录（`loadWorkflowAppResource` / `loadWorkflowDatasetResource` / `loadWorkflowAppWorkflow`）。未命中的分支和未调用的工具整个运行周期零 DB 查询、零开销。
+- 缺失/软删/跨团队**在命中节点按需抛错**：查库未找到实体或软删时，抛出 `WorkflowResourceError` 或领域异常，其余未执行的分支不受影响。任何资源加载器都不得把“已声明但实体缺失”降级为静默跳过。编辑器通过 workflow check 标出失效引用并定位到节点（`resource_missing`）。
 
 ---
 
@@ -462,3 +463,94 @@ type AppResource =
 #### 4. 详情刷新平滑过渡（Stale-While-Revalidate）
 - **根因消除**：在 `useModelSummary` 中通过 `targetKey` 对齐当前模型身份与应用维度；
 - **平滑过渡**：当打开下拉菜单或触发后台状态校验时，若在途请求正在重新验证相同模型，界面继续展示上一帧已有的有效详情，直到新响应返回后再平滑更新，彻底杜绝下拉展开或二次校验时瞬间闪烁 `Requesting models`（模型请求中）的问题。
+
+---
+
+## 17. 工作流静态资源 JIT 纯实时按需鉴权与加载架构（JIT Resource Loading）
+
+### 17.1 架构动因与演进
+在原实现中，静态资源快照（`resources`）在工作流运行开局时（第 0 毫秒）强行全量调用 `loadWorkflowResourceContext`，并发查询所有可能用到的 `MongoApp`、`MongoDataset`、`MongoAgentSkills` 以及 `MongoAppVersion`，并将实体对象存入内存 Map（`appMap`、`workflowMap`、`datasetMap`、`skillMap`）。
+
+这带来了明显的缺陷：
+1. **首字延迟（TTFT）劣化**：无论本次对话走向哪个分支，入口必须强制等待一批评定可能用不上的数据库查询；
+2. **分支污染与误报**：条件分支（如 If-Else）中未走到的分支若存在已被删除或失效的资源，开局预热也会强行查库或在未命中时崩溃；
+3. **内存臃肿与重复存储**：Context 既保存了数组 `resources`，又保存了 `resourceMap`，还持有着庞大的实体对象字典。
+
+为此，重构为**纯 JIT 实时按需加载与鉴权架构**：开局不查库、不存实体缓存、节点执行时现场核对白名单并单点查库。
+
+### 17.2 极简无状态快照上下文（Stateless Resource Context）
+彻底移除所有实体 Map 和冗余数组，`WorkflowResourceContext` 仅保留 3 个字段：
+
+```ts
+export type WorkflowResourceContext = {
+  teamId?: string;
+  /** root Test/Debug 请求允许子工作流沿用跨团队资源权限。 */
+  isRoot: boolean;
+  /** 唯一的内存白名单字典，专职提供微秒级的 O(1) 比对 */
+  resourceMap: Map<string, AppResource>;
+};
+```
+
+入口初始化函数 `loadWorkflowResourceContext` 退化为纯内存转换操作（耗时 ~0ms，零 DB 批量查询）：
+```ts
+export const loadWorkflowResourceContext = async ({
+  resources,
+  teamId,
+  isRoot = false
+}: {
+  resources: AppResourcesType;
+  teamId?: string;
+  isRoot?: boolean;
+}): Promise<WorkflowResourceContext> => {
+  const normalizedResources = mergeAppResources(Array.isArray(resources) ? resources : []);
+  const resourceMap = new Map(
+    normalizedResources.map((resource) => [getResourceKey(resource.type, resource.id), resource])
+  );
+  return { teamId, isRoot, resourceMap };
+};
+```
+
+### 17.3 流程对比
+
+```mermaid
+flowchart TD
+    subgraph 原有架构 (Eager 预热 + 内存大字典)
+        A1[API 入口] --> B1["loadWorkflowResourceContext (全量查库: MongoApp, MongoDataset, MongoAppVersion)"]
+        B1 --> C1["预热填满 appMap, datasetMap, workflowMap (持有大量实体状态)"]
+        C1 --> D1[启动工作流引擎 dispatchWorkFlow]
+        D1 --> E1{未命中分支资源失效?}
+        E1 -- 是 --> F1[开局直接报错崩溃 ❌]
+        E1 -- 否 --> G1[从内存 Map 读取实体]
+    end
+
+    subgraph 纯粹 JIT 架构 (只留 resourceMap, 纯实时查库)
+        A2[API 入口] --> B2["loadWorkflowResourceContext (纯内存构造 resourceMap, 0ms, 零 DB 查询)"]
+        B2 --> C2[启动工作流引擎 dispatchWorkFlow]
+        C2 --> D2[流转到具体节点]
+        D2 --> E2{"节点命中? (如 runApp / dataset)"}
+        E2 -- 未走该分支 --> F2[零 DB 查询, 完全无损跳过 ✅]
+        E2 -- 走该分支 --> G2["assertWorkflowResource (纯内存核对 resourceMap 白名单)"]
+        G2 -- 不在快照 --> H2[抛出未授权异常阻断 ❌]
+        G2 -- 命中快照 --> I2["实时查库: MongoApp.findOne / MongoDataset.findOne (~1ms)"]
+        I2 -- 实体已被删/查不到 --> J2[抛出不可用领域异常 ❌]
+        I2 -- 查得实体 --> K2[直接执行子工作流/读取知识库]
+    end
+```
+
+### 17.4 调度边界与现场查询收敛规则
+
+1. **子应用与工具集（`loadWorkflowAppResource`）**：
+   - 动态引用或无快照时按当前运行人读权限查询（`authAppByTmbId`）；
+   - 静态引用时核对 `assertWorkflowResource` 白名单，通过后现场执行 `MongoApp.findOne`；未找到或格式非法统一抛出 `WorkflowResourceError`；
+   - 子应用工作流节点按需通过 `loadWorkflowAppWorkflow` 实时获取最新发布版本。
+2. **知识库检索（`loadWorkflowDatasetResource`）**：
+   - 动态引用或无快照时按当前运行人读权限鉴权（`authDatasetByTmbId`）；
+   - 静态引用核对 `assertWorkflowDatasetResources` 白名单后现场执行 `MongoDataset.findOne`；查不到统一抛出 `DatasetErrEnum.unExist`；
+   - Agent 用户上下文中的批量知识库元数据（`loadAgentDatasetContext`）现场单次 `MongoDataset.find`，兼顾 JIT 实时性与批查询性能。
+3. **沙箱技能（`injectAgentSkillFilesToSandbox`）**：
+   - 现场遍历核对 `assertWorkflowResource({ type: 'skill' })`；
+   - 现场执行 `MongoAgentSkills.find` 查询有效实体，数量不匹配或缺失直接抛出 `SkillErrEnum.unExist`。
+4. **统一复用与错误隔离**：
+   - 所有派发分支（`runApp.ts`、`runTool.ts`、`sub/app/index.ts`、`dispatch/utils/index.ts`）统一收敛至 `loadWorkflowAppResource` / `loadWorkflowDatasetResource`；
+   - 不引入任何中间层查询缓存，每次执行现场查库，确保多节点或协作修改的数据实时一致性。
+

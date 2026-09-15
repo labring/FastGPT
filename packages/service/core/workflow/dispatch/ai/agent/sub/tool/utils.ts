@@ -61,7 +61,7 @@ import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/ty
 import { getMCPChildren } from '../../../../../../app/mcp';
 import {
   filterWorkflowToolList,
-  getWorkflowAppWorkflow,
+  loadWorkflowAppWorkflow,
   isWorkflowResourceError,
   loadWorkflowAppResource
 } from '../../../../../utils/resource';
@@ -376,7 +376,7 @@ export const getAgentRuntimeTools = async ({
     const toolList = filterWorkflowToolList({
       context: resourceContext,
       appId: String(app._id),
-      tools: await getMCPChildren(app, getWorkflowAppWorkflow(String(app._id)))
+      tools: await getMCPChildren(app, await loadWorkflowAppWorkflow(app))
     });
     const tool = findToolByName(toolList, toolName);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
@@ -750,10 +750,7 @@ export const getAgentRuntimeTools = async ({
               ? filterWorkflowToolList({
                   context: resourceContext,
                   appId: String(toolSetApp._id),
-                  tools: await getMCPChildren(
-                    toolSetApp,
-                    getWorkflowAppWorkflow(String(toolSetApp._id))
-                  )
+                  tools: await getMCPChildren(toolSetApp, await loadWorkflowAppWorkflow(toolSetApp))
                 })
               : [];
 

@@ -42,8 +42,6 @@ import {
   normalizeFlowNodeInputType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
-import { authAppByTmbId } from '../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getToolSetChildDescription } from '@fastgpt/global/core/app/tool/utils';
 
 /**
@@ -589,19 +587,8 @@ export const rewriteRuntimeWorkFlow = async ({
   };
 
   const getAuthorizedToolSet = async (toolSetId: string) => {
-    const resourceContext = getWorkflowResourceContext();
-    if (resourceContext) {
-      return loadWorkflowAppResource({ appId: toolSetId, tmbId, type: 'tool' });
-    }
-
     try {
-      return (
-        await authAppByTmbId({
-          tmbId,
-          appId: toolSetId,
-          per: ReadPermissionVal
-        })
-      ).app;
+      return await loadWorkflowAppResource({ appId: toolSetId, tmbId, type: 'tool' });
     } catch {
       return undefined;
     }

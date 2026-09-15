@@ -7,6 +7,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   mongoDatasetFind: vi.fn(),
+  mongoDatasetFindOne: vi.fn(),
   checkAppResourceReadPermissions: vi.fn(),
   resolveAppResourcesByPermission: vi.fn()
 }));
@@ -17,7 +18,8 @@ vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
     ...actual,
     MongoDataset: {
       ...actual.MongoDataset,
-      find: mocks.mongoDatasetFind
+      find: mocks.mongoDatasetFind,
+      findOne: mocks.mongoDatasetFindOne
     }
   };
 });
@@ -32,12 +34,13 @@ import {
   assertWorkflowNodeModelResources,
   createWorkflowChildResourceContext,
   loadWorkflowAppResource,
+  loadWorkflowDatasetResource,
   loadWorkflowResourceContext,
   prepareWorkflowDebugResourceContext,
   WorkflowResourceError
 } from '@fastgpt/service/core/workflow/utils/resource';
 
-const createFindResult = (documents: unknown[] = []) => ({
+const createFindResult = (documents: unknown = []) => ({
   lean: vi.fn().mockResolvedValue(documents)
 });
 
@@ -47,6 +50,7 @@ describe('workflow resource context', () => {
     mocks.mongoDatasetFind.mockReturnValue(
       createFindResult([{ _id: 'dataset-1' }, { _id: 'dataset-2' }])
     );
+    mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
     mocks.checkAppResourceReadPermissions.mockResolvedValue(undefined);
   });
 
@@ -57,14 +61,24 @@ describe('workflow resource context', () => {
       isRoot: true
     });
 
+    // 验证入口纯内存初始化，不触发 DB 预查
+    expect(mocks.mongoDatasetFind).not.toHaveBeenCalled();
+    expect(mocks.mongoDatasetFindOne).not.toHaveBeenCalled();
+
     const childContext = await runWithContext(
       { mcpClientMemory: {}, resourceContext: rootContext },
       () => createWorkflowChildResourceContext([{ type: 'dataset', id: 'dataset-2' }], 'child-team')
     );
 
     expect(childContext.isRoot).toBe(true);
-    expect(mocks.mongoDatasetFind).toHaveBeenNthCalledWith(2, {
-      _id: { $in: ['dataset-2'] },
+
+    // 运行时真正调用 loadWorkflowDatasetResource 时，才 JIT 查库，且因 isRoot 跳过 teamId 限制
+    await runWithContext({ mcpClientMemory: {}, resourceContext: childContext }, () =>
+      loadWorkflowDatasetResource({ datasetId: 'dataset-2' })
+    );
+
+    expect(mocks.mongoDatasetFindOne).toHaveBeenCalledWith({
+      _id: 'dataset-2',
       deleteTime: null
     });
   });
@@ -115,12 +129,7 @@ describe('workflow resource context', () => {
     const resource = { type: 'tool' as const, id: 'missing-tool' };
     const resourceContext = {
       isRoot: false,
-      resources: [resource],
-      resourceMap: new Map([['tool:missing-tool', resource]]),
-      appMap: new Map(),
-      workflowMap: new Map(),
-      datasetMap: new Map(),
-      skillMap: new Map()
+      resourceMap: new Map([['tool:missing-tool', resource]])
     };
 
     await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
