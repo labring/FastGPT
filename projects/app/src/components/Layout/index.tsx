@@ -54,7 +54,6 @@ const ActivityAdModal = dynamic(() => import('@/components/support/activity/Acti
 const ProModal = dynamic(() => import('@/components/ProTip/ProModal'), {
   ssr: false
 });
-
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
   '/login': true,
@@ -92,12 +91,41 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { toast } = useToast();
   const { t } = useClientTranslation('price');
   const { Loading } = useLoading();
-  const { setLastRoute, loading, feConfigs, showProModal, setShowProModal } = useSystemStore();
+  const {
+    setLastRoute,
+    loading,
+    feConfigs,
+    showProModal,
+    setShowProModal,
+    licenseData,
+    licenseLoading,
+    initLicenseData
+  } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const modelLoginGeneration = useUserModelStore((state) => state.loginGeneration);
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
   const checkedModelIdentityRef = useRef<string>();
+
+  const isRoot = userInfo?.username === 'root';
+
+  useEffect(() => {
+    if (!userInfo || !isRoot) return;
+    void initLicenseData();
+  }, [initLicenseData, isRoot, userInfo]);
+
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !isRoot ||
+      licenseLoading ||
+      licenseData ||
+      router.pathname === '/admin/home'
+    ) {
+      return;
+    }
+    void router.replace('/admin/home');
+  }, [isRoot, licenseData, licenseLoading, router]);
 
   // Auto redeem coupon
   useCheckCoupon();
@@ -133,7 +161,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     if (userInfo?.username !== 'root') return;
     // 模型配置页会自行加载同一份数据；这里跳过，避免首屏重复请求。
-    if (router.pathname === '/config/model') return;
+    if (router.pathname === '/admin/config/modelProvider') return;
 
     const identity = `${userInfo.team.teamId}:${userInfo.team.tmbId}:${modelLoginGeneration}`;
     if (checkedModelIdentityRef.current === identity) return;
@@ -147,16 +175,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:llm_model_not_config')
           });
-          if (router.pathname !== '/config/model') {
-            router.push('/config/model?modelTab=config');
+          if (router.pathname !== '/admin/config/modelProvider') {
+            router.push('/admin/config/modelProvider?modelTab=config');
           }
         } else if (!activeModels.some((model) => model.type === ModelTypeEnum.embedding)) {
           toast({
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          if (router.pathname !== '/config/model') {
-            router.push('/config/model?modelTab=config');
+          if (router.pathname !== '/admin/config/modelProvider') {
+            router.push('/admin/config/modelProvider?modelTab=config');
           }
         }
       })
@@ -244,6 +272,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       )}
       {/* 企业认证 */}
       <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
+
       {/* 活动 */}
       <ActivityAdModal />
       {/* 无 SSL，手动复制 */}
