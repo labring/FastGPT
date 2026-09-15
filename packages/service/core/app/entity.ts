@@ -12,6 +12,7 @@ type AppListQuery = {
   limit?: number;
 };
 
+// SXF 特有功能
 const getPinnedListStages = ({
   fields,
   sort,
@@ -49,11 +50,11 @@ const getPinnedListStages = ({
 export const findAppsForList = async (options: AppListQuery) => {
   const { filter, fields, sort, pinnedFirst = false, offset = 0, limit } = options;
   if (!pinnedFirst) {
-    return MongoApp.find(filter, fields)
-      .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
-      .skip(offset)
-      .limit(limit ?? 0)
-      .lean();
+    return MongoApp.find(filter, fields, {
+      limit,
+      sort: { ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 },
+      skip: offset
+    }).lean();
   }
 
   return MongoApp.aggregate<AppSchemaType>([

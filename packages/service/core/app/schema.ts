@@ -146,7 +146,8 @@ defineIndex(AppSchema, { key: { teamId: 1, createTime: 1 } });
 defineIndex(AppSchema, { key: { teamId: 1, type: 1 } });
 defineIndex(AppSchema, { key: { teamId: 1, parentId: 1 } });
 // 置顶优先排序。置顶项数量很少，只需覆盖排序前缀，不为各排序组合单独建索引
-defineIndex(AppSchema, { key: { teamId: 1, isPinned: -1, pinnedAt: -1 } });
+// defineIndex(AppSchema, { key: { teamId: 1, isPinned: -1, pinnedAt: -1 } });
+
 defineIndex(AppSchema, {
   key: { teamId: 1, deleteTime: 1, 'resourceRefs.skillIds': 1 }
 });
