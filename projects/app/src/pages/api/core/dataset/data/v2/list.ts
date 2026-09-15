@@ -10,7 +10,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import {
   GetDatasetDataListBodySchema,
   GetDatasetDataListResponseSchema,
@@ -58,14 +58,18 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
     MongoDatasetData.countDocuments(match)
   ]);
 
-  await Promise.all(
-    list.map(async (item) => {
-      item.q = await replaceS3KeyToPreviewUrl(item.q, addHours(new Date(), 1));
-      if (item.a) {
-        item.a = await replaceS3KeyToPreviewUrl(item.a, addHours(new Date(), 1));
-      }
-    })
+  const previewTexts = list.flatMap(({ q, a }) => (a ? [q, a] : [q]));
+  const previewTextsWithUrls = await replaceS3KeysToPreviewUrls(
+    previewTexts,
+    addHours(new Date(), 1)
   );
+  let previewTextIndex = 0;
+  list.forEach((item) => {
+    item.q = previewTextsWithUrls[previewTextIndex++] ?? item.q;
+    if (item.a) {
+      item.a = previewTextsWithUrls[previewTextIndex++] ?? item.a;
+    }
+  });
 
   const imageIds = list.map((item) => item.imageId!).filter(Boolean);
   const imageSizeMap = new Map<string, number>();

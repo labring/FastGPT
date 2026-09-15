@@ -2,7 +2,7 @@ import {
   createS3KeysPreviewUrlMap,
   getS3ObjectKeysFromTexts,
   replaceS3KeysWithPreviewUrlMap
-} from '../../../core/dataset/utils';
+} from '../../../common/s3/utils/preview';
 import { serviceEnv } from '../../../env';
 import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';

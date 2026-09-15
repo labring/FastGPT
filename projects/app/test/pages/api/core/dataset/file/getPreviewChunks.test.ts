@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   authDataset: vi.fn(),
   readDatasetSourceRawText: vi.fn(),
   rawText2Chunks: vi.fn(),
-  replaceS3KeyToPreviewUrl: vi.fn((value: string) => value)
+  replaceS3KeysToPreviewUrls: vi.fn((values: string[]) => values)
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -51,8 +51,8 @@ vi.mock('@fastgpt/global/core/dataset/training/utils', () => ({
   maxPreviewChunkCount: 50_000
 }));
 
-vi.mock('@fastgpt/service/core/dataset/utils', () => ({
-  replaceS3KeyToPreviewUrl: mocks.replaceS3KeyToPreviewUrl
+vi.mock('@fastgpt/service/common/s3/utils/preview', () => ({
+  replaceS3KeysToPreviewUrls: mocks.replaceS3KeysToPreviewUrls
 }));
 
 import handler from '@/pages/api/core/dataset/file/getPreviewChunks';
@@ -130,6 +130,7 @@ describe('getPreviewChunks', () => {
         sourceId: `dataset/${datasetId}/demo.pdf`
       })
     );
+    expect(mocks.replaceS3KeysToPreviewUrls).toHaveBeenCalledWith(['hello', ''], expect.any(Date));
   });
 
   // 预览必须和导入走同一条分块路径，否则智能分块的预览结果与实际入库结果不一致。

@@ -15,7 +15,7 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import { serviceEnv } from '@fastgpt/service/env';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
@@ -125,16 +125,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
     cursor.pause();
 
     try {
-      const [sanitizedQ, sanitizedA] = await Promise.all([
-        replaceS3KeyToPreviewUrl(
-          sanitizeCsvField(doc.q || ''),
-          addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
-        ),
-        replaceS3KeyToPreviewUrl(
-          sanitizeCsvField(doc.a || ''),
-          addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
-        )
-      ]);
+      const [sanitizedQ, sanitizedA] = await replaceS3KeysToPreviewUrls(
+        [sanitizeCsvField(doc.q || ''), sanitizeCsvField(doc.a || '')],
+        addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
+      );
 
       write(`\n${sanitizedQ},${sanitizedA}`);
     } catch (error) {

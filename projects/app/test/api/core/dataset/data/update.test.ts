@@ -8,7 +8,7 @@ const {
   mockUpdateDatasetDataSystemIndexes,
   mockPushGenerateVectorUsage,
   mockAddAuditLog,
-  mockReplaceS3KeyToPreviewUrl,
+  mockReplaceS3KeysToPreviewUrls,
   mockEmbeddingModel
 } = vi.hoisted(() => ({
   mockAuthDatasetData: vi.fn(),
@@ -16,7 +16,7 @@ const {
   mockUpdateDatasetDataSystemIndexes: vi.fn(),
   mockPushGenerateVectorUsage: vi.fn(),
   mockAddAuditLog: vi.fn(),
-  mockReplaceS3KeyToPreviewUrl: vi.fn(),
+  mockReplaceS3KeysToPreviewUrls: vi.fn(),
   mockEmbeddingModel: {
     modelId: '68ad85a7463006c963799a06',
     model: 'vision-embedding',
@@ -51,8 +51,8 @@ vi.mock('@fastgpt/service/support/user/audit/util', () => ({
   getI18nDatasetType: vi.fn((type: string) => type)
 }));
 
-vi.mock('@fastgpt/service/core/dataset/utils', () => ({
-  replaceS3KeyToPreviewUrl: mockReplaceS3KeyToPreviewUrl
+vi.mock('@fastgpt/service/common/s3/utils/preview', () => ({
+  replaceS3KeysToPreviewUrls: mockReplaceS3KeysToPreviewUrls
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
@@ -102,7 +102,7 @@ describe('PUT /api/core/dataset/data/update', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAuthDatasetData.mockResolvedValue(buildAuthResult());
-    mockReplaceS3KeyToPreviewUrl.mockImplementation((text: string) => text);
+    mockReplaceS3KeysToPreviewUrls.mockImplementation((texts: string[]) => texts);
     mockUpdateDatasetDataByIndexes.mockResolvedValue({ tokens: 12 });
     mockUpdateDatasetDataSystemIndexes.mockResolvedValue({ tokens: 0 });
   });
@@ -153,6 +153,11 @@ describe('PUT /api/core/dataset/data/update', () => {
       q: 'new question',
       a: 'new answer'
     });
+    expect(mockReplaceS3KeysToPreviewUrls).toHaveBeenCalledTimes(1);
+    expect(mockReplaceS3KeysToPreviewUrls.mock.calls[0]?.[0]).toEqual([
+      'new question',
+      'new answer'
+    ]);
   });
 
   it('should pass an explicit empty question to the index update path', async () => {

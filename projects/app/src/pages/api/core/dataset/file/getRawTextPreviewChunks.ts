@@ -11,7 +11,7 @@ import {
   maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
 
-import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
 import { addDays } from 'date-fns';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -60,12 +60,16 @@ async function handler(
     maxChunks: maxPreviewChunkCount
   });
 
-  const chunksWithPreviewUrls = await Promise.all(
-    chunks.slice(0, 10).map(async (chunk) => ({
-      q: await replaceS3KeyToPreviewUrl(chunk.q, addDays(new Date(), 1)),
-      a: await replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
-    }))
+  const previewChunks = chunks.slice(0, 10);
+  const previewTexts = previewChunks.flatMap(({ q, a }) => [q, a]);
+  const previewTextsWithUrls = await replaceS3KeysToPreviewUrls(
+    previewTexts,
+    addDays(new Date(), 1)
   );
+  const chunksWithPreviewUrls = previewChunks.map((chunk, index) => ({
+    q: previewTextsWithUrls[index * 2] ?? chunk.q,
+    a: previewTextsWithUrls[index * 2 + 1] ?? chunk.a
+  }));
 
   return GetPreviewChunksResponseSchema.parse({
     chunks: chunksWithPreviewUrls,

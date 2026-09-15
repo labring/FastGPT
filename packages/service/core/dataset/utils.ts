@@ -1,171 +1,14 @@
 import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { S3Sources } from '../../common/s3/contracts/type';
-import { isS3ObjectKey } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
-import { S3Buckets } from '../../common/s3/config/constants';
 import { isImageEmbeddingModel } from '../ai/model';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
-import { createS3DownloadAccessUrls } from '../../common/s3/accessLink';
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
 } from '@fastgpt/global/core/ai/model.schema';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
-const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
-
-/**
- * 匹配 Markdown 链接中的 S3 key，同时兼容 Turndown 的 `<...>` 包装。
- *
- * 尖括号包装与普通 key 分支必须分开匹配，避免把合法 key 中的 `>` 误判为包装结束符。
- */
-const createS3MarkdownKeyRegex = () => {
-  const sourcePattern = Object.values(S3Sources)
-    .map((prefix) => `${prefix}\\/`)
-    .join('|');
-
-  return new RegExp(
-    String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(?:<((?:${sourcePattern})[^)]+)>|((?:${sourcePattern})[^)]+?))\s*\)`,
-    'g'
-  );
-};
-
-/** 匹配完整 `<img>` 标签；允许引号属性值内出现尖括号，避免被误判为标签结束。 */
-const createHtmlImageTagRegex = () => /<img\b(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi;
-/** 单个标签内的首个 src；无 g 标志，配合对单个 img 标签的 replace/exec 使用。 */
-const createHtmlImageSrcRegex = () => /(\s+src\s*=\s*)(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/i;
-
-const getHtmlImageObjectKey = (imageTag: string) => {
-  const srcMatch = createHtmlImageSrcRegex().exec(imageTag);
-  return (srcMatch?.[2] ?? srcMatch?.[3] ?? srcMatch?.[4])?.trim();
-};
-
-const isPreviewUrlS3ObjectKey = (objectKey: string) =>
-  previewUrlS3Sources.some((source) => isS3ObjectKey(objectKey, source));
-
-/**
- * 从多段文本（Markdown 图片语法与 HTML `<img>` 标签）中提取允许签发预览链接的 S3 对象键，
- * 并按首次出现顺序去重。
- */
-export const getS3ObjectKeysFromTexts = (texts: Array<string | undefined>) => {
-  const objectKeys = new Set<string>();
-
-  for (const text of texts) {
-    if (!text || typeof text !== 'string') continue;
-
-    const matches: Array<{ index: number; objectKey: string }> = [];
-
-    for (const match of text.matchAll(createS3MarkdownKeyRegex())) {
-      const objectKey = match[3] ?? match[4];
-      if (objectKey && isPreviewUrlS3ObjectKey(objectKey)) {
-        matches.push({ index: match.index, objectKey });
-      }
-    }
-
-    for (const match of text.matchAll(createHtmlImageTagRegex())) {
-      const objectKey = getHtmlImageObjectKey(match[0]);
-      if (objectKey && isPreviewUrlS3ObjectKey(objectKey)) {
-        matches.push({ index: match.index, objectKey });
-      }
-    }
-
-    matches
-      .sort((left, right) => left.index - right.index)
-      .forEach(({ objectKey }) => objectKeys.add(objectKey));
-  }
-
-  return Array.from(objectKeys);
-};
-
-/**
- * 为一批 S3 对象键创建预览 URL 映射。
- *
- * 输入会先去重，并按 SDK 的批量上限分片，避免调用方因结果规模变化退化成逐条 Mongo 查询。
- */
-export const createS3KeysPreviewUrlMap = async ({
-  objectKeys,
-  expiredTime
-}: {
-  objectKeys: string[];
-  expiredTime: Date;
-}) => {
-  const uniqueObjectKeys = Array.from(new Set(objectKeys));
-  const previewUrlMap = new Map<string, string>();
-
-  for (let index = 0; index < uniqueObjectKeys.length; index += S3_DOWNLOAD_URL_BATCH_MAX_SIZE) {
-    const batchKeys = uniqueObjectKeys.slice(index, index + S3_DOWNLOAD_URL_BATCH_MAX_SIZE);
-    const urls = await createS3DownloadAccessUrls(
-      batchKeys.map((objectKey) => ({
-        objectKey,
-        bucketName: S3Buckets.private,
-        expiredTime
-      }))
-    );
-
-    batchKeys.forEach((objectKey, batchIndex) => {
-      previewUrlMap.set(objectKey, urls[batchIndex]!);
-    });
-  }
-
-  return previewUrlMap;
-};
-
-/** 使用已签发的 URL 映射替换 Markdown 图片语法与 HTML <img> 标签中的 S3 对象键，不产生额外存储 IO。 */
-export const replaceS3KeysWithPreviewUrlMap = (
-  documentQuoteText: string,
-  previewUrlMap: ReadonlyMap<string, string>
-) => {
-  if (!documentQuoteText || typeof documentQuoteText !== 'string') {
-    return documentQuoteText as string;
-  }
-
-  const matches = Array.from(documentQuoteText.matchAll(createS3MarkdownKeyRegex()));
-  let content = documentQuoteText;
-
-  for (const match of matches.slice().reverse()) {
-    const [full, bang, alt, wrappedObjectKey, unwrappedObjectKey] = match;
-    const objectKey = wrappedObjectKey ?? unwrappedObjectKey;
-    const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
-
-    if (previewUrl) {
-      const replacement = `${bang}[${alt}](${previewUrl})`;
-      content =
-        content.slice(0, match.index) + replacement + content.slice(match.index + full.length);
-    }
-  }
-
-  content = content.replace(createHtmlImageTagRegex(), (imageTag) => {
-    return imageTag.replace(
-      createHtmlImageSrcRegex(),
-      (full, prefix: string, doubleQuoted?: string, singleQuoted?: string, unquoted?: string) => {
-        const objectKey = (doubleQuoted ?? singleQuoted ?? unquoted)?.trim();
-        const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
-        if (!previewUrl) return full;
-
-        if (doubleQuoted !== undefined) return `${prefix}"${previewUrl}"`;
-        if (singleQuoted !== undefined) return `${prefix}'${previewUrl}'`;
-        return `${prefix}"${previewUrl}"`;
-      }
-    );
-  });
-
-  return content;
-};
-
-/** 批量替换多段文本中的 S3 对象键，所有唯一 key 共用批量签发请求。 */
-export const replaceS3KeysToPreviewUrls = async (
-  documentQuoteTexts: string[],
-  expiredTime: Date
-) => {
-  const previewUrlMap = await createS3KeysPreviewUrlMap({
-    objectKeys: getS3ObjectKeysFromTexts(documentQuoteTexts),
-    expiredTime
-  });
-
-  return documentQuoteTexts.map((text) => replaceS3KeysWithPreviewUrlMap(text, previewUrlMap));
-};
 
 // TODO: 需要优化成批量获取权限
 export const filterDatasetsByTmbId = async ({
@@ -194,27 +37,6 @@ export const filterDatasetsByTmbId = async ({
   // Then filter datasetIds based on permissions
   return datasetIds.filter((_, index) => permissions[index]);
 };
-
-/**
- * 替换数据集引用 markdown 文本中的图片链接格式的 S3 对象键为短访问 URL。
- *
- * @param documentQuoteText 数据集引用文本
- * @param expiredTime 过期时间
- * @returns 替换后的文本
- *
- * @example
- *
- * ```typescript
- * const datasetQuoteText = '![image.png](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/aZos7D-214afce5-4d42-4356-9e05-8164d51c59ae.png)';
- * const replacedText = await replaceS3KeyToPreviewUrl(datasetQuoteText, expiredTime)
- * console.log(replacedText)
- * // '![image.png](http://localhost:3000/api/system/file/d/alias.exp.sig)'
- * ```
- */
-export async function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime: Date) {
-  const [content] = await replaceS3KeysToPreviewUrls([documentQuoteText], expiredTime);
-  return content!;
-}
 
 export const getDatasetImageIndexCapability = ({
   vectorModel,
