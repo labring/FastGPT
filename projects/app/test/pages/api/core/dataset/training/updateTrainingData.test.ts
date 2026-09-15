@@ -6,6 +6,7 @@ import {
   authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { failAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
 
 const datasetId = '507f1f77bcf86cd799439011';
 const collectionId = '507f1f77bcf86cd799439012';
@@ -28,6 +29,11 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 
 vi.mock('@fastgpt/service/core/dataset/training/audit', () => ({
   refreshTrainingAuditTask: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn().mockResolvedValue(undefined),
+  failAuditLogByTaskId: vi.fn().mockResolvedValue(undefined)
 }));
 
 describe('updateTrainingData', () => {
@@ -53,6 +59,59 @@ describe('updateTrainingData', () => {
         name: 'Dataset'
       }
     } as any);
+  });
+
+  it('should mark batch retry audit as failed when releasing training tasks fails', async () => {
+    vi.mocked(MongoDatasetTraining.countDocuments).mockResolvedValue(0);
+    vi.mocked(MongoDatasetTraining.updateMany).mockRejectedValueOnce(
+      new Error('Mongo unavailable')
+    );
+
+    await expect(
+      handler({
+        body: {
+          datasetId
+        }
+      } as any)
+    ).rejects.toThrow('Mongo unavailable');
+
+    expect(failAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team1',
+        scope: 'member',
+        event: 'RETRY_TRAINING',
+        failureReason: 'Mongo unavailable',
+        taskId: expect.any(String)
+      })
+    );
+  });
+
+  it('should mark single retry audit as failed when releasing the training task fails', async () => {
+    vi.mocked(MongoDatasetTraining.findById).mockResolvedValue({
+      _id: dataId,
+      teamId: 'team1',
+      datasetId,
+      collectionId
+    });
+    vi.mocked(MongoDatasetTraining.updateOne).mockRejectedValueOnce(new Error('Write timeout'));
+
+    await expect(
+      handler({
+        body: {
+          dataId
+        }
+      } as any)
+    ).rejects.toThrow('Write timeout');
+
+    expect(failAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team1',
+        scope: 'member',
+        event: 'RETRY_TRAINING',
+        failureReason: 'Write timeout',
+        taskId: expect.any(String)
+      })
+    );
   });
 
   it('should retry only final errors in collection scope', async () => {

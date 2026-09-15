@@ -14,10 +14,11 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { addAuditLog, failAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { randomUUID } from 'node:crypto';
 import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
@@ -95,15 +96,33 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       });
     });
 
-    await MongoDatasetTraining.updateMany(trainingMatch, {
-      $unset: { errorMsg: '' },
-      $set: { auditTaskId },
-      retryCount: 3,
-      lockTime: new Date('2000')
-    });
+    try {
+      await MongoDatasetTraining.updateMany(trainingMatch, {
+        $unset: { errorMsg: '' },
+        $set: { auditTaskId },
+        retryCount: 3,
+        lockTime: new Date('2000')
+      });
 
-    if (retryCount > 0) {
-      await refreshTrainingAuditTask(auditTaskId);
+      if (retryCount > 0) {
+        await refreshTrainingAuditTask(auditTaskId);
+      }
+    } catch (error) {
+      // 训练任务释放失败时，收口已创建的审计，避免零条重试的 success 或 processing 悬挂。
+      await failAuditLogByTaskId({
+        teamId: retryMatch.teamId,
+        taskId: auditTaskId,
+        scope: 'member',
+        event: AuditEventEnum.RETRY_TRAINING,
+        failureReason: getErrText(error)
+      }).catch((auditError) => {
+        logger.error('Batch training retry audit failure update failed', {
+          error: auditError,
+          teamId: retryMatch.teamId,
+          auditTaskId
+        });
+      });
+      throw error;
     }
 
     return UpdateTrainingDataResponseSchema.parse(undefined);
@@ -172,31 +191,49 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     });
   });
 
-  // Add to chunk
-  if (data.imageId && q) {
-    await MongoDatasetTraining.updateOne(trainingMatch, {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      mode: TrainingModeEnum.chunk,
-      ...(q !== undefined && { q }),
-      ...(a !== undefined && { a }),
-      ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: new Date('2000'),
-      auditTaskId
-    });
-  } else {
-    await MongoDatasetTraining.updateOne(trainingMatch, {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      ...(q !== undefined && { q }),
-      ...(a !== undefined && { a }),
-      ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: new Date('2000'),
-      auditTaskId
-    });
-  }
+  try {
+    // Add to chunk
+    if (data.imageId && q) {
+      await MongoDatasetTraining.updateOne(trainingMatch, {
+        $unset: { errorMsg: '' },
+        retryCount: 3,
+        mode: TrainingModeEnum.chunk,
+        ...(q !== undefined && { q }),
+        ...(a !== undefined && { a }),
+        ...(chunkIndex !== undefined && { chunkIndex }),
+        lockTime: new Date('2000'),
+        auditTaskId
+      });
+    } else {
+      await MongoDatasetTraining.updateOne(trainingMatch, {
+        $unset: { errorMsg: '' },
+        retryCount: 3,
+        ...(q !== undefined && { q }),
+        ...(a !== undefined && { a }),
+        ...(chunkIndex !== undefined && { chunkIndex }),
+        lockTime: new Date('2000'),
+        auditTaskId
+      });
+    }
 
-  await refreshTrainingAuditTask(auditTaskId);
+    await refreshTrainingAuditTask(auditTaskId);
+  } catch (error) {
+    // 训练任务释放失败时，收口已创建的审计，避免单条 processing 悬挂。
+    await failAuditLogByTaskId({
+      teamId: String(collection.teamId),
+      taskId: auditTaskId,
+      scope: 'member',
+      event: AuditEventEnum.RETRY_TRAINING,
+      failureReason: getErrText(error)
+    }).catch((auditError) => {
+      logger.error('Training retry audit failure update failed', {
+        error: auditError,
+        teamId: String(collection.teamId),
+        auditTaskId
+      });
+    });
+    throw error;
+  }
 
   return UpdateTrainingDataResponseSchema.parse(undefined);
 }
