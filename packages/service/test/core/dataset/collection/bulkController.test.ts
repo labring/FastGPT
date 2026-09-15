@@ -36,7 +36,7 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 import {
   API_FILE_FILE_BATCH_SIZE,
   API_FILE_FOLDER_BATCH_SIZE,
-  bulkInsertCollections,
+  bulkInsertFolderCollections,
   bulkUpdateCollectionsParent
 } from '@fastgpt/service/core/dataset/collection/controller';
 
@@ -68,13 +68,13 @@ const mockFindLanded = (landed: Array<{ _id: Types.ObjectId }>) => {
   mockFind.mockReturnValue({ lean: vi.fn().mockResolvedValue(landed) });
 };
 
-describe('bulkInsertCollections', () => {
+describe('bulkInsertFolderCollections', () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
   /**
-   * 被测函数名: bulkInsertCollections  等级: 3-High
+   * 被测函数名: bulkInsertFolderCollections  等级: 3-High
    * 思路（正常场景）: 600 条 docs 按 API_FILE_FOLDER_BATCH_SIZE 分两批 insertMany（500 / 100），
    * 全部 apiFileId 计入成功且成功写入 teamId/tmbId/datasetId
    */
@@ -82,7 +82,7 @@ describe('bulkInsertCollections', () => {
     const docs = makeDocs(600);
     mockInsertMany.mockResolvedValue([]);
 
-    const result = await bulkInsertCollections({ teamId, tmbId, datasetId, docs });
+    const result = await bulkInsertFolderCollections({ teamId, tmbId, datasetId, docs });
 
     // 常量约定：folder 批 500，file 事务批 200
     expect(API_FILE_FOLDER_BATCH_SIZE).toBe(500);
@@ -99,7 +99,7 @@ describe('bulkInsertCollections', () => {
   });
 
   /**
-   * 被测函数名: bulkInsertCollections  等级: 3-High
+   * 被测函数名: bulkInsertFolderCollections  等级: 3-High
    * 思路（异常场景）: 第 2 批 insertMany 抛错，回查发现该批仅 docs[500] 落库，
    * 已落库项必须计入成功，其余 99 条计入失败（不能整批标失败产生幽灵缺失）
    */
@@ -108,7 +108,7 @@ describe('bulkInsertCollections', () => {
     mockInsertMany.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('batch failed'));
     mockFindLanded([{ _id: docs[500]._id }]);
 
-    const result = await bulkInsertCollections({ teamId, tmbId, datasetId, docs });
+    const result = await bulkInsertFolderCollections({ teamId, tmbId, datasetId, docs });
 
     expect(mockFind).toHaveBeenCalledTimes(1);
     expect(mockFind.mock.calls[0][0]).toMatchObject({
@@ -123,7 +123,7 @@ describe('bulkInsertCollections', () => {
   });
 
   /**
-   * 被测函数名: bulkInsertCollections  等级: 3-High
+   * 被测函数名: bulkInsertFolderCollections  等级: 3-High
    * 思路（异常场景）: insertMany 抛错且回查为空，该批全部计入失败
    */
   it('T2-3: 整批失败且回查为空时全部计入失败', async () => {
@@ -131,7 +131,7 @@ describe('bulkInsertCollections', () => {
     mockInsertMany.mockRejectedValueOnce(new Error('write failed'));
     mockFindLanded([]);
 
-    const result = await bulkInsertCollections({ teamId, tmbId, datasetId, docs });
+    const result = await bulkInsertFolderCollections({ teamId, tmbId, datasetId, docs });
 
     expect(result.successApiFileIds).toEqual([]);
     expect(result.failedApiFileIds).toEqual(docs.map((doc) => doc.apiFileId));
@@ -139,18 +139,18 @@ describe('bulkInsertCollections', () => {
   });
 
   /**
-   * 被测函数名: bulkInsertCollections  等级: 3-High
+   * 被测函数名: bulkInsertFolderCollections  等级: 3-High
    * 思路（边界场景）: docs 为空时不触发 insertMany，返回空结果
    */
   it('T2-4: 空输入不触发 insertMany', async () => {
-    const result = await bulkInsertCollections({ teamId, tmbId, datasetId, docs: [] });
+    const result = await bulkInsertFolderCollections({ teamId, tmbId, datasetId, docs: [] });
 
     expect(mockInsertMany).not.toHaveBeenCalled();
     expect(result).toEqual({ successApiFileIds: [], failedApiFileIds: [] });
   });
 
   /**
-   * 被测函数名: bulkInsertCollections  等级: 3-High
+   * 被测函数名: bulkInsertFolderCollections  等级: 3-High
    * 思路（异常场景）: insertMany 抛错后连回查也失败（如 DB 不可达），无法判定落库情况，
    * 整批计入失败；函数仍 resolve，且原始错误与回查错误都要落日志
    */
@@ -161,7 +161,7 @@ describe('bulkInsertCollections', () => {
     mockInsertMany.mockRejectedValueOnce(insertError);
     mockFind.mockReturnValue({ lean: vi.fn().mockRejectedValue(recoveryError) });
 
-    await expect(bulkInsertCollections({ teamId, tmbId, datasetId, docs })).resolves.toEqual({
+    await expect(bulkInsertFolderCollections({ teamId, tmbId, datasetId, docs })).resolves.toEqual({
       successApiFileIds: [],
       failedApiFileIds: docs.map((doc) => doc.apiFileId)
     });
@@ -187,7 +187,7 @@ describe('bulkUpdateCollectionsParent', () => {
    */
   it('T2-5: 一次 bulkWrite 完成 2 条层级校正', async () => {
     const updates = makeUpdates(2);
-    mockBulkWrite.mockResolvedValue({ writeErrors: [] });
+    mockBulkWrite.mockResolvedValue({ writeErrors: [], matchedCount: 2 });
 
     const result = await bulkUpdateCollectionsParent({ teamId, updates });
 
@@ -205,6 +205,24 @@ describe('bulkUpdateCollectionsParent', () => {
     });
     expect(result.successIds).toEqual(updates.map((item) => item._id));
     expect(result.failedIds).toEqual([]);
+    expect(result.matchedCount).toBe(2);
+  });
+
+  /**
+   * 被测函数名: bulkUpdateCollectionsParent  等级: 3-High
+   * 思路（边界场景）: 目标行在调用前被删/重建 —— filter 命中 0 条，驱动不报错、writeErrors 为空，
+   * 逐 op 只在 results 里体现「未执行」的 cast 失败，因此这种静默空操作必须靠 matchedCount 暴露。
+   * 调用方（同步流程）据此告警；successIds 仍按 op 执行结果计数。
+   */
+  it('T2-5b: 目标行已不存在时 matchedCount 小于 updates 数', async () => {
+    const updates = makeUpdates(3);
+    // 3 条 op 只有 1 条命中（另外 2 条的 _id 已被删除/重建）
+    mockBulkWrite.mockResolvedValue({ writeErrors: [], matchedCount: 1 });
+
+    const result = await bulkUpdateCollectionsParent({ teamId, updates });
+
+    expect(result.matchedCount).toBe(1);
+    expect(result.successIds).toEqual(updates.map((item) => item._id));
   });
 
   /**
@@ -257,7 +275,8 @@ describe('bulkUpdateCollectionsParent', () => {
 
     await expect(bulkUpdateCollectionsParent({ teamId, updates })).resolves.toEqual({
       successIds: [],
-      failedIds: updates.map((item) => item._id)
+      failedIds: updates.map((item) => item._id),
+      matchedCount: 0
     });
     expect(mockLogger.warn).toHaveBeenCalledTimes(1);
     expect(mockLogger.warn.mock.calls[0]).toEqual([
@@ -274,6 +293,6 @@ describe('bulkUpdateCollectionsParent', () => {
     const result = await bulkUpdateCollectionsParent({ teamId, updates: [] });
 
     expect(mockBulkWrite).not.toHaveBeenCalled();
-    expect(result).toEqual({ successIds: [], failedIds: [] });
+    expect(result).toEqual({ successIds: [], failedIds: [], matchedCount: 0 });
   });
 });
