@@ -70,11 +70,13 @@ export const useTableMultipleSelect = <T = any,>({
   // Select all items
   const selectAllTrigger = useCallback(() => {
     if (isSelecteAll) {
-      setSelectedItems([]);
+      // 勾选只加当前 list，取消也只减当前 list，否则分页/搜索后取消全选会连带清掉其他页的选中项
+      const listIds = new Set(list.map((item) => getItemId(item)));
+      setSelectedItems((pre) => pre.filter((item) => !listIds.has(getItemId(item))));
     } else {
       setSelectedItems((pre) => [...pre, ...list.filter((item) => !isSelected(item))]);
     }
-  }, [isSelecteAll, list, isSelected]);
+  }, [isSelecteAll, list, isSelected, getItemId]);
 
   const selectedCount = selectedItems.length;
   // Check if has selections
