@@ -9,6 +9,8 @@ export type DatasetSyncJobData = {
   scope?: 'member' | 'system';
   /** 关联审计事件的 taskId，同时用作 BullMQ jobId 以识别去重命中。 */
   taskId?: string;
+  /** 手动同步的操作成员；仅 member scope 使用，供 worker 竞态补建审计。 */
+  tmbId?: string;
 };
 
 const repeatDuration = 24 * 60 * 60 * 1000;
