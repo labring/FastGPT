@@ -14,8 +14,12 @@ import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 import { getAgentSandboxSkillMaxBytes } from '../../../config';
 import { joinSandboxPath } from '../../../utils';
 import { authSkillByTmbId } from '../../../../../../support/permission/skill/auth';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getWorkflowResourceContext } from '../../../../../workflow/utils/context';
+import { assertWorkflowResource } from '../../../../../workflow/utils/resource';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { Types } from '../../../../../../common/mongo';
 import { Readable } from 'node:stream';
 
 export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
@@ -137,13 +141,15 @@ export const injectAgentSkillFilesToSandbox = async ({
   skillIds,
   teamId,
   tmbId,
-  workDirectory
+  workDirectory,
+  dynamic = false
 }: {
   sandbox: ISandbox;
   skillIds: string[];
   teamId: string;
   tmbId: string;
   workDirectory: string;
+  dynamic?: boolean;
 }): Promise<DeployedSkillVersion[]> => {
   const skillsRootPath = getRuntimeSkillsRootPath(workDirectory);
   await sandbox.createDirectories([skillsRootPath]);
@@ -178,11 +184,34 @@ export const injectAgentSkillFilesToSandbox = async ({
     return [];
   }
 
-  const teamSkills = await MongoAgentSkills.find({
-    _id: { $in: skillIds },
-    teamId,
-    deleteTime: null
-  });
+  const resourceContext = getWorkflowResourceContext();
+  if (resourceContext && !dynamic) {
+    skillIds.forEach((skillId) =>
+      assertWorkflowResource({
+        context: resourceContext,
+        type: 'skill',
+        id: skillId
+      })
+    );
+  }
+  const hasInvalidId = skillIds.some((id) => !Types.ObjectId.isValid(id));
+  if (resourceContext && !dynamic && hasInvalidId) {
+    throw SkillErrEnum.unExist;
+  }
+  const validSkillIds = skillIds.filter((id) => Types.ObjectId.isValid(id));
+  const teamSkills =
+    validSkillIds.length > 0
+      ? await MongoAgentSkills.find({
+          _id: { $in: validSkillIds },
+          deleteTime: null,
+          ...(resourceContext?.teamId && !resourceContext?.isRoot
+            ? { $or: [{ teamId: resourceContext.teamId }, { source: AgentSkillSourceEnum.system }] }
+            : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
+        })
+      : [];
+  if (resourceContext && !dynamic && teamSkills.length !== skillIds.length) {
+    throw SkillErrEnum.unExist;
+  }
   if (teamSkills.length === 0) {
     logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
     await cleanupStaleDirs(new Set());
@@ -193,11 +222,13 @@ export const injectAgentSkillFilesToSandbox = async ({
     await Promise.all(
       teamSkills.map(async (skill) => {
         try {
-          await authSkillByTmbId({
-            tmbId,
-            skillId: String(skill._id),
-            per: ReadPermissionVal
-          });
+          if (!resourceContext || dynamic) {
+            await authSkillByTmbId({
+              tmbId,
+              skillId: String(skill._id),
+              per: ReadPermissionVal
+            });
+          }
           return skill;
         } catch (error) {
           if (error !== SkillErrEnum.unAuthSkill && error !== SkillErrEnum.unExist) {

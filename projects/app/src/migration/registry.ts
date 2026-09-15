@@ -18,6 +18,7 @@ import { backfillResourceOwnerAcl } from './tasks/4170/20260905_backfill_resourc
 import { cleanupTeamMemberRoles } from './tasks/4170/20260907_cleanup_team_member_roles';
 import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legacy_invited_members';
 import { migrateDatasetTagsV2 } from './tasks/20260907_migrate_dataset_tags_v2';
+import { backfillAppResourceSnapshots } from './tasks/4171/20260909_backfill_app_resource_snapshots';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -363,6 +364,36 @@ export const systemMigrations = [
     blockStartup: true,
     onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: migrateDatasetTagsV2
+  },
+  {
+    id: '20260909_backfill_app_resource_snapshots',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260909_backfill_app_resource_snapshots.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260909_backfill_app_resource_snapshots.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260909_backfill_app_resource_snapshots.result'),
+    progressSteps: [
+      {
+        key: 'versions',
+        labelKey: i18nT(
+          'system_migration:migrations.20260909_backfill_app_resource_snapshots.versions'
+        )
+      },
+      {
+        key: 'apps',
+        labelKey: i18nT('system_migration:migrations.20260909_backfill_app_resource_snapshots.apps')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20260909_backfill_app_resource_snapshots.validation'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillAppResourceSnapshots
   }
 ] as const satisfies readonly SystemMigration[];
 

@@ -147,18 +147,15 @@ describe('publish optional model defaults', () => {
     expect((await MongoApp.findById(app._id).lean())?.chatConfig?.questionGuide).toBeUndefined();
   });
 
-  it('fills an empty enabled model only from the publishing member available candidates', async () => {
-    const { member, app, availableModel } = await createRestrictedModelScenario();
+  it('does not replace a restricted system default with another member model', async () => {
+    const { member, app } = await createRestrictedModelScenario();
     const result = await Call(handler, {
       auth: member,
       query: { appId: String(app._id) },
       body: { isPublish: true, nodes: [], chatConfig: { questionGuide: { open: true } } }
     });
-    expect(result.code).toBe(200);
-    const saved = await MongoApp.findById(app._id).lean();
-    const version = await MongoAppVersion.findOne({ appId: app._id, isPublish: true }).lean();
-    expect(saved?.chatConfig?.questionGuide?.modelId).toBe(availableModel.modelId);
-    expect(version?.chatConfig?.questionGuide?.modelId).toBe(availableModel.modelId);
+    expect(result.code).not.toBe(200);
+    expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
   });
 
   it('rejects publishing when no permitted fallback exists', async () => {
@@ -171,6 +168,34 @@ describe('publish optional model defaults', () => {
     });
     expect(result.code).not.toBe(200);
     expect(await MongoAppVersion.countDocuments({ appId: app._id })).toBe(0);
+  });
+
+  it('allows publishing a baseline model after the collaborator loses personal access', async () => {
+    const { member, app, restrictedModel } = await createRestrictedModelScenario();
+    await MongoAppVersion.create({
+      appId: app._id,
+      tmbId: member.tmbId,
+      nodes: [],
+      edges: [],
+      chatConfig: { questionGuide: { open: true, modelId: restrictedModel.modelId } },
+      resources: [{ type: 'model', id: restrictedModel.modelId }],
+      versionName: 'Authorized draft'
+    });
+
+    const result = await Call(handler, {
+      auth: member,
+      query: { appId: String(app._id) },
+      body: {
+        isPublish: true,
+        nodes: [],
+        chatConfig: { questionGuide: { open: true, modelId: restrictedModel.modelId } }
+      }
+    });
+
+    expect(result.code).toBe(200);
+    expect(
+      (await MongoAppVersion.findOne({ appId: app._id, isPublish: true }).lean())?.resources
+    ).toEqual([{ type: 'model', id: restrictedModel.modelId }]);
   });
 
   it('preserves restricted model references when saving a draft', async () => {
@@ -186,9 +211,9 @@ describe('publish optional model defaults', () => {
       }
     });
     expect(result.code).toBe(200);
-    expect((await MongoApp.findById(app._id).lean())?.chatConfig?.questionGuide?.modelId).toBe(
-      restrictedModel.modelId
-    );
+    const version = await MongoAppVersion.findOne({ appId: app._id, isAutoSave: true }).lean();
+    expect(version?.chatConfig?.questionGuide?.modelId).toBe(restrictedModel.modelId);
+    expect(version?.resources).toEqual([]);
   });
 
   it.each([undefined, null, '', '   '])(
@@ -213,26 +238,21 @@ describe('publish optional model defaults', () => {
         body
       });
       expect(result.code).toBe(200);
-      const saved = await MongoApp.findById(app._id).lean();
       const version = await MongoAppVersion.findOne({ appId: app._id, isPublish: true }).lean();
-      for (const nodes of [saved?.modules, version?.nodes]) {
-        expect(nodes?.[0].inputs).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              key: NodeInputKeyEnum.datasetSearchRerankModelId,
-              value: 'default-rerank'
-            }),
-            expect.objectContaining({
-              key: NodeInputKeyEnum.datasetSearchExtensionModelId,
-              value: previousDefaults.llm!.modelId
-            })
-          ])
-        );
-      }
-      for (const config of [saved?.chatConfig, version?.chatConfig]) {
-        expect(config?.questionGuide?.modelId).toBe(previousDefaults.llm!.modelId);
-        expect(config?.ttsConfig?.modelId).toBe('default-tts');
-      }
+      expect(version?.nodes?.[0].inputs).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: NodeInputKeyEnum.datasetSearchRerankModelId,
+            value: 'default-rerank'
+          }),
+          expect.objectContaining({
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            value: previousDefaults.llm!.modelId
+          })
+        ])
+      );
+      expect(version?.chatConfig?.questionGuide?.modelId).toBe(previousDefaults.llm!.modelId);
+      expect(version?.chatConfig?.ttsConfig?.modelId).toBe('default-tts');
     }
   );
 
@@ -250,9 +270,9 @@ describe('publish optional model defaults', () => {
       body: makeBody(false, 'deleted-id')
     });
     expect(result.code).toBe(200);
-    const saved = await MongoApp.findById(app._id).lean();
-    expect(saved?.chatConfig?.questionGuide?.modelId).toBe('deleted-id');
-    expect(saved?.chatConfig?.ttsConfig?.modelId).toBe('deleted-id');
+    const version = await MongoAppVersion.findOne({ appId: app._id, isPublish: true }).lean();
+    expect(version?.chatConfig?.questionGuide?.modelId).toBe('deleted-id');
+    expect(version?.chatConfig?.ttsConfig?.modelId).toBe('deleted-id');
   });
 
   it('does not publish or silently replace an explicitly unavailable model', async () => {

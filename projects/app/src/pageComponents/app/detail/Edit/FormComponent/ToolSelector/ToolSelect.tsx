@@ -13,7 +13,6 @@ import ToolSelectModal from './ToolSelectModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from '../../component/ConfigToolModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { formatToolError } from '@fastgpt/global/core/app/utils';
 import {
   PluginStatusEnum,
   PluginStatusMap,
@@ -24,6 +23,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { isDebugToolSource, getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { getToolErrorMessage } from '@/web/core/workflow/workflowCheck';
 
 const ToolSelect = ({
   generatedSelectedTools,
@@ -90,12 +90,12 @@ const ToolSelect = ({
         gridGap={[2, 4]}
       >
         {selectedTools.map((item) => {
-          // 即将下架/已下架
-          const status = item.pluginData?.status || item.status;
-          const isOffline = status === PluginStatusEnum.Offline;
-          const toolError =
-            formatToolError(item.pluginData?.error) ||
-            (isOffline ? 'common:error.tool_not_exist' : undefined);
+          const toolError = getToolErrorMessage({
+            status: item.pluginData?.status || item.status,
+            error: item.pluginData?.error,
+            t
+          });
+          const hasToolError = !!toolError;
 
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
@@ -103,7 +103,7 @@ const ToolSelect = ({
           return (
             <MyTooltip
               key={getToolIdentityKey(item.pluginId || item.id, item.source)}
-              label={item.intro}
+              label={toolError || item.intro}
             >
               <Grid
                 overflow={'hidden'}
@@ -117,10 +117,10 @@ const ToolSelect = ({
                 bg={'white'}
                 borderRadius={'6px'}
                 border={'base'}
-                borderColor={toolError ? 'red.600' : 'myGray.200'}
+                borderColor={hasToolError ? 'red.600' : 'myGray.200'}
                 userSelect={'none'}
                 _hover={{
-                  borderColor: toolError ? 'red.600' : 'primary.300',
+                  borderColor: hasToolError ? 'red.600' : 'primary.300',
                   '.delete': {
                     display: 'flex'
                   },
@@ -133,7 +133,12 @@ const ToolSelect = ({
                 }}
               >
                 <Avatar src={item.avatar} w={'28px'} h={'28px'} borderRadius={'sm'} />
-                <Box minW={0} className={'textEllipsis'} fontSize={'sm'} color={'myGray.900'}>
+                <Box
+                  minW={0}
+                  className={'textEllipsis'}
+                  fontSize={'sm'}
+                  color={hasToolError ? 'red.600' : 'myGray.900'}
+                >
                   {item.name}
                 </Box>
 
@@ -154,7 +159,7 @@ const ToolSelect = ({
                     <MyTag colorSchema="red" type="fill" className="unHoverStyle">
                       <MyIcon name={'common/error'} w={'14px'} mr={1} />
                       <Box color={'red.600'} maxW={'150px'} className="textEllipsis">
-                        {t(toolError as any)}
+                        {toolError}
                       </Box>
                     </MyTag>
                   )}
@@ -164,7 +169,7 @@ const ToolSelect = ({
                     </MyTag>
                   )}
                   {isDebugTool && <DebugToolTag className="unHoverStyle" />}
-                  {!toolError && (
+                  {!hasToolError && (
                     <MyIconButton
                       className="hoverStyle"
                       display={'none'}

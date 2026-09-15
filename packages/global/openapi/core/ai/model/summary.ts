@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 
 /* ============================================================================
@@ -18,6 +19,10 @@ export const GetModelSummariesBodySchema = z.object({
       description: '待查询的稳定模型 ID，最多 100 个',
       example: ['68ad85a7463006c963799a01']
     }),
+  appId: ObjectIdSchema.optional().meta({
+    description: '应用 ID；存在时会将应用基线资源中的模型视作有权限',
+    example: '68ad85a7463006c963799a05'
+  }),
   outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
     description: '外链鉴权数据，使用发布者身份计算权限',
     example: { shareId: 'share-id', outLinkUid: 'out-link-user-id' }

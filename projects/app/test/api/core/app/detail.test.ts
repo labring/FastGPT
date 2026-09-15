@@ -1,66 +1,111 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-
-const mocks = vi.hoisted(() => ({
-  authApp: vi.fn(),
-  getLocale: vi.fn(),
-  rewriteAppWorkflowToDetail: vi.fn()
-}));
-
-vi.mock('@/service/middleware/entry', () => ({
-  NextAPI: (handler: unknown) => handler
-}));
-
-vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
-  authApp: mocks.authApp
-}));
-
-vi.mock('@fastgpt/service/common/middle/i18n', () => ({
-  getLocale: mocks.getLocale
-}));
-
-vi.mock('@fastgpt/service/core/app/utils', () => ({
-  rewriteAppWorkflowToDetail: mocks.rewriteAppWorkflowToDetail
-}));
-
 import handler from '@/pages/api/core/app/detail';
+import { onCreateApp } from '@/pages/api/core/app/create';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type {
+  GetAppDetailQueryType,
+  GetAppDetailResponseType
+} from '@fastgpt/global/openapi/core/app/common/api';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getFakeUsers, getUser } from '@test/datas/users';
+import { Call } from '@test/utils/request';
+import { describe, expect, it } from 'vitest';
 
-const appId = '68ad85a7463006c963799a05';
-
-describe('GET /api/core/app/detail', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.getLocale.mockReturnValue('zh-CN');
-    mocks.rewriteAppWorkflowToDetail.mockResolvedValue(undefined);
-    mocks.authApp.mockResolvedValue({
-      app: {
-        _id: appId,
-        teamId: '68ad85a7463006c963799a06',
-        tmbId: '68ad85a7463006c963799a07',
-        type: AppTypeEnum.workflow,
-        name: '历史应用',
-        avatar: '/icon/logo.svg',
-        intro: '',
-        updateTime: '2026-01-01T00:00:00.000Z',
-        modules: [],
-        edges: [],
-        chatConfig: {
-          questionGuide: null
-        },
-        permission: new AppPermission({ role: ReadRoleVal })
-      },
-      teamId: '68ad85a7463006c963799a06',
-      isRoot: false
+describe('get app detail api', () => {
+  it('returns draft workflow as nodes', async () => {
+    const [owner] = (await getFakeUsers(1)).members;
+    const appId = await onCreateApp({
+      name: 'detail nodes app',
+      intro: '',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'start-1',
+          flowNodeType: 'workflowStart',
+          name: 'Start',
+          inputs: [
+            {
+              key: 'query',
+              label: 'Query',
+              renderTypeList: [FlowNodeInputTypeEnum.input]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: { welcomeText: 'hello' }
     });
+
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      {
+        auth: owner,
+        headers: {},
+        query: { appId }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.nodes.map((node) => node.nodeId)).toEqual(['start-1']);
+    expect(res.data).not.toHaveProperty('modules');
   });
 
-  it('uses the chat config schema default for read-only apps with a legacy null value', async () => {
-    const result = await handler({ query: { appId } } as any);
+  it('does not expose workflow configuration to a read-only collaborator', async () => {
+    const owner = await getUser(`detail-owner-${getNanoid(6)}`);
+    const reader = await getUser(`detail-reader-${getNanoid(6)}`, owner.teamId);
+    const appId = await onCreateApp({
+      name: 'private workflow config',
+      intro: '',
+      type: AppTypeEnum.workflow,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      nodes: [
+        {
+          nodeId: 'start-1',
+          flowNodeType: 'workflowStart',
+          name: 'Start',
+          inputs: [],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {
+        instruction: 'private instruction',
+        scheduledTriggerConfig: {
+          cronString: '0 9 * * *',
+          timezone: 'Asia/Shanghai',
+          defaultPrompt: 'private prompt'
+        }
+      }
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.app,
+      teamId: owner.teamId,
+      resourceId: appId,
+      tmbId: reader.tmbId,
+      permission: ReadPermissionVal
+    });
 
-    expect(result.chatConfig).toEqual({});
-    expect(result.modules).toEqual([]);
-    expect(result.edges).toEqual([]);
+    const res = await Call<Record<string, never>, GetAppDetailQueryType, GetAppDetailResponseType>(
+      handler,
+      {
+        auth: reader,
+        headers: {},
+        query: { appId }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.nodes).toEqual([]);
+    expect(res.data.edges).toEqual([]);
+    expect(res.data.chatConfig).toEqual({});
   });
 });

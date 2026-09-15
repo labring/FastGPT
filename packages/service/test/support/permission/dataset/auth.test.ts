@@ -121,6 +121,21 @@ describe('authDatasetCollection', () => {
     ).rejects.toBe(DatasetErrEnum.unAuthDataset);
   });
 
+  it('rejects with unExist when dataset does not exist or is soft deleted', async () => {
+    mockFindDataset.mockReturnValue({
+      lean: vi.fn().mockResolvedValue(null)
+    });
+
+    await expect(
+      authDatasetByTmbId({
+        tmbId: 'tmb-a',
+        datasetId,
+        per: ReadPermissionVal
+      })
+    ).rejects.toBe(DatasetErrEnum.unExist);
+    expect(mockFindDataset).toHaveBeenCalledWith({ _id: datasetId, deleteTime: null });
+  });
+
   it('falls back to the parent ACL for an inherited dataset', async () => {
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',

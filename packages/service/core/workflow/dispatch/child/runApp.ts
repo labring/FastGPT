@@ -16,12 +16,10 @@ import { getNodeErrResponse, getHistories } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { authAppByTmbId } from '../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../utils/context';
+import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
-import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { getRuntimeNodeResponseSummary } from '../utils';
 
 type Props = ModuleDispatchProps<{
@@ -67,7 +65,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     return files;
   })();
 
-  if (!userChatInput && !userInputFiles) {
+  if (!userChatInput && userInputFiles.length === 0) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
   if (!appId) {
@@ -75,17 +73,21 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   }
 
   try {
-    // Auth the app by tmbId(Not the user, but the workflow user)
-    const { app: appData } = await authAppByTmbId({
-      appId: appId,
-      tmbId: runningAppInfo.tmbId,
-      per: ReadPermissionVal
+    const appData = await loadWorkflowAppResource({
+      appId,
+      tmbId: props.runningUserInfo.tmbId,
+      type: 'agent'
     });
-    const { nodes, edges, chatConfig } = await getAppVersionById({
+    const childVersion = await getAppVersionById({
       appId,
       versionId: version,
       app: appData
     });
+    const { nodes, edges, chatConfig } = childVersion;
+    const resourceContext = await createWorkflowChildResourceContext(
+      childVersion.resources,
+      String(appData.teamId)
+    );
 
     const childStreamResponse = system_forbid_stream ? false : props.stream;
     // Auto line
@@ -140,6 +142,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         variablesConfig: chatConfig.variables,
         inputVariables: childrenAppVariables
       }),
+      resourceContext,
       fn: async ({ resolveInputFile, query: childQuery, histories: childHistories }) => {
         filteredChildHistories = childHistories;
         filteredChildQuery = childQuery;
@@ -175,7 +178,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
             tmbId: String(appData.tmbId),
             isChildApp: true
           },
-          runningUserInfo: await getRunningUserInfoByTmbId(appData.tmbId),
           runtimeNodes,
           runtimeEdges,
           histories: childHistories,

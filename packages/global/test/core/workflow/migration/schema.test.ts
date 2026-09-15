@@ -1258,4 +1258,41 @@ describe('workflow migration boundary', () => {
 
     expect(await migrateWorkflowToCurrent(input as any)).toEqual(input);
   });
+
+  it('preserves name and avatar on selectedTools during canonical migration', async () => {
+    const input = {
+      nodes: [
+        {
+          nodeId: 'agent-1',
+          flowNodeType: 'agent',
+          name: 'Agent',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.selectedTools,
+              label: 'Selected tools',
+              renderTypeList: [FlowNodeInputTypeEnum.selectTool],
+              selectedType: FlowNodeInputTypeEnum.selectTool,
+              value: [
+                {
+                  id: 'tool-1',
+                  name: 'My Tool Name',
+                  avatar: 'core/workflow/template/tool',
+                  config: {},
+                  inputs: []
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    };
+
+    const result = await migrateWorkflowToCurrent(input as any);
+    const selectedToolsValue = (result.nodes[0].inputs[0] as any).value;
+    expect(selectedToolsValue[0].name).toBe('My Tool Name');
+    expect(selectedToolsValue[0].avatar).toBe('core/workflow/template/tool');
+  });
 });

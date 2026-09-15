@@ -1,6 +1,6 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
-import { type AppDetailType } from '@fastgpt/global/core/app/type';
+import { type AppWithPermissionType } from '@fastgpt/global/core/app/type';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal,
@@ -50,12 +50,12 @@ export const authAppByTmbId = async ({
   per: PermissionValueType;
   isRoot?: boolean;
 }): Promise<{
-  app: AppDetailType;
+  app: AppWithPermissionType;
 }> => {
   const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
   const app = await (async () => {
-    const app = await MongoApp.findOne({ _id: appId }).lean();
+    const app = await MongoApp.findOne({ _id: appId, deleteTime: null }).lean();
 
     if (!app) {
       return Promise.reject(AppErrEnum.unExist);
@@ -141,7 +141,7 @@ export const authApp = async ({
   per: PermissionValueType;
 }): Promise<
   AuthResponseType<AppPermission> & {
-    app: AppDetailType;
+    app: AppWithPermissionType;
   }
 > => {
   const result = await parseHeaderCert(props);

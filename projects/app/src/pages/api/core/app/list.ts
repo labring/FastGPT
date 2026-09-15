@@ -8,13 +8,13 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { findAppsForList } from '@fastgpt/service/core/app/entity';
+import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -137,7 +137,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     return;
   })();
 
-  const listField = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules${
+  const listField = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId${
     pinnedFirst ? ' isPinned' : ''
   }`;
 
@@ -148,6 +148,8 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     pinnedFirst,
     limit
   });
+
+  const interactiveAppIds = await getInteractiveAppIdSet(myApps);
 
   const formatApps = myApps
     .map((app) => {
@@ -174,10 +176,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
           privateApp: isPrivateResourceByCollaborators({ resourceClbs })
         };
       })();
-      const { modules, ...rest } = app;
-      const hasInteractiveNode = modules?.some((item) =>
-        [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
-      );
+      const { publishedVersionId: _publishedVersionId, ...rest } = app;
       return {
         ...rest,
         avatar: app.avatar,
@@ -186,7 +185,7 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
         parentId: app.parentId,
         permission: Per,
         private: privateApp,
-        hasInteractiveNode
+        hasInteractiveNode: interactiveAppIds.has(String(app._id))
       };
     })
     .filter((app) => app.permission.hasReadPer);

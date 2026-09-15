@@ -2,7 +2,6 @@ import { getDatasetModelReference } from '../dataset/model';
 import { MongoDataset } from '../dataset/schema';
 
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
-import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -19,12 +18,14 @@ import { authAppByTmbId } from '../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import {
   isSystemOrCommercialToolId,
   mergeToolSetChildDescriptions,
   splitCombineToolId
 } from '@fastgpt/global/core/app/tool/utils';
-import { AgentToolInputModeEnum } from '@fastgpt/global/core/app/tool/constants';
+import { AgentToolInputModeEnum, AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { AgentToolSchema } from '@fastgpt/global/core/app/tool/type';
 import {
@@ -35,10 +36,16 @@ import {
   type SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import { authSkillByTmbId } from '../../support/permission/skill/auth';
+import { MongoAgentSkills } from '../ai/skill/model/schema';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { getAppResourceKey, normalizeAppToolResource } from './resources';
 import type {
   FlowNodeInputItemType,
   SelectedDatasetType
 } from '@fastgpt/global/core/workflow/type/io';
+import type { AppResourcesType } from '@fastgpt/global/core/app/type';
 import { formatToolInputSecrets } from './tool/secretConfig';
 import z from 'zod';
 
@@ -52,49 +59,109 @@ export async function rewriteAppWorkflowToDetail({
   teamId,
   isRoot,
   ownerTmbId,
-  lang
+  viewerTmbId,
+  lang,
+  resources = []
 }: {
   nodes: DetailWorkflowNode[];
   teamId: string;
   isRoot: boolean;
   ownerTmbId: string;
+  /** 当前请求操作者；仅对快照外新增资源做 UI 侧权限提示。 */
+  viewerTmbId?: string;
   lang?: localeType;
+  resources?: AppResourcesType;
 }) {
+  // 快照内资源属于已确认的历史基线，不使用当前操作者或应用 owner 重新鉴权。
+  const snapshotResourceKeys = new Set(resources.map(getAppResourceKey));
+  const hasSnapshotResource = (type: 'agent' | 'tool' | 'dataset' | 'skill', id: string) =>
+    snapshotResourceKeys.has(getAppResourceKey({ type, id }));
   type SelectedDatasetSnapshot = Pick<SelectedDatasetType, 'datasetId'> &
     Partial<SelectedDatasetType>;
   const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
 
+  /**
+   * 校验快照引用的外部应用工具权限与存在状态。
+   * 返回值约定：
+   * - undefined: 鉴权通过或无需应用级鉴权；
+   * - 'tool_missing': 工具不存在或已被软删除；
+   * - 'resource_no_permission': 当前用户无权访问该工具。
+   */
+  const authSnapshotExternalTool = async ({
+    id,
+    resourceType
+  }: {
+    id: string;
+    resourceType: 'agent' | 'tool';
+  }): Promise<'resource_no_permission' | 'tool_missing' | undefined> => {
+    let parsed: ReturnType<typeof splitCombineToolId> | undefined;
+    try {
+      parsed = splitCombineToolId(id);
+    } catch {
+      // 无法被解析为有效 toolId 时，如果快照中有则放行，否则视为未授权
+      return !hasSnapshotResource(resourceType, id) ? 'resource_no_permission' : undefined;
+    }
+
+    // 系统工具或商业版公共工具无需应用级鉴权
+    if (
+      parsed.source === AppToolSourceEnum.systemTool ||
+      parsed.source === AppToolSourceEnum.commercial ||
+      parsed.source === AppToolSourceEnum.community
+    ) {
+      return undefined;
+    }
+
+    const normalizedResource = normalizeAppToolResource(id);
+    const targetAppId = normalizedResource?.id ?? parsed.authAppId ?? parsed.pluginId;
+    if (!targetAppId) return 'tool_missing';
+
+    const resourceInSnapshot = hasSnapshotResource(resourceType, targetAppId);
+    if ((!viewerTmbId || resourceInSnapshot) && !isRoot) return undefined;
+
+    try {
+      await authAppByTmbId({
+        tmbId: viewerTmbId ?? ownerTmbId,
+        appId: targetAppId,
+        per: ReadPermissionVal,
+        isRoot
+      });
+      return undefined;
+    } catch (error) {
+      // 区分资源已删除/不存在与无访问权限
+      if (error === AppErrEnum.unExist) {
+        return 'tool_missing';
+      }
+      return 'resource_no_permission';
+    }
+  };
+
   const loadToolNode = async ({
     id,
     versionId,
-    source
+    source,
+    resourceType = 'tool'
   }: {
     id: string;
     versionId?: string;
     source?: string;
+    resourceType?: 'agent' | 'tool';
   }) => {
-    const { authAppId } = splitCombineToolId(id);
+    const authError = await authSnapshotExternalTool({ id, resourceType });
+    if (authError) {
+      return {
+        success: false,
+        error: authError
+      };
+    }
 
     try {
-      const [preview] = await Promise.all([
-        getClientToolPreviewNode({
-          appId: id,
-          versionId,
-          lang,
-          source,
-          teamId
-        }),
-        ...(authAppId
-          ? [
-              authAppByTmbId({
-                tmbId: ownerTmbId,
-                appId: authAppId,
-                per: ReadPermissionVal,
-                isRoot
-              })
-            ]
-          : [])
-      ]);
+      const preview = await getClientToolPreviewNode({
+        appId: id,
+        versionId,
+        lang,
+        source,
+        teamId
+      });
 
       return {
         success: true,
@@ -103,7 +170,10 @@ export async function rewriteAppWorkflowToDetail({
     } catch (error) {
       return {
         success: false,
-        error: getErrText(error, '', lang)
+        error:
+          error === PluginErrEnum.unExist || error === AppErrEnum.unExist
+            ? 'tool_missing'
+            : getErrText(error, '', lang)
       };
     }
   };
@@ -112,33 +182,92 @@ export async function rewriteAppWorkflowToDetail({
     skillId: StoredSelectedAgentSkillItemTypeSchema.shape.skillId
   });
 
+  /**
+   * 通用外部资源快照解析驱动：
+   * 负责统一处理资源快照基线判断（hasSnapshotResource）、Viewer 鉴权与 DB 查询（均包含 deleteTime: null）、
+   * 统一未授权与缺失错误映射（resource_no_permission / resource_missing），以及失效时保留快照元数据。
+   */
+  const resolveSnapshotResource = async <TSnapshot, TViewerLive, TDbLive, TOutput>({
+    resourceType,
+    resourceId,
+    snapshot,
+    fetchLiveByViewer,
+    fetchLiveFromDb,
+    unAuthError,
+    formatLive,
+    formatFallback
+  }: {
+    resourceType: 'agent' | 'tool' | 'skill' | 'dataset';
+    resourceId: string;
+    snapshot: TSnapshot;
+    fetchLiveByViewer?: () => PromiseLike<TViewerLive>;
+    fetchLiveFromDb?: () => PromiseLike<TDbLive | null | undefined>;
+    unAuthError: unknown;
+    formatLive: (live: TViewerLive | TDbLive) => TOutput;
+    formatFallback: (
+      snapshot: TSnapshot,
+      error: 'resource_no_permission' | 'resource_missing'
+    ) => TOutput;
+  }): Promise<TOutput> => {
+    const resourceInSnapshot = hasSnapshotResource(resourceType, resourceId);
+    let live: TViewerLive | TDbLive | null | undefined;
+    let isNoPermission = false;
+
+    try {
+      if (viewerTmbId && !resourceInSnapshot) {
+        live = await fetchLiveByViewer?.();
+      } else {
+        live = await fetchLiveFromDb?.();
+      }
+    } catch (error) {
+      isNoPermission = error === unAuthError;
+    }
+
+    if (live) {
+      return formatLive(live);
+    }
+
+    return formatFallback(snapshot, isNoPermission ? 'resource_no_permission' : 'resource_missing');
+  };
+
   const loadAgentSkill = async (
     selectedSkill: AgentSkillSnapshot
   ): Promise<SelectedAgentSkillItemType> => {
-    try {
-      const { skill } = await authSkillByTmbId({
-        tmbId: ownerTmbId,
-        skillId: selectedSkill.skillId,
-        per: ReadPermissionVal,
-        isRoot
-      });
-
-      return {
+    const skillId = String(selectedSkill.skillId);
+    return resolveSnapshotResource({
+      resourceType: 'skill',
+      resourceId: skillId,
+      snapshot: selectedSkill,
+      fetchLiveByViewer: async () =>
+        (
+          await authSkillByTmbId({
+            tmbId: viewerTmbId!,
+            skillId,
+            per: ReadPermissionVal,
+            isRoot
+          })
+        ).skill,
+      fetchLiveFromDb: () =>
+        MongoAgentSkills.findOne({
+          _id: skillId,
+          deleteTime: null,
+          ...(isRoot ? {} : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
+        }).lean(),
+      unAuthError: SkillErrEnum.unAuthSkill,
+      formatLive: (skill) => ({
         skillId: String(skill._id),
         name: skill.name,
         description: skill.description,
-        avatar: skill.avatar,
-        isDeleted: false
-      };
-    } catch {
-      return {
-        skillId: selectedSkill.skillId,
-        name: selectedSkill.name ?? 'Invalid',
-        description: selectedSkill.description ?? '',
-        avatar: selectedSkill.avatar,
-        isDeleted: true
-      };
-    }
+        avatar: skill.avatar
+      }),
+      formatFallback: (snapshot, error) => ({
+        skillId: snapshot.skillId,
+        name: snapshot.name ?? 'Invalid',
+        description: snapshot.description ?? '',
+        avatar: snapshot.avatar,
+        error
+      })
+    });
   };
   type ToolInputSnapshot = Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
     Partial<FlowNodeInputItemType>;
@@ -183,40 +312,51 @@ export async function rewriteAppWorkflowToDetail({
       snapshot: SelectedDatasetSnapshot
     ): Promise<SelectedDatasetType> => {
       const datasetId = String(snapshot.datasetId);
-      const dataset = await MongoDataset.findOne({
-        _id: datasetId,
-        ...(!isRoot && teamId && { teamId })
-      }).lean();
-      if (dataset && !dataset.deleteTime) {
-        const { dataset: accessibleDataset } = await authDatasetByTmbId({
-          tmbId: ownerTmbId,
+      return resolveSnapshotResource({
+        resourceType: 'dataset',
+        resourceId: datasetId,
+        snapshot,
+        fetchLiveByViewer: async () =>
+          (
+            await authDatasetByTmbId({
+              tmbId: viewerTmbId!,
+              datasetId,
+              per: ReadPermissionVal,
+              isRoot
+            })
+          ).dataset,
+        fetchLiveFromDb: () =>
+          MongoDataset.findOne({
+            _id: datasetId,
+            deleteTime: null,
+            ...(!isRoot && teamId && { teamId })
+          }).lean(),
+        unAuthError: DatasetErrEnum.unAuthDataset,
+        formatLive: (dataset) => {
+          const modelReference = getDatasetModelReference(dataset, 'embedding');
+
+          return {
+            datasetId: String(dataset._id),
+            avatar: dataset.avatar,
+            name: dataset.name,
+            // 详情接口只返回知识库绑定的模型引用，不因模型停用或下架阻断应用详情。
+            vectorModel: {
+              modelId: modelReference.modelId ?? undefined,
+              model: modelReference.model ?? ''
+            }
+          };
+        },
+        formatFallback: (snapshot, error) => ({
           datasetId,
-          per: ReadPermissionVal,
-          isRoot
-        });
-        const modelReference = getDatasetModelReference(accessibleDataset, 'embedding');
-
-        return {
-          datasetId: String(accessibleDataset._id),
-          avatar: accessibleDataset.avatar,
-          name: accessibleDataset.name,
-          // 详情接口只返回知识库绑定的模型引用，不因模型停用或下架阻断应用详情。
+          avatar: defaultDeletedDatasetAvatar,
+          name: snapshot.name || 'Invalid',
           vectorModel: {
-            modelId: modelReference.modelId ?? undefined,
-            model: modelReference.model ?? ''
+            modelId: snapshot.vectorModel?.modelId,
+            model: snapshot.vectorModel?.model ?? ''
           },
-          isDeleted: false
-        };
-      }
-
-      // 保存前会压缩成 { datasetId }，软删除或物理删除后没有快照时需要补齐合法占位。
-      return {
-        datasetId,
-        avatar: defaultDeletedDatasetAvatar,
-        name: snapshot.name || '',
-        vectorModel: snapshot.vectorModel || { model: '' },
-        isDeleted: true
-      };
+          error
+        })
+      });
     };
 
     if (!value) return;
@@ -253,6 +393,7 @@ export async function rewriteAppWorkflowToDetail({
         const result = await loadToolNode({
           id: toolId,
           versionId: node.version ?? '',
+          resourceType: node.flowNodeType === FlowNodeTypeEnum.appModule ? 'agent' : 'tool',
           source:
             node.source ??
             node.toolConfig?.systemTool?.source ??
@@ -344,7 +485,8 @@ export async function rewriteAppWorkflowToDetail({
               const result = await loadToolNode({
                 id: tool.id,
                 versionId: tool.version,
-                source: tool.source
+                source: tool.source,
+                resourceType: 'tool'
               });
               if (result.success) {
                 const data = result.data!;
@@ -405,8 +547,8 @@ export async function rewriteAppWorkflowToDetail({
                   inputs: tool.inputs ?? [],
                   templateType: 'personalTool' as const,
                   flowNodeType: FlowNodeTypeEnum.tool,
-                  name: 'Invalid',
-                  avatar: '',
+                  name: tool.name ?? 'Invalid',
+                  avatar: tool.avatar ?? '',
                   intro: '',
                   showStatus: false,
                   weight: 0,
