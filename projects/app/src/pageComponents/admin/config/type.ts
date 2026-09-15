@@ -183,8 +183,6 @@ export type ConfigFormType = {
     scripts?: string;
     limit?: FastGPTConfigFileType['feConfigs']['limit'];
     systemEnv: {
-      oneapiUrl?: string;
-      chatApiKey: string;
       openapiPrefix: string;
       datasetParseMaxProcess: number;
       vectorMaxProcess: number;

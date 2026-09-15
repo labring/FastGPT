@@ -157,7 +157,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     if (userInfo?.username !== 'root') return;
     // 模型配置页会自行加载同一份数据；这里跳过，避免首屏重复请求。
-    if (router.pathname === '/config/model') return;
+    // 旧路由 /config/model 已由 next.config redirect 到 /admin/config/modelProvider。
+    if (router.pathname === '/admin/config/modelProvider') return;
 
     const identity = `${userInfo.team.teamId}:${userInfo.team.tmbId}:${modelLoginGeneration}`;
     if (checkedModelIdentityRef.current === identity) return;

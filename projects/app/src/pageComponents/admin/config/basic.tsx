@@ -142,15 +142,6 @@ export const Settings = () => {
       </FormItem>
 
       <FirstTitle title="系统参数" />
-      <FormItem
-        title="oneAPI地址(会覆盖环境变量配置的)"
-        description="oneAPI地址，可以使用 oneapi 来实现多模型接入"
-      >
-        <Input {...register('systemEnv.oneapiUrl')} placeholder="请输入 oneAPI 地址" />
-      </FormItem>
-      <FormItem title="OneAPI 密钥(会覆盖环境变量配置的)" description="">
-        <Input {...register('systemEnv.chatApiKey')} placeholder="请输入 OneAPI 密钥" />
-      </FormItem>
       <FormItem title="知识库文件解析最大处理线程" description="">
         <Input
           type="number"
