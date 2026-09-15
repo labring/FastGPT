@@ -3,7 +3,7 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { ClientSession } from '../../../common/mongo';
+import { Types, type ClientSession } from '../../../common/mongo';
 import {
   getAppResourceKey,
   hasAppResource,
@@ -122,6 +122,50 @@ export const checkAppResourceReadPermissions = async (
 };
 
 /**
+ * 过滤操作人有权限访问的资源快照：
+ * 1. 仅保留操作人有读取权限的资源，无权限项静默剔除；
+ * 2. 若无法查到有效成员信息（如成员不存在、已离职或 tmbId 非法），按安全规则全部剔除为 []；
+ * 3. 过滤过程静默进行，捕获所有异常并兜底。
+ */
+export const filterAuthorizedAppResources = async ({
+  resources,
+  tmbId,
+  isRoot = false,
+  allowRootCrossTeam = false
+}: {
+  resources: AppResource[];
+  tmbId: unknown;
+  isRoot?: boolean;
+  allowRootCrossTeam?: boolean;
+}): Promise<AppResource[]> => {
+  if (resources.length === 0) return [];
+
+  const validTmbId = typeof tmbId === 'string' && tmbId.length > 0 ? tmbId : String(tmbId ?? '');
+  if (!validTmbId || !Types.ObjectId.isValid(validTmbId)) {
+    return [];
+  }
+
+  try {
+    // 无法查到有效成员信息就全部剔除
+    await getTmbInfoByTmbId({ tmbId: validTmbId });
+
+    const unauthorized = await getUnauthorizedAppResources({
+      resources,
+      tmbId: validTmbId,
+      isRoot,
+      allowRootCrossTeam
+    });
+    if (unauthorized.length === 0) return resources;
+
+    const unauthorizedKeys = new Set(unauthorized.map((item) => getAppResourceKey(item.resource)));
+    return resources.filter((resource) => !unauthorizedKeys.has(getAppResourceKey(resource)));
+  } catch {
+    // 无法查到有效成员信息（例如成员不存在或已离职），全部剔除
+    return [];
+  }
+};
+
+/**
  * 按当前应用草稿快照解析资源，并只校验相对快照新增的 ACL 资源。
  * 保存/自动保存不阻断无权限新增；发布和 Test/Debug 通过 blockOnUnauthorized 阻断。
  */
@@ -156,17 +200,13 @@ export const resolveAppResourcesByPermission = async ({
     return mergeAppResources([...kept, ...added]);
   }
 
-  const unauthorized = await getUnauthorizedAppResources({
+  const authorizedAdded = await filterAuthorizedAppResources({
     resources: added,
     tmbId,
     isRoot,
     allowRootCrossTeam
   });
-  const unauthorizedKeys = new Set(unauthorized.map((item) => getAppResourceKey(item.resource)));
-  return mergeAppResources([
-    ...kept,
-    ...added.filter((resource) => !unauthorizedKeys.has(getAppResourceKey(resource)))
-  ]);
+  return mergeAppResources([...kept, ...authorizedAdded]);
 };
 
 /**

@@ -7,7 +7,8 @@ import {
 
 const mocks = vi.hoisted(() => ({
   mongoDatasetFind: vi.fn(),
-  checkAppResourceReadPermissions: vi.fn()
+  checkAppResourceReadPermissions: vi.fn(),
+  resolveAppResourcesByPermission: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
@@ -22,7 +23,8 @@ vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
 });
 
 vi.mock('@fastgpt/service/support/permission/app/resource', () => ({
-  checkAppResourceReadPermissions: mocks.checkAppResourceReadPermissions
+  checkAppResourceReadPermissions: mocks.checkAppResourceReadPermissions,
+  resolveAppResourcesByPermission: mocks.resolveAppResourcesByPermission
 }));
 
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
@@ -31,6 +33,7 @@ import {
   createWorkflowChildResourceContext,
   loadWorkflowAppResource,
   loadWorkflowResourceContext,
+  prepareWorkflowDebugResourceContext,
   WorkflowResourceError
 } from '@fastgpt/service/core/workflow/utils/resource';
 
@@ -129,5 +132,57 @@ describe('workflow resource context', () => {
         })
       ).rejects.toBeInstanceOf(WorkflowResourceError)
     );
+  });
+
+  describe('prepareWorkflowDebugResourceContext', () => {
+    it('extracts resources, loads context, and enforces read permission blocking on unauthorized items', async () => {
+      mocks.resolveAppResourcesByPermission.mockResolvedValue([
+        { type: 'dataset', id: 'dataset-1' }
+      ]);
+
+      const context = await prepareWorkflowDebugResourceContext({
+        appId: 'app-debug-1',
+        nodes: [
+          {
+            flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+            nodeId: 'node-ds',
+            inputs: [
+              {
+                key: NodeInputKeyEnum.datasetSelectList,
+                value: [{ datasetId: 'dataset-1' }],
+                valueType: WorkflowIOValueTypeEnum.datasetSelectList,
+                renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
+              }
+            ]
+          } as any
+        ],
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        isRoot: true
+      });
+
+      expect(context.isRoot).toBe(true);
+      expect(mocks.resolveAppResourcesByPermission).toHaveBeenCalledWith({
+        appId: 'app-debug-1',
+        extracted: [{ type: 'dataset', id: 'dataset-1' }],
+        tmbId: 'tmb-1',
+        isRoot: true,
+        blockOnUnauthorized: true,
+        allowRootCrossTeam: true
+      });
+    });
+
+    it('propagates permission errors when resolveAppResourcesByPermission throws', async () => {
+      mocks.resolveAppResourcesByPermission.mockRejectedValue(new Error('unauthorized resource'));
+
+      await expect(
+        prepareWorkflowDebugResourceContext({
+          appId: 'app-debug-1',
+          nodes: [],
+          teamId: 'team-1',
+          tmbId: 'tmb-1'
+        })
+      ).rejects.toThrow('unauthorized resource');
+    });
   });
 });

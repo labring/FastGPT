@@ -10,6 +10,7 @@ import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSch
 import { resolveStoredAppResources, getLegacySkillIds } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 
 type LegacyResourceRefs = {
   skillIds?: unknown;
@@ -168,6 +169,7 @@ export const readAppVersionResourceBatch = (params: {
     ...params,
     projection: {
       _id: 1,
+      tmbId: 1,
       nodes: 1,
       edges: 1,
       chatConfig: 1,
@@ -205,6 +207,7 @@ export const readAppVersionResourceRecord = (id: string) =>
     {
       projection: {
         _id: 1,
+        tmbId: 1,
         nodes: 1,
         edges: 1,
         chatConfig: 1,
@@ -251,13 +254,17 @@ export const backfillAppVersionResourceRecords = async (
     try {
       const snapshot = buildAppResourceSnapshot(record);
       result.legacySkillMismatches += snapshot.legacySkillMismatches;
+      const authorizedResources = await filterAuthorizedAppResources({
+        resources: snapshot.resources,
+        tmbId: record.tmbId
+      });
       const updateResult = await MongoAppVersion.collection.updateOne(
         {
           _id: record._id as never,
           resources: getSnapshotQueryValue(record.resources),
           ...getWorkflowSnapshot(record, true)
         },
-        { $set: { resources: snapshot.resources } }
+        { $set: { resources: authorizedResources } }
       );
       if (updateResult.matchedCount === 1) {
         result.updatedCount += 1;
@@ -400,6 +407,10 @@ const createMissingPublishedVersion = (record: AppResourceMigrationRecord) =>
     }
 
     const snapshot = buildAppResourceSnapshot(currentApp);
+    const authorizedResources = await filterAuthorizedAppResources({
+      resources: snapshot.resources,
+      tmbId: currentApp.tmbId
+    });
     const insertResult = await MongoAppVersion.collection.insertOne(
       {
         tmbId: String(currentApp.tmbId),
@@ -410,7 +421,7 @@ const createMissingPublishedVersion = (record: AppResourceMigrationRecord) =>
         chatConfig: snapshot.normalizedWorkflow.chatConfig,
         isPublish: true,
         versionName: typeof currentApp.name === 'string' ? currentApp.name : undefined,
-        resources: snapshot.resources
+        resources: authorizedResources
       },
       { session }
     );

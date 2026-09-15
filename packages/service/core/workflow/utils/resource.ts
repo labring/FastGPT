@@ -1,4 +1,5 @@
 import type {
+  AppChatConfigType,
   AppResource,
   AppResourcesType,
   AppResourceType,
@@ -12,6 +13,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   isWorkflowSystemModelInput,
@@ -22,8 +24,16 @@ import { MongoDataset } from '../../dataset/schema';
 import { MongoAgentSkills } from '../../ai/skill/model/schema';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
-import { getAppResourceKey, mergeAppResources, resolveSystemModelId } from '../../app/resources';
-import { checkAppResourceReadPermissions } from '../../../support/permission/app/resource';
+import {
+  extractAppResources,
+  getAppResourceKey,
+  mergeAppResources,
+  resolveSystemModelId
+} from '../../app/resources';
+import {
+  checkAppResourceReadPermissions,
+  resolveAppResourcesByPermission
+} from '../../../support/permission/app/resource';
 import { getWorkflowResourceContext } from './context';
 import {
   getAppPublishedWorkflowMap,
@@ -370,3 +380,41 @@ export const createWorkflowChildResourceContext = (
   teamId?: string,
   isRoot = getWorkflowResourceContext()?.isRoot ?? false
 ) => loadWorkflowResourceContext({ resources, teamId, isRoot });
+
+/**
+ * 为工作流调试与测试（chatTest 与 debug）准备未发布工作流的资源上下文并校验权限。
+ * 1. 静态提取工作流节点与配置声明的资源快照；
+ * 2. 批量加载运行时所需的实体上下文（App, Dataset, Skill 等）；
+ * 3. 相对应用当前草稿快照基线校验新增资源读取权限（阻断未授权操作，root 请求保留跨团队权限）。
+ */
+export const prepareWorkflowDebugResourceContext = async ({
+  appId,
+  nodes,
+  chatConfig,
+  teamId,
+  tmbId,
+  isRoot = false
+}: {
+  appId: string;
+  nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
+  chatConfig?: AppChatConfigType;
+  teamId?: string;
+  tmbId: string;
+  isRoot?: boolean;
+}) => {
+  const extractedResources = extractAppResources({ nodes, chatConfig });
+  const resourceContext = await loadWorkflowResourceContext({
+    resources: extractedResources,
+    teamId,
+    isRoot
+  });
+  await resolveAppResourcesByPermission({
+    appId,
+    extracted: extractedResources,
+    tmbId,
+    isRoot,
+    blockOnUnauthorized: true,
+    allowRootCrossTeam: isRoot
+  });
+  return resourceContext;
+};

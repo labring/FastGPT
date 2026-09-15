@@ -6,7 +6,11 @@ const mocks = vi.hoisted(() => ({
   getAppLatestVersion: vi.fn(),
   getAppDraftResourceBaseline: vi.fn(),
   checkAppResourceReadPermissions: vi.fn(),
-  getUnauthorizedAppResources: vi.fn()
+  getUnauthorizedAppResources: vi.fn(),
+  authAppByTmbId: vi.fn(),
+  authDatasetByTmbId: vi.fn(),
+  authSkillByTmbId: vi.fn(),
+  getTmbInfoByTmbId: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
@@ -14,7 +18,26 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppDraftResourceBaseline: mocks.getAppDraftResourceBaseline
 }));
 
-import { authTargetModelResource } from '@fastgpt/service/support/permission/app/resource';
+vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
+  authAppByTmbId: mocks.authAppByTmbId
+}));
+
+vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
+  authDatasetByTmbId: mocks.authDatasetByTmbId
+}));
+
+vi.mock('@fastgpt/service/support/permission/skill/auth', () => ({
+  authSkillByTmbId: mocks.authSkillByTmbId
+}));
+
+vi.mock('@fastgpt/service/support/user/team/controller', () => ({
+  getTmbInfoByTmbId: mocks.getTmbInfoByTmbId
+}));
+
+import {
+  authTargetModelResource,
+  filterAuthorizedAppResources
+} from '@fastgpt/service/support/permission/app/resource';
 
 describe('authTargetModelResource', () => {
   beforeEach(() => {
@@ -63,5 +86,90 @@ describe('authTargetModelResource', () => {
     ).resolves.toBeUndefined();
 
     expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
+  });
+});
+
+describe('filterAuthorizedAppResources', () => {
+  const validTmbId = '65f000000000000000000001';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns empty array when resources array is empty without checking permissions', async () => {
+    const result = await filterAuthorizedAppResources({
+      resources: [],
+      tmbId: validTmbId
+    });
+    expect(result).toEqual([]);
+    expect(mocks.authAppByTmbId).not.toHaveBeenCalled();
+    expect(mocks.authDatasetByTmbId).not.toHaveBeenCalled();
+    expect(mocks.authSkillByTmbId).not.toHaveBeenCalled();
+  });
+
+  it('returns empty array when tmbId is invalid or missing', async () => {
+    const resources = [{ type: 'app' as const, id: 'app-1' }];
+
+    expect(await filterAuthorizedAppResources({ resources, tmbId: '' })).toEqual([]);
+    expect(await filterAuthorizedAppResources({ resources, tmbId: 'invalid-id' })).toEqual([]);
+    expect(await filterAuthorizedAppResources({ resources, tmbId: undefined })).toEqual([]);
+    expect(mocks.authAppByTmbId).not.toHaveBeenCalled();
+  });
+
+  it('returns all resources when member has read permissions for all items', async () => {
+    mocks.authAppByTmbId.mockResolvedValue(undefined);
+    mocks.authDatasetByTmbId.mockResolvedValue(undefined);
+
+    const resources = [
+      { type: 'agent' as const, id: '65f000000000000000000010' },
+      { type: 'dataset' as const, id: '65f000000000000000000020' }
+    ];
+
+    const result = await filterAuthorizedAppResources({
+      resources,
+      tmbId: validTmbId
+    });
+
+    expect(result).toEqual(resources);
+    expect(mocks.authAppByTmbId).toHaveBeenCalledWith(
+      expect.objectContaining({ appId: '65f000000000000000000010', tmbId: validTmbId })
+    );
+    expect(mocks.authDatasetByTmbId).toHaveBeenCalledWith(
+      expect.objectContaining({ datasetId: '65f000000000000000000020', tmbId: validTmbId })
+    );
+  });
+
+  it('silently filters out unauthorized resources while retaining authorized ones', async () => {
+    mocks.authAppByTmbId.mockResolvedValue(undefined);
+    mocks.authDatasetByTmbId.mockRejectedValue(new Error('Permission denied'));
+
+    const resources = [
+      { type: 'agent' as const, id: '65f000000000000000000010' },
+      { type: 'dataset' as const, id: '65f000000000000000000020' }
+    ];
+
+    const result = await filterAuthorizedAppResources({
+      resources,
+      tmbId: validTmbId
+    });
+
+    expect(result).toEqual([{ type: 'agent', id: '65f000000000000000000010' }]);
+  });
+
+  it('drops all resources to empty array when member cannot be found or is inactive', async () => {
+    mocks.authAppByTmbId.mockRejectedValue(new Error('Member not found'));
+    mocks.getTmbInfoByTmbId.mockRejectedValue(new Error('Member not found'));
+
+    const resources = [
+      { type: 'agent' as const, id: '65f000000000000000000010' },
+      { type: 'skill' as const, id: '65f000000000000000000030' }
+    ];
+
+    const result = await filterAuthorizedAppResources({
+      resources,
+      tmbId: validTmbId
+    });
+
+    expect(result).toEqual([]);
   });
 });

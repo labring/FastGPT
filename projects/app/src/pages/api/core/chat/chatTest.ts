@@ -59,9 +59,7 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
-import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { prepareWorkflowDebugResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -97,22 +95,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appId,
       per: ReadPermissionVal
     });
-    const extractedResources = extractAppResources({
-      nodes,
-      chatConfig
-    });
-    const resourceContext = await loadWorkflowResourceContext({
-      resources: extractedResources,
-      teamId,
-      isRoot
-    });
-    await resolveAppResourcesByPermission({
+    const resourceContext = await prepareWorkflowDebugResourceContext({
       appId,
-      extracted: extractedResources,
+      nodes,
+      chatConfig,
+      teamId,
       tmbId,
-      isRoot,
-      blockOnUnauthorized: true,
-      allowRootCrossTeam: isRoot
+      isRoot
     });
 
     // 类型获取

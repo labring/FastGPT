@@ -46,7 +46,13 @@ const normalizeStoredVersionWorkflow = (
     chatConfig: version.chatConfig
   });
 
-const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionWorkflow => {
+/**
+ * 标准化单条 Version 记录的工作流及其资源快照。
+ * 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
+ * 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
+ * 缺失或非法的 resources 会按该版本内容回退提取，确保快照始终合法。
+ */
+export const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionWorkflow => {
   // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
   // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
   const normalizedWorkflow = normalizeStoredVersionWorkflow(version);
