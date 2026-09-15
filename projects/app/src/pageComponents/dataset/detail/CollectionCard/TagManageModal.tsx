@@ -504,7 +504,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
           lineHeight={'20px'}
           color={'myGray.600'}
         >
-          {allDatasetTags.length === 0 ? (
+          {allDatasetTags.length === 0 && newTag === undefined ? (
             <EmptyTip text={t('dataset:dataset.no_tags')} />
           ) : (
             allDatasetTags.map((tag) => {
