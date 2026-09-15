@@ -312,33 +312,32 @@ export const finalizeChatRound = async (props: Props) => {
     delete humanUpdate.obj;
     delete aiUpdate.obj;
 
-    const [humanDoc, aiDoc] = await Promise.all([
-      MongoChatItem.findOneAndUpdate(
-        {
-          ...buildChatSourceQuery(chatSource),
-          chatId,
-          dataId: humanDataId,
-          obj: ChatRoleEnum.Human
-        },
-        {
-          $set: humanUpdate
-        },
-        {
-          session,
-          new: true
-        }
-      ),
-      MongoChatItem.findOneAndUpdate(
-        { ...buildChatSourceQuery(chatSource), chatId, dataId: aiDataId, obj: ChatRoleEnum.AI },
-        {
-          $set: aiUpdate
-        },
-        {
-          session,
-          new: true
-        }
-      )
-    ]);
+    // MongoDB Node.js 驱动不支持同一事务中的并行操作；串行更新避免 DDM 事务 staging 栈失衡。
+    const humanDoc = await MongoChatItem.findOneAndUpdate(
+      {
+        ...buildChatSourceQuery(chatSource),
+        chatId,
+        dataId: humanDataId,
+        obj: ChatRoleEnum.Human
+      },
+      {
+        $set: humanUpdate
+      },
+      {
+        session,
+        new: true
+      }
+    );
+    const aiDoc = await MongoChatItem.findOneAndUpdate(
+      { ...buildChatSourceQuery(chatSource), chatId, dataId: aiDataId, obj: ChatRoleEnum.AI },
+      {
+        $set: aiUpdate
+      },
+      {
+        session,
+        new: true
+      }
+    );
 
     if (!humanDoc || !aiDoc) {
       throw new Error(`Pending chat round items not found: ${chatId}`);
