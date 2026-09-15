@@ -27,6 +27,7 @@ import { MongoAppRegistration } from '../../support/appRegistration/schema';
 import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import { type ClientSession } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 import { deleteAppSandboxes } from '../ai/sandbox/interface/resource/sourceCleanup';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
@@ -373,4 +374,42 @@ export const updateParentFoldersUpdateTime = ({ parentId }: { parentId?: string 
   }).catch((err) => {
     logger.error('Failed to update parent folder updateTime', { error: err });
   });
+};
+
+/**
+ * 更新应用或文件夹的置顶状态。
+ *
+ * 置顶只影响列表排序，因此刻意不改动任何既有副作用：
+ * - 不刷新 updateTime，否则取消置顶后资源无法回到原排序位置；
+ * - 不刷新父文件夹 updateTime；
+ * - 不写审计日志。
+ *
+ * 重复置顶保持幂等，不刷新 pinnedAt，避免置顶项之间顺序抖动。
+ */
+export const updateAppPin = async ({
+  teamId,
+  appId,
+  isPinned,
+  session
+}: {
+  teamId: string;
+  appId: string;
+  isPinned: boolean;
+  session?: ClientSession;
+}) => {
+  if (isPinned) {
+    // 已置顶的记录不满足条件，因此不会覆盖首次置顶时间
+    await MongoApp.updateOne(
+      { _id: appId, teamId, deleteTime: null, isPinned: { $ne: true } },
+      { $set: { isPinned: true, pinnedAt: new Date() } },
+      { session }
+    );
+    return;
+  }
+
+  await MongoApp.updateOne(
+    { _id: appId, teamId, deleteTime: null },
+    { $set: { isPinned: false }, $unset: { pinnedAt: '' } },
+    { session }
+  );
 };

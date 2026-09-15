@@ -15,12 +15,251 @@ import type {
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { updateAppPin } from '@fastgpt/service/core/app/controller';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFakeUsers, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('POST /api/core/app/list', () => {
+  it.each([false, true])(
+    'does not read an unpinned app twice after the first database read (V2=%s)',
+    async (useV2) => {
+      const user = await getUser(`pin-concurrent-${getNanoid(6)}`);
+      const [pinned, normal] = await MongoApp.create([
+        {
+          name: 'Pinned',
+          type: AppTypeEnum.workflow,
+          teamId: user.teamId,
+          tmbId: user.tmbId,
+          isPinned: true,
+          pinnedAt: new Date(),
+          updateTime: new Date('2025-01-01')
+        },
+        {
+          name: 'Normal',
+          type: AppTypeEnum.workflow,
+          teamId: user.teamId,
+          tmbId: user.tmbId,
+          updateTime: new Date('2020-01-01')
+        }
+      ]);
+      let changed = false;
+      const unpinAfterRead = async () => {
+        if (changed) return;
+        changed = true;
+        await updateAppPin({ teamId: user.teamId, appId: String(pinned._id), isPinned: false });
+      };
+      const find = MongoApp.find.bind(MongoApp);
+      const aggregate = MongoApp.aggregate.bind(MongoApp);
+      const findSpy = vi.spyOn(MongoApp, 'find').mockImplementation((...args) => {
+        const query = find(...args);
+        const exec = query.exec.bind(query);
+        query.exec = async () => {
+          const result = await exec();
+          await unpinAfterRead();
+          return result;
+        };
+        return query;
+      });
+      const aggregateSpy = vi.spyOn(MongoApp, 'aggregate').mockImplementation((...args) => {
+        const query = aggregate(...args);
+        const exec = query.exec.bind(query);
+        query.exec = async () => {
+          const result = await exec();
+          await unpinAfterRead();
+          return result;
+        };
+        return query;
+      });
+      try {
+        const list = await (async () => {
+          if (useV2) {
+            const response = await Call<
+              ListAppV2BodyType,
+              Record<string, never>,
+              ListAppV2ResponseType
+            >(handlerV2, {
+              auth: user,
+              body: { pinnedFirst: true, pageSize: 2 }
+            });
+            expect(response.data.total).toBe(2);
+            return response.data.list;
+          }
+          const response = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(
+            handler,
+            {
+              auth: user,
+              body: { pinnedFirst: true }
+            }
+          );
+          return response.data;
+        })();
+        expect(changed).toBe(true);
+        expect(list.map((app) => String(app._id))).toEqual([
+          String(pinned._id),
+          String(normal._id)
+        ]);
+        expect(
+          list.every(
+            (app) => !('_pinRank' in app) && !('_listSortTime' in app) && !('pinnedAt' in app)
+          )
+        ).toBe(true);
+      } finally {
+        findSpy.mockRestore();
+        aggregateSpy.mockRestore();
+      }
+    }
+  );
+
+  it.each([false, true])('restores an unpinned app among missing flags (V2=%s)', async (useV2) => {
+    const user = await getUser(`pin-restore-${getNanoid(6)}`);
+    const [older, newer] = await MongoApp.create([
+      {
+        name: 'Older',
+        type: AppTypeEnum.workflow,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        updateTime: new Date('2020-01-01')
+      },
+      {
+        name: 'Newer',
+        type: AppTypeEnum.workflow,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        updateTime: new Date('2021-01-01')
+      }
+    ]);
+    await updateAppPin({ teamId: user.teamId, appId: String(older._id), isPinned: true });
+    await updateAppPin({ teamId: user.teamId, appId: String(older._id), isPinned: false });
+    if (useV2) {
+      const response = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+        handlerV2,
+        {
+          auth: user,
+          body: { pinnedFirst: true, pageSize: 1 }
+        }
+      );
+      expect(response.data.total).toBe(2);
+      expect(response.data.list.map((app) => String(app._id))).toEqual([String(newer._id)]);
+    } else {
+      const response = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(
+        handler,
+        {
+          auth: user,
+          body: { pinnedFirst: true }
+        }
+      );
+      expect(response.data.map((app) => String(app._id))).toEqual([
+        String(newer._id),
+        String(older._id)
+      ]);
+    }
+  });
+
+  it.each([undefined, false])(
+    'omits pin fields from V2 default responses (%s)',
+    async (pinnedFirst) => {
+      const user = await getUser(`pin-contract-${getNanoid(6)}`);
+      await MongoApp.create(
+        [true, false, undefined].map((isPinned) => ({
+          name: 'App',
+          teamId: user.teamId,
+          tmbId: user.tmbId,
+          type: AppTypeEnum.workflow,
+          isPinned,
+          ...(isPinned && { pinnedAt: new Date() })
+        }))
+      );
+      const response = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+        handlerV2,
+        {
+          auth: user,
+          body: { pinnedFirst }
+        }
+      );
+      expect(response.data.list).toHaveLength(3);
+      expect(response.data.list.every((app) => !('isPinned' in app) && !('pinnedAt' in app))).toBe(
+        true
+      );
+      const legacy = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(
+        handler,
+        { auth: user, body: { pinnedFirst } }
+      );
+      expect(legacy.data).toHaveLength(3);
+      expect(legacy.data.every((app) => !('isPinned' in app) && !('pinnedAt' in app))).toBe(true);
+    }
+  );
+
+  it('paginates across pinned folders and normal apps without duplicate or missing items', async () => {
+    const user = await getUser(`pin-pages-${getNanoid(6)}`);
+    await MongoApp.create(
+      Array.from({ length: 6 }, (_, index) => ({
+        name: `Page ${index}`,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        type: index === 0 ? AppTypeEnum.folder : AppTypeEnum.workflow,
+        updateTime: new Date(`2020-01-0${6 - index}`),
+        ...(index < 3
+          ? { isPinned: true, pinnedAt: new Date(`2021-01-0${3 - index}`) }
+          : index === 3
+            ? { isPinned: false }
+            : {})
+      }))
+    );
+    const names: string[] = [];
+    for (const pageNum of [1, 2, 3, 4]) {
+      const response = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+        handlerV2,
+        {
+          auth: user,
+          body: { pinnedFirst: true, pageNum, pageSize: 2 }
+        }
+      );
+      expect(response.data.total).toBe(6);
+      names.push(...response.data.list.map((app) => app.name));
+    }
+    expect(names).toEqual(['Page 0', 'Page 1', 'Page 2', 'Page 3', 'Page 4', 'Page 5']);
+  });
+
+  it('searches and filters before pin pagination without the V1 50-hit cap', async () => {
+    const user = await getUser(`pin-search-pages-${getNanoid(6)}`);
+    await MongoApp.create(
+      Array.from({ length: 65 }, (_, index) => ({
+        name: `Match ${index}`,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        type: AppTypeEnum.workflow,
+        isPinned: index === 0,
+        ...(index === 0 && { pinnedAt: new Date() })
+      }))
+    );
+    const response = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+      handlerV2,
+      {
+        auth: user,
+        body: {
+          pinnedFirst: true,
+          searchKey: 'Match',
+          type: AppTypeEnum.workflow,
+          tmbIds: [user.tmbId],
+          offset: 50,
+          pageSize: 20
+        }
+      }
+    );
+    expect(response.data.total).toBe(65);
+    expect(response.data.list).toHaveLength(15);
+    const empty = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+      handlerV2,
+      {
+        auth: user,
+        body: { pinnedFirst: true, searchKey: 'absent' }
+      }
+    );
+    expect(empty.data).toEqual({ list: [], total: 0 });
+  });
+
   it('derives the interactive-node flag from the projected flow node type', async () => {
     const { owner } = await getFakeUsers(1);
     await MongoApp.create([
@@ -358,5 +597,135 @@ describe('POST /api/core/app/list', () => {
     expect(res.data.list).toContainEqual(
       expect.objectContaining({ name: 'Legacy App', avatar: '/icon/logo.svg', intro: '' })
     );
+  });
+
+  describe('pinned ordering', () => {
+    const createPinnedFixtures = async (user: Awaited<ReturnType<typeof getUser>>) => {
+      const [normal, pinnedEarlier, pinnedLatest] = await MongoApp.create([
+        {
+          name: '普通应用',
+          type: AppTypeEnum.workflow,
+          teamId: user.teamId,
+          tmbId: user.tmbId,
+          createTime: new Date('2026-01-01T00:00:00.000Z'),
+          updateTime: new Date('2026-01-03T00:00:00.000Z'),
+          modules: []
+        },
+        {
+          name: '较早置顶',
+          type: AppTypeEnum.workflow,
+          teamId: user.teamId,
+          tmbId: user.tmbId,
+          isPinned: true,
+          pinnedAt: new Date('2026-02-01T00:00:00.000Z'),
+          createTime: new Date('2026-03-01T00:00:00.000Z'),
+          updateTime: new Date('2026-01-01T00:00:00.000Z'),
+          modules: []
+        },
+        {
+          name: '最新置顶',
+          type: AppTypeEnum.workflow,
+          teamId: user.teamId,
+          tmbId: user.tmbId,
+          isPinned: true,
+          pinnedAt: new Date('2026-03-01T00:00:00.000Z'),
+          createTime: new Date('2026-02-01T00:00:00.000Z'),
+          updateTime: new Date('2026-01-02T00:00:00.000Z'),
+          modules: []
+        }
+      ]);
+
+      return { normal, pinnedEarlier, pinnedLatest };
+    };
+
+    it('keeps the original order and omits the pin state when pin ordering is off', async () => {
+      const user = await getUser(`app-list-pin-off-${getNanoid(6)}`);
+      await createPinnedFixtures(user);
+
+      const res = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(handler, {
+        auth: user,
+        body: { type: AppTypeEnum.workflow }
+      });
+
+      expect(res.code).toBe(200);
+      expect(res.data.map((app) => app.name)).toEqual(['普通应用', '最新置顶', '较早置顶']);
+      expect(res.data.every((app) => !('isPinned' in app))).toBe(true);
+    });
+
+    it('puts pinned apps first ordered by pin time when no sort is chosen', async () => {
+      const user = await getUser(`app-list-pin-default-${getNanoid(6)}`);
+      await createPinnedFixtures(user);
+
+      const res = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(handler, {
+        auth: user,
+        body: { type: AppTypeEnum.workflow, pinnedFirst: true }
+      });
+
+      expect(res.code).toBe(200);
+      // 置顶组内按置顶时间倒序，普通组按修改时间倒序
+      expect(res.data.map((app) => app.name)).toEqual(['最新置顶', '较早置顶', '普通应用']);
+      expect(res.data.map((app) => app.isPinned)).toEqual([true, true, undefined]);
+    });
+
+    it('orders pinned and normal groups by the chosen sort condition', async () => {
+      const user = await getUser(`app-list-pin-sort-${getNanoid(6)}`);
+      await createPinnedFixtures(user);
+
+      const desc = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(
+        handler,
+        {
+          auth: user,
+          body: {
+            type: AppTypeEnum.workflow,
+            pinnedFirst: true,
+            sort: AppListSortEnum.createTimeDesc
+          }
+        }
+      );
+      expect(desc.data.map((app) => app.name)).toEqual(['较早置顶', '最新置顶', '普通应用']);
+
+      const asc = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(handler, {
+        auth: user,
+        body: {
+          type: AppTypeEnum.workflow,
+          pinnedFirst: true,
+          sort: AppListSortEnum.createTimeAsc
+        }
+      });
+      // 置顶组始终在前，组内随所选排序条件翻转
+      expect(asc.data.map((app) => app.name)).toEqual(['最新置顶', '较早置顶', '普通应用']);
+    });
+
+    it('promotes the pinned app among search hits', async () => {
+      const user = await getUser(`app-list-pin-search-${getNanoid(6)}`);
+      await MongoApp.create([
+        {
+          name: '客服 普通',
+          type: AppTypeEnum.workflow,
+          teamId: user.teamId,
+          tmbId: user.tmbId,
+          updateTime: new Date('2026-01-02T00:00:00.000Z'),
+          modules: []
+        },
+        {
+          name: '客服 置顶',
+          type: AppTypeEnum.workflow,
+          teamId: user.teamId,
+          tmbId: user.tmbId,
+          isPinned: true,
+          pinnedAt: new Date('2026-01-01T00:00:00.000Z'),
+          updateTime: new Date('2026-01-01T00:00:00.000Z'),
+          modules: []
+        }
+      ]);
+
+      const res = await Call<ListAppBodyType, Record<string, never>, ListAppResponseType>(handler, {
+        auth: user,
+        body: { type: AppTypeEnum.workflow, searchKey: '客服', pinnedFirst: true }
+      });
+
+      expect(res.code).toBe(200);
+      expect(res.data.map((app) => app.name)).toEqual(['客服 置顶', '客服 普通']);
+    });
   });
 });
