@@ -5,10 +5,9 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import {
-  createCollectionAndInsertData,
-  bulkInsertCollections,
+  createApiFileCollectionsBatch,
+  bulkInsertFolderCollections,
   bulkUpdateCollectionsParent,
-  API_FILE_FILE_BATCH_SIZE,
   type BulkInsertCollectionDoc,
   type BulkUpdateCollectionParentItem
 } from '@fastgpt/service/core/dataset/collection/controller';
@@ -66,6 +65,8 @@ export const createApiDatasetCollection = async ({
   teamId,
   tmbId,
   dataset,
+  // 请求体父级单独取出：它不能进入 createCollectionParams，否则会覆盖逐文件解析出的父级
+  parentId: requestParentId,
   ...body
 }: CreateApiCollectionV2BodyType & {
   teamId: string;
@@ -124,7 +125,7 @@ export const createApiDatasetCollection = async ({
   };
   const { idMap, newFolderIdMap } = buildIdMap(existByApiFileId, nodes);
 
-  const bodyParentId = body.parentId ? new Types.ObjectId(body.parentId) : null;
+  const bodyParentId = requestParentId ? new Types.ObjectId(requestParentId) : null;
   /** undefined 表示父级尚未落库（其祖先写入失败），调用方须整棵跳过 */
   const resolveParentId = (node: ApiFileTreeNode): Types.ObjectId | null | undefined =>
     node.serverParentId === null ? bodyParentId : idMap.get(node.serverParentId);
@@ -194,7 +195,7 @@ export const createApiDatasetCollection = async ({
       });
     }
 
-    const { successApiFileIds, failedApiFileIds } = await bulkInsertCollections({
+    const { successApiFileIds, failedApiFileIds } = await bulkInsertFolderCollections({
       teamId,
       tmbId,
       datasetId: String(dataset._id),
@@ -227,50 +228,50 @@ export const createApiDatasetCollection = async ({
     });
   }
 
-  // 6. file 分段事务写入
+  // 6. file 单事务整批写入：全部落库或全部回滚，不做部分成功
+  //    （分批事务在超时后无法判断批内哪些已落库，重试与失败计数都不可靠）
   const fileNodes = nodes.filter((node) => node.type !== 'folder');
-  for (let i = 0; i < fileNodes.length; i += API_FILE_FILE_BATCH_SIZE) {
-    const writable: Array<{ node: ApiFileTreeNode; parentId: Types.ObjectId | null }> = [];
+  const writable: Array<{ node: ApiFileTreeNode; parentId: Types.ObjectId | null }> = [];
 
-    for (const node of fileNodes.slice(i, i + API_FILE_FILE_BATCH_SIZE)) {
-      // 已落库的 file 只参与上面的层级校正，不重复创建
-      if (existByApiFileId.has(node.serverId)) continue;
+  for (const node of fileNodes) {
+    // 已落库的 file 只参与上面的层级校正，不重复创建
+    if (existByApiFileId.has(node.serverId)) continue;
 
-      const parentId = resolveParentId(node);
-      // 未命中不等于回退：只可能是祖先 folder 本轮写入失败，整棵跳过，重新导入即可幂等补齐。
-      // null 是合法值（serverParentId 为空且请求体未传 parentId → 落在知识库根）
-      if (parentId === undefined) {
-        failedCount++;
-        continue;
-      }
-      writable.push({ node, parentId });
+    const parentId = resolveParentId(node);
+    // 未命中不等于回退：只可能是祖先 folder 本轮写入失败，整棵跳过，重新导入即可幂等补齐。
+    // null 是合法值（serverParentId 为空且请求体未传 parentId → 落在知识库根）
+    if (parentId === undefined) {
+      failedCount++;
+      continue;
     }
-    if (writable.length === 0) continue;
+    writable.push({ node, parentId });
+  }
 
+  if (writable.length > 0) {
     try {
       await mongoSessionRun(async (session) => {
-        for (const { node, parentId } of writable) {
-          await createCollectionAndInsertData({
-            dataset,
-            createCollectionParams: {
-              ...body,
-              // 必须写在 ...body 之后：body.parentId 是用户选中的父级，会覆盖查表结果
-              parentId: parentId ? String(parentId) : undefined,
-              teamId,
-              tmbId,
-              type: DatasetCollectionTypeEnum.apiFile,
-              name: node.name,
-              apiFileId: node.serverId,
-              apiFileParentId: node.serverParentId ?? undefined,
-              metadata: { relatedImgId: node.serverId },
-              customPdfParse
-            },
-            session
-          });
-        }
+        await createApiFileCollectionsBatch({
+          dataset,
+          files: writable.map(({ node, parentId }) => ({
+            name: node.name,
+            apiFileId: node.serverId,
+            apiFileParentId: node.serverParentId ?? undefined,
+            parentId: parentId ? String(parentId) : undefined,
+            metadata: { relatedImgId: node.serverId }
+          })),
+          createCollectionParams: {
+            ...body,
+            teamId,
+            tmbId,
+            type: DatasetCollectionTypeEnum.apiFile,
+            customPdfParse
+          },
+          session
+        });
       });
       successCount += writable.length;
     } catch (error) {
+      // 事务已整体回滚，无部分成功：整批计入失败，客户端重试即可（已存在的节点会被幂等跳过）
       logger.warn('Create api file collection batch failed', {
         teamId,
         datasetId: String(dataset._id),
@@ -280,6 +281,16 @@ export const createApiDatasetCollection = async ({
       failedCount += writable.length;
     }
   }
+
+  logger.info('Create api file collection completed', {
+    teamId,
+    datasetId: String(dataset._id),
+    nodeCount: nodes.length,
+    folderCount: folderNodes.length,
+    fileCount: fileNodes.length,
+    successCount,
+    failedCount
+  });
 
   return { successCount, failedCount };
 };

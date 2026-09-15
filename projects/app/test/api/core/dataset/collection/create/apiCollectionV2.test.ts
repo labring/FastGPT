@@ -4,8 +4,8 @@ import { CreateApiCollectionV2ResponseSchema } from '@fastgpt/global/openapi/cor
 
 const {
   mockListFiles,
-  mockCreateCollectionAndInsertData,
-  mockBulkInsertCollections,
+  mockCreateApiFileCollectionsBatch,
+  mockBulkInsertFolderCollections,
   mockBulkUpdateCollectionsParent,
   mockCollectionFind,
   mockMongoSessionRun,
@@ -27,8 +27,8 @@ const {
   }
   return {
     mockListFiles: vi.fn(),
-    mockCreateCollectionAndInsertData: vi.fn(),
-    mockBulkInsertCollections: vi.fn(),
+    mockCreateApiFileCollectionsBatch: vi.fn(),
+    mockBulkInsertFolderCollections: vi.fn(),
     mockBulkUpdateCollectionsParent: vi.fn(),
     mockCollectionFind: vi.fn(),
     mockMongoSessionRun: vi.fn(),
@@ -75,10 +75,9 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
-  createCollectionAndInsertData: mockCreateCollectionAndInsertData,
-  bulkInsertCollections: mockBulkInsertCollections,
-  bulkUpdateCollectionsParent: mockBulkUpdateCollectionsParent,
-  API_FILE_FILE_BATCH_SIZE: 200
+  createApiFileCollectionsBatch: mockCreateApiFileCollectionsBatch,
+  bulkInsertFolderCollections: mockBulkInsertFolderCollections,
+  bulkUpdateCollectionsParent: mockBulkUpdateCollectionsParent
 }));
 
 import { createApiDatasetCollection } from '@/pages/api/core/dataset/collection/create/apiCollectionV2';
@@ -121,13 +120,17 @@ const call = (overrides: any = {}) =>
   } as any);
 
 const folderDocs = () =>
-  mockBulkInsertCollections.mock.calls.flatMap((c: any[]) => (c[0] as any).docs);
+  mockBulkInsertFolderCollections.mock.calls.flatMap((c: any[]) => (c[0] as any).docs);
 const findFolder = (apiFileId: string) =>
   folderDocs().find((doc: any) => doc.apiFileId === apiFileId);
+/** 把整批调用展开成「每文件一份参数」，保留原有逐文件断言口径 */
 const createdFileParams = () =>
-  mockCreateCollectionAndInsertData.mock.calls.map(
-    (c: any[]) => (c[0] as any).createCollectionParams
-  );
+  mockCreateApiFileCollectionsBatch.mock.calls.flatMap((c: any[]) => {
+    const { files, createCollectionParams } = c[0] as any;
+    return files.map((file: any) => ({ ...createCollectionParams, ...file }));
+  });
+const createdBatchFiles = () =>
+  mockCreateApiFileCollectionsBatch.mock.calls.flatMap((c: any[]) => (c[0] as any).files);
 const correctionUpdates = () =>
   (mockBulkUpdateCollectionsParent.mock.calls[0]?.[0] as any)?.updates ?? [];
 
@@ -137,7 +140,7 @@ describe('createApiDatasetCollection', () => {
     objectIdState.counter = 0;
     mockListFiles.mockResolvedValue([]);
     mockCollectionFind.mockReturnValue({ lean: vi.fn().mockResolvedValue([]) });
-    mockBulkInsertCollections.mockImplementation(async ({ docs }: any) => ({
+    mockBulkInsertFolderCollections.mockImplementation(async ({ docs }: any) => ({
       successApiFileIds: docs.map((d: any) => d.apiFileId),
       failedApiFileIds: []
     }));
@@ -146,10 +149,7 @@ describe('createApiDatasetCollection', () => {
       failedIds: []
     }));
     mockMongoSessionRun.mockImplementation((fn: any) => fn('session'));
-    mockCreateCollectionAndInsertData.mockResolvedValue({
-      collectionId: 'c',
-      results: { insertLen: 0 }
-    });
+    mockCreateApiFileCollectionsBatch.mockResolvedValue({ collectionIds: [] });
   });
 
   it('should use dingtalk rootNodeId when importing root folder recursively', async () => {
@@ -183,13 +183,11 @@ describe('createApiDatasetCollection', () => {
       expect.objectContaining({ apiFileId: RootCollectionId, type: 'folder' })
     ]);
 
-    expect(mockCreateCollectionAndInsertData).toHaveBeenCalledWith(
+    expect(mockCreateApiFileCollectionsBatch).toHaveBeenCalledWith(
       expect.objectContaining({
         dataset,
-        createCollectionParams: expect.objectContaining({
-          apiFileId: 'doc-1',
-          type: 'apiFile'
-        }),
+        files: [expect.objectContaining({ apiFileId: 'doc-1' })],
+        createCollectionParams: expect.objectContaining({ type: 'apiFile' }),
         session: 'session'
       })
     );
@@ -287,7 +285,7 @@ describe('createApiDatasetCollection', () => {
     expect(b).toBeDefined();
     // 不重复创建 c / d
     expect(findFolder('c')).toBeUndefined();
-    expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
+    expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
 
     // 校正条目：c 重挂到 b，d 已经正确所以不出现
     const updates = correctionUpdates();
@@ -316,7 +314,7 @@ describe('createApiDatasetCollection', () => {
     const result = await call({ apiFiles: [apiFile('l1', 'folder', true)] });
 
     expect(folderDocs()).toHaveLength(0);
-    expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
+    expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
     expect(mockBulkUpdateCollectionsParent).toHaveBeenCalledWith(
       expect.objectContaining({ updates: [] })
     );
@@ -328,31 +326,26 @@ describe('createApiDatasetCollection', () => {
     );
   });
 
-  it('T3-8 550 个平铺文件按 200 分批事务', async () => {
+  it('T3-8 550 个平铺文件单事务整批创建', async () => {
     const files = Array.from({ length: 550 }, (_, i) => apiFile(`f${i}`, 'file'));
 
-    const batchSizes: number[] = [];
-    mockMongoSessionRun.mockImplementation(async (fn: any) => {
-      const before = mockCreateCollectionAndInsertData.mock.calls.length;
-      const result = await fn('session');
-      batchSizes.push(mockCreateCollectionAndInsertData.mock.calls.length - before);
-      return result;
-    });
+    const result = await call({ apiFiles: files });
 
-    await call({ apiFiles: files });
-
-    expect(mockMongoSessionRun).toHaveBeenCalledTimes(3);
-    expect(batchSizes).toEqual([200, 200, 150]);
-    expect(batchSizes.every((size) => size <= 200)).toBe(true);
+    // 不再按 200 分批：一个 session、一次批量调用覆盖全部文件
+    expect(mockMongoSessionRun).toHaveBeenCalledTimes(1);
+    expect(mockCreateApiFileCollectionsBatch).toHaveBeenCalledTimes(1);
+    expect(createdBatchFiles()).toHaveLength(550);
+    expect(createdBatchFiles()[0].apiFileId).toBe('f0');
+    expect(result).toEqual({ successCount: 550, failedCount: 0 });
   });
 
-  it('T3-9 1200 个同层 folder 一次 bulkInsertCollections 交付', async () => {
+  it('T3-9 1200 个同层 folder 一次 bulkInsertFolderCollections 交付', async () => {
     const folders = Array.from({ length: 1200 }, (_, i) => apiFile(`d${i}`, 'folder'));
 
     await call({ apiFiles: folders });
 
-    expect(mockBulkInsertCollections).toHaveBeenCalledTimes(1);
-    expect((mockBulkInsertCollections.mock.calls[0][0] as any).docs).toHaveLength(1200);
+    expect(mockBulkInsertFolderCollections).toHaveBeenCalledTimes(1);
+    expect((mockBulkInsertFolderCollections.mock.calls[0][0] as any).docs).toHaveLength(1200);
   });
 
   it('T3-10 顶层节点无 server 父级：parentId 取请求体', async () => {
@@ -368,7 +361,7 @@ describe('createApiDatasetCollection', () => {
       l2: [apiFile('l3', 'folder', true)],
       l3: [apiFile('l4', 'file')]
     });
-    mockBulkInsertCollections.mockImplementation(async ({ docs }: any) => {
+    mockBulkInsertFolderCollections.mockImplementation(async ({ docs }: any) => {
       const failed = docs.filter((doc: any) => doc.apiFileId === 'l2');
       if (failed.length) {
         return { successApiFileIds: [], failedApiFileIds: ['l2'] };
@@ -382,43 +375,29 @@ describe('createApiDatasetCollection', () => {
     });
 
     // L2 失败 -> L3 与 file 均不创建，绝不回退到 'KB_FOLDER'
-    expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
+    expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
     expect(findFolder('l3')).toBeUndefined();
     // 1 个成功（l1）+ 失败 3（l2、l3、l4 整棵）
     expect(result).toEqual({ successCount: 1, failedCount: 3 });
   });
 
-  it('T3-12 file 批事务失败：仅该批计入失败，其余批次继续', async () => {
+  it('T3-12 file 事务失败：整批计入失败，不留部分成功', async () => {
     const files = Array.from({ length: 550 }, (_, i) => apiFile(`f${i}`, 'file'));
-
-    // 第 2 个事务内的 createCollectionAndInsertData 抛错，使该批整体失败
-    let sessionRuns = 0;
-    let failingRun = false;
-    mockMongoSessionRun.mockImplementation(async (fn: any) => {
-      sessionRuns++;
-      failingRun = sessionRuns === 2;
-      try {
-        return await fn('session');
-      } finally {
-        failingRun = false;
-      }
-    });
-    mockCreateCollectionAndInsertData.mockImplementation(async () => {
-      if (failingRun) throw new Error('batch-2 failed');
-      return { collectionId: 'c', results: { insertLen: 0 } };
-    });
+    mockCreateApiFileCollectionsBatch.mockRejectedValue(new Error('batch failed'));
 
     const result = await call({ apiFiles: files });
 
-    expect(result).toEqual({ successCount: 350, failedCount: 200 });
-    // 文件批事务失败必须留下服务端信号，否则整批静默丢失
+    // 超时/失败后无法判断批内哪些已落库，故全部计入失败（服务端整批回滚）
+    expect(mockMongoSessionRun).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ successCount: 0, failedCount: 550 });
+    // 整批失败必须留下服务端信号，否则静默丢失
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Create api file collection batch failed',
-      expect.objectContaining({ datasetId: 'dataset-id', batchSize: 200 })
+      expect.objectContaining({ datasetId: 'dataset-id', batchSize: 550 })
     );
   });
 
-  it('T3-13 校正失败不阻断后续 file 批次', async () => {
+  it('T3-13 校正失败不阻断 file 批量创建', async () => {
     setServerTree({
       p: [apiFile('c', 'folder', true)],
       c: [apiFile('f', 'file')]
@@ -434,7 +413,7 @@ describe('createApiDatasetCollection', () => {
 
     expect(correctionUpdates()).toHaveLength(1);
     expect(result.failedCount).toBe(1);
-    expect(mockCreateCollectionAndInsertData).toHaveBeenCalled();
+    expect(mockCreateApiFileCollectionsBatch).toHaveBeenCalled();
     // 校正失败必须记 WARN（设计文档 §3.2.2.1 步骤 9 / §3.2.4），否则 40k 规模下无人可查
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Create api file collection parent update failed',
@@ -445,8 +424,8 @@ describe('createApiDatasetCollection', () => {
   it('T3-14 空输入：不写任何数据', async () => {
     const result = await call({ apiFiles: [] });
 
-    expect(mockBulkInsertCollections).not.toHaveBeenCalled();
-    expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
+    expect(mockBulkInsertFolderCollections).not.toHaveBeenCalled();
+    expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
     expect(result).toEqual({ successCount: 0, failedCount: 0 });
   });
 
@@ -457,8 +436,8 @@ describe('createApiDatasetCollection', () => {
       'server down'
     );
 
-    expect(mockBulkInsertCollections).not.toHaveBeenCalled();
-    expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
+    expect(mockBulkInsertFolderCollections).not.toHaveBeenCalled();
+    expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
   });
 
   it('T3-16 响应契约：{successCount, failedCount} 可被 schema 解析', async () => {
@@ -478,7 +457,7 @@ describe('createApiDatasetCollection', () => {
       'fail-child': [apiFile('fail-file', 'file')]
     });
     // T2 的部分落库：同一批里 land 成功、fail 失败（recovery 重查后的 split）
-    mockBulkInsertCollections.mockImplementation(async ({ docs }: any) => {
+    mockBulkInsertFolderCollections.mockImplementation(async ({ docs }: any) => {
       const ids = docs.map((doc: any) => doc.apiFileId);
       if (ids.includes('fail')) {
         return { successApiFileIds: ['land'], failedApiFileIds: ['fail'] };
@@ -517,7 +496,7 @@ describe('createApiDatasetCollection', () => {
       ])
     });
     // 同层 folder 批：n 落库、q 失败
-    mockBulkInsertCollections.mockImplementation(async ({ docs }: any) => {
+    mockBulkInsertFolderCollections.mockImplementation(async ({ docs }: any) => {
       const ids = docs.map((doc: any) => doc.apiFileId);
       if (ids.includes('q')) {
         return { successApiFileIds: ['n'], failedApiFileIds: ['q'] };
@@ -536,7 +515,7 @@ describe('createApiDatasetCollection', () => {
     expect(updates.find((u: any) => u._id === 'EXQ')).toBeUndefined();
 
     // 已存在节点不重建
-    expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
+    expect(mockCreateApiFileCollectionsBatch).not.toHaveBeenCalled();
     // p + n 成功；q 失败
     expect(result).toEqual({ successCount: 2, failedCount: 1 });
   });

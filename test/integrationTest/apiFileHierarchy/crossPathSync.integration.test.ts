@@ -4,8 +4,10 @@
  *
  * 与既有单路径套件的区别：两边的 mock 只覆盖「非层级依赖」（server 请求、解析队列、
  * 命中已存在节点的 syncCollection），层级相关的代码全部是真实实现 ——
- * buildApiFileTree、两边的父级解析/创建循环、bulkInsertCollections、
+ * buildApiFileTree、两边的父级解析/创建循环、bulkInsertFolderCollections、
  * bulkUpdateCollectionsParent、createOneCollection、MongoDatasetCollection、以及真实事务。
+ * 创建路径的文件批写也被替换（createApiFileCollectionsBatch 内部要解析模型 + 建训练账单，
+ * 测试环境无模型配置），但替换点在「批量写 collection」一层，父级解析与 parentId 仍走真实实现。
  *
  * MF-1 的判别力：全量导入（本地存在哨兵行）时，同步路径新建的 server 根级节点必须与
  * 创建路径落在同一条本地 parentId 链上（父级 = 哨兵行），而不是平铺在 dataset 根。
@@ -22,7 +24,12 @@ import { createApiDatasetCollection } from '@/pages/api/core/dataset/collection/
 
 const mockState = vi.hoisted(() => ({
   listFiles: vi.fn(),
-  /** 文件批写只替换「建 collection」这一步（解析队列需要 Redis）；folder 批仍走真实 bulkInsertCollections */
+  /**
+   * 文件批写只替换「建 collection」这一步（真实实现要解析模型并建训练账单，测试环境无模型配置）；
+   * folder 批仍走真实 bulkInsertFolderCollections
+   */
+  createApiFileCollectionsBatch: vi.fn(),
+  /** 同步路径仍逐文件走 createCollectionAndInsertData，同样只替换建 collection 这一步 */
   createCollectionAndInsertData: vi.fn(),
   syncCollection: vi.fn(),
   delCollection: vi.fn(),
@@ -74,6 +81,7 @@ vi.mock('@fastgpt/service/core/dataset/collection/utils', async (importOriginal)
 
 vi.mock('@fastgpt/service/core/dataset/collection/controller', async (importOriginal) => ({
   ...(await importOriginal<object>()),
+  createApiFileCollectionsBatch: mockState.createApiFileCollectionsBatch,
   createCollectionAndInsertData: mockState.createCollectionAndInsertData,
   delCollection: mockState.delCollection
 }));
@@ -167,7 +175,29 @@ describe('API 文件库：创建路径与同步路径在同一份数据上收敛
     mockState.syncCollection.mockResolvedValue(undefined);
     mockState.delCollection.mockResolvedValue(undefined);
     mockState.crawlWebsite.mockResolvedValue(undefined);
-    // 真实 createOneCollection 落库；生产实现在这里还会建训练账单并推解析队列（需要 Redis）
+    // 真实 createOneCollection 落库；生产实现在这里还会解析模型、建训练账单并推解析队列
+    mockState.createApiFileCollectionsBatch.mockImplementation(
+      async ({ dataset, files, createCollectionParams, session }: any) => {
+        mockState.sessions.push(session);
+        const collectionIds: string[] = [];
+        for (const file of files) {
+          const collection = await createOneCollection({
+            ...createCollectionParams,
+            name: file.name,
+            datasetId: String(dataset._id),
+            type: DatasetCollectionTypeEnum.apiFile,
+            parentId: file.parentId ?? null,
+            apiFileId: file.apiFileId,
+            apiFileParentId: file.apiFileParentId,
+            metadata: file.metadata,
+            session
+          });
+          collectionIds.push(String(collection._id));
+        }
+        return { collectionIds };
+      }
+    );
+    // 同步路径的逐文件入口：同样只做真实 createOneCollection
     mockState.createCollectionAndInsertData.mockImplementation(
       async ({ createCollectionParams, session }: any) => {
         mockState.sessions.push(session);
