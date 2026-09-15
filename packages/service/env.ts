@@ -294,6 +294,10 @@ export const serviceEnv = createEnv({
     TRACING_OTEL_URL: UrlSchema.optional(),
     TRACING_OTEL_SAMPLE_RATIO: NumSchema.min(0).max(1).optional(),
 
+    LANGFUSE_SECRET_KEY: z.string().optional(),
+    LANGFUSE_PUBLIC_KEY: z.string().optional(),
+    LANGFUSE_BASE_URL: UrlSchema.optional(),
+
     // ==================== 域名与前端 ====================
     FE_DOMAIN: UrlSchema.meta({
       description:

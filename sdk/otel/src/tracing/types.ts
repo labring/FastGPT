@@ -1,4 +1,5 @@
 import type { Resource } from '@opentelemetry/resources';
+import type { SpanProcessor } from '@opentelemetry/sdk-trace-base';
 
 export type TracingOptions = {
   enabled?: boolean;
@@ -17,3 +18,4 @@ export type TracingConfigureOptions = {
 
 export type TraceAttributeValue = string | number | boolean;
 export type TraceAttributes = Record<string, TraceAttributeValue>;
+export type { SpanProcessor };
