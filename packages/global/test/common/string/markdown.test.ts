@@ -69,6 +69,12 @@ describe('markdown 字符串处理函数测试', () => {
       expect(result).not.toMatch(/\s$/);
     });
 
+    it('应该保留 Markdown 硬换行的行尾双空格', () => {
+      const input = 'Line  \nNext';
+
+      expect(simpleMarkdownText(input)).toBe(input);
+    });
+
     it('应该处理空字符串', () => {
       const result = simpleMarkdownText('');
 
@@ -410,7 +416,8 @@ describe('markdown 字符串处理函数测试', () => {
       const text = `before ![alt](data:image/png;base64,${base64Data}) after`;
       const result = await parseMarkdownBase64Images(text);
 
-      expect(result).toBe('before  after');
+      // 图片被删除后留下的多余空白由 simpleText 压缩成一个空格
+      expect(result).toBe('before after');
       expect(result).not.toContain('data:image/png;base64');
     });
 
