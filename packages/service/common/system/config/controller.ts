@@ -1,8 +1,7 @@
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { MongoSystemConfigs } from './schema';
-import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import type { FastGPTConfigFileType, LicenseDataType } from '@fastgpt/global/common/system/types';
 import { FastGPTProUrl } from '../constants';
-import { type LicenseDataType } from '@fastgpt/global/common/system/types';
 
 export const getFastGPTConfigFromDB = async (): Promise<{
   fastgptConfig: FastGPTConfigFileType;

@@ -51,3 +51,5 @@ pro/admin/worker/
 /pro/llm_benchmark/content_benchmark/.cache/
 .gstack/
 .worktrees/
+
+.pi
