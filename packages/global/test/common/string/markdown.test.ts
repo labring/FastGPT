@@ -69,6 +69,12 @@ describe('markdown 字符串处理函数测试', () => {
       expect(result).not.toMatch(/\s$/);
     });
 
+    it('应该保留 Markdown 硬换行的行尾双空格', () => {
+      const input = 'Line  \nNext';
+
+      expect(simpleMarkdownText(input)).toBe(input);
+    });
+
     it('应该处理空字符串', () => {
       const result = simpleMarkdownText('');
 

@@ -47,6 +47,7 @@ describe('string tools', () => {
     expect(simpleText('{"matrix": [[]]}')).toBe('{"matrix": [[]]}');
     expect(simpleText('中文 ]中文')).toBe('中文 ]中文');
     expect(simpleText('def f():\n    return 1')).toBe('def f():\n    return 1');
+    expect(simpleText('line  \nnext')).toBe('line  \nnext');
   });
 
   it('should replace sensitive text', () => {

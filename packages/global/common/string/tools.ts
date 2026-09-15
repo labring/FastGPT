@@ -22,8 +22,8 @@ export const simpleText = (text = '') => {
   text = text.replace(/([\u4e00-\u9fa5])[^\S\r\n]+([\u4e00-\u9fa5])/g, '$1$2');
   text = text.replace(/\r\n|\r/g, '\n');
   text = text.replace(/\n{3,}/g, '\n\n');
-  // \u53ea\u538b\u7f29\u884c\u5185\u591a\u4f59\u7a7a\u767d\uff0c\u884c\u9996\u7f29\u8fdb\u4fdd\u7559\uff0c\u907f\u514d\u7834\u574f\u4ee3\u7801\u5757\u3002
-  text = text.replace(/(?<=\S)[^\S\r\n]{2,}/g, ' ');
+  // \u53ea\u538b\u7f29\u6b63\u6587\u5b57\u7b26\u4e4b\u95f4\u7684\u591a\u4f59\u7a7a\u767d\uff0c\u4fdd\u7559\u884c\u9996\u7f29\u8fdb\u548c Markdown \u786c\u6362\u884c\u6240\u9700\u7684\u884c\u5c3e\u7a7a\u683c\u3002
+  text = text.replace(/(?<=\S)[^\S\r\n]{2,}(?=\S)/g, ' ');
   text = text.replace(/[\x00-\x08]/g, ' ');
 
   return text;
