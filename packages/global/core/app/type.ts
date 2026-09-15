@@ -241,6 +241,14 @@ export const AppStorageSchemaTypeSchema = z.object({
   favourite: BoolSchema.optional(),
   quick: BoolSchema.optional(),
 
+  // 置顶。状态保存在资源文档上，按团队共享，随资源移动、删除
+  isPinned: BoolSchema.optional().meta({
+    description: '是否置顶。置顶状态按团队共享，团队间隔离'
+  }),
+  pinnedAt: z.coerce.date().optional().meta({
+    description: '置顶时间。未置顶时为空，用于置顶项之间的排序'
+  }),
+
   // 软删除字段
   deleteTime: z.coerce.date().nullish(),
 
@@ -280,6 +288,8 @@ export type AppListItemType = {
   private?: boolean;
   sourceMember: SourceMemberType;
   hasInteractiveNode?: boolean;
+  /** 仅在列表请求显式要求置顶排序时返回 */
+  isPinned?: boolean;
 };
 
 export type AppDetailType = AppSchemaType & {

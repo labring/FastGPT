@@ -313,7 +313,12 @@ export const ListAppBodySchema = z
       .meta({
         example: ['68ad85a7463006c963799a06'],
         description: '按创建者筛选。缺省不过滤；空数组表示无选中创建者，返回空列表'
-      })
+      }),
+    pinnedFirst: BoolSchema.optional().meta({
+      example: true,
+      description:
+        '是否启用置顶排序。仅应用工作台列表使用；缺省时置顶不参与排序，返回结构也不含置顶状态'
+    })
   })
   .meta({
     example: {
@@ -356,7 +361,10 @@ export const AppListItemSchema = z
     inheritPermission: BoolSchema.optional().meta({ description: '是否继承父级权限' }),
     private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
-    hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' })
+    hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
+    isPinned: BoolSchema.optional().meta({
+      description: '是否置顶。仅在请求启用置顶排序时返回'
+    })
   })
   .meta({
     description: '应用列表项'
@@ -495,6 +503,35 @@ export const UpdateAppResponseSchema = z.unknown().nullable().optional().meta({
   description: 'MongoDB 更新结果；移动应用时无返回数据'
 });
 export type UpdateAppResponseType = z.infer<typeof UpdateAppResponseSchema>;
+
+/* ============================================================================
+ * API: 置顶应用
+ * Route: PUT /api/core/app/pin
+ * Method: PUT
+ * Description: 置顶或取消置顶应用、文件夹。置顶只影响列表排序，不计入审计行为。
+ * Tags: ['基础管理']
+ * ============================================================================ */
+
+export const PinAppQuerySchema = z.object({
+  appId: AppIdSchema
+});
+export type PinAppQueryType = z.infer<typeof PinAppQuerySchema>;
+
+export const PinAppBodySchema = z.object({
+  isPinned: BoolSchema.meta({
+    example: true,
+    description: '是否置顶。置顶状态按团队共享，团队间隔离'
+  })
+});
+export type PinAppBodyType = z.infer<typeof PinAppBodySchema>;
+
+export const PinAppResponseSchema = z.object({
+  isPinned: BoolSchema.meta({
+    example: true,
+    description: '操作后的置顶状态'
+  })
+});
+export type PinAppResponseType = z.infer<typeof PinAppResponseSchema>;
 
 /* ============================================================================
  * API: 删除应用

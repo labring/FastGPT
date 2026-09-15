@@ -1,4 +1,3 @@
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   PerResourceTypeEnum,
@@ -7,11 +6,8 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import {
-  AppListSortEnum,
-  appListSortMongoMap,
-  AppTypeEnum
-} from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { findAppsForList } from '@fastgpt/service/core/app/entity';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -41,7 +37,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 */
 
 async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppResponseType> {
-  const { parentId, type, searchKey, sort, tmbIds } = parseApiInput({
+  const { parentId, type, searchKey, sort, tmbIds, pinnedFirst } = parseApiInput({
     req,
     bodySchema: ListAppBodySchema
   }).body;
@@ -141,13 +137,17 @@ async function handler(req: ApiRequestProps<ListAppBodyType>): Promise<ListAppRe
     return;
   })();
 
-  const myApps = await MongoApp.find(
-    { ...findAppsQuery, deleteTime: null },
-    '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules',
-    { limit }
-  )
-    .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
-    .lean();
+  const listField = `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules${
+    pinnedFirst ? ' isPinned' : ''
+  }`;
+
+  const myApps = await findAppsForList({
+    filter: { ...findAppsQuery, deleteTime: null },
+    fields: listField,
+    sort,
+    pinnedFirst,
+    limit
+  });
 
   const formatApps = myApps
     .map((app) => {

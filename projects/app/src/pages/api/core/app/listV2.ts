@@ -1,4 +1,3 @@
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import {
   PerResourceTypeEnum,
@@ -7,11 +6,8 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import {
-  AppListSortEnum,
-  appListSortMongoMap,
-  AppTypeEnum
-} from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { findAppsPage } from '@fastgpt/service/core/app/entity';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -41,6 +37,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     searchKey,
     sort,
     tmbIds,
+    pinnedFirst,
     excludeAppId,
     pageNum = 1,
     pageSize = 50,
@@ -120,17 +117,16 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   })();
 
   const skip = offset ?? (pageNum - 1) * pageSize;
-  const [myApps, total] = await Promise.all([
-    MongoApp.find(
-      findAppsQuery,
-      '_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules'
-    )
-      .sort({ ...appListSortMongoMap[sort ?? AppListSortEnum.updateTimeDesc], _id: -1 })
-      .skip(skip)
-      .limit(pageSize)
-      .lean(),
-    MongoApp.countDocuments(findAppsQuery)
-  ]);
+  const { list: myApps, total } = await findAppsPage({
+    filter: findAppsQuery,
+    fields: `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules${
+      pinnedFirst ? ' isPinned' : ''
+    }`,
+    sort,
+    pinnedFirst,
+    offset: skip,
+    limit: pageSize
+  });
 
   const pageRoleList = await getResourcePermissionsByResourceIds({
     resourceType: PerResourceTypeEnum.app,

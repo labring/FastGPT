@@ -15,6 +15,9 @@ import {
   ListAppResponseSchema,
   ListAppV2BodySchema,
   ListAppV2ResponseSchema,
+  PinAppBodySchema,
+  PinAppQuerySchema,
+  PinAppResponseSchema,
   TransitionWorkflowBodySchema,
   TransitionWorkflowResponseSchema,
   UpdateAppBodySchema,
@@ -136,6 +139,33 @@ export const AppCommonPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: UpdateAppResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/pin': {
+    put: {
+      summary: '置顶应用',
+      description: '置顶或取消置顶应用、文件夹',
+      tags: [DevApiTagsMap.appCommon],
+      requestParams: {
+        query: PinAppQuerySchema
+      },
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: PinAppBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新置顶状态',
+          content: {
+            'application/json': {
+              schema: PinAppResponseSchema
             }
           }
         }
