@@ -152,6 +152,10 @@ export const CreateApiCollectionV2ResponseSchema = z.object({
 });
 export type CreateApiCollectionV2ResponseType = z.infer<typeof CreateApiCollectionV2ResponseSchema>;
 
+// V1 单文件路径复用 createApiDatasetCollection，响应结构与 V2 相同
+export const CreateApiCollectionResponseSchema = CreateApiCollectionV2ResponseSchema;
+export type CreateApiCollectionResponseType = CreateApiCollectionV2ResponseType;
+
 /* ============================================================================
  * API: 上传图片集创建集合
  * Route: POST /core/dataset/collection/create/images

@@ -197,8 +197,9 @@ export const bulkUpdateCollectionsParent = async ({
 /**
  * 解析模型数据 + 计算 chunk 设置 + 清理与 trainingType 互斥的字段。
  * 批量创建时整批复用同一份结果，避免逐文件重复计算。
+ * 导出供单测直接断言计算结果（避免测试复制一份计算逻辑当断言基准）。
  */
-const formatCollectionParamsByDataset = async ({
+export const formatCollectionParamsByDataset = async ({
   dataset,
   createCollectionParams
 }: {
@@ -568,6 +569,21 @@ export const createApiFileCollectionsBatch = async ({
   const teamId = formatCreateCollectionParams.teamId;
   const tmbId = formatCreateCollectionParams.tmbId;
 
+  // tags 是请求级参数，整批相同：解析一次即可，避免逐文件重复创建标签文档
+  const collectionTags = await createOrGetCollectionTags({
+    tags: formatCreateCollectionParams.tags,
+    teamId,
+    datasetId: String(dataset._id),
+    session
+  });
+
+  // 解析队列路径不在此处切块（切块在 datasetParse 里按 collection 的 chunkSize 做），
+  // 但**必须把计算好的 chunkSize / indexSize 落库**：collection 是这两个值的唯一载体，
+  // 置空会让解析阶段回退到 rawText2Chunks 的默认 512、向量阶段回退到模型最大索引长度，
+  // 而不是本次请求算出来的自动值（chunkAutoChunkSize = 1000）。
+  const chunkSize = formatCreateCollectionParams.chunkSize;
+  const indexSize = formatCreateCollectionParams.indexSize;
+
   // 配额检查一次覆盖整批：解析队列路径尚无 chunk，predictDataLimitLength 恒为 0，
   // 用「待创建 collection 数」近似预测增量 —— 每个文件最终至少产生 1 个索引，逐文件检查等价但要多 4w 次查询。
   // 放在写入之前：超限直接抛出，事务整体回滚，调用方按「整批失败」计数
@@ -603,11 +619,13 @@ export const createApiFileCollectionsBatch = async ({
       apiFileId: file.apiFileId,
       apiFileParentId: file.apiFileParentId,
       metadata: file.metadata,
-      tags: undefined,
+      // 展开的 formatCreateCollectionParams 里是原始 tags，须用解析后的标签文档覆盖
+      tags: collectionTags,
       trainingType,
-      // 解析队列路径没有 rawText/imageIds，显式置空以对齐 createCollectionAndInsertData 的该分支
-      chunkSize: undefined,
-      indexSize: undefined,
+      // 与 createCollectionAndInsertData 的无 rawText/imageIds 分支一致：
+      // 有计算值就写计算值，只有没算出来时才是 undefined
+      chunkSize,
+      indexSize,
       hashRawText: undefined,
       rawTextLength: undefined
     })),

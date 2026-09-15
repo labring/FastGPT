@@ -6,11 +6,35 @@ import type {
   BulkUpdateCollectionParentItem
 } from '@fastgpt/service/core/dataset/collection/controller';
 
-const { mockInsertMany, mockFind, mockBulkWrite, mockLogger } = vi.hoisted(() => ({
+const {
+  mockInsertMany,
+  mockFind,
+  mockBulkWrite,
+  mockLogger,
+  mockCreateTrainingUsage,
+  mockCreate,
+  mockCreateOrGetCollectionTags
+} = vi.hoisted(() => ({
   mockInsertMany: vi.fn(),
   mockFind: vi.fn(),
   mockBulkWrite: vi.fn(),
-  mockLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+  mockLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  mockCreateTrainingUsage: vi.fn(),
+  mockCreate: vi.fn(),
+  mockCreateOrGetCollectionTags: vi.fn()
+}));
+
+// 标签解析要读写真库，且其正确性由上游标签模块自身测试覆盖；此处只钉「批量路径有没有把
+// 解析结果写进 doc」，故直接 mock 掉解析结果
+vi.mock('@fastgpt/service/core/dataset/collection/utils', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  createOrGetCollectionTags: mockCreateOrGetCollectionTags
+}));
+
+// 配额检查要读真库（team_subscriptions），与 T2-10 的断言无关
+vi.mock('@fastgpt/service/support/permission/teamLimit', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  checkDatasetIndexLimit: vi.fn()
 }));
 
 // 部分 mock：保留 DatasetColCollectionName 等导出，其它 schema 仍引用它们
@@ -28,6 +52,32 @@ vi.mock('@fastgpt/service/core/dataset/collection/schema', async (importOriginal
   };
 });
 
+// T2-10 只关心「落库文档带了什么」，训练账单、标签解析与解析队列入队不是断言对象
+vi.mock('@fastgpt/service/support/wallet/usage/controller', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  createTrainingUsage: mockCreateTrainingUsage
+}));
+vi.mock('@fastgpt/service/core/dataset/training/schema', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/dataset/training/schema')>();
+  return {
+    ...actual,
+    MongoDatasetTraining: { ...actual.MongoDatasetTraining, create: mockCreate }
+  };
+});
+// 模型目录依赖全局配置，测试环境无；给定句柄不影响 chunkSize/indexSize 的计算分支
+vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getModelHandle: async () => ({
+    getLLMModelData: () => ({ modelId: 'agent-model', maxToken: 8000, config: {} }),
+    getEmbeddingModelData: () => ({
+      modelId: 'embedding-model',
+      config: { defaultToken: 100, maxToken: 100, weight: 0 }
+    }),
+    getVlmModelData: () => undefined
+  })
+}));
+
 vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/common/logger')>();
   return { ...actual, getLogger: () => mockLogger };
@@ -37,8 +87,11 @@ import {
   API_FILE_FILE_BATCH_SIZE,
   API_FILE_FOLDER_BATCH_SIZE,
   bulkInsertFolderCollections,
-  bulkUpdateCollectionsParent
+  bulkUpdateCollectionsParent,
+  createApiFileCollectionsBatch,
+  formatCollectionParamsByDataset
 } from '@fastgpt/service/core/dataset/collection/controller';
+import { chunkAutoChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const teamId = 'team-1';
 const tmbId = 'tmb-1';
@@ -67,6 +120,15 @@ const makeUpdates = (count: number): BulkUpdateCollectionParentItem[] =>
 const mockFindLanded = (landed: Array<{ _id: Types.ObjectId }>) => {
   mockFind.mockReturnValue({ lean: vi.fn().mockResolvedValue(landed) });
 };
+
+/** T2-10 用的最小 dataset / 文件入参（模型解析走真实实现，故只给必要字段） */
+const makeDataset = () => ({ _id: datasetId, teamId, agentModel: 'a', embeddingModel: 'e' }) as any;
+const makeFile = (apiFileId: string) => ({
+  name: apiFileId,
+  apiFileId,
+  apiFileParentId: null,
+  parentId: null
+});
 
 describe('bulkInsertFolderCollections', () => {
   beforeEach(() => {
@@ -294,5 +356,74 @@ describe('bulkUpdateCollectionsParent', () => {
 
     expect(mockBulkWrite).not.toHaveBeenCalled();
     expect(result).toEqual({ successIds: [], failedIds: [], matchedCount: 0 });
+  });
+});
+
+describe('createApiFileCollectionsBatch', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockCreateTrainingUsage.mockResolvedValue({ usageId: 'usage-1' });
+    mockInsertMany.mockResolvedValue({});
+    mockCreate.mockResolvedValue({});
+  });
+
+  /**
+   * 被测函数名: createApiFileCollectionsBatch  等级: 3-High
+   * 思路（回归场景）: 解析队列路径在创建时并不切块，但 collection 行是 chunkSize / indexSize
+   * 的**唯一载体** —— 解析阶段读 `collection.chunkSize` 切块（datasetParse），向量阶段读
+   * `collection.indexSize` 定索引长度（datasetParse → generateVector）。
+   * 若创建时把这两个字段置空，解析会回退到 rawText2Chunks 的默认 512、向量回退到模型最大
+   * 索引长度，而不是本次请求算出的自动值（chunkAutoChunkSize = 1000）——
+   * 直接改变切分粒度、索引成本与召回效果，且不报错。
+   * 本用例钉住：insertMany 写入的文档必须带上计算后的 chunkSize / indexSize。
+   */
+  it('T2-10: 落库文档带上计算后的 chunkSize / indexSize', async () => {
+    const { formatCreateCollectionParams } = await formatCollectionParamsByDataset({
+      dataset: makeDataset(),
+      createCollectionParams: {}
+    });
+
+    // 前提校验：自动模式下确实算出了非空值（否则本用例不具备判别力）
+    expect(formatCreateCollectionParams.chunkSize).toBe(chunkAutoChunkSize);
+    expect(formatCreateCollectionParams.indexSize).toBeDefined();
+
+    await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files: [makeFile('f-1')],
+      createCollectionParams: {},
+      session: {} as any
+    });
+
+    const [docs] = mockInsertMany.mock.calls[0];
+    expect(docs[0].chunkSize).toBe(formatCreateCollectionParams.chunkSize);
+    expect(docs[0].indexSize).toBe(formatCreateCollectionParams.indexSize);
+    expect(docs[0].chunkSize).toBe(chunkAutoChunkSize);
+  });
+
+  /**
+   * 被测函数名: createApiFileCollectionsBatch  等级: 3-High
+   * 思路（回归场景）: 批量路径曾把 tags 强制置为 undefined，导致
+   * CreateApiCollectionV2BodySchema 支持的 tags 在批量导入时被静默丢弃（旧逐文件路径会保存）。
+   * 标签是请求级参数，整批应写入同一份解析结果。
+   */
+  it('T2-11: 落库文档带上请求级 tags 的解析结果', async () => {
+    const resolvedTags = [{ tagId: 'tag-id-1', value: ['t-1'] }];
+    mockCreateOrGetCollectionTags.mockResolvedValue(resolvedTags as any);
+
+    await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files: [makeFile('f-1'), makeFile('f-2')],
+      createCollectionParams: { tags: ['t-1'] } as any,
+      session: {} as any
+    });
+
+    // 标签是请求级参数，整批只解析一次
+    expect(mockCreateOrGetCollectionTags).toHaveBeenCalledTimes(1);
+    expect(mockCreateOrGetCollectionTags.mock.calls[0][0]).toMatchObject({ tags: ['t-1'] });
+
+    const [docs] = mockInsertMany.mock.calls[0];
+    // 关键断言：展开的 formatCreateCollectionParams 里的原始 tags 必须被解析结果覆盖，不能是 undefined
+    expect(docs[0].tags).toEqual(resolvedTags);
+    expect(docs[1].tags).toEqual(resolvedTags);
   });
 });
