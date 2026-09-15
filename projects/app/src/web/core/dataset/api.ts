@@ -22,7 +22,11 @@ import type {
   SearchDatasetTestBody,
   SearchDatasetTestResponse,
   GetDatasetPermissionResponse,
-  ChangeDatasetOwnerBody
+  ChangeDatasetOwnerBody,
+  EnableCollectionPermissionBody,
+  EnableCollectionPermissionResponse,
+  DisableCollectionPermissionBody,
+  DisableCollectionPermissionResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 /* ======================== dataset ======================= */
@@ -74,6 +78,25 @@ export const resumeInheritPer = (datasetId: string) =>
 
 export const postChangeOwner = (data: ChangeDatasetOwnerBody) =>
   POST(`/proApi/core/dataset/changeOwner`, data);
+
+/* =========== collection permission switch ============ */
+/**
+ * 开启知识库的文件/文件夹级权限：服务端在同一请求内同步物化全部 collection 权限快照，
+ * 物化成功后才置位开关，因此耗时较长且失败时开关保持关闭。
+ */
+export const postEnableCollectionPermission = (data: EnableCollectionPermissionBody) =>
+  POST<EnableCollectionPermissionResponse>(`/core/dataset/enableCollectionPermission`, data, {
+    timeout: 600000
+  });
+
+/**
+ * 关闭知识库的文件/文件夹级权限：服务端会删除全部 collection 协作者配置并重置为继承态，
+ * 属于不可回退的破坏性操作，调用方必须二次确认。
+ */
+export const postDisableCollectionPermission = (data: DisableCollectionPermissionBody) =>
+  POST<DisableCollectionPermissionResponse>(`/core/dataset/disableCollectionPermission`, data, {
+    timeout: 600000
+  });
 
 /* =========== search test ============ */
 export const postSearchText = (data: SearchDatasetTestBody) =>

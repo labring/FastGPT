@@ -384,7 +384,8 @@ export async function updateCollectionCollaboratorsWithAuth({
 **协作者列表** `POST /api/proApi/core/dataset/collection/collaborator/list`（fastgpt-pro，对齐 dataset 版 `collaborator/list`）：
 
 - 鉴权：目标 collection `read` 及以上；
-- 读取该 collection 的物化快照（`getResourceOwnedClbs` / `findByResource`），返回完整有效协作者列表，供前端协作设置弹窗展示。
+- 读取该 collection 的物化快照（`getResourceOwnedClbs` / `findByResource`），返回完整有效协作者列表，供前端协作设置弹窗展示；
+- 同时经 `resolveCollectionParentClbs` 返回 `parentClbs`（跨类型父级：根 collection → dataset 有效 clbs；非根 → 父 folder 快照）。该字段与写路径 `updateCollectionCollaboratorsWithAuth` 内部判定冲突所用的父级完全同源，供前端在「继承态修改/删除父级协作者」时先弹出独立化二次确认（§6.4 冲突检测），避免前端不提示、后端静默翻转 `inheritPermission=false`。独立态（`inheritPermission=false`）的前端不弹确认，与既有 dataset/agentSkill 一致。
 
 ### 6.5 创建 collection（controller.ts）
 
