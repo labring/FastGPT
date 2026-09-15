@@ -19,6 +19,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowResourceContext } from '../../../../../workflow/utils/context';
 import { assertWorkflowResource } from '../../../../../workflow/utils/resource';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { Types } from '../../../../../../common/mongo';
 import { Readable } from 'node:stream';
 
 export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
@@ -192,20 +193,25 @@ export const injectAgentSkillFilesToSandbox = async ({
         id: skillId
       })
     );
-    if (skillIds.some((skillId) => !resourceContext.skillMap.has(skillId))) {
-      throw SkillErrEnum.unExist;
-    }
   }
+  const hasInvalidId = skillIds.some((id) => !Types.ObjectId.isValid(id));
+  if (resourceContext && !dynamic && hasInvalidId) {
+    throw SkillErrEnum.unExist;
+  }
+  const validSkillIds = skillIds.filter((id) => Types.ObjectId.isValid(id));
   const teamSkills =
-    resourceContext && !dynamic
-      ? skillIds
-          .map((skillId) => resourceContext.skillMap.get(skillId))
-          .filter((skill): skill is NonNullable<typeof skill> => !!skill)
-      : await MongoAgentSkills.find({
-          _id: { $in: skillIds },
+    validSkillIds.length > 0
+      ? await MongoAgentSkills.find({
+          _id: { $in: validSkillIds },
           deleteTime: null,
-          $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
-        });
+          ...(resourceContext?.teamId && !resourceContext?.isRoot
+            ? { $or: [{ teamId: resourceContext.teamId }, { source: AgentSkillSourceEnum.system }] }
+            : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
+        })
+      : [];
+  if (resourceContext && !dynamic && teamSkills.length !== skillIds.length) {
+    throw SkillErrEnum.unExist;
+  }
   if (teamSkills.length === 0) {
     logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
     await cleanupStaleDirs(new Set());

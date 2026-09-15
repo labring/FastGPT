@@ -10,6 +10,9 @@ import { decodeToolSetNodesFromStorage } from '@fastgpt/service/core/app/jsonSch
 import { resolveStoredAppResources, getLegacySkillIds } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
+import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 type LegacyResourceRefs = {
   skillIds?: unknown;
@@ -84,7 +87,10 @@ const isFolderApp = (type: unknown) =>
   AppFolderTypeList.includes(type as (typeof AppFolderTypeList)[number]);
 
 /** 从历史工作流字段确定性生成资源快照，并统计旧 Skill 引用是否完整保留。 */
-export const buildAppResourceSnapshot = (record: AppResourceMigrationRecord) => {
+export const buildAppResourceSnapshot = (
+  record: AppResourceMigrationRecord,
+  models: readonly SystemModelDataType[] = []
+) => {
   const storedNodes = Array.isArray(record.nodes)
     ? record.nodes
     : Array.isArray(record.modules)
@@ -100,7 +106,8 @@ export const buildAppResourceSnapshot = (record: AppResourceMigrationRecord) => 
     resources: record.resources,
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
-    resourceRefs: record.resourceRefs
+    resourceRefs: record.resourceRefs,
+    models
   });
   const skillIds = new Set(
     resources.filter((resource) => resource.type === 'skill').map((resource) => resource.id)
@@ -168,6 +175,7 @@ export const readAppVersionResourceBatch = (params: {
     ...params,
     projection: {
       _id: 1,
+      tmbId: 1,
       nodes: 1,
       edges: 1,
       chatConfig: 1,
@@ -205,6 +213,7 @@ export const readAppVersionResourceRecord = (id: string) =>
     {
       projection: {
         _id: 1,
+        tmbId: 1,
         nodes: 1,
         edges: 1,
         chatConfig: 1,
@@ -249,15 +258,19 @@ export const backfillAppVersionResourceRecords = async (
     }
 
     try {
-      const snapshot = buildAppResourceSnapshot(record);
+      const snapshot = buildAppResourceSnapshot(record, (await getModelHandle()).getAllModels());
       result.legacySkillMismatches += snapshot.legacySkillMismatches;
+      const authorizedResources = await filterAuthorizedAppResources({
+        resources: snapshot.resources,
+        tmbId: record.tmbId
+      });
       const updateResult = await MongoAppVersion.collection.updateOne(
         {
           _id: record._id as never,
           resources: getSnapshotQueryValue(record.resources),
           ...getWorkflowSnapshot(record, true)
         },
-        { $set: { resources: snapshot.resources } }
+        { $set: { resources: authorizedResources } }
       );
       if (updateResult.matchedCount === 1) {
         result.updatedCount += 1;
@@ -366,8 +379,9 @@ const updatePublishedVersionPointer = async ({
  * 对无正式 Version App，在同一事务内重读权威 App 图、创建正式 Version 并写入指针。
  * 事务回滚覆盖写入后退出，事务内的“仍无正式 Version”检查使整个最小单元可重放。
  */
-const createMissingPublishedVersion = (record: AppResourceMigrationRecord) =>
-  mongoSessionRun(async (session) => {
+const createMissingPublishedVersion = async (record: AppResourceMigrationRecord) => {
+  const models = (await getModelHandle()).getAllModels();
+  return mongoSessionRun(async (session) => {
     const currentApp = (await MongoApp.collection.findOne(
       { _id: record._id as never },
       {
@@ -399,7 +413,11 @@ const createMissingPublishedVersion = (record: AppResourceMigrationRecord) =>
       );
     }
 
-    const snapshot = buildAppResourceSnapshot(currentApp);
+    const snapshot = buildAppResourceSnapshot(currentApp, models);
+    const authorizedResources = await filterAuthorizedAppResources({
+      resources: snapshot.resources,
+      tmbId: currentApp.tmbId
+    });
     const insertResult = await MongoAppVersion.collection.insertOne(
       {
         tmbId: String(currentApp.tmbId),
@@ -410,7 +428,7 @@ const createMissingPublishedVersion = (record: AppResourceMigrationRecord) =>
         chatConfig: snapshot.normalizedWorkflow.chatConfig,
         isPublish: true,
         versionName: typeof currentApp.name === 'string' ? currentApp.name : undefined,
-        resources: snapshot.resources
+        resources: authorizedResources
       },
       { session }
     );
@@ -435,6 +453,7 @@ const createMissingPublishedVersion = (record: AppResourceMigrationRecord) =>
       legacySkillMismatches: snapshot.legacySkillMismatches
     };
   });
+};
 
 /** 回填 App 正式指针，并为无正式 Version 的非文件夹 App 原子补建正式 Version。 */
 export const backfillAppResourceRecords = async (
@@ -508,10 +527,19 @@ export const validateAppResourceRecords = async (records: AppResourceMigrationRe
 /** 非 ObjectId 记录无法进入稳定游标，最终校验时单独报告。 */
 export const readInvalidAppResourceRecordIds = async (
   collection: typeof MongoApp.collection | typeof MongoAppVersion.collection,
-  limit: number
+  limit: number,
+  lastId?: unknown
 ) =>
   collection
-    .find({ _id: { $not: { $type: 'objectId' } } } as never, { projection: { _id: 1 } })
+    .find(
+      {
+        _id: {
+          $not: { $type: 'objectId' },
+          ...(lastId === undefined ? {} : { $gt: lastId })
+        }
+      } as never,
+      { projection: { _id: 1 } }
+    )
     .sort({ _id: 1 })
     .limit(limit)
     .toArray() as Promise<AppResourceMigrationRecord[]>;

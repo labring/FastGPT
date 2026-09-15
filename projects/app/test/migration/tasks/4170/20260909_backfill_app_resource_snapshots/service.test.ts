@@ -2,6 +2,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as appResourcePermission from '@fastgpt/service/support/permission/app/resource';
 import {
   backfillAppResourceRecords,
   backfillAppVersionResourceRecords,
@@ -47,6 +48,9 @@ const createVersion = ({
 describe('App resource snapshot migration service', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
+    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockImplementation(
+      async ({ resources }) => resources
+    );
     await Promise.all([MongoApp.deleteMany({}), MongoAppVersion.deleteMany({})]);
   });
 
@@ -133,6 +137,7 @@ describe('App resource snapshot migration service', () => {
   });
 
   it('creates a published Version from the legacy App workflow when drafts already exist', async () => {
+    vi.spyOn(appResourcePermission, 'getUnauthorizedAppResources').mockResolvedValue([]);
     const app = createApp({
       modules: [
         {
@@ -183,6 +188,83 @@ describe('App resource snapshot migration service', () => {
       })
     );
     await expect(validateAppResourceRecords([migratedApp!])).resolves.toEqual([]);
+  });
+
+  it('silently filters unauthorized resources when creator member lacks permissions', async () => {
+    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockResolvedValue([
+      { type: 'skill', id: 'legacy-skill' }
+    ]);
+    const app = createApp({
+      modules: [
+        {
+          nodeId: 'legacy-agent-node',
+          flowNodeType: 'appModule',
+          name: 'Legacy agent',
+          pluginId: 'legacy-agent-id',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+    await MongoApp.collection.insertOne(app);
+
+    await expect(backfillAppResourceRecords([app])).resolves.toMatchObject({
+      updatedCount: 1,
+      createdVersionCount: 1,
+      failures: []
+    });
+
+    const createdVersion = await MongoAppVersion.collection.findOne({ appId: app._id });
+    expect(createdVersion?.resources).toEqual([{ type: 'skill', id: 'legacy-skill' }]);
+  });
+
+  it('drops all resources to empty array when member cannot be found or is invalid', async () => {
+    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockResolvedValue([]);
+    const app = createApp({
+      modules: [
+        {
+          nodeId: 'legacy-agent-node',
+          flowNodeType: 'appModule',
+          name: 'Legacy agent',
+          pluginId: 'legacy-agent-id',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+    const version = createVersion({
+      appId: app._id,
+      nodes: [
+        {
+          nodeId: 'legacy-agent-node',
+          flowNodeType: 'appModule',
+          name: 'Legacy agent',
+          pluginId: 'legacy-agent-id',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+    await Promise.all([
+      MongoApp.collection.insertOne(app),
+      MongoAppVersion.collection.insertOne(version)
+    ]);
+
+    // Stage 1: versions backfill drops all resources to []
+    await expect(backfillAppVersionResourceRecords([version])).resolves.toMatchObject({
+      updatedCount: 1,
+      failures: []
+    });
+    const updatedVersion = await MongoAppVersion.collection.findOne({ _id: version._id });
+    expect(updatedVersion?.resources).toEqual([]);
+
+    // filterAuthorizedAppResources helper drops to [] for invalid tmbId
+    await expect(
+      appResourcePermission.filterAuthorizedAppResources({
+        resources: [{ type: 'skill', id: 'some-skill' }],
+        tmbId: 'invalid-tmb'
+      })
+    ).resolves.toEqual([]);
   });
 
   it('validates missing snapshots, invalid pointers, missing published Versions, and folders', async () => {

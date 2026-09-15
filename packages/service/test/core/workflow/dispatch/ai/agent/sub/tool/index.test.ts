@@ -93,19 +93,18 @@ const createDispatchToolProps = (
     },
     params,
     runningAppInfo: {
-      id: 'attacker-app',
+      id: 'app-id',
       teamId: 'attacker-team',
-      tmbId: 'attacker-tmb',
-      name: 'Attacker workflow'
+      tmbId: 'app-creator-tmb',
+      name: 'Agent workflow'
     },
     runningUserInfo: {
-      username: 'attacker',
-      teamName: 'Attacker team',
-      memberName: 'Attacker member',
+      username: 'caller',
+      teamName: 'Caller team',
+      memberName: 'Caller member',
       contact: '',
       teamId: 'attacker-team',
-      // 工具加载和执行都必须使用应用创建者，而不是当前调用者。
-      tmbId: 'caller-without-toolset-permission'
+      tmbId: 'caller-tmb'
     },
     chatId: 'chat',
     uid: 'uid',
@@ -271,7 +270,7 @@ describe('dispatchTool runtime toolset auth', () => {
       }
       expect(getAppVersionByIdMock).toHaveBeenCalled();
       expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-        tmbId: 'attacker-tmb',
+        tmbId: 'caller-tmb',
         appId: 'victim-toolset',
         per: ReadPermissionVal
       });
@@ -346,7 +345,7 @@ describe('dispatchTool runtime toolset auth', () => {
     }
   );
 
-  it('should reject HTTP agent tool execution when running app tmb has no parent toolset permission', async () => {
+  it('should reject HTTP agent tool execution when caller tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
 
     const result = await dispatchTool(
@@ -358,7 +357,7 @@ describe('dispatchTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
@@ -431,7 +430,7 @@ describe('dispatchTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });
@@ -446,7 +445,7 @@ describe('dispatchTool runtime toolset auth', () => {
     expect(result.response).toBe(JSON.stringify({ ok: true }));
   });
 
-  it('should reject MCP agent tool execution when running app tmb has no parent toolset permission', async () => {
+  it('should reject MCP agent tool execution when caller tmb has no parent toolset permission', async () => {
     authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
 
     const result = await dispatchTool(
@@ -458,7 +457,7 @@ describe('dispatchTool runtime toolset auth', () => {
     );
 
     expect(authAppByTmbIdMock).toHaveBeenCalledWith({
-      tmbId: 'attacker-tmb',
+      tmbId: 'caller-tmb',
       appId: 'victim-toolset',
       per: ReadPermissionVal
     });

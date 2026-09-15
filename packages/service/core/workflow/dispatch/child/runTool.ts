@@ -113,12 +113,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
   try {
     /**
-     * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前工作流执行身份
+     * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前运行用户执行身份
      * 重新校验父工具集权限，避免脏数据或绕过保存接口的跨用户工具集引用被执行。
      */
     const authRuntimeToolset = async (parentId: string, toolName?: string) =>
       loadWorkflowAppResource({
-        tmbId: runningAppInfo.tmbId,
+        tmbId: runningUserInfo.tmbId,
         appId: parentId,
         type: 'tool',
         toolName

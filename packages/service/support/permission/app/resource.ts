@@ -3,7 +3,7 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { ClientSession } from '../../../common/mongo';
+import { Types, type ClientSession } from '../../../common/mongo';
 import {
   getAppResourceKey,
   hasAppResource,
@@ -21,9 +21,58 @@ import { getMemberModelIds } from '../model/controller';
 import { authAppByTmbId } from './auth';
 import { getModelHandle } from '../../../core/ai/model';
 
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+
 type UnauthorizedAppResource = {
   resource: AppResource;
   error: unknown;
+};
+
+// 已知业务无权限与资源已删除错误标识
+const KNOWN_UNAUTHORIZED_ERRORS = new Set<string>([
+  AppErrEnum.unAuthApp,
+  AppErrEnum.unExist,
+  DatasetErrEnum.unAuthDataset,
+  DatasetErrEnum.unExist,
+  SkillErrEnum.unAuthSkill,
+  SkillErrEnum.unExist,
+  ModelErrEnum.unExist,
+  ERROR_ENUM.unAuthModel,
+  ERROR_ENUM.unAuthorization,
+  CommonErrEnum.fileNotFound,
+  CommonErrEnum.unAuthFile,
+  'member not exist',
+  'tmbId or userId is required',
+  'Member not found',
+  'Permission denied',
+  'permission denied'
+]);
+
+const getErrorKey = (error: unknown): string => {
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const err = error as Record<string, any>;
+    return String(err.statusText || err.message || err.reason || err.code || '');
+  }
+  return '';
+};
+
+/** 判断是否属于已知明确的无权限 / 资源不存在业务错误。 */
+export const isKnownUnauthorizedError = (error: unknown): boolean => {
+  return KNOWN_UNAUTHORIZED_ERRORS.has(getErrorKey(error));
+};
+
+/** 判断是否属于已知明确的成员不存在或已离职错误。 */
+export const isKnownMemberNotExistError = (error: unknown): boolean => {
+  const key = getErrorKey(error);
+  return (
+    key === 'member not exist' ||
+    key === 'tmbId or userId is required' ||
+    key === 'Member not found'
+  );
 };
 
 /**
@@ -31,6 +80,7 @@ type UnauthorizedAppResource = {
  *
  * App、Dataset 和 Skill 复用各自的标准鉴权函数，避免在 App 域复制权限继承规则。
  * root 仅在 Test/Debug 显式允许时跨团队读取资源。
+ * 仅处理明确已知的无权限错误并标记绕过，其他任何未知异常直接抛出。
  */
 export const getUnauthorizedAppResources = async ({
   resources,
@@ -105,7 +155,10 @@ export const getUnauthorizedAppResources = async ({
           return { resource, error: ERROR_ENUM.unAuthModel };
         }
       } catch (error) {
-        return { resource, error };
+        if (isKnownUnauthorizedError(error)) {
+          return { resource, error };
+        }
+        throw error;
       }
     })
   );
@@ -119,6 +172,51 @@ export const checkAppResourceReadPermissions = async (
 ) => {
   const unauthorized = await getUnauthorizedAppResources(props);
   if (unauthorized[0]) throw unauthorized[0].error;
+};
+
+/**
+ * 过滤操作人有权限访问的资源快照：
+ * 1. 仅保留操作人有读取权限的资源，无权限项静默剔除；
+ * 2. 若明确为成员不存在或离职，按安全规则全部剔除为 []；
+ * 3. 其他非无权限异常一律直接抛出，让外层记录错误并触发重试。
+ */
+export const filterAuthorizedAppResources = async ({
+  resources,
+  tmbId,
+  isRoot = false,
+  allowRootCrossTeam = false
+}: {
+  resources: AppResource[];
+  tmbId: unknown;
+  isRoot?: boolean;
+  allowRootCrossTeam?: boolean;
+}): Promise<AppResource[]> => {
+  if (resources.length === 0) return [];
+
+  const validTmbId = typeof tmbId === 'string' && tmbId.length > 0 ? tmbId : String(tmbId ?? '');
+  if (!validTmbId || !Types.ObjectId.isValid(validTmbId)) {
+    return [];
+  }
+
+  try {
+    await getTmbInfoByTmbId({ tmbId: validTmbId });
+  } catch (error) {
+    if (isKnownMemberNotExistError(error)) {
+      return [];
+    }
+    throw error;
+  }
+
+  const unauthorized = await getUnauthorizedAppResources({
+    resources,
+    tmbId: validTmbId,
+    isRoot,
+    allowRootCrossTeam
+  });
+  if (unauthorized.length === 0) return resources;
+
+  const unauthorizedKeys = new Set(unauthorized.map((item) => getAppResourceKey(item.resource)));
+  return resources.filter((resource) => !unauthorizedKeys.has(getAppResourceKey(resource)));
 };
 
 /**
@@ -156,17 +254,13 @@ export const resolveAppResourcesByPermission = async ({
     return mergeAppResources([...kept, ...added]);
   }
 
-  const unauthorized = await getUnauthorizedAppResources({
+  const authorizedAdded = await filterAuthorizedAppResources({
     resources: added,
     tmbId,
     isRoot,
     allowRootCrossTeam
   });
-  const unauthorizedKeys = new Set(unauthorized.map((item) => getAppResourceKey(item.resource)));
-  return mergeAppResources([
-    ...kept,
-    ...added.filter((resource) => !unauthorizedKeys.has(getAppResourceKey(resource)))
-  ]);
+  return mergeAppResources([...kept, ...authorizedAdded]);
 };
 
 /**

@@ -5,10 +5,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
-import {
-  assertWorkflowDatasetResources,
-  getWorkflowDatasetResource
-} from '../../../../utils/resource';
+import { assertWorkflowDatasetResources } from '../../../../utils/resource';
 import { getWorkflowResourceContext } from '../../../../utils/context';
 import type { DeployedSkillInfo } from '../../../../../ai/sandbox/interface/runtime';
 import {
@@ -51,19 +48,17 @@ export const loadAgentDatasetContext = async (
       : datasetIds;
   if (authorizedDatasetIds.length === 0) return [];
 
-  const datasets =
-    resourceContext && !dynamicDataset
-      ? authorizedDatasetIds
-          .map((datasetId) => getWorkflowDatasetResource(datasetId))
-          .filter((dataset): dataset is NonNullable<typeof dataset> => !!dataset)
-      : await MongoDataset.find(
-          {
-            _id: {
-              $in: authorizedDatasetIds
-            }
-          },
-          'name intro'
-        ).lean();
+  const datasets = await MongoDataset.find(
+    {
+      _id: {
+        $in: authorizedDatasetIds
+      },
+      ...(resourceContext && !dynamicDataset && resourceContext.teamId && !resourceContext.isRoot
+        ? { teamId: resourceContext.teamId }
+        : {})
+    },
+    'name intro'
+  ).lean();
   const datasetMap = new Map(
     datasets.map((item) => [
       String(item._id),

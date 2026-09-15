@@ -26,9 +26,7 @@ import {
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { extractAppResources } from '@fastgpt/service/core/app/resources';
-import { resolveAppResourcesByPermission } from '@fastgpt/service/support/permission/app/resource';
-import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
+import { prepareWorkflowDebugResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 import { getAppDraftWorkflow } from '@fastgpt/service/core/app/version/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<WorkflowDebugResponse> {
@@ -67,19 +65,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
         source: UsageSourceEnum.fastgpt
       });
   const responseChatItemId = getNanoid();
-  const extractedResources = extractAppResources({ nodes, chatConfig: workflowChatConfig });
-  const resourceContext = await loadWorkflowResourceContext({
-    resources: extractedResources,
-    teamId: String(app.teamId),
-    isRoot
-  });
-  await resolveAppResourcesByPermission({
+  const resourceContext = await prepareWorkflowDebugResourceContext({
     appId,
-    extracted: extractedResources,
+    nodes,
+    chatConfig: workflowChatConfig,
+    teamId: String(app.teamId),
     tmbId,
-    isRoot,
-    blockOnUnauthorized: true,
-    allowRootCrossTeam: isRoot
+    isRoot
   });
   const {
     query: workflowQuery,

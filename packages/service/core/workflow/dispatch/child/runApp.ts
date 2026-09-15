@@ -20,7 +20,6 @@ import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../utils/context';
 import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
-import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { getRuntimeNodeResponseSummary } from '../utils';
 
 type Props = ModuleDispatchProps<{
@@ -66,7 +65,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     return files;
   })();
 
-  if (!userChatInput && !userInputFiles) {
+  if (!userChatInput && userInputFiles.length === 0) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
   if (!appId) {
@@ -179,7 +178,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
             tmbId: String(appData.tmbId),
             isChildApp: true
           },
-          runningUserInfo: await getRunningUserInfoByTmbId(appData.tmbId),
           runtimeNodes,
           runtimeEdges,
           histories: childHistories,

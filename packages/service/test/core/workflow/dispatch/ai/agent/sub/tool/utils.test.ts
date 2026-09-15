@@ -17,6 +17,8 @@ import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node
 const {
   authAppByTmbIdMock,
   getAppVersionByIdMock,
+  getAppLatestVersionMock,
+  mongoAppFindOneMock,
   getMCPChildrenMock,
   getHTTPToolListMock,
   getSystemToolDetailMock,
@@ -24,10 +26,19 @@ const {
 } = vi.hoisted(() => ({
   authAppByTmbIdMock: vi.fn(),
   getAppVersionByIdMock: vi.fn(),
+  getAppLatestVersionMock: vi.fn(),
+  mongoAppFindOneMock: vi.fn(),
   getMCPChildrenMock: vi.fn(),
   getHTTPToolListMock: vi.fn(),
   getSystemToolDetailMock: vi.fn(),
   assertTeamPluginSourceAccessMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/app/schema')>()),
+  MongoApp: {
+    findOne: mongoAppFindOneMock
+  }
 }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
@@ -35,7 +46,8 @@ vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
-  getAppVersionById: getAppVersionByIdMock
+  getAppVersionById: getAppVersionByIdMock,
+  getAppLatestVersion: getAppLatestVersionMock
 }));
 
 vi.mock('@fastgpt/service/core/app/mcp', () => ({
@@ -346,6 +358,18 @@ describe('getAgentRuntimeTools schema loading', () => {
         chatConfig: app.chatConfig
       })
     );
+
+    getAppLatestVersionMock.mockImplementation(async (appId: string, app?: any) => ({
+      versionId: '',
+      versionName: app?.name ?? '',
+      nodes: app?.modules ?? [],
+      edges: app?.edges ?? [],
+      chatConfig: app?.chatConfig ?? {}
+    }));
+
+    mongoAppFindOneMock.mockImplementation((query: { _id?: string }) => ({
+      lean: vi.fn().mockResolvedValue(query?._id ? (appMap[query._id] ?? null) : null)
+    }));
   });
 
   const appMap: Record<string, any> = {
@@ -972,12 +996,8 @@ describe('getAgentRuntimeTools schema loading', () => {
         mcpClientMemory: {},
         resourceContext: {
           teamId: 'team_1',
-          resources: [],
-          resourceMap: new Map(),
-          appMap: new Map(),
-          workflowMap: new Map(),
-          datasetMap: new Map(),
-          skillMap: new Map()
+          isRoot: false,
+          resourceMap: new Map()
         }
       },
       () =>
@@ -1004,12 +1024,7 @@ describe('getAgentRuntimeTools schema loading', () => {
         resourceContext: {
           teamId: 'team_1',
           isRoot: false,
-          resources: [resource],
-          resourceMap: new Map([['tool:workflow_app', resource]]),
-          appMap: new Map([['workflow_app', appMap.workflow_app]]),
-          workflowMap: new Map(),
-          datasetMap: new Map(),
-          skillMap: new Map()
+          resourceMap: new Map([['tool:workflow_app', resource]])
         }
       },
       () =>

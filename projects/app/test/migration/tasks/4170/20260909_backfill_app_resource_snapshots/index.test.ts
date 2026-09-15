@@ -7,7 +7,9 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { backfillAppResourceSnapshots } from '@/migration/tasks/4170/20260909_backfill_app_resource_snapshots';
+import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
+import * as appResourcePermission from '@fastgpt/service/support/permission/app/resource';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const teamId = new Types.ObjectId('65f000000000000000000061');
@@ -109,6 +111,9 @@ const createContext = ({
 describe('4170 App resource snapshot migration', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
+    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockImplementation(
+      async ({ resources }) => resources
+    );
     await Promise.all([MongoApp.deleteMany({}), MongoAppVersion.deleteMany({})]);
   });
 
@@ -300,5 +305,63 @@ describe('4170 App resource snapshot migration', () => {
         reason: { message: 'Record _id is not an ObjectId' }
       })
     ]);
+  });
+
+  it('reports all non-ObjectId records when they span multiple batches', async () => {
+    const invalidRecords = Array.from({ length: systemMigrationBatchSize + 1 }, (_, index) => ({
+      _id: `legacy-version-id-${String(index).padStart(4, '0')}` as never,
+      appId: new Types.ObjectId(),
+      tmbId: String(tmbId),
+      nodes: [],
+      edges: []
+    }));
+    await MongoAppVersion.collection.insertMany(invalidRecords);
+    const state = createContext();
+
+    await expect(backfillAppResourceSnapshots(state.context)).rejects.toThrow(
+      'App resource records still require migration'
+    );
+    expect(state.getFailedRecords()).toHaveLength(invalidRecords.length);
+    expect(state.getFailedRecords().map((record) => record.data.recordId)).toEqual(
+      invalidRecords.map((record) => record._id)
+    );
+  });
+
+  it('silently filters unauthorized resources during the full migration workflow', async () => {
+    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockResolvedValue([]);
+    const records = createLegacyRecords();
+    await Promise.all([
+      MongoApp.collection.insertOne(records.app),
+      MongoAppVersion.collection.insertOne(records.version)
+    ]);
+    const state = createContext();
+
+    await expect(backfillAppResourceSnapshots(state.context)).resolves.toMatchObject({
+      versionsProcessedCount: 1,
+      appsProcessedCount: 1
+    });
+
+    const updatedVersion = await MongoAppVersion.collection.findOne({ _id: records.version._id });
+    expect(updatedVersion?.resources).toEqual([]);
+    expect(state.getFailedRecords()).toEqual([]);
+  });
+
+  it('drops all resources to empty array when creator member info is not found during full migration', async () => {
+    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockResolvedValue([]);
+    const records = createLegacyRecords();
+    await Promise.all([
+      MongoApp.collection.insertOne(records.app),
+      MongoAppVersion.collection.insertOne(records.version)
+    ]);
+    const state = createContext();
+
+    await expect(backfillAppResourceSnapshots(state.context)).resolves.toMatchObject({
+      versionsProcessedCount: 1,
+      appsProcessedCount: 1
+    });
+
+    const updatedVersion = await MongoAppVersion.collection.findOne({ _id: records.version._id });
+    expect(updatedVersion?.resources).toEqual([]);
+    expect(state.getFailedRecords()).toEqual([]);
   });
 });

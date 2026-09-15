@@ -334,8 +334,12 @@ export const extractAppResources = ({
     });
   });
 
-  if (chatConfig?.questionGuide?.open) addModels(chatConfig.questionGuide.modelId, 'llm');
-  if (chatConfig?.ttsConfig?.type === 'model') addModels(chatConfig.ttsConfig.modelId, 'tts');
+  if (chatConfig?.questionGuide?.open) {
+    addModels(chatConfig.questionGuide.modelId ?? chatConfig.questionGuide.model, 'llm');
+  }
+  if (chatConfig?.ttsConfig?.type === 'model') {
+    addModels(chatConfig.ttsConfig.modelId ?? chatConfig.ttsConfig.model, 'tts');
+  }
 
   return mergeAppResources(resources);
 };
@@ -343,13 +347,14 @@ export const extractAppResources = ({
 /**
  * 解析一条 Version 上的 resources。
  * 数组（含空数组）视为已落库快照；缺字段则按 nodes 提取，并合并旧 resourceRefs.skillIds。
+ * 旧模型名称的映射由调用方通过公开模型读取入口获取目录后传入，避免纯提取逻辑访问私有缓存。
  */
 export const resolveStoredAppResources = ({
   resources,
   nodes,
   chatConfig,
   resourceRefs,
-  models = []
+  models
 }: {
   resources?: unknown;
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
@@ -366,7 +371,7 @@ export const resolveStoredAppResources = ({
   const extracted = extractAppResources({
     nodes: nodes ?? [],
     chatConfig,
-    models
+    models: models ?? []
   });
   return mergeAppResources([
     ...extracted,

@@ -13,6 +13,8 @@ import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
+import { getModelHandle } from '../../ai/model';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
 type VersionResourceSource = Pick<AppVersionSchemaType, 'nodes' | 'chatConfig' | 'resources'> & {
   resourceRefs?: unknown;
@@ -28,14 +30,20 @@ export type AppPublishedWorkflow = Pick<AppVersionSchemaType, 'nodes'>;
 const getVersionResourceSnapshot = (
   version: VersionResourceSource,
   nodes = version.nodes,
-  chatConfig = version.chatConfig
+  chatConfig = version.chatConfig,
+  models: readonly SystemModelDataType[] = []
 ): AppResourcesType =>
   resolveStoredAppResources({
     resources: version.resources,
     nodes,
     chatConfig,
-    resourceRefs: version.resourceRefs
+    resourceRefs: version.resourceRefs,
+    models
   });
+
+/** 有效快照无需重新解析模型；仅历史或损坏快照通过公开目录读取入口补齐 modelId。 */
+const getFallbackResourceModels = async (resources: unknown) =>
+  AppResourcesSchema.safeParse(resources).success ? [] : (await getModelHandle()).getAllModels();
 
 const normalizeStoredVersionWorkflow = (
   version: Pick<AppVersionSchemaType, 'nodes' | 'edges' | 'chatConfig'>
@@ -46,7 +54,16 @@ const normalizeStoredVersionWorkflow = (
     chatConfig: version.chatConfig
   });
 
-const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionWorkflow => {
+/**
+ * 标准化单条 Version 记录的工作流及其资源快照。
+ * 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
+ * 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
+ * 缺失或非法的 resources 会按该版本内容回退提取，确保快照始终合法。
+ */
+export const normalizeAppVersionWorkflow = (
+  version: AppVersionSchemaType,
+  models: readonly SystemModelDataType[] = []
+): AppVersionWorkflow => {
   // 历史版本只迁移该版本自身的系统配置节点，不继承当前应用 chatConfig，
   // 避免当前配置占位导致该版本中的欢迎语、定时任务等旧值被丢弃。
   const normalizedWorkflow = normalizeStoredVersionWorkflow(version);
@@ -56,7 +73,8 @@ const normalizeAppVersionWorkflow = (version: AppVersionSchemaType): AppVersionW
     resources: getVersionResourceSnapshot(
       version,
       normalizedWorkflow.nodes,
-      normalizedWorkflow.chatConfig
+      normalizedWorkflow.chatConfig,
+      models
     ),
     ...normalizedWorkflow
   };
@@ -94,7 +112,10 @@ const loadApp = async (appId: string, app?: AppVersionLookupApp) =>
  * 在非阻塞迁移窗口内读取无正式 Version 应用的旧工作流。
  * 草稿 Version 不能替代旧代码实际运行的 App 图；迁移补出正式 Version 后停止 fallback。
  */
-const normalizeLegacyAppWorkflow = (app?: AppVersionLookupApp | null): AppVersionWorkflow => {
+const normalizeLegacyAppWorkflow = (
+  app?: AppVersionLookupApp | null,
+  models: readonly SystemModelDataType[] = []
+): AppVersionWorkflow => {
   if (!app) return emptyVersionWorkflow();
 
   const normalizedWorkflow = migrateWorkflowToCurrent({
@@ -108,7 +129,8 @@ const normalizeLegacyAppWorkflow = (app?: AppVersionLookupApp | null): AppVersio
     resources: resolveStoredAppResources({
       nodes: normalizedWorkflow.nodes,
       chatConfig: normalizedWorkflow.chatConfig,
-      resourceRefs: app.resourceRefs
+      resourceRefs: app.resourceRefs,
+      models
     }),
     ...normalizedWorkflow
   };
@@ -140,8 +162,12 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
       })
       .lean());
 
-  if (version) return normalizeAppVersionWorkflow(version);
-  return normalizeLegacyAppWorkflow(migrationApp);
+  if (version)
+    return normalizeAppVersionWorkflow(version, await getFallbackResourceModels(version.resources));
+  return normalizeLegacyAppWorkflow(
+    migrationApp,
+    migrationApp ? (await getModelHandle()).getAllModels() : []
+  );
 };
 
 /**
@@ -150,8 +176,13 @@ export const getAppLatestVersion = async (appId: string, app?: AppVersionLookupA
  */
 export const getAppDraftWorkflow = async (appId: string, app?: AppVersionLookupApp) => {
   const draft = await getAppDraftVersion(appId);
-  if (draft) return normalizeAppVersionWorkflow(draft);
-  return normalizeLegacyAppWorkflow(await loadApp(appId, app));
+  if (draft)
+    return normalizeAppVersionWorkflow(draft, await getFallbackResourceModels(draft.resources));
+  const migrationApp = await loadApp(appId, app);
+  return normalizeLegacyAppWorkflow(
+    migrationApp,
+    migrationApp ? (await getModelHandle()).getAllModels() : []
+  );
 };
 
 /**
@@ -182,7 +213,8 @@ export const getAppDraftResourceBaseline = async (appId: string, session?: Clien
     resources: draft.resources,
     nodes: decodeToolSetNodesFromStorage(draft.nodes),
     chatConfig: draft.chatConfig,
-    resourceRefs: (draft as { resourceRefs?: unknown }).resourceRefs
+    resourceRefs: (draft as { resourceRefs?: unknown }).resourceRefs,
+    models: (await getModelHandle()).getAllModels()
   });
 };
 
@@ -405,7 +437,11 @@ export const getAppVersionById = async ({
       appId
     }).lean();
 
-    if (version) return normalizeAppVersionWorkflow(version);
+    if (version)
+      return normalizeAppVersionWorkflow(
+        version,
+        await getFallbackResourceModels(version.resources)
+      );
   }
 
   return getAppLatestVersion(appId, app);

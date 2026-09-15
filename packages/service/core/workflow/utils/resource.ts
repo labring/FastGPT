@@ -1,17 +1,16 @@
 import type {
+  AppChatConfigType,
   AppResource,
   AppResourcesType,
   AppResourceType,
   AppSchemaType
 } from '@fastgpt/global/core/app/type';
-import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
-import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   isWorkflowSystemModelInput,
@@ -19,27 +18,27 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { MongoApp } from '../../app/schema';
 import { MongoDataset } from '../../dataset/schema';
-import { MongoAgentSkills } from '../../ai/skill/model/schema';
+import { getModelHandle } from '../../ai/model';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
-import { getAppResourceKey, mergeAppResources, resolveSystemModelId } from '../../app/resources';
-import { checkAppResourceReadPermissions } from '../../../support/permission/app/resource';
-import { getWorkflowResourceContext } from './context';
 import {
-  getAppPublishedWorkflowMap,
-  type AppPublishedWorkflow
-} from '../../app/version/controller';
+  extractAppResources,
+  getAppResourceKey,
+  mergeAppResources,
+  resolveSystemModelId
+} from '../../app/resources';
+import {
+  checkAppResourceReadPermissions,
+  resolveAppResourcesByPermission
+} from '../../../support/permission/app/resource';
+import { getWorkflowResourceContext } from './context';
+import { getAppLatestVersion, type AppPublishedWorkflow } from '../../app/version/controller';
 
 export type WorkflowResourceContext = {
   teamId?: string;
   /** root Test/Debug 请求允许子工作流沿用跨团队资源权限。 */
   isRoot: boolean;
-  resources: AppResourcesType;
   resourceMap: Map<string, AppResource>;
-  appMap: Map<string, AppSchemaType>;
-  workflowMap: Map<string, AppPublishedWorkflow>;
-  datasetMap: Map<string, DatasetSchemaType>;
-  skillMap: Map<string, AgentSkillSchemaType>;
 };
 
 /** 静态资源快照不一致错误；不能被工具加载器降级为单个工具不可用。 */
@@ -51,7 +50,7 @@ export const isWorkflowResourceError = (error: unknown): error is WorkflowResour
 const getResourceKey = (type: AppResourceType, id: string) =>
   getAppResourceKey({ type, id } as AppResource);
 
-/** 按资源快照批量加载实体；root 调试请求跳过团队过滤，但仍校验实体存在。 */
+/** 按资源快照初始化内存白名单字典；纯内存操作，不执行数据库查询。 */
 export const loadWorkflowResourceContext = async ({
   resources,
   teamId,
@@ -60,66 +59,17 @@ export const loadWorkflowResourceContext = async ({
   resources: AppResourcesType;
   teamId?: string;
   isRoot?: boolean;
-}) => {
+}): Promise<WorkflowResourceContext> => {
   const normalizedResources = mergeAppResources(Array.isArray(resources) ? resources : []);
   const resourceMap = new Map(
     normalizedResources.map((resource) => [getResourceKey(resource.type, resource.id), resource])
   );
-  const appIds = normalizedResources
-    .filter((resource) => resource.type === 'agent' || resource.type === 'tool')
-    .map((resource) => resource.id);
-  const datasetIds = normalizedResources
-    .filter((resource) => resource.type === 'dataset')
-    .map((resource) => resource.id);
-  const skillIds = normalizedResources
-    .filter((resource) => resource.type === 'skill')
-    .map((resource) => resource.id);
-
-  const [apps, datasets, skills] = await Promise.all([
-    appIds.length
-      ? MongoApp.find({
-          _id: { $in: appIds },
-          deleteTime: null,
-          ...(teamId && !isRoot ? { teamId } : {})
-        }).lean()
-      : [],
-    datasetIds.length
-      ? MongoDataset.find({
-          _id: { $in: datasetIds },
-          deleteTime: null,
-          ...(teamId && !isRoot ? { teamId } : {})
-        }).lean()
-      : [],
-    skillIds.length
-      ? MongoAgentSkills.find({
-          _id: { $in: skillIds },
-          deleteTime: null,
-          ...(teamId && !isRoot
-            ? {
-                $or: [{ teamId }, { source: AgentSkillSourceEnum.system }]
-              }
-            : {})
-        }).lean()
-      : []
-  ]);
-
-  const appMap = new Map(apps.map((app) => [String(app._id), app]));
-  const workflowMap = apps.length
-    ? await getAppPublishedWorkflowMap(apps)
-    : new Map<string, AppPublishedWorkflow>();
-  const datasetMap = new Map(datasets.map((dataset) => [String(dataset._id), dataset]));
-  const skillMap = new Map(skills.map((skill) => [String(skill._id), skill]));
 
   return {
     teamId,
     isRoot,
-    appMap,
-    workflowMap,
-    datasetMap,
-    skillMap,
-    resources: normalizedResources,
     resourceMap
-  } satisfies WorkflowResourceContext;
+  };
 };
 
 /** 校验当前工作流版本声明了指定资源；没有上下文时保留非 App 调试场景的旧权限语义。 */
@@ -158,8 +108,6 @@ const modelFeatureKeyMap = new Map<string, NodeInputKeyEnum>([
   [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearch]
 ]);
 
-const getRuntimeModelId = (value: unknown): string | undefined => resolveSystemModelId(value);
-
 /**
  * 在统一节点调度边界校验实际使用的模型资源。
  *
@@ -175,10 +123,9 @@ export const assertWorkflowNodeModelResources = async ({
   params: Record<string, unknown>;
   tmbId: string;
 }) => {
-  const modelReferences: Array<{ id: string; dynamic: boolean }> = [];
+  const modelReferences: Array<{ value: unknown; dynamic: boolean }> = [];
   const addModel = (value: unknown, dynamic: boolean) => {
-    const id = getRuntimeModelId(value);
-    if (id) modelReferences.push({ id, dynamic });
+    if (value !== undefined && value !== null) modelReferences.push({ value, dynamic });
   };
 
   node.inputs.forEach((input) => {
@@ -218,7 +165,10 @@ export const assertWorkflowNodeModelResources = async ({
 
   const context = getWorkflowResourceContext();
   const permissionResources = new Map<string, AppResource>();
-  modelReferences.forEach(({ id, dynamic }) => {
+  const models = modelReferences.length ? (await getModelHandle()).getAllModels() : [];
+  modelReferences.forEach(({ value, dynamic }) => {
+    const id = resolveSystemModelId(value, undefined, models);
+    if (!id) return;
     if (context && !dynamic) {
       assertWorkflowResource({ context, type: 'model', id });
       return;
@@ -280,21 +230,23 @@ export const assertWorkflowDatasetResources = ({
       type: 'dataset',
       id
     });
-    if (!context.datasetMap.has(id)) throw DatasetErrEnum.unExist;
   });
 };
 
-/** 读取当前资源上下文已批量加载的知识库实体。 */
-export const getWorkflowDatasetResource = (datasetId: string) =>
-  getWorkflowResourceContext()?.datasetMap.get(datasetId);
+/** 实时读取 App 对应的正式工作流（仅包含 nodes）；无上下文时返回 undefined。 */
+export const loadWorkflowAppWorkflow = async (
+  app: AppSchemaType
+): Promise<AppPublishedWorkflow | undefined> => {
+  const context = getWorkflowResourceContext();
+  if (!context) return undefined;
 
-/** 读取当前资源上下文中 App 对应的正式工作流。 */
-export const getWorkflowAppWorkflow = (appId: string) =>
-  getWorkflowResourceContext()?.workflowMap?.get(appId);
+  const latestVersion = await getAppLatestVersion(String(app._id), app);
+  return { nodes: latestVersion.nodes ?? [] };
+};
 
 /**
  * 读取工作流使用的知识库。
- * 静态引用必须命中当前 Version 快照；动态引用按运行人 tmbId 鉴权。
+ * 静态引用必须命中当前 Version 快照并实时查询数据库；动态引用按运行人 tmbId 鉴权。
  * 没有 resourceContext 时（Skill 调试、商业工具清空父快照）也按运行人鉴权，不能裸 findById。
  */
 export const loadWorkflowDatasetResource = async ({
@@ -312,7 +264,16 @@ export const loadWorkflowDatasetResource = async ({
   const context = getWorkflowResourceContext();
   if (context && !dynamic) {
     assertWorkflowDatasetResources({ datasetIds });
-    const dataset = context.datasetMap.get(datasetId);
+    let dataset = null;
+    try {
+      dataset = await MongoDataset.findOne({
+        _id: datasetId,
+        deleteTime: null,
+        ...(context.teamId && !context.isRoot ? { teamId: context.teamId } : {})
+      }).lean();
+    } catch {
+      throw DatasetErrEnum.unExist;
+    }
     if (!dataset) throw DatasetErrEnum.unExist;
     return dataset;
   }
@@ -332,7 +293,7 @@ export const loadWorkflowDatasetResource = async ({
 
 /**
  * 加载 App 或工具集。
- * 静态引用命中当前 Version 快照；动态引用或没有 resourceContext 时按运行人读权限查询。
+ * 静态引用命中当前 Version 快照并实时查询数据库；动态引用或没有 resourceContext 时按运行人读权限查询。
  */
 export const loadWorkflowAppResource = async ({
   appId,
@@ -359,7 +320,16 @@ export const loadWorkflowAppResource = async ({
   }
 
   assertWorkflowResource({ context, type, id: appId, toolName });
-  const app = context.appMap.get(appId);
+  let app = null;
+  try {
+    app = await MongoApp.findOne({
+      _id: appId,
+      deleteTime: null,
+      ...(context.teamId && !context.isRoot ? { teamId: context.teamId } : {})
+    }).lean();
+  } catch {
+    throw new WorkflowResourceError(`App resource is unavailable: ${type}:${appId}`);
+  }
   if (!app) throw new WorkflowResourceError(`App resource is unavailable: ${type}:${appId}`);
   return app;
 };
@@ -370,3 +340,41 @@ export const createWorkflowChildResourceContext = (
   teamId?: string,
   isRoot = getWorkflowResourceContext()?.isRoot ?? false
 ) => loadWorkflowResourceContext({ resources, teamId, isRoot });
+
+/**
+ * 为工作流调试与测试（chatTest 与 debug）准备未发布工作流的资源上下文并校验权限。
+ * 1. 静态提取工作流节点与配置声明的资源快照；
+ * 2. 批量加载运行时所需的实体上下文（App, Dataset, Skill 等）；
+ * 3. 相对应用当前草稿快照基线校验新增资源读取权限（阻断未授权操作，root 请求保留跨团队权限）。
+ */
+export const prepareWorkflowDebugResourceContext = async ({
+  appId,
+  nodes,
+  chatConfig,
+  teamId,
+  tmbId,
+  isRoot = false
+}: {
+  appId: string;
+  nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
+  chatConfig?: AppChatConfigType;
+  teamId?: string;
+  tmbId: string;
+  isRoot?: boolean;
+}) => {
+  const extractedResources = extractAppResources({ nodes, chatConfig });
+  const resourceContext = await loadWorkflowResourceContext({
+    resources: extractedResources,
+    teamId,
+    isRoot
+  });
+  await resolveAppResourcesByPermission({
+    appId,
+    extracted: extractedResources,
+    tmbId,
+    isRoot,
+    blockOnUnauthorized: true,
+    allowRootCrossTeam: isRoot
+  });
+  return resourceContext;
+};
