@@ -18,6 +18,8 @@ const expectedPaths = {
   '/core/ai/sandbox/keepalive': 'post',
   '/core/ai/sandbox/verifyTicket': 'get',
   '/core/ai/skill/copy': 'post',
+  '/core/ai/skill/debugChat': 'post',
+  '/maxApi/core/ai/skill/debugChat': 'post',
   '/core/ai/skill/resumeInheritPermission': 'get',
   '/proApi/core/ai/skill/changeOwner': 'post',
   '/proApi/core/ai/skill/collaborator/list': 'get',
@@ -154,6 +156,10 @@ describe('AI OpenAPI contracts', () => {
     expect(openAPIDocument.paths?.['/core/ai/skill/version/list']?.post?.tags).toEqual([
       DevApiTagsMap.skillVersion
     ]);
+    expect(openAPIDocument.paths?.['/maxApi/core/ai/skill/debugChat']?.post?.tags).toEqual([
+      DevApiTagsMap.skillDebug
+    ]);
+    expect(openAPIDocument.paths?.['/proApi/core/ai/skill/debugChat']).toBeUndefined();
   });
 
   it('groups chat resume under session operations', () => {

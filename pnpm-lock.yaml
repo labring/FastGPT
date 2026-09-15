@@ -468,6 +468,9 @@ importers:
       '@logtape/pretty':
         specifier: 2.0.2
         version: 2.0.2(@logtape/logtape@2.0.2)
+      '@node-rs/jieba':
+        specifier: 'catalog:'
+        version: 2.0.1
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.4.3)

@@ -106,14 +106,14 @@ export const createResumeReadyNotifier = (onResumeReady?: () => void) => {
   };
 };
 
-const shouldSendStreamResumeHeader = (url: string) =>
+export const shouldSendStreamResumeHeader = (url: string) =>
   new Set([
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
     '/api/maxApi/core/chat/chatAgentHelper/completions',
     '/api/core/ai/skill/debugChat',
-    '/api/proApi/core/ai/skill/debugChat'
+    '/api/maxApi/core/ai/skill/debugChat'
   ]).has(url);
 
 type CommonResponseType = {

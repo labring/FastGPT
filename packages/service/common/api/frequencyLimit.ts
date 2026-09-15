@@ -22,6 +22,12 @@ const _FrequencyLimitOptionSchema = z.union([
 ]);
 type FrequencyLimitOption = z.infer<typeof _FrequencyLimitOptionSchema>;
 
+type TeamFrequencyLimitStatus = {
+  limit: number;
+  remaining: number;
+  resetAt: number;
+};
+
 const getLimitData = async (data: FrequencyLimitOption) => {
   if (data.type === LimitTypeEnum.chat) {
     const qpm = await teamQPM.getTeamQPMLimit(data.teamId);
@@ -37,29 +43,24 @@ const getLimitData = async (data: FrequencyLimitOption) => {
   return;
 };
 
-/*
-  true: 未达到限制
-  false: 达到了限制
-*/
-export const teamFrequencyLimit = async ({
+/**
+ * 校验团队级请求频率并返回响应头所需的限流状态。
+ *
+ * 该函数不写 HTTP 响应，供 Next、Hono 等不同传输层复用；配置或 Redis
+ * 不可用时保持 fail-closed，达到限额时抛出可展示的业务错误。
+ */
+export const checkTeamFrequencyLimit = async ({
   teamId,
-  type,
-  res
-}: FrequencyLimitOption & {
-  res: NodeApiResponse;
-}) => {
+  type
+}: FrequencyLimitOption): Promise<TeamFrequencyLimitStatus | undefined> => {
   let data: Awaited<ReturnType<typeof getLimitData>>;
   try {
     data = await getLimitData({ type, teamId });
   } catch (error) {
     logger.error('Team QPM configuration lookup failed closed', { teamId, type, error });
-    jsonRes(res, {
-      code: 429,
-      error: 'Rate limit service unavailable. Please try again later.'
-    });
-    return false;
+    throw new UserError('Rate limit service unavailable. Please try again later.');
   }
-  if (!data) return true;
+  if (!data) return;
 
   const { limit, seconds } = data;
 
@@ -74,11 +75,7 @@ export const teamFrequencyLimit = async ({
     if (error instanceof RedisInvalidArgumentError) throw error;
 
     logger.error('Team QPM rate limit failed closed', { teamId, type, error });
-    jsonRes(res, {
-      code: 429,
-      error: new UserError('Rate limit service unavailable. Please try again later.')
-    });
-    return false;
+    throw new UserError('Rate limit service unavailable. Please try again later.');
   }
 
   if (!result.allowed) {
@@ -88,18 +85,44 @@ export const teamFrequencyLimit = async ({
       limit,
       ttlSeconds: result.ttlSeconds
     });
+    throw new UserError(
+      `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${result.ttlSeconds} seconds.`
+    );
+  }
+
+  return {
+    limit,
+    remaining: result.remaining,
+    resetAt: result.resetAt
+  };
+};
+
+/*
+  true: 未达到限制
+  false: 达到了限制
+*/
+export const teamFrequencyLimit = async ({
+  teamId,
+  type,
+  res
+}: FrequencyLimitOption & {
+  res: NodeApiResponse;
+}) => {
+  try {
+    const status = await checkTeamFrequencyLimit({ teamId, type });
+    if (!status) return true;
+
+    res.setHeader('X-RateLimit-Limit', status.limit);
+    res.setHeader('X-RateLimit-Remaining', status.remaining);
+    res.setHeader('X-RateLimit-Reset', status.resetAt);
+    return true;
+  } catch (error) {
+    if (error instanceof RedisInvalidArgumentError) throw error;
+
     jsonRes(res, {
       code: 429,
-      error: new UserError(
-        `Rate limit exceeded. Maximum ${limit} requests per ${seconds} seconds for this team. Please try again in ${result.ttlSeconds} seconds.`
-      )
+      error
     });
     return false;
   }
-
-  // 在响应头中添加限流信息
-  res.setHeader('X-RateLimit-Limit', limit);
-  res.setHeader('X-RateLimit-Remaining', result.remaining);
-  res.setHeader('X-RateLimit-Reset', result.resetAt);
-  return true;
 };

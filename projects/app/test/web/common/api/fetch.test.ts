@@ -4,7 +4,8 @@ import {
   createResumeReadyNotifier,
   createStreamFetchError,
   getStreamTypingQueueConsumeCount,
-  handleEventSourceData
+  handleEventSourceData,
+  shouldSendStreamResumeHeader
 } from '@/web/common/api/fetch';
 import {
   SseResponseEventEnum,
@@ -156,5 +157,15 @@ describe('createResumeReadyNotifier', () => {
     notifyResumeReady(StreamResumePhaseEnum.live);
     notifyResumeReady(StreamResumePhaseEnum.live);
     expect(onResumeReady).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('shouldSendStreamResumeHeader', () => {
+  it('enables resume for the Max Skill Helper endpoint', () => {
+    expect(shouldSendStreamResumeHeader('/api/maxApi/core/ai/skill/debugChat')).toBe(true);
+  });
+
+  it('does not keep the removed Pro Skill Helper endpoint', () => {
+    expect(shouldSendStreamResumeHeader('/api/proApi/core/ai/skill/debugChat')).toBe(false);
   });
 });
