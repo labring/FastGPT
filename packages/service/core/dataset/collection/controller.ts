@@ -35,10 +35,22 @@ import {
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
+import {
+  addAuditLog,
+  failAuditLogByTaskId,
+  updateAuditLogByTaskId
+} from '../../../support/user/audit/util';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { refreshTrainingAuditTask } from '../training/audit';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { randomUUID } from 'node:crypto';
+import { getLogger, LogCategories } from '../../../common/logger';
 import type {
   CreateCollectionWithResultResponseType,
   ApiCreateDatasetCollectionParams
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -47,7 +59,10 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams,
   backupParse = false,
   billId,
-  session
+  session,
+  audit = true,
+  auditSourceType,
+  auditTaskId
 }: {
   dataset: DatasetSchemaType;
   rawText?: string;
@@ -58,6 +73,17 @@ export const createCollectionAndInsertData = async ({
 
   billId?: string;
   session?: ClientSession;
+  audit?: boolean;
+  auditSourceType?:
+    | 'backup'
+    | 'template'
+    | 'image'
+    | 'link'
+    | 'external_file'
+    | 'api'
+    | 'text'
+    | 'file';
+  auditTaskId?: string;
 }): Promise<CreateCollectionWithResultResponseType> => {
   const modelHandle = await getModelHandle();
   const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
@@ -187,6 +213,69 @@ export const createCollectionAndInsertData = async ({
     insertLen: predictDataLimitLength(trainingMode, chunks)
   });
 
+  const auditSource = (() => {
+    if (auditSourceType) return auditSourceType;
+    if (trainingType === DatasetCollectionDataProcessModeEnum.backup) return 'backup';
+    if (trainingType === DatasetCollectionDataProcessModeEnum.template) return 'template';
+    if (imageIds) return 'image';
+    if (createCollectionParams.rawLink) return 'link';
+    if (createCollectionParams.externalFileId || createCollectionParams.externalFileUrl) {
+      return 'external_file';
+    }
+    if (createCollectionParams.apiFileId) return 'api';
+    if (rawText) return 'text';
+    return 'file';
+  })();
+  const resolvedAuditTaskId = auditTaskId ?? (audit ? randomUUID() : undefined);
+  let auditCreated = false;
+
+  if (resolvedAuditTaskId && audit) {
+    await addAuditLog({
+      teamId,
+      tmbId,
+      scope: 'member',
+      event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+      params: {
+        datasetId: String(dataset._id),
+        datasetName: dataset.name,
+        collectionName: createCollectionParams.name,
+        sourceType: auditSource,
+        sourceName: createCollectionParams.name,
+        trainingType,
+        chunkSize: String(formatCreateCollectionParams.chunkSize ?? ''),
+        indexSize: String(formatCreateCollectionParams.indexSize ?? ''),
+        result: 'processing',
+        insertLen: '1',
+        taskId: resolvedAuditTaskId,
+        details: [
+          {
+            resourceName: createCollectionParams.name,
+            resourceType: 'collection',
+            sourceType: auditSource,
+            sourceName: createCollectionParams.name,
+            action: 'import',
+            result: 'processing',
+            processingParams: {
+              trainingType,
+              chunkSize: formatCreateCollectionParams.chunkSize ?? '',
+              indexSize: formatCreateCollectionParams.indexSize ?? ''
+            }
+          }
+        ]
+      }
+    })
+      .then(() => {
+        auditCreated = true;
+      })
+      .catch((error) => {
+        logger.warn('Collection import audit create failed', {
+          error,
+          teamId,
+          auditTaskId: resolvedAuditTaskId
+        });
+      });
+  }
+
   const fn = async (session: ClientSession): Promise<CreateCollectionWithResultResponseType> => {
     // 3. Create collection
     const { _id: collectionId } = await createOneCollection({
@@ -230,6 +319,7 @@ export const createCollectionAndInsertData = async ({
           indexSize,
           mode: trainingMode,
           billId: traingUsageId,
+          auditTaskId: resolvedAuditTaskId,
           data: chunks.map((item, index) => ({
             ...item,
             indexes: item.indexes?.map((text) => ({
@@ -247,6 +337,7 @@ export const createCollectionAndInsertData = async ({
           datasetId: dataset._id,
           collectionId,
           billId: traingUsageId,
+          auditTaskId: resolvedAuditTaskId,
           session
         });
         return {
@@ -263,10 +354,63 @@ export const createCollectionAndInsertData = async ({
     };
   };
 
-  if (session) {
-    return fn(session);
+  const result = await (session ? fn(session) : mongoSessionRun(fn)).catch(async (error) => {
+    if (auditCreated) {
+      // 审计收口失败不能掩盖真实的业务异常，否则调用方拿到的是审计错误
+      await failAuditLogByTaskId({
+        teamId,
+        taskId: resolvedAuditTaskId!,
+        scope: 'member',
+        event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+        failureReason: getErrText(error)
+      }).catch((auditError) => {
+        logger.warn('Collection import audit failure update failed', {
+          error: auditError,
+          teamId,
+          auditTaskId: resolvedAuditTaskId
+        });
+      });
+    }
+    throw error;
+  });
+
+  if (auditCreated) {
+    // 集合和训练数据此时已提交，回填真实 collectionId；审计写入失败不能让已成功的接口返回 500
+    await updateAuditLogByTaskId({
+      teamId,
+      taskId: resolvedAuditTaskId!,
+      scope: 'member',
+      event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+      result: 'processing',
+      metadata: {
+        details: [
+          {
+            resourceId: result.collectionId,
+            resourceName: createCollectionParams.name,
+            resourceType: 'collection',
+            sourceType: auditSource,
+            sourceName: createCollectionParams.name,
+            action: 'import',
+            result: 'processing',
+            processingParams: {
+              trainingType,
+              chunkSize: formatCreateCollectionParams.chunkSize ?? '',
+              indexSize: formatCreateCollectionParams.indexSize ?? ''
+            }
+          }
+        ]
+      }
+    }).catch((error) => {
+      logger.warn('Collection import audit update failed', {
+        error,
+        teamId,
+        auditTaskId: resolvedAuditTaskId
+      });
+    });
+    await refreshTrainingAuditTask(resolvedAuditTaskId!);
   }
-  return mongoSessionRun(fn);
+
+  return result;
 };
 
 export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
