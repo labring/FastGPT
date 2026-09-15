@@ -74,7 +74,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
               activeIcon: 'support/config/configFill',
               link: '/admin/dashboard',
               activePrefix: ['/admin'],
-              activeLink: ['/config/plugin/tool', '/config/model']
+              activeLink: [] as string[]
             }
           ]
         : [])
@@ -92,46 +92,50 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         position={'relative'}
         px={4}
       >
-        {navbarList.map((item) => (
-          <Flex
-            position={'relative'}
-            key={item.link}
-            cursor={'pointer'}
-            borderRadius={'md'}
-            textAlign={'center'}
-            alignItems={'center'}
-            h={'100%'}
-            pt={1}
-            px={3}
-            transform={'scale(0.9)'}
-            {...(item.activeLink.includes(router.pathname)
-              ? {
-                  color: 'primary.600'
+        {navbarList.map((item) => {
+          const isActive =
+            (item.activePrefix?.some((prefix) => router.pathname.startsWith(prefix)) ?? false) ||
+            item.activeLink.includes(router.pathname);
+
+          return (
+            <Flex
+              position={'relative'}
+              key={item.link}
+              cursor={'pointer'}
+              borderRadius={'md'}
+              textAlign={'center'}
+              alignItems={'center'}
+              h={'100%'}
+              pt={1}
+              px={3}
+              transform={'scale(0.9)'}
+              {...(isActive
+                ? {
+                    color: 'primary.600'
+                  }
+                : {
+                    color: 'myGray.500'
+                  })}
+              onClick={() => {
+                if (item.link === router.asPath) return;
+                if (item.link.startsWith('/chat')) {
+                  window.open(item.link, '_blank');
+                  return;
                 }
-              : {
-                  color: 'myGray.500'
-                })}
-            onClick={() => {
-              if (item.link === router.asPath) return;
-              if (item.link.startsWith('/chat')) {
-                window.open(item.link, '_blank');
-                return;
-              }
-              router.push(item.link);
-            }}
-          >
-            <Badge isDot count={item.unread}>
-              <MyIcon
-                name={
-                  (item.activeLink.includes(router.pathname) ? item.activeIcon : item.icon) as any
-                }
-                width={'20px'}
-                height={'20px'}
-              />
-              <Box fontSize={'12px'}>{item.label}</Box>
-            </Badge>
-          </Flex>
-        ))}
+                router.push(item.link);
+              }}
+            >
+              <Badge isDot count={item.unread}>
+                <MyIcon
+                  name={(isActive ? item.activeIcon : item.icon) as any}
+                  width={'20px'}
+                  height={'20px'}
+                />
+                <Box fontSize={'12px'}>{item.label}</Box>
+              </Badge>
+            </Flex>
+          );
+        })}
       </Flex>
     </>
   );

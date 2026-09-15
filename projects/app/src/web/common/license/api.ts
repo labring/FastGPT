@@ -3,7 +3,7 @@ import type { LicenseDataType } from '@fastgpt/global/common/system/types';
 
 /**
  * 读取 license 状态。pro 服务未配置/不可达时返回 undefined（视为未激活），
- * 以便开源版 root 正确触发激活/购买提示弹窗。
+ * 由管理员主页展示激活入口。
  */
 export const getLicenseData = async (): Promise<LicenseDataType | undefined> => {
   const res = await GET<LicenseDataType | { total?: number; list?: unknown[] }>(

@@ -3,7 +3,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { Box, Button, Flex, HStack, Textarea } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Icon from '@fastgpt/web/components/common/Icon';
-import Markdown from '@/components/admin/markdown';
+import Markdown from '@/components/Markdown';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInstanceId, postActiveLicense } from '@/web/common/license/api';
 

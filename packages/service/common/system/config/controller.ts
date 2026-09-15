@@ -1,4 +1,3 @@
-import { verifyLicenseSignature, normalizeLicenseData, isLicenseExpired } from '../license/verify';
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { MongoSystemConfigs } from './schema';
 import type { FastGPTConfigFileType, LicenseDataType } from '@fastgpt/global/common/system/types';
@@ -29,21 +28,7 @@ export const getFastGPTConfigFromDB = async (): Promise<{
   ]);
 
   const config = fastgptConfig?.value || {};
-  // 决策版 §4：DB 只存原始 license 字符串；启动时从原始 license 重新验签，
-  // 验签/归一化失败或过期则视为未激活（undefined），不信任落库的解析结果。
-  let licenseData: LicenseDataType | undefined;
-  const licenseStr = licenseConfig?.value?.license as string | undefined;
-  if (licenseStr) {
-    try {
-      const raw = verifyLicenseSignature(licenseStr);
-      const normalized = normalizeLicenseData(raw);
-      if (!isLicenseExpired(normalized)) {
-        licenseData = normalized;
-      }
-    } catch (error) {
-      licenseData = undefined;
-    }
-  }
+  const licenseData = licenseConfig?.value?.data as LicenseDataType | undefined;
 
   const fastgptConfigTime = fastgptConfig?.createTime.getTime().toString();
   const licenseConfigTime = licenseConfig?.createTime.getTime().toString();

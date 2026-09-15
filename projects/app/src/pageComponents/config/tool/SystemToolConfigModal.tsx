@@ -65,26 +65,26 @@ const TOOL_SET_MODAL_WIDTH = '800px';
 const RUNTIME_CONFIG_FIELDS = [
   {
     key: 'minPods',
-    labelKey: i18nT('admin_plugin:toolkit_runtime_config_min_pods'),
-    tipKey: i18nT('admin_plugin:toolkit_runtime_config_min_pods_tip'),
+    labelKey: i18nT('admin:toolkit_runtime_config_min_pods'),
+    tipKey: i18nT('admin:toolkit_runtime_config_min_pods_tip'),
     min: 0
   },
   {
     key: 'maxPods',
-    labelKey: i18nT('admin_plugin:toolkit_runtime_config_max_pods'),
-    tipKey: i18nT('admin_plugin:toolkit_runtime_config_max_pods_tip'),
+    labelKey: i18nT('admin:toolkit_runtime_config_max_pods'),
+    tipKey: i18nT('admin:toolkit_runtime_config_max_pods_tip'),
     min: 1
   },
   {
     key: 'podTimeout',
-    labelKey: i18nT('admin_plugin:toolkit_runtime_config_pod_timeout'),
-    tipKey: i18nT('admin_plugin:toolkit_runtime_config_pod_timeout_tip'),
+    labelKey: i18nT('admin:toolkit_runtime_config_pod_timeout'),
+    tipKey: i18nT('admin:toolkit_runtime_config_pod_timeout_tip'),
     min: 1
   },
   {
     key: 'maxConcurrentRequestsPerPod',
-    labelKey: i18nT('admin_plugin:toolkit_runtime_config_max_concurrent_requests_per_pod'),
-    tipKey: i18nT('admin_plugin:toolkit_runtime_config_max_concurrent_requests_per_pod_tip'),
+    labelKey: i18nT('admin:toolkit_runtime_config_max_concurrent_requests_per_pod'),
+    tipKey: i18nT('admin:toolkit_runtime_config_max_concurrent_requests_per_pod_tip'),
     min: 1
   }
 ] as const;
@@ -177,7 +177,7 @@ const SystemToolConfigModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t, i18n } = useClientTranslation(['app', 'admin_plugin']);
+  const { t, i18n } = useClientTranslation(['app', 'admin']);
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { register, reset, handleSubmit, setValue, watch } = useForm<UpdateSystemToolBodyType>();
@@ -288,14 +288,14 @@ const SystemToolConfigModal = ({
       const value = runtimeConfig[field.key];
       if (typeof value !== 'number' || !Number.isFinite(value)) {
         return Promise.reject(
-          t('admin_plugin:toolkit_runtime_config_invalid_number', {
+          t('admin:toolkit_runtime_config_invalid_number', {
             label: t(field.labelKey)
           })
         );
       }
       if (value < field.min) {
         return Promise.reject(
-          t('admin_plugin:toolkit_runtime_config_min_value', {
+          t('admin:toolkit_runtime_config_min_value', {
             label: t(field.labelKey),
             min: field.min
           })
@@ -303,7 +303,7 @@ const SystemToolConfigModal = ({
       }
       if (!Number.isInteger(value)) {
         return Promise.reject(
-          t('admin_plugin:toolkit_runtime_config_invalid_integer', {
+          t('admin:toolkit_runtime_config_invalid_integer', {
             label: t(field.labelKey)
           })
         );
@@ -312,7 +312,7 @@ const SystemToolConfigModal = ({
     }
 
     if (config.minPods > config.maxPods) {
-      return Promise.reject(t('admin_plugin:toolkit_runtime_config_min_pods_over_max_pods'));
+      return Promise.reject(t('admin:toolkit_runtime_config_min_pods_over_max_pods'));
     }
 
     return config;
@@ -905,7 +905,7 @@ const SystemToolConfigModal = ({
                 _selected={{ color: 'primary.600', borderBottomColor: 'primary.600' }}
                 fontWeight={'600'}
               >
-                {t('admin_plugin:toolkit_runtime_config')}
+                {t('admin:toolkit_runtime_config')}
               </Tab>
             </TabList>
 
@@ -919,7 +919,7 @@ const SystemToolConfigModal = ({
               <TabPanel px={0} pt={6} pb={0}>
                 {runtimeConfigSection || (
                   <Box color={'myGray.500'} fontSize={'sm'}>
-                    {t('admin_plugin:toolkit_no_runtime_config')}
+                    {t('admin:toolkit_no_runtime_config')}
                   </Box>
                 )}
               </TabPanel>
@@ -957,7 +957,7 @@ const SystemToolConfigModal = ({
               {showRuntimeConfig && tabIndex === 1 && (
                 <PopoverConfirm
                   type="info"
-                  content={t('admin_plugin:toolkit_reset_runtime_config_confirm')}
+                  content={t('admin:toolkit_reset_runtime_config_confirm')}
                   onConfirm={onResetRuntimeConfig}
                   Trigger={
                     <Button

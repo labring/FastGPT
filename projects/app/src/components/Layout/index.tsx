@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -54,10 +54,6 @@ const ActivityAdModal = dynamic(() => import('@/components/support/activity/Acti
 const ProModal = dynamic(() => import('@/components/ProTip/ProModal'), {
   ssr: false
 });
-const LicenseInput = dynamic(() => import('@/components/admin/License/Input'), {
-  ssr: false
-});
-
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
   '/login': true,
@@ -111,8 +107,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
   const checkedModelIdentityRef = useRef<string>();
 
-  // root 登录后检测 license 状态（开源版未激活时提示激活/购买商业版）
-  const [dismissLicenseModal, setDismissLicenseModal] = useState(false);
   const isRoot = userInfo?.username === 'root';
 
   useEffect(() => {
@@ -120,8 +114,18 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     void initLicenseData();
   }, [initLicenseData, isRoot, userInfo]);
 
-  // 检测完成前不弹窗，避免已有 license 时刷新页面闪烁激活弹窗
-  const showLicenseModal = isRoot && !licenseLoading && !licenseData && !dismissLicenseModal;
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !isRoot ||
+      licenseLoading ||
+      licenseData ||
+      router.pathname === '/admin/home'
+    ) {
+      return;
+    }
+    void router.replace('/admin/home');
+  }, [isRoot, licenseData, licenseLoading, router]);
 
   // Auto redeem coupon
   useCheckCoupon();
@@ -157,7 +161,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     if (userInfo?.username !== 'root') return;
     // 模型配置页会自行加载同一份数据；这里跳过，避免首屏重复请求。
-    // 旧路由 /config/model 已由 next.config redirect 到 /admin/config/modelProvider。
     if (router.pathname === '/admin/config/modelProvider') return;
 
     const identity = `${userInfo.team.teamId}:${userInfo.team.tmbId}:${modelLoginGeneration}`;
@@ -269,9 +272,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       )}
       {/* 企业认证 */}
       <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
-
-      {/* 开源版未激活 license 时，root 提示激活/购买商业版（可取消） */}
-      {showLicenseModal && <LicenseInput onClose={() => setDismissLicenseModal(true)} />}
 
       {/* 活动 */}
       <ActivityAdModal />

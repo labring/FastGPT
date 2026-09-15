@@ -32,13 +32,13 @@ const isLicenseExpiringSoon = (expiredTime?: string, licenseType?: string) => {
 /** 管理员首页的 License 概览，按设计稿展示租户信息、额度和授权能力。 */
 const AdminHome = () => {
   const { licenseData, licenseLoading } = useSystemStore();
-  const { t } = useClientTranslation('admin_plugin');
+  const { t } = useClientTranslation('admin');
   const [showLicenseInput, setShowLicenseInput] = useState(false);
   const isActivated = Boolean(licenseData) && !licenseLoading;
   const isExpiringSoon =
     isActivated && isLicenseExpiringSoon(licenseData?.expiredTime, licenseData?.licenseType);
   const limits = licenseData?.limits;
-  const company = licenseData?.company ?? t('admin_plugin:license_current_tenant');
+  const company = licenseData?.company ?? t('admin:license_current_tenant');
   const avatarText = useMemo(() => {
     const latin = company
       .match(/[A-Za-z]/g)
@@ -47,14 +47,14 @@ const AdminHome = () => {
     return (latin || company.slice(0, 2) || 'VI').toUpperCase();
   }, [company]);
   const capabilities = [
-    { label: t('admin_plugin:license_sso'), enabled: Boolean(licenseData?.functions?.sso) },
-    { label: t('admin_plugin:license_pay'), enabled: Boolean(licenseData?.functions?.pay) },
+    { label: t('admin:license_sso'), enabled: Boolean(licenseData?.functions?.sso) },
+    { label: t('admin:license_pay'), enabled: Boolean(licenseData?.functions?.pay) },
     {
-      label: t('admin_plugin:license_templates'),
+      label: t('admin:license_templates'),
       enabled: Boolean(licenseData?.functions?.customTemplates || licenseData?.functions?.portal)
     },
     {
-      label: t('admin_plugin:license_dataset_enhance'),
+      label: t('admin:license_dataset_enhance'),
       enabled: Boolean(licenseData?.functions?.datasetEnhance)
     }
   ];
@@ -70,10 +70,10 @@ const AdminHome = () => {
         borderColor="myGray.200"
       >
         <Box fontSize="16px" fontWeight="600" lineHeight="1.2" whiteSpace="nowrap">
-          {t('admin_plugin:license_admin_home')}
+          {t('admin:license_admin_home')}
         </Box>
         <Box color="myGray.500" fontSize="12px">
-          {t('admin_plugin:license_admin_home_description')}
+          {t('admin:license_admin_home_description')}
         </Box>
       </Flex>
 
@@ -101,7 +101,7 @@ const AdminHome = () => {
               </Flex>
               <Box minW={0}>
                 <Box color="myGray.500" fontSize="12px" mb={0.5}>
-                  {t('admin_plugin:license_tenant_name')}
+                  {t('admin:license_tenant_name')}
                 </Box>
                 <Flex alignItems="center" gap="10px" flexWrap="wrap">
                   <Box fontSize="24px" fontWeight="600" lineHeight="1.25" noOfLines={1}>
@@ -118,8 +118,8 @@ const AdminHome = () => {
                     whiteSpace="nowrap"
                   >
                     {licenseData?.licenseType === 'trial'
-                      ? t('admin_plugin:license_trial')
-                      : t('admin_plugin:license_business')}
+                      ? t('admin:license_trial')
+                      : t('admin:license_business')}
                   </Box>
                 </Flex>
               </Box>
@@ -148,14 +148,14 @@ const AdminHome = () => {
                   bg={isExpiringSoon ? 'orange.500' : isActivated ? 'primary.500' : 'red.500'}
                 />
                 {isExpiringSoon
-                  ? t('admin_plugin:license_expiring_soon')
+                  ? t('admin:license_expiring_soon')
                   : isActivated
-                    ? t('admin_plugin:license_active')
-                    : t('admin_plugin:license_inactive')}
+                    ? t('admin:license_active')
+                    : t('admin:license_inactive')}
               </Box>
               <Flex alignItems="center" gap={4}>
                 <Box color="myGray.500" fontSize="12px">
-                  {t('admin_plugin:license_expires_at')}
+                  {t('admin:license_expires_at')}
                 </Box>
                 <Box fontSize="24px" fontWeight="500" lineHeight="1">
                   {formatDate(licenseData?.expiredTime)}
@@ -173,14 +173,14 @@ const AdminHome = () => {
               leftIcon={<MyIcon name="common/settingLight" w="18px" />}
               onClick={() => setShowLicenseInput(true)}
             >
-              {isActivated ? t('admin_plugin:license_change') : t('admin_plugin:license_activate')}
+              {isActivated ? t('admin:license_change') : t('admin:license_activate')}
             </Button>
           </Grid>
         </Box>
 
         <Box mt={4}>
           <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
-            {t('admin_plugin:license_limits')}
+            {t('admin:license_limits')}
           </Box>
           <Grid
             h="98px"
@@ -191,9 +191,9 @@ const AdminHome = () => {
             p={6}
           >
             {[
-              [t('admin_plugin:license_max_users'), limits?.maxUsers],
-              [t('admin_plugin:license_max_apps'), limits?.maxApps],
-              [t('admin_plugin:license_max_datasets'), limits?.maxDatasets]
+              [t('admin:license_max_users'), limits?.maxUsers],
+              [t('admin:license_max_apps'), limits?.maxApps],
+              [t('admin:license_max_datasets'), limits?.maxDatasets]
             ].map(([label, value], index) => (
               <GridItem
                 key={label}
@@ -205,9 +205,7 @@ const AdminHome = () => {
                   {label}
                 </Box>
                 <Box fontSize="24px" fontWeight="600">
-                  {typeof value === 'number' && value > 0
-                    ? value
-                    : t('admin_plugin:license_unlimited')}
+                  {typeof value === 'number' && value > 0 ? value : t('admin:license_unlimited')}
                 </Box>
               </GridItem>
             ))}
@@ -216,7 +214,7 @@ const AdminHome = () => {
 
         <Box mt={4}>
           <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
-            {t('admin_plugin:license_capabilities')}
+            {t('admin:license_capabilities')}
           </Box>
           <Grid templateColumns={'1fr 1fr'} gap={'10px'}>
             {capabilities.map(({ label, enabled }) => (

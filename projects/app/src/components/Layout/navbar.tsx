@@ -105,9 +105,8 @@ const Navbar = ({ unread }: { unread: number }) => {
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
               link: '/admin/dashboard',
-              // 管理员区域路由前缀匹配；旧 /config 路由已重定向，activeLink 保留以兼容重定向生效前的瞬时路径
               activePrefix: ['/admin'],
-              activeLink: ['/config/plugin/tool', '/config/model']
+              activeLink: [] as string[]
             }
           ]
         : [])

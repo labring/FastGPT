@@ -1,6 +1,6 @@
 import type { LicenseDataType } from '@fastgpt/global/common/system/types';
 import { Box, Flex, Tag } from '@chakra-ui/react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import React from 'react';
 
 /** 决策版 functions 中文展示清单（顺序即展示顺序） */
@@ -32,7 +32,7 @@ const LicenseData = ({ licenseData }: { licenseData?: LicenseDataType }) => {
   return (
     <Box p={4} pb={3}>
       <Flex gap={2} alignItems={'center'}>
-        <Avatar src="/icon/user.svg" w={6} h={6} />
+        <MyIcon name="support/user/userLight" w={6} h={6} color="primary.600" />
         <Box fontSize={'sm'} color={'myGray.900'}>
           {licenseData.company}
         </Box>
