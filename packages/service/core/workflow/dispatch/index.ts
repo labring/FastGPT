@@ -56,6 +56,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
+import { createLangfuseWorkflowTracing } from '../../../common/langfuse/workflow';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
@@ -873,6 +874,10 @@ export class WorkflowQueue {
     result: NodeResponseCompleteType;
   }> {
     const mode = this.isDebugMode ? 'test' : this.data.mode;
+    const langfuseTracing = createLangfuseWorkflowTracing({
+      isRootRuntime: this.isRootRuntime,
+      mode
+    });
     const stepMetricAttributes = {
       nodeType: node.flowNodeType,
       mode
@@ -1094,6 +1099,14 @@ export class WorkflowQueue {
         });
       }
 
+      langfuseTracing.recordStep({
+        span: stepSpan,
+        nodeType: node.flowNodeType,
+        input: params,
+        output: dispatchRes.data,
+        response: formatCurrentNodeResponse
+      });
+
       // Error
       if (currentNodeError !== undefined) {
         if (stepSpan) {
@@ -1148,7 +1161,8 @@ export class WorkflowQueue {
               tracerName: 'fastgpt.workflow',
               attributes: {
                 'fastgpt.workflow.node.type': node.flowNodeType,
-                'fastgpt.workflow.mode': mode
+                'fastgpt.workflow.mode': mode,
+                ...langfuseTracing.getStepAttributes(String(this.data.runningAppInfo.sourceId))
               }
             },
             async (stepSpan) => executeNode(stepSpan)
@@ -1587,6 +1601,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
   const currentWorkflowDispatchDeep = previousWorkflowDispatchDeep + 1;
   data.workflowDispatchDeep = currentWorkflowDispatchDeep;
   const isRootRuntime = currentWorkflowDispatchDeep === 1;
+  const langfuseTracing = createLangfuseWorkflowTracing({ isRootRuntime, mode: data.mode });
   if (currentWorkflowDispatchDeep > 20) {
     data.workflowDispatchDeep = previousWorkflowDispatchDeep;
     return {
@@ -1624,7 +1639,14 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             'fastgpt.workflow.app_version': data.apiVersion,
             'fastgpt.workflow.is_tool_call': !!data.isToolCall,
             'fastgpt.workflow.node_count': data.runtimeNodes.length,
-            'fastgpt.workflow.edge_count': data.runtimeEdges.length
+            'fastgpt.workflow.edge_count': data.runtimeEdges.length,
+            ...langfuseTracing.getTraceAttributes({
+              sessionId: data.chatId ?? '',
+              userId: String(data.runningUserInfo.tmbId),
+              appId: String(data.runningAppInfo.sourceId),
+              appName: data.runningAppInfo.name,
+              input: data.query
+            })
           }
         },
         async (workflowSpan) => {
@@ -1706,6 +1728,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               !!workflowQueue.nodeInteractiveResponse
             );
             workflowSpan.setStatus({ code: SpanStatusCode.OK });
+
+            langfuseTracing.recordOutput(workflowSpan, workflowQueue.chatAssistantResponse);
 
             if (isRootRuntime) {
               data.workflowStreamResponse?.(workflowSseEvent.workflowDuration(durationSeconds));

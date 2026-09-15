@@ -175,6 +175,7 @@ export type SystemEnvType = {
   hnswMaxScanTuples: number;
 
   customPdfParse?: customPdfParseType;
+  langfuse?: LangfuseConfigType;
   fileUrlWhitelist?: string[];
   customDomain?: customDomainType;
   workflowHttpNode?: {
@@ -214,6 +215,12 @@ export type customPdfParseType = {
   textinAppId?: string;
   textinSecretCode?: string;
   price?: number;
+};
+
+export type LangfuseConfigType = {
+  secretKey?: string;
+  publicKey?: string;
+  baseUrl?: string;
 };
 
 export type LicenseDataType = {

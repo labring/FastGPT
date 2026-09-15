@@ -40,6 +40,7 @@
     "@emotion/react": "catalog:",
     "@emotion/styled": "catalog:",
     "@fastgpt-sdk/otel": "workspace:*",
+    "@langfuse/otel": "5.11.1",
     "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/dal": "workspace:*",
