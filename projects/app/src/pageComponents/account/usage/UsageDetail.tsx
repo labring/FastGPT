@@ -16,64 +16,51 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
     [usage.list]
   );
 
-  const {
-    hasModel,
-    hasToken,
-    hasInputToken,
-    hasOutputToken,
-    hasCharsLen,
-    hasDuration,
-    hasPages,
-    hasCount
-  } = useMemo(() => {
-    let hasModel = false;
-    let hasToken = false;
-    let hasInputToken = false;
-    let hasOutputToken = false;
-    let hasCharsLen = false;
-    let hasDuration = false;
-    let hasPages = false;
-    let hasCount = false;
+  const { hasModel, hasInputToken, hasOutputToken, hasCharsLen, hasDuration, hasPages, hasCount } =
+    useMemo(() => {
+      let hasModel = false;
+      let hasInputToken = false;
+      let hasOutputToken = false;
+      let hasCharsLen = false;
+      let hasDuration = false;
+      let hasPages = false;
+      let hasCount = false;
 
-    usage.list.forEach((item) => {
-      if (item.modelId !== undefined || item.model !== undefined) {
-        hasModel = true;
-      }
+      usage.list.forEach((item) => {
+        if (item.modelId !== undefined || item.model !== undefined) {
+          hasModel = true;
+        }
 
-      if (typeof item.tokens === 'number') {
-        hasToken = true;
-      }
-      if (typeof item.inputTokens === 'number') {
-        hasInputToken = true;
-      }
-      if (typeof item.outputTokens === 'number') {
-        hasOutputToken = true;
-      }
-      if (typeof item.charsLength === 'number') {
-        hasCharsLen = true;
-      }
-      if (typeof item.duration === 'number') {
-        hasDuration = true;
-      }
-      if (typeof item.pages === 'number') {
-        hasPages = true;
-      }
-      if (typeof item.count === 'number') {
-        hasCount = true;
-      }
-    });
+        if (typeof item.inputTokens === 'number') {
+          hasInputToken = true;
+        }
+        if (typeof item.outputTokens === 'number') {
+          hasOutputToken = true;
+        }
+        if (typeof item.charsLength === 'number') {
+          hasCharsLen = true;
+        }
+        if (typeof item.duration === 'number') {
+          hasDuration = true;
+        }
+        if (typeof item.pages === 'number') {
+          hasPages = true;
+        }
+        if (typeof item.count === 'number') {
+          hasCount = true;
+        }
+      });
 
-    return {
-      hasModel,
-      hasToken,
-      hasInputToken,
-      hasOutputToken,
-      hasCharsLen,
-      hasDuration,
-      hasPages,
-      hasCount
-    };
-  }, [usage.list]);
+      return {
+        hasModel,
+        hasInputToken,
+        hasOutputToken,
+        hasCharsLen,
+        hasDuration,
+        hasPages,
+        hasCount
+      };
+    }, [usage.list]);
 
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('account_usage:usage_detail')} w={'700px'}>

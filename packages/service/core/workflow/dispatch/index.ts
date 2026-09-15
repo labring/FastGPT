@@ -20,7 +20,10 @@ import type {
 } from '../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { childrenResponseFields } from '@fastgpt/global/core/chat/utils/mergeNode';
+import {
+  childrenResponseFields,
+  sumNodeResponseTokens
+} from '@fastgpt/global/core/chat/utils/mergeNode';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
@@ -752,6 +755,10 @@ export class WorkflowQueue {
   };
 
   private usagePush(usages: ChatNodeUsageType[]) {
+    // 空列表直接跳过：下游 pushUsageItemsTimer 用 MongoUsageItem.create(..., { ordered: true })
+    // 且吞掉错误，空批次既无意义又可能连带丢掉同一 tick 的其它账目。
+    if (usages.length === 0) return;
+
     // 暂时只有 root runtime 需要 push usage，child 的统一给到 root 去推送
     if (this.isRootRuntime) {
       if (this.data.usageId) {
@@ -1077,6 +1084,35 @@ export class WorkflowQueue {
       const nodeResponsesForDisplay = this.data.isToolCall
         ? filterToolCallNodeResponses(nodeResponsesForWrite)
         : nodeResponsesForWrite;
+
+      // 工具调用里被过滤掉的错误详情不会入库，app chat log 遍历响应树时看不到它们，
+      // 可这些 LLM 调用确实消耗了 token。这里把「写入集 - 展示集」的差额补到当前节点
+      // 自身的响应上兜底：被过滤的响应已不会成为 row，补在父响应上不会重复累计。
+      // 不能改成比较两者长度：过滤同时发生在顶层和嵌套 children 里，只过滤嵌套子响应时
+      // 顶层长度根本不变。只补 token 不动 totalPoints —— 这些调用的积分已走 usage 链路
+      // 计过费，改了会重复计分。
+      if (this.data.isToolCall) {
+        const writeTokens = sumNodeResponseTokens(nodeResponsesForWrite);
+        const displayTokens = sumNodeResponseTokens(nodeResponsesForDisplay);
+        const lostInputTokens = writeTokens.inputTokens - displayTokens.inputTokens;
+        const lostOutputTokens = writeTokens.outputTokens - displayTokens.outputTokens;
+
+        if (lostInputTokens > 0 || lostOutputTokens > 0) {
+          // 展示集里的响应是过滤阶段的浅拷贝，必须一并改拷贝本身，否则改不到 sink 入库的那份；
+          // 原始对象留着供 SSE/队列结果使用，两者对象图独立，各改一次不会互相叠加。
+          // 用 Set 按引用去重：哪天过滤函数改成"无需过滤时原样返回"，同对象会被加两次。
+          new Set([
+            nodeResponsesForDisplay.find(
+              (response) => response.id === formatCurrentNodeResponse?.id
+            ),
+            formatCurrentNodeResponse
+          ]).forEach((target) => {
+            if (!target) return;
+            target.inputTokens = (target.inputTokens || 0) + lostInputTokens;
+            target.outputTokens = (target.outputTokens || 0) + lostOutputTokens;
+          });
+        }
+      }
 
       // 子节点只产出响应；请求级 sink 统一负责写库、V2 实时发布和 Share 字段裁剪。
       // 工具调用中的错误响应已经从 nodeResponsesForDisplay 移除，仍由上面的 summary 保留。

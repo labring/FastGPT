@@ -71,7 +71,9 @@ describe('dispatchRunPlugin', () => {
   beforeEach(() => {
     runWorkflowMock.mockReset();
     getSystemToolWorkflowRuntimeMock.mockReset();
-    computedAppToolUsageMock.mockReset().mockResolvedValue(1);
+    computedAppToolUsageMock
+      .mockReset()
+      .mockResolvedValue({ totalPoints: 1, fixedPoints: 1, childrenBillable: false });
   });
 
   it.each([

@@ -4,9 +4,11 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   appendNodeResponseByParent,
   childrenResponseFields,
+  collectNodeResponseTokens,
   getChildrenResponses,
   getNodeResponseIdentityKey,
-  mergeNodeResponseDataByIdAndParent
+  mergeNodeResponseDataByIdAndParent,
+  sumNodeResponseTokens
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 
 const createNodeResponse = (
@@ -794,5 +796,171 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
     expect(result[0].childTotalPoints).toBeUndefined();
     expect(result[0].childrenResponses?.[0].childTotalPoints).toBeUndefined();
     expect(result[1].childTotalPoints).toBeUndefined();
+  });
+});
+
+describe('collectNodeResponseTokens', () => {
+  const collect = (responses: ChatHistoryItemResType[]) => {
+    const owners = new Map<string, string>();
+    const total = { inputTokens: 0, outputTokens: 0 };
+
+    responses.forEach((response, index) => {
+      collectNodeResponseTokens(response, `owner-${index}`, owners, total);
+    });
+
+    return total;
+  };
+
+  it('sums the canonical token fields of one response', () => {
+    expect(
+      collect([
+        createNodeResponse({
+          id: 'chat',
+          inputTokens: 100,
+          outputTokens: 20,
+          toolCallInputTokens: 5,
+          toolCallOutputTokens: 6,
+          embeddingTokens: 7,
+          reRankInputTokens: 8
+        })
+      ])
+    ).toEqual({ inputTokens: 120, outputTokens: 26 });
+  });
+
+  it('includes deepSearchResult because it has no child row of its own', () => {
+    expect(
+      collect([
+        createNodeResponse({
+          id: 'search',
+          deepSearchResult: { model: 'deep', inputTokens: 30, outputTokens: 4 }
+        })
+      ])
+    ).toEqual({ inputTokens: 30, outputTokens: 4 });
+  });
+
+  it('excludes legacy fields that duplicate input+output', () => {
+    expect(
+      collect([
+        createNodeResponse({
+          id: 'legacy',
+          tokens: 999,
+          extensionTokens: 888,
+          inputTokens: 10,
+          outputTokens: 2,
+          // compressTextAgent 是同一行自身 flat 字段的副本
+          compressTextAgent: { inputTokens: 10, outputTokens: 2, totalPoints: 1 }
+        })
+      ])
+    ).toEqual({ inputTokens: 10, outputTokens: 2 });
+  });
+
+  it('walks inline child responses', () => {
+    expect(
+      collect([
+        createNodeResponse({
+          id: 'parent',
+          inputTokens: 1,
+          childrenResponses: [
+            createNodeResponse({
+              id: 'child',
+              inputTokens: 2,
+              toolDetail: [createNodeResponse({ id: 'grandchild', inputTokens: 3 })]
+            })
+          ]
+        })
+      ])
+    ).toEqual({ inputTokens: 6, outputTokens: 0 });
+  });
+
+  it('counts a response once when it is inlined and also passed as its own row', () => {
+    const inlined = createNodeResponse({ id: 'shared', inputTokens: 40 });
+
+    expect(
+      collect([
+        createNodeResponse({ id: 'parent', childrenResponses: [inlined] }),
+        createNodeResponse({ id: 'shared', parentId: 'parent', inputTokens: 40 })
+      ])
+    ).toEqual({ inputTokens: 40, outputTokens: 0 });
+  });
+
+  it('accumulates into the caller total, leaving overwrite semantics to the caller', () => {
+    const owners = new Map<string, string>();
+    const total = { inputTokens: 0, outputTokens: 0 };
+
+    collectNodeResponseTokens(
+      createNodeResponse({ id: 'chat', inputTokens: 10 }),
+      'chat-owner',
+      owners,
+      total
+    );
+    collectNodeResponseTokens(
+      createNodeResponse({ id: 'chat', inputTokens: 45 }),
+      'chat-owner',
+      owners,
+      total
+    );
+
+    // 本函数只负责累加进传入的 total。同一 ownerKey 的"后到覆盖先到"由调用方保证：
+    // collectSummary 每行新建一个 total 再赋值给该 identity 的贡献，因此 10 不会残留。
+    expect(total.inputTokens).toBe(55);
+
+    const perRow = { inputTokens: 0, outputTokens: 0 };
+    collectNodeResponseTokens(
+      createNodeResponse({ id: 'chat', inputTokens: 45 }),
+      'chat-owner',
+      owners,
+      perRow
+    );
+    // 重新遍历同一响应（已登记的 id 属于同一 owner）仍然会计入，调用方据此覆盖旧值。
+    expect(perRow.inputTokens).toBe(45);
+  });
+
+  it('counts an id-less response on every traversal since it cannot be claimed', () => {
+    // 已知限制：无 id 的响应无法登记归属。生产行由 createChatItemResponseRows 兜底分配 id，
+    // 只有旧数据/异常输入里的内联 child 会缺 id，这里把行为固化下来避免被误改。
+    expect(
+      collect([
+        createNodeResponse({
+          id: 'first',
+          childrenResponses: [createNodeResponse({ id: '', inputTokens: 5 })]
+        }),
+        createNodeResponse({
+          id: 'second',
+          childrenResponses: [createNodeResponse({ id: '', inputTokens: 5 })]
+        })
+      ])
+    ).toEqual({ inputTokens: 10, outputTokens: 0 });
+  });
+});
+
+describe('sumNodeResponseTokens', () => {
+  it('sums a list of roots, including their inline subtrees', () => {
+    expect(
+      sumNodeResponseTokens([
+        createNodeResponse({
+          id: 'chat',
+          inputTokens: 10,
+          outputTokens: 2,
+          childrenResponses: [createNodeResponse({ id: 'compress', inputTokens: 5 })]
+        }),
+        createNodeResponse({ id: 'search', embeddingTokens: 7, reRankInputTokens: 3 })
+      ])
+    ).toEqual({ inputTokens: 25, outputTokens: 2 });
+  });
+
+  it('counts an inlined response once even when it is also a row of the same list', () => {
+    expect(
+      sumNodeResponseTokens([
+        createNodeResponse({
+          id: 'parent',
+          childrenResponses: [createNodeResponse({ id: 'shared', inputTokens: 40 })]
+        }),
+        createNodeResponse({ id: 'shared', parentId: 'parent', inputTokens: 40 })
+      ])
+    ).toEqual({ inputTokens: 40, outputTokens: 0 });
+  });
+
+  it('returns zeroed totals for an empty list', () => {
+    expect(sumNodeResponseTokens([])).toEqual({ inputTokens: 0, outputTokens: 0 });
   });
 });

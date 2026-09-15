@@ -50,7 +50,9 @@ const ChatLogSchema = new Schema({
     type: Number,
     default: 0
   },
-  // 累计 token 消耗，口径与 totalPoints 一致：只统计根节点响应
+  // 累计 token 消耗。口径与 totalPoints 不同：points 由容器节点自身聚合子节点、只取根节点，
+  // token 从不聚合，需要遍历全部响应实例（见 WorkflowNodeResponseWriter.collectSummary）。
+  // 历史记录没有这两个字段，读取侧按 0 兜底。
   totalInputTokens: {
     type: Number,
     default: 0

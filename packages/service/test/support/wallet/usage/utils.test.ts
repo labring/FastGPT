@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import {
+  buildFlowUsageItems,
+  formatModelChars2Points
+} from '@fastgpt/service/support/wallet/usage/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
 
@@ -106,5 +109,51 @@ describe('formatModelChars2Points', () => {
     // inputTokens:200 匹配第二梯度 (inputPrice:5, outputPrice:10)
     // 5 * (2000/1000) + 10 * (100/1000) = 10 + 1 = 11
     expect(result.totalPoints).toBe(11);
+  });
+});
+
+describe('buildFlowUsageItems', () => {
+  it('逐条保留 token，并按前缀区分每次子流程执行', () => {
+    const items = buildFlowUsageItems({
+      usages: [
+        { moduleName: 'chat', totalPoints: 3, inputTokens: 100, outputTokens: 20 },
+        { moduleName: 'search', totalPoints: 4, inputTokens: 50, outputTokens: 0 }
+      ] as any,
+      moduleNamePrefix: 'loop-1'
+    });
+
+    expect(items).toEqual([
+      { moduleName: 'loop-1-chat', totalPoints: 3, inputTokens: 100, outputTokens: 20 },
+      { moduleName: 'loop-1-search', totalPoints: 4, inputTokens: 50, outputTokens: 0 }
+    ]);
+  });
+
+  it('billable=false 时金额归零但 token 照常保留', () => {
+    const items = buildFlowUsageItems({
+      usages: [{ moduleName: 'chat', totalPoints: 9, inputTokens: 100, outputTokens: 20 }] as any,
+      billable: false,
+      moduleNamePrefix: 'tool'
+    });
+
+    expect(items).toEqual([
+      { moduleName: 'tool-chat', totalPoints: 0, inputTokens: 100, outputTokens: 20 }
+    ]);
+  });
+
+  it('moduleName 缺失时退回前缀本身，不出现前缀自我重复', () => {
+    const items = buildFlowUsageItems({
+      usages: [{ totalPoints: 1, inputTokens: 10, outputTokens: 1 }] as any,
+      moduleNamePrefix: 'loop-1'
+    });
+
+    expect(items[0].moduleName).toBe('loop-1');
+  });
+
+  it('无前缀且无 moduleName 时给出兜底名，避免整批 usage item 因缺字段创建失败', () => {
+    const items = buildFlowUsageItems({
+      usages: [{ totalPoints: 1 }] as any
+    });
+
+    expect(items[0].moduleName).toBe('usage');
   });
 });
