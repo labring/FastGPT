@@ -78,6 +78,12 @@ const DatasetCollectionSchema = new Schema({
 
   forbid: Boolean,
 
+  // Permission: 继承态标记（默认 true = 快照 = merge(父级有效 clbs, 自身 clbs)）
+  inheritPermission: {
+    type: Boolean,
+    default: true
+  },
+
   // Parse settings
   customPdfParse: Boolean,
   apiFileParentId: String,
@@ -103,6 +109,16 @@ defineIndex(DatasetCollectionSchema, {
     datasetId: 1,
     parentId: 1,
     updateTime: -1
+  }
+});
+
+// scan subtree by inherit state (permission sync / collection list)
+defineIndex(DatasetCollectionSchema, {
+  key: {
+    teamId: 1,
+    datasetId: 1,
+    parentId: 1,
+    inheritPermission: 1
   }
 });
 

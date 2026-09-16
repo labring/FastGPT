@@ -473,6 +473,42 @@ export type ResumeDatasetInheritPermissionBody = z.infer<
   typeof ResumeDatasetInheritPermissionBodySchema
 >;
 
+/** 启用 collection 级权限：物化该 dataset 全部 collection 快照后置位开关。 */
+export const EnableCollectionPermissionBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type EnableCollectionPermissionBody = z.infer<typeof EnableCollectionPermissionBodySchema>;
+
+export const EnableCollectionPermissionResponseSchema = z.object({
+  collectionCount: z.number().meta({
+    description: '已物化的 collection 数量'
+  })
+});
+export type EnableCollectionPermissionResponse = z.infer<
+  typeof EnableCollectionPermissionResponseSchema
+>;
+
+/** 关闭 collection 级权限：清理该 dataset 全部 collection 权限配置后置位开关。 */
+export const DisableCollectionPermissionBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type DisableCollectionPermissionBody = z.infer<typeof DisableCollectionPermissionBodySchema>;
+
+export const DisableCollectionPermissionResponseSchema = z.object({
+  collectionCount: z.number().meta({
+    description: '已清理的 collection 数量'
+  })
+});
+export type DisableCollectionPermissionResponse = z.infer<
+  typeof DisableCollectionPermissionResponseSchema
+>;
+
 /* ============================================================================
  * API: 创建知识库文件夹
  * Route: POST /api/core/dataset/folder/create
