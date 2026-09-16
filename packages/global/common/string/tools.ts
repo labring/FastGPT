@@ -19,7 +19,10 @@ export const simpleText = (text = '') => {
   text = text.trim();
   // `[^\S\r\n]` \u662f\u201c\u9664\u6362\u884c\u5916\u7684\u7a7a\u767d\u201d\uff1b`[\s&&[^\n]]` \u7684\u4ea4\u96c6\u5199\u6cd5\u53ea\u5728 v \u6807\u5fd7\u4e0b\u6210\u7acb\uff0c
   // \u666e\u901a\u6b63\u5219\u4f1a\u628a\u672b\u5c3e\u7684 `]` \u5f53\u5b57\u9762\u91cf\uff0c\u53cd\u800c\u4f1a\u5220\u6389\u6b63\u6587\u91cc\u7684 `]]`\u3002
-  text = text.replace(/([\u4e00-\u9fa5])[^\S\r\n]+([\u4e00-\u9fa5])/g, '$1$2');
+  // Matching the character on the right consumes it, so the next run of blanks
+  // has no Chinese character in front of it any more and only every second
+  // gap is closed. Look ahead instead of capturing, so every gap is seen.
+  text = text.replace(/(?<=[\u4e00-\u9fa5])[^\S\r\n]+(?=[\u4e00-\u9fa5])/g, '');
   text = text.replace(/\r\n|\r/g, '\n');
   text = text.replace(/\n{3,}/g, '\n\n');
   // \u53ea\u538b\u7f29\u6b63\u6587\u5b57\u7b26\u4e4b\u95f4\u7684\u591a\u4f59\u7a7a\u767d\uff0c\u4fdd\u7559\u884c\u9996\u7f29\u8fdb\u548c Markdown \u786c\u6362\u884c\u6240\u9700\u7684\u884c\u5c3e\u7a7a\u683c\u3002
