@@ -47,6 +47,7 @@ import {
 } from '@fastgpt/service/support/permission/collection/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 
@@ -137,10 +138,13 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   let collectionIdFilter = {};
   let groupIds: string[] = [];
   let orgIds: string[] = [];
+  const tmbInfo = await getTmbInfoByTmbId({ tmbId });
+  const isTeamOwner = String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
   const shortCircuitCollectionPermission = await canShortCircuitCollectionPermission({
     teamId,
     datasetIds: [datasetId],
-    tmbId
+    tmbId,
+    tmbInfo
   });
   if (!shortCircuitCollectionPermission) {
     const candidates = await MongoDatasetCollection.find(
@@ -245,7 +249,9 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
 
     return new CollectionPermission({
       role: permission.role === OwnerRoleVal ? ManageRoleVal : permission.role,
-      isOwner: String(item.tmbId) === tmbId
+      // 团队 owner 恒 owner；否则仅 collection.tmbId 本人（与 authDatasetCollection 一致）。
+      // isOwner=true 时 Permission 内部把 role 置为 OwnerRoleVal，上面的 manage 兜底只对非团队 owner 生效。
+      isOwner: isTeamOwner || String(item.tmbId) === tmbId
     });
   };
 

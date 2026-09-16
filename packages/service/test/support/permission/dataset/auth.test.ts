@@ -70,9 +70,14 @@ import {
   authDatasetCollectionCreate
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
+import type { NodeHttpRequest } from '@fastgpt/service/types/http';
 
 const datasetId = '507f1f77bcf86cd799439011';
 const collectionId = '507f1f77bcf86cd799439012';
+
+// parseHeaderCert 在本文件中被 mock，req 只作占位；IncomingMessage 无法在测试内构造完整，
+// 故用显式断言给出最小占位对象。
+const mockReq = {} as unknown as NodeHttpRequest;
 
 const mockDatasetQuery = (dataset: Record<string, any>) => {
   mockFindDataset.mockReturnValue({
@@ -275,6 +280,69 @@ describe('authDatasetCollection', () => {
     });
 
     expect(result.permission.role).toBe(ManageRoleVal);
+    expect(result.permission.checkPer(OwnerPermissionVal)).toBe(false);
+    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+  });
+
+  it('grants owner permission to the team owner on a collection created by another member', async () => {
+    // 团队 owner（permission.isOwner=true）+ collection 由他人创建 + dataset 已启用
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-other'
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      collectionPermissionEnabled: true
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    const result = await authDatasetCollection({
+      req: mockReq,
+      authToken: true,
+      collectionId,
+      per: OwnerPermissionVal
+    });
+
+    expect(result.permission.isOwner).toBe(true);
+    expect(result.permission.role).toBe(OwnerRoleVal);
+    expect(result.permission.checkPer(OwnerPermissionVal)).toBe(true);
+    // 团队 owner 短路，未走物化快照解析
+    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+  });
+
+  it('caps a team admin who does not own the collection to manage', async () => {
+    // 团队管理员不是 owner：与 app/dataset/skill 的 tmbPer.isOwner 判定一致
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false, hasManagePer: true }
+    });
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-other'
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      collectionPermissionEnabled: true
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+
+    const result = await authDatasetCollection({
+      req: mockReq,
+      authToken: true,
+      collectionId,
+      per: ReadPermissionVal
+    });
+
+    expect(result.permission.role).toBe(ManageRoleVal);
+    expect(result.permission.isOwner).toBe(false);
     expect(result.permission.checkPer(OwnerPermissionVal)).toBe(false);
     expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
   });

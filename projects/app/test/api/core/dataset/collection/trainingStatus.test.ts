@@ -20,6 +20,39 @@ import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
 describe('collection training status api', () => {
+  it('grants collection owner permission to the team owner in the list response', async () => {
+    const users = await getFakeUsers(1);
+    const member = users.members[0]; // 非团队 owner/管理员的普通成员
+    const dataset = await MongoDataset.create({
+      name: 'team-owner-permission',
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test'
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'owned-by-member',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: users.owner.teamId,
+      tmbId: member.tmbId,
+      datasetId: dataset._id
+    });
+
+    const response = await Call(listHandler, {
+      auth: users.owner,
+      body: { datasetId: dataset._id, pageSize: 10, offset: 0, filterTags: [] }
+    });
+
+    expect(response.code).toBe(200);
+    expect(response.data.list).toHaveLength(1);
+    expect(response.data.list[0]._id).toEqual(String(collection._id));
+    // 团队 owner 恒有资源 owner 权（与 app/dataset/skill 一致），即使 collection 由他人创建
+    expect(response.data.list[0].permission).toMatchObject({
+      isOwner: true,
+      hasManagePer: true
+    });
+  });
+
   it('returns each collection effective permission instead of the dataset permission', async () => {
     const users = await getFakeUsers(1);
     const member = users.members[0];
