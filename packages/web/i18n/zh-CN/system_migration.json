@@ -88,10 +88,10 @@
   "migrations.20260907_migrate_dataset_tags_v2.datasets": "整理知识库标签定义",
   "migrations.20260907_migrate_dataset_tags_v2.collections": "迁移 Collection 标签值",
   "migrations.20260907_migrate_dataset_tags_v2.validation": "校验标签迁移结果",
-  "migrations.20260909_backfill_app_resource_snapshots.name": "回填应用资源快照",
-  "migrations.20260909_backfill_app_resource_snapshots.description": "为历史应用版本回填资源快照和正式版本指针，并为没有版本的应用补建正式版本。",
-  "migrations.20260909_backfill_app_resource_snapshots.versions": "回填应用版本资源快照",
-  "migrations.20260909_backfill_app_resource_snapshots.apps": "回填应用正式版本指针",
-  "migrations.20260909_backfill_app_resource_snapshots.validation": "校验应用资源迁移结果",
-  "migrations.20260909_backfill_app_resource_snapshots.result": "已检查并迁移 {{versionsProcessedCount}} 个应用版本和 {{appsProcessedCount}} 个应用。"
+  "migrations.20260916_backfill_app_resource_snapshots.name": "回填应用资源快照",
+  "migrations.20260916_backfill_app_resource_snapshots.description": "为历史应用版本回填资源快照和正式版本指针，并为没有版本的应用补建正式版本。",
+  "migrations.20260916_backfill_app_resource_snapshots.versions": "回填应用版本资源快照",
+  "migrations.20260916_backfill_app_resource_snapshots.apps": "回填应用正式版本指针",
+  "migrations.20260916_backfill_app_resource_snapshots.validation": "校验应用资源迁移结果",
+  "migrations.20260916_backfill_app_resource_snapshots.result": "已检查并迁移 {{versionsProcessedCount}} 个应用版本和 {{appsProcessedCount}} 个应用。"
 }

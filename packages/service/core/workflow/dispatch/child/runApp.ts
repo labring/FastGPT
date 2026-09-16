@@ -16,9 +16,8 @@ import { getNodeErrResponse, getHistories } from '../utils';
 import { getWorkflowFileVariableInputs, WorkflowVariableState } from '../utils/variables';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../utils/context';
-import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
+import { loadChildWorkflowWithResource } from '../../utils/resource';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRuntimeNodeResponseSummary } from '../utils';
 
@@ -73,21 +72,13 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   }
 
   try {
-    const appData = await loadWorkflowAppResource({
+    const { appData, childVersion, resourceContext } = await loadChildWorkflowWithResource({
       appId,
+      versionId: version,
       tmbId: props.runningUserInfo.tmbId,
       type: 'agent'
     });
-    const childVersion = await getAppVersionById({
-      appId,
-      versionId: version,
-      app: appData
-    });
     const { nodes, edges, chatConfig } = childVersion;
-    const resourceContext = await createWorkflowChildResourceContext(
-      childVersion.resources,
-      String(appData.teamId)
-    );
 
     const childStreamResponse = system_forbid_stream ? false : props.stream;
     // Auto line

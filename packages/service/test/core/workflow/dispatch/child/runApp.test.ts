@@ -5,8 +5,7 @@ import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/uti
 
 const mocks = vi.hoisted(() => ({
   runWorkflow: vi.fn(),
-  loadWorkflowAppResource: vi.fn(),
-  getAppVersionById: vi.fn(),
+  loadChildWorkflowWithResource: vi.fn(),
   getUserChatInfo: vi.fn()
 }));
 
@@ -15,12 +14,7 @@ vi.mock('../../../../../core/workflow/dispatch/index', () => ({
 }));
 
 vi.mock('../../../../../core/workflow/utils/resource', () => ({
-  loadWorkflowAppResource: (args: any) => mocks.loadWorkflowAppResource(args),
-  createWorkflowChildResourceContext: vi.fn(async () => ({}))
-}));
-
-vi.mock('../../../../../core/app/version/controller', () => ({
-  getAppVersionById: (args: any) => mocks.getAppVersionById(args)
+  loadChildWorkflowWithResource: (args: any) => mocks.loadChildWorkflowWithResource(args)
 }));
 
 vi.mock('../../../../../support/user/team/utils', () => ({
@@ -48,18 +42,21 @@ describe('dispatchRunAppNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getUserChatInfo.mockResolvedValue({ externalProvider: undefined });
-    mocks.loadWorkflowAppResource.mockResolvedValue({
-      _id: 'child-app-id',
-      name: 'Child App',
-      avatar: 'child-avatar',
-      teamId: 'child-team-id',
-      tmbId: 'child-owner-tmb'
-    });
-    mocks.getAppVersionById.mockResolvedValue({
-      nodes: [],
-      edges: [],
-      chatConfig: { variables: [] },
-      resources: []
+    mocks.loadChildWorkflowWithResource.mockResolvedValue({
+      appData: {
+        _id: 'child-app-id',
+        name: 'Child App',
+        avatar: 'child-avatar',
+        teamId: 'child-team-id',
+        tmbId: 'child-owner-tmb'
+      },
+      childVersion: {
+        nodes: [],
+        edges: [],
+        chatConfig: { variables: [] },
+        resources: []
+      },
+      resourceContext: {}
     });
     mocks.runWorkflow.mockResolvedValue({
       flowUsages: [{ moduleName: 'Child App', totalPoints: 10 }],
@@ -117,8 +114,9 @@ describe('dispatchRunAppNode', () => {
     const result = await dispatchRunAppNode(props);
 
     // 验证资源加载时使用当前运行用户身份
-    expect(mocks.loadWorkflowAppResource).toHaveBeenCalledWith({
+    expect(mocks.loadChildWorkflowWithResource).toHaveBeenCalledWith({
       appId: 'child-app-id',
+      versionId: 'v1',
       tmbId: 'caller-tmb-id',
       type: 'agent'
     });

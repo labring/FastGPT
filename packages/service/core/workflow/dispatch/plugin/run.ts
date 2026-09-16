@@ -27,7 +27,6 @@ import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { dispatchRunTool } from '../child/runTool';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { anyValueDecrypt } from '../../../../common/secret/utils';
-import { getAppVersionById } from '../../../app/version/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import {
   getWorkflowFileInputsFromValue,
@@ -37,7 +36,7 @@ import {
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { getRuntimeNodeResponseSummary } from '../utils';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
-import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
+import { loadChildWorkflowWithResource } from '../../utils/resource';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -99,26 +98,18 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     */
     const { files } = chatValue2RuntimePrompt(query);
 
-    // 仅在 personal 分支需要 toolData 来判断 pluginDetail 的可见性
-    const toolData =
-      source === AppToolSourceEnum.personal
-        ? await loadWorkflowAppResource({
-            appId,
-            tmbId: props.runningUserInfo.tmbId,
-            type: 'tool'
-          })
-        : undefined;
-
-    if (source === AppToolSourceEnum.personal && toolData) {
-      const toolVersion = await getAppVersionById({
-        appId: toolData._id,
+    if (source === AppToolSourceEnum.personal) {
+      const {
+        appData: toolData,
+        childVersion: toolVersion,
+        resourceContext
+      } = await loadChildWorkflowWithResource({
+        appId,
         versionId: version,
-        app: toolData
+        tmbId: props.runningUserInfo.tmbId,
+        type: 'tool'
       });
-      workflowToolResourceContext = await createWorkflowChildResourceContext(
-        toolVersion.resources,
-        String(toolData.teamId)
-      );
+      workflowToolResourceContext = resourceContext;
 
       workflowTool = {
         id: String(toolData._id),

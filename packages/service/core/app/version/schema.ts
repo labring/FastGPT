@@ -67,7 +67,8 @@ const AppVersionSchema = new Schema(
 
 defineIndex(AppVersionSchema, { key: { appId: 1, time: -1 } });
 defineIndex(AppVersionSchema, {
-  key: { appId: 1, 'resources.type': 1, 'resources.id': 1 }
+  key: { appId: 1, 'resources.type': 1, 'resources.id': 1 },
+  deprecated: true
 });
 
 export const MongoAppVersion = getMongoModel<AppVersionSchemaType>(

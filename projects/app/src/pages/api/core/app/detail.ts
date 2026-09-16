@@ -2,7 +2,6 @@ import type { NextApiRequest } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -20,26 +19,12 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
     querySchema: GetAppDetailQuerySchema
   }).query;
 
-  if (!appId) {
-    Promise.reject(CommonErrEnum.missingParams);
-  }
   // 凭证校验
   const { app, teamId, tmbId, isRoot } = await authApp({
     req,
     authToken: true,
     appId,
     per: ReadPermissionVal
-  });
-
-  const workflow = await getAppDraftWorkflow(app._id, app);
-  await rewriteAppWorkflowToDetail({
-    nodes: workflow.nodes,
-    teamId,
-    viewerTmbId: tmbId,
-    ownerTmbId: app.tmbId,
-    isRoot,
-    lang: getLocale(req),
-    resources: workflow.resources
   });
 
   if (!app.permission.hasWritePer) {
@@ -52,6 +37,17 @@ async function handler(req: NextApiRequest): Promise<GetAppDetailResponseType> {
       chatConfig: undefined
     });
   }
+
+  const workflow = await getAppDraftWorkflow(app._id, app);
+  await rewriteAppWorkflowToDetail({
+    nodes: workflow.nodes,
+    teamId,
+    viewerTmbId: tmbId,
+    ownerTmbId: app.tmbId,
+    isRoot,
+    lang: getLocale(req),
+    resources: workflow.resources
+  });
 
   return GetAppDetailResponseSchema.parse({
     ...app,

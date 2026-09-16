@@ -69,11 +69,10 @@ export const resolveSystemModelId = (
   return rawValue;
 };
 
-const getModelId = (
-  value: unknown,
-  modelType: AppResourceModelType,
-  models: readonly SystemModelDataType[]
-) => resolveSystemModelId(value, modelType, models);
+const getEntityId = (value: unknown, specificKey?: string) =>
+  getStringValue(value) ??
+  (specificKey ? getStringValue(getObjectValue(value, specificKey)) : undefined) ??
+  getStringValue(getObjectValue(value, 'id'));
 
 /** 资源快照统一按 type + id 去重。 */
 export const getAppResourceKey = (resource: AppResource) => `${resource.type}:${resource.id}`;
@@ -90,15 +89,23 @@ export const hasAppResource = ({
   return resources.some((item) => getAppResourceKey(item) === key);
 };
 
-const isAclAppResource = (resource: AppResource) =>
-  resource.type === 'agent' ||
-  resource.type === 'tool' ||
-  resource.type === 'dataset' ||
-  resource.type === 'skill' ||
-  resource.type === 'model';
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** 从知识库搜索配置中提取已开启的模型引用（rerank / extension query）。 */
+export const extractDatasetModelsFromParams = (
+  params: unknown
+): Array<{ id: unknown; modelType: AppResourceModelType }> => {
+  if (!isRecord(params)) return [];
+  const models: Array<{ id: unknown; modelType: AppResourceModelType }> = [];
+  if (params[NodeInputKeyEnum.datasetSearchUsingReRank] === true) {
+    models.push({ id: params[NodeInputKeyEnum.datasetSearchRerankModelId], modelType: 'rerank' });
+  }
+  if (params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery] === true) {
+    models.push({ id: params[NodeInputKeyEnum.datasetSearchExtensionModelId], modelType: 'llm' });
+  }
+  return models;
+};
 
 /**
  * 从历史 `resourceRefs.skillIds` 取出有效 skill id。
@@ -242,10 +249,7 @@ export const extractAppResources = ({
 
   const addDataset = (value: unknown) => {
     getValueList(value).forEach((item) => {
-      const id =
-        getStringValue(item) ??
-        getStringValue(getObjectValue(item, 'datasetId')) ??
-        getStringValue(getObjectValue(item, 'id'));
+      const id = getEntityId(item, 'datasetId');
       if (id) addResource({ type: 'dataset', id });
       const nested = getObjectValue(item, 'datasets');
       if (nested) addDataset(nested);
@@ -254,17 +258,14 @@ export const extractAppResources = ({
 
   const addSkills = (value: unknown) => {
     getValueList(value).forEach((item) => {
-      const id =
-        getStringValue(item) ??
-        getStringValue(getObjectValue(item, 'skillId')) ??
-        getStringValue(getObjectValue(item, 'id'));
+      const id = getEntityId(item, 'skillId');
       if (id) addResource({ type: 'skill', id });
     });
   };
 
   const addModels = (value: unknown, modelType: AppResourceModelType) => {
     getValueList(value).forEach((item) => {
-      const id = getModelId(item, modelType, models);
+      const id = resolveSystemModelId(item, modelType, models);
       if (id) addResource({ type: 'model', id });
     });
   };
@@ -298,13 +299,10 @@ export const extractAppResources = ({
       ) {
         addDataset(input.value);
       }
-      if (input.key === NodeInputKeyEnum.datasetParams && isRecord(input.value)) {
-        if (input.value[NodeInputKeyEnum.datasetSearchUsingReRank] === true) {
-          addModels(input.value[NodeInputKeyEnum.datasetSearchRerankModelId], 'rerank');
-        }
-        if (input.value[NodeInputKeyEnum.datasetSearchUsingExtensionQuery] === true) {
-          addModels(input.value[NodeInputKeyEnum.datasetSearchExtensionModelId], 'llm');
-        }
+      if (input.key === NodeInputKeyEnum.datasetParams) {
+        extractDatasetModelsFromParams(input.value).forEach(({ id, modelType }) => {
+          addModels(id, modelType);
+        });
       }
       if (input.key === NodeInputKeyEnum.selectedTools) {
         getValueList(input.value).forEach((tool) => {
@@ -313,10 +311,7 @@ export const extractAppResources = ({
         });
       }
       if (input.key === NodeInputKeyEnum.runAppSelectApp) {
-        const id =
-          getStringValue(getObjectValue(input.value, 'appId')) ??
-          getStringValue(getObjectValue(input.value, 'id')) ??
-          getStringValue(input.value);
+        const id = getEntityId(input.value, 'appId');
         if (id) addResource({ type: 'agent', id });
       }
       const modelType = modelInputTypes.get(input.key);
@@ -390,14 +385,12 @@ export const splitExtractedAppResources = ({
   extracted: AppResourcesType;
   baseline: AppResourcesType;
 }) => {
-  const baselineKeys = new Set(
-    baseline.filter(isAclAppResource).map((resource) => getAppResourceKey(resource))
-  );
+  const baselineKeys = new Set(baseline.map((resource) => getAppResourceKey(resource)));
   const kept: AppResourcesType = [];
   const added: AppResourcesType = [];
 
   extracted.forEach((resource) => {
-    if (!isAclAppResource(resource) || baselineKeys.has(getAppResourceKey(resource))) {
+    if (baselineKeys.has(getAppResourceKey(resource))) {
       kept.push(resource);
       return;
     }

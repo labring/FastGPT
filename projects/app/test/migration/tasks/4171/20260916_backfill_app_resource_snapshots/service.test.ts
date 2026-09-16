@@ -11,7 +11,7 @@ import {
   buildAppResourceSnapshot,
   validateAppResourceRecords,
   validateAppVersionResourceRecords
-} from '@/migration/tasks/4171/20260909_backfill_app_resource_snapshots/service';
+} from '@/migration/tasks/4171/20260916_backfill_app_resource_snapshots/service';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 

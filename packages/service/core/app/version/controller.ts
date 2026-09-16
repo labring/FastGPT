@@ -1,5 +1,6 @@
 import {
   AppResourcesSchema,
+  type AppResource,
   type AppResourcesType,
   type AppSchemaType
 } from '@fastgpt/global/core/app/type';
@@ -8,7 +9,7 @@ import { MongoAppVersion } from './schema';
 import { Types, type ClientSession } from '../../../common/mongo';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
-import { resolveStoredAppResources } from '../resources';
+import { mergeAppResources, resolveStoredAppResources } from '../resources';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
@@ -198,24 +199,38 @@ export const getAppDraftVersion = async (appId: string, session?: ClientSession)
  * 读取当前草稿 Version 的资源快照，供保存增量鉴权做 baseline。
  * 没有草稿时返回空数组，本次提取全部视为新增。传入 session 时，读取会参与同一事务，
  * 事务重试后也会重新读取最新的草稿 Version。
+ *
+ * 对历史未迁移草稿（缺失 resources 字段）：回退从节点提取；若传入权限确认回调，
+ * 则执行权限过滤，防止未经授权的引用被误作为 baseline 绕过鉴权。
  */
-export const getAppDraftResourceBaseline = async (appId: string, session?: ClientSession) => {
+export const getAppDraftResourceBaseline = async (
+  appId: string,
+  session?: ClientSession,
+  filter?: (resources: AppResource[], draftTmbId?: string) => Promise<AppResource[]>
+): Promise<AppResourcesType> => {
   const draft = await getAppDraftVersion(appId, session);
   if (!draft) return [];
 
   // 非法快照不能回退为当前节点提取，否则曾被保存过滤掉的资源会重新变成 baseline，
-  // 从而绕过下一次保存/发布的新增资源鉴权。缺失字段仍按历史版本兼容逻辑提取。
-  if (Array.isArray(draft.resources) && !AppResourcesSchema.safeParse(draft.resources).success) {
-    return [];
+  // 从而绕过下一次保存/发布的新增资源鉴权。合法快照直接作为基线使用。
+  if (Array.isArray(draft.resources)) {
+    const parsed = AppResourcesSchema.safeParse(draft.resources);
+    return parsed.success ? mergeAppResources(parsed.data) : [];
   }
 
-  return resolveStoredAppResources({
+  const rawResources = resolveStoredAppResources({
     resources: draft.resources,
     nodes: decodeToolSetNodesFromStorage(draft.nodes),
     chatConfig: draft.chatConfig,
     resourceRefs: (draft as { resourceRefs?: unknown }).resourceRefs,
     models: (await getModelHandle()).getAllModels()
   });
+
+  if (filter) {
+    return filter(rawResources, draft.tmbId);
+  }
+
+  return rawResources;
 };
 
 /**

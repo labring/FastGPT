@@ -240,7 +240,20 @@ export const resolveAppResourcesByPermission = async ({
   allowRootCrossTeam?: boolean;
   session?: ClientSession;
 }) => {
-  const baseline = await getAppDraftResourceBaseline(appId, session);
+  const baseline = await getAppDraftResourceBaseline(
+    appId,
+    session,
+    async (rawResources, draftTmbId) => {
+      const authorTmbId = draftTmbId || tmbId;
+      if (!authorTmbId) return [];
+      return filterAuthorizedAppResources({
+        resources: rawResources,
+        tmbId: authorTmbId,
+        isRoot,
+        allowRootCrossTeam
+      });
+    }
+  );
   const { kept, added } = splitExtractedAppResources({ extracted, baseline });
   if (added.length === 0) return mergeAppResources(kept);
 

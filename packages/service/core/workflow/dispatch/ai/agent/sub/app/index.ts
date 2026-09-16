@@ -2,6 +2,7 @@ import type { DispatchSubAppResponse } from '../../type';
 import { getAppVersionById } from '../../../../../../../core/app/version/controller';
 import {
   createWorkflowChildResourceContext,
+  loadChildWorkflowWithResource,
   loadWorkflowAppResource
 } from '../../../../../../../core/workflow/utils/resource';
 import { getUserChatInfo } from '../../../../../../../support/user/team/utils';
@@ -89,22 +90,14 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     ...data
   } = props;
 
-  const appData = await loadWorkflowAppResource({
+  const { appData, childVersion, resourceContext } = await loadChildWorkflowWithResource({
     appId: app.id,
+    versionId: app.version,
     tmbId: runningUserInfo.tmbId,
     type: 'tool',
     dynamic
   });
-  const childVersion = await getAppVersionById({
-    appId: app.id,
-    versionId: app.version,
-    app: appData
-  });
   const { nodes, edges, chatConfig } = childVersion;
-  const resourceContext = await createWorkflowChildResourceContext(
-    childVersion.resources,
-    String(appData.teamId)
-  );
   const workflowToolVariables = filterWorkflowToolInputVariables({
     inputs: appData2FlowNodeIO({ chatConfig }).inputs,
     variables: customAppVariables

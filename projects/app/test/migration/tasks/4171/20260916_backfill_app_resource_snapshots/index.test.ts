@@ -6,7 +6,7 @@ import type {
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { backfillAppResourceSnapshots } from '@/migration/tasks/4171/20260909_backfill_app_resource_snapshots';
+import { backfillAppResourceSnapshots } from '@/migration/tasks/4171/20260916_backfill_app_resource_snapshots';
 import { systemMigrationBatchSize } from '@/migration/constants';
 import type { SystemMigrationContext } from '@/migration/registry';
 import * as appResourcePermission from '@fastgpt/service/support/permission/app/resource';
@@ -67,7 +67,7 @@ const createContext = ({
   let saveCheckpointCallCount = 0;
 
   const context = {
-    migrationId: '20260909_backfill_app_resource_snapshots',
+    migrationId: '20260916_backfill_app_resource_snapshots',
     runId: 'test-run',
     signal: new AbortController().signal,
     getCheckpoint: async (schema) =>
@@ -328,25 +328,6 @@ describe('4170 App resource snapshot migration', () => {
   });
 
   it('silently filters unauthorized resources during the full migration workflow', async () => {
-    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockResolvedValue([]);
-    const records = createLegacyRecords();
-    await Promise.all([
-      MongoApp.collection.insertOne(records.app),
-      MongoAppVersion.collection.insertOne(records.version)
-    ]);
-    const state = createContext();
-
-    await expect(backfillAppResourceSnapshots(state.context)).resolves.toMatchObject({
-      versionsProcessedCount: 1,
-      appsProcessedCount: 1
-    });
-
-    const updatedVersion = await MongoAppVersion.collection.findOne({ _id: records.version._id });
-    expect(updatedVersion?.resources).toEqual([]);
-    expect(state.getFailedRecords()).toEqual([]);
-  });
-
-  it('drops all resources to empty array when creator member info is not found during full migration', async () => {
     vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockResolvedValue([]);
     const records = createLegacyRecords();
     await Promise.all([

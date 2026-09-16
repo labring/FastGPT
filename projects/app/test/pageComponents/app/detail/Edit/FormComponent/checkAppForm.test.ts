@@ -211,5 +211,18 @@ describe('checkAppFormResourceIssues', () => {
       });
       expect(result).toBeUndefined();
     });
+
+    it('should intercept error when chatConfig has invalid model configuration', async () => {
+      const appForm = getDefaultAppForm();
+      appForm.chatConfig.ttsConfig = { type: 'model', modelId: 'non-existent-tts-model' };
+      const result = await checkAppFormBeforePublish({
+        appForm,
+        form2WorkflowFn: () => ({ nodes: [], edges: [] }),
+        showSandbox: true,
+        enableSandbox: true,
+        t: mockT
+      });
+      expect(result).toBeDefined();
+    });
   });
 });

@@ -57,7 +57,10 @@ describe('workflow resource context', () => {
     );
     mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
     mocks.checkAppResourceReadPermissions.mockResolvedValue(undefined);
-    mocks.getModelHandle.mockResolvedValue({ getAllModels: () => [] });
+    mocks.getModelHandle.mockResolvedValue({
+      getAllModels: () => [],
+      getSystemDefaultModelIds: () => ({})
+    });
   });
 
   it('inherits root cross-team permission when creating a child context', async () => {
@@ -131,35 +134,54 @@ describe('workflow resource context', () => {
     expect(mocks.checkAppResourceReadPermissions).toHaveBeenCalledOnce();
   });
 
-  it('checks a legacy model name against the declared modelId', async () => {
+  it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
     mocks.getModelHandle.mockResolvedValue({
-      getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }]
+      getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
+      getSystemDefaultModelIds: () => ({})
     });
-    const context = await loadWorkflowResourceContext({
-      resources: [{ type: 'model', id: 'resolved-model-id' }]
+    mocks.resolveAppResourcesByPermission.mockResolvedValue([
+      { type: 'model', id: 'resolved-model-id' }
+    ]);
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModel,
+            value: 'legacy-llm',
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ]
+      } as any
+    ];
+
+    const context = await prepareWorkflowDebugResourceContext({
+      appId: 'app-debug-1',
+      nodes,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
     });
-    const node = {
-      flowNodeType: FlowNodeTypeEnum.chatNode,
-      inputs: [
-        {
-          key: NodeInputKeyEnum.aiModelId,
-          value: 'legacy-llm',
-          valueType: WorkflowIOValueTypeEnum.string,
-          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
-        }
-      ]
-    };
+
+    expect(nodes[0].inputs[0].key).toBe(NodeInputKeyEnum.aiModelId);
+    expect(nodes[0].inputs[0].value).toBe('resolved-model-id');
+    expect(context.resourceMap.has('model:resolved-model-id')).toBe(true);
+    expect(mocks.resolveAppResourcesByPermission).toHaveBeenCalledWith({
+      appId: 'app-debug-1',
+      extracted: [{ type: 'model', id: 'resolved-model-id' }],
+      tmbId: 'tmb-1',
+      isRoot: false,
+      blockOnUnauthorized: true,
+      allowRootCrossTeam: false
+    });
 
     await runWithContext({ mcpClientMemory: {}, resourceContext: context }, () =>
       assertWorkflowNodeModelResources({
-        node,
-        params: { [NodeInputKeyEnum.aiModelId]: 'legacy-llm' },
+        node: nodes[0],
+        params: { [NodeInputKeyEnum.aiModelId]: 'resolved-model-id' },
         tmbId: 'tmb-1'
       })
     );
-
-    expect(mocks.checkAppResourceReadPermissions).not.toHaveBeenCalled();
-    expect(mocks.getModelHandle).toHaveBeenCalledOnce();
   });
 
   it('rejects a declared App resource when the entity is unavailable', async () => {

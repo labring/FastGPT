@@ -13,6 +13,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
+  formatModels,
   isWorkflowSystemModelInput,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
@@ -23,6 +24,7 @@ import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
 import {
   extractAppResources,
+  extractDatasetModelsFromParams,
   getAppResourceKey,
   mergeAppResources,
   resolveSystemModelId
@@ -32,7 +34,11 @@ import {
   resolveAppResourcesByPermission
 } from '../../../support/permission/app/resource';
 import { getWorkflowResourceContext } from './context';
-import { getAppLatestVersion, type AppPublishedWorkflow } from '../../app/version/controller';
+import {
+  getAppLatestVersion,
+  getAppVersionById,
+  type AppPublishedWorkflow
+} from '../../app/version/controller';
 
 export type WorkflowResourceContext = {
   teamId?: string;
@@ -98,14 +104,11 @@ export const assertWorkflowResource = ({
 
 const modelFeatureKeyMap = new Map<string, NodeInputKeyEnum>([
   [NodeInputKeyEnum.datasetSearchRerankModelId, NodeInputKeyEnum.datasetSearchUsingReRank],
-  [NodeInputKeyEnum.datasetSearchRerankModel, NodeInputKeyEnum.datasetSearchUsingReRank],
   [
     NodeInputKeyEnum.datasetSearchExtensionModelId,
     NodeInputKeyEnum.datasetSearchUsingExtensionQuery
   ],
-  [NodeInputKeyEnum.datasetSearchExtensionModel, NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
-  [NodeInputKeyEnum.datasetDeepSearchModelId, NodeInputKeyEnum.datasetDeepSearch],
-  [NodeInputKeyEnum.datasetDeepSearchModel, NodeInputKeyEnum.datasetDeepSearch]
+  [NodeInputKeyEnum.datasetDeepSearchModelId, NodeInputKeyEnum.datasetDeepSearch]
 ]);
 
 /**
@@ -139,35 +142,17 @@ export const assertWorkflowNodeModelResources = async ({
     (input) => input.key === NodeInputKeyEnum.datasetParams
   );
   const datasetParams = params[NodeInputKeyEnum.datasetParams];
-  if (
-    node.flowNodeType === FlowNodeTypeEnum.agent &&
-    datasetParams &&
-    typeof datasetParams === 'object' &&
-    !Array.isArray(datasetParams)
-  ) {
-    const config = datasetParams as Record<string, unknown>;
+  if (node.flowNodeType === FlowNodeTypeEnum.agent) {
     const dynamic = datasetParamsInput ? nodeInputIsReference(datasetParamsInput) : false;
-    if (config[NodeInputKeyEnum.datasetSearchUsingReRank] === true) {
-      addModel(
-        config[NodeInputKeyEnum.datasetSearchRerankModelId] ??
-          config[NodeInputKeyEnum.datasetSearchRerankModel],
-        dynamic
-      );
-    }
-    if (config[NodeInputKeyEnum.datasetSearchUsingExtensionQuery] === true) {
-      addModel(
-        config[NodeInputKeyEnum.datasetSearchExtensionModelId] ??
-          config[NodeInputKeyEnum.datasetSearchExtensionModel],
-        dynamic
-      );
-    }
+    extractDatasetModelsFromParams(datasetParams).forEach(({ id }) => {
+      addModel(id, dynamic);
+    });
   }
 
   const context = getWorkflowResourceContext();
   const permissionResources = new Map<string, AppResource>();
-  const models = modelReferences.length ? (await getModelHandle()).getAllModels() : [];
   modelReferences.forEach(({ value, dynamic }) => {
-    const id = resolveSystemModelId(value, undefined, models);
+    const id = resolveSystemModelId(value);
     if (!id) return;
     if (context && !dynamic) {
       assertWorkflowResource({ context, type: 'model', id });
@@ -342,10 +327,56 @@ export const createWorkflowChildResourceContext = (
 ) => loadWorkflowResourceContext({ resources, teamId, isRoot });
 
 /**
+ * 加载子应用/插件工作流及其独立资源快照上下文。
+ * 封装“校验应用 -> 加载版本 -> 初始化子快照上下文”流程。
+ */
+export const loadChildWorkflowWithResource = async ({
+  appId,
+  versionId,
+  tmbId,
+  type,
+  toolName,
+  dynamic = false,
+  teamId
+}: {
+  appId: string;
+  versionId?: string;
+  tmbId: string;
+  type: Extract<AppResourceType, 'agent' | 'tool'>;
+  toolName?: string;
+  dynamic?: boolean;
+  teamId?: string;
+}) => {
+  const appData = await loadWorkflowAppResource({
+    appId,
+    tmbId,
+    type,
+    toolName,
+    dynamic
+  });
+  const childVersion = await getAppVersionById({
+    appId,
+    versionId,
+    app: appData
+  });
+  const resourceContext = await createWorkflowChildResourceContext(
+    childVersion.resources,
+    teamId || String(appData.teamId)
+  );
+
+  return {
+    appData,
+    childVersion,
+    resourceContext
+  };
+};
+
+/**
  * 为工作流调试与测试（chatTest 与 debug）准备未发布工作流的资源上下文并校验权限。
- * 1. 静态提取工作流节点与配置声明的资源快照；
- * 2. 批量加载运行时所需的实体上下文（App, Dataset, Skill 等）；
- * 3. 相对应用当前草稿快照基线校验新增资源读取权限（阻断未授权操作，root 请求保留跨团队权限）。
+ * 1. 规范化工作流模型引用与字段（formatModels）；
+ * 2. 静态提取工作流节点与配置声明的资源快照（extractAppResources 带模型目录）；
+ * 3. 按资源快照初始化白名单上下文（loadWorkflowResourceContext）；
+ * 4. 相对应用当前草稿快照基线校验新增资源读取权限（阻断未授权操作，root 请求保留跨团队权限）。
  */
 export const prepareWorkflowDebugResourceContext = async ({
   appId,
@@ -362,7 +393,21 @@ export const prepareWorkflowDebugResourceContext = async ({
   tmbId: string;
   isRoot?: boolean;
 }) => {
-  const extractedResources = extractAppResources({ nodes, chatConfig });
+  const modelHandle = await getModelHandle();
+  if (nodes) {
+    formatModels({
+      nodes: nodes as StoreNodeItemType[],
+      chatConfig,
+      models: modelHandle.getAllModels(),
+      defaultModelIds: modelHandle.getSystemDefaultModelIds(),
+      modelReferencePolicy: 'preserve'
+    });
+  }
+  const extractedResources = extractAppResources({
+    nodes,
+    chatConfig,
+    models: modelHandle.getAllModels()
+  });
   const resourceContext = await loadWorkflowResourceContext({
     resources: extractedResources,
     teamId,

@@ -54,8 +54,8 @@ describe('validateSystemMigrationRegistry', () => {
       progressSteps: [{ key: 'datasets' }, { key: 'collections' }, { key: 'validation' }]
     });
     expect(systemMigrations.at(-1)).toMatchObject({
-      id: '20260909_backfill_app_resource_snapshots',
-      version: '4.17.0',
+      id: '20260916_backfill_app_resource_snapshots',
+      version: '4.17.1',
       blockStartup: false,
       onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'versions' }, { key: 'apps' }, { key: 'validation' }]

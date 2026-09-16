@@ -88,10 +88,10 @@
   "migrations.20260907_migrate_dataset_tags_v2.datasets": "Normalize dataset tag definitions",
   "migrations.20260907_migrate_dataset_tags_v2.collections": "Migrate collection tag values",
   "migrations.20260907_migrate_dataset_tags_v2.validation": "Validate tag migration",
-  "migrations.20260909_backfill_app_resource_snapshots.name": "Backfill App resource snapshots",
-  "migrations.20260909_backfill_app_resource_snapshots.description": "Backfill resource snapshots and published Version pointers for historical Apps, and create a published Version for Apps that have no Version.",
-  "migrations.20260909_backfill_app_resource_snapshots.versions": "Backfill App Version resource snapshots",
-  "migrations.20260909_backfill_app_resource_snapshots.apps": "Backfill App published Version pointers",
-  "migrations.20260909_backfill_app_resource_snapshots.validation": "Validate App resource migration",
-  "migrations.20260909_backfill_app_resource_snapshots.result": "Checked and migrated {{versionsProcessedCount}} App Versions and {{appsProcessedCount}} Apps."
+  "migrations.20260916_backfill_app_resource_snapshots.name": "Backfill App resource snapshots",
+  "migrations.20260916_backfill_app_resource_snapshots.description": "Backfill resource snapshots and published Version pointers for historical Apps, and create a published Version for Apps that have no Version.",
+  "migrations.20260916_backfill_app_resource_snapshots.versions": "Backfill App Version resource snapshots",
+  "migrations.20260916_backfill_app_resource_snapshots.apps": "Backfill App published Version pointers",
+  "migrations.20260916_backfill_app_resource_snapshots.validation": "Validate App resource migration",
+  "migrations.20260916_backfill_app_resource_snapshots.result": "Checked and migrated {{versionsProcessedCount}} App Versions and {{appsProcessedCount}} Apps."
 }

@@ -160,13 +160,14 @@ export const checkAppFormBeforePublish = async ({
     nodes,
     edges,
     models: await getWorkflowModelDetails(nodes),
+    chatConfig: appForm.chatConfig,
     t
   });
 
   if (checkResults.hasError) {
     const firstIssue = checkResults.firstErrorNodeId
       ? checkResults.issueMap[checkResults.firstErrorNodeId]?.find((item) => item.level === 'error')
-      : undefined;
+      : checkResults.chatConfigIssues.find((item) => item.level === 'error');
 
     return (
       firstIssue?.message ||

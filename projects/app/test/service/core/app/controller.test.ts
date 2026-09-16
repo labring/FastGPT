@@ -725,4 +725,61 @@ describe('resolveAppResourcesByPermission', () => {
       })
     ).rejects.toBe(AppErrEnum.unAuthApp);
   });
+
+  it('filters unauthorized resources from an unmigrated draft (missing resources) to prevent bypass', async () => {
+    const owner = await getUser(`unmigrated-draft-owner-${getNanoid(6)}`);
+    const member = await getUser(`unmigrated-draft-member-${getNanoid(6)}`, owner.teamId);
+    const workflowApp = await MongoApp.create({
+      name: 'Workflow app with unmigrated draft',
+      type: AppTypeEnum.workflow,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const protectedToolset = await MongoApp.create({
+      name: 'Protected toolset',
+      type: AppTypeEnum.mcpToolSet,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+
+    // 模拟尚未跑迁移的历史草稿：未包含 resources 字段，但 nodes 中已引用受保护工具
+    await MongoAppVersion.create({
+      appId: workflowApp._id,
+      tmbId: member.tmbId,
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          pluginId: String(protectedToolset._id),
+          inputs: []
+        }
+      ],
+      edges: []
+    });
+
+    const targetResource = { type: 'tool' as const, id: String(protectedToolset._id) };
+
+    // 发布时必须被阻断，不能当成 kept 绕过
+    await expect(
+      resolveAppResourcesByPermission({
+        appId: String(workflowApp._id),
+        extracted: [targetResource],
+        tmbId: member.tmbId,
+        blockOnUnauthorized: true
+      })
+    ).rejects.toBe(AppErrEnum.unAuthApp);
+
+    // 保存时无权限项不应进入快照
+    await expect(
+      resolveAppResourcesByPermission({
+        appId: String(workflowApp._id),
+        extracted: [targetResource],
+        tmbId: member.tmbId,
+        blockOnUnauthorized: false
+      })
+    ).resolves.toEqual([]);
+  });
 });
