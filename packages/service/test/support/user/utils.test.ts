@@ -50,7 +50,7 @@ describe('support user utils', () => {
         list: [{ tmbId: 'member-id' }]
       });
 
-      expect(result.sourceMember.name).toBe('unknow');
+      expect(result.sourceMember.name).toBe('unknown');
     }
   );
 
