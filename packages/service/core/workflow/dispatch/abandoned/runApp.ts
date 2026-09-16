@@ -18,10 +18,10 @@ import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/glob
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
+<<<<<<< HEAD
 import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
 import { getAppVersionById } from '../../../app/version/controller';
 import { nodeHasDynamicInput } from '../../../app/resources';
-import { buildFlowUsageItems } from '../../../../support/wallet/usage/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -127,9 +127,13 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     });
 
   // 子工作流本身不会落账，由当前应用节点统一归集，避免用量遗漏或重复计费。
-  // 逐条落账而不是合成一个金额：token 只挂在每条 usage 上，先求和会永久丢掉子流程的 token。
   const totalPoints = flowUsages.reduce((sum, usage) => sum + safePoints(usage.totalPoints), 0);
-  props.usagePush(buildFlowUsageItems({ usages: flowUsages, moduleNamePrefix: appData.name }));
+  props.usagePush([
+    {
+      moduleName: appData.name,
+      totalPoints
+    }
+  ]);
 
   const completeMessages = filteredChildHistories.concat([
     {

@@ -186,42 +186,22 @@ describe('loop/service', () => {
       expect(pts).toBe(15);
     });
 
-    it('调用 usagePush 一次，逐条透传子流程 usage 以保住 token', () => {
+    it('调用 usagePush 一次，参数包含 totalPoints 和正确的 moduleName', () => {
       const usagePush = vi.fn();
       const response = makeDispatchFlowResponse({
         flowUsages: [{ totalPoints: 7, moduleName: 'x' } as any]
       });
       pushSubWorkflowUsage({ usagePush, response, name: 'loopNode', iteration: 3 });
       expect(usagePush).toHaveBeenCalledOnce();
-      expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 7, moduleName: 'loopNode-3-x' }]);
+      expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 7, moduleName: 'loopNode-3' }]);
     });
 
-    it('token 不会被求和丢掉（回归：此前坍缩成单个 totalPoints）', () => {
-      const usagePush = vi.fn();
-      const response = makeDispatchFlowResponse({
-        flowUsages: [
-          { totalPoints: 3, moduleName: 'chat', inputTokens: 100, outputTokens: 20 },
-          { totalPoints: 4, moduleName: 'search', inputTokens: 50, outputTokens: 0 }
-        ] as any
-      });
-
-      const pts = pushSubWorkflowUsage({ usagePush, response, name: 'loop', iteration: 1 });
-
-      // 点数口径不变
-      expect(pts).toBe(7);
-      // 但每条 usage 的 token 必须原样落账
-      expect(usagePush).toHaveBeenCalledWith([
-        { totalPoints: 3, moduleName: 'loop-1-chat', inputTokens: 100, outputTokens: 20 },
-        { totalPoints: 4, moduleName: 'loop-1-search', inputTokens: 50, outputTokens: 0 }
-      ]);
-    });
-
-    it('flowUsages 为空时返回 0 且不写入空批次', () => {
+    it('flowUsages 为空时返回 0', () => {
       const usagePush = vi.fn();
       const response = makeDispatchFlowResponse({ flowUsages: [] });
       const pts = pushSubWorkflowUsage({ usagePush, response, name: 'node', iteration: 0 });
       expect(pts).toBe(0);
-      expect(usagePush).not.toHaveBeenCalled();
+      expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 0, moduleName: 'node-0' }]);
     });
 
     it('iteration 正确拼接到 moduleName', () => {
@@ -230,7 +210,7 @@ describe('loop/service', () => {
         flowUsages: [{ totalPoints: 1, moduleName: 'z' } as any]
       });
       pushSubWorkflowUsage({ usagePush, response, name: 'parallel', iteration: 99 });
-      expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 1, moduleName: 'parallel-99-z' }]);
+      expect(usagePush).toHaveBeenCalledWith([{ totalPoints: 1, moduleName: 'parallel-99' }]);
     });
   });
 

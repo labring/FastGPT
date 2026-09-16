@@ -755,10 +755,6 @@ export class WorkflowQueue {
   };
 
   private usagePush(usages: ChatNodeUsageType[]) {
-    // 空列表直接跳过：下游 pushUsageItemsTimer 用 MongoUsageItem.create(..., { ordered: true })
-    // 且吞掉错误，空批次既无意义又可能连带丢掉同一 tick 的其它账目。
-    if (usages.length === 0) return;
-
     // 暂时只有 root runtime 需要 push usage，child 的统一给到 root 去推送
     if (this.isRootRuntime) {
       if (this.data.usageId) {

@@ -280,9 +280,7 @@ describe('agent sub app dispatchPlugin', () => {
       }
     });
     mocks.runWorkflow.mockResolvedValueOnce({
-      flowUsages: [
-        { moduleName: 'Child token/tool usage', totalPoints: 3, inputTokens: 100, outputTokens: 20 }
-      ],
+      flowUsages: [{ moduleName: 'Child token/tool usage', totalPoints: 3 }],
       runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'pluginOutputResponse',
@@ -304,21 +302,12 @@ describe('agent sub app dispatchPlugin', () => {
     expect(mocks.getAppVersionById).not.toHaveBeenCalled();
     expect(mocks.runWorkflow).toHaveBeenCalledTimes(1);
     expect(result.errorMessage).toBeUndefined();
-    // 固定调用费与子流程消耗分开落账：子流程必须逐条透传，token 才不会被求和丢掉。
-    // 该工具不计子流程费时（hasTokenFee=false）子流程条目 amount 记 0，但 token 仍然保留。
     expect(result.usages).toEqual([
       {
         moduleName: 'System Workflow',
-        totalPoints: 10
-      },
-      {
-        moduleName: 'System Workflow-Child token/tool usage',
-        totalPoints: hasTokenFee ? 3 : 0,
-        inputTokens: 100,
-        outputTokens: 20
+        totalPoints: expectedPoints
       }
     ]);
-    expect(result.usages.reduce((sum, item) => sum + item.totalPoints, 0)).toBe(expectedPoints);
   });
 
   it('does not charge a system workflow when its child run fails', async () => {
@@ -347,10 +336,9 @@ describe('agent sub app dispatchPlugin', () => {
     const result = await dispatchSystemWorkflow();
 
     expect(result.errorMessage).toBe('child failed');
-    // 子流程报错不计费（amount 记 0），但仍逐条落账以保留 token。
     expect(result.usages).toEqual([
       {
-        moduleName: 'System Workflow-Failed child usage',
+        moduleName: 'System Workflow',
         totalPoints: 0
       }
     ]);
@@ -384,7 +372,7 @@ describe('agent sub app dispatchPlugin', () => {
     expect(result.errorMessage).toBe('upstream unavailable');
     expect(result.usages).toEqual([
       {
-        moduleName: 'System Workflow-Child usage',
+        moduleName: 'System Workflow',
         totalPoints: 0
       }
     ]);

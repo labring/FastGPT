@@ -5,7 +5,7 @@ import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/typ
 import dayjs from 'dayjs';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { formatNumber, formatTokenCount } from '@fastgpt/global/common/math/tools';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 
@@ -16,51 +16,64 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
     [usage.list]
   );
 
-  const { hasModel, hasInputToken, hasOutputToken, hasCharsLen, hasDuration, hasPages, hasCount } =
-    useMemo(() => {
-      let hasModel = false;
-      let hasInputToken = false;
-      let hasOutputToken = false;
-      let hasCharsLen = false;
-      let hasDuration = false;
-      let hasPages = false;
-      let hasCount = false;
+  const {
+    hasModel,
+    hasToken,
+    hasInputToken,
+    hasOutputToken,
+    hasCharsLen,
+    hasDuration,
+    hasPages,
+    hasCount
+  } = useMemo(() => {
+    let hasModel = false;
+    let hasToken = false;
+    let hasInputToken = false;
+    let hasOutputToken = false;
+    let hasCharsLen = false;
+    let hasDuration = false;
+    let hasPages = false;
+    let hasCount = false;
 
-      usage.list.forEach((item) => {
-        if (item.modelId !== undefined || item.model !== undefined) {
-          hasModel = true;
-        }
+    usage.list.forEach((item) => {
+      if (item.modelId !== undefined || item.model !== undefined) {
+        hasModel = true;
+      }
 
-        if (typeof item.inputTokens === 'number') {
-          hasInputToken = true;
-        }
-        if (typeof item.outputTokens === 'number') {
-          hasOutputToken = true;
-        }
-        if (typeof item.charsLength === 'number') {
-          hasCharsLen = true;
-        }
-        if (typeof item.duration === 'number') {
-          hasDuration = true;
-        }
-        if (typeof item.pages === 'number') {
-          hasPages = true;
-        }
-        if (typeof item.count === 'number') {
-          hasCount = true;
-        }
-      });
+      if (typeof item.tokens === 'number') {
+        hasToken = true;
+      }
+      if (typeof item.inputTokens === 'number') {
+        hasInputToken = true;
+      }
+      if (typeof item.outputTokens === 'number') {
+        hasOutputToken = true;
+      }
+      if (typeof item.charsLength === 'number') {
+        hasCharsLen = true;
+      }
+      if (typeof item.duration === 'number') {
+        hasDuration = true;
+      }
+      if (typeof item.pages === 'number') {
+        hasPages = true;
+      }
+      if (typeof item.count === 'number') {
+        hasCount = true;
+      }
+    });
 
-      return {
-        hasModel,
-        hasInputToken,
-        hasOutputToken,
-        hasCharsLen,
-        hasDuration,
-        hasPages,
-        hasCount
-      };
-    }, [usage.list]);
+    return {
+      hasModel,
+      hasToken,
+      hasInputToken,
+      hasOutputToken,
+      hasCharsLen,
+      hasDuration,
+      hasPages,
+      hasCount
+    };
+  }, [usage.list]);
 
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('account_usage:usage_detail')} w={'700px'}>
@@ -94,6 +107,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
               <Tr>
                 <Th>{t('account_usage:module_name')}</Th>
                 {hasModel && <Th>{t('account_usage:ai_model')}</Th>}
+                {hasToken && <Th>{t('account_usage:token_length')}</Th>}
                 {hasInputToken && <Th>{t('account_usage:input_token_length')}</Th>}
                 {hasOutputToken && <Th>{t('account_usage:output_token_length')}</Th>}
                 {hasCount && <Th>{t('account_usage:count')}</Th>}
@@ -108,8 +122,9 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                 <Tr key={i}>
                   <Td>{t(item.moduleName as any)}</Td>
                   {hasModel && <Td>{item.model ?? '-'}</Td>}
-                  {hasInputToken && <Td>{formatTokenCount(item.inputTokens ?? 0)}</Td>}
-                  {hasOutputToken && <Td>{formatTokenCount(item.outputTokens ?? 0)}</Td>}
+                  {hasToken && <Td>{item.tokens ?? '-'}</Td>}
+                  {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}
+                  {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}
                   {hasCount && <Td>{item.count ?? '-'}</Td>}
                   {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                   {hasDuration && <Td>{item.duration ?? '-'}</Td>}

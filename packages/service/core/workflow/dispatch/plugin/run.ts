@@ -19,8 +19,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { computedAppToolUsage, getAppToolOutputError } from '../../../app/tool/runtime/utils';
-import { buildFlowUsageItems } from '../../../../support/wallet/usage/utils';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { getNodeErrResponse } from '../utils';
 import { serverGetWorkflowToolRunUserQuery } from '../../../app/tool/workflowTool/utils';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -323,32 +321,20 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       pluginOutput
     });
 
-    const {
-      totalPoints: usagePoints,
-      fixedPoints,
-      childrenBillable
-    } = await computedAppToolUsage({
+    const usagePoints = await computedAppToolUsage({
       plugin: workflowTool,
       childrenUsage: flowUsages,
       error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
     });
-    // 子流程逐条落账，token 才留得住；固定调用费本身没有 token，单独作为一条。
-    // billable=false（报错、或该工具不计子流程费）时子流程条目记 0 分但保留 token。
-    // 固定费为 0 时不再占一条空记录，同时避免整体为空触发下游空批量写入。
-    const toolUsageItems: ChatNodeUsageType[] = [
-      ...(fixedPoints !== 0 ? [{ moduleName: workflowTool.name, totalPoints: fixedPoints }] : []),
-      ...buildFlowUsageItems({
-        usages: flowUsages,
-        billable: childrenBillable,
-        moduleNamePrefix: workflowTool.name
-      })
-    ];
-    if (toolUsageItems.length > 0) {
-      props.usagePush(toolUsageItems);
-    }
-    // 系统级工作流工具不会落库内部详情（上面把 nodeResponseSink 置空了），子流程的 nodeResponse
-    // 不进 writer，app chat log 的遍历就看不到这些 LLM 调用。此时把汇总 token 写回工具节点自身兜底。
-    // 常规分支子行照常入库，绝对不能回写，否则链 A 遍历响应树时会重复累计。
+    // Child run not push usage
+    props.usagePush([
+      {
+        moduleName: workflowTool.name,
+        totalPoints: usagePoints
+      }
+    ]);
+    // 系统级工作流工具不会落库内部详情，AppLog 需要把子流程 token 汇总到工具节点。
+    // 常规分支会直接写入子响应，不能回填，否则会重复累计。
     const childTokens = shouldStoreChildNodeResponses
       ? undefined
       : flowUsages.reduce(
