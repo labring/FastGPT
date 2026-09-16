@@ -76,6 +76,11 @@ export const CreateDatasetBodySchema = z.object({
   }),
   sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({
     description: '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
+  }),
+  inheritPermission: z.boolean().optional().meta({
+    example: true,
+    description:
+      '是否继承父级权限（默认 true）。true=继承父级 dataset 权限；false=独立配置，子树停止传播'
   })
 });
 
@@ -119,6 +124,11 @@ export const CreateDatasetWithFilesBodySchema = z.object({
       sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({
         description:
           '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
+      }),
+      inheritPermission: z.boolean().optional().meta({
+        example: true,
+        description:
+          '是否继承父级权限（默认 true）。true=继承父级 dataset 权限；false=独立配置，子树停止传播'
       })
     })
     .meta({ description: '知识库参数' }),
@@ -473,6 +483,42 @@ export type ResumeDatasetInheritPermissionBody = z.infer<
   typeof ResumeDatasetInheritPermissionBodySchema
 >;
 
+/** 启用 collection 级权限：物化该 dataset 全部 collection 快照后置位开关。 */
+export const EnableCollectionPermissionBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type EnableCollectionPermissionBody = z.infer<typeof EnableCollectionPermissionBodySchema>;
+
+export const EnableCollectionPermissionResponseSchema = z.object({
+  collectionCount: z.number().meta({
+    description: '已物化的 collection 数量'
+  })
+});
+export type EnableCollectionPermissionResponse = z.infer<
+  typeof EnableCollectionPermissionResponseSchema
+>;
+
+/** 关闭 collection 级权限：清理该 dataset 全部 collection 权限配置后置位开关。 */
+export const DisableCollectionPermissionBodySchema = z.object({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
+});
+export type DisableCollectionPermissionBody = z.infer<typeof DisableCollectionPermissionBodySchema>;
+
+export const DisableCollectionPermissionResponseSchema = z.object({
+  collectionCount: z.number().meta({
+    description: '已清理的 collection 数量'
+  })
+});
+export type DisableCollectionPermissionResponse = z.infer<
+  typeof DisableCollectionPermissionResponseSchema
+>;
+
 /* ============================================================================
  * API: 创建知识库文件夹
  * Route: POST /api/core/dataset/folder/create
@@ -489,6 +535,11 @@ export const CreateDatasetFolderBodySchema = z.object({
   intro: z.string().meta({
     example: '存放产品相关知识库',
     description: '文件夹简介'
+  }),
+  inheritPermission: z.boolean().optional().meta({
+    example: true,
+    description:
+      '是否继承父级权限（默认 true）。true=继承父级 dataset 权限；false=独立配置，子树停止传播'
   })
 });
 export type CreateDatasetFolderBody = z.infer<typeof CreateDatasetFolderBodySchema>;

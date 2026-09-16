@@ -21,6 +21,8 @@ import {
   GetDatasetPathsQuerySchema,
   UpdateDatasetBodySchema,
   ResumeDatasetInheritPermissionBodySchema,
+  EnableCollectionPermissionBodySchema,
+  DisableCollectionPermissionBodySchema,
   CreateDatasetFolderBodySchema,
   SearchDatasetTestBodySchema,
   ExportDatasetQuerySchema,
@@ -311,6 +313,46 @@ export const DatasetPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功恢复继承权限'
+        }
+      }
+    }
+  },
+  '/core/dataset/enableCollectionPermission': {
+    post: {
+      summary: '启用知识库的文件级权限',
+      description:
+        '开启该知识库的文件/文件夹级权限：物化全部文件/文件夹的权限快照后置位开关。开启后可为单个文件/文件夹单独配置协作者；未单独配置的仍继承知识库权限。需要知识库管理权限',
+      tags: [DevApiTagsMap.datasetCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: EnableCollectionPermissionBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功启用文件级权限'
+        }
+      }
+    }
+  },
+  '/core/dataset/disableCollectionPermission': {
+    post: {
+      summary: '关闭知识库的文件级权限',
+      description:
+        '关闭该知识库的文件/文件夹级权限：删除全部文件/文件夹的协作者配置并重置为继承态，随后关闭开关。该操作不可恢复，需要知识库管理权限',
+      tags: [DevApiTagsMap.datasetCommon],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: DisableCollectionPermissionBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功关闭文件级权限'
         }
       }
     }

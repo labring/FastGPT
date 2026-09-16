@@ -10,7 +10,8 @@ const {
   filterDatasetsByTmbIdMock,
   findDatasetByIdMock,
   getDatasetSearchVlmModelMock,
-  formatModelChars2PointsMock
+  formatModelChars2PointsMock,
+  resolveReadableCollectionIdsMock
 } = vi.hoisted(() => ({
   countPromptTokensMock: vi.fn(),
   createLLMResponseMock: vi.fn(),
@@ -18,7 +19,8 @@ const {
   filterDatasetsByTmbIdMock: vi.fn(),
   findDatasetByIdMock: vi.fn(),
   getDatasetSearchVlmModelMock: vi.fn(),
-  formatModelChars2PointsMock: vi.fn()
+  formatModelChars2PointsMock: vi.fn(),
+  resolveReadableCollectionIdsMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/dataset/search', () => ({
@@ -92,6 +94,11 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
 }));
 
+// Collection 级权限解析依赖真实 DB 查询，单测只关心「是否按鉴权结果透传可读集合」。
+vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
+  resolveReadableCollectionIds: resolveReadableCollectionIdsMock
+}));
+
 import { dispatchAgentDatasetSearch } from '../../../../../../../core/workflow/dispatch/ai/agent/sub/dataset';
 
 const llmModelData = (model: string) =>
@@ -117,6 +124,7 @@ describe('dispatchAgentDatasetSearch', () => {
       })
     });
     filterDatasetsByTmbIdMock.mockImplementation(async ({ datasetIds }) => datasetIds);
+    resolveReadableCollectionIdsMock.mockResolvedValue(undefined);
     countPromptTokensMock.mockResolvedValue(100);
     createLLMResponseMock.mockResolvedValue({
       answerText: '[chunk_2]',
@@ -402,6 +410,7 @@ describe('dispatchAgentDatasetSearch', () => {
 
   it('filters dataset ids by tmbId when dataset auth is enabled', async () => {
     filterDatasetsByTmbIdMock.mockResolvedValueOnce(['dataset_2']);
+    resolveReadableCollectionIdsMock.mockResolvedValueOnce(['collection_2']);
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 0,
@@ -426,9 +435,16 @@ describe('dispatchAgentDatasetSearch', () => {
       datasetIds: ['dataset_1', 'dataset_2'],
       tmbId: 'tmb_1'
     });
+    // 鉴权后的 dataset 列表继续下钻到 collection 级权限，可读集合必须透传给召回层。
+    expect(resolveReadableCollectionIdsMock).toHaveBeenCalledWith({
+      teamId: 'team_1',
+      datasetIds: ['dataset_2'],
+      tmbId: 'tmb_1'
+    });
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        datasetIds: ['dataset_2']
+        datasetIds: ['dataset_2'],
+        readableCollectionIdList: ['collection_2']
       })
     );
   });

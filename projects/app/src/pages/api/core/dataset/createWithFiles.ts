@@ -49,7 +49,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     vectorModelId,
     agentModelId,
     vlmModelId,
-    sangforFileParseConfig
+    sangforFileParseConfig,
+    inheritPermission
   } = datasetParams;
   const modelHandle = await getModelHandle();
   const vectorModelData =
@@ -98,7 +99,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             avatar,
             intro: '',
             type: DatasetTypeEnum.dataset,
-            ...(sangforFileParseConfig && { sangforFileParseConfig })
+            ...(sangforFileParseConfig && { sangforFileParseConfig }),
+            // 独立态（false）仅写 owner 快照，不合并父级 dataset 权限；子树停止传播
+            inheritPermission
           }
         ],
         { session, ordered: true }
