@@ -23,7 +23,11 @@ import {
   type SearchDatasetTestResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import {
+  createNodeApiLimitResponse,
+  LimitTypeEnum,
+  teamFrequencyLimit
+} from '@fastgpt/service/common/api/frequencyLimit';
 import { findFirstDatasetSearchVlmModel } from '@fastgpt/service/core/dataset/search/vlm';
 
 export async function handler(
@@ -66,7 +70,14 @@ export async function handler(
     datasetId,
     per: ReadPermissionVal
   });
-  if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) return;
+  if (
+    !(await teamFrequencyLimit({
+      teamId,
+      type: LimitTypeEnum.chat,
+      limitResponse: createNodeApiLimitResponse(res)
+    }))
+  )
+    return;
   // auth balance
   await checkTeamAIPoints(teamId);
 

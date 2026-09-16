@@ -26,7 +26,11 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { sseErrRes } from '../../../../common/response';
 import { authSkill } from '../../../../support/permission/skill/auth';
-import { teamFrequencyLimit, LimitTypeEnum } from '../../../../common/api/frequencyLimit';
+import {
+  createNodeApiLimitResponse,
+  teamFrequencyLimit,
+  LimitTypeEnum
+} from '../../../../common/api/frequencyLimit';
 import { getIpFromRequest } from '../../../../common/geo';
 import { getLocale } from '../../../../common/middle/i18n';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -392,7 +396,11 @@ export async function handleSkillDebugChat(
     await runSkillDebugChat(req, body, {
       agentSandboxPrepareActions: options.agentSandboxPrepareActions,
       checkTeamFrequencyLimit: (teamId) =>
-        teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }),
+        teamFrequencyLimit({
+          teamId,
+          type: LimitTypeEnum.chat,
+          limitResponse: createNodeApiLimitResponse(res)
+        }),
       createStreamResponseContext: ({ teamId, skillId, chatId }) =>
         createWorkflowStreamResponseContext({
           req,
