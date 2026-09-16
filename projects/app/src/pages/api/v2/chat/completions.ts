@@ -60,7 +60,11 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
+import {
+  createNodeApiLimitResponse,
+  LimitTypeEnum,
+  teamFrequencyLimit
+} from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
@@ -175,7 +179,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       !(await teamFrequencyLimit({
         teamId,
         type: LimitTypeEnum.chat,
-        res
+        limitResponse: createNodeApiLimitResponse(res)
       }))
     ) {
       return;
