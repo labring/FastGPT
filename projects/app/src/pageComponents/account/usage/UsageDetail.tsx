@@ -101,7 +101,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
         <FormLabel flex={'0 0 80px'} mb={1}>
           {t('account_usage:billing_module')}
         </FormLabel>
-        <FixedTableContainer horizontalScroll fontSize={'sm'} maxH="none">
+        <FixedTableContainer horizontalScroll px={0} fontSize={'sm'} maxH="none">
           <Table>
             <Thead>
               <Tr>
