@@ -190,6 +190,8 @@ export async function initSystemConfig() {
 
   // set config
   initFastGPTConfig(config);
+  const { refreshLangfuseTracing } = await import('@fastgpt/service/common/langfuse');
+  await refreshLangfuseTracing();
 
   logger.info('System config loaded', {
     fastgpt: {

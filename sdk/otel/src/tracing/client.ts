@@ -4,7 +4,10 @@ import { defaultResource, resourceFromAttributes } from '@opentelemetry/resource
 import {
   BatchSpanProcessor,
   ParentBasedSampler,
-  TraceIdRatioBasedSampler
+  TraceIdRatioBasedSampler,
+  type ReadableSpan,
+  type SpanExporter,
+  type SpanProcessor
 } from '@opentelemetry/sdk-trace-base';
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
@@ -15,6 +18,7 @@ type OtlpTraceExporterConfig = ConstructorParameters<typeof OTLPTraceExporter>[0
 let configured = false;
 let configurePromise: Promise<void> | null = null;
 let tracerProvider: NodeTracerProvider | null = null;
+let extraSpanProcessors: SpanProcessor[] = [];
 let defaultTracerName = 'fastgpt';
 let defaultTracerVersion: string | undefined;
 
@@ -96,7 +100,7 @@ export async function configureTracing(options: TracingConfigureOptions = {}) {
       }).merge(tracingOptions.additionalResource ?? null)
     );
 
-    const spanProcessors = [];
+    const spanProcessors: SpanProcessor[] = [...extraSpanProcessors];
 
     if (hasOtlpEndpoint(tracingOptions.otlpExporterConfig)) {
       const exporter = new OTLPTraceExporter({
@@ -104,7 +108,25 @@ export async function configureTracing(options: TracingConfigureOptions = {}) {
         url: resolveOtlpTracesUrl(tracingOptions.otlpExporterConfig)
       });
 
-      spanProcessors.push(new BatchSpanProcessor(exporter));
+      // Langfuse 与通用追踪共用 span；只在 OTLP 出口裁剪，不能修改其他 processor 读取的原始数据。
+      const otlpExporter: SpanExporter = {
+        export(spans, callback) {
+          const sanitizedSpans = spans.map((span) => {
+            const sanitizedSpan = Object.create(span) as ReadableSpan;
+            Object.defineProperty(sanitizedSpan, 'attributes', {
+              value: Object.fromEntries(
+                Object.entries(span.attributes).filter(([key]) => !key.startsWith('langfuse.'))
+              )
+            });
+            return sanitizedSpan;
+          });
+          exporter.export(sanitizedSpans, callback);
+        },
+        shutdown: () => exporter.shutdown(),
+        forceFlush: () => exporter.forceFlush()
+      };
+
+      spanProcessors.push(new BatchSpanProcessor(otlpExporter));
     }
 
     tracerProvider = new NodeTracerProvider({
@@ -128,6 +150,15 @@ export async function configureTracing(options: TracingConfigureOptions = {}) {
   }
 }
 
+/** 注册额外的 span processor；相同实例重复注册时保持幂等。 */
+export function addSpanProcessor(processor: SpanProcessor): void {
+  if (extraSpanProcessors.includes(processor)) return;
+  if (tracerProvider) {
+    throw new Error('addSpanProcessor must be called before tracing is configured');
+  }
+  extraSpanProcessors.push(processor);
+}
+
 export async function disposeTracing() {
   if (configurePromise) {
     try {
@@ -143,6 +174,7 @@ export async function disposeTracing() {
   if (!tracerProvider) {
     configured = false;
     configurePromise = null;
+    extraSpanProcessors = [];
     return;
   }
 
@@ -151,6 +183,7 @@ export async function disposeTracing() {
   configured = false;
   configurePromise = null;
   tracerProvider = null;
+  extraSpanProcessors = [];
 }
 
 export function getTracer(name = defaultTracerName, version = defaultTracerVersion) {
