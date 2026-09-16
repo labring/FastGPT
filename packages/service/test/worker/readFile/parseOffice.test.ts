@@ -76,6 +76,37 @@ describe('parseOffice', () => {
     await expect(parsePptx(buffer)).resolves.toBe('Slide 1\nNote 1\nSlide 2');
   });
 
+  it('段落内的软换行还原成换行符', async () => {
+    const buffer = await createPptx({
+      path: 'ppt/slides/slide1.xml',
+      content:
+        '<a:p><a:r><a:t>ADDRESS LINE ONE</a:t></a:r><a:br/><a:r><a:t>ADDRESS LINE TWO</a:t></a:r></a:p>'
+    });
+
+    await expect(parsePptx(buffer)).resolves.toBe('ADDRESS LINE ONE\nADDRESS LINE TWO');
+  });
+
+  it('同一段落内的相邻 run 仍然直接相连', async () => {
+    const buffer = await createPptx({
+      path: 'ppt/slides/slide1.xml',
+      content: '<a:p><a:r><a:t>Fast</a:t></a:r><a:r><a:t>GPT</a:t></a:r></a:p>'
+    });
+
+    await expect(parsePptx(buffer)).resolves.toBe('FastGPT');
+  });
+
+  it('表格单元格内的软换行同样保留', async () => {
+    const buffer = await createPptx({
+      path: 'ppt/slides/slide1.xml',
+      content:
+        '<a:tbl><a:tr><a:tc><a:txBody>' +
+        '<a:p><a:r><a:t>CELL LINE ONE</a:t></a:r><a:br/><a:r><a:t>CELL LINE TWO</a:t></a:r></a:p>' +
+        '</a:txBody></a:tc></a:tr></a:tbl>'
+    });
+
+    await expect(parsePptx(buffer)).resolves.toBe('CELL LINE ONE\nCELL LINE TWO');
+  });
+
   it('合法 slide XML 没有文本节点时返回空字符串', async () => {
     const buffer = await createPptx({
       path: 'ppt/slides/slide1.xml',
