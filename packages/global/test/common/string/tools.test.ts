@@ -108,6 +108,18 @@ describe('string tools', () => {
     );
   });
 
+  it('should not close the json on a bracket inside a json5 comment', () => {
+    // 调用方用 JSON5 解析,注释里的括号不是结构括号
+    expect(sliceJsonStr('{a: 1, /* } */ b: 2}')).toBe('{a: 1, /* } */ b: 2}');
+    expect(sliceJsonStr('[1, /* ] */ 2]')).toBe('[1, /* ] */ 2]');
+    expect(sliceJsonStr('{a: 1, // }\n b: 2} trailing')).toBe('{a: 1, // }\n b: 2}');
+    expect(sliceJsonStr('[1, // ]\n 2] trailing')).toBe('[1, // ]\n 2]');
+    // 字符串里的注释符号仍然是普通字符
+    expect(sliceJsonStr('{a: "/* }"} trailing')).toBe('{a: "/* }"}');
+    // 除号不是注释
+    expect(sliceJsonStr('{a: 1 / 2} trailing')).toBe('{a: 1 / 2}');
+  });
+
   it('should slice string with start and end', () => {
     expect(sliceStrStartEnd('abc', 2, 2)).toBe('abc');
     expect(sliceStrStartEnd(null, 2, 2)).toBe('');

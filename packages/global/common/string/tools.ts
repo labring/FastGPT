@@ -57,7 +57,22 @@ export const customNanoid = (str: string, size: number) => customAlphabet(str, s
 /* Custom text to reg, need to replace special chats */
 export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/* slice json str */
+/**
+ * Extract the first complete JSON value out of a model's answer.
+ *
+ * Walks forward from the first opening bracket and returns as soon as that
+ * value closes, so anything written after it is left out -- a second object, a
+ * closing code fence followed by a note, a sentence mentioning a {placeholder}.
+ * Searching backwards for the last closing bracket instead would swallow all
+ * of it.
+ *
+ * The result is handed to `jsonrepair` / `json5.parse`, so the scan follows
+ * JSON5: single- and double-quoted strings, `//` line comments and block
+ * comments are non-structural and their brackets are not counted.
+ *
+ * A string with no bracket, or a value that never closes, is returned
+ * unchanged and left to the caller's repair step, as before.
+ */
 export const sliceJsonStr = (str: string) => {
   str = str.trim();
 
@@ -68,17 +83,25 @@ export const sliceJsonStr = (str: string) => {
   const openChar = str[start];
   const closeChar = openChar === '{' ? '}' : ']';
 
-  // Walk forward and close at depth 0. Searching backwards for the last closing
-  // bracket instead would swallow anything the model wrote after the JSON that
-  // happens to contain one -- a second object, a closing code fence followed by
-  // a note, a sentence mentioning a {placeholder}.
   let depth = 0;
-  // Both quote characters, because the callers parse with JSON5.
   let stringChar: string | undefined;
   let escaped = false;
+  let comment: 'line' | 'block' | undefined;
 
   for (let i = start; i < str.length; i++) {
     const ch = str[i];
+
+    if (comment === 'line') {
+      if (ch === '\n') comment = undefined;
+      continue;
+    }
+    if (comment === 'block') {
+      if (ch === '*' && str[i + 1] === '/') {
+        comment = undefined;
+        i++;
+      }
+      continue;
+    }
 
     if (escaped) {
       escaped = false;
@@ -96,6 +119,11 @@ export const sliceJsonStr = (str: string) => {
       stringChar = ch;
       continue;
     }
+    if (ch === '/' && (str[i + 1] === '/' || str[i + 1] === '*')) {
+      comment = str[i + 1] === '/' ? 'line' : 'block';
+      i++;
+      continue;
+    }
 
     if (ch === openChar) {
       depth++;
@@ -105,7 +133,6 @@ export const sliceJsonStr = (str: string) => {
     }
   }
 
-  // Unbalanced: leave it to the caller's repair step, as before.
   return str;
 };
 
