@@ -521,10 +521,10 @@ export const SkillPath: OpenAPIPath = {
       }
     }
   },
-  '/proApi/core/ai/skill/debugChat': {
+  '/maxApi/core/ai/skill/debugChat': {
     post: {
-      summary: '技能调试对话（Pro）',
-      description: '基于 Pro 版 edit-debug 沙盒发起技能调试对话，返回 SSE 流',
+      summary: '技能辅助生成调试对话（Max）',
+      description: '基于 Max 内置 skill-creator 和 edit-debug 沙盒发起技能调试对话，返回 SSE 流',
       tags: [DevApiTagsMap.skillDebug],
       requestBody: {
         content: {

@@ -193,7 +193,7 @@ export const streamSkillDebugChat = ({
 }): Promise<StreamResponseType> => {
   const { feConfigs } = useSystemStore.getState();
   return streamFetch({
-    url: feConfigs?.isPlus ? '/api/proApi/core/ai/skill/debugChat' : '/api/core/ai/skill/debugChat',
+    url: feConfigs?.isPlus ? '/api/maxApi/core/ai/skill/debugChat' : '/api/core/ai/skill/debugChat',
     data,
     onMessage,
     abortCtrl
