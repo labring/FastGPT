@@ -206,18 +206,19 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       <Accordion allowToggle defaultIndex={-1}>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
           <AccordionButton
-            w={'fit-content'}
             p={0}
+            mb={4}
+            justifyContent={'space-between'}
             bg={'transparent'}
             border={'none'}
             boxShadow={'none'}
             _hover={{ bg: 'transparent' }}
             _expanded={{ bg: 'transparent' }}
           >
-            <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'} pb={4}>
+            <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'}>
               {t('common:core.dataset.collection.metadata.metadata')}
             </Box>
-            <AccordionIcon ml={1} w={'1rem'} h={'1rem'} color={'myGray.500'} />
+            <AccordionIcon w={'1.25rem'} h={'1.25rem'} color={'myGray.500'} />
           </AccordionButton>
 
           <AccordionPanel p={0}>
