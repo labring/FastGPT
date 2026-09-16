@@ -5,6 +5,9 @@ import { getTestMaxWorkers } from './test/vitestWorkers';
 export default defineConfig({
   resolve: {
     alias: {
+      // 跨包集成测试会加载 pro/admin 的同步模块，该模块内部用 '@/' 指代 pro/admin/src；
+      // 这条 specifier 在 projects/app 下不存在（根仓其它用例不引用），单独指向 pro/admin
+      '@/service/common/crawler': resolve('pro/admin/src/service/common/crawler'),
       '@': resolve('projects/app/src'),
       '@fastgpt-sdk/storage/access-link': resolve('sdk/storage/src/access-link/index.ts'),
       '@fastgpt-sdk/storage': resolve('sdk/storage/src/index.ts'),
