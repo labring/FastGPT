@@ -383,8 +383,8 @@ export const serviceEnv = createEnv({
     WORKFLOW_MAX_RUN_TIMES: IntSchema.default(500).meta({
       description: '工作流最大运行次数，避免极端死循环'
     }),
-    RETRIEVAL_RESULTS_LIMIT: IntSchema.default(20).meta({
-      description: '知识库检索节点日志详情记录的召回候选集上限，默认 20；设为 0 表示不记录'
+    RETRIEVAL_RESULTS_LIMIT: IntSchema.default(0).meta({
+      description: '知识库检索节点日志详情记录的召回候选集上限，默认 0 表示不记录'
     }),
     WORKFLOW_MAX_LOOP_TIMES: IntSchema.default(100).meta({
       description: '循环/并行节点最大输入数组长度（默认 100）'
