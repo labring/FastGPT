@@ -722,4 +722,76 @@ describe('system migration runner', () => {
       vi.useRealTimers();
     }
   });
+
+  it('delays execution when migration has delay: true and delayMs is configured', async () => {
+    let runStartedAt = 0;
+    const migration = {
+      ...createMigration('20260903_runner_delayed_task', async () => {
+        runStartedAt = Date.now();
+      }),
+      delay: true
+    };
+
+    const delayMs = 60;
+    const runner = createSystemMigrationRunner({
+      migrations: [migration],
+      timing: {
+        scanIntervalMs: 10_000,
+        delayMs
+      },
+      logger
+    });
+
+    try {
+      const runnerStartedAt = Date.now();
+      await runner.start();
+      await runner.tick();
+
+      expect(runStartedAt).toBeGreaterThanOrEqual(runnerStartedAt + delayMs - 15);
+      const state = await MongoSystemMigrationState.findById(migration.id).lean();
+      expect(state?.status).toBe(SystemMigrationStatusEnum.succeeded);
+      expect(logger.info).toHaveBeenCalledWith(
+        'System migration execution delayed by configuration',
+        expect.objectContaining({
+          migrationId: migration.id,
+          delayMs
+        })
+      );
+    } finally {
+      runner.stop();
+    }
+  });
+
+  it('does not delay execution when migration does not specify delay', async () => {
+    let runStartedAt = 0;
+    const migration = createMigration('20260903_runner_nodelay_task', async () => {
+      runStartedAt = Date.now();
+    });
+
+    const delayMs = 100;
+    const runner = createSystemMigrationRunner({
+      migrations: [migration],
+      timing: {
+        scanIntervalMs: 10_000,
+        delayMs
+      },
+      logger
+    });
+
+    try {
+      const runnerStartedAt = Date.now();
+      await runner.start();
+      await runner.tick();
+
+      expect(runStartedAt).toBeLessThan(runnerStartedAt + delayMs);
+      const state = await MongoSystemMigrationState.findById(migration.id).lean();
+      expect(state?.status).toBe(SystemMigrationStatusEnum.succeeded);
+      expect(logger.info).not.toHaveBeenCalledWith(
+        'System migration execution delayed by configuration',
+        expect.anything()
+      );
+    } finally {
+      runner.stop();
+    }
+  });
 });

@@ -414,10 +414,19 @@ export const createSystemMigrationRunner = ({
       return 'interrupted';
     };
 
-    const executionStartedAt = Date.now();
-    migrationLogger.info('System migration execution started');
+    let executionStartedAt = Date.now();
 
     try {
+      if (migration.delay && resolvedTiming.delayMs > 0) {
+        migrationLogger.info('System migration execution delayed by configuration', {
+          delayMs: resolvedTiming.delayMs
+        });
+        await delay(resolvedTiming.delayMs, abortController.signal);
+      }
+
+      executionStartedAt = Date.now();
+      migrationLogger.info('System migration execution started');
+
       // 先校验任务返回值，再与 succeeded 一起提交，避免提前暴露尚未成功的结果。
       const result = SystemMigrationResultDataSchema.optional().parse(await migration.run(context));
       const incompleteProgressStep = migration.progressSteps.find(

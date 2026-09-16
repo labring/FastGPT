@@ -58,6 +58,7 @@ describe('validateSystemMigrationRegistry', () => {
       version: '4.17.1',
       blockStartup: false,
       onFailure: SystemMigrationFailurePolicyEnum.continue,
+      delay: true,
       progressSteps: [{ key: 'versions' }, { key: 'apps' }, { key: 'validation' }]
     });
   });
@@ -66,7 +67,10 @@ describe('validateSystemMigrationRegistry', () => {
     expect(() =>
       validateSystemMigrationRegistry([
         createMigration('20260903_add_example_field'),
-        createMigration('20260904_backfill_example_field')
+        {
+          ...createMigration('20260904_backfill_example_field'),
+          delay: true
+        }
       ])
     ).not.toThrow();
   });
@@ -90,6 +94,18 @@ describe('validateSystemMigrationRegistry', () => {
         }
       ])
     ).toThrow('must stop following migrations');
+  });
+
+  it('rejects a blocking migration that configures delay', () => {
+    expect(() =>
+      validateSystemMigrationRegistry([
+        {
+          ...createMigration('20260903_invalid_delay_policy'),
+          blockStartup: true,
+          delay: true
+        }
+      ])
+    ).toThrow('cannot be delayed');
   });
 
   it.each(['migration_1', '2026-09-03_bad', '20260903_Uppercase'])(

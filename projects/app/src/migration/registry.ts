@@ -78,6 +78,11 @@ export type SystemMigration = {
   blockStartup: boolean;
   /** 当前任务失败后，Runner 是暂停队列还是继续检查后续任务。 */
   onFailure: SystemMigrationFailurePolicyEnum;
+  /**
+   * 是否在获得租约后延迟执行。
+   * 为 true 时，Runner 根据环境变量 SYSTEM_MIGRATION_DELAY_SECONDS 设定的时长延迟执行。
+   */
+  delay?: boolean;
   /** 正常返回可选最终结果；Runner 会在提交 succeeded 时原子持久化。 */
   run: (context: SystemMigrationContext) => Promise<SystemMigrationResultData | void>;
 };
@@ -393,6 +398,7 @@ export const systemMigrations = [
     ],
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
+    delay: true,
     run: backfillAppResourceSnapshots
   }
 ] as const satisfies readonly SystemMigration[];
@@ -417,6 +423,10 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
       migration.onFailure === SystemMigrationFailurePolicyEnum.continue
     ) {
       throw new Error(`Blocking system migration ${migration.id} must stop following migrations`);
+    }
+
+    if (migration.blockStartup && migration.delay) {
+      throw new Error(`Blocking system migration ${migration.id} cannot be delayed`);
     }
 
     const progressStepKeys = new Set<string>();

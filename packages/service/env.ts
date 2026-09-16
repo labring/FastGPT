@@ -366,6 +366,9 @@ export const serviceEnv = createEnv({
     SYSTEM_MIGRATION_BATCH_SIZE: IntSchema.min(50).max(1000).default(100).meta({
       description: '系统迁移任务每批处理的记录数'
     }),
+    SYSTEM_MIGRATION_DELAY_SECONDS: IntSchema.min(0).default(0).meta({
+      description: '配置了 delay 的系统迁移任务延迟执行时间（秒），默认 0 为不延迟'
+    }),
     XLSX_PARSE_MAX_ROWS: IntSchema.min(1).max(1_048_576).default(100_000).meta({
       description: 'XLSX 单个工作表允许的最大行数'
     }),
