@@ -38,7 +38,7 @@ import {
 } from '@fastgpt/web/hooks/useResponsiveGridPageSize';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
-const BatchActionBar = dynamic(() => import('./BatchActionBar'));
+import BatchActionBar from '@/components/common/batch/BatchActionBar';
 const BatchDeleteModal = dynamic(() => import('./BatchDeleteModal'));
 
 type AppListContextType = {
@@ -442,7 +442,16 @@ const AppListContextProvider = ({
   return (
     <AppListContext.Provider value={contextValue}>
       {children}
-      {isBatchMode && isPc && <BatchActionBar />}
+      {isBatchMode && isPc && (
+        <BatchActionBar
+          isAllSelected={isAllSelected}
+          isIndeterminate={isIndeterminate}
+          selectedCount={selectedAppIds.length}
+          onSelectAll={onSelectAllApps}
+          onBatchMove={() => setIsBatchMoving(true)}
+          onBatchDelete={() => setIsBatchDeleting(true)}
+        />
+      )}
       {!!moveAppId && (
         <MoveModal
           moveResourceId={moveAppId}

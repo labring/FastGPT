@@ -255,5 +255,20 @@
   "yuque_dataset_desc": "Build a Dataset from Yuque documents by configuring access permissions, without storing a second copy",
   "training.status_error": "Indexing error",
   "training_error_list": "Error list",
-  "training_error_empty": "No indexing errors"
+  "training_error_empty": "No indexing errors",
+  "filtered_no_delete_permission_tip": "Knowledge bases without delete permission have been filtered",
+  "confirm_delete_datasets_tip": "Are you sure you want to delete the following knowledge bases? Deleting them will also delete their associated indexes and data.",
+  "confirm_delete_folders_tip": "Are you sure you want to delete the following folders? Once deleted, all knowledge bases and their data inside them will be deleted.",
+  "confirm_delete_mixed_tip": "Are you sure you want to delete the following knowledge bases and folders? Once deleted, these knowledge bases and all contents in the folders will be deleted.",
+  "dataset_count_one": "{{count}} knowledge base",
+  "dataset_count_other": "{{count}} knowledge bases",
+  "folder_count_one": "{{count}} folder",
+  "folder_count_other": "{{count}} folders",
+  "delete_datasets_and_folders_confirm_title": "Confirm deleting {{datasets}} and {{folders}}",
+  "delete_datasets_confirm_title_one": "Confirm deleting {{count}} knowledge base",
+  "delete_datasets_confirm_title_other": "Confirm deleting {{count}} knowledge bases",
+  "delete_folders_confirm_title_one": "Confirm deleting {{count}} folder",
+  "delete_folders_confirm_title_other": "Confirm deleting {{count}} folders",
+  "delete_following_datasets_tip": "Deleting the following knowledge bases will also delete their associated indexes and data.",
+  "delete_following_folders_tip": "Once deleted, these folders, all knowledge bases inside them, and associated data will be deleted."
 }

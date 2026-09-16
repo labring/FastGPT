@@ -255,5 +255,16 @@
   "yuque_dataset_desc": "可透過設定 Yuque 文件權限，使用 Yuque 文件建構知識庫，文件不會進行二次儲存",
   "training.status_error": "訓練異常",
   "training_error_list": "異常列表",
-  "training_error_empty": "暫無訓練異常"
+  "training_error_empty": "暫無訓練異常",
+  "filtered_no_delete_permission_tip": "已過濾無刪除權限的知識庫",
+  "confirm_delete_datasets_tip": "確認刪除以下知識庫嗎？刪除以下知識庫會將其關聯的索引和數據一併刪除。",
+  "confirm_delete_folders_tip": "確認刪除以下文件夾嗎？刪除後，這些文件夾及其包含的全部知識庫、關聯索引和數據將被一併刪除。",
+  "confirm_delete_mixed_tip": "確認刪除以下知識庫和文件夾嗎？刪除後，這些知識庫以及文件夾內的全部內容將被一併刪除。",
+  "dataset_count": "{{count}} 個知識庫",
+  "folder_count": "{{count}} 個文件夾",
+  "delete_datasets_and_folders_confirm_title": "確認刪除 {{datasets}} 和 {{folders}}",
+  "delete_datasets_confirm_title": "確認刪除 {{count}} 個知識庫",
+  "delete_folders_confirm_title": "確認刪除 {{count}} 個文件夾",
+  "delete_following_datasets_tip": "刪除以下知識庫會將其關聯的索引和數據一併刪除。",
+  "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部知識庫、關聯索引和數據將被一併刪除。"
 }

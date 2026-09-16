@@ -1293,5 +1293,13 @@
   "password_wechat_load_failed": "QR Code 載入失敗，請重試",
   "password_wechat_qr": "微信驗證 QR Code",
   "password_wechat_scan": "微信掃碼登入",
-  "update_password": "修改密碼"
+  "update_password": "修改密碼",
+  "batch_manage": "批量管理",
+  "batch_move": "批量移動",
+  "batch_delete": "批量刪除",
+  "select_all_filtered": "全選篩選項",
+  "selected_items": "已選 <bold>{{count}}</bold> 項",
+  "read_only_no_batch_permission": "無當前資源操作權限，無法批量操作",
+  "will_delete": "將刪除",
+  "confirm_delete": "確認刪除"
 }

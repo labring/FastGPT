@@ -158,31 +158,33 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            {isPc && (
-              <Flex alignItems={'center'} gap={'12px'}>
-                <Button
-                  variant={'grayBase'}
-                  px={'14px'}
-                  iconSpacing={'6px'}
-                  {...(isBatchMode && {
-                    color: 'primary.600',
-                    bg: 'primary.50',
-                    _hover: {
+            {(isPc || hasCreatePer) && (
+              <Flex alignItems={'center'} gap={[2, '12px']}>
+                {isPc && (
+                  <Button
+                    variant={'grayBase'}
+                    px={'14px'}
+                    iconSpacing={'6px'}
+                    {...(isBatchMode && {
                       color: 'primary.600',
-                      bg: 'primary.100'
-                    }
-                  })}
-                  leftIcon={<MyIcon name={'common/checkSquareBroken'} w={'18px'} h={'18px'} />}
-                  onClick={() => setIsBatchMode((prev) => !prev)}
-                >
-                  {t('app:batch_manage')}
-                </Button>
+                      bg: 'primary.50',
+                      _hover: {
+                        color: 'primary.600',
+                        bg: 'primary.100'
+                      }
+                    })}
+                    leftIcon={<MyIcon name={'common/checkSquareBroken'} w={'18px'} h={'18px'} />}
+                    onClick={() => setIsBatchMode((prev) => !prev)}
+                  >
+                    {t('common:batch_manage')}
+                  </Button>
+                )}
                 {hasCreatePer && (
                   <>
                     <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
                       <Button
                         variant={'grayBase'}
-                        px={'14px'}
+                        px={['12px', '14px']}
                         iconSpacing={'6px'}
                         leftIcon={<MyIcon name={'common/add2'} w={'18px'} h={'18px'} />}
                         onClick={() => setEditFolder({})}
@@ -193,7 +195,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     </MyTooltip>
                     <Button
                       variant={'grayBase'}
-                      px={'14px'}
+                      px={['12px', '14px']}
                       iconSpacing={'6px'}
                       leftIcon={<MyIcon name={'common/importLight'} w={'18px'} h={'18px'} />}
                       onClick={onOpenJsonImportModal}

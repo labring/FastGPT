@@ -13,12 +13,14 @@ import {
 import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
 import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { useRouter } from 'next/router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
 import { type UpdateDatasetBody } from '@fastgpt/global/openapi/core/dataset/api';
 import dynamic from 'next/dynamic';
+import BatchActionBar from '@/components/common/batch/BatchActionBar';
+import BatchDeleteModal from './BatchDeleteModal';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import { type DatasetItemType, type DatasetListItemType } from '@fastgpt/global/core/dataset/type';
@@ -60,6 +62,21 @@ export type DatasetContextType = {
   setListFilters: (next: DatasetListFilterType) => void;
   columnCount: number;
   pageSize: number;
+
+  isBatchMode: boolean;
+  setIsBatchMode: (val: boolean | ((prev: boolean) => boolean)) => void;
+  selectedDatasetIds: string[];
+  setSelectedDatasetIds: React.Dispatch<React.SetStateAction<string[]>>;
+  onToggleSelectDataset: (id: string) => void;
+  onSelectAllDatasets: (checked: boolean) => void;
+  isAllSelected: boolean;
+  isIndeterminate: boolean;
+  selectableDatasets: DatasetListItemType[];
+  selectedDatasets: DatasetListItemType[];
+  isBatchMoving: boolean;
+  setIsBatchMoving: (val: boolean) => void;
+  isBatchDeleting: boolean;
+  setIsBatchDeleting: (val: boolean) => void;
 };
 
 export const DatasetsContext = createContext<DatasetContextType>({
@@ -92,7 +109,22 @@ export const DatasetsContext = createContext<DatasetContextType>({
     throw new Error('Function not implemented.');
   },
   columnCount: 1,
-  pageSize: 50
+  pageSize: 50,
+
+  isBatchMode: false,
+  setIsBatchMode: () => {},
+  selectedDatasetIds: [],
+  setSelectedDatasetIds: () => {},
+  onToggleSelectDataset: () => {},
+  onSelectAllDatasets: () => {},
+  isAllSelected: false,
+  isIndeterminate: false,
+  selectableDatasets: [],
+  selectedDatasets: [],
+  isBatchMoving: false,
+  setIsBatchMoving: () => {},
+  isBatchDeleting: false,
+  setIsBatchDeleting: () => {}
 });
 
 function DatasetContextProvider({ children }: { children: React.ReactNode }) {
@@ -227,6 +259,116 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     errorToast: t('common:dataset.Delete Dataset Error')
   });
 
+  const [isBatchMode, setIsBatchMode] = useState(false);
+  const [selectedDatasetIds, setSelectedDatasetIds] = useState<string[]>([]);
+  const [isBatchMoving, setIsBatchMoving] = useState(false);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
+
+  // 在渲染阶段同步校准状态：当离开批量模式，或目录、搜索、筛选发生变化时立即清空已选项
+  const [prevBatchState, setPrevBatchState] = useState({
+    parentId,
+    searchKey,
+    listFilters,
+    isBatchMode
+  });
+
+  if (
+    prevBatchState.parentId !== parentId ||
+    prevBatchState.searchKey !== searchKey ||
+    prevBatchState.listFilters !== listFilters ||
+    prevBatchState.isBatchMode !== isBatchMode
+  ) {
+    setPrevBatchState({
+      parentId,
+      searchKey,
+      listFilters,
+      isBatchMode
+    });
+    if (selectedDatasetIds.length > 0) {
+      setSelectedDatasetIds([]);
+    }
+  }
+
+  const handleSetIsBatchMode = useCallback((action: React.SetStateAction<boolean>) => {
+    setIsBatchMode((prev) => {
+      const next = typeof action === 'function' ? action(prev) : action;
+      if (!next) {
+        setSelectedDatasetIds([]);
+      }
+      return next;
+    });
+  }, []);
+
+  // 可批量操作的资源（必须具有管理权限或为 Owner）
+  const selectableDatasets = useMemo(
+    () =>
+      myDatasets.filter((dataset) =>
+        Boolean(dataset.permission?.hasManagePer || dataset.permission?.isOwner)
+      ),
+    [myDatasets]
+  );
+  const selectableDatasetIds = useMemo(
+    () => selectableDatasets.map((d) => d._id),
+    [selectableDatasets]
+  );
+
+  const selectedDatasets = useMemo(
+    () => myDatasets.filter((dataset) => selectedDatasetIds.includes(dataset._id)),
+    [myDatasets, selectedDatasetIds]
+  );
+
+  const isAllSelected = useMemo(
+    () =>
+      selectableDatasetIds.length > 0 &&
+      selectableDatasetIds.every((id) => selectedDatasetIds.includes(id)),
+    [selectableDatasetIds, selectedDatasetIds]
+  );
+
+  const isIndeterminate = useMemo(
+    () => selectedDatasetIds.length > 0 && !isAllSelected,
+    [selectedDatasetIds, isAllSelected]
+  );
+
+  const onToggleSelectDataset = useCallback(
+    (id: string) => {
+      if (!selectableDatasetIds.includes(id)) return;
+      setSelectedDatasetIds((prev) =>
+        prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      );
+    },
+    [selectableDatasetIds]
+  );
+
+  const onSelectAllDatasets = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        setSelectedDatasetIds(selectableDatasetIds);
+      } else {
+        setSelectedDatasetIds([]);
+      }
+    },
+    [selectableDatasetIds]
+  );
+
+  const onBatchMoveDatasets = useCallback(
+    async (targetParentId: ParentIdType) => {
+      if (selectedDatasetIds.length === 0) return;
+      const finalParentId = targetParentId === 'root' ? null : (targetParentId as string);
+      await Promise.all(
+        selectedDatasetIds.map((id) =>
+          putDatasetById({
+            id,
+            parentId: finalParentId
+          })
+        )
+      );
+      await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyDatasets()]);
+      setSelectedDatasetIds([]);
+      setIsBatchMode(false);
+    },
+    [selectedDatasetIds, refetchFolderDetail, refetchPaths, loadMyDatasets]
+  );
+
   const contextValue = {
     isFetchingDatasets,
     isEmpty,
@@ -247,12 +389,37 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     listFilters,
     setListFilters,
     columnCount,
-    pageSize
+    pageSize,
+
+    isBatchMode,
+    setIsBatchMode: handleSetIsBatchMode,
+    selectedDatasetIds,
+    setSelectedDatasetIds,
+    onToggleSelectDataset,
+    onSelectAllDatasets,
+    isAllSelected,
+    isIndeterminate,
+    selectableDatasets,
+    selectedDatasets,
+    isBatchMoving,
+    setIsBatchMoving,
+    isBatchDeleting,
+    setIsBatchDeleting
   };
 
   return (
     <DatasetsContext.Provider value={contextValue}>
       {children}
+      {isBatchMode && isPc && (
+        <BatchActionBar
+          isAllSelected={isAllSelected}
+          isIndeterminate={isIndeterminate}
+          selectedCount={selectedDatasetIds.length}
+          onSelectAll={onSelectAllDatasets}
+          onBatchMove={() => setIsBatchMoving(true)}
+          onBatchDelete={() => setIsBatchDeleting(true)}
+        />
+      )}
       {!!moveDatasetId && (
         <MoveModal
           moveResourceId={moveDatasetId}
@@ -261,6 +428,26 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
           onClose={() => setMoveDatasetId(undefined)}
           onConfirm={(parentId) => onMoveDataset(parentId)}
           moveHint={t('dataset:move.hint')}
+        />
+      )}
+      {isBatchMoving && (
+        <MoveModal
+          moveResourceIds={selectedDatasetIds}
+          server={getDatasetFolderList}
+          title={t('common:Move')}
+          onClose={() => setIsBatchMoving(false)}
+          onConfirm={onBatchMoveDatasets}
+          moveHint={t('dataset:move.hint')}
+        />
+      )}
+      {isBatchDeleting && selectedDatasets.length > 0 && (
+        <BatchDeleteModal
+          datasets={selectedDatasets}
+          onClose={() => setIsBatchDeleting(false)}
+          onSuccess={() => {
+            setSelectedDatasetIds([]);
+            loadMyDatasets();
+          }}
         />
       )}
     </DatasetsContext.Provider>

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Grid, IconButton, HStack, Flex } from '@chakra-ui/react';
+import { Box, Grid, IconButton, HStack, Flex, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -211,7 +211,10 @@ const List = ({
     listFilters,
     columnCount,
     pageSize,
-    parentId
+    parentId,
+    isBatchMode,
+    selectedSkillIds,
+    onToggleSelectSkill
   } = useContextSelector(SkillListContext, (v) => ({
     skills: v.skills,
     refreshSkills: v.refreshSkills,
@@ -224,7 +227,10 @@ const List = ({
     listFilters: v.listFilters,
     columnCount: v.columnCount,
     pageSize: v.pageSize,
-    parentId: v.parentId
+    parentId: v.parentId,
+    isBatchMode: v.isBatchMode,
+    selectedSkillIds: v.selectedSkillIds,
+    onToggleSelectSkill: v.onToggleSelectSkill
   }));
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
@@ -239,9 +245,9 @@ const List = ({
   const isInitialLoading = !isEmpty && skills.length === 0 && isFetchingSkills;
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: skills,
-    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}`,
+    listKey: `${router.pathname}-${parentId || ''}-${searchKey}-${listFilters.creator.mode}-${listFilters.creator.tmbIds.join(',')}-${listFilters.sort}-${columnCount}-${pageSize}-${isInitialLoading}-${isBatchMode}`,
     scrollContainerRef,
-    reservedSlotCount: isInitialLoading ? 0 : 1,
+    reservedSlotCount: isInitialLoading || isBatchMode ? 0 : 1,
     estimatedRowHeight: 160,
     estimatedRowGap: 20,
     loadingItemCount: isFetchingSkills
@@ -445,6 +451,9 @@ const List = ({
       }
     ];
 
+    const isSelected = selectedSkillIds.includes(skill._id);
+    const hasBatchPer = Boolean(skill.permission?.hasManagePer || skill.permission?.isOwner);
+
     return (
       <MyBox
         key={skill._id}
@@ -459,25 +468,46 @@ const List = ({
         display={'flex'}
         flexDirection={'column'}
         minW={0}
-        _hover={{
-          borderColor: 'primary.300',
-          boxShadow: '1.5',
-          '& .more': {
-            display: 'flex'
+        _hover={
+          isBatchMode
+            ? {
+                borderColor: isSelected ? 'primary.600' : 'primary.300',
+                boxShadow: '1.5'
+              }
+            : {
+                borderColor: 'primary.300',
+                boxShadow: '1.5',
+                '& .more': {
+                  display: 'flex'
+                },
+                '& .time': {
+                  display: ['flex', 'none']
+                }
+              }
+        }
+        {...(isBatchMode && {
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (hasBatchPer) {
+              onToggleSelectSkill(skill._id);
+            }
           },
-          '& .time': {
-            display: ['flex', 'none']
+          ...(isSelected && {
+            borderColor: 'primary.600',
+            bg: 'primary.50'
+          })
+        })}
+        {...(!isBatchMode && {
+          onClick: () => {
+            if (isFolder) {
+              setSearchKey('');
+              router.push({ query: { ...router.query, parentId: skill._id } });
+            } else {
+              if (isSkillReady && !guardSkillSandboxOperation()) return;
+              router.push(`/skill/detail?skillId=${skill._id}`);
+            }
           }
-        }}
-        onClick={() => {
-          if (isFolder) {
-            setSearchKey('');
-            router.push({ query: { ...router.query, parentId: skill._id } });
-          } else {
-            if (isSkillReady && !guardSkillSandboxOperation()) return;
-            router.push(`/skill/detail?skillId=${skill._id}`);
-          }
-        }}
+        })}
       >
         <Grid templateColumns={'auto minmax(0, 1fr) auto'} alignItems={'center'} gap={2}>
           {isFolder ? (
@@ -497,18 +527,36 @@ const List = ({
               </Box>
             </MyTooltip>
           </Box>
-          {(isSkillCreating || isSkillCreateFailed) && (
-            <Box
-              px={2}
-              py={0.5}
-              borderRadius={'sm'}
-              fontSize={'10px'}
-              color={isSkillCreateFailed ? 'red.600' : 'primary.600'}
-              bg={isSkillCreateFailed ? 'red.50' : 'primary.50'}
-              flexShrink={0}
-            >
-              {isSkillCreateFailed ? t('common:failed') : t('skill:generating')}
-            </Box>
+          {isBatchMode ? (
+            hasBatchPer ? (
+              <Checkbox size={'sm'} isChecked={isSelected} pointerEvents={'none'} />
+            ) : (
+              <MyTooltip label={t('common:read_only_no_batch_permission')}>
+                <Box
+                  w={'16px'}
+                  h={'16px'}
+                  borderRadius={'xs'}
+                  border={'1px solid'}
+                  borderColor={'#CECECE'}
+                  bg={'#F9F9F9'}
+                  cursor={'not-allowed'}
+                />
+              </MyTooltip>
+            )
+          ) : (
+            (isSkillCreating || isSkillCreateFailed) && (
+              <Box
+                px={2}
+                py={0.5}
+                borderRadius={'sm'}
+                fontSize={'10px'}
+                color={isSkillCreateFailed ? 'red.600' : 'primary.600'}
+                bg={isSkillCreateFailed ? 'red.50' : 'primary.50'}
+                flexShrink={0}
+              >
+                {isSkillCreateFailed ? t('common:failed') : t('skill:generating')}
+              </Box>
+            )
           )}
         </Grid>
 
@@ -555,7 +603,7 @@ const List = ({
                 <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
               </HStack>
             )}
-            {isPersonal && (
+            {!isBatchMode && isPersonal && (
               <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
                 <MyMenu
                   Button={
@@ -633,7 +681,12 @@ const List = ({
             gridGap={5}
             alignItems={'stretch'}
           >
-            {onClickCreate ? <ListCreateCard onClick={onClickCreate} /> : <ForbiddenCreateButton />}
+            {!isBatchMode &&
+              (onClickCreate ? (
+                <ListCreateCard onClick={onClickCreate} />
+              ) : (
+                <ForbiddenCreateButton />
+              ))}
             {renderVirtualGridItems(renderSkillCard)}
           </Grid>
         )}

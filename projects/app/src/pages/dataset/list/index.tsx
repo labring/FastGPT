@@ -62,12 +62,17 @@ const Dataset = () => {
     searchKey,
     setSearchKey,
     listFilters,
-    setListFilters
+    setListFilters,
+    isBatchMode,
+    setIsBatchMode
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
+  const hasCreatePer = folderDetail
+    ? folderDetail.permission.hasWritePer
+    : !!userInfo?.team?.permission.hasDatasetCreatePer;
 
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
@@ -154,98 +159,118 @@ const Dataset = () => {
 
             <Flex flex={1} />
 
-            {(folderDetail
-              ? folderDetail.permission.hasWritePer
-              : userInfo?.team?.permission.hasDatasetCreatePer) && (
-              <Box pl={[0, 4]}>
-                <MultipleMenu
-                  size="md"
-                  Trigger={
-                    <Button variant={'primary'} px="0">
-                      <Flex alignItems={'center'} px={5}>
-                        <AddIcon mr={2} />
-                        <Box>{t('common:new_create')}</Box>
-                      </Flex>
-                    </Button>
-                  }
-                  menuList={[
-                    {
-                      children: [
-                        {
-                          icon: 'core/dataset/commonDatasetColor',
-                          label: t('dataset:common_dataset'),
-                          description: t('dataset:common_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.dataset)
-                        },
-                        {
-                          icon: 'core/dataset/websiteDatasetColor',
-                          label: t('dataset:website_dataset'),
-                          description: t('dataset:website_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
-                        },
-                        {
-                          icon: 'core/dataset/otherDataset',
-                          label: t('dataset:other_dataset'),
-                          description: t('dataset:external_other_dataset_desc'),
-                          menuList: [
-                            {
-                              children: [
-                                {
-                                  icon: 'core/dataset/externalDatasetColor',
-                                  label: t('dataset:api_file'),
-                                  description: t('dataset:external_file_dataset_desc'),
-                                  onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
-                                },
-                                ...(feConfigs?.show_dataset_feishu !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/feishuDatasetColor',
-                                        label: t('dataset:feishu_dataset'),
-                                        description: t('dataset:feishu_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
-                                      }
-                                    ]
-                                  : []),
-                                ...(feConfigs?.show_dataset_yuque !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/yuqueDatasetColor',
-                                        label: t('dataset:yuque_dataset'),
-                                        description: t('dataset:yuque_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
-                                      }
-                                    ]
-                                  : []),
-                                ...(feConfigs?.show_dataset_dingtalk !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/dingtalkDatasetColor',
-                                        label: t('dataset:dingtalk_dataset'),
-                                        description: t('dataset:dingtalk_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.dingtalk)
-                                      }
-                                    ]
-                                  : [])
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      children: [
-                        {
-                          icon: FolderIcon,
-                          label: t('common:Folder'),
-                          disabled: !canCreateFolder,
-                          disabledTip: t('common:folder_depth_limit_tip'),
-                          onClick: () => setEditFolderData({})
-                        }
-                      ]
+            {(isPc || hasCreatePer) && (
+              <Flex alignItems={'center'} gap={'12px'} pl={[0, 4]}>
+                {isPc && (
+                  <Button
+                    variant={'primaryOutline'}
+                    px={'14px'}
+                    iconSpacing={'6px'}
+                    {...(isBatchMode && {
+                      bg: 'primary.50',
+                      borderColor: 'primary.600',
+                      color: 'primary.600',
+                      _hover: {
+                        bg: 'primary.100'
+                      }
+                    })}
+                    leftIcon={<MyIcon name={'common/checkSquareBroken'} w={'18px'} h={'18px'} />}
+                    onClick={() => setIsBatchMode((prev) => !prev)}
+                  >
+                    {t('common:batch_manage')}
+                  </Button>
+                )}
+                {hasCreatePer && (
+                  <MultipleMenu
+                    size="md"
+                    Trigger={
+                      <Button variant={'primary'} px="0">
+                        <Flex alignItems={'center'} px={5}>
+                          <AddIcon mr={2} />
+                          <Box>{t('common:new_create')}</Box>
+                        </Flex>
+                      </Button>
                     }
-                  ]}
-                />
-              </Box>
+                    menuList={[
+                      {
+                        children: [
+                          {
+                            icon: 'core/dataset/commonDatasetColor',
+                            label: t('dataset:common_dataset'),
+                            description: t('dataset:common_dataset_desc'),
+                            onClick: () => onSelectDatasetType(DatasetTypeEnum.dataset)
+                          },
+                          {
+                            icon: 'core/dataset/websiteDatasetColor',
+                            label: t('dataset:website_dataset'),
+                            description: t('dataset:website_dataset_desc'),
+                            onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
+                          },
+                          {
+                            icon: 'core/dataset/otherDataset',
+                            label: t('dataset:other_dataset'),
+                            description: t('dataset:external_other_dataset_desc'),
+                            menuList: [
+                              {
+                                children: [
+                                  {
+                                    icon: 'core/dataset/externalDatasetColor',
+                                    label: t('dataset:api_file'),
+                                    description: t('dataset:external_file_dataset_desc'),
+                                    onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
+                                  },
+                                  ...(feConfigs?.show_dataset_feishu !== false
+                                    ? [
+                                        {
+                                          icon: 'core/dataset/feishuDatasetColor',
+                                          label: t('dataset:feishu_dataset'),
+                                          description: t('dataset:feishu_dataset_desc'),
+                                          onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
+                                        }
+                                      ]
+                                    : []),
+                                  ...(feConfigs?.show_dataset_yuque !== false
+                                    ? [
+                                        {
+                                          icon: 'core/dataset/yuqueDatasetColor',
+                                          label: t('dataset:yuque_dataset'),
+                                          description: t('dataset:yuque_dataset_desc'),
+                                          onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
+                                        }
+                                      ]
+                                    : []),
+                                  ...(feConfigs?.show_dataset_dingtalk !== false
+                                    ? [
+                                        {
+                                          icon: 'core/dataset/dingtalkDatasetColor',
+                                          label: t('dataset:dingtalk_dataset'),
+                                          description: t('dataset:dingtalk_dataset_desc'),
+                                          onClick: () =>
+                                            onSelectDatasetType(DatasetTypeEnum.dingtalk)
+                                        }
+                                      ]
+                                    : [])
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        children: [
+                          {
+                            icon: FolderIcon,
+                            label: t('common:Folder'),
+                            disabled: !canCreateFolder,
+                            disabledTip: t('common:folder_depth_limit_tip'),
+                            onClick: () => setEditFolderData({})
+                          }
+                        ]
+                      }
+                    ]}
+                  />
+                )}
+              </Flex>
             )}
           </Flex>
 

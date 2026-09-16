@@ -111,3 +111,135 @@ describe('agent batch management logic', () => {
     expect(disabledIds).toContain('folder-1');
   });
 });
+
+describe('skill batch management logic', () => {
+  const mockSkills = [
+    {
+      _id: 'skill-1',
+      name: 'Skill 1',
+      type: 'skill' as any,
+      permission: {
+        hasManagePer: true,
+        isOwner: true
+      }
+    },
+    {
+      _id: 'skill-2',
+      name: 'Skill 2 (Manage Only)',
+      type: 'skill' as any,
+      permission: {
+        hasManagePer: true,
+        isOwner: false
+      }
+    },
+    {
+      _id: 'skill-3',
+      name: 'Skill 3 (Read Only)',
+      type: 'skill' as any,
+      permission: {
+        hasManagePer: false,
+        isOwner: false
+      }
+    },
+    {
+      _id: 'folder-skill-1',
+      name: 'Skill Folder 1',
+      type: 'folder' as any,
+      permission: {
+        hasManagePer: true,
+        isOwner: true
+      }
+    }
+  ];
+
+  it('filters selectable skills (manage or owner permission required)', () => {
+    const selectable = mockSkills.filter(
+      (s) => s.permission?.hasManagePer || s.permission?.isOwner
+    );
+    expect(selectable.map((s) => s._id)).toEqual(['skill-1', 'skill-2', 'folder-skill-1']);
+    expect(selectable.some((s) => s._id === 'skill-3')).toBe(false);
+  });
+
+  it('filters deletable skills (owner permission strictly required)', () => {
+    const selected = [mockSkills[0], mockSkills[1], mockSkills[3]];
+    const deletable = selected.filter((s) => s.permission?.isOwner);
+
+    expect(deletable.map((s) => s._id)).toEqual(['skill-1', 'folder-skill-1']);
+    expect(deletable.some((s) => s._id === 'skill-2')).toBe(false);
+  });
+
+  it('determines folder vs skill count for dynamic description', () => {
+    const selected = [mockSkills[0], mockSkills[3]];
+    const folderCount = selected.filter((s) => s.type === 'folder').length;
+    const skillCount = selected.length - folderCount;
+
+    expect(folderCount).toBe(1);
+    expect(skillCount).toBe(1);
+  });
+});
+
+describe('dataset batch management logic', () => {
+  const mockDatasets = [
+    {
+      _id: 'dataset-1',
+      name: 'Dataset 1',
+      type: 'dataset' as any,
+      permission: {
+        hasManagePer: true,
+        isOwner: true
+      }
+    },
+    {
+      _id: 'dataset-2',
+      name: 'Dataset 2 (Manage Only)',
+      type: 'dataset' as any,
+      permission: {
+        hasManagePer: true,
+        isOwner: false
+      }
+    },
+    {
+      _id: 'dataset-3',
+      name: 'Dataset 3 (Read Only)',
+      type: 'dataset' as any,
+      permission: {
+        hasManagePer: false,
+        isOwner: false
+      }
+    },
+    {
+      _id: 'folder-dataset-1',
+      name: 'Dataset Folder 1',
+      type: 'folder' as any,
+      permission: {
+        hasManagePer: true,
+        isOwner: true
+      }
+    }
+  ];
+
+  it('filters selectable datasets (manage or owner permission required)', () => {
+    const selectable = mockDatasets.filter(
+      (d) => d.permission?.hasManagePer || d.permission?.isOwner
+    );
+    expect(selectable.map((d) => d._id)).toEqual(['dataset-1', 'dataset-2', 'folder-dataset-1']);
+    expect(selectable.some((d) => d._id === 'dataset-3')).toBe(false);
+  });
+
+  it('filters deletable datasets (owner permission strictly required)', () => {
+    const selected = [mockDatasets[0], mockDatasets[1], mockDatasets[3]];
+    const deletable = selected.filter((d) => d.permission?.isOwner);
+
+    expect(deletable.map((d) => d._id)).toEqual(['dataset-1', 'folder-dataset-1']);
+    expect(deletable.some((d) => d._id === 'dataset-2')).toBe(false);
+  });
+
+  it('determines folder vs dataset count for dynamic description', () => {
+    const selected = [mockDatasets[0], mockDatasets[3]];
+    const folderCount = selected.filter((d) => d.type === 'folder').length;
+    const datasetCount = selected.length - folderCount;
+
+    expect(folderCount).toBe(1);
+    expect(datasetCount).toBe(1);
+  });
+});

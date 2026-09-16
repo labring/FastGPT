@@ -1293,5 +1293,13 @@
   "password_wechat_load_failed": "二维码加载失败，请重试",
   "password_wechat_qr": "微信验证二维码",
   "password_wechat_scan": "微信扫码登录",
-  "update_password": "修改密码"
+  "update_password": "修改密码",
+  "batch_manage": "批量管理",
+  "batch_move": "批量移动",
+  "batch_delete": "批量删除",
+  "select_all_filtered": "全选筛选项",
+  "selected_items": "已选 <bold>{{count}}</bold> 项",
+  "read_only_no_batch_permission": "无当前资源的操作权限，无法批量操作",
+  "will_delete": "将删除",
+  "confirm_delete": "确认删除"
 }

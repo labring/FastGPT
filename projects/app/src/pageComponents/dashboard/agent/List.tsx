@@ -214,7 +214,7 @@ const List = () => {
         cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
         border={'1px solid'}
         borderColor={isBatchMode && isSelected ? 'primary.600 !important' : 'myGray.200'}
-        bg={'white'}
+        bg={isBatchMode && isSelected ? 'primary.50' : 'white'}
         borderRadius={'10px'}
         position={'relative'}
         display={'flex'}
@@ -288,7 +288,7 @@ const List = () => {
               canBatchOperate ? (
                 <Checkbox size={'sm'} isChecked={isSelected} pointerEvents={'none'} />
               ) : (
-                <MyTooltip label={t('app:read_only_no_batch_permission')}>
+                <MyTooltip label={t('common:read_only_no_batch_permission')}>
                   <Box
                     w={'16px'}
                     h={'16px'}

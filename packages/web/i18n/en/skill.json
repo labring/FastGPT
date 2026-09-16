@@ -87,5 +87,20 @@
   "skill_select_limit_tip": "Reached the limit of 100 associated Skills per app",
   "switch_version_confirm": "Note: Switching versions will lose files outside the current workspace. Any unpublished changes will also be lost.",
   "unnamed_skill": "Unnamed",
-  "unsupported_file_format": "File format {{ext}} is not supported"
+  "unsupported_file_format": "Unsupported {{ext}} file format",
+  "filtered_no_delete_permission_tip": "Skills without delete permission have been filtered",
+  "confirm_delete_skills_tip": "Are you sure you want to delete the following skills?",
+  "confirm_delete_folders_tip": "Are you sure you want to delete the following folders? Once deleted, all skills inside them will be deleted.",
+  "confirm_delete_mixed_tip": "Are you sure you want to delete the following skills and folders? Once deleted, these skills and all contents in the folders will be deleted.",
+  "skill_count_one": "{{count}} skill",
+  "skill_count_other": "{{count}} skills",
+  "folder_count_one": "{{count}} folder",
+  "folder_count_other": "{{count}} folders",
+  "delete_skills_and_folders_confirm_title": "Confirm deleting {{skills}} and {{folders}}",
+  "delete_skills_confirm_title_one": "Confirm deleting {{count}} skill",
+  "delete_skills_confirm_title_other": "Confirm deleting {{count}} skills",
+  "delete_folders_confirm_title_one": "Confirm deleting {{count}} folder",
+  "delete_folders_confirm_title_other": "Confirm deleting {{count}} folders",
+  "delete_following_skills_tip": "Deleting the following skills cannot be undone.",
+  "delete_following_folders_tip": "Once deleted, these folders and all skills inside them will be deleted."
 }

@@ -595,12 +595,7 @@
   "workflow.user_file_input_desc": "Links to documents and images uploaded by users.",
   "workflow.user_select": "User Select",
   "workflow.user_select_tip": "Use this Node to configure options for users to select during a Chat. Each option can lead to a different Workflow branch.",
-  "batch_manage": "Batch Manage",
-  "batch_move": "Batch Move",
-  "batch_delete": "Batch Delete",
-  "select_all_filtered": "Select All Filtered",
   "filtered_no_delete_permission_tip": "Apps without delete permission have been filtered",
-  "read_only_no_batch_permission": "No operation permission for this app, batch operation is not allowed",
   "confirm_delete_apps_tip": "Are you sure you want to delete the following apps? Deleting these apps will also delete their associated chat history.",
   "confirm_delete_folders_tip": "Are you sure you want to delete the following folders? Once deleted, these folders, all apps inside them, and associated chat history will be deleted.",
   "confirm_delete_mixed_tip": "Are you sure you want to delete the following apps and folders? Once deleted, these apps and their associated chat history, as well as all contents in the folders, will be deleted.",
@@ -614,8 +609,5 @@
   "delete_folders_confirm_title_one": "Confirm deleting {{count}} folder",
   "delete_folders_confirm_title_other": "Confirm deleting {{count}} folders",
   "delete_following_apps_tip": "Deleting the following apps will also delete their associated chat history.",
-  "delete_following_folders_tip": "Once deleted, these folders, all apps inside them, and associated chat history will be deleted.",
-  "will_delete": "Will delete",
-  "selected_items": "<bold>{{count}}</bold> selected",
-  "confirm_delete": "Confirm Delete"
+  "delete_following_folders_tip": "Once deleted, these folders, all apps inside them, and associated chat history will be deleted."
 }
