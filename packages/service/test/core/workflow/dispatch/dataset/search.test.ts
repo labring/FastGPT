@@ -545,4 +545,100 @@ describe('dispatchDatasetSearch', () => {
       'https://files.example.com/query.png'
     ]);
   });
+
+  describe('retrievalResults', () => {
+    const recalled = [
+      { id: 'recall_1', q: 'q1', a: 'a1', sourceName: 'doc1.md' },
+      { id: 'recall_2', q: 'q2', a: 'a2', sourceName: 'doc2.md' }
+    ];
+    const reranked = [{ id: 'recall_2', q: 'q2', a: 'a2', sourceName: 'doc2.md' }];
+
+    // searchUsingReRank 为 true 时计费分支会读取 rerankModelData，必须配置。
+    const useRerankModel = async () => {
+      vi.mocked((await modelGetters.getModelHandle()).getRerankModelData).mockReturnValue({
+        modelId: 'rerank-model',
+        model: 'rerank-model',
+        name: 'Rerank Model',
+        type: 'rerank',
+        config: {}
+      } as any);
+    };
+
+    it('keeps the pre-rerank candidates when rerank is on', async () => {
+      await useRerankModel();
+      defaultSearchDatasetDataMock.mockResolvedValue({
+        searchRes: reranked,
+        retrievalResults: recalled,
+        embeddingTokens: 10,
+        reRankInputTokens: 5,
+        usingSimilarityFilter: false,
+        usingReRank: true
+      });
+
+      const result = await runSearch({ usingReRank: true });
+      const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
+
+      expect(nodeResponse?.retrievalResults?.map((item) => item.id)).toEqual([
+        'recall_1',
+        'recall_2'
+      ]);
+      // quoteList 仍是重排后的列表
+      expect(nodeResponse?.quoteList?.map((item) => item.id)).toEqual(['recall_2']);
+    });
+
+    it('drops retrievalResults when rerank is off, even if the recall layer produced it', async () => {
+      // 搜索层无条件产出快照，是否暴露由 dispatcher 决定。
+      defaultSearchDatasetDataMock.mockResolvedValue({
+        searchRes: recalled,
+        retrievalResults: recalled,
+        embeddingTokens: 10,
+        reRankInputTokens: 0,
+        usingSimilarityFilter: false,
+        usingReRank: false
+      });
+
+      const result = await runSearch({ usingReRank: false });
+
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
+        'retrievalResults'
+      );
+    });
+
+    it('omits the field when the recall layer returns an empty snapshot', async () => {
+      // RETRIEVAL_RESULTS_LIMIT=0 时搜索层返回空数组，等价于关闭。
+      await useRerankModel();
+      defaultSearchDatasetDataMock.mockResolvedValue({
+        searchRes: reranked,
+        retrievalResults: [],
+        embeddingTokens: 10,
+        reRankInputTokens: 5,
+        usingSimilarityFilter: false,
+        usingReRank: true
+      });
+
+      const result = await runSearch({ usingReRank: true });
+
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
+        'retrievalResults'
+      );
+    });
+
+    it('omits the field on the deep search path, which does not produce it', async () => {
+      await useRerankModel();
+      deepRagSearchMock.mockResolvedValue({
+        searchRes: reranked,
+        embeddingTokens: 10,
+        reRankInputTokens: 5,
+        usingSimilarityFilter: false,
+        usingReRank: true
+      });
+
+      const result = await runSearch({ usingReRank: true, datasetDeepSearch: true });
+      expect(deepRagSearchMock).toHaveBeenCalled();
+
+      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
+        'retrievalResults'
+      );
+    });
+  });
 });

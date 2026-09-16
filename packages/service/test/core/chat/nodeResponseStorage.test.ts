@@ -685,6 +685,94 @@ describe('WorkflowNodeResponseWriter', () => {
     });
   });
 
+  it('slims dataset retrievalResults alongside quoteList before persisting', async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 1,
+      retainInMemory: true,
+      model: { create }
+    });
+
+    const [returnedResponse] = await writer.record([
+      makeResponse({
+        id: 'dataset-root',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [
+          {
+            id: 'quote-1',
+            q: 'reranked question',
+            a: 'reranked answer',
+            datasetId: 'dataset-1',
+            collectionId: 'collection-1',
+            sourceId: 'source-1',
+            sourceName: 'source',
+            chunkIndex: 0,
+            score: []
+          } as any
+        ],
+        retrievalResults: [
+          {
+            id: 'recall-1',
+            q: 'full question',
+            a: 'full answer',
+            indexes: [{ type: 'qa', dataId: 'data-1', text: 'full question' }],
+            datasetId: 'dataset-1',
+            collectionId: 'collection-1',
+            sourceId: 'source-1',
+            sourceName: 'source',
+            chunkIndex: 1,
+            score: []
+          } as any
+        ]
+      })
+    ]);
+
+    // 内存中保留完整 q/a，供当前请求的日志详情使用
+    expect(returnedResponse.retrievalResults?.[0]).toMatchObject({
+      id: 'recall-1',
+      q: 'full question',
+      a: 'full answer',
+      indexes: [{ type: 'qa', dataId: 'data-1', text: 'full question' }]
+    });
+    // 入库前瘦身，避免重排开启时单行体积翻倍
+    const persisted = create.mock.calls[0][0][0].data.retrievalResults?.[0];
+    expect(persisted).toEqual({
+      id: 'recall-1',
+      chunkIndex: 1,
+      datasetId: 'dataset-1',
+      collectionId: 'collection-1',
+      sourceId: 'source-1',
+      sourceName: 'source',
+      score: []
+    });
+    expect(persisted).not.toHaveProperty('q');
+    expect(persisted).not.toHaveProperty('a');
+    expect(persisted).not.toHaveProperty('indexes');
+  });
+
+  it('slims dataset retrievalResults even when quoteList is absent', async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 1,
+      retainInMemory: true,
+      model: { create }
+    });
+
+    await writer.record([
+      makeResponse({
+        id: 'dataset-root',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        retrievalResults: [
+          { id: 'recall-1', q: 'full question', a: 'full answer', chunkIndex: 0 } as any
+        ]
+      })
+    ]);
+
+    expect(create.mock.calls[0][0][0].data.retrievalResults?.[0]).not.toHaveProperty('q');
+  });
+
   it('retains all flat nodeResponse increments and folds them for composition', async () => {
     const writer = new WorkflowNodeResponseWriter({
       ...base,

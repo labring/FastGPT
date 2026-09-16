@@ -14,6 +14,7 @@ import {
   removeDuplicateSearchResults
 } from './result';
 import { countRecallLimit, filterDatasetDataByMaxTokens } from './utils';
+import { serviceEnv } from '../../../../env';
 
 /**
  * 执行默认知识库召回主流程。
@@ -158,6 +159,10 @@ export async function searchDatasetData(
     }
   ]);
 
+  // 融合完成即取快照：去重/相似度/token 裁剪之前的候选集，仅用于日志详情对比召回与重排。
+  // 上限由 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不记录。
+  const retrievalResults = rrfConcatResults.slice(0, serviceEnv.RETRIEVAL_RESULTS_LIMIT);
+
   // Step 7: 最终过滤顺序固定为：同内容去重 -> 相似度阈值 -> token 上限。
   // 先去重可以避免同一 chunk 因多路召回重复占用相似度过滤和 token 预算。
   const filterSameDataResults = removeDuplicateSearchResults(rrfConcatResults);
@@ -194,6 +199,7 @@ export async function searchDatasetData(
     similarity,
     usingReRank: finalUsingReRank,
     usingSimilarityFilter,
-    imageCaptionResult
+    imageCaptionResult,
+    retrievalResults
   };
 }

@@ -64,6 +64,10 @@ export type SearchDatasetDataResponse = {
   usingReRank: boolean;
   usingSimilarityFilter: boolean;
 
+  /** 融合阶段候选集快照（去重/阈值/token 裁剪前），仅用于日志详情对比召回与重排。
+   *  可选：deepRagHandler 等外部实现不产出该字段。 */
+  retrievalResults?: SearchDataResponseItemType[];
+
   queryExtensionResult?: {
     llmModel: string;
     embeddingModel: string;
