@@ -170,7 +170,7 @@ syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs
 |---|---|---|
 | `POST /api/core/dataset/collection/create` | dataset write | 父 collection folder `write` 或 dataset `write` 及以上；根创建需 dataset `write` |
 | `PUT /api/core/dataset/collection/update` | collection write | 非 move：collection `write`；move：源父级 + 目标父级 `manage`（根 ↔ 目录需 `TeamDatasetCreatePermissionVal`），**不接收 `inheritPermission`** |
-| `DELETE /api/core/dataset/collection/delete` | collection write | collection `write`（folder 递归删子树） |
+| `DELETE /api/core/dataset/collection/delete` | collection write | collection `manage`（folder 递归删子树；删除是不可逆的结构性操作，write 协作者只能改内容不能删结构） |
 | `GET /api/core/dataset/collection/detail` | collection read | dataset `read`（门槛）+ collection `read` |
 | `GET /api/core/dataset/collection/listV2` | dataset read | dataset `read`（门槛）；有 `parentId` 时校验该 folder `read`；列表按可读集合逐条过滤 |
 

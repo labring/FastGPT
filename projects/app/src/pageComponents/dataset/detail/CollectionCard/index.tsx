@@ -138,6 +138,13 @@ const CollectionCard = () => {
     getItemId: (e) => e._id
   });
 
+  // 删除统一要求 collection manage（后端 per: ManagePermissionVal），
+  // 批量删除必须所选全部有 manage 权限，否则请求会被整批拒绝。
+  const canBatchDelete = useMemo(
+    () => selectedItems.length > 0 && selectedItems.every((item) => item.permission.hasManagePer),
+    [selectedItems]
+  );
+
   const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
 
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -378,23 +385,25 @@ const CollectionCard = () => {
                             {t('dataset:tag.batch_edit')}
                           </Button>
                         )}
-                      <Button
-                        size={'sm'}
-                        variant={'whiteBase'}
-                        onClick={() =>
-                          openDeleteConfirm({
-                            onConfirm: () =>
-                              onDelCollection(selectedItems.map((e) => e._id)).then(() =>
-                                setSelectedItems([])
-                              ),
-                            customContent: t('dataset:confirm_delete_collection', {
-                              num: selectedItems.length
-                            })
-                          })()
-                        }
-                      >
-                        {t('dataset:batch_delete')}
-                      </Button>
+                      {canBatchDelete && (
+                        <Button
+                          size={'sm'}
+                          variant={'whiteBase'}
+                          onClick={() =>
+                            openDeleteConfirm({
+                              onConfirm: () =>
+                                onDelCollection(selectedItems.map((e) => e._id)).then(() =>
+                                  setSelectedItems([])
+                                ),
+                              customContent: t('dataset:confirm_delete_collection', {
+                                num: selectedItems.length
+                              })
+                            })()
+                          }
+                        >
+                          {t('dataset:batch_delete')}
+                        </Button>
+                      )}
                     </HStack>
                   </HStack>
                 )}
@@ -625,25 +634,29 @@ const CollectionCard = () => {
                                 : [])
                             ]
                           },
-                          {
-                            children: [
-                              {
-                                type: 'danger',
-                                icon: 'delete',
-                                label: t('common:Delete'),
-                                onClick: () =>
-                                  openDeleteConfirm({
-                                    onConfirm: () => onDelCollection([collection._id]),
-                                    customContent:
-                                      collection.type === DatasetCollectionTypeEnum.folder
-                                        ? t(
-                                            'common:dataset.collections.Confirm to delete the folder'
-                                          )
-                                        : t('common:dataset.Confirm to delete the file')
-                                  })()
-                              }
-                            ]
-                          }
+                          ...(collection.permission.hasManagePer
+                            ? [
+                                {
+                                  children: [
+                                    {
+                                      type: 'danger' as const,
+                                      icon: 'delete',
+                                      label: t('common:Delete'),
+                                      onClick: () =>
+                                        openDeleteConfirm({
+                                          onConfirm: () => onDelCollection([collection._id]),
+                                          customContent:
+                                            collection.type === DatasetCollectionTypeEnum.folder
+                                              ? t(
+                                                  'common:dataset.collections.Confirm to delete the folder'
+                                                )
+                                              : t('common:dataset.Confirm to delete the file')
+                                        })()
+                                    }
+                                  ]
+                                }
+                              ]
+                            : [])
                         ]}
                       />
                     )}

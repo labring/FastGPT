@@ -100,6 +100,7 @@ const CollectionFolderCard = ({
           }
           onMove={() => setIsMoving(true)}
           deleteTip={t('common:dataset.collections.Confirm to delete the folder')}
+          canDelete={folder.permission.hasManagePer}
           onDelete={async () => {
             await deleteFolder();
             await backToParentFolder();

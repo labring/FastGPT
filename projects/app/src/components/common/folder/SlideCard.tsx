@@ -21,6 +21,9 @@ const FolderSlideCard = ({
   onMove,
   deleteTip,
   onDelete,
+  // 删除按钮所需的权限档位：默认 owner（知识库/应用目录删除接口要求 owner），
+  // collection 目录的删除接口要求 manage，由调用方显式传入。
+  canDelete,
   // 为 false 时不渲染简介区（collection 无 intro 字段）
   showIntro = true,
   // 为 false 时不渲染协作者区（如知识库未开启数据集权限配置）
@@ -41,6 +44,8 @@ const FolderSlideCard = ({
   onMove: () => void;
   deleteTip: string;
   onDelete: () => void;
+  /** 是否展示删除按钮；缺省按 owner 判定（`managePer.permission.isOwner`） */
+  canDelete?: boolean;
 
   managePer: MemberManagerInputPropsType;
 
@@ -101,7 +106,7 @@ const FolderSlideCard = ({
             >
               {t('common:Move')}
             </Button>
-            {managePer.permission.isOwner && (
+            {(canDelete ?? managePer.permission.isOwner) && (
               <PopoverConfirm
                 Trigger={
                   <Button
