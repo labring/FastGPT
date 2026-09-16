@@ -2,7 +2,8 @@ import {
   isModelAllowedByValues,
   resolveModelSelectorDisabled,
   resolveModelSelectorProviders,
-  resolveModelSelectorSelection
+  resolveModelSelectorSelection,
+  sortModelSelectorModels
 } from '@/components/Select/AIModelSelector.utils';
 import { describe, expect, it } from 'vitest';
 
@@ -29,6 +30,28 @@ describe('AIModelSelector utils', () => {
     expect(isModelAllowedByValues(model, new Set(['model-id']))).toBe(true);
     expect(isModelAllowedByValues(model, new Set(['gpt-4o']))).toBe(true);
     expect(isModelAllowedByValues(model, new Set(['other']))).toBe(false);
+  });
+
+  it('moves beta models to the end without changing the input order', () => {
+    const models = [
+      { modelId: 'beta-first', testMode: true },
+      { modelId: 'stable', testMode: false },
+      { modelId: 'stable-without-flag' },
+      { modelId: 'beta-last', testMode: true }
+    ];
+
+    expect(sortModelSelectorModels(models).map((item) => item.modelId)).toEqual([
+      'stable',
+      'stable-without-flag',
+      'beta-first',
+      'beta-last'
+    ]);
+    expect(models.map((item) => item.modelId)).toEqual([
+      'beta-first',
+      'stable',
+      'stable-without-flag',
+      'beta-last'
+    ]);
   });
 
   it('orders provider groups by the plugin provider catalog', () => {
