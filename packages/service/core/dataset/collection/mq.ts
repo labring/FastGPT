@@ -47,10 +47,7 @@ export const initCollectionUpdateWorker = () => {
 
 /**
  * Push collection update job to queue with debounce
- * @param collectionId - Collection ID
- * @param datasetId - Dataset ID
- * @param teamId - Team ID
- * @param delay - Delay in milliseconds (default: 5000ms = 5s)
+ * @param data - Job payload ({ teamId, datasetId, collectionId })
  */
 export const pushCollectionUpdateJob = (data: CollectionUpdateJobData) =>
   collectionUpdateMQService.pushJob(data);
