@@ -49,7 +49,7 @@ export default function VariablePlugin({ variables }: { variables: EditorVariabl
   );
 
   useEffect(() => {
-    mergeRegister(
+    return mergeRegister(
       ...registerLexicalTextEntity(editor, getVariableMatch, VariableNode, createVariableNode)
     );
   }, [createVariableNode, editor, getVariableMatch]);

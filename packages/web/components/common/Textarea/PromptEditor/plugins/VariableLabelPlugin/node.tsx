@@ -87,12 +87,16 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   }
   exportDOM(): DOMExportOutput {
     const element = document.createElement('span');
+    element.textContent = this.getTextContent();
     return { element };
   }
   static importDOM(): DOMConversionMap | null {
     return {};
   }
   updateDOM(): false {
+    return false;
+  }
+  isKeyboardSelectable(): boolean {
     return false;
   }
   getVariableKey(): string {
