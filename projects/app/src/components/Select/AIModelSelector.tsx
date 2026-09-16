@@ -22,7 +22,8 @@ import {
   isModelAllowedByValues,
   resolveModelSelectorDisabled,
   resolveModelSelectorProviders,
-  resolveModelSelectorSelection
+  resolveModelSelectorSelection,
+  sortModelSelectorModels
 } from './AIModelSelector.utils';
 import { ModelStatusLabel } from './ModelStatusLabel';
 
@@ -133,10 +134,12 @@ const AIModelSelector = ({
   );
   const models = useMemo(
     () =>
-      modelList.filter(
-        (model) =>
-          model.type === modelType &&
-          (allowedValues === undefined || isModelAllowedByValues(model, allowedValues))
+      sortModelSelectorModels(
+        modelList.filter(
+          (model) =>
+            model.type === modelType &&
+            (allowedValues === undefined || isModelAllowedByValues(model, allowedValues))
+        )
       ),
     [allowedValues, modelList, modelType]
   );

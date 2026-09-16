@@ -43,6 +43,11 @@ export const isModelAllowedByValues = (
 ) =>
   allowedValues === undefined || allowedValues.has(model.modelId) || allowedValues.has(model.model);
 
+/** 将测试模式模型放到列表末尾，同时保留同一分组内模型的目录顺序。 */
+export const sortModelSelectorModels = <T extends Pick<MyModelItemType, 'testMode'>>(
+  models: T[]
+) => [...models].sort((a, b) => Number(Boolean(a.testMode)) - Number(Boolean(b.testMode)));
+
 /**
  * 按 plugin 模型供应商目录的声明顺序生成选择器分组。
  *
