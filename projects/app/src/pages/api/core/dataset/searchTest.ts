@@ -1,6 +1,7 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
 import { pushDatasetTestUsage } from '@/service/support/wallet/usage/push';
 import { deepRagSearch, defaultSearchDatasetData } from '@fastgpt/service/core/dataset/search';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
@@ -80,6 +81,13 @@ export async function handler(
     return Promise.reject('Invalid query image key');
   }
 
+  // Collection 级权限可读集合：undefined=无需过滤；真子集=仅这些 collection 可召回
+  const readableCollectionIdList = await resolveReadableCollectionIds({
+    teamId,
+    datasetIds: [datasetId],
+    tmbId
+  });
+
   // 搜索主链路只接收模型可读图片 URL；temp key 的鉴权和临时 URL 生成固定在入口层完成。
   const validQueryImageUrls = await Promise.all(
     validQueryImageKeys.map(async (key) => {
@@ -117,6 +125,7 @@ export async function handler(
   const searchData = {
     histories: [],
     teamId,
+    tmbId,
     reRankQuery: text,
     textQueries: text ? [text] : [],
     imageQueries: validQueryImageUrls,
@@ -129,7 +138,8 @@ export async function handler(
     embeddingWeight,
     usingReRank,
     rerankModel: rerankModelData,
-    rerankWeight
+    rerankWeight,
+    readableCollectionIdList
   };
   const {
     searchRes,

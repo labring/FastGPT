@@ -2,7 +2,7 @@ import {
   CreateApiCollectionV2BodySchema,
   type CreateApiCollectionV2BodyType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   createCollectionAndInsertData,
   createOneCollection
@@ -10,7 +10,6 @@ import {
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
@@ -25,12 +24,12 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
   const body = parseApiInput({ req, bodySchema: CreateApiCollectionV2BodySchema }).body;
 
-  const { teamId, tmbId, dataset } = await authDataset({
+  const { teamId, tmbId, dataset } = await authDatasetCollectionCreate({
     req,
     authToken: true,
     authApiKey: true,
     datasetId: body.datasetId,
-    per: WritePermissionVal
+    parentId: body.parentId
   });
 
   // Check dataset limit

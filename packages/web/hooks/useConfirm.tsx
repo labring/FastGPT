@@ -168,6 +168,10 @@ export const useConfirm = (props?: {
       const finalShowCancel = customShowCancel !== undefined ? customShowCancel : showCancel;
       const finalVariant = customConfirmButtonVariant || map.variant;
 
+      // 关闭后立即卸载：确认回调常伴随父级状态更新，若保留 Chakra 的退场动画节点，
+      // 退场期间的重渲染会让 portal 残留成透明遮罩并永久拦截页面点击。
+      if (!isOpen) return null;
+
       return (
         <MyModal isOpen={isOpen} onClose={handleClose} isCentered size={'sm'} borderRadius={'10px'}>
           <Flex direction={'column'} gap={'24px'}>
@@ -253,9 +257,13 @@ export const useConfirm = (props?: {
                       if (typeof confirmCb.current === 'function') {
                         await confirmCb.current();
                       }
-                      onClose();
-                    } catch {}
-                    setRequesting(false);
+                    } catch {
+                      // 失败时保持弹窗打开并解除 loading，允许用户重试。
+                      setRequesting(false);
+                      return;
+                    }
+                    // 关闭后不再更新本地状态：弹窗退出动画期间的重渲染会让 portal 残留并持续拦截点击。
+                    onClose();
                   }}
                 >
                   {countDownAmount > 0 ? `${countDownAmount}s` : finalConfirmText}

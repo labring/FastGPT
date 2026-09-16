@@ -151,6 +151,10 @@ export const DatasetSchema = z
     createTime: z.coerce.date().meta({ description: '创建时间' }),
     updateTime: z.coerce.date().meta({ description: '更新时间' }),
     inheritPermission: z.boolean().meta({ description: '继承权限' }),
+    collectionPermissionEnabled: z
+      .boolean()
+      .optional()
+      .meta({ description: 'collection 级权限开关：false 表示关闭态（默认，可读性等于 dataset）' }),
 
     avatar: z
       .preprocess((value) => value ?? undefined, z.string().default(LOGO_ICON))
@@ -226,6 +230,11 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   updateTime: z.coerce.date().meta({ description: '更新时间' }),
 
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
+
+  inheritPermission: z
+    .boolean()
+    .optional()
+    .meta({ description: '继承权限：true=快照合并父级，false=独立配置' }),
 
   fileId: z.string().optional().meta({ description: '文件 ID' }),
   rawLink: z.string().optional().meta({ description: '原始链接' }),
