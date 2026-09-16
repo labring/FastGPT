@@ -62,30 +62,50 @@ export const sliceJsonStr = (str: string) => {
   str = str.trim();
 
   // Find first opening bracket
-  let start = -1;
-  let openChar = '';
-
-  for (let i = 0; i < str.length; i++) {
-    if (str[i] === '{' || str[i] === '[') {
-      start = i;
-      openChar = str[i];
-      break;
-    }
-  }
-
+  const start = str.search(/[{\[]/);
   if (start === -1) return str;
 
-  // Find matching closing bracket from the end
+  const openChar = str[start];
   const closeChar = openChar === '{' ? '}' : ']';
 
-  for (let i = str.length - 1; i >= start; i--) {
+  // Walk forward and close at depth 0. Searching backwards for the last closing
+  // bracket instead would swallow anything the model wrote after the JSON that
+  // happens to contain one -- a second object, a closing code fence followed by
+  // a note, a sentence mentioning a {placeholder}.
+  let depth = 0;
+  // Both quote characters, because the callers parse with JSON5.
+  let stringChar: string | undefined;
+  let escaped = false;
+
+  for (let i = start; i < str.length; i++) {
     const ch = str[i];
 
-    if (ch === closeChar) {
-      return str.slice(start, i + 1);
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      if (stringChar) escaped = true;
+      continue;
+    }
+    if (stringChar) {
+      if (ch === stringChar) stringChar = undefined;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      stringChar = ch;
+      continue;
+    }
+
+    if (ch === openChar) {
+      depth++;
+    } else if (ch === closeChar) {
+      depth--;
+      if (depth === 0) return str.slice(start, i + 1);
     }
   }
 
+  // Unbalanced: leave it to the caller's repair step, as before.
   return str;
 };
 
