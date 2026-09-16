@@ -67,6 +67,9 @@ const processBase64Images = async (
   return result + htmlContent.slice(lastIndex);
 };
 
+/** A markdown table's second line, `| --- |` with optional alignment colons. */
+const isDivider = (line?: string) => !!line && /^\|(?:\s*:?-{3,}:?\s*\|)+$/.test(line);
+
 export const html2md = async (
   html: string,
   options: {
@@ -89,6 +92,30 @@ export const html2md = async (
   try {
     turndownService.remove(['i', 'script', 'iframe', 'style']);
     turndownService.use(gfm);
+
+    // joplin-turndown-plugin-gfm only treats a row as the header when every
+    // cell is a <th>. A table written with <td> throughout therefore gets an
+    // empty header row, and its column names drop into the first body row --
+    // where the header is what gives every value in the table its meaning.
+    // A later rule wins in turndown, so this one replaces the plugin's.
+    turndownService.addRule('tableHeader', {
+      filter: (node) => node.nodeName === 'TABLE',
+      replacement: function (content) {
+        const rows = content.replace(/\n+/g, '\n').trim();
+        // The plugin lays a table it cannot render out as plain paragraphs
+        // (one cell only, or a nested table); leave those exactly as they are.
+        const lines = rows.split('\n');
+        if (!lines.every((line) => line.startsWith('|'))) return content;
+
+        if (isDivider(lines[1])) return `\n\n${rows}\n\n`;
+
+        const columns = (lines[0].match(/(?<!\\)\|/g) || []).length - 1;
+        if (columns < 1) return `\n\n${rows}\n\n`;
+
+        const divider = `|${' --- |'.repeat(columns)}`;
+        return `\n\n${lines[0]}\n${divider}\n${lines.slice(1).join('\n')}\n\n`;
+      }
+    });
 
     // add custom handling for media tag
     turndownService.addRule('media', {
