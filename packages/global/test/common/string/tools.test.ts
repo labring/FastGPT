@@ -40,6 +40,10 @@ describe('string tools', () => {
     expect(simpleText('中文\t中文')).toBe('中文中文');
     // 全角空格
     expect(simpleText('中文　中文')).toBe('中文中文');
+    // 超过两个汉字时,每一处空白都要去掉,而不是隔一个去一个
+    expect(simpleText('中 文 字 符 串')).toBe('中文字符串');
+    expect(simpleText('产 品 说 明 书')).toBe('产品说明书');
+    expect(simpleText('这 是 一 段 中文')).toBe('这是一段中文');
   });
 
   it('should keep brackets and line indentation while normalizing blanks', () => {
