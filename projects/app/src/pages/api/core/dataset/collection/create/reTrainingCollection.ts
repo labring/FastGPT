@@ -52,7 +52,8 @@ async function handler(req: ApiRequestProps): Promise<ReTrainingCollectionRespon
           datasetId: collection.datasetId,
           tags: collection.tags
         })
-      }
+      },
+      audit: false
     });
 
     (async () => {

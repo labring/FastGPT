@@ -5,6 +5,12 @@ import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 
 export type DatasetSyncJobData = {
   datasetId: string;
+  /** 执行主体范围；缺省视为定时同步等系统任务。 */
+  scope?: 'member' | 'system';
+  /** 关联审计事件的 taskId，同时用作 BullMQ jobId 以识别去重命中。 */
+  taskId?: string;
+  /** 手动同步的操作成员；仅 member scope 使用，供 worker 竞态补建审计。 */
+  tmbId?: string;
 };
 
 const repeatDuration = 24 * 60 * 60 * 1000;
@@ -40,7 +46,10 @@ export class DatasetSyncMQService {
   /** 投递以 datasetId 去重的同步任务。 */
   addJob(data: DatasetSyncJobData) {
     const datasetId = String(data.datasetId);
-    return this.getQueue().add(datasetId, data, { deduplication: { id: datasetId } });
+    return this.getQueue().add(datasetId, data, {
+      ...(data.taskId ? { jobId: data.taskId } : {}),
+      deduplication: { id: datasetId }
+    });
   }
 
   /** 将 BullMQ 状态转换为业务侧 dataset sync 状态。 */
