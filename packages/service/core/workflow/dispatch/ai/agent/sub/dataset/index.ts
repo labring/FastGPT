@@ -1,3 +1,4 @@
+import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
 import { getModelHandle } from '../../../../../../ai/model';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -212,6 +213,7 @@ export const dispatchAgentDatasetSearch = async ({
     datasetParams
   });
 
+  const nodeSummary = createNodeSummary();
   try {
     const requestedDatasetIds = datasetParams.datasets.map((item) => item.datasetId);
     const datasetIds =
@@ -283,6 +285,7 @@ export const dispatchAgentDatasetSearch = async ({
     // count bill results
     const usages: ChatNodeUsageType[] = [];
     const childrenResponses: ChatHistoryItemResType[] = [];
+    let childrenResponsePoints = 0;
     let searchResults = searchRes;
 
     // 合并其他的 usages
@@ -302,13 +305,15 @@ export const dispatchAgentDatasetSearch = async ({
           outputTokens: queryExtensionResult.outputTokens
         };
         usages.push(queryExtensionUsage);
+        childrenResponsePoints += queryExtensionUsage.totalPoints;
         childrenResponses.push(
           createQueryExtensionChildNodeResponse({
             requestIds: [queryExtensionResult.requestId],
             usage: queryExtensionUsage,
             modelName: extensionModelData!.name,
             seconds: queryExtensionResult.seconds,
-            query: queryExtensionResult.query
+            query: queryExtensionResult.query,
+            embeddingTokens: queryExtensionResult.embeddingTokens
           })
         );
 
@@ -339,6 +344,7 @@ export const dispatchAgentDatasetSearch = async ({
           outputTokens: imageCaptionResult.outputTokens
         };
         usages.push(imageCaptionUsage);
+        childrenResponsePoints += imageCaptionUsage.totalPoints;
         childrenResponses.push(
           createImageCaptionChildNodeResponse({
             requestIds: imageCaptionResult.requestIds,
@@ -396,6 +402,7 @@ export const dispatchAgentDatasetSearch = async ({
       // 将 AI 分块选择记录为知识库搜索子调用，requestId 跟随 child nodeResponse 展示。
       if (pickResults.usage) {
         usages.push(pickResults.usage);
+        childrenResponsePoints += pickResults.usage.totalPoints;
         childrenResponses.push(
           createChunkSelectionChildNodeResponse({
             requestIds: [pickResults.requestId],
@@ -412,6 +419,8 @@ export const dispatchAgentDatasetSearch = async ({
     const nodeResponse: DispatchSubAppResponse['nodeResponse'] = {
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
+      totalPoints:
+        usages.reduce((sum, usage) => sum + usage.totalPoints, 0) - childrenResponsePoints,
       datasetQueries: [...textQueries, ...imageQueries],
       embeddingModel: vectorModel.name,
       embeddingTokens,
@@ -437,6 +446,7 @@ export const dispatchAgentDatasetSearch = async ({
     return {
       response: formattedResponse,
       usages: usages,
+      nodeSummary: getNodeSummaryData(nodeSummary),
       nodeResponse
     };
   } catch (error) {
@@ -444,6 +454,7 @@ export const dispatchAgentDatasetSearch = async ({
     const response = `Failed to search dataset: ${getErrText(error)}`;
     return {
       response,
+      nodeSummary: getNodeSummaryData(nodeSummary),
       errorMessage: response
     };
   }

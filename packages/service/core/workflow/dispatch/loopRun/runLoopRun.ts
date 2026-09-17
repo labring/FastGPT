@@ -14,13 +14,9 @@ import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/l
 import { serviceEnv } from '../../../../env';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
-import {
-  collectResponseFeedbacks,
-  getRuntimeNodeResponseSummary,
-  getNodeErrResponse,
-  mergeRuntimeNodeResponseSummary,
-  pushSubWorkflowUsage
-} from '../utils';
+import type { DispatchFlowResponse } from '../type';
+import { collectResponseFeedbacks, getNodeErrResponse, pushSubWorkflowUsage } from '../utils';
+import { getWorkflowRuntimeSummary, mergeWorkflowRuntimeSummary } from '../utils/summary';
 import {
   hasLoopRunBreakChild,
   injectLoopRunStart,
@@ -99,7 +95,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     : [];
   const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
-  let totalPoints = 0;
   let childResponseCount = 0;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined;
   // Pre-interrupt runtime summary survives across resume here, so loopRun can still
@@ -110,11 +105,14 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     response
   }: {
     isResumeIteration: boolean;
-    response: Response;
+    response: DispatchFlowResponse;
   }) => {
-    const currentSummary = getRuntimeNodeResponseSummary(response);
+    const currentSummary = getWorkflowRuntimeSummary(response);
     const fullSummary = isResumeIteration
-      ? mergeRuntimeNodeResponseSummary(pendingIterationSummary, currentSummary)
+      ? mergeWorkflowRuntimeSummary({
+          currentSummary: pendingIterationSummary,
+          workflowRuntimeSummary: currentSummary
+        })
       : currentSummary;
 
     // 同一个 iterationResponseId 会在暂停和恢复后各写一条 wrapper row；读取时数值字段按
@@ -192,13 +190,13 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
       )
     });
-
     // Merge pre-interrupt runtime summary so resumed iteration still sees the full
     // set of finished nodes and stats without keeping full child nodeResponse data.
     const { fullSummary: iterationSummary, wrapperSummary } = getWrapperSummary({
       isResumeIteration,
       response
     });
+    const childRuntimeSummary = getWorkflowRuntimeSummary(response);
     const iterationChildResponseCount = wrapperSummary.childResponseCount;
     const iterationRunningTime = +((Date.now() - iterationStartTime) / 1000).toFixed(2);
     assistantResponses.push(...response.assistantResponses);
@@ -208,8 +206,12 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       name,
       iteration
     });
-    const iterationDetailTotalPoints = wrapperSummary.totalPoints ?? iterationTotalPoints;
-    totalPoints += iterationTotalPoints;
+    props.nodeSummary.mergeNodeSummary({
+      llmInputTokens: childRuntimeSummary.llmInputTokens,
+      llmOutputTokens: childRuntimeSummary.llmOutputTokens,
+      totalPoints: iterationTotalPoints,
+      citeCollectionIds: childRuntimeSummary.citeCollectionIds
+    });
     collectResponseFeedbacks(response, customFeedbacks);
 
     // Apply `finishedNodeIds` over the merged children so pre-interrupt nodes count
@@ -234,7 +236,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         moduleName: i18nT('workflow:parallel_task'),
         moduleNameArgs: { index: iteration },
         runningTime: Math.round(iterationRunningTime * 100) / 100,
-        totalPoints: iterationDetailTotalPoints,
         loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
         loopOutputValue: customOutputs,
         error: opts.error,
@@ -342,7 +343,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         }
       : undefined,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints,
       loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,
       loopRunIterations: loopHistory.length,
       loopRunHistory: loopHistory,

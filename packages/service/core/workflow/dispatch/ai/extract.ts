@@ -74,7 +74,6 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       extractModel,
       lastMemory
     });
-
     // remove invalid key
     for (const key in arg) {
       const item = extractKeys.find((item) => item.key === key);

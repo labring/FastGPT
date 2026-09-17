@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
+import { createNodeSummary } from '../../../../../core/workflow/dispatch/utils/summary';
 
 const mocks = vi.hoisted(() => ({
   runWorkflow: vi.fn(),
@@ -65,7 +66,7 @@ describe('dispatchRunAppNode', () => {
       workflowInteractiveResponse: undefined,
       system_memories: [],
       customFeedbacks: [],
-      runtimeNodeResponseSummary: {
+      workflowRuntimeSummary: {
         responseIds: [],
         finishedNodeIds: [],
         childResponseCount: 1
@@ -108,11 +109,11 @@ describe('dispatchRunAppNode', () => {
       uid: 'caller-uid',
       chatId: 'chat-1',
       responseChatItemId: 'resp-1',
-      usagePush
+      usagePush,
+      nodeSummary: createNodeSummary()
     };
 
     const result = await dispatchRunAppNode(props);
-
     // 验证资源加载时使用当前运行用户身份
     expect(mocks.loadChildWorkflowWithResource).toHaveBeenCalledWith({
       appId: 'child-app-id',

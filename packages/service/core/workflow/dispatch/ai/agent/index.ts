@@ -20,7 +20,7 @@ import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
-import type { RuntimeNodeResponseSummary } from '../../type';
+import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import {
@@ -90,23 +90,26 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
-}> & {
-  runtimeNodeResponseSummary?: RuntimeNodeResponseSummary;
-};
+}>;
 
 /**
  * Agent 节点入口。
  * 负责准备历史、文件、工具、能力插件和持久化 memory，然后把实际循环执行交给统一 agentLoop 入口。
  */
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
-  // 这些数组会贯穿整轮 dispatch，并由 adapter 持续写入。
-  // 最终统一作为 workflow 节点的 assistantResponses 和 nodeResponses 返回。
+  // assistantResponses 贯穿整轮 dispatch；Agent 内部 nodeResponse 由 sink 逐条发布。
   const assistantResponses: AIChatItemValueItemType[] = [];
   const childNodeResponses: ChatHistoryItemResType[] = [];
   const nodeResponseCollector = createAgentNodeResponseCollector({
     nodeResponseSink: props.nodeResponseSink,
-    nodeResponses: childNodeResponses
+    nodeResponses: childNodeResponses,
+    onNodeResponseSummary: (summary) =>
+      props.nodeSummary.mergeNodeSummary(runtimeSummaryToNodeSummary(summary))
   });
+  // Agent 的主模型、工具和压缩响应都是当前层的顶级详情行；只有工具压缩通过
+  // event collector 自己携带 parentId，不能挂到一个不存在的 Agent 根响应下。
+  const appendAgentNodeResponse = (response: ChatHistoryItemResType) =>
+    nodeResponseCollector.appendNodeResponse(response);
 
   const {
     node: { nodeId, inputs },
@@ -288,7 +291,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       workflowStreamResponse,
       assistantResponses,
       nodeResponses: childNodeResponses,
-      appendNodeResponse: nodeResponseCollector.appendNodeResponse
+      appendNodeResponse: appendAgentNodeResponse,
+      onToolResult: (result) => {
+        props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));
+      }
     });
     const agentSystemPrompt = buildDefaultAgentSystemPrompt({
       userSystemPrompt: formattedUserSystemPrompt,
@@ -351,8 +357,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       // memory 会在用户下一次回复时恢复，保证上下文连续和缓存命中。
       // saveChat 会把该 askId 回写到用户答案上，后续 chats2GPTMessages 据此跳过这条 UI-only 回答。
       return {
-        [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
-        runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary(),
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
         [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
           nodeId,
@@ -364,8 +368,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     if (outputSummary.status === 'interactive' && outputSummary.interactive) {
       return {
-        [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
-        runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary(),
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
         [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
           nodeId,
@@ -396,12 +398,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({
         nodeId
       }),
-      [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
-      runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary()
+      [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
     };
   } catch (error) {
-    // dispatch 层兜底：异常仍要清理 pending memory，并把已有 assistantResponses/nodeResponses 返回给前端恢复。
+    // dispatch 层兜底：异常仍要清理 pending memory；内部详情已经由 sink 发布。
     getLogger(LogCategories.MODULE.AI.AGENT).error(`[Agent] dispatchRunAgent caught error`, {
       error
     });
@@ -417,9 +417,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         nodeId,
         memory: {}
       }),
-      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
-      runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary()
+      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses
     };
   } finally {
     await nodeResponseCollector.flush();

@@ -353,10 +353,18 @@ describe('debugChat handler — parameter validation', () => {
       system_memories: { memory: 'value' },
       durationSeconds: 1.2,
       customFeedbacks: ['feedback-id'],
-      nodeResponseSummary: {
+      workflowRuntimeSummary: {
+        responseIds: [],
+        finishedNodeIds: [],
+        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
-        totalPoints: 0
+        totalPoints: 0,
+        hasLoopRunBreak: false,
+        hasToolStop: false,
+        hasNestedEnd: false,
+        llmInputTokens: 0,
+        llmOutputTokens: 0
       }
     });
     debugChatMocks.finalizeChatRound.mockResolvedValue(undefined);

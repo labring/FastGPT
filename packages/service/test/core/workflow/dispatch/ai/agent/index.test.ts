@@ -1,3 +1,4 @@
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChatFileTypeEnum,
@@ -244,6 +245,7 @@ const createProps = () =>
     },
     uid: 'user_1',
     externalProvider: {},
+    nodeSummary: createNodeSummary(),
     usagePush: vi.fn(),
     mode: 'chat',
     chatId: 'chat_1',
@@ -776,6 +778,50 @@ describe('dispatchRunAgent user context', () => {
         }
       }
     ]);
+  });
+
+  it('publishes Agent internal responses as current-layer top-level rows', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const publishedResponses: any[] = [];
+    const props = createProps();
+    props.nodeResponseSink = {
+      publish: vi.fn(async (inputs: Array<{ response: any }>) => {
+        publishedResponses.push(...inputs.map((input) => input.response));
+        return inputs.map((input) => input.response);
+      })
+    };
+    runAgentLoopMock.mockImplementationOnce(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'GPT-4',
+        requestId: 'req_agent',
+        finishReason: 'stop',
+        answerText: 'answer',
+        usages: [],
+        seconds: 0.1
+      });
+      return {
+        status: 'done',
+        completeMessages: [],
+        assistantMessages: [],
+        requestIds: []
+      };
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(publishedResponses).toHaveLength(1);
+    expect(publishedResponses[0]).not.toHaveProperty('parentId');
   });
 
   it('routes pi engine through the unified runAgentLoop provider entry', async () => {

@@ -1,6 +1,7 @@
 import type {
   AIChatItemType,
   AIChatItemValueItemType,
+  ChatSummaryType,
   ToolModuleResponseItemType,
   UserChatItemType
 } from '@fastgpt/global/core/chat/type';
@@ -37,7 +38,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import { parseAgentAskAnswers } from '@fastgpt/global/core/ai/agent/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
-import type { NodeResponseWriteSummary } from './nodeResponseStorage';
+import type { WorkflowRuntimeSummaryType } from '../workflow/dispatch/type';
 import {
   getPreparedRoundDataIds,
   isSkipSaveChatId,
@@ -62,7 +63,8 @@ export type Props = ChatSourceParams & {
   userContent: UserChatItemType & { dataId?: string };
   aiContent: AIChatItemType & { dataId?: string };
   metadata?: Record<string, any>;
-  nodeResponseSummary?: NodeResponseWriteSummary;
+  /** 当前 workflow 的统一摘要，包含错误、积分、引用和 LLM-only token。 */
+  workflowRuntimeSummary?: WorkflowRuntimeSummaryType;
   durationSeconds: number; //s
   errorMsg?: string;
 };
@@ -174,47 +176,61 @@ const formatAiContent = ({
   aiContent,
   durationSeconds,
   errorMsg,
-  nodeResponseSummary
+  workflowRuntimeSummary
 }: {
   aiContent: AIChatItemType & { dataId?: string };
   durationSeconds: number;
   errorMsg?: string;
-  nodeResponseSummary?: NodeResponseWriteSummary;
+  workflowRuntimeSummary?: WorkflowRuntimeSummaryType;
 }) => {
   // nodeResponse 由 runtime writer 分批持久化；saveChat 只保存 AI 消息主体。
   const aiResponse = { ...aiContent };
   delete aiResponse.responseData;
-  const errorCount = nodeResponseSummary?.errorCount ?? 0;
+  const errorCount = workflowRuntimeSummary?.errorCount ?? 0;
 
   return {
     aiResponse: {
       ...aiResponse,
       durationSeconds,
       errorMsg,
-      citeCollectionIds: nodeResponseSummary?.citeCollectionIds || []
+      citeCollectionIds: workflowRuntimeSummary?.citeCollectionIds || []
     },
     errorCount
   };
 };
 
 const getChatDataLog = async ({
-  nodeResponseSummary
+  workflowRuntimeSummary
 }: {
-  nodeResponseSummary?: NodeResponseWriteSummary;
+  workflowRuntimeSummary?: WorkflowRuntimeSummaryType;
 }) => {
   const now = new Date();
   const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
-  const errorCount = nodeResponseSummary?.errorCount ? 1 : 0;
-  const totalPoints = nodeResponseSummary?.totalPoints ?? 0;
+  const errorCount = workflowRuntimeSummary?.errorCount ?? 0;
+  const totalPoints = workflowRuntimeSummary?.totalPoints ?? 0;
+  const totalInputTokens = workflowRuntimeSummary?.llmInputTokens ?? 0;
+  const totalOutputTokens = workflowRuntimeSummary?.llmOutputTokens ?? 0;
 
   return {
     fifteenMinutesAgo,
     errorCount,
     totalPoints,
+    totalInputTokens,
+    totalOutputTokens,
     now
   };
 };
+
+/**
+ * 读取当前 workflow 的 LLM-only token 汇总。
+ *
+ * Chat.summary 是跨轮次累计值，写入时使用 `$inc`；缺失 runtime summary 的兼容入口按零处理。
+ */
+const getRuntimeChatSummary = (summary?: WorkflowRuntimeSummaryType): ChatSummaryType => ({
+  llmInputTokens: summary?.llmInputTokens ?? 0,
+  llmOutputTokens: summary?.llmOutputTokens ?? 0
+});
 
 type FailChatRoundParams = ChatSourceParams & {
   chatId: string;
@@ -253,6 +269,7 @@ export const finalizeChatRound = async (props: Props) => {
     errorMsg,
     metadata = {}
   } = props;
+  const runtimeChatSummary = getRuntimeChatSummary(props.workflowRuntimeSummary);
   const chatSource = {
     sourceType: props.sourceType,
     sourceId: props.sourceId
@@ -274,7 +291,7 @@ export const finalizeChatRound = async (props: Props) => {
     aiContent,
     durationSeconds,
     errorMsg,
-    nodeResponseSummary: props.nodeResponseSummary
+    workflowRuntimeSummary: props.workflowRuntimeSummary
   });
 
   const processedContent = [userContent, aiResponse];
@@ -369,7 +386,11 @@ export const finalizeChatRound = async (props: Props) => {
           hasBeenRead: false,
           chatGenerateStatus: ChatGenerateStatusEnum.done
         },
-        ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
+        $inc: {
+          'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
+          'summary.llmOutputTokens': runtimeChatSummary.llmOutputTokens,
+          ...(errorCount > 0 ? { errorCount } : {})
+        }
       },
       {
         session
@@ -396,8 +417,15 @@ export const finalizeChatRound = async (props: Props) => {
   // App 统计日志不是主链路强依赖，失败只记录日志，不影响 chat item 和 chat 主数据保存。
   if (chatSource.sourceType === ChatSourceTypeEnum.app) {
     try {
-      const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-        nodeResponseSummary: props.nodeResponseSummary
+      const {
+        fifteenMinutesAgo,
+        errorCount,
+        totalPoints,
+        totalInputTokens,
+        totalOutputTokens,
+        now
+      } = await getChatDataLog({
+        workflowRuntimeSummary: props.workflowRuntimeSummary
       });
       const userId = String(outLinkUid || tmbId);
 
@@ -420,6 +448,8 @@ export const finalizeChatRound = async (props: Props) => {
             chatItemCount: 1,
             errorCount,
             totalPoints,
+            totalInputTokens,
+            totalOutputTokens,
             totalResponseTime: durationSeconds
           },
           $set: {
@@ -520,9 +550,10 @@ export const pushChatRecords = async (props: Props) => {
     aiContent,
     durationSeconds,
     errorMsg,
-    nodeResponseSummary,
+    workflowRuntimeSummary,
     metadata = {}
   } = props;
+  const runtimeChatSummary = getRuntimeChatSummary(workflowRuntimeSummary);
   const chatSource = {
     sourceType: props.sourceType,
     sourceId: props.sourceId
@@ -559,7 +590,7 @@ export const pushChatRecords = async (props: Props) => {
       aiContent,
       durationSeconds,
       errorMsg,
-      nodeResponseSummary
+      workflowRuntimeSummary
     });
     const processedContent = [userContent, aiResponse];
 
@@ -602,7 +633,11 @@ export const pushChatRecords = async (props: Props) => {
           $setOnInsert: {
             createTime: new Date()
           },
-          ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
+          $inc: {
+            'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
+            'summary.llmOutputTokens': runtimeChatSummary.llmOutputTokens,
+            ...(errorCount > 0 ? { errorCount } : {})
+          }
         },
         {
           session,
@@ -631,8 +666,15 @@ export const pushChatRecords = async (props: Props) => {
     // Create app chat data log
     if (chatSource.sourceType === ChatSourceTypeEnum.app) {
       try {
-        const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-          nodeResponseSummary
+        const {
+          fifteenMinutesAgo,
+          errorCount,
+          totalPoints,
+          totalInputTokens,
+          totalOutputTokens,
+          now
+        } = await getChatDataLog({
+          workflowRuntimeSummary
         });
         const userId = String(outLinkUid || tmbId);
 
@@ -655,6 +697,8 @@ export const pushChatRecords = async (props: Props) => {
               chatItemCount: 1,
               errorCount,
               totalPoints,
+              totalInputTokens,
+              totalOutputTokens,
               totalResponseTime: durationSeconds
             },
             $set: {
@@ -705,7 +749,6 @@ export const updateInteractiveChat = async ({
   const {
     teamId,
     chatId,
-    nodes,
     appChatConfig,
     userContent,
     aiContent,
@@ -713,6 +756,7 @@ export const updateInteractiveChat = async ({
     durationSeconds,
     errorMsg
   } = props;
+  const runtimeChatSummary = getRuntimeChatSummary(props.workflowRuntimeSummary);
   const chatSource = {
     sourceType: props.sourceType,
     sourceId: props.sourceId
@@ -810,7 +854,7 @@ export const updateInteractiveChat = async ({
     aiContent,
     durationSeconds,
     errorMsg,
-    nodeResponseSummary: props.nodeResponseSummary
+    workflowRuntimeSummary: props.workflowRuntimeSummary
   });
 
   /**
@@ -1013,7 +1057,11 @@ export const updateInteractiveChat = async ({
           variables,
           updateTime: new Date()
         },
-        ...(errorCount > 0 && { $inc: { errorCount: errorCount } })
+        $inc: {
+          'summary.llmInputTokens': runtimeChatSummary.llmInputTokens,
+          'summary.llmOutputTokens': runtimeChatSummary.llmOutputTokens,
+          ...(errorCount > 0 ? { errorCount } : {})
+        }
       },
       {
         session
@@ -1034,9 +1082,10 @@ export const updateInteractiveChat = async ({
   }
 
   try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-      nodeResponseSummary: props.nodeResponseSummary
-    });
+    const { fifteenMinutesAgo, errorCount, totalPoints, totalInputTokens, totalOutputTokens, now } =
+      await getChatDataLog({
+        workflowRuntimeSummary: props.workflowRuntimeSummary
+      });
 
     await MongoAppChatLog.updateOne(
       {
@@ -1050,6 +1099,8 @@ export const updateInteractiveChat = async ({
           chatItemCount: 1,
           errorCount,
           totalPoints,
+          totalInputTokens,
+          totalOutputTokens,
           totalResponseTime: durationSeconds
         },
         $set: {

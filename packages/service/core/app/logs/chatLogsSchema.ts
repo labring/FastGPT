@@ -50,6 +50,16 @@ const ChatLogSchema = new Schema({
     type: Number,
     default: 0
   },
+  // 累计当前 workflow 轮次的 LLM token；由 workflowRuntimeSummary 写入。
+  // 历史记录没有这两个字段，读取侧按 0 兜底。
+  totalInputTokens: {
+    type: Number,
+    default: 0
+  },
+  totalOutputTokens: {
+    type: Number,
+    default: 0
+  },
   goodFeedbackCount: {
     type: Number,
     default: 0

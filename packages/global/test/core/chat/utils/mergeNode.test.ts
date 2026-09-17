@@ -5,6 +5,7 @@ import {
   appendNodeResponseByParent,
   childrenResponseFields,
   getChildrenResponses,
+  getChildrenTotalPoints,
   getNodeResponseIdentityKey,
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
@@ -175,6 +176,23 @@ describe('node response child helpers', () => {
       'node\u0000parent'
     );
     expect(getNodeResponseIdentityKey(createNodeResponse({ id: 'node' }))).toBe('node\u0000');
+  });
+
+  it('recursively sums descendant own points without including the current node', () => {
+    const response = createNodeResponse({
+      id: 'root',
+      totalPoints: 10,
+      childrenResponses: [
+        createNodeResponse({
+          id: 'child-1',
+          totalPoints: 2,
+          childrenResponses: [createNodeResponse({ id: 'grandchild', totalPoints: 3 })]
+        }),
+        createNodeResponse({ id: 'child-2', totalPoints: 4 })
+      ]
+    });
+
+    expect(getChildrenTotalPoints(response)).toBe(9);
   });
 });
 

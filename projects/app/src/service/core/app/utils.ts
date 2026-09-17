@@ -13,7 +13,7 @@ import type {
   AIChatItemValueItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import type { NodeResponseWriteSummary } from '@fastgpt/service/core/chat/nodeResponseStorage';
+import type { WorkflowRuntimeSummaryType } from '@fastgpt/service/core/workflow/dispatch/type';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -127,14 +127,14 @@ export const getScheduleTriggerApp = async () => {
         assistantResponses = [],
         system_memories,
         customFeedbacks,
-        nodeResponseSummary
+        workflowRuntimeSummary
       }: {
         error?: any;
         durationSeconds?: number;
         assistantResponses?: AIChatItemValueItemType[];
         system_memories?: Record<string, any>;
         customFeedbacks?: string[];
-        nodeResponseSummary?: NodeResponseWriteSummary;
+        workflowRuntimeSummary?: WorkflowRuntimeSummaryType;
       }) => {
         if (!preparedRound.shouldFinalizePreparedRound) {
           return;
@@ -160,7 +160,7 @@ export const getScheduleTriggerApp = async () => {
           },
           durationSeconds,
           errorMsg: getErrText(error),
-          nodeResponseSummary
+          workflowRuntimeSummary
         };
 
         await finalizeChatRound(saveParams);
@@ -173,7 +173,7 @@ export const getScheduleTriggerApp = async () => {
           durationSeconds,
           system_memories,
           customFeedbacks,
-          nodeResponseSummary
+          workflowRuntimeSummary
         } = await retryFn(async () => {
           return dispatchWorkFlow({
             chatId: preparedRound.chatId,
@@ -212,12 +212,12 @@ export const getScheduleTriggerApp = async () => {
 
         // Save chat
         await saveChatRound({
-          error: nodeResponseSummary?.lastError,
+          error: workflowRuntimeSummary?.errorText,
           durationSeconds,
           assistantResponses,
           system_memories,
           customFeedbacks,
-          nodeResponseSummary
+          workflowRuntimeSummary
         });
       } catch (error) {
         logger.error('Schedule trigger workflow run failed', {

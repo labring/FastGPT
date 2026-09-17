@@ -64,7 +64,6 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     histories: chatHistories,
     cqModel
   });
-
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
   const { totalPoints } = formatModelChars2Points({

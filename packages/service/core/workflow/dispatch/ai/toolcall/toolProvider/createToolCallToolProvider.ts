@@ -15,6 +15,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkflowReadFiles } from '../../readFiles';
 import { getWorkflowFileMaxAmount } from '../../../../utils/context';
+import type { DispatchFlowResponse } from '../../../type';
 
 type CacheToolFlowResponse = (args: {
   callId: string;
@@ -36,7 +37,8 @@ export const createToolCallToolProvider = async ({
   workflowProps,
   runtimeNodes,
   runtimeEdges,
-  cacheToolFlowResponse
+  cacheToolFlowResponse,
+  onWorkflowRuntimeSummary
 }: {
   messages: DispatchToolModuleProps['messages'];
   toolNodes: DispatchToolModuleProps['toolNodes'];
@@ -49,6 +51,7 @@ export const createToolCallToolProvider = async ({
   runtimeNodes: DispatchToolModuleProps['runtimeNodes'];
   runtimeEdges: DispatchToolModuleProps['runtimeEdges'];
   cacheToolFlowResponse: CacheToolFlowResponse;
+  onWorkflowRuntimeSummary?: (summary?: DispatchFlowResponse['workflowRuntimeSummary']) => void;
 }): Promise<ToolCallToolProvider> => {
   const { finalMessages, tools, getToolInfo } = await useToolCatalog({
     messages,
@@ -60,7 +63,7 @@ export const createToolCallToolProvider = async ({
     .filter((toolNode) => toolNode.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
     .map((toolNode) => toolNode.nodeId);
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
-    async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
+    async ({ callId, runtimeNodes, runtimeEdges, lastInteractive }) => {
       const result = await runWorkflow({
         ...workflowProps,
         // 继承父流程的流式能力；是否禁流由子节点的 forbidStream 控制。
@@ -68,12 +71,14 @@ export const createToolCallToolProvider = async ({
         ...(lastInteractive ? { lastInteractive } : {}),
         runtimeNodes,
         runtimeEdges,
-        isToolCall: true
+        isToolCall: true,
+        nodeResponseParentId: callId
       });
+      onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
 
       return {
         flowResponses: result.flatNodeResponses ?? [],
-        runtimeNodeResponseSummary: result.runtimeNodeResponseSummary,
+        workflowRuntimeSummary: result.workflowRuntimeSummary,
         flowUsages: result.flowUsages,
         runTimes: result[DispatchNodeResponseKeyEnum.runTimes],
         assistantResponses: result[DispatchNodeResponseKeyEnum.assistantResponses],

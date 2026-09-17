@@ -77,7 +77,7 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     ]);
   });
 
-  it('records tool responses with cached nodeResponse and compression child', () => {
+  it('records tool responses and compression as separate flat rows', () => {
     const { collector, nodeResponses } = createCollector();
 
     collector.cacheToolResult({
@@ -123,15 +123,14 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         moduleName: 'Search',
         runningTime: 0.5,
         toolRes: 'compressed',
-        childTotalPoints: 0.3,
-        childrenResponses: [
-          expect.objectContaining({
-            id: 'req_compress',
-            moduleName: 'chat:tool_response_compress',
-            totalPoints: 0.3,
-            textOutput: 'compressed'
-          })
-        ]
+        totalPoints: 2
+      }),
+      expect.objectContaining({
+        id: 'req_compress',
+        moduleName: 'chat:tool_response_compress',
+        parentId: 'call_search',
+        totalPoints: 0.3,
+        textOutput: 'compressed'
       })
     ]);
   });

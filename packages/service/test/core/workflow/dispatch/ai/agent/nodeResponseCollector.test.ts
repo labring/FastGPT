@@ -29,7 +29,7 @@ describe('createAgentNodeResponseCollector', () => {
     expect(publishOrder).toEqual(['first', 'second']);
     expect(nodeResponses).toEqual([]);
     expect(collector.getNodeResponses()).toBeUndefined();
-    expect(collector.getRuntimeNodeResponseSummary()?.responseIds).toEqual(['first', 'second']);
+    expect(collector.getWorkflowRuntimeSummary()?.responseIds).toEqual(['first', 'second']);
   });
 
   it('没有 sink 时兼容调试路径，返回本地数组', () => {
@@ -39,6 +39,6 @@ describe('createAgentNodeResponseCollector', () => {
     collector.appendNodeResponse(makeResponse('local'));
 
     expect(collector.getNodeResponses()).toEqual([makeResponse('local')]);
-    expect(collector.getRuntimeNodeResponseSummary()).toBeUndefined();
+    expect(collector.getWorkflowRuntimeSummary()).toBeUndefined();
   });
 });

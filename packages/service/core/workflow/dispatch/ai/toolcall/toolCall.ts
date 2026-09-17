@@ -4,7 +4,10 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { DispatchToolModuleProps } from './type';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { normalizeAgentLoopUsages } from '../../../../ai/llm/agentLoop/interface';
 import type {
   InteractiveNodeResponseType,
@@ -19,6 +22,8 @@ import {
   type AgentLoopCoreToolRunFlowResponse
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
+import { createAgentNodeResponseCollector } from '../agent/nodeResponseCollector';
+import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 
 type ResponseType = {
   requestIds: string[];
@@ -69,6 +74,28 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   let getProviderToolInfo: (name: string) => ToolInfo | undefined = () => undefined;
   const getToolInfo = (name: string) => getProviderToolInfo(name);
 
+  const toolNodeResponses: ChatHistoryItemResType[] = [];
+  const nodeResponseCollector = createAgentNodeResponseCollector({
+    nodeResponseSink: props.nodeResponseSink,
+    nodeResponses: toolNodeResponses,
+    onNodeResponseSummary: (summary) =>
+      props.nodeSummary.mergeNodeSummary(runtimeSummaryToNodeSummary(summary))
+  });
+  const appendToolNodeResponse = (response: ChatHistoryItemResType) =>
+    nodeResponseCollector.appendNodeResponse({
+      ...response,
+      ...(response.parentId || !props.nodeResponseParentId
+        ? {}
+        : { parentId: props.nodeResponseParentId })
+    });
+  const mergeChildWorkflowSummary = (
+    workflowSummary: Parameters<typeof runtimeSummaryToNodeSummary>[0]
+  ) => {
+    props.nodeSummary.mergeNodeSummary(
+      stripNodeSummaryErrorFields(runtimeSummaryToNodeSummary(workflowSummary))
+    );
+  };
+
   const runtimeEnvironment = createAgentLoopCoreRuntimeEnvironment({
     node: workflowProps.node,
     workflowStreamResponse,
@@ -76,6 +103,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     streamReasoning: aiChatReasoning,
     sliceToolResponse: true,
     getToolInfo,
+    appendNodeResponse: appendToolNodeResponse,
+    collectAgentCallNodeResponse: false,
     collectToolRunResponses: true
   });
   const toolProvider = await createToolCallToolProvider({
@@ -86,7 +115,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowProps,
     runtimeNodes,
     runtimeEdges,
-    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse
+    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse,
+    onWorkflowRuntimeSummary: mergeChildWorkflowSummary
   });
   getProviderToolInfo = toolProvider.getToolInfo;
   const systemPrompt = toolProvider.finalMessages
@@ -170,7 +200,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
         showReasoning: aiChatReasoning,
         getEventToolInfo: getToolInfo
       }
-    });
+    }).finally(() => nodeResponseCollector.flush());
 
   return {
     requestIds: outputSummary.requestIds,

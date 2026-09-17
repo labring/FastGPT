@@ -106,7 +106,7 @@ describe('createChatItemResponseRows', () => {
     });
   });
 
-  it('does not generate childTotalPoints in response rows', () => {
+  it('does not persist childTotalPoints on parent or nested response rows', () => {
     const rows = createChatItemResponseRows({
       ...base,
       nodeResponses: [
@@ -114,18 +114,23 @@ describe('createChatItemResponseRows', () => {
           id: 'loop',
           moduleType: FlowNodeTypeEnum.loopRun,
           totalPoints: 1,
-          childrenResponses: [makeResponse({ id: 'loop-child', totalPoints: 2 })]
+          childTotalPoints: 2,
+          childrenResponses: [
+            makeResponse({ id: 'loop-child', totalPoints: 2, childTotalPoints: 3 })
+          ]
         }),
         makeResponse({
           id: 'batch',
           moduleType: FlowNodeTypeEnum.parallelRun,
           totalPoints: 3,
+          childTotalPoints: 4,
           childrenResponses: [makeResponse({ id: 'batch-child', totalPoints: 4 })]
         })
       ]
     });
 
     expect(rows[0].data.childTotalPoints).toBeUndefined();
+    expect(rows[0].data.childrenResponses?.[0].childTotalPoints).toBeUndefined();
     expect(rows[0].data.childResponseCount).toBe(1);
     expect(rows[1].data.childTotalPoints).toBeUndefined();
     expect(rows[1].data.childResponseCount).toBe(1);
@@ -871,9 +876,6 @@ describe('WorkflowNodeResponseWriter', () => {
         totalPoints: 3
       }
     });
-    expect(writer.getSummary()).toMatchObject({
-      totalPoints: 3
-    });
   });
 
   it('retries failed writes and releases rows after a retry succeeds', async () => {
@@ -1013,97 +1015,6 @@ describe('WorkflowNodeResponseWriter', () => {
 
     expect(create).toHaveBeenCalledTimes(4);
     expect(writer.isFullyFlushed).toBe(true);
-    expect(writer.getSummary()).toMatchObject({
-      errorCount: 0,
-      totalPoints: 0
-    });
-  });
-
-  it('keeps summary contributions when detail rows are dropped after fallback failure', async () => {
-    const create = vi.fn().mockRejectedValue(new Error('db rejects every payload'));
-    const writer = new WorkflowNodeResponseWriter({
-      ...base,
-      batchSize: 1,
-      model: {
-        create
-      }
-    });
-
-    await writer.record([
-      makeResponse({
-        id: 'root',
-        totalPoints: 8,
-        errorText: 'root failed',
-        childrenResponses: [
-          makeResponse({
-            id: 'dataset-child',
-            moduleType: FlowNodeTypeEnum.datasetSearchNode,
-            quoteList: [
-              {
-                id: 'quote',
-                collectionId: 'collection-from-dropped-row',
-                datasetId: 'dataset',
-                sourceId: 'source',
-                sourceName: 'source',
-                chunkIndex: 0,
-                score: []
-              }
-            ]
-          })
-        ]
-      })
-    ]);
-
-    expect(writer.isFullyFlushed).toBe(true);
-    expect(writer.getSummary()).toEqual({
-      citeCollectionIds: ['collection-from-dropped-row'],
-      errorCount: 1,
-      lastError: 'root failed',
-      totalPoints: 8
-    });
-  });
-
-  it('collects write summary for save metadata while rows are released', async () => {
-    const writer = new WorkflowNodeResponseWriter({
-      ...base,
-      batchSize: 10,
-      model: {
-        create: vi.fn().mockResolvedValue(undefined)
-      }
-    });
-
-    await writer.record([
-      makeResponse({
-        id: 'root-error',
-        totalPoints: 10,
-        errorText: 'failed',
-        childrenResponses: [
-          makeResponse({
-            id: 'dataset-child',
-            moduleType: FlowNodeTypeEnum.datasetSearchNode,
-            totalPoints: 3,
-            quoteList: [
-              {
-                id: 'quote',
-                collectionId: 'collection-1',
-                datasetId: 'dataset-1',
-                sourceId: 'source-1',
-                sourceName: 'source',
-                chunkIndex: 0,
-                score: []
-              }
-            ]
-          })
-        ]
-      })
-    ]);
-
-    expect(writer.getSummary()).toEqual({
-      citeCollectionIds: ['collection-1'],
-      errorCount: 1,
-      lastError: 'failed',
-      totalPoints: 10
-    });
   });
 
   it('creates a writer through factory and writes rows with default options', async () => {
@@ -1124,95 +1035,6 @@ describe('WorkflowNodeResponseWriter', () => {
       data: expect.objectContaining({
         id: 'factory-root'
       })
-    });
-  });
-
-  it('keeps separate summary contributions for same id under different parentId', async () => {
-    const writer = new WorkflowNodeResponseWriter({
-      ...base,
-      batchSize: 10,
-      model: {
-        create: vi.fn().mockResolvedValue(undefined)
-      }
-    });
-
-    await writer.record([
-      makeResponse({ id: 'parent-1' }),
-      makeResponse({ id: 'parent-2' }),
-      makeResponse({
-        id: 'shared-child',
-        parentId: 'parent-1',
-        moduleType: FlowNodeTypeEnum.datasetSearchNode,
-        quoteList: [
-          {
-            id: 'quote-1',
-            collectionId: 'collection-parent-1',
-            datasetId: 'dataset',
-            sourceId: 'source',
-            sourceName: 'source',
-            chunkIndex: 0,
-            score: []
-          }
-        ]
-      }),
-      makeResponse({
-        id: 'shared-child',
-        parentId: 'parent-2',
-        moduleType: FlowNodeTypeEnum.datasetSearchNode,
-        quoteList: [
-          {
-            id: 'quote-2',
-            collectionId: 'collection-parent-2',
-            datasetId: 'dataset',
-            sourceId: 'source',
-            sourceName: 'source',
-            chunkIndex: 0,
-            score: []
-          }
-        ]
-      })
-    ]);
-
-    expect(writer.getSummary().citeCollectionIds).toEqual([
-      'collection-parent-1',
-      'collection-parent-2'
-    ]);
-  });
-
-  it('ignores tool execution errors in summary while tracking root errors', async () => {
-    const writer = new WorkflowNodeResponseWriter({
-      ...base,
-      batchSize: 10,
-      model: {
-        create: vi.fn().mockResolvedValue(undefined)
-      }
-    });
-
-    await writer.record([
-      makeResponse({
-        id: 'flat-tool-sandbox',
-        moduleType: FlowNodeTypeEnum.tool,
-        errorText: 'Sandbox timeout',
-        totalPoints: 2
-      }),
-      makeResponse({
-        id: 'flat-tool-custom',
-        toolRes: 'Command failed',
-        errorText: 'Command failed',
-        totalPoints: 1
-      }),
-      makeResponse({
-        id: 'root-llm',
-        moduleType: FlowNodeTypeEnum.chatNode,
-        totalPoints: 5
-      })
-    ]);
-
-    expect(writer.getSummary()).toEqual({
-      citeCollectionIds: [],
-      errorCount: 0,
-      lastError: undefined,
-      totalPoints: 8
     });
   });
 });
