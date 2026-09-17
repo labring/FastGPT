@@ -19,6 +19,7 @@
     "@fastgpt-sdk/otel": "workspace:*",
     "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
+    "@langfuse/otel": "5.11.1",
     "@fastgpt/dal": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "@fastgpt-sdk/anydoc": "catalog:",

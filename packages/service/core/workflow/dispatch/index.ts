@@ -56,6 +56,12 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
+import {
+  onWorkflowEnd,
+  onWorkflowNodeEnd,
+  onWorkflowNodeStart,
+  onWorkflowStart
+} from '../../../common/langfuse/workflow';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
@@ -1094,6 +1100,15 @@ export class WorkflowQueue {
         });
       }
 
+      onWorkflowNodeEnd({
+        isRootRuntime: this.isRootRuntime,
+        mode,
+        nodeType: node.flowNodeType,
+        input: params,
+        output: dispatchRes.data,
+        response: formatCurrentNodeResponse
+      });
+
       // Error
       if (currentNodeError !== undefined) {
         if (stepSpan) {
@@ -1141,8 +1156,13 @@ export class WorkflowQueue {
     if (shouldTraceWorkflowStep(node.flowNodeType)) {
       return observeWorkflowStep(
         stepMetricAttributes,
-        () =>
-          withActiveSpan(
+        () => {
+          onWorkflowNodeStart({
+            isRootRuntime: this.isRootRuntime,
+            mode,
+            appId: String(this.data.runningAppInfo.sourceId)
+          });
+          return withActiveSpan(
             {
               name: 'workflow.step',
               tracerName: 'fastgpt.workflow',
@@ -1152,7 +1172,8 @@ export class WorkflowQueue {
               }
             },
             async (stepSpan) => executeNode(stepSpan)
-          ),
+          );
+        },
         {
           getStatus: getWorkflowStepStatus
         }
@@ -1612,8 +1633,17 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       mode: data.mode,
       isRoot: isRootRuntime
     },
-    () =>
-      withActiveSpan(
+    () => {
+      onWorkflowStart({
+        isRootRuntime,
+        mode: data.mode,
+        sessionId: data.chatId ?? '',
+        userId: String(data.runningUserInfo.tmbId),
+        appId: String(data.runningAppInfo.sourceId),
+        appName: data.runningAppInfo.name,
+        input: data.query
+      });
+      return withActiveSpan(
         {
           name: isRootRuntime ? 'workflow.run' : 'workflow.child.run',
           tracerName: 'fastgpt.workflow',
@@ -1707,6 +1737,12 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             );
             workflowSpan.setStatus({ code: SpanStatusCode.OK });
 
+            onWorkflowEnd({
+              isRootRuntime,
+              mode: data.mode,
+              output: workflowQueue.chatAssistantResponse
+            });
+
             if (isRootRuntime) {
               data.workflowStreamResponse?.(workflowSseEvent.workflowDuration(durationSeconds));
             }
@@ -1737,7 +1773,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             data.workflowDispatchDeep = previousWorkflowDispatchDeep;
           }
         }
-      ),
+      );
+    },
     {
       getRunTimes: (result) => result[DispatchNodeResponseKeyEnum.runTimes]
     }
