@@ -19,14 +19,7 @@ const fields = '_id name isPinned';
 const options = { filter, fields, pinnedFirst: true, limit: 2 };
 
 const queryResult = (items: { _id: string }[]) => {
-  const query = {
-    sort: vi.fn().mockReturnThis(),
-    skip: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    lean: vi.fn().mockResolvedValue(items)
-  };
-  mocks.find.mockReturnValueOnce(query);
-  return query;
+  mocks.find.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(items) });
 };
 
 beforeEach(() => {
@@ -37,19 +30,24 @@ beforeEach(() => {
 
 describe('findAppsForList', () => {
   it('keeps the V1 non-paginated query unlimited', async () => {
-    const query = queryResult([{ _id: 'normal' }]);
-    await findAppsForList({ filter, fields });
-    expect(query.limit).toHaveBeenCalledWith(0);
-    expect(query.skip).toHaveBeenCalledWith(0);
+    queryResult([{ _id: 'normal' }]);
+    const list = await findAppsForList({ filter, fields });
+    expect(list).toEqual([{ _id: 'normal' }]);
+    // A missing `limit` is what keeps the legacy V1 list unlimited.
+    expect(mocks.find).toHaveBeenCalledExactlyOnceWith(filter, fields, {
+      skip: 0,
+      sort: { updateTime: -1, _id: -1 }
+    });
   });
 
   it('preserves ordinary query sorting, pagination and projection without aggregation', async () => {
-    const query = queryResult([{ _id: 'normal' }]);
+    queryResult([{ _id: 'normal' }]);
     await findAppsForList({ filter, fields: '_id name', offset: 5, limit: 5 });
-    expect(mocks.find).toHaveBeenCalledWith(filter, '_id name');
-    expect(query.sort).toHaveBeenCalledWith({ updateTime: -1, _id: -1 });
-    expect(query.skip).toHaveBeenCalledWith(5);
-    expect(query.limit).toHaveBeenCalledWith(5);
+    expect(mocks.find).toHaveBeenCalledExactlyOnceWith(filter, '_id name', {
+      limit: 5,
+      skip: 5,
+      sort: { updateTime: -1, _id: -1 }
+    });
     expect(mocks.aggregate).not.toHaveBeenCalled();
     expect(mocks.countDocuments).not.toHaveBeenCalled();
   });
