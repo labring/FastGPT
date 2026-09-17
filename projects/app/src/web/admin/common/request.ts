@@ -16,33 +16,44 @@ type ConfigType = Parameters<typeof appGET>[2];
  * 保证管理员页面骨架可正常渲染（不依赖商业版服务）。
  */
 
-/** 识别 /proApi 请求的降级条件：pro 服务未配置（500 + 未配置商业版链接）或 404 */
-const silentDegrade404 = (error: unknown) => {
-  const isProApiUnavailable =
-    typeof error === 'string'
-      ? error === 'Not Found' || error.includes('未配置商业版链接')
-      : (() => {
-          const e = error as {
-            response?: { status?: number };
-            status?: number;
-            code?: number;
-            error?: unknown;
-            message?: unknown;
-            config?: { url?: string };
-          };
-          const status = e?.response?.status ?? e?.status ?? e?.code;
-          const url = e?.config?.url ?? '';
-          const isProApi = url.includes('/proApi/') || String(e?.message ?? '').includes('proApi');
-          // proApi 代理在未配置 FastGPTProUrl 时返回 500 + 未配置商业版链接；404 视为接口不存在
-          const proUnavailable =
-            isProApi &&
-            (String(e?.error ?? '').includes('未配置商业版链接') ||
-              String(e?.message ?? '').includes('未配置商业版链接') ||
-              String(e?.error ?? '').includes('ECONNREFUSED'));
-          return status === 404 || proUnavailable;
-        })();
+/** 请求层错误可能是字符串，也可能是普通对象（响应体 / axios 错误）；这里只收窄形状，字段逐个判型 */
+type ApiErrorShape = {
+  message?: unknown;
+  error?: unknown;
+  status?: number;
+  code?: number;
+  response?: { status?: number; data?: { message?: unknown } };
+  config?: { url?: string };
+};
+const isApiErrorShape = (value: unknown): value is ApiErrorShape =>
+  typeof value === 'object' && value !== null;
 
-  if (isProApiUnavailable) {
+/**
+ * 识别 /proApi 请求的降级条件：
+ * - 代理未配置商业版服务：错误体为 `{ code: 500, message: '未配置商业版链接: ...' }`；该文案仅由 app 的
+ *   /api/proApi 代理产生，且错误体上没有 config/url，只能按文案判定
+ * - 商业版服务未启动：ECONNREFUSED，按请求地址确认是 /proApi，避免吞掉其它服务的连接错误
+ * - 接口在商业版中不存在：404
+ */
+const silentDegrade404 = (error: unknown) => {
+  const detail = isApiErrorShape(error) ? error : undefined;
+  const text = [
+    typeof error === 'string' ? error : undefined,
+    typeof detail?.message === 'string' ? detail.message : undefined,
+    typeof detail?.error === 'string' ? detail.error : undefined,
+    typeof detail?.response?.data?.message === 'string' ? detail.response.data.message : undefined
+  ]
+    .filter((item): item is string => Boolean(item))
+    .join(' ');
+
+  const status = detail?.response?.status ?? detail?.status ?? detail?.code;
+  const url = detail?.config?.url ?? '';
+
+  const proUnavailable =
+    text.includes('未配置商业版链接') ||
+    (url.includes('/proApi/') && text.includes('ECONNREFUSED'));
+
+  if (status === 404 || error === 'Not Found' || proUnavailable) {
     console.warn('[admin] pro 服务未配置或接口不可达，静默降级为空数据');
     // 返回对 usePagination（{ total, list }）与统计接口（字段 undefined 可接受）都安全的结构
     return { total: 0, list: [] } as never;
