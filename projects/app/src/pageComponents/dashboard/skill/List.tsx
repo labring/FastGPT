@@ -20,6 +20,7 @@ import {
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
 import {
+  batchMoveSkills,
   deleteSkill,
   postUpdateSkill,
   postCopySkill,
@@ -313,8 +314,8 @@ const List = ({
   const { runAsync: onMoveSkill } = useRequest(
     async (targetId: ParentIdType) => {
       if (!moveSkillId) return;
-      return postUpdateSkill({
-        skillId: moveSkillId,
+      return batchMoveSkills({
+        ids: [moveSkillId],
         parentId: targetId === 'root' ? null : (targetId as string)
       });
     },
