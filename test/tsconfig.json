@@ -21,14 +21,6 @@
     "noImplicitAny": false,
     "types": ["vitest/globals", "node"]
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "../packages/**/*.ts",
-    "../packages/**/*.tsx",
-    "../packages/**/*.d.ts",
-    "../projects/app/src/**/*.ts",
-    "../projects/app/src/**/*"
-  ],
+  "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules", "../node_modules", "dist", "../dist"]
 }
