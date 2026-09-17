@@ -314,8 +314,8 @@ describe('authDatasetCollection', () => {
     expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
   });
 
-  it('caps a team admin who does not own the collection to manage', async () => {
-    // 团队管理员不是 owner：与 app/dataset/skill 的 tmbPer.isOwner 判定一致
+  it('rejects a team admin who has no collection permission while collection permission is enabled', async () => {
+    // 团队管理员不是资源 owner，且本仓其它资源层不设 admin 旁路：启用态下必须按 collection 快照判定
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',
       permission: { isOwner: false, hasManagePer: true }
@@ -333,6 +333,38 @@ describe('authDatasetCollection', () => {
       collectionPermissionEnabled: true
     });
     mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+    mockResolveCollectionPermission.mockResolvedValue(0);
+
+    await expect(
+      authDatasetCollection({
+        req: mockReq,
+        authToken: true,
+        collectionId,
+        per: ReadPermissionVal
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDatasetCollection);
+    expect(mockResolveCollectionPermission).toHaveBeenCalled();
+  });
+
+  it('resolves a team admin role from the collection snapshot', async () => {
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false, hasManagePer: true }
+    });
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-other'
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      collectionPermissionEnabled: true
+    });
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+    mockResolveCollectionPermission.mockResolvedValue(ReadPermissionVal);
 
     const result = await authDatasetCollection({
       req: mockReq,
@@ -341,10 +373,10 @@ describe('authDatasetCollection', () => {
       per: ReadPermissionVal
     });
 
-    expect(result.permission.role).toBe(ManageRoleVal);
+    expect(result.permission.role).toBe(ReadPermissionVal);
     expect(result.permission.isOwner).toBe(false);
     expect(result.permission.checkPer(OwnerPermissionVal)).toBe(false);
-    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+    expect(mockResolveCollectionPermission).toHaveBeenCalled();
   });
 });
 

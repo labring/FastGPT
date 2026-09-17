@@ -133,7 +133,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     }
   }
 
-  // Collection 级可见性过滤：团队 owner/admin 或纯继承短路时跳过；
+  // Collection 级可见性过滤：团队 owner 或纯继承短路时跳过；
   // 否则以当前目录候选集合 `$in` 限定批量解析可读 ID（无 N+1）。
   let collectionIdFilter = {};
   let groupIds: string[] = [];

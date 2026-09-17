@@ -229,12 +229,11 @@ export async function authDatasetCollection({
 
   // 2. 团队身份旁路（短路语义）：
   //    Dataset read 门槛已通过。团队 owner 恒有资源 owner 权（与 authDatasetByTmbId / app / skill
-  //    的 `tmbPer.isOwner` 回退一致）；团队管理员对该 Dataset 下所有 Collection 视为可管理
-  //    （管理员不是 owner），与 listV2 短路保持一致，避免「列表可见但点进去无权限」。
+  //    的 `tmbPer.isOwner` 回退一致）；团队管理员在 dataset / app 层没有资源旁路，collection 层
+  //    同样不设旁路，一律按 dataset 有效权限与 collection 快照解析。
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
   const isSameTeam = String(tmbInfo.teamId) === String(teamId);
   const isTeamOwner = isSameTeam && tmbInfo.permission.isOwner;
-  const isTeamAdmin = isSameTeam && !isTeamOwner && tmbInfo.permission.hasManagePer;
 
   // 3. 短路：Dataset 处于关闭态（默认，含全部存量数据）→ Collection 有效权限直接等于
   //    Dataset 有效权限（父 owner 不透传，cap 为 manage）。关闭态由「开关是唯一入口」保证不存
@@ -246,8 +245,6 @@ export async function authDatasetCollection({
   if (isTeamOwner) {
     // 团队 owner 直接短路为 owner，免去一次 ACL 读；与 app/dataset/skill 的 owner 语义一致。
     role = OwnerRoleVal;
-  } else if (isTeamAdmin) {
-    role = ManageRoleVal;
   } else if (datasetCollectionPermissionEnabled !== true) {
     const isCollectionOwner = String(collection.tmbId) === String(tmbId);
     const datasetRole = dataset.permission.role;
