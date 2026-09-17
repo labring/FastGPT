@@ -67,6 +67,7 @@ export type FastGPTFeConfigsType = {
    * 用于区分「商业版部署」与「社区版部署」，后者没有授权概念，不应展示额度、公司名与激活状态。
    */
   isProService?: boolean;
+  hasMax?: boolean;
   hideChatCopyrightSetting?: boolean;
   /**
    * 用户自助注册方式。兼容期允许读取旧配置中的 sync，但新配置不再写入 sync。
