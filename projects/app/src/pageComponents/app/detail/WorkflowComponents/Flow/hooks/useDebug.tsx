@@ -15,14 +15,11 @@ import { useReactFlow } from 'reactflow';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
-import {
-  nodeInputTypeToInputType,
-  variableInputTypeToInputType
-} from '@/components/core/app/formRender/utils';
+import { variableInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useTranslation } from 'next-i18next';
@@ -33,15 +30,23 @@ import { AppContext } from '../../../context';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
+import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import type { FileSelectorValueItemType } from '@/components/core/app/FileSelector/type';
+import { getPresignedChatFileGetUrl } from '@/web/common/file/api';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   checkInputShouldRenderInDebug,
   debugNodeShouldShowAllInputs,
   getDebugGlobalVariableFormProps,
-  getDebugInputFormProps,
+  getDebugInputFormConfig,
   getDebugInputFormValue,
   getDebugRuntimeInputs,
   getWorkflowStartDebugFileInput,
-  getWorkflowStartDebugQuery
+  getWorkflowStartDebugQuery,
+  isDebugReadFilesInput,
+  resolveDebugReadFilesInput
 } from './useDebugInput';
 
 const MyRightDrawer = dynamic(
@@ -72,10 +77,20 @@ export const useDebug = () => {
     (v) => v
   );
   const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
+  const debugChatId = useContextSelector(WorkflowDebugContext, (v) => v.debugChatId);
   const setDebugChatId = useContextSelector(WorkflowDebugContext, (v) => v.setDebugChatId);
+  const readFilesSubmissionController = useContextSelector(
+    WorkflowDebugContext,
+    (v) => v.readFilesSubmissionController
+  );
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-
+  const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const debugFileMaxAmount = getUserFileAmountLimit({
+    teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
+    systemMaxFileAmount: feConfigs?.uploadFileMaxAmount ?? 10
+  });
   const { filteredVar, customVar, internalVar, variables } = useMemo(() => {
     const variables = appDetail.chatConfig?.variables || [];
     return {
@@ -165,6 +180,7 @@ export const useDebug = () => {
 
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
+      readFilesSubmissionController.invalidate();
       // 每次打开调试弹窗生成独立的会话 chatId，文件上传与调试运行共用，保证文件归属校验通过
       setDebugChatId(getNanoid());
 
@@ -202,13 +218,15 @@ export const useDebug = () => {
       setRuntimeNodes(runtimeNodes);
       setRuntimeEdges(runtimeEdges);
     },
-    [flowData2StoreDataAndCheck, setNodes, setDebugChatId]
+    [flowData2StoreDataAndCheck, readFilesSubmissionController, setNodes, setDebugChatId]
   );
 
   const DebugInputModal = useCallback(() => {
     if (!runtimeNodes || !runtimeEdges) return <></>;
 
     const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.node);
+    const [hasFileError, setHasFileError] = useState(false);
+    const [isPreparingReadFiles, setIsPreparingReadFiles] = useState(false);
     const fileUploading = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploading);
 
     const runtimeNode = runtimeNodes.find((node) => node.nodeId === runtimeNodeId);
@@ -248,13 +266,14 @@ export const useDebug = () => {
     const { handleSubmit } = variablesForm;
 
     const onClose = () => {
+      readFilesSubmissionController.invalidate();
       setRuntimeNodeId(undefined);
       setRuntimeNodes(undefined);
       setRuntimeEdges(undefined);
     };
 
-    const onClickRun = (data: Record<string, any>) => {
-      onStartNodeDebug({
+    const startNodeDebug = ({ data, chatId }: { data: Record<string, any>; chatId?: string }) => {
+      void onStartNodeDebug({
         entryNodeId: runtimeNode.nodeId,
         runtimeNodes: runtimeNodes.map((node) =>
           node.nodeId === runtimeNode.nodeId
@@ -272,13 +291,80 @@ export const useDebug = () => {
         query: getWorkflowStartDebugQuery({
           flowNodeType: runtimeNode.flowNodeType,
           nodeVariables: data.nodeVariables
-        })
+        }),
+        chatId
       });
 
       // Filter global variables and set them as default global variable values
       setDefaultGlobalVariables(data.variables);
 
       onClose();
+    };
+
+    const readFilesInput = runtimeNode.inputs.find((input) =>
+      isDebugReadFilesInput({
+        flowNodeType: runtimeNode.flowNodeType,
+        input
+      })
+    );
+
+    const onClickRun = async (data: Record<string, any>) => {
+      if (!readFilesInput) {
+        startNodeDebug({ data });
+        return;
+      }
+      if (fileUploading || hasFileError) return;
+
+      const submitDebugChatId = debugChatId;
+      if (!submitDebugChatId) {
+        toast({
+          status: 'error',
+          title: t('common:core.chat.error.Chat error')
+        });
+        return;
+      }
+
+      const submissionToken = readFilesSubmissionController.begin();
+      if (!submissionToken) return;
+
+      setIsPreparingReadFiles(true);
+      try {
+        const rawFiles = data.nodeVariables?.[NodeInputKeyEnum.fileUrlList];
+        const files: FileSelectorValueItemType[] = Array.isArray(rawFiles) ? rawFiles : [];
+        const fileUrlList = await resolveDebugReadFilesInput({
+          files,
+          resolveFileKey: (key) =>
+            getPresignedChatFileGetUrl({
+              key,
+              appId: appDetail._id,
+              chatId: submitDebugChatId
+            })
+        });
+
+        if (!readFilesSubmissionController.isCurrent(submissionToken)) return;
+
+        startNodeDebug({
+          data: {
+            ...data,
+            nodeVariables: {
+              ...data.nodeVariables,
+              [NodeInputKeyEnum.fileUrlList]: fileUrlList
+            }
+          },
+          chatId: submitDebugChatId
+        });
+      } catch (error) {
+        if (!readFilesSubmissionController.isCurrent(submissionToken)) return;
+
+        toast({
+          status: 'error',
+          title: getErrText(error, t('common:core.chat.error.Chat error'))
+        });
+      } finally {
+        if (readFilesSubmissionController.finish(submissionToken)) {
+          setIsPreparingReadFiles(false);
+        }
+      }
     };
 
     const onCheckRunError = useCallback((e: FieldErrors<Record<string, any>>) => {
@@ -322,7 +408,14 @@ export const useDebug = () => {
           )}
           <Box display={currentTab === TabEnum.node ? 'block' : 'none'}>
             {renderInputs.map((item) => {
-              const inputProps = getDebugInputFormProps(item);
+              const { inputProps, inputType } = getDebugInputFormConfig(item, {
+                flowNodeType: runtimeNode.flowNodeType,
+                maxFiles: debugFileMaxAmount
+              });
+              const isReadFilesInput = isDebugReadFilesInput({
+                flowNodeType: runtimeNode.flowNodeType,
+                input: item
+              });
 
               return (
                 <LabelAndFormRender
@@ -331,10 +424,11 @@ export const useDebug = () => {
                   label={item.debugLabel || item.label}
                   required={item.required}
                   description={t(item.placeholder || item.description)}
-                  inputType={nodeInputTypeToInputType(item.renderTypeList)}
+                  inputType={inputType}
                   form={variablesForm}
                   fieldName={`nodeVariables.${item.key}`}
                   bg={'myGray.50'}
+                  onFileErrorChange={isReadFilesInput ? setHasFileError : undefined}
                 />
               );
             })}
@@ -382,7 +476,11 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button isDisabled={fileUploading} onClick={handleSubmit(onClickRun, onCheckRunError)}>
+          <Button
+            isDisabled={fileUploading || isPreparingReadFiles || hasFileError}
+            isLoading={isPreparingReadFiles}
+            onClick={handleSubmit(onClickRun, onCheckRunError)}
+          >
             {t('common:Run')}
           </Button>
         </Flex>
@@ -400,9 +498,14 @@ export const useDebug = () => {
     filteredVar,
     runtimeNodeId,
     onStartNodeDebug,
+    debugChatId,
     getNodeById,
     edges,
     appDetail.chatConfig,
+    appDetail._id,
+    debugFileMaxAmount,
+    readFilesSubmissionController,
+    toast,
     childrenNodeIdListMap
   ]);
 
