@@ -59,6 +59,7 @@ describe('workflow resource context', () => {
     mocks.checkAppResourceReadPermissions.mockResolvedValue(undefined);
     mocks.getModelHandle.mockResolvedValue({
       getAllModels: () => [],
+      getActiveModels: () => [],
       getSystemDefaultModelIds: () => ({})
     });
   });
@@ -173,6 +174,7 @@ describe('workflow resource context', () => {
   it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
     mocks.getModelHandle.mockResolvedValue({
       getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
+      getActiveModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
       getSystemDefaultModelIds: () => ({})
     });
     mocks.resolveAppResourcesByPermission.mockResolvedValue([
@@ -218,6 +220,84 @@ describe('workflow resource context', () => {
         tmbId: 'tmb-1'
       })
     );
+  });
+
+  it('falls back unavailable Agent search enhancement models before resource authorization', async () => {
+    mocks.getModelHandle.mockResolvedValue({
+      getAllModels: () => [
+        { model: 'default-llm', modelId: 'default-llm-id', type: 'llm', isActive: true },
+        {
+          model: 'default-rerank',
+          modelId: 'default-rerank-id',
+          type: 'rerank',
+          isActive: true
+        }
+      ],
+      getActiveModels: () => [
+        { model: 'default-llm', modelId: 'default-llm-id', type: 'llm', isActive: true },
+        {
+          model: 'default-rerank',
+          modelId: 'default-rerank-id',
+          type: 'rerank',
+          isActive: true
+        }
+      ],
+      getSystemDefaultModelIds: () => ({
+        llm: 'default-llm-id',
+        rerank: 'default-rerank-id'
+      })
+    });
+    mocks.resolveAppResourcesByPermission.mockResolvedValue([
+      { type: 'model', id: 'default-llm-id' },
+      { type: 'model', id: 'default-rerank-id' }
+    ]);
+    const datasetParams = {
+      datasets: [],
+      usingReRank: true,
+      rerankModelId: 'removed-rerank-id',
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModelId: 'removed-llm-id'
+    };
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            value: datasetParams,
+            valueType: WorkflowIOValueTypeEnum.object,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ]
+      } as any
+    ];
+
+    const context = await prepareWorkflowDebugResourceContext({
+      appId: 'app-debug-1',
+      nodes,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(datasetParams).toMatchObject({
+      rerankModelId: 'default-rerank-id',
+      datasetSearchExtensionModelId: 'default-llm-id'
+    });
+    expect(Array.from(context.resourceMap.values())).toEqual([
+      { type: 'model', id: 'default-llm-id' },
+      { type: 'model', id: 'default-rerank-id' }
+    ]);
+    expect(mocks.resolveAppResourcesByPermission).toHaveBeenCalledWith({
+      appId: 'app-debug-1',
+      extracted: [
+        { type: 'model', id: 'default-llm-id' },
+        { type: 'model', id: 'default-rerank-id' }
+      ],
+      tmbId: 'tmb-1',
+      isRoot: false,
+      blockOnUnauthorized: true,
+      allowRootCrossTeam: false
+    });
   });
 
   it('rejects a declared App resource when the entity is unavailable', async () => {

@@ -645,7 +645,7 @@ export const formatModels = ({
   chatConfig?: AppChatConfigType;
   models?: Array<{ modelId: string; model: string; type: ModelTypeEnum }>;
   defaultModelIds?: Partial<Record<ModelTypeEnum, string>>;
-  modelReferencePolicy: 'preserve' | 'fallback' | 'validate' | 'import';
+  modelReferencePolicy: 'preserve' | 'fallback' | 'validate' | 'import' | 'debug';
 }) => {
   const validationIssues: WorkflowModelValidationIssue[] = [];
   /** 发布校验只保留功能级信息，服务端错误作为客户端的兜底提示。 */
@@ -715,8 +715,17 @@ export const formatModels = ({
         ? matchedModelByName
         : undefined);
     if (matchedModel) return matchedModel.modelId;
+    // 调试运行与知识库搜索运行时保持一致：可选搜索增强模型失效时先回退，
+    // 主模型、问题引导和 TTS 仍保留原引用并按严格规则报错。
+    if (
+      modelReferencePolicy === 'debug' &&
+      featureEnabled &&
+      (feature === 'query_extension' || feature === 'rerank')
+    ) {
+      return getFallbackModelId(type) || undefined;
+    }
     // 草稿保留非空 canonical 引用，失效 ID 不得用 legacy 字段隐式修复。
-    if (modelReferencePolicy === 'preserve') {
+    if (modelReferencePolicy === 'preserve' || modelReferencePolicy === 'debug') {
       return getModelReferenceValue({ modelId, model });
     }
     // 导入配置中的 modelId 可能来自其他环境；名称也无法解析时清空值。

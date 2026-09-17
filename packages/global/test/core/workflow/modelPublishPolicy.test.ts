@@ -277,3 +277,78 @@ describe('formatModels missing optional model slots', () => {
     ).not.toThrow();
   });
 });
+
+describe('formatModels debug auxiliary model fallback', () => {
+  it('replaces unavailable Agent query-extension and rerank models with usable defaults', () => {
+    const datasetParams = {
+      usingReRank: true,
+      rerankModelId: 'removed-rerank',
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModelId: 'removed-query'
+    };
+    const nodes: NonNullable<Parameters<typeof formatModels>[0]['nodes']> = [
+      {
+        nodeId: 'agent',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        outputs: [],
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            label: '',
+            value: 'removed-primary-model',
+            renderTypeList: [FlowNodeInputTypeEnum.settingLLMModel]
+          },
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            label: '',
+            value: datasetParams,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ]
+      }
+    ];
+
+    formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'debug' });
+
+    expect(datasetParams).toMatchObject({
+      rerankModelId: defaultModelIds.rerank,
+      datasetSearchExtensionModelId: defaultModelIds.llm
+    });
+    expect(nodes[0].inputs[0].value).toBe('removed-primary-model');
+  });
+
+  it('uses the first available compatible model when the configured default is unavailable', () => {
+    const nodes: NonNullable<Parameters<typeof formatModels>[0]['nodes']> = [
+      {
+        nodeId: 'search',
+        name: 'Search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        outputs: [],
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+            label: '',
+            value: true,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            label: '',
+            value: 'removed-query',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ]
+      }
+    ];
+
+    formatModels({
+      nodes,
+      models: [models[1]],
+      defaultModelIds: { llm: models[0].modelId },
+      modelReferencePolicy: 'debug'
+    });
+
+    expect(nodes[0].inputs[1].value).toBe(models[1].modelId);
+  });
+});
