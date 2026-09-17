@@ -70,6 +70,15 @@ describe('resolveEffectiveDefaultModelIds', () => {
     expect(result.chatTitleLLM).toBeUndefined();
   });
 
+  it('preserves an explicit opt-out instead of selecting the first vision LLM', () => {
+    const result = resolveEffectiveDefaultModelIds({
+      models: [llm('text-only'), llm('vision', true)],
+      configuredDefaults: { datasetImageLLM: null }
+    });
+
+    expect(result.datasetImageLLM).toBeNull();
+  });
+
   it('returns undefined when no same-type fallback exists', () => {
     const result = resolveEffectiveDefaultModelIds({
       models: [llm('llm')],

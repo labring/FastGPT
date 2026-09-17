@@ -125,6 +125,8 @@ export const getModelDefault = async <T extends ModelTypeEnum>(
     const model = id ? catalog.modelMap[id] : undefined;
     if (model && matchesModelFilter(model, options)) return model;
   }
+  if (defaultKey === 'datasetImageLLM' && catalog.defaultModelIds.datasetImageLLM === null)
+    return;
   if (defaultKey === 'chatTitleLLM') return;
   return catalog.modelList.find((model): model is ModelOfType<T> =>
     matchesModelFilter(model, options)

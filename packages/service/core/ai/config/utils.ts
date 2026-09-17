@@ -234,7 +234,7 @@ const publishInstalledModels = async ({
 
     // 默认配置只保存稳定 ID。无效配置留给成员目录按类型回退，不再读取模型布尔字段修复。
     const configuredModel = <T extends SystemModelDataType>(
-      modelId: string | undefined,
+      modelId: string | null | undefined,
       predicate: (model: SystemModelDataType) => model is T
     ) => {
       const model = modelId ? _systemModelMap.get(`id:${modelId}`) : undefined;
@@ -287,7 +287,12 @@ const publishInstalledModels = async ({
       if (!_systemDefaultModel.datasetTextLLM) {
         _systemDefaultModel.datasetTextLLM = _systemDefaultModel.llm;
       }
-      if (!_systemDefaultModel.datasetImageLLM) {
+      // `null` is an administrator's explicit opt-out. Invalid/missing IDs retain the
+      // historical fallback behavior so existing installations remain self-healing.
+      if (
+        !_systemDefaultModel.datasetImageLLM &&
+        configuredDefaultModelIds.datasetImageLLM !== null
+      ) {
         _systemDefaultModel.datasetImageLLM = _systemActiveModelList.find(
           (model): model is LLMSystemModelDataType =>
             model.type === ModelTypeEnum.llm && !!model.config.vision

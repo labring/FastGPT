@@ -387,6 +387,27 @@ describe('loadSystemModels', () => {
     expect(getModelTestDefaults().llm?.modelId).toBe(String(model._id));
   });
 
+  it('does not auto-select a vision model after the dataset image default is explicitly disabled', async () => {
+    await MongoAIModel.create({
+      type: ModelTypeEnum.llm,
+      provider: 'OpenAI',
+      model: 'configured-vision-llm',
+      name: 'Configured vision LLM',
+      scope: 'system',
+      isActive: true,
+      config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000, vision: true }
+    });
+    await MongoAIDefaultModel.create({
+      scope: 'system',
+      defaultModelIds: { datasetImageLLM: null }
+    });
+
+    await loadInstalledModels();
+
+    expect(getCachedModelHandle()?.configuredDefaultModelIds.datasetImageLLM).toBeNull();
+    expect(getCachedModelHandle()?.getDefaultModelData('datasetImageLLM')).toBeUndefined();
+  });
+
   it('reloads the model catalog without changing the system init buffer', async () => {
     await updatedReloadSystemModel();
 

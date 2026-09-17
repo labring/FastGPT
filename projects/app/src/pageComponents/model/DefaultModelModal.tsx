@@ -15,7 +15,7 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 
-type DefaultModelState = Record<keyof ModelDefaultIds, SystemModelDataType | undefined>;
+type DefaultModelState = Record<keyof ModelDefaultIds, SystemModelDataType | null | undefined>;
 
 const labelStyles = {
   fontSize: 'sm',
@@ -94,7 +94,7 @@ const DefaultModelModal = ({
       Object.fromEntries(
         Object.entries(defaultModelIds).map(([key, modelId]) => [
           key,
-          models.find((model) => model.modelId === modelId)
+          modelId === null ? null : models.find((model) => model.modelId === modelId)
         ])
       ) as DefaultModelState
   );
@@ -110,7 +110,7 @@ const DefaultModelModal = ({
   }) => {
     setDefaultData((state) => ({
       ...state,
-      [slot]: candidates.find((model) => model.modelId === modelId)
+      [slot]: modelId === '' ? null : candidates.find((model) => model.modelId === modelId)
     }));
   };
 
@@ -150,7 +150,10 @@ const DefaultModelModal = ({
                 [ModelTypeEnum.stt]: defaultData.stt?.modelId,
                 [ModelTypeEnum.rerank]: defaultData.rerank?.modelId,
                 datasetTextLLMModelId: defaultData.datasetTextLLM?.modelId,
-                datasetImageLLMModelId: defaultData.datasetImageLLM?.modelId,
+                datasetImageLLMModelId:
+                  defaultData.datasetImageLLM === null
+                    ? null
+                    : defaultData.datasetImageLLM?.modelId,
                 chatTitleLLMModelId: defaultData.chatTitleLLM?.modelId
               })
             }
@@ -193,6 +196,8 @@ const DefaultModelModal = ({
           modelType={ModelTypeEnum.llm}
           models={visionModels}
           value={defaultData.datasetImageLLM?.modelId}
+          canBeUnset
+          unsetLabel={t('common:not_set')}
           onChange={(modelId) =>
             setDefaultModel({ slot: 'datasetImageLLM', candidates: visionModels, modelId })
           }
