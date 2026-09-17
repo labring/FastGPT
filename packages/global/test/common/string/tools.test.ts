@@ -114,6 +114,10 @@ describe('string tools', () => {
     expect(sliceJsonStr('[1, /* ] */ 2]')).toBe('[1, /* ] */ 2]');
     expect(sliceJsonStr('{a: 1, // }\n b: 2} trailing')).toBe('{a: 1, // }\n b: 2}');
     expect(sliceJsonStr('[1, // ]\n 2] trailing')).toBe('[1, // ]\n 2]');
+    expect(sliceJsonStr('{a: 1, // }\r b: 2} trailing')).toBe('{a: 1, // }\r b: 2}');
+    expect(sliceJsonStr('{a: 1, // }\r\n b: 2} trailing')).toBe('{a: 1, // }\r\n b: 2}');
+    expect(sliceJsonStr('{a: 1, // }\u2028 b: 2} trailing')).toBe('{a: 1, // }\u2028 b: 2}');
+    expect(sliceJsonStr('{a: 1, // }\u2029 b: 2} trailing')).toBe('{a: 1, // }\u2029 b: 2}');
     // 字符串里的注释符号仍然是普通字符
     expect(sliceJsonStr('{a: "/* }"} trailing')).toBe('{a: "/* }"}');
     // 除号不是注释

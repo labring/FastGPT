@@ -92,7 +92,9 @@ export const sliceJsonStr = (str: string) => {
     const ch = str[i];
 
     if (comment === 'line') {
-      if (ch === '\n') comment = undefined;
+      if (ch === '\n' || ch === '\r' || ch === '\u2028' || ch === '\u2029') {
+        comment = undefined;
+      }
       continue;
     }
     if (comment === 'block') {
