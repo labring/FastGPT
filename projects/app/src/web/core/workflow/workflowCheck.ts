@@ -1,4 +1,5 @@
 import type {
+  StoreNodeItemType,
   WorkflowCheckIssue,
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
@@ -48,6 +49,9 @@ import {
 import { isToolNotExistError } from '@fastgpt/global/core/app/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { getWorkflowModelDetails } from './modelData';
+import { storeEdge2RenderEdge, storeNode2FlowNode } from './utils';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -585,6 +589,11 @@ export const checkWorkflowNodeIssues = ({
     const data = node.data;
     const inputs = data.inputs;
     const inputMap = new Map(inputs.map((input) => [input.key, input]));
+    const datasetSelectInput = inputMap.get(NodeInputKeyEnum.datasetSelectList);
+    const hasSelectedDataset =
+      !datasetSelectInput ||
+      nodeInputIsReference(datasetSelectInput) ||
+      (Array.isArray(datasetSelectInput.value) && datasetSelectInput.value.length > 0);
     const isToolNode = context.incomingEdgesMap
       .get(data.nodeId)
       ?.some((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools);
@@ -799,7 +808,9 @@ export const checkWorkflowNodeIssues = ({
           modelIdKey === NodeInputKeyEnum.datasetSearchExtensionModelId;
         // 问题优化摘要只展示实际 ID；旧名称或 defaultValue 不能掩盖尚未选择模型的状态。
         // 可选功能的开关缺省表示未开启，不借用模板默认值。
-        const featureValue = featureKey ? inputMap.get(featureKey)?.value : true;
+        const featureValue = featureKey
+          ? hasSelectedDataset && inputMap.get(featureKey)?.value
+          : true;
         addUnavailableModelIssue({
           modelId: isDatasetQueryExtension
             ? modelIdInput?.value
@@ -824,11 +835,14 @@ export const checkWorkflowNodeIssues = ({
         !Array.isArray(datasetParamsInput.value)
       ) {
         const datasetParams = datasetParamsInput.value as Record<string, unknown>;
+        const hasSelectedDataset =
+          Array.isArray(datasetParams.datasets) && datasetParams.datasets.length > 0;
         addUnavailableModelIssue({
           modelId: datasetParams[NodeInputKeyEnum.datasetSearchRerankModelId],
           model: datasetParams[NodeInputKeyEnum.datasetSearchRerankModel],
           type: ModelTypeEnum.rerank,
-          featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
+          featureEnabled:
+            hasSelectedDataset && Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
           defaultWhenEmpty: true,
           inputKey: NodeInputKeyEnum.datasetParams,
           modelInput: {
@@ -841,7 +855,9 @@ export const checkWorkflowNodeIssues = ({
           modelId: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModelId],
           model: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModel],
           type: ModelTypeEnum.llm,
-          featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
+          featureEnabled:
+            hasSelectedDataset &&
+            Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
           defaultWhenEmpty: true,
           inputKey: NodeInputKeyEnum.datasetParams,
           modelInput: {
@@ -1297,12 +1313,55 @@ export const checkWorkflowBeforeRunOrPublish = ({
   const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, models, t });
   const nodeOrder = nodes.map((node) => node.data.nodeId);
   const errorNodeIds = getWorkflowCheckErrorNodeIds(issueMap, nodeOrder);
+  const firstErrorNodeId = errorNodeIds[0];
+  const firstErrorIssue = firstErrorNodeId
+    ? issueMap[firstErrorNodeId]?.find((issue) => issue.level === 'error')
+    : chatConfigIssues.find((issue) => issue.level === 'error');
 
   return {
     issueMap,
     hasError: errorNodeIds.length > 0 || chatConfigIssues.length > 0,
-    firstErrorNodeId: errorNodeIds[0],
+    firstErrorNodeId,
+    firstErrorIssue,
     errorNodeIds,
     chatConfigIssues
   };
+};
+
+/**
+ * 将持久化工作流转换为发布校验使用的画布结构，并加载当前成员可用的模型详情。
+ * 表单发布与调试对话共用该入口，避免两条链路对同一模型配置给出不同结论。
+ */
+export const checkStoreWorkflowBeforeRunOrPublish = async ({
+  nodes: storeNodes,
+  edges: storeEdges,
+  chatConfig,
+  t
+}: {
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
+  chatConfig?: AppChatConfigType;
+  t: TFunction;
+}) => {
+  const toolNodeIds = new Set(
+    storeEdges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
+  const nodes = storeNodes.map((item) =>
+    storeNode2FlowNode({
+      item,
+      t,
+      isTool: toolNodeIds.has(item.nodeId)
+    })
+  );
+  const edges = storeEdges.map((edge) => storeEdge2RenderEdge({ edge }));
+
+  return checkWorkflowBeforeRunOrPublish({
+    nodes,
+    edges,
+    models: await getWorkflowModelDetails(nodes, chatConfig),
+    chatConfig,
+    t
+  });
 };

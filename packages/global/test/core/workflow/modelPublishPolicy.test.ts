@@ -192,7 +192,11 @@ describe('formatModels missing optional model slots', () => {
           {
             key: NodeInputKeyEnum.datasetParams,
             label: '',
-            value: { usingReRank: true, datasetSearchUsingExtensionQuery: true },
+            value: {
+              datasets: [{ datasetId: 'dataset-1' }],
+              usingReRank: true,
+              datasetSearchUsingExtensionQuery: true
+            },
             renderTypeList: [FlowNodeInputTypeEnum.hidden]
           }
         ]
@@ -218,5 +222,58 @@ describe('formatModels missing optional model slots', () => {
     });
     expect(chatConfig.questionGuide).toHaveProperty('modelId', defaultModelIds.llm);
     expect(chatConfig.ttsConfig).toHaveProperty('modelId', defaultModelIds.tts);
+  });
+
+  it('ignores dataset model parameters when no dataset is selected', () => {
+    const nodes: NonNullable<Parameters<typeof formatModels>[0]['nodes']> = [
+      {
+        nodeId: 'search',
+        name: 'Search',
+        flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+        outputs: [],
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSelectList,
+            label: '',
+            value: [],
+            renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+            label: '',
+            value: true,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          },
+          {
+            key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+            label: '',
+            value: 'removed-query-model',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ]
+      },
+      {
+        nodeId: 'agent',
+        name: 'Agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        outputs: [],
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetParams,
+            label: '',
+            value: {
+              datasets: [],
+              usingReRank: true,
+              rerankModelId: 'removed-rerank-model'
+            },
+            renderTypeList: [FlowNodeInputTypeEnum.hidden]
+          }
+        ]
+      }
+    ];
+
+    expect(() =>
+      formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'validate' })
+    ).not.toThrow();
   });
 });

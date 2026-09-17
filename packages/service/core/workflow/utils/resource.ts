@@ -127,6 +127,8 @@ export const assertWorkflowNodeModelResources = async ({
   tmbId: string;
 }) => {
   const modelReferences: Array<{ value: unknown; dynamic: boolean }> = [];
+  const selectedDatasets = params[NodeInputKeyEnum.datasetSelectList];
+  const hasSelectedDataset = Array.isArray(selectedDatasets) && selectedDatasets.length > 0;
   const addModel = (value: unknown, dynamic: boolean) => {
     if (value !== undefined && value !== null) modelReferences.push({ value, dynamic });
   };
@@ -134,7 +136,7 @@ export const assertWorkflowNodeModelResources = async ({
   node.inputs.forEach((input) => {
     if (!isWorkflowSystemModelInput({ node, input })) return;
     const featureKey = modelFeatureKeyMap.get(input.key);
-    if (featureKey && params[featureKey] !== true) return;
+    if (featureKey && (!hasSelectedDataset || params[featureKey] !== true)) return;
     addModel(params[input.key], nodeInputIsReference(input));
   });
 

@@ -134,6 +134,42 @@ describe('workflow resource context', () => {
     expect(mocks.checkAppResourceReadPermissions).toHaveBeenCalledOnce();
   });
 
+  it('does not authorize dataset models when no dataset is selected', async () => {
+    const node = {
+      flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          value: [],
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchExtensionModelId,
+          value: 'missing-model',
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+        }
+      ]
+    };
+
+    await expect(
+      assertWorkflowNodeModelResources({
+        node,
+        params: {
+          [NodeInputKeyEnum.datasetSelectList]: [],
+          [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
+          [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'missing-model'
+        },
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toBeUndefined();
+    expect(mocks.checkAppResourceReadPermissions).not.toHaveBeenCalled();
+  });
+
   it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
     mocks.getModelHandle.mockResolvedValue({
       getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],

@@ -1,11 +1,7 @@
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
 import {
-  checkWorkflowBeforeRunOrPublish,
+  checkStoreWorkflowBeforeRunOrPublish,
   getToolErrorMessage,
   getWorkflowCheckIssueMessage
 } from '@/web/core/workflow/workflowCheck';
@@ -140,37 +136,17 @@ export const checkAppFormBeforePublish = async ({
   if (resourceError) return resourceError;
 
   // 3. 工作流图级校验（模型可用性、节点输入完整性等）
-  const { nodes: storeNodes, edges: storeEdges } = form2WorkflowFn(appForm, t);
-
-  const toolNodeIds = new Set(
-    storeEdges
-      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
-      .map((edge) => edge.target)
-  );
-  const nodes = storeNodes.map((item) =>
-    storeNode2FlowNode({
-      item,
-      t,
-      isTool: toolNodeIds.has(item.nodeId)
-    })
-  );
-  const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
-
-  const checkResults = checkWorkflowBeforeRunOrPublish({
-    nodes,
-    edges,
-    models: await getWorkflowModelDetails(nodes),
+  const workflow = form2WorkflowFn(appForm, t);
+  const checkResults = await checkStoreWorkflowBeforeRunOrPublish({
+    nodes: workflow.nodes,
+    edges: workflow.edges,
     chatConfig: appForm.chatConfig,
     t
   });
 
   if (checkResults.hasError) {
-    const firstIssue = checkResults.firstErrorNodeId
-      ? checkResults.issueMap[checkResults.firstErrorNodeId]?.find((item) => item.level === 'error')
-      : checkResults.chatConfigIssues.find((item) => item.level === 'error');
-
     return (
-      firstIssue?.message ||
+      checkResults.firstErrorIssue?.message ||
       t('app:app.error.publish_unExist_app') ||
       t('common:core.workflow.Check Failed')
     );

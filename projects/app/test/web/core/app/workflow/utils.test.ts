@@ -2643,6 +2643,7 @@ describe('workflow model validation', () => {
         {
           key: NodeInputKeyEnum.datasetParams,
           value: {
+            datasets: [{ datasetId: 'dataset-1' }],
             [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
             [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'missing-extension-model'
           },
@@ -2653,6 +2654,46 @@ describe('workflow model validation', () => {
     );
 
     expect(getModelIssueCodes(node)).toContain('model_unavailable');
+  });
+
+  it('ignores dataset model parameters when no dataset is selected', () => {
+    const searchNode = makeModelNode(
+      [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          value: [],
+          renderTypeList: [FlowNodeInputTypeEnum.selectDataset]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchUsingReRank,
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.switch]
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchRerankModelId,
+          value: 'missing-rerank',
+          renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+        }
+      ],
+      FlowNodeTypeEnum.datasetSearchNode
+    );
+    const agentNode = makeModelNode(
+      [
+        {
+          key: NodeInputKeyEnum.datasetParams,
+          value: {
+            datasets: [],
+            [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
+            [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'missing-extension-model'
+          },
+          renderTypeList: [FlowNodeInputTypeEnum.custom]
+        }
+      ],
+      FlowNodeTypeEnum.agent
+    );
+
+    expect(getModelIssueCodes(searchNode)).not.toContain('model_unavailable');
+    expect(getModelIssueCodes(agentNode)).not.toContain('model_unavailable');
   });
 
   it('validates WorkflowTool model selector defaults with arbitrary input keys', () => {
