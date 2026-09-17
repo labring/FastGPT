@@ -3,6 +3,7 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
+import { checkMaxServerAvailable } from '@fastgpt/service/common/system/maxServer';
 import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
@@ -115,7 +116,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   favicon: '/favicon.ico',
   chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
   uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-  uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT
+  uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
+  hasMax: false
 };
 
 async function getPluginRemoteDebugEnabled() {
@@ -131,9 +133,10 @@ async function getPluginRemoteDebugEnabled() {
 }
 
 export async function initSystemConfig() {
-  const [{ fastgptConfig, licenseData }, pluginRemoteDebug] = await Promise.all([
+  const [{ fastgptConfig, licenseData }, pluginRemoteDebug, hasMax] = await Promise.all([
     getFastGPTConfigFromDB(),
-    getPluginRemoteDebugEnabled()
+    getPluginRemoteDebugEnabled(),
+    checkMaxServerAvailable()
   ]);
   global.licenseData = licenseData;
 
@@ -147,6 +150,7 @@ export async function initSystemConfig() {
         ...(fastgptConfig.feConfigs?.limit || {})
       },
       isPlus: !!licenseData,
+      hasMax,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
       show_aiproxy: hasAIProxyApiEndpoint(),
