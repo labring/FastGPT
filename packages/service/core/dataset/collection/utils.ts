@@ -391,7 +391,9 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
             datasetId: collection.datasetId,
             tags: collection.tags
           })
-        }
+        },
+        // 集合同步的审计由 SYNC_DATASET 事件统一记录，导入路径不再单独写 IMPORT_DATASET_CONTENT
+        audit: false
       });
     });
 
