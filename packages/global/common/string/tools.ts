@@ -60,32 +60,81 @@ export const customNanoid = (str: string, size: number) => customAlphabet(str, s
 /* Custom text to reg, need to replace special chats */
 export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/* slice json str */
+/**
+ * Extract the first complete JSON value out of a model's answer.
+ *
+ * Walks forward from the first opening bracket and returns as soon as that
+ * value closes, so anything written after it is left out -- a second object, a
+ * closing code fence followed by a note, a sentence mentioning a {placeholder}.
+ * Searching backwards for the last closing bracket instead would swallow all
+ * of it.
+ *
+ * The result is handed to `jsonrepair` / `json5.parse`, so the scan follows
+ * JSON5: single- and double-quoted strings, `//` line comments and block
+ * comments are non-structural and their brackets are not counted.
+ *
+ * A string with no bracket, or a value that never closes, is returned
+ * unchanged and left to the caller's repair step, as before.
+ */
 export const sliceJsonStr = (str: string) => {
   str = str.trim();
 
   // Find first opening bracket
-  let start = -1;
-  let openChar = '';
-
-  for (let i = 0; i < str.length; i++) {
-    if (str[i] === '{' || str[i] === '[') {
-      start = i;
-      openChar = str[i];
-      break;
-    }
-  }
-
+  const start = str.search(/[{\[]/);
   if (start === -1) return str;
 
-  // Find matching closing bracket from the end
+  const openChar = str[start];
   const closeChar = openChar === '{' ? '}' : ']';
 
-  for (let i = str.length - 1; i >= start; i--) {
+  let depth = 0;
+  let stringChar: string | undefined;
+  let escaped = false;
+  let comment: 'line' | 'block' | undefined;
+
+  for (let i = start; i < str.length; i++) {
     const ch = str[i];
 
-    if (ch === closeChar) {
-      return str.slice(start, i + 1);
+    if (comment === 'line') {
+      if (ch === '\n' || ch === '\r' || ch === '\u2028' || ch === '\u2029') {
+        comment = undefined;
+      }
+      continue;
+    }
+    if (comment === 'block') {
+      if (ch === '*' && str[i + 1] === '/') {
+        comment = undefined;
+        i++;
+      }
+      continue;
+    }
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      if (stringChar) escaped = true;
+      continue;
+    }
+    if (stringChar) {
+      if (ch === stringChar) stringChar = undefined;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      stringChar = ch;
+      continue;
+    }
+    if (ch === '/' && (str[i + 1] === '/' || str[i + 1] === '*')) {
+      comment = str[i + 1] === '/' ? 'line' : 'block';
+      i++;
+      continue;
+    }
+
+    if (ch === openChar) {
+      depth++;
+    } else if (ch === closeChar) {
+      depth--;
+      if (depth === 0) return str.slice(start, i + 1);
     }
   }
 

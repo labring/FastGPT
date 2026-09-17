@@ -89,6 +89,45 @@ describe('string tools', () => {
     expect(sliceJsonStr('prefix {"a":1')).toBe('prefix {"a":1');
   });
 
+  it('should stop at the end of the json, not at the last bracket in the text', () => {
+    // 模型常在 JSON 后面继续写解释,里面可能带括号
+    expect(sliceJsonStr('{"name":"get_weather"}\n\nI used the {city} you gave me.')).toBe(
+      '{"name":"get_weather"}'
+    );
+    expect(sliceJsonStr('{"a":1}\n{"b":2}')).toBe('{"a":1}');
+    expect(sliceJsonStr('```json\n{"a":1}\n```\nNote: {done}')).toBe('{"a":1}');
+    expect(sliceJsonStr('[1,2] and [3,4]')).toBe('[1,2]');
+  });
+
+  it('should not close the json on a bracket inside a string', () => {
+    expect(sliceJsonStr('{"a":"}"}')).toBe('{"a":"}"}');
+    expect(sliceJsonStr('{"a":"\\\\"}')).toBe('{"a":"\\\\"}');
+    expect(sliceJsonStr('{"nested":{"b":[1,{"c":2}]}} trailing')).toBe(
+      '{"nested":{"b":[1,{"c":2}]}}'
+    );
+    // 调用方用 JSON5 解析,单引号字符串同样要算在内
+    expect(sliceJsonStr("{name: 'a}b'} trailing")).toBe("{name: 'a}b'}");
+    expect(sliceJsonStr("1: {name: 'test_tool', arguments: {param: 'value', number: 42}}")).toBe(
+      "{name: 'test_tool', arguments: {param: 'value', number: 42}}"
+    );
+  });
+
+  it('should not close the json on a bracket inside a json5 comment', () => {
+    // 调用方用 JSON5 解析,注释里的括号不是结构括号
+    expect(sliceJsonStr('{a: 1, /* } */ b: 2}')).toBe('{a: 1, /* } */ b: 2}');
+    expect(sliceJsonStr('[1, /* ] */ 2]')).toBe('[1, /* ] */ 2]');
+    expect(sliceJsonStr('{a: 1, // }\n b: 2} trailing')).toBe('{a: 1, // }\n b: 2}');
+    expect(sliceJsonStr('[1, // ]\n 2] trailing')).toBe('[1, // ]\n 2]');
+    expect(sliceJsonStr('{a: 1, // }\r b: 2} trailing')).toBe('{a: 1, // }\r b: 2}');
+    expect(sliceJsonStr('{a: 1, // }\r\n b: 2} trailing')).toBe('{a: 1, // }\r\n b: 2}');
+    expect(sliceJsonStr('{a: 1, // }\u2028 b: 2} trailing')).toBe('{a: 1, // }\u2028 b: 2}');
+    expect(sliceJsonStr('{a: 1, // }\u2029 b: 2} trailing')).toBe('{a: 1, // }\u2029 b: 2}');
+    // 字符串里的注释符号仍然是普通字符
+    expect(sliceJsonStr('{a: "/* }"} trailing')).toBe('{a: "/* }"}');
+    // 除号不是注释
+    expect(sliceJsonStr('{a: 1 / 2} trailing')).toBe('{a: 1 / 2}');
+  });
+
   it('should slice string with start and end', () => {
     expect(sliceStrStartEnd('abc', 2, 2)).toBe('abc');
     expect(sliceStrStartEnd(null, 2, 2)).toBe('');
