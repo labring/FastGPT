@@ -273,9 +273,14 @@ const AppListContextProvider = ({
   const onMoveApp = useCallback(
     async (parentId: ParentIdType) => {
       if (!moveAppId) return;
-      await onUpdateApp(moveAppId, { parentId });
+      const result = await batchMoveApps({
+        ids: [moveAppId],
+        parentId: parentId ?? null
+      });
+      await loadMyApps();
+      return result;
     },
-    [moveAppId, onUpdateApp]
+    [moveAppId, loadMyApps]
   );
 
   const getAppFolderList = useCallback<SelectOneResourceServer>(
@@ -396,12 +401,12 @@ const AppListContextProvider = ({
         ids: selectedAppIds,
         parentId: targetParentId ?? null
       });
-      await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyApps()]);
+      await loadMyApps();
       setSelectedAppIds(result.failedIds);
       if (result.failedIds.length === 0) setIsBatchMode(false);
       return result;
     },
-    [selectedAppIds, refetchFolderDetail, refetchPaths, loadMyApps]
+    [selectedAppIds, loadMyApps]
   );
 
   useEffect(() => {

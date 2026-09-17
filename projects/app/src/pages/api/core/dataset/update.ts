@@ -2,11 +2,7 @@ import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  ManagePermissionVal,
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
   UpdateDatasetBodySchema,
@@ -14,14 +10,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from 'mongoose';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import {
-  syncChildrenPermission,
-  syncCollaborators
-} from '@fastgpt/service/support/permission/inheritPermission';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
@@ -36,24 +25,17 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/training/utils';
-import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
-import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { moveDataset } from '@/service/core/dataset/move';
 
-// 更新知识库接口
-// 包括如下功能：
-// 1. 更新应用的信息（包括名称，类型，头像，介绍等）
-// 2. 更新数据库的配置信息
-// 3. 移动知识库
-// 操作权限：
-// 1. 更新信息和配置编排需要有知识库的写权限
-// 2. 移动应用需要有
-//  (1) 父目录的管理权限
-//  (2) 目标目录的管理权限
-//  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
+/**
+ * 更新知识库接口
+ * 1. 若包含 parentId，则复用 moveDataset 服务完成鉴权、层级检查、权限继承与移动操作；
+ * 2. 若包含基础信息或模型配置，则校验写权限并更新。
+ */
 async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const {
     body: {
@@ -84,8 +66,32 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     }
   }
 
-  const isMove = parentId !== undefined;
+  // 1. 移动分支：直接调用 moveDataset 统一服务
+  if (parentId !== undefined) {
+    await moveDataset({ req, id, parentId });
+  }
 
+  const hasOtherFields =
+    name !== undefined ||
+    avatar !== undefined ||
+    intro !== undefined ||
+    agentModelId !== undefined ||
+    agentModel !== undefined ||
+    vlmModelId !== undefined ||
+    vlmModel !== undefined ||
+    websiteConfig !== undefined ||
+    externalReadUrl !== undefined ||
+    apiDatasetServer !== undefined ||
+    autoSync !== undefined ||
+    sangforFileParseConfig !== undefined ||
+    rawChunkSettings !== undefined;
+
+  // 纯移动操作，无需执行后续属性更新
+  if (!hasOtherFields) {
+    return;
+  }
+
+  // 2. 基础属性更新
   const { dataset, permission, tmbId, teamId } = await authDataset({
     req,
     authToken: true,
@@ -94,7 +100,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     per: ReadPermissionVal
   });
 
-  let targetName = '';
+  if (!permission.hasWritePer) {
+    return Promise.reject(DatasetErrEnum.unAuthDataset);
+  }
+
   const modelHandle = await getModelHandle();
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
@@ -119,55 +128,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const vlmValue = vlmModelId !== undefined ? vlmModelId : vlmModel;
   // undefined 表示不修改；显式 null/空字符串才是清空请求。
   const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
-  if (clearVlmModel && !permission.hasWritePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
   const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
-
-  if (isMove) {
-    if (parentId) {
-      // move to a folder, check the target folder's permission
-      const { dataset: targetDataset } = await authDataset({
-        req,
-        authToken: true,
-        authApiKey: true,
-        datasetId: parentId,
-        per: ManagePermissionVal
-      });
-      targetName = targetDataset.name;
-    } else {
-      targetName = 'root';
-    }
-    if (dataset.parentId) {
-      // move from a folder, check the (old) folder's permission
-      await authDataset({
-        req,
-        authToken: true,
-        authApiKey: true,
-        datasetId: dataset.parentId,
-        per: ManagePermissionVal
-      });
-    }
-    if (parentId === null || !dataset.parentId) {
-      // move to root or move from root
-      await authUserPer({
-        req,
-        authToken: true,
-        per: TeamDatasetCreatePermissionVal
-      });
-    }
-  } else {
-    // is not move
-    if (!permission.hasWritePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
-  }
-
-  if (isMove) {
-    await checkMoveFolderDepth({
-      resourceId: id,
-      targetParentId: parentId,
-      teamId: dataset.teamId,
-      model: MongoDataset,
-      isFolderType: (type) => type === DatasetTypeEnum.folder
-    });
-  }
 
   updateTraining({
     teamId: dataset.teamId,
@@ -241,7 +202,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     await MongoDataset.findByIdAndUpdate(
       id,
       {
-        ...parseParentIdInMongo(parentId),
         ...(name && { name }),
         ...(avatar && { avatar }),
         ...(agentModelData && { agentModelId: agentModelData.modelId }),
@@ -252,12 +212,11 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
-        ...(isMove && { inheritPermission: true }),
         ...(typeof autoSync === 'boolean' && { autoSync }),
         // 传空对象等价于恢复全部开关默认值(读取层补全),旧文件已固化的解析结果不受影响
         ...(sangforFileParseConfig !== undefined && { sangforFileParseConfig }),
         ...apiDatasetParams,
-        ...(!isMove && { updateTime: new Date() })
+        updateTime: new Date()
       },
       { session }
     );
@@ -271,54 +230,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   };
 
   await mongoSessionRun(async (session) => {
-    if (isMove) {
-      const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
-        getResourceOwnedClbs({
-          teamId: dataset.teamId,
-          resourceId: parentId,
-          resourceType: PerResourceTypeEnum.dataset,
-          session
-        }),
-        dataset.parentId
-          ? getResourceOwnedClbs({
-              teamId: dataset.teamId,
-              resourceId: dataset.parentId,
-              resourceType: PerResourceTypeEnum.dataset,
-              session
-            })
-          : Promise.resolve([]),
-        getResourceOwnedClbs({
-          teamId: dataset.teamId,
-          resourceId: id,
-          resourceType: PerResourceTypeEnum.dataset,
-          session
-        })
-      ]);
-
-      const newResourceClbs = await syncCollaborators({
-        teamId: dataset.teamId,
-        resourceId: id,
-        resourceType: PerResourceTypeEnum.dataset,
-        collaborators: parentClbs,
-        oldParentCollaborators: oldParentClbs,
-        session
-      });
-
-      await syncChildrenPermission({
-        resource: dataset,
-        resourceType: PerResourceTypeEnum.dataset,
-        resourceModel: MongoDataset,
-        folderTypeList: [DatasetTypeEnum.folder],
-        oldParentCollaborators: oldResourceClbs,
-        newParentCollaborators: newResourceClbs,
-        session
-      });
-      logDatasetMove({ tmbId, teamId, dataset, targetName });
-      return onUpdate(session);
-    } else {
-      logDatasetUpdate({ tmbId, teamId, dataset });
-      return onUpdate(session);
-    }
+    logDatasetUpdate({ tmbId, teamId, dataset });
+    return onUpdate(session);
   });
 }
 export default NextAPI(handler);
@@ -366,31 +279,6 @@ const updateSyncSchedule = async ({
     // remove Job Scheduler
     return removeDatasetSyncJobScheduler(dataset._id);
   }
-};
-
-const logDatasetMove = ({
-  tmbId,
-  teamId,
-  dataset,
-  targetName
-}: {
-  tmbId: string;
-  teamId: string;
-  dataset: any;
-  targetName: string;
-}) => {
-  (async () => {
-    addAuditLog({
-      tmbId,
-      teamId,
-      event: AuditEventEnum.MOVE_DATASET,
-      params: {
-        datasetName: dataset.name,
-        targetFolderName: targetName,
-        datasetType: getI18nDatasetType(dataset.type)
-      }
-    });
-  })();
 };
 
 const logDatasetUpdate = ({

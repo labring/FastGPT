@@ -222,12 +222,14 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const onMoveDataset = useCallback(
     async (parentId: ParentIdType) => {
       if (!moveDatasetId) return;
-      await onUpdateDataset({
-        id: moveDatasetId,
-        parentId
+      const result = await batchMoveDatasets({
+        ids: [moveDatasetId],
+        parentId: parentId ?? null
       });
+      await loadMyDatasets();
+      return result;
     },
-    [moveDatasetId, onUpdateDataset]
+    [moveDatasetId, loadMyDatasets]
   );
 
   const getDatasetFolderList = useCallback<SelectOneResourceServer>(
@@ -359,12 +361,12 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         ids: selectedDatasetIds,
         parentId: finalParentId
       });
-      await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyDatasets()]);
+      await loadMyDatasets();
       setSelectedDatasetIds(result.failedIds);
       if (result.failedIds.length === 0) setIsBatchMode(false);
       return result;
     },
-    [selectedDatasetIds, refetchFolderDetail, refetchPaths, loadMyDatasets]
+    [selectedDatasetIds, loadMyDatasets]
   );
 
   const contextValue = {

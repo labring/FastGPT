@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
 import deleteHandler from '@/pages/api/core/app/batch/delete';
 import moveHandler from '@/pages/api/core/app/batch/move';
+import updateHandler from '@/pages/api/core/app/update';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getRootUser } from '@test/datas/users';
@@ -130,6 +131,16 @@ describe('App Batch API Integration', () => {
       expect(rootMoveResponse.data.successIds).toContain(String(app1._id));
       const rootApp1 = await MongoApp.findById(app1._id);
       expect(rootApp1?.parentId).toBeNull();
+
+      // Test moving via updateHandler (backward compatibility)
+      const updateMoveRes = await Call(updateHandler, {
+        auth: rootUser,
+        query: { appId: String(app2._id) },
+        body: { parentId: String(targetFolder._id) }
+      });
+      expect(updateMoveRes.code).toBe(200);
+      const updatedApp2 = await MongoApp.findById(app2._id);
+      expect(String(updatedApp2?.parentId)).toBe(String(targetFolder._id));
 
       await MongoApp.deleteMany({ _id: { $in: [app1._id, app2._id, targetFolder._id] } });
     });

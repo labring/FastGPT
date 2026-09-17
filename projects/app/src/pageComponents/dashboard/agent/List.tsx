@@ -1,7 +1,13 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Box, Grid, IconButton, HStack, Flex, VStack, Checkbox } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { delAppById, putAppById, resumeInheritPer, changeOwner } from '@/web/core/app/api';
+import {
+  batchMoveApps,
+  delAppById,
+  putAppById,
+  resumeInheritPer,
+  changeOwner
+} from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -142,7 +148,12 @@ const List = () => {
       borderColor: 'primary.600'
     },
     onDrop: (dragId: string, targetId: string) => {
-      openMoveConfirm({ onConfirm: async () => onPutAppById(dragId, { parentId: targetId }) })();
+      openMoveConfirm({
+        onConfirm: async () => {
+          await batchMoveApps({ ids: [dragId], parentId: targetId });
+          await loadMyApps();
+        }
+      })();
     }
   });
 
