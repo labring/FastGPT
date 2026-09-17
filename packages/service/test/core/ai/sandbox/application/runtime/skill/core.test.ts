@@ -10,12 +10,15 @@ import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
+import { loadWorkflowResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 import { getUser } from '@test/datas/users';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 const makePackage = async (entries: Array<{ path: string; name: string; description: string }>) => {
   const zip = new JSZip();
@@ -293,6 +296,31 @@ description: Zeta skill
 });
 
 describe('injectAgentSkillFilesToSandbox', () => {
+  it('rejects a declared static skill when its entity is unavailable', async () => {
+    const resource = { type: 'skill' as const, id: 'missing-skill' };
+    const resourceContext = {
+      isRoot: false,
+      resources: [resource],
+      resourceMap: new Map([['skill:missing-skill', resource]]),
+      appMap: new Map(),
+      workflowMap: new Map(),
+      datasetMap: new Map(),
+      skillMap: new Map()
+    };
+
+    await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+      expect(
+        injectAgentSkillFilesToSandbox({
+          sandbox: createSkillFilesystemMocks() as any,
+          skillIds: [resource.id],
+          teamId: 'team-id',
+          tmbId: 'tmb-id',
+          workDirectory: '/workspace'
+        })
+      ).rejects.toBe(SkillErrEnum.unExist)
+    );
+  });
+
   it('stops when deployed skill directory enumeration fails', async () => {
     const sandbox = {
       ...createSkillFilesystemMocks(),
@@ -440,6 +468,73 @@ description: Latest current skill
         description: 'Latest current skill',
         directory: latestTargetDir,
         skillMdPath: latestSkillMdPath
+      }
+    ]);
+  });
+
+  it('injects a global system skill from the resource snapshot', async () => {
+    const user = await getUser(`runtime-system-skill-${getNanoid(6)}`);
+    const { teamId, tmbId } = user;
+    const skill = await MongoAgentSkills.create({
+      name: 'GlobalSystemSkill',
+      description: '',
+      teamId: null,
+      tmbId: null,
+      source: AgentSkillSourceEnum.system
+    });
+    const versionId = new Types.ObjectId();
+    const skillPackage = await makePackage([
+      { path: 'skill.md', name: 'system', description: 'Global system skill' }
+    ]);
+    const storage = await uploadSkillPackage({
+      teamId,
+      skillId: String(skill._id),
+      packageObjectId: 'runtime-system-version',
+      zipBuffer: skillPackage
+    });
+    await MongoAgentSkillsVersion.create({
+      _id: versionId,
+      skillId: skill._id,
+      tmbId,
+      storageKey: storage.key
+    });
+    await MongoAgentSkills.updateOne({ _id: skill._id }, { $set: { currentVersionId: versionId } });
+
+    const targetDir = `/workspace/projects/${String(versionId)}`;
+    const sandbox = {
+      ...createSkillFilesystemMocks(),
+      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+        makeWriteResults(entries)
+      ),
+      execute: vi.fn(async (command: string) => {
+        if (command.includes('unzip')) return { exitCode: 0, stdout: '', stderr: '' };
+        throw new Error(`Unexpected command: ${command}`);
+      }),
+      readFiles: vi.fn()
+    };
+
+    const resourceContext = await loadWorkflowResourceContext({
+      resources: [{ type: 'skill', id: String(skill._id) }],
+      teamId
+    });
+    const staticVersions = await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+      injectAgentSkillFilesToSandbox({
+        sandbox: sandbox as any,
+        skillIds: [String(skill._id)],
+        teamId,
+        tmbId,
+        workDirectory: '/workspace'
+      })
+    );
+
+    expect(staticVersions).toEqual([
+      {
+        skillId: String(skill._id),
+        name: 'GlobalSystemSkill',
+        description: '',
+        avatar: undefined,
+        versionId: String(versionId),
+        targetDir
       }
     ]);
   });

@@ -173,6 +173,12 @@ type SystemMigration = {
   blockStartup: boolean;
   /** 失败后暂停队列，或跳过当前失败项继续后续任务。 */
   onFailure: 'stop' | 'continue';
+  /**
+   * 是否在获得租约后延迟执行。
+   * 为 true 时，Runner 根据环境变量 SYSTEM_MIGRATION_DELAY_SECONDS（秒）延迟执行。
+   * 仅允许非阻塞任务配置 delay，阻塞任务配置 delay 会在启动校验时报错。
+   */
+  delay?: boolean;
   run: (context: SystemMigrationContext) => Promise<MigrationResult | void>;
 };
 

@@ -18,6 +18,7 @@ import { backfillResourceOwnerAcl } from './tasks/4170/20260905_backfill_resourc
 import { cleanupTeamMemberRoles } from './tasks/4170/20260907_cleanup_team_member_roles';
 import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legacy_invited_members';
 import { migrateDatasetTagsV2 } from './tasks/20260907_migrate_dataset_tags_v2';
+import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -77,6 +78,11 @@ export type SystemMigration = {
   blockStartup: boolean;
   /** 当前任务失败后，Runner 是暂停队列还是继续检查后续任务。 */
   onFailure: SystemMigrationFailurePolicyEnum;
+  /**
+   * 是否在获得租约后延迟执行。
+   * 为 true 时，Runner 根据环境变量 SYSTEM_MIGRATION_DELAY_SECONDS 设定的时长延迟执行。
+   */
+  delay?: boolean;
   /** 正常返回可选最终结果；Runner 会在提交 succeeded 时原子持久化。 */
   run: (context: SystemMigrationContext) => Promise<SystemMigrationResultData | void>;
 };
@@ -363,6 +369,37 @@ export const systemMigrations = [
     blockStartup: true,
     onFailure: SystemMigrationFailurePolicyEnum.stop,
     run: migrateDatasetTagsV2
+  },
+  {
+    id: '20260916_backfill_app_resource_snapshots',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260916_backfill_app_resource_snapshots.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.result'),
+    progressSteps: [
+      {
+        key: 'versions',
+        labelKey: i18nT(
+          'system_migration:migrations.20260916_backfill_app_resource_snapshots.versions'
+        )
+      },
+      {
+        key: 'apps',
+        labelKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.apps')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20260916_backfill_app_resource_snapshots.validation'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    delay: true,
+    run: backfillAppResourceSnapshots
   }
 ] as const satisfies readonly SystemMigration[];
 
@@ -386,6 +423,10 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
       migration.onFailure === SystemMigrationFailurePolicyEnum.continue
     ) {
       throw new Error(`Blocking system migration ${migration.id} must stop following migrations`);
+    }
+
+    if (migration.blockStartup && migration.delay) {
+      throw new Error(`Blocking system migration ${migration.id} cannot be delayed`);
     }
 
     const progressStepKeys = new Set<string>();

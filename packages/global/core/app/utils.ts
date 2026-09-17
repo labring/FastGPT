@@ -3,9 +3,6 @@ import { DatasetSearchModeEnum } from '../dataset/constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
-import appErrList from '../../common/error/code/app';
-import pluginErrList from '../../common/error/code/plugin';
-import { i18nT } from '../../common/i18n/utils';
 import { DatasetTagFilterVersionEnum } from '../dataset/workflowTagFilter';
 
 const deletedPluginErrorList = new Set([
@@ -59,14 +56,4 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppFormEditFormT
     return AppTypeEnum.workflowTool;
   }
   return '';
-};
-
-export const formatToolError = (error?: any) => {
-  if (!error || typeof error !== 'string') return;
-
-  if (isToolNotExistError(error)) return i18nT('common:error.tool_not_exist');
-
-  const errorText = appErrList[error]?.message || pluginErrList[error]?.message;
-
-  return errorText || error;
 };

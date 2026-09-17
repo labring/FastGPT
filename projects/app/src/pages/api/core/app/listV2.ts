@@ -8,6 +8,7 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { findAppsPage } from '@fastgpt/service/core/app/entity';
+import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -15,7 +16,6 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import {
   findResourceKeysByCollaboratorsPermission,
@@ -119,7 +119,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   const skip = offset ?? (pageNum - 1) * pageSize;
   const { list: myApps, total } = await findAppsPage({
     filter: findAppsQuery,
-    fields: `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission modules${
+    fields: `_id parentId avatar type name intro tmbId createTime updateTime pluginData inheritPermission publishedVersionId${
       pinnedFirst ? ' isPinned' : ''
     }`,
     sort,
@@ -133,6 +133,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     teamId,
     resourceIds: myApps.map((app) => String(app._id))
   });
+  const interactiveAppIds = await getInteractiveAppIdSet(myApps);
   const roleListMap = new Map<string, (typeof pageRoleList)[number][]>();
   pageRoleList.forEach((item) => {
     const resourceId = String(item.resourceId);
@@ -167,10 +168,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
         privateApp: isPrivateResourceByCollaborators({ resourceClbs })
       };
     })();
-    const { modules, ...rest } = app;
-    const hasInteractiveNode = modules?.some((item) =>
-      [FlowNodeTypeEnum.formInput, FlowNodeTypeEnum.userSelect].includes(item.flowNodeType)
-    );
+    const { publishedVersionId: _publishedVersionId, ...rest } = app;
     return {
       ...rest,
       avatar: app.avatar,
@@ -179,7 +177,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
       parentId: app.parentId,
       permission: Per,
       private: privateApp,
-      hasInteractiveNode
+      hasInteractiveNode: interactiveAppIds.has(String(app._id))
     };
   });
 

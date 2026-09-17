@@ -25,6 +25,8 @@ import {
   resolveModelSelectorSelection,
   sortModelSelectorModels
 } from './AIModelSelector.utils';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { ModelStatusLabel } from './ModelStatusLabel';
 
 type Props = Omit<SelectProps, 'list'> & {
@@ -39,6 +41,7 @@ type Props = Omit<SelectProps, 'list'> & {
   /** 只展示具备视觉能力的候选，不要求父组件预加载模型列表。 */
   vision?: boolean;
   excludeHidden?: boolean;
+  appId?: string;
 };
 
 const UNSET_MODEL_VALUE = '';
@@ -112,15 +115,25 @@ const AIModelSelector = ({
   outLinkAuthData,
   vision,
   excludeHidden,
+  appId,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const contextAppId = useContextSelector(AppContext, (e) => e?.appId);
+  const effectiveAppId = appId ?? (contextAppId || undefined);
+
   const {
     modelList,
     loading,
     error: catalogError
-  } = useModelList({ outLinkAuthData, enabled: isOpen, modelType, vision, excludeHidden });
+  } = useModelList({
+    outLinkAuthData,
+    enabled: isOpen,
+    modelType,
+    vision,
+    excludeHidden
+  });
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
   const getModelProviders = useUserModelStore((state) => state.getModelProviders);
   const catalogVersion = useUserModelStore((state) => state.version);
@@ -132,6 +145,13 @@ const AIModelSelector = ({
         : new Set(restrictedList.map((item) => String(item.value))),
     [restrictedList]
   );
+  const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
+  const detailState = useModelSummary({
+    modelId: currentValue,
+    appId: effectiveAppId,
+    outLinkAuthData
+  });
+
   const models = useMemo(
     () =>
       sortModelSelectorModels(
@@ -143,7 +163,6 @@ const AIModelSelector = ({
       ),
     [allowedValues, modelList, modelType]
   );
-  const currentValue = isEmptyModelValue(props.value) ? '' : String(props.value);
   const selection = useMemo(
     () =>
       resolveModelSelectorSelection({
@@ -153,7 +172,6 @@ const AIModelSelector = ({
     [currentValue, models]
   );
   const selectedModel = selection?.model;
-  const detailState = useModelSummary({ modelId: currentValue, outLinkAuthData });
   const { setFromCatalog } = detailState;
   const normalizedSelectionRef = useRef<string>();
   const checkedCatalogRef = useRef<string>();
@@ -165,12 +183,21 @@ const AIModelSelector = ({
       return;
     }
     if (!currentValue) return;
-    const key = JSON.stringify([catalogVersion, currentValue]);
+    const key = JSON.stringify([catalogVersion, currentValue, effectiveAppId]);
     if (checkedCatalogRef.current === key) return;
     checkedCatalogRef.current = key;
     const currentModel = modelList.find((model) => model.modelId === currentValue);
     if (currentModel) setFromCatalog(currentModel);
-  }, [catalogError, catalogVersion, currentValue, setFromCatalog, isOpen, loading, modelList]);
+  }, [
+    catalogError,
+    catalogVersion,
+    currentValue,
+    effectiveAppId,
+    setFromCatalog,
+    isOpen,
+    loading,
+    modelList
+  ]);
 
   // 完整目录加载后自动把旧 model 值写回 modelId，选择器对外只输出稳定 ID。
   useEffect(() => {

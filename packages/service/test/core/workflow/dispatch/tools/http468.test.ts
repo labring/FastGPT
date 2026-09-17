@@ -5,9 +5,13 @@ import { ContentTypes, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/co
 const axiosMock = vi.hoisted(() => vi.fn());
 const isInternalAddressMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axios: axiosMock
-}));
+vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
+  return {
+    ...mod,
+    axios: axiosMock
+  };
+});
 
 vi.mock('@fastgpt/service/common/system/utils', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@fastgpt/service/common/system/utils')>();

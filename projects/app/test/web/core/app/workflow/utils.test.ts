@@ -476,8 +476,8 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
     });
 
-    expect(result.tool.map((issue) => issue.code)).toContain('tool_no_permission');
-    expect(result.tool[0]?.message).toBe('当前账号无权限访问该资源');
+    expect(result.tool.map((issue) => issue.code)).toContain('resource_no_permission');
+    expect(result.tool[0]?.message).toBe('无权限访问该资源，请检查权限');
   });
 
   it('reports permission error when pluginData error is translated message', () => {
@@ -492,8 +492,8 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
     });
 
-    expect(result.tool.map((issue) => issue.code)).toContain('tool_no_permission');
-    expect(result.tool[0]?.message).toBe('当前账号无权限访问该资源');
+    expect(result.tool.map((issue) => issue.code)).toContain('resource_no_permission');
+    expect(result.tool[0]?.message).toBe('无权限访问该资源，请检查权限');
   });
 
   it('reports missing tool when pluginData error is appUnExist', () => {
@@ -756,6 +756,106 @@ describe('checkWorkflowNodeIssues', () => {
 
     expect(result.http.map((issue) => issue.code)).toContain('http_url_empty');
     expect(result.toolCall.map((issue) => issue.code)).toContain('tool_call_empty');
+  });
+
+  it('reports deleted dataset or skill references via resource_missing', () => {
+    const datasetNode = makeNode('dataset', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: '知识库',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [
+            { datasetId: 'd1', name: 'ok' },
+            { datasetId: 'd2', name: 'gone', error: 'resource_missing' }
+          ]
+        }
+      ]
+    });
+    const skillNode = makeNode('skill', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.skills,
+          label: '技能',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ skillId: 's2', name: 'gone', error: 'resource_missing' }]
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, datasetNode, skillNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'dataset', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'skill', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(result.dataset.map((issue) => issue.code)).toContain('resource_missing');
+    expect(result.skill.map((issue) => issue.code)).toContain('resource_missing');
+  });
+
+  it('focuses resources with an explicit ACL denial marker', () => {
+    const datasetNode = makeNode('dataset', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetSelectList,
+          label: '知识库',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ datasetId: 'd1', name: 'no-perm', error: 'resource_no_permission' }]
+        }
+      ]
+    });
+    const toolNode = makeNode('tool', FlowNodeTypeEnum.appModule, {
+      pluginData: { error: 'resource_no_permission' } as any
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, datasetNode, toolNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'dataset', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'tool', type: EDGE_TYPE }
+      ]
+    });
+
+    expect((result.dataset ?? []).map((issue) => issue.code)).toContain('resource_no_permission');
+    expect((result.tool ?? []).map((issue) => issue.code)).toContain('resource_no_permission');
+  });
+
+  it('reports unavailable datasets nested in Agent datasetParams', () => {
+    const agentNode = makeNode('agent', FlowNodeTypeEnum.agent, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.datasetParams,
+          label: '知识库配置',
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: {
+            datasets: [
+              { datasetId: 'd1', name: 'no-perm', error: 'resource_no_permission' },
+              { datasetId: 'd2', name: 'gone', error: 'resource_missing' }
+            ]
+          }
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, agentNode],
+      edges: [{ id: 'e1', source: 'start', target: 'agent', type: EDGE_TYPE }]
+    });
+
+    expect(result.agent).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'resource_no_permission',
+          inputKey: NodeInputKeyEnum.datasetParams
+        }),
+        expect.objectContaining({
+          code: 'resource_missing',
+          inputKey: NodeInputKeyEnum.datasetParams
+        })
+      ])
+    );
   });
 
   /**

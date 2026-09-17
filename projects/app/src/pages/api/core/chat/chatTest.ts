@@ -59,6 +59,7 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { APP_SANDBOX_ENABLED_CHAT_METADATA_KEY } from '@fastgpt/global/core/ai/sandbox/constants';
 import { isAppSandboxEnabledInNodes } from '@fastgpt/global/core/workflow/utils';
+import { prepareWorkflowDebugResourceContext } from '@fastgpt/service/core/workflow/utils/resource';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -88,11 +89,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     /* user auth */
-    const { app, teamId, tmbId } = await authApp({
+    const { app, teamId, tmbId, isRoot } = await authApp({
       req,
       authToken: true,
       appId,
       per: ReadPermissionVal
+    });
+    const resourceContext = await prepareWorkflowDebugResourceContext({
+      appId,
+      nodes,
+      chatConfig,
+      teamId,
+      tmbId,
+      isRoot
     });
 
     // 类型获取
@@ -278,7 +287,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodeResponseWriteConfig: {
         persistToDb: preparedRound.shouldPersistChatRound,
         retainInMemory: false
-      }
+      },
+      resourceContext
     });
 
     streamResponseContext.responseWrite(workflowSseEvent.answerStop());

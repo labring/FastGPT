@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   createChatUsageRecord: vi.fn(),
   dispatchWorkFlow: vi.fn(),
   getNanoid: vi.fn(),
+  getAppDraftWorkflow: vi.fn(),
+  getAppDraftResourceBaseline: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   getWorkflowFinalResponseData: vi.fn(),
   prepareWorkflowFileQuery: vi.fn()
@@ -26,6 +28,11 @@ vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
   dispatchWorkFlow: mocks.dispatchWorkFlow
+}));
+
+vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+  getAppDraftWorkflow: mocks.getAppDraftWorkflow,
+  getAppDraftResourceBaseline: mocks.getAppDraftResourceBaseline
 }));
 
 vi.mock('@fastgpt/service/core/workflow/utils/fileLimits', () => ({
@@ -61,15 +68,22 @@ const app = {
   _id: appId,
   name: 'Workflow app',
   teamId: 'team-id',
-  tmbId: 'owner-id',
-  chatConfig: { variables: [] }
+  tmbId: 'owner-id'
 };
+const savedChatConfig = { variables: [] };
 
 describe('workflow debug API chatId', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authCert.mockResolvedValue({ tmbId: 'member-id' });
     mocks.authApp.mockResolvedValue({ app });
+    mocks.getAppDraftWorkflow.mockResolvedValue({
+      nodes: [],
+      edges: [],
+      chatConfig: savedChatConfig,
+      resources: []
+    });
+    mocks.getAppDraftResourceBaseline.mockResolvedValue([]);
     mocks.getRunningUserInfoByTmbId.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'member-id'
@@ -117,6 +131,10 @@ describe('workflow debug API chatId', () => {
     );
     expect(mocks.createChatUsageRecord).not.toHaveBeenCalled();
     expect(mocks.getNanoid).toHaveBeenCalledTimes(1);
+    expect(mocks.getAppDraftWorkflow).toHaveBeenCalledWith(appId);
+    expect(mocks.prepareWorkflowFileQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ chatConfig: savedChatConfig })
+    );
   });
 
   it('generates a dispatch chatId when an older client does not provide one', async () => {
@@ -142,5 +160,30 @@ describe('workflow debug API chatId', () => {
     );
     expect(mocks.createChatUsageRecord).toHaveBeenCalledTimes(1);
     expect(mocks.getNanoid).toHaveBeenCalledTimes(2);
+    expect(mocks.getAppDraftWorkflow).toHaveBeenCalledWith(appId);
+    expect(mocks.dispatchWorkFlow).toHaveBeenCalledWith(
+      expect.objectContaining({ chatConfig: savedChatConfig })
+    );
+  });
+
+  it('uses request chatConfig without loading the draft workflow', async () => {
+    const requestChatConfig = { variables: [] };
+    mocks.getNanoid.mockReturnValue('response-chat-item-id');
+
+    await handler(
+      {
+        body: { appId, chatConfig: requestChatConfig, usageId: 'usage-id' },
+        headers: {}
+      } as any,
+      {} as any
+    );
+
+    expect(mocks.getAppDraftWorkflow).not.toHaveBeenCalled();
+    expect(mocks.prepareWorkflowFileQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ chatConfig: requestChatConfig })
+    );
+    expect(mocks.dispatchWorkFlow).toHaveBeenCalledWith(
+      expect.objectContaining({ chatConfig: requestChatConfig })
+    );
   });
 });

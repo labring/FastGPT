@@ -1,7 +1,10 @@
 import type { DispatchSubAppResponse } from '../../type';
-import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../../../../../core/app/version/controller';
+import {
+  createWorkflowChildResourceContext,
+  loadChildWorkflowWithResource,
+  loadWorkflowAppResource
+} from '../../../../../../../core/workflow/utils/resource';
 import { getUserChatInfo } from '../../../../../../../support/user/team/utils';
 import { runWorkflow } from '../../../../../../../core/workflow/dispatch';
 import {
@@ -71,6 +74,8 @@ type Props = Pick<
   };
   userChatInput: string;
   customAppVariables: Record<string, any>;
+  dynamic?: boolean;
+  useResourceSnapshot?: boolean;
 };
 
 export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse> => {
@@ -81,20 +86,18 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     variableState,
     customAppVariables,
     userChatInput,
+    dynamic = false,
     ...data
   } = props;
 
-  // Auth the app by tmbId(Not the user, but the workflow user)
-  const { app: appData } = await authAppByTmbId({
-    appId: app.id,
-    tmbId: runningAppInfo.tmbId,
-    per: ReadPermissionVal
-  });
-  const { nodes, edges, chatConfig } = await getAppVersionById({
+  const { appData, childVersion, resourceContext } = await loadChildWorkflowWithResource({
     appId: app.id,
     versionId: app.version,
-    app: appData
+    tmbId: runningUserInfo.tmbId,
+    type: 'tool',
+    dynamic
   });
+  const { nodes, edges, chatConfig } = childVersion;
   const workflowToolVariables = filterWorkflowToolInputVariables({
     inputs: appData2FlowNodeIO({ chatConfig }).inputs,
     variables: customAppVariables
@@ -125,6 +128,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       variablesConfig: chatConfig.variables ?? [],
       inputVariables: workflowToolVariables
     }),
+    resourceContext,
     fn: async ({ resolveInputFile }) => {
       const childrenVariableState = await WorkflowVariableState.create({
         timezone: data.timezone,
@@ -214,11 +218,14 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     variableState,
     customAppVariables,
     userChatInput,
+    dynamic = false,
+    useResourceSnapshot = true,
     ...data
   } = props;
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;
 
+  let resourceContext: Awaited<ReturnType<typeof createWorkflowChildResourceContext>> | null = null;
   const { nodes, edges, chatConfig, childAppInfo, externalProviderTmbId, billingTool } =
     await (async () => {
       if (app.systemToolId) {
@@ -243,17 +250,24 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         };
       }
 
-      // Personal plugin 必须以当前 workflow user 做 App 权限校验。
-      const { app: appData } = await authAppByTmbId({
+      // Personal plugin 必须以当前 workflow user 做 App 权限校验，并在需要时切换资源快照。
+      const appData = await loadWorkflowAppResource({
         appId: app.id,
-        tmbId: runningAppInfo.tmbId,
-        per: ReadPermissionVal
+        tmbId: runningUserInfo.tmbId,
+        type: 'tool',
+        dynamic: dynamic || !useResourceSnapshot
       });
       const appVersion = await getAppVersionById({
         appId: app.id,
         versionId: app.version,
         app: appData
       });
+      if (useResourceSnapshot) {
+        resourceContext = await createWorkflowChildResourceContext(
+          appVersion.resources,
+          String(appData.teamId || runningAppInfo.teamId)
+        );
+      }
 
       return {
         nodes: appVersion.nodes,
@@ -319,6 +333,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     workflowInteractiveResponse
   } = await runWithDerivedWorkflowFileContext({
     files: childFileInputs,
+    resourceContext,
     fn: async ({ resolveInputFile, filterFiles }) => {
       const childrenVariableState = await WorkflowVariableState.create({
         timezone: data.timezone,

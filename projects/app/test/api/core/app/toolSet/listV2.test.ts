@@ -5,6 +5,7 @@ import type {
   ListToolSetV2ResponseType
 } from '@fastgpt/global/openapi/core/app/toolSet/api';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -13,40 +14,49 @@ import { describe, expect, it } from 'vitest';
 describe('POST /api/core/app/toolSet/listV2', () => {
   it('filters and paginates HTTP toolset children after authentication', async () => {
     const user = await getUser(`toolset-list-v2-${getNanoid(6)}`);
+    const toolNode = {
+      toolConfig: {
+        httpToolSet: {
+          toolList: [
+            {
+              name: 'create-ticket',
+              description: 'Create a ticket',
+              path: '/create-ticket',
+              method: 'POST'
+            },
+            {
+              name: 'search-ticket',
+              description: 'Search tickets',
+              path: '/search-ticket',
+              method: 'GET'
+            },
+            {
+              name: 'delete-ticket',
+              description: 'Delete a ticket',
+              path: '/delete-ticket',
+              method: 'DELETE'
+            }
+          ]
+        }
+      }
+    };
     const app = await MongoApp.create({
       name: 'HTTP toolset',
       type: AppTypeEnum.httpToolSet,
       teamId: user.teamId,
       tmbId: user.tmbId,
-      modules: [
-        {
-          toolConfig: {
-            httpToolSet: {
-              toolList: [
-                {
-                  name: 'create-ticket',
-                  description: 'Create a ticket',
-                  path: '/create-ticket',
-                  method: 'POST'
-                },
-                {
-                  name: 'search-ticket',
-                  description: 'Search tickets',
-                  path: '/search-ticket',
-                  method: 'GET'
-                },
-                {
-                  name: 'delete-ticket',
-                  description: 'Delete a ticket',
-                  path: '/delete-ticket',
-                  method: 'DELETE'
-                }
-              ]
-            }
-          }
-        }
-      ]
+      modules: [toolNode]
     });
+    const version = await MongoAppVersion.create({
+      tmbId: user.tmbId,
+      appId: app._id,
+      nodes: [toolNode],
+      edges: [],
+      chatConfig: {},
+      versionName: 'HTTP toolset v1',
+      isPublish: true
+    });
+    await MongoApp.updateOne({ _id: app._id }, { $set: { publishedVersionId: version._id } });
 
     const response = await Call<
       ListToolSetV2BodyType,

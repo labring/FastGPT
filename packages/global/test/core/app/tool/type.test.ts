@@ -72,4 +72,16 @@ describe('AgentToolSchema', () => {
       })
     ).toThrow();
   });
+
+  it('preserves name and avatar in AgentTool snapshot', () => {
+    const result = AgentToolSchema.parse({
+      id: 'tool-1',
+      name: 'Search Tool',
+      avatar: 'core/workflow/template/tool',
+      config: {}
+    });
+
+    expect(result.name).toBe('Search Tool');
+    expect(result.avatar).toBe('core/workflow/template/tool');
+  });
 });

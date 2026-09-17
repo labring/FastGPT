@@ -159,4 +159,14 @@ describe('authAppByTmbId', () => {
       authAppByTmbId({ tmbId: 'member-tmb', appId, per: ReadPermissionVal })
     ).rejects.toBe(AppErrEnum.unAuthApp);
   });
+
+  it('rejects with unExist when app does not exist or is soft deleted', async () => {
+    setup();
+    mockFindOne.mockReturnValue({ lean: vi.fn().mockResolvedValue(null) });
+
+    await expect(
+      authAppByTmbId({ tmbId: 'member-tmb', appId, per: ReadPermissionVal })
+    ).rejects.toBe(AppErrEnum.unExist);
+    expect(mockFindOne).toHaveBeenCalledWith({ _id: appId, deleteTime: null });
+  });
 });

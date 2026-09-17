@@ -58,8 +58,8 @@ async function handler(
       teamId,
       tmbId,
       type: AppTypeEnum.httpToolSet,
-      modules: [toolSetRuntimeNode],
-      storageModules: encodeHttpToolSetNodesForStorage([toolSetRuntimeNode]),
+      nodes: [toolSetRuntimeNode],
+      storageNodes: encodeHttpToolSetNodesForStorage([toolSetRuntimeNode]),
       session
     });
 

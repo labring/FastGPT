@@ -106,7 +106,7 @@ const TemplateMarket = ({
         avatar: template.avatar,
         name: template.name,
         type: appType,
-        modules: templateDetail.workflow.nodes || [],
+        nodes: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig,
         templateId: templateDetail.templateId
