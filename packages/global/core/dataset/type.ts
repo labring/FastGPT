@@ -366,6 +366,7 @@ export const DatasetTrainingSchema = z.object({
     .meta({ description: '向量索引' }),
   retryCount: z.number().meta({ description: '重试次数' }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
+  auditTaskId: z.string().uuid().optional().meta({ description: '关联的审计任务 ID' }),
 
   userId: ObjectIdSchema.optional().meta({ description: '用户 ID', deprecated: true })
 });

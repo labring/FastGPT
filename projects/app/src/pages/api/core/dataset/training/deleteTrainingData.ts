@@ -12,6 +12,11 @@ import {
   type DeleteTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET);
 
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
   const { collectionId, dataId } = parseApiInput({
@@ -19,7 +24,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     bodySchema: DeleteTrainingDataBodySchema
   }).body;
 
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -33,11 +38,31 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     collectionId: collection._id,
     _id: dataId
   };
+
+  /** 清理训练记录是成员主动发起的管理动作，删除成功后记一条事件，旁路失败不影响接口。 */
+  const writeCleanAudit = (deletedCount: number) =>
+    void addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.CLEAN_TRAINING_RECORD,
+      params: {
+        datasetId: String(collection.datasetId),
+        datasetName: collection.dataset.name,
+        collectionName: collection.name,
+        count: String(deletedCount),
+        result: deletedCount > 0 ? 'success' : 'skipped'
+      }
+    }).catch((error) => {
+      logger.warn('Training record audit write failed', { error, teamId, collectionId, dataId });
+    });
+
   if (!isDatasetSynonymEnabled()) {
-    await MongoDatasetTraining.deleteOne(trainingMatch);
+    const { deletedCount } = await MongoDatasetTraining.deleteOne(trainingMatch);
+    writeCleanAudit(deletedCount);
     return DeleteTrainingDataResponseSchema.parse(undefined);
   }
 
+  let deletedCount = 0;
   await mongoSessionRun(async (session) => {
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
     if (training?.dataId && training.synonymVersion) {
@@ -50,8 +75,10 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
         { session }
       );
     }
-    await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+    const result = await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+    deletedCount = result.deletedCount;
   });
+  writeCleanAudit(deletedCount);
 
   return DeleteTrainingDataResponseSchema.parse(undefined);
 }
