@@ -8,6 +8,7 @@ const mockGetVectors = vi.hoisted(() => vi.fn());
 const mockIsImageEmbeddingModel = vi.hoisted(() => vi.fn());
 const mockRecallFromVectorStore = vi.hoisted(() => vi.fn());
 const mockCreateLLMResponse = vi.hoisted(() => vi.fn());
+const mockReRankRecall = vi.hoisted(() => vi.fn());
 const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataTextAggregate = vi.hoisted(() => vi.fn());
@@ -73,6 +74,11 @@ vi.mock('@fastgpt/service/common/vectorDB/controller', () => ({
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: mockCreateLLMResponse
+}));
+
+// reRankSearchResults 会把 rerank 异常吞成 usingReRank:false，不 mock 就无法走到「重排生效」分支。
+vi.mock('@fastgpt/service/core/ai/rerank', () => ({
+  reRankRecall: mockReRankRecall
 }));
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
@@ -494,6 +500,145 @@ describe('default recall dataset search', () => {
     expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
       'dataset/team/keep.png'
     ]);
+  });
+
+  describe('retrievalResults 快照产出条件', () => {
+    const rerankModel = {
+      modelId: 'rerank-model',
+      provider: 'openai',
+      model: 'rerank-model',
+      name: 'Rerank Model',
+      type: ModelTypeEnum.rerank,
+      scope: 'system' as const,
+      isActive: true,
+      config: {}
+    };
+
+    // 一条 text query 对应一个向量，向量召回返回两条候选，rerank 命中其中一条，
+    // 制造「候选集 != 最终结果」的场景。
+    const arrangeTwoCandidates = () => {
+      mockIsImageEmbeddingModel.mockReturnValue(false);
+      mockGetVectors.mockResolvedValue({
+        tokens: 5,
+        vectors: [[0.1, 0.2]]
+      });
+      mockRecallFromVectorStore.mockResolvedValue({
+        results: [
+          { id: 'index-a', collectionId: 'collection-1', score: 0.9 },
+          { id: 'index-b', collectionId: 'collection-1', score: 0.8 }
+        ]
+      });
+      mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
+        if (query?.forbid) return [];
+        return { lean: vi.fn().mockResolvedValue([{ _id: 'collection-1', name: 'Source' }]) };
+      });
+      mockMongoDatasetDataFind.mockReturnValue({
+        lean: vi.fn().mockResolvedValue([
+          {
+            _id: 'data-a',
+            datasetId: 'dataset-1',
+            collectionId: 'collection-1',
+            updateTime: new Date('2026-01-01'),
+            q: 'A',
+            a: 'alpha',
+            chunkIndex: 0,
+            indexes: [{ dataId: 'index-a' }]
+          },
+          {
+            _id: 'data-b',
+            datasetId: 'dataset-1',
+            collectionId: 'collection-1',
+            updateTime: new Date('2026-01-01'),
+            q: 'B',
+            a: 'beta',
+            chunkIndex: 1,
+            indexes: [{ dataId: 'index-b' }]
+          }
+        ])
+      });
+      // rerank 只保留 data-a
+      mockReRankRecall.mockResolvedValue({
+        results: [{ id: 'data-a', score: 0.99 }],
+        inputTokens: 7
+      });
+    };
+
+    const runSearch = (params: Record<string, unknown> = {}) =>
+      searchDatasetData({
+        histories: [],
+        teamId: 'team-1',
+        model: embeddingModel,
+        datasetIds: ['dataset-1'],
+        reRankQuery: 'query',
+        textQueries: ['query'],
+        limit: 5000,
+        searchMode: DatasetSearchModeEnum.embedding,
+        embeddingWeight: 1,
+        rerankModel: rerankModel as any,
+        ...params
+      });
+
+    const originalLimit = serviceEnv.RETRIEVAL_RESULTS_LIMIT;
+    afterEach(() => {
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = originalLimit;
+    });
+
+    it('重排生效时产出重排前的召回快照，含被重排淘汰的候选', async () => {
+      arrangeTwoCandidates();
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+
+      const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
+
+      expect(result.usingReRank).toBe(true);
+      expect(mockReRankRecall).toHaveBeenCalled();
+      // quoteList / searchRes 是重排后的结果，只剩 data-a
+      expect(result.searchRes.map((item) => item.id)).toEqual(['data-a']);
+      // 快照取自重排前的 textRecallResults，被重排淘汰的 data-b 仍在其中
+      expect(result.retrievalResults?.map((item) => item.id).sort()).toEqual(['data-a', 'data-b']);
+    });
+
+    it('重排未生效时不产出候选集，避免占用内存又最终不用', async () => {
+      arrangeTwoCandidates();
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+
+      const result = await runSearch({ usingReRank: false });
+
+      expect(result.usingReRank).toBe(false);
+      expect(result.retrievalResults).toBeUndefined();
+      // 未开重排时没有多余开销：rerank 未被调用
+      expect(mockReRankRecall).not.toHaveBeenCalled();
+    });
+
+    it('重排请求但 rerank 模型缺失时不产出候选集', async () => {
+      arrangeTwoCandidates();
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 20;
+
+      const result = await runSearch({ usingReRank: true, rerankModel: undefined });
+
+      // 无模型时 usingReRank 意图即为 false，不会走重排也不会产出快照
+      expect(result.usingReRank).toBe(false);
+      expect(result.retrievalResults).toBeUndefined();
+      expect(mockReRankRecall).not.toHaveBeenCalled();
+    });
+
+    it('RETRIEVAL_RESULTS_LIMIT 为 0 时不产出候选集', async () => {
+      arrangeTwoCandidates();
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 0;
+
+      const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
+
+      expect(result.usingReRank).toBe(true);
+      expect(result.retrievalResults).toBeUndefined();
+    });
+
+    it('候选数超过上限时按上限截断', async () => {
+      arrangeTwoCandidates();
+      serviceEnv.RETRIEVAL_RESULTS_LIMIT = 1;
+
+      const result = await runSearch({ usingReRank: true, rerankWeight: 1 });
+
+      expect(result.retrievalResults).toHaveLength(1);
+    });
   });
 });
 

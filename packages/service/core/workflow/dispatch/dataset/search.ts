@@ -357,8 +357,8 @@ export const dispatchDatasetSearch = async (
         ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
         // Results
         quoteList: searchRes,
-        // 仅重排开启时记录融合候选集，便于日志详情对比召回与重排结果
-        ...(searchUsingReRank && retrievalResults?.length ? { retrievalResults } : {})
+        // 融合候选集快照，仅在重排开启且未超过上限时由检索层产出，便于日志详情对比召回与重排结果
+        ...(retrievalResults?.length ? { retrievalResults } : {})
       },
       [DispatchNodeResponseKeyEnum.toolResponse]:
         searchRes.length > 0

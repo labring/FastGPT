@@ -586,8 +586,8 @@ describe('dispatchDatasetSearch', () => {
       expect(nodeResponse?.quoteList?.map((item) => item.id)).toEqual(['recall_2']);
     });
 
-    it('drops retrievalResults when rerank is off, even if the recall layer produced it', async () => {
-      // 搜索层无条件产出快照，是否暴露由 dispatcher 决定。
+    it('records whatever the recall layer produced, the layer owns the rerank gate', async () => {
+      // 是否产出由检索层按 usingReRank 决定，dispatcher 只负责原样记录。
       defaultSearchDatasetDataMock.mockResolvedValue({
         searchRes: recalled,
         retrievalResults: recalled,
@@ -599,17 +599,16 @@ describe('dispatchDatasetSearch', () => {
 
       const result = await runSearch({ usingReRank: false });
 
-      expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).not.toHaveProperty(
-        'retrievalResults'
-      );
+      expect(
+        result[DispatchNodeResponseKeyEnum.nodeResponse]?.retrievalResults?.map((item) => item.id)
+      ).toEqual(['recall_1', 'recall_2']);
     });
 
-    it('omits the field when the recall layer returns an empty snapshot', async () => {
-      // RETRIEVAL_RESULTS_LIMIT=0 时搜索层返回空数组，等价于关闭。
+    it('omits the field when the recall layer produced nothing', async () => {
+      // 重排关闭或 RETRIEVAL_RESULTS_LIMIT=0 时检索层不产出该字段。
       await useRerankModel();
       defaultSearchDatasetDataMock.mockResolvedValue({
         searchRes: reranked,
-        retrievalResults: [],
         embeddingTokens: 10,
         reRankInputTokens: 5,
         usingSimilarityFilter: false,

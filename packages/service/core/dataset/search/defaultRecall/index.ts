@@ -119,6 +119,14 @@ export async function searchDatasetData(
     { weight: 1 - embeddingWeight, list: imageCaptionFullTextRecallResults }
   ]);
 
+  // 重排前取快照：保存 textRecallResults，即重排前的文本召回候选集，
+  // 仅用于日志详情对比召回与重排。仅重排开启时产出，避免未开启重排时切了切片又没人用。
+  // 上限由 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不产出。
+  const retrievalResults =
+    usingReRank && serviceEnv.RETRIEVAL_RESULTS_LIMIT > 0
+      ? textRecallResults.slice(0, serviceEnv.RETRIEVAL_RESULTS_LIMIT)
+      : undefined;
+
   // Step 4: rerank 只处理文本召回。
   // 图片向量结果和 caption 结果仍按 RRF 融合，避免用文本 rerank 把视觉相似结果误杀。
   const {
@@ -158,10 +166,6 @@ export async function searchDatasetData(
       list: imageRecallResults
     }
   ]);
-
-  // 融合完成即取快照：去重/相似度/token 裁剪之前的候选集，仅用于日志详情对比召回与重排。
-  // 上限由 RETRIEVAL_RESULTS_LIMIT 控制，0 表示不记录。
-  const retrievalResults = rrfConcatResults.slice(0, serviceEnv.RETRIEVAL_RESULTS_LIMIT);
 
   // Step 7: 最终过滤顺序固定为：同内容去重 -> 相似度阈值 -> token 上限。
   // 先去重可以避免同一 chunk 因多路召回重复占用相似度过滤和 token 预算。
