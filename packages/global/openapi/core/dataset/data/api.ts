@@ -7,6 +7,7 @@ import {
   UpdateDatasetDataPropsSchema
 } from '../../../../core/dataset/type';
 import { DatasetCollectionDataProcessModeEnum } from '../../../../core/dataset/constants';
+import { DatasetDataIndexStatusEnum } from '../../../../core/dataset/data/constants';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
 import {
@@ -304,6 +305,10 @@ export const GetDataListItemSchema = z.object({
   imageSize: z.number().optional().meta({ description: '图片大小（字节）' }),
   imagePreviewUrl: z.string().optional().meta({ description: '图片预览 URL' }),
   chunkIndex: z.number().optional().meta({ description: '块索引' }),
+  indexStatus: z
+    .enum(DatasetDataIndexStatusEnum)
+    .optional()
+    .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
   updated: z.boolean().optional().meta({ description: '是否已更新' })
 });
 
