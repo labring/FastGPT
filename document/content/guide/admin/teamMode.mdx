@@ -83,6 +83,16 @@ description: FastGPT 团队模式说明文档
 
 ## 配置
 
-在 `fastgpt-pro` 的 `系统配置-成员配置` 中，可以配置团队模式。
+团队模式通过 `fastgpt-pro`（admin 服务）的环境变量 `TEAM_MODE` 配置，取值为 `multi`（多团队）、`single`（单团队）、`sync`（成员同步）。管理后台 `系统配置-成员配置` 中的团队模式为只读展示，请到环境变量中修改。
+
+```bash
+# fastgpt-pro（admin 服务）环境变量，选填，未配置时默认 single
+TEAM_MODE=multi
+```
+
+> **升级提醒**：旧版本通过管理后台把团队模式保存在数据库中的存量部署，如果实际运行在多团队或成员同步模式，升级后需要显式设置 `TEAM_MODE`（如 `TEAM_MODE=multi`、`TEAM_MODE=sync`）。
+>
+> - `TEAM_MODE` 为权威配置，服务启动时会覆盖数据库中保存的团队模式；
+> - 未设置或为空时按 `single` 处理。
 
 ![](/imgs/teammode.png)

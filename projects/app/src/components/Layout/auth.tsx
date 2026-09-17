@@ -8,7 +8,6 @@ const unAuthPage: { [key: string]: boolean } = {
   '/': true,
   '/login': true,
   '/login/provider': true,
-  '/login/fastlogin': true,
   '/login/sso': true,
   '/appStore': true,
   '/chat': true,
