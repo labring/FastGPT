@@ -22,7 +22,11 @@ import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
-import { pushDataListToTrainingQueue, pushDatasetToParseQueue } from '../training/controller';
+import {
+  preCreateDatasetDataAndPushToTrainingQueue,
+  pushDataListToTrainingQueue,
+  pushDatasetToParseQueue
+} from '../training/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getFullTextStore } from '../data/textStore';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -218,8 +222,9 @@ export const createCollectionAndInsertData = async ({
 
     // 5. insert to training queue
     const insertResults = await (async () => {
-      if (rawText || imageIds) {
-        return pushDataListToTrainingQueue({
+      if (imageIds) {
+        // 图片先落库为 parsed 数据，再由 ImageParse/向量处理接力更新同一条数据。
+        return preCreateDatasetDataAndPushToTrainingQueue({
           teamId,
           tmbId,
           datasetId: dataset._id,
@@ -240,19 +245,65 @@ export const createCollectionAndInsertData = async ({
           })),
           session
         });
-      } else {
-        await pushDatasetToParseQueue({
+      }
+      if (rawText) {
+        const formattedData = chunks.map((item, index) => ({
+          ...item,
+          indexes: item.indexes?.map((text) => ({
+            type: DatasetDataIndexTypeEnum.custom,
+            text
+          })),
+          chunkIndex: index
+        }));
+
+        // 备份/模板的分块在请求内已经切好，先落库再更新索引，与文件、图片导入保持一致；
+        // 集合同步等其它 rawText 调用方继续走原有创建路径。
+        if (
+          trainingType === DatasetCollectionDataProcessModeEnum.backup ||
+          trainingType === DatasetCollectionDataProcessModeEnum.template
+        ) {
+          return preCreateDatasetDataAndPushToTrainingQueue({
+            teamId,
+            tmbId,
+            datasetId: dataset._id,
+            collectionId,
+            agentModel: agentModelData,
+            vectorModel: embeddingModelData,
+            vlmModel: vlmModelData,
+            indexSize,
+            mode: trainingMode,
+            billId: traingUsageId,
+            data: formattedData,
+            session
+          });
+        }
+
+        return pushDataListToTrainingQueue({
           teamId,
           tmbId,
           datasetId: dataset._id,
           collectionId,
+          agentModel: agentModelData,
+          vectorModel: embeddingModelData,
+          vlmModel: vlmModelData,
+          indexSize,
+          mode: trainingMode,
           billId: traingUsageId,
+          data: formattedData,
           session
         });
-        return {
-          insertLen: 0
-        };
       }
+      await pushDatasetToParseQueue({
+        teamId,
+        tmbId,
+        datasetId: dataset._id,
+        collectionId,
+        billId: traingUsageId,
+        session
+      });
+      return {
+        insertLen: 0
+      };
     })();
 
     return {

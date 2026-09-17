@@ -26,7 +26,8 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     authToken: true,
     authApiKey: true,
     dataId,
-    per: WritePermissionVal
+    per: WritePermissionVal,
+    assertWritable: true
   });
   const modelHandle = await getModelHandle();
   const embeddingModel = modelHandle.getEmbeddingModelData(

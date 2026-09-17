@@ -22,7 +22,7 @@ import {
   YuqueServerSchema
 } from './apiDataset/type';
 import { SourceMemberSchema } from '../../support/user/type';
-import { DatasetDataIndexTypeEnum } from './data/constants';
+import { DatasetDataIndexStatusEnum, DatasetDataIndexTypeEnum } from './data/constants';
 import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
@@ -313,6 +313,10 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   fullTextToken: z.string().meta({ description: '全文 token' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
   rebuilding: z.boolean().optional().meta({ description: '重建中' }),
+  indexStatus: z
+    .enum(DatasetDataIndexStatusEnum)
+    .optional()
+    .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
   synonymVersion: z.number().int().nonnegative().optional().meta({ description: '同义词索引版本' }),
   synonymRebuildingVersion: z
     .number()
@@ -497,6 +501,10 @@ export const DatasetDataItemSchema = DatasetDataFieldSchema.extend({
   sourceId: z.string().optional().meta({ description: '来源 ID' }),
   chunkIndex: z.number().meta({ description: '块索引' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
+  indexStatus: z
+    .enum(DatasetDataIndexStatusEnum)
+    .optional()
+    .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   isOwner: z.boolean().meta({ description: '是否为 owner' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })

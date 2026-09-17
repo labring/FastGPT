@@ -449,6 +449,7 @@
   "core.dataset.error.Data not found": "데이터를 찾을 수 없거나 삭제되었습니다",
   "core.dataset.error.Start Sync Failed": "동기화 시작 실패",
   "core.dataset.error.canNotEditAdminPermission": "관리자 권한을 편집할 수 없습니다",
+  "core.dataset.error.dataNotIndexed": "데이터를 색인하는 중입니다. 잠시 후 다시 시도해 주세요",
   "core.dataset.error.invalidVectorModelOrQAModel": "유효하지 않은 임베딩 모델 또는 QA 모델입니다",
   "core.dataset.error.noApiServer": "API 서버가 존재하지 않습니다",
   "core.dataset.error.notSupportSync": "이 컬렉션은 동기화를 지원하지 않습니다",

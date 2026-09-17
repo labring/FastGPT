@@ -19,6 +19,7 @@ export enum DatasetErrEnum {
   externalChunkFailed = 'externalChunkFailed',
   externalChunkInvalidResponse = 'externalChunkInvalidResponse',
   externalChunkNotConfigured = 'externalChunkNotConfigured',
+  dataNotIndexed = 'dataNotIndexed',
 
   // Tag errors (501013+)
   tagNameDuplicate = 'tagNameDuplicate',
@@ -92,6 +93,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.externalChunkNotConfigured,
     message: i18nT('dataset:chunk_error.not_configured')
+  },
+  {
+    statusText: DatasetErrEnum.dataNotIndexed,
+    message: i18nT('common:core.dataset.error.dataNotIndexed')
   },
 
   // Tag errors

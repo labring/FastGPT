@@ -12,7 +12,7 @@ const {
   mockUploadImage2S3Bucket,
   mockMongoSessionRun,
   mockCreateTrainingUsage,
-  mockPushDataListToTrainingQueue,
+  mockPreCreateDatasetDataAndPushToTrainingQueue,
   mockGetDatasetImageIndexCapability,
   mockGetDatasetEmbeddingModel,
   mockGetDatasetAgentModel,
@@ -30,7 +30,7 @@ const {
   mockUploadImage2S3Bucket: vi.fn(),
   mockMongoSessionRun: vi.fn(),
   mockCreateTrainingUsage: vi.fn(),
-  mockPushDataListToTrainingQueue: vi.fn(),
+  mockPreCreateDatasetDataAndPushToTrainingQueue: vi.fn(),
   mockGetDatasetImageIndexCapability: vi.fn(),
   mockGetDatasetEmbeddingModel: vi.fn(),
   mockGetDatasetAgentModel: vi.fn(),
@@ -85,7 +85,7 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/training/controller', () => ({
-  pushDataListToTrainingQueue: mockPushDataListToTrainingQueue
+  preCreateDatasetDataAndPushToTrainingQueue: mockPreCreateDatasetDataAndPushToTrainingQueue
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => {
@@ -163,7 +163,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     mockUploadImage2S3Bucket.mockResolvedValue('dataset/team/cat.png');
     mockMongoSessionRun.mockImplementation((fn: any) => fn('session'));
     mockCreateTrainingUsage.mockResolvedValue({ usageId: 'usage-id' });
-    mockPushDataListToTrainingQueue.mockResolvedValue({ insertLen: 1 });
+    mockPreCreateDatasetDataAndPushToTrainingQueue.mockResolvedValue({ insertLen: 1 });
   });
 
   it('should upload images with chunk mode when only native image embedding is available', async () => {
@@ -178,7 +178,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
         session: 'session'
       })
     );
-    expect(mockPushDataListToTrainingQueue).toHaveBeenCalledWith({
+    expect(mockPreCreateDatasetDataAndPushToTrainingQueue).toHaveBeenCalledWith({
       teamId: 'team-id',
       tmbId: 'tmb-id',
       datasetId,
@@ -218,7 +218,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     await expect(handler({} as any)).rejects.toBeTruthy();
 
     expect(mockUploadImage2S3Bucket).not.toHaveBeenCalled();
-    expect(mockPushDataListToTrainingQueue).not.toHaveBeenCalled();
+    expect(mockPreCreateDatasetDataAndPushToTrainingQueue).not.toHaveBeenCalled();
     expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/cat.png']);
   });
 });
