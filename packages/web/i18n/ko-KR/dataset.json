@@ -255,5 +255,16 @@
   "yuque_dataset_desc": "문서 권한 설정을 통해 Yuque 문서를 이용한 데이터셋을 구축하며, 문서가 이중으로 저장되지 않습니다",
   "training.status_error": "학습 오류",
   "training_error_list": "오류 목록",
-  "training_error_empty": "학습 오류가 없습니다"
+  "training_error_empty": "학습 오류가 없습니다",
+  "filtered_no_delete_permission_tip": "삭제 권한이 없는 지식베이스는 제외되었습니다",
+  "confirm_delete_datasets_tip": "다음 지식베이스를 삭제하시겠습니까? 삭제 시 연결된 인덱스와 데이터도 함께 삭제됩니다.",
+  "confirm_delete_folders_tip": "다음 폴더를 삭제하시겠습니까? 삭제 후 이 폴더와 포함된 모든 지식베이스 및 데이터가 함께 삭제됩니다.",
+  "confirm_delete_mixed_tip": "다음 지식베이스와 폴더를 삭제하시겠습니까? 삭제 후 해당 지식베이스와 폴더 내의 모든 콘텐츠가 함께 삭제됩니다.",
+  "dataset_count": "{{count}}개 지식베이스",
+  "folder_count": "{{count}}개 폴더",
+  "delete_datasets_and_folders_confirm_title": "{{datasets}}과 {{folders}} 삭제 확인",
+  "delete_datasets_confirm_title": "{{count}}개 지식베이스 삭제 확인",
+  "delete_folders_confirm_title": "{{count}}개 폴더 삭제 확인",
+  "delete_following_datasets_tip": "다음 지식베이스를 삭제하면 연결된 인덱스와 데이터도 함께 삭제됩니다.",
+  "delete_following_folders_tip": "삭제 후 해당 폴더와 내부의 모든 지식베이스 및 데이터가 함께 삭제됩니다."
 }

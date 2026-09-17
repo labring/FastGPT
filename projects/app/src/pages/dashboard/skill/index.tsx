@@ -56,7 +56,9 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     paths,
     folderDetail,
     listFilters,
-    setListFilters
+    setListFilters,
+    isBatchMode,
+    setIsBatchMode
   } = useContextSelector(SkillListContext, (v) => v);
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
@@ -128,35 +130,58 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            <Flex alignItems={'center'} gap={3}>
-              {hasCreatePer && (
-                <>
-                  <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
-                    <Button
-                      variant={'grayBase'}
-                      leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                      onClick={() => setEditFolder({})}
-                      isDisabled={!canCreateFolder}
-                      px={[3, 5]}
-                    >
-                      {t('common:Folder')}
-                    </Button>
-                  </MyTooltip>
+            {(isPc || hasCreatePer) && (
+              <Flex alignItems={'center'} gap={[2, '12px']}>
+                {isPc && (
                   <Button
                     variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-                    onClick={() => {
-                      if (guardSkillSandboxOperation()) {
-                        setShowImportModal(true);
+                    px={'14px'}
+                    iconSpacing={'6px'}
+                    {...(isBatchMode && {
+                      color: 'primary.600',
+                      bg: 'primary.50',
+                      _hover: {
+                        color: 'primary.600',
+                        bg: 'primary.100'
                       }
-                    }}
-                    px={[3, 5]}
+                    })}
+                    leftIcon={<MyIcon name={'common/checkSquareBroken'} w={'18px'} h={'18px'} />}
+                    onClick={() => setIsBatchMode((prev) => !prev)}
                   >
-                    {t('common:Import')}
+                    {t('common:batch_manage')}
                   </Button>
-                </>
-              )}
-            </Flex>
+                )}
+                {hasCreatePer && (
+                  <>
+                    <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
+                      <Button
+                        variant={'grayBase'}
+                        px={['12px', '14px']}
+                        iconSpacing={'6px'}
+                        leftIcon={<MyIcon name={'common/add2'} w={'18px'} h={'18px'} />}
+                        onClick={() => setEditFolder({})}
+                        isDisabled={!canCreateFolder}
+                      >
+                        {t('common:Folder')}
+                      </Button>
+                    </MyTooltip>
+                    <Button
+                      variant={'grayBase'}
+                      px={['12px', '14px']}
+                      iconSpacing={'6px'}
+                      leftIcon={<MyIcon name={'common/importLight'} w={'18px'} h={'18px'} />}
+                      onClick={() => {
+                        if (guardSkillSandboxOperation()) {
+                          setShowImportModal(true);
+                        }
+                      }}
+                    >
+                      {t('common:Import')}
+                    </Button>
+                  </>
+                )}
+              </Flex>
+            )}
           </Flex>
 
           {!isPc && (

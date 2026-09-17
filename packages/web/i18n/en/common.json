@@ -929,6 +929,7 @@
   "month_text": "month",
   "move.confirm": "Confirm move",
   "move_success": "Moved Successfully",
+  "move_failed": "Move failed",
   "move_to": "Move to",
   "move_to_root": "Move to root",
   "n_agent_amount": "{{amount}} Agent limit",
@@ -1293,5 +1294,14 @@
   "password_wechat_load_failed": "The QR code could not be loaded. Try again.",
   "password_wechat_qr": "WeChat verification QR code",
   "password_wechat_scan": "Sign in with WeChat QR code",
-  "update_password": "Change password"
+  "update_password": "Change password",
+  "batch_manage": "Batch Manage",
+  "batch_move": "Batch Move",
+  "batch_delete": "Batch Delete",
+  "select_all_filtered": "Select All Filtered",
+  "selected_items": "<bold>{{count}}</bold> selected",
+  "read_only_no_batch_permission": "No operation permission for this resource, batch operation is not allowed",
+  "will_delete": "Will delete",
+  "confirm_delete": "Confirm Delete",
+  "batch_partial_failed": "Some selected items could not be processed"
 }

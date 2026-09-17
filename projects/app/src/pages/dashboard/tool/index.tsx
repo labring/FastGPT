@@ -28,6 +28,12 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import AppListFilters from '@/pageComponents/dashboard/agent/filters/AppListFilters';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  canCreateSubFolder,
+  DEFAULT_MAX_FOLDER_DEPTH
+} from '@fastgpt/global/common/parentFolder/depth';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -48,10 +54,19 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     searchKey,
     setSearchKey,
     listFilters,
-    setListFilters
+    setListFilters,
+    isBatchMode,
+    setIsBatchMode
   } = useContextSelector(AppListContext, (v) => v);
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
+  const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
+  const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
+  const folderDepthLimitTip = t('common:folder_depth_limit_tip');
+  const hasCreatePer = folderDetail
+    ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+    : Boolean(userInfo?.team.permission.hasAppCreatePer);
 
   const {
     isOpen: isOpenJsonImportModal,
@@ -138,26 +153,52 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               </>
             )}
             <Flex flex={1} />
-            {(folderDetail
-              ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
-              : userInfo?.team.permission.hasAppCreatePer) && (
-              <Flex alignItems={'center'} gap={3}>
-                <Button
-                  variant={'grayBase'}
-                  leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                  onClick={() => setEditFolder({})}
-                  px={[3, 5]}
-                >
-                  {t('common:Folder')}
-                </Button>
-                <Button
-                  variant={'grayBase'}
-                  leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}
-                  onClick={onOpenJsonImportModal}
-                  px={[3, 5]}
-                >
-                  {t('common:Import')}
-                </Button>
+            {(isPc || hasCreatePer) && (
+              <Flex alignItems={'center'} gap={[2, '12px']}>
+                {isPc && (
+                  <Button
+                    variant={'grayBase'}
+                    px={'14px'}
+                    iconSpacing={'6px'}
+                    {...(isBatchMode && {
+                      color: 'primary.600',
+                      bg: 'primary.50',
+                      _hover: {
+                        color: 'primary.600',
+                        bg: 'primary.100'
+                      }
+                    })}
+                    leftIcon={<MyIcon name={'common/checkSquareBroken'} w={'18px'} h={'18px'} />}
+                    onClick={() => setIsBatchMode((prev) => !prev)}
+                  >
+                    {t('common:batch_manage')}
+                  </Button>
+                )}
+                {hasCreatePer && (
+                  <>
+                    <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
+                      <Button
+                        variant={'grayBase'}
+                        px={['12px', '14px']}
+                        iconSpacing={'6px'}
+                        leftIcon={<MyIcon name={'common/add2'} w={'18px'} h={'18px'} />}
+                        onClick={() => setEditFolder({})}
+                        isDisabled={!canCreateFolder}
+                      >
+                        {t('common:Folder')}
+                      </Button>
+                    </MyTooltip>
+                    <Button
+                      variant={'grayBase'}
+                      px={['12px', '14px']}
+                      iconSpacing={'6px'}
+                      leftIcon={<MyIcon name={'common/importLight'} w={'18px'} h={'18px'} />}
+                      onClick={onOpenJsonImportModal}
+                    >
+                      {t('common:Import')}
+                    </Button>
+                  </>
+                )}
               </Flex>
             )}
           </Flex>

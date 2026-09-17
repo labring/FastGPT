@@ -87,5 +87,16 @@
   "skill_select_limit_tip": "已達到單個應用可關聯技能的上限（100 個）",
   "switch_version_confirm": "注意：切換版本會遺失目前工作區以外的檔案，如果目前有未發布的變更也將會遺失。",
   "unnamed_skill": "未命名",
-  "unsupported_file_format": "不支持 {{ext}} 文件格式"
+  "unsupported_file_format": "不支持 {{ext}} 文件格式",
+  "filtered_no_delete_permission_tip": "已過濾無刪除權限的技能",
+  "confirm_delete_skills_tip": "確認刪除以下技能嗎？",
+  "confirm_delete_folders_tip": "確認刪除以下文件夾嗎？刪除後，這些文件夾及其包含的全部技能將被一併刪除。",
+  "confirm_delete_mixed_tip": "確認刪除以下技能和文件夾嗎？刪除後，這些技能以及文件夾內的全部內容將被一併刪除。",
+  "skill_count": "{{count}} 個技能",
+  "folder_count": "{{count}} 個文件夾",
+  "delete_skills_and_folders_confirm_title": "確認刪除 {{skills}} 和 {{folders}}",
+  "delete_skills_confirm_title": "確認刪除 {{count}} 個技能",
+  "delete_folders_confirm_title": "確認刪除 {{count}} 個文件夾",
+  "delete_following_skills_tip": "刪除以下技能後將無法恢復。",
+  "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部技能將被一併刪除。"
 }

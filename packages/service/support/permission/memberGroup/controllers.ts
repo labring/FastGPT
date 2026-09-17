@@ -29,17 +29,29 @@ export const getTeamDefaultGroup = async ({
 
   // Create the default group if it does not exist
   if (!group) {
-    const [group] = await MongoMemberGroupModel.create(
-      [
-        {
-          teamId,
-          name: DefaultGroupName
-        }
-      ],
-      { session }
-    );
+    try {
+      const [group] = await MongoMemberGroupModel.create(
+        [
+          {
+            teamId,
+            name: DefaultGroupName
+          }
+        ],
+        { session }
+      );
 
-    return group;
+      return group;
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        const existingGroup = await MongoMemberGroupModel.findOne(
+          { teamId, name: DefaultGroupName },
+          undefined,
+          { session }
+        ).lean();
+        if (existingGroup) return existingGroup;
+      }
+      throw error;
+    }
   }
   return group;
 };

@@ -1,5 +1,10 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { AppPermissionCheckType } from '@fastgpt/global/support/permission/app/controller.schema';
+import type {
+  BatchResourceActionResponse,
+  BatchResourceDeleteBody,
+  BatchResourceMoveBody
+} from '@fastgpt/global/openapi/common/batch/api';
 
 import type {
   CreateAppBodyType,
@@ -66,6 +71,12 @@ export const getAppDetailById = (id: GetAppDetailQueryType['appId']) =>
  */
 export const putAppById = (id: UpdateAppQueryType['appId'], data: UpdateAppBodyType) =>
   PUT<UpdateAppResponseType>(`/core/app/update?appId=${id}`, data);
+
+export const batchMoveApps = (data: BatchResourceMoveBody) =>
+  POST<BatchResourceActionResponse>('/core/app/batch/move', data);
+
+export const batchDeleteApps = (data: BatchResourceDeleteBody) =>
+  POST<BatchResourceActionResponse>('/core/app/batch/delete', data);
 
 export const getAppPermission = (appId: GetAppPermissionQueryType['appId']) =>
   GET<AppPermissionCheckType>(`/core/app/getPermission?appId=${appId}`);

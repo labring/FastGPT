@@ -41,8 +41,10 @@ import {
   UpdateSkillCollaboratorResponseSchema
 } from './api';
 import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
+import { SkillBatchPath } from './batch';
 
 export const SkillPath: OpenAPIPath = {
+  ...SkillBatchPath,
   '/core/ai/skill/list': {
     post: {
       summary: '获取技能列表',

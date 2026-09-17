@@ -594,5 +594,17 @@
   "workflow.user_file_input": "檔案連結",
   "workflow.user_file_input_desc": "使用者上傳的檔案和圖片連結",
   "workflow.user_select": "使用者選擇",
-  "workflow.user_select_tip": "這個模組可以設定多個選項，供對話時選擇。不同選項可以導向不同的工作流程支線"
+  "workflow.user_select_tip": "這個模組可以設定多個選項，供對話時選擇。不同選項可以導向不同的工作流程支線",
+  "filtered_no_delete_permission_tip": "已過濾無刪除權限的應用",
+  "confirm_delete_apps_tip": "確認刪除以下應用嗎？刪除以下應用會將其關聯的對話記錄一併刪除。",
+  "confirm_delete_folders_tip": "確認刪除以下文件夾嗎？刪除後，這些文件夾及其包含的全部應用、關聯對話記錄將被一併刪除。",
+  "confirm_delete_mixed_tip": "確認刪除以下應用和文件夾嗎？刪除後，這些應用及其關聯的對話記錄，以及文件夾內的全部內容將被一併刪除。",
+  "app_count": "{{count}} 個應用",
+  "folder_count": "{{count}} 個文件夾",
+  "delete_apps_and_folders_confirm_title": "確認刪除 {{apps}} 和 {{folders}}",
+  "delete_apps_confirm_title": "確認刪除 {{count}} 個應用",
+  "delete_folders_confirm_title": "確認刪除 {{count}} 個文件夾",
+  "delete_following_apps_tip": "刪除以下應用會將其關聯的對話記錄一併刪除。",
+  "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部應用、關聯對話記錄將被一併刪除。"
 }
+
