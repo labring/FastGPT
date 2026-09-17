@@ -97,6 +97,7 @@ export const extractDatasetModelsFromParams = (
   params: unknown
 ): Array<{ id: unknown; modelType: AppResourceModelType }> => {
   if (!isRecord(params)) return [];
+  if (!Array.isArray(params.datasets) || params.datasets.length === 0) return [];
   const models: Array<{ id: unknown; modelType: AppResourceModelType }> = [];
   if (params[NodeInputKeyEnum.datasetSearchUsingReRank] === true) {
     models.push({ id: params[NodeInputKeyEnum.datasetSearchRerankModelId], modelType: 'rerank' });
@@ -275,6 +276,13 @@ export const extractAppResources = ({
       node.inputs?.some(
         (item) => item.key === key && !nodeInputIsReference(item) && item.value === true
       ) ?? false;
+    const datasetSelectInput = node.inputs?.find(
+      (input) => input.key === NodeInputKeyEnum.datasetSelectList
+    );
+    const hasSelectedDataset =
+      !datasetSelectInput ||
+      nodeInputIsReference(datasetSelectInput) ||
+      getValueList(datasetSelectInput.value).length > 0;
 
     if (node.flowNodeType === FlowNodeTypeEnum.appModule && node.pluginId) {
       addResource({ type: 'agent', id: node.pluginId });
@@ -317,11 +325,12 @@ export const extractAppResources = ({
       const modelType = modelInputTypes.get(input.key);
       const enabled =
         input.key === NodeInputKeyEnum.datasetSearchRerankModelId
-          ? isStaticInputEnabled(NodeInputKeyEnum.datasetSearchUsingReRank)
+          ? hasSelectedDataset && isStaticInputEnabled(NodeInputKeyEnum.datasetSearchUsingReRank)
           : input.key === NodeInputKeyEnum.datasetSearchExtensionModelId
-            ? isStaticInputEnabled(NodeInputKeyEnum.datasetSearchUsingExtensionQuery)
+            ? hasSelectedDataset &&
+              isStaticInputEnabled(NodeInputKeyEnum.datasetSearchUsingExtensionQuery)
             : input.key === NodeInputKeyEnum.datasetDeepSearchModelId
-              ? isStaticInputEnabled(NodeInputKeyEnum.datasetDeepSearch)
+              ? hasSelectedDataset && isStaticInputEnabled(NodeInputKeyEnum.datasetDeepSearch)
               : true;
       if (modelType && enabled && isWorkflowSystemModelInput({ node, input })) {
         addModels(input.value, modelType);

@@ -845,6 +845,14 @@ export const formatModels = ({
   };
 
   nodes.forEach((node) => {
+    const datasetSelectInput = node.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetSelectList
+    );
+    const hasSelectedDataset =
+      !datasetSelectInput ||
+      nodeInputIsReference(datasetSelectInput) ||
+      (Array.isArray(datasetSelectInput.value) && datasetSelectInput.value.length > 0);
+
     for (const [legacyKey, modelIdKey] of workflowModelKeyMappings) {
       const legacyInput = node.inputs.find((input) => input.key === legacyKey);
       const modelIdInput = node.inputs.find((input) => input.key === modelIdKey);
@@ -877,7 +885,10 @@ export const formatModels = ({
           }
         })();
         if (!featureKey) return true;
-        return Boolean(node.inputs.find((input) => input.key === featureKey)?.value);
+        return (
+          hasSelectedDataset &&
+          Boolean(node.inputs.find((input) => input.key === featureKey)?.value)
+        );
       })();
 
       if (modelReferencePolicy === 'validate' && !featureEnabled) continue;
@@ -946,12 +957,15 @@ export const formatModels = ({
       !Array.isArray(datasetParamsInput.value)
     ) {
       const datasetParams = datasetParamsInput.value as Record<string, unknown>;
+      const hasSelectedDataset =
+        Array.isArray(datasetParams.datasets) && datasetParams.datasets.length > 0;
       formatNestedModelReference({
         config: datasetParams,
         legacyKey: NodeInputKeyEnum.datasetSearchRerankModel,
         modelIdKey: NodeInputKeyEnum.datasetSearchRerankModelId,
         type: ModelTypeEnum.rerank,
-        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
+        featureEnabled:
+          hasSelectedDataset && Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
         feature: 'rerank'
       });
       formatNestedModelReference({
@@ -959,7 +973,9 @@ export const formatModels = ({
         legacyKey: NodeInputKeyEnum.datasetSearchExtensionModel,
         modelIdKey: NodeInputKeyEnum.datasetSearchExtensionModelId,
         type: ModelTypeEnum.llm,
-        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
+        featureEnabled:
+          hasSelectedDataset &&
+          Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
         feature: 'query_extension'
       });
     }

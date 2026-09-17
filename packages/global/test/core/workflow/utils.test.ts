@@ -2082,6 +2082,7 @@ describe('formatModels', () => {
           {
             key: NodeInputKeyEnum.datasetParams,
             value: {
+              datasets: [{ datasetId: 'dataset-1' }],
               usingReRank: false,
               rerankModel: 'disabled-rerank',
               datasetSearchUsingExtensionQuery: true,
@@ -2097,6 +2098,7 @@ describe('formatModels', () => {
     formatModels({ nodes, models, defaultModelIds, modelReferencePolicy: 'validate' });
 
     expect(nodes[0].inputs[0].value).toEqual({
+      datasets: [{ datasetId: 'dataset-1' }],
       usingReRank: false,
       rerankModel: 'disabled-rerank',
       datasetSearchUsingExtensionQuery: true,
@@ -2114,6 +2116,7 @@ describe('formatModels', () => {
           {
             key: NodeInputKeyEnum.datasetParams,
             value: {
+              datasets: [{ datasetId: 'dataset-1' }],
               usingReRank: true,
               rerankModel: ['source-node', 'rerank-model-id'],
               datasetSearchUsingExtensionQuery: true,
@@ -2129,6 +2132,7 @@ describe('formatModels', () => {
 
     expect(() => formatModels({ nodes, models, modelReferencePolicy: 'validate' })).not.toThrow();
     expect(nodes[0].inputs[0].value).toEqual({
+      datasets: [{ datasetId: 'dataset-1' }],
       usingReRank: true,
       rerankModelId: ['source-node', 'rerank-model-id'],
       datasetSearchUsingExtensionQuery: true,

@@ -12,6 +12,10 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import type { TFunction } from 'next-i18next';
 
+vi.mock('@/web/core/workflow/modelData', () => ({
+  getWorkflowModelDetails: vi.fn().mockResolvedValue([])
+}));
+
 const mockT: TFunction = ((key: string) => {
   const map: Record<string, string> = {
     'common:core.workflow.check.resource_no_permission': '无权限访问该资源，请检查权限',

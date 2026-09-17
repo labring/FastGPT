@@ -41,6 +41,39 @@ const createNode = ({
   }) as unknown as StoreNodeItemType;
 
 describe('extractAppResources', () => {
+  it('ignores dataset model resources when no dataset is selected', () => {
+    const resources = extractAppResources({
+      nodes: [
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+          inputs: [
+            createInput(NodeInputKeyEnum.datasetSelectList, []),
+            createInput(NodeInputKeyEnum.datasetSearchUsingReRank, true),
+            createInput(NodeInputKeyEnum.datasetSearchRerankModelId, 'rerank-model-id'),
+            createInput(NodeInputKeyEnum.datasetSearchUsingExtensionQuery, true),
+            createInput(NodeInputKeyEnum.datasetSearchExtensionModelId, 'extension-model-id'),
+            createInput(NodeInputKeyEnum.datasetDeepSearch, true),
+            createInput(NodeInputKeyEnum.datasetDeepSearchModelId, 'deep-search-model-id')
+          ]
+        }),
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.agent,
+          inputs: [
+            createInput(NodeInputKeyEnum.datasetParams, {
+              datasets: [],
+              [NodeInputKeyEnum.datasetSearchUsingReRank]: true,
+              [NodeInputKeyEnum.datasetSearchRerankModelId]: 'nested-rerank-model-id',
+              [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
+              [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'nested-extension-model-id'
+            })
+          ]
+        })
+      ]
+    });
+
+    expect(resources.filter((resource) => resource.type === 'model')).toEqual([]);
+  });
+
   it('normalizes personal, MCP and HTTP tools into parent resources', () => {
     const resources = extractAppResources({
       nodes: [
