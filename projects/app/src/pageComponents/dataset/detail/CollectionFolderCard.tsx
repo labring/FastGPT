@@ -18,7 +18,7 @@ import {
   putResumeCollectionInheritPermission
 } from '@/web/core/dataset/api/collection';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
+import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
 
 /**
  * 知识库详情页进入子目录（folder collection）后的右侧栏。
@@ -108,7 +108,7 @@ const CollectionFolderCard = ({
           managePer={{
             defaultRole: ReadRoleVal,
             permission: folder.permission,
-            roleList: DatasetRoleList,
+            roleList: CollectionRoleList,
             onGetCollaboratorList: () => getCollectionCollaboratorList(collectionId),
             onUpdateCollaborators: (props) =>
               postUpdateCollectionCollaborators({ ...props, collectionId }),

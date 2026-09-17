@@ -67,7 +67,7 @@ import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/cor
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { postEnableCollectionPermission } from '@/web/core/dataset/api';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
+import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
 import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core/dataset/api/training';
 
 const Header = dynamic(() => import('./Header'));
@@ -695,7 +695,7 @@ const CollectionCard = () => {
             managePer={{
               defaultRole: ReadRoleVal,
               permission: editPerCollection.permission,
-              roleList: DatasetRoleList,
+              roleList: CollectionRoleList,
               onGetCollaboratorList: () => getCollectionCollaboratorList(editPerCollection._id),
               onUpdateCollaborators: (props) =>
                 postUpdateCollectionCollaborators({
