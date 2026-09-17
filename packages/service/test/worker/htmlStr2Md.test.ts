@@ -123,6 +123,40 @@ describe('html2md 性能和功能测试', () => {
       expect(result.rawText).toBe('| A | B |\n| --- | --- |\n| x | a\\|b |');
     });
 
+    it('should make the header as wide as the widest row', async () => {
+      // The divider used to follow the first row only, and GFM drops every cell
+      // past the header's width, so `9 EUR` was lost.
+      const html = '<table><tr><td>Category</td></tr><tr><td>Cable</td><td>9 EUR</td></tr></table>';
+      const result = await html2md(html);
+
+      expect(result.rawText).toBe('| Category | |\n| --- | --- |\n| Cable | 9 EUR |');
+    });
+
+    it('should count a colspan in a later row towards the header width', async () => {
+      const html = '<table><tr><td>A</td><td>B</td></tr><tr><td colspan="3">wide</td></tr></table>';
+      const result = await html2md(html);
+
+      expect(result.rawText).toBe('| A | B | |\n| --- | --- | --- |\n| wide | | |');
+    });
+
+    it('should widen a th header that is narrower than the body', async () => {
+      const html =
+        '<table><thead><tr><th>Name</th></tr></thead><tbody><tr><td>Cable</td><td>9 EUR</td></tr></tbody></table>';
+      const result = await html2md(html);
+
+      expect(result.rawText).toBe('| Name | |\n| --- | --- |\n| Cable | 9 EUR |');
+    });
+
+    it('should write a caption above the table instead of between its rows', async () => {
+      // The caption's text used to sit in front of the first row, so no row
+      // got a divider and nothing on the page was a table.
+      const html =
+        '<table><caption>Prices</caption><tr><td>Product</td><td>Price</td></tr><tr><td>Cable</td><td>9</td></tr></table>';
+      const result = await html2md(html);
+
+      expect(result.rawText).toBe('Prices\n\n| Product | Price |\n| --- | --- |\n| Cable | 9 |');
+    });
+
     it('should leave a table the plugin renders as paragraphs alone', async () => {
       // One cell only, and a nested table: the plugin lays both out as plain
       // text on purpose, so there is no header to infer.
