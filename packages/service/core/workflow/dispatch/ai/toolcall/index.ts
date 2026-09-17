@@ -226,13 +226,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     });
 
     if (error) {
-      return {
-        ...getNodeErrResponse({
-          error,
-          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-          [DispatchNodeResponseKeyEnum.runTimes]: runTimes
-        })
-      };
+      return getNodeErrResponse({
+        error,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+        [DispatchNodeResponseKeyEnum.runTimes]: runTimes
+      });
     }
 
     if (toolWorkflowInteractiveResponse) {
