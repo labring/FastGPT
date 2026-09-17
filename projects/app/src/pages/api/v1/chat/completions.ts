@@ -73,6 +73,7 @@ import {
   filterWorkflowFinalResponseData,
   getWorkflowDatasetCiteRetention,
   getWorkflowFinalResponseData,
+  getWorkflowFinalResponseError,
   shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
 import { formatCompletionResponseContent } from '@/service/core/chat/utils';
@@ -499,10 +500,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         includeLegacyType: true
       });
 
-      const error =
-        nodeResponseSummary?.lastError ||
-        finalResponseData[finalResponseData.length - 1]?.error ||
-        finalResponseData[finalResponseData.length - 1]?.errorText;
+      const error = getWorkflowFinalResponseError({
+        nodeResponseSummary,
+        finalResponseData
+      });
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
