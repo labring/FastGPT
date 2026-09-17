@@ -214,32 +214,36 @@ export const LeftHeader = () => {
           }
         ]
       },
-      {
-        children: [
-          {
-            type: 'danger' as const,
-            icon: 'delete' as const,
-            label: t('common:Delete'),
-            onClick: () => {
-              if (!skillDetail) return;
-              openConfirmDelete({
-                customContent:
-                  (skillDetail.appCount ?? 0) > 0 ? (
-                    <Trans
-                      i18nKey={i18nT('skill:confirm_delete_with_refs')}
-                      values={{ count: skillDetail.appCount }}
-                      components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
-                    />
-                  ) : null,
-                onConfirm: () => onClickDeleteSkill(skillDetail._id),
-                confirmText: t('skill:confirm_delete_action'),
-                confirmButtonVariant: 'dangerFill',
-                inputConfirmText: skillDetail.name
-              })();
+      ...(skillDetail?.permission?.isOwner
+        ? [
+            {
+              children: [
+                {
+                  type: 'danger' as const,
+                  icon: 'delete' as const,
+                  label: t('common:Delete'),
+                  onClick: () => {
+                    if (!skillDetail) return;
+                    openConfirmDelete({
+                      customContent:
+                        (skillDetail.appCount ?? 0) > 0 ? (
+                          <Trans
+                            i18nKey={i18nT('skill:confirm_delete_with_refs')}
+                            values={{ count: skillDetail.appCount }}
+                            components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+                          />
+                        ) : null,
+                      onConfirm: () => onClickDeleteSkill(skillDetail._id),
+                      confirmText: t('skill:confirm_delete_action'),
+                      confirmButtonVariant: 'dangerFill',
+                      inputConfirmText: skillDetail.name
+                    })();
+                  }
+                }
+              ]
             }
-          }
-        ]
-      }
+          ]
+        : [])
     ],
     [
       t,

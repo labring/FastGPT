@@ -24,7 +24,6 @@ import {
   postUpdateSkill,
   postCopySkill,
   getAppsBySkillId,
-  getSkillListV2,
   resumeInheritPer,
   postChangeSkillOwner
 } from '@/web/core/skill/api';
@@ -39,8 +38,6 @@ import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/ai/skill/ap
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
-import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import SkillDashboardEmptyHero from '@/pageComponents/dashboard/skill/SkillDashboardEmptyHero';
@@ -214,7 +211,8 @@ const List = ({
     parentId,
     isBatchMode,
     selectedSkillIds,
-    onToggleSelectSkill
+    onToggleSelectSkill,
+    getSkillFolderList
   } = useContextSelector(SkillListContext, (v) => ({
     skills: v.skills,
     refreshSkills: v.refreshSkills,
@@ -230,7 +228,8 @@ const List = ({
     parentId: v.parentId,
     isBatchMode: v.isBatchMode,
     selectedSkillIds: v.selectedSkillIds,
-    onToggleSelectSkill: v.onToggleSelectSkill
+    onToggleSelectSkill: v.onToggleSelectSkill,
+    getSkillFolderList: v.getSkillFolderList
   }));
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
@@ -328,32 +327,6 @@ const List = ({
     }
   );
 
-  // 获取技能文件夹列表
-  const getSkillFolderListForMove = useMemo<SelectOneResourceServer>(
-    () =>
-      ({ parentId, offset, pageSize }, cancelToken) =>
-        getSkillListV2(
-          {
-            source: 'mine',
-            type: AgentSkillTypeEnum.folder,
-            parentId,
-            offset,
-            pageSize
-          },
-          cancelToken
-        ).then(({ list, total }) => ({
-          total,
-          list: list.map((item) => ({
-            id: item._id,
-            name: item.name,
-            avatar: FolderImgUrl,
-            isFolder: true,
-            disabled: item._id === moveSkillId || !item.permission.hasWritePer
-          }))
-        })),
-    [moveSkillId]
-  );
-
   const renderSkillCard = (skill: (typeof skills)[number]) => {
     const displayTime = getResourceListDisplayTime({
       sort: listFilters.sort,
@@ -390,23 +363,27 @@ const List = ({
                     });
                   }
                 },
-                {
-                  icon: 'common/file/move',
-                  type: 'grayBg' as const,
-                  label: t('common:move_to'),
-                  onClick: () => setMoveSkillId(skill._id)
-                },
-                {
-                  icon: 'key',
-                  type: 'grayBg' as const,
-                  label: t('skill:permission_settings'),
-                  onClick: () => {
-                    setEditPerSkillId(skill._id);
-                  }
-                }
+                ...(skill.permission?.hasManagePer
+                  ? [
+                      {
+                        icon: 'common/file/move',
+                        type: 'grayBg' as const,
+                        label: t('common:move_to'),
+                        onClick: () => setMoveSkillId(skill._id)
+                      },
+                      {
+                        icon: 'key',
+                        type: 'grayBg' as const,
+                        label: t('skill:permission_settings'),
+                        onClick: () => {
+                          setEditPerSkillId(skill._id);
+                        }
+                      }
+                    ]
+                  : [])
               ]
             },
-            ...(!isFolder
+            ...(!isFolder && skill.permission?.hasWritePer
               ? [
                   {
                     children: [
@@ -425,30 +402,34 @@ const List = ({
               : [])
           ]
         : []),
-      {
-        children: [
-          {
-            type: 'danger' as const,
-            icon: 'delete',
-            label: t('common:Delete'),
-            onClick: () =>
-              openConfirmDelete({
-                customContent:
-                  !isFolder && relatedAppsCount > 0 ? (
-                    <Trans
-                      i18nKey={i18nT('skill:confirm_delete_with_refs')}
-                      values={{ count: relatedAppsCount }}
-                      components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
-                    />
-                  ) : null,
-                onConfirm: () => onClickDeleteSkill(skill._id),
-                confirmText: t('skill:confirm_delete_action'),
-                confirmButtonVariant: 'dangerFill',
-                inputConfirmText: skill.name
-              })()
-          }
-        ]
-      }
+      ...(skill.permission?.isOwner
+        ? [
+            {
+              children: [
+                {
+                  type: 'danger' as const,
+                  icon: 'delete',
+                  label: t('common:Delete'),
+                  onClick: () =>
+                    openConfirmDelete({
+                      customContent:
+                        !isFolder && relatedAppsCount > 0 ? (
+                          <Trans
+                            i18nKey={i18nT('skill:confirm_delete_with_refs')}
+                            values={{ count: relatedAppsCount }}
+                            components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+                          />
+                        ) : null,
+                      onConfirm: () => onClickDeleteSkill(skill._id),
+                      confirmText: t('skill:confirm_delete_action'),
+                      confirmButtonVariant: 'dangerFill',
+                      inputConfirmText: skill.name
+                    })()
+                }
+              ]
+            }
+          ]
+        : [])
     ];
 
     const isSelected = selectedSkillIds.includes(skill._id);
@@ -603,21 +584,23 @@ const List = ({
                 <Box color={'myGray.500'}>{t(formatTimeToChatTime(displayTime))}</Box>
               </HStack>
             )}
-            {!isBatchMode && isPersonal && (
-              <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
-                <MyMenu
-                  Button={
-                    <IconButton
-                      size={'xsSquare'}
-                      variant={'transparentBase'}
-                      icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
-                      aria-label={''}
-                    />
-                  }
-                  menuList={menuList}
-                />
-              </Box>
-            )}
+            {!isBatchMode &&
+              isPersonal &&
+              (isFolder ? skill.permission?.hasManagePer : skill.permission?.hasWritePer) && (
+                <Box className="more" display={['', 'none']} onClick={(e) => e.stopPropagation()}>
+                  <MyMenu
+                    Button={
+                      <IconButton
+                        size={'xsSquare'}
+                        variant={'transparentBase'}
+                        icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
+                        aria-label={''}
+                      />
+                    }
+                    menuList={menuList}
+                  />
+                </Box>
+              )}
           </HStack>
         </HStack>
       </MyBox>
@@ -705,7 +688,7 @@ const List = ({
         {!!moveSkillId && (
           <MoveModal
             moveResourceId={moveSkillId}
-            server={getSkillFolderListForMove}
+            server={getSkillFolderList}
             title={t('skill:move_skill')}
             onClose={() => setMoveSkillId(undefined)}
             onConfirm={onMoveSkill}

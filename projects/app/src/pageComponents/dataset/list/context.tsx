@@ -247,10 +247,10 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
           name: item.name,
           avatar: FolderImgUrl,
           isFolder: true,
-          disabled: item._id === moveDatasetId || !item.permission.hasManagePer
+          disabled: !item.permission.hasManagePer
         }))
       })),
-    [moveDatasetId]
+    []
   );
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();

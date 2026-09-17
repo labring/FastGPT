@@ -89,6 +89,7 @@ type SkillListContextType = {
   setIsBatchMoving: (val: boolean) => void;
   isBatchDeleting: boolean;
   setIsBatchDeleting: (val: boolean) => void;
+  getSkillFolderList: SelectOneResourceServer;
 };
 
 export const SkillListContext = createContext<SkillListContextType>({
@@ -126,7 +127,8 @@ export const SkillListContext = createContext<SkillListContextType>({
   isBatchMoving: false,
   setIsBatchMoving: () => {},
   isBatchDeleting: false,
-  setIsBatchDeleting: () => {}
+  setIsBatchDeleting: () => {},
+  getSkillFolderList: () => Promise.resolve({ list: [], total: 0 })
 });
 
 const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
@@ -346,7 +348,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
           name: item.name,
           avatar: FolderImgUrl,
           isFolder: true,
-          disabled: !item.permission.hasWritePer
+          disabled: !item.permission.hasManagePer
         }))
       })),
     []
@@ -381,7 +383,8 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     isBatchMoving,
     setIsBatchMoving,
     isBatchDeleting,
-    setIsBatchDeleting
+    setIsBatchDeleting,
+    getSkillFolderList
   };
 
   return (

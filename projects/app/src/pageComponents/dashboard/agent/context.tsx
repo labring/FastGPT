@@ -298,7 +298,7 @@ const AppListContextProvider = ({
           name: item.name,
           avatar: FolderImgUrl,
           isFolder: true,
-          disabled: !item.permission.hasWritePer
+          disabled: !item.permission.hasManagePer
         }))
       }));
     },

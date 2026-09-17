@@ -432,7 +432,7 @@ function List() {
                             }
                           ]
                         : []),
-                      ...(dataset.permission.hasManagePer
+                      ...(dataset.permission.isOwner
                         ? [
                             {
                               children: [
