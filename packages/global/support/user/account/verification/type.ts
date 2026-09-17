@@ -7,6 +7,8 @@ import {
   recognizedAccountKinds,
   VerificationCodeTypeEnum
 } from './constants';
+import type { LangEnum } from '../../../../common/i18n/type';
+import type { FastGPTSemType } from '../../../marketing/type';
 
 export const ACCOUNT_VERIFICATION_PURPOSES = [
   'login',
@@ -32,16 +34,38 @@ export type VerificationTtlPreset = keyof typeof VerificationTtlSeconds;
  * Keeping this map in the shared package prevents the service and Pro package from
  * independently declaring incompatible scene unions.
  */
-export const VERIFICATION_TYPES = ['password', 'code', 'captcha', 'wechat', 'oauth'] as const;
+export const VERIFICATION_TYPES = [
+  'password',
+  'code',
+  'captcha',
+  'wechat',
+  'oauth',
+  'loginChallenge'
+] as const;
 export type VerificationType = (typeof VERIFICATION_TYPES)[number];
 
 export const VERIFICATION_SCENES_BY_TYPE = {
   password: ['login', 'changePassword'],
-  code: ['register', 'forgetPassword', 'changePassword', 'unsubscribe', 'bindNotification'],
-  captcha: ['register', 'forgetPassword', 'changePassword', 'unsubscribe', 'bindNotification'],
+  code: [
+    'login',
+    'register',
+    'forgetPassword',
+    'changePassword',
+    'unsubscribe',
+    'bindNotification'
+  ],
+  captcha: [
+    'login',
+    'register',
+    'forgetPassword',
+    'changePassword',
+    'unsubscribe',
+    'bindNotification'
+  ],
   // The callback adapter discovers the scene from all active QR materials.
   wechat: ACCOUNT_VERIFICATION_PURPOSES,
-  oauth: ['login']
+  oauth: ['login'],
+  loginChallenge: ['login']
 } as const satisfies Record<VerificationType, readonly AccountVerificationPurpose[]>;
 
 // Compatibility exports point at the shared scene map; they do not redeclare purpose values.
@@ -72,6 +96,15 @@ export type VerificationMaterialByType = {
     redirectUri?: string;
     transactionId?: string;
   };
+  loginChallenge: {
+    userId: string;
+    username: string;
+    method: 'code';
+    channel: 'email' | 'phone';
+    target: string;
+    language: `${LangEnum}`;
+    fastgpt_sem?: FastGPTSemType;
+  };
 };
 
 export type VerificationMaterial<T extends VerificationType> = VerificationMaterialByType[T];
@@ -88,7 +121,8 @@ export const VERIFICATION_CODE_TYPES = [
   VerificationCodeTypeEnum.findPassword,
   VerificationCodeTypeEnum.passwordChange,
   VerificationCodeTypeEnum.unsubscribe,
-  VerificationCodeTypeEnum.bindNotification
+  VerificationCodeTypeEnum.bindNotification,
+  VerificationCodeTypeEnum.login
 ] as const;
 export const VerificationCodeTypeSchema = z.enum(VERIFICATION_CODE_TYPES);
 export type VerificationCodeType = z.infer<typeof VerificationCodeTypeSchema>;
@@ -104,7 +138,8 @@ export const VERIFICATION_CODE_PURPOSES_BY_TYPE = {
   [VerificationCodeTypeEnum.findPassword]: 'forgetPassword',
   [VerificationCodeTypeEnum.passwordChange]: 'changePassword',
   [VerificationCodeTypeEnum.unsubscribe]: 'unsubscribe',
-  [VerificationCodeTypeEnum.bindNotification]: 'bindNotification'
+  [VerificationCodeTypeEnum.bindNotification]: 'bindNotification',
+  [VerificationCodeTypeEnum.login]: 'login'
 } as const satisfies Record<VerificationCodeType, CodeVerificationPurpose>;
 
 /** Backwards-compatible singular alias for callers that use the map as a lookup. */

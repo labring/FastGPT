@@ -60,6 +60,8 @@ export type FastGPTFeConfigsType = {
   show_discount_coupon?: boolean;
   show_enterprise_auth?: boolean;
   showWecomConfig?: boolean;
+  /** 登录二次验证开关：由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证。 */
+  login2faEnabled?: boolean;
   wecomLoginAutoRedirect?: boolean;
   accountCancellation?: {
     enabled?: boolean;

@@ -42,6 +42,8 @@ type Props = {
   purpose: CaptchaVerificationPurpose;
   createCodeVerification: (captcha: string) => Promise<void>;
   submitCodeVerification: (code: string) => Promise<VerificationSubmitResult>;
+  /** 可选的图片验证码获取适配器；登录 Challenge 不使用账号作为验证码作用域。 */
+  getCaptchaPic?: () => Promise<{ captchaImage: string }>;
   createOldPasswordVerification?: () => Promise<void>;
   submitOldPasswordVerification?: (params: {
     password: string;
@@ -77,6 +79,7 @@ export const AccountVerificationPanel = ({
   purpose,
   createCodeVerification,
   submitCodeVerification,
+  getCaptchaPic,
   createOldPasswordVerification,
   submitOldPasswordVerification,
   createWechatVerification,
@@ -377,6 +380,7 @@ export const AccountVerificationPanel = ({
                 onClose={onCloseCaptcha}
                 onSending={codeSending}
                 onSendCode={sendCode}
+                getCaptchaPic={getCaptchaPic}
               />
             )}
           </Box>
@@ -533,6 +537,7 @@ export const AccountVerificationPanel = ({
             onClose={onCloseCaptcha}
             onSending={codeSending}
             onSendCode={sendCode}
+            getCaptchaPic={getCaptchaPic}
           />
         )}
       </VStack>

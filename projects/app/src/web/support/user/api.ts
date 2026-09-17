@@ -11,6 +11,9 @@ import type {
   WxLoginBodyType,
   GetWXLoginQRResponseType,
   LoginSuccessResponseType,
+  LoginByPasswordResponseType,
+  LoginVerificationCaptchaResponseType,
+  LoginVerificationSendCodeResponseType,
   WxLoginResultResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type {
@@ -43,10 +46,21 @@ export const oauthLogin = (params: OauthLoginBodyType) =>
 export const postFastLogin = (params: FastLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/fastLogin', params);
 export const postLogin = ({ password, ...props }: LoginByPasswordBodyType) =>
-  POST<LoginSuccessResponseType>('/support/user/account/loginByPassword', {
+  POST<LoginByPasswordResponseType>('/support/user/account/loginByPassword', {
     ...props,
     password: hashStr(password)
   });
+export const getLoginVerificationCaptcha = (challenge: string) =>
+  POST<LoginVerificationCaptchaResponseType>('/support/user/account/login/verification/captcha', {
+    challenge
+  });
+export const sendLoginVerificationCode = (params: { challenge: string; captcha: string }) =>
+  POST<LoginVerificationSendCodeResponseType>(
+    '/support/user/account/login/verification/sendCode',
+    params
+  );
+export const verifyLoginVerificationCode = (params: { challenge: string; code: string }) =>
+  POST<LoginSuccessResponseType>('/support/user/account/login/verification/verify', params);
 // wx login
 export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponseType>('/proApi/support/user/account/login/wx/getQR');
