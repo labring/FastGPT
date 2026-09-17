@@ -66,6 +66,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     description:
       '是否部署了商业版（pro）服务（配置了 PRO_URL）。与 isPlus 区别：本字段表示服务是否接入（用于区分商业版部署与开源社区版部署），而 isPlus 表示授权是否有效。'
   }),
+  hasMax: z.boolean().optional().meta({ description: '是否配置了 Max 服务' }),
   hideChatCopyrightSetting: z
     .boolean()
     .optional()

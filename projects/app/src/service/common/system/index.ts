@@ -3,6 +3,7 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
+import { initMaxServerStatus } from '@fastgpt/service/common/system/maxServer';
 import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
@@ -67,8 +68,11 @@ export function initGlobalVariables() {
   global.datasetParseQueueLen = global.datasetParseQueueLen ?? 0;
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
+  global.hasMax = global.hasMax ?? false;
   initPlusRequest();
 }
+
+export { initMaxServerStatus };
 
 /* Init system data(Need to connected db). It only needs to run once */
 export async function getInitConfig() {
@@ -117,7 +121,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   favicon: '/favicon.ico',
   chineseRedirectUrl: appEnv.CHINESE_IP_REDIRECT_URL,
   uploadFileMaxSize: serviceEnv.UPLOAD_FILE_MAX_SIZE,
-  uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT
+  uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT,
+  hasMax: false
 };
 
 async function getPluginRemoteDebugEnabled() {
@@ -154,6 +159,7 @@ export async function initSystemConfig() {
       isPlus,
       // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
       isProService: !!serviceEnv.PRO_URL,
+      hasMax: global.hasMax ?? false,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
       show_coupon: appEnv.SHOW_COUPON,

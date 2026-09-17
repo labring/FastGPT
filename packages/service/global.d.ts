@@ -20,6 +20,8 @@ declare global {
   var workerPoll: Partial<Record<WorkerNameEnum, unknown>>;
 
   var systemConfig: Record<string, unknown> | undefined;
+
+  var hasMax: boolean | undefined;
 }
 
 export {};
