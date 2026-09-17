@@ -32,6 +32,7 @@ export type FastGPTFeConfigsType = {
   show_workorder?: boolean;
   show_emptyChat?: boolean;
   isPlus?: boolean;
+  hasMax?: boolean;
   hideChatCopyrightSetting?: boolean;
   /**
    * 用户自助注册方式。兼容期允许读取旧配置中的 sync，但新配置不再写入 sync。

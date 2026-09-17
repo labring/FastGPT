@@ -54,8 +54,9 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     enableSandbox
   });
 
-  const canUseHelper = !!feConfigs?.isPlus;
-  const activeTab = canUseHelper ? agentChatTestTab : AgentChatTestTabEnum.chatDebug;
+  const showHelper = !!feConfigs?.hasMax;
+  const canUseHelper = showHelper && !!feConfigs?.isPlus;
+  const activeTab = showHelper ? agentChatTestTab : AgentChatTestTabEnum.chatDebug;
   const [hasRenderedHelper, setHasRenderedHelper] = useSafeState(false);
   const [proModalOpen, setProModalOpen] = useSafeState(false);
   const [helperSelectedModel = '', setHelperSelectedModel] = useLocalStorageState<string>(
@@ -77,7 +78,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
 
   const { model: defaultModel } = useModelDefault({
     modelType: ModelTypeEnum.llm,
-    enabled: activeTab === AgentChatTestTabEnum.helper && !helperSelectedModel
+    enabled: showHelper && activeTab === AgentChatTestTabEnum.helper && !helperSelectedModel
   });
   useEffect(() => {
     if (!helperSelectedModel && defaultModel) setHelperSelectedModel(defaultModel.modelId);
@@ -161,7 +162,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       });
       return;
     }
-    if (activeTab === AgentChatTestTabEnum.helper) {
+    if (showHelper && activeTab === AgentChatTestTabEnum.helper) {
       try {
         await ChatAgentHelperRef.current?.restartChat();
       } catch (error) {
@@ -173,7 +174,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     } else {
       restartChat();
     }
-  }, [activeTab, isAgentSkillSandboxUnavailable, restartChat, t, toast]);
+  }, [activeTab, isAgentSkillSandboxUnavailable, restartChat, showHelper, t, toast]);
 
   // 构建 ChatAgentHelper metadata，从 appForm 中提取配置。
   const chatAgentHelperMetadata = useMemo(
@@ -206,27 +207,33 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
         boxShadow={'3'}
       >
         <Flex px={[2, 5]} pb={2} alignItems={'center'}>
-          <FillRowTabs<AgentChatTestTabEnum>
-            py={1}
-            list={[
-              {
-                label: t('app:helper_bot'),
-                value: AgentChatTestTabEnum.helper
-              },
-              {
-                label: t('app:chat_debug'),
-                value: AgentChatTestTabEnum.chatDebug
-              }
-            ]}
-            value={activeTab}
-            onChange={(value) => {
-              if (value === AgentChatTestTabEnum.helper && !canUseHelper) {
-                setProModalOpen(true);
-                return;
-              }
-              updateActiveTab(value);
-            }}
-          />
+          {showHelper ? (
+            <FillRowTabs<AgentChatTestTabEnum>
+              py={1}
+              list={[
+                {
+                  label: t('app:helper_bot'),
+                  value: AgentChatTestTabEnum.helper
+                },
+                {
+                  label: t('app:chat_debug'),
+                  value: AgentChatTestTabEnum.chatDebug
+                }
+              ]}
+              value={activeTab}
+              onChange={(value) => {
+                if (value === AgentChatTestTabEnum.helper && !canUseHelper) {
+                  setProModalOpen(true);
+                  return;
+                }
+                updateActiveTab(value);
+              }}
+            />
+          ) : (
+            <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
+              {t('app:chat_debug')}
+            </Box>
+          )}
 
           <Box flex={1} />
           <Flex alignItems={'center'} gap={2}>
@@ -251,7 +258,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
           </Flex>
         </Flex>
         <Box flex={1} minH={0}>
-          {hasRenderedHelper && (
+          {showHelper && hasRenderedHelper && (
             <Box h={'100%'} display={activeTab === AgentChatTestTabEnum.helper ? 'block' : 'none'}>
               <ChatAgentHelper
                 ChatBoxRef={ChatAgentHelperRef}

@@ -181,8 +181,11 @@ export const streamSkillDebugChat = ({
   abortCtrl: AbortController;
 }): Promise<StreamResponseType> => {
   const { feConfigs } = useSystemStore.getState();
+  const canUseMaxSkillDebug = !!(feConfigs?.isPlus && feConfigs?.hasMax);
   return streamFetch({
-    url: feConfigs?.isPlus ? '/api/maxApi/core/ai/skill/debugChat' : '/api/core/ai/skill/debugChat',
+    url: canUseMaxSkillDebug
+      ? '/api/maxApi/core/ai/skill/debugChat'
+      : '/api/core/ai/skill/debugChat',
     data,
     onMessage,
     abortCtrl
