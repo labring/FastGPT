@@ -24,11 +24,22 @@ export function resetMaxServerProbeCache() {
 }
 
 /**
+ * 初始化全局 Max 服务可用性状态。
+ * 供服务启动时作为独立前置步骤调用，探测并将结果写入 global.hasMax。
+ *
+ * @param force 是否跳过缓存强制重新探测
+ */
+export async function initMaxServerStatus(force = true): Promise<boolean> {
+  const isAvailable = await checkMaxServerAvailable(force);
+  global.hasMax = isAvailable;
+  return isAvailable;
+}
+
+/**
  * 探测 Max 扩展服务健康状态。
  *
  * 当未配置 MAX_URL 时直接返回 false；
  * 当配置了 MAX_URL 时，向 `/healthz` 发送带超时的探活请求。
- * 供系统启动（initSystemConfig）和配置变更刷新（volumnMongoWatch）时调用，
  * 探测结果存入内存 TTL 缓存并对并发在途请求做合并去重。
  *
  * @param force 是否跳过缓存强制重新探测
