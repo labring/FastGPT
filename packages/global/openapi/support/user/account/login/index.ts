@@ -5,7 +5,6 @@ import {
   PreLoginQuerySchema,
   PreLoginResponseSchema,
   OauthLoginBodySchema,
-  FastLoginBodySchema,
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
   LoginSuccessResponseSchema,
@@ -145,30 +144,6 @@ export const LoginPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: WecomGetRedirectURLResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/proApi/support/user/account/login/fastLogin': {
-    post: {
-      summary: '快捷登录',
-      description: '使用 Token 和 Code 进行快捷登录',
-      tags: [DevApiTagsMap.userLogin],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: FastLoginBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '登录成功',
-          content: {
-            'application/json': {
-              schema: LoginSuccessResponseSchema
             }
           }
         }

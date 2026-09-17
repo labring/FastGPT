@@ -83,6 +83,16 @@ For specific sync methods and rules, see [SSO & External Member Sync](./sso.en.m
 
 ## Configuration
 
-In `fastgpt-pro`'s System Configuration - Member Configuration, you can configure the team mode.
+The team mode is configured via the `TEAM_MODE` environment variable of the `fastgpt-pro` (admin) service. Valid values are `multi` (multi-team), `single` (single-team), and `sync` (member sync). The team mode shown in the admin console's System Configuration - Member Configuration is read-only — change it through the environment variable instead.
+
+```bash
+# fastgpt-pro (admin service) environment variable; optional, defaults to single when unset
+TEAM_MODE=multi
+```
+
+> **Upgrade notice**: existing deployments whose team mode was saved to the database through the old admin console must explicitly set `TEAM_MODE` (e.g. `TEAM_MODE=multi`, `TEAM_MODE=sync`) after upgrading if they do not run in single-team mode.
+>
+> - `TEAM_MODE` is authoritative and overrides the team mode stored in the database on service startup.
+> - When unset or empty, the value is treated as `single`.
 
 ![](/imgs/teammode.png)

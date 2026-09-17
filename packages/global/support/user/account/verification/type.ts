@@ -189,8 +189,6 @@ export const AccountVerificationCapabilitiesSchema = z.object({
 export type AccountVerificationCapabilities = z.infer<typeof AccountVerificationCapabilitiesSchema>;
 
 export const RecognizedAccountKindSchema = z.enum(recognizedAccountKinds);
-export type RecognizedAccountKind = z.infer<typeof RecognizedAccountKindSchema>;
-
 export const AccountKindSchema = z.union([RecognizedAccountKindSchema, z.literal('invalid')]);
 export type AccountKind = z.infer<typeof AccountKindSchema>;
 
@@ -227,3 +225,13 @@ export type AccountVerificationPasswordPolicy =
       allowPasswordFallback: true;
       oldPasswordAvailable: boolean;
     };
+
+/** 验证码校验支持的独立场景，pro 侧按场景判断具体短信/邮箱模板是否配置。 */
+export const CodeAccountVerificationSceneSchema = z.enum([
+  'register',
+  'findPassword',
+  'bindNotification',
+  'accountCancellation',
+  'passwordChange'
+]);
+export type CodeAccountVerificationScene = z.infer<typeof CodeAccountVerificationSceneSchema>;

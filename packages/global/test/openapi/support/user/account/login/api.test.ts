@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../../../../openapi/provider/devapi';
 import { openAPIPaths } from '../../../../../../openapi/path';
 import {
-  FastLoginBodySchema,
   LoginByPasswordBodySchema,
   OpenAPIUserSchema,
   LoginSuccessResponseSchema,
@@ -125,12 +124,6 @@ describe('user account OpenAPI contracts', () => {
         props: { access_token: longExternalValue }
       })
     ).toMatchObject({ callbackUrl: longExternalValue, props: { access_token: longExternalValue } });
-    expect(
-      FastLoginBodySchema.parse({ token: longExternalValue, code: longExternalValue })
-    ).toMatchObject({
-      token: longExternalValue,
-      code: longExternalValue
-    });
     expect(() => WxLoginBodySchema.parse({ code: tooLongShortValue })).toThrow();
     expect(
       WecomGetRedirectURLBodySchema.parse({
