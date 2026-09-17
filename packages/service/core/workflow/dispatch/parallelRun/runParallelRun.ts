@@ -102,6 +102,10 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             runtimeNodes: taskRuntimeNodes,
             runtimeEdges: taskRuntimeEdges
           });
+          props.nodeSummary.pushLLMTokens({
+            inputTokens: response.workflowRuntimeSummary.llmInputTokens,
+            outputTokens: response.workflowRuntimeSummary.llmOutputTokens
+          });
           const runningTime = getRunningTime();
 
           // Push usage per attempt (resources were consumed regardless of success)
@@ -206,7 +210,6 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     [NodeOutputKeyEnum.parallelFullResults]: fullResultsArray,
     [NodeOutputKeyEnum.parallelStatus]: status
   };
-
   return {
     data,
     [DispatchNodeResponseKeyEnum.toolResponse]: fullResultsArray,

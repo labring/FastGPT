@@ -4,7 +4,10 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { DispatchToolModuleProps } from './type';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { normalizeAgentLoopUsages } from '../../../../ai/llm/agentLoop/interface';
 import type {
   InteractiveNodeResponseType,
@@ -19,6 +22,8 @@ import {
   type AgentLoopCoreToolRunFlowResponse
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
+import { createAgentNodeResponseCollector } from '../agent/nodeResponseCollector';
+import { runtimeSummaryToNodeSummary, splitNodeSummaryLLMTokens } from '../../utils/summary';
 
 type ResponseType = {
   requestIds: string[];
@@ -69,6 +74,30 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   let getProviderToolInfo: (name: string) => ToolInfo | undefined = () => undefined;
   const getToolInfo = (name: string) => getProviderToolInfo(name);
 
+  const toolNodeResponses: ChatHistoryItemResType[] = [];
+  const nodeResponseCollector = createAgentNodeResponseCollector({
+    nodeResponseSink: props.nodeResponseSink,
+    nodeResponses: toolNodeResponses,
+    onNodeResponseSummary: (summary) =>
+      props.nodeSummary.mergeNodeSummary(runtimeSummaryToNodeSummary(summary))
+  });
+  const appendToolNodeResponse = (response: ChatHistoryItemResType) =>
+    nodeResponseCollector.appendNodeResponse({
+      ...response,
+      ...(response.parentId || !props.nodeResponseParentId
+        ? {}
+        : { parentId: props.nodeResponseParentId })
+    });
+  const mergeChildWorkflowSummary = (
+    workflowSummary: Parameters<typeof runtimeSummaryToNodeSummary>[0]
+  ) => {
+    const { inputTokens, outputTokens, summary } = splitNodeSummaryLLMTokens(
+      runtimeSummaryToNodeSummary(workflowSummary)
+    );
+    props.nodeSummary.pushLLMTokens({ inputTokens, outputTokens });
+    props.nodeSummary.mergeNodeSummary(summary);
+  };
+
   const runtimeEnvironment = createAgentLoopCoreRuntimeEnvironment({
     node: workflowProps.node,
     workflowStreamResponse,
@@ -76,6 +105,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     streamReasoning: aiChatReasoning,
     sliceToolResponse: true,
     getToolInfo,
+    appendNodeResponse: appendToolNodeResponse,
+    collectAgentCallNodeResponse: false,
     collectToolRunResponses: true
   });
   const toolProvider = await createToolCallToolProvider({
@@ -86,7 +117,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowProps,
     runtimeNodes,
     runtimeEdges,
-    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse
+    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse,
+    onWorkflowRuntimeSummary: mergeChildWorkflowSummary
   });
   getProviderToolInfo = toolProvider.getToolInfo;
   const systemPrompt = toolProvider.finalMessages
@@ -101,76 +133,81 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     (message) => message.role !== ChatCompletionRequestMessageRoleEnum.System
   );
 
-  const { summary: outputSummary } =
-    await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
-      provider: 'fastAgent',
-      input: buildAgentLoopCoreInput({
-        messages: loopMessages,
-        systemPrompt,
-        childrenInteractiveParams
-      }),
-      runtime: createAgentLoopCoreRuntimeWithEnvironment({
-        teamId: workflowProps.runningUserInfo.teamId,
-        environment: runtimeEnvironment,
-        llmParams: {
-          model: toolModel,
-          maxTokens: maxToken,
-          stream,
-          temperature,
-          topP: aiChatTopP,
-          stop: aiChatStopSign,
-          reasoningEffort: aiChatReasoningEffort,
-          responseFormat: {
-            type: aiChatResponseFormat,
-            json_schema: aiChatJsonSchema
+  const { summary: outputSummary } = await (async () => {
+    try {
+      return await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
+        provider: 'fastAgent',
+        input: buildAgentLoopCoreInput({
+          messages: loopMessages,
+          systemPrompt,
+          childrenInteractiveParams
+        }),
+        runtime: createAgentLoopCoreRuntimeWithEnvironment({
+          teamId: workflowProps.runningUserInfo.teamId,
+          environment: runtimeEnvironment,
+          llmParams: {
+            model: toolModel,
+            maxTokens: maxToken,
+            stream,
+            temperature,
+            topP: aiChatTopP,
+            stop: aiChatStopSign,
+            reasoningEffort: aiChatReasoningEffort,
+            responseFormat: {
+              type: aiChatResponseFormat,
+              json_schema: aiChatJsonSchema
+            },
+            useVision: aiChatVision,
+            useAudio: aiChatAudio,
+            useVideo: aiChatVideo,
+            extractFiles: aiChatExtractFiles,
+            userKey: externalProvider.openaiAccount
           },
-          useVision: aiChatVision,
-          useAudio: aiChatAudio,
-          useVideo: aiChatVideo,
-          extractFiles: aiChatExtractFiles,
-          userKey: externalProvider.openaiAccount
-        },
-        responseParams: {
-          retainDatasetCite
-        },
-        lang: workflowProps.lang,
-        systemTools: {
-          planEnabled: false,
-          askEnabled: false,
-          sandboxClient: useAgentSandbox ? workflowProps.sandboxClient : undefined,
-          readFile: toolProvider.readFileExecutor
-            ? {
-                enabled: true,
-                maxFileAmount: toolProvider.readFileMaxFileAmount,
-                execute: toolProvider.readFileExecutor
-              }
-            : undefined,
-          datasetSearch: toolProvider.datasetSearchExecutor
-            ? {
-                enabled: true,
-                currentInputFiles: fileUrlList,
-                execute: toolProvider.datasetSearchExecutor
-              }
-            : undefined
-        },
-        maxRunAgentTimes: 50,
-        checkIsStopping,
-        toolRuntime: {
-          toolProvider,
-          /**
-           * ToolCall 节点内部工具执行依赖流式输出、交互状态和 nodeResponse 顺序，
-           * 这里显式保持串行；普通 Agent 入口再按 batchToolSize 控制并发。
-           */
-          batchToolSize: 1,
-          normalizeInteractiveUsages: normalizeAgentLoopUsages
-        },
-        usagePush
-      }),
-      assistantResponses: {
-        showReasoning: aiChatReasoning,
-        getEventToolInfo: getToolInfo
-      }
-    });
+          responseParams: {
+            retainDatasetCite
+          },
+          lang: workflowProps.lang,
+          systemTools: {
+            planEnabled: false,
+            askEnabled: false,
+            sandboxClient: useAgentSandbox ? workflowProps.sandboxClient : undefined,
+            readFile: toolProvider.readFileExecutor
+              ? {
+                  enabled: true,
+                  maxFileAmount: toolProvider.readFileMaxFileAmount,
+                  execute: toolProvider.readFileExecutor
+                }
+              : undefined,
+            datasetSearch: toolProvider.datasetSearchExecutor
+              ? {
+                  enabled: true,
+                  currentInputFiles: fileUrlList,
+                  execute: toolProvider.datasetSearchExecutor
+                }
+              : undefined
+          },
+          maxRunAgentTimes: 50,
+          checkIsStopping,
+          toolRuntime: {
+            toolProvider,
+            /**
+             * ToolCall 节点内部工具执行依赖流式输出、交互状态和 nodeResponse 顺序，
+             * 这里显式保持串行；普通 Agent 入口再按 batchToolSize 控制并发。
+             */
+            batchToolSize: 1,
+            normalizeInteractiveUsages: normalizeAgentLoopUsages
+          },
+          usagePush
+        }),
+        assistantResponses: {
+          showReasoning: aiChatReasoning,
+          getEventToolInfo: getToolInfo
+        }
+      });
+    } finally {
+      await nodeResponseCollector.flush();
+    }
+  })();
 
   return {
     requestIds: outputSummary.requestIds,

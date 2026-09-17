@@ -1,4 +1,6 @@
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -58,6 +60,7 @@ const createProps = () =>
     runningUserInfo: {
       teamId: 'team_1'
     },
+    nodeSummary: createNodeSummary(),
     usagePush: vi.fn(),
     params: {
       content: '张三来自杭州',
@@ -136,7 +139,13 @@ describe('dispatchContentExtract', () => {
     });
     createLLMResponseMock.mockResolvedValue(mockLLMResponse('{"name":"张三"}'));
 
-    const result = await dispatchContentExtract(createProps());
+    const props = createProps();
+    const result = await dispatchContentExtract(props);
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
+      inputTokens: 10,
+      outputTokens: 5
+    });
+    expect(props.nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
 
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
       model: expect.objectContaining({ model: 'deepseek-r1' }),

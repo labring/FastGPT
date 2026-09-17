@@ -5,7 +5,7 @@ import type {
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentLoopRuntime } from '../../../../../ai/llm/agentLoop/interface';
 import { getExecuteTool, type ToolDispatchContext } from '../sub/utils';
-import type { WorkflowResponseType } from '../../../type';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createWorkflowAgentLoopToolCatalog } from './toolCatalog';
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { SandboxClient } from '../../../../../ai/sandbox/interface/runtime';
@@ -16,6 +16,7 @@ import {
   getAgentLoopCoreSystemToolInfo
 } from '../../agentLoopCore/interface';
 import { createWorkflowAgentToolProvider } from '../toolProvider';
+import type { AgentLoopCoreToolRunResult } from '../../agentLoopCore/interface';
 
 type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   node: {
@@ -51,6 +52,7 @@ export const createWorkflowAgentLoopRuntime = ({
   assistantResponses = [],
   nodeResponses = [],
   appendNodeResponse,
+  onToolResult,
   executeToolFactory = getExecuteTool
 }: {
   context: WorkflowAgentLoopRuntimeContext;
@@ -59,6 +61,7 @@ export const createWorkflowAgentLoopRuntime = ({
   assistantResponses?: AIChatItemValueItemType[];
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
+  onToolResult?: (result: AgentLoopCoreToolRunResult<WorkflowInteractiveResponseType>) => void;
   executeToolFactory?: typeof getExecuteTool;
 }): {
   runtime: AgentLoopRuntime<WorkflowInteractiveResponseType>;
@@ -101,6 +104,7 @@ export const createWorkflowAgentLoopRuntime = ({
   // plan/ask/sandbox 仍由 runtime 配置决定是否注入，不混入业务 runtime tools。
   const toolProvider = createWorkflowAgentToolProvider({
     context,
+    onToolResult,
     executeToolFactory
   });
 
@@ -153,7 +157,8 @@ export const createWorkflowAgentLoopRuntime = ({
       checkIsStopping: context.checkIsStopping,
       toolRuntime: {
         toolProvider,
-        batchToolSize: 5
+        batchToolSize: 5,
+        onToolResult: ({ result }) => onToolResult?.(result)
       },
       usagePush
     }).runtime

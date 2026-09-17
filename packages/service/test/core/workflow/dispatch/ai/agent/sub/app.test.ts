@@ -5,7 +5,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
-import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { prepareWorkflowFileContext } from '@fastgpt/service/core/workflow/utils/fileContext';
 import {
@@ -78,7 +78,7 @@ describe('agent sub app dispatchPlugin', () => {
     mocks.serverGetWorkflowToolRunUserQuery.mockReturnValue({ value: [] });
     mocks.runWorkflow.mockResolvedValue({
       flowUsages: [],
-      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'pluginOutputResponse',
           nodeId: 'pluginOutput',
@@ -139,6 +139,30 @@ describe('agent sub app dispatchPlugin', () => {
         workflowStreamResponse: undefined
       })
     );
+  });
+
+  it('does not expose system workflow LLM tokens to the parent agent summary', async () => {
+    mocks.getSystemToolWorkflowRuntime.mockResolvedValue({
+      id: 'commercial-system-workflow',
+      name: 'System Workflow',
+      avatar: '',
+      nodes: [],
+      edges: [],
+      chatConfig: { variables: [] },
+      currentCost: 0
+    });
+    mocks.runWorkflow.mockResolvedValue({
+      flowUsages: [],
+      workflowRuntimeSummary: {
+        ...summarizeRuntimeNodeResponses(undefined, []),
+        llmInputTokens: 20,
+        llmOutputTokens: 5
+      }
+    });
+
+    const result = await dispatchSystemWorkflow();
+
+    expect(result.nodeSummary).toBeUndefined();
   });
 
   it('initializes workflow tool variables from child chatConfig', async () => {
@@ -281,7 +305,7 @@ describe('agent sub app dispatchPlugin', () => {
     });
     mocks.runWorkflow.mockResolvedValueOnce({
       flowUsages: [{ moduleName: 'Child token/tool usage', totalPoints: 3 }],
-      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'pluginOutputResponse',
           nodeId: 'pluginOutput',
@@ -322,7 +346,7 @@ describe('agent sub app dispatchPlugin', () => {
     });
     mocks.runWorkflow.mockResolvedValueOnce({
       flowUsages: [{ moduleName: 'Failed child usage', totalPoints: 3 }],
-      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'failedResponse',
           nodeId: 'failedNode',
@@ -356,7 +380,7 @@ describe('agent sub app dispatchPlugin', () => {
     });
     mocks.runWorkflow.mockResolvedValueOnce({
       flowUsages: [{ moduleName: 'Child usage', totalPoints: 3 }],
-      runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+      workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
         {
           id: 'pluginOutputResponse',
           nodeId: 'pluginOutput',
@@ -450,7 +474,7 @@ describe('agent sub app dispatchPlugin', () => {
       expect(props.variableState.get('defaultFiles')).toEqual([defaultUrl]);
       return {
         flowUsages: [],
-        runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+        workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
           {
             id: 'pluginOutputResponse',
             nodeId: 'pluginOutput',
@@ -521,7 +545,7 @@ describe('agent sub app dispatchPlugin', () => {
     mocks.runWorkflow.mockResolvedValue({
       assistantResponses: [{ text: { content: 'waiting for plugin input' } }],
       flowUsages: [],
-      runtimeNodeResponseSummary: undefined,
+      workflowRuntimeSummary: undefined,
       workflowInteractiveResponse: nextInteractive
     });
 
@@ -619,7 +643,7 @@ describe('agent sub app dispatchApp', () => {
         }
       ],
       flowUsages: [],
-      runtimeNodeResponseSummary: undefined,
+      workflowRuntimeSummary: undefined,
       workflowInteractiveResponse: nextInteractive
     });
 
@@ -700,7 +724,7 @@ describe('agent sub app dispatchApp', () => {
     mocks.runWorkflow.mockResolvedValue({
       assistantResponses: [],
       flowUsages: [],
-      runtimeNodeResponseSummary: undefined
+      workflowRuntimeSummary: undefined
     });
 
     await dispatchApp({

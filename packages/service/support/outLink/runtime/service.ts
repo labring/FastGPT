@@ -393,7 +393,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       flowUsages,
       durationSeconds,
       system_memories,
-      nodeResponseSummary
+      workflowRuntimeSummary
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
       mode: 'chat',
@@ -474,7 +474,7 @@ export async function runOutlinkRuntime<T extends OutlinkAppType>({
       metadata: {},
       durationSeconds,
       errorMsg: respondResult.success ? undefined : getErrText(respondResult.error),
-      nodeResponseSummary
+      workflowRuntimeSummary
     };
     await finalizeChatRound(saveParams);
     roundState.finalized = true;

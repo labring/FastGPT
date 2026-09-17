@@ -1,5 +1,5 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
-import type { WorkflowResponseType } from '../../../../type';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 export type CreateAgentLoopCoreEventStreamParams = {

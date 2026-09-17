@@ -365,7 +365,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds,
       system_memories,
       customFeedbacks,
-      nodeResponseSummary,
+      workflowRuntimeSummary,
       flatNodeResponses
     } = await dispatchWorkFlow({
       apiVersion: 'v1',
@@ -440,7 +440,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         originIp
       },
       durationSeconds,
-      nodeResponseSummary
+      workflowRuntimeSummary
     };
     if (interactive) {
       await updateInteractiveChat({
@@ -508,7 +508,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       const error = getWorkflowFinalResponseError({
-        nodeResponseSummary,
+        workflowRuntimeSummary,
         finalResponseData
       });
 

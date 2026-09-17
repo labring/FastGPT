@@ -194,6 +194,7 @@ describe('dispatchAgentDatasetSearch', () => {
       } as any
     });
 
+    expect(result.nodeSummary).toEqual({});
     expect(result.nodeResponse).not.toHaveProperty('llmRequestIds');
     expect(result.nodeResponse).not.toHaveProperty('queryExtensionResult');
     expect(result.nodeResponse).not.toHaveProperty('query');
@@ -349,6 +350,7 @@ describe('dispatchAgentDatasetSearch', () => {
         totalPoints: 0
       })
     ]);
+    expect(result.nodeSummary).toEqual({});
     expect(result.usages).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

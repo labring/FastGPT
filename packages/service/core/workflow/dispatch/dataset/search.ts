@@ -230,7 +230,6 @@ export const dispatchDatasetSearch = async (
           datasetSearchExtensionBg,
           userKey: externalProvider.openaiAccount
         });
-
     // count bill results
     const nodeUsages: ChatNodeUsageType[] = [];
     const childrenResponses: ChatHistoryItemResType[] = [];

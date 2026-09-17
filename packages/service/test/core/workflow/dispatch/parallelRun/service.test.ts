@@ -15,7 +15,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
-import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ const makeDispatchFlowResponse = (
     [DispatchNodeResponseKeyEnum.assistantResponses]: [],
     [DispatchNodeResponseKeyEnum.runTimes]: 1,
     [DispatchNodeResponseKeyEnum.newVariables]: {},
-    runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses),
+    workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses),
     durationSeconds: 0,
     ...rest
   };

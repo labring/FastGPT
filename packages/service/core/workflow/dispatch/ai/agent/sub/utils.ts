@@ -9,7 +9,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './tool';
-import type { WorkflowResponseItemType } from '../../../type';
+import type { WorkflowResponseItemType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { dispatchApp, dispatchPlugin } from './app';
 import { SystemToolRepo } from '../../../../../app/tool/systemTool/systemTool.repo';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -194,6 +194,7 @@ export const getExecuteTool = ({
       interactive,
       stop = false,
       nodeResponse,
+      nodeSummary,
       errorMessage
     } = await (async (): Promise<{
       response: string;
@@ -203,6 +204,7 @@ export const getExecuteTool = ({
       stop?: boolean;
       errorMessage?: string;
       nodeResponse?: DispatchSubAppResponse['nodeResponse'];
+      nodeSummary?: DispatchSubAppResponse['nodeSummary'];
     }> => {
       try {
         // User Sub App
@@ -232,7 +234,7 @@ export const getExecuteTool = ({
         });
 
         if (tool.type === 'tool') {
-          const { response, usages, nodeResponse, errorMessage } = await dispatchTool({
+          const { response, usages, nodeResponse, nodeSummary, errorMessage } = await dispatchTool({
             tool: {
               name: tool.name,
               avatar: tool.avatar,
@@ -254,42 +256,50 @@ export const getExecuteTool = ({
             response,
             usages,
             nodeResponse,
+            nodeSummary,
             errorMessage
           };
         } else if (tool.type === 'workflow') {
           const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
 
-          const { response, assistantMessages, usages, interactive, nodeResponse, errorMessage } =
-            await dispatchApp({
-              app: {
-                name: tool.name,
-                avatar: tool.avatar,
-                id: tool.id,
-                version: tool.version
-              },
-              dynamic: tool.dynamic,
-              userChatInput: userChatInput,
-              customAppVariables: params,
-              checkIsStopping,
-              lang,
-              requestOrigin,
-              mode,
-              timezone,
-              externalProvider,
-              chatId,
-              responseChatItemId,
-              uid,
-              runningAppInfo,
-              runningUserInfo,
-              retainDatasetCite,
-              maxRunTimes,
-              workflowDispatchDeep,
-              nodeResponseSink,
-              nodeResponseParentId: callId,
-              variableState,
-              lastInteractive,
-              useResourceSnapshot: true
-            });
+          const {
+            response,
+            assistantMessages,
+            usages,
+            interactive,
+            nodeResponse,
+            nodeSummary,
+            errorMessage
+          } = await dispatchApp({
+            app: {
+              name: tool.name,
+              avatar: tool.avatar,
+              id: tool.id,
+              version: tool.version
+            },
+            dynamic: tool.dynamic,
+            userChatInput: userChatInput,
+            customAppVariables: params,
+            checkIsStopping,
+            lang,
+            requestOrigin,
+            mode,
+            timezone,
+            externalProvider,
+            chatId,
+            responseChatItemId,
+            uid,
+            runningAppInfo,
+            runningUserInfo,
+            retainDatasetCite,
+            maxRunTimes,
+            workflowDispatchDeep,
+            nodeResponseSink,
+            nodeResponseParentId: callId,
+            variableState,
+            lastInteractive,
+            useResourceSnapshot: true
+          });
 
           return {
             response,
@@ -297,6 +307,7 @@ export const getExecuteTool = ({
             usages,
             interactive,
             nodeResponse,
+            nodeSummary,
             errorMessage
           };
         } else if (tool.type === 'toolWorkflow' || tool.type === 'commercialTool') {
@@ -326,38 +337,45 @@ export const getExecuteTool = ({
             };
           })();
           const customAppVariables = filterAgentWorkflowRuntimeParams(requestParams);
-          const { response, assistantMessages, usages, interactive, nodeResponse, errorMessage } =
-            await dispatchPlugin({
-              app: {
-                name: tool.name,
-                avatar: tool.avatar,
-                id,
-                version: tool.version,
-                ...(systemToolId ? { systemToolId } : {})
-              },
-              dynamic: tool.dynamic,
-              userChatInput: '',
-              customAppVariables,
-              checkIsStopping,
-              lang,
-              requestOrigin,
-              mode,
-              timezone,
-              externalProvider,
-              chatId,
-              responseChatItemId,
-              uid,
-              runningAppInfo,
-              runningUserInfo,
-              retainDatasetCite,
-              maxRunTimes,
-              workflowDispatchDeep,
-              nodeResponseSink,
-              nodeResponseParentId: callId,
-              variableState,
-              lastInteractive,
-              useResourceSnapshot: tool.type !== 'commercialTool'
-            });
+          const {
+            response,
+            assistantMessages,
+            usages,
+            interactive,
+            nodeResponse,
+            nodeSummary,
+            errorMessage
+          } = await dispatchPlugin({
+            app: {
+              name: tool.name,
+              avatar: tool.avatar,
+              id,
+              version: tool.version,
+              ...(systemToolId ? { systemToolId } : {})
+            },
+            dynamic: tool.dynamic,
+            userChatInput: '',
+            customAppVariables,
+            checkIsStopping,
+            lang,
+            requestOrigin,
+            mode,
+            timezone,
+            externalProvider,
+            chatId,
+            responseChatItemId,
+            uid,
+            runningAppInfo,
+            runningUserInfo,
+            retainDatasetCite,
+            maxRunTimes,
+            workflowDispatchDeep,
+            nodeResponseSink,
+            nodeResponseParentId: callId,
+            variableState,
+            lastInteractive,
+            useResourceSnapshot: tool.type !== 'commercialTool'
+          });
 
           return {
             response,
@@ -365,6 +383,7 @@ export const getExecuteTool = ({
             usages,
             interactive,
             nodeResponse,
+            nodeSummary,
             errorMessage
           };
         } else {
@@ -411,6 +430,7 @@ export const getExecuteTool = ({
       usages,
       interactive,
       stop,
+      nodeSummary,
       ...(errorMessage ? { errorMessage } : {}),
       nodeResponse: formatNodeResponse
     };

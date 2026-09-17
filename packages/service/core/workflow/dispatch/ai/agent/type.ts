@@ -5,6 +5,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { NodeSummary } from '../../../types/runtime';
 
 export type DispatchSubAppResponse = {
   response: string; // 返回给 LLM 的响应
@@ -13,6 +14,7 @@ export type DispatchSubAppResponse = {
   /** 子工作流产生的完整 assistant 上下文，由 agent-loop 统一收集并持久化。 */
   assistantMessages?: ChatCompletionMessageParam[];
   usages?: ChatNodeUsageType[];
+  nodeSummary?: NodeSummary;
   /** 子工作流暂停时的交互快照，交回 agent-loop 形成 tool_child pause。 */
   interactive?: WorkflowInteractiveResponseType;
   nodeResponse?: Omit<ChatHistoryItemResType, 'runningTime' | 'totalPoints' | 'id' | 'nodeId'>; // 部分字段外层会自动根据 usages 计算。

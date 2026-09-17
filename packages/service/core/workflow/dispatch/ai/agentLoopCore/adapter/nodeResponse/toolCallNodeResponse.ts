@@ -12,8 +12,7 @@ export type CreateAgentLoopCoreToolCallNodeResponseParams = {
   query: string;
   completeMessages: ChatCompletionMessageParam[];
   useVision?: boolean;
-  toolDetail: ChatHistoryItemResType[];
-  nodeId: string;
+  toolDetail?: ChatHistoryItemResType[];
   finishReason: string;
   requestIds: string[];
   firstTokenTime?: number;
@@ -35,7 +34,6 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
   completeMessages,
   useVision,
   toolDetail,
-  nodeId,
   finishReason,
   requestIds,
   firstTokenTime
@@ -51,8 +49,7 @@ export const createAgentLoopCoreToolCallNodeResponse = ({
     10000,
     useVision
   ),
-  toolDetail,
-  mergeSignId: nodeId,
+  ...(toolDetail?.length ? { toolDetail } : {}),
   finishReason,
   llmRequestIds: requestIds,
   firstTokenTime

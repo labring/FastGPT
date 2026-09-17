@@ -1,3 +1,4 @@
+import { createWorkflowRuntimeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { summarizeAgentLoopCoreToolRunFlowResponses } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/toolRunCollector';
 import { describe, expect, it } from 'vitest';
 
@@ -6,6 +7,11 @@ describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {
     expect(
       summarizeAgentLoopCoreToolRunFlowResponses([
         {
+          workflowRuntimeSummary: {
+            ...createWorkflowRuntimeSummary(),
+            llmInputTokens: 10,
+            llmOutputTokens: 3
+          },
           runTimes: 1,
           flowResponses: [{ moduleName: 'A' } as any],
           flowUsages: [{ moduleName: 'usage-a', totalPoints: 1 }]
@@ -19,6 +25,13 @@ describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {
     ).toEqual({
       runTimes: 3,
       toolDetail: [{ moduleName: 'A' }, { moduleName: 'B' }],
+      workflowRuntimeSummary: {
+        ...createWorkflowRuntimeSummary(),
+        totalPoints: 0,
+        childResponseCount: 0,
+        llmInputTokens: 10,
+        llmOutputTokens: 3
+      },
       toolTotalPoints: 3
     });
   });
@@ -28,8 +41,8 @@ describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {
       summarizeAgentLoopCoreToolRunFlowResponses([
         {
           runTimes: 0,
-          runtimeNodeResponseSummary: {
-            runningTime: 12.5
+          workflowRuntimeSummary: {
+            ...createWorkflowRuntimeSummary()
           },
           flowResponses: [],
           flowUsages: []
@@ -38,6 +51,11 @@ describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {
     ).toEqual({
       runTimes: 0,
       toolDetail: [],
+      workflowRuntimeSummary: {
+        ...createWorkflowRuntimeSummary(),
+        totalPoints: 0,
+        childResponseCount: 0
+      },
       toolTotalPoints: 0
     });
   });

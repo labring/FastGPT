@@ -1,3 +1,4 @@
+import { createNodeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -86,7 +87,7 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
 
 describe('dispatchDatasetSearch', () => {
-  const runSearch = (params: Record<string, unknown> = {}) =>
+  const runSearch = (params: Record<string, unknown> = {}, nodeSummary = createNodeSummary()) =>
     dispatchDatasetSearch({
       runningAppInfo: { teamId: 'team_1' },
       runningUserInfo: { tmbId: 'tmb_1' },
@@ -94,6 +95,7 @@ describe('dispatchDatasetSearch', () => {
       histories: [],
       node: { name: 'Dataset Search' },
       params: { datasets: [{ datasetId: 'dataset_1' }], userChatInput: 'question', ...params },
+      nodeSummary,
       usagePush: usagePushMock
     } as any);
 
@@ -130,11 +132,16 @@ describe('dispatchDatasetSearch', () => {
         query: 'expanded'
       }
     });
-    const result = await runSearch({
-      usingReRank: true,
-      datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionModelId: 'deleted'
-    });
+    const nodeSummary = createNodeSummary();
+    const result = await runSearch(
+      {
+        usingReRank: true,
+        datasetSearchUsingExtensionQuery: true,
+        datasetSearchExtensionModelId: 'deleted'
+      },
+      nodeSummary
+    );
+    expect(nodeSummary).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
     expect(result.error).toBeUndefined();
     expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -208,6 +215,7 @@ describe('dispatchDatasetSearch', () => {
         datasets: [{ datasetId: 'first' }, { datasetId: 'second' }],
         userChatInput: 'question'
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
     expect(getDatasetSearchVlmModelMock).toHaveBeenCalledWith({
@@ -246,6 +254,7 @@ describe('dispatchDatasetSearch', () => {
         datasetSearchUsingExtensionQuery: false,
         collectionFilterMatch: '{"tags":{"$and":["legacy"]}}'
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any;
 
@@ -326,6 +335,7 @@ describe('dispatchDatasetSearch', () => {
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: true
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
@@ -400,6 +410,7 @@ describe('dispatchDatasetSearch', () => {
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: true
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
@@ -462,6 +473,7 @@ describe('dispatchDatasetSearch', () => {
         rerankWeight: 0.5,
         datasetSearchUsingExtensionQuery: false
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 
@@ -526,6 +538,7 @@ describe('dispatchDatasetSearch', () => {
         datasetSearchUsingExtensionQuery: false,
         datasetDeepSearch: true
       },
+      nodeSummary: createNodeSummary(),
       usagePush: usagePushMock
     } as any);
 

@@ -11,6 +11,7 @@ import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/u
 import { serviceEnv } from '../../../../env';
 import { getNestedEndOutputValue } from '../loop/service';
 import { collectResponseFeedbacks, injectNestedStartInputs, pushSubWorkflowUsage } from '../utils';
+import { getWorkflowRuntimeSummary } from '../utils/summary';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -88,13 +89,17 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
         storeEdges2RuntimeEdges(runtimeEdges, interactiveData?.childrenResponse)
       )
     });
+    const childSummary = getWorkflowRuntimeSummary(response);
+    props.nodeSummary.pushLLMTokens({
+      inputTokens: childSummary.llmInputTokens,
+      outputTokens: childSummary.llmOutputTokens
+    });
 
     // Concat runtime response
     if (!response.workflowInteractiveResponse) {
       outputValueArr.push(getNestedEndOutputValue(response));
     }
     assistantResponses.push(...response.assistantResponses);
-
     totalPoints += pushSubWorkflowUsage({
       usagePush: props.usagePush,
       response,

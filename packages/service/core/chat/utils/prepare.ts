@@ -177,7 +177,11 @@ export const prepareChatRound = async (
           chatGenerateStatus: ChatGenerateStatusEnum.generating
         },
         $setOnInsert: {
-          createTime: now
+          createTime: now,
+          summary: {
+            llmInputTokens: 0,
+            llmOutputTokens: 0
+          }
         }
       },
       {

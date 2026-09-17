@@ -26,13 +26,14 @@ type Response = DispatchNodeResultType<{
 }>;
 
 /** @deprecated 保留用于兼容已保存的问题优化节点。 */
-export const dispatchQueryExtension = async ({
-  histories,
-  node,
-  usagePush,
-  runningUserInfo,
-  params: { modelId, model, systemPrompt, history, userChatInput }
-}: Props): Promise<Response> => {
+export const dispatchQueryExtension = async (props: Props): Promise<Response> => {
+  const {
+    histories,
+    node,
+    usagePush,
+    runningUserInfo,
+    params: { modelId, model, systemPrompt, history, userChatInput }
+  } = props;
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
@@ -49,7 +50,6 @@ export const dispatchQueryExtension = async ({
     embeddingModel,
     teamId: runningUserInfo.teamId
   });
-
   extensionQueries.unshift(userChatInput);
 
   const { totalPoints: llmPoints, modelId: llmModelId } = formatModelChars2Points({

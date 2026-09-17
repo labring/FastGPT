@@ -1,3 +1,4 @@
+import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
 import { getModelHandle } from '../../../../../../ai/model';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -212,6 +213,7 @@ export const dispatchAgentDatasetSearch = async ({
     datasetParams
   });
 
+  const nodeSummary = createNodeSummary();
   try {
     const requestedDatasetIds = datasetParams.datasets.map((item) => item.datasetId);
     const datasetIds =
@@ -438,6 +440,7 @@ export const dispatchAgentDatasetSearch = async ({
     return {
       response: formattedResponse,
       usages: usages,
+      nodeSummary: getNodeSummaryData(nodeSummary),
       nodeResponse
     };
   } catch (error) {
@@ -445,6 +448,7 @@ export const dispatchAgentDatasetSearch = async ({
     const response = `Failed to search dataset: ${getErrText(error)}`;
     return {
       response,
+      nodeSummary: getNodeSummaryData(nodeSummary),
       errorMessage: response
     };
   }

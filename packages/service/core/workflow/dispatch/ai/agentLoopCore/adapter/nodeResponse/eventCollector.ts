@@ -5,10 +5,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/interface';
 import { AgentNodeResponseDisplay } from '../../domain/constants';
 import { parseJsonArgs } from '../../../../../../ai/utils';
-import {
-  appendAgentLoopCoreChildNodeResponses,
-  withAgentLoopCoreChildTotalPoints
-} from './children';
+import { withAgentLoopCoreChildTotalPoints } from './children';
 import { createAgentLoopCoreCompressNodeResponse } from './compress';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
@@ -30,6 +27,8 @@ export type CreateAgentLoopCoreNodeResponseEventCollectorParams = {
   };
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
+  /** ToolCall 的主模型 response 由外层 nodeResponse 承载，内部 loop 只收集工具相关 response。 */
+  collectAgentCallNodeResponse?: boolean;
   getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo;
 };
 
@@ -48,6 +47,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
   node,
   nodeResponses,
   appendNodeResponse,
+  collectAgentCallNodeResponse = true,
   getToolInfo
 }: CreateAgentLoopCoreNodeResponseEventCollectorParams) => {
   const appendedCallIds = new Set<string>();
@@ -166,6 +166,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
   const appendAgentCallNodeResponse = (
     event: Extract<AgentLoopEvent, { type: 'llm_request_end' }>
   ) => {
+    if (!collectAgentCallNodeResponse) return;
     if (appendedLlmRequestIds.has(event.requestId)) return;
     appendedLlmRequestIds.add(event.requestId);
 
@@ -224,27 +225,27 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
         seconds: event.seconds,
         errorMessage: event.errorMessage
       });
-    const compressNodeResponse = event.toolResponseCompress
-      ? createToolResponseCompressNodeResponse(event.toolResponseCompress)
-      : undefined;
-
-    return appendAgentLoopCoreChildNodeResponses({
-      nodeResponse: {
-        ...toolNodeResponse,
-        runningTime: toolNodeResponse.runningTime ?? event.seconds,
-        toolRes: toolNodeResponse.toolRes ?? event.response,
-        totalPoints: toolNodeResponse.totalPoints ?? getUsageTotalPoints(usages),
-        ...(event.errorMessage ? { errorText: event.errorMessage } : {})
-      },
-      childrenResponses: compressNodeResponse ? [compressNodeResponse] : []
-    });
+    return {
+      ...toolNodeResponse,
+      runningTime: toolNodeResponse.runningTime ?? event.seconds,
+      toolRes: toolNodeResponse.toolRes ?? event.response,
+      totalPoints: toolNodeResponse.totalPoints ?? getUsageTotalPoints(usages),
+      ...(event.errorMessage ? { errorText: event.errorMessage } : {})
+    };
   };
 
   const appendToolNodeResponse = (event: ToolRunEndEvent) => {
     if (appendedCallIds.has(event.call.id)) return;
     appendedCallIds.add(event.call.id);
 
-    append(createToolNodeResponse(event));
+    const toolNodeResponse = createToolNodeResponse(event);
+    append(toolNodeResponse);
+    if (event.toolResponseCompress) {
+      append({
+        ...createToolResponseCompressNodeResponse(event.toolResponseCompress),
+        parentId: toolNodeResponse.id
+      });
+    }
     pendingToolResultMap.delete(event.call.id);
   };
 

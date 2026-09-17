@@ -215,7 +215,7 @@ export async function handleSkillDebugChat(
       system_memories,
       durationSeconds,
       customFeedbacks,
-      nodeResponseSummary
+      workflowRuntimeSummary
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
       res,
@@ -310,7 +310,7 @@ export async function handleSkillDebugChat(
       userContent: workflowUserQuestion,
       aiContent: aiResponse,
       durationSeconds,
-      nodeResponseSummary,
+      workflowRuntimeSummary,
       metadata: { originIp }
     };
 

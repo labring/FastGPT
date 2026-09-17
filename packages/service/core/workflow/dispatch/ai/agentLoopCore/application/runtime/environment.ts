@@ -2,7 +2,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/interface';
-import type { WorkflowResponseType } from '../../../../type';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createAgentLoopCoreEventDispatcher } from '../../adapter/eventStream/eventDispatcher';
 import { createAgentLoopCoreEventStream } from '../../adapter/eventStream/createEventStream';
 import { createAgentLoopCoreNodeResponseEventCollector } from '../../adapter/nodeResponse/eventCollector';
@@ -23,12 +23,11 @@ export type CreateAgentLoopCoreRuntimeEnvironmentParams = {
   sliceToolResponse?: boolean;
   getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
   shouldStreamTool?: (name: string) => boolean;
-  /**
-   * Workflow Agent 使用 nodeResponses 记录平铺运行详情；ToolCall 不传该数组，
-   * 改由 toolRunResponses 记录子流程详情。
-   */
+  /** 当前层 response 的平铺收集目标；ToolCall 通过 appendNodeResponse 接入共享 sink。 */
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
+  /** ToolCall 只收集工具、压缩和上下文 response，主模型 response 由外层节点承载。 */
+  collectAgentCallNodeResponse?: boolean;
   collectToolRunResponses?: boolean;
 };
 
@@ -39,8 +38,8 @@ const noop = () => {};
  *
  * 这一层把 agent-loop 事件统一分成三类副作用：
  * 1. SSE：answer/reasoning/tool/plan 实时推送。
- * 2. Workflow Agent nodeResponses：主模型、业务工具、plan/ask、压缩节点平铺记录。
- * 3. ToolCall toolRunResponses：工具子流程详情和压缩 child 记录。
+ * 2. 当前层 nodeResponses：主模型、业务工具、plan/ask、压缩节点平铺记录。
+ * 3. ToolCall toolRunResponses：子 workflow 详情和控制汇总；不参与当前层 token 提取。
  *
  * 调用方只需要继续提供工具目录、system tool executor 和 LLM 参数，不再各自手写事件桥。
  */
@@ -54,6 +53,7 @@ export const createAgentLoopCoreRuntimeEnvironment = ({
   shouldStreamTool = () => true,
   nodeResponses,
   appendNodeResponse,
+  collectAgentCallNodeResponse = true,
   collectToolRunResponses = false
 }: CreateAgentLoopCoreRuntimeEnvironmentParams) => {
   const eventStream = createAgentLoopCoreEventStream({
@@ -75,6 +75,7 @@ export const createAgentLoopCoreRuntimeEnvironment = ({
           node,
           nodeResponses,
           appendNodeResponse,
+          collectAgentCallNodeResponse,
           getToolInfo: (name) => getToolInfo(name) || { name }
         })
       : undefined;

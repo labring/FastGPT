@@ -11,7 +11,11 @@ import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/t
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { DispatchFlowResponse } from '@fastgpt/service/core/workflow/dispatch/type';
-import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
+import {
+  createNodeSummary,
+  createWorkflowRuntimeSummary,
+  summarizeRuntimeNodeResponses
+} from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 
 const runWorkflowMock = vi.fn();
 
@@ -147,7 +151,7 @@ const makeDispatchFlowResponse = (
     [DispatchNodeResponseKeyEnum.assistantResponses]: [],
     [DispatchNodeResponseKeyEnum.runTimes]: 1,
     [DispatchNodeResponseKeyEnum.newVariables]: {},
-    runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses),
+    workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, nodeResponses),
     durationSeconds: 0,
     ...rest
   } as DispatchFlowResponse;
@@ -198,6 +202,7 @@ const makeProps = (
     runtimeEdges: [],
     variableState: makeVariableState(),
     usagePush: vi.fn(),
+    nodeSummary: createNodeSummary(),
     lastInteractive: undefined,
     checkIsStopping: () => false
   } as any;
@@ -225,9 +230,16 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
             .find((n: any) => n.nodeId === 'startNode')
             ?.inputs.find((i: any) => i.key === NodeInputKeyEnum.nestedStartInput)?.value
         }`;
+      const nodeResponses = [makeResponseItem('startNode'), makeResponseItem('chatNode')];
       return Promise.resolve(
         makeDispatchFlowResponse({
-          nodeResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+          workflowRuntimeSummary: {
+            ...createWorkflowRuntimeSummary(),
+            ...summarizeRuntimeNodeResponses(undefined, nodeResponses),
+            llmInputTokens: 5,
+            llmOutputTokens: 2
+          },
+          nodeResponses
         })
       );
     });
@@ -248,6 +260,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variableState: makeVariableState(),
       usagePush: vi.fn(),
+      nodeSummary: createNodeSummary(),
       lastInteractive: undefined,
       checkIsStopping: () => false
     } as any;
@@ -255,6 +268,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const result: any = await dispatchLoopRun(props);
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(3);
+    expect(props.nodeSummary).toMatchObject({
+      llmInputTokens: 15,
+      llmOutputTokens: 6
+    });
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunIterations).toBe(3);
     expect(nodeResponse.loopRunHistory).toHaveLength(3);
@@ -538,6 +555,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variableState: makeVariableState(),
       usagePush: vi.fn(),
+      nodeSummary: createNodeSummary(),
       lastInteractive: undefined,
       checkIsStopping: () => false
     } as any;
@@ -748,6 +766,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variableState: makeVariableState(),
       usagePush: vi.fn(),
+      nodeSummary: createNodeSummary(),
       lastInteractive: {
         type: 'loopRunInteractive',
         params: {
@@ -774,6 +793,14 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     runWorkflowMock.mockImplementationOnce(() =>
       Promise.resolve(
         makeDispatchFlowResponse({
+          workflowRuntimeSummary: {
+            ...createWorkflowRuntimeSummary(),
+            childResponseCount: 2,
+            childTotalPoints: 9,
+            totalPoints: 5,
+            llmInputTokens: 7,
+            llmOutputTokens: 3
+          },
           nodeResponses: [
             makeResponseItem('userSelectNode', { totalPoints: 2 }),
             makeResponseItem('chatNode', { totalPoints: 3, childTotalPoints: 4 })
@@ -791,6 +818,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const preInterruptSummary = summarizeRuntimeNodeResponses(undefined, [
       makeResponseItem('startNode', { totalPoints: 1 })
     ]);
+    preInterruptSummary.llmInputTokens = 100;
+    preInterruptSummary.llmOutputTokens = 50;
     const runtimeNodes = makeRuntimeNodes();
     const node = runtimeNodes[0];
     const props = {
@@ -805,6 +834,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variableState: makeVariableState(),
       usagePush: vi.fn(),
+      nodeSummary: createNodeSummary(),
       lastInteractive: {
         type: 'loopRunInteractive',
         params: {
@@ -822,6 +852,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const result: any = await dispatchLoopRun(props);
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
 
+    expect(props.nodeSummary).toMatchObject({
+      llmInputTokens: 7,
+      llmOutputTokens: 3
+    });
     expect(nodeResponse.totalPoints).toBe(5);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.childResponseCount).toBe(3);
@@ -864,6 +898,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variableState: makeVariableState(),
       usagePush: vi.fn(),
+      nodeSummary: createNodeSummary(),
       lastInteractive: {
         type: 'loopRunInteractive',
         params: {
@@ -950,6 +985,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variableState: makeVariableState(),
       usagePush: vi.fn(),
+      nodeSummary: createNodeSummary(),
       lastInteractive: undefined,
       checkIsStopping: () => false
     } as any;
@@ -1192,6 +1228,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       runtimeEdges: [],
       variableState: makeVariableState(),
       usagePush: vi.fn(),
+      nodeSummary: createNodeSummary(),
       checkIsStopping: () => false,
       lastInteractive: {
         type: 'loopRunInteractive',

@@ -201,9 +201,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         })
       });
     })();
-
     const { runTimes, toolDetail, toolTotalPoints } =
       summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
+    // 有 sink 时 child workflow 和当前 ToolCall 的内部 response 已经独立发布；
+    // 只在无 sink 的调试/单测路径把兼容详情挂回顶层 response。
+    const toolDetailForResponse = props.nodeResponseSink ? undefined : toolDetail;
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
     const totalPointsUsage = modelTotalPoints + toolTotalPoints;
@@ -217,19 +219,20 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       query: userChatInput,
       completeMessages,
       useVision,
-      toolDetail,
-      nodeId,
+      toolDetail: toolDetailForResponse,
       finishReason: finish_reason || 'stop',
       requestIds,
       firstTokenTime
     });
 
     if (error) {
-      return getNodeErrResponse({
-        error,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-        [DispatchNodeResponseKeyEnum.runTimes]: runTimes
-      });
+      return {
+        ...getNodeErrResponse({
+          error,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+          [DispatchNodeResponseKeyEnum.runTimes]: runTimes
+        })
+      };
     }
 
     if (toolWorkflowInteractiveResponse) {

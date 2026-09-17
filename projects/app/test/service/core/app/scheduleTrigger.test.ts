@@ -122,12 +122,18 @@ describe('getScheduleTriggerApp', () => {
       durationSeconds: 1.2,
       system_memories: { memory: 'value' },
       customFeedbacks: ['feedback-id'],
-      nodeResponseSummary: {
+      workflowRuntimeSummary: {
+        responseIds: [],
+        finishedNodeIds: [],
+        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
         totalPoints: 0,
-        inputTokens: 0,
-        outputTokens: 0
+        hasLoopRunBreak: false,
+        hasToolStop: false,
+        hasNestedEnd: false,
+        llmInputTokens: 0,
+        llmOutputTokens: 0
       }
     });
     mocks.preChatRound.mockResolvedValue({
@@ -166,12 +172,18 @@ describe('getScheduleTriggerApp', () => {
     expect(saveInput).toMatchObject({
       chatId: dispatchInput.chatId,
       source: ChatSourceEnum.cronJob,
-      nodeResponseSummary: {
+      workflowRuntimeSummary: {
+        responseIds: [],
+        finishedNodeIds: [],
+        hasError: false,
         citeCollectionIds: [],
         errorCount: 0,
         totalPoints: 0,
-        inputTokens: 0,
-        outputTokens: 0
+        hasLoopRunBreak: false,
+        hasToolStop: false,
+        hasNestedEnd: false,
+        llmInputTokens: 0,
+        llmOutputTokens: 0
       }
     });
   });

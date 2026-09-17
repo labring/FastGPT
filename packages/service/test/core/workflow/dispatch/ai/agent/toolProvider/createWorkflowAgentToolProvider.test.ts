@@ -300,7 +300,9 @@ describe('createWorkflowAgentToolProvider', () => {
   });
 
   it('creates dataset search executor and current input files from workflow agent context', async () => {
+    const onToolResult = vi.fn();
     dispatchAgentDatasetSearchMock.mockResolvedValue({
+      nodeSummary: { llmInputTokens: 12, llmOutputTokens: 4 },
       response: 'dataset content',
       usages: [{ moduleName: 'Dataset search', totalPoints: 2 }],
       nodeResponse: {
@@ -308,6 +310,7 @@ describe('createWorkflowAgentToolProvider', () => {
       }
     });
     const provider = createWorkflowAgentToolProvider({
+      onToolResult,
       context: createContext({
         requestOrigin: 'https://fastgpt.example.com',
         currentFiles: [
@@ -359,6 +362,10 @@ describe('createWorkflowAgentToolProvider', () => {
         }
       })
     );
+    expect(onToolResult).toHaveBeenCalledWith({
+      response: 'dataset content',
+      nodeSummary: { llmInputTokens: 12, llmOutputTokens: 4 }
+    });
     expect(result.metadata).toEqual(
       expect.objectContaining({
         id: 'call_dataset',

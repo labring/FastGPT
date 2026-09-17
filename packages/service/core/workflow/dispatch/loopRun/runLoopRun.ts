@@ -14,13 +14,9 @@ import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/l
 import { serviceEnv } from '../../../../env';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
-import {
-  collectResponseFeedbacks,
-  getRuntimeNodeResponseSummary,
-  getNodeErrResponse,
-  mergeRuntimeNodeResponseSummary,
-  pushSubWorkflowUsage
-} from '../utils';
+import type { DispatchFlowResponse } from '../type';
+import { collectResponseFeedbacks, getNodeErrResponse, pushSubWorkflowUsage } from '../utils';
+import { getWorkflowRuntimeSummary, mergeWorkflowRuntimeSummary } from '../utils/summary';
 import {
   hasLoopRunBreakChild,
   injectLoopRunStart,
@@ -110,11 +106,14 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     response
   }: {
     isResumeIteration: boolean;
-    response: Response;
+    response: DispatchFlowResponse;
   }) => {
-    const currentSummary = getRuntimeNodeResponseSummary(response);
+    const currentSummary = getWorkflowRuntimeSummary(response);
     const fullSummary = isResumeIteration
-      ? mergeRuntimeNodeResponseSummary(pendingIterationSummary, currentSummary)
+      ? mergeWorkflowRuntimeSummary({
+          currentSummary: pendingIterationSummary,
+          workflowRuntimeSummary: currentSummary
+        })
       : currentSummary;
 
     // 同一个 iterationResponseId 会在暂停和恢复后各写一条 wrapper row；读取时数值字段按
@@ -192,12 +191,16 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         storeEdges2RuntimeEdges(isolatedEdges, interactiveData?.childrenResponse)
       )
     });
-
     // Merge pre-interrupt runtime summary so resumed iteration still sees the full
     // set of finished nodes and stats without keeping full child nodeResponse data.
     const { fullSummary: iterationSummary, wrapperSummary } = getWrapperSummary({
       isResumeIteration,
       response
+    });
+    const childRuntimeSummary = getWorkflowRuntimeSummary(response);
+    props.nodeSummary.pushLLMTokens({
+      inputTokens: childRuntimeSummary.llmInputTokens,
+      outputTokens: childRuntimeSummary.llmOutputTokens
     });
     const iterationChildResponseCount = wrapperSummary.childResponseCount;
     const iterationRunningTime = +((Date.now() - iterationStartTime) / 1000).toFixed(2);

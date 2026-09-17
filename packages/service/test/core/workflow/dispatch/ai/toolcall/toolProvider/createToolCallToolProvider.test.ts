@@ -140,7 +140,7 @@ describe('createToolCallToolProvider', () => {
             moduleName: 'Search'
           }
         ],
-        runtimeNodeResponseSummary: { hasToolStop: false, runningTime: 0 },
+        workflowRuntimeSummary: { hasToolStop: false, runningTime: 0 },
         workflowInteractiveResponse: undefined
       });
 
@@ -243,7 +243,7 @@ describe('createToolCallToolProvider', () => {
           }
         ],
         runTimes: 1,
-        runtimeNodeResponseSummary: { hasToolStop: false, runningTime: 0 },
+        workflowRuntimeSummary: { hasToolStop: false, runningTime: 0 },
         workflowInteractiveResponse: undefined
       };
     });

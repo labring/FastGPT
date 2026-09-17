@@ -369,7 +369,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds,
       system_memories,
       customFeedbacks,
-      nodeResponseSummary,
+      workflowRuntimeSummary,
       flatNodeResponses
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
@@ -444,7 +444,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         originIp,
         ...metadata
       },
-      nodeResponseSummary,
+      workflowRuntimeSummary,
       durationSeconds
     };
     if (interactive) {
@@ -481,7 +481,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       shouldCollect: shouldCollectFinalResponseData
     });
     const finalError = getWorkflowFinalResponseError({
-      nodeResponseSummary,
+      workflowRuntimeSummary,
       finalResponseData
     });
     const feResponseData = filterWorkflowFinalResponseData({

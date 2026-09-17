@@ -34,9 +34,10 @@ import {
   WorkflowVariableState
 } from '../utils/variables';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
-import { getRuntimeNodeResponseSummary } from '../utils';
+import { getWorkflowRuntimeSummary } from '../utils/summary';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
 import { loadChildWorkflowWithResource } from '../../utils/resource';
+import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -238,7 +239,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       assistantResponses,
       runTimes,
       system_memories,
-      runtimeNodeResponseSummary,
+      workflowRuntimeSummary,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     } = await runWithDerivedWorkflowFileContext({
       histories: props.histories,
@@ -279,7 +280,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         return runWorkflow({
           ...props,
           // 系统级 workflow tool 只保留工具节点自身的响应，不展开保存其内部 workflow 详情。
-          ...(shouldStoreChildNodeResponses ? {} : { nodeResponseSink: undefined }),
+          nodeResponseSink: withWorkflowNodeResponseOutputPolicy({
+            sink: props.nodeResponseSink,
+            record: shouldStoreChildNodeResponses,
+            emit: shouldStoreChildNodeResponses
+          }),
           // Rewrite stream mode
           ...(system_forbid_stream
             ? {
@@ -312,9 +317,17 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         });
       }
     });
-    const runtimeSummary = getRuntimeNodeResponseSummary({
-      runtimeNodeResponseSummary
+    const runtimeSummary = getWorkflowRuntimeSummary({
+      workflowRuntimeSummary
     });
+    // 系统级 workflow tool 的内部模型调用对用户不可见，不计入当前用户 workflow/chat
+    // 的 token summary；普通 plugin workflow 仍按 child summary 归属一次。
+    if (shouldStoreChildNodeResponses) {
+      props.nodeSummary.pushLLMTokens({
+        inputTokens: runtimeSummary.llmInputTokens,
+        outputTokens: runtimeSummary.llmOutputTokens
+      });
+    }
     const pluginOutput = runtimeSummary.pluginOutput;
     const pluginOutputError = getAppToolOutputError({
       plugin: workflowTool,
@@ -333,17 +346,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         totalPoints: usagePoints
       }
     ]);
-    // 系统级工作流工具不会落库内部详情，AppLog 需要把子流程 token 汇总到工具节点。
-    // 常规分支会直接写入子响应，不能回填，否则会重复累计。
-    const childTokens = shouldStoreChildNodeResponses
-      ? undefined
-      : flowUsages.reduce(
-          (acc, usage) => ({
-            inputTokens: acc.inputTokens + (usage.inputTokens || 0),
-            outputTokens: acc.outputTokens + (usage.outputTokens || 0)
-          }),
-          { inputTokens: 0, outputTokens: 0 }
-        );
     const childResponseCount = runtimeSummary.childResponseCount;
     const toolResponse = pluginOutput
       ? Object.keys(pluginOutput)
@@ -353,7 +355,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             return acc;
           }, {})
       : undefined;
-
     return {
       data: pluginOutput || {},
       ...(pluginOutputError
@@ -374,9 +375,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         toolInput: workflowToolVariables,
         pluginOutput,
         childResponseCount,
-        ...(childTokens && (childTokens.inputTokens || childTokens.outputTokens)
-          ? { inputTokens: childTokens.inputTokens, outputTokens: childTokens.outputTokens }
-          : {}),
         ...(pluginOutputError ? { errorText: pluginOutputError } : {})
       },
       [DispatchNodeResponseKeyEnum.toolResponse]: pluginOutputError

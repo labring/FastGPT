@@ -4,11 +4,11 @@ import {
   isToolExecutionResponse
 } from '@fastgpt/global/core/chat/utils';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
-import {
-  composeNodeResponseDetail,
-  type NodeResponseWriteSummary
-} from '@fastgpt/service/core/chat/nodeResponseStorage';
-import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
+import { composeNodeResponseDetail } from '@fastgpt/service/core/chat/nodeResponseStorage';
+import type {
+  WorkflowDebugResponse,
+  WorkflowRuntimeSummaryType
+} from '@fastgpt/service/core/workflow/dispatch/type';
 
 /**
  * 拆分 workflow 内部引用保留策略和当前请求的公开返回策略。
@@ -134,20 +134,20 @@ export const composeDebugNodeResponseMap = ({
 /**
  * 获取 workflow 执行的最终错误。
  *
- * 优先读取已剔除工具执行错误的 nodeResponseSummary.lastError。若 summary 不存在或未记录
+ * 优先读取已剔除工具执行错误的 workflowRuntimeSummary.errorText。若 summary 不存在或未记录
  * 根错误，在从 finalResponseData 兜底回退时，同样必须遵循排除规则（忽略工具详情、工具集、
  * 以及携带 toolRes/toolInput 的子应用/平铺工具响应），避免工具执行产生的业务报错或内部异常
  * 被提升为整轮会话的顶层 API 错误。
  */
 export const getWorkflowFinalResponseError = ({
-  nodeResponseSummary,
+  workflowRuntimeSummary,
   finalResponseData = []
 }: {
-  nodeResponseSummary?: NodeResponseWriteSummary;
+  workflowRuntimeSummary?: WorkflowRuntimeSummaryType;
   finalResponseData?: ChatHistoryItemResType[];
 }) => {
-  if (nodeResponseSummary?.lastError) {
-    return nodeResponseSummary.lastError;
+  if (workflowRuntimeSummary?.errorText) {
+    return workflowRuntimeSummary.errorText;
   }
 
   const lastErrorNode = finalResponseData.findLast(

@@ -1,10 +1,9 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { hasContextCheckpoint } from '@fastgpt/global/core/chat/utils';
-import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import type { DispatchFlowResponse, RuntimeNodeResponseSummary } from '../type';
+import type { DispatchFlowResponse } from '../type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { SystemVariablesType } from '../../types/runtime';
@@ -29,7 +28,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { McpToolSetRuntimeConfigType } from '@fastgpt/global/core/workflow/type/node';
-import type { WorkflowResponseType } from '../type';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getHTTPToolList } from '../../../app/http';
@@ -43,173 +42,6 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { jsonSchema2NodeInput } from '@fastgpt/global/core/app/jsonschema';
 import { getToolSetChildDescription } from '@fastgpt/global/core/app/tool/utils';
-
-/**
- * 创建 runtime nodeResponse 的轻量汇总对象。
- *
- * 该 summary 用于在 dispatch 过程中传递父流程需要的运行信号，避免把完整
- * nodeResponses 长时间保留在内存里。
- */
-export const createRuntimeNodeResponseSummary = (): RuntimeNodeResponseSummary => ({
-  responseIds: [],
-  finishedNodeIds: [],
-  hasError: false,
-  hasLoopRunBreak: false,
-  hasToolStop: false,
-  hasNestedEnd: false
-});
-
-/**
- * 增量更新父 workflow 运行控制需要的临时字段。
- *
- * 完整 nodeResponse 会由 writer 及时落库并释放；父节点只需要这些信号来判断
- * nestedEnd 输出、错误、loop break、tool stop、完成节点和 child 统计。
- * 调用方每处理完一批 nodeResponse，就把当前 summary 和本批响应传进来，返回新的
- * summary，避免重新保存或扫描完整 nodeResponse 列表。
- */
-export const summarizeRuntimeNodeResponses = (
-  currentSummary: RuntimeNodeResponseSummary | undefined,
-  nodeResponses: ChatHistoryItemResType[] = []
-): RuntimeNodeResponseSummary => {
-  const initialSummary = currentSummary
-    ? {
-        ...currentSummary,
-        responseIds: [...currentSummary.responseIds],
-        finishedNodeIds: [...currentSummary.finishedNodeIds]
-      }
-    : createRuntimeNodeResponseSummary();
-
-  const responseIdsWithConcreteParent = new Set(
-    nodeResponses
-      .map((response) => response.parentId)
-      .filter((parentId): parentId is string => !!parentId)
-  );
-  // 已进入 currentSummary 的 response id 不能再次计入统计，避免重复事件或分批更新导致
-  // points/responseCount 被累加两次。
-  const countedIds = new Set(initialSummary.responseIds);
-
-  const addResponseToSummary = (
-    summary: RuntimeNodeResponseSummary,
-    response: ChatHistoryItemResType
-  ) => {
-    if (response.id && countedIds.has(response.id)) {
-      return summary;
-    }
-    if (response.id) {
-      countedIds.add(response.id);
-    }
-
-    if (response.id) {
-      summary.responseIds.push(response.id);
-    }
-    if (response.nodeId) {
-      summary.finishedNodeIds.push(response.nodeId);
-    }
-    if (response.error || response.errorText) {
-      summary.hasError = true;
-      summary.errorText = getErrText(response.error || response.errorText);
-    }
-    if (response.moduleType === FlowNodeTypeEnum.loopRunBreak) {
-      summary.hasLoopRunBreak = true;
-    }
-    if (response.toolStop) {
-      summary.hasToolStop = true;
-    }
-    if (response.moduleType === FlowNodeTypeEnum.nestedEnd) {
-      summary.hasNestedEnd = true;
-      summary.nestedEndOutput = response.loopOutputValue;
-    }
-    if (response.moduleType === FlowNodeTypeEnum.pluginOutput && response.pluginOutput) {
-      summary.pluginOutput = response.pluginOutput;
-    }
-
-    const children = getChildrenResponses(response);
-    const hasConcreteChild =
-      children.length > 0 || (response.id ? responseIdsWithConcreteParent.has(response.id) : false);
-    // 已有实际 child response 时，父 response 上的 child 汇总只作为兼容字段，不能再重复累加。
-    const totalPoints = response.totalPoints || 0;
-    const childTotalPoints = hasConcreteChild ? 0 : response.childTotalPoints || 0;
-    const childResponseCount = hasConcreteChild ? 0 : response.childResponseCount || 0;
-    summary.totalPoints = (summary.totalPoints || 0) + totalPoints;
-    summary.childTotalPoints = (summary.childTotalPoints || 0) + totalPoints + childTotalPoints;
-    summary.childResponseCount = (summary.childResponseCount || 0) + 1 + childResponseCount;
-
-    children.forEach((child) => {
-      addResponseToSummary(summary, child);
-    });
-
-    return summary;
-  };
-
-  return nodeResponses.reduce<RuntimeNodeResponseSummary>(
-    (summary, response) => addResponseToSummary(summary, response),
-    initialSummary
-  );
-};
-
-/**
- * 合并多个子流程或并行分支返回的轻量 nodeResponse summary。
- *
- * 这里不重新扫描完整 nodeResponses，只把各分支已汇总出的控制信号、计费点数和
- * response 计数累加到同一个 summary 中。
- */
-export const mergeRuntimeNodeResponseSummary = (
-  ...summaries: (RuntimeNodeResponseSummary | undefined)[]
-): RuntimeNodeResponseSummary =>
-  summaries.reduce<RuntimeNodeResponseSummary>((merged, summary) => {
-    if (!summary) return merged;
-
-    merged.responseIds.push(...summary.responseIds);
-    merged.finishedNodeIds.push(...summary.finishedNodeIds);
-    merged.hasError ||= summary.hasError;
-    merged.errorText = summary.errorText || merged.errorText;
-    merged.hasLoopRunBreak ||= summary.hasLoopRunBreak;
-    merged.hasToolStop ||= summary.hasToolStop;
-    merged.hasNestedEnd ||= summary.hasNestedEnd;
-    if (summary.nestedEndOutput !== undefined) {
-      merged.nestedEndOutput = summary.nestedEndOutput;
-    }
-    if (summary.pluginOutput !== undefined) {
-      merged.pluginOutput = summary.pluginOutput;
-    }
-    merged.totalPoints = (merged.totalPoints || 0) + (summary.totalPoints || 0);
-    merged.childTotalPoints = (merged.childTotalPoints || 0) + (summary.childTotalPoints || 0);
-    merged.childResponseCount =
-      (merged.childResponseCount || 0) + (summary.childResponseCount || 0);
-
-    return merged;
-  }, createRuntimeNodeResponseSummary());
-
-/**
- * 从 dispatch response 中取得 nodeResponse summary。
- *
- * 新流程会优先返回 runtimeNodeResponseSummary；旧逻辑或兼容路径只携带
- * nodeResponses 时，会现场扫描一次并生成等价 summary。
- */
-export const getRuntimeNodeResponseSummary = (response: {
-  runtimeNodeResponseSummary?: RuntimeNodeResponseSummary;
-  nodeResponses?: ChatHistoryItemResType[];
-}): RuntimeNodeResponseSummary => {
-  if (!response) return createRuntimeNodeResponseSummary();
-
-  if (
-    response.runtimeNodeResponseSummary &&
-    (response.runtimeNodeResponseSummary.responseIds.length > 0 ||
-      response.runtimeNodeResponseSummary.finishedNodeIds.length > 0 ||
-      response.runtimeNodeResponseSummary.hasError ||
-      response.runtimeNodeResponseSummary.hasLoopRunBreak ||
-      response.runtimeNodeResponseSummary.hasToolStop ||
-      response.runtimeNodeResponseSummary.hasNestedEnd ||
-      response.runtimeNodeResponseSummary.pluginOutput !== undefined ||
-      response.runtimeNodeResponseSummary.totalPoints !== undefined ||
-      response.runtimeNodeResponseSummary.childTotalPoints !== undefined ||
-      response.runtimeNodeResponseSummary.childResponseCount !== undefined)
-  ) {
-    return response.runtimeNodeResponseSummary;
-  }
-
-  return summarizeRuntimeNodeResponses(undefined, response.nodeResponses);
-};
 
 /**
  * 构造 workflow SSE 写入函数。

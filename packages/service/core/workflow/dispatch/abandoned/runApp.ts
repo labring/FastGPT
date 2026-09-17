@@ -18,10 +18,10 @@ import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/glob
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
-<<<<<<< HEAD
 import { createWorkflowChildResourceContext, loadWorkflowAppResource } from '../../utils/resource';
 import { getAppVersionById } from '../../../app/version/controller';
 import { nodeHasDynamicInput } from '../../../app/resources';
+import { getWorkflowRuntimeSummary } from '../utils/summary';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -35,7 +35,6 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
-    runningAppInfo,
     workflowStreamResponse,
     histories,
     query,
@@ -84,7 +83,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   let filteredChildHistories = chatHistories;
   let filteredChildQuery = childQuery;
 
-  const { assistantResponses, system_memories, flowUsages } =
+  const { assistantResponses, system_memories, flowUsages, workflowRuntimeSummary } =
     await runWithDerivedWorkflowFileContext({
       query: childQuery,
       histories: chatHistories,
@@ -128,6 +127,11 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   // 子工作流本身不会落账，由当前应用节点统一归集，避免用量遗漏或重复计费。
   const totalPoints = flowUsages.reduce((sum, usage) => sum + safePoints(usage.totalPoints), 0);
+  const childSummary = getWorkflowRuntimeSummary({ workflowRuntimeSummary });
+  props.nodeSummary.pushLLMTokens({
+    inputTokens: childSummary.llmInputTokens,
+    outputTokens: childSummary.llmOutputTokens
+  });
   props.usagePush([
     {
       moduleName: appData.name,

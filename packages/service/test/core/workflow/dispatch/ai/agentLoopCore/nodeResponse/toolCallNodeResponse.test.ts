@@ -20,7 +20,6 @@ describe('createAgentLoopCoreToolCallNodeResponse', () => {
         ],
         useVision: false,
         toolDetail: [{ moduleName: 'Tool' } as any],
-        nodeId: 'toolcall_node',
         finishReason: 'stop',
         requestIds: ['req_1']
       })
@@ -33,7 +32,6 @@ describe('createAgentLoopCoreToolCallNodeResponse', () => {
         model: 'GPT-5',
         query: 'hello',
         toolDetail: [{ moduleName: 'Tool' }],
-        mergeSignId: 'toolcall_node',
         finishReason: 'stop',
         llmRequestIds: ['req_1']
       })

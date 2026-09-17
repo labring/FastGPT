@@ -328,7 +328,7 @@ describe('callMcpServerTool', () => {
       newVariables: {},
       toolResponse: { result: 'tool response should not be the plugin source' },
       durationSeconds: 1,
-      runtimeNodeResponseSummary: {
+      workflowRuntimeSummary: {
         responseIds: ['plugin-output-response-id'],
         finishedNodeIds: [],
         hasError: false,
