@@ -1178,4 +1178,41 @@ describe('WorkflowNodeResponseWriter', () => {
       'collection-parent-2'
     ]);
   });
+
+  it('ignores tool execution errors in summary while tracking root errors', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: {
+        create: vi.fn().mockResolvedValue(undefined)
+      }
+    });
+
+    await writer.record([
+      makeResponse({
+        id: 'flat-tool-sandbox',
+        moduleType: FlowNodeTypeEnum.tool,
+        errorText: 'Sandbox timeout',
+        totalPoints: 2
+      }),
+      makeResponse({
+        id: 'flat-tool-custom',
+        toolRes: 'Command failed',
+        errorText: 'Command failed',
+        totalPoints: 1
+      }),
+      makeResponse({
+        id: 'root-llm',
+        moduleType: FlowNodeTypeEnum.chatNode,
+        totalPoints: 5
+      })
+    ]);
+
+    expect(writer.getSummary()).toEqual({
+      citeCollectionIds: [],
+      errorCount: 0,
+      lastError: undefined,
+      totalPoints: 8
+    });
+  });
 });

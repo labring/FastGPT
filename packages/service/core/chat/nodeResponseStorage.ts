@@ -4,6 +4,7 @@ import type {
   ChatItemResponseSchemaType
 } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
@@ -504,9 +505,10 @@ export class WorkflowNodeResponseWriter {
       // citeCollectionIds 用于保存聊天记录引用来源；内联 children 里的搜索节点也要兼容收集。
       contribution.citeCollectionIds.push(...collectCiteCollectionIds(row.data));
 
-      // 保存历史统计保持旧逻辑口径：只按根节点累计错误数和积分。
+      // 保存历史统计保持旧逻辑口径：只按根节点累计错误数和积分。工具执行详情不计入会话错误。
       if (!row.data.parentId) {
-        const errorText = row.data.errorText || row.data.error;
+        const errorText =
+          !isToolExecutionResponse(row.data) && (row.data.errorText || row.data.error);
         if (errorText) {
           contribution.errorCount = 1;
           contribution.lastError = String(errorText);

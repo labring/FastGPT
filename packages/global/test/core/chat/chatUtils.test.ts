@@ -19,7 +19,8 @@ import {
   getFlatAppResponses,
   checkInteractiveResponseStatus,
   removeAIResponseCite,
-  hasContextCheckpoint
+  hasContextCheckpoint,
+  isToolExecutionResponse
 } from '@fastgpt/global/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
@@ -806,5 +807,90 @@ describe('removeAIResponseCite', () => {
 
     expect(result[0].id).toBe('item1');
     expect(result[0].text?.content).toBe('Hello ');
+  });
+});
+
+describe('isToolExecutionResponse', () => {
+  it('returns true when parentId is present', () => {
+    expect(
+      isToolExecutionResponse({
+        id: 'child-1',
+        nodeId: 'child-node',
+        moduleName: 'Child',
+        moduleType: FlowNodeTypeEnum.agent,
+        parentId: 'parent-1'
+      })
+    ).toBe(true);
+  });
+
+  it('returns true when moduleType is tool or toolSet', () => {
+    expect(
+      isToolExecutionResponse({
+        id: 'tool-1',
+        nodeId: 'tool-node',
+        moduleName: '虚拟机/列出目录',
+        moduleType: FlowNodeTypeEnum.tool
+      })
+    ).toBe(true);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'tool-set-1',
+        nodeId: 'tool-set-node',
+        moduleName: 'Tool Set',
+        moduleType: FlowNodeTypeEnum.toolSet
+      })
+    ).toBe(true);
+  });
+
+  it('returns true when toolRes or toolInput is present on other module types', () => {
+    expect(
+      isToolExecutionResponse({
+        id: 'sub-app-1',
+        nodeId: 'sub-app-node',
+        moduleName: 'SubApp Tool',
+        moduleType: FlowNodeTypeEnum.appModule,
+        toolRes: 'Tool error: failed'
+      })
+    ).toBe(true);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'sub-app-2',
+        nodeId: 'sub-app-node',
+        moduleName: 'SubApp Tool',
+        moduleType: FlowNodeTypeEnum.appModule,
+        toolInput: { query: 'test' }
+      })
+    ).toBe(true);
+  });
+
+  it('returns false for standalone root workflow nodes without tool attributes', () => {
+    expect(
+      isToolExecutionResponse({
+        id: 'agent-1',
+        nodeId: 'agent-node',
+        moduleName: '主模型',
+        moduleType: FlowNodeTypeEnum.agent
+      })
+    ).toBe(false);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'http-1',
+        nodeId: 'http-node',
+        moduleName: 'HTTP 请求',
+        moduleType: FlowNodeTypeEnum.httpRequest468
+      })
+    ).toBe(false);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'chat-1',
+        nodeId: 'chat-node',
+        moduleName: 'AI 对话',
+        moduleType: FlowNodeTypeEnum.chatNode
+      })
+    ).toBe(false);
   });
 });
