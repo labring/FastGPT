@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Box, Button, Center, Checkbox, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Center, Checkbox, Flex, Table, Tbody, useDisclosure } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -340,32 +340,46 @@ const ToolProvider = () => {
                   dataList={displayTools}
                 >
                   {({ provided }) => (
-                    <Flex
-                      gap={0}
-                      flex={1}
-                      flexDirection={'column'}
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
+                    // ToolRow 内部使用 Tr/Td，必须置于 Table 上下文，否则 Chakra 表格样式上下文缺失会整页报错
+                    <Table
+                      variant={'simple'}
+                      w={'100%'}
+                      minW={'900px'}
+                      sx={{
+                        tableLayout: 'fixed',
+                        '& td': {
+                          borderBottom: 'none'
+                        }
+                      }}
                     >
-                      {displayTools.map((item, index) => (
-                        <Draggable
-                          key={item.id}
-                          draggableId={item.id}
-                          index={index}
-                          isDragDisabled={!!searchKey.trim()}
-                        >
-                          {(provided, snapshot) => (
-                            <ToolRow
-                              key={item.id}
-                              tool={item}
-                              setEditingToolId={setEditingToolId}
-                              provided={provided}
-                              snapshot={snapshot}
-                            />
-                          )}
-                        </Draggable>
-                      ))}
-                    </Flex>
+                      <colgroup>
+                        <col style={{ width: '22%' }} />
+                        <col style={{ width: '15%' }} />
+                        <col style={{ width: '41%' }} />
+                        <col style={{ width: '11%' }} />
+                        <col style={{ width: '11%' }} />
+                      </colgroup>
+                      <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+                        {displayTools.map((item, index) => (
+                          <Draggable
+                            key={item.id}
+                            draggableId={item.id}
+                            index={index}
+                            isDragDisabled={!!searchKey.trim()}
+                          >
+                            {(provided, snapshot) => (
+                              <ToolRow
+                                key={item.id}
+                                tool={item}
+                                setEditingToolId={setEditingToolId}
+                                provided={provided}
+                                snapshot={snapshot}
+                              />
+                            )}
+                          </Draggable>
+                        ))}
+                      </Tbody>
+                    </Table>
                   )}
                 </DndDrag>
               ) : (
