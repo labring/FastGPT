@@ -1,4 +1,7 @@
-import { getCaptchaPic, type UserVerificationPurpose } from '@/web/support/user/api';
+import {
+  getCaptchaPic as getDefaultCaptchaPic,
+  type UserVerificationPurpose
+} from '@/web/support/user/api';
 import { Button, FormControl, Input, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -14,7 +17,8 @@ const SendCodeAuthModal = ({
   purpose,
   onClose,
   onSending,
-  onSendCode
+  onSendCode,
+  getCaptchaPic
 }: {
   username: string;
   purpose: UserVerificationPurpose;
@@ -22,6 +26,8 @@ const SendCodeAuthModal = ({
 
   onSending: boolean;
   onSendCode: (e: { username: string; captcha: string }) => Promise<void>;
+  /** 登录二次验证使用 Challenge 作用域的图片验证码，普通场景使用账号作用域。 */
+  getCaptchaPic?: () => Promise<{ captchaImage: string }>;
 }) => {
   const { t } = useTranslation();
 
@@ -35,7 +41,10 @@ const SendCodeAuthModal = ({
     data,
     loading,
     run: getCaptcha
-  } = useRequest(() => getCaptchaPic(username, purpose), { manual: false });
+  } = useRequest(
+    useMemoizedFn(() => getCaptchaPic?.() ?? getDefaultCaptchaPic(username, purpose)),
+    { manual: false }
+  );
 
   const refreshCaptcha = useMemoizedFn(() => {
     getCaptcha();
