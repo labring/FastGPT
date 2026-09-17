@@ -15,5 +15,46 @@
     "jsx": "preserve",
     "incremental": true
   },
-  "exclude": ["node_modules", "**/node_modules", "**/node_modules/**"]
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    "**/node_modules/**",
+    "**/public/js/**",
+    "projects/app/worker/**",
+    "pro/admin/worker/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/coverage/**"
+  ],
+  "include": [
+    "*.ts",
+    "*.mts",
+    "*.mjs",
+    "*.js",
+    "scripts/**/*",
+    "deploy/**/*",
+    "document/*.js",
+    "document/*.mjs",
+    "document/script/**/*",
+    "pro/scripts/**/*",
+    "pro/llm_benchmark/chatTitle/**/*",
+    "pro/llm_benchmark/plan_generation/**/*",
+    "pro/llm_benchmark/skill_creator/**/*",
+    "pro/sso/*.ts",
+    "pro/sso/*.cjs",
+    "pro/sso/test/**/*",
+    "pro/browser-sandbox/*.ts",
+    "pro/browser-sandbox/*.cjs",
+    "pro/admin/*.ts",
+    "pro/admin/*.js",
+    "pro/admin/test/api/support/wallet/**/*.ts",
+    "projects/code-sandbox/*.ts",
+    "projects/code-sandbox/test/**/*",
+    "projects/volume-manager/*.ts",
+    "projects/marketplace/*.ts",
+    "projects/marketplace/*.js",
+    "projects/marketplace/*.mjs",
+    "projects/app/*.js",
+    "sdk/sandbox-adapter/*.ts"
+  ]
 }
