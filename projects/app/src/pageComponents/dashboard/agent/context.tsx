@@ -3,7 +3,7 @@ import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination, type ScrollListType } from '@fastgpt/web/hooks/useScrollPagination';
-import { getAppDetailById, getMyAppsV2, putAppById } from '@/web/core/app/api';
+import { batchMoveApps, getAppDetailById, getMyAppsV2, putAppById } from '@/web/core/app/api';
 import type { SelectOneResourceServer } from '@/components/common/folder/SelectOneResource';
 import { type AppDetailType, type AppListItemType } from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
@@ -392,10 +392,14 @@ const AppListContextProvider = ({
   const onBatchMoveApps = useCallback(
     async (targetParentId: ParentIdType) => {
       if (selectedAppIds.length === 0) return;
-      await Promise.all(selectedAppIds.map((id) => putAppById(id, { parentId: targetParentId })));
+      const result = await batchMoveApps({
+        ids: selectedAppIds,
+        parentId: targetParentId ?? null
+      });
       await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyApps()]);
-      setSelectedAppIds([]);
-      setIsBatchMode(false);
+      setSelectedAppIds(result.failedIds);
+      if (result.failedIds.length === 0) setIsBatchMode(false);
+      return result;
     },
     [selectedAppIds, refetchFolderDetail, refetchPaths, loadMyApps]
   );
@@ -476,8 +480,9 @@ const AppListContextProvider = ({
         <BatchDeleteModal
           apps={selectedApps}
           onClose={() => setIsBatchDeleting(false)}
-          onSuccess={() => {
-            setSelectedAppIds([]);
+          onSuccess={({ failedIds }) => {
+            setSelectedAppIds(failedIds);
+            if (failedIds.length === 0) setIsBatchMode(false);
             loadMyApps();
           }}
         />

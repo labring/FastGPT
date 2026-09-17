@@ -920,6 +920,7 @@
   "month_text": "월",
   "move.confirm": "이동 확인",
   "move_success": "이동되었습니다",
+  "move_failed": "이동 실패",
   "move_to": "다음으로 이동",
   "move_to_root": "루트로 이동",
   "n_agent_amount": "{{amount}}개 에이전트 한도",
@@ -1292,5 +1293,6 @@
   "selected_items": "<bold>{{count}}</bold>개 선택됨",
   "read_only_no_batch_permission": "현재 리소스에 대한 작업 권한이 없어 일괄 작업을 수행할 수 없습니다",
   "will_delete": "삭제될 항목",
-  "confirm_delete": "삭제 확인"
+  "confirm_delete": "삭제 확인",
+  "batch_partial_failed": "선택한 항목 중 일부를 처리하지 못했습니다"
 }

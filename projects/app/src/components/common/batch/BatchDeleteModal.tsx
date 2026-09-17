@@ -6,6 +6,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import DeleteConfirmInput from '@fastgpt/web/components/common/DeleteConfirmInput';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { BatchResourceActionResponse } from '@fastgpt/global/openapi/common/batch/api';
 
 export type BatchDeleteItemType = {
   _id: string;
@@ -20,8 +21,8 @@ export type CommonBatchDeleteModalProps<T extends BatchDeleteItemType> = {
   type: 'app' | 'skill' | 'dataset';
   items: T[];
   onClose: () => void;
-  onSuccess: () => void;
-  onDelete: (deletableItems: T[]) => Promise<any>;
+  onSuccess: (result: BatchResourceActionResponse) => void;
+  onDelete: (deletableItems: T[]) => Promise<BatchResourceActionResponse>;
 };
 
 /**
@@ -158,17 +159,31 @@ export const CommonBatchDeleteModal = <T extends BatchDeleteItemType>({
   }, [folderCount, itemCount, t, i18n.language, type]);
 
   const { runAsync: onExecuteDelete, loading: isDeleting } = useRequest(
-    async () => {
-      if (deletableItems.length === 0) return;
-      await onDelete(deletableItems);
+    async (): Promise<BatchResourceActionResponse> => {
+      if (deletableItems.length === 0) {
+        return { successIds: [], failedIds: [], affectedIds: [] };
+      }
+      return onDelete(deletableItems);
     },
     {
-      onSuccess() {
-        toast({
-          title: t('common:delete_success'),
-          status: 'success'
-        });
-        onSuccess();
+      onSuccess(result) {
+        if (result.successIds.length === 0 && result.failedIds.length > 0) {
+          toast({
+            title: t('common:delete_failed'),
+            status: 'error'
+          });
+        } else if (result.failedIds.length > 0) {
+          toast({
+            title: t('common:batch_partial_failed'),
+            status: 'warning'
+          });
+        } else {
+          toast({
+            title: t('common:delete_success'),
+            status: 'success'
+          });
+        }
+        onSuccess(result);
         onClose();
       },
       errorToast: t('common:delete_failed')
@@ -243,7 +258,7 @@ export const CommonBatchDeleteModal = <T extends BatchDeleteItemType>({
         )}
 
         {/* 动态说明文案 */}
-        <Box flexShrink={0}>{descriptionText}</Box>
+        {deletableItems.length > 0 && <Box flexShrink={0}>{descriptionText}</Box>}
 
         {/* 待删除清单展示 */}
         {deletableItems.length > 0 && (

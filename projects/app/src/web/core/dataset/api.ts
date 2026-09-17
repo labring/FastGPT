@@ -3,12 +3,13 @@ import type {
   GetPathProps,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
-import type {
-  DatasetItemType,
-  DatasetListItemType,
-  DatasetSimpleItemType
-} from '@fastgpt/global/core/dataset/type';
+import type { DatasetItemType, DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type';
 import type { PostDatasetSyncParams } from '@fastgpt/global/openapi/core/dataset/api';
+import type {
+  BatchResourceActionResponse,
+  BatchResourceDeleteBody,
+  BatchResourceMoveBody
+} from '@fastgpt/global/openapi/common/batch/api';
 import type {
   CreateDatasetBody,
   CreateDatasetWithFilesBody,
@@ -55,6 +56,12 @@ export const postCreateDatasetWithFiles = (data: CreateDatasetWithFilesBody) =>
   POST<CreateDatasetWithFilesResponse>(`/core/dataset/createWithFiles`, data);
 
 export const putDatasetById = (data: UpdateDatasetBody) => PUT<void>(`/core/dataset/update`, data);
+
+export const batchMoveDatasets = (data: BatchResourceMoveBody) =>
+  POST<BatchResourceActionResponse>('/core/dataset/batch/move', data);
+
+export const batchDeleteDatasets = (data: BatchResourceDeleteBody) =>
+  POST<BatchResourceActionResponse>('/core/dataset/batch/delete', data);
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 

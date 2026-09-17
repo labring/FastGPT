@@ -2,12 +2,13 @@ import React, { useMemo } from 'react';
 import CommonBatchDeleteModal from '@/components/common/batch/BatchDeleteModal';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { SkillListItemType } from './context';
-import { deleteSkill } from '@/web/core/skill/api';
+import { batchDeleteSkills } from '@/web/core/skill/api';
+import type { BatchResourceActionResponse } from '@fastgpt/global/openapi/common/batch/api';
 
 type BatchDeleteModalProps = {
   skills: SkillListItemType[];
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (result: BatchResourceActionResponse) => void;
 };
 
 /**
@@ -34,8 +35,7 @@ const BatchDeleteModal = ({ skills, onClose, onSuccess }: BatchDeleteModalProps)
       onClose={onClose}
       onSuccess={onSuccess}
       onDelete={async (deletableSkills) => {
-        const deletePromises = deletableSkills.map((item) => deleteSkill(item._id));
-        await Promise.all(deletePromises);
+        return batchDeleteSkills({ ids: deletableSkills.map((item) => item._id) });
       }}
     />
   );

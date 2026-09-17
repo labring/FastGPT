@@ -8,6 +8,7 @@ import { DatasetTagPath } from './tag';
 import { DatasetFilePath } from './file';
 import { DatasetTrainingPath } from './training';
 import { DatasetSynonymPath } from './synonym';
+import { DatasetBatchPath } from './batch';
 import {
   CreateDatasetBodySchema,
   CreateDatasetWithFilesBodySchema,
@@ -372,5 +373,6 @@ export const DatasetPath: OpenAPIPath = {
   ...DatasetTagPath,
   ...DatasetFilePath,
   ...DatasetTrainingPath,
-  ...DatasetSynonymPath
+  ...DatasetSynonymPath,
+  ...DatasetBatchPath
 };

@@ -929,6 +929,7 @@
   "month_text": "個月",
   "move.confirm": "確認移動",
   "move_success": "移動成功",
+  "move_failed": "移動失敗",
   "move_to": "移動至",
   "move_to_root": "移動至根目錄",
   "n_agent_amount": "{{amount}} 個 Agent",
@@ -1301,5 +1302,6 @@
   "selected_items": "已選 <bold>{{count}}</bold> 項",
   "read_only_no_batch_permission": "無當前資源操作權限，無法批量操作",
   "will_delete": "將刪除",
-  "confirm_delete": "確認刪除"
+  "confirm_delete": "確認刪除",
+  "batch_partial_failed": "部分選取項目操作失敗"
 }

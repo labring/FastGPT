@@ -2,6 +2,7 @@
 import {
   getDatasetPaths,
   putDatasetById,
+  batchMoveDatasets,
   getDatasetsV2,
   getDatasetById,
   delDatasetById
@@ -354,17 +355,14 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     async (targetParentId: ParentIdType) => {
       if (selectedDatasetIds.length === 0) return;
       const finalParentId = targetParentId === 'root' ? null : (targetParentId as string);
-      await Promise.all(
-        selectedDatasetIds.map((id) =>
-          putDatasetById({
-            id,
-            parentId: finalParentId
-          })
-        )
-      );
+      const result = await batchMoveDatasets({
+        ids: selectedDatasetIds,
+        parentId: finalParentId
+      });
       await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyDatasets()]);
-      setSelectedDatasetIds([]);
-      setIsBatchMode(false);
+      setSelectedDatasetIds(result.failedIds);
+      if (result.failedIds.length === 0) setIsBatchMode(false);
+      return result;
     },
     [selectedDatasetIds, refetchFolderDetail, refetchPaths, loadMyDatasets]
   );
@@ -444,8 +442,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         <BatchDeleteModal
           datasets={selectedDatasets}
           onClose={() => setIsBatchDeleting(false)}
-          onSuccess={() => {
-            setSelectedDatasetIds([]);
+          onSuccess={({ failedIds }) => {
+            setSelectedDatasetIds(failedIds);
+            if (failedIds.length === 0) setIsBatchMode(false);
             loadMyDatasets();
           }}
         />

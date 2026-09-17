@@ -2,12 +2,13 @@ import React, { useMemo } from 'react';
 import CommonBatchDeleteModal from '@/components/common/batch/BatchDeleteModal';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
-import { delDatasetById } from '@/web/core/dataset/api';
+import { batchDeleteDatasets } from '@/web/core/dataset/api';
+import type { BatchResourceActionResponse } from '@fastgpt/global/openapi/common/batch/api';
 
 type BatchDeleteModalProps = {
   datasets: DatasetListItemType[];
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (result: BatchResourceActionResponse) => void;
 };
 
 /**
@@ -34,8 +35,7 @@ const BatchDeleteModal = ({ datasets, onClose, onSuccess }: BatchDeleteModalProp
       onClose={onClose}
       onSuccess={onSuccess}
       onDelete={async (deletableDatasets) => {
-        const deletePromises = deletableDatasets.map((item) => delDatasetById(item._id));
-        await Promise.all(deletePromises);
+        return batchDeleteDatasets({ ids: deletableDatasets.map((item) => item._id) });
       }}
     />
   );

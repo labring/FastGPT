@@ -87,3 +87,61 @@ projects/app/src/components/common/batch/
    - 重点验证：管理权限与 Owner 过滤、单选与多选确认词生成、分类计数与混选判定、批量移动防环逻辑。
 2. **类型检查**：
    - 保持 `pnpm --filter app typecheck` 0 错误。
+
+---
+
+## 4. 批量 API 契约
+
+批量接口的公共请求/响应 schema 位于 `packages/global/openapi/common/batch/api.ts`，资源模块只负责路由、权限校验和具体业务实现，不把 App、Dataset、Skill 的清理逻辑放进公共层。
+
+### 4.1 路由命名
+
+| 资源 | 批量移动 | 批量删除 |
+| :--- | :--- | :--- |
+| App / Tool | `POST /core/app/batch/move` | `POST /core/app/batch/delete` |
+| Dataset | `POST /core/dataset/batch/move` | `POST /core/dataset/batch/delete` |
+| Skill | `POST /core/ai/skill/batch/move` | `POST /core/ai/skill/batch/delete` |
+
+### 4.2 请求结构
+
+```json
+{
+  "ids": ["68ad85a7463006c963799a05"],
+  "parentId": "68ad85a7463006c963799a06"
+}
+```
+
+`ids` 必填、去重；删除请求不包含 `parentId`；移动到根目录时 `parentId` 传 `null`。
+
+### 4.3 响应结构
+
+```json
+{
+  "successIds": ["68ad85a7463006c963799a05"],
+  "failedIds": [],
+  "affectedIds": ["68ad85a7463006c963799a05"]
+}
+```
+
+`successIds` 和 `failedIds` 表示请求资源的处理结果；`affectedIds` 表示实际发生变化的资源，删除操作允许包含被删除子资源的 ID，便于前端清理本地缓存。具体的权限、子树解析、事务和异步清理仍由资源模块实现。
+
+### 4.4 核心服务下沉、并发队列与单项/批量复用
+
+为理顺模块依赖方向、避免重复定义与逻辑漂移，各资源模块将单项能力下沉为独立的 Service 模块，API 接入层统一借助轻量并发执行队列调用它们：
+* **App / Tool**: 
+  - 单项删除由 `@/service/core/app/delete` 提供 `deleteApp`，单项路由 `pages/api/core/app/del.ts` 与批量路由 `batch/delete.ts` 均从该模块导入。
+  - 单项移动由 `@/service/core/app/move` 提供 `moveApp`，批量路由 `batch/move.ts` 从该模块导入。
+* **Dataset**: 
+  - 单项删除由 `@/service/core/dataset/delete` 提供 `deleteDataset`，单项路由 `pages/api/core/dataset/delete.ts` 与批量路由 `batch/delete.ts` 均从该模块导入。
+  - 单项移动由 `@/service/core/dataset/move` 提供 `moveDataset`，批量路由 `batch/move.ts` 从该模块导入。
+* **Skill**: 
+  - 单项删除由 `@/service/core/ai/skill/delete` 提供 `deleteSkill`，单项路由 `pages/api/core/ai/skill/delete.ts` 与批量路由 `batch/delete.ts` 均从该模块导入。
+  - 单项移动由 `@/service/core/ai/skill/move` 提供 `moveSkill`，批量路由 `batch/move.ts` 从该模块导入。
+* **并发队列控制**:
+  - 服务端统一使用项目全局工具 `@fastgpt/global/common/system/utils` 中的 `batchRunSettled` 调度单项服务，并发度统一采用契约常量 `BATCH_RESOURCE_ACTION_CONCURRENCY = 10`。
+  - 相比纯串行处理，吞吐量提升近 10 倍；相比全量无控并发（`Promise.all`），严格规避瞬间打满 MongoDB 事务连接池或触发并发写冲突。
+* **前端状态与三态反馈联动**:
+  - `CommonBatchDeleteModal` 与 `MoveModal` 精确区分“全部成功”（`success`）、“部分失败”（`warning`）与“全部失败”（`error`）三态 Toast。
+  - 批量删除与移动完成后，各资源 Context 将 `selectedIds` 更新为 `failedIds`，只保留未成功的资源继续高亮，成功项随列表刷新自动移出，全部成功时自动退出批量模式。
+
+

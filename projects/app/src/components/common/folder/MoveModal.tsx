@@ -5,6 +5,7 @@ import { Box, Button } from '@chakra-ui/react';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import SelectOneResource, {
   type SelectOneResourceItemType,
   type SelectOneResourceServer
@@ -32,6 +33,7 @@ const MoveModal = ({
   moveHint
 }: Props) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [selectedId, setSelectedId] = useState<ParentIdType>();
   const [isAtRoot, setIsAtRoot] = useState(true);
   const hasSelection = selectedId !== undefined;
@@ -56,8 +58,30 @@ const MoveModal = ({
       return onConfirm(parentId);
     },
     {
-      onSuccess: onClose,
-      successToast: t('common:move_success')
+      onSuccess(result) {
+        const hasFailedItems =
+          result && Array.isArray(result.failedIds) && result.failedIds.length > 0;
+        const hasSuccessItems =
+          result && Array.isArray(result.successIds) && result.successIds.length > 0;
+
+        if (!hasSuccessItems && hasFailedItems) {
+          toast({
+            title: t('common:move_failed'),
+            status: 'error'
+          });
+        } else if (hasFailedItems) {
+          toast({
+            title: t('common:batch_partial_failed'),
+            status: 'warning'
+          });
+        } else {
+          toast({
+            title: t('common:move_success'),
+            status: 'success'
+          });
+        }
+        onClose();
+      }
     }
   );
 

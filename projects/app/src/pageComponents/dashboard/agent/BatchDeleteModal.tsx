@@ -2,12 +2,14 @@ import React, { useMemo } from 'react';
 import CommonBatchDeleteModal from '@/components/common/batch/BatchDeleteModal';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppListItemType } from '@fastgpt/global/core/app/type';
-import { delAppById } from '@/web/core/app/api';
+import { batchDeleteApps } from '@/web/core/app/api';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import type { BatchResourceActionResponse } from '@fastgpt/global/openapi/common/batch/api';
 
 type BatchDeleteModalProps = {
   apps: AppListItemType[];
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (result: BatchResourceActionResponse) => void;
 };
 
 /**
@@ -18,6 +20,7 @@ type BatchDeleteModalProps = {
  * 4. 2 个及以上输入「确认删除」确认；单个对象沿用输入对象名称确认。
  */
 const BatchDeleteModal = ({ apps, onClose, onSuccess }: BatchDeleteModalProps) => {
+  const { lastChatAppId, setLastChatAppId } = useChatStore();
   const items = useMemo(
     () =>
       apps.map((app) => ({
@@ -34,14 +37,16 @@ const BatchDeleteModal = ({ apps, onClose, onSuccess }: BatchDeleteModalProps) =
       onClose={onClose}
       onSuccess={onSuccess}
       onDelete={async (deletableApps) => {
-        const deletePromises = deletableApps.map(async (item) => {
-          const deletedIds = await delAppById(item._id);
-          deletedIds?.forEach((appId) => {
-            localStorage.removeItem(`app_log_keys_${appId}`);
-          });
-          return deletedIds;
+        const result = await batchDeleteApps({
+          ids: deletableApps.map((item) => item._id)
         });
-        await Promise.all(deletePromises);
+        result.affectedIds.forEach((appId) => {
+          localStorage.removeItem(`app_log_keys_${appId}`);
+        });
+        if (lastChatAppId && result.affectedIds.includes(lastChatAppId)) {
+          setLastChatAppId('');
+        }
+        return result;
       }}
     />
   );

@@ -13,7 +13,7 @@ import {
   getSkillListV2,
   getSkillFolderPath,
   getSkillDetail,
-  postUpdateSkill
+  batchMoveSkills
 } from '@/web/core/skill/api';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type {
@@ -196,7 +196,7 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
       refreshOnWindowFocus: false
     }
   );
-  const refreshSkills = () => fetchData({ init: true });
+  const refreshSkills = useCallback(() => fetchData({ init: true }), [fetchData]);
 
   // 加载面包屑路径（仅在文件夹内时请求）
   const { data: paths = [], run: refetchPaths } = useRequest(
@@ -316,17 +316,14 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     async (targetParentId: ParentIdType) => {
       if (selectedSkillIds.length === 0) return;
       const finalParentId = targetParentId === 'root' ? null : (targetParentId as string);
-      await Promise.all(
-        selectedSkillIds.map((id) =>
-          postUpdateSkill({
-            skillId: id,
-            parentId: finalParentId
-          })
-        )
-      );
+      const result = await batchMoveSkills({
+        ids: selectedSkillIds,
+        parentId: finalParentId
+      });
       await Promise.all([refetchFolderDetail(), refetchPaths(), refreshSkills()]);
-      setSelectedSkillIds([]);
-      setIsBatchMode(false);
+      setSelectedSkillIds(result.failedIds);
+      if (result.failedIds.length === 0) setIsBatchMode(false);
+      return result;
     },
     [selectedSkillIds, refetchFolderDetail, refetchPaths, refreshSkills]
   );
@@ -414,8 +411,9 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         <BatchDeleteModal
           skills={selectedSkills}
           onClose={() => setIsBatchDeleting(false)}
-          onSuccess={() => {
-            setSelectedSkillIds([]);
+          onSuccess={({ failedIds }) => {
+            setSelectedSkillIds(failedIds);
+            if (failedIds.length === 0) setIsBatchMode(false);
             refreshSkills();
           }}
         />
