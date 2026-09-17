@@ -53,8 +53,17 @@ export type VerificationConsumeParams<T extends Type> = {
   match?: VerificationConsumeMatch<T>;
 };
 
+export type VerificationConsumeManyParams = {
+  [T in Type]: VerificationConsumeParams<T>;
+}[Type];
+
 export type VerificationConsumeContext<T extends Type> = {
   material: VerificationMaterial<T>;
+  session: ClientSession;
+};
+
+export type VerificationConsumeManyContext = {
+  materials: VerificationMaterial<Type>[];
   session: ClientSession;
 };
 
@@ -101,6 +110,39 @@ const getExpireAt = (ttlPreset: VerificationTtlPreset) =>
 
 const isMongoDuplicateKeyError = (error: unknown) =>
   !!error && typeof error === 'object' && 'code' in error && error.code === 11000;
+
+/**
+ * 在同一 Mongo 事务内消费多个互相绑定的验证材料。
+ * 任一材料不存在、过期或已被并发请求消费，整个事务都会回滚。
+ */
+const consumeManyInTransaction = async <R>(
+  params: readonly VerificationConsumeManyParams[],
+  handler: (context: VerificationConsumeManyContext) => Promise<R>
+): Promise<R> =>
+  mongoSessionRun(async (session) => {
+    // MongoDB 不允许在同一事务 session 上并行执行操作，按材料顺序串行读取。
+    const records = [];
+    for (const item of params) {
+      records.push(await findActiveRecord(item, session));
+    }
+    if (records.some((record) => !record)) {
+      throw new VerificationMaterialError();
+    }
+
+    const result = await handler({
+      materials: records.map((record) => record!.data as VerificationMaterial<Type>),
+      session
+    });
+
+    for (const item of params) {
+      const deleted = await MongoTmpData.deleteOne(getActiveFilter(item), { session });
+      if (deleted.deletedCount !== 1) {
+        throw new VerificationMaterialError();
+      }
+    }
+
+    return result;
+  });
 
 /**
  * 身份验证材料的临时存取包装。
@@ -224,23 +266,15 @@ export const verification = {
     params: VerificationConsumeParams<T>,
     handler: (context: VerificationConsumeContext<T>) => Promise<R>
   ): Promise<R> => {
-    return mongoSessionRun(async (session) => {
-      const record = await findActiveRecord(params, session);
-      if (!record) {
-        throw new VerificationMaterialError();
-      }
+    return consumeManyInTransaction(
+      [params as VerificationConsumeManyParams],
+      async ({ materials, session }) =>
+        handler({
+          material: materials[0] as VerificationMaterial<T>,
+          session
+        })
+    );
+  },
 
-      const result = await handler({
-        material: record.data as VerificationMaterial<T>,
-        session
-      });
-
-      const deleted = await MongoTmpData.deleteOne(getActiveFilter(params), { session });
-      if (deleted.deletedCount !== 1) {
-        throw new VerificationMaterialError();
-      }
-
-      return result;
-    });
-  }
+  consumeManyInTransaction
 };

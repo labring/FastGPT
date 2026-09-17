@@ -296,6 +296,102 @@ describe('tmp data verification wrapper', () => {
     ).resolves.toBeNull();
   });
 
+  it('consumes multiple bound materials in one transaction', async () => {
+    const challengeKey = 'login-challenge-key';
+    const codeKey = getCodeVerificationKey({ account: challengeKey, code: '123456' });
+
+    await verification.upsert({
+      scene: 'login',
+      type: 'loginChallenge',
+      key: challengeKey,
+      data: {
+        userId: 'user-id',
+        username: 'user@example.com',
+        method: 'code',
+        channel: 'email',
+        target: 'user@example.com',
+        language: 'zh-CN'
+      },
+      ttlPreset: 'medium'
+    });
+    await verification.upsert({
+      scene: 'login',
+      type: 'code',
+      key: codeKey,
+      data: { code: '123456', issueId: 'issue-id' },
+      ttlPreset: 'medium'
+    });
+
+    const handler = vi.fn(async ({ materials }: { materials: unknown[] }) => {
+      expect(materials).toHaveLength(2);
+      return 'completed';
+    });
+
+    await expect(
+      verification.consumeManyInTransaction(
+        [
+          { scene: 'login', type: 'loginChallenge', key: challengeKey },
+          {
+            scene: 'login',
+            type: 'code',
+            key: codeKey,
+            match: { code: '123456' }
+          }
+        ],
+        handler
+      )
+    ).resolves.toBe('completed');
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    await expect(MongoTmpData.countDocuments({})).resolves.toBe(0);
+  });
+
+  it('keeps every material when one bound material is invalid', async () => {
+    const challengeKey = 'invalid-code-challenge-key';
+    const codeKey = getCodeVerificationKey({ account: challengeKey, code: '123456' });
+
+    await verification.upsert({
+      scene: 'login',
+      type: 'loginChallenge',
+      key: challengeKey,
+      data: {
+        userId: 'user-id',
+        username: 'user@example.com',
+        method: 'code',
+        channel: 'email',
+        target: 'user@example.com',
+        language: 'zh-CN'
+      },
+      ttlPreset: 'medium'
+    });
+    await verification.upsert({
+      scene: 'login',
+      type: 'code',
+      key: codeKey,
+      data: { code: '123456', issueId: 'issue-id' },
+      ttlPreset: 'medium'
+    });
+
+    const handler = vi.fn();
+    await expect(
+      verification.consumeManyInTransaction(
+        [
+          { scene: 'login', type: 'loginChallenge', key: challengeKey },
+          {
+            scene: 'login',
+            type: 'code',
+            key: codeKey,
+            match: { code: '654321' }
+          }
+        ],
+        handler
+      )
+    ).rejects.toBeInstanceOf(VerificationMaterialError);
+
+    expect(handler).not.toHaveBeenCalled();
+    await expect(MongoTmpData.countDocuments({})).resolves.toBe(2);
+  });
+
   it('rejects expired material that is still waiting for TTL cleanup', async () => {
     const key = 'expired-transaction-material';
     const dataId = getDataId({ scene: 'login', type: 'oauth', key });

@@ -9,6 +9,12 @@ import {
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
   LoginSuccessResponseSchema,
+  LoginByPasswordResponseSchema,
+  LoginVerificationChallengeBodySchema,
+  LoginVerificationCaptchaResponseSchema,
+  LoginVerificationSendCodeBodySchema,
+  LoginVerificationSendCodeResponseSchema,
+  LoginVerificationVerifyBodySchema,
   WxLoginResultResponseSchema,
   OpenAPIUserSchema,
   SsoGetAuthorizationURLBodySchema,
@@ -70,6 +76,78 @@ export const LoginPath: OpenAPIPath = {
       responses: {
         200: {
           description: '登录成功，返回用户信息和令牌',
+          content: {
+            'application/json': {
+              schema: LoginByPasswordResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/user/account/login/verification/captcha': {
+    post: {
+      summary: '获取登录二次验证图片验证码',
+      description: '使用登录 Challenge 获取图片验证码，验证码答案用于发送邮箱或短信验证码',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: LoginVerificationChallengeBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功获取图片验证码',
+          content: {
+            'application/json': {
+              schema: LoginVerificationCaptchaResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/user/account/login/verification/sendCode': {
+    post: {
+      summary: '发送登录二次验证码',
+      description: '校验图片验证码后向登录账号的邮箱或手机号发送验证码',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: LoginVerificationSendCodeBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功发送登录二次验证码',
+          content: {
+            'application/json': {
+              schema: LoginVerificationSendCodeResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/user/account/login/verification/verify': {
+    post: {
+      summary: '验证登录二次验证码',
+      description: '校验登录 Challenge 和邮箱或短信验证码并完成密码登录',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: LoginVerificationVerifyBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '验证成功并完成登录',
           content: {
             'application/json': {
               schema: LoginSuccessResponseSchema

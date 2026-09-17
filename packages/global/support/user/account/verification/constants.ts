@@ -7,7 +7,8 @@ export enum VerificationCodeTypeEnum {
   findPassword = 'findPassword',
   passwordChange = 'passwordChange',
   unsubscribe = 'unsubscribe',
-  bindNotification = 'bindNotification'
+  bindNotification = 'bindNotification',
+  login = 'login'
 }
 
 /** 账号身份验证支持的 OAuth provider，微信扫码在验证 method 中单独处理。 */
