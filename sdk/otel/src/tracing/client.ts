@@ -152,9 +152,11 @@ export async function disposeTracing() {
   if (!configured) return;
 
   if (!tracerProvider) {
+    const processors = extraSpanProcessors;
     configured = false;
     configurePromise = null;
     extraSpanProcessors = [];
+    await Promise.all(processors.map((processor) => processor.shutdown()));
     return;
   }
 

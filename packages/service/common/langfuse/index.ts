@@ -8,6 +8,8 @@ type RuntimeConfig = { secretKey: string; publicKey: string; baseUrl?: string };
 let current: SpanProcessor | null = null;
 let hash = '';
 let pending: Promise<void> | null = null;
+// refreshLangfuseTracing 也会由系统配置加载触发，避免 OTel 未启用时创建后台客户端。
+let initialized = false;
 const initialAttributesStorage = new AsyncLocalStorage<{
   attributes: Record<string, AttributeValue>;
   consumed: boolean;
@@ -71,6 +73,7 @@ const facade: SpanProcessor = {
     const processor = current;
     current = null;
     hash = '';
+    initialized = false;
     spanAttributes.clear();
     await processor?.shutdown();
   }
@@ -116,11 +119,13 @@ export function isLangfuseEnabled() {
 /** 在 OTel provider 创建前注册可热替换的 Langfuse processor。 */
 export async function initLangfuseTracing() {
   addSpanProcessor(facade);
+  initialized = true;
   await refreshLangfuseTracing();
 }
 
 /** 根据最新系统配置替换 Langfuse processor，并在切换前刷新旧实例。 */
 export async function refreshLangfuseTracing() {
+  if (!initialized) return;
   if (pending) return pending;
   pending = (async () => {
     const config = resolve();

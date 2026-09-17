@@ -61,6 +61,9 @@ describe('initLangfuseTracing', () => {
 
   it('deduplicates facade registration and rebuilds the processor after shutdown', async () => {
     expect(isLangfuseEnabled()).toBe(true);
+    await refreshLangfuseTracing();
+    expect(mocks.construct).not.toHaveBeenCalled();
+
     await initLangfuseTracing();
     await initLangfuseTracing();
 

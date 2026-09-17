@@ -1,7 +1,8 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
-  configureTracingFromEnv,
+  configureTracing as configureOtelTracing,
+  createTracingOptionsFromEnv,
   disposeTracing,
   getCurrentSpanContext,
   getTracer
@@ -58,16 +59,21 @@ function normalizeAttributes(attributes?: Record<string, unknown>) {
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 }
 
+/** 根据 service 环境配置 OTel tracing，仅在 tracing 启用时注册 Langfuse processor。 */
 export async function configureTracing() {
-  const { initLangfuseTracing } = await import('../langfuse');
-  await initLangfuseTracing();
-
-  await configureTracingFromEnv({
+  const tracingOptions = createTracingOptionsFromEnv({
     env: serviceEnv,
     defaultServiceName: 'fastgpt-client',
     defaultTracerName: 'fastgpt-client',
     defaultSampleRatio: getDefaultTracingSampleRatio()
   });
+
+  if (tracingOptions.tracing !== false) {
+    const { initLangfuseTracing } = await import('../langfuse');
+    await initLangfuseTracing();
+  }
+
+  await configureOtelTracing(tracingOptions);
 }
 
 export function getTraceLogContext(): TraceLogContext | undefined {

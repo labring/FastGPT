@@ -32,4 +32,19 @@ describe('addSpanProcessor', () => {
     await disposeTracing();
     expect(processor.shutdown).toHaveBeenCalledTimes(1);
   });
+
+  it('shuts down extra processors when tracing is disabled', async () => {
+    const processor: SpanProcessor = {
+      onStart: vi.fn(),
+      onEnd: vi.fn(),
+      forceFlush: vi.fn(async () => undefined),
+      shutdown: vi.fn(async () => undefined)
+    };
+
+    addSpanProcessor(processor);
+    await configureTracing({ tracing: false });
+    await disposeTracing();
+
+    expect(processor.shutdown).toHaveBeenCalledTimes(1);
+  });
 });
