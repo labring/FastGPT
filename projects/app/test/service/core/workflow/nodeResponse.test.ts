@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getWorkflowDatasetCiteRetention,
+  getWorkflowFinalResponseError,
   shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
 
@@ -67,5 +69,103 @@ describe('shouldRetainWorkflowNodeResponses', () => {
     }
   ] as const)('$name', ({ input, expected }) => {
     expect(shouldRetainWorkflowNodeResponses(input)).toBe(expected);
+  });
+});
+
+describe('getWorkflowFinalResponseError', () => {
+  it('returns nodeResponseSummary.lastError directly when present', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        nodeResponseSummary: {
+          citeCollectionIds: [],
+          errorCount: 1,
+          lastError: 'Root node failed',
+          totalPoints: 10
+        },
+        finalResponseData: [
+          {
+            id: 'node-1',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            errorText: 'Different error'
+          }
+        ]
+      })
+    ).toBe('Root node failed');
+  });
+
+  it('ignores flat tool errors without parentId when summary has no lastError', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        finalResponseData: [
+          {
+            id: 'sandbox-tool-node',
+            nodeId: 'sandbox-tool-node',
+            moduleName: '虚拟机/列出目录',
+            moduleType: FlowNodeTypeEnum.tool,
+            toolInput: { path: '/user_files' },
+            toolRes: 'Tool error: file not found. lstat /user_files: no such file or directory',
+            errorText: 'Tool error: file not found. lstat /user_files: no such file or directory'
+          }
+        ]
+      })
+    ).toBeUndefined();
+  });
+
+  it('ignores subApp / custom tool execution errors carrying toolRes', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        finalResponseData: [
+          {
+            id: 'subapp-tool',
+            moduleName: '子应用工具',
+            moduleType: FlowNodeTypeEnum.appModule,
+            toolInput: { query: 'test' },
+            toolRes: 'Tool error: failed to execute',
+            errorText: 'Tool error: failed to execute'
+          }
+        ]
+      })
+    ).toBeUndefined();
+  });
+
+  it('finds earlier root node error when the last node is a tool execution error', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        finalResponseData: [
+          {
+            id: 'llm-node',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            errorText: 'Model rate limit exceeded'
+          },
+          {
+            id: 'sandbox-tool-node',
+            moduleType: FlowNodeTypeEnum.tool,
+            errorText: 'Tool error: file not found'
+          }
+        ]
+      })
+    ).toBe('Model rate limit exceeded');
+  });
+
+  it('returns regular root node error when last node is not a tool', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        finalResponseData: [
+          {
+            id: 'llm-node',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            error: { message: 'OpenAI API key expired' }
+          }
+        ]
+      })
+    ).toEqual({ message: 'OpenAI API key expired' });
+  });
+
+  it('returns undefined when finalResponseData is empty', () => {
+    expect(
+      getWorkflowFinalResponseError({
+        finalResponseData: []
+      })
+    ).toBeUndefined();
   });
 });

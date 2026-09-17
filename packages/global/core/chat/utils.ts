@@ -29,6 +29,23 @@ export const hasContextCheckpoint = (history: ChatItemMiniType) =>
   history.obj === ChatRoleEnum.AI &&
   history.value.some((value) => Boolean(value.contextCheckpoint));
 
+/**
+ * 判定是否属于工具调用或工具子执行详情。
+ *
+ * 工具执行的返回结果（无论成功或业务报错）都会作为工具输出提交给上层大模型继续推理，
+ * 且已在消息内部的工具折叠卡片中展示，不应被提升为整轮对话的聊天错误。
+ */
+export const isToolExecutionResponse = (item: ChatHistoryItemResType): boolean => {
+  if (item.parentId) return true;
+  if (item.moduleType === FlowNodeTypeEnum.tool || item.moduleType === FlowNodeTypeEnum.toolSet) {
+    return true;
+  }
+  if (item.toolRes !== undefined || item.toolInput !== undefined) {
+    return true;
+  }
+  return false;
+};
+
 // Keep the first n and last n characters
 export const getHistoryPreview = (
   completeMessages: ChatItemMiniType[],

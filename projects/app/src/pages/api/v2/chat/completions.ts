@@ -72,6 +72,7 @@ import {
   filterWorkflowFinalResponseData,
   getWorkflowDatasetCiteRetention,
   getWorkflowFinalResponseData,
+  getWorkflowFinalResponseError,
   shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
 import { formatCompletionResponseContent } from '@/service/core/chat/utils';
@@ -472,10 +473,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       flatNodeResponses,
       shouldCollect: shouldCollectFinalResponseData
     });
-    const finalError =
-      nodeResponseSummary?.lastError ||
-      finalResponseData[finalResponseData.length - 1]?.error ||
-      finalResponseData[finalResponseData.length - 1]?.errorText;
+    const finalError = getWorkflowFinalResponseError({
+      nodeResponseSummary,
+      finalResponseData
+    });
     const feResponseData = filterWorkflowFinalResponseData({
       responseData: finalResponseData,
       responseAllData,

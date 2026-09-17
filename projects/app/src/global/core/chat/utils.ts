@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
+import { getFlatAppResponses, isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
 import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -55,14 +55,14 @@ const getNodeErrorText = (item: ChatHistoryItemResType) => {
 /**
  * 按历史记录加载口径提取聊天气泡错误。
  *
- * 只有根节点失败才代表本轮对话失败；带 parentId 的响应和内嵌 children 都属于
+ * 只有根节点失败才代表本轮对话失败；带 parentId 的响应、内嵌 children 以及工具执行详情都属于
  * ToolCall/Agent 的工具执行详情，错误会作为工具结果交回上层，不应提升为聊天错误。
  */
 export const getChatItemErrorText = (
   responseData: ChatHistoryItemResType[] = []
 ): ErrorTextItemType | undefined =>
   responseData.reduce<ErrorTextItemType | undefined>((errorText, item) => {
-    if (item.parentId) return errorText;
+    if (isToolExecutionResponse(item)) return errorText;
 
     const nodeErrorText = getNodeErrorText(item);
     if (!nodeErrorText) return errorText;

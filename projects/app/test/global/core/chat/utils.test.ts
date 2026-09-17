@@ -441,6 +441,84 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(addStatisticalDataToHistoryItem(historyItem).errorText).toBeUndefined();
   });
 
+  it('ignores flat tool execution errors without parentId (e.g. sandbox tools)', () => {
+    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+      {
+        id: 'sandbox-tool-response',
+        nodeId: 'sandbox-tool-node',
+        moduleName: '虚拟机/列出目录',
+        moduleType: FlowNodeTypeEnum.tool,
+        toolInput: { path: '/user_files' },
+        toolRes: 'Tool error: file not found. lstat /user_files: no such file or directory',
+        errorText: 'Tool error: file not found. lstat /user_files: no such file or directory'
+      }
+    ];
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: '该文件夹不存在。' } }],
+      responseData
+    };
+
+    expect(getChatItemErrorText(responseData)).toBeUndefined();
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toBeUndefined();
+  });
+
+  it('ignores subApp tool execution errors without parentId carrying toolRes', () => {
+    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+      {
+        id: 'subapp-tool-response',
+        nodeId: 'subapp-tool-node',
+        moduleName: '子应用工具',
+        moduleType: FlowNodeTypeEnum.appModule,
+        toolInput: { query: 'test' },
+        toolRes: 'Tool error: failed to execute sub-app',
+        errorText: 'Tool error: failed to execute sub-app'
+      }
+    ];
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: '执行失败，已尝试备选方案。' } }],
+      responseData
+    };
+
+    expect(getChatItemErrorText(responseData)).toBeUndefined();
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toBeUndefined();
+  });
+
+  it('preserves root node errors when flat tool responses are present', () => {
+    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+      {
+        id: 'tool-response',
+        nodeId: 'tool-node',
+        moduleName: '虚拟机/列出目录',
+        moduleType: FlowNodeTypeEnum.tool,
+        toolRes: 'Tool error: file not found',
+        errorText: 'Tool error: file not found'
+      },
+      {
+        id: 'main-agent-response',
+        nodeId: 'main-agent-node',
+        moduleName: '主模型',
+        moduleType: FlowNodeTypeEnum.agent,
+        errorText: 'Quota exhausted'
+      }
+    ];
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: '' } }],
+      responseData
+    };
+
+    expect(getChatItemErrorText(responseData)).toEqual({
+      moduleName: '主模型',
+      errorText: 'Quota exhausted'
+    });
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toEqual({
+      moduleName: '主模型',
+      errorText: 'Quota exhausted'
+    });
+  });
+
   it('does not use HTTP result error as chat bubble error text when node error is absent', () => {
     const historyItem: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,
