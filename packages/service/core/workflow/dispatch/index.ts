@@ -1772,11 +1772,11 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
           } finally {
             data.workflowDispatchDeep = previousWorkflowDispatchDeep;
           }
-        },
-        {
-          getRunTimes: (result) => result[DispatchNodeResponseKeyEnum.runTimes]
         }
       );
+    },
+    {
+      getRunTimes: (result) => result[DispatchNodeResponseKeyEnum.runTimes]
     }
   ).finally(() => {
     if (data.workflowDispatchDeep === currentWorkflowDispatchDeep) {
