@@ -541,6 +541,20 @@ describe('system migration runner', () => {
       });
 
       firstRunner.stop();
+
+      const stoppedState = await MongoSystemMigrationState.findById(migration.id).lean();
+      expect(stoppedState).toMatchObject({
+        status: SystemMigrationStatusEnum.running,
+        checkpoint: { firstBatchCompleted: true }
+      });
+      // Lease 的时间计算与过期拒绝续租由 entity 测试覆盖；这里直接推进到过期状态，
+      // 避免高负载 CI 中依赖真实计时等待，专注验证 runner 的 checkpoint 接管流程。
+      const expireResult = await MongoSystemMigrationState.updateOne(
+        { _id: migration.id, runId: stoppedState?.runId },
+        { $set: { leaseExpireAt: new Date(0) } }
+      );
+      expect(expireResult.modifiedCount).toBe(1);
+
       await takeoverRunner.start();
       await takeoverRunner.waitForBlockingMigrations();
 
