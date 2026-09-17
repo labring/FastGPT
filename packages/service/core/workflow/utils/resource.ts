@@ -400,9 +400,9 @@ export const prepareWorkflowDebugResourceContext = async ({
     formatModels({
       nodes: nodes as StoreNodeItemType[],
       chatConfig,
-      models: modelHandle.getActiveModels(),
+      models: modelHandle.getAllModels(),
       defaultModelIds: modelHandle.getSystemDefaultModelIds(),
-      modelReferencePolicy: 'debug'
+      modelReferencePolicy: 'preserve'
     });
   }
   const extractedResources = extractAppResources({
