@@ -27,7 +27,7 @@ export type WorkflowRuntimeSummaryFields = {
   pluginOutput?: Record<string, any>;
   /** 当前 workflow response 中去重后的引用集合。 */
   citeCollectionIds: string[];
-  /** 当前 workflow 顶层节点自身 totalPoints 总和。 */
+  /** 当前 workflow 归属的积分总和；父 nodeResponse 不缓存 child points。 */
   totalPoints?: number;
   /** 当前 workflow 响应数量，包含嵌套 childResponseCount。 */
   childResponseCount?: number;

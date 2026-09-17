@@ -95,7 +95,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     : [];
   const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
-  let totalPoints = 0;
   let childResponseCount = 0;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined;
   // Pre-interrupt runtime summary survives across resume here, so loopRun can still
@@ -198,10 +197,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       response
     });
     const childRuntimeSummary = getWorkflowRuntimeSummary(response);
-    props.nodeSummary.pushLLMTokens({
-      inputTokens: childRuntimeSummary.llmInputTokens,
-      outputTokens: childRuntimeSummary.llmOutputTokens
-    });
     const iterationChildResponseCount = wrapperSummary.childResponseCount;
     const iterationRunningTime = +((Date.now() - iterationStartTime) / 1000).toFixed(2);
     assistantResponses.push(...response.assistantResponses);
@@ -211,8 +206,12 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       name,
       iteration
     });
-    const iterationDetailTotalPoints = wrapperSummary.totalPoints ?? iterationTotalPoints;
-    totalPoints += iterationTotalPoints;
+    props.nodeSummary.mergeNodeSummary({
+      llmInputTokens: childRuntimeSummary.llmInputTokens,
+      llmOutputTokens: childRuntimeSummary.llmOutputTokens,
+      totalPoints: iterationTotalPoints,
+      citeCollectionIds: childRuntimeSummary.citeCollectionIds
+    });
     collectResponseFeedbacks(response, customFeedbacks);
 
     // Apply `finishedNodeIds` over the merged children so pre-interrupt nodes count
@@ -237,7 +236,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         moduleName: i18nT('workflow:parallel_task'),
         moduleNameArgs: { index: iteration },
         runningTime: Math.round(iterationRunningTime * 100) / 100,
-        totalPoints: iterationDetailTotalPoints,
         loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
         loopOutputValue: customOutputs,
         error: opts.error,
@@ -345,7 +343,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         }
       : undefined,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints,
       loopRunInput: mode === LoopRunModeEnum.array ? inputArray : undefined,
       loopRunIterations: loopHistory.length,
       loopRunHistory: loopHistory,

@@ -135,14 +135,13 @@ export type SystemVariablesType = {
   cTime: string;
 };
 
-/** 当前节点 callback 可向 queue 贡献的显式 token 和已消费的 child runtime 增量。 */
+/** 当前节点 callback 可向 queue 贡献的运行摘要增量。 */
 export type NodeSummary = Partial<WorkflowRuntimeSummaryFields>;
 
-/** 当前节点执行单元的摘要及其增量采集入口。 */
+/** 当前节点执行单元的摘要及其统一增量合并入口。 */
 export type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputTokens'> & {
   llmInputTokens: number;
   llmOutputTokens: number;
-  pushLLMTokens: (tokens: { inputTokens?: number; outputTokens?: number }) => void;
   mergeNodeSummary: (summary?: NodeSummary) => void;
 };
 

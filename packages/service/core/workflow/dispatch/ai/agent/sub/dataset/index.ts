@@ -285,6 +285,7 @@ export const dispatchAgentDatasetSearch = async ({
     // count bill results
     const usages: ChatNodeUsageType[] = [];
     const childrenResponses: ChatHistoryItemResType[] = [];
+    let childrenResponsePoints = 0;
     let searchResults = searchRes;
 
     // 合并其他的 usages
@@ -304,6 +305,7 @@ export const dispatchAgentDatasetSearch = async ({
           outputTokens: queryExtensionResult.outputTokens
         };
         usages.push(queryExtensionUsage);
+        childrenResponsePoints += queryExtensionUsage.totalPoints;
         childrenResponses.push(
           createQueryExtensionChildNodeResponse({
             requestIds: [queryExtensionResult.requestId],
@@ -342,6 +344,7 @@ export const dispatchAgentDatasetSearch = async ({
           outputTokens: imageCaptionResult.outputTokens
         };
         usages.push(imageCaptionUsage);
+        childrenResponsePoints += imageCaptionUsage.totalPoints;
         childrenResponses.push(
           createImageCaptionChildNodeResponse({
             requestIds: imageCaptionResult.requestIds,
@@ -399,6 +402,7 @@ export const dispatchAgentDatasetSearch = async ({
       // 将 AI 分块选择记录为知识库搜索子调用，requestId 跟随 child nodeResponse 展示。
       if (pickResults.usage) {
         usages.push(pickResults.usage);
+        childrenResponsePoints += pickResults.usage.totalPoints;
         childrenResponses.push(
           createChunkSelectionChildNodeResponse({
             requestIds: [pickResults.requestId],
@@ -415,6 +419,8 @@ export const dispatchAgentDatasetSearch = async ({
     const nodeResponse: DispatchSubAppResponse['nodeResponse'] = {
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
+      totalPoints:
+        usages.reduce((sum, usage) => sum + usage.totalPoints, 0) - childrenResponsePoints,
       datasetQueries: [...textQueries, ...imageQueries],
       embeddingModel: vectorModel.name,
       embeddingTokens,

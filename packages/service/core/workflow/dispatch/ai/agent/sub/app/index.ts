@@ -37,6 +37,7 @@ import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/cons
 import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
 import {
   computedAppToolUsage,
+  getAppToolOwnUsage,
   getAppToolOutputError
 } from '../../../../../../app/tool/runtime/utils';
 
@@ -197,6 +198,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       moduleType: FlowNodeTypeEnum.appModule,
       moduleName: app.name,
       moduleLogo: app.avatar,
+      totalPoints: 0,
       toolInput: {
         userChatInput,
         ...workflowToolVariables
@@ -435,17 +437,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           return acc;
         }, {})
     : undefined;
-  const nodeSummary = runtimeSummaryToNodeSummary(
-    app.systemToolId
-      ? {
-          ...runtimeSummary,
-          // System workflow internals are invisible to the caller and must not affect its
-          // user-facing LLM token summary.
-          llmInputTokens: 0,
-          llmOutputTokens: 0
-        }
-      : runtimeSummary
-  );
   const response = filteredPluginOutput
     ? JSON.stringify(
         pluginOutputError
@@ -460,15 +451,39 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     : !pluginOutput
       ? 'Run workflow tool failed'
       : pluginOutputError;
+  const usagePoints = billingTool
+    ? await computedAppToolUsage({
+        plugin: billingTool,
+        childrenUsage: flowUsages,
+        error: !!errorMessage
+      })
+    : flowUsages.reduce((sum, usage) => sum + usage.totalPoints, 0);
+  const ownUsagePoints = billingTool
+    ? getAppToolOwnUsage({ plugin: billingTool, error: !!errorMessage })
+    : 0;
+  const childUsagePoints = Math.max(0, usagePoints - ownUsagePoints);
+  const runtimeNodeSummary = runtimeSummaryToNodeSummary(
+    app.systemToolId
+      ? {
+          ...runtimeSummary,
+          // System workflow internals are invisible to the caller and must not affect its
+          // user-facing LLM token summary.
+          llmInputTokens: 0,
+          llmOutputTokens: 0
+        }
+      : runtimeSummary
+  );
+  const nodeSummary = (() => {
+    const summary = { ...runtimeNodeSummary };
+    delete summary.totalPoints;
+    if (childUsagePoints) summary.totalPoints = childUsagePoints;
+    return Object.keys(summary).length > 0 ? summary : undefined;
+  })();
   const usages = billingTool
     ? [
         {
           moduleName: app.name,
-          totalPoints: await computedAppToolUsage({
-            plugin: billingTool,
-            childrenUsage: flowUsages,
-            error: !!errorMessage
-          })
+          totalPoints: usagePoints
         }
       ]
     : flowUsages;
@@ -493,6 +508,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       moduleType: FlowNodeTypeEnum.pluginModule,
       moduleName: app.name,
       moduleLogo: app.avatar,
+      totalPoints: ownUsagePoints,
       toolInput: workflowToolVariables,
       toolRes: pluginOutput || {},
       childResponseCount: runtimeSummary.childResponseCount,

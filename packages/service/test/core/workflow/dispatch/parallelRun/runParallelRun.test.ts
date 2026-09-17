@@ -175,7 +175,9 @@ describe('dispatchParallelRun', () => {
       childrenResponses: undefined
     });
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childTotalPoints).toBeUndefined();
-    expect(nodeResponse.totalPoints).toBe(3);
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.totalPoints).toBeUndefined();
+    expect(nodeResponse.totalPoints).toBeUndefined();
+    expect(props.nodeSummary.totalPoints).toBe(3);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.parallelDetail).toBeUndefined();
   });

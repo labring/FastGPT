@@ -128,9 +128,11 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   // 子工作流本身不会落账，由当前应用节点统一归集，避免用量遗漏或重复计费。
   const totalPoints = flowUsages.reduce((sum, usage) => sum + safePoints(usage.totalPoints), 0);
   const childSummary = getWorkflowRuntimeSummary({ workflowRuntimeSummary });
-  props.nodeSummary.pushLLMTokens({
-    inputTokens: childSummary.llmInputTokens,
-    outputTokens: childSummary.llmOutputTokens
+  props.nodeSummary.mergeNodeSummary({
+    llmInputTokens: childSummary.llmInputTokens,
+    llmOutputTokens: childSummary.llmOutputTokens,
+    totalPoints,
+    citeCollectionIds: childSummary.citeCollectionIds
   });
   props.usagePush([
     {
@@ -163,8 +165,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
       query: userChatInput,
-      textOutput: text,
-      totalPoints
+      textOutput: text
     }
   };
 };

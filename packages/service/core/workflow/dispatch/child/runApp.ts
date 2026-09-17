@@ -201,9 +201,11 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const runtimeSummary = getWorkflowRuntimeSummary({
       workflowRuntimeSummary
     });
-    props.nodeSummary.pushLLMTokens({
-      inputTokens: runtimeSummary.llmInputTokens,
-      outputTokens: runtimeSummary.llmOutputTokens
+    props.nodeSummary.mergeNodeSummary({
+      llmInputTokens: runtimeSummary.llmInputTokens,
+      llmOutputTokens: runtimeSummary.llmOutputTokens,
+      totalPoints: usagePoints,
+      citeCollectionIds: runtimeSummary.citeCollectionIds
     });
     const childResponseCount = runtimeSummary.childResponseCount;
     return {
@@ -225,7 +227,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: appData.avatar,
-        totalPoints: usagePoints,
         query: userChatInput,
         textOutput: text,
         childResponseCount

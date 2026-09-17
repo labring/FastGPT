@@ -358,6 +358,7 @@ describe('dispatchDatasetSearch', () => {
       })
     ]);
     expect(nodeResponse?.childTotalPoints).toBeUndefined();
+    expect(nodeResponse?.totalPoints).toBeCloseTo(0.26);
     expect(usagePushMock).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({

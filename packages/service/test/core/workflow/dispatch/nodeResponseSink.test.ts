@@ -224,7 +224,7 @@ describe('WorkflowNodeResponseSink', () => {
     });
   });
 
-  it('失败 response 与成功 response 一样更新 summary、写入并发布', async () => {
+  it('工具失败 response 正常写入并发布，但不提升为 workflow 错误', async () => {
     const writer = createWriter();
     const workflowStreamResponse = vi.fn();
     const workflowRuntimeSummary = createWorkflowRuntimeSummary();
@@ -250,12 +250,12 @@ describe('WorkflowNodeResponseSink', () => {
     await sink.publish([{ response }]);
 
     expect(workflowRuntimeSummary).toMatchObject({
-      hasError: true,
-      errorCount: 1,
-      errorText: 'tool failed',
+      hasError: false,
+      errorCount: 0,
       llmInputTokens: 11,
       llmOutputTokens: 4
     });
+    expect(workflowRuntimeSummary.errorText).toBeUndefined();
     expect(writer.record).toHaveBeenCalledWith([response]);
     expect(workflowStreamResponse).toHaveBeenCalledWith({
       event: SseResponseEventEnum.flowNodeResponse,

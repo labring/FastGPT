@@ -262,6 +262,7 @@ describe('dispatchAgentDatasetSearch', () => {
     expect(result.nodeResponse?.quoteList?.map((item: { id: string }) => item.id)).toEqual([
       'chunk_2'
     ]);
+    expect(result.nodeResponse?.totalPoints).toBeCloseTo(0.26);
   });
 
   it('sets query extension and chunk selection LLM points to zero when user OpenAI key is valid', async () => {

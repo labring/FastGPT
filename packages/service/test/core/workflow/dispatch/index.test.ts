@@ -1211,9 +1211,9 @@ describe('Workflow runtime LLM token summary', () => {
       const node = createNode('summary-node', FlowNodeTypeEnum.textEditor);
       node.isEntry = true;
       callbackMap[FlowNodeTypeEnum.textEditor] = async ({ nodeSummary }) => {
-        nodeSummary.pushLLMTokens({
-          inputTokens: mode === 'throw' ? 10 : 30,
-          outputTokens: mode === 'throw' ? 3 : 7
+        nodeSummary.mergeNodeSummary({
+          llmInputTokens: mode === 'throw' ? 10 : 30,
+          llmOutputTokens: mode === 'throw' ? 3 : 7
         });
         if (mode === 'throw') throw new Error('after LLM');
         return {

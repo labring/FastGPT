@@ -18,7 +18,11 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { computedAppToolUsage, getAppToolOutputError } from '../../../app/tool/runtime/utils';
+import {
+  computedAppToolUsage,
+  getAppToolOwnUsage,
+  getAppToolOutputError
+} from '../../../app/tool/runtime/utils';
 import { getNodeErrResponse } from '../utils';
 import { serverGetWorkflowToolRunUserQuery } from '../../../app/tool/workflowTool/utils';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -322,12 +326,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     });
     // 系统级 workflow tool 的内部模型调用对用户不可见，不计入当前用户 workflow/chat
     // 的 token summary；普通 plugin workflow 仍按 child summary 归属一次。
-    if (shouldStoreChildNodeResponses) {
-      props.nodeSummary.pushLLMTokens({
-        inputTokens: runtimeSummary.llmInputTokens,
-        outputTokens: runtimeSummary.llmOutputTokens
-      });
-    }
     const pluginOutput = runtimeSummary.pluginOutput;
     const pluginOutputError = getAppToolOutputError({
       plugin: workflowTool,
@@ -338,6 +336,22 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       plugin: workflowTool,
       childrenUsage: flowUsages,
       error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
+    });
+    const ownUsagePoints = getAppToolOwnUsage({
+      plugin: workflowTool,
+      error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
+    });
+    props.nodeSummary.mergeNodeSummary({
+      ...(shouldStoreChildNodeResponses
+        ? {
+            llmInputTokens: runtimeSummary.llmInputTokens,
+            llmOutputTokens: runtimeSummary.llmOutputTokens
+          }
+        : {}),
+      totalPoints: Math.max(0, usagePoints - ownUsagePoints),
+      ...(shouldStoreChildNodeResponses
+        ? { citeCollectionIds: runtimeSummary.citeCollectionIds }
+        : {})
     });
     // Child run not push usage
     props.usagePush([
@@ -371,7 +385,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: workflowTool.avatar,
-        totalPoints: usagePoints,
+        totalPoints: ownUsagePoints,
         toolInput: workflowToolVariables,
         pluginOutput,
         childResponseCount,

@@ -118,6 +118,7 @@ describe('abandoned dispatchAppRequest', () => {
       };
     });
 
+    const nodeSummary = createNodeSummary();
     const result = await dispatchAppRequest({
       runningAppInfo: {
         id: 'parent-app',
@@ -144,7 +145,7 @@ describe('abandoned dispatchAppRequest', () => {
       chatId: 'chat',
       responseChatItemId: 'response',
       usagePush,
-      nodeSummary: createNodeSummary(),
+      nodeSummary,
       chatConfig: {
         variables: []
       }
@@ -162,6 +163,7 @@ describe('abandoned dispatchAppRequest', () => {
         totalPoints: 5
       }
     ]);
-    expect(result.responseData?.totalPoints).toBe(5);
+    expect(result.responseData?.totalPoints).toBeUndefined();
+    expect(nodeSummary.totalPoints).toBe(5);
   });
 });

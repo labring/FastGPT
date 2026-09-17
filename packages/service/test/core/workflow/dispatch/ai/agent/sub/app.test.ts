@@ -332,6 +332,8 @@ describe('agent sub app dispatchPlugin', () => {
         totalPoints: expectedPoints
       }
     ]);
+    expect(result.nodeResponse?.totalPoints).toBe(10);
+    expect(result.nodeSummary?.totalPoints).toBe(hasTokenFee ? 3 : undefined);
   });
 
   it('does not charge a system workflow when its child run fails', async () => {

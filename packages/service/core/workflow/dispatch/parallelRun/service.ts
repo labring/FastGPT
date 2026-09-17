@@ -231,7 +231,6 @@ const buildParallelTaskWrapper = ({
     moduleName: i18nT('workflow:parallel_task'),
     moduleNameArgs: { index: result.index + 1 },
     runningTime: result.runningTime,
-    totalPoints: result.totalPoints,
     loopInputValue: input,
     loopOutputValue: result.success ? result.data : undefined,
     error: result.success ? undefined : result.error,

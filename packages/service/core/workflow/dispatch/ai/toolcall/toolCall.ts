@@ -23,7 +23,7 @@ import {
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
 import { createAgentNodeResponseCollector } from '../agent/nodeResponseCollector';
-import { runtimeSummaryToNodeSummary, splitNodeSummaryLLMTokens } from '../../utils/summary';
+import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 
 type ResponseType = {
   requestIds: string[];
@@ -91,11 +91,9 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   const mergeChildWorkflowSummary = (
     workflowSummary: Parameters<typeof runtimeSummaryToNodeSummary>[0]
   ) => {
-    const { inputTokens, outputTokens, summary } = splitNodeSummaryLLMTokens(
-      runtimeSummaryToNodeSummary(workflowSummary)
+    props.nodeSummary.mergeNodeSummary(
+      stripNodeSummaryErrorFields(runtimeSummaryToNodeSummary(workflowSummary))
     );
-    props.nodeSummary.pushLLMTokens({ inputTokens, outputTokens });
-    props.nodeSummary.mergeNodeSummary(summary);
   };
 
   const runtimeEnvironment = createAgentLoopCoreRuntimeEnvironment({

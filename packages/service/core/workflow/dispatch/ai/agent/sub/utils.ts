@@ -419,7 +419,8 @@ export const getExecuteTool = ({
         nodeId: callId,
         id: callId,
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-        totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0),
+        totalPoints:
+          nodeResponse?.totalPoints ?? usages?.reduce((sum, item) => sum + item.totalPoints, 0),
         ...(childResponseCount !== undefined ? { childResponseCount } : {})
       };
     })();

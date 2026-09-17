@@ -5,7 +5,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/interface';
 import { AgentNodeResponseDisplay } from '../../domain/constants';
 import { parseJsonArgs } from '../../../../../../ai/utils';
-import { withAgentLoopCoreChildTotalPoints } from './children';
+import { stripAgentLoopCoreChildTotalPoints } from './children';
 import { createAgentLoopCoreCompressNodeResponse } from './compress';
 import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
@@ -132,7 +132,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
     appendedCallIds.add(event.id);
 
     append(
-      withAgentLoopCoreChildTotalPoints({
+      stripAgentLoopCoreChildTotalPoints({
         id: `${node.nodeId}-plan-${event.id}`,
         nodeId: `${node.nodeId}-plan-${event.id}`,
         moduleName: AgentNodeResponseDisplay.plan.moduleName,
@@ -151,7 +151,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
     appendedCallIds.add(event.id);
 
     append(
-      withAgentLoopCoreChildTotalPoints({
+      stripAgentLoopCoreChildTotalPoints({
         id: `${node.nodeId}-ask-${event.id}`,
         nodeId: `${node.nodeId}-ask-${event.id}`,
         moduleName: AgentNodeResponseDisplay.ask.moduleName,

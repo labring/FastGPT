@@ -17,7 +17,10 @@ export type DispatchSubAppResponse = {
   nodeSummary?: NodeSummary;
   /** 子工作流暂停时的交互快照，交回 agent-loop 形成 tool_child pause。 */
   interactive?: WorkflowInteractiveResponseType;
-  nodeResponse?: Omit<ChatHistoryItemResType, 'runningTime' | 'totalPoints' | 'id' | 'nodeId'>; // 部分字段外层会自动根据 usages 计算。
+  /**
+   * 工具自身的运行详情。显式 totalPoints 表示当前响应自身费用；省略时由外层按 usages 计算。
+   */
+  nodeResponse?: Omit<ChatHistoryItemResType, 'runningTime' | 'id' | 'nodeId'>;
 };
 
 export const SubAppRuntimeSchema = z.object({

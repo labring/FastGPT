@@ -29,7 +29,7 @@ loop、parallel、Agent tool 和 ToolCall workflow tool 都会创建自己的运
 - 当前 workflow 层 publish 的 `nodeResponse` 由该层 response extractor 统计 token；
 - 成功和失败 `nodeResponse` 使用相同的 summary、持久化和 SSE 发布链路；
 - child workflow 的详情可以单独 publish，但 parent 只在 child 完成时通过 child summary 贡献 token；
-- 没有任何 `nodeResponse` 表示的内部模型调用通过 `pushLLMTokens` 贡献 token；
+- 没有任何 `nodeResponse` 表示的内部模型调用通过 `mergeNodeSummary` 贡献 token；
 - 同一模型调用只有一个归属入口；
 - child summary 的 token 在 parent 只贡献一次，控制字段按需单独消费；
 - nodeResponse 运行期 append-only，读取时再按展示 identity 合并；
@@ -45,16 +45,16 @@ response 属于当前 workflow 层，并通过当前层 scope publish
   -> 当前层 response extractor 读取 token
 
 response 属于 child workflow，并通过 child scope 直接写入请求级 output
-  -> parent 使用 child workflow summary 的 token 调用 pushLLMTokens(...)
+  -> parent 使用 child workflow summary 调用一次 mergeNodeSummary(...)
 
 没有 nodeResponse 的内部模型调用
-  -> 当前 callback 调用 props.nodeSummary.pushLLMTokens(...)
+  -> 当前 callback 调用 props.nodeSummary.mergeNodeSummary(...)
 ```
 
 同一次 LLM 调用不能同时出现在：
 
 - 当前层 response extractor 统计的 `nodeResponse.inputTokens/outputTokens`；
-- 当前 callback 的 `pushLLMTokens`；
+- 当前 callback 的 `mergeNodeSummary` token 增量；
 - parent wrapper 对同一 response 的 `childrenResponses`、`toolDetail`、`loopDetail` 或
   `parallelRunDetail` 递归统计。
 
@@ -74,11 +74,11 @@ queue 不解析 `nodeResponse`。所有当前层 response 都必须经过当前 
 child 每次完成一次工具、一次 iteration 或一次并行 task 后返回自己的
 `workflowRuntimeSummary`。parent wrapper 必须选择一种方式消费 token：
 
-- 调用一次 `pushLLMTokens`，把 child token 贡献到 parent；
-- 如果还需要错误、nested end、plugin output 等控制信号，再按业务逻辑各自消费这些字段。
+- 调用一次 `mergeNodeSummary`，把允许向上传递的 child token、积分、引用和控制字段合并到 parent；
+- 工具错误等不能向上提升的字段必须在合并前过滤。
 
 同一个 child summary 的 token 不能先通过 parent response extractor 统计，再调用
-`pushLLMTokens`；也不能先 `mergeNodeSummary`，再把同一组 token 再 push 一次。
+`mergeNodeSummary`；同一组 token 也不能拆成多条摘要增量重复合并。
 
 ### 2.4 Summary 和详情是两条不同的生命周期
 
@@ -140,9 +140,10 @@ type WorkflowRuntimeSummaryType = WorkflowRuntimeSummaryFields;
 它表示当前 `runWorkflow` 层已经累计完成的运行结果：
 
 - `responseIds`、`finishedNodeIds`：当前层已处理的 response 和节点；
-- `hasError`、`errorText`、`errorCount`：错误控制信号；
+- `hasError`、`errorText`、`errorCount`：非工具执行错误的控制信号；工具错误仅保留在 nodeResponse；
 - `hasLoopRunBreak`、`hasToolStop`、`hasNestedEnd`、`nestedEndOutput`：父 wrapper 的调度信号；
-- `pluginOutput`、`citeCollectionIds`、`totalPoints`、`childResponseCount`：当前层业务汇总；
+- `pluginOutput`、`citeCollectionIds`、`totalPoints`、`childResponseCount`：当前层业务汇总；其中
+  nodeResponse 的 `totalPoints` 只记录自身消耗，child points 通过 `NodeSummary` 向上归属；
 - `llmInputTokens`、`llmOutputTokens`：当前层唯一的 LLM token 总账。
 
 所有 summary 初始化 token 为 `0`，不能用“字段是否存在”判断节点类型。embedding、rerank 等
@@ -158,10 +159,6 @@ type NodeSummary = Partial<WorkflowRuntimeSummaryFields>;
 type NodeSummaryCollector = Omit<NodeSummary, 'llmInputTokens' | 'llmOutputTokens'> & {
   llmInputTokens: number;
   llmOutputTokens: number;
-  pushLLMTokens: (tokens: {
-    inputTokens?: number;
-    outputTokens?: number;
-  }) => void;
   mergeNodeSummary: (summary?: NodeSummary) => void;
 };
 ```
@@ -232,7 +229,7 @@ flowchart LR
   Internal[当前层内部 response\n独立 publish]
   Child[child runWorkflow\n返回 summary + 详情 rows]
   Extract[response extractor\n按 response id 去重]
-  Push[props.nodeSummary\npush child token / internal token]
+  Merge[props.nodeSummary\nmerge child summary increment]
   Queue[当前 WorkflowQueue\n调度 + collector merge]
   Summary[当前层\nworkflowRuntimeSummary]
   Scope[nodeResponseSink scope\n当前层 summary]
@@ -245,7 +242,7 @@ flowchart LR
   Direct --> Scope
   Internal --> Scope
   Scope --> Extract --> Summary
-  Child --> Parent --> Push --> Queue --> Summary
+  Child --> Parent --> Merge --> Queue --> Summary
   Scope --> Output --> Writer
   Output --> SSE
   Summary --> Chat
@@ -269,7 +266,7 @@ flowchart LR
 6. queue 不解析 response，也不调用 response extractor；它只把本次 callback 的
    `NodeSummaryCollector` 增量合并到当前层 summary。
 7. child workflow 的 response 由 child scope 统计后直接写入共享 output，不经过 parent scope；
-   child 每次完成后 parent 只把 child summary 的 token push 一次。
+   child 每次完成后 parent 只把筛选后的 child summary 合并一次。
 8. 请求级 output 把 response 交给 writer，并根据 `responseAllData`、`responseDetail`、API 版本和 Share
    权限决定是否发布。
 9. 当前层结束时，`runWorkflow` 返回该层完整 `workflowRuntimeSummary`；工具 parent 不等待整个
@@ -323,19 +320,21 @@ const childResult = await runWorkflow(childProps);
 const childSummary = childResult.workflowRuntimeSummary;
 ```
 
-child response 已经由 child scope 直接发布到共享 output。parent 不重新发布详情，只把 child token
-贡献一次：
+child response 已经由 child scope 直接发布到共享 output。parent 不重新发布详情，只把允许向上
+传递的 child summary 字段贡献一次：
 
 ```ts
-props.nodeSummary.pushLLMTokens({
-  inputTokens: childSummary.llmInputTokens,
-  outputTokens: childSummary.llmOutputTokens
+props.nodeSummary.mergeNodeSummary({
+  llmInputTokens: childSummary.llmInputTokens,
+  llmOutputTokens: childSummary.llmOutputTokens,
+  totalPoints,
+  citeCollectionIds: childSummary.citeCollectionIds
 });
 ```
 
 `parentId` 只用于读取时还原详情树，不会把 child token 自动计入 parent。
-如果 parent 还需要 `hasError`、`nestedEndOutput`、`pluginOutput` 等控制字段，应单独消费 child
-summary；不能为了传递控制字段而再次把同一组 token merge 到 parent。
+如果 parent 还需要 `hasError`、`nestedEndOutput`、`pluginOutput` 等控制字段，应在同一次 merge
+中按边界显式选择；不能为了传递控制字段而再次合并同一组 token。
 
 ### 5.4 Sink scope 与 queue 的关系
 
@@ -383,13 +382,13 @@ callback 和它启动的 child workflow 发布完成后，queue 只读取该 act
 
 | 节点 | 入口 | 说明 |
 | --- | --- | --- |
-| `appModule` | 每次 child 完成时由 child summary `pushLLMTokens` | 控制字段按 app wrapper 规则单独消费 |
-| `pluginModule` | 每次 child 完成时由 child summary `pushLLMTokens` | 控制字段按 plugin wrapper 规则单独消费 |
-| `runApp`（弃用） | 每次 child 完成时 `pushLLMTokens` | 兼容旧子应用 |
-| `loop`（弃用） | 每轮 child 完成时 `pushLLMTokens` | 每轮只贡献本轮增量 |
-| `loopRun` | 每次 iteration 完成时 `pushLLMTokens` | resume 不重复历史轮次 |
-| `parallelRun` | 每个 task/attempt 完成时 `pushLLMTokens` | retry 的实际消耗都计入 |
-| `tool` | 默认无 token；执行 child workflow 时在工具完成边界 `pushLLMTokens` | 系统工具可隐藏内部统计 |
+| `appModule` | 每次 child 完成时合并一次筛选后的 child summary | 控制字段按 app wrapper 规则选择 |
+| `pluginModule` | 每次 child 完成时合并一次筛选后的 child summary | 控制字段按 plugin wrapper 规则选择 |
+| `runApp`（弃用） | 每次 child 完成时合并一次 | 兼容旧子应用 |
+| `loop`（弃用） | 每轮 child 完成时合并一次 | 每轮只贡献本轮增量 |
+| `loopRun` | 每次 iteration 完成时合并一次 | resume 不重复历史轮次 |
+| `parallelRun` | 每个 task/attempt 完成时合并一次 | retry 的实际消耗都计入 |
+| `tool` | 默认无 token；执行 child workflow 时在工具完成边界合并一次 | 系统工具可隐藏内部统计 |
 
 ### 6.3 Mixed 节点
 
@@ -418,11 +417,11 @@ ToolCall 当前层
 
 | 节点 | 自身调用 | child/内部调用 |
 | --- | --- | --- |
-| `agent` | 主模型、工具、上下文压缩和工具响应压缩 response 在当前层 publish，由 extractor 读取；Agent 不额外制造一个根 response，内部行保持当前层顶级 | 工具执行的 child workflow 在每个工具完成时返回 summary，parent 只 push child token |
-| `toolCall` | ToolCall 主模型、上下文压缩和工具响应压缩 response 在当前层 publish，由 extractor 读取 | workflow tool child response 作为详情 publish，child 完成时由 ToolCall parent push child token |
+| `agent` | 主模型、工具、上下文压缩和工具响应压缩 response 在当前层 publish，由 extractor 读取；Agent 不额外制造一个根 response，内部行保持当前层顶级 | 工具执行的 child workflow 在每个工具完成时返回 summary，parent 过滤错误字段后合并一次 |
+| `toolCall` | ToolCall 主模型、上下文压缩和工具响应压缩 response 在当前层 publish，由 extractor 读取 | workflow tool child response 作为详情 publish，child 完成时由 ToolCall parent 过滤错误字段后合并一次 |
 
 如果某个内部调用已经作为当前层 response 通过当前 scope publish，必须删除对应的
-collector `pushLLMTokens` 增量；如果它属于独立 child workflow，则保留 child summary -> parent
+collector token 增量；如果它属于独立 child workflow，则保留 child summary -> parent
 token transfer，不能再从 parent 详情递归提取。
 
 ### 6.4 无 LLM token 的节点
@@ -533,7 +532,8 @@ ToolCall 子工作流的错误 response 不做特殊过滤，与成功 response 
 9. child row 先到时先作为临时 root，parent row 到达后再挂回 parent。
 
 读取合并只负责详情展示，不能再把 wrapper 的 child token递归加入当前 Chat 或 workflow summary。
-`childTotalPoints` 不再由后端生成，子节点积分由客户端根据 `childrenResponses` 现场计算。
+`childTotalPoints` 不再由后端生成，子节点积分由客户端递归汇总 `childrenResponses` 中所有后代
+nodeResponse 的自身 `totalPoints` 现场计算，且不包含当前节点。
 
 历史兼容：
 
@@ -606,8 +606,8 @@ id = `${loopRunNodeResponseId}:iter:${iteration}`;
 - React list key 不能只使用 `dataId`，必须包含 `obj` 或 `_id/id`；
 - 按 `dataId` 更新 AI 记录时必须带 AI 语义，避免命中同 ID Human；
 - SSE、详情弹窗和树形折叠统一按 `(id,parentId)` 合并，不再依赖 `mergeSignId`；
-- 子节点积分和运行时间展示使用已合并的 `childrenResponses`，不再读取后端生成的
-  `childTotalPoints`。
+- 子节点积分展示递归汇总已合并 `childrenResponses` 中所有后代的自身 `totalPoints`，运行时间
+  展示继续使用已合并的详情数据；二者都不再读取后端生成的 `childTotalPoints`。
 
 ## 10. Chat 汇总与错误边界
 

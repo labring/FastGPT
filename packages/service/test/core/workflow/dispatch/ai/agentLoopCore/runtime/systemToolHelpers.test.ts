@@ -228,4 +228,22 @@ describe('agentLoopCore system tool helpers', () => {
       vi.useRealTimers();
     }
   });
+
+  it('preserves explicit own points instead of aggregating child usages', () => {
+    expect(
+      mergeAgentLoopCoreSystemToolNodeResponse({
+        callId: 'dataset-call',
+        startTime: Date.now(),
+        usages: [
+          { moduleName: 'dataset embedding', totalPoints: 1 },
+          { moduleName: 'query extension child', totalPoints: 2 }
+        ],
+        nodeResponse: {
+          moduleType: FlowNodeTypeEnum.datasetSearchNode,
+          moduleName: 'Dataset search',
+          totalPoints: 1
+        } as any
+      })
+    ).toEqual(expect.objectContaining({ totalPoints: 1 }));
+  });
 });

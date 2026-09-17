@@ -20,7 +20,7 @@ import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
-import { runtimeSummaryToNodeSummary, splitNodeSummaryLLMTokens } from '../../utils/summary';
+import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import { getWorkflowFileMaxAmount } from '../../../utils/context';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import {
@@ -293,11 +293,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       nodeResponses: childNodeResponses,
       appendNodeResponse: appendAgentNodeResponse,
       onToolResult: (result) => {
-        const { inputTokens, outputTokens, summary } = splitNodeSummaryLLMTokens(
-          result.nodeSummary
-        );
-        props.nodeSummary.pushLLMTokens({ inputTokens, outputTokens });
-        props.nodeSummary.mergeNodeSummary(summary);
+        props.nodeSummary.mergeNodeSummary(stripNodeSummaryErrorFields(result.nodeSummary));
       }
     });
     const agentSystemPrompt = buildDefaultAgentSystemPrompt({

@@ -80,7 +80,6 @@ export const DispatchNodeResponseSchema = z
     model: z.string().optional().meta({ description: '旧模型标识', deprecated: true }),
     contextTotalLen: z.number().optional().meta({ description: '上下文总长度' }),
     totalPoints: z.number().optional().meta({ description: '总积分' }),
-    childTotalPoints: z.number().optional().meta({ description: '子节点总积分' }),
     childResponseCount: z.number().optional().meta({ description: '子节点响应数量' }),
 
     // LLM chat

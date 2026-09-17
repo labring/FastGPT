@@ -19,7 +19,8 @@ import {
   createNodeSummary,
   createWorkflowRuntimeSummary,
   mergeWorkflowRuntimeSummary,
-  runtimeSummaryToNodeSummary
+  runtimeSummaryToNodeSummary,
+  stripNodeSummaryErrorFields
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { WorkflowVariableState } from '../../../../core/workflow/dispatch/utils/variables';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -1714,6 +1715,75 @@ describe('getNodeErrResponse', () => {
 });
 
 describe('summarizeRuntimeNodeResponses', () => {
+  it('keeps tool execution errors out of the workflow error summary', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'tool-error',
+        nodeId: 'tool-node',
+        moduleType: FlowNodeTypeEnum.tool,
+        errorText: 'tool failed'
+      },
+      {
+        id: 'workflow-error',
+        nodeId: 'workflow-node',
+        moduleType: FlowNodeTypeEnum.chatNode,
+        errorText: 'workflow failed'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary).toMatchObject({
+      hasError: true,
+      errorCount: 1,
+      errorText: 'workflow failed'
+    });
+  });
+
+  it('keeps errors from non-tool child responses in the workflow summary', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'loop-child-error',
+        parentId: 'loop-iteration',
+        nodeId: 'workflow-node',
+        moduleType: FlowNodeTypeEnum.chatNode,
+        errorText: 'child workflow failed'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary).toMatchObject({
+      hasError: true,
+      errorCount: 1,
+      errorText: 'child workflow failed'
+    });
+  });
+
+  it('collects new citations from incremental and nested responses', () => {
+    const firstSummary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'dataset-response',
+        nodeId: 'dataset-node',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode
+      }
+    ] as ChatHistoryItemResType[]);
+    const summary = summarizeRuntimeNodeResponses(firstSummary, [
+      {
+        id: 'dataset-response',
+        nodeId: 'dataset-node',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [{ collectionId: 'collection-1' }],
+        childrenResponses: [
+          {
+            id: 'nested-dataset-response',
+            nodeId: 'nested-dataset-node',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            quoteList: [{ collectionId: 'collection-2' }]
+          }
+        ]
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary.citeCollectionIds).toEqual(['collection-1', 'collection-2']);
+  });
+
   it('deduplicates flattened child rows that are already included in parent child stats', () => {
     const summary = summarizeRuntimeNodeResponses(undefined, [
       {
@@ -1918,6 +1988,27 @@ describe('summarizeRuntimeNodeResponses', () => {
   });
 });
 
+describe('stripNodeSummaryErrorFields', () => {
+  it('keeps tool child usage and citations but removes promoted error fields', () => {
+    expect(
+      stripNodeSummaryErrorFields({
+        llmInputTokens: 10,
+        llmOutputTokens: 4,
+        totalPoints: 2,
+        citeCollectionIds: ['collection-1'],
+        hasError: true,
+        errorCount: 1,
+        errorText: 'tool failed'
+      })
+    ).toEqual({
+      llmInputTokens: 10,
+      llmOutputTokens: 4,
+      totalPoints: 2,
+      citeCollectionIds: ['collection-1']
+    });
+  });
+});
+
 // ─── safePoints ───────────────────────────────────────────────────────────────
 describe('safePoints', () => {
   it('正常数值 → 原样返回', () => {
@@ -2000,11 +2091,11 @@ describe('mergeWorkflowRuntimeSummary', () => {
 });
 
 describe('createNodeSummary', () => {
-  it('每次执行独立采集，多次调用累加并接受缺省值', () => {
+  it('每次执行独立采集，并通过统一入口累加 token', () => {
     const summary = createNodeSummary();
-    summary.pushLLMTokens({ inputTokens: 5, outputTokens: 2 });
-    summary.pushLLMTokens({ inputTokens: 3 });
-    summary.pushLLMTokens({});
+    summary.mergeNodeSummary({ llmInputTokens: 5, llmOutputTokens: 2 });
+    summary.mergeNodeSummary({ llmInputTokens: 3 });
+    summary.mergeNodeSummary({});
     expect(summary).toMatchObject({ llmInputTokens: 8, llmOutputTokens: 2 });
     expect(createNodeSummary()).toMatchObject({ llmInputTokens: 0, llmOutputTokens: 0 });
   });

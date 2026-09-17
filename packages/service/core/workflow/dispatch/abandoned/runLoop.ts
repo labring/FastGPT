@@ -50,7 +50,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   const outputValueArr = interactiveData ? interactiveData.loopResult : [];
   const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
-  let totalPoints = 0;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
   let index = 0;
 
@@ -90,21 +89,23 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       )
     });
     const childSummary = getWorkflowRuntimeSummary(response);
-    props.nodeSummary.pushLLMTokens({
-      inputTokens: childSummary.llmInputTokens,
-      outputTokens: childSummary.llmOutputTokens
-    });
 
     // Concat runtime response
     if (!response.workflowInteractiveResponse) {
       outputValueArr.push(getNestedEndOutputValue(response));
     }
     assistantResponses.push(...response.assistantResponses);
-    totalPoints += pushSubWorkflowUsage({
+    const iterationPoints = pushSubWorkflowUsage({
       usagePush: props.usagePush,
       response,
       name,
       iteration: index
+    });
+    props.nodeSummary.mergeNodeSummary({
+      llmInputTokens: childSummary.llmInputTokens,
+      llmOutputTokens: childSummary.llmOutputTokens,
+      totalPoints: iterationPoints,
+      citeCollectionIds: childSummary.citeCollectionIds
     });
 
     collectResponseFeedbacks(response, customFeedbacks);
@@ -136,7 +137,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       : undefined,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints,
       loopInput: loopInputArray,
       loopResult: outputValueArr
     },

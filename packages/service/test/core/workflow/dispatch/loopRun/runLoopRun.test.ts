@@ -856,15 +856,16 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       llmInputTokens: 7,
       llmOutputTokens: 3
     });
-    expect(nodeResponse.totalPoints).toBe(5);
+    expect(nodeResponse.totalPoints).toBeUndefined();
+    expect(props.nodeSummary.totalPoints).toBe(5);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.childResponseCount).toBe(3);
     expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'loop-parent-response:iter:1',
-      totalPoints: 5,
       childResponseCount: 2
     });
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.totalPoints).toBeUndefined();
   });
 
   it('lastInteractive 恢复后续跑多轮 → 恢复后非终止轮不应再携带 lastInteractive', async () => {
@@ -1062,7 +1063,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childTotalPoints).toBeUndefined();
     expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childrenResponses).toBeUndefined();
     expect(nodeResponse.loopRunDetail).toBeUndefined();
-    expect(nodeResponse.totalPoints).toBe(3);
+    expect(nodeResponse.totalPoints).toBeUndefined();
+    expect(props.nodeSummary.totalPoints).toBe(3);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
   });
 

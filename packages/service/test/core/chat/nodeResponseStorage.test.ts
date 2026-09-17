@@ -106,7 +106,7 @@ describe('createChatItemResponseRows', () => {
     });
   });
 
-  it('does not generate childTotalPoints in response rows', () => {
+  it('does not persist childTotalPoints on parent or nested response rows', () => {
     const rows = createChatItemResponseRows({
       ...base,
       nodeResponses: [
@@ -114,18 +114,23 @@ describe('createChatItemResponseRows', () => {
           id: 'loop',
           moduleType: FlowNodeTypeEnum.loopRun,
           totalPoints: 1,
-          childrenResponses: [makeResponse({ id: 'loop-child', totalPoints: 2 })]
+          childTotalPoints: 2,
+          childrenResponses: [
+            makeResponse({ id: 'loop-child', totalPoints: 2, childTotalPoints: 3 })
+          ]
         }),
         makeResponse({
           id: 'batch',
           moduleType: FlowNodeTypeEnum.parallelRun,
           totalPoints: 3,
+          childTotalPoints: 4,
           childrenResponses: [makeResponse({ id: 'batch-child', totalPoints: 4 })]
         })
       ]
     });
 
     expect(rows[0].data.childTotalPoints).toBeUndefined();
+    expect(rows[0].data.childrenResponses?.[0].childTotalPoints).toBeUndefined();
     expect(rows[0].data.childResponseCount).toBe(1);
     expect(rows[1].data.childTotalPoints).toBeUndefined();
     expect(rows[1].data.childResponseCount).toBe(1);

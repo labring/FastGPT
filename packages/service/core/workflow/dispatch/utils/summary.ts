@@ -40,7 +40,17 @@ const getConcreteChildParentIds = (summary: WorkflowRuntimeSummaryType) => {
   return created;
 };
 
-/** 为单次节点执行创建独立的 LLM token 采集器。 */
+/**
+ * 判断当前响应本身是否是工具执行结果。
+ * parentId 只描述详情树结构，Loop/Parallel 等普通子流程响应也会携带，不能据此吞掉错误。
+ */
+const isToolNodeResponse = (response: ChatHistoryItemResType) =>
+  response.moduleType === FlowNodeTypeEnum.tool ||
+  response.moduleType === FlowNodeTypeEnum.toolSet ||
+  response.toolRes !== undefined ||
+  response.toolInput !== undefined;
+
+/** 为单次节点执行创建独立的运行摘要采集器。 */
 export const createNodeSummary = (): NodeSummaryCollector => {
   const summary: NodeSummaryCollector = {
     llmInputTokens: 0,
@@ -55,10 +65,6 @@ export const createNodeSummary = (): NodeSummaryCollector => {
     hasNestedEnd: false,
     totalPoints: 0,
     childResponseCount: 0,
-    pushLLMTokens: ({ inputTokens = 0, outputTokens = 0 }) => {
-      summary.llmInputTokens += inputTokens;
-      summary.llmOutputTokens += outputTokens;
-    },
     mergeNodeSummary: (source) => {
       if (!source) return;
       summary.responseIds?.push(...(source.responseIds ?? []));
@@ -120,27 +126,20 @@ export const runtimeSummaryToNodeSummary = (
 };
 
 /**
- * 拆出 child workflow 已经归属到当前 callback 的 LLM token。
+ * 移除不能跨工具边界向上提升的错误控制字段。
  *
- * child summary 的控制字段仍由调用方合并；token 单独通过 pushLLMTokens 上报，
- * 这样不会把同一份 token 再当作当前节点 response 重新提取。
+ * 工具内部错误已经记录在 nodeResponse，不再提升为整轮会话错误；token、积分、引用等
+ * 业务汇总字段保留，由调用方通过 mergeNodeSummary 一次性合并。
  */
-export const splitNodeSummaryLLMTokens = (summary?: NodeSummary) => {
-  if (!summary) {
-    return {
-      inputTokens: 0,
-      outputTokens: 0,
-      summary: undefined as NodeSummary | undefined
-    };
-  }
+export const stripNodeSummaryErrorFields = (summary?: NodeSummary): NodeSummary | undefined => {
+  if (!summary) return undefined;
 
-  const { llmInputTokens = 0, llmOutputTokens = 0, ...controlSummary } = summary;
+  const controlSummary = { ...summary };
+  delete controlSummary.hasError;
+  delete controlSummary.errorText;
+  delete controlSummary.errorCount;
 
-  return {
-    inputTokens: llmInputTokens,
-    outputTokens: llmOutputTokens,
-    summary: Object.keys(controlSummary).length > 0 ? controlSummary : undefined
-  };
+  return Object.keys(controlSummary).length > 0 ? controlSummary : undefined;
 };
 
 /**
@@ -244,6 +243,8 @@ export const summarizeRuntimeNodeResponses = (
     response: ChatHistoryItemResType,
     collectTokens = true
   ) => {
+    // 同一 response id 的后续增量仍可能补充引用，引用集合需要独立于计数去重更新。
+    collectCiteCollectionIds(response);
     if (response.id && countedIds.has(response.id)) {
       return summary;
     }
@@ -265,7 +266,8 @@ export const summarizeRuntimeNodeResponses = (
     if (response.nodeId) {
       summary.finishedNodeIds.push(response.nodeId);
     }
-    if (response.error || response.errorText) {
+    // 工具错误属于模型可继续消费的工具结果，只保留在 nodeResponse 详情中。
+    if (!isToolNodeResponse(response) && (response.error || response.errorText)) {
       summary.hasError = true;
       summary.errorCount += 1;
       summary.errorText = getErrText(response.error || response.errorText);
@@ -283,8 +285,6 @@ export const summarizeRuntimeNodeResponses = (
     if (response.moduleType === FlowNodeTypeEnum.pluginOutput && response.pluginOutput) {
       summary.pluginOutput = response.pluginOutput;
     }
-    collectCiteCollectionIds(response);
-
     const children = getChildrenResponses(response);
     if (response.parentId) {
       concreteParentIds.add(response.parentId);
@@ -310,12 +310,11 @@ export const summarizeRuntimeNodeResponses = (
     return summary;
   };
 
-  initialSummary.citeCollectionIds = Array.from(citeCollectionIds);
-
   const summary = nodeResponses.reduce<WorkflowRuntimeSummaryType>(
     (summary, response) => addResponseToSummary(summary, response),
     initialSummary
   );
+  summary.citeCollectionIds = Array.from(citeCollectionIds);
   concreteChildParentIds.set(summary, concreteParentIds);
   return summary;
 };

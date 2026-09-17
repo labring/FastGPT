@@ -8,7 +8,8 @@ import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/d
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   getChildrenResponses,
-  mergeNodeResponseDataByIdAndParent
+  mergeNodeResponseDataByIdAndParent,
+  stripNodeResponseChildTotalPoints
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -295,13 +296,14 @@ export const createChatItemResponseRows = ({
   const { sourceType: _sourceType, sourceId: _sourceId, ...restBase } = base;
 
   return nodeResponses.map((response) => {
-    const id = getResponseId(response);
-    const currentParentId = getParentId(response);
-    const children = getChildrenResponses(response);
-    const childResponseCount = getResponseChildResponseCount(response, children);
+    const normalizedResponse = stripNodeResponseChildTotalPoints(response);
+    const id = getResponseId(normalizedResponse);
+    const currentParentId = getParentId(normalizedResponse);
+    const children = getChildrenResponses(normalizedResponse);
+    const childResponseCount = getResponseChildResponseCount(normalizedResponse, children);
     // data 是当前 nodeResponse 本身：保留 childrenResponses，仅读取时再与 parentId child rows 合并。
     const data = {
-      ...response,
+      ...normalizedResponse,
       id,
       ...(currentParentId ? { parentId: currentParentId } : {}),
       ...(childResponseCount !== undefined ? { childResponseCount } : {})
