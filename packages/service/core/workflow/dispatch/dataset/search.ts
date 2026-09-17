@@ -202,6 +202,7 @@ export const dispatchDatasetSearch = async (
       reRankInputTokens,
       usingSimilarityFilter,
       usingReRank: searchUsingReRank,
+      retrievalResults,
       queryExtensionResult,
       imageCaptionResult,
       deepSearchResult
@@ -355,7 +356,9 @@ export const dispatchDatasetSearch = async (
         deepSearchResult,
         ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
         // Results
-        quoteList: searchRes
+        quoteList: searchRes,
+        // 融合候选集快照，仅在重排开启且未超过上限时由检索层产出，便于日志详情对比召回与重排结果
+        ...(retrievalResults?.length ? { retrievalResults } : {})
       },
       [DispatchNodeResponseKeyEnum.toolResponse]:
         searchRes.length > 0

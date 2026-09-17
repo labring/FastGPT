@@ -120,6 +120,7 @@ const getNodeResponseFieldMap = ({
   return responseDetail
     ? {
         quoteList: true,
+        retrievalResults: true,
         ...fields
       }
     : fields;

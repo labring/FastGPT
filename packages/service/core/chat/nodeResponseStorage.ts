@@ -4,6 +4,7 @@ import type {
   ChatItemResponseSchemaType
 } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   getChildrenResponses,
@@ -74,26 +75,34 @@ const getResponseId = (response: ChatHistoryItemResType) => response.id || getNa
 
 const getParentId = (response: ChatHistoryItemResType) => response.parentId;
 
+const slimQuoteItem = (quote: SearchDataResponseQuoteListItemType) => ({
+  id: quote.id,
+  chunkIndex: quote.chunkIndex,
+  datasetId: quote.datasetId,
+  collectionId: quote.collectionId,
+  sourceId: quote.sourceId,
+  sourceName: quote.sourceName,
+  score: quote.score
+});
+
 /**
  * 数据集搜索节点可能携带完整 quote q/a 文本，体积很大且详情展示只需要来源元信息。
- * 入库前瘦身 quoteList，可以降低单条 row 过大导致 Mongo 写失败的概率。
+ * 入库前瘦身 quoteList 与 retrievalResults，可以降低单条 row 过大导致 Mongo 写失败的概率。
  */
 const slimQuoteListForStorage = (response: ChatHistoryItemResType): ChatHistoryItemResType => {
-  if (response.moduleType !== FlowNodeTypeEnum.datasetSearchNode || !response.quoteList) {
+  if (response.moduleType !== FlowNodeTypeEnum.datasetSearchNode) {
+    return response;
+  }
+
+  const { quoteList, retrievalResults } = response;
+  if (!quoteList && !retrievalResults) {
     return response;
   }
 
   return {
     ...response,
-    quoteList: response.quoteList.map((quote) => ({
-      id: quote.id,
-      chunkIndex: quote.chunkIndex,
-      datasetId: quote.datasetId,
-      collectionId: quote.collectionId,
-      sourceId: quote.sourceId,
-      sourceName: quote.sourceName,
-      score: quote.score
-    }))
+    ...(quoteList ? { quoteList: quoteList.map(slimQuoteItem) } : {}),
+    ...(retrievalResults ? { retrievalResults: retrievalResults.map(slimQuoteItem) } : {})
   };
 };
 

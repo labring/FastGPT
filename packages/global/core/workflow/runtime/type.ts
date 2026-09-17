@@ -115,6 +115,10 @@ export const DispatchNodeResponseSchema = z
     rerankWeight: z.number().optional().meta({ description: '重排权重' }),
     reRankInputTokens: z.number().optional().meta({ description: '重排输入 token' }),
     searchUsingReRank: z.boolean().optional().meta({ description: '使用重排' }),
+    retrievalResults: z
+      .array(SearchDataResponseQuoteListItemSchema)
+      .optional()
+      .meta({ description: '融合候选集（去重/过滤前），仅重排开启时记录' }),
     deepSearchResult: z
       .object({
         model: z.string().meta({ description: '模型' }),

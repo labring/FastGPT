@@ -348,6 +348,31 @@ describe('filterNodeResponseTreeData', () => {
       }
     ]);
   });
+
+  it('keeps retrievalResults in step with quoteList under responseDetail', () => {
+    const nodeResponses: ChatHistoryItemResType[] = [
+      {
+        id: 'dataset',
+        nodeId: 'dataset-node',
+        moduleName: 'Dataset Search',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [{ id: 'quote-1', q: 'reranked question', chunkIndex: 0, score: [] } as any],
+        retrievalResults: [
+          { id: 'recall-1', q: 'recalled question', chunkIndex: 1, score: [] } as any
+        ]
+      }
+    ];
+
+    // detail 打开时两者都保留，保持与 quoteList 一致
+    const withDetail = filterNodeResponseTreeData({ nodeResponses, responseDetail: true });
+    expect(withDetail[0].quoteList?.[0].id).toBe('quote-1');
+    expect(withDetail[0].retrievalResults?.[0].id).toBe('recall-1');
+
+    // detail 关闭时两者都剥掉，避免默认渠道多泄露候选集
+    const withoutDetail = filterNodeResponseTreeData({ nodeResponses, responseDetail: false });
+    expect(withoutDetail[0]).not.toHaveProperty('quoteList');
+    expect(withoutDetail[0]).not.toHaveProperty('retrievalResults');
+  });
 });
 
 describe('removeEmptyUserInput', () => {
