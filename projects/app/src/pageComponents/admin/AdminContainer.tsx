@@ -7,6 +7,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import SecondaryNavigationContainer, {
   type SecondaryNavigationTab
 } from '@/pageComponents/common/SecondaryNavigationContainer';
+import { unlicensedAdminRoutes } from '@/components/admin/constants';
 
 /**
  * 管理员区域（/admin/*）的二级导航壳层，仅 root 用户可见。
@@ -14,6 +15,7 @@ import SecondaryNavigationContainer, {
  * 非 root 访问时重定向回个人中心。
  *
  * 菜单授权（决策版）：
+ * - License 未激活：仅展示白名单菜单（模型提供商/系统工具/管理员主页），与 Layout 对 /admin/* 的路由拦截一致
  * - 套餐管理/支付记录/开票/充值 = functions.pay 控制（商业功能，激活且开启才显示）
  * - 模板 & 工具（模板市场/工具箱）= 始终显示（customTemplates 已从决策版移除，模板市场开源化）
  */
@@ -26,14 +28,17 @@ const AdminContainer = ({
   isLoading?: boolean;
 }) => {
   const router = useRouter();
-  const { initd, licenseData } = useSystemStore();
+  const { initd, licenseData, licenseLoading } = useSystemStore();
   const { userInfo } = useUserStore();
   const isRoot = userInfo?.username === 'root';
 
   const currentTab = router.pathname;
 
-  const tabList = useMemo<SecondaryNavigationTab<string>[]>(
-    () => [
+  // License 检测完成后无授权数据 = 未激活；此时仅保留白名单菜单，避免暴露被 Layout 拦截的路由
+  const licenseUnactivated = !licenseData;
+
+  const tabList = useMemo<SecondaryNavigationTab<string>[]>(() => {
+    const tabs: SecondaryNavigationTab<string>[] = [
       {
         icon: 'common/overviewLight',
         label: '数据面板',
@@ -180,9 +185,11 @@ const AdminContainer = ({
         label: '管理员主页',
         value: '/admin/home'
       }
-    ],
-    [licenseData]
-  );
+    ];
+
+    if (!licenseUnactivated) return tabs;
+    return tabs.filter((tab) => unlicensedAdminRoutes.includes(tab.value));
+  }, [licenseData, licenseUnactivated]);
 
   // 非 root 访问管理员区域时重定向回个人中心
   useEffect(() => {
@@ -198,6 +205,7 @@ const AdminContainer = ({
   return (
     <SecondaryNavigationContainer
       isLoading={isLoading || !initd || !isRoot}
+      isMenuLoading={isRoot && licenseLoading}
       tabs={tabList}
       value={currentTab}
       onChange={setCurrentTab}

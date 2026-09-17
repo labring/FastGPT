@@ -18,6 +18,7 @@ import SupportBot from './SupportBot';
 import { getAdminModelConfig } from '@/web/core/ai/config';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { unlicensedAdminRoutes } from '@/components/admin/constants';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -108,24 +109,28 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const checkedModelIdentityRef = useRef<string>();
 
   const isRoot = userInfo?.username === 'root';
+  // /admin 区域外的路由（工作台、知识库、对话等）属于开源版本体，不受 License 状态影响
+  const isAdminRoute = router.pathname.startsWith('/admin/');
 
   useEffect(() => {
     if (!userInfo || !isRoot) return;
     void initLicenseData();
   }, [initLicenseData, isRoot, userInfo]);
 
+  // License 未激活时仅限制管理员区域：白名单（管理员主页/模型提供商/系统工具）之外的 /admin/* 回到管理员主页引导激活
   useEffect(() => {
     if (
       !router.isReady ||
       !isRoot ||
       licenseLoading ||
       licenseData ||
-      router.pathname === '/admin/home'
+      !isAdminRoute ||
+      unlicensedAdminRoutes.includes(router.pathname)
     ) {
       return;
     }
     void router.replace('/admin/home');
-  }, [isRoot, licenseData, licenseLoading, router]);
+  }, [isAdminRoute, isRoot, licenseData, licenseLoading, router]);
 
   // Auto redeem coupon
   useCheckCoupon();

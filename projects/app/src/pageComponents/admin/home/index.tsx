@@ -4,6 +4,7 @@ import { Box, Button, Flex, Grid, GridItem, Skeleton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import LicenseInput from '@/components/admin/License/Input';
+import { commercialDocUrl } from '@/components/admin/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const formatDate = (value?: string) => {
@@ -58,6 +59,18 @@ const AdminHome = () => {
       enabled: Boolean(licenseData?.functions?.datasetEnhance)
     }
   ];
+
+  /**
+   * 未激活按开源版使用方式呈现：展示引导阅读商业版文档的按钮，而不是无法在开源版完成的激活入口。
+   * 已激活时仍提供变更入口（续期、换绑实例）。
+   */
+  const onLicenseButtonClick = () => {
+    if (isActivated) {
+      setShowLicenseInput(true);
+      return;
+    }
+    window.open(commercialDocUrl, '_blank');
+  };
 
   return (
     <Box h="100%" overflow="auto" bg="white" color="myGray.900">
@@ -170,10 +183,12 @@ const AdminHome = () => {
               py={2}
               px={'14px'}
               fontSize="14px"
-              leftIcon={<MyIcon name="common/settingLight" w="18px" />}
-              onClick={() => setShowLicenseInput(true)}
+              leftIcon={
+                <MyIcon name={isActivated ? 'common/settingLight' : 'common/link'} w="18px" />
+              }
+              onClick={onLicenseButtonClick}
             >
-              {isActivated ? t('admin:license_change') : t('admin:license_activate')}
+              {isActivated ? t('admin:license_change') : t('admin:license_learn_commercial')}
             </Button>
           </Grid>
         </Box>
