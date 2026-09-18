@@ -17,7 +17,8 @@ import {
   str2OpenApiSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { bundleOpenAPISchema } from '@fastgpt/global/common/string/swagger';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import {
   FlowNodeInputItemTypeSchema,
   InputConfigInputTypeEnum
@@ -888,6 +889,23 @@ describe('jsonSchema2NodeOutput', () => {
 });
 
 describe('nodeInputs2JsonSchema', () => {
+  it('should keep dataset search agent-generated schema as a string array', () => {
+    const searchInput = DatasetSearchModule.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetSearchInput
+    );
+
+    const result = nodeInputs2JsonSchema({
+      inputs: searchInput ? [searchInput] : []
+    });
+
+    expect(result.properties?.datasetSearchInput).toMatchObject({
+      type: 'array',
+      items: { type: 'string' },
+      title: 'workflow:search_query',
+      description: 'workflow:content_to_search'
+    });
+  });
+
   it.each([
     ['tool description', 'Tool description', 'UI description', 'Field label', 'Tool description'],
     ['UI description', undefined, 'UI description', 'Field label', 'UI description'],

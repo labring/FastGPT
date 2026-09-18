@@ -1395,6 +1395,53 @@ describe('agent generated tool input helpers', () => {
     expect(manualType).toBe(FlowNodeInputTypeEnum.textarea);
   });
 
+  it('should not project a JSON editor onto nodes that only declare a text control', () => {
+    const textareaOnlyInput = createMockInput({
+      key: NodeInputKeyEnum.datasetSearchInput,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.textarea
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated
+    });
+
+    expect(getToolInputManualRenderType(textareaOnlyInput)).toBe(FlowNodeInputTypeEnum.textarea);
+    expect(
+      getToolInputDisplayRenderTypeList({ input: textareaOnlyInput, showAgentGenerated: true })
+    ).toEqual([
+      FlowNodeInputTypeEnum.agentGenerated,
+      FlowNodeInputTypeEnum.textarea,
+      FlowNodeInputTypeEnum.reference
+    ]);
+
+    // 只声明单行 input 时退回 input，不要升级成多行控件。
+    expect(
+      getToolInputManualRenderType(
+        createMockInput({
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          renderTypeList: [FlowNodeInputTypeEnum.input]
+        })
+      )
+    ).toBe(FlowNodeInputTypeEnum.input);
+
+    // 节点自己声明了 JSON Editor 时，仍然按 valueType 收敛到它。
+    expect(
+      getToolInputManualRenderType(
+        createMockInput({
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          renderTypeList: [
+            FlowNodeInputTypeEnum.agentGenerated,
+            FlowNodeInputTypeEnum.JSONEditor,
+            FlowNodeInputTypeEnum.textarea
+          ],
+          selectedType: FlowNodeInputTypeEnum.textarea
+        })
+      )
+    ).toBe(FlowNodeInputTypeEnum.JSONEditor);
+  });
+
   it('should restore text input when a string input carries a stale select type', () => {
     const manualType = getToolInputManualRenderType(
       createMockInput({

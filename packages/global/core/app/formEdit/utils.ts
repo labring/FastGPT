@@ -275,12 +275,30 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
   }
 
   if (hasGenericManualInput) {
-    // string 类型的 input/textarea 都是合法手动控件，优先保留候选列表中的具体类型。
-    return preferredType === FlowNodeInputTypeEnum.input
-      ? candidates.includes(FlowNodeInputTypeEnum.input)
+    /**
+     * 走到这里说明 preferredType 不在候选中，只能投影出节点没有声明的控件。
+     * 例如：知识库搜索作为工具时，valueType 是 arrayString。此时会被选定为 JSONEditor 类型。
+     *
+     *  但若使用 JSONEditor 类型，下次读取并 migrate 时会被 template 上的 renderTypeList 过滤掉
+     * （template 上的定义只有 textarea，因为我们希望它显示为 textarea），并回退到 agentGenerated。
+     *
+     * 所以这里（在渲染时）为 JSONEditor 回退到 textarea。避免知识库搜索和指定回复节点的用户输入被覆盖。
+     */
+    const prefersTextControl =
+      preferredType === FlowNodeInputTypeEnum.input ||
+      preferredType === FlowNodeInputTypeEnum.JSONEditor;
+    if (!prefersTextControl) return preferredType;
+
+    // 数组/对象值用多行文本承载更合适；节点只声明单行 input 时退回 input。
+    const textControl =
+      preferredType === FlowNodeInputTypeEnum.JSONEditor
+        ? FlowNodeInputTypeEnum.textarea
+        : FlowNodeInputTypeEnum.input;
+    return candidates.includes(textControl)
+      ? textControl
+      : candidates.includes(FlowNodeInputTypeEnum.input)
         ? FlowNodeInputTypeEnum.input
-        : FlowNodeInputTypeEnum.textarea
-      : preferredType;
+        : FlowNodeInputTypeEnum.textarea;
   }
 
   return candidates[0];
