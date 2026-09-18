@@ -18,6 +18,7 @@ import SupportBot from './SupportBot';
 import { getAdminModelConfig } from '@/web/core/ai/config';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { unlicensedAdminRoutes } from '@/components/admin/constants';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -54,7 +55,6 @@ const ActivityAdModal = dynamic(() => import('@/components/support/activity/Acti
 const ProModal = dynamic(() => import('@/components/ProTip/ProModal'), {
   ssr: false
 });
-
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
   '/login': true,
@@ -92,12 +92,45 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { toast } = useToast();
   const { t } = useClientTranslation('price');
   const { Loading } = useLoading();
-  const { setLastRoute, loading, feConfigs, showProModal, setShowProModal } = useSystemStore();
+  const {
+    setLastRoute,
+    loading,
+    feConfigs,
+    showProModal,
+    setShowProModal,
+    licenseData,
+    licenseLoading,
+    initLicenseData
+  } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const modelLoginGeneration = useUserModelStore((state) => state.loginGeneration);
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
   const checkedModelIdentityRef = useRef<string>();
+
+  const isRoot = userInfo?.username === 'root';
+  // /admin 区域外的路由（工作台、知识库、对话等）属于开源版本体，不受 License 状态影响
+  const isAdminRoute = router.pathname.startsWith('/admin/');
+
+  useEffect(() => {
+    if (!userInfo || !isRoot) return;
+    void initLicenseData();
+  }, [initLicenseData, isRoot, userInfo]);
+
+  // License 未激活时仅限制管理员区域：白名单（管理员主页/模型提供商/系统工具）之外的 /admin/* 回到管理员主页引导激活
+  useEffect(() => {
+    if (
+      !router.isReady ||
+      !isRoot ||
+      licenseLoading ||
+      licenseData ||
+      !isAdminRoute ||
+      unlicensedAdminRoutes.includes(router.pathname)
+    ) {
+      return;
+    }
+    void router.replace('/admin/home');
+  }, [isAdminRoute, isRoot, licenseData, licenseLoading, router]);
 
   // Auto redeem coupon
   useCheckCoupon();
@@ -133,7 +166,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     if (userInfo?.username !== 'root') return;
     // 模型配置页会自行加载同一份数据；这里跳过，避免首屏重复请求。
-    if (router.pathname === '/config/model') return;
+    if (router.pathname === '/admin/config/modelProvider') return;
 
     const identity = `${userInfo.team.teamId}:${userInfo.team.tmbId}:${modelLoginGeneration}`;
     if (checkedModelIdentityRef.current === identity) return;
@@ -147,16 +180,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:llm_model_not_config')
           });
-          if (router.pathname !== '/config/model') {
-            router.push('/config/model?modelTab=config');
+          if (router.pathname !== '/admin/config/modelProvider') {
+            router.push('/admin/config/modelProvider?modelTab=config');
           }
         } else if (!activeModels.some((model) => model.type === ModelTypeEnum.embedding)) {
           toast({
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          if (router.pathname !== '/config/model') {
-            router.push('/config/model?modelTab=config');
+          if (router.pathname !== '/admin/config/modelProvider') {
+            router.push('/admin/config/modelProvider?modelTab=config');
           }
         }
       })
@@ -244,6 +277,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       )}
       {/* 企业认证 */}
       <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
+
       {/* 活动 */}
       <ActivityAdModal />
       {/* 无 SSL，手动复制 */}
