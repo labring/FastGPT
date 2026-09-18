@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getFlatAppResponses, isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
+import { findFailedResponseNode, getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -40,38 +40,25 @@ const withUseAgentSandbox = (historyItem: ChatItemMiniType, useAgentSandbox: boo
 };
 
 /**
- * 从节点运行详情中提取可直接展示在聊天气泡上的错误文本。
- *
- * 部分节点失败时历史数据只写入顶层 `error`，不一定有专门用于展示的 `errorText`。
- * 这里统一兜底，避免报错卡片显示“无输出”。
- */
-const getNodeErrorText = (item: ChatHistoryItemResType) => {
-  // 开启错误捕获的节点会把错误交给 catch 分支继续执行，聊天气泡不应把它当最终失败展示。
-  if (item.errorCaptured) return;
-
-  return item.errorText || getErrText(item.error);
-};
-
-/**
  * 按历史记录加载口径提取聊天气泡错误。
  *
- * 只有根节点失败才代表本轮对话失败；带 parentId 的响应、内嵌 children 以及工具执行详情都属于
- * ToolCall/Agent 的工具执行详情，错误会作为工具结果交回上层，不应提升为聊天错误。
+ * 统一复用 findFailedResponseNode：
+ * 忽略工具执行响应以及已被捕获的错误；优先提取根节点错误，孤儿异常错误兜底。
  */
 export const getChatItemErrorText = (
   responseData: ChatHistoryItemResType[] = []
-): ErrorTextItemType | undefined =>
-  responseData.reduce<ErrorTextItemType | undefined>((errorText, item) => {
-    if (isToolExecutionResponse(item)) return errorText;
+): ErrorTextItemType | undefined => {
+  const failedNode = findFailedResponseNode(responseData);
+  if (!failedNode) return undefined;
 
-    const nodeErrorText = getNodeErrorText(item);
-    if (!nodeErrorText) return errorText;
+  const nodeErrorText = failedNode.errorText || getErrText(failedNode.error);
+  if (!nodeErrorText) return undefined;
 
-    return {
-      moduleName: item.moduleName,
-      errorText: nodeErrorText
-    };
-  }, undefined);
+  return {
+    moduleName: failedNode.moduleName,
+    errorText: nodeErrorText
+  };
+};
 
 /**
  * 聊天列表预览只需要从 nodeResponse rows 中提取标签和错误摘要。

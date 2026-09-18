@@ -584,4 +584,58 @@ describe('addStatisticalDataToHistoryItem', () => {
 
     expect(addStatisticalDataToHistoryItem(historyItem).totalQuoteList).toHaveLength(1);
   });
+
+  it('preserves unhandled orphan child node error when parent container crashed', () => {
+    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+      {
+        id: 'orphan-code-node',
+        nodeId: 'orphan-code-node',
+        moduleName: '代码运行',
+        moduleType: FlowNodeTypeEnum.code,
+        parentId: 'crashed-container',
+        errorText: 'Process killed: out of memory'
+      }
+    ];
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: '' } }],
+      responseData
+    };
+
+    expect(getChatItemErrorText(responseData)).toEqual({
+      moduleName: '代码运行',
+      errorText: 'Process killed: out of memory'
+    });
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toEqual({
+      moduleName: '代码运行',
+      errorText: 'Process killed: out of memory'
+    });
+  });
+
+  it('preserves standalone canvas pluginModule error', () => {
+    const responseData: NonNullable<ChatItemMiniType['responseData']> = [
+      {
+        id: 'canvas-plugin-node',
+        nodeId: 'canvas-plugin-node',
+        moduleName: '插件模块',
+        moduleType: FlowNodeTypeEnum.pluginModule,
+        toolInput: { query: 'test' },
+        errorText: 'Plugin failed'
+      }
+    ];
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [{ text: { content: '' } }],
+      responseData
+    };
+
+    expect(getChatItemErrorText(responseData)).toEqual({
+      moduleName: '插件模块',
+      errorText: 'Plugin failed'
+    });
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toEqual({
+      moduleName: '插件模块',
+      errorText: 'Plugin failed'
+    });
+  });
 });

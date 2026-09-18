@@ -101,61 +101,7 @@ describe('getWorkflowFinalResponseError', () => {
     ).toBe('Root node failed');
   });
 
-  it('ignores flat tool errors without parentId when summary has no lastError', () => {
-    expect(
-      getWorkflowFinalResponseError({
-        finalResponseData: [
-          {
-            id: 'sandbox-tool-node',
-            nodeId: 'sandbox-tool-node',
-            moduleName: '虚拟机/列出目录',
-            moduleType: FlowNodeTypeEnum.tool,
-            toolInput: { path: '/user_files' },
-            toolRes: 'Tool error: file not found. lstat /user_files: no such file or directory',
-            errorText: 'Tool error: file not found. lstat /user_files: no such file or directory'
-          }
-        ]
-      })
-    ).toBeUndefined();
-  });
-
-  it('ignores subApp / custom tool execution errors carrying toolRes', () => {
-    expect(
-      getWorkflowFinalResponseError({
-        finalResponseData: [
-          {
-            id: 'subapp-tool',
-            moduleName: '子应用工具',
-            moduleType: FlowNodeTypeEnum.appModule,
-            toolInput: { query: 'test' },
-            toolRes: 'Tool error: failed to execute',
-            errorText: 'Tool error: failed to execute'
-          }
-        ]
-      })
-    ).toBeUndefined();
-  });
-
-  it('finds earlier root node error when the last node is a tool execution error', () => {
-    expect(
-      getWorkflowFinalResponseError({
-        finalResponseData: [
-          {
-            id: 'llm-node',
-            moduleType: FlowNodeTypeEnum.chatNode,
-            errorText: 'Model rate limit exceeded'
-          },
-          {
-            id: 'sandbox-tool-node',
-            moduleType: FlowNodeTypeEnum.tool,
-            errorText: 'Tool error: file not found'
-          }
-        ]
-      })
-    ).toBe('Model rate limit exceeded');
-  });
-
-  it('returns regular root node error when last node is not a tool', () => {
+  it('delegates to findFailedResponseNode when summary has no errorText', () => {
     expect(
       getWorkflowFinalResponseError({
         finalResponseData: [
@@ -169,10 +115,16 @@ describe('getWorkflowFinalResponseError', () => {
     ).toEqual({ message: 'OpenAI API key expired' });
   });
 
-  it('returns undefined when finalResponseData is empty', () => {
+  it('returns undefined when finalResponseData has no failure', () => {
     expect(
       getWorkflowFinalResponseError({
-        finalResponseData: []
+        finalResponseData: [
+          {
+            id: 'sandbox-tool-node',
+            moduleType: FlowNodeTypeEnum.tool,
+            errorText: 'Tool error: file not found'
+          }
+        ]
       })
     ).toBeUndefined();
   });
