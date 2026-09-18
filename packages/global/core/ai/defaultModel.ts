@@ -9,7 +9,9 @@ export const ModelDefaultIdsSchema = z.object({
   [ModelTypeEnum.stt]: z.string().optional(),
   [ModelTypeEnum.rerank]: z.string().optional(),
   datasetTextLLM: z.string().optional(),
-  datasetImageLLM: z.string().optional(),
+  // `null` is an explicit administrator choice to disable the automatic VLM default.
+  // Omitted keeps the legacy behavior of resolving the first available vision model.
+  datasetImageLLM: z.string().nullable().optional(),
   chatTitleLLM: z.string().optional()
 });
 

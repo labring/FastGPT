@@ -134,6 +134,25 @@ describe('catalog consumers', () => {
     ).toBeUndefined();
   });
 
+  it('does not fall back to a vision model when the administrator explicitly disables it', async () => {
+    mocks.catalog.mockResolvedValueOnce({
+      version: 'v2',
+      data: {
+        models,
+        providers: [],
+        defaultModelIds: { datasetImageLLM: null }
+      }
+    });
+
+    expect(
+      await getModelDefault({
+        modelType: ModelTypeEnum.llm,
+        defaultKey: 'datasetImageLLM',
+        vision: true
+      })
+    ).toBeUndefined();
+  });
+
   it('skips an unavailable cached or system default model before using the first candidate', async () => {
     const unavailableDefaults = models.map((model) =>
       model.modelId === 'business' || model.modelId === 'system'

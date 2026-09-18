@@ -97,6 +97,28 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
     expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith();
   });
 
+  it('persists null as an explicit opt-out for the dataset image default', async () => {
+    await handler(
+      { body: { datasetImageLLMModelId: null } } as any,
+      {} as any
+    );
+
+    expect(mocks.findLean).not.toHaveBeenCalled();
+    expect(mocks.upsertSystemDefaultModelIds).toHaveBeenCalledWith(
+      {
+        llm: undefined,
+        embedding: undefined,
+        tts: undefined,
+        stt: undefined,
+        rerank: undefined,
+        datasetTextLLM: undefined,
+        datasetImageLLM: null,
+        chatTitleLLM: undefined
+      },
+      mocks.session
+    );
+  });
+
   it.each([
     {
       name: 'model ID does not exist in the system scope',

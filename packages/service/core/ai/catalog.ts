@@ -19,7 +19,7 @@ export const resolveEffectiveDefaultModelIds = ({
     type,
     predicate
   }: {
-    configuredId?: string;
+    configuredId?: string | null;
     type: ModelTypeEnum;
     predicate?: (model: SystemModelDataType) => boolean;
   }) => {
@@ -60,11 +60,16 @@ export const resolveEffectiveDefaultModelIds = ({
       configuredId: configuredDefaults.datasetTextLLM,
       type: ModelTypeEnum.llm
     }),
-    datasetImageLLM: resolve({
-      configuredId: configuredDefaults.datasetImageLLM,
-      type: ModelTypeEnum.llm,
-      predicate: (model) => model.type === ModelTypeEnum.llm && !!model.config.vision
-    }),
+    // Preserve an explicit disable flag for clients. Returning `undefined` here would make
+    // client-side default resolution select the first available vision model again.
+    datasetImageLLM:
+      configuredDefaults.datasetImageLLM === null
+        ? null
+        : resolve({
+            configuredId: configuredDefaults.datasetImageLLM,
+            type: ModelTypeEnum.llm,
+            predicate: (model) => model.type === ModelTypeEnum.llm && !!model.config.vision
+          }),
     chatTitleLLM:
       configuredChatTitle?.type === ModelTypeEnum.llm ? configuredChatTitle.modelId : undefined
   };
