@@ -340,6 +340,38 @@ describe('authDatasetCollection', () => {
     expect(result.permission.checkPer(OwnerPermissionVal)).toBe(false);
     expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
   });
+
+  it('grants the team owner owner role on a collection owned by another member', async () => {
+    // 团队 owner 短路为 owner：changeOwner 等 owner 专属操作不能因 cap 到 manage 被误拒
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: true }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      collectionPermissionEnabled: true
+    });
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-other'
+    });
+
+    const result = await authDatasetCollection({
+      mockReq,
+      authToken: true,
+      collectionId,
+      per: OwnerPermissionVal
+    });
+
+    expect(result.permission.role).toBe(OwnerRoleVal);
+    expect(result.permission.checkPer(OwnerPermissionVal)).toBe(true);
+    // 短路生效：启用态下也不读物化快照
+    expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+  });
 });
 
 describe('authDatasetCollectionCreate', () => {

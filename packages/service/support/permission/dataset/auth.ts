@@ -229,7 +229,7 @@ export async function authDatasetCollection({
 
   // 2. 团队 owner 旁路（短路语义）：
   //    Dataset read 门槛已通过。团队 owner 拥有团队内全部资源，对该 Dataset 下所有 Collection
-  //    视为可管理，与 listV2/RAG 短路保持一致。
+  //    视为 owner（含 owner 专属操作），与 listV2/RAG 短路保持一致。
   //    团队管理员（hasManagePer）不在此列：团队级 manage 只覆盖团队自身资源（成员组/组织），
   //    Dataset / Collection 等业务资源仍以各自 ACL 为准，与 authDatasetByTmbId、dataset list 一致。
   const tmbInfo = await getTmbInfoByTmbId({ tmbId });
@@ -243,7 +243,9 @@ export async function authDatasetCollection({
   // 4. Collection 维度解析：物化快照直读（无父链递归）。
   let role: PermissionValueType;
   if (isTeamOwner) {
-    role = ManageRoleVal;
+    // 团队 owner 短路为 owner：团队 owner 拥有团队内全部资源，与设计「root / team owner →
+    // isOwner: true」一致。cap 为 manage 会让「转移 owner」等 owner 专属操作被误拒。
+    role = OwnerRoleVal;
   } else if (datasetCollectionPermissionEnabled !== true) {
     const isCollectionOwner = String(collection.tmbId) === String(tmbId);
     const datasetRole = dataset.permission.role;

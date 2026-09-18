@@ -520,6 +520,8 @@ await resumeResourcePermissionInheritance({
 
 `getReadableCollectionIds`（auth.ts）对候选 ID 执行一次 `distinct resourceId`，并通过 `$bitsAnySet` 在数据库侧过滤不可读 ACL，避免向应用层加载候选集合的完整权限记录；该路径供列表可见性过滤与 RAG 检索共用。`listV2` 完成过滤和分页后，再通过 `getCollectionPermissionMap` 仅对当前页批量解析实际 role，并与标签转换及统计查询并行执行。所有查询均以候选集合限定，不做团队全量 ACL 扫描。
 
+> **返回权限与详情鉴权（§6.3）一致**：团队 owner 短路为 `owner`（owner 专属操作可用，如 collection changeOwner）；关闭态下 collection owner 保持 `owner`，dataset owner（非 collection owner）父级权限不透传、cap 为 `manage`。
+
 > 需先校验当前用户对所属 dataset 有 `read`（§7.2 门槛）；无权限返回空列表。排序分页在过滤后的候选集合上执行（不能在过滤前 `skip/limit`，避免漏掉不可读节点占位导致的分页错位）。
 
 NFR-1（10k collections P95 ≤ 800ms）：候选 `$in` 限定 + 短路 + 过滤后分页达成。

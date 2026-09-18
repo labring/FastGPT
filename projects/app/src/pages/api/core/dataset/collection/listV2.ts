@@ -46,6 +46,7 @@ import {
   getReadableCollectionIds
 } from '@fastgpt/service/support/permission/collection/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
+import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
@@ -137,10 +138,14 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   let collectionIdFilter = {};
   let groupIds: string[] = [];
   let orgIds: string[] = [];
+  // 复用同一次 tmb 查询：短路判定与逐 Collection 返回权限都依赖是否团队 owner。
+  const tmbInfo = await getTmbInfoByTmbId({ tmbId });
+  const isTeamOwner = String(tmbInfo.teamId) === String(teamId) && tmbInfo.permission.isOwner;
   const shortCircuitCollectionPermission = await canShortCircuitCollectionPermission({
     teamId,
     datasetIds: [datasetId],
-    tmbId
+    tmbId,
+    tmbInfo
   });
   if (!shortCircuitCollectionPermission) {
     const candidates = await MongoDatasetCollection.find(
@@ -244,8 +249,9 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     if (resolvedPermission) return resolvedPermission;
 
     return new CollectionPermission({
+      // 团队 owner 与详情鉴权一致返回 owner；dataset owner 的父级权限不透传，cap 为 manage。
       role: permission.role === OwnerRoleVal ? ManageRoleVal : permission.role,
-      isOwner: String(item.tmbId) === tmbId
+      isOwner: isTeamOwner || String(item.tmbId) === tmbId
     });
   };
 
