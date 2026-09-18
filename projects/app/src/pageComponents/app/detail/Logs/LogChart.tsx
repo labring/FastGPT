@@ -938,18 +938,18 @@ const TotalData = ({ appId }: { appId: string }) => {
         },
         value: totalData.totalPoints,
         subText: undefined as string | undefined
-      },
-      {
-        label: t('app:logs_total_token_consumption'),
-        icon: 'support/bill/tokens',
-        colorSchema: {
-          icon: 'blue.600',
-          border: 'blue.200',
-          bg: 'blue.50'
-        },
-        value: (totalData.totalInputTokens || 0) + (totalData.totalOutputTokens || 0),
-        subText: `${t('app:logs_input')}${formatTokenCount(totalData.totalInputTokens || 0)} | ${t('app:logs_output')}${formatTokenCount(totalData.totalOutputTokens || 0)}`
       }
+      // {
+      //   label: t('app:logs_total_token_consumption'),
+      //   icon: 'support/bill/tokens',
+      //   colorSchema: {
+      //     icon: 'blue.600',
+      //     border: 'blue.200',
+      //     bg: 'blue.50'
+      //   },
+      //   value: (totalData.totalInputTokens || 0) + (totalData.totalOutputTokens || 0),
+      //   subText: `${t('app:logs_input')}${formatTokenCount(totalData.totalInputTokens || 0)} | ${t('app:logs_output')}${formatTokenCount(totalData.totalOutputTokens || 0)}`
+      // }
     ];
   }, [t, totalData]);
 
