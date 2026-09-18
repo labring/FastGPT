@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
   MultiSelectFilter,
@@ -7,9 +7,13 @@ import {
   type MultiSelectFilterOption,
   type MultiSelectFilterValue
 } from '@fastgpt/web/components/common/TagFilter';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getLogUsers } from '@/web/core/app/api/log';
-import type { LogUserType } from '@fastgpt/global/openapi/core/app/log/api';
+import type {
+  GetLogUsersBody,
+  GetLogUsersResponse,
+  LogUserType
+} from '@fastgpt/global/openapi/core/app/log/api';
 import dayjs from 'dayjs';
 import type { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 
@@ -34,6 +38,8 @@ export const parseUserKey = (key: string): SelectedUserType => {
   return { outLinkUid: null, tmbId: null };
 };
 
+const USER_PAGE_SIZE = 50;
+
 const UserFilter = ({
   appId,
   dateRange,
@@ -53,36 +59,38 @@ const UserFilter = ({
   // 用户打开过筛选器后，才允许日期、来源和搜索词变化触发请求。
   const [menuOpened, setMenuOpened] = useState(false);
 
-  const { data: usersData, run: fetchUsers } = useRequest(
-    () =>
-      getLogUsers({
-        appId,
-        dateStart: dayjs(dateRange.from || new Date()).format(),
-        dateEnd: dayjs(dateRange.to || new Date()).format(),
-        searchKey: searchKey || undefined,
-        sources
-      }),
-    {
-      manual: true,
-      debounceWait: 300
-    }
+  const requestParams = useMemo<Omit<GetLogUsersBody, 'offset' | 'pageSize'>>(
+    () => ({
+      appId,
+      dateStart: dayjs(dateRange.from || new Date()).format(),
+      dateEnd: dayjs(dateRange.to || new Date()).format(),
+      searchKey: searchKey || undefined,
+      sources
+    }),
+    [appId, dateRange.from, dateRange.to, searchKey, sources]
   );
 
-  useEffect(() => {
-    if (!menuOpened) return;
-    fetchUsers();
-  }, [appId, dateRange.from, dateRange.to, fetchUsers, menuOpened, searchKey, sources]);
-
+  const { data: users = [], ScrollData } = useScrollPagination<
+    GetLogUsersBody,
+    GetLogUsersResponse
+  >(getLogUsers, {
+    pageSize: USER_PAGE_SIZE,
+    params: requestParams,
+    disabled: !menuOpened,
+    refreshDeps: [menuOpened, requestParams],
+    debounceWait: 300,
+    showNoMoreTip: false
+  });
   const options = useMemo(
     () =>
-      (usersData?.list || [])
+      users
         .filter((item: LogUserType) => item.outLinkUid || item.tmbId)
         .map((item: LogUserType) => ({
           value: getUserKey(item),
           label: item.name,
           avatar: item.avatar
         })),
-    [usersData?.list]
+    [users]
   );
   const [rememberedOptions, setRememberedOptions] = useState<
     Array<MultiSelectFilterOption<string>>
@@ -129,6 +137,7 @@ const UserFilter = ({
       onSearchChange={setSearchKey}
       filterLocal={false}
       onOpen={() => setMenuOpened(true)}
+      ListContainer={ScrollData}
     />
   );
 };

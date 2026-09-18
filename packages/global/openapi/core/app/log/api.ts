@@ -1,5 +1,5 @@
 import z from 'zod';
-import { PaginationSchema } from '../../../api';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { AppLogKeysEnum, AppLogTimespanEnum } from '../../../../core/app/logs/constants';
 import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { AppLogKeysSchema } from '../../../../core/app/logs/type';
@@ -334,7 +334,7 @@ export const GetTotalDataResponseSchema = z.object({
 export type getTotalDataResponse = z.infer<typeof GetTotalDataResponseSchema>;
 
 /* Get log users */
-export const GetLogUsersBodySchema = z.object({
+export const GetLogUsersBodySchema = PaginationSchema.extend({
   appId: z.string().meta({
     example: '68ad85a7463006c963799a05',
     description: '应用 ID'
@@ -373,7 +373,7 @@ export const LogUserSchema = z.object({
 });
 export type LogUserType = z.infer<typeof LogUserSchema>;
 
-export const GetLogUsersResponseSchema = z.object({
-  list: z.array(LogUserSchema).meta({ description: '使用者列表' })
+export const GetLogUsersResponseSchema = PaginationResponseSchema(LogUserSchema).meta({
+  description: '分页使用者列表'
 });
 export type GetLogUsersResponse = z.infer<typeof GetLogUsersResponseSchema>;

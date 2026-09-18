@@ -468,6 +468,47 @@ describe('runToolCall compression node responses', () => {
     });
   });
 
+  it('does not publish a generic tool wrapper response', async () => {
+    const nodeResponseSink = {
+      hasOutput: true,
+      publish: vi.fn(async (inputs: any[]) => inputs.map((item) => item.response))
+    };
+    runAgentLoopMock.mockImplementation(async (options) => {
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call: {
+          id: 'call_search',
+          type: 'function',
+          function: {
+            name: 'search',
+            arguments: '{"query":"FastGPT"}'
+          }
+        },
+        rawResponse: 'tool response',
+        response: 'tool response',
+        seconds: 0.1
+      });
+
+      return createLoopResult({ usages: [] });
+    });
+
+    await runToolCall(
+      createProps({
+        nodeResponseSink,
+        toolNodes: [
+          {
+            nodeId: 'search',
+            name: 'Search',
+            flowNodeType: FlowNodeTypeEnum.tool,
+            inputs: []
+          }
+        ]
+      })
+    );
+
+    expect(nodeResponseSink.publish).not.toHaveBeenCalled();
+  });
+
   it('keeps compression child node responses when compression has no requestId', async () => {
     const usage = {
       moduleName: 'account_usage:compress_llm_messages',
