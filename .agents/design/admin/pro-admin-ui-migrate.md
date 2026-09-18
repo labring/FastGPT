@@ -38,7 +38,7 @@
 
 - 侧栏**一级菜单项"管理员主页"**（`/admin/home`，位于审计日志之后）
 - 页面展示：当前版本状态（开源社区版/商业版 Tag）+ 激活/变更 License 按钮 + license 详细信息（复用迁移的 `LicenseData` 组件）
-- 未激活：显示开源版说明 + 激活按钮触发 LicenseInput；已激活：显示 license 完整信息（公司/过期时间/用户数/应用数/知识库数/功能开关）
+- 未激活：显示开源版说明 + 激活按钮打开 LicenseInput 完成首次激活/续期（商业版文档降级为按钮旁的次级链接，可继续访问）；已激活：显示 license 完整信息（公司/过期时间/用户数/应用数/知识库数/功能开关）
 - 依赖：`components/admin/License/{LicenseData,Input}.tsx`、`public/icon/user.svg`（从 admin 复制）
 
 ### 菜单结构调整（2026 评审）

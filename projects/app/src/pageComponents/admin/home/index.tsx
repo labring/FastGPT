@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { Box, Button, Flex, Grid, GridItem, Skeleton } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, GridItem, Link, Skeleton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import LicenseInput from '@/components/admin/License/Input';
@@ -61,16 +61,13 @@ const AdminHome = () => {
   ];
 
   /**
-   * 未激活按开源版使用方式呈现：展示引导阅读商业版文档的按钮，而不是无法在开源版完成的激活入口。
-   * 已激活时仍提供变更入口（续期、换绑实例）。
+   * License 主操作入口：未激活/已过期（licenseData 为空）时打开激活弹窗完成首次激活或续期，
+   * 已激活时打开弹窗做变更（续期、换绑实例）。商业版文档降级为按钮旁的次级链接。
    */
-  const onLicenseButtonClick = () => {
-    if (isActivated) {
-      setShowLicenseInput(true);
-      return;
-    }
-    window.open(commercialDocUrl, '_blank');
-  };
+  const onLicenseButtonClick = () => setShowLicenseInput(true);
+
+  // 未激活时激活是唯一主操作；已激活时仅在临期续期场景强调按钮
+  const isLicenseActionPrimary = !isActivated || isExpiringSoon;
 
   return (
     <Box h="100%" overflow="auto" bg="white" color="myGray.900">
@@ -175,21 +172,34 @@ const AdminHome = () => {
                 </Box>
               </Flex>
             </Box>
-            <Button
-              variant={isExpiringSoon ? 'primary' : 'outline'}
-              color={isExpiringSoon ? 'white' : 'primary.600'}
-              borderColor={isExpiringSoon ? 'primary.500' : 'primary.300'}
-              borderRadius="6px"
-              py={2}
-              px={'14px'}
-              fontSize="14px"
-              leftIcon={
-                <MyIcon name={isActivated ? 'common/settingLight' : 'common/link'} w="18px" />
-              }
-              onClick={onLicenseButtonClick}
-            >
-              {isActivated ? t('admin:license_change') : t('admin:license_learn_commercial')}
-            </Button>
+            <Flex alignItems="center" gap={3} justifyContent="flex-end">
+              {!isActivated && (
+                <Link
+                  href={commercialDocUrl}
+                  isExternal
+                  color="myGray.500"
+                  fontSize="12px"
+                  textDecoration="underline"
+                  whiteSpace="nowrap"
+                  _hover={{ color: 'primary.600' }}
+                >
+                  {t('admin:license_learn_commercial')}
+                </Link>
+              )}
+              <Button
+                variant={isLicenseActionPrimary ? 'primary' : 'outline'}
+                color={isLicenseActionPrimary ? 'white' : 'primary.600'}
+                borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
+                borderRadius="6px"
+                py={2}
+                px={'14px'}
+                fontSize="14px"
+                leftIcon={<MyIcon name="common/settingLight" w="18px" />}
+                onClick={onLicenseButtonClick}
+              >
+                {isActivated ? t('admin:license_change') : t('admin:license_activate')}
+              </Button>
+            </Flex>
           </Grid>
         </Box>
 
