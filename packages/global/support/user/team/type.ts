@@ -84,6 +84,7 @@ export type TeamMemberItemType<
   userId: string;
   tmbId: string;
   teamId: string;
+  username?: string;
   memberName: string;
   avatar: string;
   role: `${TeamMemberRoleEnum}`;

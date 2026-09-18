@@ -114,7 +114,11 @@ const HandleInviteModal = ({
   return (
     <MyModal
       isOpen
-      title={t(`account_team:${isMultiTeamMode ? 'team_invitation' : 'set_member_name_title'}`)}
+      title={
+        isMultiTeamMode
+          ? t('account_team:team_invitation')
+          : t('account_team:set_member_name_title')
+      }
       closeOnOverlayClick={false}
       onClose={isMultiTeamMode ? rejectInvitation : undefined}
       showCloseButton={isMultiTeamMode}
@@ -153,7 +157,7 @@ const HandleInviteModal = ({
               if (!nameError) void acceptInvitation();
             }}
           >
-            {t(`account_team:${isMultiTeamMode ? 'join_team' : 'confirm_member_name'}`)}
+            {isMultiTeamMode ? t('account_team:join_team') : t('account_team:confirm_member_name')}
           </Button>
         </>
       }

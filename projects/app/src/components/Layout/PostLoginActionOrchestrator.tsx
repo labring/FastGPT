@@ -7,6 +7,7 @@ import { getInviteLinkIdFromRoute } from '@/web/support/user/loginRedirect/invit
 import { UNSET_TEAM_MEMBER_NAME } from '@fastgpt/global/support/user/team/constant';
 import type { GetUnreadInformResponseType } from '@fastgpt/global/openapi/support/user/inform/api';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
+import { shouldPromptContactBinding } from '@/web/support/user/inform/utils';
 import {
   finishPostLoginAction,
   getNextPostLoginAction,
@@ -91,11 +92,11 @@ const PostLoginActionOrchestrator = ({
   const invitationInProgress = invitationProgress.key === runKey && invitationProgress.active;
   const invitationActionLinkId = invitationInProgress ? invitationProgress.linkId : inviteLinkId;
 
-  const shouldShowContact =
-    isPlus &&
-    !!feConfigs?.bind_notification_method?.length &&
-    !userInfo?.contact &&
-    !!userInfo?.team?.permission?.isOwner;
+  const shouldShowContact = shouldPromptContactBinding({
+    isPlus,
+    bindNotificationMethod: feConfigs?.bind_notification_method,
+    contact: userInfo?.contact
+  });
 
   const canStart =
     router.isReady &&

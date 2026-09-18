@@ -50,6 +50,7 @@ import { getAccountCancellationStatus } from '@/web/support/user/account/cancell
 import { AccountCancellationConfirmModal } from '@/pageComponents/account/cancel/AccountCancellationConfirmModal';
 import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
 import { canManagePasswordFromAccountInfo } from '@/pageComponents/account/info/password';
+import { shouldPromptContactBinding } from '@/web/support/user/inform/utils';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -171,6 +172,17 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseMemberName,
     onOpen: onOpenMemberName
   } = useDisclosure();
+  const shouldPromptContact = shouldPromptContactBinding({
+    isPlus: feConfigs?.isPlus,
+    bindNotificationMethod: feConfigs?.bind_notification_method,
+    contact: userInfo?.contact
+  });
+
+  const onMemberNameSuccess = useCallback(() => {
+    if (shouldPromptContact) {
+      onOpenUpdateContact();
+    }
+  }, [onOpenUpdateContact, shouldPromptContact]);
 
   const onClickSave = useCallback(
     async (data: UserType) => {
@@ -453,6 +465,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         <MemberNameModal
           memberName={userInfo?.team?.memberName || ''}
           onClose={onCloseMemberName}
+          onSuccess={onMemberNameSuccess}
         />
       )}
     </Box>
