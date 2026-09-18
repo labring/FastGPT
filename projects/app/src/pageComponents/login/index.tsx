@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import {
   resolveAutoLoginProvider,
   resolveInitialLoginPageType
 } from '@/web/support/user/login/utils';
+import type { LoginMethodItem } from '@/web/support/user/login/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import ChineseRedirectModal from './components/ChineseRedirectModal';
@@ -37,7 +38,7 @@ export const LoginContainer = ({
 
   const [selectedPageType, setPageType] = useState<`${LoginPageTypeEnum}`>();
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
-  const { methods, startLogin } = useLoginMethods({
+  const { startLogin } = useLoginMethods({
     mode: 'selection',
     pageType: LoginPageTypeEnum.methodSelection,
     setPageType
@@ -57,8 +58,19 @@ export const LoginContainer = ({
     isWecomTerminal,
     canWecomTerminalAutoRedirect: !isWecomTerminal || feConfigs?.wecomLoginAutoRedirect === true
   });
-  const autoLoginMethod = methods.find(
-    (method) => method.type === 'oauth' && method.provider === autoLoginProvider
+  // 自动跳转渠道（含仅终端内可用的企业微信）不一定出现在可选按钮列表里，
+  // 这里按 Provider 直接构造跳转入口，与旧实现 onClickOauth({ provider }) 的口径一致。
+  const autoLoginMethod = useMemo<LoginMethodItem | undefined>(
+    () =>
+      autoLoginProvider
+        ? {
+            id: `oauth:${autoLoginProvider}`,
+            type: 'oauth',
+            provider: autoLoginProvider,
+            label: ''
+          }
+        : undefined,
+    [autoLoginProvider]
   );
   const pageType =
     selectedPageType ??

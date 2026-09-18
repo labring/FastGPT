@@ -53,7 +53,6 @@ export const useLoginMethods = ({
         feConfigs,
         labels: {
           wechat: t('common:support.user.login.Wechat'),
-          wecom: t('common:support.user.login.Wecom'),
           password: t('common:support.user.login.Password login'),
           google: t('common:support.user.login.Google'),
           github: t('common:support.user.login.Github'),

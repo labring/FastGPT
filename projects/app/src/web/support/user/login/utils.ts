@@ -20,7 +20,6 @@ export type LoginMethodItem =
 
 type LoginMethodLabels = {
   wechat: string;
-  wecom: string;
   password: string;
   google: string;
   github: string;
@@ -67,7 +66,10 @@ export const resolveAutoLoginProvider = ({
   if (wecomAvailable && isWecomTerminal) return 'wecom';
 };
 
-/** 按既有渠道顺序生成可见登录方式，选择页始终将密码登录追加到末尾。 */
+/**
+ * 按既有渠道顺序生成可见登录方式，选择页始终将密码登录追加到末尾。
+ * 企业微信登录只保留终端内自动跳转，不在选择页提供可点按钮，与旧实现保持一致。
+ */
 export const getLoginMethodItems = ({
   mode,
   pageType,
@@ -98,16 +100,6 @@ export const getLoginMethodItems = ({
       pageType: LoginPageTypeEnum.wechat,
       label: labels.wechat,
       icon: 'common/wechatFill'
-    });
-  }
-
-  if (mode === 'selection' && feConfigs.oauth?.wecom) {
-    result.push({
-      id: 'oauth:wecom',
-      type: 'oauth',
-      provider: 'wecom',
-      label: labels.wecom,
-      icon: 'common/wecom'
     });
   }
 
@@ -146,7 +138,7 @@ export const getLoginMethodItems = ({
       id: 'oauth:microsoft',
       type: 'oauth',
       provider: 'microsoft',
-      label: feConfigs.oauth.microsoft.customButton || labels.microsoft,
+      label: labels.microsoft,
       icon: 'common/microsoft'
     });
   }

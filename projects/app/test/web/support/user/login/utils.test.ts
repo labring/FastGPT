@@ -9,7 +9,6 @@ import {
 
 const labels = {
   wechat: 'WeChat',
-  wecom: 'WeCom',
   password: 'Password',
   google: 'Google',
   github: 'GitHub',
@@ -119,8 +118,7 @@ describe('getLoginMethodItems', () => {
           google: 'google-client-id',
           github: 'github-client-id',
           microsoft: {
-            clientId: 'microsoft-client-id',
-            customButton: 'Continue with Entra ID'
+            clientId: 'microsoft-client-id'
           }
         }
       })
@@ -129,12 +127,13 @@ describe('getLoginMethodItems', () => {
     expect(methods.map(({ id }) => id)).toEqual([
       'oauth:sso',
       'page:wechat',
-      'oauth:wecom',
       'oauth:google',
       'oauth:github',
       'oauth:microsoft',
       'page:password'
     ]);
+    // 企业微信登录只做终端内自动跳转，选择页不提供可点按钮。
+    expect(methods.some(({ id }) => id === 'oauth:wecom')).toBe(false);
     expect(methods.at(-1)).toMatchObject({
       type: 'page',
       pageType: LoginPageTypeEnum.passwordLogin
@@ -144,7 +143,8 @@ describe('getLoginMethodItems', () => {
       icon: '/sso.png'
     });
     expect(methods.find(({ id }) => id === 'oauth:microsoft')).toMatchObject({
-      label: 'Continue with Entra ID'
+      // 微软登录不再支持自定义按钮名，文案统一走系统默认。
+      label: labels.microsoft
     });
   });
 

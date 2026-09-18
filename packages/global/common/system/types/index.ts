@@ -111,7 +111,6 @@ export type FastGPTFeConfigsType = {
     microsoft?: {
       clientId?: string;
       tenantId?: string;
-      customButton?: string;
     };
     wecom?: boolean;
   };
