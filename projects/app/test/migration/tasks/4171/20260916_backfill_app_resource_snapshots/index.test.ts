@@ -345,4 +345,27 @@ describe('4170 App resource snapshot migration', () => {
     expect(updatedVersion?.resources).toEqual([]);
     expect(state.getFailedRecords()).toEqual([]);
   });
+
+  it('preserves underlying execution errors across migration stages', async () => {
+    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockRejectedValueOnce(
+      new Error('Auth service error')
+    );
+    const records = createLegacyRecords();
+    await Promise.all([
+      MongoApp.collection.insertOne(records.app),
+      MongoAppVersion.collection.insertOne(records.version)
+    ]);
+    const state = createContext();
+
+    await expect(backfillAppResourceSnapshots(state.context)).rejects.toThrow(
+      'App resource records still require migration'
+    );
+    expect(state.getFailedRecords()).toEqual([
+      expect.objectContaining({
+        stageKey: 'versions',
+        data: { recordId: String(records.version._id), recordType: 'app_version' },
+        reason: { message: 'Auth service error' }
+      })
+    ]);
+  });
 });
