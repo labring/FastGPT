@@ -18,7 +18,11 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import { computedAppToolUsage, getAppToolOutputError } from '../../../app/tool/runtime/utils';
+import {
+  computedAppToolUsage,
+  getAppToolOwnUsage,
+  getAppToolOutputError
+} from '../../../app/tool/runtime/utils';
 import { getNodeErrResponse } from '../utils';
 import { serverGetWorkflowToolRunUserQuery } from '../../../app/tool/workflowTool/utils';
 import { type NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -34,9 +38,10 @@ import {
   WorkflowVariableState
 } from '../utils/variables';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
-import { getRuntimeNodeResponseSummary } from '../utils';
+import { getWorkflowRuntimeSummary } from '../utils/summary';
 import { runWithDerivedWorkflowFileContext } from '../../utils/context';
 import { loadChildWorkflowWithResource } from '../../utils/resource';
+import { withWorkflowNodeResponseOutputPolicy } from '../nodeResponseSink';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -238,7 +243,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       assistantResponses,
       runTimes,
       system_memories,
-      runtimeNodeResponseSummary,
+      workflowRuntimeSummary,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks
     } = await runWithDerivedWorkflowFileContext({
       histories: props.histories,
@@ -279,7 +284,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         return runWorkflow({
           ...props,
           // 系统级 workflow tool 只保留工具节点自身的响应，不展开保存其内部 workflow 详情。
-          ...(shouldStoreChildNodeResponses ? {} : { nodeResponseSink: undefined }),
+          nodeResponseSink: withWorkflowNodeResponseOutputPolicy({
+            sink: props.nodeResponseSink,
+            record: shouldStoreChildNodeResponses,
+            emit: shouldStoreChildNodeResponses
+          }),
           // Rewrite stream mode
           ...(system_forbid_stream
             ? {
@@ -312,9 +321,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         });
       }
     });
-    const runtimeSummary = getRuntimeNodeResponseSummary({
-      runtimeNodeResponseSummary
+    const runtimeSummary = getWorkflowRuntimeSummary({
+      workflowRuntimeSummary
     });
+    // 系统级 workflow tool 的内部模型调用对用户不可见，不计入当前用户 workflow/chat
+    // 的 token summary；普通 plugin workflow 仍按 child summary 归属一次。
     const pluginOutput = runtimeSummary.pluginOutput;
     const pluginOutputError = getAppToolOutputError({
       plugin: workflowTool,
@@ -325,6 +336,22 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       plugin: workflowTool,
       childrenUsage: flowUsages,
       error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
+    });
+    const ownUsagePoints = getAppToolOwnUsage({
+      plugin: workflowTool,
+      error: runtimeSummary.hasError || !pluginOutput || !!pluginOutputError
+    });
+    props.nodeSummary.mergeNodeSummary({
+      ...(shouldStoreChildNodeResponses
+        ? {
+            llmInputTokens: runtimeSummary.llmInputTokens,
+            llmOutputTokens: runtimeSummary.llmOutputTokens
+          }
+        : {}),
+      totalPoints: Math.max(0, usagePoints - ownUsagePoints),
+      ...(shouldStoreChildNodeResponses
+        ? { citeCollectionIds: runtimeSummary.citeCollectionIds }
+        : {})
     });
     // Child run not push usage
     props.usagePush([
@@ -342,7 +369,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             return acc;
           }, {})
       : undefined;
-
     return {
       data: pluginOutput || {},
       ...(pluginOutputError
@@ -359,7 +385,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: workflowTool.avatar,
-        totalPoints: usagePoints,
+        totalPoints: ownUsagePoints,
         toolInput: workflowToolVariables,
         pluginOutput,
         childResponseCount,

@@ -390,6 +390,7 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     });
     expect(runtimeEdges[0]).toEqual({ target: 'search' });
     expect(runWorkflowTool).toHaveBeenCalledWith({
+      callId: 'call_search',
       runtimeNodes: [
         {
           nodeId: 'search',

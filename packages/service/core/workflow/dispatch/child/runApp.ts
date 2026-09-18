@@ -19,7 +19,7 @@ import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/ru
 import { parseUrlToFileType, runWithDerivedWorkflowFileContext } from '../../utils/context';
 import { loadChildWorkflowWithResource } from '../../utils/resource';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
-import { getRuntimeNodeResponseSummary } from '../utils';
+import { getWorkflowRuntimeSummary } from '../utils/summary';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -35,7 +35,6 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const {
-    runningAppInfo,
     histories,
     query,
     lastInteractive,
@@ -125,7 +124,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       workflowInteractiveResponse,
       system_memories,
       customFeedbacks,
-      runtimeNodeResponseSummary
+      workflowRuntimeSummary
     } = await runWithDerivedWorkflowFileContext({
       query: theQuery,
       histories: chatHistories,
@@ -199,11 +198,16 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         totalPoints: usagePoints
       }
     ]);
-    const runtimeSummary = getRuntimeNodeResponseSummary({
-      runtimeNodeResponseSummary
+    const runtimeSummary = getWorkflowRuntimeSummary({
+      workflowRuntimeSummary
+    });
+    props.nodeSummary.mergeNodeSummary({
+      llmInputTokens: runtimeSummary.llmInputTokens,
+      llmOutputTokens: runtimeSummary.llmOutputTokens,
+      totalPoints: usagePoints,
+      citeCollectionIds: runtimeSummary.citeCollectionIds
     });
     const childResponseCount = runtimeSummary.childResponseCount;
-
     return {
       data: {
         [NodeOutputKeyEnum.answerText]: text,
@@ -223,7 +227,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         moduleLogo: appData.avatar,
-        totalPoints: usagePoints,
         query: userChatInput,
         textOutput: text,
         childResponseCount

@@ -107,6 +107,20 @@ const ChatSchema = new Schema({
     type: Number,
     default: 0
   },
+  summary: {
+    type: {
+      llmInputTokens: {
+        type: Number,
+        default: 0
+      },
+      llmOutputTokens: {
+        type: Number,
+        default: 0
+      }
+    },
+    _id: false,
+    default: () => ({ llmInputTokens: 0, llmOutputTokens: 0 })
+  },
 
   searchKey: String,
   deleteTime: {

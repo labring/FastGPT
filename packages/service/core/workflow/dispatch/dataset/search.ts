@@ -230,10 +230,10 @@ export const dispatchDatasetSearch = async (
           datasetSearchExtensionBg,
           userKey: externalProvider.openaiAccount
         });
-
     // count bill results
     const nodeUsages: ChatNodeUsageType[] = [];
     const childrenResponses: ChatHistoryItemResType[] = [];
+    let childrenResponsePoints = 0;
     {
       // 1. Search vector
       const { totalPoints: embeddingTotalPoints } = formatModelChars2Points({
@@ -275,13 +275,15 @@ export const dispatchDatasetSearch = async (
           outputTokens: queryExtensionResult.outputTokens
         };
         nodeUsages.push(queryExtensionUsage);
+        childrenResponsePoints += queryExtensionUsage.totalPoints;
         childrenResponses.push(
           createQueryExtensionChildNodeResponse({
             requestIds: [queryExtensionResult.requestId],
             usage: queryExtensionUsage,
             modelName: extensionModelData!.name,
             seconds: queryExtensionResult.seconds,
-            query: queryExtensionResult.query
+            query: queryExtensionResult.query,
+            embeddingTokens: queryExtensionResult.embeddingTokens
           })
         );
 
@@ -313,6 +315,7 @@ export const dispatchDatasetSearch = async (
           outputTokens: imageCaptionResult.outputTokens
         };
         nodeUsages.push(imageCaptionUsage);
+        childrenResponsePoints += imageCaptionUsage.totalPoints;
         childrenResponses.push(
           createImageCaptionChildNodeResponse({
             requestIds: imageCaptionResult.requestIds,
@@ -339,7 +342,9 @@ export const dispatchDatasetSearch = async (
         });
       }
     }
-    const totalPoints = nodeUsages.reduce((acc, item) => acc + item.totalPoints, 0);
+    // 子 LLM 响应已经分别记录积分，父知识库响应只保留自身检索消耗。
+    const totalPoints =
+      nodeUsages.reduce((acc, item) => acc + item.totalPoints, 0) - childrenResponsePoints;
     props.usagePush(nodeUsages);
 
     return {

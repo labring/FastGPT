@@ -209,25 +209,38 @@ describe('runWorkflow node response persistence', () => {
   const mockTextEditorWithModuleChildResponses = (
     parentNodeResponse: Partial<ChatHistoryItemResType> = {
       textOutput: 'parent output'
-    }
+    },
+    options: { publishChildResponse?: boolean } = {}
   ) => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
-    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({
-      data: {
-        [NodeOutputKeyEnum.text]: 'parent output'
-      },
-      [DispatchNodeResponseKeyEnum.nodeResponses]: [
-        {
+    callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(
+      async ({ nodeResponseSink, nodeResponseParentId }) => {
+        const childResponse = {
           id: 'module-child-response',
           nodeId: 'module-child-node',
           moduleName: 'Module Child',
           moduleType: FlowNodeTypeEnum.agent,
           runningTime: 1,
           totalPoints: 2
+        } as ChatHistoryItemResType;
+
+        if (options.publishChildResponse) {
+          await nodeResponseSink?.publish([
+            { response: childResponse, parentId: nodeResponseParentId }
+          ]);
         }
-      ],
-      [DispatchNodeResponseKeyEnum.nodeResponse]: parentNodeResponse
-    }));
+
+        return {
+          data: {
+            [NodeOutputKeyEnum.text]: 'parent output'
+          },
+          [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            ...parentNodeResponse,
+            ...(options.publishChildResponse ? {} : { childrenResponses: [childResponse] })
+          }
+        };
+      }
+    );
 
     return () => {
       callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
@@ -364,7 +377,6 @@ describe('runWorkflow node response persistence', () => {
       expect(detail[0].childrenResponses).toEqual([
         expect.objectContaining({
           id: 'module-child-response',
-          parentId: detail[0].id,
           moduleName: 'Module Child'
         })
       ]);
@@ -373,7 +385,40 @@ describe('runWorkflow node response persistence', () => {
     }
   });
 
-  it('streams the parent error together with module child nodeResponses', async () => {
+  it('does not stream a parent response when child details were already published', async () => {
+    const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses(
+      { textOutput: 'parent output' },
+      { publishChildResponse: true }
+    );
+
+    try {
+      const streamedNodeResponses: ChatHistoryItemResType[] = [];
+      await runTextEditorWorkflowWithModuleChild({
+        apiVersion: 'v2',
+        chatId: 'workflow-module-child-stream-chat',
+        responseChatItemId: 'workflow-module-child-stream-ai-item',
+        workflowStreamResponse: (event) => {
+          if (
+            event.event === SseResponseEventEnum.flowNodeResponse &&
+            typeof event.data !== 'string'
+          ) {
+            streamedNodeResponses.push(event.data);
+          }
+        }
+      });
+
+      expect(streamedNodeResponses).toEqual([
+        expect.objectContaining({
+          id: 'module-child-response',
+          parentId: expect.any(String)
+        })
+      ]);
+    } finally {
+      restoreTextEditorDispatch();
+    }
+  });
+
+  it('streams the parent error with inline module child details', async () => {
     const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses({
       error: 'parent agent failed'
     });
@@ -394,19 +439,19 @@ describe('runWorkflow node response persistence', () => {
         }
       });
 
-      expect(streamedNodeResponses).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            id: 'module-child-response',
-            moduleName: 'Module Child'
-          }),
-          expect.objectContaining({
-            nodeId: 'parent_text_editor',
-            error: 'parent agent failed',
-            childResponseCount: 1
-          })
-        ])
-      );
+      expect(streamedNodeResponses).toEqual([
+        expect.objectContaining({
+          nodeId: 'parent_text_editor',
+          error: 'parent agent failed',
+          childResponseCount: 1,
+          childrenResponses: [
+            expect.objectContaining({
+              id: 'module-child-response',
+              moduleName: 'Module Child'
+            })
+          ]
+        })
+      ]);
     } finally {
       restoreTextEditorDispatch();
     }
@@ -564,8 +609,7 @@ describe('runWorkflow node response persistence', () => {
         childrenResponses: [expect.objectContaining({ nodeId: 'module-child-node' })]
       });
       expect(childResponse).toMatchObject({
-        nodeId: 'module-child-node',
-        parentId: parentResponse?.id
+        nodeId: 'module-child-node'
       });
 
       const rows = await MongoChatItemResponse.find({
@@ -578,7 +622,7 @@ describe('runWorkflow node response persistence', () => {
     }
   });
 
-  it('marks caught node errors so chat bubbles can ignore recovered failures', async () => {
+  it('persists caught tool workflow errors while keeping their runtime summary', async () => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
     callbackMap[FlowNodeTypeEnum.textEditor] = vi
       .fn()
@@ -633,7 +677,7 @@ describe('runWorkflow node response persistence', () => {
         chatItemDataId: responseChatItemId
       });
 
-      await runWorkflow({
+      const result = await runWorkflow({
         apiVersion: 'v2',
         mode: 'chat',
         chatId,
@@ -670,6 +714,7 @@ describe('runWorkflow node response persistence', () => {
         workflowDispatchDeep: 0,
         maxRunTimes: 20,
         stream: false,
+        isToolCall: true,
         responseAllData: true,
         responseDetail: true,
         nodeResponseSink: createTestNodeResponseSink({ writer: nodeResponseWriter }),
@@ -684,6 +729,11 @@ describe('runWorkflow node response persistence', () => {
         chatItemDataId: responseChatItemId
       });
 
+      expect(result.workflowRuntimeSummary).toMatchObject({
+        hasError: true,
+        errorCount: 1,
+        errorText: 'upstream timeout'
+      });
       expect(detail).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -1079,10 +1129,12 @@ describe('runWorkflow node response persistence', () => {
     await nodeResponseWriter.close();
 
     expect('flowResponses' in result).toBe(false);
-    expect(result.nodeResponseSummary).toMatchObject({
+    expect(result.workflowRuntimeSummary).toMatchObject({
       citeCollectionIds: [],
       errorCount: 0,
-      totalPoints: 0
+      totalPoints: 0,
+      llmInputTokens: expect.any(Number),
+      llmOutputTokens: expect.any(Number)
     });
 
     const rows = await MongoChatItemResponse.find({

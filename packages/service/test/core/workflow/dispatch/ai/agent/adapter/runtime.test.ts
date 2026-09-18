@@ -1117,15 +1117,15 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }),
       expect.objectContaining({
         id: 'call_search',
-        runningTime: 0.77,
-        childrenResponses: [
-          expect.objectContaining({
-            moduleName: 'chat:tool_response_compress',
-            moduleLogo: 'core/app/agent/child/contextCompress',
-            runningTime: 1.5,
-            llmRequestIds: ['req_tool_response_compress']
-          })
-        ]
+        runningTime: 0.77
+      }),
+      expect.objectContaining({
+        id: 'req_tool_response_compress',
+        parentId: 'call_search',
+        moduleName: 'chat:tool_response_compress',
+        moduleLogo: 'core/app/agent/child/contextCompress',
+        runningTime: 1.5,
+        llmRequestIds: ['req_tool_response_compress']
       })
     ]);
   });

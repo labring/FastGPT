@@ -73,13 +73,21 @@ describe('shouldRetainWorkflowNodeResponses', () => {
 });
 
 describe('getWorkflowFinalResponseError', () => {
-  it('returns nodeResponseSummary.lastError directly when present', () => {
+  it('returns workflowRuntimeSummary.errorText directly when present', () => {
     expect(
       getWorkflowFinalResponseError({
-        nodeResponseSummary: {
-          citeCollectionIds: [],
+        workflowRuntimeSummary: {
+          responseIds: [],
+          finishedNodeIds: [],
+          hasError: true,
+          errorText: 'Root node failed',
           errorCount: 1,
-          lastError: 'Root node failed',
+          hasLoopRunBreak: false,
+          hasToolStop: false,
+          hasNestedEnd: false,
+          citeCollectionIds: [],
+          llmInputTokens: 0,
+          llmOutputTokens: 0,
           totalPoints: 10
         },
         finalResponseData: [

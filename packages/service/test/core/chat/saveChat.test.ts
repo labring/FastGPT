@@ -389,17 +389,19 @@ describe('pushChatRecords', () => {
       expect(logs[0].errorCount).toBe(0);
     });
 
-    it('should calculate total points from writer summary', async () => {
+    it('should calculate total points from workflow runtime summary', async () => {
       const props = createMockProps(
         {
           aiContent: {
             obj: ChatRoleEnum.AI,
             value: []
           },
-          nodeResponseSummary: {
+          workflowRuntimeSummary: {
             citeCollectionIds: [],
             errorCount: 0,
-            totalPoints: 15
+            totalPoints: 15,
+            llmInputTokens: 0,
+            llmOutputTokens: 0
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -412,18 +414,19 @@ describe('pushChatRecords', () => {
       expect(logs[0].totalPoints).toBe(15);
     });
 
-    it('should save cite ids, error count and log points from writer summary', async () => {
+    it('should save cite ids, error count and log points from workflow runtime summary', async () => {
       const props = createMockProps(
         {
           aiContent: {
             obj: ChatRoleEnum.AI,
             value: []
           },
-          nodeResponseSummary: {
+          workflowRuntimeSummary: {
             citeCollectionIds: ['collection-summary'],
             errorCount: 1,
-            lastError: 'summary error',
-            totalPoints: 9
+            totalPoints: 9,
+            llmInputTokens: 120,
+            llmOutputTokens: 34
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -442,7 +445,44 @@ describe('pushChatRecords', () => {
       expect(aiItem?.citeCollectionIds).toEqual(['collection-summary']);
       expect(log?.errorCount).toBe(1);
       expect(log?.totalPoints).toBe(9);
+      expect(log?.totalInputTokens).toBe(120);
+      expect(log?.totalOutputTokens).toBe(34);
       expect(responseCount).toBe(0);
+    });
+
+    it('should accumulate only runtime LLM tokens in chat summary', async () => {
+      const firstProps = createMockProps(
+        {
+          chatId: 'runtime-chat-summary',
+          workflowRuntimeSummary: {
+            citeCollectionIds: [],
+            errorCount: 0,
+            totalPoints: 3,
+            llmInputTokens: 7,
+            llmOutputTokens: 11
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+      await pushChatRecords(firstProps);
+
+      await pushChatRecords({
+        ...firstProps,
+        workflowRuntimeSummary: {
+          ...firstProps.workflowRuntimeSummary,
+          llmInputTokens: 3,
+          llmOutputTokens: 5
+        }
+      });
+
+      const chat = await MongoChat.findOne({
+        appId: testAppId,
+        chatId: firstProps.chatId
+      }).lean();
+      expect(chat?.summary).toEqual({
+        llmInputTokens: 10,
+        llmOutputTokens: 16
+      });
     });
 
     it('should push chat log response time from persisted response rows', async () => {
@@ -575,6 +615,13 @@ describe('pushChatRecords', () => {
                 }
               }
             ]
+          },
+          workflowRuntimeSummary: {
+            citeCollectionIds: [],
+            errorCount: 0,
+            totalPoints: 0,
+            llmInputTokens: 13,
+            llmOutputTokens: 17
           }
         },
         { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
@@ -615,9 +662,13 @@ describe('pushChatRecords', () => {
 
       await finalizeChatRound(props);
 
-      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
+      const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId }).lean();
       expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.done);
       expect(chat?.hasBeenRead).toBe(false);
+      expect(chat?.summary).toEqual({
+        llmInputTokens: 13,
+        llmOutputTokens: 17
+      });
 
       const chatItems = await MongoChatItem.find({ appId: testAppId, chatId: props.chatId });
       expect(chatItems).toHaveLength(2);

@@ -44,7 +44,7 @@ import {
 import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
-import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { getWorkflowRuntimeSummary } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { resolveMcpEffectiveTmbId } from './auth';
@@ -285,8 +285,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         newVariables,
         durationSeconds,
         system_memories,
-        nodeResponseSummary,
-        runtimeNodeResponseSummary
+        workflowRuntimeSummary
       } = await dispatchWorkFlow({
         chatId: preparedRound.chatId,
         mode: 'chat',
@@ -341,7 +340,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
         userContent: workflowUserQuestion,
         aiContent: aiResponse,
         durationSeconds,
-        nodeResponseSummary
+        workflowRuntimeSummary
       };
       await finalizeChatRound(saveParams);
       chatRoundFinalized = true;
@@ -349,9 +348,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs, authProxy }: to
       // Get MCP response type
       let responseContent = (() => {
         if (isPlugin) {
-          const { pluginOutput } = getRuntimeNodeResponseSummary({
-            runtimeNodeResponseSummary
-          });
+          const { pluginOutput } = getWorkflowRuntimeSummary({ workflowRuntimeSummary });
           return stringifyMcpPluginOutput(pluginOutput);
         }
 

@@ -66,8 +66,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     loopInputArray,
     async (item: any, index: number) => {
       let lastResult: Awaited<ReturnType<typeof parseTaskResponse>> | undefined;
-      // Accumulate points across all retry attempts so nodeResponse.totalPoints
-      // matches the sum of all usagePush calls for this task.
+      // 业务汇总仍需要保留每次 retry 的积分，nodeResponse 本身不再缓存 child points。
       let accumulatedPoints = 0;
 
       for (let attempt = 0; attempt < maxRetryAttempts + 1; attempt++) {
@@ -112,6 +111,12 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             iteration: index
           });
           accumulatedPoints += attemptPoints;
+          props.nodeSummary.mergeNodeSummary({
+            llmInputTokens: response.workflowRuntimeSummary.llmInputTokens,
+            llmOutputTokens: response.workflowRuntimeSummary.llmOutputTokens,
+            totalPoints: attemptPoints,
+            citeCollectionIds: response.workflowRuntimeSummary.citeCollectionIds
+          });
 
           const result = parseTaskResponse({ index, response });
           if (result.success) {
@@ -173,7 +178,6 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     fullResultsArray,
     fullDetail,
     status,
-    totalPoints,
     attemptResponseDetails,
     assistantResponses,
     customFeedbacks
@@ -206,13 +210,11 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     [NodeOutputKeyEnum.parallelFullResults]: fullResultsArray,
     [NodeOutputKeyEnum.parallelStatus]: status
   };
-
   return {
     data,
     [DispatchNodeResponseKeyEnum.toolResponse]: fullResultsArray,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints,
       parallelInput: loopInputArray,
       parallelResult: filteredArray,
       parallelRunDetail: fullDetail,

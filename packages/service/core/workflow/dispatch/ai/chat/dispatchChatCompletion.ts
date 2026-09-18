@@ -179,9 +179,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         workflowStreamResponse?.(workflowSseEvent.answerDelta(text));
       }
     });
-
     if (responseEmptyTip) {
-      return getNodeErrResponse({ error: responseEmptyTip });
+      return getNodeErrResponse({
+        error: responseEmptyTip,
+        responseData: {
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens
+        }
+      });
     }
 
     const firstTokenTimeSec =

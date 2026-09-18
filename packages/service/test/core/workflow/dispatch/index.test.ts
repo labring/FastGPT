@@ -6,8 +6,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   dispatchWorkFlow,
   runWorkflow,
-  WorkflowQueue,
-  filterToolCallNodeResponses
+  WorkflowQueue
 } from '@fastgpt/service/core/workflow/dispatch/index';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
@@ -59,51 +58,6 @@ const createWorkflowVariableState = (
   toRuntimeRecord: () => ({ ...variables }),
   toStoreRecord: () => ({ ...variables }),
   clone: () => createWorkflowVariableState({ ...variables })
-});
-
-describe('filterToolCallNodeResponses', () => {
-  it('hides tool errors and their descendants while keeping successful responses', () => {
-    const responses = filterToolCallNodeResponses([
-      {
-        id: 'success',
-        nodeId: 'success',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Success'
-      },
-      {
-        id: 'failed',
-        nodeId: 'failed',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Failed',
-        errorText: 'tool failed'
-      },
-      {
-        id: 'failed-child',
-        nodeId: 'failed-child',
-        parentId: 'failed',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Failed child'
-      },
-      {
-        id: 'nested',
-        nodeId: 'nested',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'Nested',
-        childrenResponses: [
-          {
-            id: 'nested-error',
-            nodeId: 'nested-error',
-            moduleType: FlowNodeTypeEnum.tool,
-            moduleName: 'Nested error',
-            error: 'nested failed'
-          }
-        ]
-      }
-    ] as any);
-
-    expect(responses.map((response) => response.id)).toEqual(['success', 'nested']);
-    expect(responses[1]).not.toHaveProperty('childrenResponses');
-  });
 });
 
 describe('dispatchWorkFlow SSE initialization guard', () => {
@@ -1246,4 +1200,75 @@ describe('WorkflowQueue', () => {
       });
     });
   });
+});
+
+describe('Workflow runtime LLM token summary', () => {
+  it.each(['return', 'throw', 'hidden'])(
+    '保留 %s 节点的 token，并使用请求级 sink 统计 AppLog token',
+    async (mode) => {
+      const original = callbackMap[FlowNodeTypeEnum.textEditor];
+      const publish = vi.fn(async (items: any[]) => items.map((item) => item.response));
+      const node = createNode('summary-node', FlowNodeTypeEnum.textEditor);
+      node.isEntry = true;
+      callbackMap[FlowNodeTypeEnum.textEditor] = async ({ nodeSummary }) => {
+        nodeSummary.mergeNodeSummary({
+          llmInputTokens: mode === 'throw' ? 10 : 30,
+          llmOutputTokens: mode === 'throw' ? 3 : 7
+        });
+        if (mode === 'throw') throw new Error('after LLM');
+        return {
+          ...(mode === 'hidden' ? {} : { responseData: { inputTokens: 900, outputTokens: 800 } })
+        };
+      };
+      try {
+        const result = await runWorkflow({
+          apiVersion: 'v2',
+          mode: 'chat',
+          runningAppInfo: {
+            id: '67e0d5535c02d1d5cdede721',
+            name: 'summary',
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          runningUserInfo: {
+            teamId: '654a4107c32f3bf5f998452f',
+            tmbId: '65ab7007462ada7dbb899948'
+          },
+          histories: [],
+          query: [],
+          chatConfig: {},
+          runtimeNodes: [node],
+          runtimeEdges: [],
+          variableState: createWorkflowVariableState(),
+          externalProvider: {},
+          workflowDispatchDeep: 0,
+          maxRunTimes: 10,
+          checkIsStopping: () => false,
+          isToolCall: mode === 'throw',
+          nodeResponseSink: {
+            publish
+          }
+        } as any);
+        const inputTokens = mode === 'throw' ? 10 : 30;
+        const outputTokens = mode === 'throw' ? 3 : 7;
+        expect(result.workflowRuntimeSummary).toMatchObject({
+          llmInputTokens: mode === 'return' ? 930 : inputTokens,
+          llmOutputTokens: mode === 'return' ? 807 : outputTokens
+        });
+        if (mode === 'throw') {
+          expect(publish).toHaveBeenCalledWith([
+            expect.objectContaining({
+              response: expect.objectContaining({
+                nodeId: 'summary-node',
+                error: 'after LLM'
+              }),
+              emit: true
+            })
+          ]);
+        }
+      } finally {
+        callbackMap[FlowNodeTypeEnum.textEditor] = original;
+      }
+    }
+  );
 });

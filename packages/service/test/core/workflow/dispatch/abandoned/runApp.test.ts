@@ -3,7 +3,10 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowVariableState } from '../../../../../core/workflow/dispatch/utils/variables';
-import { summarizeRuntimeNodeResponses } from '../../../../../core/workflow/dispatch/utils';
+import {
+  createNodeSummary,
+  summarizeRuntimeNodeResponses
+} from '../../../../../core/workflow/dispatch/utils/summary';
 
 const runWorkflowMock = vi.fn();
 const authAppByTmbIdMock = vi.fn();
@@ -103,7 +106,7 @@ describe('abandoned dispatchAppRequest', () => {
         ],
         assistantResponses: [],
         system_memories: [],
-        runtimeNodeResponseSummary: summarizeRuntimeNodeResponses(undefined, [
+        workflowRuntimeSummary: summarizeRuntimeNodeResponses(undefined, [
           {
             id: 'child-root',
             moduleType: FlowNodeTypeEnum.chatNode,
@@ -115,6 +118,7 @@ describe('abandoned dispatchAppRequest', () => {
       };
     });
 
+    const nodeSummary = createNodeSummary();
     const result = await dispatchAppRequest({
       runningAppInfo: {
         id: 'parent-app',
@@ -141,6 +145,7 @@ describe('abandoned dispatchAppRequest', () => {
       chatId: 'chat',
       responseChatItemId: 'response',
       usagePush,
+      nodeSummary,
       chatConfig: {
         variables: []
       }
@@ -158,6 +163,7 @@ describe('abandoned dispatchAppRequest', () => {
         totalPoints: 5
       }
     ]);
-    expect(result.responseData?.totalPoints).toBe(5);
+    expect(result.responseData?.totalPoints).toBeUndefined();
+    expect(nodeSummary.totalPoints).toBe(5);
   });
 });

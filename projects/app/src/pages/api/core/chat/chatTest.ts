@@ -248,7 +248,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       newVariables,
       durationSeconds,
       customFeedbacks,
-      nodeResponseSummary
+      workflowRuntimeSummary
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
       res,
@@ -318,7 +318,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         originIp,
         [APP_SANDBOX_ENABLED_CHAT_METADATA_KEY]: isAppSandboxEnabledInNodes(nodes)
       },
-      nodeResponseSummary
+      workflowRuntimeSummary
     };
 
     if (interactive) {

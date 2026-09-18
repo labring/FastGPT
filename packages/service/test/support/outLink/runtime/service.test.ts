@@ -122,10 +122,12 @@ const workflowResult = {
   flowUsages: [{ totalPoints: 3 }],
   durationSeconds: 1.5,
   system_memories: { memory: 'value' },
-  nodeResponseSummary: {
+  workflowRuntimeSummary: {
     citeCollectionIds: [],
     errorCount: 0,
-    totalPoints: 3
+    totalPoints: 3,
+    inputTokens: 100,
+    outputTokens: 20
   }
 };
 

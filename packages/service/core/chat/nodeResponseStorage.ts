@@ -4,13 +4,12 @@ import type {
   ChatItemResponseSchemaType
 } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   getChildrenResponses,
-  getNodeResponseIdentityKey,
-  mergeNodeResponseDataByIdAndParent
+  mergeNodeResponseDataByIdAndParent,
+  stripNodeResponseChildTotalPoints
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -26,19 +25,6 @@ type ChatItemResponseBase = Pick<
   'teamId' | 'chatId' | 'chatItemDataId'
 > &
   ChatSourceParams;
-
-/**
- * saveChat 仍需要同步得到本轮引用、错误数和根节点费用。
- *
- * nodeResponse 详情 rows 可以失败后丢弃，但这些摘要数据已经在运行期得到，不能因为
- * 某批详情写库失败就影响 chat log、计费展示和 cite 记录。
- */
-export type NodeResponseWriteSummary = {
-  citeCollectionIds: string[];
-  errorCount: number;
-  lastError?: string;
-  totalPoints: number;
-};
 
 type ChatItemResponseRowLike = {
   data?: ChatHistoryItemResType;
@@ -163,6 +149,16 @@ const slimNodeResponseData = (response: ChatHistoryItemResType): ChatHistoryItem
   ];
   numberKeys.forEach((key) => keepNumber(data, source, key));
 
+  // deepSearchResult 没有独立 child row；fallback row 丢弃嵌套结构时，把它折算进顶层
+  // token 字段，保留详情行中的 LLM 消耗信息。
+  const deepSearchResult = (source.deepSearchResult || {}) as Record<string, unknown>;
+  (['inputTokens', 'outputTokens'] as const).forEach((key) => {
+    const value = deepSearchResult[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      data[key] = ((data[key] as number) || 0) + value;
+    }
+  });
+
   return data as ChatHistoryItemResType;
 };
 
@@ -270,23 +266,6 @@ export const getNodeResponseChildResponseCount = (
   children: ChatHistoryItemResType[] = []
 ): number | undefined => getChildResponseCount(normalizeChildResponseTree(children));
 
-const collectCiteCollectionIds = (
-  response: ChatHistoryItemResType,
-  collectionIds = new Set<string>()
-) => {
-  if (response.moduleType === FlowNodeTypeEnum.datasetSearchNode) {
-    response.quoteList?.forEach((quote) => {
-      if (quote.collectionId) {
-        collectionIds.add(quote.collectionId);
-      }
-    });
-  }
-
-  getChildrenResponses(response).forEach((child) => collectCiteCollectionIds(child, collectionIds));
-
-  return Array.from(collectionIds);
-};
-
 const getResponseChildResponseCount = (
   response: ChatHistoryItemResType,
   children: ChatHistoryItemResType[]
@@ -317,13 +296,14 @@ export const createChatItemResponseRows = ({
   const { sourceType: _sourceType, sourceId: _sourceId, ...restBase } = base;
 
   return nodeResponses.map((response) => {
-    const id = getResponseId(response);
-    const currentParentId = getParentId(response);
-    const children = getChildrenResponses(response);
-    const childResponseCount = getResponseChildResponseCount(response, children);
+    const normalizedResponse = stripNodeResponseChildTotalPoints(response);
+    const id = getResponseId(normalizedResponse);
+    const currentParentId = getParentId(normalizedResponse);
+    const children = getChildrenResponses(normalizedResponse);
+    const childResponseCount = getResponseChildResponseCount(normalizedResponse, children);
     // data 是当前 nodeResponse 本身：保留 childrenResponses，仅读取时再与 parentId child rows 合并。
     const data = {
-      ...response,
+      ...normalizedResponse,
       id,
       ...(currentParentId ? { parentId: currentParentId } : {}),
       ...(childResponseCount !== undefined ? { childResponseCount } : {})
@@ -446,9 +426,6 @@ export class WorkflowNodeResponseWriter {
   // 子 workflow 可能共享同一个 writer，并发 record 必须串行化，才能保证写入顺序稳定。
   private writeQueue = Promise.resolve();
   private failedFlushCount = 0;
-  // 按 nodeResponse id + parentId 保存摘要贡献；相同展示节点完成态会覆盖开始态，避免重复累计。
-  private readonly summaryContributions = new Map<string, NodeResponseWriteSummary>();
-
   constructor({
     model,
     batchSize = 5,
@@ -488,49 +465,6 @@ export class WorkflowNodeResponseWriter {
   }
 
   /**
-   * 收集 saveChat 需要的轻量摘要。
-   *
-   * 详情 rows 写库失败后可以丢弃，但引用来源、根节点错误数和根节点费用仍需要保存到
-   * chat 记录/日志中。相同 `id + parentId` 的后续 row 会覆盖前一次贡献，避免节点重试
-   * 或完成态更新造成重复累计。
-   */
-  private collectSummary(rows: ChatItemResponseStorageRow[]) {
-    rows.forEach((row) => {
-      const contribution: NodeResponseWriteSummary = {
-        citeCollectionIds: [],
-        errorCount: 0,
-        totalPoints: 0
-      };
-
-      // citeCollectionIds 用于保存聊天记录引用来源；内联 children 里的搜索节点也要兼容收集。
-      contribution.citeCollectionIds.push(...collectCiteCollectionIds(row.data));
-
-      // 保存历史统计保持旧逻辑口径：只按根节点累计错误数和积分。工具执行详情不计入会话错误。
-      if (!row.data.parentId) {
-        const errorText =
-          !isToolExecutionResponse(row.data) && (row.data.errorText || row.data.error);
-        if (errorText) {
-          contribution.errorCount = 1;
-          contribution.lastError = String(errorText);
-        }
-        contribution.totalPoints = row.data.totalPoints || 0;
-      }
-
-      const identityKey = getNodeResponseIdentityKey(row.data);
-      if (
-        contribution.citeCollectionIds.length > 0 ||
-        contribution.errorCount > 0 ||
-        contribution.totalPoints !== 0
-      ) {
-        // 相同展示节点后到的 row 覆盖前一次贡献，保证重试/完成态更新后摘要不重复累计。
-        this.summaryContributions.set(identityKey, contribution);
-      } else {
-        this.summaryContributions.delete(identityKey);
-      }
-    });
-  }
-
-  /**
    * 保留请求内 flat nodeResponse。
    *
    * 内存缓存只作为业务入口最终返回使用，不能提前拼树。这里和 DB 一样保留所有增量 rows，
@@ -546,22 +480,19 @@ export class WorkflowNodeResponseWriter {
    * 记录一批 nodeResponse。
    *
    * 输入就是本次要保存的 nodeResponses；writer 不再递归展开 childrenResponses。这里会
-   * 转成完整 rows、收集摘要，然后进入串行队列写入 buffer。buffer 达到 batchSize 时立即
-   * flush；返回值与请求内保留的完整 row data 一致。
+   * 转成完整 rows，然后进入串行队列写入 buffer。buffer 达到 batchSize 时立即 flush；
+   * 返回值与请求内保留的完整 row data 一致。
    */
   async record(nodeResponses?: ChatHistoryItemResType[]) {
     const rows = createChatItemResponseRows({
       ...this.base,
       nodeResponses
     });
-    // 本地关系和摘要必须在入队前更新；即使本批稍后写库失败，saveChat 仍可读取运行期摘要。
-    this.collectSummary(rows);
-
     await this.enqueue(async () => {
       this.buffer.push(...rows);
       this.retainFlatRows(rows);
       if (!this.persistToDb) {
-        // 只需要 summary/内存详情的 writer 不保留待写 buffer，避免触达 Mongo 事务。
+        // 只保留内存详情的 writer 不保留待写 buffer，避免触达 Mongo 事务。
         this.buffer = [];
         return;
       }
@@ -686,8 +617,8 @@ export class WorkflowNodeResponseWriter {
   /**
    * flush 当前 buffer。
    *
-   * 失败后释放详情 rows 并保留 summary。无论成功失败，都会清空 buffer 以降低运行期
-   * 内存占用。
+   * 无论成功失败都会清空 buffer，以降低运行期内存占用；运行期 summary 由 workflow scope
+   * 独立维护，不依赖 writer 是否成功落库。
    */
   private async flushBufferedRows() {
     if (this.buffer.length === 0) return;
@@ -699,7 +630,7 @@ export class WorkflowNodeResponseWriter {
 
     if (!persisted) {
       this.failedFlushCount += 1;
-      // 写库失败只丢弃详情 rows；运行期已累计的引用、错误数和积分仍要给 saveChat 使用。
+      // 写库失败只丢弃详情 rows；workflow summary 已在 sink/queue 中完成采集。
     }
   }
 
@@ -717,11 +648,11 @@ export class WorkflowNodeResponseWriter {
    * 关闭 writer 前的最终 flush。
    *
    * root workflow 在 saveChat 前调用 close，尽最大努力写完剩余 rows。失败策略仍是记录日志、
-   * 保留 summary、不中断主流程。
+   * 不阻断主流程。
    */
   async close() {
     await this.enqueue(async () => {
-      // close 是 saveChat 前的最终检查：尽量把剩余 rows 写完；失败则只打日志并保留摘要。
+      // close 是 saveChat 前的最终检查：尽量把剩余 rows 写完；失败则只记录日志。
       await this.flushBufferedRows();
       if (this.buffer.length > 0) {
         logger.error('Workflow node response writer closed with pending rows', {
@@ -735,38 +666,6 @@ export class WorkflowNodeResponseWriter {
   /** 当前 writer 是否已经没有待写入的本地 buffer。 */
   get isFullyFlushed() {
     return this.buffer.length === 0;
-  }
-
-  /**
-   * 返回 saveChat 使用的运行期摘要。
-   *
-   * 摘要来源于 record 阶段，不依赖详情 rows 是否最终写库成功；collectionId 会去重，错误
-   * 和积分沿用旧逻辑只统计根节点贡献。
-   */
-  getSummary(): NodeResponseWriteSummary {
-    const citeCollectionIds = new Set<string>();
-    let errorCount = 0;
-    let lastError: string | undefined;
-    let totalPoints = 0;
-
-    this.summaryContributions.forEach((contribution) => {
-      // collectionId 去重，避免同一引用在节点更新或多次搜索中重复记录。
-      contribution.citeCollectionIds.forEach((collectionId) => {
-        citeCollectionIds.add(collectionId);
-      });
-      errorCount += contribution.errorCount;
-      totalPoints += contribution.totalPoints;
-      if (contribution.lastError) {
-        lastError = contribution.lastError;
-      }
-    });
-
-    return {
-      citeCollectionIds: Array.from(citeCollectionIds),
-      errorCount,
-      lastError,
-      totalPoints
-    };
   }
 
   /** 返回本轮请求内保留的 flat nodeResponses。未开启 retainInMemory 时恒为空数组。 */

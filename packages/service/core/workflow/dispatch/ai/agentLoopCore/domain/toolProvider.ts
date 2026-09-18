@@ -10,6 +10,7 @@ import type {
   AgentLoopToolExecutionResult
 } from '../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopCoreSystemToolInfo } from './toolInfo';
+import type { NodeSummary } from '../../../../types/runtime';
 
 export type AgentLoopCoreUserToolInfo<TRaw = unknown> = {
   type: 'user';
@@ -35,6 +36,7 @@ export type AgentLoopCoreToolRunResult<TChildrenResponse = unknown> = {
   stop?: boolean;
   errorMessage?: string;
   nodeResponse?: ChatHistoryItemResType;
+  nodeSummary?: NodeSummary;
 };
 
 export type AgentLoopCoreToolProvider<TRawTool = unknown, TChildrenResponse = unknown> = {

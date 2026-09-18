@@ -11,7 +11,8 @@ const createDatasetSearchChildNodeResponse = ({
   modelName,
   moduleName,
   seconds,
-  textOutput
+  textOutput,
+  embeddingTokens
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
@@ -19,6 +20,7 @@ const createDatasetSearchChildNodeResponse = ({
   moduleName: string;
   seconds?: number;
   textOutput?: string;
+  embeddingTokens?: number;
 }): ChatHistoryItemResType => {
   const [id] = requestIds;
   if (!id) {
@@ -37,6 +39,7 @@ const createDatasetSearchChildNodeResponse = ({
     llmRequestIds: requestIds,
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
+    ...(embeddingTokens ? { embeddingTokens } : {}),
     totalPoints: usage.totalPoints,
     textOutput
   };
@@ -44,20 +47,25 @@ const createDatasetSearchChildNodeResponse = ({
 
 /**
  * 创建知识库搜索里的 query extension 子 nodeResponse。
- * 这里记录的是扩展查询的 LLM 请求本身，embedding 选词消耗仍走父知识库搜索 usage 汇总。
+ *
+ * 扩展查询的 LLM 消耗记在 usage 上；扩展选词还会额外做一次 embedding，那次 embedding
+ * 没有独立 row，只能挂在子 response 的 embeddingTokens 上，否则 app chat log 会少统计
+ * 这块 token（账单侧是有的，两页会对不上）。
  */
 export const createQueryExtensionChildNodeResponse = ({
   requestIds,
   usage,
   modelName,
   seconds,
-  query
+  query,
+  embeddingTokens
 }: {
   requestIds: string[];
   usage: ChatNodeUsageType;
   modelName: string;
   seconds?: number;
   query: string;
+  embeddingTokens?: number;
 }) =>
   createDatasetSearchChildNodeResponse({
     requestIds,
@@ -65,7 +73,8 @@ export const createQueryExtensionChildNodeResponse = ({
     modelName,
     seconds,
     moduleName: i18nT('common:core.module.template.Query extension'),
-    textOutput: query
+    textOutput: query,
+    embeddingTokens
   });
 
 /**

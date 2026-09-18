@@ -32,11 +32,12 @@ import {
   getWorkflowFileVariableInputs,
   WorkflowVariableState
 } from '../../../../utils/variables';
-import { getRuntimeNodeResponseSummary } from '../../../../utils';
+import { getWorkflowRuntimeSummary, runtimeSummaryToNodeSummary } from '../../../../utils/summary';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
 import {
   computedAppToolUsage,
+  getAppToolOwnUsage,
   getAppToolOutputError
 } from '../../../../../../app/tool/runtime/utils';
 
@@ -118,65 +119,61 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   );
   const runtimeEdges = storeEdges2RuntimeEdges(edges);
 
-  const {
-    assistantResponses,
-    flowUsages,
-    runtimeNodeResponseSummary,
-    workflowInteractiveResponse
-  } = await runWithDerivedWorkflowFileContext({
-    files: getWorkflowFileVariableInputs({
-      variablesConfig: chatConfig.variables ?? [],
-      inputVariables: workflowToolVariables
-    }),
-    resourceContext,
-    fn: async ({ resolveInputFile }) => {
-      const childrenVariableState = await WorkflowVariableState.create({
-        timezone: data.timezone,
-        runningAppInfo: childRunningAppInfo,
-        chatId: data.chatId,
-        responseChatItemId: data.responseChatItemId,
-        histories: [],
-        uid: data.uid,
+  const { assistantResponses, flowUsages, workflowRuntimeSummary, workflowInteractiveResponse } =
+    await runWithDerivedWorkflowFileContext({
+      files: getWorkflowFileVariableInputs({
         variablesConfig: chatConfig.variables ?? [],
-        inputVariables: workflowToolVariables,
-        externalVariables: externalProvider?.externalWorkflowVariables,
-        sourceVariableState: variableState,
-        resolveInputFile
-      });
+        inputVariables: workflowToolVariables
+      }),
+      resourceContext,
+      fn: async ({ resolveInputFile }) => {
+        const childrenVariableState = await WorkflowVariableState.create({
+          timezone: data.timezone,
+          runningAppInfo: childRunningAppInfo,
+          chatId: data.chatId,
+          responseChatItemId: data.responseChatItemId,
+          histories: [],
+          uid: data.uid,
+          variablesConfig: chatConfig.variables ?? [],
+          inputVariables: workflowToolVariables,
+          externalVariables: externalProvider?.externalWorkflowVariables,
+          sourceVariableState: variableState,
+          resolveInputFile
+        });
 
-      return runWorkflow({
-        ...data,
-        runningAppInfo: {
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: String(appData._id),
-          name: appData.name,
-          teamId: String(appData.teamId),
-          tmbId: String(appData.tmbId),
-          isChildApp: true
-        },
-        runningUserInfo,
-        runtimeNodes,
-        runtimeEdges,
-        chatConfig,
-        histories: [],
-        variableState: childrenVariableState,
-        isToolCall: true,
-        query: [
-          {
-            text: {
-              content: userChatInput
+        return runWorkflow({
+          ...data,
+          runningAppInfo: {
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: String(appData._id),
+            name: appData.name,
+            teamId: String(appData.teamId),
+            tmbId: String(appData.tmbId),
+            isChildApp: true
+          },
+          runningUserInfo,
+          runtimeNodes,
+          runtimeEdges,
+          chatConfig,
+          histories: [],
+          variableState: childrenVariableState,
+          isToolCall: true,
+          query: [
+            {
+              text: {
+                content: userChatInput
+              }
             }
-          }
-        ],
-        stream: false,
-        workflowStreamResponse: undefined
-      });
-    }
-  });
+          ],
+          stream: false,
+          workflowStreamResponse: undefined
+        });
+      }
+    });
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
-  const runtimeSummary = getRuntimeNodeResponseSummary({
-    runtimeNodeResponseSummary
+  const runtimeSummary = getWorkflowRuntimeSummary({
+    workflowRuntimeSummary
   });
 
   return {
@@ -195,11 +192,13 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       reserveTool: true
     }),
     usages: flowUsages,
+    nodeSummary: runtimeSummaryToNodeSummary(runtimeSummary),
     interactive: workflowInteractiveResponse,
     nodeResponse: {
       moduleType: FlowNodeTypeEnum.appModule,
       moduleName: app.name,
       moduleLogo: app.avatar,
+      totalPoints: 0,
       toolInput: {
         userChatInput,
         ...workflowToolVariables
@@ -329,7 +328,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   const {
     assistantResponses = [],
     flowUsages,
-    runtimeNodeResponseSummary,
+    workflowRuntimeSummary,
     workflowInteractiveResponse
   } = await runWithDerivedWorkflowFileContext({
     files: childFileInputs,
@@ -422,8 +421,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     }
   });
 
-  const runtimeSummary = getRuntimeNodeResponseSummary({
-    runtimeNodeResponseSummary
+  const runtimeSummary = getWorkflowRuntimeSummary({
+    workflowRuntimeSummary
   });
   const pluginOutput = runtimeSummary.pluginOutput;
   const pluginOutputError = billingTool
@@ -452,15 +451,39 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     : !pluginOutput
       ? 'Run workflow tool failed'
       : pluginOutputError;
+  const usagePoints = billingTool
+    ? await computedAppToolUsage({
+        plugin: billingTool,
+        childrenUsage: flowUsages,
+        error: !!errorMessage
+      })
+    : flowUsages.reduce((sum, usage) => sum + usage.totalPoints, 0);
+  const ownUsagePoints = billingTool
+    ? getAppToolOwnUsage({ plugin: billingTool, error: !!errorMessage })
+    : 0;
+  const childUsagePoints = Math.max(0, usagePoints - ownUsagePoints);
+  const runtimeNodeSummary = runtimeSummaryToNodeSummary(
+    app.systemToolId
+      ? {
+          ...runtimeSummary,
+          // System workflow internals are invisible to the caller and must not affect its
+          // user-facing LLM token summary.
+          llmInputTokens: 0,
+          llmOutputTokens: 0
+        }
+      : runtimeSummary
+  );
+  const nodeSummary = (() => {
+    const summary = { ...runtimeNodeSummary };
+    delete summary.totalPoints;
+    if (childUsagePoints) summary.totalPoints = childUsagePoints;
+    return Object.keys(summary).length > 0 ? summary : undefined;
+  })();
   const usages = billingTool
     ? [
         {
           moduleName: app.name,
-          totalPoints: await computedAppToolUsage({
-            plugin: billingTool,
-            childrenUsage: flowUsages,
-            error: !!errorMessage
-          })
+          totalPoints: usagePoints
         }
       ]
     : flowUsages;
@@ -479,11 +502,13 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       reserveTool: true
     }),
     usages,
+    nodeSummary,
     interactive: workflowInteractiveResponse,
     nodeResponse: {
       moduleType: FlowNodeTypeEnum.pluginModule,
       moduleName: app.name,
       moduleLogo: app.avatar,
+      totalPoints: ownUsagePoints,
       toolInput: workflowToolVariables,
       toolRes: pluginOutput || {},
       childResponseCount: runtimeSummary.childResponseCount,

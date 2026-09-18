@@ -19,6 +19,7 @@ import {
   type AgentLoopCoreToolRunFlowResponse
 } from '../agentLoopCore/interface';
 import { createToolCallToolProvider } from './toolProvider';
+import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 
 type ResponseType = {
   requestIds: string[];
@@ -69,6 +70,14 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
   let getProviderToolInfo: (name: string) => ToolInfo | undefined = () => undefined;
   const getToolInfo = (name: string) => getProviderToolInfo(name);
 
+  const mergeChildWorkflowSummary = (
+    workflowSummary: Parameters<typeof runtimeSummaryToNodeSummary>[0]
+  ) => {
+    props.nodeSummary.mergeNodeSummary(
+      stripNodeSummaryErrorFields(runtimeSummaryToNodeSummary(workflowSummary))
+    );
+  };
+
   const runtimeEnvironment = createAgentLoopCoreRuntimeEnvironment({
     node: workflowProps.node,
     workflowStreamResponse,
@@ -86,7 +95,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     workflowProps,
     runtimeNodes,
     runtimeEdges,
-    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse
+    cacheToolFlowResponse: runtimeEnvironment.cacheToolFlowResponse,
+    onWorkflowRuntimeSummary: mergeChildWorkflowSummary
   });
   getProviderToolInfo = toolProvider.getToolInfo;
   const systemPrompt = toolProvider.finalMessages
