@@ -1,6 +1,6 @@
 import { ChannelStautsMap } from '@/global/aiproxy/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/core/ai/model/api';
+import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/settings/model/api';
 import { Box, HStack, VStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';

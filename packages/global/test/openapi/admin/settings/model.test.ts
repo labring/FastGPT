@@ -10,9 +10,16 @@ import {
   TestAdminSystemModelQuerySchema,
   UpdateSystemModelBodySchema,
   UpdateSystemModelStatusBodySchema
-} from '../../../../openapi/admin/core/ai/model/api';
-import { AdminSystemModelPath } from '../../../../openapi/admin/core/ai/model';
-import { adminOpenAPITagGroups, adminOpenAPIPaths } from '../../../../openapi/path';
+} from '../../../../openapi/admin/settings/model/api';
+import { AdminSystemModelPath } from '../../../../openapi/admin/settings/model';
+import { AdminSystemChannelPath } from '../../../../openapi/admin/settings/model/channel';
+import {
+  adminOpenAPITagGroups,
+  adminOpenAPIPaths,
+  openAPITagGroups,
+  openAPIPaths
+} from '../../../../openapi/path';
+import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { DevApiTagsMap } from '../../../../openapi/tag';
 
 describe('admin system model API schemas', () => {
@@ -34,7 +41,7 @@ describe('admin system model API schemas', () => {
       createDocument({
         openapi: '3.1.0',
         info: { title: 'Admin model API', version: '1.0.0' },
-        paths: AdminSystemModelPath
+        paths: { ...AdminSystemModelPath, ...AdminSystemChannelPath }
       })
     ).not.toThrow();
   });
@@ -131,16 +138,48 @@ describe('admin system model API schemas', () => {
     ).toThrow();
   });
 
-  it('places every admin model route in the system model management group', () => {
+  it('loads every admin model route into both documents under model management', () => {
     expect(adminOpenAPITagGroups).toContainEqual({
       name: '管理员-系统接口',
-      tags: [DevApiTagsMap.adminSystemMigration, DevApiTagsMap.adminSystemModel]
+      tags: [
+        DevApiTagsMap.adminSystemMigration,
+        DevApiTagsMap.adminSystemModel,
+        DevApiTagsMap.adminModelChannel,
+        DevApiTagsMap.adminModelLog
+      ]
+    });
+    expect(openAPITagGroups).toContainEqual({
+      name: '管理员-系统接口',
+      tags: [
+        DevApiTagsMap.adminSystemMigration,
+        DevApiTagsMap.adminSystemModel,
+        DevApiTagsMap.adminModelChannel,
+        DevApiTagsMap.adminModelLog
+      ]
     });
 
     for (const [path, operations] of Object.entries(AdminSystemModelPath)) {
       expect(adminOpenAPIPaths[path]).toBe(operations);
+      expect(openAPIPaths[path]).toBe(operations);
+      expect(openAPIDocument.paths?.[path]).toBeDefined();
       for (const operation of Object.values(operations ?? {})) {
         expect(operation?.tags).toEqual([DevApiTagsMap.adminSystemModel]);
+      }
+    }
+
+    const monitoringPaths = new Set([
+      '/aiproxy/api/logs/search',
+      '/aiproxy/api/logs/detail/{id}',
+      '/aiproxy/api/dashboardv2/'
+    ]);
+    for (const [path, operations] of Object.entries(AdminSystemChannelPath)) {
+      expect(adminOpenAPIPaths[path]).toBe(operations);
+      expect(openAPIPaths[path]).toBe(operations);
+      expect(openAPIDocument.paths?.[path]).toBeDefined();
+      for (const operation of Object.values(operations ?? {})) {
+        expect(operation?.tags).toEqual([
+          monitoringPaths.has(path) ? DevApiTagsMap.adminModelLog : DevApiTagsMap.adminModelChannel
+        ]);
       }
     }
   });

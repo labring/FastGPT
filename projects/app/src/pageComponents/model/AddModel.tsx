@@ -1,5 +1,5 @@
 import { useModelChannelTest } from './useModelChannelTest';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/core/ai/model/api';
+import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/settings/model/api';
 import { getAdminModelTemplates, postSystemModelsFromTemplates } from '@/web/core/ai/config';
 import { defaultChannel } from '@/global/aiproxy/constants';
 import {

@@ -4,7 +4,7 @@ import type {
 } from '@fastgpt/global/core/ai/model.schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { postSystemModel, putSystemModel } from '@/web/core/ai/config';
-import { UpdateSystemModelBodySchema } from '@fastgpt/global/openapi/admin/core/ai/model/api';
+import { UpdateSystemModelBodySchema } from '@fastgpt/global/openapi/admin/settings/model/api';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/pricing';
 
 /** 保留完整未保存草稿，仅规范测试接口要求的模型标识和回退别名。 */

@@ -7,7 +7,7 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
  * Route: POST /api/core/ai/model/summary
  * Method: POST
  * Description: 返回当前身份对应模型名称、图标和可用状态，不返回执行配置或凭据
- * Tags: ['AI 通用', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const GetModelSummariesBodySchema = z.object({

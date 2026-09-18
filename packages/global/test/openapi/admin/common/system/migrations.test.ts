@@ -35,11 +35,21 @@ describe('system migration Admin OpenAPI contracts', () => {
   it('places the migration tag in its dedicated Admin group', () => {
     expect(adminOpenAPITagGroups).toContainEqual({
       name: '管理员-系统接口',
-      tags: [DevApiTagsMap.adminSystemMigration, DevApiTagsMap.adminSystemModel]
+      tags: [
+        DevApiTagsMap.adminSystemMigration,
+        DevApiTagsMap.adminSystemModel,
+        DevApiTagsMap.adminModelChannel,
+        DevApiTagsMap.adminModelLog
+      ]
     });
     expect(openAPITagGroups).toContainEqual({
       name: '管理员-系统接口',
-      tags: [DevApiTagsMap.adminSystemMigration]
+      tags: [
+        DevApiTagsMap.adminSystemMigration,
+        DevApiTagsMap.adminSystemModel,
+        DevApiTagsMap.adminModelChannel,
+        DevApiTagsMap.adminModelLog
+      ]
     });
   });
 

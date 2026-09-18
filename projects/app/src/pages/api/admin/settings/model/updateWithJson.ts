@@ -6,7 +6,7 @@ import { importSystemModels } from '@/service/core/ai/model/service';
 import {
   UpdateSystemModelsWithJsonBodySchema,
   type UpdateSystemModelsWithJsonBody
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 
 async function handler(req: ApiRequestProps<UpdateSystemModelsWithJsonBody>): Promise<void> {
   await authSystemAdmin({ req });

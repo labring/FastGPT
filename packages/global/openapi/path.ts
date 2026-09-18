@@ -13,6 +13,8 @@ import { DevApiTagsMap } from './tag';
 import type { OpenAPIPath } from './type';
 import { CommonPath } from './common';
 import { InvokePath } from './plugin';
+import { AdminSystemModelPath } from './admin/settings/model';
+import { AdminSystemChannelPath } from './admin/settings/model/channel';
 
 export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...AppPath,
@@ -25,6 +27,8 @@ export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...InvokePath,
   ...AIPath,
   ...SkillPath,
+  ...AdminSystemModelPath,
+  ...AdminSystemChannelPath,
   ...AdminSystemMigrationsPath
 };
 
@@ -140,6 +144,7 @@ export const openAPITagGroups = [
       DevApiTagsMap.apiKey,
       DevApiTagsMap.customDomain,
       DevApiTagsMap.commonFile,
+      DevApiTagsMap.model,
       DevApiTagsMap.commonSystem,
       DevApiTagsMap.commonOther
     ]
@@ -158,19 +163,31 @@ export const openAPITagGroups = [
   },
   {
     name: '管理员-系统接口',
-    tags: [DevApiTagsMap.adminSystemMigration]
+    tags: [
+      DevApiTagsMap.adminSystemMigration,
+      DevApiTagsMap.adminSystemModel,
+      DevApiTagsMap.adminModelChannel,
+      DevApiTagsMap.adminModelLog
+    ]
   }
 ];
 
 export const adminOpenAPIPaths: NonNullable<OpenAPIPath> = {
   ...AdminCorePath,
-  ...AdminSupportPath
+  ...AdminSupportPath,
+  ...AdminSystemModelPath,
+  ...AdminSystemChannelPath
 };
 
 export const adminOpenAPITagGroups = [
   {
     name: '管理员-系统接口',
-    tags: [DevApiTagsMap.adminSystemMigration, DevApiTagsMap.adminSystemModel]
+    tags: [
+      DevApiTagsMap.adminSystemMigration,
+      DevApiTagsMap.adminSystemModel,
+      DevApiTagsMap.adminModelChannel,
+      DevApiTagsMap.adminModelLog
+    ]
   },
   {
     name: '管理员-系统概览',

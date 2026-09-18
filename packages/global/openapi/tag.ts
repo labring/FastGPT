@@ -80,6 +80,7 @@ export const DevApiTagsMap = {
   apiKey: 'API Key 管理',
   customDomain: '自定义域名',
   commonFile: '文件管理',
+  model: '模型管理',
   commonSystem: '系统接口',
   commonOther: '基础功能其他',
 
@@ -118,7 +119,9 @@ export const DevApiTagsMap = {
   adminSettings: '系统配置',
   adminLogs: '系统日志',
   adminSystemMigration: '升级脚本',
-  adminSystemModel: '系统模型管理',
+  adminSystemModel: '管理员模型管理',
+  adminModelChannel: '管理员渠道管理',
+  adminModelLog: '管理员模型监控日志',
   adminLicense: '许可证管理',
   adminTemplate: '模板管理',
   adminTemplateType: '模板类型管理',
@@ -129,7 +132,10 @@ export const DevApiTagsMap = {
 
 /** Scalar 文档导航中的标签展示名，key 保持 OpenAPI 内部标签唯一。 */
 export const DevApiTagNameAliases: Record<string, string> = {
-  [DevApiTagsMap.pluginMarketplace]: '系统工具'
+  [DevApiTagsMap.pluginMarketplace]: '系统工具',
+  [DevApiTagsMap.adminSystemModel]: '模型管理',
+  [DevApiTagsMap.adminModelChannel]: '渠道管理',
+  [DevApiTagsMap.adminModelLog]: '监控日志'
 };
 
 export const SystemOpenApiTagMap = {

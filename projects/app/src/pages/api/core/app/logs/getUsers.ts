@@ -1,4 +1,4 @@
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
@@ -16,15 +16,23 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const appChatSourceMatch = {
-  $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
+type LogUserGroup = {
+  _id: string;
+  count: number;
 };
 
+type LogUserAggregationResult = {
+  list: LogUserGroup[];
+  total: Array<{ count: number }>;
+};
+
+/**
+ * 从应用聚合日志中按用户统计会话数；用户名搜索先转换为团队成员 ID，再执行聚合和分页。
+ */
 async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
   const {
-    body: { appId, dateStart, dateEnd, searchKey, sources }
+    body: { appId, dateStart, dateEnd, searchKey, sources, pageSize, pageNum, offset }
   } = parseApiInput({
     req,
     bodySchema: GetLogUsersBodySchema
@@ -42,75 +50,96 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
     per: AppReadChatLogPerVal
   });
 
-  // Get tmbId and outlinkUid
-  const aggregateResult = await MongoChat.aggregate(
+  const resolvedPageSize = Math.max(1, pageSize ?? 50);
+  const resolvedOffset = Math.max(0, offset ?? ((pageNum ?? 1) - 1) * resolvedPageSize);
+  const teamObjectId = new Types.ObjectId(teamId);
+  const searchPattern = searchKey?.trim()
+    ? new RegExp(replaceRegChars(searchKey.trim()), 'i')
+    : undefined;
+
+  // 团队成员名称不在 app_chat_logs 中，先将名称搜索转换为 tmbId，再和外链 UID 一起下推到日志表。
+  const matchedTeamMemberIds = searchPattern
+    ? await MongoTeamMember.find({ teamId: teamObjectId, name: searchPattern }, '_id').lean()
+    : [];
+  const userMatch = searchPattern
+    ? {
+        $or: [
+          { userId: searchPattern },
+          ...(matchedTeamMemberIds.length
+            ? [{ userId: { $in: matchedTeamMemberIds.map((item) => String(item._id)) } }]
+            : [])
+        ]
+      }
+    : {};
+
+  const [aggregateResult] = await MongoAppChatLog.aggregate<LogUserAggregationResult>(
     [
       {
         $match: {
+          teamId: teamObjectId,
           appId: new Types.ObjectId(appId),
-          ...appChatSourceMatch,
           updateTime: {
             $gte: new Date(dateStart),
             $lte: new Date(dateEnd)
           },
-          ...(sources?.length && { source: { $in: sources } })
+          userId: { $exists: true, $nin: [null, ''] },
+          ...(sources?.length && { source: { $in: sources } }),
+          ...userMatch
         }
       },
       {
         $group: {
-          _id: {
-            outLinkUid: '$outLinkUid',
-            tmbId: '$tmbId'
-          },
+          _id: '$userId',
           count: { $sum: 1 }
         }
       },
-      { $sort: { count: -1 } },
-      { $limit: 100 }
+      {
+        $facet: {
+          list: [
+            { $sort: { count: -1, _id: 1 } },
+            { $skip: resolvedOffset },
+            { $limit: resolvedPageSize }
+          ],
+          total: [{ $count: 'count' }]
+        }
+      }
     ],
     { ...readFromSecondary }
   );
 
-  const tmbIds = aggregateResult
-    .filter((item) => item._id.tmbId && !item._id.outLinkUid)
-    .map((item) => item._id.tmbId);
-
-  const teamMembers = tmbIds.length
+  const userGroups = aggregateResult?.list ?? [];
+  const total = aggregateResult?.total?.[0]?.count ?? 0;
+  const userIds = userGroups.map((item) => String(item._id));
+  const teamMembers = userIds.length
     ? await MongoTeamMember.find(
         {
-          _id: { $in: tmbIds },
-          teamId: new Types.ObjectId(teamId)
+          _id: {
+            $in: userIds
+              .filter((id) => Types.ObjectId.isValid(id))
+              .map((id) => new Types.ObjectId(id))
+          },
+          teamId: teamObjectId
         },
         '_id name avatar'
       ).lean()
     : [];
+  const tmbMap = new Map(teamMembers.map((member) => [String(member._id), member]));
 
-  const tmbMap = new Map(teamMembers.map((m) => [String(m._id), m]));
-
-  const searchPattern = searchKey ? new RegExp(replaceRegChars(searchKey), 'i') : null;
-
-  const list = aggregateResult.map((item): LogUserType => {
-    const outLinkUid = item._id.outLinkUid || null;
-    const tmbId = item._id.tmbId ? String(item._id.tmbId) : null;
-
-    const { name, avatar } = (() => {
-      if (outLinkUid) {
-        return { name: outLinkUid, avatar: DEFAULT_USER_AVATAR };
-      }
-      if (tmbId) {
-        const member = tmbMap.get(tmbId);
-        return { name: member?.name || tmbId, avatar: member?.avatar || DEFAULT_USER_AVATAR };
-      }
-      return { name: '-', avatar: DEFAULT_USER_AVATAR };
-    })();
-
-    return { outLinkUid, tmbId, name, avatar, count: item.count };
+  const list = userGroups.map((item): LogUserType => {
+    const userId = String(item._id);
+    const member = tmbMap.get(userId);
+    return {
+      outLinkUid: member ? null : userId,
+      tmbId: member ? userId : null,
+      name: member?.name || userId,
+      avatar: member?.avatar || DEFAULT_USER_AVATAR,
+      count: item.count
+    };
   });
 
   return GetLogUsersResponseSchema.parse({
-    list: searchPattern
-      ? list.filter((item) => !searchPattern || searchPattern.test(item.name)).slice(0, 50)
-      : list.slice(0, 50)
+    list,
+    total
   });
 }
 

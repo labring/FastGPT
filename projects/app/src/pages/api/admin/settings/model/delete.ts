@@ -8,7 +8,7 @@ import {
   DeleteSystemModelsBodySchema,
   type AdminSystemModelReference,
   type DeleteSystemModelsBody
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 
 async function handler(
   req: ApiRequestProps<DeleteSystemModelsBody, AdminSystemModelReference>

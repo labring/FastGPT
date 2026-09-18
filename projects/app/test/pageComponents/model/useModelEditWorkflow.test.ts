@@ -4,7 +4,7 @@ import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.
 import type {
   AdminSystemModelListItem,
   GetAdminSystemModelDetailResponse
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 
 const mocks = vi.hoisted(() => ({
   getSystemModelDetail: vi.fn(),
