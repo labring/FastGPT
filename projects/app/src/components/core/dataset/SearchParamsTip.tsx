@@ -99,6 +99,7 @@ const SearchParamsTip = ({
                   detail={detailState.detail}
                   loading={detailState.loading}
                   error={detailState.error}
+                  noTruncate
                 />
               ) : (
                 '❌'
