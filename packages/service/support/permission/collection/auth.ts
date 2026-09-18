@@ -14,6 +14,7 @@ import { getOrgIdSetWithParentByTmbId } from '../org/controllers';
 import { MongoResourcePermission } from '../schema';
 import { getTmbPermission } from '../controller';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 
 /**
@@ -207,9 +208,12 @@ export async function getReadableCollectionIds({
 
 /**
  * 判断 Collection 级权限是否可整体短路（无需逐 collection 解析）：
- * - 团队 owner/admin：对该团队全部 dataset 可读；
+ * - 团队 owner：拥有团队内全部资源；
  * - 普通成员：所有目标 Dataset 均处于**关闭态**（`collectionPermissionEnabled` 非 true，含全部
  *   存量数据），此时每个 Collection 有效权限 = Dataset 有效权限。
+ *
+ * 团队管理员（`hasManagePer`）不短路：团队级 manage 只覆盖团队自身资源，Dataset / Collection
+ * 仍以各自 ACL 为准，因此必须逐 collection 解析。
  *
  * 满足时返回 `true`，调用方（RAG 检索 / Collection 列表）可跳过 collection 权限过滤。
  * 前置条件：调用方已按 Dataset read 过滤 `datasetIds`；本函数不做 Dataset read 鉴权。
@@ -224,16 +228,16 @@ export async function canShortCircuitCollectionPermission({
   datasetIds: string[];
   tmbId: string;
   /** 可选：已解析的 tmb 信息，避免重复查询。 */
-  tmbInfo?: Awaited<ReturnType<typeof getTmbInfoByTmbId>>;
+  tmbInfo?: TeamTmbItemType;
 }): Promise<boolean> {
   if (datasetIds.length === 0) return true;
 
   const info = tmbInfo ?? (await getTmbInfoByTmbId({ tmbId }));
   if (String(info.teamId) !== String(teamId)) return false;
-  if (info.permission.isOwner || info.permission.hasManagePer) return true;
+  if (info.permission.isOwner) return true;
 
-  // 普通成员：全部 Dataset 均处于关闭态才短路。关闭态 ⇒ 不存在自定义 collection 权限，
-  // 由「开关是唯一入口」保证：未启用时所有 collection 写路径都会拒绝。
+  // 普通成员（含团队管理员）：全部 Dataset 均处于关闭态才短路。关闭态 ⇒ 不存在自定义
+  // collection 权限，由「开关是唯一入口」保证：未启用时所有 collection 写路径都会拒绝。
   const datasets = await MongoDataset.find(
     { _id: { $in: datasetIds } },
     'collectionPermissionEnabled'
@@ -249,7 +253,7 @@ export async function canShortCircuitCollectionPermission({
  *
  * 语义：返回 `undefined` 表示「无需 collection 级过滤」（短路 / 全部可读），
  * 返回字符串数组表示「仅这些 file collection 可读」的真子集。
- *  - 团队 owner/admin：`undefined`（无 collection 级过滤，按 dataset 召回）；
+ *  - 团队 owner：`undefined`（无 collection 级过滤，按 dataset 召回）；
  *  - 全部目标 dataset 处于关闭态（`collectionPermissionEnabled` 非 true，含全部存量数据）：
  *    `undefined`（短路）；
  *  - 否则：加载目标 dataset 下 file collection 最小字段，逐 dataset 并行
@@ -269,11 +273,11 @@ export async function resolveReadableCollectionIds({
   datasetIds: string[];
   tmbId: string;
   /** 可选：已解析的 tmb 信息，避免重复查询。 */
-  tmbInfo?: Awaited<ReturnType<typeof getTmbInfoByTmbId>>;
+  tmbInfo?: TeamTmbItemType;
 }): Promise<string[] | undefined> {
   if (datasetIds.length === 0) return undefined;
 
-  // 团队 owner/admin 或全部关闭态 → 短路，无需 collection 级过滤
+  // 团队 owner 或全部关闭态 → 短路，无需 collection 级过滤
   if (await canShortCircuitCollectionPermission({ teamId, datasetIds, tmbId, tmbInfo })) {
     return undefined;
   }

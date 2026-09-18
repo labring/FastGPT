@@ -513,7 +513,7 @@ await resumeResourcePermissionInheritance({
 
 1. **候选查询**：进入目录 `parentId`（null = dataset 根），查询该目录直接子 collection 的权限最小字段 `{ _id, parentId, type, inheritPermission, tmbId }`。
 2. **短路判定**（任选其一，降序）：
-   - 团队管理员/团队所有者：全部可读；
+   - 团队所有者（team owner）：全部可读；
    - `collectionPermissionEnabled !== true`（关闭态，含全部存量 dataset）且 dataset `read` 通过：全部可读（O(1)，不查 ACL）；
    - 其余（启用态）：`getReadableCollectionIds({ collections: 候选, tmbId, teamId, groupIds, orgIds, datasetPermission, collectionPermissionEnabled })` → 可读 ID 集合。
 3. 过滤出可读候选 → MongoDB 排序分页（`sort(updateTime).skip(offset).limit(pageSize)`）→ 当前页完整字段 + 统计回查（`$in` 批量聚合，无 N+1）。`total` = 过滤后该目录下节点数。
@@ -539,7 +539,7 @@ NFR-1（10k collections P95 ≤ 800ms）：候选 `$in` 限定 + 短路 + 过滤
 
 1. **dataset 前置鉴权**：过滤出有 `read` 的 dataset；
 2. **解析可读 collection 集合**：`resolveReadableCollectionIds`（auth.ts）输入 `teamId/datasetIds/tmbId` →（工作流检索仅在 `authTmbId` 开启、即存在真实成员身份时调用；未开启则不做 collection 级过滤，按 dataset 全量召回）
-   - 团队管理员 / team owner：返回 `undefined`（无 collection 级过滤，按 dataset 召回）；
+   - 团队所有者（team owner）：返回 `undefined`（无 collection 级过滤，按 dataset 召回）；
    - 全部目标 dataset 处于关闭态（`collectionPermissionEnabled !== true`）且 read 通过：返回 `undefined`（短路）；
    - 否则：加载目标 dataset 下**文件类型** collection 最小字段（`type != folder`）→ 按 `datasetId` 分组，**逐 dataset 并行**调用 `getReadableCollectionIds`（各 dataset 独立、候选 `$in` 限定，无 N+1）→ 并集为可读文件 ID；
    - 可读并集覆盖全部文件 collection → 返回 `undefined`（不设 `collectionId IN`，避免上万 ID 长过滤条件）；
@@ -601,7 +601,7 @@ NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过�
 
 - 物化快照：collection 鉴权/列表/检索单表读自身快照，无父链递归；
 - 列表/检索可见性通过 `distinct resourceId` + `$bitsAnySet` 在数据库侧过滤；列表仅对分页结果通过 `getCollectionPermissionMap` 批量解析返回权限，不做 team 全量扫描；
-- 短路：团队管理员 / dataset 处于关闭态（`collectionPermissionEnabled !== true`，含全部存量 dataset）——O(1) 跳过 distinct 查询。
+- 短路：团队所有者（team owner） / dataset 处于关闭态（`collectionPermissionEnabled !== true`，含全部存量 dataset）——O(1) 跳过 distinct 查询。团队管理员（`hasManagePer`）不短路：团队级 manage 只覆盖团队自身资源，Dataset / Collection 以各自 ACL 为准。
 
 ### 10.2 写性能
 
@@ -690,7 +690,7 @@ NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过�
 | 冲突检测 | 修改/删除父级协作者 → 翻转；owner 不可经协作者接口授予 |
 | 物化快照 | 各写路径后快照 = merge(父级, 自身)；owner→manage 降级 |
 | `getCollectionPermissionMap` / `getReadableCollectionIds` | 可见性使用候选限定的 `distinct` + `$bitsAnySet`；返回权限仅批量解析分页结果；个人 ACL 优先、无个人记录时合并 group/org；短路分支 |
-| 短路 | 关闭态（`collectionPermissionEnabled !== true`）列表/检索短路；团队管理员短路 |
+| 短路 | 关闭态（`collectionPermissionEnabled !== true`）列表/检索短路；团队所有者（team owner）短路，团队管理员不短路 |
 | 列表过滤 | 过滤后分页正确（不可读节点不占位）；无 dataset read 返回空 |
 | 启用 | 存量 collection 全量物化正确（含关闭期间新建的行被重建）；孤儿/循环校验拒绝；重复启用 0 变更 |
 | 关闭 | ACL 行彻底清理 + `inheritPermission` 重置为 true；关闭后读路径全部走短路；重复关闭 0 变更 |
