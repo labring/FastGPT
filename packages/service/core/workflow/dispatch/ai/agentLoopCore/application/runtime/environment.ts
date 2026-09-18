@@ -23,7 +23,7 @@ export type CreateAgentLoopCoreRuntimeEnvironmentParams = {
   sliceToolResponse?: boolean;
   getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
   shouldStreamTool?: (name: string) => boolean;
-  /** 当前层 response 的平铺收集目标；ToolCall 通过 appendNodeResponse 接入共享 sink。 */
+  /** Agent/PiAgent 当前层 response 的平铺收集目标。 */
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
   /** ToolCall 只收集工具、压缩和上下文 response，主模型 response 由外层节点承载。 */

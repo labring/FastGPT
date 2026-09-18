@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import {
   MultiSelectFilter,
@@ -50,10 +50,10 @@ const UserFilter = ({
   const { t } = useTranslation();
   const labels = useCommonFilterLabels();
   const [searchKey, setSearchKey] = useState('');
-  // 打开过一次后再跟 searchKey 发请求。manual + refreshDeps 不会自动 run。
+  // 用户打开过筛选器后，才允许日期、来源和搜索词变化触发请求。
   const [menuOpened, setMenuOpened] = useState(false);
 
-  const { data: usersData } = useRequest(
+  const { data: usersData, run: fetchUsers } = useRequest(
     () =>
       getLogUsers({
         appId,
@@ -63,12 +63,15 @@ const UserFilter = ({
         sources
       }),
     {
-      ready: menuOpened,
-      manual: false,
-      refreshDeps: [appId, dateRange.from, dateRange.to, searchKey, sources],
+      manual: true,
       debounceWait: 300
     }
   );
+
+  useEffect(() => {
+    if (!menuOpened) return;
+    fetchUsers();
+  }, [appId, dateRange.from, dateRange.to, fetchUsers, menuOpened, searchKey, sources]);
 
   const options = useMemo(
     () =>

@@ -72,7 +72,8 @@ export const createToolCallToolProvider = async ({
         runtimeNodes,
         runtimeEdges,
         isToolCall: true,
-        nodeResponseParentId: callId
+        // 工具调用自身不再生成 wrapper，子工作流节点直接挂到外层 ToolCall 节点。
+        nodeResponseParentId: workflowProps.nodeResponseParentId
       });
       onWorkflowRuntimeSummary?.(result.workflowRuntimeSummary);
 

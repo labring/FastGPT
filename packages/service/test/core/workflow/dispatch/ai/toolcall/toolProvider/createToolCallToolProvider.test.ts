@@ -153,6 +153,7 @@ describe('createToolCallToolProvider', () => {
           chatId: 'chat_1',
           chatConfig: {},
           usageId: 'usage_1',
+          nodeResponseParentId: 'toolcall_response',
           stream,
           workflowStreamResponse: stream ? workflowStreamResponse : undefined
         } as any
@@ -194,6 +195,7 @@ describe('createToolCallToolProvider', () => {
       expect(runWorkflowMock).toHaveBeenCalledWith(
         expect.objectContaining({
           stream,
+          nodeResponseParentId: 'toolcall_response',
           workflowStreamResponse: stream ? workflowStreamResponse : undefined
         })
       );
@@ -209,6 +211,7 @@ describe('createToolCallToolProvider', () => {
       expect(runWorkflowMock).toHaveBeenCalledWith(
         expect.objectContaining({
           stream,
+          nodeResponseParentId: 'toolcall_response',
           workflowStreamResponse: stream ? workflowStreamResponse : undefined,
           lastInteractive: childrenResponse
         })
