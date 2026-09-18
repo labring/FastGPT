@@ -192,16 +192,6 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
 
   return (
     <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6} overflow={'auto'}>
-      {/* “查看原始内容”置顶，不随元数据折叠隐藏 */}
-      {collection?.sourceId && (
-        <Button variant={'whitePrimary'} onClick={readSource} mb={6}>
-          <Flex py={2} px={3}>
-            <MyIcon name="visible" w={'1rem'} mr={'0.38rem'} />
-            <Box>{t('common:core.dataset.collection.metadata.read source')}</Box>
-          </Flex>
-        </Button>
-      )}
-
       {/* 元数据整体折叠，默认收起 */}
       <Accordion allowToggle defaultIndex={-1}>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
@@ -282,6 +272,16 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             )}
           </CollaboratorContextProvider>
         </Box>
+      )}
+
+      {/* “查看原始内容”紧随内容排布（不吸底），撑满面板可用宽度 */}
+      {collection?.sourceId && (
+        <Button variant={'whitePrimary'} onClick={readSource} mt={4} w={'full'}>
+          <Flex py={2} px={3} w={'full'} justifyContent={'center'}>
+            <MyIcon name="visible" w={'1rem'} mr={'0.38rem'} />
+            <Box>{t('common:core.dataset.collection.metadata.read source')}</Box>
+          </Flex>
+        </Button>
       )}
     </MyBox>
   );
