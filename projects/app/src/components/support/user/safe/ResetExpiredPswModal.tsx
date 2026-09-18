@@ -5,8 +5,13 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/account/cancellation/constants';
 import PasswordChangeModal from './PasswordChangeModal';
 
-/** 仅在确有存储密码且已过期时开启不可关闭的统一改密流程；注销期间不触发改密。 */
-const ResetExpiredPswModal = () => {
+type Props = {
+  enabled?: boolean;
+  onFinish?: () => void;
+};
+
+/** 仅在确有存储密码且已过期时开启不可关闭的统一改密流程；完成后回查状态并通知登录后动作编排器。 */
+const ResetExpiredPswModal = ({ enabled = true, onFinish }: Props) => {
   const { userInfo } = useUserStore();
   const accountCancellationStatus = userInfo?.team?.accountCancellation?.status;
   const isAccountCancellationPending =
@@ -16,16 +21,22 @@ const ResetExpiredPswModal = () => {
     );
   const { data: passwordExpired = false, runAsync: checkPasswordExpired } = useRequest(
     async () => {
-      if (!userInfo?._id || isAccountCancellationPending) return false;
+      if (!enabled || !userInfo?._id || isAccountCancellationPending) return false;
       return getCheckPswExpired();
     },
     {
       manual: false,
-      refreshDeps: [userInfo?._id, isAccountCancellationPending]
+      refreshDeps: [enabled, userInfo?._id, isAccountCancellationPending],
+      onSuccess(res) {
+        if (enabled && !res) onFinish?.();
+      },
+      onError() {
+        if (enabled) onFinish?.();
+      }
     }
   );
 
-  return passwordExpired ? (
+  return enabled && passwordExpired ? (
     <PasswordChangeModal
       required
       showExpiredPrompt
