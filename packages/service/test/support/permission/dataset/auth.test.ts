@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
+  ManagePermissionVal,
   ManageRoleVal,
   OwnerPermissionVal,
   OwnerRoleVal,
   ReadPermissionVal,
+  ReadRoleVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 
@@ -70,11 +72,15 @@ import {
   authDatasetCollectionCreate
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
+import type { NodeHttpRequest } from '@fastgpt/service/types/http';
+
+/** parseHeaderCert 已被 mock，请求对象仅作占位；测试关注的是鉴权分支而非请求内容。 */
+const mockReq = {} as unknown as NodeHttpRequest;
 
 const datasetId = '507f1f77bcf86cd799439011';
 const collectionId = '507f1f77bcf86cd799439012';
 
-const mockDatasetQuery = (dataset: Record<string, any>) => {
+const mockDatasetQuery = (dataset: Record<string, unknown>) => {
   mockFindDataset.mockReturnValue({
     lean: vi.fn().mockResolvedValue(dataset)
   });
@@ -201,7 +207,7 @@ describe('authDatasetCollection', () => {
 
     await expect(
       authDatasetCollection({
-        req: {} as any,
+        mockReq,
         authToken: true,
         collectionId,
         per: ReadPermissionVal
@@ -217,7 +223,7 @@ describe('authDatasetCollection', () => {
     });
 
     const result = await authDatasetCollection({
-      req: {} as any,
+      mockReq,
       authToken: true,
       collectionId,
       per: ReadPermissionVal
@@ -227,7 +233,7 @@ describe('authDatasetCollection', () => {
   });
 
   it('keeps owner for a dataset owner who also owns the collection in disabled mode', async () => {
-    // 非团队 owner/admin，走关闭态短路分支（collectionPermissionEnabled 非 true）
+    // 非团队 owner，走关闭态短路分支（collectionPermissionEnabled 非 true）
     mockGetTmbInfoByTmbId.mockResolvedValue({
       teamId: 'team-a',
       permission: { isOwner: false }
@@ -249,7 +255,7 @@ describe('authDatasetCollection', () => {
     mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
 
     const result = await authDatasetCollection({
-      req: {} as any,
+      mockReq,
       authToken: true,
       collectionId,
       per: OwnerPermissionVal
@@ -260,6 +266,47 @@ describe('authDatasetCollection', () => {
     expect(result.permission.checkPer(OwnerPermissionVal)).toBe(true);
     // 短路生效：未走物化快照解析
     expect(mockResolveCollectionPermission).not.toHaveBeenCalled();
+  });
+
+  it('does not grant collection manage to a team manager in enabled mode', async () => {
+    // 团队管理员：团队级 manage 不覆盖业务资源，必须按 collection 物化快照解析。
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: false, hasManagePer: true }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-other',
+      collectionPermissionEnabled: true
+    });
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-other'
+    });
+    // dataset read 门槛通过；collection 快照仅授予 read
+    mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
+    mockResolveCollectionPermission.mockResolvedValue(ReadRoleVal);
+
+    const result = await authDatasetCollection({
+      mockReq,
+      authToken: true,
+      collectionId,
+      per: ReadPermissionVal
+    });
+    expect(result.permission.role).toBe(ReadRoleVal);
+
+    await expect(
+      authDatasetCollection({
+        mockReq,
+        authToken: true,
+        collectionId,
+        per: ManagePermissionVal
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDatasetCollection);
+    expect(mockResolveCollectionPermission).toHaveBeenCalled();
   });
 
   it('caps a dataset owner who does not own the collection to manage in disabled mode', async () => {
@@ -283,7 +330,7 @@ describe('authDatasetCollection', () => {
     mockGetTmbPermission.mockResolvedValue(ReadPermissionVal);
 
     const result = await authDatasetCollection({
-      req: {} as any,
+      mockReq,
       authToken: true,
       collectionId,
       per: ReadPermissionVal
@@ -321,7 +368,7 @@ describe('authDatasetCollectionCreate', () => {
 
     await expect(
       authDatasetCollectionCreate({
-        req: {} as any,
+        mockReq,
         authToken: true,
         datasetId
       })
@@ -340,7 +387,7 @@ describe('authDatasetCollectionCreate', () => {
 
     await expect(
       authDatasetCollectionCreate({
-        req: {} as any,
+        mockReq,
         authToken: true,
         datasetId,
         parentId: collectionId
@@ -359,7 +406,7 @@ describe('authDatasetCollectionCreate', () => {
 
     await expect(
       authDatasetCollectionCreate({
-        req: {} as any,
+        mockReq,
         authToken: true,
         datasetId,
         parentId: collectionId
@@ -394,7 +441,7 @@ describe('authCollectionFile', () => {
     });
 
     const result = await authCollectionFile({
-      req: {} as any,
+      mockReq,
       authToken: true,
       fileId: `dataset/${datasetId}/demo.pdf`,
       per: OwnerPermissionVal
@@ -414,7 +461,7 @@ describe('authCollectionFile', () => {
 
     await expect(
       authCollectionFile({
-        req: {} as any,
+        mockReq,
         authToken: true,
         fileId: `dataset/${datasetId}/secret.pdf`,
         per: OwnerPermissionVal

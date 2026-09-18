@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
  * NFR-8（越权召回 = 0）：检索前置的「可读 collection 集合」解析。
  *
  * `resolveReadableCollectionIds` 是检索唯一授权集合来源，契约：
- *  - `undefined`：无需 collection 级过滤（关闭态短路 / 团队管理员 / 可读集合覆盖全部候选）；
+ *  - `undefined`：无需 collection 级过滤（关闭态短路 / 团队 owner / 可读集合覆盖全部候选）；
  *  - `string[]`：真子集，只能召回这些 file collection；
  *  - `[]`：无可读集合 → 召回侧必须返回空结果（`multiQueryRecall` 直接短路不查库）。
  */
@@ -215,5 +215,30 @@ describe.sequential('resolveReadableCollectionIds', () => {
         tmbId: String(users.owner.tmbId)
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('filters collection ACL for a team manager instead of bypassing it', async () => {
+    const users = await getFakeUsers(1);
+    const teamId = String(users.owner.teamId);
+    const dataset = await createDataset({ user: users.owner });
+    const datasetId = String(dataset._id);
+    const grantedFile = await createCollection({ user: users.owner, datasetId, name: 'granted' });
+    await createCollection({ user: users.owner, datasetId, name: 'hidden' });
+
+    await enableDatasetCollectionPermissions({ teamId, datasetId });
+    await grantCollectionRead({
+      teamId,
+      collectionId: String(grantedFile._id),
+      tmbId: String(users.manager.tmbId)
+    });
+
+    // 团队管理员（hasManagePer）没有 collection 级旁路：只能召回被显式授权的文件。
+    await expect(
+      resolveReadableCollectionIds({
+        teamId,
+        datasetIds: [datasetId],
+        tmbId: String(users.manager.tmbId)
+      })
+    ).resolves.toEqual([String(grantedFile._id)]);
   });
 });
