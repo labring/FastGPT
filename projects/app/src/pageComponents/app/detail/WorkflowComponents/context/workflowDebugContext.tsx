@@ -1,6 +1,6 @@
 // 工作流调试功能层
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -17,6 +17,10 @@ import { WorkflowActionsContext } from './workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  createDebugReadFilesSubmissionController,
+  type DebugReadFilesSubmissionController
+} from '../Flow/hooks/useDebugInput';
 
 export type DebugDataType = {
   runtimeNodes: RuntimeNodeItemType[];
@@ -66,6 +70,9 @@ type WorkflowDebugContextValue = {
 
   /** 设置调试会话的文件上传 chatId */
   setDebugChatId: (chatId: string) => void;
+
+  /** 跨节点共享的文档解析提交控制器，用于让旧会话的异步结果失效。 */
+  readFilesSubmissionController: DebugReadFilesSubmissionController;
 };
 
 /** 生成调试子树的文件上传上下文，确保草稿上传与调试运行共享同一 chatId。 */
@@ -155,7 +162,8 @@ export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
   debugChatId: '',
   setDebugChatId: function (): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  readFilesSubmissionController: createDebugReadFilesSubmissionController()
 });
 
 export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode }) => {
@@ -170,6 +178,10 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
   const [debugMode, setDebugMode] = useState(false);
   // 调试会话内文件上传的 chatId，打开调试弹窗时生成，调试运行沿用同一值
   const [debugChatId, setDebugChatId] = useState<string>();
+  const readFilesSubmissionController = useMemo(
+    () => createDebugReadFilesSubmissionController(),
+    []
+  );
 
   // 单步调试 - 执行下一步节点
   const onNextNodeDebug = useCallback(
@@ -348,7 +360,8 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
       debugMode,
       setDebugMode,
       debugChatId,
-      setDebugChatId
+      setDebugChatId,
+      readFilesSubmissionController
     };
   }, [
     workflowDebugData,
@@ -357,7 +370,8 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
     onStopNodeDebug,
     debugMode,
     debugChatId,
-    setDebugChatId
+    setDebugChatId,
+    readFilesSubmissionController
   ]);
 
   return (

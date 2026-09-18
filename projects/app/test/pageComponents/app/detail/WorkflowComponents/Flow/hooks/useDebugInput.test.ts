@@ -13,15 +13,20 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { WorkflowReferenceSourceNode } from '@/web/core/workflow/utils';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
+import type { FileSelectorValueItemType } from '@/components/core/app/FileSelector/type';
 import {
   checkInputShouldRenderInDebug,
+  createDebugReadFilesSubmissionController,
   debugNodeShouldShowAllInputs,
   getDebugGlobalVariableFormProps,
+  getDebugInputFormConfig,
   getDebugInputFormProps,
   getDebugInputFormValue,
   getDebugRuntimeInputs,
   getWorkflowStartDebugFileInput,
-  getWorkflowStartDebugQuery
+  getWorkflowStartDebugQuery,
+  resolveDebugReadFilesInput
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useDebugInput';
 
 const makeInput = (input: Partial<FlowNodeInputItemType>): FlowNodeInputItemType => ({
@@ -397,6 +402,172 @@ describe('useDebugInput', () => {
     });
   });
 
+  it('should render the read files URL input as a local and URL file selector', () => {
+    const input = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(
+      getDebugInputFormProps(input, {
+        flowNodeType: FlowNodeTypeEnum.readFiles,
+        maxFiles: 12
+      })
+    ).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+      canSelectFile: true,
+      canLocalUpload: true,
+      canUrlUpload: true,
+      maxFiles: 12
+    });
+  });
+
+  it('should calculate the read files input type from transformed form props', () => {
+    const input = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(
+      getDebugInputFormConfig(input, {
+        flowNodeType: FlowNodeTypeEnum.readFiles,
+        maxFiles: 12
+      }).inputType
+    ).toBe(InputTypeEnum.fileSelect);
+  });
+
+  it('should not change the same input key on another node type', () => {
+    const input = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(
+      getDebugInputFormProps(input, {
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        maxFiles: 12
+      })
+    ).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.reference]
+    });
+  });
+
+  it('should not change another input on the read files node', () => {
+    const input = makeInput({
+      key: 'otherInput',
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(
+      getDebugInputFormProps(input, {
+        flowNodeType: FlowNodeTypeEnum.readFiles,
+        maxFiles: 12
+      })
+    ).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.reference]
+    });
+  });
+
+  it('should preserve URL and local file order while resolving keys', async () => {
+    const resolvedKeys: string[] = [];
+
+    await expect(
+      resolveDebugReadFilesInput({
+        files: [
+          {
+            type: ChatFileTypeEnum.file,
+            name: 'remote.pdf',
+            url: 'https://example.com/remote.pdf'
+          },
+          {
+            type: ChatFileTypeEnum.file,
+            name: 'local.docx',
+            key: 'local-docx-key'
+          },
+          {
+            type: ChatFileTypeEnum.file,
+            name: 'second.txt',
+            key: 'second-text-key'
+          }
+        ],
+        resolveFileKey: async (key) => {
+          resolvedKeys.push(key);
+          return `https://files.example.com/${key}`;
+        }
+      })
+    ).resolves.toEqual([
+      'https://example.com/remote.pdf',
+      'https://files.example.com/local-docx-key',
+      'https://files.example.com/second-text-key'
+    ]);
+    expect(resolvedKeys).toEqual(['local-docx-key', 'second-text-key']);
+  });
+
+  it('should reject the entire read files input when a key cannot be resolved', async () => {
+    await expect(
+      resolveDebugReadFilesInput({
+        files: [
+          {
+            type: ChatFileTypeEnum.file,
+            name: 'remote.pdf',
+            url: 'https://example.com/remote.pdf'
+          },
+          {
+            type: ChatFileTypeEnum.file,
+            name: 'local.pdf',
+            key: 'unauthorized-key'
+          }
+        ],
+        resolveFileKey: async () => {
+          throw new Error('Unauthorized file');
+        }
+      })
+    ).rejects.toThrow('Unauthorized file');
+  });
+
+  it('should reject a malformed read files item without a URL or key', async () => {
+    await expect(
+      resolveDebugReadFilesInput({
+        files: [
+          {
+            type: ChatFileTypeEnum.file,
+            name: 'invalid.pdf'
+          } as FileSelectorValueItemType
+        ],
+        resolveFileKey: async () => 'https://files.example.com/should-not-resolve'
+      })
+    ).rejects.toThrow('Invalid debug file');
+  });
+
+  it('should block duplicate read files submissions until the active one finishes', () => {
+    const controller = createDebugReadFilesSubmissionController();
+    const firstSubmission = controller.begin();
+
+    expect(firstSubmission).toBeDefined();
+    expect(controller.begin()).toBeUndefined();
+    expect(controller.isCurrent(firstSubmission!)).toBe(true);
+    expect(controller.finish(firstSubmission!)).toBe(true);
+    expect(controller.begin()).toBeDefined();
+  });
+
+  it('should invalidate an old read files submission without finishing a new one', () => {
+    const controller = createDebugReadFilesSubmissionController();
+    const oldSubmission = controller.begin();
+    controller.invalidate();
+    const newSubmission = controller.begin();
+
+    expect(oldSubmission).toBeDefined();
+    expect(newSubmission).toBeDefined();
+    expect(controller.isCurrent(oldSubmission!)).toBe(false);
+    expect(controller.isCurrent(newSubmission!)).toBe(true);
+    expect(controller.finish(oldSubmission!)).toBe(false);
+    expect(controller.isCurrent(newSubmission!)).toBe(true);
+  });
+
   it('should not use default value as node debug form default value', () => {
     const input = makeInput({
       key: 'query',
@@ -441,6 +612,27 @@ describe('useDebugInput', () => {
     });
 
     expect(updatedInput.value).toBeUndefined();
+  });
+
+  it('should replace only the runtime read files input without mutating the original reference', () => {
+    const referenceValue = [['workflowStart', NodeOutputKeyEnum.userFiles]];
+    const referenceInput = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      value: referenceValue
+    });
+
+    const [runtimeInput] = getDebugRuntimeInputs({
+      inputs: [referenceInput],
+      nodeVariables: {
+        [NodeInputKeyEnum.fileUrlList]: ['https://files.example.com/local.pdf']
+      }
+    });
+
+    expect(runtimeInput.value).toEqual(['https://files.example.com/local.pdf']);
+    expect(referenceInput.value).toBe(referenceValue);
   });
 
   it('should keep inputs that are not shown in the debug form unchanged', () => {
