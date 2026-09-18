@@ -10,7 +10,7 @@ import {
   GetAdminSystemModelDetailResponseSchema,
   type AdminSystemModelReference,
   type GetAdminSystemModelDetailResponse
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getAdminAIProxyChannelItems } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 

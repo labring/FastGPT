@@ -5,7 +5,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateSystemModelStatusBodySchema,
   type UpdateSystemModelStatusBody
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 import { updateSystemModelStatus } from '@fastgpt/service/core/ai/config/service';
 
 async function handler(req: ApiRequestProps<UpdateSystemModelStatusBody>): Promise<void> {

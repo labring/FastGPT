@@ -6,7 +6,7 @@ import { updateSystemDefaultModels } from '@/service/core/ai/model/service';
 import {
   UpdateDefaultModelsBodySchema,
   type UpdateDefaultModelsBody
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 
 async function handler(req: ApiRequestProps<UpdateDefaultModelsBody>): Promise<void> {
   await authSystemAdmin({ req });

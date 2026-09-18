@@ -11,14 +11,14 @@ import {
   SystemModelDocumentDataSchema,
   TTSModelConfigSchema,
   TTSSystemModelDocumentSchema
-} from '../../../../../core/ai/model.schema';
-import { ModelScopeEnum, ModelTypeEnum } from '../../../../../core/ai/constants';
-import { IntSchema } from '../../../../../common/zod';
+} from '../../../../core/ai/model.schema';
+import { ModelScopeEnum, ModelTypeEnum } from '../../../../core/ai/constants';
+import { IntSchema } from '../../../../common/zod';
 import z from 'zod';
-import { ModelProviderSchema } from '../../../../core/ai/model/api';
-import { ModelDefaultIdsSchema } from '../../../../../core/ai/defaultModel';
-import { ObjectIdSchema } from '../../../../../common/type/mongo';
-import { I18nStringSchema } from '../../../../../common/i18n/type';
+import { ModelProviderSchema } from '../../../core/ai/model/api';
+import { ModelDefaultIdsSchema } from '../../../../core/ai/defaultModel';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { I18nStringSchema } from '../../../../common/i18n/type';
 
 const ModelIdSchema = ObjectIdSchema.meta({
   example: '68ad85a7463006c963799a05',
@@ -49,7 +49,7 @@ const ModelIdsSchema = z
  * Route: DELETE /api/admin/settings/model/delete
  * Method: DELETE
  * Description: 按 modelIds 批量删除系统模型；兼容旧版 modelId query
- * Tags: ['系统模型管理', 'Delete']
+ * Tags: ['模型管理', 'Delete']
  * ============================================================================ */
 
 export const DeleteSystemModelsBodySchema = z.object({
@@ -62,7 +62,7 @@ export type DeleteSystemModelsBody = z.infer<typeof DeleteSystemModelsBodySchema
  * Route: GET /api/admin/settings/model/list
  * Method: GET
  * Description: 获取全部系统作用域模型
- * Tags: ['系统模型管理', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const AdminModelChannelSchema = z.object({
@@ -75,45 +75,6 @@ export const AdminModelChannelSchema = z.object({
   status: IntSchema.meta({ example: 1, description: 'AI Proxy 渠道状态' })
 });
 export type AdminModelChannel = z.infer<typeof AdminModelChannelSchema>;
-
-/* ============================================================================
- * API: 创建 AI Proxy 渠道
- * Route: POST /api/aiproxy/api/createChannel
- * Method: POST
- * Description: 创建单个命名渠道，兼容旧版 AI Proxy 并返回准确渠道 ID
- * Tags: ['系统模型管理', 'Write']
- * ============================================================================ */
-export const CreateAdminAIProxyChannelBodySchema = z
-  .object({
-    name: z.string().trim().min(1).meta({ description: '渠道名称', example: 'OpenAI' }),
-    type: IntSchema.positive().meta({ description: 'AI Proxy 协议类型', example: 1 }),
-    base_url: z.string().optional().meta({ description: '渠道模型服务地址' }),
-    key: z
-      .string()
-      .refine((key) => key.split('\n').filter((line) => line.trim()).length <= 1, {
-        message: 'Only one channel credential is supported'
-      })
-      .optional()
-      .meta({ description: '单个渠道模型服务凭证；不支持换行分隔多个密钥' }),
-    models: z.array(z.string().trim().min(1)).optional().meta({ description: '支持的模型标识' }),
-    model_mapping: z.record(z.string(), z.unknown()).optional().meta({ description: '模型映射' }),
-    priority: IntSchema.positive().optional().meta({ description: '渠道优先级', example: 1 })
-  })
-  .passthrough();
-export type CreateAdminAIProxyChannelBody = z.infer<typeof CreateAdminAIProxyChannelBodySchema>;
-/** 此代理保留第三方 envelope，而不是 FastGPT NextAPI 的 data 响应。 */
-export const CreateAdminAIProxyChannelResponseSchema = z.discriminatedUnion('success', [
-  z.object({
-    success: z.literal(true),
-    data: z.object({
-      id: IntSchema.positive().meta({ description: '创建成功的准确渠道 ID', example: 1 })
-    })
-  }),
-  z.object({ success: z.literal(false), message: z.string().optional() })
-]);
-export type CreateAdminAIProxyChannelResponse = z.infer<
-  typeof CreateAdminAIProxyChannelResponseSchema
->;
 
 export const AdminSystemModelListItemSchema = SystemModelDataSchema.and(
   z.object({
@@ -145,7 +106,7 @@ export type GetAdminSystemModelListResponse = z.infer<typeof GetAdminSystemModel
  * Route: GET /api/admin/settings/model/detail
  * Method: GET
  * Description: 按 modelId 获取系统模型详情
- * Tags: ['系统模型管理', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const AdminSystemModelDetailChannelSchema = AdminModelChannelSchema.extend({
@@ -171,7 +132,7 @@ export type GetAdminSystemModelDetailResponse = z.infer<
  * Route: GET /api/admin/settings/model/test
  * Method: GET
  * Description: 按 modelId 测试系统模型调用
- * Tags: ['系统模型管理', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const TestAdminSystemModelQuerySchema = AdminSystemModelReferenceSchema.extend({
@@ -189,7 +150,7 @@ export type TestAdminSystemModelResponse = z.infer<typeof TestAdminSystemModelRe
  * Route: POST /api/admin/settings/model/test
  * Method: POST
  * Description: 使用当前模型表单草稿和指定 AI Proxy 渠道发起测试，不持久化模型
- * Tags: ['系统模型管理', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 const TestModelPriceFields = {
@@ -251,7 +212,7 @@ export type ModelTemplateReference = z.infer<typeof ModelTemplateReferenceSchema
  * Route: GET /api/admin/settings/model/templates
  * Method: GET
  * Description: 实时读取 Plugin 模型模板，不使用服务端缓存
- * Tags: ['系统模型管理', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const GetAdminModelTemplatesResponseSchema = z.object({
@@ -265,7 +226,7 @@ export type GetAdminModelTemplatesResponse = z.infer<typeof GetAdminModelTemplat
  * Route: POST /api/admin/settings/model/create
  * Method: POST
  * Description: 按最新持久化结构创建自定义系统模型
- * Tags: ['系统模型管理', 'Write']
+ * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
 const CreateSystemModelDataSchema = z
@@ -305,7 +266,7 @@ export type CreateSystemModelResponse = z.infer<typeof CreateSystemModelResponse
  * Route: POST /api/admin/settings/model/createFromTemplates
  * Method: POST
  * Description: 重新拉取模板并先绑定渠道，再事务级创建尚未安装的模型
- * Tags: ['系统模型管理', 'Write']
+ * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
 export const CreateSystemModelsFromTemplatesBodySchema = z
@@ -357,7 +318,7 @@ export type CreateSystemModelsFromTemplatesResponse = z.infer<
  * API: 替换模型渠道绑定
  * Route: PUT /api/admin/settings/model/channel/replace
  * Method: PUT
- * Tags: ['系统模型管理', 'Write']
+ * Tags: ['渠道管理', 'Write']
  * ============================================================================ */
 
 export const ReplaceSystemModelChannelsBodySchema = z
@@ -375,7 +336,7 @@ export type ReplaceSystemModelChannelsBody = z.infer<typeof ReplaceSystemModelCh
  * Route: PUT /api/admin/settings/model/update
  * Method: PUT
  * Description: 只按 modelId 更新已有系统模型的可编辑参数，模型标识不可修改
- * Tags: ['系统模型管理', 'Write']
+ * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
 export const UpdateSystemModelDataSchema = z
@@ -407,7 +368,7 @@ export type UpdateSystemModelBody = z.infer<typeof UpdateSystemModelBodySchema>;
  * Route: PUT /api/admin/settings/model/updateStatus
  * Method: PUT
  * Description: 按 modelIds 批量启用或停用系统模型
- * Tags: ['系统模型管理', 'Write']
+ * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
 export const UpdateSystemModelStatusBodySchema = z.object({
@@ -464,7 +425,7 @@ const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
  * Route: PUT /api/admin/settings/model/updateWithJson
  * Method: PUT
  * Description: 忽略无 modelId 的旧记录；本实例 modelId 只更新可编辑参数并保留原 model，外部记录按 model 创建或更新
- * Tags: ['系统模型管理', 'Write']
+ * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
 export const UpdateSystemModelsWithJsonBodySchema = z.object({
@@ -482,7 +443,7 @@ export type ParsedSystemModelsWithJsonBody = z.output<typeof UpdateSystemModelsW
  * Route: GET /api/admin/settings/model/getConfigJson
  * Method: GET
  * Description: 导出包含 modelId 的最新系统模型配置 JSON
- * Tags: ['系统模型管理', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const GetSystemModelConfigJsonResponseSchema = z.string().meta({
@@ -497,7 +458,7 @@ export type GetSystemModelConfigJsonResponse = z.infer<
  * Route: PUT /api/admin/settings/model/updateDefault
  * Method: PUT
  * Description: 按 string modelId 更新各类型及系统用途的默认模型
- * Tags: ['系统模型管理', 'Write']
+ * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
 export const UpdateDefaultModelsBodySchema = z.object({

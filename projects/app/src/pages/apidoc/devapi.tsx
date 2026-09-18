@@ -10,6 +10,12 @@ function DevApiDocPage() {
     <ScalarOpenApiPage
       documentUrl="/api/apidoc/devapi.json"
       flattenedTagNames={[DevApiTagsMap.aiAuxiliary, DevApiTagsMap.toolPreview]}
+      nestedTagNames={{
+        [DevApiTagsMap.adminSystemModel]: [
+          DevApiTagsMap.adminModelChannel,
+          DevApiTagsMap.adminModelLog
+        ]
+      }}
       tagNameAliases={{
         ...DevApiTagNameAliases,
         [DevApiTagsMap.commonOther]: t('common:Other')

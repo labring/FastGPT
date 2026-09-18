@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { GetAdminSystemModelListResponse } from '@fastgpt/global/openapi/admin/core/ai/model/api';
+import type { GetAdminSystemModelListResponse } from '@fastgpt/global/openapi/admin/settings/model/api';
 
 const mocks = vi.hoisted(() => {
   const slots: { dependencies: readonly unknown[]; value: unknown }[] = [];

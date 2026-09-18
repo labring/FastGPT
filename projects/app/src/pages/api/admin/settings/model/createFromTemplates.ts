@@ -8,7 +8,7 @@ import {
   type CreateSystemModelsFromTemplatesBody,
   CreateSystemModelsFromTemplatesResponseSchema,
   type CreateSystemModelsFromTemplatesResponse
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 
 async function handler(
   req: ApiRequestProps<CreateSystemModelsFromTemplatesBody>

@@ -13,6 +13,7 @@ import {
   HStack,
   Grid,
   GridItem,
+  Avatar,
   type BoxProps
 } from '@chakra-ui/react';
 import DateRangePicker, {
@@ -34,6 +35,7 @@ import type { ChannelLogListItemType } from '@/global/aiproxy/type';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import ModelTabHeader from '../ModelTabHeader';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 
 type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   channelName: string | number;
@@ -135,8 +137,8 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         channelName: channelName || item.channel,
         model: (
           <HStack>
-            <MyIcon name={provider?.avatar as any} w={'1rem'} />
-            <Box>{model?.model}</Box>
+            <Avatar src={model ? provider.avatar : HUGGING_FACE_ICON} w={'1rem'} h={'1rem'} />
+            <Box>{model?.model ?? item.model}</Box>
           </HStack>
         ),
         duration: durationSecond,

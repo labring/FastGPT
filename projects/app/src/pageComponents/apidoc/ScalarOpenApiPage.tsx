@@ -32,10 +32,12 @@ type ScalarWorkspaceStore = {
  */
 const transformScalarNavigationTags = ({
   flattenedTagNames,
-  tagNameAliases
+  tagNameAliases,
+  nestedTagNames
 }: {
   flattenedTagNames: string[];
   tagNameAliases: Record<string, string>;
+  nestedTagNames: Record<string, string[]>;
 }) => {
   const workspaceStore = (
     window as typeof window & {
@@ -47,44 +49,78 @@ const transformScalarNavigationTags = ({
   if (!navigation?.children?.length) return;
 
   const flattenedTagNameSet = new Set(flattenedTagNames);
-  const flattenEntries = (entries: ScalarNavigationEntry[]): ScalarNavigationEntry[] =>
-    entries.flatMap((entry) => {
-      const children = entry.children ? flattenEntries(entry.children) : undefined;
+  const transformEntries = (entries: ScalarNavigationEntry[]): ScalarNavigationEntry[] => {
+    const transformedEntries = entries.flatMap((entry) => {
+      const children = entry.children ? transformEntries(entry.children) : undefined;
 
       if (entry.type === 'tag' && !entry.isGroup && entry.title) {
         if (flattenedTagNameSet.has(entry.title)) return children ?? [];
-
-        const displayName = tagNameAliases[entry.title];
-        if (displayName) return [{ ...entry, title: displayName, children }];
       }
 
       return [children ? { ...entry, children } : entry];
     });
 
-  navigation.children = flattenEntries(navigation.children);
+    for (const [parentTagName, childTagNames] of Object.entries(nestedTagNames)) {
+      const parent = transformedEntries.find(
+        (entry) => entry.type === 'tag' && !entry.isGroup && entry.title === parentTagName
+      );
+      if (!parent) continue;
+
+      const childTagNameSet = new Set(childTagNames);
+      const nestedChildren = transformedEntries.filter(
+        (entry) =>
+          entry.type === 'tag' &&
+          !entry.isGroup &&
+          !!entry.title &&
+          childTagNameSet.has(entry.title)
+      );
+      if (!nestedChildren.length) continue;
+
+      parent.children = [
+        ...nestedChildren.map((entry) => {
+          const displayName = entry.title ? tagNameAliases[entry.title] : undefined;
+          return displayName ? { ...entry, title: displayName } : entry;
+        }),
+        ...(parent.children ?? [])
+      ];
+      for (let index = transformedEntries.length - 1; index >= 0; index--) {
+        if (nestedChildren.includes(transformedEntries[index])) transformedEntries.splice(index, 1);
+      }
+    }
+
+    return transformedEntries.map((entry) => {
+      const displayName = entry.title ? tagNameAliases[entry.title] : undefined;
+      return displayName ? { ...entry, title: displayName } : entry;
+    });
+  };
+
+  navigation.children = transformEntries(navigation.children);
 };
 
 export const ScalarOpenApiPage = ({
   documentUrl,
   defaultOpenAllTags,
   flattenedTagNames,
-  tagNameAliases
+  tagNameAliases,
+  nestedTagNames
 }: {
   documentUrl: string;
   defaultOpenAllTags?: boolean;
   flattenedTagNames?: string[];
   tagNameAliases?: Record<string, string>;
+  nestedTagNames?: Record<string, string[]>;
 }) => (
   <Box w="100vw" h="100vh" overflow="auto">
     <ApiReferenceReact
       configuration={getScalarOpenApiReferenceConfig(documentUrl, {
         defaultOpenAllTags,
         onLoaded:
-          flattenedTagNames?.length || tagNameAliases
+          flattenedTagNames?.length || tagNameAliases || nestedTagNames
             ? () =>
                 transformScalarNavigationTags({
                   flattenedTagNames: flattenedTagNames ?? [],
-                  tagNameAliases: tagNameAliases ?? {}
+                  tagNameAliases: tagNameAliases ?? {},
+                  nestedTagNames: nestedTagNames ?? {}
                 })
             : undefined
       })}
