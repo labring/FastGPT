@@ -118,20 +118,31 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
     await context.reportFailedRecords([...failedRecordMap.values()]);
     failedRecordSnapshotDirty = false;
   };
-  const replaceFailures = ({
+
+  /**
+   * 同步批次失败记录：批次内成功的记录清除历史失败；未成功的记录记录错误。
+   * 校验阶段（isValidation = true）优先保留执行阶段已记录的底层错误现场，避免被泛化校验信息覆盖。
+   */
+  const syncFailures = ({
     stageKey,
     records,
-    failures
+    failures,
+    isValidation = false
   }: {
     stageKey: typeof VERSION_STAGE_KEY | typeof APP_STAGE_KEY;
     records: AppResourceMigrationRecord[];
     failures: AppResourceMigrationFailure[];
+    isValidation?: boolean;
   }) => {
     const failuresById = new Map(failures.map((failure) => [String(failure.record._id), failure]));
     records.forEach((record) => {
       const failure = failuresById.get(String(record._id));
-      if (failure) setFailedRecord(createFailedRecord({ stageKey, failure }));
-      else deleteFailedRecord(stageKey, record._id);
+      const key = `${stageKey}:${String(record._id)}`;
+      if (!failure) {
+        deleteFailedRecord(stageKey, record._id);
+      } else if (!isValidation || !failedRecordMap.has(key)) {
+        setFailedRecord(createFailedRecord({ stageKey, failure }));
+      }
     });
   };
   const saveCheckpoint = async () => context.saveCheckpoint(checkpoint);
@@ -185,8 +196,7 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
         if (!currentRecords[recordIndex]) deleteFailedRecord(stageKey, record.data.recordId);
       });
       const result = await processRecords(records);
-      replaceFailures({ stageKey, records, failures: result.failures });
-      checkpoint.stages[stageKey] = state;
+      syncFailures({ stageKey, records, failures: result.failures });
       await reportFailedRecordsIfChanged();
     }
 
@@ -201,7 +211,7 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
         if (records.length === 0) break;
 
         const result = await processRecords(records);
-        replaceFailures({ stageKey, records, failures: result.failures });
+        syncFailures({ stageKey, records, failures: result.failures });
         state.lastId = String(records.at(-1)!._id);
         state.processedCount += records.length;
         checkpoint.stages[stageKey] = state;
@@ -227,8 +237,7 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
         });
         if (records.length === 0) break;
         const result = await processRecords(records);
-        replaceFailures({ stageKey, records, failures: result.failures });
-        checkpoint.stages[stageKey] = state;
+        syncFailures({ stageKey, records, failures: result.failures });
         await reportFailedRecordsIfChanged();
         tailLastId = String(records.at(-1)!._id);
       }
@@ -277,10 +286,11 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
       limit: systemMigrationBatchSize
     });
     if (records.length === 0) break;
-    replaceFailures({
+    syncFailures({
       stageKey: VERSION_STAGE_KEY,
       records,
-      failures: validateAppVersionResourceRecords(records)
+      failures: validateAppVersionResourceRecords(records),
+      isValidation: true
     });
     await reportFailedRecordsIfChanged();
     lastVersionId = String(records.at(-1)!._id);
@@ -294,10 +304,11 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
       limit: systemMigrationBatchSize
     });
     if (records.length === 0) break;
-    replaceFailures({
+    syncFailures({
       stageKey: APP_STAGE_KEY,
       records,
-      failures: await validateAppResourceRecords(records)
+      failures: await validateAppResourceRecords(records),
+      isValidation: true
     });
     await reportFailedRecordsIfChanged();
     lastAppId = String(records.at(-1)!._id);

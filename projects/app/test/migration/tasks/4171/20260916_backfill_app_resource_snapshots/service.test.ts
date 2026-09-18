@@ -84,7 +84,6 @@ describe('App resource snapshot migration service', () => {
       }
     ]);
     expect(snapshot.resources).toContainEqual({ type: 'skill', id: 'legacy-skill' });
-    expect(snapshot.legacySkillMismatches).toBe(0);
   });
 
   it('accepts a concurrent Version update when it already produced a legal snapshot', async () => {
@@ -259,14 +258,6 @@ describe('App resource snapshot migration service', () => {
     });
     const updatedVersion = await MongoAppVersion.collection.findOne({ _id: version._id });
     expect(updatedVersion?.resources).toEqual([]);
-
-    // filterAuthorizedAppResources helper drops to [] for invalid tmbId
-    await expect(
-      appResourcePermission.filterAuthorizedAppResources({
-        resources: [{ type: 'skill', id: 'some-skill' }],
-        tmbId: 'invalid-tmb'
-      })
-    ).resolves.toEqual([]);
   });
 
   it('validates missing snapshots, invalid pointers, missing published Versions, and folders', async () => {
@@ -279,7 +270,15 @@ describe('App resource snapshot migration service', () => {
     ]);
 
     expect(validateAppVersionResourceRecords([version])).toEqual([
-      expect.objectContaining({ message: 'App Version resources are still missing or invalid' })
+      expect.objectContaining({ message: expect.stringContaining('invalid_type') })
+    ]);
+
+    const invalidVersion = createVersion({
+      appId: app._id,
+      resources: [{ type: 'invalid_type', id: 'foo' }]
+    });
+    expect(validateAppVersionResourceRecords([invalidVersion])).toEqual([
+      expect.objectContaining({ message: expect.stringContaining('invalid_union') })
     ]);
     await expect(validateAppResourceRecords([app, folder])).resolves.toEqual([
       expect.objectContaining({

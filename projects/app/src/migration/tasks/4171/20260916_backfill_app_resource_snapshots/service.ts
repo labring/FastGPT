@@ -10,7 +10,7 @@ import {
   decodeToolSetNodesFromStorage,
   encodeMcpToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
-import { resolveStoredAppResources, getLegacySkillIds } from '@fastgpt/service/core/app/resources';
+import { resolveStoredAppResources } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
@@ -49,8 +49,6 @@ export type AppResourceMigrationBatchResult = {
   failures: AppResourceMigrationFailure[];
   updatedCount: number;
   createdVersionCount: number;
-  legacySkillRefs: number;
-  legacySkillMismatches: number;
 };
 
 type AppVersionState = {
@@ -61,9 +59,7 @@ type AppVersionState = {
 const emptyBatchResult = (): AppResourceMigrationBatchResult => ({
   failures: [],
   updatedCount: 0,
-  createdVersionCount: 0,
-  legacySkillRefs: 0,
-  legacySkillMismatches: 0
+  createdVersionCount: 0
 });
 
 const toObjectId = (value: unknown): Types.ObjectId | undefined => {
@@ -94,7 +90,7 @@ const isFolderApp = (type: unknown) =>
   typeof type === 'string' &&
   AppFolderTypeList.includes(type as (typeof AppFolderTypeList)[number]);
 
-/** 从历史工作流字段确定性生成资源快照，并统计旧 Skill 引用是否完整保留。 */
+/** 从历史工作流字段确定性生成资源快照。 */
 export const buildAppResourceSnapshot = (
   record: AppResourceMigrationRecord,
   models: readonly SystemModelDataType[] = []
@@ -109,7 +105,6 @@ export const buildAppResourceSnapshot = (
     edges: Array.isArray(record.edges) ? record.edges : [],
     chatConfig: record.chatConfig
   });
-  const legacySkillIds = getLegacySkillIds(record.resourceRefs);
   const resources = resolveStoredAppResources({
     resources: record.resources,
     nodes: normalizedWorkflow.nodes,
@@ -117,15 +112,10 @@ export const buildAppResourceSnapshot = (
     resourceRefs: record.resourceRefs,
     models
   });
-  const skillIds = new Set(
-    resources.filter((resource) => resource.type === 'skill').map((resource) => resource.id)
-  );
 
   return {
     normalizedWorkflow,
-    resources,
-    legacySkillRefs: legacySkillIds.length,
-    legacySkillMismatches: legacySkillIds.filter((id) => !skillIds.has(id)).length
+    resources
   };
 };
 
@@ -266,14 +256,12 @@ export const backfillAppVersionResourceRecords = async (
   const result = emptyBatchResult();
 
   for (const record of records) {
-    result.legacySkillRefs += getLegacySkillIds(record.resourceRefs).length;
     if (Array.isArray(record.resources) && AppResourcesSchema.safeParse(record.resources).success) {
       continue;
     }
 
     try {
       const snapshot = buildAppResourceSnapshot(record, (await getModelHandle()).getAllModels());
-      result.legacySkillMismatches += snapshot.legacySkillMismatches;
       const authorizedResources = await filterAuthorizedAppResources({
         resources: snapshot.resources,
         tmbId: record.tmbId
@@ -295,7 +283,16 @@ export const backfillAppVersionResourceRecords = async (
         { _id: record._id as never },
         { projection: { resources: 1 } }
       );
-      if (!current || AppResourcesSchema.safeParse(current.resources).success) continue;
+      if (!current) continue;
+      const currentParsed = AppResourcesSchema.safeParse(current.resources);
+      if (currentParsed.success) continue;
+      if (current.resources !== undefined) {
+        result.failures.push({
+          record,
+          message: currentParsed.error.message
+        });
+        continue;
+      }
       result.failures.push({
         record,
         message: 'App Version changed concurrently before its resources could be backfilled'
@@ -498,8 +495,7 @@ const createMissingPublishedVersion = async (record: AppResourceMigrationRecord)
 
     return {
       appUpdated: true,
-      versionCreated: true,
-      legacySkillMismatches: snapshot.legacySkillMismatches
+      versionCreated: true
     };
   });
 };
@@ -512,7 +508,6 @@ export const backfillAppResourceRecords = async (
   const states = await readAppVersionStates(records);
 
   for (const record of records) {
-    result.legacySkillRefs += getLegacySkillIds(record.resourceRefs).length;
     if (record.parentId) continue;
     const state = states.get(String(record._id));
     if (!state) continue;
@@ -538,7 +533,6 @@ export const backfillAppResourceRecords = async (
       const created = await createMissingPublishedVersion(record);
       if (created?.appUpdated) result.updatedCount += 1;
       if (created?.versionCreated) result.createdVersionCount += 1;
-      result.legacySkillMismatches += created?.legacySkillMismatches ?? 0;
     } catch (error) {
       result.failures.push({
         record,
@@ -552,11 +546,10 @@ export const backfillAppResourceRecords = async (
 
 /** 扫描 Version 快照的真实完成条件，并返回需要管理员处理的记录。 */
 export const validateAppVersionResourceRecords = (records: AppResourceMigrationRecord[]) =>
-  records.flatMap<AppResourceMigrationFailure>((record) =>
-    AppResourcesSchema.safeParse(record.resources).success
-      ? []
-      : [{ record, message: 'App Version resources are still missing or invalid' }]
-  );
+  records.flatMap<AppResourceMigrationFailure>((record) => {
+    const parsed = AppResourcesSchema.safeParse(record.resources);
+    return parsed.success ? [] : [{ record, message: parsed.error.message }];
+  });
 
 /** 扫描 App 正式指针与无正式 Version 补建的真实完成条件。 */
 export const validateAppResourceRecords = async (records: AppResourceMigrationRecord[]) => {
