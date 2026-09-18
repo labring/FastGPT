@@ -1,4 +1,4 @@
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
+import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
@@ -60,11 +60,7 @@ type InputRenderTypeState = {
 type SavedToolInputTypeState = InputRenderTypeState;
 
 type ToolInputTypeState = InputRenderTypeState &
-  Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
-  Pick<
-    Partial<FlowNodeInputItemType>,
-    'defaultToAgentGenerated' | 'toolDescription' | 'list' | 'enums' | 'enum' | 'valueType'
-  >;
+  Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'>;
 
 type ToolInputDefaultModeOptions = {
   forceDefaultMode?: boolean;
@@ -213,95 +209,23 @@ const shouldUseAgentGeneratedOnly = (
 const getManualRenderTypeCandidates = (renderTypeList: FlowNodeInputTypeEnum[] = []) =>
   renderTypeList.filter((type) => manualInputRenderTypes.has(type));
 
-const getValueTypePreferredManualType = (input: ToolInputTypeState) => {
-  switch (input.valueType) {
-    case WorkflowIOValueTypeEnum.number:
-      return FlowNodeInputTypeEnum.numberInput;
-    case WorkflowIOValueTypeEnum.boolean:
-      return FlowNodeInputTypeEnum.switch;
-    case WorkflowIOValueTypeEnum.object:
-    case WorkflowIOValueTypeEnum.arrayString:
-    case WorkflowIOValueTypeEnum.arrayNumber:
-    case WorkflowIOValueTypeEnum.arrayBoolean:
-    case WorkflowIOValueTypeEnum.arrayObject:
-    case WorkflowIOValueTypeEnum.arrayAny:
-    case WorkflowIOValueTypeEnum.any:
-      return FlowNodeInputTypeEnum.JSONEditor;
-    case WorkflowIOValueTypeEnum.string:
-    default:
-      return FlowNodeInputTypeEnum.input;
-  }
-};
-
 /**
- * Agent 生成只是输入来源，切回手动输入时需要恢复真实编辑控件。
- * JSON Schema 的 list 可能只是候选值；只有没有 valueType 对应主控件时才回退到 select/multipleSelect。
+ * 取工具入参在“手动输入”下唯一使用的那个控件。
+ *
+ * 这里只使用 renderType 状态：已选中的手动控件优先，否则取 renderTypeList 中第一个手动控件
+ * （JSON Schema 投影和节点模板都会把主控件放在第一位）。
+ * 必须折叠成一个：NodeInputSelect 里 input/textarea/JSONEditor/numberInput 的菜单标题都是
+ * “手动输入”，同时展示会出现同名重复项。
+ *
+ * 刻意不看 valueType：控件由 renderTypeList 声明，valueType 只描述值形状。
+ * 例如知识库搜索的 datasetSearchInput 是 arrayString 却声明 textarea，就该渲染 textarea。
  * 没有手动候选时返回 undefined，调用方不能把它伪造成手动输入。
  */
-export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
+export const getToolInputManualRenderType = (input: InputRenderTypeState) => {
   const candidates = getManualRenderTypeCandidates(input.renderTypeList);
   const selectedType = getSelectedInputRenderType(input);
-  const preferredType = getValueTypePreferredManualType(input);
-  const isGenericSelectedType =
-    selectedType === FlowNodeInputTypeEnum.input || selectedType === FlowNodeInputTypeEnum.textarea;
-  const isSelectSelectedType =
-    selectedType === FlowNodeInputTypeEnum.select ||
-    selectedType === FlowNodeInputTypeEnum.multipleSelect;
-  const hasPreferredManualType = candidates.includes(preferredType);
 
-  if (
-    selectedType &&
-    candidates.includes(selectedType) &&
-    (!isGenericSelectedType || preferredType === FlowNodeInputTypeEnum.input) &&
-    (!isSelectSelectedType || !hasPreferredManualType)
-  ) {
-    return selectedType;
-  }
-
-  const hasGenericManualInput =
-    candidates.includes(FlowNodeInputTypeEnum.input) ||
-    candidates.includes(FlowNodeInputTypeEnum.textarea);
-  if (!candidates.length) return undefined;
-
-  if (candidates.includes(preferredType)) {
-    return preferredType;
-  }
-
-  if (
-    input.valueType?.startsWith('array') &&
-    candidates.includes(FlowNodeInputTypeEnum.multipleSelect)
-  ) {
-    return FlowNodeInputTypeEnum.multipleSelect;
-  }
-
-  if (hasGenericManualInput) {
-    /**
-     * 走到这里说明 preferredType 不在候选中，只能投影出节点没有声明的控件。
-     * 例如：知识库搜索作为工具时，valueType 是 arrayString。此时会被选定为 JSONEditor 类型。
-     *
-     *  但若使用 JSONEditor 类型，下次读取并 migrate 时会被 template 上的 renderTypeList 过滤掉
-     * （template 上的定义只有 textarea，因为我们希望它显示为 textarea），并回退到 agentGenerated。
-     *
-     * 所以这里（在渲染时）为 JSONEditor 回退到 textarea。避免知识库搜索和指定回复节点的用户输入被覆盖。
-     */
-    const prefersTextControl =
-      preferredType === FlowNodeInputTypeEnum.input ||
-      preferredType === FlowNodeInputTypeEnum.JSONEditor;
-    if (!prefersTextControl) return preferredType;
-
-    // 数组/对象值用多行文本承载更合适；节点只声明单行 input 时退回 input。
-    const textControl =
-      preferredType === FlowNodeInputTypeEnum.JSONEditor
-        ? FlowNodeInputTypeEnum.textarea
-        : FlowNodeInputTypeEnum.input;
-    return candidates.includes(textControl)
-      ? textControl
-      : candidates.includes(FlowNodeInputTypeEnum.input)
-        ? FlowNodeInputTypeEnum.input
-        : FlowNodeInputTypeEnum.textarea;
-  }
-
-  return candidates[0];
+  return selectedType && candidates.includes(selectedType) ? selectedType : candidates[0];
 };
 
 const getToolInputAllowedValues = (input: FlowNodeInputItemType) => {
@@ -446,14 +370,13 @@ export const initAgentToolInputType = <T extends FlowNodeInputItemType>({
   if (mode === AgentToolInputModeEnum.manual) {
     const manualType = getToolInputManualRenderType(inputWithoutSelection);
     if (manualType) {
+      // manualType 一定来自 renderTypeList，这里只需补上可切回的 agentGenerated。
       const renderTypeList = Array.from(
         new Set([
           ...(canInputBeAgentGenerated(inputWithoutSelection)
             ? [FlowNodeInputTypeEnum.agentGenerated]
             : []),
-          ...(inputWithoutSelection.renderTypeList.includes(manualType)
-            ? inputWithoutSelection.renderTypeList
-            : [manualType, ...inputWithoutSelection.renderTypeList])
+          ...inputWithoutSelection.renderTypeList
         ])
       );
 
