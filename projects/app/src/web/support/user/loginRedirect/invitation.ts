@@ -4,7 +4,11 @@ const INVITATION_QUERY_KEYS = ['invitelinkid', 'inviteLinkId'] as const;
 export const getInviteLinkIdFromRoute = (route: string) => {
   try {
     const url = new URL(route, 'http://fastgpt.local');
-    return INVITATION_QUERY_KEYS.map((key) => url.searchParams.get(key)).find(Boolean) || '';
+    return (
+      INVITATION_QUERY_KEYS.map((key) => url.searchParams.get(key)).find((value): value is string =>
+        Boolean(value)
+      ) ?? ''
+    );
   } catch {
     return '';
   }

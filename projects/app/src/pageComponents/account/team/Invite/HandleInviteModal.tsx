@@ -5,7 +5,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   getInvitationInfo,
   postAcceptInvitationWithMemberName,
@@ -14,7 +14,12 @@ import {
 import { clearInviteLinkFromRoute } from '@/web/support/user/loginRedirect/invitation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { TeamMemberNameSchema } from '@fastgpt/global/support/user/team/memberName';
+import { useMemberNameForm } from '@/pageComponents/account/team/MemberNameForm/useMemberNameForm';
+import {
+  memberNameButtonStyles,
+  memberNameInputStyles,
+  memberNameLabelStyles
+} from '@/pageComponents/account/team/MemberNameForm/styles';
 
 /**
  * 登录后处理团队邀请。接受时一次提交成员名和邀请，拒绝或无效邀请只清理当前上下文。
@@ -35,8 +40,8 @@ const HandleInviteModal = ({
   const { initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
   const isMultiTeamMode = feConfigs?.teamMode !== 'single';
-  const [memberName, setMemberName] = useState('');
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const { memberName, nameError, showNameError, markInteracted, onNameChange, parseMemberName } =
+    useMemberNameForm({ defaultName: '' });
   const alreadyJoinedNotifiedRef = useRef(false);
 
   const clearInvitationContext = useCallback(async () => {
@@ -64,18 +69,15 @@ const HandleInviteModal = ({
     void finishInvitation();
   }, [finishInvitation, invitationInfo?.alreadyJoined, t, toast]);
 
-  const nameError = useMemo(() => {
-    if (!memberName) return t('account_team:member_name_required');
-    const result = TeamMemberNameSchema.safeParse(memberName);
-    return result.success ? '' : t('account_team:member_name_limit');
-  }, [memberName, t]);
-  const showNameError = hasInteracted && !!nameError;
-  const inviterName =
-    invitationInfo?.creatorUsername || t('account_team:invitation_creator_fallback');
+  // creatorUsername 是可选字段，空串同样需要回落到兜底文案，所以显式判空而不是用 || 覆盖假值。
+  const creatorUsername = invitationInfo?.creatorUsername?.trim();
+  const inviterName = creatorUsername
+    ? creatorUsername
+    : t('account_team:invitation_creator_fallback');
 
   const { runAsync: acceptInvitation, loading: accepting } = useRequest(
     async () => {
-      const normalizedMemberName = TeamMemberNameSchema.parse(memberName);
+      const normalizedMemberName = parseMemberName();
       onStart?.();
       return postAcceptInvitationWithMemberName({
         linkId: inviteLinkId,
@@ -128,13 +130,7 @@ const HandleInviteModal = ({
           {isMultiTeamMode && (
             <Button
               variant="whiteBase"
-              h="32px"
-              minH="32px"
-              px="14px"
-              fontSize="12px"
-              lineHeight="16px"
-              letterSpacing="0.5px"
-              borderRadius="6px"
+              {...memberNameButtonStyles}
               isLoading={accepting}
               onClick={rejectInvitation}
             >
@@ -143,17 +139,11 @@ const HandleInviteModal = ({
           )}
           <Button
             variant="primary"
-            h="32px"
-            minH="32px"
-            px="14px"
-            fontSize="12px"
-            lineHeight="16px"
-            letterSpacing="0.5px"
-            borderRadius="6px"
+            {...memberNameButtonStyles}
             isLoading={accepting}
             isDisabled={!!nameError}
             onClick={() => {
-              setHasInteracted(true);
+              markInteracted();
               if (!nameError) void acceptInvitation();
             }}
           >
@@ -190,15 +180,7 @@ const HandleInviteModal = ({
         )}
         <FormControl isInvalid={showNameError}>
           <Box display="flex" alignItems="center" justifyContent="space-between" w="full" mb="8px">
-            <Box
-              color="#24282C"
-              fontSize="12px"
-              fontWeight={500}
-              lineHeight="16px"
-              letterSpacing="0.5px"
-            >
-              {t('account_team:member_name_label')}
-            </Box>
+            <Box {...memberNameLabelStyles}>{t('account_team:member_name_label')}</Box>
             {showNameError && (
               <Box
                 color="#D92D20"
@@ -213,14 +195,7 @@ const HandleInviteModal = ({
           </Box>
           <Input
             value={memberName}
-            h="32px"
-            minH="32px"
-            px="12px"
-            fontSize="12px"
-            lineHeight="16px"
-            letterSpacing="0.048px"
-            borderColor="#E8EBF0"
-            borderRadius="6px"
+            {...memberNameInputStyles}
             placeholder={
               isMultiTeamMode
                 ? t('account_team:invite_member_name_placeholder')
@@ -228,11 +203,8 @@ const HandleInviteModal = ({
             }
             _placeholder={{ color: '#667085' }}
             _invalid={{ borderColor: '#E8EBF0', boxShadow: 'none' }}
-            onChange={(event) => {
-              setHasInteracted(true);
-              setMemberName(event.target.value);
-            }}
-            onBlur={() => setHasInteracted(true)}
+            onChange={onNameChange}
+            onBlur={markInteracted}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !nameError && !accepting) {
                 event.preventDefault();

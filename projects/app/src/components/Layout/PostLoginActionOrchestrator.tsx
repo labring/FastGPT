@@ -1,5 +1,5 @@
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -14,6 +14,7 @@ import {
   isPostLoginActionRoute,
   startPostLoginAction,
   type OneTimePostLoginAction,
+  type PostLoginAction,
   type PostLoginActionState
 } from './postLoginAction';
 
@@ -44,8 +45,29 @@ const EnterpriseAuthNoticeModal = dynamic(
 );
 
 const CONTACT_HANDLED_KEY_PREFIX = 'fastgpt:login-action:bind-contact-handled:v3:';
+const CONTACT_HANDLED_EVENT = 'fastgpt:login-action:bind-contact-handled-changed';
 
 const getContactHandledKey = (userId: string) => `${CONTACT_HANDLED_KEY_PREFIX}${userId}`;
+
+/**
+ * 读取当前用户是否已处理过“绑定联系方式”引导。
+ * 只允许在客户端调用，供 useSyncExternalStore 的 getSnapshot 使用。
+ */
+const readContactHandled = (userId?: string) =>
+  !!userId && window.localStorage.getItem(getContactHandledKey(userId)) === '1';
+
+/**
+ * 订阅已处理标记的变更：写入后派发的自定义事件覆盖当前标签页，
+ * storage 事件覆盖其他标签页，保证渲染读到的始终是最新值。
+ */
+const subscribeContactHandled = (onChange: () => void) => {
+  window.addEventListener(CONTACT_HANDLED_EVENT, onChange);
+  window.addEventListener('storage', onChange);
+  return () => {
+    window.removeEventListener(CONTACT_HANDLED_EVENT, onChange);
+    window.removeEventListener('storage', onChange);
+  };
+};
 
 type PostLoginActionOrchestratorProps = {
   importantInforms: UserInformSchema[];
@@ -55,6 +77,73 @@ type PostLoginActionOrchestratorProps = {
     data?: GetUnreadInformResponseType;
   }>;
   unreadQueryFetched: boolean;
+};
+
+/** 渲染单个登录后动作所需的上下文，由各业务弹窗按需取用。 */
+type PostLoginActionViewProps = {
+  inviteLinkId: string;
+  importantInforms: UserInformSchema[];
+  importantInformQueryError: boolean;
+  refetchImportantInforms: () => Promise<{
+    isError?: boolean;
+    data?: GetUnreadInformResponseType;
+  }>;
+  onStartInvitation: () => void;
+  onFinishInvitation: () => void;
+  onFinishContact: () => void;
+  onFinishImportantInform: () => void;
+  onFinishOneTimeAction: (action: OneTimePostLoginAction) => void;
+};
+
+/**
+ * 动作到弹窗的映射表。key 覆盖 PostLoginAction 全集，新增动作时 TypeScript 会强制补齐渲染分支，
+ * 避免只改了顺序逻辑却漏了渲染。邀请动作在链接已被清理时返回 null，由编排器继续释放锁。
+ */
+const POST_LOGIN_ACTION_VIEWS: Record<
+  PostLoginAction,
+  (props: PostLoginActionViewProps) => ReactNode
+> = {
+  invitation: ({ inviteLinkId, onStartInvitation, onFinishInvitation }) =>
+    inviteLinkId ? (
+      <HandleInviteModal
+        inviteLinkId={inviteLinkId}
+        onStart={onStartInvitation}
+        onFinish={onFinishInvitation}
+      />
+    ) : null,
+  memberName: ({ onFinishOneTimeAction }) => (
+    <ForceMemberNameModal onSuccess={() => onFinishOneTimeAction('memberName')} />
+  ),
+  resetExpiredPassword: ({ onFinishOneTimeAction }) => (
+    <ResetExpiredPswModal enabled onFinish={() => onFinishOneTimeAction('resetExpiredPassword')} />
+  ),
+  contact: ({ onFinishContact }) => <UpdateContact onClose={onFinishContact} mode="contact" />,
+  systemMessage: ({ onFinishOneTimeAction }) => (
+    <SystemMsgModal enabled onFinish={() => onFinishOneTimeAction('systemMessage')} />
+  ),
+  importantInform: ({
+    importantInforms,
+    importantInformQueryError,
+    refetchImportantInforms,
+    onFinishImportantInform
+  }) => (
+    <ImportantInform
+      enabled
+      informs={importantInforms}
+      refetch={refetchImportantInforms}
+      queryError={importantInformQueryError}
+      onResolved={onFinishImportantInform}
+    />
+  ),
+  activityAd: ({ onFinishOneTimeAction }) => (
+    <ActivityAdModal enabled onFinish={() => onFinishOneTimeAction('activityAd')} />
+  ),
+  enterpriseAuthNotice: ({ onFinishOneTimeAction }) => (
+    <EnterpriseAuthNoticeModal
+      enabled
+      onFinish={() => onFinishOneTimeAction('enterpriseAuthNotice')}
+    />
+  )
 };
 
 /**
@@ -87,8 +176,13 @@ const PostLoginActionOrchestrator = ({
     active: boolean;
   }>({ key: '', linkId: '', active: false });
 
-  const contactHandled =
-    !!userId && window.localStorage.getItem(getContactHandledKey(userId)) === '1';
+  // localStorage 属于渲染外部的可变数据源，统一通过 useSyncExternalStore 订阅，
+  // 不在渲染体里同步读取；服务端渲染阶段固定视为未处理。
+  const contactHandled = useSyncExternalStore(
+    subscribeContactHandled,
+    () => readContactHandled(userId),
+    () => false
+  );
   const invitationInProgress = invitationProgress.key === runKey && invitationProgress.active;
   const invitationActionLinkId = invitationInProgress ? invitationProgress.linkId : inviteLinkId;
 
@@ -146,8 +240,9 @@ const PostLoginActionOrchestrator = ({
   useEffect(() => {
     if (!canStart || !runKey || currentAction || !nextAction) return;
 
-    // The effect commits the derived action into the orchestrator lock before the next external update.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // 编排锁只能在路由、用户信息和未读通知这些异步输入全部就绪后提交，
+    // 放到渲染期提交会触发 react-hooks/set-state-in-render，所以保留在 effect 中。
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 动作锁依赖异步就绪状态，无法在渲染期派生
     setRunState((state) => startPostLoginAction({ state, key: runKey, action: nextAction }));
   }, [canStart, currentAction, nextAction, runKey]);
 
@@ -156,64 +251,32 @@ const PostLoginActionOrchestrator = ({
   const finishContact = useCallback(() => {
     if (userId) {
       window.localStorage.setItem(getContactHandledKey(userId), '1');
+      // 主动派发变更事件，避免依赖下一次渲染才拿到最新标记。
+      window.dispatchEvent(new Event(CONTACT_HANDLED_EVENT));
     }
     finishOneTimeAction('contact');
   }, [finishOneTimeAction, userId]);
 
-  if (activeAction === 'invitation' && invitationActionLinkId) {
-    return (
-      <HandleInviteModal
-        inviteLinkId={invitationActionLinkId}
-        onStart={startInvitation}
-        onFinish={finishInvitation}
-      />
-    );
-  }
+  if (!activeAction) return null;
 
-  if (activeAction === 'memberName') {
-    return <ForceMemberNameModal onSuccess={() => finishOneTimeAction('memberName')} />;
-  }
+  // 动作与弹窗的对应关系集中在 POST_LOGIN_ACTION_VIEWS，这里只负责把上下文传进去。
+  const renderAction = POST_LOGIN_ACTION_VIEWS[activeAction];
 
-  if (activeAction === 'resetExpiredPassword') {
-    return (
-      <ResetExpiredPswModal enabled onFinish={() => finishOneTimeAction('resetExpiredPassword')} />
-    );
-  }
-
-  if (activeAction === 'contact') {
-    return <UpdateContact onClose={finishContact} mode="contact" />;
-  }
-
-  if (activeAction === 'systemMessage') {
-    return <SystemMsgModal enabled onFinish={() => finishOneTimeAction('systemMessage')} />;
-  }
-
-  if (activeAction === 'importantInform') {
-    return (
-      <ImportantInform
-        enabled
-        informs={importantInforms}
-        refetch={refetchImportantInforms}
-        queryError={importantInformQueryError}
-        onResolved={finishImportantInform}
-      />
-    );
-  }
-
-  if (activeAction === 'activityAd') {
-    return <ActivityAdModal enabled onFinish={() => finishOneTimeAction('activityAd')} />;
-  }
-
-  if (activeAction === 'enterpriseAuthNotice') {
-    return (
-      <EnterpriseAuthNoticeModal
-        enabled
-        onFinish={() => finishOneTimeAction('enterpriseAuthNotice')}
-      />
-    );
-  }
-
-  return null;
+  return (
+    <>
+      {renderAction({
+        inviteLinkId: invitationActionLinkId,
+        importantInforms,
+        importantInformQueryError,
+        refetchImportantInforms,
+        onStartInvitation: startInvitation,
+        onFinishInvitation: finishInvitation,
+        onFinishContact: finishContact,
+        onFinishImportantInform: finishImportantInform,
+        onFinishOneTimeAction: finishOneTimeAction
+      })}
+    </>
+  );
 };
 
 export default PostLoginActionOrchestrator;
