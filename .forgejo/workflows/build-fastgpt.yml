@@ -17,6 +17,8 @@ on:
 jobs:
   validate-version:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
