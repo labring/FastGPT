@@ -19,6 +19,7 @@ import {
   DatasetDataIndexOperation,
   type DatasetDataIndexDraft
 } from '@/service/core/dataset/data/dataIndex';
+import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   getDatasetSynonymTransformContext,
   isDatasetSynonymEnabled
@@ -34,11 +35,17 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   imageIndex?: boolean;
   /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
   forceRebuild?: boolean;
+  /** 传入时复用调用方事务，用于把训练任务删除、状态推进并入同一次写入边界。 */
+  session?: ClientSession;
+  /** 写入完成后要落库的索引状态；提前落库数据由向量回写标记为 indexed。 */
+  indexStatus?: DatasetDataIndexStatusEnum;
+  /** 在同一写入边界内移除图片的临时对象过期设置（提前落库数据首次完成索引时）。 */
+  removeImageTTL?: boolean;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
   UpdateDatasetDataByIndexesProps,
-  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap'
+  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session' | 'indexStatus' | 'removeImageTTL'
 > & {
   q?: string;
   imageIndex?: boolean;
@@ -97,6 +104,18 @@ export class DatasetDataOperation {
       datasetId: String(datasetId),
       teamId: String(teamId)
     });
+  }
+
+  /**
+   * 在调用方已开启的事务内执行，没有传入事务时自行开启一个。
+   * 提前落库的向量回写需要把训练任务删除并入同一次写入边界，因此必须复用调用方 session。
+   */
+  private runInSession<T>(
+    session: ClientSession | undefined,
+    fn: (session: ClientSession) => Promise<T>
+  ) {
+    if (session) return fn(session);
+    return mongoSessionRun(fn);
   }
 
   /**
@@ -251,7 +270,10 @@ export class DatasetDataOperation {
     imageIndex,
     metadata,
     forceRebuild = false,
-    imageDescMap
+    imageDescMap,
+    session,
+    indexStatus,
+    removeImageTTL = false
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
 
@@ -316,7 +338,7 @@ export class DatasetDataOperation {
         .filter((item) => !item.skipped)
         .map((item) => item.index.dataId)
         .filter(Boolean) as string[];
-      await mongoSessionRun(async (session) => {
+      await this.runInSession(session, async (mongoSession) => {
         if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
           throw new Error('同义词配置已变化，请重试索引更新');
         }
@@ -325,7 +347,8 @@ export class DatasetDataOperation {
           { _id: mongoData._id, ...(synonymContext && { updateTime }) },
           {
             $set: {
-              ...(nextQ !== mongoData.q || nextA !== mongoData.a
+              // 用归一化后的旧值比较：缺失的 a/q 与空串语义相同，不应因此写入一条无变化的历史。
+              ...(nextQ !== (mongoData.q ?? '') || nextA !== (mongoData.a ?? '')
                 ? {
                     history: [
                       { q: mongoData.q, a: mongoData.a, updateTime },
@@ -338,12 +361,13 @@ export class DatasetDataOperation {
               ...(metadata !== undefined ? { metadata } : {}),
               ...(imageDescMap !== undefined ? { imageDescMap } : {}),
               indexes: newIndexes,
+              ...(indexStatus !== undefined ? { indexStatus } : {}),
               ...(synonymContext && { synonymVersion: synonymContext.version }),
               updateTime: new Date()
             },
             ...(synonymContext && { $unset: { synonymRebuildingVersion: '' } })
           },
-          { session }
+          { session: mongoSession }
         );
         if (synonymContext && updateResult.modifiedCount !== 1) {
           throw new Error('数据已变化，请重试索引更新');
@@ -362,8 +386,14 @@ export class DatasetDataOperation {
                 `${nextQ}\n${nextA}`.trim()
             }
           ],
-          session
+          mongoSession
         );
+
+        // 提前落库改走更新路径、不经过创建路径，图片的过期设置必须在这里显式移除，
+        // 否则已成功索引的图片仍会按临时对象被清理。
+        if (removeImageTTL && isS3ObjectKey(nextImageId, 'dataset')) {
+          await removeS3TTL({ key: nextImageId, bucketName: 'private', session: mongoSession });
+        }
 
         await this.indexOperation.deleteVectors({
           teamId: mongoData.teamId,
