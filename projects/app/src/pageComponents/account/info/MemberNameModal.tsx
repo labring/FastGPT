@@ -7,8 +7,14 @@ import { TeamMemberNameSchema } from '@fastgpt/global/support/user/team/memberNa
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
-/** 修改当前团队成员名，成功后刷新用户信息并关闭弹窗。 */
-const MemberNameModal = ({ memberName, onClose }: { memberName: string; onClose: () => void }) => {
+type MemberNameModalProps = {
+  memberName: string;
+  onClose: () => void;
+  onSuccess?: () => void;
+};
+
+/** 修改当前团队成员名，成功后刷新用户信息、关闭弹窗并通知调用方继续后续动作。 */
+const MemberNameModal = ({ memberName, onClose, onSuccess }: MemberNameModalProps) => {
   const { t } = useClientTranslation('account_team');
   const { initUserInfo } = useUserStore();
   const [value, setValue] = useState(memberName);
@@ -28,7 +34,10 @@ const MemberNameModal = ({ memberName, onClose }: { memberName: string; onClose:
     },
     {
       manual: true,
-      onSuccess: onClose
+      onSuccess: () => {
+        onClose();
+        onSuccess?.();
+      }
     }
   );
 
