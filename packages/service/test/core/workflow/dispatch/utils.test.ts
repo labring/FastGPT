@@ -1756,6 +1756,48 @@ describe('summarizeRuntimeNodeResponses', () => {
     });
   });
 
+  it('ignores captured errors in the workflow error summary', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'catch-http',
+        nodeId: 'http-node',
+        moduleType: FlowNodeTypeEnum.httpRequest468,
+        errorText: 'Network timeout',
+        errorCaptured: true
+      },
+      {
+        id: 'root-llm',
+        nodeId: 'chat-node',
+        moduleType: FlowNodeTypeEnum.chatNode,
+        errorText: 'Rate limit'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary).toMatchObject({
+      hasError: true,
+      errorCount: 1,
+      errorText: 'Rate limit'
+    });
+  });
+
+  it('preserves standalone canvas pluginModule error in the workflow error summary', () => {
+    const summary = summarizeRuntimeNodeResponses(undefined, [
+      {
+        id: 'canvas-plugin',
+        nodeId: 'plugin-node',
+        moduleType: FlowNodeTypeEnum.pluginModule,
+        toolInput: { query: 'test' },
+        errorText: 'Plugin failed'
+      }
+    ] as ChatHistoryItemResType[]);
+
+    expect(summary).toMatchObject({
+      hasError: true,
+      errorCount: 1,
+      errorText: 'Plugin failed'
+    });
+  });
+
   it('collects new citations from incremental and nested responses', () => {
     const firstSummary = summarizeRuntimeNodeResponses(undefined, [
       {

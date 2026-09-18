@@ -20,7 +20,8 @@ import {
   checkInteractiveResponseStatus,
   removeAIResponseCite,
   hasContextCheckpoint,
-  isToolExecutionResponse
+  isToolExecutionResponse,
+  findFailedResponseNode
 } from '@fastgpt/global/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
@@ -811,7 +812,7 @@ describe('removeAIResponseCite', () => {
 });
 
 describe('isToolExecutionResponse', () => {
-  it('returns true when parentId is present', () => {
+  it('does not treat child workflow nodes as tools solely based on parentId', () => {
     expect(
       isToolExecutionResponse({
         id: 'child-1',
@@ -820,10 +821,10 @@ describe('isToolExecutionResponse', () => {
         moduleType: FlowNodeTypeEnum.agent,
         parentId: 'parent-1'
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it('returns true when moduleType is tool or toolSet', () => {
+  it('returns true when moduleType is tool, toolSet or toolCall', () => {
     expect(
       isToolExecutionResponse({
         id: 'tool-1',
@@ -841,9 +842,18 @@ describe('isToolExecutionResponse', () => {
         moduleType: FlowNodeTypeEnum.toolSet
       })
     ).toBe(true);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'tool-call-1',
+        nodeId: 'tool-call-node',
+        moduleName: 'Tool Call',
+        moduleType: FlowNodeTypeEnum.toolCall
+      })
+    ).toBe(true);
   });
 
-  it('returns true when toolRes or toolInput is present on other module types', () => {
+  it('returns true when toolRes or toolId is present', () => {
     expect(
       isToolExecutionResponse({
         id: 'sub-app-1',
@@ -856,13 +866,35 @@ describe('isToolExecutionResponse', () => {
 
     expect(
       isToolExecutionResponse({
-        id: 'sub-app-2',
+        id: 'sub-app-toolId',
         nodeId: 'sub-app-node',
         moduleName: 'SubApp Tool',
         moduleType: FlowNodeTypeEnum.appModule,
-        toolInput: { query: 'test' }
+        toolId: 'my_tool'
       })
     ).toBe(true);
+  });
+
+  it('does not treat standalone nodes with toolInput as tool execution unless toolId or toolRes is present', () => {
+    expect(
+      isToolExecutionResponse({
+        id: 'sub-app-2',
+        nodeId: 'sub-app-node',
+        moduleName: 'SubApp Node',
+        moduleType: FlowNodeTypeEnum.appModule,
+        toolInput: { query: 'test' }
+      })
+    ).toBe(false);
+
+    expect(
+      isToolExecutionResponse({
+        id: 'plugin-1',
+        nodeId: 'plugin-node',
+        moduleName: '插件',
+        moduleType: FlowNodeTypeEnum.pluginModule,
+        toolInput: { text: 'hello' }
+      })
+    ).toBe(false);
   });
 
   it('returns false for standalone root workflow nodes without tool attributes', () => {
@@ -892,5 +924,108 @@ describe('isToolExecutionResponse', () => {
         moduleType: FlowNodeTypeEnum.chatNode
       })
     ).toBe(false);
+  });
+});
+
+describe('findFailedResponseNode', () => {
+  it('returns undefined when responseData is empty', () => {
+    expect(findFailedResponseNode([])).toBeUndefined();
+  });
+
+  it('ignores tool execution responses', () => {
+    expect(
+      findFailedResponseNode([
+        {
+          id: 'sandbox-tool',
+          moduleName: '虚拟机/列出目录',
+          moduleType: FlowNodeTypeEnum.tool,
+          errorText: 'File not found'
+        }
+      ])
+    ).toBeUndefined();
+  });
+
+  it('ignores nodes with errorCaptured: true', () => {
+    expect(
+      findFailedResponseNode([
+        {
+          id: 'catch-node',
+          moduleName: 'HTTP 请求',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          errorText: 'Network timeout',
+          errorCaptured: true
+        }
+      ])
+    ).toBeUndefined();
+  });
+
+  it('returns root node error when present', () => {
+    const rootNode: ChatHistoryItemResType = {
+      id: 'root-llm',
+      moduleName: '主模型',
+      moduleType: FlowNodeTypeEnum.chatNode,
+      errorText: 'Quota exhausted'
+    };
+
+    expect(findFailedResponseNode([rootNode])).toEqual(rootNode);
+  });
+
+  it('prefers root node error over child node error', () => {
+    const rootNode: ChatHistoryItemResType = {
+      id: 'loop-run',
+      moduleName: '循环节点',
+      moduleType: FlowNodeTypeEnum.loopRun,
+      errorText: 'Loop failed'
+    };
+    const childNode: ChatHistoryItemResType = {
+      id: 'child-step',
+      moduleName: '代码节点',
+      moduleType: FlowNodeTypeEnum.code,
+      parentId: 'loop-run',
+      errorText: 'Code syntax error'
+    };
+
+    expect(findFailedResponseNode([childNode, rootNode])).toEqual(rootNode);
+  });
+
+  it('falls back to orphan child node error when parent container crashed before writing nodeResponse', () => {
+    const orphanChild: ChatHistoryItemResType = {
+      id: 'orphan-code',
+      moduleName: '代码节点',
+      moduleType: FlowNodeTypeEnum.code,
+      parentId: 'crashed-container',
+      errorText: 'Container killed unexpectedly'
+    };
+
+    expect(findFailedResponseNode([orphanChild])).toEqual(orphanChild);
+  });
+
+  it('returns standalone canvas pluginModule error', () => {
+    const pluginNode: ChatHistoryItemResType = {
+      id: 'canvas-plugin',
+      moduleName: '工作流插件',
+      moduleType: FlowNodeTypeEnum.pluginModule,
+      toolInput: { text: 'test' },
+      errorText: 'Plugin execution failed'
+    };
+
+    expect(findFailedResponseNode([pluginNode])).toEqual(pluginNode);
+  });
+
+  it('does not promote child node error when parent container is present and succeeded', () => {
+    const parentNode: ChatHistoryItemResType = {
+      id: 'parent-container',
+      moduleName: '循环容器',
+      moduleType: FlowNodeTypeEnum.loopRun
+    };
+    const childNode: ChatHistoryItemResType = {
+      id: 'child-step',
+      parentId: 'parent-container',
+      moduleName: '子节点',
+      moduleType: FlowNodeTypeEnum.code,
+      errorText: 'Internal branch error'
+    };
+
+    expect(findFailedResponseNode([parentNode, childNode])).toBeUndefined();
   });
 });

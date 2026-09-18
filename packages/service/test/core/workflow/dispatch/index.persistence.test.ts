@@ -622,7 +622,7 @@ describe('runWorkflow node response persistence', () => {
     }
   });
 
-  it('persists caught tool workflow errors while keeping their runtime summary', async () => {
+  it('persists caught workflow errors in detail without marking runtime summary as failed', async () => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
     callbackMap[FlowNodeTypeEnum.textEditor] = vi
       .fn()
@@ -730,10 +730,10 @@ describe('runWorkflow node response persistence', () => {
       });
 
       expect(result.workflowRuntimeSummary).toMatchObject({
-        hasError: true,
-        errorCount: 1,
-        errorText: 'upstream timeout'
+        hasError: false,
+        errorCount: 0
       });
+      expect(result.workflowRuntimeSummary.errorText).toBeUndefined();
       expect(detail).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
