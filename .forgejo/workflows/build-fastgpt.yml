@@ -67,6 +67,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Capture proxy envs from variables
         run: |
