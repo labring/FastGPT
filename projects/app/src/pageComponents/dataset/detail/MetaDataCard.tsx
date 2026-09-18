@@ -262,7 +262,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             {({ MemberListCard, onOpenManageModal }) => (
               <>
                 <Flex alignItems="center" justifyContent="space-between">
-                  <Box fontSize={'sm'} color={'myGray.500'}>
+                  <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'}>
                     {t('common:permission.Collaborator')}
                   </Box>
                   {collection.permission.hasManagePer && (
