@@ -267,6 +267,8 @@ export const FixedTableLayout = ({
 type FixedTableContainerProps = BoxProps & {
   /** 带边框的内嵌表：不留外侧 padding，最后一列表头延伸覆盖滚动条上方。 */
   flush?: boolean;
+  /** 统一应用到固定表头和表体的 Table 视觉变体。 */
+  tableVariant?: TableProps['variant'];
   /** 滚动 body 的背景色；仅需要覆盖滚动条留白时设置。 */
   bodyBg?: BoxProps['bg'];
   horizontalScroll?: boolean;
@@ -411,6 +413,7 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
       scrollContainer,
       horizontalScroll = false,
       flush = false,
+      tableVariant,
       bodyBg,
       ...rootProps
     },
@@ -427,6 +430,7 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
         React.isValidElement(child) && (child.type === Table || child.type === 'table')
     );
     const tableChildren = React.Children.toArray(table?.props.children);
+    const tableVariantProps = tableVariant ? { variant: tableVariant } : {};
     const isHead = (child: ReactNode) =>
       React.isValidElement(child) && (child.type === Thead || child.type === 'thead');
     const head = tableChildren.filter(isHead);
@@ -435,6 +439,7 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
         ? React.cloneElement(table, {
             id: undefined,
             ref: null,
+            ...tableVariantProps,
             children: head
           })
         : undefined;
@@ -442,6 +447,7 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
       ? content.map((child) =>
           child === table
             ? React.cloneElement(table!, {
+                ...tableVariantProps,
                 children: tableChildren.filter((child) => !isHead(child))
               })
             : child

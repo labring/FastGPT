@@ -463,7 +463,7 @@ const CreateAppsPage = () => {
                   borderWidth={'1px'}
                   position={'relative'}
                 >
-                  <FixedTableContainer maxH={360} minH={200}>
+                  <FixedTableContainer flush tableVariant={'flat'} maxH={360} minH={200}>
                     <Table bg={'white'}>
                       <Thead bg={'myGray.50'}>
                         <Tr>

@@ -91,12 +91,12 @@ defineIndex(ChatLogSchema, {
 // Update record
 defineIndex(ChatLogSchema, { key: { teamId: 1, appId: 1, chatId: 1 } });
 
+// Deprecated indexes
 // Get chart data with a source filter.
 defineIndex(ChatLogSchema, {
-  key: { teamId: 1, appId: 1, source: 1, updateTime: -1 }
+  key: { teamId: 1, appId: 1, source: 1, updateTime: -1 },
+  deprecated: true
 });
-
-// Deprecated indexes
 defineIndex(ChatLogSchema, {
   key: { teamId: 1, appId: 1, userId: 1 },
   deprecated: true
