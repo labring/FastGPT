@@ -18,7 +18,12 @@ import {
 import {
   delDatasetCollectionById,
   putDatasetCollectionById,
-  postLinkCollectionSync
+  postLinkCollectionSync,
+  getDatasetCollectionById,
+  getCollectionCollaboratorList,
+  postUpdateCollectionCollaborators,
+  putResumeCollectionInheritPermission,
+  postChangeCollectionOwner
 } from '@/web/core/dataset/api/collection';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
@@ -59,12 +64,17 @@ import {
 } from '@/web/core/dataset/trainingStatus';
 import TrainingErrorModal from './TrainingErrorModal';
 import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
+import { postEnableCollectionPermission } from '@/web/core/dataset/api';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
 import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core/dataset/api/training';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
 const CollectionTagSetModal = dynamic(() => import('./CollectionTagSetModal'));
 const CollectionTagBatchModal = dynamic(() => import('./CollectionTagBatchModal'));
+const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -82,6 +92,9 @@ const CollectionCard = () => {
   const [hasDatasetTrainingError, setHasDatasetTrainingError] = useState(false);
   const [tagSetCollection, setTagSetCollection] = useState<DatasetCollectionsListItemType>();
   const [isBatchTagModalOpen, setIsBatchTagModalOpen] = useState(false);
+  const [editPerCollection, setEditPerCollection] = useState<DatasetCollectionItemType>();
+  // 记录最近一次发起权限请求的 collection，用于丢弃快速切换目标时的过期响应。
+  const permissionTargetIdRef = useRef('');
 
   const {
     collections,
@@ -190,6 +203,64 @@ const CollectionCard = () => {
     errorToast: t('common:core.dataset.error.Start Sync Failed')
   });
 
+  /**
+   * 读取目标 collection 详情并写入权限弹窗状态。
+   * 快速切换目标时按最近一次请求的 ID 丢弃过期响应，避免旧详情覆盖新选中的 collection。
+   */
+  const { runAsync: loadPermissionCollection, loading: isOpeningCollectionPer } = useRequest(
+    async (collectionId: string) => {
+      const detail = await getDatasetCollectionById(collectionId);
+      if (permissionTargetIdRef.current !== collectionId) return;
+      setEditPerCollection(detail);
+    }
+  );
+
+  /**
+   * 开启文件级权限并打开配置窗：物化全部 collection 权限快照 → 刷新知识库详情（开关状态）→ 读取目标详情。
+   * 流程独立于确认框执行，失败由请求层提示，开关保持原值。
+   */
+  const { runAsync: enableCollectionPerAndOpen, loading: isEnablingCollectionPer } = useRequest(
+    async (collectionId: string) => {
+      await postEnableCollectionPermission({ datasetId: datasetDetail._id });
+      await loadDatasetDetail(datasetDetail._id);
+      await loadPermissionCollection(collectionId);
+    }
+  );
+
+  const {
+    openConfirm: openCollectionPerEnableConfirm,
+    ConfirmModal: ConfirmCollectionPerEnableModal
+  } = useConfirm({
+    content: t('common:permission.collection_permission_enable_confirm')
+  });
+
+  /** 权限弹窗内写操作后刷新列表权限摘要与当前 collection 详情，避免继承态/owner 停留在旧值。 */
+  const refreshPermissionCollection = async () => {
+    if (!editPerCollection) return;
+    await getData(pageNum);
+    await loadPermissionCollection(editPerCollection._id);
+  };
+
+  /**
+   * 打开 collection 权限配置。
+   * 数据集未开启文件级权限时先二次确认，确认后由 enableCollectionPerAndOpen 完成物化再打开配置窗；
+   * 已开启时直接读取详情并打开。确认框先关闭再执行异步流程，避免弹窗退出期间的状态刷新打断关闭动画。
+   */
+  const onOpenCollectionPer = (collectionId: string) => {
+    permissionTargetIdRef.current = collectionId;
+
+    if (datasetDetail.collectionPermissionEnabled === true) {
+      loadPermissionCollection(collectionId);
+      return;
+    }
+
+    openCollectionPerEnableConfirm({
+      onConfirm: () => {
+        enableCollectionPerAndOpen(collectionId).catch(() => undefined);
+      }
+    })();
+  };
+
   const hasTrainingData = useMemo(
     () => !!formatCollections.find((item) => item.trainingAmount > 0),
     [formatCollections]
@@ -233,7 +304,7 @@ const CollectionCard = () => {
     }
   });
 
-  const isLoading = isUpdating || isSyncing || isGetting || isDropping;
+  const isLoading = isUpdating || isSyncing || isGetting || isDropping || isEnablingCollectionPer;
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} pt={[2, 4]} pb={0} overflow={'hidden'}>
@@ -532,6 +603,16 @@ const CollectionCard = () => {
                                       })
                                   })
                               },
+                              ...(collection.permission.hasManagePer
+                                ? [
+                                    {
+                                      icon: 'key',
+                                      label: t('common:permission.Permission'),
+                                      disabled: isOpeningCollectionPer || isEnablingCollectionPer,
+                                      onClick: () => onOpenCollectionPer(collection._id)
+                                    }
+                                  ]
+                                : []),
                               ...(feConfigs?.isPlus &&
                               datasetDetail.type !== DatasetTypeEnum.websiteDataset
                                 ? [
@@ -578,6 +659,41 @@ const CollectionCard = () => {
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
         <EditTitleModal />
+        <ConfirmCollectionPerEnableModal />
+
+        {!!editPerCollection && (
+          <ConfigPerModal
+            avatar={editPerCollection.dataset.avatar}
+            name={editPerCollection.name}
+            hasParent
+            isInheritPermission={editPerCollection.inheritPermission !== false}
+            refetchResource={refreshPermissionCollection}
+            resumeInheritPermission={() =>
+              putResumeCollectionInheritPermission(editPerCollection._id).then(
+                refreshPermissionCollection
+              )
+            }
+            onChangeOwner={(tmbId) =>
+              postChangeCollectionOwner({
+                collectionId: editPerCollection._id,
+                ownerId: tmbId
+              }).then(refreshPermissionCollection)
+            }
+            managePer={{
+              defaultRole: ReadRoleVal,
+              permission: editPerCollection.permission,
+              roleList: DatasetRoleList,
+              onGetCollaboratorList: () => getCollectionCollaboratorList(editPerCollection._id),
+              onUpdateCollaborators: (props) =>
+                postUpdateCollectionCollaborators({
+                  ...props,
+                  collectionId: editPerCollection._id
+                }),
+              refreshDeps: [editPerCollection._id, editPerCollection.inheritPermission]
+            }}
+            onClose={() => setEditPerCollection(undefined)}
+          />
+        )}
 
         {!!tagSetCollection && (
           <CollectionTagSetModal

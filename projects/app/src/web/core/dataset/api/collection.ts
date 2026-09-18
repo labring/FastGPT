@@ -1,4 +1,4 @@
-import { GET, POST, DELETE } from '@/web/common/api/request';
+import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   ParentTreePathItemType,
   ParentIdType
@@ -23,10 +23,13 @@ import type {
 import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   DatasetCollectionsListItemType,
+  ChangeCollectionOwnerBody,
   DeleteCollectionBodyType,
   GetTagFilterOptionsResponseType,
+  GetCollectionCollaboratorListResponse,
   ReadCollectionSourceBodyType,
   ReadCollectionSourceResponseType,
+  UpdateCollectionCollaboratorBody,
   UpdateDatasetCollectionBodyType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import type { PaginationResponse } from '@fastgpt/global/openapi/api';
@@ -148,3 +151,15 @@ export const postBatchSetCollectionTags = (data: BatchSetCollectionTagsParams) =
 /* ================== read source ======================== */
 export const getCollectionSource = (data: ReadCollectionSourceBodyType) =>
   POST<ReadCollectionSourceResponseType>('/core/dataset/collection/read', data);
+
+/* ================== collection permission ======================== */
+export const getCollectionCollaboratorList = (collectionId: string) =>
+  GET<GetCollectionCollaboratorListResponse>(`/proApi/core/dataset/collection/collaborator/list`, {
+    collectionId
+  });
+export const postUpdateCollectionCollaborators = (body: UpdateCollectionCollaboratorBody) =>
+  POST(`/proApi/core/dataset/collection/collaborator/update`, body);
+export const putResumeCollectionInheritPermission = (collectionId: string) =>
+  PUT(`/core/dataset/collection/resumeInheritPermission`, { collectionId });
+export const postChangeCollectionOwner = (body: ChangeCollectionOwnerBody) =>
+  POST(`/proApi/core/dataset/collection/changeOwner`, body);

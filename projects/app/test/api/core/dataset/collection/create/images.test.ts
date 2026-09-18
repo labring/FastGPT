@@ -7,7 +7,7 @@ import {
 const {
   mockResolveMultipleFormData,
   mockClearDiskTempFiles,
-  mockAuthDataset,
+  mockAuthDatasetCollectionCreate,
   mockCheckDatasetIndexLimit,
   mockAssertUploadRateLimit,
   mockGetTeamPlanStatus,
@@ -21,7 +21,7 @@ const {
 } = vi.hoisted(() => ({
   mockResolveMultipleFormData: vi.fn(),
   mockClearDiskTempFiles: vi.fn(),
-  mockAuthDataset: vi.fn(),
+  mockAuthDatasetCollectionCreate: vi.fn(),
   mockCheckDatasetIndexLimit: vi.fn(),
   mockAssertUploadRateLimit: vi.fn(),
   mockGetTeamPlanStatus: vi.fn(),
@@ -48,7 +48,7 @@ vi.mock('@fastgpt/service/common/file/multer', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
-  authDataset: mockAuthDataset
+  authDatasetCollectionCreate: mockAuthDatasetCollectionCreate
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -121,7 +121,7 @@ describe('POST /api/core/dataset/collection/create/images', () => {
         }
       ]
     });
-    mockAuthDataset.mockResolvedValue({
+    mockAuthDatasetCollectionCreate.mockResolvedValue({
       teamId: 'team-id',
       tmbId: 'tmb-id',
       dataset: {

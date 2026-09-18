@@ -27,6 +27,9 @@ const CollectionCard = dynamic(
 const DataCard = dynamic(() => import('@/pageComponents/dataset/detail/DataCard'));
 const Test = dynamic(() => import('@/pageComponents/dataset/detail/Test'));
 const Info = dynamic(() => import('@/pageComponents/dataset/detail/Info/index'));
+const CollectionFolderCard = dynamic(
+  () => import('@/pageComponents/dataset/detail/CollectionFolderCard')
+);
 const Import = dynamic(() => import('@/pageComponents/dataset/detail/Import'));
 
 export enum TabEnum {
@@ -52,6 +55,9 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const { isPc } = useSystem();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const loadDatasetDetail = useContextSelector(DatasetPageContext, (v) => v.loadDatasetDetail);
+
+  const queryParentId = router.query.parentId;
+  const parentId = typeof queryParentId === 'string' ? queryParentId : '';
 
   useRequest(() => loadDatasetDetail(datasetId), {
     onError(err: any) {
@@ -93,7 +99,12 @@ const Detail = ({ datasetId, currentTab }: Props) => {
             )}
             {[TabEnum.collectionCard, TabEnum.test].includes(currentTab) && (
               <Flex {...sliderStyles} flex={'0 0 17rem'}>
-                <Info datasetId={datasetId} />
+                {/* 子目录浏览态右栏=该目录自身；知识库根目录右栏=知识库 Info（不变） */}
+                {currentTab === TabEnum.collectionCard && parentId ? (
+                  <CollectionFolderCard datasetId={datasetId} collectionId={parentId} />
+                ) : (
+                  <Info datasetId={datasetId} />
+                )}
               </Flex>
             )}
           </>

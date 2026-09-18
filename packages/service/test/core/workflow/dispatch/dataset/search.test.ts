@@ -11,6 +11,7 @@ const {
   defaultSearchDatasetDataMock,
   deepRagSearchMock,
   loadWorkflowDatasetResourceMock,
+  findDatasetByIdMock,
   getDatasetSearchVlmModelMock,
   formatModelChars2PointsMock,
   usagePushMock
@@ -18,6 +19,7 @@ const {
   defaultSearchDatasetDataMock: vi.fn(),
   deepRagSearchMock: vi.fn(),
   loadWorkflowDatasetResourceMock: vi.fn(),
+  findDatasetByIdMock: vi.fn(),
   getDatasetSearchVlmModelMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn(),
   usagePushMock: vi.fn()
@@ -34,6 +36,13 @@ vi.mock('@fastgpt/service/core/dataset/search/vlm', () => ({
 
 vi.mock('@fastgpt/service/core/workflow/utils/resource', () => ({
   loadWorkflowDatasetResource: loadWorkflowDatasetResourceMock
+}));
+
+vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
+  MongoDataset: {
+    findById: findDatasetByIdMock
+  }
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
