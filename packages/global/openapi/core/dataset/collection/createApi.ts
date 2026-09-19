@@ -1,5 +1,9 @@
 import z from 'zod';
-import { ChunkSettingsSchema, CollectionTagLabelSchema } from '../../../../core/dataset/type';
+import {
+  ChunkSettingsSchema,
+  CollectionTagLabelSchema,
+  sangforIndexConfigSchema
+} from '../../../../core/dataset/type';
 import { DatasetCollectionTypeEnum } from '../../../../core/dataset/constants';
 import { ParentIdSchema } from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
@@ -27,6 +31,16 @@ export const ApiCreateCollectionBaseSchema = DatasetCollectionStoreDataSchema.ex
   tags: CollectionTagsInputSchema
 });
 export type ApiCreateDatasetCollectionParams = z.infer<typeof ApiCreateCollectionBaseSchema>;
+
+// sangfor 导入链路会随集合参数一并透传索引增强配置(超级索引/小到大索引等)。这些字段不在通用
+// ChunkSettingsSchema 里,只在集合创建/重训/模板这些 leaf schema 上放行。
+const IultmzhCollectionStoreDataSchema = DatasetCollectionStoreDataSchema.extend(
+  sangforIndexConfigSchema.shape
+);
+const IultmzhCreateCollectionBaseSchema = IultmzhCollectionStoreDataSchema.extend({
+  datasetId: z.string().meta({ description: '数据集 ID' }),
+  tags: CollectionTagsInputSchema
+});
 
 // 集合创建带数据返回的 Response Schema（collectionId + insertResults）
 export const CreateCollectionWithResultResponseSchema = z.object({
@@ -68,7 +82,7 @@ export type CreateCollectionResponseType = z.infer<typeof CreateCollectionRespon
  * API: 重新训练集合
  * Route: POST /core/dataset/collection/create/reTrainingCollection
  * ============================================================================ */
-export const ReTrainingCollectionBodySchema = DatasetCollectionStoreDataSchema.extend({
+export const ReTrainingCollectionBodySchema = IultmzhCollectionStoreDataSchema.extend({
   collectionId: z.string().meta({ description: '需要重新训练的集合 ID' })
 });
 export type ReTrainingCollectionBodyType = z.infer<typeof ReTrainingCollectionBodySchema>;
@@ -82,7 +96,7 @@ export type ReTrainingCollectionResponseType = z.infer<typeof ReTrainingCollecti
  * API: 通过文件 ID 创建集合
  * Route: POST /core/dataset/collection/create/fileId
  * ============================================================================ */
-export const CreateCollectionByFileIdBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateCollectionByFileIdBodySchema = IultmzhCreateCollectionBaseSchema.extend({
   fileId: z.string().meta({ description: 'S3 文件对象键（必须是 dataset 路径下的文件）' }),
   customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' })
 });
@@ -93,7 +107,7 @@ export type CreateCollectionByFileIdBodyType = z.infer<typeof CreateCollectionBy
  * Route: POST /core/dataset/collection/create/localFile
  * Content-Type: multipart/form-data
  * ============================================================================ */
-export const CreateCollectionByLocalFileBodySchema = ApiCreateCollectionBaseSchema;
+export const CreateCollectionByLocalFileBodySchema = IultmzhCreateCollectionBaseSchema;
 export type CreateCollectionByLocalFileBodyType = z.infer<
   typeof CreateCollectionByLocalFileBodySchema
 >;
@@ -111,7 +125,7 @@ export const CreateCollectionByLocalFileFormSchema = z.object({
  * API: 通过链接创建集合
  * Route: POST /core/dataset/collection/create/link
  * ============================================================================ */
-export const CreateLinkCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateLinkCollectionBodySchema = IultmzhCreateCollectionBaseSchema.extend({
   link: z.string().url().meta({ description: '链接 URL' })
 });
 export type CreateLinkCollectionBodyType = z.infer<typeof CreateLinkCollectionBodySchema>;
@@ -120,7 +134,7 @@ export type CreateLinkCollectionBodyType = z.infer<typeof CreateLinkCollectionBo
  * API: 通过文本创建集合
  * Route: POST /core/dataset/collection/create/text
  * ============================================================================ */
-export const CreateTextCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateTextCollectionBodySchema = IultmzhCreateCollectionBaseSchema.extend({
   name: z.string().meta({ description: '集合名称' }),
   text: z.string().meta({ description: '文本内容' })
 });
@@ -130,7 +144,7 @@ export type CreateTextCollectionBodyType = z.infer<typeof CreateTextCollectionBo
  * API: 通过 API 数据集创建集合（V1）
  * Route: POST /core/dataset/collection/create/apiCollection
  * ============================================================================ */
-export const CreateApiCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateApiCollectionBodySchema = IultmzhCreateCollectionBaseSchema.extend({
   name: z.string().meta({ description: '集合名称' }),
   apiFileId: z.string().meta({ description: 'API 文件 ID' })
 });
@@ -140,8 +154,19 @@ export type CreateApiCollectionBodyType = z.infer<typeof CreateApiCollectionBody
  * API: 通过 API 数据集创建集合（V2，支持批量/文件夹）
  * Route: POST /core/dataset/collection/create/apiCollectionV2
  * ============================================================================ */
-export const CreateApiCollectionV2BodySchema = ApiCreateCollectionBaseSchema.extend({
-  apiFiles: z.array(APIFileItemSchema).meta({ description: 'API 文件列表（支持文件夹递归导入）' })
+// 文件级覆盖只认分块/增强/提示词字段，粒度与顶层 leaf schema 一致(含 sangfor 增强字段)。
+// datasetId/parentId/tags 等归属字段由本接口决定，不能被文件数据覆盖(未知字段会被 strip)。
+// catch 让单个文件的非法值回退为「不覆盖」，而不是让整批导入失败。
+const ApiFileChunkConfigSchema = ChunkSettingsSchema.extend(sangforIndexConfigSchema.shape);
+
+export const CreateApiCollectionV2BodySchema = IultmzhCreateCollectionBaseSchema.extend({
+  apiFiles: z
+    .array(
+      APIFileItemSchema.extend({
+        chunkConfig: ApiFileChunkConfigSchema.optional().catch(undefined)
+      })
+    )
+    .meta({ description: 'API 文件列表（支持文件夹递归导入）' })
 });
 export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2BodySchema>;
 
@@ -150,7 +175,7 @@ export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2
  * Route: POST /core/dataset/collection/create/images
  * Content-Type: multipart/form-data
  * ============================================================================ */
-export const CreateImageCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateImageCollectionBodySchema = IultmzhCreateCollectionBaseSchema.extend({
   collectionName: z.string().meta({ description: '集合名称' })
 });
 export type ImageCreateDatasetCollectionParams = z.infer<typeof CreateImageCollectionBodySchema>;
@@ -205,11 +230,9 @@ export const CreateBackupCollectionMultipartSchema = z.object({
  * Route: POST /core/dataset/collection/create/template
  * Content-Type: multipart/form-data
  * ============================================================================ */
-// handler 内 parse 用
-export const CreateTemplateCollectionFormSchema = z.object({
-  datasetId: z.string().meta({ description: '数据集 ID' }),
-  parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
-  tags: CollectionTagsInputSchema
+// handler 内 parse 用。base 已含 datasetId 与 tags（同一定义），这里只补模板接口特有的 parentId。
+export const CreateTemplateCollectionFormSchema = IultmzhCreateCollectionBaseSchema.extend({
+  parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' })
 });
 export type CreateTemplateCollectionFormType = z.infer<typeof CreateTemplateCollectionFormSchema>;
 
@@ -227,7 +250,7 @@ export const CreateTemplateCollectionMultipartSchema = z.object({
  * API: 通过外部文件 URL 创建集合（已废弃）
  * Route: POST /proApi/core/dataset/collection/create/externalFileUrl
  * ============================================================================ */
-export const CreateExternalFileCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateExternalFileCollectionBodySchema = IultmzhCreateCollectionBaseSchema.extend({
   externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
   externalFileUrl: z.string().meta({ description: '外部文件 URL' }),
   filename: z.string().optional().meta({ description: '文件名' })

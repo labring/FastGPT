@@ -29,7 +29,9 @@ async function handler(req: ApiRequestProps) {
     });
     filepaths.push(result.fileMetadata.path);
     const filename = decodeMultipartFilename(result.fileMetadata.originalname);
-    const { datasetId, parentId, tags } = CreateTemplateCollectionFormSchema.parse(result.data);
+    const { datasetId, parentId, ...collectionParams } = CreateTemplateCollectionFormSchema.parse(
+      result.data
+    );
 
     const { teamId, tmbId, dataset } = await authDataset({
       req,
@@ -75,6 +77,7 @@ async function handler(req: ApiRequestProps) {
       rawText,
       backupParse: true,
       createCollectionParams: {
+        ...collectionParams,
         teamId,
         tmbId,
         datasetId: dataset._id,
@@ -82,8 +85,7 @@ async function handler(req: ApiRequestProps) {
         name: filename,
         type: DatasetCollectionTypeEnum.file,
         fileId,
-        trainingType: DatasetCollectionDataProcessModeEnum.template,
-        tags
+        trainingType: DatasetCollectionDataProcessModeEnum.template
       }
     });
     promoted = true;

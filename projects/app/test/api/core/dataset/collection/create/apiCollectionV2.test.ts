@@ -117,4 +117,56 @@ describe('createApiDatasetCollection', () => {
       })
     );
   });
+
+  it('只允许 chunkConfig 覆盖分块/增强参数，不允许其注入归属字段', async () => {
+    mockListFiles.mockResolvedValueOnce([]);
+
+    await createApiDatasetCollection({
+      datasetId: 'dataset-id',
+      apiFiles: [
+        {
+          id: 'file-1',
+          rawId: 'file-1',
+          parentId: 'api-parent',
+          name: 'File 1',
+          type: 'file',
+          hasChild: false,
+          updateTime: new Date(),
+          createTime: new Date(),
+          chunkConfig: {
+            datasetId: 'injected-dataset',
+            parentId: 'injected-parent',
+            tags: ['injected-tag'],
+            chunkSize: 999,
+            indexSize: 111,
+            autoIndexes: true
+          }
+        }
+      ],
+      customPdfParse: false,
+      parentId: 'request-parent',
+      tags: [{ tagId: 'product' }],
+      trainingType: 'chunk',
+      teamId: 'team-id',
+      tmbId: 'tmb-id',
+      dataset: {
+        _id: 'dataset-id',
+        teamId: 'team-id',
+        type: DatasetTypeEnum.dataset,
+        permission: {}
+      } as any
+    } as any);
+
+    const { createCollectionParams } = mockCreateCollectionAndInsertData.mock.calls[0][0];
+    // 分块/增强参数允许按文件覆盖
+    expect(createCollectionParams).toMatchObject({
+      chunkSize: 999,
+      indexSize: 111,
+      autoIndexes: true
+    });
+    // 归属字段仍由请求本身决定，chunkConfig 无法注入
+    expect(createCollectionParams.datasetId).toBe('dataset-id');
+    expect(createCollectionParams.parentId).toBe('request-parent');
+    expect(createCollectionParams.tags).toEqual([{ tagId: 'product' }]);
+  });
 });

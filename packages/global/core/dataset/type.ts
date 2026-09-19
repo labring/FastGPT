@@ -140,6 +140,35 @@ export const sangforFileParseConfigSchema = z
   .meta({ description: '外部文档解析配置' });
 export type IultmzhFileParseConfigType = z.infer<typeof sangforFileParseConfigSchema>;
 
+/* ===== Iultmzh index/enhance config ===== */
+// sangfor 导入链路专用的索引增强配置(超级索引、小到大索引、自动索引细粒度及其提示词)。
+// FastGPT 不消费这些字段,且它们不在 Mongoose ChunkSettings 里(不落库),因此不计入通用
+// ChunkSettingsSchema,只在集合创建/预览类接口的 leaf schema 上挂载。
+export const sangforIndexConfigSchema = z.object({
+  hypeIndexes: z.boolean().optional().meta({ description: '超级索引' }),
+  small2bigIndexes: z.boolean().optional().meta({ description: '小到大索引' }),
+  autoIndexesConfig: z
+    .object({ questionIndex: z.boolean().optional(), summaryIndex: z.boolean().optional() })
+    .optional(),
+  hypeIndexPrompt: z.string().optional(),
+  small2bigConfig: z
+    .object({
+      chunkSize: z.number().optional(),
+      customSplitChar: z.string().optional(),
+      overlap: z.number().optional(),
+      overlapRatio: z.number().optional(),
+      maxChildChunks: z.number().optional(),
+      paragraphChunkDeep: z.number().optional(),
+      paragraphChunkMinSize: z.number().optional(),
+      maxSize: z.number().optional(),
+      customReg: z.array(z.string()).optional()
+    })
+    .optional(),
+  autoIndexesPrompt: z.string().optional(),
+  imageIndexPrompt: z.string().optional()
+});
+export type IultmzhIndexConfigType = z.infer<typeof sangforIndexConfigSchema>;
+
 /* ===== Dataset ===== */
 export const DatasetSchema = z
   .object({

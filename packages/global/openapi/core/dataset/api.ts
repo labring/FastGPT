@@ -9,6 +9,7 @@ import {
   DatasetSchema,
   DatasetListItemSchema,
   sangforFileParseConfigSchema,
+  sangforIndexConfigSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
 import { AppListSortEnum } from '../../../core/app/constants';
@@ -119,6 +120,15 @@ export const CreateDatasetWithFilesBodySchema = z.object({
       sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({
         description:
           '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
+      }),
+      // 不传时沿用本接口原有的系统默认分块设置，调用方传入才覆盖。
+      // sangfor 导入链路还会一并透传索引增强配置
+      chunkSettings: ChunkSettingsSchema.extend(sangforIndexConfigSchema.shape).optional().meta({
+        description: '上传文件所建集合的分块/增强/提示词配置。不传则使用系统默认分块设置'
+      }),
+      // 只做加法：不传时沿用本接口原有的 customPdfParse=false。
+      customPdfParse: z.boolean().optional().meta({
+        description: '上传文件所建集合是否走外部解析服务；不传则保持本接口原有的关闭行为'
       })
     })
     .meta({ description: '知识库参数' }),

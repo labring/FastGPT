@@ -145,6 +145,10 @@ export const createApiDatasetCollection = async ({
           dataset,
           createCollectionParams: {
             ...body,
+            // chunkConfig 只用于按文件覆盖分块/增强/提示词。datasetId、parentId、tags 等归属字段
+            // 由本接口决定；白名单过滤放在请求 schema(APIFileItemSchema 扩展)完成，非法值在该层
+            // 已被回退为「不覆盖」，这里不再二次 parse，避免单个文件的数据让整批导入失败。
+            ...(file.chunkConfig ?? {}),
             teamId,
             tmbId,
             type: DatasetCollectionTypeEnum.apiFile,

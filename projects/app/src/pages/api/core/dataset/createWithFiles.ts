@@ -49,7 +49,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     vectorModelId,
     agentModelId,
     vlmModelId,
-    sangforFileParseConfig
+    sangforFileParseConfig,
+    customPdfParse,
+    chunkSettings
   } = datasetParams;
   const modelHandle = await getModelHandle();
   const vectorModelData =
@@ -152,7 +154,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             chunkSplitMode: DataChunkSplitModeEnum.paragraph,
             chunkSize: 1024,
             indexSize: 512,
-            customPdfParse: false
+            customPdfParse: customPdfParse ?? false,
+            // 调用方传入的分块字段覆盖上面的同名默认值。注意默认 chunkSettingMode 是 auto，
+            // 而 auto 会用系统 autoChunkSize/autoIndexSize 覆盖 chunkSize/indexSize，因此
+            // 参数化的分块大小只有在调用方同时传 chunkSettingMode: 'custom' 时才生效。
+            ...(chunkSettings ?? {})
           },
           session
         });
