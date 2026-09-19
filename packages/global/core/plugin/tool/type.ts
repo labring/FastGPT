@@ -12,7 +12,7 @@ export const SystemToolBasicConfigSchema = z.object({
   pluginOrder: z.number().optional()
 });
 
-/** SystemTool 配置数据库里面的的存储结构 */
+/** SystemTool 配置数据库里面的存储结构 */
 export const SystemPluginToolCollectionSchema = SystemToolBasicConfigSchema.extend({
   pluginId: z.string(),
   promoteTags: z.array(UserTagsSchema).nullish(),
