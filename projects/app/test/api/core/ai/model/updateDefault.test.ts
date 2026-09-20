@@ -97,11 +97,8 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
     expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith();
   });
 
-  it('persists null as an explicit opt-out for the dataset image default', async () => {
-    await handler(
-      { body: { datasetImageLLMModelId: null } } as any,
-      {} as any
-    );
+  it('persists omitted optional model IDs as unconfigured', async () => {
+    await handler({ body: {} } as any, {} as any);
 
     expect(mocks.findLean).not.toHaveBeenCalled();
     expect(mocks.upsertSystemDefaultModelIds).toHaveBeenCalledWith(
@@ -112,7 +109,7 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
         stt: undefined,
         rerank: undefined,
         datasetTextLLM: undefined,
-        datasetImageLLM: null,
+        datasetImageLLM: undefined,
         chatTitleLLM: undefined
       },
       mocks.session

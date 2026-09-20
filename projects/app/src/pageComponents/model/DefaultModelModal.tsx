@@ -15,7 +15,7 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 
-type DefaultModelState = Record<keyof ModelDefaultIds, SystemModelDataType | null | undefined>;
+type DefaultModelState = Record<keyof ModelDefaultIds, SystemModelDataType | undefined>;
 
 const labelStyles = {
   fontSize: 'sm',
@@ -94,7 +94,7 @@ const DefaultModelModal = ({
       Object.fromEntries(
         Object.entries(defaultModelIds).map(([key, modelId]) => [
           key,
-          modelId === null ? null : models.find((model) => model.modelId === modelId)
+          models.find((model) => model.modelId === modelId)
         ])
       ) as DefaultModelState
   );
@@ -110,7 +110,7 @@ const DefaultModelModal = ({
   }) => {
     setDefaultData((state) => ({
       ...state,
-      [slot]: modelId === '' ? null : candidates.find((model) => model.modelId === modelId)
+      [slot]: candidates.find((model) => model.modelId === modelId)
     }));
   };
 
@@ -150,10 +150,7 @@ const DefaultModelModal = ({
                 [ModelTypeEnum.stt]: defaultData.stt?.modelId,
                 [ModelTypeEnum.rerank]: defaultData.rerank?.modelId,
                 datasetTextLLMModelId: defaultData.datasetTextLLM?.modelId,
-                datasetImageLLMModelId:
-                  defaultData.datasetImageLLM === null
-                    ? null
-                    : defaultData.datasetImageLLM?.modelId,
+                datasetImageLLMModelId: defaultData.datasetImageLLM?.modelId,
                 chatTitleLLMModelId: defaultData.chatTitleLLM?.modelId
               })
             }

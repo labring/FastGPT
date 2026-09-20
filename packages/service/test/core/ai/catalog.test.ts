@@ -27,7 +27,12 @@ const embedding = (modelId: string): SystemModelDataType => ({
 
 describe('resolveEffectiveDefaultModelIds', () => {
   it('keeps configured defaults when they are available to the member', () => {
-    const models = [llm('llm-first'), llm('llm-configured'), embedding('embedding-configured')];
+    const models = [
+      llm('llm-first'),
+      llm('llm-configured'),
+      llm('vision-configured', true),
+      embedding('embedding-configured')
+    ];
 
     expect(
       resolveEffectiveDefaultModelIds({
@@ -35,12 +40,14 @@ describe('resolveEffectiveDefaultModelIds', () => {
         configuredDefaults: {
           llm: 'llm-configured',
           datasetTextLLM: 'llm-configured',
+          datasetImageLLM: 'vision-configured',
           embedding: 'embedding-configured'
         }
       })
     ).toMatchObject({
       llm: 'llm-configured',
       datasetTextLLM: 'llm-configured',
+      datasetImageLLM: 'vision-configured',
       embedding: 'embedding-configured'
     });
   });
@@ -56,7 +63,7 @@ describe('resolveEffectiveDefaultModelIds', () => {
     expect(result.embedding).toBe('embedding-first');
   });
 
-  it('uses the first vision LLM for dataset images and never falls back chatTitle', () => {
+  it('never falls back optional defaults when configured models are unavailable', () => {
     const models = [llm('text-only'), llm('vision', true)];
     const result = resolveEffectiveDefaultModelIds({
       models,
@@ -66,17 +73,8 @@ describe('resolveEffectiveDefaultModelIds', () => {
       }
     });
 
-    expect(result.datasetImageLLM).toBe('vision');
+    expect(result.datasetImageLLM).toBeUndefined();
     expect(result.chatTitleLLM).toBeUndefined();
-  });
-
-  it('preserves an explicit opt-out instead of selecting the first vision LLM', () => {
-    const result = resolveEffectiveDefaultModelIds({
-      models: [llm('text-only'), llm('vision', true)],
-      configuredDefaults: { datasetImageLLM: null }
-    });
-
-    expect(result.datasetImageLLM).toBeNull();
   });
 
   it('returns undefined when no same-type fallback exists', () => {

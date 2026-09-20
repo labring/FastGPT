@@ -507,7 +507,7 @@ export const UpdateDefaultModelsBodySchema = z.object({
   [ModelTypeEnum.stt]: ModelIdSchema.optional(),
   [ModelTypeEnum.rerank]: ModelIdSchema.optional(),
   datasetTextLLMModelId: ModelIdSchema.optional(),
-  datasetImageLLMModelId: ModelIdSchema.nullable().optional(),
+  datasetImageLLMModelId: ModelIdSchema.optional(),
   chatTitleLLMModelId: ModelIdSchema.optional()
 });
 export type UpdateDefaultModelsBody = z.infer<typeof UpdateDefaultModelsBodySchema>;

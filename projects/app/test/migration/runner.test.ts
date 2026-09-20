@@ -494,26 +494,15 @@ describe('system migration runner', () => {
 
   it('leaves a stopped owner running until another node takes over the expired lease', async () => {
     let executions = 0;
-    let markFirstExecutionReady = () => {};
-    const firstExecutionReady = new Promise<void>((resolve) => {
-      markFirstExecutionReady = resolve;
-    });
     const migration = createMigration(
       '20260903_runner_crash_takeover',
       async (context) => {
         executions += 1;
         if (executions === 1) {
           await context.saveCheckpoint({ firstBatchCompleted: true });
-          await new Promise<void>((resolve) => {
-            if (context.signal.aborted) {
-              markFirstExecutionReady();
-              resolve();
-              return;
-            }
-
-            context.signal.addEventListener('abort', resolve, { once: true });
-            markFirstExecutionReady();
-          });
+          await new Promise<void>((resolve) =>
+            context.signal.addEventListener('abort', () => resolve(), { once: true })
+          );
           return;
         }
         expect(
@@ -544,7 +533,12 @@ describe('system migration runner', () => {
 
     try {
       await firstRunner.start();
-      await firstExecutionReady;
+      await vi.waitFor(async () => {
+        const state = await MongoSystemMigrationState.findById(migration.id).lean();
+        expect(state).toMatchObject({
+          status: SystemMigrationStatusEnum.running
+        });
+      });
 
       firstRunner.stop();
       await takeoverRunner.start();

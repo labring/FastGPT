@@ -134,13 +134,13 @@ describe('catalog consumers', () => {
     ).toBeUndefined();
   });
 
-  it('does not fall back to a vision model when the administrator explicitly disables it', async () => {
+  it('does not fall back to a vision model when no dataset image default is configured', async () => {
     mocks.catalog.mockResolvedValueOnce({
       version: 'v2',
       data: {
         models,
         providers: [],
-        defaultModelIds: { datasetImageLLM: null }
+        defaultModelIds: {}
       }
     });
 
