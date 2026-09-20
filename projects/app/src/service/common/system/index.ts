@@ -29,10 +29,7 @@ import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/co
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
-import {
-  isLicenseActive,
-  isLicenseFunctionEnabled
-} from '@fastgpt/global/common/system/license/utils';
+import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
@@ -159,9 +156,9 @@ export async function initSystemConfig() {
       show_aiproxy: hasAIProxyApiEndpoint(),
       show_coupon: appEnv.SHOW_COUPON,
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
-      show_dataset_enhance: isLicenseFunctionEnabled(licenseData, 'datasetEnhance'),
+      show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
-      show_batch_eval: isLicenseFunctionEnabled(licenseData, 'eval'),
+      show_batch_eval: licenseData?.functions?.eval,
       pluginRemoteDebug,
       payFormUrl: appEnv.PAY_FORM_URL || '',
       marketplaceUrl: appEnv.MARKETPLACE_URL,
