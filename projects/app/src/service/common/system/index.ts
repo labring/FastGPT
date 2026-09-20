@@ -151,6 +151,8 @@ export async function initSystemConfig() {
         ...(fastgptConfig.feConfigs?.limit || {})
       },
       isPlus,
+      // 仅表示是否接入 pro 服务（PRO_URL 已配置），与授权是否有效无关
+      isProService: !!serviceEnv.PRO_URL,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
       show_aiproxy: hasAIProxyApiEndpoint(),

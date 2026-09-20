@@ -59,6 +59,14 @@ export type FastGPTFeConfigsType = {
   show_workorder?: boolean;
   show_emptyChat?: boolean;
   isPlus?: boolean;
+  /**
+   * 是否部署了商业版（pro）服务，等价于服务端配置了 PRO_URL。
+   *
+   * 与 isPlus 的区别：isPlus 表示「授权是否有效」，会因未激活/已到期而为 false，
+   * 但这类部署仍然配置了 pro 服务（需要展示激活/续期入口）；本字段只表示服务是否接入，
+   * 用于区分「商业版部署」与「社区版部署」，后者没有授权概念，不应展示额度、公司名与激活状态。
+   */
+  isProService?: boolean;
   hideChatCopyrightSetting?: boolean;
   /**
    * 用户自助注册方式。兼容期允许读取旧配置中的 sync，但新配置不再写入 sync。

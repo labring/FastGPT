@@ -22,7 +22,7 @@ import DetailTeamModal from './components/DetailTeamModal';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import EditTeamModal from './components/EditTeamModal';
 import { getTeams } from '@/web/admin/users/api';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
@@ -46,7 +46,7 @@ const TeamTable = () => {
   });
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <HStack pb={4}>
         {isPc && (
           <Box as={'h1'} {...accountTitleTextStyles}>
@@ -121,7 +121,7 @@ const TeamTable = () => {
           )}
         </TableContainer>
       </ScrollData>
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 

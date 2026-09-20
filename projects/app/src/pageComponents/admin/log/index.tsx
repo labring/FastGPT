@@ -1,5 +1,5 @@
 'use client';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import {
   Table,
   Thead,
@@ -52,7 +52,7 @@ const LogTable = () => {
   });
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <HStack pb={4}>
         {isPc && (
           <Box as={'h1'} {...accountTitleTextStyles}>
@@ -122,7 +122,7 @@ const LogTable = () => {
         </TableContainer>
       </ScrollData>
       {logDetail && <LogDetailModal log={logDetail} onClose={() => setLogDetail(undefined)} />}
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 

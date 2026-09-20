@@ -42,5 +42,9 @@
   "license_portal": "入口網站",
   "license_sandbox_skills": "沙盒與技能",
   "license_yes": "已授權",
-  "license_no": "未授權"
+  "license_no": "未授權",
+  "license_community": "社群版",
+  "license_current_version": "目前版本",
+  "license_admin_home_community_description": "檢視目前版本與功能能力",
+  "license_upgrade_commercial": "了解商業版"
 }

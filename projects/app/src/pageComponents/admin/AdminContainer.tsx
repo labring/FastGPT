@@ -226,8 +226,8 @@ const AdminContainer = ({
       onChange={setCurrentTab}
       mobileScrollPositionKey={'admin-mobile-navigation'}
     >
-      {/* 内容区使用浅灰底，让迁移页面的 BoxCard 白卡片自然浮起（对齐 pro/admin 视觉） */}
-      <Box bg={'myGray.100'} h={'100%'} p={[0, 4]} overflow={'auto'}>
+      {/* 内容区白底铺满：各迁移页面自带内边距，这里不再叠一层灰底与 padding */}
+      <Box bg={'white'} h={'100%'} overflow={'auto'}>
         {children}
       </Box>
     </SecondaryNavigationContainer>

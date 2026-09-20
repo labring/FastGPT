@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box, Flex, Grid, GridItem, HStack, Skeleton } from '@chakra-ui/react';
 import { GET } from '@/web/admin/common/request';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type {
@@ -179,7 +179,7 @@ export default function DashboardOverview(): JSX.Element {
   ];
 
   return (
-    <BoxCard>
+    <BoxPageRoot>
       <DashboardHeader />
 
       {/* User Statistics */}
@@ -229,6 +229,6 @@ export default function DashboardOverview(): JSX.Element {
           ))}
         </Grid>
       </Box>
-    </BoxCard>
+    </BoxPageRoot>
   );
 }
