@@ -184,7 +184,10 @@ export function formatConfigStore2FormSchema({
           '',
         REGISTER_EN: fastgptPro.auth?.sms.REGISTER_EN || fastgptPro.auth?.sms.REGISTER || '',
         RESET_PASSWORD_EN:
-          fastgptPro.auth?.sms.RESET_PASSWORD_EN || fastgptPro.auth?.sms.RESET_PASSWORD || ''
+          fastgptPro.auth?.sms.RESET_PASSWORD_EN || fastgptPro.auth?.sms.RESET_PASSWORD || '',
+        CHANGE_PASSWORD: fastgptPro?.auth?.sms?.CHANGE_PASSWORD || '',
+        CHANGE_PASSWORD_EN:
+          fastgptPro.auth?.sms.CHANGE_PASSWORD_EN || fastgptPro.auth?.sms.CHANGE_PASSWORD || ''
       },
       phone: {
         SNED_PHONE_ACCESSKEYID: fastgptPro?.auth?.phone?.SNED_PHONE_ACCESSKEYID || '',

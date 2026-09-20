@@ -69,6 +69,8 @@ export type SystemConfigType = {
       POINTS_TEN_PERCENT_REMAIN: string;
       REGISTER_EN: string;
       RESET_PASSWORD_EN: string;
+      CHANGE_PASSWORD?: string;
+      CHANGE_PASSWORD_EN?: string;
       BIND_NOTIFICATION_EN: string;
       EXPIRE_SOON_EN: string;
       EXPIRED_EN: string;

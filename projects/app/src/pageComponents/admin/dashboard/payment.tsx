@@ -9,8 +9,12 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { GetPaysFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import DashboardHeader, { type DateRange } from '@/pageComponents/admin/dashboard/Header';
-import { formatList2ChartsData, getStartTime } from '@/pageComponents/admin/dashboard/utils';
+import DashboardHeader from '@/pageComponents/admin/dashboard/Header';
+import {
+  formatList2ChartsData,
+  getStartTime,
+  getDashboardFilters
+} from '@/pageComponents/admin/dashboard/utils';
 
 const ChartsBoxStyles = {
   px: 5,
@@ -29,14 +33,7 @@ export default function PaymentPage(): JSX.Element {
   const [orderAmountType, setOrderAmountType] = useState<'all' | 'success'>('success');
   const orderAmountField = orderAmountType === 'all' ? 'totalCount' : 'successCount';
 
-  // Get dateRange from query
-  const dateRange = useMemo((): DateRange => {
-    const range = router.query.dateRange;
-    if (range === '7' || range === '30' || range === '90' || range === '180') {
-      return Number(range) as DateRange;
-    }
-    return 7;
-  }, [router.query.dateRange]);
+  const { dateRange, granularity } = getDashboardFilters(router.query);
 
   const startTime = useMemo(() => getStartTime(dateRange), [dateRange]);
 
@@ -45,36 +42,37 @@ export default function PaymentPage(): JSX.Element {
       return await GET<GetPaysFormDataResponseType>(
         `/proApi/admin/core/dashboard/getPaysFormData`,
         {
-          startTime
+          startTime,
+          granularity
         }
       ).then((res) => ({
-        orderAmounts: formatList2ChartsData(
-          res.orderAmounts,
-          {
+        orderAmounts: formatList2ChartsData(res.orderAmounts, {
+          defaultValues: {
             totalCount: 0,
             successCount: 0
           },
-          startTime
-        ),
-        payAmounts: formatList2ChartsData(
-          res.payAmounts,
-          {
+          startTime,
+          granularity
+        }),
+        payAmounts: formatList2ChartsData(res.payAmounts, {
+          defaultValues: {
             totalCount: 0
           },
-          startTime
-        ),
-        payTeams: formatList2ChartsData(
-          res.payTeams,
-          {
+          startTime,
+          granularity
+        }),
+        payTeams: formatList2ChartsData(res.payTeams, {
+          defaultValues: {
             totalCount: 0
           },
-          startTime
-        )
+          startTime,
+          granularity
+        })
       }));
     },
     {
       manual: false,
-      refreshDeps: [dateRange, startTime]
+      refreshDeps: [dateRange, startTime, granularity]
     }
   );
 

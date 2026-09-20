@@ -8,8 +8,12 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { GetUserFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import DashboardHeader, { type DateRange } from '@/pageComponents/admin/dashboard/Header';
-import { formatList2ChartsData, getStartTime } from '@/pageComponents/admin/dashboard/utils';
+import DashboardHeader from '@/pageComponents/admin/dashboard/Header';
+import {
+  formatList2ChartsData,
+  getStartTime,
+  getDashboardFilters
+} from '@/pageComponents/admin/dashboard/utils';
 
 const ChartsBoxStyles = {
   px: 5,
@@ -25,14 +29,7 @@ export default function TrafficPage(): JSX.Element {
   const router = useRouter();
   const theme = useTheme();
 
-  // Get dateRange from query
-  const dateRange = useMemo((): DateRange => {
-    const range = router.query.dateRange;
-    if (range === '7' || range === '30' || range === '90' || range === '180') {
-      return Number(range) as DateRange;
-    }
-    return 7;
-  }, [router.query.dateRange]);
+  const { dateRange, granularity } = getDashboardFilters(router.query);
 
   const startTime = useMemo(() => getStartTime(dateRange), [dateRange]);
 
@@ -41,24 +38,25 @@ export default function TrafficPage(): JSX.Element {
       return await GET<GetUserFormDataResponseType>(
         `/proApi/admin/core/dashboard/getUserFormData`,
         {
-          startTime
+          startTime,
+          granularity
         }
       ).then((res) => {
         return {
           startUserCount: res.startUserCount,
-          registeredUserCount: formatList2ChartsData(
-            res.registeredUserCount,
-            {
+          registeredUserCount: formatList2ChartsData(res.registeredUserCount, {
+            defaultValues: {
               count: 0
             },
-            startTime
-          )
+            startTime,
+            granularity
+          })
         };
       });
     },
     {
       manual: false,
-      refreshDeps: [dateRange, startTime]
+      refreshDeps: [dateRange, startTime, granularity]
     }
   );
 

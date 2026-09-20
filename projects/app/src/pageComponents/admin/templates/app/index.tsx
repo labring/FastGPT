@@ -33,7 +33,7 @@ const AppTemplate = () => {
   } = useDisclosure();
 
   const {
-    data: templates = [],
+    data: templates,
     run: refreshTemplates,
     loading
   } = useRequest(getSystemTemplates, {
@@ -49,7 +49,9 @@ const AppTemplate = () => {
   const [localTemplates, setLocalTemplates] = useState<AppTemplateSchemaType[]>([]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 迁移自 pro/admin，保持原逻辑
+    // 请求尚未完成时保留本地状态，成功返回空列表时才清空（避免无限重渲染）。
+    if (templates === undefined) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 服务端刷新结果需同步至可拖拽的本地副本
     setLocalTemplates(templates);
   }, [templates]);
 
@@ -201,7 +203,7 @@ const AppTemplate = () => {
       )}
       {isOpenQuickTemplateModal && (
         <QuickTemplateModal
-          templates={templates}
+          templates={templates ?? localTemplates}
           onClose={onCloseQuickTemplateModal}
           refreshTemplates={refreshTemplates}
         />

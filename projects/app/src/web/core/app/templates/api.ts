@@ -22,8 +22,14 @@ export type AdminCreateTemplateBodyType = {
   workflow: WorkflowTemplateBasicType;
 };
 
-export const getSystemTemplates = () =>
-  GET<AppTemplateSchemaType[]>('/proApi/admin/core/app/templates/list');
+/**
+ * 模板列表与类型列表的契约都是数组，但 pro 服务不可用时请求层会降级为空分页结构（对象）。
+ * 在 API 边界收敛为数组，调用方（模板管理页）无需重复判断降级形态。
+ */
+export const getSystemTemplates = async () => {
+  const res = await GET<AppTemplateSchemaType[]>('/proApi/admin/core/app/templates/list');
+  return Array.isArray(res) ? res : [];
+};
 
 export const postCreateTemplate = (data: AdminCreateTemplateBodyType) =>
   POST('/proApi/admin/core/app/templates/create', data);
@@ -46,8 +52,10 @@ export const putUpdateTemplateOrder = (data: {
   templates: { templateId: string; order: number }[];
 }) => PUT('/proApi/admin/core/app/templates/updateOrder', data);
 
-export const getTemplateTypes = () =>
-  GET<GetTemplateTypesResponseType>('/proApi/core/app/template/getTemplateTypes');
+export const getTemplateTypes = async () => {
+  const res = await GET<GetTemplateTypesResponseType>('/proApi/core/app/template/getTemplateTypes');
+  return Array.isArray(res) ? res : [];
+};
 
 export const postSaveTemplateType = (data: {
   typeId: string;

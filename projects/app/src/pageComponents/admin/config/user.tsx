@@ -23,9 +23,9 @@ interface titleType {
 
 const UserSetting = () => {
   const [rawData, setRawData] = useState<ConfigFormType>();
-  const { feConfigs } = useSystemStore();
-  // app 侧暂无 License 系统，SSO 相关配置默认关闭（与开源版一致），后续接入 license 后替换
-  const licenseSsoEnabled = false;
+  const { feConfigs, licenseData } = useSystemStore();
+  // SSO 相关配置仅在商业版授权包含 sso 能力时开放
+  const licenseSsoEnabled = Boolean(licenseData?.functions?.sso);
   const { setValue, reset, watch, register, handleSubmit, control } =
     useForm<ConfigFormType['loginSettings']>();
 
@@ -204,6 +204,12 @@ const UserSetting = () => {
       </FormItem>
       {/*<FormItem title="重置密码(EN)" description="填写后，将会开启手机号找回密码">
         <Input {...register('sms.RESET_PASSWORD_EN')} placeholder="重置密码(英文)" />
+      </FormItem>*/}
+      <FormItem title="修改密码" description="填写后，手机号账号可以使用短信验证码修改密码">
+        <Input {...register('sms.CHANGE_PASSWORD')} placeholder="修改密码" />
+      </FormItem>
+      {/*<FormItem title="修改密码(EN)" description="填写后，手机号账号可以使用短信验证码修改密码">
+        <Input {...register('sms.CHANGE_PASSWORD_EN')} placeholder="修改密码(英文)" />
       </FormItem>*/}
       <FormItem title="绑定通知手机号" description="填写后，将会允许手机号绑定通知方式">
         <Input {...register('sms.BIND_NOTIFICATION')} placeholder="绑定通知手机号" />
