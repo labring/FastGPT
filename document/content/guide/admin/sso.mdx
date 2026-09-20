@@ -99,7 +99,7 @@ env:
   - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
 ```
 
-#### 2. 在商业版后台配置按钮文字，图标等。
+#### 2. 在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中配置按钮文字，图标等。
 
 <table className="table-hover table-striped-columns text-center">
   <thead>
@@ -492,7 +492,7 @@ env:
   - SYNC_MEMBER_CRON=0 0 * * *
 ```
 
-然后在商业版后台开启成员同步。SYNC_MEMBER_CRON 使用 UTC 时区；留空表示不执行定时同步。
+然后在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中开启成员同步。SYNC_MEMBER_CRON 使用 UTC 时区；留空表示不执行定时同步。
 
 #### LDAP 连接配置
 
@@ -838,6 +838,6 @@ curl 示例
 
 ## 如何对接非标准系统
 
-1. 客户自己开发：按 fastgpt 提供的标准接口进行开发，并将部署后的服务地址填入 fastgpt-pro
+1. 客户自己开发：按 fastgpt 提供的标准接口进行开发，并将部署后的服务地址填入 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置`
    可以参考该模版库：[fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template) 进行开发
 2. 由 fastgpt 团队定制开发：a. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。b. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接。
