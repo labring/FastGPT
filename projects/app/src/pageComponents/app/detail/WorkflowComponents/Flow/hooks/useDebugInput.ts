@@ -22,6 +22,7 @@ import {
   workflowReferenceValueIsSelectable,
   type WorkflowReferenceSourceNode
 } from '@/web/core/workflow/utils';
+import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 
 const primitiveValueTypes = new Set<WorkflowIOValueTypeEnum>([
   WorkflowIOValueTypeEnum.string,
@@ -41,6 +42,18 @@ const fileSelectEnabled = (config?: AppFileSelectConfigType) =>
     config?.canSelectAudio ||
     config?.canSelectCustomFileExtension
   );
+
+/** 识别调试表单中需要临时接收文件 URL 的节点输入。 */
+export const isDebugFileUrlInput = ({ input }: { input: FlowNodeInputItemType }) => {
+  const selectedType = getSelectedInputRenderType(input);
+
+  return (
+    input.key === NodeInputKeyEnum.fileUrlList &&
+    input.valueType === WorkflowIOValueTypeEnum.arrayString &&
+    (selectedType === FlowNodeInputTypeEnum.reference ||
+      selectedType === FlowNodeInputTypeEnum.agentGenerated)
+  );
+};
 
 /** 根据应用文件配置，为流程开始节点生成仅用于调试表单的文件输入。 */
 export const getWorkflowStartDebugFileInput = ({
@@ -159,10 +172,27 @@ export const getDebugInputFormValue = (input: FlowNodeInputItemType) => {
   return value;
 };
 
-export const getDebugInputFormProps = (input: FlowNodeInputItemType) => {
+export const getDebugInputFormProps = (
+  input: FlowNodeInputItemType,
+  options?: {
+    maxFiles?: number;
+  }
+) => {
   const props = { ...input };
   delete props.value;
   delete props.defaultValue;
+
+  if (isDebugFileUrlInput({ input })) {
+    return {
+      ...props,
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+      canSelectFile: true,
+      canLocalUpload: true,
+      canUrlUpload: true,
+      retainPreviewUrl: true,
+      maxFiles: options?.maxFiles
+    };
+  }
 
   if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
     return {
@@ -173,6 +203,19 @@ export const getDebugInputFormProps = (input: FlowNodeInputItemType) => {
   }
 
   return props;
+};
+
+/** 统一生成节点调试字段属性和控件类型，避免控件类型继续读取转换前的 renderTypeList。 */
+export const getDebugInputFormConfig = (
+  input: FlowNodeInputItemType,
+  options?: Parameters<typeof getDebugInputFormProps>[1]
+) => {
+  const inputProps = getDebugInputFormProps(input, options);
+
+  return {
+    inputProps,
+    inputType: nodeInputTypeToInputType(inputProps.renderTypeList)
+  };
 };
 
 const parseDebugInputFormValue = (input: FlowNodeInputItemType, value: any) => {

@@ -13,10 +13,12 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { WorkflowReferenceSourceNode } from '@/web/core/workflow/utils';
+import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import {
   checkInputShouldRenderInDebug,
   debugNodeShouldShowAllInputs,
   getDebugGlobalVariableFormProps,
+  getDebugInputFormConfig,
   getDebugInputFormProps,
   getDebugInputFormValue,
   getDebugRuntimeInputs,
@@ -397,6 +399,85 @@ describe('useDebugInput', () => {
     });
   });
 
+  it('should render a reference file URL input as a local and URL file selector', () => {
+    const input = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(
+      getDebugInputFormProps(input, {
+        maxFiles: 12
+      })
+    ).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.fileSelect],
+      canSelectFile: true,
+      canLocalUpload: true,
+      canUrlUpload: true,
+      retainPreviewUrl: true,
+      maxFiles: 12
+    });
+  });
+
+  it('should calculate the read files input type from transformed form props', () => {
+    const input = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(
+      getDebugInputFormConfig(input, {
+        maxFiles: 12
+      }).inputType
+    ).toBe(InputTypeEnum.fileSelect);
+  });
+
+  it('should render an agent generated file URL input as a file selector', () => {
+    const input = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.reference,
+        FlowNodeInputTypeEnum.JSONEditor
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(getDebugInputFormConfig(input, { maxFiles: 12 }).inputType).toBe(
+      InputTypeEnum.fileSelect
+    );
+  });
+
+  it('should keep manually configured file URL input as JSON editor', () => {
+    const input = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.JSONEditor],
+      selectedType: FlowNodeInputTypeEnum.JSONEditor,
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(getDebugInputFormConfig(input).inputType).toBe(InputTypeEnum.JSONEditor);
+  });
+
+  it('should not change another array string input', () => {
+    const input = makeInput({
+      key: 'otherInput',
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      valueType: WorkflowIOValueTypeEnum.arrayString
+    });
+
+    expect(
+      getDebugInputFormProps(input, {
+        maxFiles: 12
+      })
+    ).toMatchObject({
+      renderTypeList: [FlowNodeInputTypeEnum.reference]
+    });
+  });
+
   it('should not use default value as node debug form default value', () => {
     const input = makeInput({
       key: 'query',
@@ -441,6 +522,27 @@ describe('useDebugInput', () => {
     });
 
     expect(updatedInput.value).toBeUndefined();
+  });
+
+  it('should replace only the runtime read files input without mutating the original reference', () => {
+    const referenceValue = [['workflowStart', NodeOutputKeyEnum.userFiles]];
+    const referenceInput = makeInput({
+      key: NodeInputKeyEnum.fileUrlList,
+      renderTypeList: [FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      valueType: WorkflowIOValueTypeEnum.arrayString,
+      value: referenceValue
+    });
+
+    const [runtimeInput] = getDebugRuntimeInputs({
+      inputs: [referenceInput],
+      nodeVariables: {
+        [NodeInputKeyEnum.fileUrlList]: ['https://files.example.com/local.pdf']
+      }
+    });
+
+    expect(runtimeInput.value).toEqual(['https://files.example.com/local.pdf']);
+    expect(referenceInput.value).toBe(referenceValue);
   });
 
   it('should keep inputs that are not shown in the debug form unchanged', () => {
