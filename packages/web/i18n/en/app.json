@@ -334,7 +334,7 @@
   "raw_params": "original parameters",
   "reasoning_effort": "Reasoning effort",
   "reasoning_effort_unsupported": "This model does not support disabling reasoning",
-  "reasoning_response": "Hide AI reasoning",
+  "reasoning_response": "Hide reasoning output",
   "recharge": "Go to recharge",
   "reference_variable": "Citation variables",
   "refresh_templates": "Refresh",
