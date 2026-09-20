@@ -95,15 +95,3 @@ export const isLicenseExpired = (data: LicenseTimeFields | undefined, now: Date 
 /** License 是否处于可授权状态：存在、已生效且未到期。 */
 export const isLicenseActive = (data: LicenseTimeFields | undefined, now: Date = new Date()) =>
   !isLicenseExpired(data, now);
-
-/**
- * 判断某项授权能力是否可用。
- *
- * 功能开关必须同时满足「授权在有效期内」与「该能力被签发」，只读 `functions[key]`
- * 会让已过期的 License 继续开启对应功能。
- */
-export const isLicenseFunctionEnabled = (
-  data: (LicenseTimeFields & { functions?: Record<string, boolean | undefined> }) | undefined,
-  key: string,
-  now: Date = new Date()
-) => isLicenseActive(data, now) && data?.functions?.[key] === true;
