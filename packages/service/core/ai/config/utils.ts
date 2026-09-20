@@ -287,12 +287,6 @@ const publishInstalledModels = async ({
       if (!_systemDefaultModel.datasetTextLLM) {
         _systemDefaultModel.datasetTextLLM = _systemDefaultModel.llm;
       }
-      if (!_systemDefaultModel.datasetImageLLM) {
-        _systemDefaultModel.datasetImageLLM = _systemActiveModelList.find(
-          (model): model is LLMSystemModelDataType =>
-            model.type === ModelTypeEnum.llm && !!model.config.vision
-        );
-      }
       if (!_systemDefaultModel.embedding) {
         _systemDefaultModel.embedding = _systemActiveModelList.find(
           (model): model is EmbeddingSystemModelDataType => model.type === ModelTypeEnum.embedding

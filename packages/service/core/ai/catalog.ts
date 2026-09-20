@@ -4,7 +4,7 @@ import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
 
 /**
  * 按成员实际可用模型计算有效默认 ID。管理员配置不可用时仅在同类型内回退；图片数据集
- * 默认模型额外要求 vision 能力。chatTitle 是可选增强能力，不做隐式回退。
+ * 与 chatTitle 是可选增强能力，只校验已配置模型，不做隐式回退。
  */
 export const resolveEffectiveDefaultModelIds = ({
   models,
@@ -34,6 +34,9 @@ export const resolveEffectiveDefaultModelIds = ({
   const configuredChatTitle = configuredDefaults.chatTitleLLM
     ? modelMap.get(configuredDefaults.chatTitleLLM)
     : undefined;
+  const configuredDatasetImage = configuredDefaults.datasetImageLLM
+    ? modelMap.get(configuredDefaults.datasetImageLLM)
+    : undefined;
 
   return {
     [ModelTypeEnum.llm]: resolve({
@@ -60,11 +63,10 @@ export const resolveEffectiveDefaultModelIds = ({
       configuredId: configuredDefaults.datasetTextLLM,
       type: ModelTypeEnum.llm
     }),
-    datasetImageLLM: resolve({
-      configuredId: configuredDefaults.datasetImageLLM,
-      type: ModelTypeEnum.llm,
-      predicate: (model) => model.type === ModelTypeEnum.llm && !!model.config.vision
-    }),
+    datasetImageLLM:
+      configuredDatasetImage?.type === ModelTypeEnum.llm && configuredDatasetImage.config.vision
+        ? configuredDatasetImage.modelId
+        : undefined,
     chatTitleLLM:
       configuredChatTitle?.type === ModelTypeEnum.llm ? configuredChatTitle.modelId : undefined
   };
