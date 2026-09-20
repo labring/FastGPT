@@ -29,6 +29,10 @@ import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/co
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import {
+  isLicenseActive,
+  isLicenseFunctionEnabled
+} from '@fastgpt/global/common/system/license/utils';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
@@ -135,7 +139,10 @@ export async function initSystemConfig() {
     getFastGPTConfigFromDB(),
     getPluginRemoteDebugEnabled()
   ]);
+  // global 保留快照（含已到期），功能开关按授权是否有效计算，
+  // 避免过期的商业版授权继续开启商业能力；前端据此可区分「未激活」与「已到期」。
   global.licenseData = licenseData;
+  const isPlus = isLicenseActive(licenseData);
 
   const config: FastGPTConfigFileType = {
     feConfigs: {
@@ -146,15 +153,15 @@ export async function initSystemConfig() {
         ...defaultFeConfigs.limit,
         ...(fastgptConfig.feConfigs?.limit || {})
       },
-      isPlus: !!licenseData,
+      isPlus,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
       show_aiproxy: hasAIProxyApiEndpoint(),
       show_coupon: appEnv.SHOW_COUPON,
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
-      show_dataset_enhance: licenseData?.functions?.datasetEnhance,
+      show_dataset_enhance: isLicenseFunctionEnabled(licenseData, 'datasetEnhance'),
       show_intelligent_chunking: !!serviceEnv.SANGFOR_CHUNK_URL,
-      show_batch_eval: licenseData?.functions?.batchEval,
+      show_batch_eval: isLicenseFunctionEnabled(licenseData, 'eval'),
       pluginRemoteDebug,
       payFormUrl: appEnv.PAY_FORM_URL || '',
       marketplaceUrl: appEnv.MARKETPLACE_URL,
@@ -184,7 +191,7 @@ export async function initSystemConfig() {
     subPlans: fastgptConfig.subPlans
   };
 
-  if (!licenseData) {
+  if (!isPlus) {
     config.feConfigs.loginGuideDocUrl = defaultOpenSourceLoginGuideDocUrl;
   }
 
