@@ -35,6 +35,11 @@
   "license_capabilities": "Capabilities",
   "license_sso": "Single sign-on",
   "license_pay": "Payment system",
-  "license_templates": "Custom templates and system tools",
-  "license_dataset_enhance": "Dataset enhancement"
+  "license_dataset_enhance": "Dataset enhancement",
+  "license_eval": "Evaluation",
+  "license_assistant_generate": "Assistant generation",
+  "license_portal": "Portal",
+  "license_sandbox_skills": "Sandbox and skills",
+  "license_yes": "Enabled",
+  "license_no": "Not enabled"
 }

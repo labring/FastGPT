@@ -35,6 +35,11 @@
   "license_capabilities": "제공 기능",
   "license_sso": "싱글 사인온",
   "license_pay": "결제 시스템",
-  "license_templates": "사용자 지정 템플릿 및 시스템 도구",
-  "license_dataset_enhance": "데이터셋 강화"
+  "license_dataset_enhance": "데이터셋 강화",
+  "license_eval": "평가",
+  "license_assistant_generate": "보조 생성",
+  "license_portal": "포털",
+  "license_sandbox_skills": "샌드박스 및 스킬",
+  "license_yes": "사용 가능",
+  "license_no": "사용 불가"
 }

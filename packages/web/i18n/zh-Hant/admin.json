@@ -35,6 +35,11 @@
   "license_capabilities": "授權能力",
   "license_sso": "單一登入",
   "license_pay": "支付系統",
-  "license_templates": "自訂範本和系統工具",
-  "license_dataset_enhance": "知識庫增強"
+  "license_dataset_enhance": "知識庫增強",
+  "license_eval": "評估",
+  "license_assistant_generate": "輔助生成",
+  "license_portal": "入口網站",
+  "license_sandbox_skills": "沙盒與技能",
+  "license_yes": "已授權",
+  "license_no": "未授權"
 }

@@ -1,8 +1,22 @@
 import type { SubPlanType } from '../../../support/wallet/sub/type';
 import type { AccountCancellationVerificationCapabilities } from '../../../support/user/account/cancellation/type';
-import type { LicensePayload, LicenseSchemaVersionType, LicenseType, LicenseFunctions, LicenseLimits } from '../license/schema';
+import type {
+  LicensePayload,
+  LicenseSchemaVersionType,
+  LicenseType,
+  LicenseFunctions,
+  LicenseFunctionKey,
+  LicenseLimits
+} from '../license/schema';
 
-export type { LicensePayload, LicenseSchemaVersionType, LicenseType, LicenseFunctions, LicenseLimits };
+export type {
+  LicensePayload,
+  LicenseSchemaVersionType,
+  LicenseType,
+  LicenseFunctions,
+  LicenseFunctionKey,
+  LicenseLimits
+};
 export {
   licenseFunctionKeys,
   licenseLimitsKeys,

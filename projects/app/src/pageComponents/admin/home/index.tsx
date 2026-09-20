@@ -6,6 +6,7 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import LicenseInput from '@/components/admin/License/Input';
 import { commercialDocUrl } from '@/components/admin/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { LicenseFunctionKey } from '@fastgpt/global/common/system/types';
 
 const formatDate = (value?: string) => {
   if (!value) return '--';
@@ -30,6 +31,26 @@ const isLicenseExpiringSoon = (expiredTime?: string, licenseType?: string) => {
   return expiration <= threshold;
 };
 
+/**
+ * 授权能力的展示顺序与文案 key，键取自决策版函数清单（licenseFunctionKeys）。
+ *
+ * 顺序即界面顺序：先给客户最关心的登录与计费，再是增强类能力。
+ * 新增能力时在 licenseFunctionKeys 与本清单各补一项即可，两个清单不一致时由
+ * typing 报错提醒，不会静默漏展示某一项授权。
+ */
+const FUNCTION_CAPABILITY_ITEMS: Array<{
+  key: LicenseFunctionKey;
+  labelKey: string;
+}> = [
+  { key: 'sso', labelKey: 'license_sso' },
+  { key: 'pay', labelKey: 'license_pay' },
+  { key: 'eval', labelKey: 'license_eval' },
+  { key: 'datasetEnhance', labelKey: 'license_dataset_enhance' },
+  { key: 'assistantGenerate', labelKey: 'license_assistant_generate' },
+  { key: 'portal', labelKey: 'license_portal' },
+  { key: 'sandboxSkills', labelKey: 'license_sandbox_skills' }
+];
+
 /** 管理员首页的 License 概览，按设计稿展示租户信息、额度和授权能力。 */
 const AdminHome = () => {
   const { licenseData, licenseLoading } = useSystemStore();
@@ -47,18 +68,13 @@ const AdminHome = () => {
       .slice(0, 2);
     return (latin || company.slice(0, 2) || 'VI').toUpperCase();
   }, [company]);
-  const capabilities = [
-    { label: t('admin:license_sso'), enabled: Boolean(licenseData?.functions?.sso) },
-    { label: t('admin:license_pay'), enabled: Boolean(licenseData?.functions?.pay) },
-    {
-      label: t('admin:license_templates'),
-      enabled: Boolean(licenseData?.functions?.customTemplates || licenseData?.functions?.portal)
-    },
-    {
-      label: t('admin:license_dataset_enhance'),
-      enabled: Boolean(licenseData?.functions?.datasetEnhance)
-    }
-  ];
+  // 展示顺序与文案由展示清单决定；每一项都从 licenseData.functions 实际取值，
+  // 未激活（licenseData 为空）时全部显示为未授权，不隐藏任何能力项。
+  const capabilities = FUNCTION_CAPABILITY_ITEMS.map(({ key, labelKey }) => ({
+    key,
+    label: t(`admin:${labelKey}`),
+    enabled: Boolean(licenseData?.functions?.[key])
+  }));
 
   /**
    * License 主操作入口：未激活/已过期（licenseData 为空）时打开激活弹窗完成首次激活或续期，
@@ -242,9 +258,9 @@ const AdminHome = () => {
             {t('admin:license_capabilities')}
           </Box>
           <Grid templateColumns={'1fr 1fr'} gap={'10px'}>
-            {capabilities.map(({ label, enabled }) => (
+            {capabilities.map(({ key, label, enabled }) => (
               <Flex
-                key={label}
+                key={key}
                 alignItems="center"
                 gap={'11px'}
                 h="50px"
