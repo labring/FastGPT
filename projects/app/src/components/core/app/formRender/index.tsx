@@ -235,6 +235,7 @@ const InputRender = (props: InputRenderProps) => {
         canLocalUpload={fileSelectProps.canLocalUpload}
         canUrlUpload={fileSelectProps.canUrlUpload}
         onFileErrorChange={props.onFileErrorChange}
+        retainPreviewUrl={props.retainPreviewUrl}
       />
     );
   }

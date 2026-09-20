@@ -54,6 +54,7 @@ export type SpecificProps = {
   outLinkAuthData?: OutLinkChatAuthProps;
 
   // fileSelect
+  retainPreviewUrl?: boolean;
   form?: UseFormReturn<any>;
   fieldName?: string;
   canLocalUpload?: boolean;
