@@ -35,6 +35,7 @@ import {
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
+import { startCollectionImportAudit, type CollectionImportSourceType } from '../audit';
 import type {
   CreateCollectionWithResultResponseType,
   ApiCreateDatasetCollectionParams
@@ -47,7 +48,10 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams,
   backupParse = false,
   billId,
-  session
+  session,
+  audit = true,
+  auditSourceType,
+  auditTaskId
 }: {
   dataset: DatasetSchemaType;
   rawText?: string;
@@ -58,6 +62,9 @@ export const createCollectionAndInsertData = async ({
 
   billId?: string;
   session?: ClientSession;
+  audit?: boolean;
+  auditSourceType?: CollectionImportSourceType;
+  auditTaskId?: string;
 }): Promise<CreateCollectionWithResultResponseType> => {
   const modelHandle = await getModelHandle();
   const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
@@ -187,6 +194,27 @@ export const createCollectionAndInsertData = async ({
     insertLen: predictDataLimitLength(trainingMode, chunks)
   });
 
+  // 审计旁路：来源推断、任务创建与收口都封装在 dataset 审计模块，业务层只持有返回对象
+  const importAudit = await startCollectionImportAudit({
+    enabled: audit,
+    taskId: auditTaskId,
+    teamId,
+    tmbId,
+    datasetId: String(dataset._id),
+    datasetName: dataset.name,
+    collectionName: createCollectionParams.name,
+    sourceType: auditSourceType,
+    trainingType,
+    imageIds,
+    rawText,
+    rawLink: createCollectionParams.rawLink,
+    externalFileId: createCollectionParams.externalFileId,
+    externalFileUrl: createCollectionParams.externalFileUrl,
+    apiFileId: createCollectionParams.apiFileId,
+    chunkSize: formatCreateCollectionParams.chunkSize,
+    indexSize: formatCreateCollectionParams.indexSize
+  });
+
   const fn = async (session: ClientSession): Promise<CreateCollectionWithResultResponseType> => {
     // 3. Create collection
     const { _id: collectionId } = await createOneCollection({
@@ -230,6 +258,7 @@ export const createCollectionAndInsertData = async ({
           indexSize,
           mode: trainingMode,
           billId: traingUsageId,
+          auditTaskId: importAudit.taskId,
           data: chunks.map((item, index) => ({
             ...item,
             indexes: item.indexes?.map((text) => ({
@@ -247,6 +276,7 @@ export const createCollectionAndInsertData = async ({
           datasetId: dataset._id,
           collectionId,
           billId: traingUsageId,
+          auditTaskId: importAudit.taskId,
           session
         });
         return {
@@ -263,10 +293,16 @@ export const createCollectionAndInsertData = async ({
     };
   };
 
-  if (session) {
-    return fn(session);
-  }
-  return mongoSessionRun(fn);
+  const result = await (session ? fn(session) : mongoSessionRun(fn)).catch(async (error) => {
+    // fail 内部吞掉审计异常，业务错误仍按原样外抛
+    await importAudit.fail(error);
+    throw error;
+  });
+
+  // 回填真实 collectionId 并尝试收口一次；未创建审计时为 no-op
+  await importAudit.bindCollection(result.collectionId);
+
+  return result;
 };
 
 export type CreateOneCollectionParams = ApiCreateDatasetCollectionParams & {
