@@ -74,7 +74,9 @@ const ActivityAdModal = () => {
           onOpen();
         }
       },
-      refreshDeps: [isCancellationRestricted, userInfo]
+      refreshDeps: [isCancellationRestricted, userInfo, feConfigs?.isPlus],
+      // 活动广告属于附加展示：未配置或不可用时静默跳过，不向用户报错
+      errorToast: ''
     }
   );
 

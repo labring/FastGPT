@@ -99,7 +99,7 @@ env:
   - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
 ```
 
-#### 2. Configure button text, icons, etc. in the commercial version admin panel.
+#### 2. In the FastGPT frontend, go to `Admin` -> `System Configuration` -> `User Configuration` to configure button text, icons, etc.
 
 <table className="table-hover table-striped-columns text-center">
   <thead>
@@ -495,7 +495,7 @@ env:
   - SYNC_MEMBER_CRON=0 0 * * *
 ```
 
-Enable member synchronization in the commercial admin panel. SYNC_MEMBER_CRON uses UTC; leaving it empty disables scheduled synchronization.
+Enable member synchronization in the FastGPT frontend under `Admin` -> `System Configuration` -> `User Configuration`. SYNC_MEMBER_CRON uses UTC; leaving it empty disables scheduled synchronization.
 
 #### LDAP Connection Configuration
 
@@ -818,7 +818,7 @@ curl example
 
 ## How to Integrate Non-Standard Systems
 
-1. Self-development: Build according to the standard interfaces provided by FastGPT, then enter the deployed service address into fastgpt-pro.
+1. Self-development: Build according to the standard interfaces provided by FastGPT, then enter the deployed service address in the FastGPT frontend under `Admin` -> `System Configuration` -> `User Configuration`.
    You can use this template repository as a starting point: [fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template)
 2. Custom development by the FastGPT team:
    a. Provide the system's SSO documentation, member and organization retrieval documentation, and an external test address.
