@@ -4,6 +4,7 @@ import { getMongoModel, Schema, Types } from '@fastgpt/service/common/mongo';
 
 type TestMongoRecord = {
   ownerId: Types.ObjectId;
+  name: string;
 };
 
 const getFindHooks = (schema: InstanceType<typeof Schema>, type: '_pres' | '_posts') =>
@@ -12,7 +13,8 @@ const getFindHooks = (schema: InstanceType<typeof Schema>, type: '_pres' | '_pos
 describe('Mongo common middleware', () => {
   it('installs common middleware only once for a reused Schema', () => {
     const schema = new Schema<TestMongoRecord>({
-      ownerId: Schema.Types.ObjectId
+      ownerId: Schema.Types.ObjectId,
+      name: String
     });
 
     getMongoModel<TestMongoRecord>(`MongoMiddlewareFirst${randomUUID()}`, schema);
@@ -25,17 +27,38 @@ describe('Mongo common middleware', () => {
 
   it('converts ObjectIds in lean query results through middleware', async () => {
     const schema = new Schema<TestMongoRecord>({
-      ownerId: Schema.Types.ObjectId
+      ownerId: Schema.Types.ObjectId,
+      name: String
     });
     const model = getMongoModel<TestMongoRecord>(`MongoMiddlewareResult${randomUUID()}`, schema);
     const ownerId = new Types.ObjectId();
 
-    await model.create({ ownerId });
+    await model.create({ ownerId, name: 'before' });
 
     const result = await model.findOne({ ownerId }).lean();
 
     expect(result).not.toBeNull();
     expect(result?._id).toEqual(expect.any(String));
     expect(result?.ownerId).toBe(ownerId.toString());
+  });
+
+  it('keeps hydrated documents saveable after a find query', async () => {
+    const schema = new Schema<TestMongoRecord>({
+      ownerId: Schema.Types.ObjectId,
+      name: String
+    });
+    const model = getMongoModel<TestMongoRecord>(`MongoMiddlewareSave${randomUUID()}`, schema);
+    const created = await model.create({
+      ownerId: new Types.ObjectId(),
+      name: 'before'
+    });
+
+    const result = await model.findById(created._id);
+    expect(result).not.toBeNull();
+
+    result!.name = 'after';
+    await result!.save();
+
+    await expect(model.findById(created._id).lean()).resolves.toMatchObject({ name: 'after' });
   });
 });
