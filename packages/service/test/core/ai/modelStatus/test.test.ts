@@ -11,7 +11,14 @@ const mocks = vi.hoisted(() => ({
   reRankRecall: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/config', () => ({ getAIApi: mocks.getAIApi }));
+vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/config')>();
+  return {
+    ...actual,
+    getAIApi: mocks.getAIApi,
+    getAiproxyScopeHeaders: vi.fn(() => ({}))
+  };
+});
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: mocks.createLLMResponse
 }));

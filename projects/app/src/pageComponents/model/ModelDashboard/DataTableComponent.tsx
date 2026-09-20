@@ -5,7 +5,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { DashboardDataItemType } from '@/global/aiproxy/type';
+import type { ChannelDashboardSummary } from '@fastgpt/global/openapi/core/ai/channel/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
@@ -13,7 +13,7 @@ import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 export type DashboardDataEntry = {
   timestamp: number;
-  summary: DashboardDataItemType[];
+  summary: ChannelDashboardSummary[];
 };
 
 export type DataTableComponentProps = {
@@ -114,7 +114,7 @@ const DataTableComponent = ({
       data.forEach((dayData) => {
         const summary = dayData.summary;
 
-        summary.forEach((item: DashboardDataItemType) => {
+        summary.forEach((item: ChannelDashboardSummary) => {
           const channelId = `${item.channel_id!}`;
           const existing = channelMap.get(channelId) || {
             model: item.model || '-',
@@ -187,7 +187,7 @@ const DataTableComponent = ({
       data.forEach((dayData) => {
         const summary = dayData.summary;
 
-        summary.forEach((item: DashboardDataItemType) => {
+        summary.forEach((item: ChannelDashboardSummary) => {
           const modelName = item.model || '-';
           const existing = modelMap.get(modelName) || {
             totalCalls: 0,

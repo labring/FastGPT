@@ -1,6 +1,5 @@
 import { axiosWithoutSSRF } from '@fastgpt/service/common/api/axios';
 import { getAIProxyAdminConfig } from '@fastgpt/service/thirdProvider/aiproxy/config';
-import { withAIProxyChannelMutation } from '@fastgpt/service/thirdProvider/aiproxy/lease';
 import { z } from 'zod';
 
 const AIProxyChannelSchema = z
@@ -90,7 +89,7 @@ const getAIProxyChannels = async () => {
 /**
  * 合并更新指定 AI Proxy 渠道类型的配置。
  * AI Proxy 渠道更新是完整替换，因此这里先读取权威快照、保留原 configs 及其他可往返字段，
- * 在统一写租约内逐条更新，并重新读取校验目标配置；beforeUpdate 用于调用方检查自身租约。
+ * 逐条更新，并重新读取校验目标配置；beforeUpdate 用于调用方检查自身租约。
  */
 export const mergeAIProxyChannelConfigs = async ({
   channelTypes,
@@ -100,45 +99,45 @@ export const mergeAIProxyChannelConfigs = async ({
   channelTypes: number | readonly number[] | number[];
   configPatch: Record<string, string | number | boolean | null>;
   beforeUpdate: () => Promise<void>;
-}) =>
-  withAIProxyChannelMutation(async ({ signal, assertValid }) => {
-    const typeSet = new Set(Array.isArray(channelTypes) ? channelTypes : [channelTypes as number]);
-    const { channels, baseUrl, headers } = await getAIProxyChannels();
-    const targetChannels = channels.filter((channel) => typeSet.has(channel.type));
-    const channelsToUpdate = targetChannels.filter((channel) =>
-      Object.entries(configPatch).some(([key, value]) => !Object.is(channel.configs?.[key], value))
+}) => {
+  const controller = new AbortController();
+  const signal = controller.signal;
+  const typeSet = new Set(Array.isArray(channelTypes) ? channelTypes : [channelTypes as number]);
+  const { channels, baseUrl, headers } = await getAIProxyChannels();
+  const targetChannels = channels.filter((channel) => typeSet.has(channel.type));
+  const channelsToUpdate = targetChannels.filter((channel) =>
+    Object.entries(configPatch).some(([key, value]) => !Object.is(channel.configs?.[key], value))
+  );
+
+  // 完整 PUT 无法往返非零 balance_threshold；先检查全部目标，避免校验到一半才部分写入。
+  channelsToUpdate.forEach(assertChannelUpdateSupported);
+
+  for (const channel of channelsToUpdate) {
+    await beforeUpdate();
+    const { data: updateResponse } = await axiosWithoutSSRF.put(
+      `${baseUrl}/api/channel/${channel.id}`,
+      getChannelUpdateData(channel, channel.models, {
+        ...(channel.configs ?? {}),
+        ...configPatch
+      }),
+      { headers, signal, timeout: 30000 }
     );
+    AIProxyMutationResponseSchema.parse(updateResponse);
+  }
 
-    // 完整 PUT 无法往返非零 balance_threshold；先检查全部目标，避免校验到一半才部分写入。
-    channelsToUpdate.forEach(assertChannelUpdateSupported);
+  const { channels: verifiedChannels } = await getAIProxyChannels();
+  const verifiedTargetChannels = verifiedChannels.filter((channel) => typeSet.has(channel.type));
+  const remainingCount = verifiedTargetChannels.filter((channel) =>
+    Object.entries(configPatch).some(([key, value]) => !Object.is(channel.configs?.[key], value))
+  ).length;
+  if (remainingCount > 0) {
+    throw new Error(
+      `${remainingCount} AI Proxy channels of type ${[...typeSet].join(',')} still require config updates`
+    );
+  }
 
-    for (const channel of channelsToUpdate) {
-      await beforeUpdate();
-      assertValid();
-      const { data: updateResponse } = await axiosWithoutSSRF.put(
-        `${baseUrl}/api/channel/${channel.id}`,
-        getChannelUpdateData(channel, channel.models, {
-          ...(channel.configs ?? {}),
-          ...configPatch
-        }),
-        { headers, signal, timeout: 30000 }
-      );
-      AIProxyMutationResponseSchema.parse(updateResponse);
-    }
-
-    const { channels: verifiedChannels } = await getAIProxyChannels();
-    const verifiedTargetChannels = verifiedChannels.filter((channel) => typeSet.has(channel.type));
-    const remainingCount = verifiedTargetChannels.filter((channel) =>
-      Object.entries(configPatch).some(([key, value]) => !Object.is(channel.configs?.[key], value))
-    ).length;
-    if (remainingCount > 0) {
-      throw new Error(
-        `${remainingCount} AI Proxy channels of type ${[...typeSet].join(',')} still require config updates`
-      );
-    }
-
-    return {
-      channelCount: verifiedTargetChannels.length,
-      updatedCount: channelsToUpdate.length
-    };
-  });
+  return {
+    channelCount: verifiedTargetChannels.length,
+    updatedCount: channelsToUpdate.length
+  };
+};

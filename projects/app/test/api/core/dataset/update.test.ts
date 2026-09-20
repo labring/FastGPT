@@ -28,7 +28,7 @@ import { Call } from '@test/utils/request';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RebuildEmbeddingBodySchema } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
 
 /** Snapshot ACL rows in a stable order so assertions compare exact permission sets. */
 const toPermissionRows = (collaborators: { tmbId?: unknown; permission: number }[]) =>

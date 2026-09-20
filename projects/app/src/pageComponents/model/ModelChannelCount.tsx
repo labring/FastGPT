@@ -1,6 +1,6 @@
-import { ChannelStautsMap } from '@/global/aiproxy/constants';
+import { ChannelStatusMap } from '@fastgpt/global/core/ai/channel';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
 import { Box, HStack, VStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -13,7 +13,7 @@ const ModelChannelCount = ({
   channels,
   onClick
 }: {
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
   onClick?: () => void;
 }) => {
   const { t, i18n } = useSafeTranslation();
@@ -64,7 +64,7 @@ const ModelChannelCount = ({
       {() => (
         <VStack alignItems="stretch" spacing={3} maxH="280px" overflowY="auto">
           {channels.map((channel) => {
-            const status = ChannelStautsMap[channel.status as keyof typeof ChannelStautsMap];
+            const status = ChannelStatusMap[channel.status as keyof typeof ChannelStatusMap];
             return (
               <HStack key={channel.id} spacing={3}>
                 <Box w="110px" flexShrink={0} noOfLines={1}>

@@ -1,5 +1,6 @@
 import type { Readable } from 'node:stream';
-import { getAxiosConfig } from '../config';
+import { getModelAxiosConfig } from '../config';
+import { normalizeRelayNoChannelError } from '../channel/error';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 import FormData from 'form-data';
 import { type STTSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -30,25 +31,28 @@ export const aiTranscriptions = async ({
   data.append('model', modelData.model);
   data.append('file', fileStream, { filename });
 
-  const aiAxiosConfig = getAxiosConfig();
-  onRequestStart?.();
-
-  // 管理员配置的 url，允许是内网
-  const { data: result } = await axiosWithoutSSRF.post<{
-    text: string;
-    usage?: { total_tokens: number };
-  }>(modelData.requestUrl ? modelData.requestUrl : '/audio/transcriptions', data, {
-    ...(modelData.requestUrl ? {} : { baseURL: aiAxiosConfig.baseUrl }),
+  const axiosConfig = getModelAxiosConfig({
+    model: modelData,
+    defaultPath: '/audio/transcriptions',
     headers: {
-      Authorization: modelData.requestAuth
-        ? `Bearer ${modelData.requestAuth}`
-        : aiAxiosConfig.authorization,
       ...data.getHeaders(),
       ...headers
-    },
-    ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
-    signal
+    } as Record<string, string>
   });
+  onRequestStart?.();
 
-  return result;
+  try {
+    const { data: result } = await axiosWithoutSSRF.post<{
+      text: string;
+      usage?: { total_tokens: number };
+    }>(axiosConfig.url, data, {
+      headers: axiosConfig.headers,
+      ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
+      signal
+    });
+
+    return result;
+  } catch (e) {
+    throw normalizeRelayNoChannelError(e);
+  }
 };

@@ -94,21 +94,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
           });
 
           /* create buffer */
-          await MongoTTSBuffer.create(
-            {
-              bufferId,
-              text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
-              buffer
-            },
-            ttsModel.requestUrl && ttsModel.requestAuth
-              ? {
-                  path: ttsModel.requestUrl,
-                  headers: {
-                    Authorization: `Bearer ${ttsModel.requestAuth}`
-                  }
-                }
-              : {}
-          );
+          await MongoTTSBuffer.create({
+            bufferId,
+            text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
+            buffer
+          });
         } catch {}
       },
       onError: (err) => {

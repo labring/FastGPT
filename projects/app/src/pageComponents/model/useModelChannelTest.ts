@@ -1,8 +1,8 @@
-import { getTestModel, postTestDraftModel } from '@/web/core/ai/config';
+import { testModel, testDraftModel } from '@/web/core/ai/model/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRef, useState } from 'react';
@@ -18,10 +18,12 @@ export type ModelChannelTestTarget =
  */
 export const useModelChannelTest = ({
   target,
-  channels
+  channels,
+  channelType = 'system'
 }: {
   target?: ModelChannelTestTarget;
-  channels: Pick<AdminModelChannel, 'id' | 'name'>[];
+  channels: Pick<ModelChannelSummary, 'id' | 'name'>[];
+  channelType?: 'system' | 'team';
 }) => {
   const { t } = useSafeTranslation();
   const { toast } = useToast();
@@ -50,9 +52,9 @@ export const useModelChannelTest = ({
     setTestingChannelIds(new Set(inFlight.current));
     try {
       if (target.source === 'installed') {
-        await getTestModel({ modelId: target.modelId, channelId });
+        await testModel({ modelId: target.modelId, channelId, channelType });
       } else if (modelData) {
-        await postTestDraftModel({ modelData, channelId });
+        await testDraftModel({ modelData, channelId, channelType });
       }
       toast({
         status: 'success',

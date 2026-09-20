@@ -1,5 +1,6 @@
 /* v8 ignore file */
 import { ModelScopeEnum, ModelTypeEnum } from '../constants';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z
@@ -92,7 +93,9 @@ const SystemModelDocumentBaseSchema = PriceTypeSchema.extend({
   provider: z.string().trim().min(1),
   model: z.string().trim().min(1),
   name: z.string().trim().min(1),
-  scope: z.literal(ModelScopeEnum.system).default(ModelScopeEnum.system),
+  scope: z.nativeEnum(ModelScopeEnum).default(ModelScopeEnum.system),
+  tmbId: ObjectIdSchema.nullish(),
+  teamId: ObjectIdSchema.nullish(),
   isActive: z.boolean().optional(),
   requestUrl: z.string().optional(),
   requestAuth: z.string().optional(),

@@ -1,7 +1,7 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { findSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
 import type { ModelRequirement } from './types';
 

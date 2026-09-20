@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const mocks = vi.hoisted(() => ({ getUserModelCatalog: vi.fn() }));
-vi.mock('@/web/common/system/api', () => ({ getUserModelCatalog: mocks.getUserModelCatalog }));
+vi.mock('@/web/core/ai/model/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/web/core/ai/model/api')>()),
+  getUserModelCatalog: mocks.getUserModelCatalog
+}));
 
 import {
   resetUserModelCatalogAfterLogin,

@@ -1,4 +1,4 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
 
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/list';

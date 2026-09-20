@@ -2,7 +2,7 @@ import {
   createModelHandle,
   getCachedModelHandle,
   publishModelHandle
-} from '@fastgpt/service/core/ai/config/handle';
+} from '@fastgpt/service/core/ai/model/handle';
 import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 

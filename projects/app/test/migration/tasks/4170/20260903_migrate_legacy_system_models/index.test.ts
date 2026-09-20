@@ -10,12 +10,14 @@ const mocks = vi.hoisted(() => ({
   bootstrapAIModelsFromLegacy: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/app/provider/controller', () => ({
+vi.mock('@fastgpt/service/core/ai/provider/controller', () => ({
   preloadModelProviders: mocks.preloadModelProviders
 }));
-vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
-  getPluginSystemModelDocuments: mocks.getPluginSystemModelDocuments,
+vi.mock('@fastgpt/service/core/ai/model/catalog', () => ({
   loadInstalledModels: mocks.loadInstalledModels
+}));
+vi.mock('@fastgpt/service/core/ai/model/template', () => ({
+  getPluginSystemModelDocuments: mocks.getPluginSystemModelDocuments
 }));
 vi.mock('@/migration/tasks/4170/20260903_migrate_legacy_system_models/service', () => ({
   inspectLegacySystemModelMigration: mocks.inspectLegacySystemModelMigration,

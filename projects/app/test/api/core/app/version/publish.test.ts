@@ -1,4 +1,4 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import handler from '@/pages/api/core/app/version/publish';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';

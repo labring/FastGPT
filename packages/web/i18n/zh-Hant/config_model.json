@@ -1,4 +1,5 @@
 {
+  "active_model": "可用模型",
   "max_response_tokens": "最大回應 Tokens",
   "voices_array_required": "音色必須是非空陣列，且每項包含 label 和 value",
   "select_model_provider_placeholder": "請選擇提供商",
@@ -119,6 +120,14 @@
   "model.batch_status_disabled": "已停用 {{count}} 個模型",
   "model.batch_delete": "批次刪除",
   "model.batch_delete_confirm": "確認刪除選取的 {{count}} 個模型？刪除後無法復原。",
+  "channel.batch_enable": "批次啟用",
+  "channel.batch_disable": "批次停用",
+  "channel.batch_status_enabled": "已啟用 {{count}} 個渠道",
+  "channel.batch_status_disabled": "已停用 {{count}} 個渠道",
+  "channel.batch_delete": "批次刪除",
+  "channel.batch_delete_confirm": "確認刪除選取的 {{count}} 個渠道？刪除後無法復原。",
+  "channel.delete_affected_models_warning": "刪除渠道後，以下模型將失去所有可用渠道：{{models}}。確認繼續刪除？",
+  "channel.search_placeholder": "按渠道名稱搜尋",
   "model.alias": "別名",
   "model.alias_tip": "模型在系統中展示的名字，方便使用者理解",
   "model.basic_config_section": "基本配置",
@@ -255,5 +264,14 @@
   "model_status_tip_checks_with_failed": "{{total}} 次探測，{{failed}} 次失敗",
   "model_status_test_webhook": "測試 Webhook",
   "model_status_test_webhook_success": "Webhook 測試成功，已發送異常與恢復通知",
-  "model_status_webhook_url_empty": "請先填寫告警 Webhook 地址"
+  "model_status_webhook_url_empty": "請先填寫告警 Webhook 地址",
+  "confirm_remove_channel_association": "是否解除關聯？解除後將從列表中移除",
+  "channel_disassociate_success": "已解除渠道關聯",
+  "channel_max_five_tip": "目前僅展示前 5 個渠道，點擊渠道數量可查看全部",
+  "collaborators": "協作者",
+  "manage_collaborators": "管理協作者",
+  "available_range": "可用範圍",
+  "available_to_all": "全員可用",
+  "only_available_to_self": "僅自己可用",
+  "system_model_tag": "系統"
 }

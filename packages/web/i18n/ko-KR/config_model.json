@@ -1,4 +1,5 @@
 {
+  "active_model": "사용 가능한 모델",
   "max_response_tokens": "최대 응답 Tokens",
   "voices_array_required": "음색은 각 항목에 label과 value가 있는 비어 있지 않은 배열이어야 합니다",
   "select_model_provider_placeholder": "공급자를 선택하세요",

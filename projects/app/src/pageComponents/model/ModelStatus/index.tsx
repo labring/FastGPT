@@ -41,7 +41,7 @@ import {
   postModelStatusProbe,
   putModelStatusProbeConfig,
   postTestModelStatusWebhook
-} from '@/web/core/ai/config';
+} from '@/web/core/ai/model/api';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '../ModelTabHeader';
 

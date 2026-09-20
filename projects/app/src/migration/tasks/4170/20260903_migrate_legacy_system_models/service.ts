@@ -5,10 +5,10 @@ import {
 import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
+import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/constants';
 import { getLegacyDefaultModelFlags, repairSystemModelDocument } from './utils';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
-import { assertSystemModelTypesMatchPluginTemplates } from '@fastgpt/service/core/ai/config/utils';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { assertSystemModelTypesMatchPluginTemplates } from '@fastgpt/service/core/ai/model/transform';
 import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 
