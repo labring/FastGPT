@@ -133,7 +133,8 @@ export type UserSelectOptionItemType = z.infer<typeof UserSelectOptionItemSchema
 export const UserSelectInteractiveSchema = z.object({
   type: z.literal('userSelect'),
   params: z.object({
-    description: z.string(),
+    // 说明文字是可选的输入。
+    description: z.string().default(''),
     userSelectOptions: z.array(UserSelectOptionItemSchema),
     userSelectedVal: z.string().optional()
   })
@@ -164,7 +165,8 @@ export type UserInputFormItemType = z.infer<typeof UserInputFormItemSchema>;
 export const UserInputInteractiveSchema = z.object({
   type: z.literal('userInput'),
   params: z.object({
-    description: z.string(),
+    // 同 userSelect：说明文字可留空，缺省为空串。
+    description: z.string().default(''),
     inputForm: z.array(UserInputFormItemSchema),
     submitted: z.boolean().optional()
   })
