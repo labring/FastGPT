@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import type React from 'react';
+import type { LicenseDataType } from '@fastgpt/global/common/system/types';
 import { Box } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -8,6 +9,7 @@ import SecondaryNavigationContainer, {
   type SecondaryNavigationTab
 } from '@/pageComponents/common/SecondaryNavigationContainer';
 import { unlicensedAdminRoutes } from '@/components/admin/constants';
+import { isLicenseExpired } from '@fastgpt/global/common/system/license/utils';
 
 /**
  * 管理员区域（/admin/*）的二级导航壳层，仅 root 用户可见。
@@ -34,8 +36,19 @@ const AdminContainer = ({
 
   const currentTab = router.pathname;
 
-  // License 检测完成后无授权数据 = 未激活；此时仅保留白名单菜单，避免暴露被 Layout 拦截的路由
-  const licenseUnactivated = !licenseData;
+  // License 检测完成后无授权数据、或授权已过期 = 不可用；此时仅保留白名单菜单，
+  // 避免暴露被 Layout 拦截的路由。已过期的 License 仍在 store 中，必须按有效期判定。
+  const licenseUnactivated = useMemo(
+    () => !licenseData || isLicenseExpired(licenseData),
+    [licenseData]
+  );
+
+  // 菜单里的功能开关一律经此处读取：授权不可用时全部按关闭处理，
+  // 避免过期 License 的 functions 继续解锁套餐、支付等菜单。
+  const licenseCapabilities = useMemo<Partial<LicenseDataType['functions']>>(
+    () => (licenseUnactivated ? {} : (licenseData?.functions ?? {})),
+    [licenseData, licenseUnactivated]
+  );
 
   const tabList = useMemo<SecondaryNavigationTab<string>[]>(() => {
     const tabs: SecondaryNavigationTab<string>[] = [
@@ -69,7 +82,7 @@ const AdminContainer = ({
             label: '团队管理',
             value: '/admin/teams'
           },
-          ...(licenseData?.functions?.pay
+          ...(licenseCapabilities.pay
             ? [
                 {
                   icon: 'support/account/plans',
@@ -137,7 +150,7 @@ const AdminContainer = ({
             label: '用户配置',
             value: '/admin/config/user'
           },
-          ...(licenseData?.functions?.pay
+          ...(licenseCapabilities.pay
             ? [
                 {
                   icon: 'support/bill/priceLight',
@@ -189,7 +202,7 @@ const AdminContainer = ({
 
     if (!licenseUnactivated) return tabs;
     return tabs.filter((tab) => unlicensedAdminRoutes.includes(tab.value));
-  }, [licenseData, licenseUnactivated]);
+  }, [licenseCapabilities, licenseUnactivated]);
 
   // 非 root 访问管理员区域时重定向回个人中心
   useEffect(() => {

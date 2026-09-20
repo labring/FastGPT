@@ -2,6 +2,7 @@ import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/cons
 import { MongoSystemConfigs } from './schema';
 import type { FastGPTConfigFileType, LicenseDataType } from '@fastgpt/global/common/system/types';
 import { FastGPTProUrl } from '../constants';
+import { isLicenseExpired } from '@fastgpt/global/common/system/license/utils';
 
 export const getFastGPTConfigFromDB = async (): Promise<{
   fastgptConfig: FastGPTConfigFileType;
@@ -28,7 +29,11 @@ export const getFastGPTConfigFromDB = async (): Promise<{
   ]);
 
   const config = fastgptConfig?.value || {};
-  const licenseData = licenseConfig?.value?.data as LicenseDataType | undefined;
+  const storedLicenseData = licenseConfig?.value?.data as LicenseDataType | undefined;
+  // 过期即视为未授权：DB 里的快照不会因到期自动清除，若原样返回，调用方（isPlus、功能开关、
+  // 前端展示）会把已到期的商业版授权当成有效。这里统一过滤，语义与 pro 的验签校验一致。
+  const licenseData =
+    storedLicenseData && !isLicenseExpired(storedLicenseData) ? storedLicenseData : undefined;
 
   const fastgptConfigTime = fastgptConfig?.createTime.getTime().toString();
   const licenseConfigTime = licenseConfig?.createTime.getTime().toString();

@@ -19,6 +19,7 @@ import { getAdminModelConfig } from '@/web/core/ai/config';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { unlicensedAdminRoutes } from '@/components/admin/constants';
+import { isLicenseExpired } from '@fastgpt/global/common/system/license/utils';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -117,20 +118,26 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     void initLicenseData();
   }, [initLicenseData, isRoot, userInfo]);
 
-  // License 未激活时仅限制管理员区域：白名单（管理员主页/模型提供商/系统工具）之外的 /admin/* 回到管理员主页引导激活
+  // License 未激活或已过期时仅限制管理员区域：
+  // 白名单（管理员主页/模型提供商/系统工具）之外的 /admin/* 回到管理员主页引导激活或续期。
+  // 只判断 licenseData 是否存在不够：已过期的 License 仍在 store 中，会继续放行全部菜单。
+  const isLicenseValid = useMemo(
+    () => Boolean(licenseData) && !isLicenseExpired(licenseData),
+    [licenseData]
+  );
   useEffect(() => {
     if (
       !router.isReady ||
       !isRoot ||
       licenseLoading ||
-      licenseData ||
+      isLicenseValid ||
       !isAdminRoute ||
       unlicensedAdminRoutes.includes(router.pathname)
     ) {
       return;
     }
     void router.replace('/admin/home');
-  }, [isAdminRoute, isRoot, licenseData, licenseLoading, router]);
+  }, [isAdminRoute, isRoot, isLicenseValid, licenseLoading, router]);
 
   // Auto redeem coupon
   useCheckCoupon();
