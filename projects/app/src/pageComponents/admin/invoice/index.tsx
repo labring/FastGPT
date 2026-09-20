@@ -1,5 +1,5 @@
 'use client';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { finishInvoice, getInvoiceList } from '@/web/support/wallet/invoice/api';
 import {
   Table,
@@ -53,7 +53,7 @@ const InvoiceManageTable = () => {
   });
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <HStack pb={4}>
         {isPc && (
           <Box fontSize={'2xl'} fontWeight={'bold'}>
@@ -159,7 +159,7 @@ const InvoiceManageTable = () => {
           )}
         </TableContainer>
       </ScrollData>
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 export default InvoiceManageTable;

@@ -16,6 +16,7 @@ import { useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import { useMount } from 'ahooks';
 
@@ -174,7 +175,7 @@ const InformSetting = () => {
   });
 
   return (
-    <>
+    <BoxPageRoot>
       <BoxCard>
         <HStack>
           <Box fontSize={'2xl'}>系统公告配置</Box>
@@ -338,7 +339,7 @@ const InformSetting = () => {
       <ConfirmClearOperationalAd />
       <ConfirmActivityAd />
       <ConfirmClearActivityAd />
-    </>
+    </BoxPageRoot>
   );
 };
 

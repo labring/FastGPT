@@ -30,7 +30,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getPays } from '@/web/admin/pays/api';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
@@ -144,7 +144,7 @@ const BillTable = () => {
   });
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <HStack pb={4}>
         {isPc && (
           <Box as={'h1'} {...accountTitleTextStyles}>
@@ -241,7 +241,7 @@ const BillTable = () => {
       {!!billDetail && (
         <BillDetailModal bill={billDetail} onClose={() => setBillDetail(undefined)} />
       )}
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 

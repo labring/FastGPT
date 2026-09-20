@@ -24,7 +24,7 @@ import { getUsers } from '@/web/admin/users/api';
 import UserEditModal from './components/UserEditModal';
 import type { UserItemType } from '@fastgpt/global/openapi/admin/routes/users/api';
 import UserAddModal from './components/UserAddModal';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
@@ -50,7 +50,7 @@ const UserTable = () => {
   });
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <HStack pb={4}>
         {isPc && (
           <Box as={'h1'} {...accountTitleTextStyles}>
@@ -139,7 +139,7 @@ const UserTable = () => {
       {!!userDetail && (
         <UserDetailModal user={userDetail} onClose={() => setUserDetail(undefined)} />
       )}
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 

@@ -42,5 +42,9 @@
   "license_portal": "Portal",
   "license_sandbox_skills": "Sandbox and skills",
   "license_yes": "Enabled",
-  "license_no": "Not enabled"
+  "license_no": "Not enabled",
+  "license_community": "Community",
+  "license_current_version": "Current version",
+  "license_admin_home_community_description": "View the current version and capabilities",
+  "license_upgrade_commercial": "Learn about the commercial edition"
 }

@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Box, useTheme } from '@chakra-ui/react';
 import { GET } from '@/web/admin/common/request';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { GetPaysFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
@@ -77,7 +77,7 @@ export default function PaymentPage(): JSX.Element {
   );
 
   return (
-    <BoxCard>
+    <BoxPageRoot>
       <DashboardHeader />
       <MyBox minH={'400px'} isLoading={loading}>
         {paysData && (
@@ -149,6 +149,6 @@ export default function PaymentPage(): JSX.Element {
           </>
         )}
       </MyBox>
-    </BoxCard>
+    </BoxPageRoot>
   );
 }

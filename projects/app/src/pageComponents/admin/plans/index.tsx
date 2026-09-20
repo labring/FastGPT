@@ -24,7 +24,7 @@ import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/co
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import PlanAddModal from './components/PlanAddModal';
 import PlanEditModal from './components/PlanEditModal';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
@@ -79,7 +79,7 @@ const PlanTable = () => {
   });
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <HStack pb={4}>
         {isPc && (
           <Box as={'h1'} {...accountTitleTextStyles}>
@@ -174,7 +174,7 @@ const PlanTable = () => {
           )}
         </TableContainer>
       </ScrollData>
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 

@@ -68,9 +68,11 @@ const LICENSE_STATUS_DISPLAY: Record<
 
 /** 管理员首页的 License 概览，按设计稿展示租户信息、额度和授权能力。 */
 const AdminHome = () => {
-  const { licenseData, licenseLoading } = useSystemStore();
+  const { licenseData, licenseLoading, feConfigs } = useSystemStore();
   const { t } = useClientTranslation('admin');
   const [showLicenseInput, setShowLicenseInput] = useState(false);
+  // 未接入 pro 服务 = 社区版部署，没有授权概念：不展示租户名、额度与激活状态，只保留功能能力清单。
+  const isCommunityEdition = !feConfigs?.isProService;
   // 四态由共享判定给出（尚未激活 / 生效中 / 即将过期 / 已到期），避免前后端各写一份窗口规则。
   const licenseStatus = licenseLoading ? LicenseStatusEnum.inactive : getLicenseStatus(licenseData);
   const isExpired = licenseStatus === LicenseStatusEnum.expired;
@@ -130,163 +132,211 @@ const AdminHome = () => {
           {t('admin:license_admin_home')}
         </Box>
         <Box color="myGray.500" fontSize="12px">
-          {t('admin:license_admin_home_description')}
+          {isCommunityEdition
+            ? t('admin:license_admin_home_community_description')
+            : t('admin:license_admin_home_description')}
         </Box>
       </Flex>
 
       <Box p={6}>
         <Box border="1px solid" h="104px" borderColor="myGray.200" borderRadius="8px" p={6}>
-          <Grid
-            alignItems="center"
-            gap={{ base: 5, md: 7 }}
-            templateColumns={{ base: '1fr', md: 'minmax(0, 1.35fr) 1px minmax(260px, 1fr) auto' }}
-          >
-            <Flex alignItems="center" gap={3} minW={0} flex="1 1 420px">
-              <Flex
-                alignItems="center"
-                justifyContent="center"
-                flexShrink={0}
-                w="36px"
-                h="36px"
-                borderRadius="50%"
-                border="1px solid"
-                borderColor="rgba(51, 112, 255, 0.20)"
-                bg="linear-gradient(201deg, #3E78FF 13.74%, #78A0FF 89.76%)"
-                color="white"
-                fontSize="12px"
-                fontWeight="500"
-              >
-                {avatarText.slice(0, 2)}
-              </Flex>
-              <Box minW={0}>
-                <Box color="myGray.500" fontSize="12px" mb={0.5}>
-                  {t('admin:license_tenant_name')}
+          {isCommunityEdition ? (
+            /* 社区版：没有授权概念，只展示版本标识与商业版引导 */
+            <Flex alignItems="center" justifyContent="space-between" h="100%" gap={4}>
+              <Flex minW={0} gap={2} alignItems={'center'}>
+                <Box color="myGray.500" fontWeight={500} fontSize="12px" mb={0.5}>
+                  {t('admin:license_current_version')}
                 </Box>
-                <Flex alignItems="center" gap="10px" flexWrap="wrap">
-                  <Box fontSize="24px" fontWeight="600" lineHeight="1.25" noOfLines={1}>
-                    {licenseLoading ? <Skeleton w="260px" h="38px" /> : company || PLACEHOLDER}
-                  </Box>
-                  {licenseTypeKey && (
-                    <Box
-                      px={3}
-                      py={1}
-                      borderRadius="18px"
-                      bg="blue.50"
-                      color="primary.600"
-                      fontSize="11px"
-                      fontWeight={500}
-                      whiteSpace="nowrap"
-                    >
-                      {t(`admin:${licenseTypeKey}`)}
-                    </Box>
-                  )}
-                </Flex>
-              </Box>
-            </Flex>
-
-            <Box
-              h="56px"
-              borderLeft="1px solid"
-              borderColor="myGray.200"
-              display={{ base: 'none', md: 'block' }}
-            />
-            <Box flex="1 1 360px">
-              <Box color={statusDisplay.color} fontSize="11px" mb={4} h={'16px'}>
                 <Box
                   as="span"
                   display="inline-block"
-                  w="6px"
-                  h="6px"
-                  mr={2}
-                  borderRadius="50%"
-                  bg={statusDisplay.dot}
-                />
-                {t(`admin:${statusDisplay.labelKey}`)}
-              </Box>
-              <Flex alignItems="center" gap={4}>
-                <Box color="myGray.500" fontSize="12px">
-                  {t('admin:license_expires_at')}
-                </Box>
-                <Box fontSize="24px" fontWeight="500" lineHeight="1">
-                  {formatDate(licenseData?.expiredTime)}
+                  px={3}
+                  py={'6px'}
+                  borderRadius="33px"
+                  bg="myGray.100"
+                  color="myGray.700"
+                  fontSize="11px"
+                  fontWeight={500}
+                  lineHeight="1.3"
+                  whiteSpace="nowrap"
+                >
+                  {t('admin:license_community')}
                 </Box>
               </Flex>
-            </Box>
-            <Flex alignItems="center" gap={3} justifyContent="flex-end">
-              {!isActivated && (
-                <Link
-                  href={commercialDocUrl}
-                  isExternal
-                  color="myGray.500"
-                  fontSize="12px"
-                  textDecoration="underline"
-                  whiteSpace="nowrap"
-                  _hover={{ color: 'primary.600' }}
-                >
-                  {t('admin:license_learn_commercial')}
-                </Link>
-              )}
+
               <Button
-                variant={isLicenseActionPrimary ? 'primary' : 'outline'}
-                color={isLicenseActionPrimary ? 'white' : 'primary.600'}
-                borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
+                variant="outline"
+                color="primary.600"
+                borderColor="primary.300"
                 borderRadius="6px"
                 py={2}
                 px={'14px'}
                 fontSize="14px"
-                leftIcon={<MyIcon name="common/settingLight" w="18px" />}
-                onClick={onLicenseButtonClick}
+                whiteSpace="nowrap"
+                as={Link}
+                href={commercialDocUrl}
+                isExternal
+                _hover={{ bg: 'primary.50' }}
               >
-                {isExpired
-                  ? t('admin:license_renew')
-                  : isActivated
-                    ? t('admin:license_change')
-                    : t('admin:license_activate')}
+                {t('admin:license_upgrade_commercial')}
               </Button>
             </Flex>
-          </Grid>
+          ) : (
+            <Grid
+              alignItems="center"
+              gap={{ base: 5, md: 7 }}
+              templateColumns={{ base: '1fr', md: 'minmax(0, 1.35fr) 1px minmax(260px, 1fr) auto' }}
+            >
+              <Flex alignItems="center" gap={3} minW={0} flex="1 1 420px">
+                <Flex
+                  alignItems="center"
+                  justifyContent="center"
+                  flexShrink={0}
+                  w="36px"
+                  h="36px"
+                  borderRadius="50%"
+                  border="1px solid"
+                  borderColor="rgba(51, 112, 255, 0.20)"
+                  bg="linear-gradient(201deg, #3E78FF 13.74%, #78A0FF 89.76%)"
+                  color="white"
+                  fontSize="12px"
+                  fontWeight="500"
+                >
+                  {avatarText.slice(0, 2)}
+                </Flex>
+                <Box minW={0}>
+                  <Box color="myGray.500" fontSize="12px" mb={0.5}>
+                    {t('admin:license_tenant_name')}
+                  </Box>
+                  <Flex alignItems="center" gap="10px" flexWrap="wrap">
+                    <Box fontSize="24px" fontWeight="600" lineHeight="1.25" noOfLines={1}>
+                      {licenseLoading ? <Skeleton w="260px" h="38px" /> : company || PLACEHOLDER}
+                    </Box>
+                    {licenseTypeKey && (
+                      <Box
+                        px={3}
+                        py={1}
+                        borderRadius="18px"
+                        bg="blue.50"
+                        color="primary.600"
+                        fontSize="11px"
+                        fontWeight={500}
+                        whiteSpace="nowrap"
+                      >
+                        {t(`admin:${licenseTypeKey}`)}
+                      </Box>
+                    )}
+                  </Flex>
+                </Box>
+              </Flex>
+
+              <Box
+                h="56px"
+                borderLeft="1px solid"
+                borderColor="myGray.200"
+                display={{ base: 'none', md: 'block' }}
+              />
+              <Box flex="1 1 360px">
+                <Box color={statusDisplay.color} fontSize="11px" mb={4} h={'16px'}>
+                  <Box
+                    as="span"
+                    display="inline-block"
+                    w="6px"
+                    h="6px"
+                    mr={2}
+                    borderRadius="50%"
+                    bg={statusDisplay.dot}
+                  />
+                  {t(`admin:${statusDisplay.labelKey}`)}
+                </Box>
+                <Flex alignItems="center" gap={4}>
+                  <Box color="myGray.500" fontSize="12px">
+                    {t('admin:license_expires_at')}
+                  </Box>
+                  <Box fontSize="24px" fontWeight="500" lineHeight="1">
+                    {formatDate(licenseData?.expiredTime)}
+                  </Box>
+                </Flex>
+              </Box>
+              <Flex alignItems="center" gap={3} justifyContent="flex-end">
+                {!isActivated && (
+                  <Link
+                    href={commercialDocUrl}
+                    isExternal
+                    color="myGray.500"
+                    fontSize="12px"
+                    textDecoration="underline"
+                    whiteSpace="nowrap"
+                    _hover={{ color: 'primary.600' }}
+                  >
+                    {t('admin:license_learn_commercial')}
+                  </Link>
+                )}
+                <Button
+                  variant={isLicenseActionPrimary ? 'primary' : 'outline'}
+                  color={isLicenseActionPrimary ? 'white' : 'primary.600'}
+                  borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
+                  borderRadius="6px"
+                  py={2}
+                  px={'14px'}
+                  fontSize="14px"
+                  leftIcon={<MyIcon name="common/settingLight" w="18px" />}
+                  onClick={onLicenseButtonClick}
+                >
+                  {isExpired
+                    ? t('admin:license_renew')
+                    : isActivated
+                      ? t('admin:license_change')
+                      : t('admin:license_activate')}
+                </Button>
+              </Flex>
+            </Grid>
+          )}
         </Box>
 
-        <Box mt={4}>
-          <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
-            {t('admin:license_limits')}
+        {/* 资源额度来自 License，社区版没有该信息 */}
+        {!isCommunityEdition && (
+          <Box mt={4}>
+            <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
+              {t('admin:license_limits')}
+            </Box>
+            <Grid
+              h="98px"
+              templateColumns={{ base: '1fr', md: 'repeat(3, 1fr)' }}
+              border="1px solid"
+              borderColor="myGray.200"
+              borderRadius="8px"
+              p={6}
+            >
+              {(
+                [
+                  [t('admin:license_max_users'), limits?.maxUsers],
+                  [t('admin:license_max_apps'), limits?.maxApps],
+                  [t('admin:license_max_datasets'), limits?.maxDatasets]
+                ] satisfies Array<[string, number | undefined]>
+              ).map(([label, value], index) => (
+                <GridItem
+                  key={label}
+                  pl={index === 0 ? 0 : 6}
+                  borderLeft={index === 0 ? 'none' : '1px solid'}
+                  borderColor="myGray.200"
+                >
+                  <Box color="myGray.500" fontSize="12px" mb={'2px'}>
+                    {label}
+                  </Box>
+                  <Box fontSize="24px" fontWeight="600">
+                    {/* 有额度时显示数值，额度为 0 表示不限，无有效授权时显示占位符 */}
+                    {value === undefined
+                      ? PLACEHOLDER
+                      : value > 0
+                        ? value
+                        : t('admin:license_unlimited')}
+                  </Box>
+                </GridItem>
+              ))}
+            </Grid>
           </Box>
-          <Grid
-            h="98px"
-            templateColumns={{ base: '1fr', md: 'repeat(3, 1fr)' }}
-            border="1px solid"
-            borderColor="myGray.200"
-            borderRadius="8px"
-            p={6}
-          >
-            {(
-              [
-                [t('admin:license_max_users'), limits?.maxUsers],
-                [t('admin:license_max_apps'), limits?.maxApps],
-                [t('admin:license_max_datasets'), limits?.maxDatasets]
-              ] satisfies Array<[string, number | undefined]>
-            ).map(([label, value], index) => (
-              <GridItem
-                key={label}
-                pl={index === 0 ? 0 : 6}
-                borderLeft={index === 0 ? 'none' : '1px solid'}
-                borderColor="myGray.200"
-              >
-                <Box color="myGray.500" fontSize="12px" mb={'2px'}>
-                  {label}
-                </Box>
-                <Box fontSize="24px" fontWeight="600">
-                  {/* 有额度时显示数值，额度为 0 表示不限，无有效授权时显示占位符 */}
-                  {value === undefined
-                    ? PLACEHOLDER
-                    : value > 0
-                      ? value
-                      : t('admin:license_unlimited')}
-                </Box>
-              </GridItem>
-            ))}
-          </Grid>
-        </Box>
+        )}
 
         <Box mt={4}>
           <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>

@@ -16,7 +16,7 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { getDatasets } from '@/web/admin/datasets/api';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRouter } from 'next/router';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
@@ -39,7 +39,7 @@ const DatasetTable = () => {
   };
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <HStack pb={4}>
         <Box as={'h1'} {...accountTitleTextStyles}>
           知识库列表
@@ -109,7 +109,7 @@ const DatasetTable = () => {
       </ScrollData>
 
       {!!appDetail && <AppDetailModal app={appDetail} onClose={() => setAppDetail(undefined)} />}
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 

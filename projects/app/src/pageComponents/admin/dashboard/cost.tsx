@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Box, useTheme } from '@chakra-ui/react';
 import { POST } from '@/web/admin/common/request';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { GetCostFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
@@ -58,7 +58,7 @@ export default function CostPage(): JSX.Element {
   );
 
   return (
-    <BoxCard>
+    <BoxPageRoot>
       <DashboardHeader />
       <MyBox minH={'400px'} isLoading={loading}>
         {costData && (
@@ -82,6 +82,6 @@ export default function CostPage(): JSX.Element {
           </>
         )}
       </MyBox>
-    </BoxCard>
+    </BoxPageRoot>
   );
 }

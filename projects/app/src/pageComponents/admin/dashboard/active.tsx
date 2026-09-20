@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Box, useTheme, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { GET } from '@/web/admin/common/request';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { GetChatFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
 import type { GetQpmRangeResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
@@ -81,7 +81,7 @@ export default function ActivePage(): JSX.Element {
   }, [activeData?.qpmRanges]);
 
   return (
-    <BoxCard>
+    <BoxPageRoot>
       <DashboardHeader />
       <MyBox minH={'400px'} isLoading={loading}>
         {activeData && (
@@ -154,6 +154,6 @@ export default function ActivePage(): JSX.Element {
           </>
         )}
       </MyBox>
-    </BoxCard>
+    </BoxPageRoot>
   );
 }

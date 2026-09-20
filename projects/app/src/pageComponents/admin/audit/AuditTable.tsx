@@ -1,5 +1,5 @@
 'use client';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import {
   Table,
   Thead,
@@ -110,7 +110,7 @@ const AuditTable = () => {
   });
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <Flex justify={'flex-end'} align={'center'} pb={'1rem'} gap={2} wrap="wrap" mr="2px">
         <HStack pb={4}>
           {isPc && (
@@ -222,7 +222,7 @@ const AuditTable = () => {
       {auditDetail && (
         <AuditDetailModal log={auditDetail} onClose={() => setAuditDetail(undefined)} />
       )}
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 

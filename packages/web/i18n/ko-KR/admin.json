@@ -42,5 +42,9 @@
   "license_portal": "포털",
   "license_sandbox_skills": "샌드박스 및 스킬",
   "license_yes": "사용 가능",
-  "license_no": "사용 불가"
+  "license_no": "사용 불가",
+  "license_community": "커뮤니티 버전",
+  "license_current_version": "현재 버전",
+  "license_admin_home_community_description": "현재 버전과 기능을 확인합니다",
+  "license_upgrade_commercial": "비즈니스 버전 살펴보기"
 }

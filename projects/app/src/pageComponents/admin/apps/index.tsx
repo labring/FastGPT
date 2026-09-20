@@ -18,7 +18,7 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getApps } from '@/web/admin/apps/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import BoxCard from '@/components/admin/BoxContainer/Card';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
@@ -45,7 +45,7 @@ const AppTable = () => {
   };
 
   return (
-    <BoxCard display={'flex'} flexDirection={'column'} h={'100%'}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
       <HStack pb={4}>
         <Box as={'h1'} {...accountTitleTextStyles}>
           应用列表
@@ -113,7 +113,7 @@ const AppTable = () => {
       </ScrollData>
 
       {!!appDetail && <AppDetailModal app={appDetail} onClose={() => setAppDetail(undefined)} />}
-    </BoxCard>
+    </BoxPageRoot>
   );
 };
 
