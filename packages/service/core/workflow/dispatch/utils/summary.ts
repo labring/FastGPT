@@ -1,6 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
+import { isToolExecutionResponse } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { WorkflowRuntimeSummaryType } from '../type';
 import type { NodeSummary, NodeSummaryCollector } from '../../types/runtime';
@@ -39,16 +40,6 @@ const getConcreteChildParentIds = (summary: WorkflowRuntimeSummaryType) => {
   concreteChildParentIds.set(summary, created);
   return created;
 };
-
-/**
- * 判断当前响应本身是否是工具执行结果。
- * parentId 只描述详情树结构，Loop/Parallel 等普通子流程响应也会携带，不能据此吞掉错误。
- */
-const isToolNodeResponse = (response: ChatHistoryItemResType) =>
-  response.moduleType === FlowNodeTypeEnum.tool ||
-  response.moduleType === FlowNodeTypeEnum.toolSet ||
-  response.toolRes !== undefined ||
-  response.toolInput !== undefined;
 
 /** 为单次节点执行创建独立的运行摘要采集器。 */
 export const createNodeSummary = (): NodeSummaryCollector => {
@@ -266,8 +257,12 @@ export const summarizeRuntimeNodeResponses = (
     if (response.nodeId) {
       summary.finishedNodeIds.push(response.nodeId);
     }
-    // 工具错误属于模型可继续消费的工具结果，只保留在 nodeResponse 详情中。
-    if (!isToolNodeResponse(response) && (response.error || response.errorText)) {
+    // 工具错误属于模型可继续消费的工具结果，只保留在 nodeResponse 详情中。捕获的错误也不计入运行失败。
+    if (
+      !response.errorCaptured &&
+      !isToolExecutionResponse(response) &&
+      (response.error || response.errorText)
+    ) {
       summary.hasError = true;
       summary.errorCount += 1;
       summary.errorText = getErrText(response.error || response.errorText);

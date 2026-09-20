@@ -1,8 +1,6 @@
-import type { OpenAPIPath } from '../../../../type';
-import { DevApiTagsMap } from '../../../../tag';
+import type { OpenAPIPath } from '../../../type';
+import { DevApiTagsMap } from '../../../tag';
 import {
-  CreateAdminAIProxyChannelBodySchema,
-  CreateAdminAIProxyChannelResponseSchema,
   AdminSystemModelReferenceSchema,
   CreateSystemModelBodySchema,
   CreateSystemModelResponseSchema,
@@ -24,21 +22,6 @@ import {
 } from './api';
 
 export const AdminSystemModelPath: OpenAPIPath = {
-  '/aiproxy/api/createChannel': {
-    post: {
-      summary: '创建 AI Proxy 渠道',
-      tags: [DevApiTagsMap.adminSystemModel],
-      requestBody: {
-        content: { 'application/json': { schema: CreateAdminAIProxyChannelBodySchema } }
-      },
-      responses: {
-        200: {
-          description: '单渠道创建结果；成功时返回准确渠道 ID（兼容 AI Proxy v0.6.5）',
-          content: { 'application/json': { schema: CreateAdminAIProxyChannelResponseSchema } }
-        }
-      }
-    }
-  },
   '/admin/settings/model/list': {
     get: {
       summary: '获取管理员系统模型列表',

@@ -17,6 +17,11 @@ const expectedPaths = {
   '/core/ai/optimizePrompt': 'post',
   '/core/ai/sandbox/keepalive': 'post',
   '/core/ai/sandbox/verifyTicket': 'get',
+  '/core/ai/model/catalog': 'get',
+  '/core/ai/model/list': 'get',
+  '/core/ai/model/summary': 'post',
+  '/proApi/system/model/collaborator/list': 'get',
+  '/proApi/system/model/collaborator/update': 'post',
   '/core/ai/skill/copy': 'post',
   '/core/ai/skill/resumeInheritPermission': 'get',
   '/proApi/core/ai/skill/changeOwner': 'post',
@@ -45,6 +50,26 @@ describe('AI OpenAPI contracts', () => {
         })
       ])
     );
+  });
+
+  it('groups user model APIs under common model management', () => {
+    expect(openAPITagGroups.find(({ name }) => name === '通用-基础功能')?.tags).toContain(
+      DevApiTagsMap.model
+    );
+
+    for (const path of [
+      '/core/ai/model/catalog',
+      '/core/ai/model/list',
+      '/core/ai/model/summary',
+      '/proApi/system/model/collaborator/list',
+      '/proApi/system/model/collaborator/update'
+    ]) {
+      const operations = Object.values(openAPIDocument.paths?.[path] ?? {});
+      expect(operations).not.toHaveLength(0);
+      for (const operation of operations) {
+        expect(operation?.tags).toEqual([DevApiTagsMap.model]);
+      }
+    }
   });
 
   it('groups AI generation helpers under the dedicated section', () => {

@@ -16,7 +16,7 @@ import type {
   UpdateSystemModelBody,
   UpdateSystemModelStatusBody,
   UpdateSystemModelsWithJsonBody
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 
 const adminModelPath = '/admin/settings/model';
 

@@ -157,7 +157,8 @@ export const AppLogPath: OpenAPIPath = {
   '/core/app/logs/getUsers': {
     post: {
       summary: '获取日志用户列表',
-      description: '获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序',
+      description:
+        '获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序，支持搜索和分页',
       tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
       requestBody: {
         content: {

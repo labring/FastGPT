@@ -4,7 +4,7 @@ import { createServer, type Server } from 'node:http';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { type CreateSystemModelBody } from '@fastgpt/global/openapi/admin/core/ai/model/api';
+import { type CreateSystemModelBody } from '@fastgpt/global/openapi/admin/settings/model/api';
 
 // 全局测试配置提供 MongoMemoryReplSet；这里恢复真实 session，覆盖提交与回滚。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');

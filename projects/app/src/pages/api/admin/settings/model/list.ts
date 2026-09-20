@@ -7,7 +7,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import {
   GetAdminSystemModelListResponseSchema,
   type GetAdminSystemModelListResponse
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { getAdminAIProxyChannelItems } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 

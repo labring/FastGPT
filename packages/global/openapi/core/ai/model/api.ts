@@ -88,7 +88,7 @@ export const ModelProviderSchema = z.object({
  * Route: GET /api/core/ai/model/catalog
  * Method: GET
  * Description: 通过登录态或外链身份返回对应成员完整可用模型、Provider 与有效默认模型 ID；版本一致时省略数据
- * Tags: ['AI 通用', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const GetModelCatalogQuerySchema = z.object({
@@ -118,7 +118,7 @@ export type GetModelCatalogResponse = z.infer<typeof GetModelCatalogResponseSche
  * Route: GET /api/core/ai/model/list
  * Method: GET
  * Description: 无需鉴权返回价格页所需的最小化 active 系统模型与价格信息
- * Tags: ['AI 通用', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 const PublicPriceModelBaseSchema = z.object({
@@ -189,7 +189,7 @@ export type GetSystemModelsResponse = z.infer<typeof GetSystemModelsResponseSche
  * Route: GET /proApi/system/model/collaborator/list
  * Method: GET
  * Description: 获取指定模型的协作者权限配置
- * Tags: ['AI 通用', 'Read']
+ * Tags: ['模型管理', 'Read']
  * ============================================================================ */
 
 export const ModelCollaboratorListQuerySchema = z.object({
@@ -203,7 +203,7 @@ export const ModelCollaboratorListResponseSchema = CollaboratorListSchema;
  * Route: POST /proApi/system/model/collaborator/update
  * Method: POST
  * Description: 批量更新指定模型的协作者权限配置
- * Tags: ['AI 通用', 'Write']
+ * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
 export const ModelCollaboratorUpdateBodySchema = z.object({

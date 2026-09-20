@@ -13,7 +13,8 @@ export const ModelStatusLabel = ({
   loading,
   error,
   emptyLabel,
-  avatarSize = '1rem'
+  avatarSize = '1rem',
+  noTruncate = false
 }: {
   modelId?: string;
   detail?: ModelSummary;
@@ -21,6 +22,7 @@ export const ModelStatusLabel = ({
   error?: boolean;
   emptyLabel?: string;
   avatarSize?: string;
+  noTruncate?: boolean;
 }) => {
   const { t } = useTranslation();
   if (isEmptyModelValue(modelId)) return <>{emptyLabel ?? t('common:not_model_config')}</>;
@@ -41,7 +43,14 @@ export const ModelStatusLabel = ({
       color={detail.status === 'active' ? undefined : 'red.500'}
     >
       <Avatar src={detail.avatar ?? HUGGING_FACE_ICON} w={avatarSize} borderRadius={0} />
-      <Box data-preserve-width minW={0} noOfLines={1} title={text}>
+      <Box
+        data-preserve-width
+        minW={noTruncate ? 'max-content' : 0}
+        flexShrink={noTruncate ? 0 : undefined}
+        noOfLines={noTruncate ? undefined : 1}
+        whiteSpace={noTruncate ? 'nowrap' : undefined}
+        title={text}
+      >
         {text}
       </Box>
     </Flex>

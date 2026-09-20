@@ -9,7 +9,7 @@ import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import {
   ReplaceSystemModelChannelsBodySchema,
   type ReplaceSystemModelChannelsBody
-} from '@fastgpt/global/openapi/admin/core/ai/model/api';
+} from '@fastgpt/global/openapi/admin/settings/model/api';
 
 /**
  * 以提交的完整渠道集合替换模型绑定。

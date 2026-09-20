@@ -7,7 +7,7 @@ import { Box, Flex } from '@chakra-ui/react';
  *
  * @param avatars - avatars array
  * @param max - max avatars to show
- * @param [groupId] - group id to make the key unique
+ * @param total - total count used to render the overflow indicator
  * @returns
  */
 function AvatarGroup({

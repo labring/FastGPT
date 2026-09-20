@@ -692,18 +692,20 @@ export const createSystemMigrationRunner = ({
 
 export type SystemMigrationRunner = ReturnType<typeof createSystemMigrationRunner>;
 
-let systemMigrationRunner: SystemMigrationRunner | undefined;
+declare global {
+  var systemMigrationRunner: SystemMigrationRunner | undefined;
+}
 
 /** 启动当前进程唯一的生产迁移执行器。 */
 export const startSystemMigrationRunner = async (): Promise<SystemMigrationRunner> => {
-  if (!systemMigrationRunner) {
-    systemMigrationRunner = createSystemMigrationRunner();
-    await systemMigrationRunner.start();
+  if (!global.systemMigrationRunner) {
+    global.systemMigrationRunner = createSystemMigrationRunner();
+    await global.systemMigrationRunner.start();
   }
-  return systemMigrationRunner;
+  return global.systemMigrationRunner;
 };
 
 /** 管理员重置失败任务后唤醒当前 API 节点；实际执行仍需正常竞争 Mongo lease。 */
 export const wakeSystemMigrationRunner = (): void => {
-  void systemMigrationRunner?.wake();
+  void global.systemMigrationRunner?.wake();
 };

@@ -1,6 +1,6 @@
 import { getSystemModelDetail } from '@/web/core/ai/config';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
-import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/core/ai/model/api';
+import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/settings/model/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';

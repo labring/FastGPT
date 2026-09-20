@@ -98,8 +98,15 @@ const VariableEdit = ({
       />
       {/* Form render */}
       {formatVariables.length > 0 && (
-        <FixedTableContainer bodyBg="white" flush mt={2} borderRadius={'md'} borderWidth={'1px'}>
-          <Table variant={'workflow'} w={'100%'} sx={{ tableLayout: 'fixed' }}>
+        <FixedTableContainer
+          bodyBg="white"
+          flush
+          tableVariant={'flat'}
+          mt={2}
+          borderRadius={'md'}
+          borderWidth={'1px'}
+        >
+          <Table w={'100%'} sx={{ tableLayout: 'fixed' }}>
             <Thead>
               <Tr>
                 <Th pl={'24px !important'} pr={'8px !important'}>

@@ -6,6 +6,7 @@ import MyPopover from '../MyPopover';
 import MyIcon from '../Icon';
 import Avatar from '../Avatar';
 import MyTooltip from '../MyTooltip';
+import MyBox from '../MyBox';
 import FilterButton, { FilterSummaryValue, useFilterTriggerWidth } from './FilterButton';
 import FilterSearchInput, {
   FILTER_SEARCH_THRESHOLD,
@@ -62,6 +63,7 @@ export type MultiSelectFilterProps<T extends string = string> = {
   placement?: PlacementWithLogical;
   /** 下拉列表高度档位，选项较多时使用 md 或 lg。 */
   listSize?: FilterListSize;
+  isLoading?: boolean;
 };
 
 /**
@@ -85,7 +87,8 @@ function MultiSelectFilter<T extends string>({
   onOpen,
   maxW = '200px',
   placement = 'bottom-start',
-  listSize = DEFAULT_FILTER_LIST_SIZE
+  listSize = DEFAULT_FILTER_LIST_SIZE,
+  isLoading = false
 }: MultiSelectFilterProps<T>) {
   const { t } = useTranslation();
   const [innerSearch, setInnerSearch] = useState('');
@@ -180,7 +183,7 @@ function MultiSelectFilter<T extends string>({
       }
     >
       {() => (
-        <Box p={'6px'} minW={'100%'} onClick={(e) => e.stopPropagation()}>
+        <MyBox isLoading={isLoading} p={'6px'} minW={'100%'} onClick={(e) => e.stopPropagation()}>
           <Flex direction={'column'} gap={'4px'}>
             <Flex
               alignItems={'center'}
@@ -220,7 +223,7 @@ function MultiSelectFilter<T extends string>({
               </>
             )}
           </Flex>
-        </Box>
+        </MyBox>
       )}
     </MyPopover>
   );
