@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
@@ -27,15 +28,19 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
+import type { TeamAuditDetail } from '@fastgpt/global/support/user/audit/type';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResponse> {
   const { datasetParams, files } = parseApiInput({
@@ -82,6 +87,10 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
   // check limit
   await checkTeamDatasetLimit(teamId);
 
+  const auditTaskId = randomUUID();
+  const chunkSize = 1024;
+  const indexSize = 512;
+
   try {
     const result = await mongoSessionRun(async (session) => {
       // 1. Create dataset
@@ -117,6 +126,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
 
       // 4. Move temp files to dataset directory and create collections
       const bucket = new S3PrivateBucket();
+      const auditDetails: TeamAuditDetail[] = [];
 
       for (const file of files) {
         if (!file.fileId.startsWith('temp/')) {
@@ -133,7 +143,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
           to: newKey
         });
 
-        await createCollectionAndInsertData({
+        const { collectionId } = await createCollectionAndInsertData({
           dataset,
           createCollectionParams: {
             datasetId: dataset._id,
@@ -150,11 +160,27 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             chunkTriggerMinSize: 1000,
             chunkSettingMode: ChunkSettingModeEnum.auto,
             chunkSplitMode: DataChunkSplitModeEnum.paragraph,
-            chunkSize: 1024,
-            indexSize: 512,
+            chunkSize,
+            indexSize,
             customPdfParse: false
           },
-          session
+          session,
+          audit: false,
+          auditTaskId
+        });
+        auditDetails.push({
+          resourceId: collectionId,
+          resourceName: file.name,
+          resourceType: 'collection',
+          sourceType: 'file',
+          sourceName: file.name,
+          action: 'import',
+          result: 'processing',
+          processingParams: {
+            trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+            chunkSize,
+            indexSize
+          }
         });
       }
 
@@ -164,9 +190,33 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         avatar: dataset.avatar,
         vectorModel: {
           model: vectorModelData.model
-        }
+        },
+        auditDetails
       };
     });
+
+    const { auditDetails, ...response } = result;
+
+    // 事务提交后才写入导入事件：不会给失败的导入留下 processing 记录，
+    // 也能拿到真实的 datasetId 和 collectionId；collectionName 存稳定枚举值，渲染时再翻译
+    await addAuditLog({
+      teamId,
+      tmbId,
+      event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+      params: {
+        datasetId: String(response.datasetId),
+        datasetName: name,
+        collectionName: 'dataset_files',
+        sourceType: 'file',
+        result: files.length === 0 ? 'success' : 'processing',
+        insertLen: String(files.length),
+        taskId: auditTaskId,
+        details: auditDetails
+      }
+    }).catch((error) => {
+      logger.warn('Dataset import audit create failed', { error, teamId, auditTaskId });
+    });
+    await refreshTrainingAuditTask(auditTaskId);
 
     // Track and audit log
     pushTrack.createDataset({
@@ -188,7 +238,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
       });
     })();
 
-    return CreateDatasetWithFilesResponseSchema.parse(result);
+    return CreateDatasetWithFilesResponseSchema.parse(response);
   } catch (error) {
     return Promise.reject(error);
   }
