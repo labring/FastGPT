@@ -45,12 +45,7 @@ export const AdminInvoicePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '发票开具成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '发票开具成功'
         }
       }
     }

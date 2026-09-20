@@ -1,4 +1,5 @@
 import z from 'zod';
+import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 
 export const PluginDebugChannelStatusSchema = z.enum([
   'enabled',
@@ -118,6 +119,7 @@ export const PluginDebugChannelPluginSchema = z
       description: '调试插件版本'
     }),
     name: z.unknown().meta({
+      ...OpenObjectOpenApiMeta,
       example: {
         en: 'Get Time',
         'zh-CN': '获取时间'
@@ -128,6 +130,7 @@ export const PluginDebugChannelPluginSchema = z
       .unknown()
       .optional()
       .meta({
+        ...OpenObjectOpenApiMeta,
         example: {
           en: 'Get current time',
           'zh-CN': '获取当前时间'

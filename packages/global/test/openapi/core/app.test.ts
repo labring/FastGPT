@@ -156,8 +156,10 @@ describe('App OpenAPI contracts', () => {
       appId: objectId,
       evalModelId: objectId
     });
-    expect(CreateEvaluationFormSchema.parse({ file: {}, data: '{}' })).toEqual({
-      file: {},
+    expect(
+      CreateEvaluationFormSchema.parse({ file: 'binary-file-placeholder', data: '{}' })
+    ).toEqual({
+      file: 'binary-file-placeholder',
       data: '{}'
     });
     expect(DeleteEvaluationQuerySchema.parse({ evalId: objectId })).toEqual({ evalId: objectId });

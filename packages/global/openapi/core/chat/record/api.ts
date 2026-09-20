@@ -176,7 +176,9 @@ export type GetPaginationRecordsBodyType = z.infer<typeof GetPaginationRecordsBo
 export type GetPaginationRecordsBodyRuntimeType = z.infer<typeof GetPaginationRecordsBodySchema>;
 
 export const GetPaginationRecordsResponseSchema = z.object({
-  list: z.array(z.any()).meta({ description: '对话列表' }),
+  list: z
+    .array(z.any())
+    .meta({ items: { type: 'object', additionalProperties: true }, description: '对话列表' }),
   total: z.number().int().nonnegative().meta({ example: 10, description: '总数' })
 });
 export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecordsResponseSchema>;
@@ -233,7 +235,7 @@ export type AudioTranscriptionsDataType = z.infer<typeof AudioTranscriptionsData
 export type AudioTranscriptionsDataRuntimeType = z.infer<typeof AudioTranscriptionsDataSchema>;
 
 export const AudioTranscriptionsFormRawSchema = z.object({
-  file: z.any().meta({ format: 'binary', description: '上传的音频文件（二进制）' }),
+  file: z.string().meta({ format: 'binary', description: '上传的音频文件（二进制）' }),
   data: AudioTranscriptionsDataRawSchema.meta({
     description: '语音识别参数（JSON 序列化后传入）'
   })

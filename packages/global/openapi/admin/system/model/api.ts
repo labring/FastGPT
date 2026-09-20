@@ -142,7 +142,19 @@ export const TestAdminSystemModelQuerySchema = AdminSystemModelReferenceSchema.e
   })
 });
 export type TestAdminSystemModelQuery = z.infer<typeof TestAdminSystemModelQuerySchema>;
-export const TestAdminSystemModelResponseSchema = z.unknown();
+/** 模型连通性测试结果；TTS、STT 和 rerank 测试成功时没有业务返回值。 */
+export const TestAdminSystemModelResponseSchema = z
+  .union([
+    z.string().meta({ description: 'LLM 的回答文本' }),
+    z.object({
+      tokens: z.number().int().nonnegative().meta({ description: 'Embedding 输入 token 数' }),
+      vectors: z
+        .array(z.array(z.number()))
+        .meta({ description: 'Embedding 向量数组，顺序与输入一致' })
+    })
+  ])
+  .optional()
+  .meta({ description: '模型连通性测试结果' });
 export type TestAdminSystemModelResponse = z.infer<typeof TestAdminSystemModelResponseSchema>;
 
 /* ============================================================================
@@ -229,23 +241,18 @@ export type GetAdminModelTemplatesResponse = z.infer<typeof GetAdminModelTemplat
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
+/** 创建时仅保留已声明的模型字段；额外字段按历史行为忽略，modelId 仍由服务端生成。 */
 const CreateSystemModelDataSchema = z
-  .unknown()
-  .superRefine((value, ctx) => {
-    if (
-      typeof value === 'object' &&
-      value !== null &&
-      Object.prototype.hasOwnProperty.call(value, 'modelId')
-    ) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['modelId'],
-        message: 'modelId is not allowed when creating a model'
-      });
-    }
-  })
-  .pipe(SystemModelDocumentDataSchema)
-  .meta({ description: '不含 modelId 的完整系统模型配置' });
+  .discriminatedUnion('type', [
+    LLMSystemModelDocumentSchema,
+    EmbeddingSystemModelDocumentSchema,
+    TTSSystemModelDocumentSchema,
+    STTSystemModelDocumentSchema,
+    RerankSystemModelDocumentSchema
+  ])
+  .meta({
+    description: '不含 modelId 的完整系统模型配置；未声明字段会被忽略，modelId 始终由服务端生成'
+  });
 
 export const CreateSystemModelBodySchema = z
   .object({

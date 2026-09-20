@@ -61,6 +61,7 @@ export const AddPlansBodySchema = z.object({
   totalPoints: z.number().optional().meta({ description: '总积分' }),
   surplusPoints: z.number().optional().meta({ description: '剩余积分' })
 });
+export type AddPlansBodyType = z.infer<typeof AddPlansBodySchema>;
 
 // updatePlan
 export const UpdatePlanBodySchema = z.object({
@@ -88,3 +89,4 @@ export const UpdatePlanBodySchema = z.object({
   maxUploadFileCount: NumSchema.optional().meta({ description: '最大上传文件数' }),
   enableSandbox: z.boolean().optional().meta({ description: '是否启用沙盒' })
 });
+export type UpdatePlanBodyType = z.infer<typeof UpdatePlanBodySchema>;

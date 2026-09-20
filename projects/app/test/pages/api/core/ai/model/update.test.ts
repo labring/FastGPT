@@ -486,15 +486,17 @@ describe('admin settings model create/update api', () => {
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
   });
 
-  it('rejects modelId anywhere in a create model payload', async () => {
+  it('ignores a client-provided modelId when creating a model', async () => {
+    const clientModelId = '68ad85a7463006c963799a05';
     const res = await callApi({
       handler: createModelApi,
-      body: { modelData: { ...buildLlmDocument(), modelId: '68ad85a7463006c963799a05' } }
+      body: { modelData: { ...buildLlmDocument(), modelId: clientModelId } }
     });
 
-    expect(res.error?.name).toBe('ApiRequestInputParseError');
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
-    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+    expect(res.error).toBeUndefined();
+    expect(res.data?.modelId).not.toBe(clientModelId);
+    await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
+    expect(configMocks.updatedReloadSystemModel).toHaveBeenCalledTimes(1);
   });
 
   it('rejects the whole template batch when a selected template disappeared', async () => {

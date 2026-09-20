@@ -502,9 +502,13 @@ export const UpdateAppBodySchema = z
   });
 export type UpdateAppBodyType = z.infer<typeof UpdateAppBodySchema>;
 
-export const UpdateAppResponseSchema = z.unknown().nullable().optional().meta({
-  description: 'MongoDB 更新结果；移动应用时无返回数据'
-});
+export const UpdateAppResponseSchema = z
+  .union([
+    z.looseObject({}).meta({ description: 'MongoDB 更新结果' }),
+    z.null().meta({ description: '移动应用时无返回数据' })
+  ])
+  .optional()
+  .meta({ description: '应用更新结果' });
 export type UpdateAppResponseType = z.infer<typeof UpdateAppResponseSchema>;
 
 /* ============================================================================

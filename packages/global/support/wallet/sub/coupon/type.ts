@@ -2,7 +2,7 @@ import z from 'zod';
 import { SubTypeEnum, StandardSubLevelEnum } from '../constants';
 import { CouponTypeEnum } from './constants';
 
-const CustomSubConfigSchema = z.object({
+export const CustomSubConfigSchema = z.object({
   requestsPerMinute: z.number(),
   maxTeamMember: z.number(),
   maxAppAmount: z.number(),

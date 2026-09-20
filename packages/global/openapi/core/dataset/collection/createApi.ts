@@ -108,7 +108,7 @@ export type CreateCollectionByLocalFileBodyType = z.infer<
 // OpenAPI 文档专用：描述 multipart/form-data 的实际结构
 // file 字段为二进制文件；data 字段为 JSON 序列化的对象（encoding: application/json）
 export const CreateCollectionByLocalFileFormSchema = z.object({
-  file: z.any().meta({ format: 'binary', description: '上传的文件（二进制）' }),
+  file: z.string().meta({ format: 'binary', description: '上传的文件（二进制）' }),
   data: CreateCollectionByLocalFileBodySchema.meta({
     description: '集合参数（JSON 序列化后传入）'
   })
@@ -180,7 +180,7 @@ export type CreateImageCollectionFormType = z.infer<typeof CreateImageCollection
 // OpenAPI 文档专用：描述 multipart/form-data 的实际结构（多文件）
 export const CreateImageCollectionMultipartSchema = z.object({
   file: z
-    .array(z.any().meta({ format: 'binary' }))
+    .array(z.string().meta({ format: 'binary' }))
     .meta({ description: '上传的图片文件列表（二进制，多选）' }),
   data: CreateImageCollectionDataSchema.meta({
     description: '集合参数（JSON 序列化后传入）'
@@ -202,7 +202,7 @@ export type CreateBackupCollectionFormType = z.infer<typeof CreateBackupCollecti
 
 // OpenAPI 文档专用
 export const CreateBackupCollectionMultipartSchema = z.object({
-  file: z.any().meta({
+  file: z.string().meta({
     format: 'binary',
     description:
       '备份 CSV 或 Excel 文件（表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；兼容旧版 q、a、indexes 表头）'
@@ -225,7 +225,7 @@ export type CreateTemplateCollectionFormType = z.infer<typeof CreateTemplateColl
 
 // OpenAPI 文档专用
 export const CreateTemplateCollectionMultipartSchema = z.object({
-  file: z.any().meta({
+  file: z.string().meta({
     format: 'binary',
     description:
       '模板 CSV 或 Excel 文件（表头由 q、a、index、metadata 组成，q/a/metadata 各一列，index 可多列且顺序任意，metadata 单元格为 JSON object；Excel 仅支持单工作表且不能包含合并单元格；兼容旧版 q、a、indexes 表头）'

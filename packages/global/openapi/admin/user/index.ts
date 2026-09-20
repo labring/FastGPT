@@ -72,12 +72,7 @@ export const AdminUsersPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '更新成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '更新成功'
         }
       }
     }
@@ -96,12 +91,7 @@ export const AdminUsersPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '注销成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '注销成功'
         }
       }
     }

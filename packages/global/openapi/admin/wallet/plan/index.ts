@@ -46,12 +46,7 @@ export const AdminPlanPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '添加成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '添加成功'
         }
       }
     }
@@ -70,12 +65,7 @@ export const AdminPlanPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '更新成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '更新成功'
         }
       }
     }

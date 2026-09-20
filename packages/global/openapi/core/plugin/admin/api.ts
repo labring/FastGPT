@@ -10,7 +10,8 @@ import { I18nStringSchema } from '../../../../common/i18n/type';
  * ============================================================================ */
 
 export const UploadPkgPluginBodySchema = z.object({
-  file: z.any().meta({
+  file: z.string().meta({
+    format: 'binary',
     description:
       'multipart/form-data file 字段，可重复传入，支持 .pkg 文件或包含多个 .pkg 的 .zip 文件'
   })

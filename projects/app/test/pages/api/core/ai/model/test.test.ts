@@ -225,19 +225,22 @@ describe('admin model test routing', () => {
   });
 
   it('tests an embedding model through the selected channel', async () => {
-    const vectors = [{ embedding: [0.1, 0.2], index: 0 }];
+    const embeddingResult = {
+      tokens: 1,
+      vectors: [[0.1, 0.2]]
+    };
     mocks.findModelData.mockReturnValue({
       ...installedModel,
       type: ModelTypeEnum.embedding
     });
-    mocks.getVectors.mockResolvedValue(vectors);
+    mocks.getVectors.mockResolvedValue(embeddingResult);
 
     const result = await handler(
       { query: { modelId: installedModel.modelId, channelId: 11 } } as any,
       {} as any
     );
 
-    expect(result).toEqual(vectors);
+    expect(result).toEqual(embeddingResult);
     expect(mocks.getVectors).toHaveBeenCalledWith(
       expect.objectContaining({
         inputs: [{ type: 'text', input: 'Hi' }],

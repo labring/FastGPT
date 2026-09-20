@@ -7,6 +7,7 @@ import {
   DeleteSystemModelsBodySchema,
   ImportedSystemModelSchema,
   ReplaceSystemModelChannelsBodySchema,
+  TestAdminSystemModelResponseSchema,
   TestAdminSystemModelQuerySchema,
   UpdateSystemModelBodySchema,
   UpdateSystemModelStatusBodySchema
@@ -39,6 +40,35 @@ describe('admin system model API schemas', () => {
         paths: { ...AdminSystemModelPath, ...AdminSystemChannelPath }
       })
     ).not.toThrow();
+  });
+
+  it('documents the create body modelData as a discriminated union', () => {
+    // 回归：曾用 z.unknown().pipe(...) 实现，zod-openapi 只能输出 description，
+    // 生成的客户端会把 modelData 当成 null/any。
+    const document = createDocument({
+      openapi: '3.1.0',
+      info: { title: 'Admin model API', version: '1.0.0' },
+      paths: AdminSystemModelPath
+    });
+    const body = document.paths?.['/admin/system/model/create']?.post?.requestBody as
+      | { content: { 'application/json': { schema: { properties: Record<string, unknown> } } } }
+      | undefined;
+    const modelData = body?.content['application/json'].schema.properties.modelData as
+      | { type?: string; oneOf?: unknown[] }
+      | undefined;
+
+    expect(modelData?.type).toBe('object');
+    expect(modelData?.oneOf).toHaveLength(5);
+  });
+
+  it('describes each model test result without a documentation-only override', () => {
+    expect(TestAdminSystemModelResponseSchema.parse('Hello')).toBe('Hello');
+    expect(TestAdminSystemModelResponseSchema.parse({ tokens: 2, vectors: [[0.1, 0.2]] })).toEqual({
+      tokens: 2,
+      vectors: [[0.1, 0.2]]
+    });
+    expect(TestAdminSystemModelResponseSchema.parse(undefined)).toBeUndefined();
+    expect(() => TestAdminSystemModelResponseSchema.parse([[0.1, 0.2]])).toThrow();
   });
 
   it('validates unique model IDs for batch status and delete operations', () => {
@@ -85,7 +115,7 @@ describe('admin system model API schemas', () => {
     ).toThrow();
   });
 
-  it('rejects generated model IDs and invalid channel IDs at write boundaries', () => {
+  it('strips legacy model fields and rejects invalid channel IDs at write boundaries', () => {
     const modelData = {
       type: 'llm' as const,
       provider: 'OpenAI',
@@ -96,12 +126,16 @@ describe('admin system model API schemas', () => {
       config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
     };
 
-    expect(() =>
+    expect(
       CreateSystemModelBodySchema.parse({
-        modelData: { ...modelData, modelId: '68ad85a7463006c963799a05' },
+        modelData: {
+          ...modelData,
+          modelId: '68ad85a7463006c963799a05',
+          legacyClientField: true
+        },
         channelIds: []
       })
-    ).toThrow('modelId is not allowed when creating a model');
+    ).toEqual({ modelData, channelIds: [] });
     expect(() => CreateSystemModelBodySchema.parse({ modelData, channelIds: [0] })).toThrow();
     expect(() =>
       ReplaceSystemModelChannelsBodySchema.parse({
@@ -215,3 +249,4 @@ describe('admin system model API schemas', () => {
     expect(parsed.config).not.toHaveProperty('unknownConfig');
   });
 });
+

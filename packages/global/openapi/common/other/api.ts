@@ -35,7 +35,7 @@ export const PushTrackBodySchema = z.object({
     example: TrackEnum.useAppTemplate,
     description: '埋点事件类型'
   }),
-  data: z.unknown().meta({
+  data: z.json().meta({
     example: { id: 'app-template-id', name: '示例模板' },
     description: '事件关联数据，结构由事件类型决定'
   })

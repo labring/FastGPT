@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { JsonValueOpenApiMeta } from '../../common/zod/openapi';
 import { formatTime2YMDHM } from '../../common/string/time';
 import { DatasetCollectionTagTypeEnum } from './constants';
 import type { DatasetCollectionTagType, DatasetTagType } from './type';
@@ -78,7 +79,10 @@ export const DatasetTagFilterConditionSchema = z.object({
   tagType: WorkflowTagFilterTagTypeSchema.optional(),
   op: z.string().optional(),
   valueMode: z.enum(DatasetTagFilterValueModeEnum).optional(),
-  value: z.unknown().optional()
+  value: z
+    .unknown()
+    .optional()
+    .meta({ ...JsonValueOpenApiMeta, description: '筛选值' })
 });
 export type DatasetTagFilterCondition = z.infer<typeof DatasetTagFilterConditionSchema>;
 

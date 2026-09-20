@@ -10,5 +10,7 @@ export const DatasetItemSchema = z.object({
   totalDatas: z.number().meta({ description: '数据总量' }),
   totalVectors: z.number().meta({ description: '向量总量' })
 });
+export type DatasetItemType = z.infer<typeof DatasetItemSchema>;
 
 export const GetDatasetsResponseSchema = PaginationResponseSchema(DatasetItemSchema);
+export type GetDatasetsResponseType = z.infer<typeof GetDatasetsResponseSchema>;
