@@ -92,9 +92,10 @@ describe('POST /api/core/ai/model/summary', () => {
       outLinkConfig: { teamId: 'link-team', tmbId: 'link-member' }
     });
     mocks.findMember.mockReturnValue({ lean: vi.fn().mockResolvedValue({ role: 'owner' }) });
-    await handler({ body: { modelIds: ['active'], outLinkAuthData } } as any);
+    const req = { body: { modelIds: ['active'], outLinkAuthData } } as any;
+    await handler(req);
     expect(mocks.authUserPer).not.toHaveBeenCalled();
-    expect(mocks.authOutLink).toHaveBeenCalledWith(outLinkAuthData);
+    expect(mocks.authOutLink).toHaveBeenCalledWith({ ...outLinkAuthData, req });
     expect(mocks.permission).toHaveBeenCalledWith({
       teamId: 'link-team',
       tmbId: 'link-member',

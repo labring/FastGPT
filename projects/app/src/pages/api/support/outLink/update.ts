@@ -14,6 +14,7 @@ import {
   type OutLinkUpdateBodyType,
   type OutLinkUpdateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 
 // {
 // _id?: string; // Outlink 的 ID
@@ -25,7 +26,7 @@ import {
 // app?: T; // 平台的配置
 // }
 
-async function handler(
+export async function handler(
   req: ApiRequestProps<OutLinkUpdateBodyType>
 ): Promise<OutLinkUpdateResponseType> {
   const {
@@ -35,6 +36,7 @@ async function handler(
     limit,
     app,
     canDownloadSource,
+    allowAnonymous,
     showRunningStatus,
     showSkillReferences,
     showFullText
@@ -59,10 +61,13 @@ async function handler(
     per: ManagePermissionVal
   });
 
+  const isShareLink = outLink.type === PublishChannelEnum.share;
+
   const doc = await MongoOutLink.findByIdAndUpdate(_id, {
     name,
     showCite,
     canDownloadSource,
+    ...(isShareLink && allowAnonymous !== undefined ? { allowAnonymous } : {}),
     showRunningStatus,
     showSkillReferences,
     showFullText,

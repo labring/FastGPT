@@ -1,7 +1,9 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import * as getUsers from '@/pages/api/core/app/logs/getUsers';
+import * as listApi from '@/pages/api/core/app/logs/list';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
@@ -13,9 +15,11 @@ import {
 import { Call } from '@test/utils/request';
 import type {
   GetLogUsersBody,
-  GetLogUsersResponse
+  GetLogUsersResponse,
+  getAppChatLogsBody,
+  getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type EmptyQuery = Record<string, never>;
 type TestChatLog = {
@@ -158,6 +162,120 @@ describe('getUsers API', () => {
     const outLinkUser = res.data.list.find((u) => u.outLinkUid === 'external-user-1');
     expect(outLinkUser).toBeDefined();
     expect(outLinkUser?.count).toBe(1);
+  });
+
+  it('returns a protected share visitor as an out-link filter that finds their chat', async () => {
+    const visitor = await MongoUser.create({
+      username: 'protected-share-visitor',
+      password: 'test-password'
+    });
+    const visitorMember = await MongoTeamMember.create({
+      teamId: testTeamId,
+      userId: visitor._id,
+      name: 'Protected Share Visitor',
+      status: 'active',
+      createTime: new Date(),
+      defaultTeam: false
+    });
+    const visitorTmbId = String(visitorMember._id);
+    const now = new Date();
+    await createAppChatLogs(
+      [
+        {
+          chatId: 'protected-share-chat',
+          userId: visitorTmbId,
+          source: ChatSourceEnum.share
+        }
+      ],
+      now
+    );
+    await MongoChat.create({
+      chatId: 'protected-share-chat',
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      outLinkUid: visitorTmbId,
+      sourceType: ChatSourceTypeEnum.app,
+      source: ChatSourceEnum.share,
+      updateTime: now,
+      title: 'Protected share chat'
+    });
+    const dateStart = new Date(now.getTime() - 1000).toISOString();
+    const dateEnd = new Date(now.getTime() + 1000).toISOString();
+
+    const users = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
+      auth: authUser,
+      body: { appId: testAppId, dateStart, dateEnd }
+    });
+
+    expect(users.code).toBe(200);
+    const shareVisitor = users.data.list.find((item) => item.outLinkUid === visitorTmbId);
+    expect(shareVisitor).toMatchObject({ tmbId: null, name: 'Protected Share Visitor' });
+
+    const logs = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+        body: {
+          appId: testAppId,
+          dateStart,
+          dateEnd,
+          outLinkUids: [visitorTmbId]
+        }
+      }
+    );
+
+    expect(logs.code).toBe(200);
+    expect(logs.data.list).toEqual(
+      expect.arrayContaining([expect.objectContaining({ chatId: 'protected-share-chat' })])
+    );
+  });
+
+  it('does not resolve an out-link UID to a member from another team', async () => {
+    const foreignUser = await MongoUser.create({
+      username: 'foreign-user-logs',
+      password: 'test-password'
+    });
+    const foreignTeam = await MongoTeam.create({
+      name: 'Foreign Team Logs',
+      ownerId: foreignUser._id,
+      avatar: 'foreign-avatar',
+      createTime: new Date(),
+      balance: 0
+    });
+    const foreignMember = await MongoTeamMember.create({
+      teamId: foreignTeam._id,
+      userId: foreignUser._id,
+      name: 'Foreign Member',
+      role: TeamMemberRoleEnum.owner,
+      status: 'active',
+      createTime: new Date(),
+      defaultTeam: true
+    });
+    const now = new Date();
+    const foreignTmbId = String(foreignMember._id);
+    await createAppChatLogs(
+      [{ chatId: 'foreign-member-chat', userId: foreignTmbId, source: ChatSourceEnum.share }],
+      now
+    );
+
+    const res = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
+      auth: authUser,
+      body: {
+        appId: testAppId,
+        dateStart: new Date(now.getTime() - 1000).toISOString(),
+        dateEnd: new Date(now.getTime() + 1000).toISOString()
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.list).toContainEqual(
+      expect.objectContaining({
+        outLinkUid: foreignTmbId,
+        name: foreignTmbId
+      })
+    );
   });
 
   it('should filter users by searchKey', async () => {

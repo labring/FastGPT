@@ -2,11 +2,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { FeishuAppSchema } from '@fastgpt/global/support/outLink/type';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
-import { loadOutlinkProviderConfig } from '@fastgpt/service/support/permission/publish/authLink';
+import {
+  authOutLinkValid,
+  loadOutlinkProviderConfig
+} from '@fastgpt/service/support/permission/publish/authLink';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
+import { getUserIdByTmbId } from '@fastgpt/service/support/user/team/utils';
 
 vi.mock('@fastgpt/service/support/outLink/schema', () => ({
   MongoOutLink: { findOne: vi.fn() }
+}));
+
+vi.mock('@fastgpt/service/support/user/account/cancellation/guard', () => ({
+  assertCancellation: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/user/team/utils', () => ({
+  getUserIdByTmbId: vi.fn()
 }));
 
 const config = {
@@ -30,6 +43,42 @@ const config = {
     appSecret: ' feishu-app-secret '
   }
 };
+
+describe('authOutLinkValid', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getUserIdByTmbId).mockResolvedValue('user-id');
+  });
+
+  it('keeps legacy share links anonymously accessible', async () => {
+    vi.mocked(MongoOutLink.findOne).mockReturnValue({
+      lean: vi.fn().mockResolvedValue({ ...config, type: PublishChannelEnum.share })
+    } as any);
+
+    const result = await authOutLinkValid({ shareId: 'share-id' });
+
+    expect(MongoOutLink.findOne).toHaveBeenCalledWith({
+      shareId: 'share-id',
+      type: PublishChannelEnum.share
+    });
+    expect(result.outLinkConfig.allowAnonymous).toBe(true);
+    expect(assertCancellation).toHaveBeenCalled();
+  });
+
+  it('preserves an explicit login requirement', async () => {
+    vi.mocked(MongoOutLink.findOne).mockReturnValue({
+      lean: vi.fn().mockResolvedValue({
+        ...config,
+        type: PublishChannelEnum.share,
+        allowAnonymous: false
+      })
+    } as any);
+
+    await expect(authOutLinkValid({ shareId: 'share-id' })).resolves.toMatchObject({
+      outLinkConfig: { allowAnonymous: false }
+    });
+  });
+});
 
 describe('loadOutlinkProviderConfig', () => {
   beforeEach(() => {

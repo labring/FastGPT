@@ -18,9 +18,13 @@ import {
 import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getTeamMemberDisplayIdentityMap } from '@fastgpt/service/support/user/team/memberDisplay';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 type LogUserGroup = {
-  _id: string;
+  _id: {
+    userId: string;
+    source: ChatSourceEnum;
+  };
   count: number;
 };
 
@@ -118,14 +122,17 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
       },
       {
         $group: {
-          _id: '$userId',
+          _id: {
+            userId: '$userId',
+            source: '$source'
+          },
           count: { $sum: 1 }
         }
       },
       {
         $facet: {
           list: [
-            { $sort: { count: -1, _id: 1 } },
+            { $sort: { count: -1, '_id.userId': 1, '_id.source': 1 } },
             { $skip: resolvedOffset },
             { $limit: resolvedPageSize }
           ],
@@ -138,18 +145,19 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
 
   const userGroups = aggregateResult?.list ?? [];
   const total = aggregateResult?.total?.[0]?.count ?? 0;
-  const userIds = userGroups.map((item) => String(item._id));
+  const userIds = userGroups.map((item) => String(item._id.userId));
   const memberDisplayMap = await getTeamMemberDisplayIdentityMap({
     teamId,
     tmbIds: userIds.filter((id) => Types.ObjectId.isValid(id))
   });
 
   const list = userGroups.map((item): LogUserType => {
-    const userId = String(item._id);
+    const userId = String(item._id.userId);
     const member = memberDisplayMap.get(userId);
+    const isShareUser = item._id.source === ChatSourceEnum.share;
     return {
-      outLinkUid: member ? null : userId,
-      tmbId: member ? userId : null,
+      outLinkUid: isShareUser || !member ? userId : null,
+      tmbId: !isShareUser && member ? userId : null,
       name: member?.name || userId,
       avatar: member?.avatar || DEFAULT_USER_AVATAR,
       count: item.count

@@ -544,6 +544,7 @@ describe('App Delete Data Cleanup Verification', () => {
       name: 'Test Share Link',
       shareId: `test_share_${timestamp}`,
       type: 'share',
+      allowAnonymous: true,
       limit: 100,
       immediateReturn: false
     });

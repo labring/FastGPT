@@ -15,7 +15,7 @@ export const authModelViewer = async ({
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
   if (outLinkAuthData) {
-    const { outLinkConfig } = await authOutLink(outLinkAuthData);
+    const { outLinkConfig } = await authOutLink({ ...outLinkAuthData, req });
     const teamId = String(outLinkConfig.teamId);
     const tmbId = String(outLinkConfig.tmbId);
     const tmb = await MongoTeamMember.findOne({ _id: tmbId, teamId }, 'role').lean();

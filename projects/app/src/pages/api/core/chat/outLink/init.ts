@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
   const { shareId, outLinkUid } = outLinkAuthData;
 
   // auth link permission
-  const { uid, appId } = await authOutLink({ shareId, outLinkUid });
+  const { uid, appId } = await authOutLink({ shareId, outLinkUid, req });
 
   // auth app permission
   const [chat, app] = await Promise.all([

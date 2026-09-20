@@ -72,7 +72,7 @@ export async function authChatCrud({
       outLinkConfig,
       uid,
       appId: shareChatAppId
-    } = await authOutLink({ shareId, outLinkUid });
+    } = await authOutLink({ shareId, outLinkUid, req: props.req });
 
     const resolvedAppId = String(shareChatAppId);
     if (appId && resolvedAppId !== appId) return Promise.reject(ChatErrEnum.unAuthChat);
