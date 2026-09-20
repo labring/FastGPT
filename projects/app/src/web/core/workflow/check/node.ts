@@ -1,3 +1,5 @@
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { filterSelectableWorkflowNodeOutputs } from '../utils';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/common/workflow/model';
 import { workflowDatasetParamModelSlots } from '@fastgpt/global/core/workflow/model/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -8,7 +10,8 @@ import {
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
-  WorkflowIOValueTypeEnum
+  WorkflowIOValueTypeEnum,
+  VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
 import {
   isValidReferenceValueFormat,
@@ -116,12 +119,14 @@ export const checkWorkflowNodeInputRules = ({
   data,
   inputMap,
   context,
+  variables,
   modelIssues
 }: {
   data: FlowNodeItemType;
   inputMap: Map<string, FlowNodeInputItemType>;
   context: WorkflowCheckContext;
   modelIssues: WorkflowRuleIssue[];
+  variables?: AppChatConfigType['variables'];
 }): WorkflowRuleIssue[] => {
   const isEmptyWorkflowInputValue = (value: unknown) =>
     value === undefined ||
@@ -184,6 +189,48 @@ export const checkWorkflowNodeInputRules = ({
     return inputVal === undefined || inputVal === null || inputVal === '';
   };
 
+  /** 动态选项仅接受仍可选择的字符串、数组或 any 引用；运行前同时检查全局变量类型。 */
+  const dynamicOptionValueTypes = new Set<WorkflowIOValueTypeEnum>([
+    WorkflowIOValueTypeEnum.string,
+    WorkflowIOValueTypeEnum.arrayString,
+    WorkflowIOValueTypeEnum.arrayAny,
+    WorkflowIOValueTypeEnum.any
+  ]);
+
+  const dynamicOptionReferenceIsLive = (
+    value: unknown,
+    context: WorkflowCheckContext,
+    variables?: AppChatConfigType['variables']
+  ) => {
+    if (!isValidReferenceValueFormat(value)) return false;
+
+    const [refNodeId, refOutputId] = value;
+    if (!refNodeId || !refOutputId) return false;
+    if (refNodeId === VARIABLE_NODE_ID) {
+      // variables 未提供时保持单节点增量校验的兼容性；运行/发布前会传入完整变量配置。
+      if (!variables) return true;
+
+      const variable = variables.find((item) => item.key === refOutputId);
+      return (
+        !!variable &&
+        (variable.valueType === undefined || dynamicOptionValueTypes.has(variable.valueType))
+      );
+    }
+
+    const sourceNode = context.nodeMap.get(refNodeId);
+    if (!sourceNode) return false;
+
+    return filterSelectableWorkflowNodeOutputs({
+      outputs: sourceNode.outputs,
+      valueType: WorkflowIOValueTypeEnum.any,
+      catchError: sourceNode.catchError
+    }).some(
+      (output) =>
+        output.id === refOutputId &&
+        (output.valueType === undefined || dynamicOptionValueTypes.has(output.valueType))
+    );
+  };
+
   const issues: WorkflowRuleIssue[] = [];
   if (workflowCheckSkipNodeRuleTypes.has(data.flowNodeType)) {
     return issues;
@@ -222,18 +269,65 @@ export const checkWorkflowNodeInputRules = ({
     const isUserSelect = data.flowNodeType === FlowNodeTypeEnum.userSelect;
     const inputKey = isUserSelect ? NodeInputKeyEnum.userSelectOptions : NodeInputKeyEnum.agents;
     const codePrefix = isUserSelect ? 'user_select' : 'classify_question';
-    const options = inputMap.get(inputKey)?.value as Array<{ value?: string }> | undefined;
-    if (!options?.length) {
-      issues.push({ code: `${codePrefix}_empty`, inputKey });
-    } else if (options.some((option) => !option.value)) {
-      issues.push({ code: `${codePrefix}_value_empty`, inputKey });
+    const optionInput = inputMap.get(inputKey);
+    if (
+      isUserSelect &&
+      optionInput &&
+      getSelectedInputRenderType(optionInput) === FlowNodeInputTypeEnum.reference
+    ) {
+      const references = optionInput.value;
+      if (!Array.isArray(references) || references.length === 0) {
+        issues.push({ code: 'user_select_empty', inputKey });
+      } else if (
+        !references.every((reference) =>
+          dynamicOptionReferenceIsLive(reference, context, variables)
+        )
+      ) {
+        issues.push({ code: 'invalid_reference', inputKey, input: optionInput });
+      }
+    } else {
+      const options = optionInput?.value as Array<{ value?: string }> | undefined;
+      if (!options?.length) {
+        issues.push({ code: `${codePrefix}_empty`, inputKey });
+      } else if (options.some((option) => !option.value)) {
+        issues.push({ code: `${codePrefix}_value_empty`, inputKey });
+      }
     }
   }
 
   if (data.flowNodeType === FlowNodeTypeEnum.formInput) {
-    const value = inputMap.get(NodeInputKeyEnum.userInputForms)?.value as unknown[] | undefined;
+    const value = inputMap.get(NodeInputKeyEnum.userInputForms)?.value as
+      | Array<{
+          key?: string;
+          label?: string;
+          listInputType?: FlowNodeInputTypeEnum;
+          listReference?: unknown;
+        }>
+      | undefined;
     if (!value || value.length === 0) {
       issues.push({ code: 'form_input_empty', inputKey: NodeInputKeyEnum.userInputForms });
+    } else {
+      const invalidReferenceForm = value.find((form) => {
+        if (form.listInputType !== FlowNodeInputTypeEnum.reference) return false;
+        const references = isValidReferenceValueFormat(form.listReference)
+          ? [form.listReference]
+          : Array.isArray(form.listReference)
+            ? form.listReference
+            : [];
+        return (
+          references.length === 0 ||
+          !references.every((reference) =>
+            dynamicOptionReferenceIsLive(reference, context, variables)
+          )
+        );
+      });
+      if (invalidReferenceForm) {
+        issues.push({
+          code: 'invalid_reference',
+          inputKey: NodeInputKeyEnum.userInputForms,
+          fallbackLabel: invalidReferenceForm.label || invalidReferenceForm.key || 'Options'
+        });
+      }
     }
   }
 

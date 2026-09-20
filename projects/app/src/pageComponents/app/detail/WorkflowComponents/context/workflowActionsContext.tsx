@@ -138,6 +138,7 @@ export const WorkflowActionsContext = createContext<WorkflowActionsContextValue>
 export const WorkflowActionsProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   // 获取 WorkflowBufferDataContext 的数据
   const {
@@ -257,6 +258,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         edges,
         modelData,
         nodeId,
+        variables: appDetail.chatConfig?.variables ?? [],
         t
       });
 
@@ -281,7 +283,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         })
       );
     },
-    [appId, edges, getNodes, setNodes, t]
+    [appId, appDetail.chatConfig?.variables, edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
@@ -323,10 +325,16 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        modelData,
+        variables: appDetail.chatConfig?.variables ?? [],
+        t
+      });
       onSyncWorkflowCheckIssues(issueMap);
     }, 400);
-  }, [appId, edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [appId, appDetail.chatConfig?.variables, edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {

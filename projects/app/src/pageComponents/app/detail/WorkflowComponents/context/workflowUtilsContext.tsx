@@ -317,7 +317,13 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         )
       )
         return;
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, modelData, t });
+      const issueMap = checkWorkflowNodeIssues({
+        nodes,
+        edges,
+        modelData,
+        variables: appDetail.chatConfig?.variables ?? [],
+        t
+      });
       onSyncWorkflowCheckIssues(issueMap);
     };
 
@@ -328,7 +334,14 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       active = false;
       window.clearInterval(timer);
     };
-  }, [appDetail._id, edges, getNodes, onSyncWorkflowCheckIssues, t]);
+  }, [
+    appDetail._id,
+    appDetail.chatConfig?.variables,
+    edges,
+    getNodes,
+    onSyncWorkflowCheckIssues,
+    t
+  ]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(

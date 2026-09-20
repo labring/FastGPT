@@ -39,9 +39,10 @@ export const UserSelectNode: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.userSelectOptions,
-      renderTypeList: [FlowNodeInputTypeEnum.custom],
+      renderTypeList: [FlowNodeInputTypeEnum.custom, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.custom,
       valueType: WorkflowIOValueTypeEnum.any,
-      label: '',
+      label: i18nT('app:workflow.select_options_mode_label'),
       value: [
         {
           value: 'Confirm',

@@ -1,5 +1,8 @@
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -7,6 +10,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import {
   getHandleId,
+  getSelectedInputRenderType,
   isValidReferenceValueFormat
 } from '@fastgpt/global/common/workflow/reference';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -69,9 +73,15 @@ export const createWorkflowCheckContext = ({
     })();
     if (!branchInputKey) return true;
     if (!sourceHandle) return false;
-    const branches = inputs.find((input) => input.key === branchInputKey)?.value as
-      | Array<{ key?: string }>
-      | undefined;
+    const branchInput = inputs.find((input) => input.key === branchInputKey);
+    if (
+      flowNodeType === FlowNodeTypeEnum.userSelect &&
+      branchInput &&
+      getSelectedInputRenderType(branchInput) === FlowNodeInputTypeEnum.reference
+    ) {
+      return sourceHandle === getHandleId(nodeId, 'source', 'ref_default');
+    }
+    const branches = branchInput?.value as Array<{ key?: string }> | undefined;
     return (
       Array.isArray(branches) &&
       branches.some(
