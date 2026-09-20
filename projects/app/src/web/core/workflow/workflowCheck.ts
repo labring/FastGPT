@@ -51,7 +51,11 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getWorkflowModelDetails } from './modelData';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from './utils';
+import {
+  filterSelectableWorkflowNodeOutputs,
+  storeEdge2RenderEdge,
+  storeNode2FlowNode
+} from './utils';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -88,8 +92,13 @@ const isWorkflowEdgeSourceHandleValid = (
   if (flowNodeType === FlowNodeTypeEnum.userSelect) {
     if (!sourceHandle) return false;
 
-    const options = inputs?.find((input) => input.key === NodeInputKeyEnum.userSelectOptions)
-      ?.value as Array<{ key?: string }> | undefined;
+    const optionInput = inputs?.find((input) => input.key === NodeInputKeyEnum.userSelectOptions);
+    const renderType = optionInput && getSelectedInputRenderType(optionInput);
+    if (renderType === FlowNodeInputTypeEnum.reference) {
+      return sourceHandle === getHandleId(nodeId, 'source', 'ref_default');
+    }
+
+    const options = optionInput?.value as Array<{ key?: string }> | undefined;
 
     return (
       Array.isArray(options) &&
@@ -491,6 +500,47 @@ const referenceValueIsLive = (
   return context.nodeOutputMap.get(refNodeId)?.has(refOutputId) === true;
 };
 
+const dynamicOptionValueTypes = new Set<WorkflowIOValueTypeEnum>([
+  WorkflowIOValueTypeEnum.string,
+  WorkflowIOValueTypeEnum.arrayString,
+  WorkflowIOValueTypeEnum.arrayAny,
+  WorkflowIOValueTypeEnum.any
+]);
+
+const dynamicOptionReferenceIsLive = (
+  value: ReferenceItemValueType | undefined,
+  context: WorkflowCheckContext,
+  variables?: AppChatConfigType['variables']
+) => {
+  if (!isValidReferenceValueFormat(value)) return false;
+
+  const [refNodeId, refOutputId] = value;
+  if (!refNodeId || !refOutputId) return false;
+  if (refNodeId === VARIABLE_NODE_ID) {
+    // variables 未提供时保持单节点增量校验的兼容性；运行/发布前会传入完整变量配置。
+    if (!variables) return true;
+
+    const variable = variables.find((item) => item.key === refOutputId);
+    return (
+      !!variable &&
+      (variable.valueType === undefined || dynamicOptionValueTypes.has(variable.valueType))
+    );
+  }
+
+  const sourceNode = context.nodeMap.get(refNodeId);
+  if (!sourceNode) return false;
+
+  return filterSelectableWorkflowNodeOutputs({
+    outputs: sourceNode.data.outputs,
+    valueType: WorkflowIOValueTypeEnum.any,
+    catchError: sourceNode.data.catchError
+  }).some(
+    (output) =>
+      output.id === refOutputId &&
+      (output.valueType === undefined || dynamicOptionValueTypes.has(output.valueType))
+  );
+};
+
 /** 引用输入是否尚未选择（空占位 / 未选变量），区别于曾经选中但已失效的引用。 */
 const isUnsetReferenceValue = (value: unknown) => {
   if (value === undefined || value === null || value === '') return true;
@@ -549,12 +599,14 @@ export const checkWorkflowNodeIssues = ({
   edges,
   models,
   nodeId,
+  variables,
   t
 }: {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   edges: Edge<any>[];
   models?: WorkflowCheckModel[];
   nodeId?: string;
+  variables?: AppChatConfigType['variables'];
   t?: TFunction;
 }): WorkflowCheckNodeIssueMap => {
   const context = createWorkflowCheckContext({ nodes, edges });
@@ -894,9 +946,34 @@ export const checkWorkflowNodeIssues = ({
       }
 
       if (data.flowNodeType === FlowNodeTypeEnum.userSelect) {
-        const configValue = inputMap.get(NodeInputKeyEnum.userSelectOptions)?.value as
-          | Array<{ value?: string }>
-          | undefined;
+        const optionInput = inputMap.get(NodeInputKeyEnum.userSelectOptions);
+        const renderType = optionInput && getSelectedInputRenderType(optionInput);
+        if (renderType === FlowNodeInputTypeEnum.reference) {
+          const references = optionInput?.value;
+          if (!Array.isArray(references) || references.length === 0) {
+            addIssue({
+              node,
+              code: 'user_select_empty',
+              message: getWorkflowCheckIssueMessage('user_select_empty', t),
+              inputKey: NodeInputKeyEnum.userSelectOptions
+            });
+          } else if (
+            !references.every((reference) =>
+              dynamicOptionReferenceIsLive(reference as ReferenceItemValueType, context, variables)
+            )
+          ) {
+            addIssue({
+              node,
+              code: 'invalid_reference',
+              message: getWorkflowCheckIssueMessage('invalid_reference', t, {
+                inputName: optionInput ? getInputLabel(optionInput, t) : undefined
+              }),
+              inputKey: NodeInputKeyEnum.userSelectOptions
+            });
+          }
+          continue;
+        }
+        const configValue = optionInput?.value as Array<{ value?: string }> | undefined;
         if (!configValue || configValue.length === 0) {
           addIssue({
             node,
@@ -915,7 +992,14 @@ export const checkWorkflowNodeIssues = ({
       }
 
       if (data.flowNodeType === FlowNodeTypeEnum.formInput) {
-        const value = inputMap.get(NodeInputKeyEnum.userInputForms)?.value as unknown[] | undefined;
+        const value = inputMap.get(NodeInputKeyEnum.userInputForms)?.value as
+          | Array<{
+              key?: string;
+              label?: string;
+              listInputType?: FlowNodeInputTypeEnum;
+              listReference?: unknown;
+            }>
+          | undefined;
         if (!value || value.length === 0) {
           addIssue({
             node,
@@ -923,6 +1007,38 @@ export const checkWorkflowNodeIssues = ({
             message: getWorkflowCheckIssueMessage('form_input_empty', t),
             inputKey: NodeInputKeyEnum.userInputForms
           });
+        } else {
+          const invalidReferenceForm = value.find((form) => {
+            if (form.listInputType !== FlowNodeInputTypeEnum.reference) return false;
+
+            const references = isValidReferenceValueFormat(form.listReference)
+              ? [form.listReference]
+              : Array.isArray(form.listReference)
+                ? form.listReference
+                : [];
+
+            return (
+              references.length === 0 ||
+              !references.every((reference) =>
+                dynamicOptionReferenceIsLive(
+                  reference as ReferenceItemValueType,
+                  context,
+                  variables
+                )
+              )
+            );
+          });
+
+          if (invalidReferenceForm) {
+            addIssue({
+              node,
+              code: 'invalid_reference',
+              message: getWorkflowCheckIssueMessage('invalid_reference', t, {
+                inputName: invalidReferenceForm.label || invalidReferenceForm.key || 'Options'
+              }),
+              inputKey: NodeInputKeyEnum.userInputForms
+            });
+          }
         }
       }
 
@@ -1309,7 +1425,13 @@ export const checkWorkflowBeforeRunOrPublish = ({
   t?: TFunction;
   chatConfig?: AppChatConfigType;
 }) => {
-  const issueMap = checkWorkflowNodeIssues({ nodes, edges, models, t });
+  const issueMap = checkWorkflowNodeIssues({
+    nodes,
+    edges,
+    models,
+    variables: chatConfig?.variables ?? [],
+    t
+  });
   const chatConfigIssues = checkWorkflowChatConfigModelIssues({ chatConfig, models, t });
   const nodeOrder = nodes.map((node) => node.data.nodeId);
   const errorNodeIds = getWorkflowCheckErrorNodeIds(issueMap, nodeOrder);

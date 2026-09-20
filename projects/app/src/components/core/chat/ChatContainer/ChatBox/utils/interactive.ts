@@ -269,7 +269,7 @@ export const getInteractiveByHistories = (
   if (finalInteractive.type === 'userSelect' && !finalInteractive.params.userSelectedVal) {
     return {
       interactive: finalInteractive,
-      canSendQuery: false
+      canSendQuery: finalInteractive.params.userSelectOptions.length === 0
     };
   } else if (finalInteractive.type === 'userInput' && !finalInteractive.params.submitted) {
     return {
@@ -373,9 +373,12 @@ export const rewriteHistoriesByInteractiveResponse = ({
             ...finalInteractive,
             params: {
               ...finalInteractive.params,
-              userSelectedVal: finalInteractive.params.userSelectOptions.find(
-                (item) => item.value === interactiveVal
-              )?.value
+              userSelectedVal:
+                finalInteractive.params.userSelectOptions.length === 0
+                  ? interactiveVal
+                  : finalInteractive.params.userSelectOptions.find(
+                      (item) => item.value === interactiveVal
+                    )?.value
             }
           }
         };

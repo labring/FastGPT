@@ -156,6 +156,10 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   max: z.number().optional(), // numberInput
   min: z.number().optional(), // numberInput
   list: z.array(z.object({ label: z.string(), value: z.string() })).optional(), // select
+  listInputType: z.enum([FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.custom]).optional(),
+  listReference: z
+    .union([z.tuple([z.string(), z.string()]), z.array(z.tuple([z.string(), z.string()]))])
+    .optional(),
 
   canLocalUpload: z.boolean().optional(),
   canUrlUpload: z.boolean().optional()

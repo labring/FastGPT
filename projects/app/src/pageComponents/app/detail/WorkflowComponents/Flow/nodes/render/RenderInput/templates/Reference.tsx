@@ -4,7 +4,7 @@ import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getNodeAllSource, filterSelectableWorkflowNodeOutputs } from '@/web/core/workflow/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ReferenceArrayValueType,
   ReferenceItemValueType,
@@ -17,6 +17,9 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { MySourceHandle } from '../../Handle';
+import { Position } from 'reactflow';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 
 const MultipleRowSelect = dynamic(() =>
   import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
@@ -48,6 +51,7 @@ type CommonSelectProps = {
 };
 type SelectProps<T extends boolean> = CommonSelectProps & {
   isArray?: T;
+  clearInvalid?: boolean;
   value?: T extends true ? ReferenceArrayValueType : ReferenceItemValueType;
   onSelect: (val?: T extends true ? ReferenceArrayValueType : ReferenceItemValueType) => void;
 };
@@ -55,12 +59,15 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
 export const useReference = ({
   nodeId,
   valueType = WorkflowIOValueTypeEnum.any,
-  includeChildren
+  includeChildren,
+  allowedValueTypes
 }: {
   nodeId: string;
   valueType?: WorkflowIOValueTypeEnum;
   // Include the container's own children as reference sources.
   includeChildren?: boolean;
+  /** Restricts dynamic option sources without changing their runtime value semantics. */
+  allowedValueTypes?: WorkflowIOValueTypeEnum[];
 }) => {
   const { t } = useSafeTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -101,13 +108,20 @@ export const useReference = ({
             outputs: node.outputs,
             valueType,
             catchError: node.catchError
-          }).map((output) => {
-            return {
-              label: t(output.label as any),
-              value: output.id,
-              valueType: output.valueType
-            };
           })
+            .filter(
+              (output) =>
+                !allowedValueTypes ||
+                !output.valueType ||
+                allowedValueTypes.includes(output.valueType)
+            )
+            .map((output) => {
+              return {
+                label: t(output.label as any),
+                value: output.id,
+                valueType: output.valueType
+              };
+            })
         };
       })
       .filter((item) => item.children.length > 0);
@@ -121,6 +135,7 @@ export const useReference = ({
     t,
     valueType,
     includeChildren,
+    allowedValueTypes,
     childrenNodeIdListMap
   ]);
 
@@ -135,7 +150,8 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const isArray = item.valueType?.includes('array') ?? false;
+  const isDynamicOptionInput = item.key === NodeInputKeyEnum.userSelectOptions;
+  const isArray = isDynamicOptionInput || (item.valueType?.includes('array') ?? false);
 
   const onSelect = useCallback(
     (e?: ReferenceValueType) => {
@@ -154,7 +170,15 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
 
   const { referenceList } = useReference({
     nodeId,
-    valueType: item.valueType
+    valueType: item.valueType,
+    allowedValueTypes: isDynamicOptionInput
+      ? [
+          WorkflowIOValueTypeEnum.string,
+          WorkflowIOValueTypeEnum.arrayString,
+          WorkflowIOValueTypeEnum.arrayAny,
+          WorkflowIOValueTypeEnum.any
+        ]
+      : undefined
   });
 
   const popDirection = useMemo(() => {
@@ -163,15 +187,28 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     return isNestedParentNodeType(node.flowNodeType) ? 'top' : 'bottom';
   }, [nodeId, getNodeById]);
 
+  const showReferenceHandle = item.key === NodeInputKeyEnum.userSelectOptions;
+
   return (
-    <ReferSelector
-      placeholder={t(item.referencePlaceholder as any) || t('common:select_reference_variable')}
-      list={referenceList}
-      value={item.value}
-      onSelect={onSelect}
-      popDirection={popDirection}
-      isArray={isArray}
-    />
+    <Box position={'relative'}>
+      <ReferSelector
+        placeholder={t(item.referencePlaceholder as any) || t('common:select_reference_variable')}
+        list={referenceList}
+        value={item.value}
+        onSelect={onSelect}
+        popDirection={popDirection}
+        isArray={isArray}
+        clearInvalid={isDynamicOptionInput}
+      />
+      {showReferenceHandle && (
+        <MySourceHandle
+          nodeId={nodeId}
+          handleId={getHandleId(nodeId, 'source', 'ref_default')}
+          position={Position.Right}
+          translate={[34, 0]}
+        />
+      )}
+    </Box>
   );
 };
 
@@ -183,7 +220,8 @@ const SingleReferenceSelector = ({
   list = [],
   onSelect,
   popDirection,
-  ButtonProps
+  ButtonProps,
+  clearInvalid = false
 }: SelectProps<false>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
@@ -220,6 +258,19 @@ const SingleReferenceSelector = ({
       onSelect(value[0]);
     }
   }, [value, onSelect]);
+
+  useEffect(() => {
+    if (Array.isArray(value) && value.length === 1 && Array.isArray(value[0])) return;
+
+    const selected = value ? getSelectValue(value) : undefined;
+    if (
+      clearInvalid &&
+      value &&
+      (!selected || (Array.isArray(selected) && selected.length === 0))
+    ) {
+      onSelect(undefined);
+    }
+  }, [clearInvalid, getSelectValue, onSelect, value]);
 
   const ItemSelector = useMemo(() => {
     const selectorVal = value as ReferenceItemValueType;
@@ -274,7 +325,8 @@ const MultipleReferenceSelector = ({
   value,
   list = [],
   onSelect,
-  popDirection
+  popDirection,
+  clearInvalid = false
 }: SelectProps<true>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
@@ -318,6 +370,19 @@ const MultipleReferenceSelector = ({
       onSelect([value]);
     }
   }, [formatList, onSelect, value]);
+
+  useEffect(() => {
+    if (!Array.isArray(value) || typeof value[0] === 'string') return;
+
+    const validReferenceCount = formatList.filter(
+      (item) => item.nodeName && item.outputName
+    ).length;
+    if (clearInvalid && validReferenceCount !== value.length) {
+      onSelect(
+        formatList.filter((item) => item.nodeName && item.outputName).map((item) => item.rawValue)
+      );
+    }
+  }, [clearInvalid, formatList, onSelect, value]);
 
   const ArraySelector = useMemo(() => {
     return (

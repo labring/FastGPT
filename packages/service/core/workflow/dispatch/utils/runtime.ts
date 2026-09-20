@@ -70,6 +70,14 @@ export const getWorkflowNodeRunParams = ({
 
     const rawValue = input.value;
     const isReferenceInput = nodeInputIsReference(input);
+
+    // Dynamic interactive options need the original references. Their dispatcher
+    // resolves each source separately so arrayAny remains a single option.
+    if (input.key === NodeInputKeyEnum.userSelectOptions && isReferenceInput) {
+      params[input.key] = rawValue;
+      return;
+    }
+
     const needsTextReplace = typeof rawValue === 'string' && rawValue.includes('{{');
     let value = rawValue;
 
