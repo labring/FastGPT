@@ -105,6 +105,7 @@
   "video": "支持视频识别",
   "video_tip": "如果模型支持视频识别，则打开该开关。",
   "waiting_test": "等待测试",
+  "active_model": "可用模型",
   "channel": "模型渠道",
   "config_model": "模型配置",
   "create_model": "新增模型",

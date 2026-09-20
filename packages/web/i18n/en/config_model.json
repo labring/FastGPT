@@ -105,6 +105,7 @@
   "video": "Video recognition",
   "video_tip": "Turn this on if the model supports video recognition.",
   "waiting_test": "Waiting for testing",
+  "active_model": "Available models",
   "channel": "Model provider",
   "config_model": "Model configuration",
   "create_model": "Add new model",

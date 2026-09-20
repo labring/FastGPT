@@ -105,6 +105,7 @@
   "video": "영상 인식",
   "video_tip": "모델이 영상 인식을 지원하는 경우 켜세요.",
   "waiting_test": "테스트 대기 중",
+  "active_model": "사용 가능한 모델",
   "channel": "모델 제공업체",
   "config_model": "모델 설정",
   "create_model": "새 모델 추가",
