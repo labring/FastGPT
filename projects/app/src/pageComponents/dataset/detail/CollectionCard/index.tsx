@@ -118,6 +118,7 @@ const CollectionCard = () => {
     isSelected,
     getRowSelectionProps,
     setSelectedItems,
+    FloatingActionBar,
     isSelecteAll,
     selectAllTrigger
   } = useTableMultipleSelect({
@@ -236,8 +237,8 @@ const CollectionCard = () => {
   const isLoading = isUpdating || isSyncing || isGetting || isDropping;
 
   return (
-    <MyBox isLoading={isLoading} h={'100%'} pt={[2, 4]} pb={0} overflow={'hidden'}>
-      <Flex ref={BoxRef} flexDirection={'column'} pt={[1, 0]} pb={0} h={'100%'} px={[2, 6]}>
+    <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
+      <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
         {/* header */}
         <Header
           hasTrainingData={hasTrainingData}
@@ -254,82 +255,44 @@ const CollectionCard = () => {
           flex={'1 0 0'}
           h={0}
           footer={
-            selectedItems.length > 0 || total > pageSize ? (
-              <Flex
-                w={'100%'}
-                py={2}
-                alignItems={'center'}
-                justifyContent={
-                  selectedItems.length > 0 && total > pageSize ? 'space-between' : 'center'
-                }
-                flexWrap={['wrap', 'nowrap']}
-                gap={2}
-              >
-                {selectedItems.length > 0 && (
-                  <HStack
-                    bg={'white'}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                    boxShadow={'2'}
-                    borderRadius={'md'}
-                    px={4}
-                    py={2}
-                    spacing={4}
-                  >
-                    <HStack spacing={2} fontSize={'sm'}>
-                      <Checkbox
-                        size={'sm'}
-                        isChecked={isSelecteAll}
-                        isIndeterminate={selectedItems.length > 0 && !isSelecteAll}
-                        onChange={selectAllTrigger}
-                      >
-                        <Box color={'myGray.900'} userSelect={'none'}>
-                          {t('dataset:collection.select_all_filtered')}
-                        </Box>
-                      </Checkbox>
-                      <Box color={'myGray.700'} userSelect={'none'}>
-                        {t('dataset:tag.filter_selected')}{' '}
-                        <Box as={'span'} color={'primary.600'} fontWeight={'medium'}>
-                          {selectedItems.length}
-                        </Box>{' '}
-                        {t('dataset:tag.filter_item')}
-                      </Box>
-                    </HStack>
-                    <HStack spacing={2}>
-                      {datasetDetail.permission.hasWritePer &&
-                        datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
-                        feConfigs?.isPlus && (
-                          <Button
-                            size={'sm'}
-                            variant={'whiteBase'}
-                            onClick={() => setIsBatchTagModalOpen(true)}
-                          >
-                            {t('dataset:tag.batch_edit')}
-                          </Button>
-                        )}
-                      <Button
-                        size={'sm'}
-                        variant={'whiteBase'}
-                        onClick={() =>
-                          openDeleteConfirm({
-                            onConfirm: () =>
-                              onDelCollection(selectedItems.map((e) => e._id)).then(() =>
-                                setSelectedItems([])
-                              ),
-                            customContent: t('dataset:confirm_delete_collection', {
-                              num: selectedItems.length
-                            })
-                          })()
-                        }
-                      >
-                        {t('dataset:batch_delete')}
-                      </Button>
-                    </HStack>
+            <>
+              <FloatingActionBar
+                pt={4}
+                Controler={
+                  <HStack>
+                    {datasetDetail.permission.hasWritePer &&
+                      datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
+                      feConfigs?.isPlus && (
+                        <Button variant={'whiteBase'} onClick={() => setIsBatchTagModalOpen(true)}>
+                          {t('dataset:tag.batch_edit')}
+                        </Button>
+                      )}
+                    <Button
+                      variant={'whiteBase'}
+                      onClick={() =>
+                        openDeleteConfirm({
+                          onConfirm: () =>
+                            onDelCollection(selectedItems.map((e) => e._id)).then(() =>
+                              setSelectedItems([])
+                            ),
+                          customContent: t('dataset:confirm_delete_collection', {
+                            num: selectedItems.length
+                          })
+                        })()
+                      }
+                    >
+                      {t('dataset:batch_delete')}
+                    </Button>
                   </HStack>
+                }
+              >
+                {total > pageSize && (
+                  <Flex justifyContent={'center'}>
+                    <Pagination />
+                  </Flex>
                 )}
-                {total > pageSize && <Pagination />}
-              </Flex>
-            ) : null
+              </FloatingActionBar>
+            </>
           }
         >
           <Table variant={'simple'} draggable={false}>
@@ -337,11 +300,7 @@ const CollectionCard = () => {
               <Tr>
                 <Th py={4}>
                   <HStack>
-                    <Checkbox
-                      isChecked={isSelecteAll}
-                      isIndeterminate={selectedItems.length > 0 && !isSelecteAll}
-                      onChange={selectAllTrigger}
-                    />
+                    <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
                     <Box>{t('common:Name')}</Box>
                   </HStack>
                 </Th>
@@ -393,7 +352,7 @@ const CollectionCard = () => {
                           onChange={() => toggleSelect(collection)}
                         />
                       </HStack>
-                      <Box minW={0} flex={1}>
+                      <Flex flexDirection={'column'} gap={'6px'} minW={0} flex={1}>
                         <Flex alignItems={'center'} minW={0}>
                           <MyIcon
                             name={collection.icon as any}
@@ -416,7 +375,7 @@ const CollectionCard = () => {
                         {feConfigs?.isPlus && !!collection.tags?.length && (
                           <TagsPopOver currentCollection={collection} />
                         )}
-                      </Box>
+                      </Flex>
                     </HStack>
                   </Td>
                   <Td py={2}>
