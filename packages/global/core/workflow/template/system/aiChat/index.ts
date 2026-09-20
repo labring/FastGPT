@@ -185,6 +185,11 @@ export const AiChatModule: FlowNodeTemplateType = {
       type: FlowNodeOutputTypeEnum.static,
       invalid: true,
       invalidCondition: ({ inputs, llmModelMap }) => {
+        const reasoningEffort = inputs.find(
+          (item) => item.key === NodeInputKeyEnum.aiChatReasoningEffort
+        )?.value;
+        if (reasoningEffort === 'none') return true;
+
         const model =
           inputs.find((item) => item.key === NodeInputKeyEnum.aiModelId)?.value ||
           inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;

@@ -165,6 +165,10 @@ export const useDebug = () => {
 
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
+      // 调试入口在节点悬浮菜单里，鼠标移开后菜单会被隐藏；此时抽屉关闭时 focus-lock 无法把焦点还给菜单按钮，
+      // 会退回到卡片内第一个可聚焦元素（示意图 tooltip 的 span[tabindex=0]），导致示意图自动展开。先主动失焦。
+      (document.activeElement as HTMLElement | null)?.blur();
+
       // 每次打开调试弹窗生成独立的会话 chatId，文件上传与调试运行共用，保证文件归属校验通过
       setDebugChatId(getNanoid());
 
