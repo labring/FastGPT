@@ -169,6 +169,11 @@ const AdminContainer = ({
         value: '/admin/config/modelProvider'
       },
       {
+        icon: 'common/rocket',
+        label: '版本升级',
+        value: '/admin/config/migration'
+      },
+      {
         icon: 'common/layer',
         label: '模板 & 工具',
         value: '/admin/templates/app',
