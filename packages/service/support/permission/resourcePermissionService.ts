@@ -179,6 +179,7 @@ export const createResourcePermissions = async ({
 /**
  * 按资源树传播父级 ACL。只处理启用继承的分支，
  * 这样取消继承的节点及其独立子树都不会被父级更新覆盖。
+ * 返回本次受影响的继承子资源数量，供审计等旁路逻辑描述影响范围。
  */
 export const syncResourceTreePermissions = async ({
   resource,
@@ -233,7 +234,7 @@ export const syncResourceTreePermissions = async ({
   );
 
   if (affectedCollaborators.length === 0) {
-    return;
+    return 0;
   }
 
   const allDescendantIds: string[] = [];
@@ -259,7 +260,7 @@ export const syncResourceTreePermissions = async ({
   }
 
   if (allDescendantIds.length === 0) {
-    return;
+    return 0;
   }
 
   const permissionRows = await resourcePermissionRepo.findByResourceIdsAndCollaborators({
@@ -366,6 +367,8 @@ export const syncResourceTreePermissions = async ({
       session
     });
   }
+
+  return allDescendantIds.length;
 };
 
 /**
@@ -482,7 +485,10 @@ export const moveResourcePermissions = async ({
   return { newParentId, collaborators: newResourceCollaborators };
 };
 
-/** 恢复继承时保留相对当前父级独有的权限位，并同步整个子树。 */
+/**
+ * 恢复继承时保留相对当前父级独有的权限位，并同步整个子树。
+ * 返回受影响的资源总数（含资源自身）。
+ */
 export const resumeResourcePermissionInheritance = async ({
   resource,
   resourceModel,
@@ -528,7 +534,7 @@ export const resumeResourcePermissionInheritance = async ({
       collaborators: newResourceCollaborators,
       session: activeSession
     });
-    await syncResourceTreePermissions({
+    const descendantCount = await syncResourceTreePermissions({
       resource,
       resourceModel,
       resourceType,
@@ -541,6 +547,8 @@ export const resumeResourcePermissionInheritance = async ({
       { inheritPermission: true },
       { session: activeSession }
     );
+
+    return descendantCount + 1;
   };
 
   return session ? fn(session) : mongoSessionRun(fn);

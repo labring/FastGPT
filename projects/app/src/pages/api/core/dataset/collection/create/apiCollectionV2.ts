@@ -20,6 +20,14 @@ import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/consta
 import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { randomUUID } from 'node:crypto';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
+import type { TeamAuditDetail } from '@fastgpt/global/support/user/audit/type';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps<CreateApiCollectionV2BodyType>) {
   const body = parseApiInput({ req, bodySchema: CreateApiCollectionV2BodySchema }).body;
@@ -124,11 +132,13 @@ export const createApiDatasetCollection = async ({
       !existApiFileIdSet.has(item.id) && array.findIndex((file) => file.id === item.id) === index
   );
 
-  return mongoSessionRun(async (session) => {
+  const auditTaskId = randomUUID();
+  const auditDetails = await mongoSessionRun(async (session) => {
+    const details: TeamAuditDetail[] = [];
     for await (const file of createFiles) {
       // Create folder
       if (file.hasChild && file.type === 'folder') {
-        await createOneCollection({
+        const { _id } = await createOneCollection({
           teamId,
           tmbId,
           session,
@@ -137,10 +147,19 @@ export const createApiDatasetCollection = async ({
           datasetId: dataset._id,
           apiFileId: file.id
         });
+        details.push({
+          resourceId: String(_id),
+          resourceName: file.name,
+          resourceType: 'folder',
+          sourceType: 'api',
+          sourceName: file.name,
+          action: 'import',
+          result: 'success'
+        });
       }
 
       if (file.type === 'file') {
-        await createCollectionAndInsertData({
+        const { collectionId } = await createCollectionAndInsertData({
           dataset,
           createCollectionParams: {
             ...body,
@@ -155,9 +174,42 @@ export const createApiDatasetCollection = async ({
             },
             customPdfParse
           },
-          session
+          session,
+          audit: false,
+          auditTaskId
+        });
+        details.push({
+          resourceId: collectionId,
+          resourceName: file.name,
+          resourceType: 'collection',
+          sourceType: 'api',
+          sourceName: file.name,
+          action: 'import',
+          result: 'processing'
         });
       }
     }
+    return details;
   });
+
+  // 事务提交后才写入导入事件，避免为失败的导入留下 processing 记录；
+  // collectionName 存稳定枚举值，渲染时再翻译
+  await addAuditLog({
+    teamId,
+    tmbId,
+    event: AuditEventEnum.IMPORT_DATASET_CONTENT,
+    params: {
+      datasetId: String(dataset._id),
+      datasetName: dataset.name,
+      collectionName: 'api_files',
+      sourceType: 'api',
+      result: createFiles.length === 0 ? 'success' : 'processing',
+      insertLen: String(createFiles.length),
+      taskId: auditTaskId,
+      details: auditDetails
+    }
+  }).catch((error) => {
+    logger.warn('API dataset import audit create failed', { error, teamId, auditTaskId });
+  });
+  await refreshTrainingAuditTask(auditTaskId);
 };

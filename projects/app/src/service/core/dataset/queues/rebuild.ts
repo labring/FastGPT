@@ -23,6 +23,7 @@ type DatasetRebuildContext = {
   vectorModel: EmbeddingSystemModelDataType;
   vlmModel?: LLMSystemModelDataType;
   synonymVersion?: number;
+  auditTaskId?: string;
 };
 
 /**
@@ -119,7 +120,8 @@ export const enqueueNextDatasetRebuildTask = async (
               q: data.q,
               indexes: data.indexes
             }),
-            retryCount: 50
+            retryCount: 50,
+            ...(context.auditTaskId && { auditTaskId: context.auditTaskId })
           }
         ],
         { session, ordered: true }

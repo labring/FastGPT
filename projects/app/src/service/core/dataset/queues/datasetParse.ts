@@ -39,6 +39,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { createParseTaskLease, PARSE_QUEUE_LEASE_TIMEOUT_MINUTES } from './parseLease';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
@@ -401,6 +402,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,
+            auditTaskId: data.auditTaskId,
             data: trainingData,
             session
           });
@@ -420,6 +422,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           datasetId: data.datasetId,
           collectionId: data.collectionId
         });
+        await refreshTrainingAuditTask(data.auditTaskId);
       } catch (err) {
         await taskLease.stop();
         if (err === TeamErrEnum.datasetSizeNotEnough) {
@@ -432,6 +435,7 @@ export const datasetParseQueue = async (): Promise<any> => {
             errorMsg: i18nT('common:code_error.team_error.dataset_size_not_enough'),
             lockTime: new Date('2999/5/5')
           });
+          await refreshTrainingAuditTask(data.auditTaskId);
 
           continue;
         }
@@ -447,6 +451,7 @@ export const datasetParseQueue = async (): Promise<any> => {
           errorMsg: getErrText(err, 'unknown error'),
           lockTime: addMinutes(new Date(), -PARSE_QUEUE_LEASE_TIMEOUT_MINUTES)
         });
+        await refreshTrainingAuditTask(data.auditTaskId);
 
         await delay(100);
       } finally {

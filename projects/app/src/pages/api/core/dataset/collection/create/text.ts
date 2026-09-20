@@ -43,6 +43,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
 
   const res = await createCollectionAndInsertData({
     dataset,
+    auditSourceType: 'text',
     createCollectionParams: {
       ...body,
       teamId,

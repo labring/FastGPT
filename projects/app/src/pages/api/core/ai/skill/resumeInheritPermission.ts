@@ -15,6 +15,8 @@ import {
   type ResumeSkillInheritPermissionResponse
 } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 export type ResumeInheritPermissionQuery = ResumeSkillInheritPermissionQuery;
 export type ResumeInheritPermissionBody = Record<string, never>;
@@ -27,15 +29,16 @@ async function handler(
     req,
     querySchema: ResumeSkillInheritPermissionQuerySchema
   }).query;
-  const { skill } = await authSkill({
+  const { teamId, tmbId, skill } = await authSkill({
     skillId,
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
+  let affectedResourceCount = 1;
   if (skill.parentId) {
-    await resumeInheritPermission({
+    affectedResourceCount = await resumeInheritPermission({
       resource: skill,
       folderTypeList: [AgentSkillTypeEnum.folder],
       resourceType: PerResourceTypeEnum.agentSkill,
@@ -51,6 +54,23 @@ async function handler(
       }
     );
   }
+
+  // 权限恢复成功后再写审计，保证成功响应后审计记录已经进入写入流程。
+  await addAuditLog({
+    teamId,
+    tmbId,
+    scope: 'member',
+    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    params: {
+      datasetId: skillId,
+      datasetName: skill.name,
+      targetPath: skill.name,
+      parentDatasetName: skill.parentId ? String(skill.parentId) : '-',
+      oldPermissionSource: 'self',
+      newPermissionSource: skill.parentId ? 'parent' : 'team',
+      affectedResourceCount
+    }
+  });
 
   return ResumeSkillInheritPermissionResponseSchema.parse(undefined);
 }

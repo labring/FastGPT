@@ -7,11 +7,19 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { getFakeUsers } from '@test/datas/users';
+import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { getFakeUsers, getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.unmock('@fastgpt/service/support/user/audit/util');
 
 describe('resume dataset inherit permission api', () => {
+  beforeEach(async () => {
+    await MongoTeamAudit.deleteMany({});
+  });
+
   it('restores inheritance for a root dataset and persists the flag', async () => {
     const users = await getFakeUsers(1);
     const dataset = await MongoDataset.create({
@@ -115,5 +123,47 @@ describe('resume dataset inherit permission api', () => {
         expect.objectContaining({ tmbId: users.members[0].tmbId, permission: ReadRoleVal })
       ])
     );
+  });
+
+  it('writes a RESUME_INHERIT_PERMISSION audit after success', async () => {
+    const root = await getRootUser();
+    const parent = await MongoDataset.create({
+      name: 'parent',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModelId: 'test-model'
+    });
+    const folder = await MongoDataset.create({
+      name: 'folder',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModelId: 'test-model',
+      parentId: parent._id,
+      inheritPermission: false
+    });
+
+    const res = await Call(handler, {
+      auth: root,
+      body: { datasetId: String(folder._id) }
+    });
+
+    expect(res.code).toBe(200);
+
+    // 该接口的审计在返回前落库，响应成功后应立即可查
+    const audit = await MongoTeamAudit.findOne({
+      teamId: root.teamId,
+      event: AuditEventEnum.RESUME_INHERIT_PERMISSION
+    }).lean();
+    expect(audit).not.toBeNull();
+    expect(audit?.scope).toBe('member');
+    expect(audit?.tmbId).toBeDefined();
+    expect(audit?.metadata).toMatchObject({
+      datasetId: String(folder._id),
+      datasetName: 'folder',
+      oldPermissionSource: 'self',
+      newPermissionSource: 'parent'
+    });
+    // 事务内采集的影响面：子 dataset 自身 + 父级链传播，至少覆盖被恢复的资源
+    expect(Number(audit?.metadata?.affectedResourceCount)).toBeGreaterThanOrEqual(1);
   });
 });
