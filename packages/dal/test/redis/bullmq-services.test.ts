@@ -54,6 +54,25 @@ describe('BullMQ business services', () => {
     expect(queue.getJob).toHaveBeenCalledWith('team-1-app-1');
   });
 
+  it('preserves the audit task id as the BullMQ job id for dataset sync', async () => {
+    const queue = {
+      add: vi.fn().mockResolvedValue({ id: 'audit-task-1' })
+    };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+    } as unknown as BullMQBinding;
+    const service = new DatasetSyncMQService(binding);
+    const data = { datasetId: 'dataset-1', taskId: 'audit-task-1' };
+
+    await expect(service.addJob(data)).resolves.toEqual({ id: 'audit-task-1' });
+    expect(queue.add).toHaveBeenCalledWith('dataset-1', data, {
+      jobId: 'audit-task-1',
+      deduplication: { id: 'dataset-1' }
+    });
+  });
+
   it('uses failed-job recovery for Dataset deletion jobs', async () => {
     const queue = {
       add: vi.fn().mockResolvedValue({ id: 'job-2' }),

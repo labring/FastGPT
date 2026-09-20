@@ -22,6 +22,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { enqueueNextDatasetRebuildTask } from './rebuild';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
@@ -180,6 +181,7 @@ export async function generateVector(): Promise<any> {
           await enqueueFollowingDatasetRebuild({ trainingData: data });
         }
         await MongoDatasetTraining.deleteOne({ _id: data._id });
+        await refreshTrainingAuditTask(data.auditTaskId);
         continue;
       }
 
@@ -225,6 +227,7 @@ export async function generateVector(): Promise<any> {
           collectionId: data.collectionId,
           dataId: data.dataId
         });
+        await refreshTrainingAuditTask(data.auditTaskId);
       } catch (err: any) {
         logger.error('Vector queue task failed', {
           error: err,
@@ -241,6 +244,7 @@ export async function generateVector(): Promise<any> {
             errorMsg: getErrText(err, 'unknown error')
           }
         );
+        await refreshTrainingAuditTask(data.auditTaskId);
         await delay(100);
       }
     }
@@ -276,7 +280,8 @@ const enqueueFollowingDatasetRebuild = async ({
       vlmModel: modelHandle.getVlmModelData(getDatasetModelReference(trainingData.dataset, 'vlm'), {
         optional: true
       }),
-      synonymVersion: trainingData.synonymVersion
+      synonymVersion: trainingData.synonymVersion,
+      auditTaskId: trainingData.auditTaskId
     })
   );
 };

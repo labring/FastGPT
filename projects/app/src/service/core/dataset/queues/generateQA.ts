@@ -24,6 +24,7 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -222,6 +223,7 @@ export async function generateQA(): Promise<any> {
             errorMsg: getErrText(err, 'unknown error')
           }
         );
+        await refreshTrainingAuditTask(data.auditTaskId);
 
         await delay(100);
       }

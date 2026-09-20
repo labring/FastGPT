@@ -305,4 +305,19 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     });
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
+
+  it('completes an empty dataset rebuild without waiting for a worker', async () => {
+    const { root, dataset } = await createDatasetContext();
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: visionEmbeddingModel.modelId
+      }
+    });
+
+    expect(res.code).toBe(200);
+    await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
+  });
 });
