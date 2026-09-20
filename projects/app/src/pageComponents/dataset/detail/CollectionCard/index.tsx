@@ -267,6 +267,13 @@ const CollectionCard = () => {
     [formatCollections]
   );
 
+  // 删除是 owner 专属操作：批量删除仅作用于选中项中的 owner 项，其余项被过滤并提示。
+  const ownedSelectedItems = useMemo(
+    () => selectedItems.filter((item) => item.permission.isOwner),
+    [selectedItems]
+  );
+  const hasFilteredUnDeletableItems = ownedSelectedItems.length < selectedItems.length;
+
   useRequest(
     async () => {
       const shouldRefreshTrainingError =
@@ -331,6 +338,11 @@ const CollectionCard = () => {
                 pt={4}
                 Controler={
                   <HStack>
+                    {hasFilteredUnDeletableItems && (
+                      <Box color={'myGray.500'} userSelect={'none'} fontSize={'sm'}>
+                        {t('dataset:collection.filtered_no_delete_permission_tip')}
+                      </Box>
+                    )}
                     {datasetDetail.permission.hasWritePer &&
                       datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
                       feConfigs?.isPlus && (
@@ -338,22 +350,24 @@ const CollectionCard = () => {
                           {t('dataset:tag.batch_edit')}
                         </Button>
                       )}
-                    <Button
-                      variant={'whiteBase'}
-                      onClick={() =>
-                        openDeleteConfirm({
-                          onConfirm: () =>
-                            onDelCollection(selectedItems.map((e) => e._id)).then(() =>
-                              setSelectedItems([])
-                            ),
-                          customContent: t('dataset:confirm_delete_collection', {
-                            num: selectedItems.length
-                          })
-                        })()
-                      }
-                    >
-                      {t('dataset:batch_delete')}
-                    </Button>
+                    {ownedSelectedItems.length > 0 && (
+                      <Button
+                        variant={'whiteBase'}
+                        onClick={() =>
+                          openDeleteConfirm({
+                            onConfirm: () =>
+                              onDelCollection(ownedSelectedItems.map((e) => e._id)).then(() =>
+                                setSelectedItems([])
+                              ),
+                            customContent: t('dataset:confirm_delete_collection', {
+                              num: ownedSelectedItems.length
+                            })
+                          })()
+                        }
+                      >
+                        {t('dataset:batch_delete')}
+                      </Button>
+                    )}
                   </HStack>
                 }
               >
@@ -584,25 +598,30 @@ const CollectionCard = () => {
                                 : [])
                             ]
                           },
-                          {
-                            children: [
-                              {
-                                type: 'danger',
-                                icon: 'delete',
-                                label: t('common:Delete'),
-                                onClick: () =>
-                                  openDeleteConfirm({
-                                    onConfirm: () => onDelCollection([collection._id]),
-                                    customContent:
-                                      collection.type === DatasetCollectionTypeEnum.folder
-                                        ? t(
-                                            'common:dataset.collections.Confirm to delete the folder'
-                                          )
-                                        : t('common:dataset.Confirm to delete the file')
-                                  })()
-                              }
-                            ]
-                          }
+                          // 删除是 owner 专属操作：非 owner 的写入协作者不提供删除入口（与 SlideCard 一致）
+                          ...(collection.permission.isOwner
+                            ? [
+                                {
+                                  children: [
+                                    {
+                                      type: 'danger' as const,
+                                      icon: 'delete',
+                                      label: t('common:Delete'),
+                                      onClick: () =>
+                                        openDeleteConfirm({
+                                          onConfirm: () => onDelCollection([collection._id]),
+                                          customContent:
+                                            collection.type === DatasetCollectionTypeEnum.folder
+                                              ? t(
+                                                  'common:dataset.collections.Confirm to delete the folder'
+                                                )
+                                              : t('common:dataset.Confirm to delete the file')
+                                        })()
+                                    }
+                                  ]
+                                }
+                              ]
+                            : [])
                         ]}
                       />
                     )}

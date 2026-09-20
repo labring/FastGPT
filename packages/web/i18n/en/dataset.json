@@ -30,6 +30,7 @@
   "collection.select_all_filtered": "Select all filtered",
   "collection.sync.submit": "Sync task submitted",
   "collection.training_type": "Chunk type",
+  "collection.filtered_no_delete_permission_tip": "Files without delete permission have been filtered",
   "collection.permission.des.read": "Can view collection content",
   "collection.permission.des.write": "Can modify collection content (update / sync / adjust training params)",
   "collection.permission.des.manage": "Can manage the whole collection and assign permissions",

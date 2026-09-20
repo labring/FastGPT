@@ -170,9 +170,11 @@ syncDatasetToCollections({ teamId, datasetId, oldEffectiveClbs, newEffectiveClbs
 |---|---|---|
 | `POST /api/core/dataset/collection/create` | dataset write | 父 collection folder `write` 或 dataset `write` 及以上；根创建需 dataset `write` |
 | `PUT /api/core/dataset/collection/update` | collection write | 非 move：collection `write`；move：源父级 + 目标父级 `manage`（根 ↔ 目录需 `TeamDatasetCreatePermissionVal`），**不接收 `inheritPermission`** |
-| `DELETE /api/core/dataset/collection/delete` | collection write | collection `write`（folder 递归删子树） |
+| `DELETE /api/core/dataset/collection/delete` | collection write | collection owner（owner 专属操作；manage/write 协作者不可删；folder 递归删子树） |
 | `GET /api/core/dataset/collection/detail` | collection read | dataset `read`（门槛）+ collection `read` |
 | `GET /api/core/dataset/collection/listV2` | dataset read | dataset `read`（门槛）；有 `parentId` 时校验该 folder `read`；列表按可读集合逐条过滤 |
+
+> `collection/delete` 收紧为 **owner 专属**：删除不可逆，只有集合 owner 能决策。`Permission.checkPer(OwnerPermissionVal)` 仅在 `permission === OwnerPermissionVal` 时通过，因此 `manage` 协作者不再能删；系统 root / 团队 owner 仍短路为 owner。语义与 dataset / app / skill 的删除门槛一致。前端行菜单与批量删除栏同步只对 `permission.isOwner` 暴露删除入口。
 
 **开关前置条件（新增约束）：**
 

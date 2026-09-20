@@ -3,7 +3,7 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -25,6 +25,8 @@ async function handler(req: ApiRequestProps) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
+  // 删除是 owner 专属操作：仅集合所有者（collection.tmbId）可删，持有 manage/write 的协作者不可删。
+  // 与 dataset / app / skill 删除保持一致（不可逆操作由 owner 唯一决策）。
   const [{ teamId, collection, tmbId }] = await Promise.all(
     deletedIds.map(async (collectionId) => {
       return await authDatasetCollection({
@@ -32,7 +34,7 @@ async function handler(req: ApiRequestProps) {
         authToken: true,
         authApiKey: true,
         collectionId,
-        per: WritePermissionVal
+        per: OwnerPermissionVal
       });
     })
   );
