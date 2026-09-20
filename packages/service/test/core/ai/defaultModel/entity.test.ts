@@ -16,8 +16,12 @@ describe('AI default model entity', () => {
   });
 
   it('upserts the only system-scoped default record', async () => {
-    await upsertSystemDefaultModelIds({ llm: 'llm-1' });
-    await upsertSystemDefaultModelIds({ llm: 'llm-2', embedding: 'embedding-1' });
+    await upsertSystemDefaultModelIds({ llm: 'llm-1', datasetImageLLM: 'vision-1' });
+    await upsertSystemDefaultModelIds({
+      llm: 'llm-2',
+      embedding: 'embedding-1',
+      datasetImageLLM: undefined
+    });
 
     await expect(
       MongoAIDefaultModel.countDocuments({ scope: ModelScopeEnum.system })

@@ -99,6 +99,33 @@ describe('useNodeOutputValidity', () => {
     expect(selectable()).not.toContain(NodeOutputKeyEnum.reasoningText);
   });
 
+  it('removes reasoning output when reasoning effort is none', () => {
+    run();
+    mocks.nodes = mocks.nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        inputs: node.data.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.aiChatReasoningEffort ? { ...input, value: 'none' } : input
+        )
+      }
+    }));
+    run();
+    expect(selectable()).not.toContain(NodeOutputKeyEnum.reasoningText);
+
+    mocks.nodes = mocks.nodes.map((node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        inputs: node.data.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.aiChatReasoningEffort ? { ...input, value: 'high' } : input
+        )
+      }
+    }));
+    run();
+    expect(selectable()).toContain(NodeOutputKeyEnum.reasoningText);
+  });
+
   it.each([{ loading: true }, { loading: false, error: new Error('offline') }])(
     'preserves output while detail is unavailable: %o',
     (state) => {

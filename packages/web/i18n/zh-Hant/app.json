@@ -341,7 +341,7 @@
   "raw_params": "原始參數",
   "reasoning_effort": "思考配置",
   "reasoning_effort_unsupported": "該模型不支援關閉思考",
-  "reasoning_response": "隱藏 AI 思考",
+  "reasoning_response": "隱藏思考輸出",
   "recharge": "去充值",
   "reference_variable": "引用變量",
   "refresh_templates": "換一批",

@@ -193,6 +193,8 @@ const DefaultModelModal = ({
           modelType={ModelTypeEnum.llm}
           models={visionModels}
           value={defaultData.datasetImageLLM?.modelId}
+          canBeUnset
+          unsetLabel={t('common:not_set')}
           onChange={(modelId) =>
             setDefaultModel({ slot: 'datasetImageLLM', candidates: visionModels, modelId })
           }

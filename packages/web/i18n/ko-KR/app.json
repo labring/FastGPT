@@ -341,7 +341,7 @@
   "raw_params": "원본 파라미터",
   "reasoning_effort": "사고 강도",
   "reasoning_effort_unsupported": "이 모델은 사고 기능 비활성화를 지원하지 않습니다",
-  "reasoning_response": "AI 사고 과정 숨기기",
+  "reasoning_response": "사고 출력 숨기기",
   "recharge": "충전하러 가기",
   "reference_variable": "인용 변수",
   "refresh_templates": "새로고침",

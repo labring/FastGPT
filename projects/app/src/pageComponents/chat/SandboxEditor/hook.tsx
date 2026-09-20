@@ -791,7 +791,7 @@ export const useSandboxFileStore = ({
 
   const refreshWorkspaceRef = useLatest(refreshWorkspace);
 
-  // 维持长连接连接
+  // 维持长连接
   useEffect(() => {
     if (!sandboxTargetId || !chatId) return;
 

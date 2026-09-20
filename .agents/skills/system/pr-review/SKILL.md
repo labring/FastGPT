@@ -100,7 +100,7 @@ git branch -D pr/<number>
 聚焦前端（`projects/app/src/`、`packages/web/`）的质量问题，完成以下检查清单：
 
 - [] [React 性能](./frontend-quality/react-performance.md)
-- [] [后端安全](../backend-quality/security.md)（前端安全检查项暂无独立文档，参考后端安全清单）
+- [] [后端安全](./backend-quality/security.md)（前端安全检查项暂无独立文档，参考后端安全清单）
 - [] [TypeScript 质量](./frontend-quality/typescript.md)
 
 ### 第四阶段：代码风格规范 📐

@@ -97,6 +97,25 @@ describe('PUT /api/admin/settings/model/updateDefault', () => {
     expect(mocks.updatedReloadSystemModel).toHaveBeenCalledWith();
   });
 
+  it('persists omitted optional model IDs as unconfigured', async () => {
+    await handler({ body: {} } as any, {} as any);
+
+    expect(mocks.findLean).not.toHaveBeenCalled();
+    expect(mocks.upsertSystemDefaultModelIds).toHaveBeenCalledWith(
+      {
+        llm: undefined,
+        embedding: undefined,
+        tts: undefined,
+        stt: undefined,
+        rerank: undefined,
+        datasetTextLLM: undefined,
+        datasetImageLLM: undefined,
+        chatTitleLLM: undefined
+      },
+      mocks.session
+    );
+  });
+
   it.each([
     {
       name: 'model ID does not exist in the system scope',
