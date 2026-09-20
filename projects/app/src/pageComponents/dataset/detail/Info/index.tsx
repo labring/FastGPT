@@ -75,7 +75,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   });
 
   /**
-   * 关闭文件级权限：清理全部 collection 协作者配置后刷新知识库详情。
+   * 关闭数据集权限：清理全部 collection 协作者配置后刷新知识库详情。
    * 该流程独立于确认框执行，失败由请求层提示且开关保持原值。
    */
   const { runAsync: disableCollectionPer, loading: isDisablingCollectionPer } = useRequest(

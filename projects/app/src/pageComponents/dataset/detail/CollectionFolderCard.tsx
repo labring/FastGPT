@@ -18,14 +18,14 @@ import {
   putResumeCollectionInheritPermission
 } from '@/web/core/dataset/api/collection';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
+import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
 
 /**
  * 知识库详情页进入子目录（folder collection）后的右侧栏。
  *
  * 结构与列表页 FolderSlideCard 完全一致（名称+编辑 / 操作 / 协作者），仅按 collection 的数据能力裁剪：
  * - collection 无 intro 字段 → 隐藏简介区；
- * - 知识库未开启数据集权限配置 → 隐藏协作者区（关闭态不存在 collection ACL，写入会被服务端拒绝），
+ * - 知识库未开启数据集权限 → 隐藏协作者区（关闭态不存在 collection ACL，写入会被服务端拒绝），
  *   与同页文件侧栏 MetaDataCard 的门槛一致。
  */
 const CollectionFolderCard = ({
@@ -107,7 +107,7 @@ const CollectionFolderCard = ({
           managePer={{
             defaultRole: ReadRoleVal,
             permission: folder.permission,
-            roleList: DatasetRoleList,
+            roleList: CollectionRoleList,
             onGetCollaboratorList: () => getCollectionCollaboratorList(collectionId),
             onUpdateCollaborators: (props) =>
               postUpdateCollectionCollaborators({ ...props, collectionId }),

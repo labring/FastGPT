@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 /**
- * 关闭 dataset 的 collection 级权限：清理该 dataset 全部 collection 的权限配置
+ * 关闭 dataset 的 collection 级权限（数据集权限）：清理该 dataset 全部 collection 的权限配置
  * （删除 ACL 行 + `inheritPermission` 重置为继承态），最后置位开关为关闭。
  *
  * 权限：dataset `manage` 及以上。**破坏性操作**：会删除该知识库下所有文件/文件夹的协作者配置，

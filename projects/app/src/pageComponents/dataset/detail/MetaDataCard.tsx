@@ -31,7 +31,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
+import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
 
 // 后端返回的 file.filename/name 已是解码后的纯文件名，但仍可能包含字面 %（如 `¥%……`）。
 // 直接 decodeURIComponent 会抛 URIError；这里安全解码，兼容历史百分号编码数据且不崩溃。
@@ -230,13 +230,13 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         </AccordionItem>
       </Accordion>
 
-      {/* 文件级权限关闭态不存在 collection 快照，避免对无 ACL 的集合发起协作者查询 */}
+      {/* 数据集权限关闭态不存在 collection 快照，避免对无 ACL 的集合发起协作者查询 */}
       {!!collection?._id && collection.dataset.collectionPermissionEnabled === true && (
         <Box mt={6}>
           <CollaboratorContextProvider
             permission={collection.permission}
             defaultRole={ReadRoleVal}
-            roleList={DatasetRoleList}
+            roleList={CollectionRoleList}
             isInheritPermission={collection.inheritPermission !== false}
             hasParent
             refetchResource={refetchCollection}

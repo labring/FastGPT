@@ -88,7 +88,7 @@ export const postChangeOwner = (data: ChangeDatasetOwnerBody) =>
 
 /* =========== collection permission switch ============ */
 /**
- * 开启知识库的文件/文件夹级权限：服务端在同一请求内同步物化全部 collection 权限快照，
+ * 开启知识库的数据集权限：服务端在同一请求内同步物化全部 collection 权限快照，
  * 物化成功后才置位开关，因此耗时较长且失败时开关保持关闭。
  */
 export const postEnableCollectionPermission = (data: EnableCollectionPermissionBody) =>
@@ -97,7 +97,7 @@ export const postEnableCollectionPermission = (data: EnableCollectionPermissionB
   });
 
 /**
- * 关闭知识库的文件/文件夹级权限：服务端会删除全部 collection 协作者配置并重置为继承态，
+ * 关闭知识库的数据集权限：服务端会删除全部 collection 协作者配置并重置为继承态，
  * 属于不可回退的破坏性操作，调用方必须二次确认。
  */
 export const postDisableCollectionPermission = (data: DisableCollectionPermissionBody) =>

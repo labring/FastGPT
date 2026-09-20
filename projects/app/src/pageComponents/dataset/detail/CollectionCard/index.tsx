@@ -67,7 +67,7 @@ import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/cor
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { postEnableCollectionPermission } from '@/web/core/dataset/api';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { DatasetRoleList } from '@fastgpt/global/support/permission/dataset/constant';
+import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
 import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core/dataset/api/training';
 
 const Header = dynamic(() => import('./Header'));
@@ -217,7 +217,7 @@ const CollectionCard = () => {
   );
 
   /**
-   * 开启文件级权限并打开配置窗：物化全部 collection 权限快照 → 刷新知识库详情（开关状态）→ 读取目标详情。
+   * 开启数据集权限并打开配置窗：物化全部 collection 权限快照 → 刷新知识库详情（开关状态）→ 读取目标详情。
    * 流程独立于确认框执行，失败由请求层提示，开关保持原值。
    */
   const { runAsync: enableCollectionPerAndOpen, loading: isEnablingCollectionPer } = useRequest(
@@ -244,7 +244,7 @@ const CollectionCard = () => {
 
   /**
    * 打开 collection 权限配置。
-   * 数据集未开启文件级权限时先二次确认，确认后由 enableCollectionPerAndOpen 完成物化再打开配置窗；
+   * collection 未开启数据集权限时先二次确认，确认后由 enableCollectionPerAndOpen 完成物化再打开配置窗；
    * 已开启时直接读取详情并打开。确认框先关闭再执行异步流程，避免弹窗退出期间的状态刷新打断关闭动画。
    */
   const onOpenCollectionPer = (collectionId: string) => {
@@ -641,7 +641,7 @@ const CollectionCard = () => {
             managePer={{
               defaultRole: ReadRoleVal,
               permission: editPerCollection.permission,
-              roleList: DatasetRoleList,
+              roleList: CollectionRoleList,
               onGetCollaboratorList: () => getCollectionCollaboratorList(editPerCollection._id),
               onUpdateCollaborators: (props) =>
                 postUpdateCollectionCollaborators({
