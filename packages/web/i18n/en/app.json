@@ -597,6 +597,7 @@
   "workflow.select_description": "Description Text",
   "workflow.select_description_placeholder": "For example: \nAre there tomatoes in the fridge?",
   "workflow.select_description_tip": "You can add a description text to explain the meaning of each option to the user.",
+  "workflow.select_options_mode_label": "Options",
   "workflow.select_result": "Selected Result",
   "workflow.user_file_input": "File Link",
   "workflow.user_file_input_desc": "Links to documents and images uploaded by users.",
