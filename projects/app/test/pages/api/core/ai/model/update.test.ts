@@ -10,11 +10,6 @@ const configMocks = vi.hoisted(() => ({
   refreshModelTemplates: vi.fn(),
   updatedReloadSystemModel: vi.fn()
 }));
-const channelMocks = vi.hoisted(() => ({
-  appendModelsToAIProxyChannels: vi.fn(),
-  replaceModelInAIProxyChannels: vi.fn(),
-  syncModelInAIProxyChannels: vi.fn()
-}));
 const providerMocks = vi.hoisted(() => ({ preloadModelProviders: vi.fn() }));
 
 vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
@@ -26,7 +21,6 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
     updatedReloadSystemModel: configMocks.updatedReloadSystemModel
   };
 });
-vi.mock('@fastgpt/service/thirdProvider/aiproxy/channel', () => channelMocks);
 vi.mock('@fastgpt/service/core/app/provider/controller', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/app/provider/controller')>()),
   preloadModelProviders: providerMocks.preloadModelProviders
@@ -34,7 +28,6 @@ vi.mock('@fastgpt/service/core/app/provider/controller', async (importOriginal) 
 
 import createModelApi from '@/pages/api/admin/system/model/create';
 import createModelsFromTemplatesApi from '@/pages/api/admin/system/model/createFromTemplates';
-import replaceModelChannelsApi from '@/pages/api/admin/system/model/channel/replace';
 import getModelTemplatesApi from '@/pages/api/admin/system/model/templates';
 import updateModelApi from '@/pages/api/admin/system/model/update';
 
@@ -67,9 +60,12 @@ describe('admin settings model create/update api', () => {
   beforeEach(() => {
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
     configMocks.refreshModelTemplates.mockReset().mockResolvedValue([]);
+<<<<<<< HEAD
     channelMocks.appendModelsToAIProxyChannels.mockReset().mockResolvedValue(undefined);
     channelMocks.replaceModelInAIProxyChannels.mockReset().mockResolvedValue(undefined);
     channelMocks.syncModelInAIProxyChannels.mockReset().mockResolvedValue(undefined);
+=======
+>>>>>>> 34c0c4957 (feat(model): support member-level AI channel isolation and proxy integration)
     providerMocks.preloadModelProviders.mockReset().mockImplementation(async () => {
       global.ModelProviderRawCache = [];
     });
@@ -133,14 +129,10 @@ describe('admin settings model create/update api', () => {
   it('creates an active model with no channel or connection configuration', async () => {
     const res = await callApi({
       handler: createModelApi,
-      body: { modelData: buildLlmDocument(), channelIds: [] }
+      body: { modelData: buildLlmDocument() }
     });
 
     expect(res.error).toBeUndefined();
-    expect(channelMocks.appendModelsToAIProxyChannels).toHaveBeenCalledWith({
-      channelIds: [],
-      models: ['test-llm']
-    });
     const created = await MongoAIModel.findById(res.data?.modelId).lean();
     expect(created).toMatchObject({ isActive: true });
     expect(created).not.toHaveProperty('requestUrl');
@@ -155,8 +147,7 @@ describe('admin settings model create/update api', () => {
           ...buildLlmDocument(),
           requestUrl: 'https://first.example.com/v1/chat/completions',
           requestAuth: 'first-secret'
-        },
-        channelIds: []
+        }
       }
     });
     expect(created.error).toBeUndefined();
@@ -182,39 +173,6 @@ describe('admin settings model create/update api', () => {
       requestUrl: 'https://second.example.com/v1/chat/completions',
       requestAuth: 'second-secret'
     });
-  });
-
-  it('binds channels before inserting the new model', async () => {
-    channelMocks.appendModelsToAIProxyChannels.mockImplementationOnce(async () => {
-      await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
-    });
-
-    const res = await callApi({
-      handler: createModelApi,
-      body: { modelData: buildLlmDocument(), channelIds: [7] }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(channelMocks.appendModelsToAIProxyChannels).toHaveBeenCalledWith({
-      channelIds: [7],
-      models: ['test-llm']
-    });
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
-  });
-
-  it('does not insert a model when channel binding fails', async () => {
-    channelMocks.appendModelsToAIProxyChannels.mockRejectedValueOnce(
-      new Error('channel update failed')
-    );
-
-    const res = await callApi({
-      handler: createModelApi,
-      body: { modelData: buildLlmDocument(), channelIds: [7] }
-    });
-
-    expect(res.error).toBeDefined();
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
-    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
   it('creates a second model without overwriting the existing default model document', async () => {
@@ -256,50 +214,41 @@ describe('admin settings model create/update api', () => {
     await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
   });
 
-  it('rejects an existing model before mutating any requested channel', async () => {
+  it('rejects an existing model when creating a duplicate model', async () => {
     await MongoAIModel.create(buildLlmDocument());
 
     const res = await callApi({
       handler: createModelApi,
-      body: { modelData: buildLlmDocument(), channelIds: [7] }
+      body: { modelData: buildLlmDocument() }
     });
 
     expect(res.error?.name).toBe('UserError');
-    expect(channelMocks.appendModelsToAIProxyChannels).not.toHaveBeenCalled();
     await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
   });
 
-  it('validates edited config before any channel mutation', async () => {
+  it('validates edited config', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
         modelId: String(existing._id),
-        channelIds: [7],
         modelData: { ...buildLlmUpdateData(), name: '   ' }
       }
     });
     expect(res.error).toBeDefined();
-    expect(channelMocks.replaceModelInAIProxyChannels).not.toHaveBeenCalled();
     expect((await MongoAIModel.findById(existing._id).lean())?.name).toBe('Test LLM');
   });
 
-  it('submits edited channels and model config through one validated operation', async () => {
+  it('submits edited model config successfully', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
         modelId: String(existing._id),
-        channelIds: [7],
         modelData: { ...buildLlmUpdateData(), name: 'Updated alias' }
       }
     });
     expect(res.error).toBeUndefined();
-    expect(channelMocks.syncModelInAIProxyChannels).toHaveBeenCalledWith({
-      oldModel: existing.model,
-      newModel: existing.model,
-      channelIds: [7]
-    });
     expect((await MongoAIModel.findById(existing._id).lean())?.name).toBe('Updated alias');
   });
 
@@ -382,23 +331,17 @@ describe('admin settings model create/update api', () => {
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
-  it('allows changing model identifier by stable modelId, updating channels and database', async () => {
+  it('allows changing model identifier by stable modelId, updating database', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
         modelId: String(existing._id),
-        modelData: { ...buildLlmUpdateData(), model: 'renamed-llm' },
-        channelIds: [3]
+        modelData: { ...buildLlmUpdateData(), model: 'renamed-llm' }
       }
     });
 
     expect(res.error).toBeUndefined();
-    expect(channelMocks.syncModelInAIProxyChannels).toHaveBeenCalledWith({
-      oldModel: 'test-llm',
-      newModel: 'renamed-llm',
-      channelIds: [3]
-    });
     await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
       model: 'renamed-llm'
     });
@@ -422,7 +365,6 @@ describe('admin settings model create/update api', () => {
     });
 
     expect(res.error?.name).toBe('UserError');
-    expect(channelMocks.syncModelInAIProxyChannels).not.toHaveBeenCalled();
     await expect(MongoAIModel.findById(existing1._id).lean()).resolves.toMatchObject({
       model: 'test-llm'
     });
@@ -508,13 +450,11 @@ describe('admin settings model create/update api', () => {
         templates: [
           { type: ModelTypeEnum.llm, model: 'test-llm' },
           { type: ModelTypeEnum.llm, model: 'removed-llm' }
-        ],
-        channelIds: [7]
+        ]
       }
     });
 
     expect(res.error?.name).toBe('UserError');
-    expect(channelMocks.appendModelsToAIProxyChannels).not.toHaveBeenCalled();
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
   });
 
@@ -585,17 +525,12 @@ describe('admin settings model create/update api', () => {
         templates: [
           { type: ModelTypeEnum.llm, model: 'test-llm' },
           { type: ModelTypeEnum.llm, model: 'new-llm' }
-        ],
-        channelIds: [7]
+        ]
       }
     });
 
     expect(res.error).toBeUndefined();
     expect(res.data?.models).toHaveLength(1);
-    expect(channelMocks.appendModelsToAIProxyChannels).toHaveBeenCalledWith({
-      channelIds: [7],
-      models: ['new-llm']
-    });
     await expect(MongoAIModel.findOne({ model: 'new-llm' }).lean()).resolves.toMatchObject({
       name: 'Latest template name',
       isActive: false
@@ -605,11 +540,12 @@ describe('admin settings model create/update api', () => {
   it('rolls back the whole Mongo batch on a concurrent unique-model conflict', async () => {
     const firstTemplate = { ...buildLlmDocument(), model: 'batch-first' };
     const conflictingTemplate = { ...buildLlmDocument(), model: 'batch-conflict' };
-    const channelModels = new Set<string>();
     configMocks.refreshModelTemplates.mockResolvedValue([firstTemplate, conflictingTemplate]);
-    channelMocks.appendModelsToAIProxyChannels.mockImplementationOnce(async ({ models }) => {
-      models.forEach((model: string) => channelModels.add(model));
+
+    const originalInsertMany = MongoAIModel.insertMany;
+    vi.spyOn(MongoAIModel, 'insertMany').mockImplementationOnce(async (docs, options) => {
       await MongoAIModel.create(conflictingTemplate);
+      return originalInsertMany.call(MongoAIModel, docs, options);
     });
 
     const res = await callApi({
@@ -618,51 +554,13 @@ describe('admin settings model create/update api', () => {
         templates: [
           { type: ModelTypeEnum.llm, model: 'batch-first' },
           { type: ModelTypeEnum.llm, model: 'batch-conflict' }
-        ],
-        channelIds: [7]
+        ]
       }
     });
 
     expect(res.error).toBeDefined();
     await expect(MongoAIModel.exists({ model: 'batch-first' })).resolves.toBeNull();
     await expect(MongoAIModel.countDocuments({ model: 'batch-conflict' })).resolves.toBe(1);
-    expect([...channelModels]).toEqual(['batch-first', 'batch-conflict']);
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
-  });
-
-  it('replaces model channels by stable modelId without accepting a renamed identifier', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
-
-    const res = await callApi({
-      handler: replaceModelChannelsApi,
-      body: {
-        modelId: String(existing._id),
-        channelIds: [2, 7]
-      }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(channelMocks.replaceModelInAIProxyChannels).toHaveBeenCalledWith({
-      model: 'test-llm',
-      channelIds: [2, 7]
-    });
-  });
-
-  it('allows replacing an existing model association with zero channels', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
-
-    const res = await callApi({
-      handler: replaceModelChannelsApi,
-      body: {
-        modelId: String(existing._id),
-        channelIds: []
-      }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(channelMocks.replaceModelInAIProxyChannels).toHaveBeenCalledWith({
-      model: 'test-llm',
-      channelIds: []
-    });
   });
 });

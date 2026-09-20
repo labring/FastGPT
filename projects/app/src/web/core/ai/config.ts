@@ -9,7 +9,6 @@ import type {
   GetAdminModelTemplatesResponse,
   GetAdminSystemModelDetailResponse,
   GetAdminSystemModelListResponse,
-  ReplaceSystemModelChannelsBody,
   TestAdminSystemModelQuery,
   TestDraftAdminSystemModelBody,
   UpdateDefaultModelsBody,
@@ -39,8 +38,6 @@ export const getAdminModelTemplates = () =>
   GET<GetAdminModelTemplatesResponse>(`${adminModelPath}/templates`);
 export const postSystemModelsFromTemplates = (data: CreateSystemModelsFromTemplatesBody) =>
   POST<CreateSystemModelsFromTemplatesResponse>(`${adminModelPath}/createFromTemplates`, data);
-export const putReplaceSystemModelChannels = (data: ReplaceSystemModelChannelsBody) =>
-  PUT(`${adminModelPath}/channel/replace`, data);
 export const putSystemModel = (data: UpdateSystemModelBody) =>
   PUT(`${adminModelPath}/update`, data);
 export const putSystemModelsStatus = (data: UpdateSystemModelStatusBody) =>

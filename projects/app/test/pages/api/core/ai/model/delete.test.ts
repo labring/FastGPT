@@ -6,7 +6,6 @@ const modelId = '68ad85a7463006c963799a05';
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
   findModelData: vi.fn(),
-  removeModelsFromAIProxyChannels: vi.fn(),
   deleteModels: vi.fn(),
   deleteProbeRecords: vi.fn(),
   deletePermissions: vi.fn(),
@@ -28,10 +27,6 @@ vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   getModelHandle: async () => ({ findModelData: mocks.findModelData })
-}));
-
-vi.mock('@fastgpt/service/thirdProvider/aiproxy/channel', () => ({
-  removeModelsFromAIProxyChannels: mocks.removeModelsFromAIProxyChannels
 }));
 
 vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
@@ -70,7 +65,6 @@ describe('DELETE /api/admin/system/model/delete', () => {
       model: `model-${requestedModelId}`,
       type: ModelTypeEnum.llm
     }));
-    mocks.removeModelsFromAIProxyChannels.mockResolvedValue(undefined);
     mocks.deleteModels.mockResolvedValue({ deletedCount: 1 });
     mocks.deleteProbeRecords.mockResolvedValue({ deletedCount: 1 });
     mocks.deletePermissions.mockResolvedValue({ deletedCount: 1 });
@@ -80,9 +74,6 @@ describe('DELETE /api/admin/system/model/delete', () => {
   it('hard deletes an installed model without consulting Plugin templates', async () => {
     await handler({ query: { modelId } } as any);
 
-    expect(mocks.removeModelsFromAIProxyChannels).toHaveBeenCalledWith({
-      models: [`model-${modelId}`]
-    });
     expect(mocks.deleteModels).toHaveBeenCalledWith(
       { _id: { $in: [modelId] }, scope: 'system' },
       { session: mocks.session }
@@ -113,9 +104,6 @@ describe('DELETE /api/admin/system/model/delete', () => {
 
     await handler({ body: { modelIds: [modelId, secondModelId] } } as any);
 
-    expect(mocks.removeModelsFromAIProxyChannels).toHaveBeenCalledWith({
-      models: [`model-${modelId}`, `model-${secondModelId}`]
-    });
     expect(mocks.deleteModels).toHaveBeenCalledWith(
       { _id: { $in: [modelId, secondModelId] }, scope: 'system' },
       { session: mocks.session }
@@ -130,7 +118,7 @@ describe('DELETE /api/admin/system/model/delete', () => {
     expect(mocks.updatedReloadSystemModel).toHaveBeenCalledOnce();
   });
 
-  it('does not mutate channels or MongoDB when any model does not exist', async () => {
+  it('does not mutate MongoDB when any model does not exist', async () => {
     const missingModelId = '68ad85a7463006c963799a06';
     mocks.findModelData.mockImplementation(({ modelId: requestedModelId }) =>
       requestedModelId === missingModelId
@@ -146,28 +134,6 @@ describe('DELETE /api/admin/system/model/delete', () => {
       handler({ body: { modelIds: [modelId, missingModelId] } } as any)
     ).rejects.toBeDefined();
 
-    expect(mocks.removeModelsFromAIProxyChannels).not.toHaveBeenCalled();
     expect(mocks.deleteModels).not.toHaveBeenCalled();
-  });
-
-  it('keeps committed model deletion when channel unbinding fails', async () => {
-    mocks.removeModelsFromAIProxyChannels.mockRejectedValueOnce(new Error('unbind failed'));
-
-    await expect(handler({ query: { modelId } } as any)).rejects.toThrow('unbind failed');
-
-    expect(mocks.deleteModels).toHaveBeenCalledOnce();
-    expect(mocks.deletePermissions).toHaveBeenCalledOnce();
-    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledOnce();
-  });
-
-  it('unbinds channels after the MongoDB deletion and cache refresh', async () => {
-    await handler({ query: { modelId } } as any);
-
-    expect(mocks.deleteModels.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.removeModelsFromAIProxyChannels.mock.invocationCallOrder[0]
-    );
-    expect(mocks.updatedReloadSystemModel.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.removeModelsFromAIProxyChannels.mock.invocationCallOrder[0]
-    );
   });
 });

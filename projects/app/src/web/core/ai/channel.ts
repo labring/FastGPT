@@ -1,156 +1,76 @@
-import axios, { type Method, type AxiosResponse } from 'axios';
-import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import {
   type DashboardDataItemType,
   type ChannelInfoType,
-  type ChannelListResponseType,
-  type ChannelLogListItemType,
   type CreateChannelProps,
   DashboardDataItemSchema
 } from '@/global/aiproxy/type';
 import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import {
-  FASTGPT_WEB_REQUEST_HEADER,
-  FASTGPT_WEB_REQUEST_VALUE
-} from '@fastgpt/global/common/system/constants';
 import { REASONING_FIELD_MAPPING_CHANNEL_TYPES } from '@fastgpt/global/core/ai/channel';
-
-interface ResponseDataType {
-  success: boolean;
-  message: string;
-  data: any;
-}
+import { useUserStore } from '@/web/support/user/useUserStore';
+import type {
+  AffectedModelsResponse,
+  BatchDeleteChannelsResponse,
+  BatchUpdateChannelStatusResponse,
+  ChannelListItem,
+  ChannelModelsResponse,
+  CreateChannelResponse,
+  DeleteChannelResponse,
+  GetChannelDashboardResponse,
+  GetChannelLogDetailResponse,
+  GetChannelLogsResponse,
+  ListChannelsQuery,
+  ListChannelsResponse,
+  ModelChannelsResponse,
+  ProviderMetasResponse,
+  TestChannelResponse,
+  UpdateChannelResponse,
+  UpdateChannelStatusResponse
+} from '@fastgpt/global/openapi/core/ai/channel/api';
 
 const reasoningFieldMappingChannelTypes = new Set<number>(REASONING_FIELD_MAPPING_CHANNEL_TYPES);
 
 /**
- * 请求成功,检查请求头
+ * 默认渠道范围解析：root 默认系统渠道视图，成员默认本人团队渠道视图
  */
-function responseSuccess(response: AxiosResponse<ResponseDataType>) {
-  return response;
-}
-/**
- * 响应数据检查
- */
-function checkRes(data: ResponseDataType) {
-  if (data === undefined) {
-    console.log('error->', data, 'data is empty');
-    return Promise.reject(i18nT('common:server_error'));
-  } else if (!data.success) {
-    return Promise.reject(data);
-  }
-  return data.data;
-}
+const getDefaultChannelScope = (): 'system' | 'team' =>
+  useUserStore.getState().userInfo?.username === 'root' ? 'system' : 'team';
 
 /**
- * 响应错误
+ * 获取渠道列表。
+ * 根据当前用户角色默认拉取对应视图（root 默认 system 系统渠道，成员默认 team 专属渠道）。
  */
-function responseError(err: any) {
-  console.log('error->', 'Request failed', err);
-  const data = err?.response?.data || err;
+export const getChannelList = (params?: ListChannelsQuery): Promise<ChannelListItem[]> => {
+  const query: ListChannelsQuery = {
+    groupType: getDefaultChannelScope(),
+    ...params
+  };
 
-  if (!err) {
-    return Promise.reject({ message: i18nT('common:error.unKnow') });
-  }
-  if (typeof err === 'string') {
-    return Promise.reject({ message: err });
-  }
-  if (typeof data === 'string') {
-    return Promise.reject(data);
-  }
-
-  return Promise.reject(data);
-}
-
-/* 创建请求实例 */
-const instance = axios.create({
-  timeout: 60000, // 超时时间
-  headers: {
-    'content-type': 'application/json'
-  }
-});
-
-/* 请求拦截 */
-instance.interceptors.request.use((config) => {
-  config.headers ??= {} as typeof config.headers;
-  if (config.method?.toUpperCase() === 'GET') {
-    config.headers[FASTGPT_WEB_REQUEST_HEADER] = FASTGPT_WEB_REQUEST_VALUE;
-  }
-  return config;
-});
-
-/* 响应拦截 */
-instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
-
-function request(url: string, data: any, method: Method): any {
-  /* 去空 */
-  for (const key in data) {
-    if (data[key] === undefined) {
-      delete data[key];
-    }
-  }
-
-  return instance
-    .request({
-      baseURL: getWebReqUrl('/api/aiproxy/api'),
-      url,
-      method,
-      data: ['POST', 'PUT'].includes(method) ? data : undefined,
-      params: !['POST', 'PUT'].includes(method) ? data : undefined
-    })
-    .then((res) => checkRes(res.data))
-    .catch((err) => responseError(err));
-}
-
-/**
- * api请求方式
- * @param {String} url
- * @param {Any} params
- * @param {Object} config
- * @returns
- */
-export function GET<T = undefined>(url: string, params = {}): Promise<T> {
-  return request(url, params, 'GET');
-}
-export function POST<T = undefined>(url: string, data = {}): Promise<T> {
-  return request(url, data, 'POST');
-}
-export function PUT<T = undefined>(url: string, data = {}): Promise<T> {
-  return request(url, data, 'PUT');
-}
-export function DELETE<T = undefined>(url: string, data = {}): Promise<T> {
-  return request(url, data, 'DELETE');
-}
-
-// ====== API ======
-export const getChannelList = () =>
-  GET<ChannelListResponseType>('/channels/all').then((res) => {
-    res.sort((a, b) => b.created_at - a.created_at || b.id - a.id);
-    return res;
+  return GET<ListChannelsResponse>('/core/ai/channel/list', query).then((res) => {
+    const list = [...(res?.list ?? [])];
+    list.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0) || b.id - a.id);
+    return list;
   });
+};
 
+/** 获取渠道提供商协议默认配置与提示 */
 export const getChannelProviders = () =>
-  GET<
-    Record<
-      number,
-      {
-        defaultBaseUrl: string;
-        keyHelp: string;
-        name: string;
-      }
-    >
-  >('/channels/type_metas');
+  GET<ProviderMetasResponse>('/core/ai/channel/providerMetas');
 
-/** FastGPT 所有渠道创建入口的统一提交方法，创建前按展示名称检查重复。 */
-export const postCreateChannel = async (data: CreateChannelProps) => {
+/** FastGPT 渠道创建入口，创建前在目标 scope 内按展示名称检查重复 */
+export const postCreateChannel = async (
+  data: CreateChannelProps & { groupType?: 'system' | 'team'; priority?: number }
+): Promise<void> => {
+  const groupType = data.groupType ?? getDefaultChannelScope();
   const name = data.name.trim();
-  const channels = await getChannelList();
+  const channels = await getChannelList({ groupType });
   if (channels.some((channel) => channel.name.trim() === name)) {
     return Promise.reject(i18nT('config_model:channel_name_duplicate'));
   }
 
-  return POST<{ id: number }>(`/createChannel`, {
+  await POST<CreateChannelResponse>('/core/ai/channel/create', {
+    groupType,
     type: data.type,
     name,
     base_url: data.base_url,
@@ -159,103 +79,194 @@ export const postCreateChannel = async (data: CreateChannelProps) => {
     configs: reasoningFieldMappingChannelTypes.has(data.type)
       ? { map_reasoning_to_reasoning_content: true }
       : undefined,
-    key: data.key,
-    priority: 1
+    key: data.key ?? '',
+    priority: data.priority ?? 1
   });
 };
 
-export const putChannelStatus = (id: number, status: ChannelStatusEnum) =>
-  POST(`/channel/${id}/status`, {
-    status
+/** 更新单个渠道启用/禁用状态 */
+export const putChannelStatus = (
+  id: number,
+  status: ChannelStatusEnum,
+  channelType?: 'system' | 'team'
+) =>
+  POST<UpdateChannelStatusResponse>('/core/ai/channel/status', {
+    id,
+    status: status as 1 | 2,
+    channelType: channelType ?? getDefaultChannelScope()
   });
-/**
- * AI Proxy v0.6.5 仅提供渠道完整更新接口，因此必须把列表快照中的高级配置原样带回。
- * balance_threshold 无法通过该版本接口可靠往返，非零时在写入前拒绝，避免静默归零。
- */
-export const putChannel = (data: ChannelInfoType) => {
+
+/** 完整更新渠道配置 */
+export const putChannel = (
+  data: (
+    | ChannelInfoType
+    | (Partial<ChannelInfoType> & {
+        id: number;
+        name: string;
+        type: number;
+        key?: string;
+        models: string[];
+      })
+  ) & { channelType?: 'system' | 'team' }
+) => {
+  const channelType = data.channelType ?? getDefaultChannelScope();
+
   if (data.balance_threshold !== undefined && data.balance_threshold !== 0) {
     return Promise.reject(
       new Error(`AI Proxy v0.6.5 cannot preserve balance_threshold for channel: ${data.id}`)
     );
   }
 
-  return PUT(`/channel/${data.id}`, {
+  return PUT<UpdateChannelResponse>('/core/ai/channel/update', {
+    id: data.id,
+    channelType,
     type: data.type,
     name: data.name,
     base_url: data.base_url,
     proxy_url: data.proxy_url,
     models: data.models,
-    model_mapping: data.model_mapping,
-    configs: data.configs,
-    key: data.key,
-    status: data.status,
+    model_mapping: data.model_mapping ?? undefined,
+    configs: data.configs ?? undefined,
+    key: data.key ?? '',
+    status: (data.status as 1 | 2) ?? undefined,
     priority: Math.max(data.priority ?? 1, 1),
-    sets: data.sets,
-    enabled_auto_balance_check: data.enabled_auto_balance_check,
-    skip_tls_verify: data.skip_tls_verify,
-    enabled_no_permission_ban: data.enabled_no_permission_ban,
-    warn_error_rate: data.warn_error_rate,
-    max_error_rate: data.max_error_rate
+    sets: data.sets ?? undefined
   });
 };
 
-export const deleteChannel = (id: number) => DELETE(`/channel/${id}`);
-
-export const getChannelLog = (params: {
-  request_id?: string;
-  channel?: string;
-  model_name?: string;
-  code_type?: 'all' | 'success' | 'error';
-  start_timestamp: number;
-  end_timestamp: number;
-  offset?: number;
-  pageNum?: number;
-  pageSize: number;
-}) =>
-  GET<{
-    logs: ChannelLogListItemType[];
-    total: number;
-  }>(`/logs/search`, {
-    result_only: true,
-    request_id: params.request_id,
-    channel: params.channel,
-    model_name: params.model_name,
-    code_type: params.code_type,
-    start_timestamp: params.start_timestamp,
-    end_timestamp: params.end_timestamp,
-    p: params.pageNum ?? Math.floor((params.offset ?? 0) / params.pageSize) + 1,
-    per_page: params.pageSize
-  }).then((res) => {
-    return {
-      list: res.logs,
-      total: res.total
-    };
+/** 删除指定渠道 */
+export const deleteChannel = (id: number, channelType?: 'system' | 'team') =>
+  DELETE<DeleteChannelResponse>('/core/ai/channel/delete', {
+    id,
+    channelType: channelType ?? getDefaultChannelScope()
   });
 
-export const getLogDetail = (id: number) =>
-  GET<{
-    request_body: string;
-    response_body: string;
-  }>(`/logs/detail/${id}`);
+/** 批量删除渠道 */
+export const batchDeleteChannels = (ids: number[], channelType?: 'system' | 'team') =>
+  POST<BatchDeleteChannelsResponse>('/core/ai/channel/batchDelete', {
+    ids,
+    channelType: channelType ?? getDefaultChannelScope()
+  });
 
+/** 批量启停渠道 */
+export const batchUpdateChannelStatus = (
+  ids: number[],
+  status: 1 | 2,
+  channelType?: 'system' | 'team'
+) =>
+  POST<BatchUpdateChannelStatusResponse>('/core/ai/channel/batchStatus', {
+    ids,
+    status,
+    channelType: channelType ?? getDefaultChannelScope()
+  });
+
+/** 分页查询渠道调用日志 */
+export const getChannelLog = (params: {
+  channelType?: 'system' | 'team';
+  requestId?: string;
+  request_id?: string;
+  channelId?: string | number;
+  channel?: string | number;
+  modelName?: string;
+  model_name?: string;
+  codeType?: 'all' | 'success' | 'error';
+  code_type?: 'all' | 'success' | 'error';
+  startTimestamp?: number;
+  start_timestamp?: number;
+  endTimestamp?: number;
+  end_timestamp?: number;
+  offset?: number;
+  pageNum?: number;
+  pageSize?: number;
+}) => {
+  const query = {
+    channelType: params.channelType ?? getDefaultChannelScope(),
+    requestId: params.requestId ?? params.request_id,
+    channelId:
+      params.channelId !== undefined
+        ? Number(params.channelId) || undefined
+        : params.channel !== undefined
+          ? Number(params.channel) || undefined
+          : undefined,
+    modelName: params.modelName ?? params.model_name,
+    codeType: params.codeType ?? params.code_type,
+    startTimestamp: params.startTimestamp ?? params.start_timestamp ?? 0,
+    endTimestamp: params.endTimestamp ?? params.end_timestamp ?? Date.now(),
+    pageNum:
+      params.pageNum ??
+      (params.offset !== undefined && params.pageSize
+        ? Math.floor(params.offset / params.pageSize) + 1
+        : 1),
+    pageSize: params.pageSize ?? 20
+  };
+
+  return GET<GetChannelLogsResponse>('/core/ai/channel/logs', query);
+};
+
+/** 获取调用日志详情 */
+export const getLogDetail = (id: number, channelType?: 'system' | 'team') =>
+  GET<GetChannelLogDetailResponse>('/core/ai/channel/logDetail', {
+    id,
+    channelType: channelType ?? getDefaultChannelScope()
+  });
+
+/** 获取监控时序指标 */
 export const getDashboardV2 = (params: {
+  channelType?: 'system' | 'team';
+  channelId?: number;
   channel?: number;
   model?: string;
+  startTimestamp?: number;
   start_timestamp?: number;
+  endTimestamp?: number;
   end_timestamp?: number;
   timezone: string;
   timespan: 'day' | 'hour' | 'minute';
-}) =>
-  GET<
-    {
-      timestamp: number;
-      summary: DashboardDataItemType[];
-    }[]
-  >('/dashboardv2/', params).then((res) =>
+}): Promise<{ timestamp: number; summary: DashboardDataItemType[] }[]> => {
+  const query = {
+    channelType: params.channelType ?? getDefaultChannelScope(),
+    channelId: params.channelId ?? params.channel,
+    model: params.model,
+    startTimestamp: params.startTimestamp ?? params.start_timestamp,
+    endTimestamp: params.endTimestamp ?? params.end_timestamp,
+    timezone: params.timezone,
+    timespan: params.timespan
+  };
+
+  return GET<GetChannelDashboardResponse>('/core/ai/channel/dashboard', query).then((res) =>
     res.map((item) => ({
       ...item,
-      summary: item.summary.map((item) => DashboardDataItemSchema.parse(item))
+      summary: item.summary.map((summaryItem) => DashboardDataItemSchema.parse(summaryItem))
     }))
   );
+};
 
-export { responseSuccess, checkRes, responseError, instance, request };
+/** 单渠道模型探活测试 */
+export const getTestChannel = (data: {
+  id: number;
+  model: string;
+  channelType?: 'system' | 'team';
+}) =>
+  GET<TestChannelResponse>('/core/ai/channel/test', {
+    id: data.id,
+    model: data.model,
+    channelType: data.channelType ?? getDefaultChannelScope()
+  });
+
+/** 查询删除渠道时受影响的独占模型 */
+export const getAffectedModels = (id: number, channelType?: 'system' | 'team') =>
+  GET<AffectedModelsResponse>('/core/ai/channel/affectedModels', {
+    id,
+    channelType: channelType ?? getDefaultChannelScope()
+  });
+
+/** 获取指定渠道服务的全部模型（悬浮详情） */
+export const getChannelModels = (id: number, channelType?: 'system' | 'team') =>
+  GET<ChannelModelsResponse>('/core/ai/channel/models', {
+    id,
+    channelType: channelType ?? getDefaultChannelScope()
+  });
+
+/** 获取指定模型关联的全部渠道（悬浮详情） */
+export const getModelChannels = (modelId: string) =>
+  GET<ModelChannelsResponse>('/core/ai/channel/modelChannels', { modelId });

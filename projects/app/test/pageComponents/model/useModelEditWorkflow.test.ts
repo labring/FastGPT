@@ -21,7 +21,6 @@ vi.mock('@/web/core/ai/config', () => ({
   getTestModel: mocks.getTestModel,
   postTestDraftModel: mocks.postTestDraftModel,
   postSystemModel: vi.fn(),
-  putReplaceSystemModelChannels: vi.fn(),
   putSystemModel: vi.fn()
 }));
 

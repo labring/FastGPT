@@ -135,10 +135,12 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const isLoading =
     loadingChannelList || loadingUpdateChannel || loadingDeleteChannel || channelMutationLoading;
 
+  const canCreateChannel = isRoot || Boolean(userInfo?.team?.permission?.hasModelCreateRole);
+
   return (
     <>
-      {isRoot && (
-        <ModelTabHeader Tab={Tab}>
+      <ModelTabHeader Tab={Tab}>
+        {canCreateChannel && (
           <Button
             w={['100%', 'auto']}
             variant={'primary'}
@@ -147,8 +149,8 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           >
             {t('config_model:create_channel')}
           </Button>
-        </ModelTabHeader>
-      )}
+        )}
+      </ModelTabHeader>
       <MyBox
         flex={'1 0 0'}
         h={0}
@@ -274,6 +276,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             })();
                             updateChannel({
                               ...item,
+                              key: '',
                               priority: val
                             });
                           }}
@@ -296,7 +299,17 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             tip={t('config_model:edit')}
                             pointerEvents={channelMutationLoading ? 'none' : undefined}
                             opacity={channelMutationLoading ? 0.5 : 1}
-                            onClick={() => setEditChannel(item)}
+                            onClick={() =>
+                              setEditChannel({
+                                ...defaultChannel,
+                                ...item,
+                                key: '',
+                                status: item.status as ChannelStatusEnum,
+                                base_url: item.base_url ?? '',
+                                priority: item.priority ?? 1,
+                                created_at: item.created_at ?? 0
+                              })
+                            }
                           />
                           <MyIconButton
                             icon={'delete'}

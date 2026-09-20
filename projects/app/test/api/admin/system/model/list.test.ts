@@ -11,7 +11,7 @@ vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => ha
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authSystemAdmin: mocks.authSystemAdmin
 }));
-vi.mock('@fastgpt/service/thirdProvider/aiproxy/channel', () => ({
+vi.mock('@fastgpt/service/core/ai/channel', () => ({
   getAdminAIProxyChannelItems: mocks.getAdminAIProxyChannelItems
 }));
 

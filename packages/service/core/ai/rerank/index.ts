@@ -1,7 +1,8 @@
 import { getModelHandle } from '../model';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 
-import { getAxiosConfig } from '../config';
+import { getAxiosConfig, getAiproxyScopeHeaders } from '../config';
+import { normalizeRelayNoChannelError } from '../channel';
 import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -118,7 +119,8 @@ export async function reRankRecall({
     .post<PostReRankResponse>(requestUrl, requestBody, {
       headers: {
         Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization,
-        ...headers
+        ...headers,
+        ...getAiproxyScopeHeaders(model as any, baseUrl)
       },
       timeout: timeoutMs ?? 30000,
       signal
@@ -167,7 +169,7 @@ export async function reRankRecall({
     })
     .catch((err) => {
       logger.error('Rerank request failed', { error: err });
-      return Promise.reject(err);
+      return Promise.reject(normalizeRelayNoChannelError(err));
     });
 
   return {

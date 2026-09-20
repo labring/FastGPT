@@ -11,7 +11,6 @@ import { DevApiTagsMap } from './tag';
 import type { OpenAPIPath } from './type';
 import { CommonPath } from './common';
 import { InvokePath } from './plugin';
-
 export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...AppPath,
   ...ChatPath,

@@ -41,7 +41,6 @@ import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import * as catalogEntity from '@fastgpt/service/core/ai/config/entity';
 import { refreshModelHandle, loadInstalledModels } from '@fastgpt/service/core/ai/config/utils';
-import { appendModelsToAIProxyChannels } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 
@@ -160,13 +159,12 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     );
   });
 
-  it('creates a model through real HTTP and publishes the committed catalog revision', async () => {
+  it('creates a model and publishes the committed catalog revision', async () => {
     const { modelId } = await createSystemModel({
       modelData: createDraft('integration-new'),
       channelIds: [1]
     });
 
-    expect(channels[0].models).toEqual(['unrelated', 'integration-new']);
     expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({
       model: 'integration-new',
       isActive: true
@@ -176,34 +174,26 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(getCachedModelHandle()?.getAllModels()).toMatchObject([
       { modelId, model: 'integration-new' }
     ]);
-    expect(requests.map(({ method }) => method)).toEqual(['GET', 'PUT']);
-    expect(
-      requests.every(({ authorization }) => authorization === 'Bearer local-integration-token')
-    ).toBe(true);
   });
 
-  it('rejects duplicate creation before issuing any additional external request', async () => {
+  it('rejects duplicate creation', async () => {
     await createSystemModel({ modelData: createDraft('duplicate'), channelIds: [1] });
-    requests = [];
 
     await expect(
       createSystemModel({ modelData: createDraft('duplicate'), channelIds: [2] })
     ).rejects.toThrow(ModelErrEnum.alreadyExists);
 
-    expect(requests).toEqual([]);
-    expect(channels[1].models).toEqual([]);
     expect(await MongoAIModel.countDocuments({ model: 'duplicate' })).toBe(1);
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
   });
 
-  it('removes probe records, permissions, and channel bindings when deleting models', async () => {
+  it('removes probe records and permissions when deleting models', async () => {
     external.listModels.mockResolvedValue([createDraft('template-a'), createDraft('template-b')]);
     const result = await createSystemModelsFromTemplates({
       templates: [
         { type: ModelTypeEnum.llm, model: 'template-a' },
         { type: ModelTypeEnum.llm, model: 'template-b' }
-      ],
-      channelIds: [1, 2]
+      ]
     });
     expect(result.models).toHaveLength(2);
     expect(await MongoAIModel.countDocuments({ isActive: false })).toBe(2);
@@ -233,27 +223,13 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await MongoAIModel.countDocuments()).toBe(0);
     expect(await MongoModelStatusProbeRecord.countDocuments()).toBe(0);
     expect(await MongoResourcePermission.countDocuments()).toBe(0);
-    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], []]);
     expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
     expect(await catalogEntity.readSystemModelRevision()).toBe(2);
   });
 
-  it('keeps the accepted partial external success without writing MongoDB when a later channel fails', async () => {
-    failedChannelId = 2;
-
-    await expect(
-      createSystemModel({ modelData: createDraft('partial'), channelIds: [1, 2] })
-    ).rejects.toThrow();
-
-    expect(channels.map(({ models }) => models)).toEqual([['unrelated', 'partial'], []]);
-    expect(await MongoAIModel.countDocuments()).toBe(0);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(0);
-  });
-
   it('rolls back model, probe, and permission deletion when a transactional write fails', async () => {
     const { modelId } = await createSystemModel({
-      modelData: createDraft('rollback-delete'),
-      channelIds: [1]
+      modelData: createDraft('rollback-delete')
     });
     await MongoModelStatusProbeRecord.create({
       modelId,
@@ -279,61 +255,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await MongoAIModel.findById(modelId).lean()).not.toBeNull();
     expect(await MongoModelStatusProbeRecord.countDocuments({ modelId })).toBe(1);
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    // 数据库事务失败时尚未开始外部解绑。
-    expect(channels[0].models).toEqual(['unrelated', 'rollback-delete']);
     expect(getCachedModelHandle()?.revision).toBe(1);
-  });
-
-  it('commits model and permission deletion before unbinding and does not restore them on channel failure', async () => {
-    const { modelId } = await createSystemModel({
-      modelData: createDraft('delete-first'),
-      channelIds: [1, 2]
-    });
-    await MongoResourcePermission.collection.insertOne({
-      resourceType: PerResourceTypeEnum.model,
-      resourceId: new connectionMongo.Types.ObjectId(modelId)
-    });
-    failedChannelId = 2;
-    writeGate = createGate();
-    writeStarted = createGate();
-    const deletion = deleteSystemModels({ modelIds: [modelId] });
-    const rejected = expect(deletion).rejects.toThrow();
-    try {
-      await writeStarted.promise;
-      // 首次渠道写入尚未完成时，数据库和运行时目录已经完成删除。
-      expect(await MongoAIModel.findById(modelId).lean()).toBeNull();
-      expect(await MongoResourcePermission.countDocuments()).toBe(0);
-      expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
-      expect(channels[0].models).toContain('delete-first');
-    } finally {
-      writeGate.resolve();
-      await rejected;
-    }
-    expect(await MongoAIModel.findById(modelId).lean()).toBeNull();
-    expect(await MongoResourcePermission.countDocuments()).toBe(0);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(2);
-    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], ['delete-first']]);
-    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
-  });
-
-  it('rejects competing writers while a lease is held and preserves both changes after retry', async () => {
-    writeGate = createGate();
-    writeStarted = createGate();
-    const first = appendModelsToAIProxyChannels({ channelIds: [1], models: ['first'] });
-    try {
-      await writeStarted.promise;
-      await expect(
-        appendModelsToAIProxyChannels({ channelIds: [1], models: ['second'] })
-      ).rejects.toThrow('being updated');
-      expect(requests).toHaveLength(2);
-    } finally {
-      writeGate.resolve();
-      await first;
-    }
-
-    await appendModelsToAIProxyChannels({ channelIds: [1], models: ['second'] });
-
-    expect(channels[0].models).toEqual(['unrelated', 'first', 'second']);
   });
 
   it('returns committed creation after reload failure and repairs the snapshot at the next read barrier', async () => {
@@ -479,8 +401,6 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(updated).toMatchObject({ name: 'Renamed', model: 'renamed-model', type: 'llm' });
     expect(updated).not.toHaveProperty('requestUrl');
     expect(updated).not.toHaveProperty('requestAuth');
-    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], ['renamed-model']]);
-
     await updateSystemModel({
       modelId,
       modelData: { ...editable, model: 'renamed-model-v2', name: 'RenamedV2' }
@@ -491,7 +411,6 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       model: 'renamed-model-v2',
       type: 'llm'
     });
-    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], ['renamed-model-v2']]);
   });
 
   it('keeps JSON import atomic and distinguishes legacy no-ID records from deliberate empty configuration', async () => {
@@ -548,21 +467,17 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       requestStartedAt: new Date(),
       requestEndedAt: new Date()
     });
-    const channelsBeforeImport = structuredClone(channels);
     requests = [];
     await importSystemModels({ config: [] });
     expect(await MongoAIModel.findById(modelId).lean()).toBeNull();
     expect(await MongoAIModel.countDocuments()).toBe(0);
     expect(await MongoModelStatusProbeRecord.countDocuments()).toBe(0);
     expect(await MongoResourcePermission.countDocuments()).toBe(0);
-    expect(channels).toEqual(channelsBeforeImport);
-    expect(channels[0].models).toContain('json-original');
     expect(requests).toEqual([]);
   });
 
-  it('rolls back MongoDB after successful channel writes and deduplicates external bindings on retry', async () => {
+  it('rolls back MongoDB when model insert fails and succeeds on retry', async () => {
     const beforeDefaults = await MongoAIDefaultModel.findOne().lean();
-    // 在真实事务已增加 revision 后注入模型写入失败；HTTP 渠道写入已经完成。
     vi.spyOn(MongoAIModel, 'create').mockImplementationOnce(() => {
       throw new Error('Injected model insert failure');
     });
@@ -574,19 +489,11 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await MongoAIDefaultModel.findOne().lean()).toEqual(beforeDefaults);
     expect(await catalogEntity.readSystemModelRevision()).toBe(0);
     expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
-    expect(channels.map(({ models }) => models)).toEqual([
-      ['unrelated', 'retry-after-db-failure'],
-      ['retry-after-db-failure']
-    ]);
 
     await createSystemModel(input);
 
     expect(await MongoAIModel.countDocuments()).toBe(1);
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    expect(channels.map(({ models }) => models)).toEqual([
-      ['unrelated', 'retry-after-db-failure'],
-      ['retry-after-db-failure']
-    ]);
   });
 
   it('rejects concurrent duplicate creation through the real unique index with one committed revision', async () => {

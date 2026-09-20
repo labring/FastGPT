@@ -26,8 +26,7 @@ import {
   getAdminModelConfig,
   getTestModel,
   deleteSystemModels,
-  putSystemModelsStatus,
-  putReplaceSystemModelChannels
+  putSystemModelsStatus
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -792,13 +791,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           channels={channelList}
           selectedChannelIds={channelModel.channels.map((channel) => channel.id)}
           onClose={() => setChannelModel(undefined)}
-          onConfirm={async (channelIds) => {
-            await runChannelMutation(() =>
-              putReplaceSystemModelChannels({ modelId: channelModel.modelId, channelIds })
-            );
-            toast({ status: 'success', title: t('config_model:associate_success') });
+          onConfirm={async () => {
             setChannelModel(undefined);
-            await refreshModels().catch(() => {});
           }}
         />
       )}

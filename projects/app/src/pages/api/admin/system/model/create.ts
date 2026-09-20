@@ -14,12 +14,12 @@ async function handler(
   req: ApiRequestProps<CreateSystemModelBody>
 ): Promise<CreateSystemModelResponse> {
   await authSystemAdmin({ req });
-  const { modelData, channelIds } = parseApiInput({
+  const { modelData } = parseApiInput({
     req,
     bodySchema: CreateSystemModelBodySchema
   }).body;
 
-  return CreateSystemModelResponseSchema.parse(await createSystemModel({ modelData, channelIds }));
+  return CreateSystemModelResponseSchema.parse(await createSystemModel({ modelData }));
 }
 
 export default NextAPI(handler);

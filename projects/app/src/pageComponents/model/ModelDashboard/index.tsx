@@ -200,12 +200,12 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { data: dashboardData = [], loading: isLoading } = useRequest(
     async () => {
       const params = {
-        channel: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,
+        channelId: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,
         model: filterProps.model,
-        start_timestamp: filterProps.dateRange.from
+        startTimestamp: filterProps.dateRange.from
           ? Math.floor(filterProps.dateRange.from.getTime())
           : undefined,
-        end_timestamp: filterProps.dateRange.to
+        endTimestamp: filterProps.dateRange.to
           ? Math.floor(filterProps.dateRange.to.getTime())
           : undefined,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,

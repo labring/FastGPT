@@ -31,13 +31,13 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import type { ChannelLogListItemType } from '@/global/aiproxy/type';
+import type { ChannelLogListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import ModelTabHeader from '../ModelTabHeader';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 
-type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
+type LogDetailType = Omit<ChannelLogListItem, 'model' | 'request_at'> & {
   channelName: string | number;
   model: React.JSX.Element;
   duration: number;
@@ -112,12 +112,13 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     pageSizeCacheKey: 'config-model-channel-log',
     refreshDeps: [filterProps],
     params: {
-      request_id: filterProps.request_id,
-      channel: filterProps.channelId,
-      model_name: filterProps.model,
-      code_type: filterProps.code_type,
-      start_timestamp: filterProps.dateRange.from?.getTime() || 0,
-      end_timestamp: filterProps.dateRange.to?.getTime() || 0
+      channelType: isRoot ? ('system' as const) : ('team' as const),
+      requestId: filterProps.request_id,
+      channelId: filterProps.channelId ? Number(filterProps.channelId) : undefined,
+      modelName: filterProps.model,
+      codeType: filterProps.code_type,
+      startTimestamp: filterProps.dateRange.from?.getTime() || 0,
+      endTimestamp: filterProps.dateRange.to?.getTime() || 0
     },
     scrollContainerRef
   });
@@ -153,7 +154,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
   return (
     <>
       <MyBox display={'flex'} flex={'1 0 0'} h={0} minH={0} flexDirection={'column'} gap={4}>
-        {isRoot && <ModelTabHeader Tab={Tab} />}
+        <ModelTabHeader Tab={Tab} />
         <Flex
           px={6}
           flexDirection={['column', 'row']}

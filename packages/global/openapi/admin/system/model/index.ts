@@ -11,7 +11,6 @@ import {
   GetAdminSystemModelDetailResponseSchema,
   GetAdminSystemModelListResponseSchema,
   GetSystemModelConfigJsonResponseSchema,
-  ReplaceSystemModelChannelsBodySchema,
   TestAdminSystemModelQuerySchema,
   TestDraftAdminSystemModelBodySchema,
   UpdateDefaultModelsBodySchema,
@@ -93,16 +92,6 @@ export const AdminSystemModelPath: OpenAPIPath = {
           }
         }
       }
-    }
-  },
-  '/admin/system/model/channel/replace': {
-    put: {
-      summary: '替换模型渠道绑定',
-      tags: [DevApiTagsMap.adminSystemModel],
-      requestBody: {
-        content: { 'application/json': { schema: ReplaceSystemModelChannelsBodySchema } }
-      },
-      responses: { 200: { description: '替换成功' } }
     }
   },
   '/admin/system/model/delete': {

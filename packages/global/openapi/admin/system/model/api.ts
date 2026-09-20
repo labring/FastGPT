@@ -234,10 +234,7 @@ const CreateSystemModelDataSchema = SystemModelDocumentDataSchema.meta({
 
 export const CreateSystemModelBodySchema = z
   .object({
-    modelData: CreateSystemModelDataSchema,
-    channelIds: z.array(IntSchema.positive()).default([]).meta({
-      description: '创建前统一绑定的 AI Proxy 渠道；允许为空数组'
-    })
+    modelData: CreateSystemModelDataSchema
   })
   .strict();
 export type CreateSystemModelBody = z.infer<typeof CreateSystemModelBodySchema>;
@@ -250,7 +247,7 @@ export type CreateSystemModelResponse = z.infer<typeof CreateSystemModelResponse
  * API: 从 Plugin 模板批量创建系统模型
  * Route: POST /api/admin/system/model/createFromTemplates
  * Method: POST
- * Description: 重新拉取模板并先绑定渠道，再事务级创建尚未安装的模型
+ * Description: 重新拉取模板并在事务级创建尚未安装的模型
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
@@ -274,11 +271,7 @@ export const CreateSystemModelsFromTemplatesBodySchema = z
           keys.add(key);
         });
       })
-      .meta({ description: '本次选择的模板临时键' }),
-    channelIds: z.array(IntSchema.positive()).meta({
-      example: [1, 2],
-      description: '统一关联的 AI Proxy 渠道 ID；允许为空数组'
-    })
+      .meta({ description: '本次选择的模板临时键' })
   })
   .strict();
 export type CreateSystemModelsFromTemplatesBody = z.infer<
@@ -298,23 +291,6 @@ export const CreateSystemModelsFromTemplatesResponseSchema = z.object({
 export type CreateSystemModelsFromTemplatesResponse = z.infer<
   typeof CreateSystemModelsFromTemplatesResponseSchema
 >;
-
-/* ============================================================================
- * API: 替换模型渠道绑定
- * Route: PUT /api/admin/system/model/channel/replace
- * Method: PUT
- * Tags: ['渠道管理', 'Write']
- * ============================================================================ */
-
-export const ReplaceSystemModelChannelsBodySchema = z
-  .object({
-    modelId: ModelIdSchema,
-    channelIds: z.array(IntSchema.positive()).meta({
-      description: '替换后的完整渠道 ID 集合；允许为空数组'
-    })
-  })
-  .strict();
-export type ReplaceSystemModelChannelsBody = z.infer<typeof ReplaceSystemModelChannelsBodySchema>;
 
 /* ============================================================================
  * API: 更新系统模型配置
@@ -346,10 +322,7 @@ export type UpdateSystemModelData = z.infer<typeof UpdateSystemModelDataSchema>;
 export const UpdateSystemModelBodySchema = z
   .object({
     modelId: ModelIdSchema,
-    modelData: UpdateSystemModelDataSchema,
-    channelIds: z.array(IntSchema.positive()).optional().meta({
-      description: '可选的完整渠道集合；编辑表单一并提交时，模型配置预检通过后才更新渠道'
-    })
+    modelData: UpdateSystemModelDataSchema
   })
   .strict();
 export type UpdateSystemModelBody = z.infer<typeof UpdateSystemModelBodySchema>;

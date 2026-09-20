@@ -1,6 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
-import { getAIApi } from '../../config';
+import { getAIApi, getAiproxyScopeHeaders } from '../../config';
+import { normalizeRelayNoChannelError } from '../../channel';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { isStreamCompletionResponse } from './response/normalize';
 import type { CreateChatCompletionProps, CreateChatCompletionResult } from './types';
@@ -48,7 +49,8 @@ export const createChatCompletion = async ({
         ...options?.headers,
         ...(modelData.requestAuth && !requestMeta.usedUserOpenAIKey
           ? { Authorization: `Bearer ${modelData.requestAuth}` }
-          : {})
+          : {}),
+        ...getAiproxyScopeHeaders(modelData as any, requestMeta.baseUrl)
       }
     });
 
@@ -78,6 +80,6 @@ export const createChatCompletion = async ({
     }
 
     logger.error('LLM response error', { request: body, error });
-    return Promise.reject(error);
+    return Promise.reject(normalizeRelayNoChannelError(error));
   }
 };

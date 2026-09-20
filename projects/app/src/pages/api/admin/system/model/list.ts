@@ -9,7 +9,7 @@ import {
   type GetAdminSystemModelListResponse
 } from '@fastgpt/global/openapi/admin/system/model/api';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import { getAdminAIProxyChannelItems } from '@fastgpt/service/thirdProvider/aiproxy/channel';
+import { getAdminAIProxyChannelItems } from '@fastgpt/service/core/ai/channel';
 
 async function handler(req: ApiRequestProps): Promise<GetAdminSystemModelListResponse> {
   await authSystemAdmin({ req });

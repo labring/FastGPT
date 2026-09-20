@@ -1,5 +1,6 @@
 import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { getAIApi } from '../config';
+import { getAIApi, getAiproxyScopeHeaders } from '../config';
+import { normalizeRelayNoChannelError } from '../channel';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -99,7 +100,9 @@ export async function getVectors({
     });
   }
 
-  const { ai } = getAIApi(timeoutMs === undefined ? undefined : { timeout: timeoutMs });
+  const { ai, requestMeta } = getAIApi(
+    timeoutMs === undefined ? undefined : { timeout: timeoutMs }
+  );
 
   let chunkSize = Number(model.config.batchSize || 1);
   chunkSize = isNaN(chunkSize) ? 1 : chunkSize;
@@ -138,12 +141,20 @@ export async function getVectors({
                       ...(model.requestAuth
                         ? { Authorization: `Bearer ${model.requestAuth}` }
                         : {}),
-                      ...headers
+                      ...headers,
+                      ...getAiproxyScopeHeaders(model as any, requestMeta.baseUrl)
                     },
                     signal,
                     maxRetries: timeoutMs === undefined ? undefined : 0
                   }
-                : { headers, signal, maxRetries: timeoutMs === undefined ? undefined : 0 }
+                : {
+                    headers: {
+                      ...headers,
+                      ...getAiproxyScopeHeaders(model as any, requestMeta.baseUrl)
+                    },
+                    signal,
+                    maxRetries: timeoutMs === undefined ? undefined : 0
+                  }
             )
             .then(async (res) => {
               if (!res.data) {
@@ -206,7 +217,7 @@ export async function getVectors({
       error
     });
 
-    return Promise.reject(error);
+    return Promise.reject(normalizeRelayNoChannelError(error));
   }
 }
 

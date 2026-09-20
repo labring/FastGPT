@@ -4,7 +4,6 @@ import { DashboardPath } from './dashboard';
 import { AdminDatasetsPath } from './dataset';
 import { AdminLicensePath } from './license';
 import { AdminSystemPath } from './system';
-import { AdminSystemChannelPath } from './system/model/channel';
 import { AdminSystemModelPath } from './system/model';
 import { AdminTeamsPath } from './team';
 import { AdminUsersPath } from './user';
@@ -18,7 +17,6 @@ export const AdminPath: NonNullable<OpenAPIPath> = {
   ...AdminLicensePath,
   ...AdminSystemPath,
   ...AdminSystemModelPath,
-  ...AdminSystemChannelPath,
   ...AdminTeamsPath,
   ...AdminUsersPath,
   ...AdminWalletPath

@@ -93,7 +93,7 @@ export const SystemToolCodec = {
     return {
       id: this.getDBPluginId(tool.pluginId),
       etag: tool.etag,
-      author: tool.author ?? global.feConfigs.systemTitle ?? '',
+      author: tool.author ?? global.feConfigs?.systemTitle ?? '',
       avatar: tool.icon,
       currentCost: config?.currentCost ?? 0,
       hasSystemSecret,

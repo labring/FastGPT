@@ -526,8 +526,7 @@ const TemplateCreateModal = ({
   const { runAsync: createModelsRequest, loading: creatingModels } = useRequest(
     () =>
       postSystemModelsFromTemplates({
-        templates: selectedTemplates.map(({ type, model }) => ({ type, model })),
-        channelIds: selectedChannelIds
+        templates: selectedTemplates.map(({ type, model }) => ({ type, model }))
       }),
     {
       onSuccess: () => {

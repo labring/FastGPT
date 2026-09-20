@@ -27,32 +27,28 @@ export const prepareDraftSystemModelForTest = (
 
 /** 新建模型只调用创建接口，入参类型从结构上排除 modelId。 */
 export const submitCreatedSystemModel = ({
-  modelData,
-  channelIds
+  modelData
 }: {
   modelData: SystemModelDocumentDataType;
-  channelIds: number[];
-}) => postSystemModel({ modelData: normalizeModelPricingForSave(modelData), channelIds });
+  channelIds?: number[];
+}) => postSystemModel({ modelData: normalizeModelPricingForSave(modelData) });
 
-/** 编辑参数与渠道作为同一次请求预检，服务端统一编排外部绑定和模型写入。 */
+/** 编辑参数只按 modelId 更新已有模型的可编辑配置。 */
 export const submitUpdatedSystemModel = async ({
   modelId,
-  modelData,
-  channelIds
+  modelData
 }: {
   modelId: SystemModelDataType['modelId'];
   modelData: SystemModelDocumentDataType;
-  channelIds: number[];
+  channelIds?: number[];
 }) => {
   const normalizedModelData = normalizeModelPricingForSave(modelData);
 
   const input = UpdateSystemModelBodySchema.parse({
-    modelId,
     modelData: {
       ...normalizedModelData,
       model: normalizedModelData.model.trim()
-    },
-    channelIds
+    }
   });
   await putSystemModel(input);
 };

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   postSystemModel: vi.fn(),
-  putReplaceSystemModelChannels: vi.fn(),
   putSystemModel: vi.fn()
 }));
 
@@ -33,19 +32,16 @@ describe('admin model submit controllers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.postSystemModel.mockResolvedValue({ modelId: '68ad85a7463006c963799a05' });
-    mocks.putReplaceSystemModelChannels.mockResolvedValue(undefined);
     mocks.putSystemModel.mockResolvedValue(undefined);
   });
 
   it('uses only POST create for a new model and sends no modelId', async () => {
-    await submitCreatedSystemModel({ modelData, channelIds: [] });
+    await submitCreatedSystemModel({ modelData });
 
     expect(mocks.postSystemModel).toHaveBeenCalledWith({
-      modelData: { ...modelData, priceTiers: [] },
-      channelIds: []
+      modelData: { ...modelData, priceTiers: [] }
     });
     expect(mocks.putSystemModel).not.toHaveBeenCalled();
-    expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
     expect(mocks.postSystemModel.mock.calls[0]?.[0].modelData).not.toHaveProperty('modelId');
   });
 
@@ -87,20 +83,17 @@ describe('admin model submit controllers', () => {
     });
   });
 
-  it('submits config and channels together with trimmed model identifier', async () => {
+  it('submits config with trimmed model identifier', async () => {
     const modelId = '68ad85a7463006c963799a05';
 
     await submitUpdatedSystemModel({
       modelId,
-      modelData: { ...modelData, model: '  controller-test-model  ' },
-      channelIds: [2, 7]
+      modelData: { ...modelData, model: '  controller-test-model  ' }
     });
 
     expect(mocks.postSystemModel).not.toHaveBeenCalled();
-    expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
     expect(mocks.putSystemModel).toHaveBeenCalledWith({
       modelId,
-      channelIds: [2, 7],
       modelData: expect.objectContaining({
         model: 'controller-test-model'
       })
@@ -122,12 +115,10 @@ describe('admin model submit controllers', () => {
     await expect(
       submitUpdatedSystemModel({
         modelId: '68ad85a7463006c963799a05',
-        modelData: { ...modelData, name: '   ' },
-        channelIds: [2]
+        modelData: { ...modelData, name: '   ' }
       })
     ).rejects.toBeDefined();
     expect(mocks.putSystemModel).not.toHaveBeenCalled();
-    expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
   });
 });
 
@@ -172,8 +163,7 @@ describe('normalizeModelPricingForSave', () => {
 
     await submitUpdatedSystemModel({
       modelId: '68ad85a7463006c963799a05',
-      modelData: form,
-      channelIds: []
+      modelData: form
     });
     expect(mocks.putSystemModel.mock.calls.at(-1)?.[0].modelData).toMatchObject({ priceTiers: [] });
     expect(mocks.putSystemModel.mock.calls.at(-1)?.[0].modelData).not.toHaveProperty('inputPrice');

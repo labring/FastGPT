@@ -116,12 +116,11 @@ const EditChannelModal = ({
         return;
       }
 
-      const createdChannel = await postCreateChannel({
+      await postCreateChannel({
         ...data,
         model_mapping: data.model_mapping ?? {}
       });
-      await onSuccess(createdChannel.id);
-      return createdChannel;
+      await onSuccess();
     },
     {
       onSuccess() {

@@ -14,13 +14,13 @@ async function handler(
   req: ApiRequestProps<CreateSystemModelsFromTemplatesBody>
 ): Promise<CreateSystemModelsFromTemplatesResponse> {
   await authSystemAdmin({ req });
-  const { templates, channelIds } = parseApiInput({
+  const { templates } = parseApiInput({
     req,
     bodySchema: CreateSystemModelsFromTemplatesBodySchema
   }).body;
 
   return CreateSystemModelsFromTemplatesResponseSchema.parse(
-    await createSystemModelsFromTemplates({ templates, channelIds })
+    await createSystemModelsFromTemplates({ templates })
   );
 }
 

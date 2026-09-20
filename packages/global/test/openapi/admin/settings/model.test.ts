@@ -6,13 +6,12 @@ import {
   CreateSystemModelsFromTemplatesBodySchema,
   DeleteSystemModelsBodySchema,
   ImportedSystemModelSchema,
-  ReplaceSystemModelChannelsBodySchema,
   TestAdminSystemModelQuerySchema,
   UpdateSystemModelBodySchema,
   UpdateSystemModelStatusBodySchema
 } from '../../../../openapi/admin/system/model/api';
 import { AdminSystemModelPath } from '../../../../openapi/admin/system/model';
-import { AdminSystemChannelPath } from '../../../../openapi/admin/system/model/channel';
+import { ChannelPath } from '../../../../openapi/core/ai/channel';
 import { openAPITagGroups, openAPIPaths } from '../../../../openapi/path';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { DevApiTagsMap } from '../../../../openapi/tag';
@@ -36,7 +35,7 @@ describe('admin system model API schemas', () => {
       createDocument({
         openapi: '3.1.0',
         info: { title: 'Admin model API', version: '1.0.0' },
-        paths: { ...AdminSystemModelPath, ...AdminSystemChannelPath }
+        paths: { ...AdminSystemModelPath, ...ChannelPath }
       })
     ).not.toThrow();
   });
@@ -95,16 +94,13 @@ describe('admin system model API schemas', () => {
 
     expect(
       CreateSystemModelsFromTemplatesBodySchema.parse({
-        templates: templates.slice(0, 500),
-        channelIds: []
+        templates: templates.slice(0, 500)
       }).templates
     ).toHaveLength(500);
-    expect(() =>
-      CreateSystemModelsFromTemplatesBodySchema.parse({ templates, channelIds: [] })
-    ).toThrow();
+    expect(() => CreateSystemModelsFromTemplatesBodySchema.parse({ templates })).toThrow();
   });
 
-  it('strips legacy model fields and rejects invalid channel IDs at write boundaries', () => {
+  it('strips legacy model fields at write boundaries', () => {
     const modelData = {
       type: 'llm' as const,
       provider: 'OpenAI',
@@ -121,17 +117,9 @@ describe('admin system model API schemas', () => {
           ...modelData,
           modelId: '68ad85a7463006c963799a05',
           legacyClientField: true
-        },
-        channelIds: []
+        }
       })
-    ).toEqual({ modelData, channelIds: [] });
-    expect(() => CreateSystemModelBodySchema.parse({ modelData, channelIds: [0] })).toThrow();
-    expect(() =>
-      ReplaceSystemModelChannelsBodySchema.parse({
-        modelId: '68ad85a7463006c963799a05',
-        channelIds: [-1]
-      })
-    ).toThrow();
+    ).toEqual({ modelData });
   });
 
   it('accepts optional model identifier in update data and rejects empty strings', () => {
@@ -187,18 +175,11 @@ describe('admin system model API schemas', () => {
       }
     }
 
-    const monitoringPaths = new Set([
-      '/aiproxy/api/logs/search',
-      '/aiproxy/api/logs/detail/{id}',
-      '/aiproxy/api/dashboardv2/'
-    ]);
-    for (const [path, operations] of Object.entries(AdminSystemChannelPath)) {
+    for (const [path, operations] of Object.entries(ChannelPath)) {
       expect(openAPIPaths[path]).toBe(operations);
       expect(openAPIDocument.paths?.[path]).toBeDefined();
       for (const operation of Object.values(operations ?? {})) {
-        expect(operation?.tags).toEqual([
-          monitoringPaths.has(path) ? DevApiTagsMap.adminModelLog : DevApiTagsMap.adminModelChannel
-        ]);
+        expect(operation?.tags).toEqual([DevApiTagsMap.model]);
       }
     }
   });

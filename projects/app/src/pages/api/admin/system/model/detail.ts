@@ -12,7 +12,7 @@ import {
   type GetAdminSystemModelDetailResponse
 } from '@fastgpt/global/openapi/admin/system/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { getAdminAIProxyChannelItems } from '@fastgpt/service/thirdProvider/aiproxy/channel';
+import { getAdminAIProxyChannelItems } from '@fastgpt/service/core/ai/channel';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, AdminSystemModelReference>
