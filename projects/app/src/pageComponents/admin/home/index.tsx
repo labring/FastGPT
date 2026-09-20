@@ -7,29 +7,13 @@ import LicenseInput from '@/components/admin/License/Input';
 import { commercialDocUrl } from '@/components/admin/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { LicenseFunctionKey } from '@fastgpt/global/common/system/types';
-import { isLicenseExpired } from '@fastgpt/global/common/system/license/utils';
+import { getLicenseStatus, LicenseStatusEnum } from '@fastgpt/global/common/system/license/utils';
 
 const formatDate = (value?: string) => {
   if (!value) return '--';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toISOString().slice(0, 10);
-};
-
-const isLicenseExpiringSoon = (expiredTime?: string, licenseType?: string) => {
-  if (!expiredTime) return false;
-  const now = new Date();
-  const expiration = new Date(expiredTime);
-  if (Number.isNaN(expiration.getTime()) || expiration <= now) return false;
-
-  const threshold = new Date(now);
-  // 试用版预警窗口为 10 天，商业版按自然月计算，和续期策略保持一致。
-  if (licenseType === 'trial') {
-    threshold.setDate(threshold.getDate() + 10);
-  } else {
-    threshold.setMonth(threshold.getMonth() + 1);
-  }
-  return expiration <= threshold;
 };
 
 /**
@@ -52,21 +36,48 @@ const FUNCTION_CAPABILITY_ITEMS: Array<{
   { key: 'sandboxSkills', labelKey: 'license_sandbox_skills' }
 ];
 
-/** 无有效授权（未激活/已过期）时统一使用的占位符，避免把「不限」误读为真实额度。 */
+/** 无有效授权（尚未激活/已到期）时统一使用的占位符，避免把「不限」误读为真实额度。 */
 const PLACEHOLDER = '--';
+
+/** 四态对应的徽标文案与配色；「即将过期」用橙色提示续期。 */
+const LICENSE_STATUS_DISPLAY: Record<
+  LicenseStatusEnum,
+  { labelKey: string; color: string; dot: string }
+> = {
+  [LicenseStatusEnum.inactive]: {
+    labelKey: 'license_inactive',
+    color: 'red.600',
+    dot: 'red.500'
+  },
+  [LicenseStatusEnum.active]: {
+    labelKey: 'license_active',
+    color: 'primary.600',
+    dot: 'primary.500'
+  },
+  [LicenseStatusEnum.expiring]: {
+    labelKey: 'license_expiring_soon',
+    color: 'orange.600',
+    dot: 'orange.500'
+  },
+  [LicenseStatusEnum.expired]: {
+    labelKey: 'license_expired',
+    color: 'red.600',
+    dot: 'red.500'
+  }
+};
 
 /** 管理员首页的 License 概览，按设计稿展示租户信息、额度和授权能力。 */
 const AdminHome = () => {
   const { licenseData, licenseLoading } = useSystemStore();
   const { t } = useClientTranslation('admin');
   const [showLicenseInput, setShowLicenseInput] = useState(false);
-  // 过期与未激活都不可授权，但展示文案不同：过期需要提示续期，未激活需要引导激活。
-  const isExpired = Boolean(licenseData) && isLicenseExpired(licenseData);
-  const isActivated = Boolean(licenseData) && !licenseLoading && !isExpired;
-  const isExpiringSoon =
-    isActivated && isLicenseExpiringSoon(licenseData?.expiredTime, licenseData?.licenseType);
+  // 四态由共享判定给出（尚未激活 / 生效中 / 即将过期 / 已到期），避免前后端各写一份窗口规则。
+  const licenseStatus = licenseLoading ? LicenseStatusEnum.inactive : getLicenseStatus(licenseData);
+  const isExpired = licenseStatus === LicenseStatusEnum.expired;
+  const isExpiringSoon = licenseStatus === LicenseStatusEnum.expiring;
+  const isActivated = licenseStatus === LicenseStatusEnum.active || isExpiringSoon;
 
-  // 未激活/已过期时没有有效的授权信息：租户名、额度与版本标签一律用占位符，
+  // 尚未激活/已到期时没有有效的授权信息：租户名、额度与版本标签一律用占位符，
   // 不展示「不限」「商业版」这类只对有效授权成立的语义。
   const isLicenseValid = isActivated;
   const company = isLicenseValid ? licenseData?.company : undefined;
@@ -101,16 +112,9 @@ const AdminHome = () => {
   // 未激活时激活是唯一主操作；已激活时仅在临期续期场景强调按钮
   const isLicenseActionPrimary = !isActivated || isExpiringSoon;
 
-  // 状态徽标：过期与未激活同为「不可授权」，但过期需要指向续期而非首次激活，因此文案与配色分开。
-  const statusDisplay = (() => {
-    if (isExpired) return { labelKey: 'license_expired', color: 'red.600', dot: 'red.500' };
-    if (isExpiringSoon) {
-      return { labelKey: 'license_expiring_soon', color: 'orange.600', dot: 'orange.500' };
-    }
-    if (isActivated)
-      return { labelKey: 'license_active', color: 'primary.600', dot: 'primary.500' };
-    return { labelKey: 'license_inactive', color: 'red.600', dot: 'red.500' };
-  })();
+  // 状态徽标：四态各有文案与配色，「已到期」与「尚未激活」都不可授权，
+  // 但前者需要指向续期、后者需要引导激活，因此分开呈现。
+  const statusDisplay = LICENSE_STATUS_DISPLAY[licenseStatus];
 
   return (
     <Box h="100%" overflow="auto" bg="white" color="myGray.900">

@@ -9,7 +9,7 @@ import SecondaryNavigationContainer, {
   type SecondaryNavigationTab
 } from '@/pageComponents/common/SecondaryNavigationContainer';
 import { unlicensedAdminRoutes } from '@/components/admin/constants';
-import { isLicenseExpired } from '@fastgpt/global/common/system/license/utils';
+import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 
 /**
  * 管理员区域（/admin/*）的二级导航壳层，仅 root 用户可见。
@@ -38,10 +38,7 @@ const AdminContainer = ({
 
   // License 检测完成后无授权数据、或授权已过期 = 不可用；此时仅保留白名单菜单，
   // 避免暴露被 Layout 拦截的路由。已过期的 License 仍在 store 中，必须按有效期判定。
-  const licenseUnactivated = useMemo(
-    () => !licenseData || isLicenseExpired(licenseData),
-    [licenseData]
-  );
+  const licenseUnactivated = useMemo(() => !isLicenseActive(licenseData), [licenseData]);
 
   // 菜单里的功能开关一律经此处读取：授权不可用时全部按关闭处理，
   // 避免过期 License 的 functions 继续解锁套餐、支付等菜单。

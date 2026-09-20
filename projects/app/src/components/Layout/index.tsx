@@ -19,7 +19,7 @@ import { getAdminModelConfig } from '@/web/core/ai/config';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { unlicensedAdminRoutes } from '@/components/admin/constants';
-import { isLicenseExpired } from '@fastgpt/global/common/system/license/utils';
+import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -121,10 +121,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   // License 未激活或已过期时仅限制管理员区域：
   // 白名单（管理员主页/模型提供商/系统工具）之外的 /admin/* 回到管理员主页引导激活或续期。
   // 只判断 licenseData 是否存在不够：已过期的 License 仍在 store 中，会继续放行全部菜单。
-  const isLicenseValid = useMemo(
-    () => Boolean(licenseData) && !isLicenseExpired(licenseData),
-    [licenseData]
-  );
+  const isLicenseValid = useMemo(() => isLicenseActive(licenseData), [licenseData]);
   useEffect(() => {
     if (
       !router.isReady ||
