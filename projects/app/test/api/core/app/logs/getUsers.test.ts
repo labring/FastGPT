@@ -6,7 +6,10 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import {
+  TeamMemberRoleEnum,
+  UNSET_TEAM_MEMBER_NAME
+} from '@fastgpt/global/support/user/team/constant';
 import { Call } from '@test/utils/request';
 import type {
   GetLogUsersBody,
@@ -225,6 +228,59 @@ describe('getUsers API', () => {
     expect(res2.code).toBe(200);
     const aliceUser = res2.data.list.find((u) => u.outLinkUid === 'alice-user');
     expect(aliceUser).toBeDefined();
+  });
+
+  it('should find pending-name team members by username or contact', async () => {
+    const now = new Date();
+    const user = await MongoUser.create({
+      username: 'first-login-user',
+      contact: 'first-login@example.com',
+      password: 'test-password'
+    });
+    const teamMember = await MongoTeamMember.create({
+      teamId: testTeamId,
+      userId: user._id,
+      name: UNSET_TEAM_MEMBER_NAME,
+      role: TeamMemberRoleEnum.owner,
+      status: 'active',
+      createTime: new Date(),
+      defaultTeam: false
+    });
+
+    await createAppChatLogs(
+      [
+        {
+          chatId: 'first-login-user-chat',
+          userId: String(teamMember._id),
+          source: ChatSourceEnum.online
+        }
+      ],
+      now
+    );
+
+    const request = {
+      appId: testAppId,
+      dateStart: new Date(now.getTime() - 1000).toISOString(),
+      dateEnd: new Date(now.getTime() + 1000).toISOString()
+    };
+    const byUsername = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(
+      getUsers.default,
+      { auth: authUser, body: { ...request, searchKey: 'first-login-user' } }
+    );
+    const byContact = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(
+      getUsers.default,
+      { auth: authUser, body: { ...request, searchKey: 'first-login@example.com' } }
+    );
+
+    expect(byUsername.code).toBe(200);
+    expect(byUsername.data.total).toBe(1);
+    expect(byUsername.data.list[0]).toMatchObject({
+      tmbId: String(teamMember._id),
+      name: 'first-login-user'
+    });
+    expect(byContact.code).toBe(200);
+    expect(byContact.data.total).toBe(1);
+    expect(byContact.data.list[0].tmbId).toBe(String(teamMember._id));
   });
 
   it('should sort users by chat count descending', async () => {

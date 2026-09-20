@@ -16,6 +16,7 @@ import { type UserUpdateParams } from '@/types/user';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type';
+import { getTeamMemberDisplayName } from '@fastgpt/global/support/user/team/memberName';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
@@ -289,6 +290,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   } as const;
 
   const isSyncMember = getIsMemberSyncMode(feConfigs);
+  // 成员名可能仍是待补齐保留值，展示和弹窗回填都统一回落到登录用户名，
+  // 避免把内部占位符暴露给用户，也避免回填后提交被 schema 拒绝。
+  const memberDisplayName = getTeamMemberDisplayName({
+    memberName: userInfo?.team?.memberName,
+    username: userInfo?.username
+  });
   return (
     <Box>
       {/* user info */}
@@ -404,7 +411,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               flex={'1 0 0'}
               disabled={isSyncMember}
               readOnly
-              value={userInfo?.team?.memberName || 'Member'}
+              value={memberDisplayName}
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
               h={'36px'}
@@ -463,7 +470,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
       {isOpenMemberName && (
         <MemberNameModal
-          memberName={userInfo?.team?.memberName || ''}
+          memberName={memberDisplayName}
           onClose={onCloseMemberName}
           onSuccess={onMemberNameSuccess}
         />

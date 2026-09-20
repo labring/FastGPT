@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   finishPostLoginAction,
   getNextPostLoginAction,
+  isMandatoryPostLoginActionRoute,
   isPostLoginActionRoute,
   startPostLoginAction,
   type OneTimePostLoginAction,
@@ -15,7 +16,8 @@ const getAction = (
   currentAction?: PostLoginAction
 ) =>
   getNextPostLoginAction({
-    canStart: true,
+    canStartMandatory: true,
+    canStartOptional: true,
     currentAction,
     completed: new Set(completed),
     inviteLinkId: 'invite-1',
@@ -62,7 +64,8 @@ describe('post login action order', () => {
   it('skips contact after it has been handled and returns no action when all candidates are complete', () => {
     expect(
       getNextPostLoginAction({
-        canStart: true,
+        canStartMandatory: true,
+        canStartOptional: true,
         completed: new Set<OneTimePostLoginAction>([
           'memberName',
           'resetExpiredPassword',
@@ -82,7 +85,8 @@ describe('post login action order', () => {
 
     expect(
       getNextPostLoginAction({
-        canStart: true,
+        canStartMandatory: true,
+        canStartOptional: true,
         completed: new Set<OneTimePostLoginAction>([
           'memberName',
           'resetExpiredPassword',
@@ -103,7 +107,8 @@ describe('post login action order', () => {
   it('does not let a current action bypass the startup guard', () => {
     expect(
       getNextPostLoginAction({
-        canStart: false,
+        canStartMandatory: false,
+        canStartOptional: false,
         currentAction: 'activityAd',
         completed: new Set(),
         inviteLinkId: '',
@@ -119,7 +124,8 @@ describe('post login action order', () => {
   it('supports non-plus member-name actions without adding plus-only actions', () => {
     expect(
       getNextPostLoginAction({
-        canStart: true,
+        canStartMandatory: true,
+        canStartOptional: true,
         completed: new Set(),
         inviteLinkId: '',
         hasPendingMemberName: true,
@@ -136,7 +142,8 @@ describe('post login action order', () => {
     );
     expect(
       getNextPostLoginAction({
-        canStart: true,
+        canStartMandatory: true,
+        canStartOptional: true,
         completed: new Set<OneTimePostLoginAction>([
           'invitation',
           'memberName',
@@ -177,7 +184,8 @@ describe('post login action order', () => {
   it('does not start before the derived startup conditions are ready', () => {
     expect(
       getNextPostLoginAction({
-        canStart: false,
+        canStartMandatory: false,
+        canStartOptional: false,
         completed: new Set(),
         inviteLinkId: 'invite-1',
         hasPendingMemberName: true,
@@ -210,9 +218,11 @@ describe('post login action order', () => {
   });
   it('does not start on the account cancellation page', () => {
     expect(isPostLoginActionRoute('/account/cancel')).toBe(false);
+    expect(isMandatoryPostLoginActionRoute('/account/cancel')).toBe(false);
     expect(
       getNextPostLoginAction({
-        canStart: isPostLoginActionRoute('/account/cancel'),
+        canStartMandatory: isMandatoryPostLoginActionRoute('/account/cancel'),
+        canStartOptional: isPostLoginActionRoute('/account/cancel'),
         completed: new Set(),
         inviteLinkId: 'invite-1',
         hasPendingMemberName: true,
@@ -223,6 +233,124 @@ describe('post login action order', () => {
       })
     ).toBeUndefined();
   });
+
+  it('keeps notification-excluded routes open for mandatory actions', () => {
+    expect(isPostLoginActionRoute('/chat')).toBe(false);
+    expect(isMandatoryPostLoginActionRoute('/chat')).toBe(true);
+    expect(isPostLoginActionRoute('/appStore')).toBe(false);
+    expect(isMandatoryPostLoginActionRoute('/appStore')).toBe(true);
+  });
+
+  it('still starts invitation and member name when only mandatory actions are admitted', () => {
+    expect(
+      getNextPostLoginAction({
+        canStartMandatory: true,
+        canStartOptional: false,
+        completed: new Set(),
+        inviteLinkId: 'invite-1',
+        hasPendingMemberName: true,
+        shouldShowContact: true,
+        contactHandled: false,
+        isPlus: true,
+        hasImportantInform: true
+      })
+    ).toBe('invitation');
+    expect(
+      getNextPostLoginAction({
+        canStartMandatory: true,
+        canStartOptional: false,
+        completed: new Set(['invitation']),
+        inviteLinkId: '',
+        hasPendingMemberName: true,
+        shouldShowContact: true,
+        contactHandled: false,
+        isPlus: true,
+        hasImportantInform: true
+      })
+    ).toBe('memberName');
+  });
+
+  it('lets an invitation preempt a locked optional action hidden by the current route', () => {
+    expect(
+      getNextPostLoginAction({
+        canStartMandatory: true,
+        canStartOptional: false,
+        currentAction: 'activityAd',
+        completed: new Set(),
+        inviteLinkId: 'invite-1',
+        hasPendingMemberName: false,
+        shouldShowContact: false,
+        contactHandled: false,
+        isPlus: true,
+        hasImportantInform: false
+      })
+    ).toBe('invitation');
+  });
+
+  it('hides a locked optional action when no mandatory action is pending', () => {
+    expect(
+      getNextPostLoginAction({
+        canStartMandatory: true,
+        canStartOptional: false,
+        currentAction: 'activityAd',
+        completed: new Set(),
+        inviteLinkId: '',
+        hasPendingMemberName: false,
+        shouldShowContact: false,
+        contactHandled: false,
+        isPlus: true,
+        hasImportantInform: false
+      })
+    ).toBeUndefined();
+  });
+
+  it('keeps a locked mandatory action visible on notification-excluded routes', () => {
+    expect(
+      getNextPostLoginAction({
+        canStartMandatory: true,
+        canStartOptional: false,
+        currentAction: 'memberName',
+        completed: new Set(),
+        inviteLinkId: '',
+        hasPendingMemberName: true,
+        shouldShowContact: false,
+        contactHandled: false,
+        isPlus: true,
+        hasImportantInform: false
+      })
+    ).toBe('memberName');
+  });
+
+  it('does not start optional actions before the unread query settles', () => {
+    expect(
+      getNextPostLoginAction({
+        canStartMandatory: true,
+        canStartOptional: false,
+        completed: new Set(['invitation', 'memberName']),
+        inviteLinkId: '',
+        hasPendingMemberName: false,
+        shouldShowContact: true,
+        contactHandled: false,
+        isPlus: true,
+        hasImportantInform: true
+      })
+    ).toBeUndefined();
+  });
+
+  it('recognizes every route excluded from mandatory actions', () => {
+    expect(
+      [
+        '/',
+        '/login',
+        '/login/provider',
+        '/login/fastlogin',
+        '/login/sso',
+        '/account/cancel',
+        '/logout'
+      ].every((pathname) => !isMandatoryPostLoginActionRoute(pathname))
+    ).toBe(true);
+    expect(isMandatoryPostLoginActionRoute('/dashboard/agent')).toBe(true);
+  });
 });
 
 describe('post login action state', () => {
@@ -231,7 +359,37 @@ describe('post login action state', () => {
     completed: new Set(['memberName'])
   };
 
-  it('locks one current action and preserves it for the same user and team', () => {
+  it('pauses a locked optional action while a mandatory action runs and restores it afterwards', () => {
+    const optionalStarted = startPostLoginAction({
+      state: initialState,
+      key: 'user-1:team-1',
+      action: 'activityAd'
+    });
+    const mandatoryStarted = startPostLoginAction({
+      state: optionalStarted,
+      key: 'user-1:team-1',
+      action: 'invitation',
+      linkId: 'invite-1'
+    });
+
+    expect(mandatoryStarted.currentAction).toBe('invitation');
+    expect(mandatoryStarted.currentLinkId).toBe('invite-1');
+    expect(mandatoryStarted.pausedOptionalAction).toBe('activityAd');
+
+    const mandatoryFinished = finishPostLoginAction({
+      state: mandatoryStarted,
+      key: 'user-1:team-1',
+      action: 'invitation'
+    });
+
+    expect(mandatoryFinished.currentAction).toBe('activityAd');
+    expect(mandatoryFinished.currentLinkId).toBeUndefined();
+    expect(mandatoryFinished.pausedOptionalAction).toBeUndefined();
+    expect(mandatoryFinished.completed.has('invitation')).toBe(true);
+    expect(mandatoryFinished.completed.has('activityAd')).toBe(false);
+  });
+
+  it('does not let another optional action preempt the current optional action', () => {
     const started = startPostLoginAction({
       state: initialState,
       key: 'user-1:team-1',
@@ -334,5 +492,82 @@ describe('post login action state', () => {
         action: 'activityAd'
       })
     ).toBe(started);
+  });
+
+  it('snapshots the invite link when locking the invitation action', () => {
+    const started = startPostLoginAction({
+      state: initialState,
+      key: 'user-1:team-1',
+      action: 'invitation',
+      linkId: 'invite-1'
+    });
+
+    expect(started.currentAction).toBe('invitation');
+    expect(started.currentLinkId).toBe('invite-1');
+  });
+
+  it('keeps the invite link snapshot while the invitation action stays locked', () => {
+    const started = startPostLoginAction({
+      state: initialState,
+      key: 'user-1:team-1',
+      action: 'invitation',
+      linkId: 'invite-1'
+    });
+
+    // the route query is cleared while the modal is open, so the lock must not be rewritten
+    expect(
+      startPostLoginAction({ state: started, key: 'user-1:team-1', action: 'memberName' })
+    ).toBe(started);
+    expect(started.currentLinkId).toBe('invite-1');
+  });
+
+  it('clears the invite link snapshot when the invitation action is released', () => {
+    const started = startPostLoginAction({
+      state: initialState,
+      key: 'user-1:team-1',
+      action: 'invitation',
+      linkId: 'invite-1'
+    });
+
+    const finished = finishPostLoginAction({
+      state: started,
+      key: 'user-1:team-1',
+      action: 'invitation'
+    });
+
+    expect(finished.currentLinkId).toBeUndefined();
+    expect(finished.completed.has('invitation')).toBe(true);
+  });
+
+  it('does not carry an invite link snapshot into a non-invitation action', () => {
+    const released = finishPostLoginAction({
+      state: startPostLoginAction({
+        state: initialState,
+        key: 'user-1:team-1',
+        action: 'invitation',
+        linkId: 'invite-1'
+      }),
+      key: 'user-1:team-1',
+      action: 'invitation'
+    });
+
+    expect(
+      startPostLoginAction({ state: released, key: 'user-1:team-1', action: 'memberName' })
+        .currentLinkId
+    ).toBeUndefined();
+  });
+
+  it('drops the invite link snapshot when the user or team key changes', () => {
+    const started = startPostLoginAction({
+      state: initialState,
+      key: 'user-1:team-1',
+      action: 'invitation',
+      linkId: 'invite-1'
+    });
+
+    expect(
+      startPostLoginAction({ state: started, key: 'user-2:team-2', action: 'memberName' })
+        .currentLinkId
+    ).toBeUndefined();
   });
 });

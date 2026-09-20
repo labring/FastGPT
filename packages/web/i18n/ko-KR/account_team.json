@@ -118,6 +118,7 @@
   "confirm_member_name": "확인",
   "cancel_member_name": "취소",
   "reject_invitation": "초대 거절",
+  "accept_invitation": "팀 가입",
   "invited_by": "{{source}}님의 초대",
   "invitation_creator_fallback": "팀 관리자",
   "has_forbidden": "비활성화됨",

@@ -2,6 +2,7 @@ import { MongoTeamMember } from '../../user/team/teamMemberSchema';
 import { type UserModelSchema } from '@fastgpt/global/support/user/type';
 import { type TeamSchema } from '@fastgpt/global/support/user/team/type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { getTeamMemberDisplayName } from '@fastgpt/global/support/user/team/memberName';
 
 /** 根据团队成员 ID 解析所属用户 ID，供不携带 Session 的运行时鉴权使用。 */
 export async function getUserIdByTmbId(tmbId: string) {
@@ -31,7 +32,10 @@ export async function getRunningUserInfoByTmbId(tmbId: string) {
     return {
       username: tmb.user.username,
       teamName: tmb.team.name,
-      memberName: tmb.name,
+      memberName: getTeamMemberDisplayName({
+        memberName: tmb.name,
+        username: tmb.user.username
+      }),
       contact: tmb.user.contact || '',
       teamId: tmb.teamId,
       tmbId: tmb._id

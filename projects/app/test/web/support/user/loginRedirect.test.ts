@@ -124,12 +124,12 @@ describe('login redirect helpers', () => {
     vi.setSystemTime(new Date('2026-05-11T00:00:00.000Z'));
   });
 
-  it('redirects a cancelling team to the account cancellation page before restoring drafts', async () => {
+  it('redirects a cancelling team to the account cancellation page before invitations and drafts', async () => {
     const restoreWorkflowLocalDraft = vi.fn();
 
     const route = await resolveLoginRedirectAfterLogin({
       user: cancellingUser,
-      fallbackRoute: '/account/team',
+      fallbackRoute: '/account/team?invitelinkid=invite-1',
       restoreWorkflowLocalDraft
     });
 
@@ -221,6 +221,36 @@ describe('login redirect helpers', () => {
     expect(
       clearInviteLinkFromRoute('/account/team?invitelinkid=invite-2&inviteLinkId=invite-3')
     ).toBe('/account/team');
+  });
+
+  it('should keep invitation route ahead of a matched workflow draft', async () => {
+    saveDraftToStorage();
+    const saveDraft = vi.fn();
+    const invitationRoute = '/account/team?invitelinkid=invite-1';
+
+    const route = await resolveLoginRoute({
+      fallbackRoute: invitationRoute,
+      saveDraft: saveDraft as any
+    });
+
+    expect(route).toBe(invitationRoute);
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(readWorkflowLocalDraft()).not.toBeNull();
+  });
+
+  it('should keep invitation route ahead of a mismatched-team workflow draft', async () => {
+    saveDraftToStorage({ tmbId: 'tmb-b' });
+    const saveDraft = vi.fn();
+    const invitationRoute = '/account/team?inviteLinkId=invite-2';
+
+    const route = await resolveLoginRoute({
+      fallbackRoute: invitationRoute,
+      saveDraft: saveDraft as any
+    });
+
+    expect(route).toBe(invitationRoute);
+    expect(saveDraft).not.toHaveBeenCalled();
+    expect(readWorkflowLocalDraft()).not.toBeNull();
   });
 
   it('should restore draft even when login fallback route is not the workflow detail page', async () => {

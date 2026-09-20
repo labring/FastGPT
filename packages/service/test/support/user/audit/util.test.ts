@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { MongoTeamAudit } from '@fastgpt/service/support/user/audit/schema';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { UNSET_TEAM_MEMBER_NAME } from '@fastgpt/global/support/user/team/constant';
 
 vi.unmock('@fastgpt/service/support/user/audit/util');
 
@@ -35,6 +36,30 @@ describe('addAuditLog', () => {
       .mockResolvedValue(undefined as never);
     await expect(addAuditLog(input)).resolves.toBeUndefined();
     expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not persist the pending member name sentinel', async () => {
+    const create = vi.spyOn(MongoTeamAudit, 'create').mockResolvedValue(undefined as never);
+
+    await addAuditLog({
+      ...input,
+      params: {
+        ...input.params,
+        oldOwnerName: UNSET_TEAM_MEMBER_NAME,
+        members: [UNSET_TEAM_MEMBER_NAME]
+      }
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      teamId: input.teamId,
+      tmbId: input.tmbId,
+      event: input.event,
+      metadata: {
+        ...input.params,
+        oldOwnerName: '',
+        members: ['']
+      }
+    });
   });
 
   it('handles exhausted retries internally', async () => {

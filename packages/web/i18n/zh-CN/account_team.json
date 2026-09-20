@@ -122,7 +122,7 @@
   "confirm_member_name": "确定",
   "cancel_member_name": "取消",
   "reject_invitation": "拒绝邀请",
-  "join_team": "加入团队",
+  "accept_invitation": "加入团队",
   "invited_by": "来自 {{source}} 的邀请",
   "invitation_creator_fallback": "团队管理员",
   "has_forbidden": "已失效",

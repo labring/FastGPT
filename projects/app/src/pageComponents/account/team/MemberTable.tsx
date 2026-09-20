@@ -33,9 +33,9 @@ import { delLeaveTeam } from '@/web/support/user/team/api';
 import { postSyncMembers } from '@/web/support/user/api';
 import {
   TeamMemberRoleEnum,
-  TeamMemberStatusEnum,
-  UNSET_TEAM_MEMBER_NAME
+  TeamMemberStatusEnum
 } from '@fastgpt/global/support/user/team/constant';
+import { getTeamMemberDisplayName } from '@fastgpt/global/support/user/team/memberName';
 import { format } from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -54,10 +54,6 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
 
-const getMemberDisplayName = (member: Pick<TeamMemberItemType, 'memberName' | 'username'>) =>
-  member.memberName === UNSET_TEAM_MEMBER_NAME
-    ? (member.username ?? member.memberName)
-    : member.memberName;
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useClientTranslation(['account_team', 'user']);
   const { toast } = useToast();
@@ -331,7 +327,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                     <HStack>
                       <Avatar src={member.avatar} w={['18px', '22px']} borderRadius={'50%'} />
                       <Box className={'textEllipsis'}>
-                        {getMemberDisplayName(member)}
+                        {getTeamMemberDisplayName(member)}
                         {member.status !== 'active' && (
                           <Tag ml="2" colorSchema="gray" bg={'myGray.100'} color={'myGray.700'}>
                             {member.status === 'forbidden'
@@ -385,10 +381,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                             content={
                               isSyncMode
                                 ? t('account_team:forbidden_tip', {
-                                    username: getMemberDisplayName(member)
+                                    username: getTeamMemberDisplayName(member)
                                   })
                                 : t('account_team:remove_tip', {
-                                    username: getMemberDisplayName(member)
+                                    username: getTeamMemberDisplayName(member)
                                   })
                             }
                             onConfirm={() => onRemoveMember(member.tmbId)}
@@ -407,7 +403,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                           }
                           type="info"
                           content={t('account_team:restore_tip', {
-                            username: getMemberDisplayName(member)
+                            username: getTeamMemberDisplayName(member)
                           })}
                           onConfirm={() => onRestore(member.tmbId)}
                         />

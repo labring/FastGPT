@@ -38,7 +38,7 @@ const ImportantInform = ({
       onSuccess: (id) => {
         dismissedIdsRef.current.add(id);
         setVisibleInforms((current) => current.filter((inform) => inform._id !== id));
-        // The local state controls the current modal; refetch only synchronizes the parent cache.
+        // 编排锁由下面的 effect 在父级查询确认已读项消失后释放。
         void refetch().catch(() => undefined);
       },
       onError: () => undefined,
@@ -60,10 +60,18 @@ const ImportantInform = ({
   }, [informs, queryError]);
 
   useEffect(() => {
-    if (enabled && !queryError && visibleInforms.length === 0) {
+    if (!enabled || queryError || visibleInforms.length > 0) return;
+
+    const hasUnconfirmedDismissal = [...dismissedIdsRef.current].some((id) =>
+      informs.some((inform) => inform._id === id)
+    );
+    const hasNewInform = informs.some((inform) => !dismissedIdsRef.current.has(inform._id));
+
+    // 首次查询为空可直接结束；关闭通知后则必须等父级缓存确认已读项已消失。
+    if (!hasUnconfirmedDismissal && !hasNewInform) {
       onResolved?.();
     }
-  }, [enabled, onResolved, queryError, visibleInforms.length]);
+  }, [enabled, informs, onResolved, queryError, visibleInforms.length]);
 
   if (!enabled) return null;
 

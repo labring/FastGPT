@@ -420,6 +420,7 @@ describe('support user OpenAPI contracts', () => {
             tmbId: objectId,
             teamId: objectId,
             username: 'historical-member',
+            memberNamePending: false,
             status: TeamMemberStatusEnum.active,
             createTime: '2026-01-01T00:00:00.000Z'
           }
@@ -599,6 +600,7 @@ describe('support user OpenAPI contracts', () => {
             teamId: objectId,
             memberName: '历史成员',
             username: 'historical-member',
+            memberNamePending: false,
             avatar: null,
             status: 'active',
             contact: null,
@@ -620,6 +622,7 @@ describe('support user OpenAPI contracts', () => {
             teamId: objectId,
             memberName: '历史成员',
             username: 'historical-member',
+            memberNamePending: false,
             avatar: null,
             status: 'waiting',
             contact: null,

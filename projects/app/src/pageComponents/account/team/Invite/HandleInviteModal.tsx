@@ -1,11 +1,12 @@
 import { Box, Button, FormControl, Input, Flex } from '@chakra-ui/react';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import {
   getInvitationInfo,
   postAcceptInvitationWithMemberName,
@@ -14,19 +15,23 @@ import {
 import { clearInviteLinkFromRoute } from '@/web/support/user/loginRedirect/invitation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { TeamMemberNameSchema } from '@fastgpt/global/support/user/team/memberName';
+import { useMemberNameForm } from '@/pageComponents/account/team/MemberNameForm/useMemberNameForm';
+import {
+  memberNameButtonStyles,
+  memberNameInputStyles,
+  memberNameLabelStyles
+} from '@/pageComponents/account/team/MemberNameForm/styles';
 
 /**
  * 登录后处理团队邀请。接受时一次提交成员名和邀请，拒绝或无效邀请只清理当前上下文。
  * 团队切换失败不回滚接受结果，也不自动重试，继续留在当前 session。
+ * inviteLinkId 由编排器在加锁时快照传入，因此这里清理路由上的邀请参数不会把自己卸载掉。
  */
 const HandleInviteModal = ({
   inviteLinkId,
-  onStart,
   onFinish
 }: {
   inviteLinkId: string;
-  onStart?: () => void;
   onFinish?: () => void;
 }) => {
   const router = useRouter();
@@ -35,8 +40,8 @@ const HandleInviteModal = ({
   const { initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
   const isMultiTeamMode = feConfigs?.teamMode !== 'single';
-  const [memberName, setMemberName] = useState('');
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const { memberName, nameError, showNameError, markInteracted, onNameChange, parseMemberName } =
+    useMemberNameForm({ defaultName: '' });
   const alreadyJoinedNotifiedRef = useRef(false);
 
   const clearInvitationContext = useCallback(async () => {
@@ -45,8 +50,14 @@ const HandleInviteModal = ({
   }, [router]);
 
   const finishInvitation = useCallback(async () => {
-    await clearInvitationContext();
-    onFinish?.();
+    try {
+      await clearInvitationContext();
+    } catch (error) {
+      console.error('[Team invitation] Failed to clear invitation route:', error);
+    } finally {
+      // 路由清理是非关键收尾，失败时也必须释放编排锁，避免后续登录动作永久停滞。
+      onFinish?.();
+    }
   }, [clearInvitationContext, onFinish]);
 
   const { data: invitationInfo } = useRequest(() => getInvitationInfo(inviteLinkId), {
@@ -64,19 +75,15 @@ const HandleInviteModal = ({
     void finishInvitation();
   }, [finishInvitation, invitationInfo?.alreadyJoined, t, toast]);
 
-  const nameError = useMemo(() => {
-    if (!memberName) return t('account_team:member_name_required');
-    const result = TeamMemberNameSchema.safeParse(memberName);
-    return result.success ? '' : t('account_team:member_name_limit');
-  }, [memberName, t]);
-  const showNameError = hasInteracted && !!nameError;
-  const inviterName =
-    invitationInfo?.creatorUsername || t('account_team:invitation_creator_fallback');
+  // creatorUsername 是可选字段，空串同样需要回落到兜底文案，所以显式判空而不是用 || 覆盖假值。
+  const creatorUsername = invitationInfo?.creatorUsername?.trim();
+  const inviterName = creatorUsername
+    ? creatorUsername
+    : t('account_team:invitation_creator_fallback');
 
   const { runAsync: acceptInvitation, loading: accepting } = useRequest(
     async () => {
-      const normalizedMemberName = TeamMemberNameSchema.parse(memberName);
-      onStart?.();
+      const normalizedMemberName = parseMemberName();
       return postAcceptInvitationWithMemberName({
         linkId: inviteLinkId,
         memberName: normalizedMemberName
@@ -84,19 +91,37 @@ const HandleInviteModal = ({
     },
     {
       manual: true,
+      onError: async (error: Error) => {
+        const statusText = (error as Error & { statusText?: string }).statusText;
+        const isTerminalError = [
+          TeamErrEnum.invitationLinkInvalid,
+          TeamErrEnum.youHaveBeenInTheTeam
+        ].includes(statusText as TeamErrEnum);
+
+        if (!isTerminalError) return;
+
+        if (statusText === TeamErrEnum.youHaveBeenInTheTeam) {
+          toast({ status: 'error', title: t('account_team:already_joined') });
+        }
+        await finishInvitation();
+      },
       onSuccess: async ({ teamId }) => {
         toast({ status: 'success', title: t('account_team:join_team_success') });
+        let shouldReload = false;
         try {
           await putSwitchTeam(teamId);
           await initUserInfo();
-          await clearInvitationContext();
-          router.reload();
+          shouldReload = true;
         } catch {
           toast({ status: 'warning', title: t('account_team:switch_team_failed') });
-          await initUserInfo();
-          await clearInvitationContext();
+          await initUserInfo().catch((error) => {
+            console.error('[Team invitation] Failed to refresh user info:', error);
+          });
+        } finally {
+          await finishInvitation();
         }
-        onFinish?.();
+
+        if (shouldReload) router.reload();
       }
     }
   );
@@ -128,13 +153,7 @@ const HandleInviteModal = ({
           {isMultiTeamMode && (
             <Button
               variant="whiteBase"
-              h="32px"
-              minH="32px"
-              px="14px"
-              fontSize="12px"
-              lineHeight="16px"
-              letterSpacing="0.5px"
-              borderRadius="6px"
+              {...memberNameButtonStyles}
               isLoading={accepting}
               onClick={rejectInvitation}
             >
@@ -143,21 +162,17 @@ const HandleInviteModal = ({
           )}
           <Button
             variant="primary"
-            h="32px"
-            minH="32px"
-            px="14px"
-            fontSize="12px"
-            lineHeight="16px"
-            letterSpacing="0.5px"
-            borderRadius="6px"
+            {...memberNameButtonStyles}
             isLoading={accepting}
             isDisabled={!!nameError}
             onClick={() => {
-              setHasInteracted(true);
+              markInteracted();
               if (!nameError) void acceptInvitation();
             }}
           >
-            {isMultiTeamMode ? t('account_team:join_team') : t('account_team:confirm_member_name')}
+            {isMultiTeamMode
+              ? t('account_team:accept_invitation')
+              : t('account_team:confirm_member_name')}
           </Button>
         </>
       }
@@ -190,15 +205,7 @@ const HandleInviteModal = ({
         )}
         <FormControl isInvalid={showNameError}>
           <Box display="flex" alignItems="center" justifyContent="space-between" w="full" mb="8px">
-            <Box
-              color="#24282C"
-              fontSize="12px"
-              fontWeight={500}
-              lineHeight="16px"
-              letterSpacing="0.5px"
-            >
-              {t('account_team:member_name_label')}
-            </Box>
+            <Box {...memberNameLabelStyles}>{t('account_team:member_name_label')}</Box>
             {showNameError && (
               <Box
                 color="#D92D20"
@@ -213,14 +220,7 @@ const HandleInviteModal = ({
           </Box>
           <Input
             value={memberName}
-            h="32px"
-            minH="32px"
-            px="12px"
-            fontSize="12px"
-            lineHeight="16px"
-            letterSpacing="0.048px"
-            borderColor="#E8EBF0"
-            borderRadius="6px"
+            {...memberNameInputStyles}
             placeholder={
               isMultiTeamMode
                 ? t('account_team:invite_member_name_placeholder')
@@ -228,11 +228,8 @@ const HandleInviteModal = ({
             }
             _placeholder={{ color: '#667085' }}
             _invalid={{ borderColor: '#E8EBF0', boxShadow: 'none' }}
-            onChange={(event) => {
-              setHasInteracted(true);
-              setMemberName(event.target.value);
-            }}
-            onBlur={() => setHasInteracted(true)}
+            onChange={onNameChange}
+            onBlur={markInteracted}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && !nameError && !accepting) {
                 event.preventDefault();

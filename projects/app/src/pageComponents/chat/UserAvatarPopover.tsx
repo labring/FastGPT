@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import { Box, Flex, Text, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import { getTeamMemberDisplayName } from '@fastgpt/global/support/user/team/memberName';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -128,7 +129,11 @@ const UserAvatarPopover = ({
               >
                 <Avatar src={userInfo?.avatar} bg="myGray.200" borderRadius="50%" w={5} h={5} />
                 <Box flex="1 1 0" minW="0" whiteSpace="pre-wrap">
-                  {userInfo?.team.memberName ?? '-'}
+                  {getTeamMemberDisplayName({
+                    memberName: userInfo?.team.memberName,
+                    username: userInfo?.username,
+                    fallback: '-'
+                  })}
                 </Box>
               </Flex>
             )}
