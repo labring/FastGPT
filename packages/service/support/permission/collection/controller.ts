@@ -228,7 +228,9 @@ export async function resumeCollectionInheritPermission({
     session
   });
 
-  return resumeResourcePermissionInheritance({
+  // 本函数对外承诺 Promise<void>：受影响资源数只服务于 dataset/app/skill 侧的审计描述，
+  // collection 级恢复继承暂无审计需求，此处显式丢弃返回值以保持上游契约不变。
+  await resumeResourcePermissionInheritance({
     resource: collection,
     resourceModel: MongoDatasetCollection,
     resourceType: PerResourceTypeEnum.collection,
