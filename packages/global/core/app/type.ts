@@ -302,6 +302,8 @@ export type AppListItemType = {
   private?: boolean;
   sourceMember: SourceMemberType;
   hasInteractiveNode?: boolean;
+  /** 工具或工具文件夹关联的正式应用数量 */
+  relatedAppCount?: number;
   /** 仅在列表请求显式要求置顶排序时返回 */
   isPinned?: boolean;
 };

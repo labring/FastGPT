@@ -68,6 +68,7 @@ describe('Dataset OpenAPI contracts', () => {
   it('registers both legacy and paginated dataset list APIs', () => {
     expect(openAPIDocument.paths?.['/core/dataset/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/core/dataset/listV2']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/dataset/apps']?.get).toBeDefined();
   });
 
   it('groups Dataset permission APIs with dataset permission and shared permission tags', () => {

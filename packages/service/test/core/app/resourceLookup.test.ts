@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
+import {
+  countTeamAppsByPublishedResourceGroups,
+  findTeamAppsByPublishedResource
+} from '@fastgpt/service/core/app/resourceLookup';
 
 const teamId = new Types.ObjectId('65f000000000000000000071');
 const otherTeamId = new Types.ObjectId('65f000000000000000000072');
@@ -84,5 +87,63 @@ describe('findTeamAppsByPublishedResource', () => {
       ids: 'removed-skill'
     });
     expect(removed.apps).toHaveLength(0);
+  });
+
+  it('counts each app once when a folder group contains multiple referenced resources', async () => {
+    const secondAppId = new Types.ObjectId('65f000000000000000000079');
+    const secondVersionId = new Types.ObjectId('65f000000000000000000080');
+    await MongoApp.collection.insertMany([
+      {
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'App using two children',
+        type: 'workflow',
+        publishedVersionId,
+        deleteTime: null
+      },
+      {
+        _id: secondAppId,
+        teamId,
+        tmbId,
+        name: 'App using one child',
+        type: 'workflow',
+        publishedVersionId: secondVersionId,
+        deleteTime: null
+      }
+    ]);
+    await MongoAppVersion.collection.insertMany([
+      {
+        _id: publishedVersionId,
+        appId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [
+          { type: 'dataset', id: 'child-1' },
+          { type: 'dataset', id: 'child-2' }
+        ]
+      },
+      {
+        _id: secondVersionId,
+        appId: secondAppId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [{ type: 'dataset', id: 'child-2' }]
+      }
+    ]);
+
+    const counts = await countTeamAppsByPublishedResourceGroups({
+      teamId: String(teamId),
+      type: 'dataset',
+      resourceIdsByGroup: new Map([
+        ['folder-1', ['child-1', 'child-2']],
+        ['child-2', ['child-2']]
+      ])
+    });
+
+    expect(counts.get('folder-1')).toBe(2);
+    expect(counts.get('child-2')).toBe(2);
   });
 });

@@ -1,14 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
-import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
-import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { findResourceKeysByCollaboratorsPermission } from '@fastgpt/service/support/permission/resourcePermissionService';
+import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import type {
   ListAppsBySkillIdQuery,
   ListAppsBySkillIdResponse
@@ -16,44 +10,31 @@ import type {
 import { ListAppsBySkillIdQuerySchema } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
+import { formatReadableReferencedApps } from '@/service/core/app/referencedApps';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
 ): Promise<ListAppsBySkillIdResponse> {
   const { skillId } = parseApiInput({ req, querySchema: ListAppsBySkillIdQuerySchema }).query;
 
-  const {
-    tmbId,
-    teamId,
-    permission: teamPer
-  } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: ReadPermissionVal
-  });
-
-  const readableAppIds = await (async () => {
-    if (teamPer.isOwner) return;
-
-    const [groupIds, orgIds] = await Promise.all([
-      getGroupsByTmbId({ tmbId, teamId }).then((items) => items.map((item) => String(item._id))),
-      getOrgIdSetWithParentByTmbId({ teamId, tmbId }).then((ids) => Array.from(ids))
-    ]);
-
-    return new Set(
-      await findResourceKeysByCollaboratorsPermission({
-        resourceType: PerResourceTypeEnum.app,
-        teamId,
-        tmbId,
-        groupIds,
-        orgIds,
-        permission: ReadPermissionVal,
-        matchLogic: 'or',
-        personalPermissionPriority: true
-      })
-    );
-  })();
+  const [{ tmbId, teamId, permission: teamPer }, { permission: skillPer }] = await Promise.all([
+    authUserPer({
+      req,
+      authToken: true,
+      authApiKey: true,
+      per: ReadPermissionVal
+    }),
+    authSkill({
+      req,
+      authToken: true,
+      authApiKey: true,
+      skillId,
+      per: ReadPermissionVal
+    })
+  ]);
+  if (!skillPer.isOwner) {
+    return { list: [], hiddenCount: 0, hiddenOwnerGroups: [] };
+  }
 
   const { apps } = await findTeamAppsByPublishedResource({
     teamId,
@@ -62,26 +43,12 @@ async function handler(
   });
   apps.sort((a, b) => +new Date(b.updateTime) - +new Date(a.updateTime));
 
-  const visibleApps = apps
-    .filter(
-      (app) =>
-        teamPer.isOwner ||
-        String(app.tmbId) === String(tmbId) ||
-        readableAppIds?.has(String(app._id))
-    )
-    .map((app) => ({
-      _id: String(app._id),
-      name: app.name,
-      avatar: app.avatar || '',
-      intro: app.intro || '',
-      tmbId: String(app.tmbId),
-      type: app.type,
-      updateTime: app.updateTime
-    }));
-  const hiddenCount = apps.length - visibleApps.length;
-
-  const list = await addSourceMember({ list: visibleApps });
-  return { list, hiddenCount };
+  return formatReadableReferencedApps({
+    apps,
+    teamId,
+    tmbId,
+    isTeamOwner: teamPer.isOwner
+  });
 }
 
 export default NextAPI(handler);

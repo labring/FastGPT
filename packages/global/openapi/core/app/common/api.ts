@@ -347,6 +347,9 @@ export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;
 export const ListAppV2BodySchema = ListAppBodySchema.extend({
   excludeAppId: ObjectIdSchema.optional().meta({
     description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
+  }),
+  withRelatedAppCount: BoolSchema.optional().meta({
+    description: '是否返回工具或工具文件夹被正式应用引用的数量'
   })
 }).extend(PaginationSchema.shape);
 export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
@@ -368,6 +371,9 @@ export const AppListItemSchema = z
     private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
     hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
+    relatedAppCount: NumSchema.optional().meta({
+      description: '工具或工具文件夹关联的正式应用数量'
+    }),
     isPinned: BoolSchema.optional().meta({
       description: '是否置顶。仅在请求启用置顶排序时返回'
     })
@@ -385,6 +391,39 @@ export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchem
   description: '应用列表(分页)'
 });
 export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
+
+export const ReferencedAppSchema = z.object({
+  _id: ObjectIdSchema,
+  name: z.string(),
+  avatar: z.string(),
+  intro: z.string(),
+  tmbId: ObjectIdSchema,
+  type: z.enum(AppTypeEnum),
+  updateTime: z.coerce.date(),
+  sourceMember: SourceMemberSchema.optional()
+});
+export type ReferencedApp = z.infer<typeof ReferencedAppSchema>;
+
+export const HiddenReferencedAppOwnerSchema = z.object({
+  tmbId: ObjectIdSchema,
+  count: NumSchema.int().positive(),
+  sourceMember: SourceMemberSchema.optional()
+});
+export type HiddenReferencedAppOwner = z.infer<typeof HiddenReferencedAppOwnerSchema>;
+
+export const ReferencedAppsResponseSchema = z.object({
+  list: z.array(ReferencedAppSchema),
+  hiddenCount: NumSchema.int().nonnegative().describe('当前用户无权限查看的引用应用数量'),
+  // Commercial clients may use this extension to group inaccessible apps by owner.
+  // Keep it optional so existing open-source clients remain source-compatible.
+  hiddenOwnerGroups: z.array(HiddenReferencedAppOwnerSchema).optional()
+});
+export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
+
+export const GetAppsByToolIdQuerySchema = z.object({
+  toolId: AppIdSchema
+});
+export type GetAppsByToolIdQuery = z.infer<typeof GetAppsByToolIdQuerySchema>;
 
 /* ============================================================================
  * API: 获取应用详情

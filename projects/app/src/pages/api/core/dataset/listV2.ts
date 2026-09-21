@@ -30,6 +30,9 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
+import { getFolderDescendantResourceIds } from '@fastgpt/service/common/parentFolder/resource';
 
 async function handler(
   req: ApiRequestProps<GetDatasetListV2Body>
@@ -42,7 +45,8 @@ async function handler(
     tmbIds,
     pageNum = 1,
     pageSize = 50,
-    offset
+    offset,
+    withAppCount
   } = parseApiInput({
     req,
     bodySchema: GetDatasetListV2BodySchema
@@ -180,7 +184,47 @@ async function handler(
     };
   });
 
-  const list = await addSourceMember({ list: formatDatasets });
+  const appCountMap = withAppCount
+    ? await (async () => {
+        const ownerDatasets = formatDatasets.filter((dataset) => dataset.permission.isOwner);
+        const resourceIdsByGroup = new Map<string, string[]>();
+        const folderIds = ownerDatasets
+          .filter((dataset) => dataset.type === DatasetTypeEnum.folder)
+          .map((dataset) => String(dataset._id));
+        const descendantIdsByFolder = await getFolderDescendantResourceIds({
+          folderIds,
+          fetchChildren: (parentIds) =>
+            MongoDataset.find(
+              { teamId, deleteTime: null, parentId: { $in: parentIds } },
+              '_id parentId type'
+            ).lean(),
+          shouldTraverse: (dataset) => dataset.type === DatasetTypeEnum.folder,
+          isResource: (dataset) => dataset.type !== DatasetTypeEnum.folder
+        });
+        ownerDatasets.forEach((dataset) => {
+          const datasetId = String(dataset._id);
+          resourceIdsByGroup.set(
+            datasetId,
+            dataset.type === DatasetTypeEnum.folder
+              ? (descendantIdsByFolder.get(datasetId) ?? [])
+              : [datasetId]
+          );
+        });
+        return countTeamAppsByPublishedResourceGroups({
+          teamId,
+          type: 'dataset',
+          resourceIdsByGroup
+        });
+      })()
+    : undefined;
+  const list = await addSourceMember({
+    list: formatDatasets.map((dataset) => ({
+      ...dataset,
+      ...(appCountMap && dataset.permission.isOwner
+        ? { appCount: appCountMap.get(String(dataset._id)) ?? 0 }
+        : {})
+    }))
+  });
   return GetDatasetListV2ResponseSchema.parse({ list, total });
 }
 
