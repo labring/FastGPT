@@ -9,6 +9,7 @@ import { DatasetFilePath } from './file';
 import { DatasetTrainingPath } from './training';
 import { DatasetSynonymPath } from './synonym';
 import { DatasetBatchPath } from './batch';
+import { ReferencedAppsResponseSchema } from '../app/common/api';
 import {
   CreateDatasetBodySchema,
   CreateDatasetWithFilesBodySchema,
@@ -19,6 +20,7 @@ import {
   GetDatasetListResponseSchema,
   GetDatasetListV2BodySchema,
   GetDatasetListV2ResponseSchema,
+  GetAppsByDatasetIdQuerySchema,
   GetDatasetPathsQuerySchema,
   UpdateDatasetBodySchema,
   ResumeDatasetInheritPermissionBodySchema,
@@ -154,6 +156,24 @@ export const DatasetPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功返回路径列表'
+        }
+      }
+    }
+  },
+  '/core/dataset/apps': {
+    get: {
+      summary: '获取引用知识库的应用',
+      description: '返回引用指定知识库或其子知识库的正式应用，并按当前用户权限过滤可见项',
+      tags: [DevApiTagsMap.datasetCommon],
+      requestParams: { query: GetAppsByDatasetIdQuerySchema },
+      responses: {
+        200: {
+          description: '成功获取引用应用',
+          content: {
+            'application/json': {
+              schema: ReferencedAppsResponseSchema
+            }
+          }
         }
       }
     }

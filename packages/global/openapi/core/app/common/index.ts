@@ -11,10 +11,12 @@ import {
   GetAppBasicInfoResponseSchema,
   GetAppDetailQuerySchema,
   GetAppDetailResponseSchema,
+  GetAppsByToolIdQuerySchema,
   ListAppBodySchema,
   ListAppResponseSchema,
   ListAppV2BodySchema,
   ListAppV2ResponseSchema,
+  ReferencedAppsResponseSchema,
   PinAppBodySchema,
   PinAppQuerySchema,
   PinAppResponseSchema,
@@ -69,6 +71,22 @@ export const AppCommonPath: OpenAPIPath = {
             'application/json': {
               schema: ListAppV2ResponseSchema
             }
+          }
+        }
+      }
+    }
+  },
+  '/core/app/appsByToolId': {
+    get: {
+      summary: '获取引用工具的应用',
+      description: '返回引用指定工具或工具文件夹内工具的正式应用，并按当前用户权限过滤可见项',
+      tags: [DevApiTagsMap.appCommon],
+      requestParams: { query: GetAppsByToolIdQuerySchema },
+      responses: {
+        200: {
+          description: '成功获取引用应用',
+          content: {
+            'application/json': { schema: ReferencedAppsResponseSchema }
           }
         }
       }

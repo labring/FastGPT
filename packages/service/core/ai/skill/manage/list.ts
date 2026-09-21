@@ -18,7 +18,8 @@ import type { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
-import { findTeamAppsByPublishedResource } from '../../../app/resourceLookup';
+import { countTeamAppsByPublishedResourceGroups } from '../../../app/resourceLookup';
+import { getFolderDescendantResourceIds } from '../../../../common/parentFolder/resource';
 
 type TeamPermission = {
   isOwner: boolean;
@@ -240,24 +241,44 @@ export const listReadableAgentSkills = async ({
   const total = dbTotal ?? formatSkills.length;
   const pagedSkills = formatSkills;
 
-  const nonFolderSkills =
-    withAppCount !== false ? pagedSkills.filter((s) => s.type !== AgentSkillTypeEnum.folder) : [];
-  const appCountMap = new Map<string, number>();
-  if (nonFolderSkills.length > 0) {
-    const skillIdStrings = nonFolderSkills.map((skill) => String(skill._id));
-    const { counts } = await findTeamAppsByPublishedResource({
-      teamId,
-      type: 'skill',
-      ids: skillIdStrings
-    });
-    counts.forEach((count, skillId) => {
-      appCountMap.set(skillId, count);
-    });
-  }
+  const appCountMap =
+    withAppCount === false
+      ? new Map<string, number>()
+      : await (async () => {
+          const ownerSkills = pagedSkills.filter((skill) => skill.permission.isOwner);
+          const resourceIdsByGroup = new Map<string, string[]>();
+          const folderIds = ownerSkills
+            .filter((skill) => skill.type === AgentSkillTypeEnum.folder)
+            .map((skill) => String(skill._id));
+          const descendantIdsByFolder = await getFolderDescendantResourceIds({
+            folderIds,
+            fetchChildren: (parentIds) =>
+              MongoAgentSkills.find(
+                { teamId, deleteTime: null, parentId: { $in: parentIds } },
+                '_id parentId type'
+              ).lean(),
+            shouldTraverse: (skill) => skill.type === AgentSkillTypeEnum.folder,
+            isResource: (skill) => skill.type !== AgentSkillTypeEnum.folder
+          });
+          ownerSkills.forEach((skill) => {
+            const skillId = String(skill._id);
+            resourceIdsByGroup.set(
+              skillId,
+              skill.type === AgentSkillTypeEnum.folder
+                ? (descendantIdsByFolder.get(skillId) ?? [])
+                : [skillId]
+            );
+          });
+          return countTeamAppsByPublishedResourceGroups({
+            teamId,
+            type: 'skill',
+            resourceIdsByGroup
+          });
+        })();
 
   const listWithAppCount = pagedSkills.map((skill) => ({
     ...skill,
-    appCount: appCountMap.get(skill._id.toString()) ?? 0
+    ...(skill.permission.isOwner ? { appCount: appCountMap.get(skill._id.toString()) ?? 0 } : {})
   }));
   const list = withSourceMember
     ? await addSourceMember({ list: listWithAppCount })

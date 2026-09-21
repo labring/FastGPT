@@ -6,8 +6,11 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { findAppsPage } from '@fastgpt/service/core/app/entity';
+import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getFolderDescendantResourceIds } from '@fastgpt/service/common/parentFolder/resource';
 import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -41,7 +44,8 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     excludeAppId,
     pageNum = 1,
     pageSize = 50,
-    offset
+    offset,
+    withRelatedAppCount
   } = parseApiInput({
     req,
     bodySchema: ListAppV2BodySchema
@@ -181,7 +185,47 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     };
   });
 
-  const list = await addSourceMember({ list: formatApps });
+  const relatedAppCountMap = withRelatedAppCount
+    ? await (async () => {
+        const ownerApps = formatApps.filter((app) => app.permission.isOwner);
+        const resourceIdsByGroup = new Map<string, string[]>();
+        const folderIds = ownerApps
+          .filter((app) => app.type === AppTypeEnum.toolFolder)
+          .map((app) => String(app._id));
+        const descendantIdsByFolder = await getFolderDescendantResourceIds({
+          folderIds,
+          fetchChildren: (parentIds) =>
+            MongoApp.find(
+              { teamId, deleteTime: null, parentId: { $in: parentIds } },
+              '_id parentId type'
+            ).lean(),
+          shouldTraverse: (app) => AppFolderTypeList.includes(app.type as AppTypeEnum),
+          isResource: (app) =>
+            ToolTypeList.includes(app.type as AppTypeEnum) || app.type === AppTypeEnum.tool
+        });
+        ownerApps.forEach((app) => {
+          const appId = String(app._id);
+          const isTool = ToolTypeList.includes(app.type) || app.type === AppTypeEnum.tool;
+          if (isTool) resourceIdsByGroup.set(appId, [appId]);
+          if (app.type === AppTypeEnum.toolFolder) {
+            resourceIdsByGroup.set(appId, descendantIdsByFolder.get(appId) ?? []);
+          }
+        });
+        return countTeamAppsByPublishedResourceGroups({
+          teamId,
+          type: 'tool',
+          resourceIdsByGroup
+        });
+      })()
+    : undefined;
+  const list = await addSourceMember({
+    list: formatApps.map((app) => ({
+      ...app,
+      ...(relatedAppCountMap && app.permission.isOwner
+        ? { relatedAppCount: relatedAppCountMap.get(String(app._id)) ?? 0 }
+        : {})
+    }))
+  });
   return ListAppV2ResponseSchema.parse({ list, total });
 }
 

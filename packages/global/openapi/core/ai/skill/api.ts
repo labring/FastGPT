@@ -23,6 +23,7 @@ import {
 } from '../../../../support/permission/collaborator.schema';
 import { AppListSortEnum } from '../../../../core/app/constants';
 import { IntSchema } from '../../../../common/zod';
+import { HiddenReferencedAppOwnerSchema, ReferencedAppSchema } from '../../app/common/api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -383,25 +384,13 @@ export const ListAppsBySkillIdQuerySchema = z.object({
 });
 export type ListAppsBySkillIdQuery = z.infer<typeof ListAppsBySkillIdQuerySchema>;
 
-export const AppsBySkillIdItemSchema = z.object({
-  _id: z.string(),
-  name: z.string(),
-  avatar: z.string(),
-  intro: z.string(),
-  tmbId: z.string(),
-  type: z.string(),
-  updateTime: z.coerce.date(),
-  sourceMember: z.object({
-    name: z.string(),
-    avatar: z.string().nullable().optional(),
-    status: z.string()
-  })
-});
+export const AppsBySkillIdItemSchema = ReferencedAppSchema;
 export type AppsBySkillIdItem = z.infer<typeof AppsBySkillIdItemSchema>;
 
 export const ListAppsBySkillIdResponseSchema = z.object({
   list: z.array(AppsBySkillIdItemSchema),
-  hiddenCount: z.number().int().nonnegative().describe('当前用户无权限查看的引用应用数量')
+  hiddenCount: z.number().int().nonnegative().describe('当前用户无权限查看的引用应用数量'),
+  hiddenOwnerGroups: z.array(HiddenReferencedAppOwnerSchema).optional()
 });
 export type ListAppsBySkillIdResponse = z.infer<typeof ListAppsBySkillIdResponseSchema>;
 
