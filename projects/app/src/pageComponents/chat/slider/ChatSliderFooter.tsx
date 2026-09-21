@@ -7,6 +7,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
+import { getTeamMemberDisplayName } from '@fastgpt/global/support/user/team/memberName';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
@@ -28,7 +29,10 @@ const ChatSliderFooter = () => {
           <Flex alignItems="center" gap={2} borderRadius="50%">
             <Avatar src={userInfo?.avatar} w={8} h={8} borderRadius="50%" bg="myGray.200" />
             <Box className="textEllipsis" flexGrow={1} fontSize={'sm'} fontWeight={500} minW={0}>
-              {userInfo?.team?.memberName}
+              {getTeamMemberDisplayName({
+                memberName: userInfo?.team?.memberName,
+                username: userInfo?.username
+              })}
             </Box>
           </Flex>
         </UserAvatarPopover>

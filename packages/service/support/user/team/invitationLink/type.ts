@@ -1,5 +1,3 @@
-import { type TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
-
 export type InvitationSchemaType = {
   _id: string;
   linkId: string;
@@ -8,6 +6,8 @@ export type InvitationSchemaType = {
   forbidden?: boolean;
   expires: Date;
   description: string;
+  creatorUsername?: string;
+  creatorTmbId?: string;
   members: string[];
 };
 
@@ -34,4 +34,6 @@ export type InvitationLinkCreateType = {
 export type InvitationInfoType = InvitationSchemaType & {
   teamAvatar: string;
   teamName: string;
+  creatorMemberName?: string;
+  alreadyJoined: boolean;
 };

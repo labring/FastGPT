@@ -1,6 +1,7 @@
 export const TeamCollectionName = 'teams';
 export const TeamMemberCollectionName = 'team_members';
 export const MAX_TEAM_OWNER_COUNT = 5;
+export const UNSET_TEAM_MEMBER_NAME = '__FASTGPT_PENDING__';
 
 export enum TeamMemberRoleEnum {
   owner = 'owner'

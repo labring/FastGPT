@@ -29,6 +29,11 @@ import {
   getActiveAccountCancellationsByTeamIds
 } from '../account/cancellation';
 import { createTeamDefaultGroup } from '../../permission/memberGroup/teamDefaultGroup';
+import type { UserModelSchema } from '@fastgpt/global/support/user/type';
+import {
+  getTeamMemberDisplayName,
+  isTeamMemberNamePending
+} from '@fastgpt/global/support/user/team/memberName';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
@@ -43,7 +48,10 @@ async function getTeamMember(
   match: Record<string, any>,
   session?: ClientSession
 ): Promise<TeamTmbItemType> {
-  const query = MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team');
+  const query = MongoTeamMember.findOne(match).populate<{
+    team: TeamSchema;
+    user: UserModelSchema;
+  }>('team user');
   if (session) query.session(session);
   const tmb = await query.lean();
   if (!tmb || !tmb.team || tmb.team.deleteTime) {
@@ -64,7 +72,11 @@ async function getTeamMember(
     teamId: String(tmb.teamId),
     teamAvatar: tmb.team.avatar,
     teamName: tmb.team.name,
-    memberName: tmb.name,
+    memberName: getTeamMemberDisplayName({
+      memberName: tmb.name,
+      username: tmb.user?.username
+    }),
+    memberNamePending: isTeamMemberNamePending(tmb.name),
     avatar: tmb.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),

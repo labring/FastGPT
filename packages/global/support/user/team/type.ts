@@ -57,6 +57,7 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   teamAvatar: z.string().nullish(),
   teamName: z.string(),
   memberName: z.string().default('Member'),
+  memberNamePending: z.boolean().default(false),
   avatar: z.string().nullish(),
   balance: z.number().optional(),
   tmbId: ObjectIdSchema,
@@ -84,7 +85,10 @@ export type TeamMemberItemType<
   userId: string;
   tmbId: string;
   teamId: string;
+  username?: string;
   memberName: string;
+  /** 成员名是否仍待补齐；为 true 时 memberName 是回落展示名（登录用户名或空串），不是用户提交值。 */
+  memberNamePending: boolean;
   avatar: string;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;

@@ -63,11 +63,11 @@ const SearchMemberSchema = z
     }),
     name: z.string().meta({
       example: '张三',
-      description: '成员名称'
+      description: '成员名称，展示口径；成员名待补齐时回落到登录用户名'
     }),
     memberName: z.string().default('Member').meta({
       example: '张三',
-      description: '成员展示名称'
+      description: '成员展示名称；成员名待补齐时回落到登录用户名'
     }),
     avatar: z.string().nullish().meta({
       example: 'https://example.com/avatar.png',

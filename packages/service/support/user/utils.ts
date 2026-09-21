@@ -1,8 +1,8 @@
 import { type SourceMemberType } from '@fastgpt/global/support/user/type';
 import { MongoTeam } from './team/teamSchema';
-import { MongoTeamMember } from './team/teamMemberSchema';
 import { type ClientSession } from '../../common/mongo';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
+import { getTeamMemberDisplayIdentityMap } from './team/memberDisplay';
 
 /* export dataset limit */
 export const updateExportDatasetLimit = async (teamId: string) => {
@@ -106,21 +106,13 @@ export async function addSourceMember<T extends { tmbId: string }>({
 
   const tmbIdList = list
     .map((item) => (item.tmbId ? String(item.tmbId) : undefined))
-    .filter(Boolean);
-  const tmbList = await MongoTeamMember.find(
-    {
-      _id: { $in: tmbIdList }
-    },
-    'tmbId name avatar status',
-    {
-      session
-    }
-  ).lean();
+    .filter((tmbId): tmbId is string => tmbId !== undefined);
+  const memberDisplayMap = await getTeamMemberDisplayIdentityMap({ tmbIds: tmbIdList, session });
 
   return list
     .map((item) => {
-      const tmb = tmbList.find((tmb) => String(tmb._id) === String(item.tmbId));
-      if (!tmb) return;
+      const member = memberDisplayMap.get(String(item.tmbId));
+      if (!member) return;
 
       // @ts-ignore
       const formatItem = typeof item.toObject === 'function' ? item.toObject() : item;
@@ -128,9 +120,9 @@ export async function addSourceMember<T extends { tmbId: string }>({
       return {
         ...formatItem,
         sourceMember: {
-          name: tmb.name?.trim() ? tmb.name : 'unknown',
-          avatar: tmb.avatar,
-          status: tmb.status ?? TeamMemberStatusEnum.active
+          name: member.name || 'unknown',
+          avatar: member.avatar,
+          status: member.status ?? TeamMemberStatusEnum.active
         }
       };
     })

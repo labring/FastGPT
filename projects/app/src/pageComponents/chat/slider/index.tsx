@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import { getTeamMemberDisplayName } from '@fastgpt/global/support/user/team/memberName';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import UserAvatarPopover from '@/pageComponents/chat/UserAvatarPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -424,7 +425,10 @@ const BottomSection = () => {
                   fontWeight={500}
                   minW={0}
                 >
-                  {userInfo?.team?.memberName}
+                  {getTeamMemberDisplayName({
+                    memberName: userInfo?.team?.memberName,
+                    username: userInfo?.username
+                  })}
                 </AnimatedText>
               </Flex>
             </UserAvatarPopover>
