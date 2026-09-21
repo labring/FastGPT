@@ -104,4 +104,8 @@
   "migrations.20260928_backfill_member_name_set.members": "Backfill member name flags",
   "migrations.20260928_backfill_member_name_set.validation": "Validate member name backfill",
   "migrations.20260928_backfill_member_name_set.result": "Scanned {{scannedCount}} members, marked {{ownerCount}} owners, {{usernameMatchCount}} username fallback names, and {{setTrueCount}} set names."
+  "migrations.20260928_migrate_legacy_channel_configs.name": "Migrate legacy model configs to AI Proxy channels",
+  "migrations.20260928_migrate_legacy_channel_configs.description": "Idempotently convert requestUrl and requestAuth from legacy models into AI Proxy system channels.",
+  "migrations.20260928_migrate_legacy_channel_configs.channels": "Migrate model channels",
+  "migrations.20260928_migrate_legacy_channel_configs.result": "Checked {{scannedCount}} legacy configs, created {{migratedCount}} channels, skipped {{skippedCount}} existing channels."
 }

@@ -15,6 +15,7 @@ import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartC
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import DataTableComponent from './DataTableComponent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -59,11 +60,22 @@ const getDefaultDateRange = (): DateRangeType => {
   return { from, to };
 };
 
-const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
+const ModelDashboard = ({
+  Tab,
+  channelType = 'system'
+}: {
+  Tab: React.ReactNode;
+  channelType?: 'system' | 'team';
+}) => {
   const { t, i18n } = useClientTranslation('config_model');
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
-  const { getModelProvider, systemModelList } = useAdminModelConfig();
+  const isTeam = channelType === 'team';
+  const { getModelProvider: getAdminModelProvider, systemModelList } = useAdminModelConfig();
+  const { modelList: memberModelList, getModelProvider: getMemberModelProvider } =
+    useUserModelStore();
+  const availableModels = isTeam ? memberModelList : systemModelList;
+  const getModelProvider = isTeam ? getMemberModelProvider : getAdminModelProvider;
 
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
 
@@ -91,14 +103,15 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   // Fetch channel list with "All" option
   const { data: channelList = [] } = useRequest(
     async () => {
-      const res = (await getChannelList()).map((item) => ({
+      const res = (await getChannelList({ channelType })).map((item) => ({
         label: item.name,
         value: `${item.id}`
       }));
       return [{ label: t('common:All'), value: '' }, ...res];
     },
     {
-      manual: false
+      manual: false,
+      refreshDeps: [channelType]
     }
   );
 
@@ -106,9 +119,9 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const llmModelSet = useMemo(
     () =>
       new Set(
-        systemModelList.filter((item) => item.type === ModelTypeEnum.llm).map((item) => item.model)
+        availableModels.filter((item) => item.type === ModelTypeEnum.llm).map((item) => item.model)
       ),
-    [systemModelList]
+    [availableModels]
   );
   const isLLMModel = useCallback(
     (model: string) => {
@@ -118,7 +131,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   );
 
   const modelList = useMemo(() => {
-    const res = systemModelList
+    const res = availableModels
       .map((item) => {
         const provider = getModelProvider(item.provider, i18n.language);
         return {
@@ -130,7 +143,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       })
       .sort((a, b) => a.order - b.order);
     return [{ label: t('common:All'), value: '' }, ...res];
-  }, [getModelProvider, i18n.language, systemModelList, t]);
+  }, [availableModels, getModelProvider, i18n.language, t]);
   // Model price map
   const modelPriceMap = useMemo(() => {
     const map = new Map<
@@ -142,7 +155,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         priceTiers?: ModelPriceTierType[];
       }
     >();
-    systemModelList.forEach((model) => {
+    availableModels.forEach((model) => {
       map.set(model.model, {
         inputPrice: model.inputPrice,
         outputPrice: model.outputPrice,
@@ -151,7 +164,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
       });
     });
     return map;
-  }, [systemModelList]);
+  }, [availableModels]);
 
   const computeTimespan = (hoursDiff: number) => {
     const options: { label: string; value: 'minute' | 'hour' | 'day' }[] = [];
@@ -200,6 +213,7 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
   const { data: dashboardData = [], loading: isLoading } = useRequest(
     async () => {
       const params = {
+        channelType,
         channelId: filterProps.channelId ? parseInt(filterProps.channelId) : undefined,
         model: filterProps.model,
         startTimestamp: filterProps.dateRange.from
@@ -270,7 +284,8 @@ const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
         filterProps.channelId,
         filterProps.dateRange,
         filterProps.model,
-        filterProps.timespan
+        filterProps.timespan,
+        channelType
       ]
     }
   );

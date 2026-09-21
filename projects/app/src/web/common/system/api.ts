@@ -2,7 +2,8 @@ import { GET, POST } from '@/web/common/api/request';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import type {
   GetModelCatalogResponse,
-  GetSystemModelsResponse
+  GetSystemModelsResponse,
+  ModelCollaboratorBatchListResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import type {
   GetModelSummariesBody,
@@ -36,6 +37,11 @@ export const getPublicModelCatalog = () =>
 export const getModelCollaborators = (modelId: string) =>
   GET<CollaboratorListType>('/proApi/system/model/collaborator/list', {
     modelId
+  });
+
+export const getBatchModelCollaborators = (modelIds: string[]) =>
+  POST<ModelCollaboratorBatchListResponse>('/proApi/system/model/collaborator/batchList', {
+    modelIds
   });
 
 export const updateModelCollaborators = (

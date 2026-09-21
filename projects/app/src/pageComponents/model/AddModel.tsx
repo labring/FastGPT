@@ -56,12 +56,22 @@ const EditChannelModal = dynamic(() => import('./Channel/EditChannelModal'), { s
 
 /** 空白模型只使用固定默认值；数值草稿的 NaN 表示未填写，提交时再补齐引用上限。 */
 export const createBlankSystemModelData = ({
-  type
+  type,
+  channelType = 'system',
+  scope
 }: {
   type: ModelTypeEnum;
+  channelType?: 'system' | 'team';
+  scope?: ModelScopeEnum;
 }): SystemModelDocumentDataType => {
+  const resolvedScope = (
+    channelType === 'team' || scope === ModelScopeEnum.team
+      ? ModelScopeEnum.team
+      : ModelScopeEnum.system
+  ) as ModelScopeEnum.system;
+
   const base = {
-    scope: ModelScopeEnum.system as ModelScopeEnum.system,
+    scope: resolvedScope,
     provider: '',
     model: '',
     name: '',
@@ -235,29 +245,38 @@ const ModelTypeSelector = ({
  */
 export const BlankModelCreateModal = ({
   createModelData,
+  defaultModelData,
   providers,
   channels,
+  channelType = 'system',
   onSuccess,
   onClose
 }: {
   createModelData: (type: ModelTypeEnum) => SystemModelDocumentDataType;
+  defaultModelData?: SystemModelDocumentDataType;
   providers: ModelProviderItemType[];
   channels: AdminModelChannel[];
+  channelType?: 'system' | 'team';
   onSuccess: () => unknown | Promise<unknown>;
   onClose: () => void;
 }) => {
   const { t } = useClientTranslation('config_model');
   const router = useRouter();
-  const [step, setStep] = useState<'type' | 'config'>('type');
-  const [selectedType, setSelectedType] = useState<ModelTypeEnum>(ModelTypeEnum.llm);
+  const [step, setStep] = useState<'type' | 'config'>(defaultModelData ? 'config' : 'type');
+  const [selectedType, setSelectedType] = useState<ModelTypeEnum>(
+    defaultModelData?.type ?? ModelTypeEnum.llm
+  );
   const [submitting, setSubmitting] = useState(false);
   const [selectedChannelIds, setSelectedChannelIds] = useState<Set<number>>(new Set());
   const [showAssociateChannel, setShowAssociateChannel] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
-  const [draftModel, setDraftModel] = useState('');
+  const [draftModel, setDraftModel] = useState(defaultModelData?.model ?? '');
   const [isFormDirty, setIsFormDirty] = useState(false);
   const modelFormGetValuesRef = useRef<ModelConfigFormGetValues | null>(null);
-  const modelData = useMemo(() => createModelData(selectedType), [createModelData, selectedType]);
+  const modelData = useMemo(
+    () => defaultModelData ?? createModelData(selectedType),
+    [defaultModelData, createModelData, selectedType]
+  );
   const { openConfirm: openLeaveConfirm, ConfirmModal: LeaveConfirmModal } = useConfirm();
 
   const { testingChannelIds, testModelChannel: handleTestModelChannel } = useModelChannelTest({
@@ -314,9 +333,15 @@ export const BlankModelCreateModal = ({
             </>
           ) : (
             <>
-              <Button type="button" variant="whiteBase" size="md" onClick={() => setStep('type')}>
-                {t('config_model:previous_step')}
-              </Button>
+              {defaultModelData ? (
+                <Button variant="whiteBase" size="md" onClick={onClose}>
+                  {t('common:Cancel')}
+                </Button>
+              ) : (
+                <Button type="button" variant="whiteBase" size="md" onClick={() => setStep('type')}>
+                  {t('config_model:previous_step')}
+                </Button>
+              )}
               <Button
                 key="create-model"
                 size="md"
@@ -337,6 +362,7 @@ export const BlankModelCreateModal = ({
             getValuesRef={modelFormGetValuesRef}
             formId={createFormId}
             modelData={modelData}
+            channelType={channelType}
             providers={providers}
             onModelChange={setDraftModel}
             channelSection={{
@@ -371,6 +397,7 @@ export const BlankModelCreateModal = ({
             onSubmit={async (data) => {
               await submitCreatedSystemModel({
                 modelData: data,
+                channelType,
                 channelIds: [...selectedChannelIds]
               });
             }}
@@ -408,6 +435,7 @@ export const BlankModelCreateModal = ({
           fixedModel={{
             model: draftModel.trim() || t('config_model:model_pending_creation')
           }}
+          channelType={channelType}
           allowEmptyModels
           onSuccess={async (createdChannelId) => {
             if (createdChannelId !== undefined) {
@@ -428,15 +456,19 @@ export const BlankModelCreateModal = ({
 const TemplateCreateModal = ({
   installedModels,
   channels,
+  channelType = 'system',
   onClose,
   onSuccess,
-  onRefresh
+  onRefresh,
+  onSelectSingleTemplate
 }: {
   installedModels: SystemModelDataType[];
   channels: AdminModelChannel[];
+  channelType?: 'system' | 'team';
   onClose: () => void;
   onSuccess: () => Promise<void>;
   onRefresh?: () => Promise<void>;
+  onSelectSingleTemplate?: (template: SystemModelDocumentDataType) => void;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const [step, setStep] = useState<1 | 2>(1);
@@ -526,7 +558,8 @@ const TemplateCreateModal = ({
   const { runAsync: createModelsRequest, loading: creatingModels } = useRequest(
     () =>
       postSystemModelsFromTemplates({
-        templates: selectedTemplates.map(({ type, model }) => ({ type, model }))
+        templates: selectedTemplates.map(({ type, model }) => ({ type, model })),
+        channelType
       }),
     {
       onSuccess: () => {
@@ -566,7 +599,16 @@ const TemplateCreateModal = ({
             <Button variant="whiteBase" onClick={onClose}>
               {t('common:Cancel')}
             </Button>
-            <Button isDisabled={selectedKeys.size === 0} onClick={() => setStep(2)}>
+            <Button
+              isDisabled={selectedKeys.size === 0}
+              onClick={() => {
+                if (selectedTemplates.length === 1 && onSelectSingleTemplate) {
+                  onSelectSingleTemplate(selectedTemplates[0]);
+                } else {
+                  setStep(2);
+                }
+              }}
+            >
               {t('config_model:next_step')}
             </Button>
           </>
@@ -788,6 +830,7 @@ const TemplateCreateModal = ({
             model: model.model,
             avatar: providerMap.get(model.provider)?.avatar
           }))}
+          channelType={channelType}
           allowEmptyModels
           onSuccess={async (createdChannelId) => {
             if (createdChannelId !== undefined) {
@@ -809,6 +852,7 @@ const AddModel = ({
   installedModels,
   channels,
   providers,
+  channelType = 'system',
   onSuccess,
   buttonBoxProps,
   ...buttonProps
@@ -816,14 +860,18 @@ const AddModel = ({
   installedModels: SystemModelDataType[];
   channels: AdminModelChannel[];
   providers: ModelProviderItemType[];
+  channelType?: 'system' | 'team';
   onSuccess: () => Promise<void>;
   buttonBoxProps?: BoxProps;
 } & ButtonProps) => {
   const [showBlankCreate, setShowBlankCreate] = useState(false);
   const [showTemplateCreate, setShowTemplateCreate] = useState(false);
+  const [templateForConfig, setTemplateForConfig] = useState<SystemModelDocumentDataType | null>(
+    null
+  );
   const getBlankModelData = useCallback(
-    (type: ModelTypeEnum) => createBlankSystemModelData({ type }),
-    []
+    (type: ModelTypeEnum) => createBlankSystemModelData({ type, channelType }),
+    [channelType]
   );
 
   return (
@@ -839,17 +887,40 @@ const AddModel = ({
           createModelData={getBlankModelData}
           providers={providers}
           channels={channels}
+          channelType={channelType}
           onClose={() => setShowBlankCreate(false)}
           onSuccess={onSuccess}
+        />
+      )}
+      {templateForConfig && (
+        <BlankModelCreateModal
+          createModelData={getBlankModelData}
+          defaultModelData={templateForConfig}
+          providers={providers}
+          channels={channels}
+          channelType={channelType}
+          onClose={() => setTemplateForConfig(null)}
+          onSuccess={async () => {
+            setTemplateForConfig(null);
+            await onSuccess();
+          }}
         />
       )}
       {showTemplateCreate && (
         <TemplateCreateModal
           installedModels={installedModels}
           channels={channels}
+          channelType={channelType}
           onClose={() => setShowTemplateCreate(false)}
           onSuccess={onSuccess}
           onRefresh={onSuccess}
+          onSelectSingleTemplate={(template) => {
+            setShowTemplateCreate(false);
+            setTemplateForConfig({
+              ...template,
+              scope: channelType === 'team' ? ModelScopeEnum.team : ModelScopeEnum.system
+            });
+          }}
         />
       )}
     </>

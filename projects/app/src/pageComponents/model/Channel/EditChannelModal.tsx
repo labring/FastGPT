@@ -15,6 +15,7 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
+import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useLockFn } from 'ahooks';
 
@@ -35,6 +36,7 @@ const EditChannelModal = ({
   fixedModel,
   fixedModels,
   allowEmptyModels = false,
+  channelType,
   onClose,
   onSuccess
 }: {
@@ -42,16 +44,26 @@ const EditChannelModal = ({
   fixedModel?: { model: string; avatar?: string };
   fixedModels?: { model: string; avatar?: string }[];
   allowEmptyModels?: boolean;
+  channelType?: 'system' | 'team';
   onClose: () => void;
   onSuccess: (createdChannelId?: number) => unknown | Promise<unknown>;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
+  const isTeam = channelType === 'team';
   const {
-    aiproxyChannels,
-    getModelProvider,
+    aiproxyChannels: adminAIProxyChannels,
+    getModelProvider: getAdminModelProvider,
     systemModelList,
     loading: loadingModels
   } = useAdminModelConfig();
+  const {
+    modelList: memberModelList,
+    modelProviders: memberModelProviders,
+    getModelProvider: getMemberModelProvider
+  } = useUserModelStore();
+  const aiproxyChannels = adminAIProxyChannels;
+  const getModelProvider = isTeam ? getMemberModelProvider : getAdminModelProvider;
+  const availableModels = isTeam ? memberModelList : systemModelList;
   const isEdit = defaultConfig.id !== 0;
   const currentModels = fixedModels ?? (fixedModel ? [fixedModel] : []);
   const isCompactCreate = !isEdit && currentModels.length > 0;
@@ -92,7 +104,7 @@ const EditChannelModal = ({
 
   const models = useWatch({ control, name: 'models' });
   const modelList = useMemo(() => {
-    return systemModelList.map((item) => {
+    return availableModels.map((item: any) => {
       const provider = getModelProvider(item.provider, i18n.language);
 
       return {
@@ -102,7 +114,7 @@ const EditChannelModal = ({
         searchText: item.model
       };
     });
-  }, [getModelProvider, i18n.language, systemModelList]);
+  }, [getModelProvider, i18n.language, availableModels]);
 
   const modelMapping = useWatch({ control, name: 'model_mapping' });
   const { runAsync: submitRequest, loading: loadingCreate } = useRequest(
@@ -111,13 +123,14 @@ const EditChannelModal = ({
         return Promise.reject(t('config_model:selected_model_empty'));
       }
       if (isEdit) {
-        await putChannel(data);
+        await putChannel({ ...data, channelType });
         await onSuccess();
         return;
       }
 
       await postCreateChannel({
         ...data,
+        channelType,
         model_mapping: data.model_mapping ?? {}
       });
       await onSuccess();

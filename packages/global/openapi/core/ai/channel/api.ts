@@ -43,11 +43,11 @@ export const ChannelBodySchema = z.object({
 export type ChannelBody = z.infer<typeof ChannelBodySchema>;
 
 // ═══ POST /api/core/ai/channel/create ═══
-// The caller declares the channel kind explicitly (groupType) — the server does
+// The caller declares the channel kind explicitly (channelType) — the server does
 // not infer it from the role, so root can create member channels too (root is
 // also a team admin). groupId is never sent; it is always derived from the session.
 export const CreateChannelBodySchema = ChannelBodySchema.extend({
-  groupType: z.enum(['system', 'team']).meta({
+  channelType: ChannelTypeEnumSchema.meta({
     description: 'system=系统渠道（root 专用）；team=本人所在团队的成员渠道'
   })
 });
@@ -95,37 +95,6 @@ export const DeleteChannelResponseSchema = z.object({
 });
 export type DeleteChannelResponse = z.infer<typeof DeleteChannelResponseSchema>;
 
-// ═══ POST /api/core/ai/channel/batchDelete ═══
-export const BatchDeleteChannelsBodySchema = z.object({
-  ids: z.array(z.number().int()).min(1).meta({ description: '待批量删除的渠道 ID 列表' }),
-  channelType: ChannelTypeEnumSchema.meta({
-    description: 'system=系统渠道（root 专用）；team=成员渠道'
-  })
-});
-export type BatchDeleteChannelsBody = z.infer<typeof BatchDeleteChannelsBodySchema>;
-
-export const BatchDeleteChannelsResponseSchema = z
-  .undefined()
-  .meta({ description: '批量删除成功' });
-export type BatchDeleteChannelsResponse = z.infer<typeof BatchDeleteChannelsResponseSchema>;
-
-// ═══ POST /api/core/ai/channel/batchStatus ═══
-export const BatchUpdateChannelStatusBodySchema = z.object({
-  ids: z.array(z.number().int()).min(1).meta({ description: '待批量更新状态的渠道 ID 列表' }),
-  status: z.union([z.literal(1), z.literal(2)]).meta({ description: '1=启用 / 2=禁用' }),
-  channelType: ChannelTypeEnumSchema.meta({
-    description: 'system=系统渠道（root 专用）；team=成员渠道'
-  })
-});
-export type BatchUpdateChannelStatusBody = z.infer<typeof BatchUpdateChannelStatusBodySchema>;
-
-export const BatchUpdateChannelStatusResponseSchema = z
-  .undefined()
-  .meta({ description: '批量更新状态成功' });
-export type BatchUpdateChannelStatusResponse = z.infer<
-  typeof BatchUpdateChannelStatusResponseSchema
->;
-
 // ═══ POST /api/core/ai/channel/status ═══
 // POST carries id + status in the body (no GET-style query precedent exists for status ops).
 export const UpdateChannelStatusBodySchema = z.object({
@@ -139,6 +108,50 @@ export type UpdateChannelStatusBody = z.infer<typeof UpdateChannelStatusBodySche
 
 export const UpdateChannelStatusResponseSchema = z.undefined().meta({ description: '操作成功' });
 export type UpdateChannelStatusResponse = z.infer<typeof UpdateChannelStatusResponseSchema>;
+
+// ═══ POST /api/core/ai/channel/batch ═══
+export const BatchDeleteChannelsBodySchema = z.object({
+  action: z.literal('delete'),
+  ids: z.array(z.number().int()).min(1).meta({ description: '待删除的渠道 ID 列表' }),
+  channelType: ChannelTypeEnumSchema.meta({
+    description: 'system=系统渠道（root 专用）；team=成员渠道'
+  })
+});
+export type BatchDeleteChannelsBody = z.infer<typeof BatchDeleteChannelsBodySchema>;
+
+export const BatchDeleteChannelsResponseSchema = z.object({
+  affectedModels: z.array(AffectedModelItemSchema).meta({ description: '受影响的模型清单' })
+});
+export type BatchDeleteChannelsResponse = z.infer<typeof BatchDeleteChannelsResponseSchema>;
+
+export const BatchUpdateChannelsStatusBodySchema = z.object({
+  action: z.literal('status'),
+  ids: z.array(z.number().int()).min(1).meta({ description: '待更新状态的渠道 ID 列表' }),
+  status: z.union([z.literal(1), z.literal(2)]).meta({ description: '1=启用 / 2=禁用' }),
+  channelType: ChannelTypeEnumSchema.meta({
+    description: 'system=系统渠道（root 专用）；team=成员渠道'
+  })
+});
+export type BatchUpdateChannelsStatusBody = z.infer<typeof BatchUpdateChannelsStatusBodySchema>;
+
+export const BatchUpdateChannelsStatusResponseSchema = z
+  .undefined()
+  .meta({ description: '操作成功' });
+export type BatchUpdateChannelsStatusResponse = z.infer<
+  typeof BatchUpdateChannelsStatusResponseSchema
+>;
+
+export const BatchChannelBodySchema = z.discriminatedUnion('action', [
+  BatchDeleteChannelsBodySchema,
+  BatchUpdateChannelsStatusBodySchema
+]);
+export type BatchChannelBody = z.infer<typeof BatchChannelBodySchema>;
+
+export const BatchChannelResponseSchema = z.union([
+  BatchDeleteChannelsResponseSchema,
+  BatchUpdateChannelsStatusResponseSchema
+]);
+export type BatchChannelResponse = z.infer<typeof BatchChannelResponseSchema>;
 
 // ═══ GET /api/core/ai/channel/test ═══
 // Resource id via query — same convention as model test (TestModelQuerySchema).
@@ -215,11 +228,10 @@ export const ListChannelsQuerySchema = z.object({
   pageSize: z.coerce.number().optional().meta({ description: '每页条数，不传返回全量' }),
   search: z.string().optional().meta({ description: '模糊搜索关键字（名称、模型等）' }),
   // Root only: system = 系统渠道视图；team = 全量成员渠道视图（跨成员运维）。
-  // 成员请求不带 groupType（或非 root 时忽略），恒为本人渠道视图。
-  groupType: z
-    .enum(['system', 'team'])
-    .optional()
-    .meta({ description: 'root 专用：system=系统渠道，team=全量成员渠道' })
+  // 成员请求不带 channelType（或非 root 时忽略），恒为本人渠道视图。
+  channelType: ChannelTypeEnumSchema.optional().meta({
+    description: 'root 专用：system=系统渠道，team=全量成员渠道'
+  })
 });
 export type ListChannelsQuery = z.infer<typeof ListChannelsQuerySchema>;
 

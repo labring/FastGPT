@@ -35,14 +35,15 @@ vi.mock('@fastgpt/global/common/i18n/utils', () => ({
 }));
 
 import {
-  batchDeleteChannels,
-  batchUpdateChannelStatus,
   deleteChannel,
   getChannelList,
+  getChannelPageList,
   getChannelLog,
   getChannelProviders,
   getDashboardV2,
   getLogDetail,
+  postBatchDeleteChannels,
+  postBatchUpdateChannelStatus,
   postCreateChannel,
   putChannel,
   putChannelStatus
@@ -91,7 +92,7 @@ describe('Channel Web Client API', () => {
 
       const res = await getChannelList();
 
-      expect(mocks.GET).toHaveBeenCalledWith('/core/ai/channel/list', { groupType: 'system' });
+      expect(mocks.GET).toHaveBeenCalledWith('/core/ai/channel/list', { channelType: 'system' });
       expect(res.map((item) => item.id)).toEqual([2, 1]);
     });
 
@@ -101,7 +102,7 @@ describe('Channel Web Client API', () => {
 
       await getChannelList();
 
-      expect(mocks.GET).toHaveBeenCalledWith('/core/ai/channel/list', { groupType: 'team' });
+      expect(mocks.GET).toHaveBeenCalledWith('/core/ai/channel/list', { channelType: 'team' });
     });
   });
 
@@ -136,7 +137,7 @@ describe('Channel Web Client API', () => {
       await expect(postCreateChannel(channelInput)).resolves.toBeUndefined();
 
       expect(mocks.POST).toHaveBeenCalledWith('/core/ai/channel/create', {
-        groupType: 'system',
+        channelType: 'system',
         type: 1,
         name: 'Existing channel',
         base_url: 'https://example.com/v1',
@@ -155,7 +156,7 @@ describe('Channel Web Client API', () => {
       await postCreateChannel({ ...channelInput, type: 14 });
 
       expect(mocks.POST).toHaveBeenCalledWith('/core/ai/channel/create', {
-        groupType: 'system',
+        channelType: 'system',
         type: 14,
         name: 'Existing channel',
         base_url: 'https://example.com/v1',
@@ -250,25 +251,36 @@ describe('Channel Web Client API', () => {
         channelType: 'system'
       });
     });
-  });
 
-  describe('batch operations', () => {
-    it('calls /core/ai/channel/batchDelete', async () => {
-      mocks.POST.mockResolvedValueOnce(undefined);
-      await batchDeleteChannels([1, 2]);
-      expect(mocks.POST).toHaveBeenCalledWith('/core/ai/channel/batchDelete', {
-        ids: [1, 2],
-        channelType: 'system'
+    it('calls getChannelPageList with pagination and returns response directly', async () => {
+      const mockRes = { list: [], total: 0 };
+      mocks.GET.mockResolvedValueOnce(mockRes);
+      const res = await getChannelPageList({ pageNum: 2, pageSize: 20, search: 'test' });
+      expect(res).toBe(mockRes);
+      expect(mocks.GET).toHaveBeenCalledWith('/core/ai/channel/list', {
+        channelType: 'system',
+        pageNum: 2,
+        pageSize: 20,
+        search: 'test'
       });
     });
 
-    it('calls /core/ai/channel/batchStatus', async () => {
-      mocks.POST.mockResolvedValueOnce(undefined);
-      await batchUpdateChannelStatus([1, 2], 2);
-      expect(mocks.POST).toHaveBeenCalledWith('/core/ai/channel/batchStatus', {
+    it('calls postBatchDeleteChannels and postBatchUpdateChannelStatus', async () => {
+      mocks.POST.mockResolvedValueOnce({ affectedModels: [] });
+      await postBatchDeleteChannels({ ids: [1, 2] });
+      expect(mocks.POST).toHaveBeenCalledWith('/core/ai/channel/batch', {
+        action: 'delete',
         ids: [1, 2],
-        status: 2,
         channelType: 'system'
+      });
+
+      mocks.POST.mockResolvedValueOnce(undefined);
+      await postBatchUpdateChannelStatus({ ids: [3, 4], status: 2, channelType: 'team' });
+      expect(mocks.POST).toHaveBeenCalledWith('/core/ai/channel/batch', {
+        action: 'status',
+        ids: [3, 4],
+        status: 2,
+        channelType: 'team'
       });
     });
   });

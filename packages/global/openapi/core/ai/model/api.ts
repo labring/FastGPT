@@ -5,9 +5,12 @@ import {
   ModelPriceTierSchema,
   RerankModelConfigSchema,
   STTModelConfigSchema,
+  SystemModelDataSchema,
   TTSModelConfigSchema
 } from '../../../../core/ai/model/schema';
 import z from 'zod';
+import { IntSchema } from '../../../../common/zod';
+import { I18nStringSchema } from '../../../../common/i18n/type';
 import {
   CollaboratorItemSchema,
   CollaboratorListSchema
@@ -15,12 +18,26 @@ import {
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 
+export const ModelChannelSummarySchema = z.object({
+  id: IntSchema.positive().meta({ example: 1, description: 'AI Proxy 渠道 ID' }),
+  name: z.string().meta({ example: 'OpenAI 主渠道', description: '渠道名称' }),
+  protocol: z.object({
+    name: I18nStringSchema.meta({ description: '渠道协议名称' }),
+    avatar: z.string().meta({ example: 'model/openai', description: '渠道协议图标' })
+  }),
+  status: IntSchema.meta({ example: 1, description: 'AI Proxy 渠道状态' })
+});
+export type ModelChannelSummary = z.infer<typeof ModelChannelSummarySchema>;
+export const AdminModelChannelSchema = ModelChannelSummarySchema;
+export type AdminModelChannel = ModelChannelSummary;
+
 const MyModelBaseSchema = z.object({
   modelId: z.string().meta({ description: '模型稳定 ID' }),
   model: z.string().meta({ description: 'Provider 请求使用的模型标识' }),
   name: z.string().meta({ description: '模型展示名称' }),
   provider: z.string().meta({ description: '模型提供商标识' }),
-  scope: z.literal(ModelScopeEnum.system).meta({ description: '模型实例作用域' }),
+  scope: z.nativeEnum(ModelScopeEnum).meta({ description: '模型实例作用域' }),
+  tmbId: z.string().optional().meta({ description: '模型归属成员 ID' }),
   avatar: z.string().optional().meta({ description: '模型图标' }),
   isActive: z.boolean().optional().meta({ description: '模型是否启用' }),
   testMode: z.boolean().optional().meta({ description: '是否为测试模式' }),
@@ -197,6 +214,64 @@ export const ModelCollaboratorListQuerySchema = z.object({
 });
 export type ModelCollaboratorListQuery = z.infer<typeof ModelCollaboratorListQuerySchema>;
 export const ModelCollaboratorListResponseSchema = CollaboratorListSchema;
+
+/* ============================================================================
+ * API: 批量获取模型协作者
+ * Route: POST /proApi/system/model/collaborator/batchList
+ * Method: POST
+ * Description: 批量获取多个模型的协作者权限配置
+ * Tags: ['模型管理', 'Read']
+ * ============================================================================ */
+
+export const ModelCollaboratorBatchListBodySchema = z.object({
+  modelIds: z.array(z.string()).min(1).meta({ description: '模型稳定 ID 列表' })
+});
+export type ModelCollaboratorBatchListBody = z.infer<typeof ModelCollaboratorBatchListBodySchema>;
+
+export const ModelCollaboratorBatchListResponseSchema = z.record(
+  z.string(),
+  CollaboratorListSchema
+);
+export type ModelCollaboratorBatchListResponse = z.infer<
+  typeof ModelCollaboratorBatchListResponseSchema
+>;
+
+/* ============================================================================
+ * API: 获取团队私有模型列表（用户侧模型配置）
+ * Route: GET /api/core/ai/model/teamModels
+ * Method: GET
+ * Description: 获取当前登录团队成员名下的私有模型列表及关联的团队渠道摘要
+ * Tags: ['模型管理', 'Read']
+ * ============================================================================ */
+
+export const TeamModelListItemSchema = z
+  .object({
+    modelId: z.string().meta({ description: '模型稳定 ID' }),
+    model: z.string().meta({ description: 'Provider 请求使用的模型标识' }),
+    name: z.string().meta({ description: '模型展示名称' }),
+    provider: z.string().meta({ description: '模型提供商标识' }),
+    scope: z.nativeEnum(ModelScopeEnum).default(ModelScopeEnum.team),
+    type: z.nativeEnum(ModelTypeEnum),
+    tmbId: z.string().optional(),
+    avatar: z.string().optional(),
+    isActive: z.boolean().optional(),
+    testMode: z.boolean().optional(),
+    charsPointsPrice: z.number().optional(),
+    priceTiers: z.array(ModelPriceTierSchema).optional(),
+    inputPrice: z.number().optional(),
+    outputPrice: z.number().optional(),
+    config: z.record(z.string(), z.any()).optional(),
+    channels: z.array(AdminModelChannelSchema).meta({ description: '当前模型关联的渠道摘要' })
+  })
+  .passthrough();
+export type TeamModelListItem = z.infer<typeof TeamModelListItemSchema>;
+
+export const GetTeamModelsResponseSchema = z.object({
+  models: z.array(TeamModelListItemSchema),
+  channels: z.array(AdminModelChannelSchema),
+  providers: z.array(ModelProviderSchema)
+});
+export type GetTeamModelsResponse = z.infer<typeof GetTeamModelsResponseSchema>;
 
 /* ============================================================================
  * API: 更新模型协作者

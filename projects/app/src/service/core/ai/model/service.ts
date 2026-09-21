@@ -10,14 +10,53 @@ import {
   getSystemModelConfigUpdate,
   updateSystemModelConfig
 } from '@fastgpt/service/core/ai/config/service';
-/** 更新系统模型配置，外部写入前检查目标实例、类型与新标识可用性。 */
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import {
+  getSystemGroupId,
+  listAllGroupChannels,
+  updateGroupChannel,
+  listAllSystemChannels,
+  updateSystemChannel
+} from '@fastgpt/service/core/ai/channel';
+import {
+  normalizeModelPricingForRead,
+  normalizeModelPricingForSave
+} from '@fastgpt/global/core/ai/model/pricing';
+import {
+  ImportedSystemModelSchema,
+  CreateSystemModelResponseSchema,
+  CreateSystemModelsFromTemplatesResponseSchema,
+  type CreateSystemModelBody,
+  type CreateSystemModelResponse,
+  type CreateSystemModelsFromTemplatesBody,
+  type CreateSystemModelsFromTemplatesResponse,
+  type DeleteSystemModelsBody,
+  type ParsedSystemModelsWithJsonBody,
+  type UpdateDefaultModelsBody,
+  type UpdateSystemModelBody
+} from '@fastgpt/global/openapi/admin/system/model/api';
+
+/** 更新系统或团队模型配置，外部写入前检查目标实例、类型与新标识可用性。 */
 export const updateSystemModel = async ({
   modelId,
-  modelData
-}: UpdateSystemModelBody): Promise<void> => {
-  const existing = await MongoAIModel.findOne({ _id: modelId, scope: ModelScopeEnum.system })
-    .select({ model: 1, type: 1 })
-    .lean();
+  modelData,
+  channelType = 'system',
+  tmbId
+}: UpdateSystemModelBody & { tmbId?: string }): Promise<void> => {
+  const isTeam = channelType === 'team' || modelData.scope === ModelScopeEnum.team;
+  const resolvedScope = isTeam ? ModelScopeEnum.team : ModelScopeEnum.system;
+
+  const query: Record<string, any> = { _id: modelId, scope: resolvedScope };
+  if (isTeam && tmbId) {
+    query.tmbId = tmbId;
+  }
+
+  const existing = await MongoAIModel.findOne(query).select({ model: 1, type: 1, tmbId: 1 }).lean();
   if (!existing) throw ModelErrEnum.unExist;
   if (existing.type !== modelData.type) {
     throw new UserError('System model type cannot be changed');
@@ -28,11 +67,15 @@ export const updateSystemModel = async ({
   const isModelRenamed = targetModel !== oldModel;
 
   if (isModelRenamed) {
-    const existingTarget = await MongoAIModel.exists({
-      scope: ModelScopeEnum.system,
+    const duplicateQuery: Record<string, any> = {
+      scope: resolvedScope,
       model: targetModel,
       _id: { $ne: modelId }
-    });
+    };
+    if (isTeam && existing.tmbId) {
+      duplicateQuery.tmbId = existing.tmbId;
+    }
+    const existingTarget = await MongoAIModel.exists(duplicateQuery);
     if (existingTarget) {
       throw new UserError(ModelErrEnum.alreadyExists);
     }
@@ -43,19 +86,29 @@ export const updateSystemModel = async ({
     modelData: {
       ...modelData,
       model: targetModel
-    }
+    },
+    scope: resolvedScope,
+    tmbId: isTeam && tmbId ? tmbId : undefined
   });
 };
 
 /** 预检重名后事务创建模型；数据库唯一索引负责并发兜底。 */
 export const createSystemModel = async ({
-  modelData
+  modelData,
+  channelType
 }: CreateSystemModelBody): Promise<CreateSystemModelResponse> => {
+  const isTeam = channelType === 'team' || modelData.scope === ModelScopeEnum.team;
+  const resolvedScope = isTeam ? ModelScopeEnum.team : ModelScopeEnum.system;
+
   // 可提前识别的重名直接拒绝；数据库唯一索引继续作为并发兜底。
-  const existingModel = await MongoAIModel.exists({
-    scope: ModelScopeEnum.system,
+  const duplicateFilter: Record<string, any> = {
+    scope: resolvedScope,
     model: modelData.model
-  });
+  };
+  if (isTeam && modelData.tmbId) {
+    duplicateFilter.tmbId = modelData.tmbId;
+  }
+  const existingModel = await MongoAIModel.exists(duplicateFilter);
   if (existingModel) {
     throw new UserError(ModelErrEnum.alreadyExists);
   }
@@ -65,6 +118,7 @@ export const createSystemModel = async ({
       [
         {
           ...modelData,
+          scope: resolvedScope,
           isActive: modelData.isActive ?? false
         }
       ],
@@ -78,8 +132,12 @@ export const createSystemModel = async ({
 
 /** 提交时重新读取模板，预检后批量创建停用实例。 */
 export const createSystemModelsFromTemplates = async ({
-  templates
-}: CreateSystemModelsFromTemplatesBody): Promise<CreateSystemModelsFromTemplatesResponse> => {
+  templates,
+  channelType = 'system',
+  tmbId
+}: CreateSystemModelsFromTemplatesBody & {
+  tmbId?: string;
+}): Promise<CreateSystemModelsFromTemplatesResponse> => {
   const latestTemplates = await refreshModelTemplates();
   const latestTemplateMap = new Map(
     latestTemplates.map((template) => [`${template.type}:${template.model}`, template])
@@ -91,16 +149,26 @@ export const createSystemModelsFromTemplates = async ({
     return template;
   });
 
-  const existingModels = await MongoAIModel.find({
-    scope: ModelScopeEnum.system,
+  const isTeam = channelType === 'team';
+  const resolvedScope = isTeam ? ModelScopeEnum.team : ModelScopeEnum.system;
+  const existingFilter: Record<string, any> = {
+    scope: resolvedScope,
     model: { $in: selectedTemplates.map(({ model }) => model) }
-  })
-    .select({ model: 1 })
-    .lean();
+  };
+  if (isTeam && tmbId) {
+    existingFilter.tmbId = tmbId;
+  }
+
+  const existingModels = await MongoAIModel.find(existingFilter).select({ model: 1 }).lean();
   const existingModelNames = new Set(existingModels.map((model) => model.model));
   const modelsToCreate = selectedTemplates
     .filter((template) => !existingModelNames.has(template.model))
-    .map((template) => ({ ...template, isActive: false }));
+    .map((template) => ({
+      ...template,
+      scope: resolvedScope,
+      ...(isTeam && tmbId ? { tmbId } : {}),
+      isActive: false
+    }));
 
   const createdModels = await runSystemModelTransaction(async (session) => {
     if (modelsToCreate.length === 0) return [];
@@ -119,17 +187,24 @@ export const createSystemModelsFromTemplates = async ({
 };
 
 /** 按稳定 ID 在同一事务删除模型、权限和探测历史并刷新缓存。 */
-export const deleteSystemModels = async ({ modelIds }: DeleteSystemModelsBody): Promise<void> => {
-  const models = await MongoAIModel.find({ _id: { $in: modelIds }, scope: ModelScopeEnum.system })
-    .select({ model: 1 })
-    .lean();
+export const deleteSystemModels = async ({
+  modelIds,
+  channelType = 'system',
+  tmbId
+}: DeleteSystemModelsBody & { tmbId?: string }): Promise<void> => {
+  const isTeam = channelType === 'team';
+  const resolvedScope = isTeam ? ModelScopeEnum.team : ModelScopeEnum.system;
+
+  const query: Record<string, any> = { _id: { $in: modelIds }, scope: resolvedScope };
+  if (isTeam && tmbId) {
+    query.tmbId = tmbId;
+  }
+
+  const models = await MongoAIModel.find(query).select({ model: 1 }).lean();
   if (models.length !== modelIds.length) throw ModelErrEnum.unExist;
 
   await runSystemModelTransaction(async (session) => {
-    const result = await MongoAIModel.deleteMany(
-      { _id: { $in: modelIds }, scope: ModelScopeEnum.system },
-      { session }
-    );
+    const result = await MongoAIModel.deleteMany(query, { session });
     if (result.deletedCount !== modelIds.length) return Promise.reject(ModelErrEnum.unExist);
 
     await MongoModelStatusProbeRecord.deleteMany({ modelId: { $in: modelIds } }, { session });
@@ -144,6 +219,63 @@ export const deleteSystemModels = async ({ modelIds }: DeleteSystemModelsBody): 
   });
 
   await updatedReloadSystemModel();
+
+  // 清理 AI Proxy 渠道中的模型映射（用例 13）
+  const deletedModelNames = models.map((m) => m.model);
+  if (deletedModelNames.length > 0) {
+    try {
+      if (isTeam && tmbId) {
+        const groupId = getSystemGroupId(tmbId);
+        const { channels = [] } = await listAllGroupChannels(groupId)
+          .then((chList) => ({ channels: chList }))
+          .catch(() => ({ channels: [] }));
+        await Promise.all(
+          channels
+            .filter((ch) => (ch.models || []).some((m) => deletedModelNames.includes(m)))
+            .map((ch) =>
+              updateGroupChannel(groupId, ch.id, {
+                name: ch.name,
+                type: ch.type,
+                key: ch.key,
+                models: (ch.models || []).filter((m) => !deletedModelNames.includes(m)),
+                ...(ch.base_url !== undefined && { base_url: ch.base_url }),
+                ...(ch.model_mapping !== undefined && {
+                  model_mapping: Object.fromEntries(
+                    Object.entries(ch.model_mapping).filter(([k]) => !deletedModelNames.includes(k))
+                  )
+                }),
+                ...(ch.priority !== undefined && { priority: ch.priority }),
+                ...(ch.status !== undefined && { status: ch.status })
+              }).catch(() => {})
+            )
+        );
+      } else if (!isTeam) {
+        const channels = await listAllSystemChannels().catch(() => []);
+        await Promise.all(
+          channels
+            .filter((ch) => (ch.models || []).some((m) => deletedModelNames.includes(m)))
+            .map((ch) =>
+              updateSystemChannel(ch.id, {
+                name: ch.name,
+                type: ch.type,
+                key: ch.key,
+                models: (ch.models || []).filter((m) => !deletedModelNames.includes(m)),
+                ...(ch.base_url !== undefined && { base_url: ch.base_url }),
+                ...(ch.model_mapping !== undefined && {
+                  model_mapping: Object.fromEntries(
+                    Object.entries(ch.model_mapping).filter(([k]) => !deletedModelNames.includes(k))
+                  )
+                }),
+                ...(ch.priority !== undefined && { priority: ch.priority }),
+                ...(ch.status !== undefined && { status: ch.status })
+              }).catch(() => {})
+            )
+        );
+      }
+    } catch (_err) {
+      // 容错处理：渠道映射清理失败不阻塞模型删除完成
+    }
+  }
 };
 
 /** 替换系统模型配置，保留命中实例身份；事务删除缺失模型、权限和探测历史，不修改 AI Proxy 渠道关联。 */

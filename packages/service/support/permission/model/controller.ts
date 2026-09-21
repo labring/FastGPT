@@ -12,6 +12,7 @@ import { getTmpData, setTmpData } from '../../tmpData/controller';
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import { MongoTmpData } from '../../tmpData/schema';
 import type { ClientSession } from '../../../common/mongo';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getModelHandle } from '../../../core/ai/model';
@@ -30,9 +31,13 @@ export const clearMyModelsCache = ({
 }) =>
   MongoTmpData.deleteMany(
     {
-      ...myModelsCacheFilter,
-      'data.teamId': teamId,
-      'data.tmbId': { $exists: true }
+      $or: [
+        { dataId: { $regex: new RegExp(`^${TmpDataEnum.MyModels}--${String(teamId)}--`) } },
+        {
+          ...myModelsCacheFilter,
+          'data.teamId': teamId
+        }
+      ]
     },
     { session }
   );
@@ -63,28 +68,10 @@ export const getMemberModelCatalogPermission = async ({
       const handle = await getModelHandle();
       return { models: handle.getAllModels(), revision: handle.revision };
     })());
-  const catalogModels = includeInactive
+  const allModels = includeInactive
     ? snapshot.models
     : snapshot.models.filter((model) => model.isActive);
   const catalogRevision = snapshot.revision;
-  if (isTeamOwner) {
-    const modelIds = catalogModels.map((model) => model.modelId);
-    return { modelIds, version: hashStr([...modelIds].sort().join('\n')) };
-  }
-
-  const cacheMetadata = { teamId, tmbId };
-  const cachedModels = includeInactive
-    ? undefined
-    : await getTmpData({
-        type: TmpDataEnum.MyModels,
-        metadata: cacheMetadata
-      });
-  if (cachedModels && (cachedModels.data.catalogRevision ?? 0) === catalogRevision) {
-    return {
-      modelIds: cachedModels.data.modelIds,
-      version: cachedModels.data.version
-    };
-  }
 
   const [groups, orgs] = await Promise.all([
     getGroupsByTmbId({
@@ -108,11 +95,44 @@ export const getMemberModelCatalogPermission = async ({
   const permissionConfiguredModelSet = new Set(
     rps.map(getPermissionModelId).filter((modelId): modelId is string => !!modelId)
   );
-  const unconfiguredModels = catalogModels.filter(
-    (model) => !permissionConfiguredModelSet.has(model.modelId)
-  );
 
-  const myModels = await findResourceKeysByCollaboratorsPermission({
+  if (isTeamOwner) {
+    const modelIds = allModels
+      .filter((model) => {
+        const isTeam = (model as { scope?: string }).scope === ModelScopeEnum.team;
+        if (!isTeam) return true;
+        const ownerTmbId = (model as { tmbId?: string }).tmbId;
+        return (
+          (ownerTmbId && String(ownerTmbId) === tmbId) ||
+          permissionConfiguredModelSet.has(model.modelId)
+        );
+      })
+      .map((model) => model.modelId);
+    return { modelIds, version: hashStr([...modelIds].sort().join('\n')) };
+  }
+
+  const cacheMetadata = { teamId, tmbId };
+  const cachedModels = includeInactive
+    ? undefined
+    : await getTmpData({
+        type: TmpDataEnum.MyModels,
+        metadata: cacheMetadata
+      });
+  if (cachedModels && (cachedModels.data.catalogRevision ?? 0) === catalogRevision) {
+    return {
+      modelIds: cachedModels.data.modelIds,
+      version: cachedModels.data.version
+    };
+  }
+
+  // 1. 系统模型中未配置限定权限的（默认全员可用）
+  const unconfiguredSystemModels = allModels.filter((model) => {
+    const isTeam = (model as { scope?: string }).scope === ModelScopeEnum.team;
+    return !isTeam && !permissionConfiguredModelSet.has(model.modelId);
+  });
+
+  // 2. 协作者授权命中的模型（系统模型或被授权的团队私有模型）
+  const myCollaboratorModelIds = await findResourceKeysByCollaboratorsPermission({
     teamId,
     resourceType: PerResourceTypeEnum.model,
     tmbId,
@@ -124,8 +144,19 @@ export const getMemberModelCatalogPermission = async ({
     personalPermissionPriority: false
   });
 
+  // 3. 当前成员自己拥有的团队私有模型
+  const myOwnedTeamModels = allModels.filter((model) => {
+    const isTeam = (model as { scope?: string }).scope === ModelScopeEnum.team;
+    const ownerTmbId = (model as { tmbId?: string }).tmbId;
+    return isTeam && ownerTmbId && String(ownerTmbId) === tmbId;
+  });
+
   const modelIds = Array.from(
-    new Set([...unconfiguredModels.map((model) => model.modelId), ...myModels])
+    new Set([
+      ...unconfiguredSystemModels.map((m) => m.modelId),
+      ...myCollaboratorModelIds,
+      ...myOwnedTeamModels.map((m) => m.modelId)
+    ])
   );
   const version = hashStr([...modelIds].sort().join('\n'));
 

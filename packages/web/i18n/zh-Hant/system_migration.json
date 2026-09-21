@@ -104,4 +104,8 @@
   "migrations.20260928_backfill_member_name_set.members": "回填成員名標記",
   "migrations.20260928_backfill_member_name_set.validation": "校驗成員名回填結果",
   "migrations.20260928_backfill_member_name_set.result": "已掃描 {{scannedCount}} 個成員，標記 owner {{ownerCount}} 個、用戶名回落名 {{usernameMatchCount}} 個、已設定成員名 {{setTrueCount}} 個。"
+  "migrations.20260928_migrate_legacy_channel_configs.name": "遷移舊模型設定至 AI Proxy 渠道",
+  "migrations.20260928_migrate_legacy_channel_configs.description": "將歷史模型中設定的 requestUrl 與 requestAuth 冪等轉換為 AI Proxy 系統渠道。",
+  "migrations.20260928_migrate_legacy_channel_configs.channels": "遷移模型渠道",
+  "migrations.20260928_migrate_legacy_channel_configs.result": "已檢查 {{scannedCount}} 個舊模型設定，新建 {{migratedCount}} 個渠道，跳過 {{skippedCount}} 個已有渠道。"
 }

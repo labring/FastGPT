@@ -1,4 +1,5 @@
 import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
+import type { GetTeamModelsResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import type {
   AdminSystemModelReference,
   CreateSystemModelBody,
@@ -27,10 +28,12 @@ import type {
 
 const adminModelPath = '/admin/system/model';
 
+export const getTeamModelsConfig = () => GET<GetTeamModelsResponse>('/core/ai/model/teamModels');
+
 export const getAdminModelConfig = () =>
   GET<GetAdminSystemModelListResponse>(`${adminModelPath}/list`);
-export const getSystemModelDetail = (modelId: string) =>
-  GET<GetAdminSystemModelDetailResponse>(`${adminModelPath}/detail`, { modelId });
+export const getSystemModelDetail = (modelId: string, channelType?: 'system' | 'team') =>
+  GET<GetAdminSystemModelDetailResponse>(`${adminModelPath}/detail`, { modelId, channelType });
 
 export const postSystemModel = (data: CreateSystemModelBody) =>
   POST<CreateSystemModelResponse>(`${adminModelPath}/create`, data);

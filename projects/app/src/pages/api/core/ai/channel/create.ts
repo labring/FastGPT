@@ -19,11 +19,11 @@ import {
 /** 创建渠道：root 创建系统渠道，成员创建私有团队分组渠道 */
 async function handler(req: ApiRequestProps<CreateChannelBody>): Promise<CreateChannelResponse> {
   const body = parseApiInput({ req, bodySchema: CreateChannelBodySchema }).body;
-  const { groupType, ...channelData } = body;
+  const { channelType, ...channelData } = body;
 
   const { tmbId, tmb, isRoot } = await authUserPer({ req, authToken: true });
 
-  if (groupType === 'system') {
+  if (channelType === 'system') {
     if (!isRoot) {
       return Promise.reject(ModelErrEnum.rootOnlyPermit);
     }

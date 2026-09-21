@@ -226,4 +226,57 @@ describe('model permission cache', () => {
     );
     await expect(MongoTmpData.countDocuments({ dataId: /^unrelated--/ })).resolves.toBe(1);
   });
+
+  it('allows team members to use team models when explicitly granted via collaborators', async () => {
+    const teamId = new Types.ObjectId().toString();
+    const ownerTmbId = new Types.ObjectId().toString();
+    const collaboratorTmbId = new Types.ObjectId().toString();
+    const otherMemberTmbId = new Types.ObjectId().toString();
+    const teamModelId = new Types.ObjectId().toString();
+
+    setModelTestSnapshot({
+      models: [
+        {
+          modelId: teamModelId,
+          model: 'custom-team-model',
+          scope: 'team',
+          tmbId: ownerTmbId,
+          isActive: true
+        }
+      ] as any
+    });
+
+    // 1. 模型所有者天然有权限
+    const ownerModels = await getMemberModelIds({
+      teamId,
+      tmbId: ownerTmbId,
+      isTeamOwner: false
+    });
+    expect(ownerModels).toContain(teamModelId);
+
+    // 2. 未授权成员无权限
+    const otherModels = await getMemberModelIds({
+      teamId,
+      tmbId: otherMemberTmbId,
+      isTeamOwner: false
+    });
+    expect(otherModels).not.toContain(teamModelId);
+
+    // 3. 授权协作者权限给 collaboratorTmbId
+    await MongoResourcePermission.create({
+      teamId: new Types.ObjectId(teamId),
+      resourceType: PerResourceTypeEnum.model,
+      resourceId: new Types.ObjectId(teamModelId),
+      tmbId: new Types.ObjectId(collaboratorTmbId),
+      permission: ReadPermissionVal
+    });
+
+    // 4. 被授权成员刷新后可用
+    const collaboratorModels = await getMemberModelIds({
+      teamId,
+      tmbId: collaboratorTmbId,
+      isTeamOwner: false
+    });
+    expect(collaboratorModels).toContain(teamModelId);
+  });
 });

@@ -21,6 +21,7 @@ import {
   assertMemberChannelPermission,
   assertOwnGroupChannel,
   channelCount,
+  getBatchChannelsAffectedModels,
   getChannelAffectedModels,
   getChannelModels,
   getGlobalGroupChannelList,
@@ -241,6 +242,16 @@ describe('channel controller — delete protection / refs', () => {
     // gpt-4o is on two system channels → not affected
     const sysSafe = await getChannelAffectedModels(SYSTEM_CHANNELS[0]);
     expect(sysSafe).toEqual([]);
+
+    // When both channels providing gpt-4o are deleted together, gpt-4o is affected
+    const batchAffected = await getBatchChannelsAffectedModels([
+      SYSTEM_CHANNELS[0],
+      SYSTEM_CHANNELS[1]
+    ]);
+    expect(batchAffected).toEqual([
+      { modelId: 'sys-llm-1', name: 'Sys GPT-4o', model: 'gpt-4o' },
+      { modelId: 'sys-llm-2', name: 'Sys Claude', model: 'claude-3-5-sonnet' }
+    ]);
   });
 
   it('group bucket counts ignore other members channels (route scope isolation)', async () => {

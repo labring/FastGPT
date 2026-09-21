@@ -14,14 +14,14 @@ import {
 async function handler(
   req: ApiRequestProps<Record<string, never>, ListChannelsQuery>
 ): Promise<ListChannelsResponse> {
-  const { pageNum, pageSize, groupType, search } = parseApiInput({
+  const { pageNum, pageSize, channelType, search } = parseApiInput({
     req,
     querySchema: ListChannelsQuerySchema
   }).query;
 
   const { tmbId, isRoot } = await authUserPer({ req, authToken: true });
 
-  if (isRoot && groupType === 'system') {
+  if (isRoot && channelType === 'system') {
     return ListChannelsResponseSchema.parse(
       await getSystemChannelList({ pageNum, pageSize, search })
     );

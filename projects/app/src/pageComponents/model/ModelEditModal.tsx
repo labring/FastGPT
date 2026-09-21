@@ -17,11 +17,13 @@ const formId = 'system-model-edit-form';
 const ModelEditModal = ({
   model,
   providers,
+  channelType = 'system',
   onSuccess,
   onClose
 }: {
   model: AdminSystemModelListItem;
   providers: ModelProviderItemType[];
+  channelType?: 'system' | 'team';
   onSuccess: () => void | Promise<void>;
   onClose: () => void;
 }) => {
@@ -35,7 +37,6 @@ const ModelEditModal = ({
     setDraftModel,
     modelFormGetValuesRef,
     selectedChannelIds,
-    setSelectedChannelIds,
     showCreateChannel,
     setShowCreateChannel,
     showAssociateChannel,
@@ -45,9 +46,11 @@ const ModelEditModal = ({
     testingChannelIds,
     setIsFormDirty,
     submitModel,
+    removeChannel,
+    associateChannels,
     refreshAfterChannelCreated,
     LeaveConfirmModal
-  } = useModelEditWorkflow({ model, onSuccess, onClose });
+  } = useModelEditWorkflow({ model, channelType, onSuccess, onClose });
 
   return (
     <>
@@ -81,6 +84,7 @@ const ModelEditModal = ({
           <ModelConfigForm
             getValuesRef={modelFormGetValuesRef}
             formId={formId}
+            channelType={channelType}
             modelData={(() => {
               const { modelId: _modelId, avatar: _avatar, ...documentData } = detail.model;
               return documentData;
@@ -100,13 +104,7 @@ const ModelEditModal = ({
                   onManage={goToChannelManagement}
                   onTest={(channelId) => void testModelChannel(channelId)}
                   testingChannelIds={testingChannelIds}
-                  onRemove={(channelId) =>
-                    setSelectedChannelIds((current) => {
-                      const next = new Set(current);
-                      next.delete(channelId);
-                      return next;
-                    })
-                  }
+                  onRemove={(channelId) => void removeChannel(channelId)}
                 />
               )
             }}
@@ -133,10 +131,7 @@ const ModelEditModal = ({
           ]}
           channels={detail.channels}
           selectedChannelIds={[...selectedChannelIds]}
-          onConfirm={(channelIds) => {
-            setSelectedChannelIds(new Set(channelIds));
-            setShowAssociateChannel(false);
-          }}
+          onConfirm={(channelIds) => associateChannels(channelIds)}
           onClose={() => setShowAssociateChannel(false)}
         />
       )}

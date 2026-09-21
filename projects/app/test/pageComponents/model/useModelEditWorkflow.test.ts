@@ -28,7 +28,18 @@ vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react')>()),
   useRef: <T>(value: T) => ({ current: value }),
   useState: <T>(value: T) => [value, vi.fn()],
+  useMemo: <T>(fn: () => T) => fn(),
   useEffect: vi.fn()
+}));
+
+const channelMocks = vi.hoisted(() => ({
+  getChannelList: vi.fn(),
+  putChannel: vi.fn()
+}));
+
+vi.mock('@/web/core/ai/channel', () => ({
+  getChannelList: channelMocks.getChannelList,
+  putChannel: channelMocks.putChannel
 }));
 
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
@@ -149,5 +160,50 @@ describe('useModelEditWorkflow draft test wiring', () => {
     await workflow.testModelChannel(7);
     expect(mocks.getTestModel).not.toHaveBeenCalled();
     expect(mocks.postTestDraftModel).not.toHaveBeenCalled();
+  });
+
+  it('immediately updates AI Proxy channel models on removeChannel', async () => {
+    const mockChannel = {
+      id: 7,
+      name: 'Edited model channel',
+      type: 1,
+      base_url: 'https://api.openai.com',
+      models: ['saved-tts', 'other-model']
+    };
+    channelMocks.getChannelList.mockResolvedValue([mockChannel]);
+    channelMocks.putChannel.mockResolvedValue(undefined);
+
+    const workflow = useModelEditWorkflow({ model, onClose: vi.fn(), onSuccess: vi.fn() });
+    await workflow.removeChannel(7);
+
+    expect(channelMocks.getChannelList).toHaveBeenCalledWith({ channelType: 'system' });
+    expect(channelMocks.putChannel).toHaveBeenCalledWith({
+      ...mockChannel,
+      models: ['other-model'],
+      channelType: 'system'
+    });
+    expect(mocks.refreshDetail).toHaveBeenCalled();
+    expect(mocks.toast).toHaveBeenCalledWith({
+      status: 'success',
+      title: 'config_model:channel_disassociate_success'
+    });
+  });
+
+  it('immediately persists new associations on associateChannels', async () => {
+    const channel1 = { id: 7, name: 'ch1', type: 1, models: ['saved-tts'] };
+    const channel2 = { id: 8, name: 'ch2', type: 1, models: [] };
+    channelMocks.getChannelList.mockResolvedValue([channel1, channel2]);
+    channelMocks.putChannel.mockResolvedValue(undefined);
+
+    const workflow = useModelEditWorkflow({ model, onClose: vi.fn(), onSuccess: vi.fn() });
+    // Associates channel 8 (new), keeps 7
+    await workflow.associateChannels([7, 8]);
+
+    expect(channelMocks.putChannel).toHaveBeenCalledWith({
+      ...channel2,
+      models: ['saved-tts'],
+      channelType: 'system'
+    });
+    expect(mocks.refreshDetail).toHaveBeenCalled();
   });
 });

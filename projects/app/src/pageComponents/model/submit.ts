@@ -2,7 +2,7 @@ import type {
   SystemModelDataType,
   SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { postSystemModel, putSystemModel } from '@/web/core/ai/config';
 import { UpdateSystemModelBodySchema } from '@fastgpt/global/openapi/admin/system/model/api';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
@@ -27,28 +27,38 @@ export const prepareDraftSystemModelForTest = (
 
 /** 新建模型只调用创建接口，入参类型从结构上排除 modelId。 */
 export const submitCreatedSystemModel = ({
-  modelData
+  modelData,
+  channelType
 }: {
   modelData: SystemModelDocumentDataType;
+  channelType?: 'system' | 'team';
   channelIds?: number[];
-}) => postSystemModel({ modelData: normalizeModelPricingForSave(modelData) });
+}) =>
+  postSystemModel({
+    modelData: normalizeModelPricingForSave(modelData),
+    channelType: channelType ?? (modelData.scope === ModelScopeEnum.team ? 'team' : 'system')
+  });
 
 /** 编辑参数只按 modelId 更新已有模型的可编辑配置。 */
 export const submitUpdatedSystemModel = async ({
   modelId,
-  modelData
+  modelData,
+  channelType
 }: {
   modelId: SystemModelDataType['modelId'];
   modelData: SystemModelDocumentDataType;
+  channelType?: 'system' | 'team';
   channelIds?: number[];
 }) => {
   const normalizedModelData = normalizeModelPricingForSave(modelData);
 
   const input = UpdateSystemModelBodySchema.parse({
+    modelId,
     modelData: {
       ...normalizedModelData,
       model: normalizedModelData.model.trim()
-    }
+    },
+    channelType: channelType ?? (modelData.scope === ModelScopeEnum.team ? 'team' : 'system')
   });
   await putSystemModel(input);
 };

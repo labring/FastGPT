@@ -15,7 +15,12 @@ import {
 import { ModelScopeEnum, ModelTypeEnum } from '../../../../core/ai/constants';
 import { IntSchema } from '../../../../common/zod';
 import z from 'zod';
-import { ModelProviderSchema } from '../../../core/ai/model/api';
+import {
+  AdminModelChannelSchema,
+  type AdminModelChannel,
+  ModelProviderSchema
+} from '../../../core/ai/model/api';
+export { AdminModelChannelSchema, type AdminModelChannel };
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { I18nStringSchema } from '../../../../common/i18n/type';
@@ -25,8 +30,15 @@ const ModelIdSchema = ObjectIdSchema.meta({
   description: '模型稳定 ObjectId'
 });
 
+export const ModelChannelTypeSchema = z
+  .enum(['system', 'team'])
+  .optional()
+  .meta({ description: '模型作用域类型' });
+export type ModelChannelType = z.infer<typeof ModelChannelTypeSchema>;
+
 export const AdminSystemModelReferenceSchema = z.object({
-  modelId: ModelIdSchema
+  modelId: ModelIdSchema,
+  channelType: ModelChannelTypeSchema
 });
 export type AdminSystemModelReference = z.infer<typeof AdminSystemModelReferenceSchema>;
 
@@ -53,7 +65,8 @@ const ModelIdsSchema = z
  * ============================================================================ */
 
 export const DeleteSystemModelsBodySchema = z.object({
-  modelIds: ModelIdsSchema
+  modelIds: ModelIdsSchema,
+  channelType: ModelChannelTypeSchema
 });
 export type DeleteSystemModelsBody = z.infer<typeof DeleteSystemModelsBodySchema>;
 
@@ -64,17 +77,6 @@ export type DeleteSystemModelsBody = z.infer<typeof DeleteSystemModelsBodySchema
  * Description: 获取全部系统作用域模型
  * Tags: ['模型管理', 'Read']
  * ============================================================================ */
-
-export const AdminModelChannelSchema = z.object({
-  id: IntSchema.positive().meta({ example: 1, description: 'AI Proxy 渠道 ID' }),
-  name: z.string().meta({ example: 'OpenAI 主渠道', description: '渠道名称' }),
-  protocol: z.object({
-    name: I18nStringSchema.meta({ description: '渠道协议名称' }),
-    avatar: z.string().meta({ example: 'model/openai', description: '渠道协议图标' })
-  }),
-  status: IntSchema.meta({ example: 1, description: 'AI Proxy 渠道状态' })
-});
-export type AdminModelChannel = z.infer<typeof AdminModelChannelSchema>;
 
 export const AdminSystemModelListItemSchema = SystemModelDataSchema.and(
   z.object({
@@ -176,7 +178,8 @@ export const TestDraftAdminSystemModelBodySchema = z
     channelId: IntSchema.positive().meta({
       example: 1,
       description: '本次测试指定的 AI Proxy 渠道 ID'
-    })
+    }),
+    channelType: ModelChannelTypeSchema
   })
   .strict()
   .superRefine(({ modelData }, ctx) => {
@@ -234,7 +237,8 @@ const CreateSystemModelDataSchema = SystemModelDocumentDataSchema.meta({
 
 export const CreateSystemModelBodySchema = z
   .object({
-    modelData: CreateSystemModelDataSchema
+    modelData: CreateSystemModelDataSchema,
+    channelType: z.enum(['system', 'team']).optional().meta({ description: '模型作用域类型' })
   })
   .strict();
 export type CreateSystemModelBody = z.infer<typeof CreateSystemModelBodySchema>;
@@ -271,7 +275,8 @@ export const CreateSystemModelsFromTemplatesBodySchema = z
           keys.add(key);
         });
       })
-      .meta({ description: '本次选择的模板临时键' })
+      .meta({ description: '本次选择的模板临时键' }),
+    channelType: z.enum(['system', 'team']).optional().meta({ description: '模型作用域类型' })
   })
   .strict();
 export type CreateSystemModelsFromTemplatesBody = z.infer<
@@ -322,7 +327,8 @@ export type UpdateSystemModelData = z.infer<typeof UpdateSystemModelDataSchema>;
 export const UpdateSystemModelBodySchema = z
   .object({
     modelId: ModelIdSchema,
-    modelData: UpdateSystemModelDataSchema
+    modelData: UpdateSystemModelDataSchema,
+    channelType: ModelChannelTypeSchema
   })
   .strict();
 export type UpdateSystemModelBody = z.infer<typeof UpdateSystemModelBodySchema>;
@@ -337,7 +343,8 @@ export type UpdateSystemModelBody = z.infer<typeof UpdateSystemModelBodySchema>;
 
 export const UpdateSystemModelStatusBodySchema = z.object({
   modelIds: ModelIdsSchema,
-  isActive: z.boolean().meta({ example: true, description: '目标启用状态' })
+  isActive: z.boolean().meta({ example: true, description: '目标启用状态' }),
+  channelType: ModelChannelTypeSchema
 });
 export type UpdateSystemModelStatusBody = z.infer<typeof UpdateSystemModelStatusBodySchema>;
 

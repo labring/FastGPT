@@ -9,10 +9,6 @@ import { getCachedModelHandle } from '../config/handle';
 import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
 import { getModelProviderMetadata } from '../../app/provider/controller';
 import {
-  batchDeleteGroupChannels,
-  batchUpdateGroupChannelStatus,
-  requestBatchDeleteSystemChannels,
-  requestBatchUpdateSystemChannelStatus,
   getRealtimeGroupChannels,
   getRealtimeSystemChannels,
   getSystemGroupId,
@@ -242,6 +238,57 @@ export const getChannelAffectedModels = async (
   }
 };
 
+/**
+ * getBatchChannelsAffectedModels: 计算批量删除渠道后，会失去全部可用渠道的模型列表。
+ */
+export const getBatchChannelsAffectedModels = async (
+  channels: (AiproxyChannel | AiproxyGroupChannel)[]
+): Promise<{ modelId: string; name: string; model: string }[]> => {
+  try {
+    if (channels.length === 0) return [];
+
+    const channelsByBucket = new Map<string, (AiproxyChannel | AiproxyGroupChannel)[]>();
+    for (const channel of channels) {
+      const bucketKey = (channel as AiproxyGroupChannel).group_id || 'system';
+      const list = channelsByBucket.get(bucketKey) || [];
+      list.push(channel);
+      channelsByBucket.set(bucketKey, list);
+    }
+
+    const affectedModelsMap = new Map<string, { modelId: string; name: string; model: string }>();
+
+    for (const [bucketKey, bucketTargetChannels] of channelsByBucket.entries()) {
+      const isSystem = bucketKey === 'system';
+      const tmbId = isSystem ? undefined : parseTmbIdFromGroupId(bucketKey);
+      const bucketModels = isSystem ? getSystemModels() : tmbId ? getOwnerModels(tmbId) : [];
+      if (bucketModels.length === 0) continue;
+
+      const bucketAllChannels = isSystem
+        ? await getRealtimeSystemChannels()
+        : await getRealtimeGroupChannels(bucketKey);
+
+      const deletedIds = new Set(bucketTargetChannels.map((c) => c.id));
+      const remainingChannels = bucketAllChannels.filter((c) => !deletedIds.has(c.id));
+      const remainingModelNames = new Set(remainingChannels.flatMap((c) => c.models || []));
+      const deletedModelNames = new Set(bucketTargetChannels.flatMap((c) => c.models || []));
+
+      for (const m of bucketModels) {
+        if (deletedModelNames.has(m.model) && !remainingModelNames.has(m.model)) {
+          affectedModelsMap.set(m.id, {
+            modelId: m.id,
+            name: m.name || m.model,
+            model: m.model
+          });
+        }
+      }
+    }
+
+    return Array.from(affectedModelsMap.values());
+  } catch (error) {
+    return rejectNormalized(error);
+  }
+};
+
 /** 获取指定渠道关联的模型列表 */
 export const getChannelModels = (
   channel: AiproxyChannel | AiproxyGroupChannel
@@ -389,58 +436,6 @@ export const getGlobalGroupChannelList = async ({
       }),
       total
     };
-  } catch (error) {
-    return rejectNormalized(error);
-  }
-};
-
-export const batchDeleteMemberChannels = async ({
-  tmbId,
-  ids
-}: {
-  tmbId: string;
-  ids: number[];
-}): Promise<void> => {
-  try {
-    await batchDeleteGroupChannels(getSystemGroupId(tmbId), ids);
-  } catch (error) {
-    return rejectNormalized(error);
-  }
-};
-
-export const batchUpdateMemberChannelStatus = async ({
-  tmbId,
-  ids,
-  status
-}: {
-  tmbId: string;
-  ids: number[];
-  status: ChannelStatus;
-}): Promise<void> => {
-  try {
-    await batchUpdateGroupChannelStatus(getSystemGroupId(tmbId), ids, status);
-  } catch (error) {
-    return rejectNormalized(error);
-  }
-};
-
-export const batchDeleteSystemChannels = async ({ ids }: { ids: number[] }): Promise<void> => {
-  try {
-    await requestBatchDeleteSystemChannels(ids);
-  } catch (error) {
-    return rejectNormalized(error);
-  }
-};
-
-export const batchUpdateSystemChannelStatus = async ({
-  ids,
-  status
-}: {
-  ids: number[];
-  status: ChannelStatus;
-}): Promise<void> => {
-  try {
-    await requestBatchUpdateSystemChannelStatus(ids, status);
   } catch (error) {
     return rejectNormalized(error);
   }

@@ -1,6 +1,6 @@
 import { assertModelAvailable } from '../utils';
 import { cloneDeep } from 'lodash-es';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType,
@@ -50,6 +50,16 @@ export const createModelHandle = (input: ModelSnapshot) => {
   const modelsById = new Map(snapshot.models.map((model) => [model.modelId, model]));
   const modelsByName = new Map(snapshot.models.map((model) => [model.model, model]));
   const activeModels = freeze(snapshot.models.filter((model) => model.isActive));
+  const systemModels = freeze(
+    snapshot.models.filter(
+      (model) =>
+        (model as { scope?: string }).scope === ModelScopeEnum.system ||
+        !(model as { scope?: string }).scope
+    )
+  );
+  const teamModels = freeze(
+    snapshot.models.filter((model) => (model as { scope?: string }).scope === ModelScopeEnum.team)
+  );
   const defaultIds = freeze({
     llm: snapshot.defaultModels.llm?.modelId,
     embedding: snapshot.defaultModels.embedding?.modelId,
@@ -135,7 +145,12 @@ export const createModelHandle = (input: ModelSnapshot) => {
     },
     getSystemDefaultModelIds: () => defaultIds,
     getAllModels: () => snapshot.models,
-    getActiveModels: () => activeModels
+    getActiveModels: () => activeModels,
+    getSystemModels: () => systemModels,
+    getTeamModels: (tmbId?: string) =>
+      tmbId
+        ? teamModels.filter((model) => (model as { tmbId?: string }).tmbId === tmbId)
+        : teamModels
   });
 };
 

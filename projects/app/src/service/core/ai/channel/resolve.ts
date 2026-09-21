@@ -69,6 +69,25 @@ export const resolveChannelForOperation = async ({
 };
 
 /**
+ * 批量校验并解析渠道。所有渠道必须均存在且属于操作者权限范围。
+ */
+export const resolveChannelsForOperation = async ({
+  ids,
+  channelType,
+  tmbId,
+  isRoot
+}: {
+  ids: number[];
+  channelType: ChannelType;
+  tmbId: string;
+  isRoot: boolean;
+}): Promise<ResolvedChannel[]> => {
+  return Promise.all(
+    ids.map((id) => resolveChannelForOperation({ id, channelType, tmbId, isRoot }))
+  );
+};
+
+/**
  * 推导日志/监控只读范围，并在存在 channelId 时校验其属于目标 bucket。
  * 与跨成员运维解析不同，team 对 root 也固定使用当前会话 tmbId，禁止借 channelId
  * 读取其他成员的私有渠道数据。

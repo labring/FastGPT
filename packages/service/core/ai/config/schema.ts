@@ -28,6 +28,10 @@ const SystemModelSchema = new Schema(
       required: true,
       default: ModelScopeEnum.system
     },
+    tmbId: {
+      type: Schema.Types.ObjectId,
+      ref: 'team_members'
+    },
     isActive: Boolean,
     requestUrl: String,
     requestAuth: String,
@@ -60,6 +64,14 @@ defineIndex(SystemModelSchema, {
   options: {
     unique: true,
     partialFilterExpression: { scope: ModelScopeEnum.system }
+  }
+});
+
+defineIndex(SystemModelSchema, {
+  key: { scope: 1, tmbId: 1, model: 1 },
+  options: {
+    unique: true,
+    partialFilterExpression: { scope: ModelScopeEnum.team }
   }
 });
 

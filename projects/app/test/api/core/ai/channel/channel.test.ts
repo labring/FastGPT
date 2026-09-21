@@ -2,9 +2,14 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import {
+  batchDeleteGroupChannels,
+  batchDeleteSystemChannels,
+  batchUpdateGroupChannelStatus,
+  batchUpdateSystemChannelStatus,
   createGroupChannel,
   createSystemChannel,
   deleteGroupChannel,
+  getBatchChannelsAffectedModels,
   getChannelModels,
   getChannelAffectedModels,
   getChannelTypeMetas,
@@ -27,6 +32,7 @@ import listHandler from '@/pages/api/core/ai/channel/list';
 import createHandler from '@/pages/api/core/ai/channel/create';
 import updateHandler from '@/pages/api/core/ai/channel/update';
 import deleteHandler from '@/pages/api/core/ai/channel/delete';
+import batchHandler from '@/pages/api/core/ai/channel/batch';
 import statusHandler from '@/pages/api/core/ai/channel/status';
 import testHandler from '@/pages/api/core/ai/channel/test';
 import affectedModelsHandler from '@/pages/api/core/ai/channel/affectedModels';
@@ -51,11 +57,16 @@ vi.mock('@fastgpt/service/core/ai/channel', async (importOriginal) => {
     updateSystemChannel: vi.fn(),
     deleteGroupChannel: vi.fn(),
     deleteSystemChannel: vi.fn(),
+    batchDeleteGroupChannels: vi.fn(),
+    batchDeleteSystemChannels: vi.fn(),
     updateGroupChannelStatus: vi.fn(),
     updateSystemChannelStatus: vi.fn(),
+    batchUpdateGroupChannelStatus: vi.fn(),
+    batchUpdateSystemChannelStatus: vi.fn(),
     testGroupChannel: vi.fn(),
     testSystemChannel: vi.fn(),
     getChannelAffectedModels: vi.fn(),
+    getBatchChannelsAffectedModels: vi.fn(),
     getChannelModels: vi.fn(),
     getSystemChannelList: vi.fn(),
     getMemberChannelList: vi.fn(),
@@ -170,14 +181,14 @@ describe('GET /api/core/ai/channel/list', () => {
     expect(vi.mocked(getGlobalGroupChannelList)).not.toHaveBeenCalled();
   });
 
-  it('root with groupType=team only gets the root own-channel view', async () => {
+  it('root with channelType=team only gets the root own-channel view', async () => {
     rootAuth();
     vi.mocked(getMemberChannelList).mockResolvedValue({
       list: [channelItem(5, 1)],
       total: 1
     });
 
-    const res = await Call(listHandler, { query: { groupType: 'team' } });
+    const res = await Call(listHandler, { query: { channelType: 'team' } });
 
     expect(res.code).toBe(200);
     expect(res.data.total).toBe(1);
@@ -190,16 +201,16 @@ describe('GET /api/core/ai/channel/list', () => {
   });
 });
 
-describe('POST /api/core/ai/channel/create (groupType declared by caller)', () => {
+describe('POST /api/core/ai/channel/create (channelType declared by caller)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('member declares groupType=team → creates in own group (groupId derived from session)', async () => {
+  it('member declares channelType=team → creates in own group (groupId derived from session)', async () => {
     memberWithCreatePer();
 
     const res = await Call(createHandler, {
-      body: { groupType: 'team', name: 'my channel', type: 1, key: 'key', models: ['gpt-4o'] }
+      body: { channelType: 'team', name: 'my channel', type: 1, key: 'key', models: ['gpt-4o'] }
     });
 
     expect(res.code).toBe(200);
@@ -214,7 +225,7 @@ describe('POST /api/core/ai/channel/create (groupType declared by caller)', () =
     memberWithoutCreatePer();
 
     const res = await Call(createHandler, {
-      body: { groupType: 'team', name: 'my channel', type: 1, key: 'key', models: ['gpt-4o'] }
+      body: { channelType: 'team', name: 'my channel', type: 1, key: 'key', models: ['gpt-4o'] }
     });
 
     expect(res.code).toBe(500);
@@ -223,11 +234,11 @@ describe('POST /api/core/ai/channel/create (groupType declared by caller)', () =
     expect(vi.mocked(createSystemChannel)).not.toHaveBeenCalled();
   });
 
-  it('member declaring groupType=system is rejected (system channels are root-only)', async () => {
+  it('member declaring channelType=system is rejected (system channels are root-only)', async () => {
     memberWithCreatePer();
 
     const res = await Call(createHandler, {
-      body: { groupType: 'system', name: 'my channel', type: 1, key: 'key', models: ['gpt-4o'] }
+      body: { channelType: 'system', name: 'my channel', type: 1, key: 'key', models: ['gpt-4o'] }
     });
 
     expect(res.code).toBe(500);
@@ -236,11 +247,17 @@ describe('POST /api/core/ai/channel/create (groupType declared by caller)', () =
     expect(vi.mocked(createGroupChannel)).not.toHaveBeenCalled();
   });
 
-  it('root declaring groupType=system creates a system channel', async () => {
+  it('root declaring channelType=system creates a system channel', async () => {
     rootAuth();
 
     const res = await Call(createHandler, {
-      body: { groupType: 'system', name: 'system channel', type: 1, key: 'key', models: ['gpt-4o'] }
+      body: {
+        channelType: 'system',
+        name: 'system channel',
+        type: 1,
+        key: 'key',
+        models: ['gpt-4o']
+      }
     });
 
     expect(res.code).toBe(200);
@@ -250,12 +267,12 @@ describe('POST /api/core/ai/channel/create (groupType declared by caller)', () =
     expect(vi.mocked(createGroupChannel)).not.toHaveBeenCalled();
   });
 
-  it('root declaring groupType=team creates in root own team group (root is also a team admin)', async () => {
+  it('root declaring channelType=team creates in root own team group (root is also a team admin)', async () => {
     rootAuth();
 
     const res = await Call(createHandler, {
       body: {
-        groupType: 'team',
+        channelType: 'team',
         name: 'root team channel',
         type: 1,
         key: 'key',
@@ -542,5 +559,68 @@ describe('GET /api/core/ai/channel/models (related models for hover)', () => {
     expect(vi.mocked(getChannelModels)).toHaveBeenCalledWith(
       expect.objectContaining({ id: 12, group_id: undefined })
     );
+  });
+});
+
+describe('POST /api/core/ai/channel/batch (batch operations)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('member batch-deletes own channels and gets affected models', async () => {
+    memberWithCreatePer();
+    vi.mocked(getGroupChannelById).mockImplementation(async (groupId, id) =>
+      groupChannel(id, groupId)
+    );
+    vi.mocked(getBatchChannelsAffectedModels).mockResolvedValue([
+      { modelId: 'm1', name: 'Model 1', model: 'gpt-4o' }
+    ]);
+
+    const res = await Call(batchHandler, {
+      body: { action: 'delete', ids: [1, 2], channelType: 'team' }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.affectedModels).toEqual([{ modelId: 'm1', name: 'Model 1', model: 'gpt-4o' }]);
+    expect(vi.mocked(batchDeleteGroupChannels)).toHaveBeenCalledWith(GROUP_ID, [1, 2]);
+  });
+
+  it('member batch-updates status of own channels', async () => {
+    memberWithCreatePer();
+    vi.mocked(getGroupChannelById).mockImplementation(async (groupId, id) =>
+      groupChannel(id, groupId)
+    );
+
+    const res = await Call(batchHandler, {
+      body: { action: 'status', ids: [1, 2], status: 2, channelType: 'team' }
+    });
+
+    expect(res.code).toBe(200);
+    expect(vi.mocked(batchUpdateGroupChannelStatus)).toHaveBeenCalledWith(GROUP_ID, [1, 2], 2);
+  });
+
+  it('non-root batch operation on system channels is rejected', async () => {
+    memberWithCreatePer();
+
+    const res = await Call(batchHandler, {
+      body: { action: 'delete', ids: [1, 2], channelType: 'system' }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toBe('rootOnlyPermit');
+    expect(vi.mocked(batchDeleteSystemChannels)).not.toHaveBeenCalled();
+  });
+
+  it('root batch-deletes system channels', async () => {
+    rootAuth();
+    vi.mocked(getSystemChannelById).mockImplementation(async (id) => systemChannel(id));
+    vi.mocked(getBatchChannelsAffectedModels).mockResolvedValue([]);
+
+    const res = await Call(batchHandler, {
+      body: { action: 'delete', ids: [10, 20], channelType: 'system' }
+    });
+
+    expect(res.code).toBe(200);
+    expect(vi.mocked(batchDeleteSystemChannels)).toHaveBeenCalledWith([10, 20]);
   });
 });

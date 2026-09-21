@@ -1,6 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { assertMemberChannelPermission } from '@fastgpt/service/core/ai/channel';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createSystemModel } from '@/service/core/ai/model/service';
 import {
@@ -13,13 +16,27 @@ import {
 async function handler(
   req: ApiRequestProps<CreateSystemModelBody>
 ): Promise<CreateSystemModelResponse> {
-  await authSystemAdmin({ req });
-  const { modelData } = parseApiInput({
-    req,
-    bodySchema: CreateSystemModelBodySchema
-  }).body;
+  const { tmbId, tmb, isRoot } = await authUserPer({ req, authToken: true });
+  const { modelData, channelType = modelData.scope === ModelScopeEnum.team ? 'team' : 'system' } =
+    parseApiInput({
+      req,
+      bodySchema: CreateSystemModelBodySchema
+    }).body;
 
-  return CreateSystemModelResponseSchema.parse(await createSystemModel({ modelData }));
+  if (channelType === 'team') {
+    if (!isRoot) {
+      await assertMemberChannelPermission(tmb.permission);
+    }
+    modelData.tmbId = tmbId;
+    modelData.scope = ModelScopeEnum.team;
+  } else {
+    if (!isRoot) {
+      return Promise.reject(ModelErrEnum.rootOnlyPermit);
+    }
+    modelData.scope = ModelScopeEnum.system;
+  }
+
+  return CreateSystemModelResponseSchema.parse(await createSystemModel({ modelData, channelType }));
 }
 
 export default NextAPI(handler);

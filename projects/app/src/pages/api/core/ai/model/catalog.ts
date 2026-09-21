@@ -13,6 +13,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { resolveEffectiveDefaultModelIds } from '@fastgpt/service/core/ai/catalog';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 
 /** 返回当前成员完整模型目录；命中内容版本时只返回 version。 */
 export async function handler(

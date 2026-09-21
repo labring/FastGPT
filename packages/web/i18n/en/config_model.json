@@ -1,4 +1,5 @@
 {
+  "active_model": "Available Models",
   "max_response_tokens": "Maximum response Tokens",
   "voices_array_required": "Voices must be a non-empty array with label and value in each item",
   "select_model_provider_placeholder": "Select a provider",
@@ -119,6 +120,14 @@
   "model.batch_status_disabled": "Disabled {{count}} models",
   "model.batch_delete": "Delete selected",
   "model.batch_delete_confirm": "Delete the {{count}} selected models? This action cannot be undone.",
+  "channel.batch_enable": "Enable selected",
+  "channel.batch_disable": "Disable selected",
+  "channel.batch_status_enabled": "Enabled {{count}} channels",
+  "channel.batch_status_disabled": "Disabled {{count}} channels",
+  "channel.batch_delete": "Delete selected",
+  "channel.batch_delete_confirm": "Delete the {{count}} selected channels? This action cannot be undone.",
+  "channel.delete_affected_models_warning": "After deletion, the following models will have no available channels: {{models}}. Are you sure you want to continue?",
+  "channel.search_placeholder": "Search by channel name",
   "model.alias": "Alias",
   "model.alias_tip": "The name of the model displayed in the system is convenient for users to understand.",
   "model.basic_config_section": "Basic config",
@@ -255,5 +264,14 @@
   "model_status_tip_checks_with_failed": "{{total}} checks, {{failed}} failed",
   "model_status_test_webhook": "Test Webhook",
   "model_status_test_webhook_success": "Webhook test succeeded, error and recovery notifications sent",
-  "model_status_webhook_url_empty": "Please enter the alert Webhook URL first"
+  "model_status_webhook_url_empty": "Please enter the alert Webhook URL first",
+  "confirm_remove_channel_association": "Remove this association? It will be removed from the list.",
+  "channel_disassociate_success": "Channel disassociated successfully",
+  "channel_max_five_tip": "Only the first 5 channels are shown. Click the count to view all.",
+  "collaborators": "Collaborators",
+  "manage_collaborators": "Manage Collaborators",
+  "available_range": "Availability",
+  "available_to_all": "Available to all",
+  "only_available_to_self": "Only available to self",
+  "system_model_tag": "System"
 }

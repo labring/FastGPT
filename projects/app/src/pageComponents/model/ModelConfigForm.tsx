@@ -349,6 +349,7 @@ type ModelConfigFormProps = {
   providers: ModelProviderItemType[];
   formId: string;
   onSubmit: (modelData: SystemModelDocumentDataType) => Promise<unknown>;
+  channelType?: 'system' | 'team';
   isModelIdReadOnly?: boolean;
   channelSection?: {
     title: string;
@@ -368,6 +369,7 @@ const ModelConfigForm = ({
   formId,
   onSubmit,
   channelSection,
+  channelType,
   isModelIdReadOnly = false,
   onModelChange,
   onSuccess,
@@ -377,6 +379,7 @@ const ModelConfigForm = ({
 }: ModelConfigFormProps) => {
   const { t } = useClientTranslation('config_model');
   const { feConfigs } = useSystemStore();
+  const isTeamModel = channelType === 'team' || modelData.scope === ModelScopeEnum.team;
   const initialModelData = normalizeModelPricingForRead(modelData);
   const [hasJsonDraftChanges, setHasJsonDraftChanges] = useState(false);
 
@@ -789,7 +792,7 @@ const ModelConfigForm = ({
         </Section>
       )}
 
-      {priceUnit && feConfigs?.isPlus && (
+      {priceUnit && feConfigs?.isPlus && !isTeamModel && (
         <Section title={t('config_model:model.price_config_section')}>
           {isLLMModel ? (
             <ModelPriceTiersTable

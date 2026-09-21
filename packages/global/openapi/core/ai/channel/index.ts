@@ -2,10 +2,8 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
   AffectedModelsResponseSchema,
-  BatchDeleteChannelsBodySchema,
-  BatchDeleteChannelsResponseSchema,
-  BatchUpdateChannelStatusBodySchema,
-  BatchUpdateChannelStatusResponseSchema,
+  BatchChannelBodySchema,
+  BatchChannelResponseSchema,
   ChannelModelsResponseSchema,
   CreateChannelBodySchema,
   CreateChannelResponseSchema,
@@ -41,7 +39,7 @@ export const ChannelPath: OpenAPIPath = {
     get: {
       summary: '渠道列表',
       description:
-        '成员：本人渠道视图；root 带 groupType=system 返回系统渠道视图，groupType=team 返回 root 本人渠道视图。每条含关联模型数。',
+        '成员：本人渠道视图；root 带 channelType=system 返回系统渠道视图，channelType=team 返回 root 本人渠道视图。每条含关联模型数。',
       tags: [DevApiTagsMap.model],
       requestParams: { query: ListChannelsQuerySchema },
       responses: {
@@ -101,38 +99,6 @@ export const ChannelPath: OpenAPIPath = {
       }
     }
   },
-  '/core/ai/channel/batchDelete': {
-    post: {
-      summary: '批量删除渠道',
-      description: '对接 AI Proxy 原生 batch_delete 批量删除渠道。',
-      tags: [DevApiTagsMap.model],
-      requestBody: {
-        content: { 'application/json': { schema: BatchDeleteChannelsBodySchema } }
-      },
-      responses: {
-        200: {
-          description: '批量删除成功',
-          content: { 'application/json': { schema: BatchDeleteChannelsResponseSchema } }
-        }
-      }
-    }
-  },
-  '/core/ai/channel/batchStatus': {
-    post: {
-      summary: '批量更新渠道状态',
-      description: '对接 AI Proxy 原生 batch_status 批量启用或禁用渠道。',
-      tags: [DevApiTagsMap.model],
-      requestBody: {
-        content: { 'application/json': { schema: BatchUpdateChannelStatusBodySchema } }
-      },
-      responses: {
-        200: {
-          description: '批量更新状态成功',
-          content: { 'application/json': { schema: BatchUpdateChannelStatusResponseSchema } }
-        }
-      }
-    }
-  },
   '/core/ai/channel/status': {
     post: {
       summary: '启用/停用渠道',
@@ -146,6 +112,23 @@ export const ChannelPath: OpenAPIPath = {
         200: {
           description: '操作成功',
           content: { 'application/json': { schema: UpdateChannelStatusResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/channel/batch': {
+    post: {
+      summary: '批量操作渠道',
+      description:
+        '批量删除或批量修改渠道状态。action: delete（批量删除，返回受影响模型清单）/ status（批量更新状态）。',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: BatchChannelBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '操作成功',
+          content: { 'application/json': { schema: BatchChannelResponseSchema } }
         }
       }
     }

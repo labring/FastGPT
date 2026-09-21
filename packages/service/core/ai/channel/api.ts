@@ -231,11 +231,32 @@ export const deleteSystemChannel = async (id: number): Promise<void> => {
   await del<void>(`/api/channel/${id}`);
 };
 
+export const batchDeleteSystemChannels = async (ids: number[]): Promise<void> => {
+  if (ids.length === 0) return;
+  try {
+    await post<void>(`/api/channels/batch_delete`, { ids });
+  } catch {
+    await Promise.all(ids.map((id) => deleteSystemChannel(id)));
+  }
+};
+
 export const updateSystemChannelStatus = async (
   id: number,
   status: ChannelStatus
 ): Promise<void> => {
   await post<void>(`/api/channel/${id}/status`, { status });
+};
+
+export const batchUpdateSystemChannelStatus = async (
+  ids: number[],
+  status: ChannelStatus
+): Promise<void> => {
+  if (ids.length === 0) return;
+  try {
+    await post<void>(`/api/channels/batch_status`, { ids, status });
+  } catch {
+    await Promise.all(ids.map((id) => updateSystemChannelStatus(id, status)));
+  }
 };
 
 /**
@@ -268,6 +289,11 @@ export const deleteGroupChannel = async (groupId: string, id: number): Promise<v
   await del<void>(`/api/group/${encodeURIComponent(groupId)}/channel/${id}`);
 };
 
+export const batchDeleteGroupChannels = async (groupId: string, ids: number[]): Promise<void> => {
+  if (ids.length === 0) return;
+  await post<void>(`/api/group/${encodeURIComponent(groupId)}/channels/batch_delete`, { ids });
+};
+
 export const updateGroupChannelStatus = async (
   groupId: string,
   id: number,
@@ -276,39 +302,19 @@ export const updateGroupChannelStatus = async (
   await post<void>(`/api/group/${encodeURIComponent(groupId)}/channel/${id}/status`, { status });
 };
 
-/* ═══ PR #621 Batch Operations ═══ */
-
-export const batchDeleteGroupChannels = (groupId: string, ids: number[]): Promise<void> =>
-  post<void>(`/api/group/${encodeURIComponent(groupId)}/channels/batch_delete`, { ids });
-
-export const batchUpdateGroupChannelStatus = (
+export const batchUpdateGroupChannelStatus = async (
   groupId: string,
   ids: number[],
   status: ChannelStatus
-): Promise<void> =>
-  post<void>(`/api/group/${encodeURIComponent(groupId)}/channels/batch_status`, { ids, status });
-
-export const requestBatchDeleteSystemChannels = async (ids: number[]): Promise<void> => {
-  try {
-    await post<void>('/api/channels/batch_delete', { ids });
-  } catch {
-    await Promise.all(ids.map((id) => deleteSystemChannel(id)));
-  }
-};
-
-export const requestBatchUpdateSystemChannelStatus = async (
-  ids: number[],
-  status: ChannelStatus
 ): Promise<void> => {
-  try {
-    await post<void>('/api/channels/batch_status', { ids, status });
-  } catch {
-    await Promise.all(ids.map((id) => updateSystemChannelStatus(id, status)));
-  }
+  if (ids.length === 0) return;
+  await post<void>(`/api/group/${encodeURIComponent(groupId)}/channels/batch_status`, {
+    ids,
+    status
+  });
 };
 
-/** 格式化成员在 AI Proxy 的分组 ID */
-export const getSystemGroupId = (tmbId: string): string => `fastgpt:tmb:${tmbId}`;
+export { getSystemGroupId } from './utils';
 
 export const testGroupChannel = async (
   groupId: string,

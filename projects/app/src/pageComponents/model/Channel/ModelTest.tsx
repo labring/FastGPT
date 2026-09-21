@@ -1,4 +1,4 @@
-import { getTestModel } from '@/web/core/ai/config';
+import { getTestChannel } from '@/web/core/ai/channel';
 import { Table, Thead, Tbody, Tr, Th, Td, Box, Flex, Button, HStack } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useEffect, useRef, useState } from 'react';
@@ -27,10 +27,12 @@ type ModelTestItem = {
 const ModelTest = ({
   channelId,
   models,
+  channelType = 'system',
   onClose
 }: {
   channelId: number;
   models: string[];
+  channelType?: 'system' | 'team';
   onClose: () => void;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
@@ -86,19 +88,19 @@ const ModelTest = ({
       let errorNum = 0;
       setTestModelList((prev) => prev.map((item) => ({ ...item, loading: true })));
 
-      const testModel = async (modelId: string) => {
+      const testModel = async (testItem: ModelTestItem) => {
         setTestModelList((prev) =>
           prev.map((item) =>
-            item.modelId === modelId ? { ...item, status: 'running', message: '' } : item
+            item.modelId === testItem.modelId ? { ...item, status: 'running', message: '' } : item
           )
         );
         const start = Date.now();
         try {
-          await getTestModel({ modelId, channelId });
+          await getTestChannel({ id: channelId, model: testItem.model, channelType });
           const duration = Date.now() - start;
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.modelId === modelId
+              item.modelId === testItem.modelId
                 ? { ...item, status: 'success', duration: duration / 1000, loading: false }
                 : item
             )
@@ -106,7 +108,7 @@ const ModelTest = ({
         } catch (error) {
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.modelId === modelId
+              item.modelId === testItem.modelId
                 ? { ...item, status: 'error', message: getErrText(error), loading: false }
                 : item
             )
@@ -115,11 +117,7 @@ const ModelTest = ({
         }
       };
 
-      await batchRun(
-        testModelList.map((item) => item.modelId),
-        testModel,
-        5
-      );
+      await batchRun(testModelList, testModel, 5);
 
       if (errorNum > 0) {
         toast({
@@ -135,6 +133,9 @@ const ModelTest = ({
 
   const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest(
     async (modelId: string) => {
+      const target = testModelList.find((item) => item.modelId === modelId);
+      if (!target) return;
+
       const start = Date.now();
 
       setTestModelList((prev) =>
@@ -146,7 +147,7 @@ const ModelTest = ({
       );
 
       try {
-        await getTestModel({ modelId, channelId });
+        await getTestChannel({ id: channelId, model: target.model, channelType });
         const duration = Date.now() - start;
 
         setTestModelList((prev) =>

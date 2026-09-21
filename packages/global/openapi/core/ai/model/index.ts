@@ -4,6 +4,9 @@ import {
   GetModelCatalogQuerySchema,
   GetModelCatalogResponseSchema,
   GetSystemModelsResponseSchema,
+  GetTeamModelsResponseSchema,
+  ModelCollaboratorBatchListBodySchema,
+  ModelCollaboratorBatchListResponseSchema,
   ModelCollaboratorListQuerySchema,
   ModelCollaboratorListResponseSchema,
   ModelCollaboratorUpdateBodySchema
@@ -11,6 +14,19 @@ import {
 import { GetModelSummariesBodySchema, GetModelSummariesResponseSchema } from './summary';
 
 export const AIModelPath: OpenAPIPath = {
+  '/core/ai/model/teamModels': {
+    get: {
+      summary: '获取团队私有模型列表',
+      description: '获取当前登录成员名下的团队私有模型列表及关联的团队渠道摘要',
+      tags: [DevApiTagsMap.model],
+      responses: {
+        200: {
+          description: '成功返回团队私有模型列表',
+          content: { 'application/json': { schema: GetTeamModelsResponseSchema } }
+        }
+      }
+    }
+  },
   '/core/ai/model/summary': {
     post: {
       summary: '批量获取模型展示详情',
@@ -63,6 +79,22 @@ export const AIModelPath: OpenAPIPath = {
         200: {
           description: '成功返回模型协作者',
           content: { 'application/json': { schema: ModelCollaboratorListResponseSchema } }
+        }
+      }
+    }
+  },
+  '/proApi/system/model/collaborator/batchList': {
+    post: {
+      summary: '批量获取模型协作者',
+      description: '批量获取多个稳定模型 ID 对应的协作者',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: ModelCollaboratorBatchListBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '成功返回模型协作者映射表',
+          content: { 'application/json': { schema: ModelCollaboratorBatchListResponseSchema } }
         }
       }
     }

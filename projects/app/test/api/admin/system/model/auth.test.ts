@@ -6,7 +6,6 @@ import detailApi from '@/pages/api/admin/system/model/detail';
 import createApi from '@/pages/api/admin/system/model/create';
 import templatesApi from '@/pages/api/admin/system/model/templates';
 import createFromTemplatesApi from '@/pages/api/admin/system/model/createFromTemplates';
-import replaceChannelsApi from '@/pages/api/admin/system/model/channel/replace';
 import deleteApi from '@/pages/api/admin/system/model/delete';
 import testApi from '@/pages/api/admin/system/model/test';
 import updateApi from '@/pages/api/admin/system/model/update';
@@ -22,7 +21,6 @@ describe('admin model API authorization', () => {
     ['create', createApi],
     ['templates', templatesApi],
     ['createFromTemplates', createFromTemplatesApi],
-    ['channel/replace', replaceChannelsApi],
     ['delete', deleteApi],
     ['test', testApi],
     ['update', updateApi],

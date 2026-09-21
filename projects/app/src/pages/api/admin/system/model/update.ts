@@ -1,6 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { authSystemAdmin, authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { assertMemberChannelPermission } from '@fastgpt/service/core/ai/channel';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateSystemModelBodySchema,
@@ -9,13 +10,22 @@ import {
 import { updateSystemModel } from '@/service/core/ai/model/service';
 
 async function handler(req: ApiRequestProps<UpdateSystemModelBody>): Promise<void> {
-  await authSystemAdmin({ req });
   const input = parseApiInput({
     req,
     bodySchema: UpdateSystemModelBodySchema
   }).body;
+  const { channelType } = input;
 
-  await updateSystemModel(input);
+  if (channelType === 'team') {
+    const { tmbId, tmb, isRoot } = await authUserPer({ req, authToken: true });
+    if (!isRoot) {
+      await assertMemberChannelPermission(tmb.permission);
+    }
+    await updateSystemModel({ ...input, channelType: 'team', tmbId });
+  } else {
+    await authSystemAdmin({ req });
+    await updateSystemModel({ ...input, channelType: 'system' });
+  }
 }
 
 export default NextAPI(handler);

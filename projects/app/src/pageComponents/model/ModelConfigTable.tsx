@@ -17,17 +17,20 @@ import {
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteSystemModel,
-  getAdminModelConfig,
-  getTestModel,
   deleteSystemModels,
+  getAdminModelConfig,
+  getTeamModelsConfig,
+  getTestModel,
   putSystemModelsStatus
 } from '@/web/core/ai/config';
+import { getChannelList, putChannel } from '@/web/core/ai/channel';
+import ModelScopeCell from '@/components/core/ai/ModelScopeCell';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -66,8 +69,9 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 const modelRowHeight = 80;
 const modelTableColumnWidth = {
   selection: '48px',
-  billing: '250px',
-  channels: '180px',
+  channels: '160px',
+  billing: '240px',
+  scope: '160px',
   active: '128px',
   actions: '160px'
 } as const;
@@ -77,11 +81,13 @@ const ModelEditButton = React.memo(
   ({
     model,
     providers,
+    channelType = 'system',
     onSuccess,
     isDisabled
   }: {
     model: AdminSystemModelListItem;
     providers: ModelProviderItemType[];
+    channelType?: 'system' | 'team';
     onSuccess: () => Promise<void>;
     isDisabled?: boolean;
   }) => {
@@ -101,6 +107,7 @@ const ModelEditButton = React.memo(
           <ModelEditModal
             model={model}
             providers={providers}
+            channelType={channelType}
             onSuccess={onSuccess}
             onClose={() => setIsOpen(false)}
           />
@@ -111,24 +118,37 @@ const ModelEditButton = React.memo(
 );
 ModelEditButton.displayName = 'ModelEditButton';
 
-const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
+const ModelTable = ({
+  Tab,
+  channelType = 'system'
+}: {
+  Tab: React.ReactNode;
+  channelType?: 'system' | 'team';
+}) => {
   const { t, i18n } = useClientTranslation('config_model');
   const { toast } = useToast();
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const showBilling = !!feConfigs?.isPlus;
-  const tableColumnCount = showBilling ? 6 : 5;
+  const isTeam = channelType === 'team';
+  const showBilling = !isTeam && !!feConfigs?.isPlus;
+  const tableColumnCount = 2 + (showBilling ? 1 : 0) + (isTeam ? 1 : 0) + 1 + 1 + 1;
 
   const {
-    data: adminConfig,
-    runAsync: refreshSystemModelList,
+    data: modelConfigData,
+    runAsync: refreshModelList,
     loading: loadingModels
-  } = useRequest(getAdminModelConfig, { manual: false });
-  const systemModelList = useMemo(() => adminConfig?.models ?? [], [adminConfig?.models]);
-  const channelList = useMemo(() => adminConfig?.channels ?? [], [adminConfig?.channels]);
+  } = useRequest(() => (isTeam ? getTeamModelsConfig() : getAdminModelConfig()) as Promise<any>, {
+    manual: false,
+    refreshDeps: [isTeam]
+  });
+  const modelItems = useMemo(
+    () => (modelConfigData?.models ?? []) as AdminSystemModelListItem[],
+    [modelConfigData?.models]
+  );
+  const channelList = useMemo(() => modelConfigData?.channels ?? [], [modelConfigData?.channels]);
   const providerCache = useMemo(
-    () => formatModelProviders(adminConfig?.providers ?? []),
-    [adminConfig?.providers]
+    () => formatModelProviders(modelConfigData?.providers ?? []),
+    [modelConfigData?.providers]
   );
   const getModelProviders = useCallback(
     (language?: string) =>
@@ -154,11 +174,11 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const refreshModels = useCallback(async () => {
     useUserModelStore.getState().clearMemory();
-    await refreshSystemModelList();
-  }, [refreshSystemModelList]);
+    await refreshModelList();
+  }, [refreshModelList]);
 
   const modelList = useMemo(() => {
-    const formatLLMModelList = systemModelList
+    const formatLLMModelList = modelItems
       .filter((item) => item.type === ModelTypeEnum.llm)
       .map((item) => ({
         ...item,
@@ -171,7 +191,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         ),
         tagColor: 'blue'
       }));
-    const formatVectorModelList = systemModelList
+    const formatVectorModelList = modelItems
       .filter((item) => item.type === ModelTypeEnum.embedding)
       .map((item) => ({
         ...item,
@@ -189,7 +209,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         ),
         tagColor: 'yellow'
       }));
-    const formatAudioSpeechModelList = systemModelList
+    const formatAudioSpeechModelList = modelItems
       .filter((item) => item.type === ModelTypeEnum.tts)
       .map((item) => ({
         ...item,
@@ -206,7 +226,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         ),
         tagColor: 'green'
       }));
-    const formatWhisperModel = systemModelList
+    const formatWhisperModel = modelItems
       .filter((item) => item.type === ModelTypeEnum.stt)
       .map((item) => ({
         ...item,
@@ -223,7 +243,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         ),
         tagColor: 'purple'
       }));
-    const formatRerankModelList = systemModelList
+    const formatRerankModelList = modelItems
       .filter((item) => item.type === ModelTypeEnum.rerank)
       .map((item) => ({
         ...item,
@@ -251,8 +271,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         ...formatRerankModelList
       ].map((item) => [item.modelId, item] as const)
     );
-    // 格式化不能改变服务端返回的 MongoDB 新建时间倒序。
-    const list = systemModelList.flatMap((item) => {
+    // 接口已在服务端做好 team/system 隔离，此处只需按模型类型筛选
+    const list = modelItems.flatMap((item) => {
       if (modelType && item.type !== modelType) return [];
       const formattedModel = formattedModelMap.get(item.modelId);
       return formattedModel ? [formattedModel] : [];
@@ -267,17 +287,17 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         providerName: provider.name,
         contextToken:
           item.type === ModelTypeEnum.llm
-            ? item.config.maxContext
+            ? (item.config as any)?.maxContext
             : item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank
-              ? item.config.maxToken
+              ? (item.config as any)?.maxToken
               : undefined,
         vision:
           item.type === ModelTypeEnum.llm || item.type === ModelTypeEnum.embedding
-            ? item.config.vision
+            ? (item.config as any)?.vision
             : undefined,
-        audio: item.type === ModelTypeEnum.llm ? item.config.audio : undefined,
-        video: item.type === ModelTypeEnum.llm ? item.config.video : undefined,
-        reasoning: item.type === ModelTypeEnum.llm ? item.config.reasoning : undefined
+        audio: item.type === ModelTypeEnum.llm ? (item.config as any)?.audio : undefined,
+        video: item.type === ModelTypeEnum.llm ? (item.config as any)?.video : undefined,
+        reasoning: item.type === ModelTypeEnum.llm ? (item.config as any)?.reasoning : undefined
       };
     });
 
@@ -296,16 +316,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     });
 
     return filterList;
-  }, [
-    systemModelList,
-    t,
-    modelType,
-    getModelProvider,
-    i18n.language,
-    provider,
-    search,
-    showActive
-  ]);
+  }, [modelItems, t, modelType, getModelProvider, i18n.language, provider, search, showActive]);
   const activeModelLength = useMemo(() => {
     return modelList.filter((item) => item.isActive).length;
   }, [modelList]);
@@ -343,7 +354,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     async (data: Parameters<typeof getTestModel>[0]) => {
       testingModelIdsDispatch.add(data.modelId);
       try {
-        return await getTestModel(data);
+        return await getTestModel({ ...data, channelType });
       } finally {
         testingModelIdsDispatch.remove(data.modelId);
       }
@@ -367,7 +378,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     async ({ modelId, model, isActive }: { modelId: string; model: string; isActive: boolean }) => {
       updatingModelIdsDispatch.add(modelId);
       try {
-        await putSystemModelsStatus({ modelIds: [modelId], isActive });
+        await putSystemModelsStatus({ modelIds: [modelId], isActive, channelType });
         toast({
           status: 'success',
           title: t(isActive ? 'config_model:status_enabled' : 'config_model:status_disabled', {
@@ -450,41 +461,54 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   } = useDisclosure();
 
   // 渠道是列表的补充数据，模型详情和更新也都有独立操作反馈；只有模型首次加载阻塞整表。
-  const isInitialLoading = loadingModels && adminConfig === undefined;
+  const isInitialLoading = loadingModels && modelConfigData === undefined;
 
   const [showModelId, setShowModelId] = useState(true);
 
+  const canManageModel = Boolean(
+    isRoot ||
+    userInfo?.team?.permission?.hasManagePer ||
+    userInfo?.team?.permission?.hasModelCreateRole
+  );
+
   return (
     <>
-      {isRoot && (
+      {canManageModel && (
         <ModelTabHeader Tab={Tab}>
           <Grid
             w={['100%', 'auto']}
-            templateColumns={['repeat(3, minmax(0, 1fr))', 'repeat(3, auto)']}
+            templateColumns={
+              !isTeam && isRoot ? ['repeat(3, minmax(0, 1fr))', 'repeat(3, auto)'] : ['1fr', 'auto']
+            }
             gap={2}
           >
-            <Button
-              w={['100%', 'auto']}
-              minW={0}
-              px={[2, 4]}
-              variant={'whiteBase'}
-              onClick={onOpenDefaultModel}
-            >
-              {t('config_model:model.default_model')}
-            </Button>
-            <Button
-              w={['100%', 'auto']}
-              minW={0}
-              px={[2, 4]}
-              variant={'whiteBase'}
-              onClick={onOpenJsonConfig}
-            >
-              {t('config_model:model.json_config')}
-            </Button>
+            {!isTeam && isRoot && (
+              <>
+                <Button
+                  w={['100%', 'auto']}
+                  minW={0}
+                  px={[2, 4]}
+                  variant={'whiteBase'}
+                  onClick={onOpenDefaultModel}
+                >
+                  {t('config_model:model.default_model')}
+                </Button>
+                <Button
+                  w={['100%', 'auto']}
+                  minW={0}
+                  px={[2, 4]}
+                  variant={'whiteBase'}
+                  onClick={onOpenJsonConfig}
+                >
+                  {t('config_model:model.json_config')}
+                </Button>
+              </>
+            )}
             <AddModel
-              installedModels={systemModelList}
+              installedModels={modelItems}
               channels={channelList}
               providers={modelProviders}
+              channelType={channelType}
               onSuccess={refreshModels}
               isDisabled={channelMutationLoading}
               w={['100%', 'auto']}
@@ -500,7 +524,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           <ModelListFilters
             px={6}
             providers={modelProviders}
-            models={systemModelList}
+            models={modelItems}
             provider={provider}
             onProviderChange={setProvider}
             modelType={modelType}
@@ -525,7 +549,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               bodyProps={{ flex: '1 0 0', h: 0, px: 4 }}
               renderHeader={({ headerTableWidth }) => (
                 <Table
-                  minW="1100px"
+                  minW={isTeam ? '950px' : '980px'}
                   sx={{
                     tableLayout: 'fixed',
                     width: `${headerTableWidth} !important`
@@ -534,8 +558,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                   <colgroup>
                     <col style={{ width: modelTableColumnWidth.selection }} />
                     <col />
-                    {showBilling && <col style={{ width: modelTableColumnWidth.billing }} />}
                     <col style={{ width: modelTableColumnWidth.channels }} />
+                    {showBilling && <col style={{ width: modelTableColumnWidth.billing }} />}
+                    {isTeam && <col style={{ width: modelTableColumnWidth.scope }} />}
                     <col style={{ width: modelTableColumnWidth.active }} />
                     <col style={{ width: modelTableColumnWidth.actions }} />
                   </colgroup>
@@ -562,8 +587,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           <MyIcon name="modal/changePer" w="1rem" />
                         </HStack>
                       </Th>
-                      {showBilling && <Th fontSize="xs">{t('common:model.billing')}</Th>}
                       <Th fontSize="xs">{t('config_model:model.channels')}</Th>
+                      {showBilling && <Th fontSize="xs">{t('common:model.billing')}</Th>}
+                      {isTeam && <Th fontSize="xs">{t('config_model:available_range')}</Th>}
                       <Th fontSize="xs">
                         <Box
                           cursor="pointer"
@@ -579,12 +605,13 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 </Table>
               )}
               renderBody={() => (
-                <Table w={'100%'} minW={'1100px'} sx={{ tableLayout: 'fixed' }}>
+                <Table w={'100%'} minW={isTeam ? '950px' : '980px'} sx={{ tableLayout: 'fixed' }}>
                   <colgroup>
                     <col style={{ width: modelTableColumnWidth.selection }} />
                     <col />
-                    {showBilling && <col style={{ width: modelTableColumnWidth.billing }} />}
                     <col style={{ width: modelTableColumnWidth.channels }} />
+                    {showBilling && <col style={{ width: modelTableColumnWidth.billing }} />}
+                    {isTeam && <col style={{ width: modelTableColumnWidth.scope }} />}
                     <col style={{ width: modelTableColumnWidth.active }} />
                     <col style={{ width: modelTableColumnWidth.actions }} />
                   </colgroup>
@@ -594,9 +621,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         <Td colSpan={tableColumnCount}>
                           <EmptyTip
                             py={12}
-                            text={
-                              systemModelList.length === 0 ? t('config_model:no_models') : undefined
-                            }
+                            text={modelItems.length === 0 ? t('config_model:no_models') : undefined}
                           />
                         </Td>
                       </Tr>
@@ -636,6 +661,11 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               >
                                 {showModelId ? item.model : item.name}
                               </CopyBox>
+                              {isTeam && item.scope === ModelScopeEnum.system && (
+                                <MyTag type={'borderFill'} colorSchema={'gray'}>
+                                  {t('config_model:system_model_tag')}
+                                </MyTag>
+                              )}
                               {item.testMode && <TestModeBetaTag />}
                             </Flex>
                           </HStack>
@@ -652,7 +682,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             />
                           </HStack>
                         </Td>
-                        {showBilling && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
                         <Td fontSize={'sm'}>
                           <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
                             <ModelChannelCount
@@ -661,6 +690,18 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             />
                           </Box>
                         </Td>
+                        {showBilling && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
+                        {isTeam && (
+                          <Td fontSize={'sm'}>
+                            <ModelScopeCell
+                              modelId={item.modelId}
+                              scope={item.scope}
+                              isAccountConfig
+                              hasManagePer={userInfo?.team.permission.hasManagePer}
+                              selectedHint={t('config_model:available_range')}
+                            />
+                          </Td>
+                        )}
                         <Td fontSize={'sm'}>
                           <Flex data-row-action w={'32px'} justifyContent={'center'}>
                             {updatingModelIds.has(item.modelId) ? (
@@ -693,6 +734,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             <ModelEditButton
                               model={item}
                               providers={modelProviders}
+                              channelType={channelType}
                               onSuccess={refreshModels}
                               isDisabled={channelMutationLoading}
                             />
@@ -708,7 +750,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               }
                               type="delete"
                               content={t('config_model:model.delete_model_confirm')}
-                              onConfirm={() => deleteModel({ modelId: item.modelId })}
+                              onConfirm={() => deleteModel({ modelId: item.modelId, channelType })}
                             />
                           </HStack>
                         </Td>
@@ -740,7 +782,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         onClick={() =>
                           updateModelsStatus({
                             modelIds: selectedItems.map((model) => model.modelId),
-                            isActive: true
+                            isActive: true,
+                            channelType
                           })
                         }
                       >
@@ -752,7 +795,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         onClick={() =>
                           updateModelsStatus({
                             modelIds: selectedItems.map((model) => model.modelId),
-                            isActive: false
+                            isActive: false,
+                            channelType
                           })
                         }
                       >
@@ -769,7 +813,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                             }),
                             onConfirm: () =>
                               deleteModels({
-                                modelIds: selectedItems.map((model) => model.modelId)
+                                modelIds: selectedItems.map((model) => model.modelId),
+                                channelType
                               })
                           })()
                         }
@@ -791,8 +836,37 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           channels={channelList}
           selectedChannelIds={channelModel.channels.map((channel) => channel.id)}
           onClose={() => setChannelModel(undefined)}
-          onConfirm={async () => {
+          onConfirm={async (channelIds) => {
+            await runChannelMutation(async () => {
+              const channels = await getChannelList({ channelType });
+              const currentAssociatedSet = new Set(channelModel.channels.map((c) => c.id));
+              const nextSelectedSet = new Set(channelIds);
+              const toAdd = channels.filter(
+                (c) => nextSelectedSet.has(c.id) && !currentAssociatedSet.has(c.id)
+              );
+              const toRemove = channels.filter(
+                (c) => !nextSelectedSet.has(c.id) && currentAssociatedSet.has(c.id)
+              );
+              await Promise.all([
+                ...toAdd.map((c) =>
+                  putChannel({
+                    ...c,
+                    models: Array.from(new Set([...(c.models || []), channelModel.model])),
+                    channelType
+                  })
+                ),
+                ...toRemove.map((c) =>
+                  putChannel({
+                    ...c,
+                    models: (c.models || []).filter((m) => m !== channelModel.model),
+                    channelType
+                  })
+                )
+              ]);
+            });
+            toast({ status: 'success', title: t('config_model:associate_success') });
             setChannelModel(undefined);
+            await refreshModels().catch(() => {});
           }}
         />
       )}
@@ -801,8 +875,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       )}
       {isOpenDefaultModel && (
         <DefaultModelModal
-          models={systemModelList}
-          defaultModelIds={adminConfig?.defaultModelIds ?? {}}
+          models={modelItems as any}
+          defaultModelIds={(modelConfigData as any)?.defaultModelIds ?? {}}
           onClose={onCloseDefaultModel}
           onSuccess={refreshModels}
         />

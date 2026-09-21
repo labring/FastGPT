@@ -38,10 +38,7 @@ export const readSystemModelSnapshot = () =>
       const defaults = await MongoAIDefaultModel.findOne({ scope: ModelScopeEnum.system })
         .session(session)
         .lean();
-      const models = await MongoAIModel.find({ scope: ModelScopeEnum.system })
-        .sort({ _id: -1 })
-        .session(session)
-        .lean();
+      const models = await MongoAIModel.find().sort({ _id: -1 }).session(session).lean();
       return {
         models,
         defaultModelIds: ModelDefaultIdsSchema.parse(defaults?.defaultModelIds ?? {}),

@@ -60,12 +60,6 @@ describe('admin settings model create/update api', () => {
   beforeEach(() => {
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
     configMocks.refreshModelTemplates.mockReset().mockResolvedValue([]);
-<<<<<<< HEAD
-    channelMocks.appendModelsToAIProxyChannels.mockReset().mockResolvedValue(undefined);
-    channelMocks.replaceModelInAIProxyChannels.mockReset().mockResolvedValue(undefined);
-    channelMocks.syncModelInAIProxyChannels.mockReset().mockResolvedValue(undefined);
-=======
->>>>>>> 34c0c4957 (feat(model): support member-level AI channel isolation and proxy integration)
     providerMocks.preloadModelProviders.mockReset().mockImplementation(async () => {
       global.ModelProviderRawCache = [];
     });

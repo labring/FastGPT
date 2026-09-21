@@ -21,6 +21,7 @@ import { migrateDatasetTagsV2 } from './tasks/4171/20260907_migrate_dataset_tags
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
 import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_channel_reasoning_mapping';
 import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
+import { migrateLegacyChannelConfigs } from './tasks/4171/20260928_migrate_legacy_channel_configs';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -453,6 +454,27 @@ export const systemMigrations = [
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillMemberNameSet
+  },
+  {
+    delay: true,
+    id: '20260928_migrate_legacy_channel_configs',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260928_migrate_legacy_channel_configs.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260928_migrate_legacy_channel_configs.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260928_migrate_legacy_channel_configs.result'),
+    progressSteps: [
+      {
+        key: 'channels',
+        labelKey: i18nT(
+          'system_migration:migrations.20260928_migrate_legacy_channel_configs.channels'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: migrateLegacyChannelConfigs
   }
 ] as const satisfies readonly SystemMigration[];
 

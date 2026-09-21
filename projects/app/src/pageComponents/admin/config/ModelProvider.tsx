@@ -37,7 +37,7 @@ const ModelProvider = () => {
     if (!router.isReady || queryModelTab === undefined) return;
     if (typeof queryModelTab === 'string' && queryModelTab === modelTab) return;
 
-    // “可用模型”及已关闭的 AI Proxy 页面都统一回退到模型配置。
+    // “可用模型”及已关闭的页面都统一回退到模型配置。
     void router.replace(
       {
         pathname: router.pathname,
@@ -89,10 +89,10 @@ const ModelProvider = () => {
           py={6}
           pt={[4, 6]}
         >
-          {modelTab === 'config' && <ModelConfigTable Tab={Tab} />}
-          {modelTab === 'channel' && <ChannelTable Tab={Tab} />}
-          {modelTab === 'channel_log' && <ChannelLog Tab={Tab} />}
-          {modelTab === 'account_model' && <ModelDashboard Tab={Tab} />}
+          {modelTab === 'config' && <ModelConfigTable Tab={Tab} channelType="system" />}
+          {modelTab === 'channel' && <ChannelTable Tab={Tab} channelType="system" />}
+          {modelTab === 'channel_log' && <ChannelLog Tab={Tab} channelType="system" />}
+          {modelTab === 'account_model' && <ModelDashboard Tab={Tab} channelType="system" />}
           {modelTab === 'status' && <ModelStatus Tab={Tab} />}
         </Flex>
       </Flex>

@@ -1,5 +1,6 @@
 import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -26,7 +27,7 @@ async function handler(req: ApiRequestProps): Promise<GetAdminSystemModelListRes
   }
   const modelHandle = await getModelHandle();
   return GetAdminSystemModelListResponseSchema.parse({
-    models: modelHandle.getAllModels().map((model) => ({
+    models: modelHandle.getSystemModels().map((model) => ({
       ...desensitizeSystemModel(model),
       channels: channelsByModel.get(model.model) ?? []
     })),

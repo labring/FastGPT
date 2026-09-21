@@ -140,16 +140,20 @@ describe('readSystemModelSnapshot', () => {
     });
   });
 
-  it('excludes team models and orders system models newest first', async () => {
+  it('orders models newest first including system and team models', async () => {
+    const sampleTmbId = '68ad85a7463006c963799a05';
     await MongoAIModel.create([
       { ...modelData, model: 'first' },
       { ...modelData, model: 'second' },
-      { ...modelData, scope: ModelScopeEnum.team, model: 'team-only' }
+      { ...modelData, scope: ModelScopeEnum.team, tmbId: sampleTmbId, model: 'team-only' }
     ]);
+
+    const found = await MongoAIModel.findOne({ scope: ModelScopeEnum.team, tmbId: sampleTmbId });
+    expect(found).toBeDefined();
 
     const snapshot = await readSystemModelSnapshot();
 
-    expect(snapshot.models.map(({ model }) => model)).toEqual(['second', 'first']);
+    expect(snapshot.models.map(({ model }) => model)).toEqual(['team-only', 'second', 'first']);
     expect(snapshot.defaultModelIds).toEqual({});
     expect(snapshot.revision).toBe(0);
   });

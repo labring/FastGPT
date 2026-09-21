@@ -274,8 +274,10 @@ const publishInstalledModels = async ({
       (model): model is RerankSystemModelDataType => model.type === ModelTypeEnum.rerank
     );
 
-    // Active 列表沿用 MongoDB 的新建时间倒序；后续可由持久化 order 字段接管排序。
-    const _systemActiveModelList = _systemModelList.filter((model) => model.isActive);
+    // Active 列表沿用 MongoDB 的新建时间倒序；系统级默认模型和公共目录版本只计算系统模型。
+    const _systemActiveModelList = _systemModelList.filter(
+      (model) => model.isActive && (model.scope === ModelScopeEnum.system || !model.scope)
+    );
 
     // Default model check
     {
@@ -309,7 +311,9 @@ const publishInstalledModels = async ({
       }
     }
 
-    const nextPermissionCacheSignature = getPermissionCacheSignature(_systemActiveModelList);
+    const nextPermissionCacheSignature = getPermissionCacheSignature(
+      _systemModelList.filter((model) => model.isActive)
+    );
     if (
       !skipPermissionCacheInvalidation &&
       previousPermissionCacheSignature !== undefined &&

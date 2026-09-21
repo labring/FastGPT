@@ -1,14 +1,16 @@
 import { ChannelStautsMap } from '@/global/aiproxy/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
-import { Box, Button, HStack, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useState } from 'react';
 
 const ChannelTableColumns = () => (
   <colgroup>
@@ -37,10 +39,13 @@ const ModelLinkedChannels = ({
   onManage: () => void;
   onTest: (channelId: number) => void;
   testingChannelIds: ReadonlySet<number>;
-  onRemove: (channelId: number) => void;
+  onRemove: (channelId: number) => Promise<unknown> | void;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
+  const [showAllChannels, setShowAllChannels] = useState(false);
   const linkedChannels = channels.filter((channel) => selectedIds.has(channel.id));
+  const displayedChannels =
+    showAllChannels || linkedChannels.length <= 5 ? linkedChannels : linkedChannels.slice(0, 5);
 
   return (
     <Box>
@@ -111,7 +116,7 @@ const ModelLinkedChannels = ({
           <Table size="sm" sx={{ tableLayout: 'fixed' }}>
             <ChannelTableColumns />
             <Tbody color="myGray.600">
-              {linkedChannels.map((channel) => {
+              {displayedChannels.map((channel) => {
                 const status = ChannelStautsMap[channel.status as keyof typeof ChannelStautsMap];
 
                 return (
@@ -143,11 +148,17 @@ const ModelLinkedChannels = ({
                           isLoading={testingChannelIds.has(channel.id)}
                           onClick={() => onTest(channel.id)}
                         />
-                        <MyIconButton
-                          icon="delete"
-                          tip={t('config_model:remove_channel_association')}
-                          hoverColor="red.500"
-                          onClick={() => onRemove(channel.id)}
+                        <PopoverConfirm
+                          type={'delete'}
+                          content={t('config_model:confirm_remove_channel_association')}
+                          onConfirm={() => onRemove(channel.id)}
+                          Trigger={
+                            <MyIconButton
+                              icon="delete"
+                              tip={t('config_model:remove_channel_association')}
+                              hoverColor="red.500"
+                            />
+                          }
                         />
                       </HStack>
                     </Td>
@@ -165,6 +176,19 @@ const ModelLinkedChannels = ({
           </Table>
         )}
       />
+      {linkedChannels.length > 5 && (
+        <Flex justifyContent="center" mt={2}>
+          <Button
+            variant="transparentBase"
+            size="xs"
+            color="myGray.500"
+            _hover={{ color: 'primary.600' }}
+            onClick={() => setShowAllChannels((prev) => !prev)}
+          >
+            {showAllChannels ? t('common:Fold') : t('config_model:channel_max_five_tip')}
+          </Button>
+        </Flex>
+      )}
     </Box>
   );
 };

@@ -90,36 +90,45 @@ export const getSystemModelConfigUpdate = (
 const updateExistingSystemModels = async ({
   modelIds,
   update,
-  session
+  session,
+  scope = ModelScopeEnum.system,
+  tmbId
 }: {
   modelIds: string[];
   update: EditableSystemModelData | Pick<SystemModelDocumentDataType, 'isActive'>;
   session?: ClientSession;
+  scope?: ModelScopeEnum;
+  tmbId?: string;
 }) => {
-  const result = await MongoAIModel.updateMany(
-    { _id: { $in: modelIds }, scope: ModelScopeEnum.system },
-    { $set: update },
-    { session }
-  );
+  const query: Record<string, any> = { _id: { $in: modelIds }, scope };
+  if (scope === ModelScopeEnum.team && tmbId) {
+    query.tmbId = tmbId;
+  }
+  const result = await MongoAIModel.updateMany(query, { $set: update }, { session });
 
   if (result.matchedCount !== modelIds.length) {
     return Promise.reject(ModelErrEnum.unExist);
   }
 };
 
-/** 按稳定 modelId 更新单个系统模型的可编辑配置，并刷新运行时模型快照。 */
+/** 按稳定 modelId 更新单个系统或团队模型的可编辑配置，并刷新运行时模型快照。 */
 export const updateSystemModelConfig = async ({
   modelId,
-  modelData
+  modelData,
+  scope = ModelScopeEnum.system,
+  tmbId
 }: {
   modelId: string;
   modelData: EditableSystemModelData;
+  scope?: ModelScopeEnum;
+  tmbId?: string;
 }) => {
   await runSystemModelTransaction(async (session) => {
-    const existingModel = await MongoAIModel.findOne(
-      { _id: modelId, scope: ModelScopeEnum.system },
-      { type: 1, model: 1 }
-    )
+    const query: Record<string, any> = { _id: modelId, scope };
+    if (scope === ModelScopeEnum.team && tmbId) {
+      query.tmbId = tmbId;
+    }
+    const existingModel = await MongoAIModel.findOne(query, { type: 1, model: 1, tmbId: 1 })
       .session(session)
       .lean();
     if (!existingModel) throw ModelErrEnum.unExist;
@@ -129,18 +138,27 @@ export const updateSystemModelConfig = async ({
 
     const trimmedModel = typeof modelData.model === 'string' ? modelData.model.trim() : undefined;
     if (trimmedModel && trimmedModel !== existingModel.model) {
-      const duplicate = await MongoAIModel.exists({
-        scope: ModelScopeEnum.system,
+      const duplicateQuery: Record<string, any> = {
+        scope,
         model: trimmedModel,
         _id: { $ne: modelId }
-      }).session(session);
+      };
+      if (scope === ModelScopeEnum.team && existingModel.tmbId) {
+        duplicateQuery.tmbId = existingModel.tmbId;
+      }
+      const duplicate = await MongoAIModel.exists(duplicateQuery).session(session);
       if (duplicate) {
         throw new UserError(ModelErrEnum.alreadyExists);
       }
     }
 
     const result = await MongoAIModel.updateOne(
-      { _id: modelId, scope: ModelScopeEnum.system, type: existingModel.type },
+      {
+        _id: modelId,
+        scope,
+        type: existingModel.type,
+        ...(query.tmbId ? { tmbId: query.tmbId } : {})
+      },
       getSystemModelConfigUpdate(modelData),
       { session }
     );
@@ -149,16 +167,20 @@ export const updateSystemModelConfig = async ({
   await updatedReloadSystemModel();
 };
 
-/** 在单个 MongoDB 事务中批量更新系统模型启停状态，并刷新运行时模型快照。 */
+/** 在单个 MongoDB 事务中批量更新系统或团队模型启停状态，并刷新运行时模型快照。 */
 export const updateSystemModelStatus = async ({
   modelIds,
-  isActive
+  isActive,
+  scope = ModelScopeEnum.system,
+  tmbId
 }: {
   modelIds: string[];
   isActive: boolean;
+  scope?: ModelScopeEnum;
+  tmbId?: string;
 }) => {
   await runSystemModelTransaction((session) =>
-    updateExistingSystemModels({ modelIds, update: { isActive }, session })
+    updateExistingSystemModels({ modelIds, update: { isActive }, session, scope, tmbId })
   );
   await updatedReloadSystemModel();
 };

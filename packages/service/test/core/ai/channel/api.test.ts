@@ -16,7 +16,9 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/config', () => ({
 import { resetChannelCache } from '@fastgpt/service/core/ai/channel/cache';
 import {
   batchDeleteGroupChannels,
+  batchDeleteSystemChannels,
   batchUpdateGroupChannelStatus,
+  batchUpdateSystemChannelStatus,
   createGroupChannel,
   createSystemChannel,
   deleteGroupChannel,
@@ -28,8 +30,6 @@ import {
   listGlobalGroupChannels,
   listGroupChannels,
   listSystemChannels,
-  requestBatchDeleteSystemChannels,
-  requestBatchUpdateSystemChannelStatus,
   searchChannelLogs,
   testGroupChannel,
   testSystemChannel,
@@ -119,6 +119,45 @@ describe('aiproxy channel admin client', () => {
     ]);
   });
 
+  it('batch delete and status hit the respective aiproxy batch endpoints', async () => {
+    axiosMock.mockResolvedValue(okEnvelope(null));
+    const groupId = 'fastgpt:tmb:tmb-a';
+
+    await batchDeleteGroupChannels(groupId, [1, 2, 3]);
+    await batchUpdateGroupChannelStatus(groupId, [4, 5], 2);
+    await batchDeleteSystemChannels([10, 20]);
+    await batchUpdateSystemChannelStatus([30, 40], 1);
+
+    const calls = axiosMock.mock.calls.map((c) => ({
+      method: c[0].method,
+      url: c[0].url,
+      data: c[0].data
+    }));
+
+    expect(calls).toEqual([
+      {
+        method: 'post',
+        url: 'http://aiproxy.test/api/group/fastgpt%3Atmb%3Atmb-a/channels/batch_delete',
+        data: { ids: [1, 2, 3] }
+      },
+      {
+        method: 'post',
+        url: 'http://aiproxy.test/api/group/fastgpt%3Atmb%3Atmb-a/channels/batch_status',
+        data: { ids: [4, 5], status: 2 }
+      },
+      {
+        method: 'post',
+        url: 'http://aiproxy.test/api/channels/batch_delete',
+        data: { ids: [10, 20] }
+      },
+      {
+        method: 'post',
+        url: 'http://aiproxy.test/api/channels/batch_status',
+        data: { ids: [30, 40], status: 1 }
+      }
+    ]);
+  });
+
   it('passes transparent pagination and search parameters directly to aiproxy', async () => {
     axiosMock.mockResolvedValue(okEnvelope({ channels: [], total: 0 }));
 
@@ -156,45 +195,6 @@ describe('aiproxy channel admin client', () => {
     const res = await listAllSystemChannels();
     expect(res).toEqual([]);
     expect(axiosMock.mock.calls).toHaveLength(1);
-  });
-
-  it('system and group batch operations call the corresponding batch endpoints', async () => {
-    axiosMock.mockResolvedValue(okEnvelope(null));
-    const groupId = getSystemGroupId('tmb-a');
-
-    await requestBatchDeleteSystemChannels([101, 102]);
-    await requestBatchUpdateSystemChannelStatus([101, 102], 2);
-    await batchDeleteGroupChannels(groupId, [201, 202]);
-    await batchUpdateGroupChannelStatus(groupId, [201, 202], 1);
-
-    const calls = axiosMock.mock.calls.map((c) => ({
-      method: c[0].method,
-      url: c[0].url,
-      data: c[0].data
-    }));
-
-    expect(calls).toEqual([
-      {
-        method: 'post',
-        url: 'http://aiproxy.test/api/channels/batch_delete',
-        data: { ids: [101, 102] }
-      },
-      {
-        method: 'post',
-        url: 'http://aiproxy.test/api/channels/batch_status',
-        data: { ids: [101, 102], status: 2 }
-      },
-      {
-        method: 'post',
-        url: 'http://aiproxy.test/api/group/fastgpt%3Atmb%3Atmb-a/channels/batch_delete',
-        data: { ids: [201, 202] }
-      },
-      {
-        method: 'post',
-        url: 'http://aiproxy.test/api/group/fastgpt%3Atmb%3Atmb-a/channels/batch_status',
-        data: { ids: [201, 202], status: 1 }
-      }
-    ]);
   });
 
   it('queries system logs and preserves the system channel id', async () => {

@@ -1,7 +1,7 @@
 import OpenAI from '@fastgpt/global/core/ai';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { serviceEnv } from '../../env';
-import { getSystemGroupId } from './channel/api';
+import { getSystemGroupId } from './channel/utils';
 
 const aiProxyBaseUrl = serviceEnv.AIPROXY_API_ENDPOINT
   ? `${serviceEnv.AIPROXY_API_ENDPOINT}/v1`

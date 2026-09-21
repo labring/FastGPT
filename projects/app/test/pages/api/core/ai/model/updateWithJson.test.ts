@@ -260,7 +260,6 @@ describe('admin settings model updateWithJson api', () => {
     const { model: _model, ...configWithoutModel } = buildLlmConfig({ modelId: 'external-id' });
 
     const res = await callUpdateWithJson(JSON.stringify([configWithoutModel]));
-
     expect(res.error?.name).toBe('UserError');
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
