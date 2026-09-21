@@ -282,7 +282,7 @@ export const pushDatasetToParseQueue = async ({
   const ids = Array.isArray(collectionId) ? collectionId : [collectionId];
   if (ids.length === 0) return;
 
-  await MongoDatasetTraining.create(
+  await MongoDatasetTraining.insertMany(
     ids.map((id) => ({
       teamId,
       tmbId,

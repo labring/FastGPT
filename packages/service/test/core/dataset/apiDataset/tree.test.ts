@@ -94,6 +94,17 @@ describe('buildApiFileTree', () => {
     });
   });
 
+  it('T1-3b: 显式 undefined 的 seed.listId 枚举 provider 根，不回退到 SYSTEM_ROOT', async () => {
+    listFiles.mockResolvedValue([]);
+
+    await buildApiFileTree({
+      request,
+      seeds: [{ ...file(RootCollectionId, 'folder', true), listId: undefined }]
+    });
+
+    expect(listFiles).toHaveBeenCalledWith({ parentId: undefined });
+  });
+
   /**
    * 被测函数名: buildApiFileTree  等级: 3-High
    * 思路（边界场景）: hasChild 为 false 的 folder 只产出节点，不发起 listFiles（ET-003）
@@ -160,6 +171,49 @@ describe('buildApiFileTree', () => {
 
     expect(nodes).toHaveLength(1);
     expect(listFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it('T1-7b: 子目录先于祖先传入时，以祖先遍历出的层级覆盖根级占位', async () => {
+    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
+      if (parentId === 'a') return [file('b', 'folder', true)];
+      if (parentId === 'b') return [file('c', 'file')];
+      return [];
+    });
+
+    const nodes = await buildApiFileTree({
+      request,
+      seeds: [file('b', 'folder', true), file('a', 'folder', true)]
+    });
+
+    expect(
+      nodes.map(({ serverId, serverParentId, depth }) => [serverId, serverParentId, depth])
+    ).toEqual([
+      ['a', null, 0],
+      ['b', 'a', 1],
+      ['c', 'b', 2]
+    ]);
+    expect(listFiles.mock.calls.map((call) => call[0])).toEqual([
+      { parentId: 'b' },
+      { parentId: 'a' }
+    ]);
+  });
+
+  it('T1-7c: provider 返回祖先回环时不改写为循环层级', async () => {
+    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
+      if (parentId === 'a') return [file('b', 'folder', true)];
+      if (parentId === 'b') return [file('a', 'folder', true)];
+      return [];
+    });
+
+    const nodes = await buildApiFileTree({ request, seeds: [file('a', 'folder', true)] });
+
+    expect(
+      nodes.map(({ serverId, serverParentId, depth }) => [serverId, serverParentId, depth])
+    ).toEqual([
+      ['a', null, 0],
+      ['b', 'a', 1]
+    ]);
+    expect(listFiles).toHaveBeenCalledTimes(2);
   });
 
   /**
