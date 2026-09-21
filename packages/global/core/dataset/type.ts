@@ -169,6 +169,14 @@ export const sangforIndexConfigSchema = z.object({
 });
 export type IultmzhIndexConfigType = z.infer<typeof sangforIndexConfigSchema>;
 
+// 通用分块设置 + sangfor 索引增强。增强字段整体收敛为一个可选对象挂在 sangforIndexConfig 下，
+// 不 spread 到通用 ChunkSettingsSchema 上，避免私有字段平铺进开源契约。
+export const sangforChunkSettingsSchema = ChunkSettingsSchema.extend({
+  sangforIndexConfig: sangforIndexConfigSchema.optional().meta({
+    description: '索引增强配置(超级索引/小到大索引/自动索引细粒度及其提示词)'
+  })
+});
+
 /* ===== Dataset ===== */
 export const DatasetSchema = z
   .object({

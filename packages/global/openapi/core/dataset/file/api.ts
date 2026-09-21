@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetSourceReadTypeEnum } from '../../../../core/dataset/constants';
-import { ChunkSettingsSchema, sangforIndexConfigSchema } from '../../../../core/dataset/type';
+import { ChunkSettingsSchema } from '../../../../core/dataset/type';
 import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 import { IntSchema, NumSchema } from '../../../../common/zod';
 import { minChunkSize } from '../../../../core/dataset/training/utils';
@@ -31,9 +31,7 @@ const PreviewChunkSplitterSchema = z
     description: '自定义最高优先分隔符，使用 | 分隔多个非空项，最多 10 项、200 字符'
   });
 
-const PreviewChunkSettingsSchema = ChunkSettingsSchema.extend(
-  sangforIndexConfigSchema.shape
-).extend({
+const PreviewChunkSettingsSchema = ChunkSettingsSchema.extend({
   chunkTriggerMinSize: IntSchema.optional().meta({ description: '分块触发最小大小' }),
   paragraphChunkDeep: IntSchema.max(8).optional().meta({ description: '段落分块深度，最大 8' }),
   paragraphChunkMinSize: IntSchema.optional().meta({ description: '段落分块最小大小' }),

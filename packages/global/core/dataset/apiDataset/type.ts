@@ -8,11 +8,7 @@ export const APIFileItemSchema = z.object({
   type: z.enum(['file', 'folder']),
   updateTime: z.coerce.date(),
   createTime: z.coerce.date(),
-  hasChild: z.boolean().optional(),
-  // Sangfor Chunk Service 会挂逐文件导入覆盖（分块/增强/提示词）。这里保持 API 数据集项的宽松形状，
-  // 具体契约在创建集合的请求 schema(createApi.ts) 里收窄为 ChunkSettingsSchema + sangforIndexConfigSchema，
-  // 归属字段(datasetId/parentId/tags/metadata)在该层被 strip，文件数据不能改集合归属。
-  chunkConfig: z.record(z.string(), z.unknown()).optional()
+  hasChild: z.boolean().optional()
 });
 export type APIFileItemType = z.infer<typeof APIFileItemSchema>;
 

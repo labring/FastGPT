@@ -83,6 +83,16 @@ export const createApiDatasetCollection = async ({
   const isDirectorySelected = apiFiles.length === 1 && apiFiles[0].id === RootCollectionId;
   const rootDirectoryId = isDirectorySelected ? RootCollectionId : undefined;
 
+  // 只有请求体里的顶层文件可能带 chunkConfig；递归拉取到的子文件不带，统一按 fileId 查表取用，
+  // 递归函数本身保持通用文件类型不变。
+  const chunkConfigByFileId = new Map<
+    string,
+    CreateApiCollectionV2BodyType['apiFiles'][number]['chunkConfig']
+  >();
+  for (const file of apiFiles) {
+    if (file.chunkConfig) chunkConfigByFileId.set(file.id, file.chunkConfig);
+  }
+
   // Get all apiFileId with top level parent ID
   const getFilesRecursively = async (
     files: APIFileItemType[],
@@ -146,9 +156,10 @@ export const createApiDatasetCollection = async ({
           createCollectionParams: {
             ...body,
             // chunkConfig 只用于按文件覆盖分块/增强/提示词。datasetId、parentId、tags 等归属字段
-            // 由本接口决定；白名单过滤放在请求 schema(APIFileItemSchema 扩展)完成，非法值在该层
-            // 已被回退为「不覆盖」，这里不再二次 parse，避免单个文件的数据让整批导入失败。
-            ...(file.chunkConfig ?? {}),
+            // 由本接口决定；白名单过滤放在请求 schema(CreateApiCollectionV2BodySchema 的 apiFiles
+            // 扩展)完成，非法值在该层已被回退为「不覆盖」，这里不再二次 parse，避免单个文件的数据
+            // 让整批导入失败。
+            ...(chunkConfigByFileId.get(file.id) ?? {}),
             teamId,
             tmbId,
             type: DatasetCollectionTypeEnum.apiFile,

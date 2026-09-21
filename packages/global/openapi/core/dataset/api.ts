@@ -9,7 +9,7 @@ import {
   DatasetSchema,
   DatasetListItemSchema,
   sangforFileParseConfigSchema,
-  sangforIndexConfigSchema,
+  sangforChunkSettingsSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
 import { AppListSortEnum } from '../../../core/app/constants';
@@ -123,7 +123,7 @@ export const CreateDatasetWithFilesBodySchema = z.object({
       }),
       // 不传时沿用本接口原有的系统默认分块设置，调用方传入才覆盖。
       // sangfor 导入链路还会一并透传索引增强配置
-      chunkSettings: ChunkSettingsSchema.extend(sangforIndexConfigSchema.shape).optional().meta({
+      chunkSettings: sangforChunkSettingsSchema.optional().meta({
         description: '上传文件所建集合的分块/增强/提示词配置。不传则使用系统默认分块设置'
       }),
       // 只做加法：不传时沿用本接口原有的 customPdfParse=false。
