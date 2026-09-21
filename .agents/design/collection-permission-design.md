@@ -633,6 +633,7 @@ NFR-7（P95 ≤ 200ms）：候选 `$in` 限定 + 短路 + `undefined` 不设过�
 | 根 collection 更新协作者冲突 | 传入 dataset 父级 `parentCollaborators`，通用冲突检测触发 → 翻转独立态 |
 | 恢复继承时父级无权限 | 仅保留自身 clbs（含 owner） |
 | 删除 Collection / Folder / Dataset | 同事务批量清理 `resource_permissions`（`$in`），失败回滚，无孤儿记录 |
+| 重训 / 同步重建 Collection | 重建会生成新 `_id`，而创建流程只写默认快照（继承态 = 父级 + owner，独立态 = 仅 owner）→ 必须在删除原集合前读取物化快照，并在新集合创建后同事务写回（`carryOverCollectionPermission`），否则独立态集合失去全部自定义协作者、继承态集合失去相对父级独有的授权；空快照（关闭态存量数据）不写回，保留创建流程的默认快照 |
 | 只拥有文件权限无知识库权限 | 不展示文件，不展示知识库（dataset 门槛） |
 | 并发写同资源 | Mongo 事务串行化 + 后写为准（NFR-6），不做额外并发控制 |
 | 未启用时配置 collection 协作者 | 返回专用错误码，前端提示「是否开启文件级权限」；无 dataset `manage` 时只提示联系知识库管理员（§6.9） |

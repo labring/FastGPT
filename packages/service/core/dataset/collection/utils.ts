@@ -23,6 +23,8 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createCollectionAndInsertData, delCollection } from './controller';
 import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
+import { getCollectionCollaborators } from '../../../support/permission/collection/collaborator';
+import { carryOverCollectionPermission } from '../../../support/permission/collection/controller';
 
 /**
  * get all collection by top collectionId
@@ -370,6 +372,13 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   const hashRawText = hashStr(rawText);
   if (collection.hashRawText && hashRawText !== collection.hashRawText) {
     await mongoSessionRun(async (session) => {
+      // 同步同样以新 _id 重建 collection：删除前留存权限快照，创建后写回，避免协作者配置丢失。
+      const collaborators = await getCollectionCollaborators({
+        teamId: collection.teamId,
+        collectionId: String(collection._id),
+        session
+      });
+
       // Delete old collection
       await delCollection({
         collections: [collection],
@@ -379,7 +388,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       });
 
       // Create new collection
-      await createCollectionAndInsertData({
+      const { collectionId } = await createCollectionAndInsertData({
         session,
         dataset,
         rawText: rawText,
@@ -392,6 +401,13 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
             tags: collection.tags
           })
         }
+      });
+
+      await carryOverCollectionPermission({
+        teamId: collection.teamId,
+        collectionId,
+        collaborators,
+        session
       });
     });
 

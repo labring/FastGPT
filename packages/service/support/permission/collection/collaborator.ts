@@ -77,17 +77,21 @@ export async function updateCollectionCollaboratorsWithAuth({
 /**
  * 读取 Collection 的完整有效协作者快照（物化直读），供协作设置弹窗展示。
  * 鉴权由调用方（目标 collection `read` 及以上）完成。
+ * 传入 `session` 时在同一事务内读取，供重训 / 同步在删除原集合前留存快照。
  */
 export const getCollectionCollaborators = async ({
   teamId,
-  collectionId
+  collectionId,
+  session
 }: {
   teamId: string;
   collectionId: string;
+  session?: ClientSession;
 }): Promise<CollaboratorItemType[]> => {
   return getResourceOwnedClbs({
     resourceType: PerResourceTypeEnum.collection,
     teamId,
-    resourceId: collectionId
+    resourceId: collectionId,
+    session
   });
 };

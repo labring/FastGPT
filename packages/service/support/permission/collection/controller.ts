@@ -96,6 +96,42 @@ export async function createCollectionPermission({
   }
 }
 
+/**
+ * 重训 / 同步等「删除原集合并以新 _id 重建」场景的权限迁移。
+ *
+ * 重建会生成新的 collection `_id`，而创建流程只会写入默认快照（继承态 = 父级 + owner，
+ * 独立态 = 仅 owner），因此不迁移就会丢掉原集合的权限配置：独立态集合失去全部自定义协作者，
+ * 继承态集合失去相对父级独有的授权。
+ *
+ * 调用方必须在删除原集合前读取快照，并在新集合创建后、同一事务内调用本函数写回：
+ * 快照相对新集合依然成立——重建保持了 parentId 与 inheritPermission，父级快照未变。
+ *
+ * 空快照（关闭态存量数据没有 ACL 行）不写入，保留创建流程写入的默认快照。
+ */
+export async function carryOverCollectionPermission({
+  teamId,
+  collectionId,
+  collaborators,
+  session
+}: {
+  teamId: string;
+  /** 重建后的新 collection id。 */
+  collectionId: string;
+  /** 删除原集合前读取的物化快照。 */
+  collaborators: CollaboratorItemType[];
+  session: ClientSession;
+}): Promise<void> {
+  if (collaborators.length === 0) return;
+
+  await resourcePermissionRepo.replaceResource({
+    teamId,
+    resourceType: PerResourceTypeEnum.collection,
+    resourceId: String(collectionId),
+    collaborators,
+    session
+  });
+}
+
 /** 移动 Collection 所需的最小字段。 */
 export type CollectionMoveResourceType = Pick<
   DatasetCollectionSchemaType,
