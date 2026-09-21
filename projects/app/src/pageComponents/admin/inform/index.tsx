@@ -19,6 +19,7 @@ import BoxCard from '@/components/admin/BoxContainer/Card';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import { useMount } from 'ahooks';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const InformSetting = () => {
   // 系统公告
@@ -175,170 +176,204 @@ const InformSetting = () => {
   });
 
   return (
-    <BoxPageRoot>
-      <BoxCard>
-        <HStack>
-          <Box fontSize={'2xl'}>系统公告配置</Box>
-          <Button
-            variant={'whitePrimary'}
-            size={'sm'}
-            ml={2}
-            isLoading={isUpdatingSystemModal}
-            onClick={handleSubmitUpdateSystemMsgModal((data) =>
-              onOpenConfirmSystemModal({ onConfirm: () => onUpdateSystemModal(data) })()
-            )}
-          >
-            保存
-          </Button>
-        </HStack>
-        <Box py={2}>
-          设置该内容，会在用户登录系统后，通过弹窗形式进行强提示。用户关闭后，下次不再提示。只能设置1个该类型通知。支持
-          markdown 格式。
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'} p={0}>
+      <Flex
+        h={'64px'}
+        flexShrink={0}
+        px={6}
+        alignItems={'center'}
+        borderBottom={'1px solid'}
+        borderColor={'myGray.200'}
+      >
+        <Box as={'h1'} {...accountTitleTextStyles}>
+          通知管理
         </Box>
-        <Textarea rows={10} {...registerSystemMsgModal('content', {})} />
-      </BoxCard>
-      <BoxCard mt={4}>
-        <HStack>
-          <Box fontSize={'2xl'}>发送系统通知</Box>
-          <Button
-            variant={'whitePrimary'}
-            size={'sm'}
-            ml={2}
-            isLoading={isUpdatingSendSystemMsg}
-            onClick={handleSubmitSendSystemInform((data) =>
-              onOpenConfirmSendSystemMsg({ onConfirm: () => onUpdateSendSystemMsg(data) })()
-            )}
-          >
-            确认发送
-          </Button>
-        </HStack>
-        <Box py={2}>为所有用户发送一个通知，不同等级通知，会有不同提示。</Box>
-        <Flex alignItems={'center'}>
-          <Box flex={'0 0 100px'} mr={2}>
-            消息等级
+      </Flex>
+      <Box flex={'1 0 0'} minH={0} overflow={'auto'} px={[4, 6]} py={[4, 6]} bg={'myGray.25'}>
+        <BoxCard border={'1px solid'} borderColor={'myGray.200'} boxShadow={'1'} bg={'white'}>
+          <HStack>
+            <Box fontSize={'2xl'}>系统公告配置</Box>
+            <Button
+              variant={'whitePrimary'}
+              size={'sm'}
+              ml={2}
+              isLoading={isUpdatingSystemModal}
+              onClick={handleSubmitUpdateSystemMsgModal((data) =>
+                onOpenConfirmSystemModal({ onConfirm: () => onUpdateSystemModal(data) })()
+              )}
+            >
+              保存
+            </Button>
+          </HStack>
+          <Box py={2}>
+            设置该内容，会在用户登录系统后，通过弹窗形式进行强提示。用户关闭后，下次不再提示。只能设置1个该类型通知。支持
+            markdown 格式。
           </Box>
-          <MySelect
-            list={[
-              { label: '一般(仅发站内信)', value: InformLevelEnum.common },
-              { label: '重要（站内信+登录通知）', value: InformLevelEnum.important },
-              { label: '紧急（站内信+登录通知+邮件/短信提醒）', value: InformLevelEnum.emergency }
-            ]}
-            value={informLevel}
-            onChange={(value) => setValue('level', value)}
-          />
-        </Flex>
-        <Flex alignItems={'center'} mt={3}>
-          <Box flex={'0 0 100px'} mr={2}>
-            通知标题
-          </Box>
-          <Input
-            placeholder="通知标题"
-            {...registerSystemInform('title', {
+          <Textarea rows={10} {...registerSystemMsgModal('content', {})} />
+        </BoxCard>
+        <BoxCard
+          mt={4}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          boxShadow={'1'}
+          bg={'white'}
+        >
+          <HStack>
+            <Box fontSize={'2xl'}>发送系统通知</Box>
+            <Button
+              variant={'whitePrimary'}
+              size={'sm'}
+              ml={2}
+              isLoading={isUpdatingSendSystemMsg}
+              onClick={handleSubmitSendSystemInform((data) =>
+                onOpenConfirmSendSystemMsg({ onConfirm: () => onUpdateSendSystemMsg(data) })()
+              )}
+            >
+              确认发送
+            </Button>
+          </HStack>
+          <Box py={2}>为所有用户发送一个通知，不同等级通知，会有不同提示。</Box>
+          <Flex alignItems={'center'}>
+            <Box flex={'0 0 100px'} mr={2}>
+              消息等级
+            </Box>
+            <MySelect
+              list={[
+                { label: '一般(仅发站内信)', value: InformLevelEnum.common },
+                { label: '重要（站内信+登录通知）', value: InformLevelEnum.important },
+                { label: '紧急（站内信+登录通知+邮件/短信提醒）', value: InformLevelEnum.emergency }
+              ]}
+              value={informLevel}
+              onChange={(value) => setValue('level', value)}
+            />
+          </Flex>
+          <Flex alignItems={'center'} mt={3}>
+            <Box flex={'0 0 100px'} mr={2}>
+              通知标题
+            </Box>
+            <Input
+              placeholder="通知标题"
+              {...registerSystemInform('title', {
+                required: true
+              })}
+            ></Input>
+          </Flex>
+          <Textarea
+            mt={2}
+            rows={10}
+            placeholder="通知内容"
+            {...registerSystemInform('content', {
               required: true
             })}
-          ></Input>
-        </Flex>
-        <Textarea
-          mt={2}
-          rows={10}
-          placeholder="通知内容"
-          {...registerSystemInform('content', {
-            required: true
-          })}
-        />
-      </BoxCard>
-      <BoxCard mt={4}>
-        <HStack>
-          <Box fontSize={'2xl'}>配置底部广告(积分区)</Box>
-          <Button
-            variant={'primary'}
-            size={'sm'}
-            ml={2}
-            isLoading={isUpdatingOperationalAd}
-            onClick={handleSubmitOperationalAd((data) =>
-              onOpenConfirmOperationalAd({ onConfirm: () => onUpdateOperationalAd(data) })()
-            )}
-          >
-            保存
-          </Button>
-          <Button
-            variant={'dangerFill'}
-            size={'sm'}
-            isLoading={isClearingOperationalAd}
-            onClick={() =>
-              onOpenConfirmClearOperationalAd({ onConfirm: () => onClearOperationalAd() })()
-            }
-          >
-            清除
-          </Button>
-        </HStack>
-        <Box py={2}>配置运营活动广告，会常驻在工作台左下角用量卡片处</Box>
-
-        <Box fontSize={'18px'} color={'myGray.700'}>
-          运营图片
-        </Box>
-        <Box mt={4} mb={4}>
-          <ImageInput control={controlOperationalAd} name="operationalAdImage" />
-        </Box>
-        <Box fontSize={'18px'} color={'myGray.700'} mb={2}>
-          跳转链接
-        </Box>
-        <Input
-          {...registerOperationalAd('operationalAdLink')}
-          placeholder="请输入完整的 URL，例如: https://example.com"
-        />
-      </BoxCard>
-      <BoxCard mt={4}>
-        <HStack>
-          <Box fontSize={'2xl'}>配置全屏广告</Box>
-          <Button
-            variant={'primary'}
-            size={'sm'}
-            ml={2}
-            isLoading={isUpdatingActivityAd}
-            onClick={handleSubmitActivityAd((data) =>
-              onOpenConfirmActivityAd({ onConfirm: () => onUpdateActivityAd(data) })()
-            )}
-          >
-            保存
-          </Button>
-          <Button
-            variant={'dangerFill'}
-            size={'sm'}
-            isLoading={isClearingActivityAd}
-            onClick={() => onOpenConfirmClearActivityAd({ onConfirm: () => onClearActivityAd() })()}
-          >
-            清除
-          </Button>
-        </HStack>
-        <Box py={2}>配置活动广告，会在用户登录进入时展示开屏弹窗</Box>
-
-        <Box fontSize={'18px'} color={'myGray.700'}>
-          活动图片
-        </Box>
-        <Box mt={4} mb={4}>
-          <ImageInput
-            control={controlActivityAd}
-            name="activityAdImage"
-            uploadMaxW={1920}
-            uploadMaxH={1920}
-            uploadMaxSize={1024 * 1024 * 5}
           />
-        </Box>
-        <Box fontSize={'18px'} color={'myGray.700'} mb={2}>
-          跳转链接
-        </Box>
-        <Input
-          {...registerActivityAd('activityAdLink')}
-          placeholder="请输入完整的 URL，例如: https://example.com"
-        />
-      </BoxCard>
-      <ConfirmSendSystemMsg />
-      <ConfirmSettingSystemModal />
-      <ConfirmOperationalAd />
-      <ConfirmClearOperationalAd />
-      <ConfirmActivityAd />
-      <ConfirmClearActivityAd />
+        </BoxCard>
+        <BoxCard
+          mt={4}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          boxShadow={'1'}
+          bg={'white'}
+        >
+          <HStack>
+            <Box fontSize={'2xl'}>配置底部广告(积分区)</Box>
+            <Button
+              variant={'primary'}
+              size={'sm'}
+              ml={2}
+              isLoading={isUpdatingOperationalAd}
+              onClick={handleSubmitOperationalAd((data) =>
+                onOpenConfirmOperationalAd({ onConfirm: () => onUpdateOperationalAd(data) })()
+              )}
+            >
+              保存
+            </Button>
+            <Button
+              variant={'dangerFill'}
+              size={'sm'}
+              isLoading={isClearingOperationalAd}
+              onClick={() =>
+                onOpenConfirmClearOperationalAd({ onConfirm: () => onClearOperationalAd() })()
+              }
+            >
+              清除
+            </Button>
+          </HStack>
+          <Box py={2}>配置运营活动广告，会常驻在工作台左下角用量卡片处</Box>
+
+          <Box fontSize={'18px'} color={'myGray.700'}>
+            运营图片
+          </Box>
+          <Box mt={4} mb={4}>
+            <ImageInput control={controlOperationalAd} name="operationalAdImage" />
+          </Box>
+          <Box fontSize={'18px'} color={'myGray.700'} mb={2}>
+            跳转链接
+          </Box>
+          <Input
+            {...registerOperationalAd('operationalAdLink')}
+            placeholder="请输入完整的 URL，例如: https://example.com"
+          />
+        </BoxCard>
+        <BoxCard
+          mt={4}
+          border={'1px solid'}
+          borderColor={'myGray.200'}
+          boxShadow={'1'}
+          bg={'white'}
+        >
+          <HStack>
+            <Box fontSize={'2xl'}>配置全屏广告</Box>
+            <Button
+              variant={'primary'}
+              size={'sm'}
+              ml={2}
+              isLoading={isUpdatingActivityAd}
+              onClick={handleSubmitActivityAd((data) =>
+                onOpenConfirmActivityAd({ onConfirm: () => onUpdateActivityAd(data) })()
+              )}
+            >
+              保存
+            </Button>
+            <Button
+              variant={'dangerFill'}
+              size={'sm'}
+              isLoading={isClearingActivityAd}
+              onClick={() =>
+                onOpenConfirmClearActivityAd({ onConfirm: () => onClearActivityAd() })()
+              }
+            >
+              清除
+            </Button>
+          </HStack>
+          <Box py={2}>配置活动广告，会在用户登录进入时展示开屏弹窗</Box>
+
+          <Box fontSize={'18px'} color={'myGray.700'}>
+            活动图片
+          </Box>
+          <Box mt={4} mb={4}>
+            <ImageInput
+              control={controlActivityAd}
+              name="activityAdImage"
+              uploadMaxW={1920}
+              uploadMaxH={1920}
+              uploadMaxSize={1024 * 1024 * 5}
+            />
+          </Box>
+          <Box fontSize={'18px'} color={'myGray.700'} mb={2}>
+            跳转链接
+          </Box>
+          <Input
+            {...registerActivityAd('activityAdLink')}
+            placeholder="请输入完整的 URL，例如: https://example.com"
+          />
+        </BoxCard>
+        <ConfirmSendSystemMsg />
+        <ConfirmSettingSystemModal />
+        <ConfirmOperationalAd />
+        <ConfirmClearOperationalAd />
+        <ConfirmActivityAd />
+        <ConfirmClearActivityAd />
+      </Box>
     </BoxPageRoot>
   );
 };

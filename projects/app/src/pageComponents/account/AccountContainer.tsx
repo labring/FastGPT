@@ -37,6 +37,7 @@ const AccountContainer = ({
   const showThirdPartyTab =
     feConfigs?.show_openai_account === true ||
     feConfigs?.externalProviderWorkflowVariables?.some((item) => item.isOpen) === true;
+  const showModelProviderTab = feConfigs.isPlus;
 
   const currentTab = useMemo(() => {
     return router.pathname.split('/').pop() as TabEnum;
@@ -89,7 +90,7 @@ const AccountContainer = ({
           }
         ]
       : []),
-    ...(feConfigs.isPlus
+    ...(showModelProviderTab
       ? [
           {
             icon: 'common/model',

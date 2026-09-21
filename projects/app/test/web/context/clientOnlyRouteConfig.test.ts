@@ -7,13 +7,8 @@ describe('clientOnlyRouteConfig', () => {
     expect(isClientOnlyRoute('/account/future-page')).toBe(true);
   });
 
-  it('配置页面统一使用 client-only 模式', () => {
-    expect(isClientOnlyRoute('/config/model')).toBe(true);
-    expect(isClientOnlyRoute('/config/new-page')).toBe(true);
-  });
-
   it('独立页面也可显式启用 client-only 模式', () => {
-    expect(isClientOnlyRoute('/config/plugin/marketplace')).toBe(true);
+    expect(isClientOnlyRoute('/config/plugin/marketplace')).toBe(false);
     expect(isClientOnlyRoute('/dashboard/tool/marketplace')).toBe(true);
     expect(isClientOnlyRoute('/price')).toBe(true);
   });

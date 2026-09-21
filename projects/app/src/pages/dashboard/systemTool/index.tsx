@@ -56,7 +56,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
 
-const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPluginModal'));
+const ImportPluginModal = dynamic(() => import('@/pageComponents/admin/config/ImportPluginModal'));
 
 type PluginDebugSessionState = Pick<
   GetPluginDebugChannelResponseType,
@@ -425,7 +425,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     {userInfo?.username === 'root' && (
                       <Button
                         onClick={() => {
-                          router.push('/admin/config/plugin');
+                          router.push('/admin/plugin/tool');
                         }}
                         w={'160px'}
                       >

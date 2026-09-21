@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type { GridProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -20,6 +20,7 @@ export type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
   value: ValueType;
   size?: 'sm' | 'md' | 'lg';
   onChange: (value: ValueType) => void;
+  scrollPositionKey?: string;
 };
 
 const SideTabsGroup = <ValueType = string,>({
@@ -27,6 +28,7 @@ const SideTabsGroup = <ValueType = string,>({
   size = 'md',
   value,
   onChange,
+  scrollPositionKey = 'navigation',
   ...props
 }: Props<ValueType>) => {
   const sizeMap = useMemo(() => {
@@ -57,24 +59,74 @@ const SideTabsGroup = <ValueType = string,>({
         .map((item) => item.value),
     [list, value]
   );
-  const [expandValues, setExpandValues] = useState<ValueType[]>(defaultExpand);
+  const storageKey = 'fastgpt-admin-navigation-expanded-groups';
+  const [expandValues, setExpandValues] = useState<ValueType[]>(() => {
+    if (typeof window === 'undefined') return defaultExpand;
 
-  // 路由切换后保证激活父级展开（setState 同步于外部 value 变化，是必要的派生展开逻辑）
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      const values = stored ? (JSON.parse(stored) as ValueType[]) : [];
+      return Array.from(new Set([...values, ...defaultExpand]));
+    } catch {
+      return defaultExpand;
+    }
+  });
+
+  // 路由切换后保证激活父级展开；状态写入 localStorage，以跨页面重新挂载保留用户选择。
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 父级展开状态需跟随路由 value 同步更新
-    setExpandValues((prev) => Array.from(new Set([...prev, ...defaultExpand])));
+    setExpandValues((prev) => {
+      const next = Array.from(new Set([...prev, ...defaultExpand]));
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        // 存储不可用时仍保留内存中的展开状态。
+      }
+      return next;
+    });
   }, [defaultExpand]);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollStorageKey = `fastgpt-navigation-scroll:${scrollPositionKey}`;
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+
+    try {
+      const stored = window.localStorage.getItem(scrollStorageKey);
+      if (stored) element.scrollTop = Number(stored);
+    } catch {
+      // 存储不可用时使用默认滚动位置。
+    }
+  }, [scrollStorageKey]);
+
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    try {
+      window.localStorage.setItem(scrollStorageKey, String(event.currentTarget.scrollTop));
+    } catch {
+      // 存储不可用时不影响滚动。
+    }
+  };
+
   const toggleExpand = (itemValue: ValueType) => {
-    setExpandValues((prev) =>
-      prev.includes(itemValue) ? prev.filter((i) => i !== itemValue) : [...prev, itemValue]
-    );
+    setExpandValues((prev) => {
+      const next = prev.includes(itemValue)
+        ? prev.filter((i) => i !== itemValue)
+        : [...prev, itemValue];
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch {
+        // 存储不可用时仍保留内存中的展开状态。
+      }
+      return next;
+    });
   };
 
   const isActive = (itemValue: ValueType) => value === itemValue;
 
   return (
-    <Box fontSize={sizeMap.fontSize} {...props}>
+    <Box ref={scrollRef} onScroll={handleScroll} fontSize={sizeMap.fontSize} {...props}>
       {list.map((item) => {
         const hasChildren = !!item.children && item.children.length > 0;
         const isExpanded = expandValues.includes(item.value);

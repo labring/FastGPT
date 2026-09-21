@@ -1,18 +1,15 @@
 'use client';
 import React, { useMemo } from 'react';
-import { useRouter } from 'next/router';
 import { Box, useTheme } from '@chakra-ui/react';
 import { GET } from '@/web/admin/common/request';
-import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { GetUserFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import DashboardHeader from '@/pageComponents/admin/dashboard/Header';
 import {
   formatList2ChartsData,
   getStartTime,
-  getDashboardFilters
+  useDashboardFilters
 } from '@/pageComponents/admin/dashboard/utils';
 
 const ChartsBoxStyles = {
@@ -26,10 +23,9 @@ const ChartsBoxStyles = {
 };
 
 export default function TrafficPage(): JSX.Element {
-  const router = useRouter();
   const theme = useTheme();
 
-  const { dateRange, granularity } = getDashboardFilters(router.query);
+  const { dateRange, granularity } = useDashboardFilters();
 
   const startTime = useMemo(() => getStartTime(dateRange), [dateRange]);
 
@@ -61,53 +57,50 @@ export default function TrafficPage(): JSX.Element {
   );
 
   return (
-    <BoxPageRoot>
-      <DashboardHeader />
-      <MyBox minH={'400px'} isLoading={loading}>
-        {trafficData && (
-          <>
-            <Box {...ChartsBoxStyles}>
-              <AreaChartComponent
-                data={trafficData.registeredUserCount}
-                startDateValue={trafficData.startUserCount}
-                title={'总用户数'}
-                enableIncremental={false}
-                defaultDisplayMode="cumulative"
-                lines={[
-                  {
-                    dataKey: 'count',
-                    name: '总用户数',
-                    color: theme.colors.blue['500']
-                  }
-                ]}
-                tooltipItems={[
-                  { label: '总用户数', dataKey: 'count', color: theme.colors.blue['500'] }
-                ]}
-              />
-            </Box>
-            <Box {...ChartsBoxStyles} mt={4}>
-              <AreaChartComponent
-                data={trafficData.registeredUserCount}
-                title={'注册用户数'}
-                lines={[
-                  {
-                    dataKey: 'count',
-                    name: '注册用户数',
-                    color: theme.colors.blue['500']
-                  }
-                ]}
-                tooltipItems={[
-                  {
-                    label: '注册用户数',
-                    dataKey: 'count',
-                    color: theme.colors.adora['500']
-                  }
-                ]}
-              />
-            </Box>
-          </>
-        )}
-      </MyBox>
-    </BoxPageRoot>
+    <MyBox minH={'400px'} isLoading={loading}>
+      {trafficData && (
+        <>
+          <Box {...ChartsBoxStyles}>
+            <AreaChartComponent
+              data={trafficData.registeredUserCount}
+              startDateValue={trafficData.startUserCount}
+              title={'总用户数'}
+              enableIncremental={false}
+              defaultDisplayMode="cumulative"
+              lines={[
+                {
+                  dataKey: 'count',
+                  name: '总用户数',
+                  color: theme.colors.blue['500']
+                }
+              ]}
+              tooltipItems={[
+                { label: '总用户数', dataKey: 'count', color: theme.colors.blue['500'] }
+              ]}
+            />
+          </Box>
+          <Box {...ChartsBoxStyles} mt={4}>
+            <AreaChartComponent
+              data={trafficData.registeredUserCount}
+              title={'注册用户数'}
+              lines={[
+                {
+                  dataKey: 'count',
+                  name: '注册用户数',
+                  color: theme.colors.blue['500']
+                }
+              ]}
+              tooltipItems={[
+                {
+                  label: '注册用户数',
+                  dataKey: 'count',
+                  color: theme.colors.adora['500']
+                }
+              ]}
+            />
+          </Box>
+        </>
+      )}
+    </MyBox>
   );
 }

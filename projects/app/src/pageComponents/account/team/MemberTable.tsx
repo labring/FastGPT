@@ -38,14 +38,14 @@ import {
 import { format } from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, type ComponentProps } from 'react';
 import { downloadFetch, getIsMemberSyncMode } from '@/web/common/system/utils';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -61,30 +61,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 
-  // Member status selector
+  const [status, setStatus] = useState<string | undefined>(TeamMemberStatusEnum.active);
+
   const statusOptions = [
-    {
-      label: t('common:All'),
-      value: undefined
-    },
-    {
-      label: t('common:user.team.member.active'),
-      value: 'active'
-    },
-    {
-      label: t('account_team:leave'),
-      value: 'leave'
-    },
+    { label: t('common:All'), value: undefined },
+    { label: t('common:user.team.member.active'), value: TeamMemberStatusEnum.active },
+    { label: t('account_team:leave'), value: TeamMemberStatusEnum.leave },
     ...(isSyncMode
-      ? [
-          {
-            label: t('account_team:forbidden'),
-            value: 'forbidden'
-          }
-        ]
+      ? [{ label: t('account_team:forbidden'), value: TeamMemberStatusEnum.forbidden }]
       : [])
   ];
-  const [status, setStatus] = useState<string>();
 
   const isWecomTeam = useMemo(() => {
     return !!userInfo?.team?.isWecomTeam;
@@ -122,6 +108,15 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const onRefreshMembers = useCallback(() => {
     refetchMemberList();
   }, [refetchMemberList]);
+
+  // 外层统一显示成员请求 loading，避免滚动容器重复渲染 loading 覆盖层。
+  const MemberScrollContainer = useMemo(
+    () =>
+      function MemberScrollContainer(props: ComponentProps<typeof MemberScrollData>) {
+        return <MemberScrollData {...props} showLoadingOverlay={false} />;
+      },
+    [MemberScrollData]
+  );
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
 
@@ -190,23 +185,28 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
           alignItems={['stretch', 'center']}
           gap={2}
         >
-          <HStack w={['100%', 'auto']} gap={2}>
-            <Box flexShrink={0}>
-              <MySelect
-                bg={'white'}
-                list={statusOptions}
-                value={status}
-                onChange={(v) => setStatus(v)}
-              />
-            </Box>
-            <Box flex={['1 0 0', 'initial']} w={['auto', '200px']}>
+          <Flex
+            w={['100%', 'auto']}
+            flexDirection={['column', 'row']}
+            alignItems={'stretch'}
+            gap={2}
+          >
+            <Box w={['100%', '200px']}>
               <SearchInput
                 bg={'white'}
                 placeholder={t('account_team:search_member')}
                 onChange={(e) => setSearchKey(e.target.value)}
               />
             </Box>
-          </HStack>
+            <Box w={['100%', 'auto']}>
+              <SingleSelectFilter
+                title={t('common:Status')}
+                value={status}
+                options={statusOptions}
+                onChange={setStatus}
+              />
+            </Box>
+          </Flex>
           {userInfo?.team.permission.hasManagePer && isSyncMode && (
             <Button
               w={['100%', 'auto']}
@@ -221,28 +221,37 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:sync_immediately')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam && (
-            <Button
-              w={['100%', 'auto']}
-              variant={'primary'}
-              size="md"
-              borderRadius={'md'}
-              leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
-              onClick={onOpenInvite}
-            >
-              {t('account_team:user_team_invite_member')}
-            </Button>
-          )}
-          {userInfo?.team.permission.isOwner && !isSyncMode && feConfigs?.teamMode === 'multi' && (
-            <Button
-              w={['100%', 'auto']}
-              variant={'whitePrimary'}
-              size="md"
-              borderRadius={'md'}
-              onClick={onOpenTransferModal}
-            >
-              {t('account_team:transfer_team_ownership')}
-            </Button>
+          {((userInfo?.team.permission.isOwner && !isSyncMode && feConfigs?.teamMode === 'multi') ||
+            (userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam)) && (
+            <HStack w={['100%', 'auto']} gap={2}>
+              {userInfo?.team.permission.isOwner &&
+                !isSyncMode &&
+                feConfigs?.teamMode === 'multi' && (
+                  <Button
+                    w={['100%', 'auto']}
+                    flex={['1 1 0', 'initial']}
+                    variant={'whitePrimary'}
+                    size="md"
+                    borderRadius={'md'}
+                    onClick={onOpenTransferModal}
+                  >
+                    {t('account_team:transfer_team_ownership')}
+                  </Button>
+                )}
+              {userInfo?.team.permission.hasManagePer && !isSyncMode && !isWecomTeam && (
+                <Button
+                  w={['100%', 'auto']}
+                  flex={['1 1 0', 'initial']}
+                  variant={'primary'}
+                  size="md"
+                  borderRadius={'md'}
+                  leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
+                  onClick={onOpenInvite}
+                >
+                  {t('account_team:user_team_invite_member')}
+                </Button>
+              )}
+            </HStack>
           )}
           {userInfo?.team.permission.isOwner && isSyncMode && (
             <Button
@@ -286,7 +295,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
       <MyBox isLoading={isLoading} flex={['0 0 auto', '1 0 0']} h={['auto', 0]} minH={0}>
         <FixedTableContainer
-          scrollContainer={MemberScrollData}
+          scrollContainer={MemberScrollContainer}
           maxH="none"
           minH={0}
           px={4}

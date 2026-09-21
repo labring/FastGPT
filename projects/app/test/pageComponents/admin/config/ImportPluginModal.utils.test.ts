@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { removeUploadedPluginFileByRow } from '@/pageComponents/config/ImportPluginModal.utils';
+import { removeUploadedPluginFileByRow } from '@/pageComponents/admin/config/ImportPluginModal.utils';
 
 describe('ImportPluginModal utils', () => {
   it('should remove only the selected plugin row from a zip upload result', () => {

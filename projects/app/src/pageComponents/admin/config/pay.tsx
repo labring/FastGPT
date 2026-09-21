@@ -250,7 +250,7 @@ export const ModelSettings = () => {
   return (
     <SettingPage titles={titles} loading={isLoading} onSubmit={onSubmit}>
       <FirstTitle title="订阅套餐" />
-      <Box px={6} pt={5} pb={openPlan ? 0 : 5}>
+      <Box>
         <HStack>
           <Box>是否启用订阅套餐</Box>
           <Switch
@@ -279,17 +279,8 @@ export const ModelSettings = () => {
       </Box>
       {openPlan && standard && (
         <>
-          <Box
-            key={'标准订阅套餐'}
-            px={6}
-            py={6}
-            mb={4}
-            _notLast={{
-              borderBottomWidth: '1.5px',
-              borderBottomColor: 'myGray.200'
-            }}
-          >
-            <Flex pl={2} flexWrap={'wrap'}>
+          <Box key={'标准订阅套餐'} py={4}>
+            <Flex flexWrap={'wrap'}>
               <Box w="100%" _notFirst={{ mt: 5 }}>
                 <FormLabel
                   title="标准订阅套餐"
@@ -308,15 +299,13 @@ export const ModelSettings = () => {
           {hasLegacyPlans && (
             <Box
               key={'标准订阅套餐（旧版）'}
-              px={6}
-              py={6}
               mb={4}
               _notLast={{
                 borderBottomWidth: '1.5px',
                 borderBottomColor: 'myGray.200'
               }}
             >
-              <Flex pl={2} flexWrap={'wrap'}>
+              <Flex flexWrap={'wrap'}>
                 <Box w="100%" _notFirst={{ mt: 5 }}>
                   <FormLabel
                     title="标准订阅套餐（旧版）"

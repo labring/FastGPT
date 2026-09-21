@@ -1,8 +1,7 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, Grid, GridItem, HStack, Skeleton } from '@chakra-ui/react';
 import { GET } from '@/web/admin/common/request';
-import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type {
@@ -10,7 +9,11 @@ import type {
   GetAppStatsResponseType,
   GetDatasetStatsResponseType
 } from '@fastgpt/global/openapi/admin/core/dashboard/api';
-import DashboardHeader from '@/pageComponents/admin/dashboard/Header';
+import { DashboardLayout, type DashboardTab } from '@/pageComponents/admin/dashboard/Header';
+import TrafficPage from './traffic';
+import PaymentPage from './payment';
+import ActivePage from './active';
+import CostPage from './cost';
 
 type DataItemProps = {
   icon: string;
@@ -66,6 +69,7 @@ const DataItem = ({ icon, title, count = 0, color, isLoading = false }: DataItem
 };
 
 export default function DashboardOverview(): JSX.Element {
+  const [currentTab, setCurrentTab] = useState<DashboardTab>('overview');
   const { data: userStats, loading: userStatsLoading } = useRequest(
     () => GET<GetUserStatsResponseType>(`/proApi/admin/core/dashboard/getUserStats`),
     { manual: false }
@@ -178,57 +182,72 @@ export default function DashboardOverview(): JSX.Element {
     }
   ];
 
+  const Content =
+    currentTab === 'traffic'
+      ? TrafficPage
+      : currentTab === 'payment'
+        ? PaymentPage
+        : currentTab === 'active'
+          ? ActivePage
+          : currentTab === 'cost'
+            ? CostPage
+            : null;
+
   return (
-    <BoxPageRoot>
-      <DashboardHeader />
-
-      {/* User Statistics */}
-      <Box>
-        <Flex justify={'space-between'}>
-          <Box fontSize={'lg'} fontWeight={'bold'}>
-            用户统计
+    <DashboardLayout currentTab={currentTab} onTabChange={setCurrentTab}>
+      {Content ? (
+        <Content />
+      ) : (
+        <>
+          {/* User Statistics */}
+          <Box>
+            <Flex justify={'space-between'}>
+              <Box fontSize={'lg'} fontWeight={'bold'}>
+                用户统计
+              </Box>
+            </Flex>
+            <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>
+              {userItems.map((item, index) => (
+                <GridItem key={index}>
+                  <DataItem {...item} />
+                </GridItem>
+              ))}
+            </Grid>
           </Box>
-        </Flex>
-        <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>
-          {userItems.map((item, index) => (
-            <GridItem key={index}>
-              <DataItem {...item} />
-            </GridItem>
-          ))}
-        </Grid>
-      </Box>
 
-      {/* Application Statistics */}
-      <Box mt={6}>
-        <Flex justify={'space-between'}>
-          <Box fontSize={'lg'} fontWeight={'bold'}>
-            应用统计
+          {/* Application Statistics */}
+          <Box mt={6}>
+            <Flex justify={'space-between'}>
+              <Box fontSize={'lg'} fontWeight={'bold'}>
+                应用统计
+              </Box>
+            </Flex>
+            <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>
+              {appItems.map((item, index) => (
+                <GridItem key={index}>
+                  <DataItem {...item} />
+                </GridItem>
+              ))}
+            </Grid>
           </Box>
-        </Flex>
-        <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>
-          {appItems.map((item, index) => (
-            <GridItem key={index}>
-              <DataItem {...item} />
-            </GridItem>
-          ))}
-        </Grid>
-      </Box>
 
-      {/* Dataset Statistics */}
-      <Box mt={6}>
-        <Flex justify={'space-between'}>
-          <Box fontSize={'lg'} fontWeight={'bold'}>
-            知识库统计
+          {/* Dataset Statistics */}
+          <Box mt={6}>
+            <Flex justify={'space-between'}>
+              <Box fontSize={'lg'} fontWeight={'bold'}>
+                知识库统计
+              </Box>
+            </Flex>
+            <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>
+              {datasetItems.map((item, index) => (
+                <GridItem key={index}>
+                  <DataItem {...item} />
+                </GridItem>
+              ))}
+            </Grid>
           </Box>
-        </Flex>
-        <Grid mt={2} templateColumns={['1fr', 'repeat(3, 1fr)']} gap={6}>
-          {datasetItems.map((item, index) => (
-            <GridItem key={index}>
-              <DataItem {...item} />
-            </GridItem>
-          ))}
-        </Grid>
-      </Box>
-    </BoxPageRoot>
+        </>
+      )}
+    </DashboardLayout>
   );
 }

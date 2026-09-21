@@ -16,8 +16,12 @@ const BoxPageRoot = ({
   children: React.ReactNode;
   isLoading?: boolean;
 }) => {
+  // 页面明确指定 padding 时，不能再叠加默认 px/py，否则 p={0} 仍会留下一圈空白。
+  const defaultPx = props.p === undefined && props.px === undefined ? [4, 6] : undefined;
+  const defaultPy = props.p === undefined && props.py === undefined ? [4, 6] : undefined;
+
   return (
-    <MyBox px={[4, 6]} py={[4, 6]} bg={'white'} {...props}>
+    <MyBox px={defaultPx} py={defaultPy} bg={'white'} {...props}>
       {children}
     </MyBox>
   );

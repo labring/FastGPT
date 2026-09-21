@@ -155,6 +155,7 @@ export type ConfigFormType = {
       show_compliance_copywriting: boolean;
       show_dataset_feishu: boolean;
       show_dataset_yuque: boolean;
+      show_dataset_dingtalk: boolean;
       show_publish_feishu: boolean;
       show_publish_dingtalk: boolean;
       show_publish_wecom: boolean;

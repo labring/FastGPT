@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Table,
   Thead,
@@ -7,10 +7,8 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Flex,
   Box,
-  HStack,
   InputGroup,
   Input,
   InputLeftElement
@@ -25,7 +23,7 @@ import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import PlanAddModal from './components/PlanAddModal';
 import PlanEditModal from './components/PlanEditModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 export type PlanType = {
@@ -61,12 +59,14 @@ export type PlanType = {
 
 const PlanTable = () => {
   const [search, setSearch] = useState<string>();
-  const { isPc } = useSystem();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     data: plans,
     isLoading,
-    ScrollData,
+    Pagination,
+    total,
+    pageSize,
     getData
   } = usePagination(getPlans, {
     defaultPageSize: 20,
@@ -74,106 +74,123 @@ const PlanTable = () => {
     params: {
       search
     },
-    type: 'scroll',
-    refreshDeps: [search]
+    refreshDeps: [search],
+    scrollContainerRef
   });
 
   return (
-    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
-      <HStack pb={4}>
-        {isPc && (
-          <Box as={'h1'} {...accountTitleTextStyles}>
-            套餐管理
-          </Box>
-        )}
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'} p={0}>
+      <Flex
+        h={'64px'}
+        flexShrink={0}
+        px={6}
+        alignItems={'center'}
+        gap={2}
+        borderBottom={'1px solid'}
+        borderColor={'myGray.200'}
+      >
+        <Box as={'h1'} {...accountTitleTextStyles}>
+          套餐管理
+        </Box>
         <Box flexGrow={1}></Box>
-        <PlanAddModal
-          updateData={() => {
-            getData(1);
-          }}
-        />
-        <InputGroup w={['100%', '250px']}>
+        <InputGroup w={['100%', '250px']} h={'36px'}>
           <InputLeftElement h={'full'}>
             <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
           </InputLeftElement>
           <Input
             placeholder="请输入用户名搜索"
-            size={'sm'}
+            h={'36px'}
             onChange={(e) => setSearch(e.target.value)}
           ></Input>
         </InputGroup>
-      </HStack>
+        <PlanAddModal
+          updateData={() => {
+            getData(1);
+          }}
+        />
+      </Flex>
 
-      <ScrollData position={'relative'} h={'100%'}>
-        <TableContainer>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>团队id</Th>
-                <Th>团队名</Th>
-                <Th>用户名</Th>
-                <Th>订阅套餐</Th>
-                <Th>积分</Th>
-                <Th>起止时间</Th>
-                <Th></Th>
-              </Tr>
-            </Thead>
-            <Tbody fontSize={'sm'}>
-              {plans.map((item, i) => (
-                <Tr key={i}>
-                  <Td>{item.teamId}</Td>
-                  <Td>{item.teamName}</Td>
-                  <Td>{item.userName}</Td>
-                  <Td>
-                    {item.type === SubTypeEnum.standard
-                      ? `${standardSubLevelMap[item.level]?.label}版`
-                      : item.type === SubTypeEnum.extraDatasetSize
-                        ? '额外知识库'
-                        : 'AI 积分套餐'}
-                  </Td>
-                  <Td>
-                    {item.totalPoints
-                      ? `${Math.round(item.totalPoints - item.surplusPoints)} / ${item.totalPoints}`
-                      : '-'}
-                  </Td>
-                  <Td>
-                    <Box>
-                      {item.startTime ? dayjs(item.startTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
-                    </Box>
-                    <Box>
-                      {item.expiredTime
-                        ? dayjs(item.expiredTime).format('YYYY/MM/DD HH:mm:ss')
-                        : '-'}
-                    </Box>
-                  </Td>
-                  <Td>
-                    <PlanEditModal
-                      data={item}
-                      subType={item.type}
-                      getData={() => {
-                        getData(1);
-                      }}
-                    />
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-          {!isLoading && plans.length === 0 && (
-            <Flex
-              mt={'20vh'}
-              flexDirection={'column'}
-              alignItems={'center'}
-              justifyContent={'center'}
-            >
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                无套餐记录～
-              </Box>
+      <FixedTableContainer
+        ref={scrollContainerRef}
+        position={'relative'}
+        h={'100%'}
+        maxH={'none'}
+        horizontalScroll
+        px={[4, 6]}
+        py={6}
+        footer={
+          total > pageSize ? (
+            <Flex mt={3} justifyContent={'center'}>
+              <Pagination />
             </Flex>
-          )}
-        </TableContainer>
-      </ScrollData>
+          ) : undefined
+        }
+      >
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>团队id</Th>
+              <Th>团队名</Th>
+              <Th>用户名</Th>
+              <Th>订阅套餐</Th>
+              <Th>积分</Th>
+              <Th>起止时间</Th>
+              <Th></Th>
+            </Tr>
+          </Thead>
+          <Tbody fontSize={'sm'}>
+            {plans.map((item) => (
+              <Tr key={item.id}>
+                <Td>{item.teamId}</Td>
+                <Td>{item.teamName}</Td>
+                <Td>{item.userName}</Td>
+                <Td>
+                  {item.type === SubTypeEnum.standard
+                    ? `${standardSubLevelMap[item.level]?.label}版`
+                    : item.type === SubTypeEnum.extraDatasetSize
+                      ? '额外知识库'
+                      : 'AI 积分套餐'}
+                </Td>
+                <Td>
+                  {item.totalPoints
+                    ? `${Math.round(item.totalPoints - item.surplusPoints)} / ${item.totalPoints}`
+                    : '-'}
+                </Td>
+                <Td>
+                  <Box>
+                    {item.startTime ? dayjs(item.startTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                  </Box>
+                  <Box>
+                    {item.expiredTime ? dayjs(item.expiredTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                  </Box>
+                </Td>
+                <Td>
+                  <PlanEditModal
+                    data={item}
+                    subType={item.type}
+                    getData={() => {
+                      getData(1);
+                    }}
+                  />
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        {!isLoading && plans.length === 0 && (
+          <Flex
+            mt={'20vh'}
+            flexDirection={'column'}
+            alignItems={'center'}
+            justifyContent={'center'}
+          >
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              无套餐记录～
+            </Box>
+          </Flex>
+        )}
+      </FixedTableContainer>
     </BoxPageRoot>
   );
 };

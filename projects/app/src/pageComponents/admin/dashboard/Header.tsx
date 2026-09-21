@@ -1,18 +1,29 @@
 'use client';
-import React, { useMemo } from 'react';
-import { useRouter } from 'next/router';
-import { Flex } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitFormData } from '@/web/admin/config/api';
 import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
-import { getDashboardFilters, type DateRange, type Granularity } from './utils';
+import {
+  useDashboardFilters,
+  DashboardFiltersContext,
+  defaultDashboardFilters,
+  normalizeDashboardFilters,
+  type DashboardFilters,
+  type DateRange,
+  type Granularity
+} from './utils';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 
-type DashboardTab = 'overview' | 'traffic' | 'payment' | 'active' | 'cost';
+export type DashboardTab = 'overview' | 'traffic' | 'payment' | 'active' | 'cost';
 
-const DashboardHeader = () => {
-  const router = useRouter();
+type DashboardHeaderProps = {
+  currentTab: DashboardTab;
+  onTabChange: (tab: DashboardTab) => void;
+};
 
+const DashboardHeader = ({ currentTab, onTabChange }: DashboardHeaderProps) => {
   const { data: systemConfig } = useRequest(getInitFormData, {
     manual: false
   });
@@ -29,53 +40,17 @@ const DashboardHeader = () => {
     );
   }, [systemConfig]);
 
-  const currentTab = useMemo((): DashboardTab => {
-    const path = router.pathname;
-    if (path === '/admin/dashboard') return 'overview';
-    if (path === '/admin/dashboard/traffic') return 'traffic';
-    if (path === '/admin/dashboard/payment') return 'payment';
-    if (path === '/admin/dashboard/active') return 'active';
-    if (path === '/admin/dashboard/cost') return 'cost';
-    return 'overview';
-  }, [router.pathname]);
-
-  const { dateRange, granularity } = getDashboardFilters(router.query);
+  const { dateRange, granularity, updateFilters } = useDashboardFilters();
 
   // Show date range selector for non-overview pages
   const showDateRangeSelector = currentTab !== 'overview';
 
-  const handleTabChange = (tab: DashboardTab) => {
-    const pathMap: Record<DashboardTab, string> = {
-      overview: '/admin/dashboard',
-      traffic: '/admin/dashboard/traffic',
-      payment: '/admin/dashboard/payment',
-      active: '/admin/dashboard/active',
-      cost: '/admin/dashboard/cost'
-    };
-    // Keep dateRange when switching tabs
-    router.push({
-      pathname: pathMap[tab],
-      query: tab !== 'overview' ? { dateRange, granularity } : {}
-    });
-  };
-
   const handleDateRangeChange = (range: DateRange) => {
-    router.push(
-      {
-        pathname: router.pathname,
-        query: { ...router.query, dateRange: range, granularity: range === 7 ? 'day' : granularity }
-      },
-      undefined,
-      { shallow: true }
-    );
+    updateFilters({ dateRange: range, granularity: range === 7 ? 'day' : granularity });
   };
 
   const handleGranularityChange = (value: Granularity) => {
-    router.push(
-      { pathname: router.pathname, query: { ...router.query, granularity: value } },
-      undefined,
-      { shallow: true }
-    );
+    updateFilters({ granularity: value });
   };
 
   return (
@@ -109,12 +84,13 @@ const DashboardHeader = () => {
         ]}
         py={1.5}
         value={currentTab}
-        onChange={handleTabChange}
+        onChange={onTabChange}
       />
 
       {showDateRangeSelector && (
         <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
           <SingleSelectFilter<DateRange>
+            storageKey={'admin.dashboard.dateRange'}
             title={'时间范围'}
             options={[
               { label: '近7天', value: 7 },
@@ -127,6 +103,7 @@ const DashboardHeader = () => {
           />
           {dateRange !== 7 && (
             <SingleSelectFilter<Granularity>
+              storageKey={'admin.dashboard.granularity'}
               title={'颗粒度'}
               options={[
                 { label: '按天', value: 'day' },
@@ -140,6 +117,44 @@ const DashboardHeader = () => {
         </Flex>
       )}
     </Flex>
+  );
+};
+
+export const DashboardLayout = ({
+  children,
+  currentTab,
+  onTabChange
+}: DashboardHeaderProps & { children: React.ReactNode }) => {
+  const [filters, setFilters] = useState(defaultDashboardFilters);
+  const updateFilters = useCallback((patch: Partial<DashboardFilters>) => {
+    setFilters((previous) => normalizeDashboardFilters({ ...previous, ...patch }));
+  }, []);
+  const context = useMemo(() => ({ filters, updateFilters }), [filters, updateFilters]);
+  return (
+    <DashboardFiltersContext.Provider value={context}>
+      <BoxPageRoot
+        display={'flex'}
+        flexDirection={'column'}
+        h={'100%'}
+        minH={0}
+        overflow={'hidden'}
+        p={0}
+      >
+        <Box flexShrink={0} px={[4, 6]} pt={[4, 6]}>
+          <DashboardHeader currentTab={currentTab} onTabChange={onTabChange} />
+        </Box>
+        <Box
+          flex={'1 1 0'}
+          minH={0}
+          overflowY={'auto'}
+          overflowX={'hidden'}
+          px={[4, 6]}
+          pb={[4, 6]}
+        >
+          {children}
+        </Box>
+      </BoxPageRoot>
+    </DashboardFiltersContext.Provider>
   );
 };
 

@@ -1,18 +1,9 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Flex,
-  HStack,
-  Input,
-  ModalBody,
-  ModalFooter,
-  Button,
-  useDisclosure
-} from '@chakra-ui/react';
+import { Box, Flex, HStack, Input, Button, useDisclosure } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { getTeamMembers, putTransferTeamOwnership } from '@/web/support/user/team/api';
@@ -20,6 +11,7 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
+/** 选择新团队所有者，并在二次确认后提交转让、刷新成员权限。 */
 export function TransferOwnershipModal({
   onSuccess,
   onClose
@@ -80,87 +72,10 @@ export function TransferOwnershipModal({
   return (
     <MyModal
       isOpen
-      iconSrc="modal/changePer"
-      iconColor="primary.600"
       onClose={onClose}
       title={t('account_team:transfer_team_ownership')}
-    >
-      <ModalBody>
-        <HStack mb={4}>
-          <Avatar src={userInfo?.team.teamAvatar} w={'1.75rem'} borderRadius={'md'} />
-          <Box>{userInfo?.team.teamName}</Box>
-        </HStack>
-
-        <Flex flexDirection="column">
-          <Box fontSize="14px" fontWeight="500" color="myGray.900" mb={2}>
-            {t('account_team:select_new_owner')}
-          </Box>
-          <Flex alignItems="center" position="relative">
-            {selectedMember && (
-              <Avatar
-                src={selectedMember.avatar}
-                w="20px"
-                borderRadius="md"
-                position="absolute"
-                left={3}
-              />
-            )}
-            <Input
-              placeholder={t('account_team:search_member')}
-              value={searchKey}
-              onChange={(e) => {
-                setSearchKey(e.target.value);
-                setSelectedMember(null);
-              }}
-              onFocus={() => {
-                onOpenMemberListMenu();
-                setSelectedMember(null);
-              }}
-              {...(selectedMember && { pl: '10' })}
-            />
-          </Flex>
-
-          {isOpenMemberListMenu && filteredMembers.length > 0 && (
-            <Flex
-              mt={2}
-              w="100%"
-              flexDirection="column"
-              gap={2}
-              p={1}
-              boxShadow="lg"
-              bg="white"
-              borderRadius="md"
-              zIndex={10}
-              maxH="300px"
-              overflow="auto"
-            >
-              <MemberScrollData>
-                {filteredMembers.map((item) => (
-                  <Box
-                    key={item.tmbId}
-                    p="2"
-                    _hover={{ bg: 'myGray.100' }}
-                    mx="1"
-                    borderRadius="md"
-                    cursor="pointer"
-                    onClickCapture={() => {
-                      setSearchKey(item.memberName);
-                      setSelectedMember(item);
-                      onCloseMemberListMenu();
-                    }}
-                  >
-                    <Flex align="center">
-                      <Avatar src={item.avatar} w="1.25rem" />
-                      <Box ml="2">{item.memberName}</Box>
-                    </Flex>
-                  </Box>
-                ))}
-              </MemberScrollData>
-            </Flex>
-          )}
-        </Flex>
-      </ModalBody>
-      <ModalFooter>
+      isCentered
+      footer={
         <HStack>
           <Button onClick={onClose} variant="whiteBase">
             {t('common:Cancel')}
@@ -189,7 +104,81 @@ export function TransferOwnershipModal({
             {t('account_team:confirm_transfer')}
           </Button>
         </HStack>
-      </ModalFooter>
+      }
+    >
+      <HStack mb={4}>
+        <Avatar src={userInfo?.team.teamAvatar} w={'1.75rem'} borderRadius={'md'} />
+        <Box>{userInfo?.team.teamName}</Box>
+      </HStack>
+
+      <Flex flexDirection="column">
+        <Box fontSize="14px" fontWeight="500" color="myGray.900" mb={2}>
+          {t('account_team:select_new_owner')}
+        </Box>
+        <Flex alignItems="center" position="relative">
+          {selectedMember && (
+            <Avatar
+              src={selectedMember.avatar}
+              w="20px"
+              borderRadius="md"
+              position="absolute"
+              left={3}
+            />
+          )}
+          <Input
+            placeholder={t('account_team:search_member')}
+            value={searchKey}
+            onChange={(e) => {
+              setSearchKey(e.target.value);
+              setSelectedMember(null);
+            }}
+            onFocus={() => {
+              onOpenMemberListMenu();
+              setSelectedMember(null);
+            }}
+            {...(selectedMember && { pl: '10' })}
+          />
+        </Flex>
+
+        {isOpenMemberListMenu && filteredMembers.length > 0 && (
+          <Flex
+            mt={2}
+            w="100%"
+            flexDirection="column"
+            gap={2}
+            p={1}
+            boxShadow="lg"
+            bg="white"
+            borderRadius="md"
+            zIndex={10}
+            maxH="300px"
+            overflow="auto"
+          >
+            <MemberScrollData>
+              {filteredMembers.map((item) => (
+                <Box
+                  key={item.tmbId}
+                  p="2"
+                  _hover={{ bg: 'myGray.100' }}
+                  mx="1"
+                  borderRadius="md"
+                  cursor="pointer"
+                  onClickCapture={() => {
+                    setSearchKey(item.memberName);
+                    setSelectedMember(item);
+                    onCloseMemberListMenu();
+                  }}
+                >
+                  <Flex align="center">
+                    <Avatar src={item.avatar} w="1.25rem" />
+                    <Box ml="2">{item.memberName}</Box>
+                  </Flex>
+                </Box>
+              ))}
+            </MemberScrollData>
+          </Flex>
+        )}
+      </Flex>
       <TransferConfirmModal isLoading={loading} />
     </MyModal>
   );
