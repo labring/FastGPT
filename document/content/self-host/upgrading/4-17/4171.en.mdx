@@ -15,20 +15,20 @@ upgradeTags:
 
 The FastGPT Pro admin interface is now part of the main FastGPT app. After signing in as root, use the Admin entry to access system settings, operations management, and License activation and renewal. System settings are under `/admin/settings/*`; system tools and models are at `/admin/plugin/tool` and `/admin/plugin/model`. Legacy routes have been removed.
 
-Keep the FastGPT Pro service running. If you use custom health checks for Pro, update the probe path to `/api/health`.
+The FastGPT Pro service is still required. If you use custom health checks for Pro, update the probe path to `/api/health`.
 
 ### Upgrade scripts
 
 This upgrade includes the following automated script:
 
-1. Backfill App resource permission snapshots and validate published App versions. The migration does not block startup; its progress and failed records are available in system migration tasks.
+1. Backfill App resource permission snapshots and validate published App versions. The migration task does not block startup; its progress and failed records are available in system upgrade tasks.
 
 ## 🚀 New Features
 
 1. Published App versions now include resource permission snapshots and runtime authorization. Static resources are checked against the snapshot captured at publishing time, while dynamic resources are checked against the current runtime user. This fixes permission calculations for collaboratively developed Apps with distributed runtime permissions.
 2. Added Dataset tag management and filtering with typed tag values, Collection tag maintenance, and tag conditions for Dataset searches in Workflows and Agent V2.
 3. Password changes now support third-party authentication, with a unified authorization, verification, and password-update flow.
-4. Agent V2 Dataset search now supports Dataset citations, so chats can display the sources returned by the current search.
+4. Agent V2 Dataset search now supports Dataset citations, so chats can display the citations returned by the current search.
 5. Apps now include a Token usage dashboard, and usage records also show Token consumption.
 6. App, Agent, Skill, Tool, and Dataset lists now support batch selection, moving, and deletion, with available actions restricted by management permissions.
 
@@ -46,18 +46,18 @@ This upgrade includes the following automated script:
 
 ## 🐛 Fixes
 
-1. Tool calls now use isolated workflow tool runtime state and restore interactive-node memory, preventing concurrent calls from interfering with one another or losing interactive results.
+1. Tool calls now isolate Workflow Tool runtime state and restore interactive Node memory, preventing concurrent calls from interfering with one another or losing interactive results.
 2. Fixed invoice-header forms overwriting existing input during data loading and failing to validate required fields consistently.
 3. Hid the custom-title action for temporary chats that have not been saved to history, since their title changes cannot be persisted.
 4. Fixed FastGPT Pro license verification after login and added authentication checks to billing endpoints.
 5. Fixed MongoDB transaction errors caused by concurrently writing human and AI chat items in the same chat round.
 6. Fixed HTML images in parsed documents failing to preview, and converted S3 object keys inside HTML tags to preview URLs.
-7. Fixed text cleanup removing `]]` from content and failing to remove all consecutive blanks between Chinese characters.
+7. Fixed text cleanup removing `]]` from content and failing to remove all consecutive whitespace between Chinese characters.
 8. Fixed selecting, copying, and pasting variable and Skill tags in the prompt editor.
 9. Fixed JSON extraction including trailing explanations containing brackets after a model-generated JSON value.
 10. Fixed soft line breaks in PowerPoint paragraphs being dropped and causing adjacent text to be joined.
 11. Fixed Markdown table corruption when a cell contains a backslash and when an HTML table has no explicit header row.
-12. Tool execution failures are no longer shown as ordinary chat errors in the bottom error card or counted in the node response summary.
+12. Tool execution failures are no longer shown as ordinary chat errors in the bottom error card or counted in the Node response summary.
 13. Fixed App chat tests failing to validate model availability before sending the request; specific model configuration errors are now shown first.
 14. Fixed FastGPT Pro Lark publishing channels failing to return the challenge during event-subscription URL verification when an Encrypt Key is configured.
 
