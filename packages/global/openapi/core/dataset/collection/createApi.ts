@@ -13,7 +13,11 @@ import { APIFileItemSchema } from '../../../../core/dataset/apiDataset/type';
 const DatasetCollectionStoreDataSchema = ChunkSettingsSchema.extend({
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '元数据' }),
-  customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' })
+  customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' }),
+  inheritPermission: z.boolean().optional().meta({
+    description:
+      '是否继承父级权限（默认 true）。true=继承父级（根 collection 继承 dataset）；false=独立配置，子树停止传播'
+  })
 });
 
 const CollectionTagsInputSchema = z.array(CollectionTagLabelSchema).optional().meta({
@@ -55,7 +59,10 @@ export const CreateCollectionBodySchema = z.object({
   type: z
     .enum([DatasetCollectionTypeEnum.folder, DatasetCollectionTypeEnum.virtual])
     .meta({ description: '集合类型（folder: 文件夹，virtual: 手动集合）' }),
-  tags: CollectionTagsInputSchema
+  tags: CollectionTagsInputSchema,
+  inheritPermission: z.boolean().optional().meta({
+    description: '是否继承父级权限（默认 true）。true=继承父级；false=独立配置，子树停止传播'
+  })
 });
 export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
 
@@ -160,7 +167,10 @@ export const CreateImageCollectionDataSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   collectionName: z.string().meta({ description: '集合名称' }),
-  tags: CollectionTagsInputSchema
+  tags: CollectionTagsInputSchema,
+  inheritPermission: z.boolean().optional().meta({
+    description: '是否继承父级权限（默认 true）。true=继承父级；false=独立配置，子树停止传播'
+  })
 });
 export type CreateImageCollectionDataType = z.infer<typeof CreateImageCollectionDataSchema>;
 // handler 内 parse 用

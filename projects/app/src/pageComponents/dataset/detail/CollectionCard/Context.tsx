@@ -106,7 +106,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       searchText,
       tagFilters
     },
-    refreshDeps: [parentId, searchText, tagFilters],
+    refreshDeps: [parentId, searchText, tagFilters, datasetDetail.collectionPermissionEnabled],
     scrollContainerRef
   });
 

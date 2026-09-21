@@ -27,7 +27,8 @@ export const DatasetCollectionPath: OpenAPIPath = {
         [{ in: 'body', name: 'collectionIds' }]
       ],
       summary: '删除集合',
-      description: '删除一个或多个集合及其子集合，支持通过 query.id 或 body.collectionIds 指定',
+      description:
+        '删除一个或多个集合及其子集合，支持通过 query.id 或 body.collectionIds 指定。仅集合所有者（owner）可删除；持有 manage/write 权限的协作者不可删除',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
       requestParams: {
         query: DeleteCollectionQuerySchema

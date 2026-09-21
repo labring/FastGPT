@@ -18,6 +18,7 @@ import {
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
@@ -129,6 +130,16 @@ export const moveDataset = async ({
       oldParentCollaborators: oldParentClbs,
       session
     });
+
+    // Dataset ACL 是完整有效快照。先同步 Collection，确保还能读取后代 Dataset 的旧快照。
+    await syncDatasetToCollections({
+      teamId: dataset.teamId,
+      datasetId: String(dataset._id),
+      oldEffectiveClbs: oldResourceClbs,
+      newEffectiveClbs: newResourceClbs,
+      session
+    });
+
     await syncChildrenPermission({
       resource: dataset,
       resourceType: PerResourceTypeEnum.dataset,
@@ -142,6 +153,7 @@ export const moveDataset = async ({
       id,
       {
         ...parseParentIdInMongo(parentId),
+        // 移入是授权行为：移入后始终按继承态处理（与上游 dataset 权限逻辑一致）
         inheritPermission: true
       },
       { session }
