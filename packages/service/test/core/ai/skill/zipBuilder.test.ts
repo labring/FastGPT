@@ -3,6 +3,9 @@ import JSZip from 'jszip';
 import {
   createBlankSkillWorkspacePackage,
   createSkillPackage,
+  describeImportedSkillPackageLayout,
+  normalizeImportedSkillPackageLayout,
+  planImportedSkillPackageLayout,
   validateDeployableSkillWorkspacePackage,
   validateZipStructure,
   extractSkillPackage,
@@ -500,6 +503,270 @@ description: Real runtime skill
           'skills/real-runtime-skill/.bashrc'
         ])
       );
+    });
+  });
+
+  // ==================== normalizeImportedSkillPackageLayout ====================
+  describe('normalizeImportedSkillPackageLayout', () => {
+    const SKILL_MD = (name: string, description = 'desc') =>
+      `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}`;
+
+    const buildZip = async (
+      entries: Record<string, string | { data?: string; mode?: number; dir?: true; date?: Date }>,
+      options: { platform?: 'DOS' | 'UNIX' } = { platform: 'UNIX' }
+    ) => {
+      const zip = new JSZip();
+      for (const [path, value] of Object.entries(entries)) {
+        if (typeof value === 'string') {
+          zip.file(path, value, { createFolders: false });
+          continue;
+        }
+        zip.file(path, value.dir ? null : (value.data ?? ''), {
+          createFolders: false,
+          ...(value.dir ? { dir: true } : {}),
+          ...(value.mode === undefined ? {} : { unixPermissions: value.mode }),
+          ...(value.date === undefined ? {} : { date: value.date })
+        });
+      }
+      return zip.generateAsync({ type: 'nodebuffer', ...options });
+    };
+
+    const readFilePaths = async (buffer: Buffer) => {
+      const zip = await JSZip.loadAsync(buffer);
+      return Object.keys(zip.files)
+        .filter((path) => !zip.files[path].dir)
+        .sort();
+    };
+
+    it('normalizes a single flat skill folder into skills/<frontmatter name>', async () => {
+      const buffer = await buildZip({
+        'herder_skill/SKILL.md': SKILL_MD('herdr'),
+        'herder_skill/scripts/run.sh': '#!/bin/sh\necho hi',
+        '.gitignore': 'node_modules/\n'
+      });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+
+      expect(result.normalized).toBe(true);
+      expect(result.skillDirNames).toEqual(['herdr']);
+      expect(await readFilePaths(result.buffer)).toEqual([
+        '.gitignore',
+        'skills/herdr/SKILL.md',
+        'skills/herdr/scripts/run.sh'
+      ]);
+      // `.gitignore` stays at the package root with its own content (no synthesized default).
+      const normalizedZip = await JSZip.loadAsync(result.buffer);
+      await expect(normalizedZip.file('.gitignore')!.async('string')).resolves.toBe(
+        'node_modules/\n'
+      );
+    });
+
+    it('produces a package accepted by the deployable workspace validator', async () => {
+      const buffer = await buildZip({
+        'herder_skill/SKILL.md': SKILL_MD('herdr'),
+        'herder_skill/scripts/run.sh': '#!/bin/sh'
+      });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+      const validation = await validateDeployableSkillWorkspacePackage(result.buffer);
+
+      expect(validation.valid).toBe(true);
+      expect(validation.error).toBeUndefined();
+    });
+
+    it('leaves an already normalized package untouched (same Buffer reference)', async () => {
+      const buffer = await buildZip({
+        'skills/herdr/SKILL.md': SKILL_MD('herdr'),
+        'skills/herdr/scripts/run.sh': '#!/bin/sh'
+      });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+
+      expect(result.normalized).toBe(false);
+      expect(result.reason).toBe('already-workspace-layout');
+      expect(result.buffer).toBe(buffer);
+    });
+
+    it('is idempotent: normalizing its own output is a no-op', async () => {
+      const buffer = await buildZip({ 'herder_skill/SKILL.md': SKILL_MD('herdr') });
+
+      const first = await normalizeImportedSkillPackageLayout(buffer);
+      const second = await normalizeImportedSkillPackageLayout(first.buffer);
+
+      expect(second.normalized).toBe(false);
+      expect(second.buffer).toBe(first.buffer);
+    });
+
+    it('handles upper/lower case SKILL.md entry names', async () => {
+      for (const skillMdName of ['SKILL.MD', 'skill.md']) {
+        const buffer = await buildZip({ [`herder_skill/${skillMdName}`]: SKILL_MD('herdr') });
+
+        const result = await normalizeImportedSkillPackageLayout(buffer);
+
+        expect(result.normalized).toBe(true);
+        expect(await readFilePaths(result.buffer)).toEqual([`skills/herdr/${skillMdName}`]);
+      }
+    });
+
+    it('follows the frontmatter name instead of the source folder name', async () => {
+      const buffer = await buildZip({
+        'database-display-name/SKILL.md': SKILL_MD('Real Runtime Skill')
+      });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+
+      expect(result.skillDirNames).toEqual(['real-runtime-skill']);
+      expect(await readFilePaths(result.buffer)).toEqual(['skills/real-runtime-skill/SKILL.md']);
+    });
+
+    it('falls back to the sanitized source folder name without frontmatter', async () => {
+      const buffer = await buildZip({ 'My Skill/SKILL.md': '# No frontmatter here' });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+
+      expect(result.skillDirNames).toEqual(['my-skill']);
+      expect(await readFilePaths(result.buffer)).toEqual(['skills/my-skill/SKILL.md']);
+    });
+
+    it('normalizes every flat skill folder of a multi-skill package', async () => {
+      const buffer = await buildZip({
+        'first-skill/SKILL.md': SKILL_MD('first-skill'),
+        'second-skill/SKILL.md': SKILL_MD('second-skill'),
+        'docs/readme.md': 'not a skill'
+      });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+
+      expect(result.normalized).toBe(true);
+      expect(result.skillDirNames).toEqual(['first-skill', 'second-skill']);
+      expect(await readFilePaths(result.buffer)).toEqual([
+        'docs/readme.md',
+        'skills/first-skill/SKILL.md',
+        'skills/second-skill/SKILL.md'
+      ]);
+      expect((await validateDeployableSkillWorkspacePackage(result.buffer)).valid).toBe(true);
+    });
+
+    it('wraps a root-level SKILL.md package into skills/<name>', async () => {
+      const buffer = await buildZip({
+        'SKILL.md': SKILL_MD('root-skill'),
+        'scripts/chat.js': 'console.log(1)',
+        '.gitignore': 'node_modules/\n'
+      });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+
+      expect(result.skillDirNames).toEqual(['root-skill']);
+      expect(await readFilePaths(result.buffer)).toEqual([
+        '.gitignore',
+        'skills/root-skill/SKILL.md',
+        'skills/root-skill/scripts/chat.js'
+      ]);
+      expect((await validateDeployableSkillWorkspacePackage(result.buffer)).valid).toBe(true);
+    });
+
+    it('uses the import name as fallback for a root SKILL.md without frontmatter', async () => {
+      const buffer = await buildZip({ 'SKILL.md': '# Just a header' });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer, {
+        fallbackName: 'Uploaded'
+      });
+
+      expect(result.skillDirNames).toEqual(['uploaded']);
+      expect(await readFilePaths(result.buffer)).toEqual(['skills/uploaded/SKILL.md']);
+    });
+
+    it('preserves file dates, executable bits and directory entries', async () => {
+      const date = new Date('2020-01-02T03:04:06Z');
+      const buffer = await buildZip({
+        'herder_skill/SKILL.md': { data: SKILL_MD('herdr'), date },
+        'herder_skill/scripts/': { dir: true, date },
+        'herder_skill/scripts/run.sh': { data: '#!/bin/sh', mode: 0o755, date }
+      });
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+      const zip = await JSZip.loadAsync(result.buffer);
+
+      expect(zip.file('skills/herdr/SKILL.md')!.date.toISOString()).toBe(date.toISOString());
+      const script = zip.file('skills/herdr/scripts/run.sh')!;
+      expect(Number(script.unixPermissions) & 0o777).toBe(0o755);
+      expect(script.date.toISOString()).toBe(date.toISOString());
+      expect(zip.files['skills/herdr/scripts/']?.dir).toBe(true);
+      expect(zip.files['skills/herdr/scripts/']?.date.toISOString()).toBe(date.toISOString());
+    });
+
+    it.each([
+      {
+        name: 'a nested SKILL.md deeper than one level',
+        entries: { 'a/b/SKILL.md': SKILL_MD('b') },
+        reason: 'ambiguous-skill-md'
+      },
+      {
+        name: 'a stray skills/SKILL.md',
+        entries: { 'skills/SKILL.md': SKILL_MD('stray'), 'skills/notes.md': 'notes' },
+        reason: 'ambiguous-skill-md'
+      },
+      {
+        name: 'a root SKILL.md next to a flat skill folder',
+        entries: { 'SKILL.md': SKILL_MD('root'), 'flat/SKILL.md': SKILL_MD('flat') },
+        reason: 'root-and-dir-skill-md'
+      },
+      {
+        name: 'a package without SKILL.md',
+        entries: { 'docs/readme.md': 'nothing here' },
+        reason: 'no-skill-md'
+      },
+      {
+        name: 'an entry escaping the package root',
+        entries: { '../evil.txt': 'x', 'flat/SKILL.md': SKILL_MD('flat') },
+        reason: 'unsafe-entry-path'
+      }
+    ])('leaves $name untouched', async ({ entries, reason }) => {
+      const buffer = await buildZip(entries);
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+
+      expect(result.normalized).toBe(false);
+      expect(result.reason).toBe(reason);
+      expect(result.buffer).toBe(buffer);
+    });
+
+    it('leaves non-ZIP content untouched', async () => {
+      const buffer = Buffer.from('opaque-package-content');
+
+      const result = await normalizeImportedSkillPackageLayout(buffer);
+
+      expect(result.normalized).toBe(false);
+      expect(result.reason).toBe('unparsable-package');
+      expect(result.buffer).toBe(buffer);
+    });
+  });
+
+  describe('describeImportedSkillPackageLayout', () => {
+    it('names the flat skill folders it detected', () => {
+      const description = describeImportedSkillPackageLayout([
+        'herder_skill/SKILL.md',
+        'herder_skill/README.md',
+        '.gitignore'
+      ]);
+
+      expect(description).toContain('herder_skill');
+    });
+
+    it('reports a root-level SKILL.md', () => {
+      expect(describeImportedSkillPackageLayout(['SKILL.md', 'scripts/chat.js'])).toContain(
+        'root-level SKILL.md'
+      );
+    });
+
+    it('lists the ambiguous SKILL.md locations', () => {
+      const description = describeImportedSkillPackageLayout(['a/b/SKILL.md']);
+
+      expect(description).toContain('a/b/SKILL.md');
+    });
+
+    it('reports a package without SKILL.md', () => {
+      expect(describeImportedSkillPackageLayout(['docs/readme.md'])).toBe('no SKILL.md');
     });
   });
 });

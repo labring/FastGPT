@@ -190,6 +190,7 @@
   "code_error.skill_error.no_storage": "技能没有存储，无法复制",
   "code_error.skill_error.not_exist": "技能不存在",
   "code_error.skill_error.skill_name_too_long": "技能名称不能超过 50 字符",
+  "code_error.skill_error.workspace_layout_invalid": "技能工作区结构不正确：可执行技能必须位于 skills/<名称>/SKILL.md 下",
   "code_error.skill_error.un_auth_skill": "无权操作该技能",
   "code_error.system_error.commercial_feature": "商业版专属功能",
   "code_error.system_error.community_version_num_limit": "超出社区版数量限制，请升级商业版: https://fastgpt.in",

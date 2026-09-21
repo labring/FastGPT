@@ -190,6 +190,7 @@
   "code_error.skill_error.no_storage": "Skill has no storage, cannot copy",
   "code_error.skill_error.not_exist": "Skill Does Not Exist",
   "code_error.skill_error.skill_name_too_long": "Skill name must be 50 characters or fewer",
+  "code_error.skill_error.workspace_layout_invalid": "Skill workspace is invalid: executable skills must live under skills/<name>/SKILL.md",
   "code_error.skill_error.un_auth_skill": "Unauthorized to Operate This Skill",
   "code_error.system_error.commercial_feature": "Commercial Edition exclusive feature",
   "code_error.system_error.community_version_num_limit": "You have reached the Community Edition limit. Upgrade to the commercial edition: https://fastgpt.in",

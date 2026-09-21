@@ -30,6 +30,9 @@ import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getErrResponse, getErrText } from '@fastgpt/global/common/error/utils';
+import SkillDeployErrorModal, { type SkillDeployError } from './config/SkillDeployErrorModal';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
@@ -54,16 +57,21 @@ export const HeaderContext = createContext<{
   onExportSkill: (skillId: string, skillName: string) => Promise<any>;
   onSaveDeploy: (props: { skillId: string; versionName: string }) => Promise<any>;
   handlePublishClick: () => void;
+  /** 最近一次发布失败的信息，用于展示发布失败弹窗。 */
+  deployError: SkillDeployError | undefined;
+  onCloseDeployError: () => void;
 } | null>(null);
 
 export const HeaderProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { toast } = useToast();
 
   const refreshSkillDetail = useContextSelector(SkillDetailContext, (v) => v.refreshSkillDetail);
 
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
+  const [deployError, setDeployError] = useState<SkillDeployError>();
 
   const { runAsync: onClickDeleteSkill } = useRequest(deleteSkill, {
     onSuccess() {
@@ -112,7 +120,20 @@ export const HeaderProvider = ({ children }: { children: React.ReactNode }) => {
       }),
     {
       successToast: t('skill:deploy_success'),
-      errorToast: t('skill:deploy_failed')
+      // 失败用弹窗展示（细节 + 怎么修），不走 toast；纯客户端异常（无错误码）仍用 toast。
+      errorToast: '',
+      onError(error) {
+        const response = getErrResponse(error) as
+          { code?: number; statusText?: string; message?: string } | undefined;
+        if (typeof response?.code === 'number') {
+          setDeployError({
+            statusText: response.statusText,
+            message: response.message || getErrText(error, t('skill:deploy_failed'))
+          });
+          return;
+        }
+        toast({ status: 'error', title: t('skill:deploy_failed') });
+      }
     }
   );
 
@@ -143,7 +164,9 @@ export const HeaderProvider = ({ children }: { children: React.ReactNode }) => {
         onUpdateSkill,
         onExportSkill,
         onSaveDeploy,
-        handlePublishClick
+        handlePublishClick,
+        deployError,
+        onCloseDeployError: () => setDeployError(undefined)
       }}
     >
       {children}
@@ -380,6 +403,8 @@ export const HeaderDialogs = () => {
     isSaving,
     onUpdateSkill,
     onSaveDeploy,
+    deployError,
+    onCloseDeployError,
     DeleteConfirmModal
   } = useHeader();
 
@@ -399,12 +424,18 @@ export const HeaderDialogs = () => {
               await saveAllRef.current?.();
               await onSaveDeploy({ skillId: skillDetail._id, versionName });
               onPublishModalClose();
+            } catch {
+              // 失败原因由发布失败弹窗展示，这里只负责收起发布弹窗并吞掉 rejection。
+              onPublishModalClose();
             } finally {
               setIsConfirmingPublish(false);
             }
           }}
         />
       )}
+
+      {/* 发布失败弹窗 */}
+      <SkillDeployErrorModal error={deployError} onClose={onCloseDeployError} />
 
       {/* 删除确认弹窗 */}
       <DeleteConfirmModal />

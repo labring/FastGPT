@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   mongoVersionFindOne: vi.fn(),
   validateDeployableSkillWorkspacePackage: vi.fn(),
   validateZipStructure: vi.fn(),
+  describeImportedSkillPackageLayout: vi.fn(),
   connectToSandbox: vi.fn(),
   disconnectSandbox: vi.fn(),
   getReadySandboxInfo: vi.fn(),
@@ -35,7 +36,8 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
   DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n',
   validateDeployableSkillWorkspacePackage: mocks.validateDeployableSkillWorkspacePackage,
-  validateZipStructure: mocks.validateZipStructure
+  validateZipStructure: mocks.validateZipStructure,
+  describeImportedSkillPackageLayout: mocks.describeImportedSkillPackageLayout
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/edit/config', () => ({
@@ -262,6 +264,30 @@ describe('packageSkillInSandbox', () => {
 
     await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toThrow('read failed');
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
+  });
+
+  it('reports the invalid layout as a keyed error that names the detected folder', async () => {
+    const sandbox = createPackageSandbox();
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+    mocks.validateDeployableSkillWorkspacePackage.mockResolvedValueOnce({
+      valid: false,
+      files: ['herder_skill/SKILL.md', '.gitignore'],
+      error: 'The skills/ directory must contain at least one first-level skill folder'
+    });
+    mocks.describeImportedSkillPackageLayout.mockReturnValueOnce(
+      'skill folder(s) outside skills/: herder_skill'
+    );
+
+    // message 是稳定的错误码（客户端据此分类），displayMessage 才带识别到的布局。
+    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).rejects.toMatchObject({
+      message: 'workspaceLayoutInvalid',
+      displayMessage:
+        'The skills/ directory must contain at least one first-level skill folder Detected skill folder(s) outside skills/: herder_skill. Skills must live under skills/<skill-name>/SKILL.md.'
+    });
+    expect(mocks.describeImportedSkillPackageLayout).toHaveBeenCalledWith([
+      'herder_skill/SKILL.md',
+      '.gitignore'
+    ]);
   });
 });
 

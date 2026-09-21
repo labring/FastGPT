@@ -18,7 +18,9 @@ export enum SkillErrEnum {
   archiveExtractionFailed = 'archiveExtractionFailed',
   archiveTooLarge = 'archiveTooLarge',
   missingImageRepository = 'missingImageRepository',
-  skillNameTooLong = 'skillNameTooLong'
+  skillNameTooLong = 'skillNameTooLong',
+  /** 工作区布局不满足 skills/<name>/SKILL.md，无法打包发布。 */
+  workspaceLayoutInvalid = 'workspaceLayoutInvalid'
 }
 const skillErrList = [
   {
@@ -100,6 +102,11 @@ const skillErrList = [
   {
     statusText: SkillErrEnum.skillNameTooLong,
     message: i18nT('common:code_error.skill_error.skill_name_too_long'),
+    httpStatus: 400
+  },
+  {
+    statusText: SkillErrEnum.workspaceLayoutInvalid,
+    message: i18nT('common:code_error.skill_error.workspace_layout_invalid'),
     httpStatus: 400
   }
 ];

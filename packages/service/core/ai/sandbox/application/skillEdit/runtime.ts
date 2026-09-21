@@ -5,6 +5,7 @@
  * sandbox/interface/skillEdit 调用，不直接依赖 provider、repository 或 archive 原子能力。
  */
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../../../skill/model/schema';
@@ -14,6 +15,7 @@ import { resolveSandboxHome } from '../runtime/home';
 import { joinSandboxPath } from '../../utils';
 import {
   DEFAULT_GITIGNORE_CONTENT,
+  describeImportedSkillPackageLayout,
   validateDeployableSkillWorkspacePackage,
   validateZipStructure
 } from '../../../skill/package';
@@ -520,7 +522,12 @@ export async function packageSkillInSandbox(params: {
               maxUncompressedBytes: maxBytes
             });
       if (!validation.valid) {
-        throw new Error(validation.error || 'Invalid skill package structure');
+        // 用带错误码的 UserError：客户端按 statusText 分类，displayMessage 里带上识别到的布局。
+        const detectedLayout = describeImportedSkillPackageLayout(validation.files);
+        throw new UserError(
+          SkillErrEnum.workspaceLayoutInvalid,
+          `${validation.error || 'Invalid skill package structure'} Detected ${detectedLayout}. Skills must live under skills/<skill-name>/SKILL.md.`
+        );
       }
 
       return zipBuffer;

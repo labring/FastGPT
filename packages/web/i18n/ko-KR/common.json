@@ -189,6 +189,7 @@
   "code_error.skill_error.no_storage": "스킬에 저장소가 없어 복사할 수 없습니다",
   "code_error.skill_error.not_exist": "스킬이 존재하지 않습니다",
   "code_error.skill_error.skill_name_too_long": "스킬 이름은 50자 이하여야 합니다",
+  "code_error.skill_error.workspace_layout_invalid": "스킬 작업 공간 구조가 올바르지 않습니다. 실행 가능한 스킬은 skills/<이름>/SKILL.md 아래에 있어야 합니다",
   "code_error.skill_error.un_auth_skill": "이 스킬을 조작할 권한이 없습니다",
   "code_error.system_error.commercial_feature": "상업용 에디션 전용 기능입니다",
   "code_error.system_error.community_version_num_limit": "커뮤니티 버전의 수량 제한을 초과했습니다. 상용 버전으로 업그레이드하세요: https://fastgpt.in",

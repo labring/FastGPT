@@ -9,6 +9,7 @@ import {
   AgentSkillSourceSchema,
   AgentSkillTypeSchema,
   ExtractedSkillPackageSchema,
+  RuntimeSkillMetadataSchema,
   SandboxProviderStatusSchema,
   SkillPackageSchema,
   ZipEntryInfoSchema
@@ -357,7 +358,10 @@ export const SaveDeploySkillResponseSchema = z.object({
   versionId: z.string(),
   versionName: z.string(),
   storageKey: z.string(),
-  createdAt: z.string()
+  createdAt: z.string(),
+  runtimeSkills: z
+    .array(RuntimeSkillMetadataSchema)
+    .describe('本次发布从工作区识别出的可执行 Skill，用于向用户反馈发布了什么')
 });
 export type SaveDeploySkillResponse = z.infer<typeof SaveDeploySkillResponseSchema>;
 

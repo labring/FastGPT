@@ -21,7 +21,9 @@ import {
   ReadRoleVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { downloadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { Readable } from 'node:stream';
+import JSZip from 'jszip';
 
 describe('AgentSkill Controller', () => {
   let testTeamId: string;
@@ -367,8 +369,7 @@ describe('AgentSkill Controller', () => {
         skill: skillData,
         teamId: testTeamId,
         tmbId: testTmbId,
-        packageStream: Readable.from(packageContent),
-        contentLength: packageContent.length
+        packageStream: Readable.from(packageContent)
       });
 
       expect(skillId).toBeDefined();
@@ -388,6 +389,42 @@ describe('AgentSkill Controller', () => {
       ).resolves.toMatchObject({ permission: OwnerRoleVal });
     });
 
+    it('stores a flat skill package in the runtime layout', async () => {
+      const zip = new JSZip();
+      zip.file('herder_skill/SKILL.md', '---\nname: herdr\ndescription: d\n---\n');
+      zip.file('herder_skill/scripts/run.sh', '#!/bin/sh', {
+        createFolders: false,
+        unixPermissions: 0o755
+      });
+      const packageBuffer = await zip.generateAsync({ type: 'nodebuffer', platform: 'UNIX' });
+
+      const skillId = await importSkill({
+        skill: {
+          name: 'herdr',
+          description: 'A skill',
+          category: []
+        },
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        packageStream: Readable.from(packageBuffer)
+      });
+
+      const skill = await MongoAgentSkills.findById(skillId).lean();
+      const version = await MongoAgentSkillsVersion.findById(skill!.currentVersionId).lean();
+      const storedZip = await JSZip.loadAsync(
+        await downloadSkillPackage({ storageKey: version!.storageKey })
+      );
+      const storedPaths = Object.keys(storedZip.files)
+        .filter((path) => !storedZip.files[path].dir)
+        .sort();
+
+      expect(storedPaths).toEqual(['skills/herdr/SKILL.md', 'skills/herdr/scripts/run.sh']);
+      expect(Number(storedZip.file('skills/herdr/scripts/run.sh')!.unixPermissions) & 0o777).toBe(
+        0o755
+      );
+      expect(skill?.currentRuntimeSkills).toHaveLength(0);
+    });
+
     it('should allow importing duplicate name without error', async () => {
       const skillData = {
         name: 'Duplicate Import',
@@ -400,8 +437,7 @@ describe('AgentSkill Controller', () => {
         skill: skillData,
         teamId: testTeamId,
         tmbId: testTmbId,
-        packageStream: Readable.from(packageContent),
-        contentLength: packageContent.length
+        packageStream: Readable.from(packageContent)
       });
 
       // Second import should succeed with a different ID
@@ -409,8 +445,7 @@ describe('AgentSkill Controller', () => {
         skill: skillData,
         teamId: testTeamId,
         tmbId: testTmbId,
-        packageStream: Readable.from(packageContent),
-        contentLength: packageContent.length
+        packageStream: Readable.from(packageContent)
       });
 
       expect(firstSkillId).toBeDefined();
@@ -442,8 +477,7 @@ describe('AgentSkill Controller', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         parentId: folder._id.toString(),
-        packageStream: Readable.from(packageContent),
-        contentLength: packageContent.length
+        packageStream: Readable.from(packageContent)
       });
 
       const permissions = await MongoResourcePermission.find({

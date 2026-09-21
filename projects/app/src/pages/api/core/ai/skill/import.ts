@@ -73,7 +73,6 @@ async function handler(
     teamId,
     tmbId,
     packageStream: req,
-    contentLength,
     parentId: query.parentId ?? null
   });
 

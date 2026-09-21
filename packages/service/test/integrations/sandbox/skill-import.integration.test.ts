@@ -91,16 +91,17 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
       }
     } as unknown as typeof global.skillBucket;
 
+    // 目录名沿用导入名（包内 SKILL.md 无 frontmatter），保持断言可直接推导。
+    const skillName = `imported-skill-${randomUUID()}`;
     const skillId = await importSkill({
       skill: {
-        name: `Imported skill ${randomUUID()}`,
+        name: skillName,
         description: 'Skill import sandbox integration',
         category: []
       },
       teamId,
       tmbId,
-      packageStream: Readable.from(packageBuffer),
-      contentLength: packageBuffer.length
+      packageStream: Readable.from(packageBuffer)
     });
 
     const skillVersion = await MongoAgentSkillsVersion.findOne({ skillId }).lean();
@@ -129,14 +130,17 @@ describe.skipIf(!integrationProvider).sequential('Skill import Sandbox Integrati
       );
 
       const workDirectory = context.runtimeProfile.workDirectory;
-      const [gitignore, skillMd] = await sandboxClient.provider.readFiles([
+      // 导入时扁平包被规范化为 skills/<name>/，因此沙盒工作区根目录只保留 .gitignore。
+      const [gitignore, skillMd, rootSkillMd] = await sandboxClient.provider.readFiles([
         joinSandboxPath(workDirectory, '.gitignore'),
+        joinSandboxPath(workDirectory, `skills/${skillName}/SKILL.md`),
         joinSandboxPath(workDirectory, 'SKILL.md')
       ]);
 
       expect(gitignore?.error).toBeNull();
       expect(Buffer.from(gitignore?.content ?? []).toString()).toContain('node_modules');
       expect(skillMd?.error).toBeNull();
+      expect(rootSkillMd?.error).not.toBeNull();
     } finally {
       await sandboxClient?.provider.close().catch(() => undefined);
 

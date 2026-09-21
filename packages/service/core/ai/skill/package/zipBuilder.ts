@@ -14,7 +14,11 @@
  */
 
 import JSZip from 'jszip';
-import { extractSkillNameFromSkillMd } from '../utils';
+import {
+  extractSkillNameFromSkillMd,
+  getSafeSkillDirectoryName,
+  parseSkillMarkdown
+} from '../utils';
 import { DEFAULT_GITIGNORE_CONTENT } from './constants';
 
 export type CreateSkillPackageParams = {
@@ -145,14 +149,21 @@ function addFileToZip(zip: JSZip, path: string, content: Buffer | string | Uint8
 
 /**
  * 将 JSZip 实例压缩成 Node Buffer。
+ *
+ * platform 决定是否能写出 unixPermissions：只有 UNIX 平台会写入外部属性，
+ * DOS（默认）会静默丢弃可执行位，因此需要保真的重写必须显式传 'UNIX'。
  */
-async function generateZipBuffer(zip: JSZip): Promise<Buffer> {
+async function generateZipBuffer(
+  zip: JSZip,
+  options: { platform?: 'DOS' | 'UNIX' } = {}
+): Promise<Buffer> {
   return zip.generateAsync({
     type: 'nodebuffer',
     compression: 'DEFLATE',
     compressionOptions: {
       level: 6
-    }
+    },
+    ...(options.platform ? { platform: options.platform } : {})
   });
 }
 
@@ -527,6 +538,276 @@ export async function standardizeSkillPackageBySkillMdName(
     skillMd,
     assets,
     name
+  };
+}
+
+/**
+ * 导入包的布局形态判定结果。
+ */
+export type ImportedSkillPackageLayout =
+  | {
+      applies: true;
+      /** 一级目录各自是一个 skill（一个或多个）。 */
+      kind: 'flat-dirs';
+      skills: Array<{ sourceDirName: string; skillMdEntryPath: string }>;
+    }
+  | {
+      applies: true;
+      /** 整个包就是一个 skill，SKILL.md 在根目录。 */
+      kind: 'root-skill-md';
+      skillMdEntryPath: string;
+    }
+  | {
+      applies: false;
+      reason: ImportedSkillPackageLayoutSkipReason;
+    };
+
+export type ImportedSkillPackageLayoutSkipReason =
+  /** 已是运行态要求的 skills/<name>/SKILL.md。 */
+  | 'already-workspace-layout'
+  /** 条目路径不安全（绝对路径、盘符、.. 逃逸）。 */
+  | 'unsafe-entry-path'
+  /** SKILL.md 出现在无法判定的位置（如 a/b/SKILL.md、skills/SKILL.md）。 */
+  | 'ambiguous-skill-md'
+  /** 根目录 SKILL.md 与一级 skill 目录同时存在，无法判断谁是 skill。 */
+  | 'root-and-dir-skill-md'
+  /** 包内没有 SKILL.md。 */
+  | 'no-skill-md';
+
+export type NormalizeImportedSkillPackageResult = {
+  buffer: Buffer;
+  normalized: boolean;
+  /** 规范化后的 skills/ 一级目录名。 */
+  skillDirNames?: string[];
+  reason?:
+    | ImportedSkillPackageLayoutSkipReason
+    /** 不是可解析的 ZIP（按原样入库，与导入接口的“不校验内容”语义一致）。 */
+    | 'unparsable-package'
+    /** 无法从 frontmatter、源目录名或 fallbackName 得到合法目录名。 */
+    | 'no-skill-name'
+    /** 重写后出现重复目标路径，放弃改写而不是覆盖文件。 */
+    | 'rewrite-conflict';
+};
+
+const WORKSPACE_SKILL_MD_ENTRY_PATH = /^skills\/[^/]+\/SKILL\.md$/i;
+const SKILL_MD_ENTRY_PATH = /(^|\/)SKILL\.md$/i;
+
+/**
+ * 判定导入包需要哪种布局规范化（纯函数，只吃条目路径，不读内容）。
+ *
+ * 导入是外部包进入系统的唯一入口：Claude 等外部生态的包通常是「一级目录 + SKILL.md」
+ * 或根目录直接放 SKILL.md，而运行态工作区要求 skills/<name>/SKILL.md。判定保持保守：
+ * 无法确定的形态一律不猜，交给调用方按原样入库。
+ */
+export function planImportedSkillPackageLayout(entryPaths: string[]): ImportedSkillPackageLayout {
+  const normalizedPaths = entryPaths
+    .map((path) => normalizeZipEntryPathForSafety(path))
+    .filter((path) => path && path !== '.');
+
+  if (normalizedPaths.some((path) => !isSafeZipEntryPath(path))) {
+    return { applies: false, reason: 'unsafe-entry-path' };
+  }
+  if (normalizedPaths.some((path) => WORKSPACE_SKILL_MD_ENTRY_PATH.test(path))) {
+    return { applies: false, reason: 'already-workspace-layout' };
+  }
+
+  const skillMdPaths = normalizedPaths.filter((path) => SKILL_MD_ENTRY_PATH.test(path));
+  const rootSkillMd = skillMdPaths.find((path) => path.split('/').length === 1);
+  // 一级目录名 'skills' 本身不算 skill 目录，否则 skills/SKILL.md 会被当成一个 skill。
+  const flatSkillMdPaths = skillMdPaths.filter((path) => {
+    const segments = path.split('/');
+    return segments.length === 2 && segments[0].toLowerCase() !== 'skills';
+  });
+  const straySkillMdPaths = skillMdPaths.filter(
+    (path) => path !== rootSkillMd && !flatSkillMdPaths.includes(path)
+  );
+
+  if (straySkillMdPaths.length > 0) {
+    return { applies: false, reason: 'ambiguous-skill-md' };
+  }
+  if (rootSkillMd && flatSkillMdPaths.length > 0) {
+    return { applies: false, reason: 'root-and-dir-skill-md' };
+  }
+  if (flatSkillMdPaths.length > 0) {
+    return {
+      applies: true,
+      kind: 'flat-dirs',
+      skills: flatSkillMdPaths.map((path) => ({
+        sourceDirName: path.split('/')[0],
+        skillMdEntryPath: path
+      }))
+    };
+  }
+  if (rootSkillMd) {
+    return { applies: true, kind: 'root-skill-md', skillMdEntryPath: rootSkillMd };
+  }
+
+  return { applies: false, reason: 'no-skill-md' };
+}
+
+/**
+ * 描述包内识别到的布局，供发布失败提示指出问题来源。
+ */
+export function describeImportedSkillPackageLayout(entryPaths: string[]): string {
+  const plan = planImportedSkillPackageLayout(entryPaths);
+
+  if (plan.applies) {
+    return plan.kind === 'flat-dirs'
+      ? `skill folder(s) outside skills/: ${plan.skills.map((skill) => skill.sourceDirName).join(', ')}`
+      : 'a root-level SKILL.md';
+  }
+
+  const normalizedPaths = entryPaths
+    .map((path) => normalizeZipEntryPathForSafety(path))
+    .filter((path) => path && path !== '.');
+
+  switch (plan.reason) {
+    case 'ambiguous-skill-md':
+      return `SKILL.md in unreadable locations: ${normalizedPaths
+        .filter((path) => SKILL_MD_ENTRY_PATH.test(path))
+        .join(', ')}`;
+    case 'root-and-dir-skill-md':
+      return `a root-level SKILL.md together with ${normalizedPaths
+        .filter((path) => path.split('/').length === 2 && SKILL_MD_ENTRY_PATH.test(path))
+        .map((path) => path.split('/')[0])
+        .join(', ')}`;
+    case 'unsafe-entry-path':
+      return 'unsafe entry paths';
+    case 'already-workspace-layout':
+      return 'skills/<name>/SKILL.md';
+    default:
+      return 'no SKILL.md';
+  }
+}
+
+/**
+ * 把导入包改写为运行态要求的 `skills/<name>/SKILL.md` 布局。
+ *
+ * 只改路径、不改内容：保留文件修改时间、unixPermissions 与目录条目，不合成 `.gitignore`，
+ * 不做任何内容校验。判定不成立（形态无法确定、路径不安全、目录名取不到、目标冲突）
+ * 时按引用返回原 Buffer，由调用方原样入库。
+ */
+export async function normalizeImportedSkillPackageLayout(
+  zipBuffer: Buffer,
+  options: { fallbackName?: string } = {}
+): Promise<NormalizeImportedSkillPackageResult> {
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(zipBuffer);
+  } catch {
+    return { buffer: zipBuffer, normalized: false, reason: 'unparsable-package' };
+  }
+
+  // JSZip 会静默清洗条目名，原始名保留在 unsafeOriginalName 中（同 validateZipSafety）；
+  // 带逃逸路径的包一律不改写。
+  const hasUnsafeOriginalName = Object.values(zip.files).some(
+    (file) =>
+      file.unsafeOriginalName &&
+      !isSafeZipEntryPath(normalizeZipEntryPathForSafety(file.unsafeOriginalName))
+  );
+  if (hasUnsafeOriginalName) {
+    return { buffer: zipBuffer, normalized: false, reason: 'unsafe-entry-path' };
+  }
+
+  const plan = planImportedSkillPackageLayout(Object.keys(zip.files));
+  if (!plan.applies) {
+    return { buffer: zipBuffer, normalized: false, reason: plan.reason };
+  }
+
+  /** 目录名规则：frontmatter name → 源目录名 → fallbackName。 */
+  const resolveSkillDirName = async (
+    skillMdEntryPath: string,
+    sourceDirName?: string
+  ): Promise<string> => {
+    const skillMdFile = zip.file(skillMdEntryPath);
+    if (!skillMdFile) return '';
+
+    const skillMd = await skillMdFile.async('string');
+    const { frontmatter } = parseSkillMarkdown(skillMd);
+    if (typeof frontmatter.name === 'string' && frontmatter.name.trim()) {
+      return extractSkillNameFromSkillMd(skillMd);
+    }
+    if (sourceDirName) {
+      return getSafeSkillDirectoryName(sourceDirName).toLowerCase();
+    }
+    if (options.fallbackName) {
+      return getSafeSkillDirectoryName(options.fallbackName).toLowerCase();
+    }
+    return '';
+  };
+
+  const entryPaths = Object.keys(zip.files).filter((path) => !isZipRootDirectoryEntry(path));
+  const targetPathMap = new Map<string, string>();
+  const skillDirNames: string[] = [];
+
+  if (plan.kind === 'flat-dirs') {
+    for (const skill of plan.skills) {
+      const skillDirName = await resolveSkillDirName(skill.skillMdEntryPath, skill.sourceDirName);
+      if (!skillDirName) {
+        return { buffer: zipBuffer, normalized: false, reason: 'no-skill-name' };
+      }
+      skillDirNames.push(skillDirName);
+
+      for (const path of entryPaths) {
+        if (path === skill.sourceDirName || path.startsWith(`${skill.sourceDirName}/`)) {
+          targetPathMap.set(
+            path,
+            `skills/${skillDirName}${path.slice(skill.sourceDirName.length)}`
+          );
+        }
+      }
+    }
+  } else {
+    const skillDirName = await resolveSkillDirName(plan.skillMdEntryPath);
+    if (!skillDirName) {
+      return { buffer: zipBuffer, normalized: false, reason: 'no-skill-name' };
+    }
+    skillDirNames.push(skillDirName);
+
+    for (const path of entryPaths) {
+      const normalizedPath = normalizeZipEntryPathForSafety(path);
+      // 根级 .gitignore 与已有 skills/ 内容属于工作区层，保持原位。
+      if (
+        normalizedPath.toLowerCase() === '.gitignore' ||
+        normalizedPath.toLowerCase().startsWith('skills/')
+      ) {
+        targetPathMap.set(path, normalizedPath);
+        continue;
+      }
+      targetPathMap.set(path, `skills/${skillDirName}/${normalizedPath}`);
+    }
+  }
+
+  const output = new JSZip();
+  const writtenPaths = new Set<string>();
+  for (const path of entryPaths) {
+    const file = zip.files[path];
+    const targetPath = targetPathMap.get(path) ?? normalizeZipEntryPathForSafety(path);
+    if (writtenPaths.has(targetPath)) {
+      return { buffer: zipBuffer, normalized: false, reason: 'rewrite-conflict' };
+    }
+    writtenPaths.add(targetPath);
+
+    if (file.dir) {
+      output.file(`${targetPath.replace(/\/+$/, '')}/`, null, {
+        dir: true,
+        date: file.date,
+        unixPermissions: file.unixPermissions ?? undefined
+      });
+      continue;
+    }
+    output.file(targetPath, await file.async('nodebuffer'), {
+      binary: true,
+      createFolders: false,
+      date: file.date,
+      unixPermissions: file.unixPermissions ?? undefined
+    });
+  }
+
+  return {
+    buffer: await generateZipBuffer(output, { platform: 'UNIX' }),
+    normalized: true,
+    skillDirNames
   };
 }
 

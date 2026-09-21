@@ -70,6 +70,23 @@ Skill 版本保存为不可变 ZIP 包并记录 storage key。发布校验在持
 
 编辑调试直接使用 Skill Edit Sandbox 的当前工作区，避免下载旧发布版本覆盖正在编辑的内容。内置辅助生成 Skill 仍位于 Sandbox HOME，与用户工作区隔离。
 
+## 导入
+
+导入接口接收外部 Skill 包（`POST /core/ai/skill/import`），不做内容校验，也不拒绝任何字节：
+无法解析的包按原样入库。**唯一会发生的改写是 ZIP 条目布局**——因为编辑沙盒按包内布局原样解压，
+而发布要求 `skills/<name>/SKILL.md`，所以导入时把外部形态统一转录为运行态布局：
+
+| 包内形态 | 导入结果 |
+| --- | --- |
+| `skills/<dir>/SKILL.md` | 原样（幂等） |
+| 一级目录 `<dir>/SKILL.md`（可多个） | 该目录（各自）移入 `skills/<name>/`，根级其它文件保持原位 |
+| 根级 `SKILL.md` | 除根级 `.gitignore` 与 `skills/` 外，整包移入 `skills/<name>/` |
+| 更深层或 `skills/SKILL.md` 等无法判定的位置、路径逃逸、目标冲突 | 原样入库，由发布校验指出问题 |
+
+目录名取 SKILL.md frontmatter 的 `name`，其次源目录名，最后导入名；重写保留文件时间、
+`unixPermissions` 与目录条目，不合成 `.gitignore`。导入后的包仍是“不可信输入”，
+解压、大小与路径校验照旧在沙盒侧执行。
+
 ## 安全边界
 
 - Skill ZIP 解压前校验总大小和路径穿越。
@@ -84,6 +101,9 @@ Skill 版本保存为不可变 ZIP 包并记录 storage key。发布校验在持
 
 - 空白 workspace 创建和创建接口 schema。
 - 最小发布结构和非法路径校验。
+- 导入包的布局转录：标准形态原样透传、扁平目录/根级 SKILL.md/多 skill 目录各自的搬运结果、
+  无法判定形态时原样入库，以及重写后的文件时间、可执行位和目录条目保持不变。
+- 发布响应携带识别出的 Skill 元数据；发布失败时错误信息指出识别到的布局。
 - Skill 包权限、大小限制和部署目录。
 - edit-debug 不覆盖当前工作区。
 - 内置 Skill 路径隔离、etag 幂等同步和扫描。

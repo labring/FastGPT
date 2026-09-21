@@ -76,6 +76,10 @@ export async function saveDeploySkillFromSandbox({
       workDirectory: runtimeProfile.workDirectory
     });
   } catch (error) {
+    // 带错误码的业务错误原样抛出，客户端才能按 code/statusText 分类（消息里已带识别到的布局）。
+    if (error instanceof UserError && error.message === SkillErrEnum.workspaceLayoutInvalid) {
+      return Promise.reject(error);
+    }
     return Promise.reject(new UserError(`Failed to package skill directory: ${getErrText(error)}`));
   }
 
@@ -139,7 +143,8 @@ export async function saveDeploySkillFromSandbox({
       versionId,
       versionName: resolvedVersionName,
       storageKey: storageInfo.key,
-      createdAt: createdAt.toISOString()
+      createdAt: createdAt.toISOString(),
+      runtimeSkills
     };
   });
 

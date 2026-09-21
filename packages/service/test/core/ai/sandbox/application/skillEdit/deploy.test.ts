@@ -81,6 +81,7 @@ vi.mock('@fastgpt/service/core/ai/skill/model/schema', async (importOriginal) =>
 });
 
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { saveDeploySkillFromSandbox } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/deploy';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
 
@@ -147,7 +148,14 @@ describe('saveDeploySkillFromSandbox', () => {
       })
     ).resolves.toMatchObject({
       skillId: 'skill-1',
-      storageKey: 'agent-skills/team-1/skill-1/version-1.zip'
+      storageKey: 'agent-skills/team-1/skill-1/version-1.zip',
+      runtimeSkills: [
+        {
+          name: 'runtime-skill',
+          description: 'Runtime skill',
+          path: 'skills/runtime-skill/SKILL.md'
+        }
+      ]
     });
 
     expect(mocks.updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
@@ -204,5 +212,37 @@ describe('saveDeploySkillFromSandbox', () => {
 
     expect(mocks.packageSkillInSandbox).not.toHaveBeenCalled();
     expect(mocks.uploadSkillPackage).not.toHaveBeenCalled();
+  });
+
+  it('keeps a keyed packaging error intact so clients can classify it', async () => {
+    mocks.packageSkillInSandbox.mockRejectedValueOnce(
+      new UserError(
+        'workspaceLayoutInvalid',
+        'Detected skill folder(s) outside skills/: herder_skill'
+      )
+    );
+
+    await expect(
+      saveDeploySkillFromSandbox({
+        skillId: 'skill-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).rejects.toMatchObject({
+      message: 'workspaceLayoutInvalid',
+      displayMessage: 'Detected skill folder(s) outside skills/: herder_skill'
+    });
+  });
+
+  it('still wraps unkeyed packaging errors with the packaging context', async () => {
+    mocks.packageSkillInSandbox.mockRejectedValueOnce(new Error('sandbox connection lost'));
+
+    await expect(
+      saveDeploySkillFromSandbox({
+        skillId: 'skill-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).rejects.toThrow('Failed to package skill directory: sandbox connection lost');
   });
 });
