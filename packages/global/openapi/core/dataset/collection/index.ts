@@ -24,9 +24,40 @@ import {
   UpdateDatasetCollectionBodySchema
 } from './api';
 import { DatasetCollectionCreatePath } from './createPath';
+import {
+  BatchDownloadDatasetCollectionsBodySchema,
+  BatchDownloadDatasetCollectionsResponseSchema
+} from './batchDownloadApi';
 
 export const DatasetCollectionPath: OpenAPIPath = {
   ...DatasetCollectionCreatePath,
+  '/core/dataset/collection/batchDownload': {
+    post: {
+      summary: '批量下载知识库集合原始文件',
+      description: '将选中的通用知识库文件和文件夹流式归档为 ZIP 文件',
+      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: BatchDownloadDatasetCollectionsBodySchema
+          },
+          'application/x-www-form-urlencoded': {
+            schema: BatchDownloadDatasetCollectionsBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回 ZIP 归档文件流',
+          content: {
+            'application/zip': {
+              schema: BatchDownloadDatasetCollectionsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/dataset/collection/delete': {
     post: {
       'x-required-parameter-alternatives': [

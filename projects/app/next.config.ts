@@ -59,6 +59,11 @@ const nextConfig: NextConfig = {
       {
         source: '/((?!chat/share$).*)',
         headers: securityHeaders
+      },
+      {
+        // 批量下载使用同源 iframe 读取响应开始前的 JSON 错误。
+        source: '/api/core/dataset/collection/batchDownload',
+        headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }]
       }
     ];
   },

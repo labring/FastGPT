@@ -1,5 +1,5 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -23,7 +23,9 @@ import {
   getCollectionCollaboratorList,
   postUpdateCollectionCollaborators,
   putResumeCollectionInheritPermission,
-  postChangeCollectionOwner
+  postChangeCollectionOwner,
+  canBatchDownloadDatasetCollections,
+  createBatchDownloadDatasetCollectionsSubmitter
 } from '@/web/core/dataset/api/collection';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
@@ -69,6 +71,7 @@ import { postEnableCollectionPermission } from '@/web/core/dataset/api';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { CollectionRoleList } from '@fastgpt/global/support/permission/collection/constant';
 import { hasDatasetTrainingError as checkDatasetTrainingError } from '@/web/core/dataset/api/training';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
@@ -95,6 +98,13 @@ const CollectionCard = () => {
   const [editPerCollection, setEditPerCollection] = useState<DatasetCollectionItemType>();
   // 记录最近一次发起权限请求的 collection，用于丢弃快速切换目标时的过期响应。
   const permissionTargetIdRef = useRef('');
+  const [isBatchDownloading, setIsBatchDownloading] = useState(false);
+  const batchDownloadSubmitterRef = useRef(createBatchDownloadDatasetCollectionsSubmitter());
+
+  useEffect(() => {
+    const batchDownloadSubmitter = batchDownloadSubmitterRef.current;
+    return () => batchDownloadSubmitter.cleanup();
+  }, []);
 
   const {
     collections,
@@ -314,6 +324,19 @@ const CollectionCard = () => {
 
   const isLoading = isUpdating || isSyncing || isGetting || isDropping || isEnablingCollectionPer;
 
+  const onBatchDownload = () => {
+    batchDownloadSubmitterRef.current.submit({
+      collectionIds: selectedItems.map((item) => item._id),
+      onSubmittingChange: setIsBatchDownloading,
+      onPreflightError: (error) => {
+        toast({
+          status: 'error',
+          title: getErrText(error, t('dataset:archive.download_failed'))
+        });
+      }
+    });
+  };
+
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]} overflow={'hidden'}>
       <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
@@ -342,6 +365,17 @@ const CollectionCard = () => {
                       <Box color={'myGray.500'} userSelect={'none'} fontSize={'sm'}>
                         {t('dataset:collection.filtered_no_delete_permission_tip')}
                       </Box>
+                    )}
+                    {canBatchDownloadDatasetCollections(datasetDetail.type) && (
+                      <Button
+                        variant={'whiteBase'}
+                        leftIcon={<MyIcon name={'common/download'} w={4} />}
+                        isLoading={isBatchDownloading}
+                        isDisabled={isBatchDownloading}
+                        onClick={onBatchDownload}
+                      >
+                        {t('dataset:batch_download')}
+                      </Button>
                     )}
                     {datasetDetail.permission.hasWritePer &&
                       datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
