@@ -23,6 +23,7 @@ export { FILTER_SEARCH_THRESHOLD } from './FilterSearchInput';
 export { default as FilterSearchInput } from './FilterSearchInput';
 export {
   DEFAULT_FILTER_LIST_SIZE,
+  DEFAULT_FILTER_MENU_MAX_W,
   FILTER_LIST_H,
   FILTER_LIST_HEIGHTS,
   filterListScrollSx,
