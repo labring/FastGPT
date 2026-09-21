@@ -14,7 +14,7 @@ export type ApiFileTreeNode = {
 };
 
 export type ApiFileTreeSeed = Pick<APIFileItemType, 'id' | 'name' | 'type' | 'hasChild'> & {
-  /** 展开子级时传给 listFiles 的 parentId，缺省为 id。知识库根哨兵需覆盖为 basePath / rootNodeId */
+  /** 展开子级时传给 listFiles 的 parentId；显式 undefined 表示 provider 根，字段缺省才回退为 id */
   listId?: string;
 };
 
@@ -32,6 +32,7 @@ export const buildApiFileTree = async ({
   seeds: ApiFileTreeSeed[];
 }): Promise<ApiFileTreeNode[]> => {
   const nodes: ApiFileTreeNode[] = [];
+  const nodeById = new Map<string, ApiFileTreeNode>();
   // server 树理应无环，visited 只用于抵御 provider 返回重复/自引用节点时死循环
   const visited = new Set<string>();
 
@@ -40,22 +41,56 @@ export const buildApiFileTree = async ({
     serverParentId: string | null,
     depth: number
   ): Promise<void> => {
-    if (visited.has(seed.id)) return;
+    if (visited.has(seed.id)) {
+      const existing = nodeById.get(seed.id);
+      const createsCycle = (() => {
+        const checked = new Set<string>();
+        let ancestorId = serverParentId;
+        while (ancestorId) {
+          if (ancestorId === seed.id || checked.has(ancestorId)) return true;
+          checked.add(ancestorId);
+          ancestorId = nodeById.get(ancestorId)?.serverParentId ?? null;
+        }
+        return false;
+      })();
+      // 子目录先选、祖先后选时，第二次遇到的非根路径信息更完整，应覆盖首次的根级占位。
+      if (existing && serverParentId !== null && depth > existing.depth && !createsCycle) {
+        const depthDiff = depth - existing.depth;
+        existing.serverParentId = serverParentId;
+        existing.depth = depth;
+
+        // 已先遍历完的后代也要整体下移，最终再按 depth 恢复父先子后顺序。
+        for (const node of nodes) {
+          if (node === existing) continue;
+          let parentId = node.serverParentId;
+          while (parentId) {
+            if (parentId === existing.serverId) {
+              node.depth += depthDiff;
+              break;
+            }
+            parentId = nodeById.get(parentId)?.serverParentId ?? null;
+          }
+        }
+      }
+      return;
+    }
     visited.add(seed.id);
 
-    nodes.push({
+    const node: ApiFileTreeNode = {
       serverId: seed.id,
       serverParentId,
       type: seed.type,
       name: seed.name,
       depth,
       hasChild: Boolean(seed.hasChild)
-    });
+    };
+    nodes.push(node);
+    nodeById.set(seed.id, node);
 
     if (!seed.hasChild) return;
 
     const children: APIFileItemType[] = await request.listFiles({
-      parentId: seed.listId ?? seed.id
+      parentId: Object.prototype.hasOwnProperty.call(seed, 'listId') ? seed.listId : seed.id
     });
     for (const child of children) {
       await walk(child, seed.id, depth + 1);
@@ -66,5 +101,5 @@ export const buildApiFileTree = async ({
     await walk(seed, null, 0);
   }
 
-  return nodes;
+  return nodes.sort((a, b) => a.depth - b.depth);
 };

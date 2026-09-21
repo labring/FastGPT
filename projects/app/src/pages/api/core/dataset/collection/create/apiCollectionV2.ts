@@ -220,7 +220,6 @@ export const createApiDatasetCollection = async ({
   // 取舍：以 server 层级为准，挂在自建（无 apiFileId）文件夹下的节点会被重挂到 server 真实父级。
   // 若产品改为「用户显式摆放优先」，在此处跳过 parentId 指向自建文件夹的节点即可
   const correctionResult = await bulkUpdateCollectionsParent({ teamId, updates: corrections });
-  failedCount += correctionResult.failedIds.length;
   if (correctionResult.failedIds.length) {
     // 40k 文件规模下 failedIds 可能极长，只带前 10 条做样本，完整数量见 failedCount
     logger.warn('Create api file collection parent update failed', {

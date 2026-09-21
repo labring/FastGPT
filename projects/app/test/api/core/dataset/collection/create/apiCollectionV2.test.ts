@@ -193,6 +193,19 @@ describe('createApiDatasetCollection', () => {
     );
   });
 
+  it.each([
+    ['yuque', { yuqueServer: { userId: 'yuque-user' } }],
+    ['dingtalk', { dingtalkServer: { appKey: 'ding-app', userId: 'user-id' } }]
+  ])('%s 未配置根路径时，全选从 provider 根枚举', async (_, apiDatasetServer) => {
+    await call({
+      apiFiles: [apiFile(RootCollectionId, 'folder', true, 'ROOT_FOLDER')],
+      dataset: createDataset(apiDatasetServer)
+    });
+
+    expect(mockListFiles).toHaveBeenCalledWith({ parentId: undefined });
+    expect(mockListFiles).not.toHaveBeenCalledWith({ parentId: RootCollectionId });
+  });
+
   it('T3-1 四层层级：folder 逐层写 parentId，file 落在 L3 之下', async () => {
     setServerTree({
       l1: [apiFile('l2', 'folder', true)],
@@ -294,6 +307,22 @@ describe('createApiDatasetCollection', () => {
     expect(String(updates[0].parentId)).toBe(String(b._id));
     expect(updates[0].apiFileParentId).toBe('b');
     expect(updates.find((u: any) => u._id === 'D')).toBeUndefined();
+  });
+
+  it('T3-6b 同次选择子目录再选择祖先时，按祖先路径创建且不重复', async () => {
+    setServerTree({
+      a: [apiFile('b', 'folder', true)],
+      b: [apiFile('c', 'file')]
+    });
+
+    const result = await call({
+      apiFiles: [apiFile('b', 'folder', true), apiFile('a', 'folder', true)]
+    });
+
+    expect(folderDocs().map((doc: any) => doc.apiFileId)).toEqual(['a', 'b']);
+    expect(String(findFolder('b').parentId)).toBe(String(findFolder('a')._id));
+    expect(createdBatchFiles().map((file: any) => file.apiFileId)).toEqual(['c']);
+    expect(result).toEqual({ successCount: 3, failedCount: 0 });
   });
 
   it('T3-7 重复导入幂等：无新增、校正为空、计数为 0', async () => {
@@ -413,7 +442,8 @@ describe('createApiDatasetCollection', () => {
     const result = await call({ apiFiles: [apiFile('p', 'folder', true)] });
 
     expect(correctionUpdates()).toHaveLength(1);
-    expect(result.failedCount).toBe(1);
+    // 计数只描述本次创建；层级校正失败仅通过日志暴露，不混入 failedCount
+    expect(result.failedCount).toBe(0);
     expect(mockCreateApiFileCollectionsBatch).toHaveBeenCalled();
     // 校正失败必须记 WARN，否则 40k 规模下无人可查
     expect(mockLoggerWarn).toHaveBeenCalledWith(
@@ -542,7 +572,7 @@ describe('createApiDatasetCollection', () => {
     const result = await call({ apiFiles: [apiFile('p', 'folder', true)] });
 
     expect(correctionUpdates()).toHaveLength(12);
-    expect(result.failedCount).toBe(12);
+    expect(result.failedCount).toBe(0);
     // 40k 规模下 failedIds 可能上万条，日志只带 count + 前 10 条样本
     expect(mockLoggerWarn).toHaveBeenCalledWith(
       'Create api file collection parent update failed',

@@ -12,7 +12,7 @@ const {
   mockBulkWrite,
   mockLogger,
   mockCreateTrainingUsage,
-  mockCreate,
+  mockTrainingInsertMany,
   mockCreateOrGetCollectionTags
 } = vi.hoisted(() => ({
   mockInsertMany: vi.fn(),
@@ -20,7 +20,7 @@ const {
   mockBulkWrite: vi.fn(),
   mockLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   mockCreateTrainingUsage: vi.fn(),
-  mockCreate: vi.fn(),
+  mockTrainingInsertMany: vi.fn(),
   mockCreateOrGetCollectionTags: vi.fn()
 }));
 
@@ -62,7 +62,10 @@ vi.mock('@fastgpt/service/core/dataset/training/schema', async (importOriginal) 
     await importOriginal<typeof import('@fastgpt/service/core/dataset/training/schema')>();
   return {
     ...actual,
-    MongoDatasetTraining: { ...actual.MongoDatasetTraining, create: mockCreate }
+    MongoDatasetTraining: {
+      ...actual.MongoDatasetTraining,
+      insertMany: mockTrainingInsertMany
+    }
   };
 });
 // 模型目录依赖全局配置，测试环境无；给定句柄不影响 chunkSize/indexSize 的计算分支
@@ -364,7 +367,7 @@ describe('createApiFileCollectionsBatch', () => {
     vi.resetAllMocks();
     mockCreateTrainingUsage.mockResolvedValue({ usageId: 'usage-1' });
     mockInsertMany.mockResolvedValue({});
-    mockCreate.mockResolvedValue({});
+    mockTrainingInsertMany.mockResolvedValue([]);
   });
 
   /**
@@ -398,6 +401,10 @@ describe('createApiFileCollectionsBatch', () => {
     expect(docs[0].chunkSize).toBe(formatCreateCollectionParams.chunkSize);
     expect(docs[0].indexSize).toBe(formatCreateCollectionParams.indexSize);
     expect(docs[0].chunkSize).toBe(chunkAutoChunkSize);
+    expect(mockTrainingInsertMany).toHaveBeenCalledWith(
+      [expect.objectContaining({ collectionId: expect.any(String), mode: 'parse' })],
+      { session: {}, ordered: true }
+    );
   });
 
   /**

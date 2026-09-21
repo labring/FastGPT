@@ -1,14 +1,14 @@
 /**
- * 测量脚手架（无断言）：在真实内存 Mongo 上跑真实创建路径，输出分段耗时与落库算子数。
+ * 在真实内存 Mongo 上验证 4 万条解析任务的事务耗时，并可选输出完整创建路径的分段耗时。
  *
- * 只在 MEASURE_CREATE_PERF=1 时执行，默认整文件跳过（不进 CI）。
+ * 创建路径测量只在 MEASURE_CREATE_PERF=1 时执行；4 万条队列事务回归默认执行。
  * 被替换的**非测量对象**只有三类：
  * - provider（getApiDatasetRequest）：真实延迟不可控，遍历段只计 listFiles 调用次数
  * - 知识库模型解析（dataset/model）：纯内存查表，非 I/O
  * - checkDatasetIndexLimit：套餐初始化依赖全局配置无法在测试环境走通；
  *   它内部那次 MongoTeamSub.find 由 measurePrimitives 单独微测量后补齐
  */
-import { beforeAll, describe, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 const mockState = vi.hoisted(() => {
   const deepProxy: any = new Proxy(function () {}, { get: () => deepProxy });
@@ -83,16 +83,18 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
 import { createApiDatasetCollection } from '@/pages/api/core/dataset/collection/create/apiCollectionV2';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { pushDatasetToParseQueue } from '@fastgpt/service/core/dataset/training/controller';
 
 /**
  * 已知会被真实路径调用的落库算子，用来实证「每次写入带多少行」。
- * file 批量路径用 insertMany（一次带 N 行），folder 仍逐层 create。
+ * file 与 folder 路径都用 insertMany，并分别统计实际批次数。
  */
-const opCounts = { collectionCreate: 0, collectionInsertMany: 0, trainingCreate: 0 };
+const opCounts = { collectionCreate: 0, collectionInsertMany: 0, trainingInsertMany: 0 };
 
 const originalCollectionCreate = MongoDatasetCollection.create.bind(MongoDatasetCollection);
 const originalCollectionInsertMany = MongoDatasetCollection.insertMany.bind(MongoDatasetCollection);
-const originalTrainingCreate = MongoDatasetTraining.create.bind(MongoDatasetTraining);
+const originalTrainingInsertMany = MongoDatasetTraining.insertMany.bind(MongoDatasetTraining);
 
 /** 4 层结构：哨兵 -> L1 -> L2 -> L3 -> 文件 */
 type Shape = { l1: number; l2: number; l3: number; filesPerLeaf: number };
@@ -142,7 +144,7 @@ const runCreate = async (shape: Shape) => {
   mockState.logged.length = 0;
   opCounts.collectionCreate = 0;
   opCounts.collectionInsertMany = 0;
-  opCounts.trainingCreate = 0;
+  opCounts.trainingInsertMany = 0;
   mockState.listFiles.mockImplementation(async ({ parentId }: any) => {
     mockState.listFilesCalls++;
     return tree[parentId ?? 'ROOT'] ?? [];
@@ -221,9 +223,9 @@ describe.runIf(process.env.MEASURE_CREATE_PERF === '1')('创建路径耗时测�
       opCounts.collectionInsertMany++;
       return (originalCollectionInsertMany as any)(...args);
     }) as any);
-    vi.spyOn(MongoDatasetTraining, 'create').mockImplementation(((...args: any[]) => {
-      opCounts.trainingCreate++;
-      return (originalTrainingCreate as any)(...args);
+    vi.spyOn(MongoDatasetTraining, 'insertMany').mockImplementation(((...args: any[]) => {
+      opCounts.trainingInsertMany++;
+      return (originalTrainingInsertMany as any)(...args);
     }) as any);
   });
 
@@ -231,6 +233,8 @@ describe.runIf(process.env.MEASURE_CREATE_PERF === '1')('创建路径耗时测�
     const shape = shapeFromEnv();
     const primitives = await measurePrimitives();
     const run = await runCreate(shape);
+
+    expect(run.opCounts.trainingInsertMany).toBe(1);
 
     // 每次测量输出一行，便于对比不同规模
     console.log(
@@ -253,4 +257,28 @@ describe.runIf(process.env.MEASURE_CREATE_PERF === '1')('创建路径耗时测�
         )
     );
   }, 900000);
+});
+
+describe('解析队列 4 万规模事务性能', () => {
+  it('在默认 60 秒事务期限内用一次 insertMany 写入 4 万条任务', async () => {
+    const teamId = String(new Types.ObjectId());
+    const datasetId = String(new Types.ObjectId());
+    const collectionIds = Array.from({ length: 40_000 }, () => String(new Types.ObjectId()));
+    const startedAt = Date.now();
+
+    await mongoSessionRun((session) =>
+      pushDatasetToParseQueue({
+        teamId,
+        tmbId: String(new Types.ObjectId()),
+        datasetId,
+        collectionId: collectionIds,
+        billId: String(new Types.ObjectId()),
+        session
+      })
+    );
+
+    const durationMs = Date.now() - startedAt;
+    expect(durationMs).toBeLessThan(60_000);
+    await expect(MongoDatasetTraining.countDocuments({ teamId, datasetId })).resolves.toBe(40_000);
+  }, 70_000);
 });
