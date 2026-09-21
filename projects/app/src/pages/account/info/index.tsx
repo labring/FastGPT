@@ -6,7 +6,6 @@ import {
   Button,
   useDisclosure,
   useTheme,
-  Input,
   Link,
   Grid,
   type BoxProps
@@ -407,21 +406,15 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         {feConfigs?.isPlus && (
           <Flex mt={[4, 4]} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:member_name')}&nbsp;</Box>
-            <Input
-              flex={'1 0 0'}
-              disabled={isSyncMember}
-              readOnly
-              value={memberDisplayName}
-              title={t('account_info:click_modify_nickname')}
-              borderColor={'transparent'}
-              h={'36px'}
-              transform={['none', 'translateX(-11px)']}
-              maxLength={100}
-              cursor={isSyncMember ? 'not-allowed' : 'pointer'}
-              onClick={() => {
-                if (!isSyncMember) onOpenMemberName();
-              }}
-            />
+            <Box flex={1}>{memberDisplayName}</Box>
+            <Button
+              {...actionButtonStyles}
+              variant={'whitePrimary'}
+              isDisabled={isSyncMember}
+              onClick={onOpenMemberName}
+            >
+              {t('account_info:change')}
+            </Button>
           </Flex>
         )}
         {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (

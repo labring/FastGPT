@@ -88,7 +88,7 @@ const MemberNameFormModal = ({
           {...memberNameInputStyles}
           maxLength={20}
           placeholder={placeholder}
-          _placeholder={{ color: '#667085' }}
+          _placeholder={{ color: '#667085', fontSize: 'sm' }}
           onChange={onNameChange}
           onKeyDown={(event) => {
             if (event.key !== 'Enter' || loading) return;
@@ -96,7 +96,7 @@ const MemberNameFormModal = ({
             submit();
           }}
         />
-        {showNameError && <FormErrorMessage>{nameError}</FormErrorMessage>}
+        {showNameError && <FormErrorMessage fontSize="mini">{nameError}</FormErrorMessage>}
       </FormControl>
     </MyModal>
   );

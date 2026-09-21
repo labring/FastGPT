@@ -7,6 +7,7 @@ export type InvitationSchemaType = {
   expires: Date;
   description: string;
   creatorUsername?: string;
+  creatorTmbId?: string;
   members: string[];
 };
 
@@ -33,5 +34,6 @@ export type InvitationLinkCreateType = {
 export type InvitationInfoType = InvitationSchemaType & {
   teamAvatar: string;
   teamName: string;
+  creatorMemberName?: string;
   alreadyJoined: boolean;
 };

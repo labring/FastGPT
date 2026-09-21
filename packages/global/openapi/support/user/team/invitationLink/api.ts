@@ -46,7 +46,8 @@ const InvitationLinkBaseShape = {
     description: '邀请链接过期时间'
   }),
   description: z.string().meta({ description: '邀请链接描述' }),
-  creatorUsername: z.string().optional().meta({ description: '邀请链接创建者用户名' })
+  creatorUsername: z.string().optional().meta({ description: '邀请链接创建者用户名' }),
+  creatorTmbId: ObjectIdSchema.optional().meta({ description: '邀请链接创建者成员 ID' })
 };
 
 /* ============================================================================
@@ -143,6 +144,7 @@ export const GetInvitationLinkInfoResponseSchema = z
     members: z.array(ObjectIdSchema).meta({ description: '已通过邀请链接加入的成员 ID 列表' }),
     teamAvatar: z.string().nullish().meta({ description: '团队头像' }),
     teamName: z.string().meta({ description: '团队名称' }),
+    creatorMemberName: z.string().optional().meta({ description: '邀请链接创建者成员名' }),
     alreadyJoined: z.boolean().meta({ description: '当前用户是否已经加入该团队' })
   })
   .meta({ description: '有效邀请链接详情' });

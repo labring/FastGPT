@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
         alreadyJoined: boolean;
         teamName?: string;
         creatorUsername?: string;
+        creatorMemberName?: string;
       }
     | undefined,
   manualRequestOptions: undefined as

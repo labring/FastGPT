@@ -8,7 +8,7 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
  * 合法值返回空串，调用方可以直接用返回值判断能否提交；空值和 schema 校验失败分别给出独立提示。
  */
 export const getMemberNameError = ({ value, t }: { value: string; t: TFunction }) => {
-  if (!value) return t('account_team:member_name_required');
+  if (!value.trim()) return t('account_team:member_name_required');
   return TeamMemberNameSchema.safeParse(value).success ? '' : t('account_team:member_name_limit');
 };
 

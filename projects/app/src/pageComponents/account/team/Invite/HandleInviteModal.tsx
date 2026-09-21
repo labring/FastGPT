@@ -75,11 +75,11 @@ const HandleInviteModal = ({
     void finishInvitation();
   }, [finishInvitation, invitationInfo?.alreadyJoined, t, toast]);
 
-  // creatorUsername 是可选字段，空串同样需要回落到兜底文案，所以显式判空而不是用 || 覆盖假值。
+  // 优先展示邀请人的团队成员名；历史邀请没有成员 ID 时回落到用户名。
+  const creatorMemberName = invitationInfo?.creatorMemberName?.trim();
   const creatorUsername = invitationInfo?.creatorUsername?.trim();
-  const inviterName = creatorUsername
-    ? creatorUsername
-    : t('account_team:invitation_creator_fallback');
+  const inviterName =
+    creatorMemberName || creatorUsername || t('account_team:invitation_creator_fallback');
 
   const { runAsync: acceptInvitation, loading: accepting } = useRequest(
     async () => {
@@ -128,10 +128,6 @@ const HandleInviteModal = ({
 
   const rejectInvitation = async () => {
     await finishInvitation();
-    toast({
-      status: 'info',
-      title: t('account_team:invitation_rejected', { source: inviterName })
-    });
   };
 
   if (!invitationInfo || invitationInfo.alreadyJoined) return null;
@@ -145,8 +141,7 @@ const HandleInviteModal = ({
           : t('account_team:set_member_name_title')
       }
       closeOnOverlayClick={false}
-      onClose={isMultiTeamMode ? rejectInvitation : undefined}
-      showCloseButton={isMultiTeamMode}
+      showCloseButton={false}
       borderRadius="10px"
       footer={
         <>
@@ -190,14 +185,14 @@ const HandleInviteModal = ({
             <Box display="flex" flexDirection="column" gap="4px">
               <Box
                 color="#111824"
-                fontSize="14px"
+                fontSize="sm"
                 fontWeight={500}
                 lineHeight="20px"
                 letterSpacing="0.1px"
               >
                 {invitationInfo.teamName}
               </Box>
-              <Box color="#667085" fontSize="14px" lineHeight="20px" letterSpacing="0.25px">
+              <Box color="#667085" fontSize="sm" lineHeight="20px" letterSpacing="0.25px">
                 {t('account_team:invited_by', { source: inviterName })}
               </Box>
             </Box>
@@ -209,7 +204,7 @@ const HandleInviteModal = ({
             {showNameError && (
               <Box
                 color="#D92D20"
-                fontSize="10px"
+                fontSize="mini"
                 fontWeight={500}
                 lineHeight="14px"
                 letterSpacing="0.2px"
@@ -226,7 +221,7 @@ const HandleInviteModal = ({
                 ? t('account_team:invite_member_name_placeholder')
                 : t('account_team:member_name_placeholder')
             }
-            _placeholder={{ color: '#667085' }}
+            _placeholder={{ color: '#667085', fontSize: 'sm' }}
             _invalid={{ borderColor: '#E8EBF0', boxShadow: 'none' }}
             onChange={onNameChange}
             onBlur={markInteracted}

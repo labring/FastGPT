@@ -27,7 +27,9 @@ describe('getMemberNameError', () => {
     );
   });
 
-  it('reports the length limit when the name only contains spaces', () => {
-    expect(getMemberNameError({ value: '   ', t: mockT })).toBe('account_team:member_name_limit');
+  it('asks for a name when the name only contains spaces', () => {
+    expect(getMemberNameError({ value: '   ', t: mockT })).toBe(
+      'account_team:member_name_required'
+    );
   });
 });

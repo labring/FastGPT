@@ -131,7 +131,7 @@
   "inform_level_common": "一般",
   "inform_level_emergency": "紧急",
   "inform_level_important": "重要",
-  "invitation_copy_link": "【{{systemName}}】 {{userName}} 邀请您加入{{teamName}}团队，链接：{{url}}",
+  "invitation_copy_link": "【{{systemName}}】 {{userName}} 邀请您加入“{{teamName}}”，链接：{{url}}",
   "invitation_link_auto_clean_hint": "已失效链接将在30天后自动清理",
   "invitation_link_description": "链接描述",
   "invitation_link_list": "链接列表",

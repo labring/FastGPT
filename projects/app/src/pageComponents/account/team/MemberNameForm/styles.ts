@@ -7,7 +7,7 @@ export const memberNameInputStyles = {
   h: '32px',
   minH: '32px',
   px: '12px',
-  fontSize: '12px',
+  fontSize: 'sm',
   lineHeight: '16px',
   letterSpacing: '0.048px',
   borderColor: '#E8EBF0',
@@ -16,7 +16,7 @@ export const memberNameInputStyles = {
 
 export const memberNameLabelStyles = {
   color: '#24282C',
-  fontSize: '12px',
+  fontSize: 'sm',
   fontWeight: 500,
   lineHeight: '16px',
   letterSpacing: '0.5px'
@@ -26,7 +26,7 @@ export const memberNameButtonStyles = {
   h: '32px',
   minH: '32px',
   px: '14px',
-  fontSize: '12px',
+  fontSize: 'mini',
   lineHeight: '16px',
   letterSpacing: '0.5px',
   borderRadius: '6px'
