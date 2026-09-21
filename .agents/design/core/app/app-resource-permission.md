@@ -548,8 +548,8 @@ flowchart TD
    - 静态引用核对 `assertWorkflowDatasetResources` 白名单后现场执行 `MongoDataset.findOne`；查不到统一抛出 `DatasetErrEnum.unExist`；
    - Agent 用户上下文中的批量知识库元数据（`loadAgentDatasetContext`）现场单次 `MongoDataset.find`，兼顾 JIT 实时性与批查询性能。
 3. **沙箱技能（`injectAgentSkillFilesToSandbox`）**：
-   - 现场遍历核对 `assertWorkflowResource({ type: 'skill' })`；
-   - 现场执行 `MongoAgentSkills.find` 查询有效实体，数量不匹配或缺失直接抛出 `SkillErrEnum.unExist`。
+   - 静态运行态过滤快照声明白名单 `resourceMap`；
+   - 现场执行 `MongoAgentSkills.find` 查询有效实体，缺失、软删除或未声明的技能优雅跳过并降级，不阻断 Agent 运行（错误仅在应用编辑页面和发布校验时提示）。
 4. **统一复用与错误隔离**：
    - 所有派发分支（`runApp.ts`、`runTool.ts`、`sub/app/index.ts`、`dispatch/utils/index.ts`）统一收敛至 `loadWorkflowAppResource` / `loadWorkflowDatasetResource`；
    - 不引入任何中间层查询缓存，每次执行现场查库，确保多节点或协作修改的数据实时一致性。

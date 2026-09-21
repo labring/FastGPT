@@ -17,7 +17,7 @@ import { authSkillByTmbId } from '../../../../../../support/permission/skill/aut
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowResourceContext } from '../../../../../workflow/utils/context';
-import { assertWorkflowResource } from '../../../../../workflow/utils/resource';
+import { getAppResourceKey } from '../../../../../app/resources';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { Types } from '../../../../../../common/mongo';
 import { Readable } from 'node:stream';
@@ -185,20 +185,23 @@ export const injectAgentSkillFilesToSandbox = async ({
   }
 
   const resourceContext = getWorkflowResourceContext();
-  if (resourceContext && !dynamic) {
-    skillIds.forEach((skillId) =>
-      assertWorkflowResource({
-        context: resourceContext,
-        type: 'skill',
-        id: skillId
-      })
-    );
-  }
-  const hasInvalidId = skillIds.some((id) => !Types.ObjectId.isValid(id));
-  if (resourceContext && !dynamic && hasInvalidId) {
-    throw SkillErrEnum.unExist;
-  }
-  const validSkillIds = skillIds.filter((id) => Types.ObjectId.isValid(id));
+  // 静态运行态下，仅允许注入快照中已声明的 Skill；未声明或已失效的 Skill 优雅跳过，不阻断 Agent 运行
+  const allowedSkillIds =
+    resourceContext && !dynamic
+      ? skillIds.filter((skillId) => {
+          const isDeclared = resourceContext.resourceMap.has(
+            getAppResourceKey({ type: 'skill', id: skillId })
+          );
+          if (!isDeclared) {
+            logger.warn('[Agent Skills] Skip undeclared skill during runtime injection', {
+              skillId
+            });
+          }
+          return isDeclared;
+        })
+      : skillIds;
+
+  const validSkillIds = allowedSkillIds.filter((id) => Types.ObjectId.isValid(id));
   const teamSkills =
     validSkillIds.length > 0
       ? await MongoAgentSkills.find({
@@ -209,13 +212,19 @@ export const injectAgentSkillFilesToSandbox = async ({
             : { $or: [{ teamId }, { source: AgentSkillSourceEnum.system }] })
         })
       : [];
-  if (resourceContext && !dynamic && teamSkills.length !== skillIds.length) {
-    throw SkillErrEnum.unExist;
-  }
+
   if (teamSkills.length === 0) {
     logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
     await cleanupStaleDirs(new Set());
     return [];
+  }
+
+  if (teamSkills.length !== validSkillIds.length) {
+    const existingIds = new Set(teamSkills.map((s) => String(s._id)));
+    const missingIds = validSkillIds.filter((id) => !existingIds.has(id));
+    logger.warn('[Agent Skills] Skip missing/deleted skills during runtime injection', {
+      missingIds
+    });
   }
 
   const skills = (

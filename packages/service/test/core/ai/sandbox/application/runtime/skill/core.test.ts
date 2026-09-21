@@ -296,7 +296,7 @@ description: Zeta skill
 });
 
 describe('injectAgentSkillFilesToSandbox', () => {
-  it('rejects a declared static skill when its entity is unavailable', async () => {
+  it('skips a declared static skill when its entity is unavailable instead of blocking', async () => {
     const resource = { type: 'skill' as const, id: 'missing-skill' };
     const resourceContext = {
       isRoot: false,
@@ -308,17 +308,88 @@ describe('injectAgentSkillFilesToSandbox', () => {
       skillMap: new Map()
     };
 
-    await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
-      expect(
-        injectAgentSkillFilesToSandbox({
-          sandbox: createSkillFilesystemMocks() as any,
-          skillIds: [resource.id],
-          teamId: 'team-id',
-          tmbId: 'tmb-id',
-          workDirectory: '/workspace'
-        })
-      ).rejects.toBe(SkillErrEnum.unExist)
+    const result = await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+      injectAgentSkillFilesToSandbox({
+        sandbox: createSkillFilesystemMocks() as any,
+        skillIds: [resource.id],
+        teamId: 'team-id',
+        tmbId: 'tmb-id',
+        workDirectory: '/workspace'
+      })
     );
+    expect(result).toEqual([]);
+  });
+
+  it('deploys available static skill and skips deleted/missing static skill when mixed', async () => {
+    const user = await getUser(`runtime-skill-mixed-${getNanoid(6)}`);
+    const { teamId, tmbId } = user;
+
+    const skill = await MongoAgentSkills.create({
+      name: 'ExistingSkill',
+      description: '',
+      teamId,
+      tmbId,
+      source: AgentSkillSourceEnum.personal
+    });
+    const versionId = new Types.ObjectId();
+    const skillPackage = await makePackage([
+      { path: 'skill.md', name: 'existing', description: 'Existing skill' }
+    ]);
+    const storage = await uploadSkillPackage({
+      teamId,
+      skillId: String(skill._id),
+      packageObjectId: 'runtime-mixed-version',
+      zipBuffer: skillPackage
+    });
+    await MongoAgentSkillsVersion.create({
+      _id: versionId,
+      skillId: skill._id,
+      tmbId,
+      storageKey: storage.key
+    });
+    await MongoAgentSkills.updateOne({ _id: skill._id }, { $set: { currentVersionId: versionId } });
+
+    const missingSkillId = new Types.ObjectId().toHexString();
+    const targetDir = `/workspace/projects/${String(versionId)}`;
+    const sandbox = {
+      ...createSkillFilesystemMocks(),
+      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+        makeWriteResults(entries)
+      ),
+      execute: vi.fn(async (command: string) => {
+        if (command.includes('unzip')) return { exitCode: 0, stdout: '', stderr: '' };
+        throw new Error(`Unexpected command: ${command}`);
+      }),
+      readFiles: vi.fn()
+    };
+
+    const resourceContext = await loadWorkflowResourceContext({
+      resources: [
+        { type: 'skill', id: String(skill._id) },
+        { type: 'skill', id: missingSkillId }
+      ],
+      teamId
+    });
+    const deployedVersions = await runWithContext({ mcpClientMemory: {}, resourceContext }, () =>
+      injectAgentSkillFilesToSandbox({
+        sandbox: sandbox as any,
+        skillIds: [String(skill._id), missingSkillId],
+        teamId,
+        tmbId,
+        workDirectory: '/workspace'
+      })
+    );
+
+    expect(deployedVersions).toEqual([
+      {
+        skillId: String(skill._id),
+        name: 'ExistingSkill',
+        description: '',
+        avatar: undefined,
+        versionId: String(versionId),
+        targetDir
+      }
+    ]);
   });
 
   it('stops when deployed skill directory enumeration fails', async () => {
