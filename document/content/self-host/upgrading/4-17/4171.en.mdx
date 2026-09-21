@@ -34,7 +34,6 @@ This upgrade includes the following automated script:
 
 7. Admin features are now integrated into the main app, with menus and feature status based on License permissions.
 8. File-reading Node debugging now supports local file uploads and file URLs, and prevents execution while uploads are pending or files have errors.
-9. Added Langfuse Workflow tracing, configurable through `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL`.
 
 ## ⚙️ Improvements
 
@@ -43,6 +42,7 @@ This upgrade includes the following automated script:
 
 3. Dataset search Nodes can now record candidates before reranking to help compare retrieval and reranking results. Set the recording limit with `RETRIEVAL_RESULTS_LIMIT`; recording is disabled by default.
 4. Beta models now appear at the end of the model selector.
+5. Fixed the default Dataset image model being automatically restored after clearing it. The image model can now remain unconfigured.
 
 ## 🐛 Fixes
 
@@ -60,12 +60,9 @@ This upgrade includes the following automated script:
 12. Tool execution failures are no longer shown as ordinary chat errors in the bottom error card or counted in the Node response summary.
 13. Fixed App chat tests failing to validate model availability before sending the request; specific model configuration errors are now shown first.
 14. Fixed FastGPT Pro Lark publishing channels failing to return the challenge during event-subscription URL verification when an Encrypt Key is configured.
-
-15. Fixed the default Dataset image model being automatically restored after clearing it. The image model can now remain unconfigured.
-16. Fixed Tool inputs incorrectly switching to a JSON editor in manual input mode. They now use the input control declared by the Node.
-17. Hid inactive reasoning outputs when model reasoning is disabled. Also fixed validation errors for interactive Nodes without description text and Node diagrams unexpectedly opening after the debug panel closes.
-18. Fixed MongoDB change streams failing to recover after termination by adding automatic reconnection and configuration reloads.
-19. Fixed MongoDB transaction errors caused by concurrent system configuration updates.
+15. Fixed Tool inputs incorrectly switching to a JSON editor in manual input mode. They now use the input control declared by the Node.
+16. Fixed MongoDB change streams failing to recover after termination by adding automatic reconnection and configuration reloads.
+17. Fixed MongoDB transaction errors caused by concurrent system configuration updates.
 
 ## 🛠️ Code Improvements
 
