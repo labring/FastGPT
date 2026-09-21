@@ -733,6 +733,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 <FloatingActionBar
                   borderTopWidth="1px"
                   borderColor="myGray.100"
+                  px={3}
                   Controler={
                     <HStack spacing={2}>
                       <Button

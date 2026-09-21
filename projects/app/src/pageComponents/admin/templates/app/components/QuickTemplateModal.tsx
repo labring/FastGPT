@@ -85,6 +85,7 @@ const QuickTemplateModal = ({
       }
     >
       <FillRowTabs
+        flexShrink={0}
         list={[
           { label: '工作流', value: AppTypeEnum.workflow, icon: 'core/app/type/workflow' },
           { label: '对话 Agent', value: AppTypeEnum.simple, icon: 'core/app/type/simple' },
@@ -179,12 +180,6 @@ const QuickTemplateModal = ({
                     px={3}
                     borderRadius={'md'}
                     _hover={{ bg: 'myGray.50' }}
-                    onClick={() =>
-                      setSelectedTemplateIds((state) => ({
-                        ...state,
-                        [currentAppType]: state[currentAppType].filter((v) => v !== templateId)
-                      }))
-                    }
                   >
                     <MyAvatar src={template.avatar} w={'20px'} borderRadius={'sm'} />
                     <Box w={'full'} fontSize={'sm'} color={'myGray.900'}>
@@ -197,6 +192,12 @@ const QuickTemplateModal = ({
                       _hover={{
                         color: 'red.600'
                       }}
+                      onClick={() =>
+                        setSelectedTemplateIds((state) => ({
+                          ...state,
+                          [currentAppType]: state[currentAppType].filter((v) => v !== templateId)
+                        }))
+                      }
                     />
                   </HStack>
                 ) : null;

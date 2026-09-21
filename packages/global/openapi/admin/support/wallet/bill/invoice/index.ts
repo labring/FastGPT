@@ -1,6 +1,10 @@
 import type { OpenAPIPath } from '../../../../../type';
 import { DevApiTagsMap } from '../../../../../tag';
 import { InvoiceListBodySchema, InvoiceListResponseSchema, InvoiceFinishBodySchema } from './api';
+import {
+  InvoiceDownloadFileContentSchema,
+  InvoiceDownloadFileQuerySchema
+} from '../../../../../support/wallet/bill/invoice/api';
 
 export const AdminInvoicePath: OpenAPIPath = {
   '/admin/support/wallet/bill/invoice/list': {
@@ -45,6 +49,26 @@ export const AdminInvoicePath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: {}
+            }
+          }
+        }
+      }
+    }
+  },
+  '/admin/support/wallet/bill/invoice/downloadFile': {
+    get: {
+      summary: '下载发票文件',
+      description: '按发票 ID 下载后台已开具的 PDF 文件，需要管理员权限',
+      tags: [DevApiTagsMap.adminWalletInvoice],
+      requestParams: {
+        query: InvoiceDownloadFileQuerySchema
+      },
+      responses: {
+        200: {
+          description: '发票 PDF 文件',
+          content: {
+            'application/pdf': {
+              schema: InvoiceDownloadFileContentSchema
             }
           }
         }

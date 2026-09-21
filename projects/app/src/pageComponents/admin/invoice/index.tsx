@@ -8,7 +8,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Flex,
   Box,
   HStack,
@@ -19,28 +18,31 @@ import {
   FormLabel
 } from '@chakra-ui/react';
 import type { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dayjs from 'dayjs';
-import { useCallback, useState } from 'react';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useCallback, useRef, useState } from 'react';
 import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
 import { InvoiceStatusEnum } from '@fastgpt/global/support/wallet/bill/invoice/constants';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceManageTable = () => {
-  const { isPc } = useSystem();
-
   const [search, setSearch] = useState<string>();
   const [uploadInvoiceId, setUploadInvoiceId] = useState<string>();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     data: invoices,
     isLoading,
-    ScrollData,
+    Pagination,
+    total,
+    pageSize,
     getData
   } = usePagination(getInvoiceList, {
     defaultPageSize: 20,
@@ -48,117 +50,140 @@ const InvoiceManageTable = () => {
     params: {
       search
     },
-    type: 'scroll',
-    refreshDeps: [search]
+    refreshDeps: [search],
+    scrollContainerRef
   });
 
   return (
-    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
-      <HStack pb={4}>
-        {isPc && (
-          <Box fontSize={'2xl'} fontWeight={'bold'}>
-            开票申请
-          </Box>
-        )}
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'} p={0}>
+      <Flex
+        h={'64px'}
+        flexShrink={0}
+        px={6}
+        alignItems={'center'}
+        gap={2}
+        borderBottom={'1px solid'}
+        borderColor={'myGray.200'}
+      >
+        <Box as={'h1'} {...accountTitleTextStyles}>
+          开票管理
+        </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']}>
+        <InputGroup w={['100%', '250px']} h={'36px'}>
           <InputLeftElement h={'full'}>
             <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
           </InputLeftElement>
           <Input
             placeholder="请输入用户名，回车搜索"
-            size={'sm'}
+            h={'36px'}
             onChange={(e) => setSearch(e.target.value)}
           ></Input>
         </InputGroup>
-      </HStack>
+      </Flex>
 
-      <ScrollData position={'relative'} h={'100%'}>
-        <TableContainer>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>提交状态</Th>
-                <Th>提交时间/完成时间</Th>
-                <Th>金额</Th>
-                <Th>抬头</Th>
-                <Th>联系方式</Th>
-                <Th>操作</Th>
-                <Th>Team Id</Th>
-              </Tr>
-            </Thead>
-            <Tbody fontSize={'sm'}>
-              {invoices.map((item, i) => (
-                <Tr key={i}>
-                  <Td
-                    {...(item.status === InvoiceStatusEnum.submitted
-                      ? {
-                          color: 'red.600'
-                        }
-                      : {
-                          color: 'primary.600'
-                        })}
-                  >
-                    {item.status === InvoiceStatusEnum.submitted ? '等待开票' : '已完成'}
-                  </Td>
-                  <Td>
-                    {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
-                    <br />
-                    {item.finishTime ? dayjs(item.finishTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
-                  </Td>
-                  <Td>{formatStorePrice2Read(item.amount)}元</Td>
-                  <Td>{item.teamName}</Td>
-                  <Td>{item.contactPhone || '-'}</Td>
-                  <Td>
-                    {item.status === InvoiceStatusEnum.submitted ? (
-                      <Button onClick={() => setUploadInvoiceId(item._id)} size={'sm'}>
-                        {'确认开票'}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant={'whiteBase'}
-                        size={'sm'}
-                        onClick={() => setInvoiceDetailData(item)}
-                      >
-                        详情
-                      </Button>
-                    )}
-                  </Td>
-                  <Td>{item.teamId}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-          {!isLoading && invoices.length === 0 && (
-            <Flex
-              mt={'20vh'}
-              flexDirection={'column'}
-              alignItems={'center'}
-              justifyContent={'center'}
-            >
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                无开票记录～
-              </Box>
+      <FixedTableContainer
+        ref={scrollContainerRef}
+        position={'relative'}
+        h={'100%'}
+        maxH={'none'}
+        horizontalScroll
+        px={[4, 6]}
+        py={6}
+        footer={
+          total > pageSize ? (
+            <Flex mt={3} justifyContent={'center'}>
+              <Pagination />
             </Flex>
-          )}
-          {!!invoiceDetailData && (
-            <InvoiceDetailModal
-              invoice={invoiceDetailData}
-              onClose={() => setInvoiceDetailData(undefined)}
-              flashData={() => getData(1)}
-            />
-          )}
-          {uploadInvoiceId && (
-            <InvoiceFinishModal
-              invoice={invoices.find((item) => item._id === uploadInvoiceId)!}
-              invoiceId={uploadInvoiceId}
-              onClose={() => setUploadInvoiceId(undefined)}
-              flashData={() => getData(1)}
-            />
-          )}
-        </TableContainer>
-      </ScrollData>
+          ) : undefined
+        }
+      >
+        <Table>
+          <Thead>
+            <Tr>
+              <Th>提交状态</Th>
+              <Th>提交时间/完成时间</Th>
+              <Th>金额</Th>
+              <Th>抬头</Th>
+              <Th>联系方式</Th>
+              <Th>操作</Th>
+              <Th>Team Id</Th>
+            </Tr>
+          </Thead>
+          <Tbody fontSize={'sm'}>
+            {invoices.map((item, i) => (
+              <Tr key={i}>
+                <Td
+                  {...(item.status === InvoiceStatusEnum.submitted
+                    ? {
+                        color: 'red.600'
+                      }
+                    : {
+                        color: 'primary.600'
+                      })}
+                >
+                  {item.status === InvoiceStatusEnum.submitted ? '等待开票' : '已完成'}
+                </Td>
+                <Td>
+                  {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                  <br />
+                  {item.finishTime ? dayjs(item.finishTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                </Td>
+                <Td>{formatStorePrice2Read(item.amount)}元</Td>
+                <Td>{item.teamName}</Td>
+                <Td>{item.contactPhone || '-'}</Td>
+                <Td>
+                  {item.status === InvoiceStatusEnum.submitted ? (
+                    <Button
+                      variant={'whiteBase'}
+                      onClick={() => setUploadInvoiceId(item._id)}
+                      size={'sm'}
+                    >
+                      {'确认开票'}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant={'whiteBase'}
+                      size={'sm'}
+                      onClick={() => setInvoiceDetailData(item)}
+                    >
+                      详情
+                    </Button>
+                  )}
+                </Td>
+                <Td>{item.teamId}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        {!isLoading && invoices.length === 0 && (
+          <Flex
+            mt={'20vh'}
+            flexDirection={'column'}
+            alignItems={'center'}
+            justifyContent={'center'}
+          >
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              无开票记录～
+            </Box>
+          </Flex>
+        )}
+        {!!invoiceDetailData && (
+          <InvoiceDetailModal
+            invoice={invoiceDetailData}
+            onClose={() => setInvoiceDetailData(undefined)}
+            flashData={() => getData(1)}
+          />
+        )}
+        {uploadInvoiceId && (
+          <InvoiceFinishModal
+            invoice={invoices.find((item) => item._id === uploadInvoiceId)!}
+            invoiceId={uploadInvoiceId}
+            onClose={() => setUploadInvoiceId(undefined)}
+            flashData={() => getData(1)}
+          />
+        )}
+      </FixedTableContainer>
     </BoxPageRoot>
   );
 };
@@ -190,6 +215,16 @@ function InvoiceDetailModal({
         flashData();
       }
     }
+  );
+
+  const { loading: isDownloading, run: downloadInvoice } = useRequest(
+    async () => {
+      await downloadFetch({
+        url: `/api/proApi/admin/support/wallet/bill/invoice/downloadFile?id=${encodeURIComponent(invoice._id)}`,
+        filename: `${invoice.teamName}.pdf`
+      });
+    },
+    { manual: true, errorToast: '发票下载失败' }
   );
 
   const onSelectFile = useCallback(
@@ -233,12 +268,8 @@ function InvoiceDetailModal({
             <Button
               variant={'primary'}
               size={'sm'}
-              onClick={() => {
-                window.open(
-                  `/api/support/wallet/bill/invoice/readFile?id=${invoice._id}&teamId=${invoice.teamId}&teamName=${invoice.teamName}&unifiedCreditCode=${invoice.unifiedCreditCode}&time=${Date.now()}`,
-                  '_blank'
-                );
-              }}
+              isLoading={isDownloading}
+              onClick={() => downloadInvoice()}
             >
               点击下载
             </Button>

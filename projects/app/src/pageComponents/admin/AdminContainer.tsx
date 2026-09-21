@@ -17,9 +17,9 @@ import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
  * 非 root 访问时重定向回个人中心。
  *
  * 菜单授权（决策版）：
- * - License 未激活：仅展示白名单菜单（模型提供商/系统工具/管理员主页），与 Layout 对 /admin/* 的路由拦截一致
+ * - License 未激活：仅展示白名单菜单（系统模型/系统工具/版本升级/License 管理），与 Layout 对 /admin/* 的路由拦截一致
  * - 套餐管理/支付记录/开票/充值 = functions.pay 控制（商业功能，激活且开启才显示）
- * - 模板 & 工具（模板市场/工具箱）= 始终显示（customTemplates 已从决策版移除，模板市场开源化）
+ * - 系统资源按子项过滤白名单；License 激活后，模板市场不依赖额外功能开关
  */
 
 const AdminContainer = ({
@@ -60,11 +60,6 @@ const AdminContainer = ({
         value: '/admin/inform'
       },
       {
-        icon: 'core/app/logsLight',
-        label: '日志管理',
-        value: '/admin/log'
-      },
-      {
         icon: 'common/administrator',
         label: '用户管理',
         value: '/admin/users',
@@ -102,7 +97,7 @@ const AdminContainer = ({
       },
       {
         icon: 'book',
-        label: '资源管理',
+        label: '用户资源',
         value: '/admin/apps',
         children: [
           {
@@ -118,77 +113,72 @@ const AdminContainer = ({
         ]
       },
       {
+        icon: 'common/layer',
+        label: '系统资源',
+        value: '/admin/plugin/model',
+        children: [
+          {
+            icon: 'common/model',
+            label: '系统模型',
+            value: '/admin/plugin/model'
+          },
+          {
+            icon: 'common/toolkit',
+            label: '系统工具',
+            value: '/admin/plugin/tool'
+          },
+          {
+            icon: 'common/templateMarket',
+            label: '应用模板',
+            value: '/admin/resources/app_template'
+          }
+        ]
+      },
+      {
         icon: 'common/settingLight',
         label: '系统配置',
-        value: '/admin/config/basic',
+        value: '/admin/settings/basic',
         children: [
           {
             icon: 'core/workflow/debugResult',
             label: '基础配置',
-            value: '/admin/config/basic'
+            value: '/admin/settings/basic'
           },
           {
             icon: 'common/check',
             label: '功能清单',
-            value: '/admin/config/feature'
+            value: '/admin/settings/feature'
           },
           {
             icon: 'common/model',
             label: '安全配置',
-            value: '/admin/config/model'
+            value: '/admin/settings/model'
           },
           {
             icon: 'common/thirdParty',
             label: '第三方提供商',
-            value: '/admin/config/thirdParty'
+            value: '/admin/settings/thirdParty'
           },
           {
             icon: 'support/user/userLightSmall',
             label: '用户配置',
-            value: '/admin/config/user'
+            value: '/admin/settings/user'
           },
           ...(licenseCapabilities.pay
             ? [
                 {
                   icon: 'support/bill/priceLight',
                   label: '套餐 & 充值',
-                  value: '/admin/config/pay'
+                  value: '/admin/settings/pay'
                 }
               ]
             : [])
         ]
       },
       {
-        icon: 'common/toolkit',
-        label: '系统工具',
-        value: '/admin/config/plugin'
-      },
-      {
-        icon: 'common/model',
-        label: '模型提供商',
-        value: '/admin/config/modelProvider'
-      },
-      {
         icon: 'common/rocket',
         label: '版本升级',
-        value: '/admin/config/migration'
-      },
-      {
-        icon: 'common/layer',
-        label: '模板 & 工具',
-        value: '/admin/templates/app',
-        children: [
-          {
-            icon: 'common/templateMarket',
-            label: '模板市场',
-            value: '/admin/templates/app'
-          },
-          {
-            icon: 'common/toolkit',
-            label: '工具箱',
-            value: '/admin/templates/toolkit'
-          }
-        ]
+        value: '/admin/migration'
       },
       {
         icon: 'common/audit',
@@ -196,14 +186,19 @@ const AdminContainer = ({
         value: '/admin/audit'
       },
       {
-        icon: 'common/overviewLight',
-        label: '管理员主页',
-        value: '/admin/home'
+        icon: 'common/wallet',
+        label: 'License 管理',
+        value: '/admin/license'
       }
     ];
 
     if (!licenseUnactivated) return tabs;
-    return tabs.filter((tab) => unlicensedAdminRoutes.includes(tab.value));
+    // 开源版没有系统资源分组，四个可用入口直接平铺在导航栏中。
+    return unlicensedAdminRoutes.flatMap((route) => {
+      const tab = tabs.find((item) => item.value === route);
+      if (tab) return [tab];
+      return tabs.flatMap((item) => item.children?.filter((child) => child.value === route) ?? []);
+    });
   }, [licenseCapabilities, licenseUnactivated]);
 
   // 非 root 访问管理员区域时重定向回个人中心
@@ -227,7 +222,7 @@ const AdminContainer = ({
       mobileScrollPositionKey={'admin-mobile-navigation'}
     >
       {/* 内容区白底铺满：各迁移页面自带内边距，这里不再叠一层灰底与 padding */}
-      <Box bg={'white'} h={'100%'} overflow={'auto'}>
+      <Box bg={'white'} h={'100%'} overflow={'hidden'}>
         {children}
       </Box>
     </SecondaryNavigationContainer>

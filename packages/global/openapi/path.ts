@@ -191,7 +191,7 @@ export const adminOpenAPITagGroups = [
   },
   {
     name: '管理员-系统概览',
-    tags: [DevApiTagsMap.adminDashboard, DevApiTagsMap.adminLogs, DevApiTagsMap.adminLicense]
+    tags: [DevApiTagsMap.adminDashboard, DevApiTagsMap.adminLicense]
   },
   {
     name: '管理员-资源管理',

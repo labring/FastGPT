@@ -5,15 +5,11 @@ import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
 import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
 import { useForm, useWatch } from 'react-hook-form';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';
 import SettingPage from '@/pageComponents/admin/settings/SettingPage';
-import SecondTitle from '@/pageComponents/admin/settings/SecondTitle';
 import FormItem from '@/pageComponents/admin/settings/FormItem';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import Switch from '@/pageComponents/admin/settings/Switch';
 import ThirdPartyVariables from './components/FormField/ThirdPartyVariables';
-import FormLabel from './components/FormLabel';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 interface titleType {
   mainTitle: string;
   subTitles: string[];
@@ -62,13 +58,6 @@ export const Settings = () => {
           ...rawData.externalProviderSettings,
           externalProviderWorkflowVariables:
             data.externalProviderSettings.externalProviderWorkflowVariables
-        },
-        siteSettings: {
-          ...rawData.siteSettings,
-          feConfigs: {
-            ...rawData.siteSettings.feConfigs,
-            show_openai_account: data.siteSettings.feConfigs.show_openai_account
-          }
         }
       })
     );
@@ -77,37 +66,13 @@ export const Settings = () => {
   const isLoading = loadingConfig || loadingSave;
   const titles: Array<titleType> = [
     {
-      mainTitle: '第三方账号配置',
-      subTitles: ['允许用户配置账号', '自定义工作流变量']
+      mainTitle: '自定义工作流变量',
+      subTitles: []
     }
   ];
 
   return (
     <SettingPage titles={titles} loading={isLoading} onSubmit={onSubmit}>
-      <Flex bg={'myGray.100'} alignItems={'center'}>
-        <FirstTitle title="第三方账号配置" mb={0} />
-        <Flex
-          color={'primary.600'}
-          alignItems={'center'}
-          cursor={'pointer'}
-          onClick={() => {
-            window.open(
-              'https://fael3z0zfze.feishu.cn/wiki/KOWaw6jkui5E3ekdOhvce4O9n4g?from=from_copylink'
-            );
-          }}
-        >
-          <MyIcon name="book" w={'14px'} mr={1} />
-          <Box fontSize={'mini'} fontWeight={'medium'}>
-            查看文档
-          </Box>
-        </Flex>
-      </Flex>
-      <SecondTitle title="允许用户配置账号" />
-
-      <Flex px={6} alignItems={'center'} my={3}>
-        <FormLabel title="OpenAI/OneAPI 账号" description="" mb={2} minW={'240px'} />
-        <Switch control={control} name="siteSettings.feConfigs.show_openai_account" />
-      </Flex>
       <FormItem full>
         <ThirdPartyVariables
           value={externalProviderWorkflowVariables}
@@ -115,6 +80,23 @@ export const Settings = () => {
             setValue(`externalProviderSettings.externalProviderWorkflowVariables`, val);
           }}
           title="自定义工作流变量"
+          titleExtra={
+            <Flex
+              color={'primary.600'}
+              alignItems={'center'}
+              cursor={'pointer'}
+              onClick={() => {
+                window.open(
+                  'https://fael3z0zfze.feishu.cn/wiki/KOWaw6jkui5E3ekdOhvce4O9n4g?from=from_copylink'
+                );
+              }}
+            >
+              <MyIcon name="book" w={'14px'} mr={1} />
+              <Box fontSize={'mini'} fontWeight={'medium'}>
+                查看文档
+              </Box>
+            </Flex>
+          }
         />
       </FormItem>
     </SettingPage>

@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Button,
   Table,
@@ -8,7 +8,6 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer,
   Flex,
   Box,
   HStack,
@@ -19,25 +18,30 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getApps } from '@/web/admin/apps/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const AppTable = () => {
   const [appDetail, setAppDetail] = useState<any>();
   const [searchKey, setSearchKey] = useState<string>();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     data: apps,
     isLoading,
-    ScrollData
-  } = useScrollPagination(getApps, {
-    pageSize: 20,
+    Pagination,
+    total,
+    pageSize
+  } = usePagination(getApps, {
+    defaultPageSize: 20,
+    pageSizeCacheKey: 'admin-apps-list',
     params: {
       searchKey
     },
     refreshDeps: [searchKey],
-    throttleWait: 200
+    scrollContainerRef
   });
 
   const routeToApp = (id: string) => {
@@ -45,72 +49,92 @@ const AppTable = () => {
   };
 
   return (
-    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'}>
-      <HStack pb={4}>
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'} p={0}>
+      <Flex
+        h={'64px'}
+        flexShrink={0}
+        px={6}
+        alignItems={'center'}
+        borderBottom={'1px solid'}
+        borderColor={'myGray.200'}
+      >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          应用列表
+          用户应用
         </Box>
         <Box flexGrow={1}></Box>
-        <InputGroup w={['100%', '250px']}>
+        <InputGroup w={['100%', '250px']} h={'36px'}>
           <Input
             placeholder="请输入应用名或应用id搜索"
-            size={'sm'}
+            h={'36px'}
             onChange={(e) => setSearchKey(e.target.value)}
           ></Input>
         </InputGroup>
-      </HStack>
-      <ScrollData position={'relative'} h={'100%'}>
-        <TableContainer>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>应用id</Th>
-                <Th>应用名</Th>
-                <Th>创建者</Th>
-                <Th>团队</Th>
-                <Th>介绍</Th>
-                <Th></Th>
-              </Tr>
-            </Thead>
-            <Tbody fontSize={'sm'}>
-              {apps.map((item, i) => (
-                <Tr key={i}>
-                  <Td>{item.id}</Td>
-                  <Td>{item.name}</Td>
-                  <Td>{item.username}</Td>
-                  <Td>{item.teamName}</Td>
-                  <Td maxW={'300px'} className="textEllipsis">
-                    {item.intro || '-'}
-                  </Td>
-                  <Td textAlign={'center'}>
-                    <HStack spacing={2} ml={4}>
-                      <Button variant={'whiteBase'} size={'sm'} onClick={() => setAppDetail(item)}>
-                        详情
-                      </Button>
-                      <Button variant={'whiteBase'} size={'sm'} onClick={() => routeToApp(item.id)}>
-                        跳转
-                      </Button>
-                    </HStack>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-          {!isLoading && apps.length === 0 && (
-            <Flex
-              mt={'20vh'}
-              flexDirection={'column'}
-              alignItems={'center'}
-              justifyContent={'center'}
-            >
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                无应用记录～
-              </Box>
+      </Flex>
+      <FixedTableContainer
+        ref={scrollContainerRef}
+        position={'relative'}
+        h={'100%'}
+        maxH={'none'}
+        horizontalScroll
+        px={[4, 6]}
+        py={6}
+        footer={
+          total > pageSize ? (
+            <Flex mt={3} justifyContent={'center'}>
+              <Pagination />
             </Flex>
-          )}
-        </TableContainer>
-      </ScrollData>
+          ) : undefined
+        }
+      >
+        <Table minW={'1000px'}>
+          <Thead>
+            <Tr>
+              <Th>应用id</Th>
+              <Th>应用名</Th>
+              <Th>创建者</Th>
+              <Th>团队</Th>
+              <Th>介绍</Th>
+              <Th></Th>
+            </Tr>
+          </Thead>
+          <Tbody fontSize={'sm'}>
+            {apps.map((item, i) => (
+              <Tr key={i}>
+                <Td>{item.id}</Td>
+                <Td>{item.name}</Td>
+                <Td>{item.username}</Td>
+                <Td>{item.teamName}</Td>
+                <Td maxW={'300px'} className="textEllipsis">
+                  {item.intro || '-'}
+                </Td>
+                <Td textAlign={'center'}>
+                  <HStack spacing={2} ml={4}>
+                    <Button variant={'whiteBase'} size={'sm'} onClick={() => setAppDetail(item)}>
+                      详情
+                    </Button>
+                    <Button variant={'whiteBase'} size={'sm'} onClick={() => routeToApp(item.id)}>
+                      跳转
+                    </Button>
+                  </HStack>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        {!isLoading && apps.length === 0 && (
+          <Flex
+            mt={'20vh'}
+            flexDirection={'column'}
+            alignItems={'center'}
+            justifyContent={'center'}
+          >
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              无应用记录～
+            </Box>
+          </Flex>
+        )}
+      </FixedTableContainer>
 
       {!!appDetail && <AppDetailModal app={appDetail} onClose={() => setAppDetail(undefined)} />}
     </BoxPageRoot>

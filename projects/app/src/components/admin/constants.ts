@@ -6,17 +6,17 @@
  *
  * 保留这几个入口的原因：未激活（开源版 / 未续费）部署仍需完成基础可运维配置，
  * 且这些页面的数据来自 app 自身接口，不经过 pro/admin 的 licenseCheck 拦截：
- * - /admin/home：管理员主页，License 激活入口
- * - /admin/config/modelProvider：模型提供商，未配置模型时对话与知识库不可用
- * - /admin/config/plugin：系统工具，插件与工具接入配置
- * - /admin/config/migration：版本升级，跑的是 app 自带的迁移脚本（projects/app/src/migration），
+ * - /admin/license：管理员主页，License 激活入口
+ * - /admin/plugin/model：模型提供商，未配置模型时对话与知识库不可用
+ * - /admin/plugin/tool：系统工具，插件与工具接入配置
+ * - /admin/migration：版本升级，跑的是 app 自带的迁移脚本（projects/app/src/migration），
  *   与商业授权无关；迁移未完成时数据处于中间态，不允许被 License 状态挡住
  */
 export const unlicensedAdminRoutes = [
-  '/admin/home',
-  '/admin/config/modelProvider',
-  '/admin/config/plugin',
-  '/admin/config/migration'
+  '/admin/license',
+  '/admin/plugin/model',
+  '/admin/plugin/tool',
+  '/admin/migration'
 ];
 
 /**

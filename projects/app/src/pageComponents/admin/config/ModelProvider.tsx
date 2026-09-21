@@ -1,13 +1,13 @@
 import { useEffect, useMemo } from 'react';
 import type React from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Flex } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
+import { accountPageRootStyles } from '@/pageComponents/account/styles';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/model/Channel'));
@@ -85,19 +85,6 @@ const ModelProvider = () => {
     <AdminContainer>
       {/* 迁移自原 /config 页面：整体白底内容区（原 ConfigContainer 内容区为白色） */}
       <Flex {...accountPageRootStyles} bg={'white'} flexDirection={'column'}>
-        <Flex
-          display={['none', 'flex']}
-          h={'64px'}
-          flexShrink={0}
-          px={6}
-          alignItems={'center'}
-          borderBottom={'1px solid'}
-          borderColor={'myGray.200'}
-        >
-          <Box as={'h1'} {...accountTitleTextStyles}>
-            {t('common:model.provider_title')}
-          </Box>
-        </Flex>
         <Flex
           flex={'1 0 0'}
           minH={['calc(100dvh - 78px)', 0]}

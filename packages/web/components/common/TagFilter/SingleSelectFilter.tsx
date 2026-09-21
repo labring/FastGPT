@@ -1,4 +1,12 @@
-import React, { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode
+} from 'react';
+import { readFilterSelection, writeFilterSelection } from './storage';
 import { Box, Flex } from '@chakra-ui/react';
 import type { PlacementWithLogical } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -33,6 +41,8 @@ export type SingleSelectFilterProps<T> = {
   value: T;
   options: Array<SingleSelectFilterOption<T>>;
   onChange: (value: T) => void;
+  /** 本地持久化标识；不同业务使用不同 key，支持字符串、数值和布尔值。 */
+  storageKey?: string;
   maxW?: string | number;
   minW?: string | number;
   placement?: PlacementWithLogical;
@@ -77,6 +87,7 @@ function SingleSelectFilter<T>({
   value,
   options,
   onChange,
+  storageKey,
   maxW = '180px',
   minW,
   placement = 'bottom-start',
@@ -100,6 +111,21 @@ function SingleSelectFilter<T>({
     selected?.label ?? (hasLoadedOptions ? invalidValueLabel : undefined)
   );
   const listScrollable = showSearch || visibleOptions.length > FILTER_SEARCH_THRESHOLD;
+  const restoredKeyRef = useRef<string>();
+
+  useEffect(() => {
+    if (!storageKey) {
+      restoredKeyRef.current = undefined;
+      return;
+    }
+    if (!options.length || restoredKeyRef.current === storageKey) return;
+    const storedValue = readFilterSelection(storageKey);
+    const option = options.find((item) => item.value === storedValue);
+    // 异步选项可能先只有“全部”；缓存选项未返回时不要提前结束恢复。
+    if (storedValue !== undefined && !option) return;
+    restoredKeyRef.current = storageKey;
+    if (storedValue !== undefined && option && option.value !== value) onChange(option.value);
+  }, [storageKey, options, onChange, value]);
 
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -197,6 +223,10 @@ function SingleSelectFilter<T>({
                   _hover={{ bg: isActive ? 'primary.50' : 'myGray.05' }}
                   _last={{ mb: 0 }}
                   onClick={() => {
+                    if (storageKey) {
+                      restoredKeyRef.current = storageKey;
+                      writeFilterSelection(storageKey, item.value);
+                    }
                     onChange(item.value);
                     onClose();
                   }}

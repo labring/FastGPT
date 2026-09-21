@@ -53,24 +53,18 @@ export const Settings = () => {
   const isLoading = loadingConfig || loadingSave;
 
   const titles: Array<titleType> = [
-    {
-      mainTitle: '基础配置',
-      subTitles: [
-        '前端展示配置',
-        '个性化配置',
-        '全局Script脚本',
-        '系统参数',
-        'PDF 解析配置',
-        '使用限制',
-        '小助手配置',
-        '侧边栏配置'
-      ]
-    }
-  ];
+    '前端展示配置',
+    '个性化配置',
+    '全局Script脚本',
+    '系统参数',
+    'PDF 解析配置',
+    '使用限制',
+    '小助手配置',
+    '侧边栏配置'
+  ].map((mainTitle) => ({ mainTitle, subTitles: [] }));
 
   return (
     <SettingPage titles={titles} loading={isLoading} onSubmit={onSubmit}>
-      <FirstTitle title="基础配置" />
       <FirstTitle title="前端展示配置" />
       <FormItem title="系统名" description="">
         <Input {...register('feConfigs.systemTitle')} placeholder="" />

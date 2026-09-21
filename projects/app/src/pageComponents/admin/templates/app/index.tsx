@@ -1,7 +1,7 @@
 'use client';
-import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Center, Flex, Table, Tbody, useDisclosure } from '@chakra-ui/react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import MySelect from '@fastgpt/web/components/common/MySelect';
+import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
 import { useEffect, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -11,6 +11,7 @@ import {
   putUpdateTemplateOrder
 } from '@/web/core/app/templates/api';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -18,6 +19,8 @@ import TemplateConfigModal, { defaultTemplate } from './components/ItemConfigMod
 import QuickTemplateModal from './components/QuickTemplateModal';
 import TemplateCard from './components/TemplateItemCard';
 import TemplateTypeModal from './components/TypeModal';
+import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
+import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const AppTemplate = () => {
   const {
@@ -63,33 +66,33 @@ const AppTemplate = () => {
   }, [localTemplates, currentAppType]);
 
   return (
-    <MyBox isLoading={loading}>
-      <Flex alignItems={'center'} gap={3} mt={1}>
-        <Flex
-          flex={'1'}
-          overflow={'auto'}
-          color={'myGray.900'}
-          fontSize={'18px'}
-          fontWeight={'medium'}
-          pl={3}
-        >
-          模板列表
-        </Flex>
-        <MySelect
+    <BoxPageRoot display={'flex'} flexDirection={'column'} h={'100%'} p={0}>
+      <Flex
+        minH={'64px'}
+        flexShrink={0}
+        px={6}
+        py={3}
+        alignItems={'center'}
+        borderBottom={'1px solid'}
+        borderColor={'myGray.200'}
+        gap={3}
+        wrap={'wrap'}
+      >
+        <Box as={'h1'} {...accountTitleTextStyles} flex={1}>
+          应用模板
+        </Box>
+        <SingleSelectFilter<AppTypeEnum | 'all'>
+          storageKey={'admin.templates.appType'}
+          title={'类型'}
           value={currentAppType}
-          onChange={(value) => {
-            setCurrentAppType(value as AppTypeEnum | 'all');
-          }}
-          minW={'7rem'}
-          minH={'34px'}
-          h={'34px'}
-          borderRadius={'sm'}
-          list={[
+          onChange={setCurrentAppType}
+          options={[
             { label: '全部', value: 'all' },
             { label: '工作流', value: AppTypeEnum.workflow },
             { label: '对话 Agent', value: AppTypeEnum.simple },
             { label: '工作流工具', value: AppTypeEnum.workflowTool }
           ]}
+          maxW={'180px'}
         />
         <Button onClick={() => onOpenTypeModal()} variant={'whiteBase'}>
           分类管理
@@ -107,84 +110,128 @@ const AppTemplate = () => {
         </Button>
       </Flex>
 
-      <Flex
-        bg={'white'}
-        h={8}
-        mt={5}
-        pl={8}
-        rounded={'md'}
-        alignItems={'center'}
-        fontSize={'mini'}
-        fontWeight={'medium'}
+      <MyBox
+        isLoading={loading}
+        flex={'1 0 0'}
+        minH={0}
+        py={6}
+        display={'flex'}
+        flexDirection={'column'}
       >
-        <Box w={2 / 10}>名称</Box>
-        <Box w={1 / 10}>属性</Box>
-        <Box w={4 / 10}>介绍</Box>
-        <Box w={1 / 10} pl={4}>
-          启用
-        </Box>
-        <Box w={1 / 10}>应用类型</Box>
-        <Box w={1 / 10}>推荐</Box>
-      </Flex>
+        <FixedTableLayout
+          horizontalScroll
+          scrollMode={'normal'}
+          rootProps={{ flex: '1 0 0', minH: 0 }}
+          headerProps={{ px: [4, 6], bg: 'myGray.100', borderRadius: 'md' }}
+          bodyProps={{ px: [4, 6] }}
+          renderHeader={({ headerTableWidth }) => (
+            <Flex
+              bg={'myGray.100'}
+              w={headerTableWidth}
+              minW={'900px'}
+              h={'50px'}
+              rounded={'md'}
+              alignItems={'center'}
+              fontSize={'mini'}
+              fontWeight={'medium'}
+              color={'myGray.600'}
+            >
+              <Box w={2 / 10} pl={8}>
+                名称
+              </Box>
+              <Box w={1 / 10}>属性</Box>
+              <Box w={4 / 10}>介绍</Box>
+              <Box w={1 / 10} pl={8}>
+                启用
+              </Box>
+              <Box w={1 / 10} pl={3}>
+                应用类型
+              </Box>
+              <Box w={1 / 10} pl={3}>
+                推荐
+              </Box>
+            </Flex>
+          )}
+          renderBody={() => (
+            <Box minW={'900px'}>
+              {filteredTemplates.length > 0 ? (
+                <DndDrag<AppTemplateSchemaType>
+                  onDragEndCb={async (list: AppTemplateSchemaType[]) => {
+                    const newList = list.map((item, index) => ({
+                      templateId: item.templateId,
+                      order: index
+                    }));
+                    setLocalTemplates(list);
+                    await putUpdateTemplateOrder({
+                      templates: newList
+                    });
+                    refreshTemplates();
+                  }}
+                  dataList={filteredTemplates}
+                >
+                  {({ provided }) => (
+                    <Table
+                      variant={'simple'}
+                      w={'100%'}
+                      minW={'900px'}
+                      sx={{
+                        tableLayout: 'fixed',
+                        '& td': {
+                          borderBottom: 'none'
+                        }
+                      }}
+                    >
+                      <colgroup>
+                        <col style={{ width: '20%' }} />
+                        <col style={{ width: '10%' }} />
+                        <col style={{ width: '40%' }} />
+                        <col style={{ width: '10%' }} />
+                        <col style={{ width: '10%' }} />
+                        <col style={{ width: '10%' }} />
+                      </colgroup>
+                      <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+                        {filteredTemplates.map((templateItem, index) => {
+                          const templateTag = templateItem.tags.filter(
+                            (t) => t !== 'recommendation'
+                          )[0];
+                          const property = templateTypes.find(
+                            (type) => type.typeId === templateTag
+                          )?.typeName;
 
-      <Box overflow={'auto'} mt={4} maxH={'calc(100vh - 200px)'}>
-        {filteredTemplates.length > 0 ? (
-          <DndDrag<AppTemplateSchemaType>
-            onDragEndCb={async (list: AppTemplateSchemaType[]) => {
-              const newList = list.map((item, index) => ({
-                templateId: item.templateId,
-                order: index
-              }));
-              setLocalTemplates(list);
-              await putUpdateTemplateOrder({
-                templates: newList
-              });
-              refreshTemplates();
-            }}
-            dataList={localTemplates}
-          >
-            {({ provided }) => (
-              <Flex
-                gap={1}
-                flexDirection={'column'}
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-              >
-                {filteredTemplates.map((templateItem, index) => (
-                  <Draggable
-                    key={templateItem.templateId}
-                    draggableId={String(templateItem.templateId)}
-                    index={index}
-                  >
-                    {(provided, snapshot) => {
-                      const templateTag = templateItem.tags.filter(
-                        (t) => t !== 'recommendation'
-                      )[0];
-                      const property = templateTypes.find(
-                        (type) => type.typeId === templateTag
-                      )?.typeName;
-
-                      return (
-                        <TemplateCard
-                          key={templateItem.templateId}
-                          template={templateItem}
-                          property={property || ''}
-                          setCurrentTemplate={setCurrentTemplate}
-                          provided={provided}
-                          snapshot={snapshot}
-                          refreshTemplates={refreshTemplates}
-                        />
-                      );
-                    }}
-                  </Draggable>
-                ))}
-              </Flex>
-            )}
-          </DndDrag>
-        ) : (
-          <EmptyTip text={'暂无模板'} py={2} />
-        )}
-      </Box>
+                          return (
+                            <Draggable
+                              key={templateItem.templateId}
+                              draggableId={String(templateItem.templateId)}
+                              index={index}
+                              isDragDisabled={currentAppType !== 'all'}
+                            >
+                              {(provided, snapshot) => (
+                                <TemplateCard
+                                  key={templateItem.templateId}
+                                  template={templateItem}
+                                  property={property || ''}
+                                  setCurrentTemplate={setCurrentTemplate}
+                                  provided={provided}
+                                  snapshot={snapshot}
+                                  refreshTemplates={refreshTemplates}
+                                />
+                              )}
+                            </Draggable>
+                          );
+                        })}
+                      </Tbody>
+                    </Table>
+                  )}
+                </DndDrag>
+              ) : (
+                <Center h={'full'}>
+                  <EmptyTip text={'暂无模板'} py={2} />
+                </Center>
+              )}
+            </Box>
+          )}
+        />
+      </MyBox>
 
       {currentTemplate && (
         <TemplateConfigModal
@@ -208,7 +255,7 @@ const AppTemplate = () => {
           refreshTemplates={refreshTemplates}
         />
       )}
-    </MyBox>
+    </BoxPageRoot>
   );
 };
 

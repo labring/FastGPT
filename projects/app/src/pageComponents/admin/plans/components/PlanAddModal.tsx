@@ -83,8 +83,8 @@ export default function PlanAddModal(props: { updateData: any }) {
   return (
     <>
       <Button
-        variant="outline"
-        h="100%"
+        variant="primary"
+        h="36px"
         leftIcon={<AddIcon boxSize={2} />}
         onClick={() => {
           onOpen();

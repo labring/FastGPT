@@ -117,7 +117,6 @@ export const DevApiTagsMap = {
   adminPays: '订单管理',
   adminPlans: '套餐管理',
   adminSettings: '系统配置',
-  adminLogs: '系统日志',
   adminSystemMigration: '升级脚本',
   adminSystemModel: '管理员模型管理',
   adminModelChannel: '管理员渠道管理',

@@ -1249,7 +1249,7 @@
   "user.team.Switch Team Failed": "팀 전환 실패",
   "user.team.Tags Async": "저장",
   "user.team.invite.Reject": "초대 거절됨",
-  "user.team.member.active": "가입됨",
+  "user.team.member.active": "활성",
   "user_leaved": "탈퇴함",
   "value": "값",
   "verification": "인증",

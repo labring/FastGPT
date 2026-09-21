@@ -14,7 +14,7 @@
   "toolkit_runtime_config_min_value": "{{label}} 不能小于 {{min}}",
   "toolkit_runtime_config_pod_timeout": "Pod 超时时间",
   "toolkit_runtime_config_pod_timeout_tip": "Pod 空闲超过该时间后会被回收",
-  "license_admin_home": "管理员主页",
+  "license_admin_home": "License 管理",
   "license_admin_home_description": "查看当前租户的 License 授权、资源额度与授权能力",
   "license_tenant_name": "租户名称",
   "license_business": "商业版",

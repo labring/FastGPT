@@ -1,24 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatList2ChartsData,
-  getDashboardFilters,
+  normalizeDashboardFilters,
   getStartTime
 } from '@/pageComponents/admin/dashboard/utils';
 
-describe('getDashboardFilters', () => {
+describe('normalizeDashboardFilters', () => {
   it('defaults invalid ranges and forces seven days to daily buckets', () => {
-    expect(getDashboardFilters({})).toEqual({ dateRange: 7, granularity: 'day' });
-    expect(getDashboardFilters({ dateRange: '7', granularity: 'quarter' })).toEqual({
+    expect(normalizeDashboardFilters({})).toEqual({ dateRange: 7, granularity: 'day' });
+    expect(normalizeDashboardFilters({ dateRange: 7, granularity: 'quarter' })).toEqual({
       dateRange: 7,
       granularity: 'day'
     });
-    expect(getDashboardFilters({ dateRange: ['30'], granularity: ['month'] })).toEqual({
-      dateRange: 7,
-      granularity: 'day'
-    });
-    for (const range of ['30', '90', '360']) {
-      for (const granularity of ['day', 'month', 'quarter']) {
-        expect(getDashboardFilters({ dateRange: range, granularity })).toEqual({
+    for (const range of [30, 90, 360] as const) {
+      for (const granularity of ['day', 'month', 'quarter'] as const) {
+        expect(normalizeDashboardFilters({ dateRange: range, granularity })).toEqual({
           dateRange: Number(range),
           granularity
         });

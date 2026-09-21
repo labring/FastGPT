@@ -1,4 +1,4 @@
-import { ToolkitMarketplace } from '@/pageComponents/config/tool/Marketplace';
+import { ToolkitMarketplace } from '@/pageComponents/admin/config/tool/Marketplace';
 
 export default function TeamToolkitMarketplace() {
   return <ToolkitMarketplace mode="team" />;

@@ -24,13 +24,21 @@ vi.mock('@chakra-ui/react', async () => {
     Box,
     Flex: Box,
     Button: Box,
+    Center: Box,
+    Table: Box,
+    Tbody: Box,
     useDisclosure: () => ({ isOpen: false, onOpen: vi.fn(), onClose: vi.fn() })
   };
 });
 vi.mock('@fastgpt/web/components/common/MyBox', () => ({
   default: ({ children }: any) => children
 }));
-vi.mock('@fastgpt/web/components/common/MySelect', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/TagFilter/SingleSelectFilter', () => ({
+  default: () => null
+}));
+vi.mock('@fastgpt/web/components/common/FixedTable', () => ({
+  FixedTableLayout: ({ renderBody }: any) => renderBody({})
+}));
 vi.mock('@fastgpt/web/components/common/Icon', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/EmptyTip', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/components/common/DndDrag', () => ({

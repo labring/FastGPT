@@ -1258,7 +1258,7 @@
   "user.team.Switch Team Failed": "切换团队异常",
   "user.team.Tags Async": "保存",
   "user.team.invite.Reject": "已拒绝邀请",
-  "user.team.member.active": "已加入",
+  "user.team.member.active": "活跃",
   "user_leaved": "离开",
   "value": "值",
   "verification": "验证",

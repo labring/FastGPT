@@ -8,12 +8,13 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
+import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import ToolRow from '@/pageComponents/config/tool/ToolRow';
+import ToolRow from '@/pageComponents/admin/config/tool/ToolRow';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import TagManageModal from '@/pageComponents/config/TagManageModal';
+import TagManageModal from '@/pageComponents/admin/config/TagManageModal';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { getAdminSystemTools, putAdminUpdateToolOrder } from '@/web/core/plugin/admin/tool/api';
@@ -39,12 +40,12 @@ const defaultStatusFilter: PluginStatusType[] = [
 ];
 
 const SystemToolConfigModal = dynamic(
-  () => import('@/pageComponents/config/tool/SystemToolConfigModal')
+  () => import('@/pageComponents/admin/config/tool/SystemToolConfigModal')
 );
 const WorkflowToolConfig = dynamic(
-  () => import('@/pageComponents/config/tool/WorkflowToolConfigModal')
+  () => import('@/pageComponents/admin/config/tool/WorkflowToolConfigModal')
 );
-const ImportPluginModal = dynamic(() => import('@/pageComponents/config/ImportPluginModal'));
+const ImportPluginModal = dynamic(() => import('@/pageComponents/admin/config/ImportPluginModal'));
 
 const ToolProvider = () => {
   const { t } = useClientTranslation(['app', 'file', 'admin', 'config']);
@@ -138,14 +139,14 @@ const ToolProvider = () => {
           h={['auto', '64px']}
           py={[6, 0]}
           flexShrink={0}
-          px={6}
+          px={[4, 6]}
           alignItems={['stretch', 'center']}
           flexDirection={['column', 'row']}
           borderBottom={'1px solid'}
           borderColor={'myGray.200'}
         >
           <Box as={'h1'} display={['none', 'block']} {...accountTitleTextStyles}>
-            {t('config:system_tool_management')}
+            系统工具
           </Box>
           <Flex
             ml={[0, 'auto']}
@@ -161,7 +162,7 @@ const ToolProvider = () => {
                 value={searchKey}
                 onChange={(e) => setSearchKey(e.target.value)}
                 placeholder={t('app:toolkit_search_placeholder')}
-                bg={'myGray.25'}
+                bg={'white'}
                 maxLength={30}
               />
             </Box>
@@ -204,190 +205,203 @@ const ToolProvider = () => {
           flexDirection={'column'}
           isLoading={loadingTools}
         >
-          <Box px={6} flex={'1 0 0'} minH={0} overflow={'auto'}>
-            <Flex
-              bg={'myGray.100'}
-              minW={'900px'}
-              h={'50px'}
-              rounded={'md'}
-              alignItems={'center'}
-              fontSize={'mini'}
-              fontWeight={'medium'}
-              color={'myGray.600'}
-            >
-              <Box w={2.2 / 10} pl={8}>
-                {t('app:toolkit_name')}
-              </Box>
-              <Box w={1.5 / 10}>
-                <MyMenu
-                  trigger="hover"
-                  placement="bottom-start"
-                  Button={
-                    <Flex
-                      alignItems={'center'}
-                      cursor={'pointer'}
-                      w={'fit-content'}
-                      maxW={'100%'}
-                      color={isTagFilterActive ? 'primary.600' : 'inherit'}
-                    >
-                      <Box maxW={'110px'} className="textEllipsis">
-                        {isTagFilterActive ? tagFilterLabel || tagFilter : t('app:toolkit_tags')}
-                      </Box>
-                      <MyIcon name="core/chat/chevronDown" w={4} ml={1} flexShrink={0} />
-                    </Flex>
-                  }
-                  menuList={[
-                    {
-                      children: tagFilterOptions.map((item) => ({
-                        label: item.label,
-                        onClick: () => setTagFilter(item.value),
-                        isActive: item.value === tagFilter
-                      }))
-                    }
-                  ]}
-                />
-              </Box>
-              <Box w={4.1 / 10}>{t('common:Intro')}</Box>
-              <Box w={1.1 / 10} pl={6}>
-                <MyMenu
-                  trigger="hover"
-                  placement="bottom-start"
-                  Button={
-                    <Flex
-                      alignItems={'center'}
-                      cursor={'pointer'}
-                      w={'fit-content'}
-                      color={isStatusFilterActive ? 'primary.600' : 'inherit'}
-                    >
-                      <Box>{t('app:toolkit_status')}</Box>
-                      <MyIcon
-                        name={isStatusFilterActive ? 'common/filter' : 'core/chat/chevronDown'}
-                        w={isStatusFilterActive ? 3.5 : 4}
-                        ml={1}
-                        fill={isStatusFilterActive ? 'none' : 'currentColor'}
-                      />
-                    </Flex>
-                  }
-                  menuList={[
-                    {
-                      children: [
-                        {
-                          label: (
-                            <Checkbox
-                              size={'sm'}
-                              isChecked={isAllStatusSelected}
-                              isIndeterminate={statusFilter.length > 0 && !isAllStatusSelected}
-                              pointerEvents={'none'}
-                            >
-                              {t('common:All')}
-                            </Checkbox>
-                          ),
-                          closeOnClick: false,
-                          onClick: () =>
-                            setStatusFilter(isAllStatusSelected ? [] : [...allPluginStatuses])
-                        },
-                        ...statusFilterOptions.map((item) => ({
-                          label: (
-                            <Checkbox
-                              size={'sm'}
-                              isChecked={statusFilter.includes(item.value)}
-                              pointerEvents={'none'}
-                            >
-                              {item.label}
-                            </Checkbox>
-                          ),
-                          closeOnClick: false,
-                          onClick: () =>
-                            setStatusFilter((statuses) =>
-                              statuses.includes(item.value)
-                                ? statuses.filter((status) => status !== item.value)
-                                : [...statuses, item.value]
-                            )
-                        }))
-                      ]
-                    }
-                  ]}
-                />
-              </Box>
-              <Box w={1.1 / 10} display={'flex'} alignItems={'center'}>
-                {t('app:toolkit_system_key')}
-                <QuestionTip
-                  display={'flex'}
+          <Box flex={'1 0 0'} minH={0}>
+            <FixedTableLayout
+              horizontalScroll
+              scrollMode={'normal'}
+              rootProps={{ flex: '1 0 0', minH: 0 }}
+              headerProps={{ px: [4, 6], bg: 'myGray.100', borderRadius: 'md' }}
+              bodyProps={{ px: [4, 6] }}
+              renderHeader={({ headerTableWidth }) => (
+                <Flex
+                  bg={'myGray.100'}
+                  w={headerTableWidth}
+                  minW={'900px'}
+                  h={'50px'}
+                  rounded={'md'}
                   alignItems={'center'}
-                  ml={1}
-                  label={t('app:toolkit_system_key_tip')}
-                  color={'myGray.300'}
-                />
-              </Box>
-            </Flex>
-
-            <Box mt={2} minW={'900px'}>
-              {displayTools.length > 0 ? (
-                <DndDrag<AdminSystemToolListItemType>
-                  onDragEndCb={async (list: Array<AdminSystemToolListItemType>) => {
-                    const visibleToolIds = new Set(list.map((item) => item.id));
-                    let visibleToolIndex = 0;
-                    const reorderedTools = localTools.map((item) =>
-                      visibleToolIds.has(item.id) ? list[visibleToolIndex++] : item
-                    );
-                    const newOrder = reorderedTools.map((item, index) => ({
-                      pluginId: item.id,
-                      pluginOrder: index
-                    }));
-                    setLocalTools(reorderedTools);
-                    await putAdminUpdateToolOrder({ plugins: newOrder });
-                  }}
-                  dataList={displayTools}
+                  fontSize={'mini'}
+                  fontWeight={'medium'}
+                  color={'myGray.600'}
                 >
-                  {({ provided }) => (
-                    // ToolRow 内部使用 Tr/Td，必须置于 Table 上下文，否则 Chakra 表格样式上下文缺失会整页报错
-                    <Table
-                      variant={'simple'}
-                      w={'100%'}
-                      minW={'900px'}
-                      sx={{
-                        tableLayout: 'fixed',
-                        '& td': {
-                          borderBottom: 'none'
+                  <Box w={2.2 / 10} pl={8}>
+                    {t('app:toolkit_name')}
+                  </Box>
+                  <Box w={1.5 / 10}>
+                    <MyMenu
+                      trigger="hover"
+                      placement="bottom-start"
+                      Button={
+                        <Flex
+                          alignItems={'center'}
+                          cursor={'pointer'}
+                          w={'fit-content'}
+                          maxW={'100%'}
+                          color={isTagFilterActive ? 'primary.600' : 'inherit'}
+                        >
+                          <Box maxW={'110px'} className="textEllipsis">
+                            {isTagFilterActive
+                              ? tagFilterLabel || tagFilter
+                              : t('app:toolkit_tags')}
+                          </Box>
+                          <MyIcon name="core/chat/chevronDown" w={4} ml={1} flexShrink={0} />
+                        </Flex>
+                      }
+                      menuList={[
+                        {
+                          children: tagFilterOptions.map((item) => ({
+                            label: item.label,
+                            onClick: () => setTagFilter(item.value),
+                            isActive: item.value === tagFilter
+                          }))
                         }
-                      }}
-                    >
-                      <colgroup>
-                        <col style={{ width: '22%' }} />
-                        <col style={{ width: '15%' }} />
-                        <col style={{ width: '41%' }} />
-                        <col style={{ width: '11%' }} />
-                        <col style={{ width: '11%' }} />
-                      </colgroup>
-                      <Tbody {...provided.droppableProps} ref={provided.innerRef}>
-                        {displayTools.map((item, index) => (
-                          <Draggable
-                            key={item.id}
-                            draggableId={item.id}
-                            index={index}
-                            isDragDisabled={!!searchKey.trim()}
-                          >
-                            {(provided, snapshot) => (
-                              <ToolRow
-                                key={item.id}
-                                tool={item}
-                                setEditingToolId={setEditingToolId}
-                                provided={provided}
-                                snapshot={snapshot}
-                              />
-                            )}
-                          </Draggable>
-                        ))}
-                      </Tbody>
-                    </Table>
-                  )}
-                </DndDrag>
-              ) : (
-                <Center h={'full'}>
-                  <EmptyTip text={t('app:toolkit_no_plugins')} py={2} />
-                </Center>
+                      ]}
+                    />
+                  </Box>
+                  <Box w={4.1 / 10}>{t('common:Intro')}</Box>
+                  <Box w={1.1 / 10} pl={6}>
+                    <MyMenu
+                      trigger="hover"
+                      placement="bottom-start"
+                      Button={
+                        <Flex
+                          alignItems={'center'}
+                          cursor={'pointer'}
+                          w={'fit-content'}
+                          color={isStatusFilterActive ? 'primary.600' : 'inherit'}
+                        >
+                          <Box>{t('app:toolkit_status')}</Box>
+                          <MyIcon
+                            name={isStatusFilterActive ? 'common/filter' : 'core/chat/chevronDown'}
+                            w={isStatusFilterActive ? 3.5 : 4}
+                            ml={1}
+                            fill={isStatusFilterActive ? 'none' : 'currentColor'}
+                          />
+                        </Flex>
+                      }
+                      menuList={[
+                        {
+                          children: [
+                            {
+                              label: (
+                                <Checkbox
+                                  size={'sm'}
+                                  isChecked={isAllStatusSelected}
+                                  isIndeterminate={statusFilter.length > 0 && !isAllStatusSelected}
+                                  pointerEvents={'none'}
+                                >
+                                  {t('common:All')}
+                                </Checkbox>
+                              ),
+                              closeOnClick: false,
+                              onClick: () =>
+                                setStatusFilter(isAllStatusSelected ? [] : [...allPluginStatuses])
+                            },
+                            ...statusFilterOptions.map((item) => ({
+                              label: (
+                                <Checkbox
+                                  size={'sm'}
+                                  isChecked={statusFilter.includes(item.value)}
+                                  pointerEvents={'none'}
+                                >
+                                  {item.label}
+                                </Checkbox>
+                              ),
+                              closeOnClick: false,
+                              onClick: () =>
+                                setStatusFilter((statuses) =>
+                                  statuses.includes(item.value)
+                                    ? statuses.filter((status) => status !== item.value)
+                                    : [...statuses, item.value]
+                                )
+                            }))
+                          ]
+                        }
+                      ]}
+                    />
+                  </Box>
+                  <Box w={1.1 / 10} display={'flex'} alignItems={'center'}>
+                    {t('app:toolkit_system_key')}
+                    <QuestionTip
+                      display={'flex'}
+                      alignItems={'center'}
+                      ml={1}
+                      label={t('app:toolkit_system_key_tip')}
+                      color={'myGray.300'}
+                    />
+                  </Box>
+                </Flex>
               )}
-            </Box>
+              renderBody={() => (
+                <Box minW={'900px'}>
+                  {displayTools.length > 0 ? (
+                    <DndDrag<AdminSystemToolListItemType>
+                      onDragEndCb={async (list: Array<AdminSystemToolListItemType>) => {
+                        const visibleToolIds = new Set(list.map((item) => item.id));
+                        let visibleToolIndex = 0;
+                        const reorderedTools = localTools.map((item) =>
+                          visibleToolIds.has(item.id) ? list[visibleToolIndex++] : item
+                        );
+                        const newOrder = reorderedTools.map((item, index) => ({
+                          pluginId: item.id,
+                          pluginOrder: index
+                        }));
+                        setLocalTools(reorderedTools);
+                        await putAdminUpdateToolOrder({ plugins: newOrder });
+                      }}
+                      dataList={displayTools}
+                    >
+                      {({ provided }) => (
+                        // ToolRow 内部使用 Tr/Td，必须置于 Table 上下文，否则 Chakra 表格样式上下文缺失会整页报错
+                        <Table
+                          variant={'simple'}
+                          w={'100%'}
+                          minW={'900px'}
+                          sx={{
+                            tableLayout: 'fixed',
+                            '& td': {
+                              borderBottom: 'none'
+                            }
+                          }}
+                        >
+                          <colgroup>
+                            <col style={{ width: '22%' }} />
+                            <col style={{ width: '15%' }} />
+                            <col style={{ width: '41%' }} />
+                            <col style={{ width: '11%' }} />
+                            <col style={{ width: '11%' }} />
+                          </colgroup>
+                          <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+                            {displayTools.map((item, index) => (
+                              <Draggable
+                                key={item.id}
+                                draggableId={item.id}
+                                index={index}
+                                isDragDisabled={!!searchKey.trim()}
+                              >
+                                {(provided, snapshot) => (
+                                  <ToolRow
+                                    key={item.id}
+                                    tool={item}
+                                    setEditingToolId={setEditingToolId}
+                                    provided={provided}
+                                    snapshot={snapshot}
+                                  />
+                                )}
+                              </Draggable>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      )}
+                    </DndDrag>
+                  ) : (
+                    <Center h={'full'}>
+                      <EmptyTip text={t('app:toolkit_no_plugins')} py={2} />
+                    </Center>
+                  )}
+                </Box>
+              )}
+            />
           </Box>
 
           {isOpenTagModal && <TagManageModal onClose={onCloseTagModal} />}

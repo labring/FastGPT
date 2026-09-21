@@ -58,7 +58,7 @@ const TemplateTypeModal = ({
       onClose={onClose}
       w={'580px'}
       h={'600px'}
-      footer={<Button onClick={onClose}>确定</Button>}
+      footer={<Button onClick={onClose}>完成</Button>}
     >
       <Flex
         alignItems={'center'}
@@ -66,9 +66,6 @@ const TemplateTypeModal = ({
         pb={2}
         borderBottom={'1px solid'}
         borderColor={'myGray.200'}
-        mx={4}
-        pt={6}
-        px={2}
       >
         <MyIcon name="menu" w={5} />
         <Box ml={2} fontWeight={'semibold'} flex={'1 0 0'}>
@@ -77,7 +74,7 @@ const TemplateTypeModal = ({
         <Button
           size={'sm'}
           leftIcon={<MyIcon name="common/addLight" w={4} />}
-          variant={'outline'}
+          variant={'whiteBase'}
           fontSize={'xs'}
           onClick={() => {
             setEditType({ ...defaultEmptyType, typeOrder: localTypes.length });
@@ -105,7 +102,6 @@ const TemplateTypeModal = ({
           <Flex
             {...provided.droppableProps}
             ref={provided.innerRef}
-            px={4}
             mt={1}
             flex={'1 0 0'}
             fontSize={'sm'}
@@ -134,14 +130,7 @@ const TemplateTypeModal = ({
                       py={1}
                     >
                       <Flex w={'full'}>
-                        <Flex
-                          h={8}
-                          px={2}
-                          py={1}
-                          flex={'1'}
-                          alignItems={'center'}
-                          borderRadius={'xs'}
-                        >
+                        <Flex h={8} py={1} flex={'1'} alignItems={'center'} borderRadius={'xs'}>
                           <Flex
                             h={'full'}
                             rounded={'xs'}

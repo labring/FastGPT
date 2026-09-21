@@ -72,18 +72,9 @@ export const ModelSettings = () => {
 
   const isLoading = loadingConfig || loadingSave;
   const titles: Array<titleType> = [
-    {
-      mainTitle: '基础配置',
-      subTitles: ['HTTP 节点忽略 HTTPS 证书校验']
-    },
-    {
-      mainTitle: '模型敏感审查',
-      subTitles: ['百度敏感校验', '自定义安全校验 URL']
-    },
-    {
-      mainTitle: '域名安全',
-      subTitles: ['对话文件URL白名单']
-    }
+    { mainTitle: '基础配置', subTitles: [] },
+    { mainTitle: '模型安全审查', subTitles: [] },
+    { mainTitle: '其他', subTitles: [] }
   ];
   return (
     <SettingPage titles={titles} loading={isLoading} onSubmit={onSubmit}>
@@ -110,7 +101,7 @@ export const ModelSettings = () => {
       >
         <Input {...register('censor.customCensorURL')} placeholder="" />
       </FormItem>
-      <FirstTitle title="接口安全审查" />
+      <FirstTitle title="其他" />
       <FormItem
         title="文件URL白名单"
         description={`未配置，则认为全部链接可用。已配置，则认为白名单内的链接可用。暂时仅对对话接口生效，每行填写一个。例如: 

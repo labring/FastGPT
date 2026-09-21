@@ -434,12 +434,12 @@ const TemplateConfigModal = ({
                 {
                   title: '精选应用',
                   value: true,
-                  children: <Box as="img" src="/imgs/templatePromoted.svg" w="100%" />
+                  children: <Box as="img" src="/imgs/app/templatePromoted.svg" w="100%" />
                 },
                 {
                   title: '普通应用',
                   value: false,
-                  children: <Box as="img" src="/imgs/templatePreview.svg" w="100%" />
+                  children: <Box as="img" src="/imgs/app/templatePreview.svg" w="100%" />
                 }
               ]}
               value={isPromoted ?? false}

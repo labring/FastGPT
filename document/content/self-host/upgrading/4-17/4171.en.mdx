@@ -11,6 +11,12 @@ upgradeTags:
 
 - Update the AI Proxy image tag to `v0.7.2`
 
+### Admin entry changes
+
+The FastGPT Pro admin interface is now part of the main FastGPT app. After signing in as root, use the Admin entry to access system settings, operations management, and License activation and renewal. System settings are under `/admin/settings/*`; system tools and models are at `/admin/plugin/tool` and `/admin/plugin/model`. Legacy routes have been removed.
+
+Keep the FastGPT Pro service running. If you use custom health checks for Pro, update the probe path to `/api/health`.
+
 ### Upgrade scripts
 
 This upgrade includes the following automated script:
@@ -23,13 +29,20 @@ This upgrade includes the following automated script:
 2. Added Dataset tag management and filtering with typed tag values, Collection tag maintenance, and tag conditions for Dataset searches in Workflows and Agent V2.
 3. Password changes now support third-party authentication, with a unified authorization, verification, and password-update flow.
 4. Agent V2 Dataset search now supports Dataset citations, so chats can display the sources returned by the current search.
-5. Apps now include a Token usage dashboard.
-6. App, Agent, Skill, and Dataset lists now support batch selection, moving, and deletion, with available actions restricted by management permissions.
+5. Apps now include a Token usage dashboard, and usage records also show Token consumption.
+6. App, Agent, Skill, Tool, and Dataset lists now support batch selection, moving, and deletion, with available actions restricted by management permissions.
+
+7. Admin features are now integrated into the main app, with menus and feature status based on License permissions.
+8. File-reading Node debugging now supports local file uploads and file URLs, and prevents execution while uploads are pending or files have errors.
+9. Added Langfuse Workflow tracing, configurable through `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL`.
 
 ## ⚙️ Improvements
 
-1. Improved the Dataset collection batch action bar and the empty state in tag management to reduce unnecessary controls.
+1. Updated the Dataset Collection batch action bar, tag spacing, and tag management empty state.
 2. App log user filters now load only after the filter is opened, with server-side search and pagination instead of a fixed 100-user limit.
+
+3. Dataset search Nodes can now record candidates before reranking to help compare retrieval and reranking results. Set the recording limit with `RETRIEVAL_RESULTS_LIMIT`; recording is disabled by default.
+4. Beta models now appear at the end of the model selector.
 
 ## 🐛 Fixes
 
@@ -48,6 +61,14 @@ This upgrade includes the following automated script:
 13. Fixed App chat tests failing to validate model availability before sending the request; specific model configuration errors are now shown first.
 14. Fixed FastGPT Pro Lark publishing channels failing to return the challenge during event-subscription URL verification when an Encrypt Key is configured.
 
+15. Fixed the default Dataset image model being automatically restored after clearing it. The image model can now remain unconfigured.
+16. Fixed Tool inputs incorrectly switching to a JSON editor in manual input mode. They now use the input control declared by the Node.
+17. Hid inactive reasoning outputs when model reasoning is disabled. Also fixed validation errors for interactive Nodes without description text and Node diagrams unexpectedly opening after the debug panel closes.
+18. Fixed MongoDB change streams failing to recover after termination by adding automatic reconnection and configuration reloads.
+19. Fixed MongoDB transaction errors caused by concurrent system configuration updates.
+
 ## 🛠️ Code Improvements
 
 1. The model test endpoint can now be called without configuring a channel.
+2. Added APIs for pinning Apps and folders, with opt-in pinned-first sorting in list endpoints.
+3. Dataset APIs now support external document parsing options for retaining headers and footers, appendices, image recognition results, and chart analysis results. These options apply only when an external parsing service is enabled.

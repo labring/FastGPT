@@ -57,11 +57,11 @@ export const Settings = () => {
   const titles: Array<titleType> = [
     {
       mainTitle: '功能清单',
-      subTitles: ['功能展示配置', '第三方知识库', '第三方发布渠道', '插件系统']
+      subTitles: ['展示配置', '第三方知识库', '第三方发布渠道', '插件系统', '其他']
     },
     {
       mainTitle: '自定义域名',
-      subTitles: []
+      subTitles: customDomainEnable ? ['阿里云', '腾讯云', '火山引擎'] : []
     }
   ];
 
@@ -70,8 +70,8 @@ export const Settings = () => {
       <FirstTitle title="功能清单" />
 
       <>
-        <SecondTitle title="功能展示配置" />
-        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={6}>
+        <SecondTitle title="展示配置" />
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']}>
           <Flex alignItems={'center'} my={3}>
             <FormLabel title="展示聊天空白页（都关闭即可）" description="" minW={'240px'} />
             <Switch control={control} name="feConfigs.show_emptyChat" />
@@ -85,7 +85,7 @@ export const Settings = () => {
 
       <>
         <SecondTitle title="第三方知识库" />
-        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={6}>
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']}>
           <Flex alignItems={'center'} my={3}>
             <FormLabel
               title="飞书知识库"
@@ -102,12 +102,20 @@ export const Settings = () => {
             />
             <Switch control={control} name="feConfigs.show_dataset_yuque" />
           </Flex>
+          <Flex alignItems={'center'} my={3}>
+            <FormLabel
+              title="钉钉知识库"
+              description="关闭后，创建数据库时不再显示钉钉知识库"
+              minW={'240px'}
+            />
+            <Switch control={control} name="feConfigs.show_dataset_dingtalk" />
+          </Flex>
         </Grid>
       </>
 
       <>
         <SecondTitle title="第三方发布渠道" />
-        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={6}>
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']}>
           <Flex alignItems={'center'} my={3}>
             <FormLabel
               title="飞书发布渠道"
@@ -153,7 +161,7 @@ export const Settings = () => {
 
       <>
         <SecondTitle title="插件系统" />
-        <Grid gridTemplateColumns={['1fr', '1fr 1fr']} px={6}>
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']}>
           <Flex alignItems={'center'} my={3}>
             <FormLabel
               title="允许团队上传插件"
@@ -165,15 +173,20 @@ export const Settings = () => {
             <Switch control={control} name="feConfigs.enable_team_plugin_upload" />
           </Flex>
         </Grid>
+        <SecondTitle title="其他" />
+        <Grid gridTemplateColumns={['1fr', '1fr 1fr']}>
+          <Flex alignItems={'center'} my={3}>
+            <FormLabel title="用户可配置 OpenAI 账号" description="" minW={'240px'} />
+            <Switch control={control} name="feConfigs.show_openai_account" />
+          </Flex>
+        </Grid>
       </>
 
       <>
         <FirstTitle title="自定义域名" />
-        <Box py={3}>
-          <Box px={6} mb="4">
-            Saas 服务才会用到，借助 Sealos 能力，允许用户配置自定义域名。
-          </Box>
-          <Flex px={6} alignItems={'center'} my={3}>
+        <Box>
+          <Box mb="4">Saas 服务才会用到，借助 Sealos 能力，允许用户配置自定义域名。</Box>
+          <Flex alignItems={'center'} my={3}>
             <FormLabel title="是否使用自定义域名" description="" minW={'240px'} />
             <Switch control={control} name="feConfigs.customDomain.enable" />
           </Flex>

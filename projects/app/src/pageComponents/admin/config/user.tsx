@@ -4,7 +4,6 @@ import { TeamModeEnum } from '@/pageComponents/admin/config/type';
 import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';
 import FormItem from '@/pageComponents/admin/settings/FormItem';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
-import SecondTitle from '@/pageComponents/admin/settings/SecondTitle';
 import SettingPage from '@/pageComponents/admin/settings/SettingPage';
 import Switch from '@/pageComponents/admin/settings/Switch';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -69,35 +68,30 @@ const UserSetting = () => {
     [hasSSOURL]
   );
   const titles: Array<titleType> = useMemo(
-    () => [
-      {
-        mainTitle: '通知 & 登录设置',
-        subTitles: [
-          '团队模式设置',
-          ...(hasSSOURL ? ['自定义用户系统配置'] : []),
-          '邮箱通知配置(注册、套餐通知)',
-          '阿里云短信配置',
-          '阿里云短信模板CODE（SMS_xxx）',
-          ...(licenseSsoEnabled
-            ? [
-                '微信服务号登录',
-                ...(feConfigs?.showWecomConfig ? ['企微登录'] : []),
-                'GitHub 登录配置',
-                'Google 登录配置',
-                '微软登录配置',
-                '快速登录（不推荐）'
-              ]
-            : [])
-        ]
-      }
-    ],
+    () =>
+      [
+        '团队模式设置',
+        ...(hasSSOURL ? ['自定义用户系统配置'] : []),
+        '邮箱通知配置(注册、套餐通知)',
+        '阿里云短信配置',
+        '阿里云短信模板CODE（SMS_xxx）',
+        ...(licenseSsoEnabled
+          ? [
+              '微信服务号登录',
+              ...(feConfigs?.showWecomConfig ? ['企微登录'] : []),
+              'GitHub 登录配置',
+              'Google 登录配置',
+              '微软登录配置',
+              '快速登录（不推荐）'
+            ]
+          : [])
+      ].map((mainTitle) => ({ mainTitle, subTitles: [] })),
     [feConfigs?.showWecomConfig, hasSSOURL, licenseSsoEnabled]
   );
 
   return (
     <SettingPage titles={titles} loading={isLoading} onSubmit={onSubmit}>
-      <FirstTitle title="通知登录 & 设置" />
-      <SecondTitle title="团队模式设置" description="![](/imgs/single-team-mode-intro.png)" />
+      <FirstTitle title="团队模式设置" />
 
       <FormItem>
         <MySelect<`${TeamModeEnum}`>
@@ -118,7 +112,7 @@ const UserSetting = () => {
 
       {!!watch('sso.url') && (
         <>
-          <SecondTitle title="自定义用户系统配置" />
+          <FirstTitle title="自定义用户系统配置" />
           <FormItem
             title="用户服务根地址(末尾不加/)"
             description="具体用法请看： [SSO & 外部成员同步](https://doc.fastgpt.io/guide/admin/sso)"
@@ -140,7 +134,7 @@ const UserSetting = () => {
         </>
       )}
 
-      <SecondTitle title="邮箱通知配置(注册、套餐通知)" />
+      <FirstTitle title="邮箱通知配置(注册、套餐通知)" />
       <FormItem
         title="邮箱服务SMTP地址"
         description="不同厂商不一样\nQQ: smtp.qq.com\ngmail: smtp.gmail.com"
@@ -172,7 +166,7 @@ const UserSetting = () => {
       <FormItem title="是否开启邮箱注册" description="是否开启邮箱注册">
         <Switch control={control} name="email.register" />
       </FormItem>
-      <SecondTitle title="阿里云短信配置" />
+      <FirstTitle title="阿里云短信配置" />
       <FormItem
         title="ACCESSKEYID"
         description="阿里云短信参数\nhttps://dysms.console.aliyun.com/overview\n申请对应的签名和短信模板，提供：\nACCESSKEYID\nACCESSSECRET\n签名名称\n模板CODE，SM开头的"
@@ -186,7 +180,7 @@ const UserSetting = () => {
         <Input {...register('phone.SNED_PHONE_SIGNNAME')} placeholder="签名名称" />
       </FormItem>
 
-      <SecondTitle
+      <FirstTitle
         title="阿里云短信模板CODE（SMS_xxx）"
         // description="都分中文和英文模版，英文模版可以不配，会自动拿中文的"
       />
@@ -284,7 +278,7 @@ const UserSetting = () => {
       {licenseSsoEnabled && (
         <>
           <>
-            <SecondTitle title="微信服务号登录" />
+            <FirstTitle title="微信服务号登录" />
             <FormItem
               title="AppID"
               description="服务号的 Appid。微信服务号的验证地址填写：商业版域名/api/support/user/account/login/wx/callback"
@@ -298,7 +292,7 @@ const UserSetting = () => {
 
           {!!feConfigs?.showWecomConfig && (
             <>
-              <SecondTitle title="企微登录" />
+              <FirstTitle title="企微登录" />
               <FormItem title="SuiteId" description="三方应用的 SuiteId">
                 <Input {...register('wecom.suiteId')} placeholder="wwxxxxxxxxxxxxxxx" />
               </FormItem>
@@ -345,7 +339,7 @@ const UserSetting = () => {
           )}
 
           <>
-            <SecondTitle title="GitHub 登录配置" />
+            <FirstTitle title="GitHub 登录配置" />
             <FormItem
               title="GitHub Client ID"
               description="https://github.com/settings/developers，注册一个 oauth，\nHomepage: 域名\nCallbackurl: 域名/login/provider\n提供：\nclientId: \nclientSecret:"
@@ -357,7 +351,7 @@ const UserSetting = () => {
             </FormItem>
           </>
           <>
-            <SecondTitle title="Google 登录配置" />
+            <FirstTitle title="Google 登录配置" />
             <FormItem title="Google Client ID">
               <Input {...register('google.clientId')} placeholder="Google Client ID" />
             </FormItem>
@@ -366,7 +360,7 @@ const UserSetting = () => {
             </FormItem>
           </>
           <>
-            <SecondTitle title="微软登录配置" />
+            <FirstTitle title="微软登录配置" />
             <FormItem
               title="Microsoft Client ID"
               description="对应 Microsoft 应用的「应用程序(客户端) ID」"
@@ -390,7 +384,7 @@ const UserSetting = () => {
             </FormItem>
           </>
           <>
-            <SecondTitle title="快速登录（不推荐）" />
+            <FirstTitle title="快速登录（不推荐）" />
             <FormItem>
               <Textarea {...register('fastLogin')} placeholder="快速登录（不推荐）" />
             </FormItem>
