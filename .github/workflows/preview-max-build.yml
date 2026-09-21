@@ -1,0 +1,119 @@
+name: Preview Max Image - Build
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: ['*']
+    paths:
+      - "max"
+      - "max/**"
+      - "packages/**"
+      - "sdk/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - ".gitmodules"
+      - ".github/workflows/preview-max-build.yml"
+      - ".github/workflows/preview-max-push.yml"
+
+concurrency:
+  group: 'preview-max-build-${{ github.event.pull_request.number || github.run_id }}'
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: ${{ contains(fromJSON('["COLLABORATOR", "OWNER"]'), github.event.pull_request.author_association) }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+          fetch-depth: 1
+
+      # pro 与 max 均为私有子模块，复用 PRO_SUBMODULE_TOKEN 拉取。
+      - name: Update submodules
+        env:
+          PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
+        run: |
+          if [ -f .gitmodules ]; then
+            if [ -z "${PRO_SUBMODULE_TOKEN}" ]; then
+              echo "::error::PRO_SUBMODULE_TOKEN is required to clone the private pro/max submodules. Add it to this repository's Actions secrets, or run this workflow from a repository that has the secret configured."
+              exit 1
+            fi
+            git config --global url."https://x-access-token:${PRO_SUBMODULE_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git submodule update --init --recursive
+          fi
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # turbo prune 只需要 turbo CLI 与 workspace 元数据；--filter . 只安装根依赖，
+      # 真正的依赖安装发生在 Docker builder 阶段，无需在 runner 上装全量 monorepo。
+      - name: Install root dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts --filter .
+
+      # 复刻 max/docker/build-server.mjs 的上下文生成逻辑：turbo prune 裁剪出
+      # @fastgpt/server 依赖闭包，再补入 package 目录之外的 tsconfig 与 .dockerignore。
+      - name: Generate pruned build context
+        run: |
+          set -euo pipefail
+          CONTEXT_DIR="${{ runner.temp }}/max-server-context"
+          pnpm exec turbo prune @fastgpt/server --docker --out-dir="${CONTEXT_DIR}"
+          mkdir -p "${CONTEXT_DIR}/full/max"
+          cp tsconfig.json "${CONTEXT_DIR}/full/tsconfig.json"
+          cp max/tsconfig.base.json "${CONTEXT_DIR}/full/max/tsconfig.base.json"
+          cp max/docker/.dockerignore "${CONTEXT_DIR}/.dockerignore"
+          cp max/docker/server.Dockerfile "${CONTEXT_DIR}/server.Dockerfile"
+          echo "MAX_BUILD_CONTEXT=${CONTEXT_DIR}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ env.MAX_BUILD_CONTEXT }}
+          file: ${{ env.MAX_BUILD_CONTEXT }}/server.Dockerfile
+          platforms: linux/amd64
+          push: false
+          tags: fastgpt-max-pr:${{ github.event.pull_request.head.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=fastgpt-max server image
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
+          provenance: false
+          sbom: false
+          outputs: type=docker,dest=/tmp/fastgpt-max-image.tar
+
+      - name: Save PR metadata
+        run: |
+          echo "${{ github.event.pull_request.number }}" > /tmp/pr-number.txt
+          echo "${{ github.event.pull_request.head.sha }}" > /tmp/pr-sha.txt
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-max-image
+          path: |
+            /tmp/fastgpt-max-image.tar
+            /tmp/pr-number.txt
+            /tmp/pr-sha.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 1
