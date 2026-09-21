@@ -174,10 +174,11 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       }
     | undefined;
 
+  const askContinuation = input.continuation?.type === 'ask' ? input.continuation : undefined;
   // ask_user 暂停时会把当时的 LLM messages 保存到 pendingMainContext。
-  // 恢复时追加用户回答作为对应 ask tool 的 Tool message，延续同一条消息链。
+  // 恢复时先追加 ask tool response，再消费 continuation 携带的附加消息。
   const messages =
-    input.pendingMainContext && input.userAnswer !== undefined
+    input.pendingMainContext && askContinuation
       ? [
           ...input.pendingMainContext.messages,
           {
@@ -187,10 +188,11 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
               formatAgentAskToolResponse({
                 messages: input.pendingMainContext.messages,
                 askToolCallId: input.pendingMainContext.askToolCallId,
-                answer: input.userAnswer
+                answer: askContinuation.answer
               })
             )
-          } as ChatCompletionMessageParam
+          } as ChatCompletionMessageParam,
+          ...(askContinuation.additionalMessages ?? [])
         ]
       : buildInitialMessages({ input });
   // 普通续轮通过 input.activePlan 恢复结构化 plan；ask_user 续跑则优先使用暂停时的完整快照。
