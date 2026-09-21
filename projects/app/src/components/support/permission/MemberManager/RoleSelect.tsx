@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { RoleValueType } from '@fastgpt/global/support/permission/type';
+import type { RoleListType, RoleValueType } from '@fastgpt/global/support/permission/type';
 import { useContextSelector } from 'use-context-selector';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { CollaboratorContext } from './context';
@@ -61,6 +61,38 @@ export const replaceSingleRole = ({
   return permission.role;
 };
 
+/**
+ * The single-select roles the current viewer may assign to a collaborator row.
+ *
+ * The viewer's ability comes from their effective resource permission (owner, or
+ * manage granted directly, through an inherited parent, or through a group/org),
+ * not from whether the collaborator list contains a row for the viewer.
+ *
+ * - owner: every single-select role;
+ * - other managers: every role except manage, and nothing at all on a row that
+ *   already holds manage permission, since promoting peers to administrator and
+ *   editing existing administrators is reserved for the owner.
+ */
+export const getAssignableSingleRoles = ({
+  roleList,
+  myPermission,
+  targetRole
+}: {
+  roleList: RoleListType;
+  myPermission: Permission;
+  targetRole?: RoleValueType;
+}): RoleValueType[] => {
+  const singleOptions = Object.values(roleList)
+    .filter((item) => item.checkBoxType === 'single')
+    .map((item) => item.value);
+
+  if (myPermission.isOwner) return singleOptions;
+  if (!myPermission.hasManagePer) return [];
+
+  const target = new Permission({ role: targetRole });
+  return target.hasManagePer ? [] : singleOptions.filter((value) => value !== ManageRoleVal);
+};
+
 function RoleSelect({
   value: role,
   onChange,
@@ -75,8 +107,10 @@ function RoleSelect({
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<NodeJS.Timeout>();
 
-  const { roleList: permissionList } = useContextSelector(CollaboratorContext, (v) => v);
-  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
+  const { roleList: permissionList, permission: myPermission } = useContextSelector(
+    CollaboratorContext,
+    (v) => v
+  );
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -92,18 +126,18 @@ function RoleSelect({
       };
     });
 
-    const singleOptions = list.filter((item) => item.checkBoxType === 'single');
-    const per = new Permission({ role });
+    const assignableRoleVals = getAssignableSingleRoles({
+      roleList: permissionList,
+      myPermission,
+      targetRole: role
+    });
+    const singleOptions = list.filter((item) => assignableRoleVals.includes(item.value));
 
     return {
-      singleOptions: myRole.isOwner
-        ? singleOptions
-        : myRole.hasManagePer && !per.hasManagePer
-          ? singleOptions.filter((item) => item.value !== ManageRoleVal)
-          : [],
+      singleOptions,
       checkboxList: list.filter((item) => item.checkBoxType === 'multiple')
     };
-  }, [myRole.hasManagePer, myRole.isOwner, permissionList, role]);
+  }, [myPermission, permissionList, role]);
   const selectedSingleValue = useMemo(() => {
     if (!permissionList) return undefined;
 

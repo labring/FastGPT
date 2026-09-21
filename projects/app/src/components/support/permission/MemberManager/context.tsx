@@ -10,7 +10,7 @@ import type {
   RoleListType,
   RoleValueType
 } from '@fastgpt/global/support/permission/type';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
@@ -20,7 +20,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { CommonRoleList, NullRoleVal } from '@fastgpt/global/support/permission/constant';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 
 const MemberModal = dynamic(() => import('./MemberModal'));
@@ -40,7 +39,6 @@ export type MemberManagerInputPropsType = {
 export type CollaboratorContextType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemDetailType[];
   parentClbList: CollaboratorItemDetailType[];
-  myRole: Permission;
   refetchCollaboratorList: () => void;
   isFetchingCollaborator: boolean;
   getRoleLabelList: (role: RoleValueType) => string[];
@@ -53,7 +51,6 @@ export type ChildrenProps = {
 };
 
 export const CollaboratorContext = createContext<CollaboratorContextType>({
-  myRole: new Permission(),
   defaultRole: NullRoleVal,
   collaboratorList: [],
   parentClbList: [],
@@ -184,16 +181,6 @@ const CollaboratorContextProvider = ({
     onClose: onCloseManageModal
   } = useDisclosure();
 
-  const { userInfo } = useUserStore();
-  const myRole = useMemo(() => {
-    return (
-      collaboratorList.find((v) => v.tmbId === userInfo?.team?.tmbId)?.permission ??
-      new Permission({
-        isOwner: userInfo?.team.permission.isOwner
-      })
-    );
-  }, [collaboratorList, userInfo?.team.permission.isOwner, userInfo?.team?.tmbId]);
-
   const contextValue = {
     permission,
     onGetCollaboratorList,
@@ -206,7 +193,6 @@ const CollaboratorContextProvider = ({
     getRoleLabelList,
     defaultRole,
     parentClbList,
-    myRole,
     isInheritPermission
   };
 

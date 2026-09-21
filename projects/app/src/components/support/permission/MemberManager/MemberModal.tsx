@@ -103,7 +103,7 @@ function MemberModal({
   );
 
   const parentClbs = useContextSelector(CollaboratorContext, (v) => v.parentClbList);
-  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
+  const myPermission = useContextSelector(CollaboratorContext, (v) => v.permission);
 
   const { runAsync: _onConfirm, loading: isUpdating } = useRequest(
     () =>
@@ -468,7 +468,7 @@ function MemberModal({
                     disabled={
                       clb.permission.role === OwnerRoleVal ||
                       clb.tmbId === userInfo?.team.tmbId ||
-                      (clb.permission.hasManagePer && !myRole.isOwner)
+                      (clb.permission.hasManagePer && !myPermission.isOwner)
                     }
                   />
                 );
@@ -496,7 +496,7 @@ const RenderMemberList = ({
   defaultRole: RoleValueType;
 }) => {
   const { userInfo } = useUserStore();
-  const myRole = useContextSelector(CollaboratorContext, (v) => v.myRole);
+  const myPermission = useContextSelector(CollaboratorContext, (v) => v.permission);
 
   return (
     <>
@@ -531,7 +531,7 @@ const RenderMemberList = ({
             disabled={
               member.permission.role === OwnerRoleVal ||
               member.tmbId === userInfo?.team.tmbId ||
-              (member.permission.hasManagePer && !myRole.isOwner)
+              (member.permission.hasManagePer && !myPermission.isOwner)
             }
           />
         );
