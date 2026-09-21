@@ -1,9 +1,8 @@
 'use client';
 import React, { useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
-import { GET } from '@/web/admin/common/request';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { GetUserFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
+import { getUserFormData } from '@/web/admin/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
@@ -31,13 +30,7 @@ export default function TrafficPage(): JSX.Element {
 
   const { data: trafficData, loading } = useRequest(
     async () => {
-      return await GET<GetUserFormDataResponseType>(
-        `/proApi/admin/core/dashboard/getUserFormData`,
-        {
-          startTime,
-          granularity
-        }
-      ).then((res) => {
+      return await getUserFormData({ startTime, granularity }).then((res) => {
         return {
           startUserCount: res.startUserCount,
           registeredUserCount: formatList2ChartsData(res.registeredUserCount, {

@@ -3,7 +3,7 @@ import React, { useRef, useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, HStack, Button } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { getDatasets } from '@/web/admin/datasets/api';
+import { getDatasets } from '@/web/admin/dataset/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { useRouter } from 'next/router';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';

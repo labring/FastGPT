@@ -1,14 +1,9 @@
 'use client';
 import React, { useState } from 'react';
 import { Box, Flex, Grid, GridItem, HStack, Skeleton } from '@chakra-ui/react';
-import { GET } from '@/web/admin/common/request';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type {
-  GetUserStatsResponseType,
-  GetAppStatsResponseType,
-  GetDatasetStatsResponseType
-} from '@fastgpt/global/openapi/admin/core/dashboard/api';
+import { getAppStats, getDatasetStats, getUserStats } from '@/web/admin/dashboard/api';
 import { DashboardLayout, type DashboardTab } from '@/pageComponents/admin/dashboard/Header';
 import TrafficPage from './traffic';
 import PaymentPage from './payment';
@@ -70,10 +65,9 @@ const DataItem = ({ icon, title, count = 0, color, isLoading = false }: DataItem
 
 export default function DashboardOverview(): JSX.Element {
   const [currentTab, setCurrentTab] = useState<DashboardTab>('overview');
-  const { data: userStats, loading: userStatsLoading } = useRequest(
-    () => GET<GetUserStatsResponseType>(`/proApi/admin/core/dashboard/getUserStats`),
-    { manual: false }
-  );
+  const { data: userStats, loading: userStatsLoading } = useRequest(getUserStats, {
+    manual: false
+  });
   const userItems = [
     {
       icon: 'support/user/userLight',
@@ -91,10 +85,7 @@ export default function DashboardOverview(): JSX.Element {
     }
   ];
 
-  const { data: appStats, loading: appStatsLoading } = useRequest(
-    () => GET<GetAppStatsResponseType>(`/proApi/admin/core/dashboard/getAppStats`),
-    { manual: false }
-  );
+  const { data: appStats, loading: appStatsLoading } = useRequest(getAppStats, { manual: false });
   const appItems = [
     {
       icon: 'core/app/simpleBot',
@@ -133,10 +124,9 @@ export default function DashboardOverview(): JSX.Element {
     }
   ];
 
-  const { data: datasetStats, loading: datasetStatsLoading } = useRequest(
-    () => GET<GetDatasetStatsResponseType>(`/proApi/admin/core/dashboard/getDatasetStats`),
-    { manual: false }
-  );
+  const { data: datasetStats, loading: datasetStatsLoading } = useRequest(getDatasetStats, {
+    manual: false
+  });
   const datasetItems = [
     {
       icon: 'core/dataset/commonDatasetColor',

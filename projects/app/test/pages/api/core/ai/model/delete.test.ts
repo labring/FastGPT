@@ -54,9 +54,9 @@ vi.mock('@fastgpt/service/core/ai/config/entity', () => ({
   )
 }));
 
-import handler from '@/pages/api/admin/settings/model/delete';
+import handler from '@/pages/api/admin/system/model/delete';
 
-describe('DELETE /api/admin/settings/model/delete', () => {
+describe('DELETE /api/admin/system/model/delete', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue(undefined);

@@ -7,7 +7,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { putUpdateQuickTemplate } from '@/web/core/app/templates/api';
+import { putUpdateQuickTemplate } from '@/web/admin/app/templates/api';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import type { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import dynamic from 'next/dynamic';

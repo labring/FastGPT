@@ -8,7 +8,7 @@ import SettingPage from '@/pageComponents/admin/settings/SettingPage';
 import Switch from '@/pageComponents/admin/settings/Switch';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
-import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
+import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
 import { Box, Input, Textarea } from '@chakra-ui/react';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';

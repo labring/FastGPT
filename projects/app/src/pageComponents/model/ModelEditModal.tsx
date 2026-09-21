@@ -1,7 +1,7 @@
 import { defaultChannel } from '@/global/aiproxy/constants';
 import { Button } from '@chakra-ui/react';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
-import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/settings/model/api';
+import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/system/model/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import dynamic from 'next/dynamic';
 import ModelConfigForm from './ModelConfigForm';

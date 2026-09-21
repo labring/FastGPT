@@ -100,42 +100,41 @@ export const DevApiTagsMap = {
   teamSubscription: '订阅管理',
 
   /* 插件市场 */
-  pluginMarketplace: '插件市场-系统工具',
+  pluginMarketplace: '工具',
 
-  /* 管理员-插件管理 */
-  pluginAdmin: '管理员插件管理',
-  pluginToolAdmin: '管理员系统工具管理',
+  /* 子服务-Pro */
+  subserviceProDataset: '知识库',
 
-  /* 管理员-系统管理 */
-  adminDashboard: '仪表盘',
+  /* 系统资源 */
+  pluginAdmin: '插件管理',
+  pluginToolAdmin: '系统工具管理',
+
+  /* 管理员系统接口 */
+  adminDashboard: '数据面板',
   adminInform: '通知管理',
-  adminApps: '应用管理',
+  adminApps: '应用资源',
   adminWalletCoupon: '兑换码管理',
-  adminUsers: '用户管理',
-  adminTeams: '团队管理',
-  adminDatasets: '知识库管理',
+  adminUsers: '用户信息',
+  adminTeams: '团队',
+  adminDatasets: '知识库资源',
   adminPays: '订单管理',
-  adminPlans: '套餐管理',
+  adminPlans: '套餐',
   adminSettings: '系统配置',
   adminSystemMigration: '升级脚本',
-  adminSystemModel: '管理员模型管理',
-  adminModelChannel: '管理员渠道管理',
-  adminModelLog: '管理员模型监控日志',
-  adminLicense: '许可证管理',
-  adminTemplate: '模板管理',
-  adminTemplateType: '模板类型管理',
-  adminWalletInvoice: '发票管理',
+  adminSystemModel: '系统模型',
+  adminModelChannel: '模型渠道',
+  adminModelLog: '模型监控日志',
+  adminLicense: 'License 管理',
+  adminTemplate: '应用模板',
+  adminTemplateType: '模板类型',
+  adminWalletInvoice: '发票处理',
   adminWalletRefund: '退款管理',
-  adminAuth: '管理员认证'
+  adminAuth: '认证',
+  adminAudit: '审计日志'
 };
 
 /** Scalar 文档导航中的标签展示名，key 保持 OpenAPI 内部标签唯一。 */
-export const DevApiTagNameAliases: Record<string, string> = {
-  [DevApiTagsMap.pluginMarketplace]: '系统工具',
-  [DevApiTagsMap.adminSystemModel]: '模型管理',
-  [DevApiTagsMap.adminModelChannel]: '渠道管理',
-  [DevApiTagsMap.adminModelLog]: '监控日志'
-};
+export const DevApiTagNameAliases: Record<string, string> = {};
 
 export const SystemOpenApiTagMap = {
   appLog: 'systemOpenAPI:appLog',

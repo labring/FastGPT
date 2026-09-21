@@ -18,7 +18,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import DetailTeamModal from './components/DetailTeamModal';
 import EditTeamModal from './components/EditTeamModal';
-import { getTeams } from '@/web/admin/users/api';
+import { getTeams } from '@/web/admin/team/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';

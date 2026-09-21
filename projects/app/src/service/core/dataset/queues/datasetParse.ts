@@ -32,7 +32,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { postCreateParagraphTitle } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -84,20 +84,7 @@ const requestLLMPargraph = async ({
     }
   }
 
-  const data = await POST<{
-    resultText: string;
-    totalInputTokens: number;
-    totalOutputTokens: number;
-  }>(
-    '/core/dataset/training/llmPargraph',
-    {
-      rawText,
-      modelId,
-      teamId,
-      billId
-    },
-    { timeout: 600000 }
-  );
+  const data = await postCreateParagraphTitle({ rawText, modelId, teamId, billId });
 
   return data;
 };

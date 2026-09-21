@@ -148,7 +148,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   useEffect(() => {
     if (userInfo?.username !== 'root') return;
     // 模型配置页会自行加载同一份数据；这里跳过，避免首屏重复请求。
-    if (router.pathname === '/admin/plugin/model') return;
+    if (router.pathname === '/admin/resources/model') return;
 
     const identity = `${userInfo.team.teamId}:${userInfo.team.tmbId}:${modelLoginGeneration}`;
     if (checkedModelIdentityRef.current === identity) return;
@@ -162,16 +162,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:llm_model_not_config')
           });
-          if (router.pathname !== '/admin/plugin/model') {
-            router.push('/admin/plugin/model?modelTab=config');
+          if (router.pathname !== '/admin/resources/model') {
+            router.push('/admin/resources/model?modelTab=config');
           }
         } else if (!activeModels.some((model) => model.type === ModelTypeEnum.embedding)) {
           toast({
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          if (router.pathname !== '/admin/plugin/model') {
-            router.push('/admin/plugin/model?modelTab=config');
+          if (router.pathname !== '/admin/resources/model') {
+            router.push('/admin/resources/model?modelTab=config');
           }
         }
       })

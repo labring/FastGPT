@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { plusRequest } from '@fastgpt/service/common/api/plusRequest';
+import { forwardWecom } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import handler from '@/pages/api/support/outLink/wecom/[token]';
 
-vi.mock('@fastgpt/service/common/api/plusRequest', () => ({
-  plusRequest: vi.fn()
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', () => ({
+  forwardWecom: vi.fn()
 }));
 
 describe('WeCom outlink proxy', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('forwards callback method and sends encrypted response once', async () => {
-    vi.mocked(plusRequest).mockResolvedValue({
+    vi.mocked(forwardWecom).mockResolvedValue({
       data: { data: { message: 'encrypted-response' } }
     } as any);
     const req = {
@@ -28,9 +28,9 @@ describe('WeCom outlink proxy', () => {
 
     await handler(req, res);
 
-    expect(plusRequest).toHaveBeenCalledWith({
+    expect(forwardWecom).toHaveBeenCalledWith({
+      token: 'share-id',
       method: 'POST',
-      url: 'support/outLink/wecom/share-id',
       params: req.query,
       data: req.body
     });

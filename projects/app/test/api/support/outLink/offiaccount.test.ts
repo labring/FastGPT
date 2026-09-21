@@ -1,17 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { plusRequest } from '@fastgpt/service/common/api/plusRequest';
+import { forwardOffiaccount } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import handler from '@/pages/api/support/outLink/offiaccount/[token]';
 
-vi.mock('@fastgpt/service/common/api/plusRequest', () => ({
-  plusRequest: vi.fn()
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', () => ({
+  forwardOffiaccount: vi.fn()
 }));
 
 describe('Official account outlink proxy', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('forwards an encrypted passive reply exactly once', async () => {
-    vi.mocked(plusRequest).mockResolvedValue({
+    vi.mocked(forwardOffiaccount).mockResolvedValue({
       data: { data: { message: 'encrypted-response' } }
     } as any);
     const req = {
@@ -28,9 +28,9 @@ describe('Official account outlink proxy', () => {
 
     await handler(req, res);
 
-    expect(plusRequest).toHaveBeenCalledWith({
+    expect(forwardOffiaccount).toHaveBeenCalledWith({
+      token: 'share-id',
       method: 'POST',
-      url: 'support/outLink/offiaccount/share-id',
       params: req.query,
       data: req.body
     });

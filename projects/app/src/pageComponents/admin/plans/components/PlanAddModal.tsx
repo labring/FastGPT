@@ -1,7 +1,7 @@
 import { Box, Button, FormControl, FormLabel, Input, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { POST } from '@/web/admin/common/request';
+import { addPlan } from '@/web/admin/wallet/plan/api';
 import { AddIcon } from '@chakra-ui/icons';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -61,7 +61,7 @@ export default function PlanAddModal(props: { updateData: any }) {
       if (formData.surplusPoints > formData.totalPoints) {
         throw new Error('剩余积分不能大于总积分');
       }
-      await POST(`/proApi/admin/routes/plans/addPlans`, {
+      await addPlan({
         ...formData,
         startTime: startTimeISO,
         expiredTime: expiredTimeISO

@@ -7,11 +7,14 @@ import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
-import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
-  type DeepRagSearchProps,
-  type SearchDatasetDataResponse
-} from '@fastgpt/service/core/dataset/search';
+  postCheckCensor,
+  postConcatUsage,
+  postCreateUsage,
+  postDeepRag,
+  postPushUsageItems
+} from '@fastgpt/service/thirdProvider/fastgptPro/api';
+import type { DeepRagSearchProps } from '@fastgpt/service/core/dataset/search';
 import type {
   PushUsageItemsProps,
   ConcatUsageProps,
@@ -41,24 +44,24 @@ export function initGlobalVariables() {
   function initPlusRequest() {
     global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
       if (!isProVersion()) return Promise.resolve({ code: 200 });
-      return POST<{ code: number; message?: string }>('/common/censor/check', { text });
+      return postCheckCensor({ text });
     };
 
     global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
-      return POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+      return postDeepRag(data);
     };
 
     global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
       if (!isProVersion()) return;
-      return POST<string>('/support/wallet/usage/createUsage', data);
+      return postCreateUsage(data);
     };
     global.concatUsageHandler = function concatUsageHandler(data: ConcatUsageProps) {
       if (!isProVersion()) return;
-      return POST('/support/wallet/usage/concatUsage', data);
+      return postConcatUsage(data);
     };
     global.pushUsageItemsHandler = function pushUsageItemsHandler(data: PushUsageItemsProps) {
       if (!isProVersion()) return;
-      return POST('/support/wallet/usage/pushUsageItems', data);
+      return postPushUsageItems(data);
     };
   }
 

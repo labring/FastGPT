@@ -3,7 +3,7 @@ import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { openAPIPaths, openAPITagGroups } from '../../../../openapi/path';
 import { DevApiTagsMap } from '../../../../openapi/tag';
 import { BillItemSchema } from '../../../../openapi/support/wallet/bill/api';
-import { GetPaysResponseSchema } from '../../../../openapi/admin/routes/pays/api';
+import { GetPaysResponseSchema } from '../../../../openapi/admin/wallet/pay/api';
 import {
   InvoiceRecordsResponseSchema,
   InvoiceSubmitBodySchema,

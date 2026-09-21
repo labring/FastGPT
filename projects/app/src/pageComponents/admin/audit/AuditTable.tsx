@@ -7,7 +7,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { useMemo, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { getOperationLogs } from '@/web/admin/audit/api';
+import { getOperationLogs } from '@/web/admin/system/audit/api';
 import { adminAuditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -22,7 +22,7 @@ import {
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { specialProcessors } from '@/pageComponents/admin/audit/processors';
 import { defaultMetadataProcessor } from '@/pageComponents/admin/audit/commonProcessor';
-import type { TeamAuditListItemType } from '@fastgpt/global/support/user/audit/type';
+import type { AdminAuditListItemType } from '@fastgpt/global/openapi/admin/system/audit/api';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const AuditTable = () => {
@@ -31,7 +31,7 @@ const AuditTable = () => {
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter<string>());
   const [eventFilter, setEventFilter] =
     useState<MultiSelectFilterValue<AdminAuditEventEnum>>(createMultiSelectFilter());
-  const [auditDetail, setAuditDetail] = useState<TeamAuditListItemType>();
+  const [auditDetail, setAuditDetail] = useState<AdminAuditListItemType>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // 获取团队成员列表
@@ -207,7 +207,7 @@ const AuditTable = () => {
   );
 };
 
-function AuditDetailModal({ log, onClose }: { log: TeamAuditListItemType; onClose: () => void }) {
+function AuditDetailModal({ log, onClose }: { log: AdminAuditListItemType; onClose: () => void }) {
   const { t } = useTranslation();
   const i18nData = adminAuditLogMap[log.event as AdminAuditEventEnum];
   const metadata = defaultMetadataProcessor(log.metadata, t);

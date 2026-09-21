@@ -115,17 +115,17 @@ const AdminContainer = ({
       {
         icon: 'common/layer',
         label: '系统资源',
-        value: '/admin/plugin/model',
+        value: '/admin/resources/model',
         children: [
           {
             icon: 'common/model',
             label: '系统模型',
-            value: '/admin/plugin/model'
+            value: '/admin/resources/model'
           },
           {
             icon: 'common/toolkit',
             label: '系统工具',
-            value: '/admin/plugin/tool'
+            value: '/admin/resources/tool'
           },
           {
             icon: 'common/templateMarket',

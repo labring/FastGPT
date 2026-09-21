@@ -11,7 +11,7 @@ import {
   getOperationalAd,
   postUpdateActivityAd,
   getActivityAd
-} from '@/web/common/system/inform/api';
+} from '@/web/admin/system/inform/api';
 import { useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';

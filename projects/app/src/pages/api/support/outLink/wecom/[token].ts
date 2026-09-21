@@ -1,5 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
-import { plusRequest } from '@fastgpt/service/common/api/plusRequest';
+import { forwardWecom } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 
 export type OutLinkWecomQuery = any;
 export type OutLinkWecomBody = any;
@@ -8,9 +8,9 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<any> {
   const { token } = req.query;
-  const result = await plusRequest({
+  const result = await forwardWecom({
+    token,
     method: req.method,
-    url: `support/outLink/wecom/${token}`,
     params: req.query,
     data: req.body
   });

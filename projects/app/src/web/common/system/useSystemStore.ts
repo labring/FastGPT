@@ -148,7 +148,7 @@ export const useSystemStore = create<State>()(
             state.licenseLoading = true;
           });
           try {
-            const { getLicenseData } = await import('@/web/common/license/api');
+            const { getLicenseData } = await import('@/web/admin/license/api');
             const licenseData = await getLicenseData();
             set((state) => {
               state.licenseData = licenseData;

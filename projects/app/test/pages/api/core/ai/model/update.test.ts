@@ -31,11 +31,11 @@ vi.mock('@fastgpt/service/core/app/provider/controller', async (importOriginal) 
   preloadModelProviders: providerMocks.preloadModelProviders
 }));
 
-import createModelApi from '@/pages/api/admin/settings/model/create';
-import createModelsFromTemplatesApi from '@/pages/api/admin/settings/model/createFromTemplates';
-import replaceModelChannelsApi from '@/pages/api/admin/settings/model/channel/replace';
-import getModelTemplatesApi from '@/pages/api/admin/settings/model/templates';
-import updateModelApi from '@/pages/api/admin/settings/model/update';
+import createModelApi from '@/pages/api/admin/system/model/create';
+import createModelsFromTemplatesApi from '@/pages/api/admin/system/model/createFromTemplates';
+import replaceModelChannelsApi from '@/pages/api/admin/system/model/channel/replace';
+import getModelTemplatesApi from '@/pages/api/admin/system/model/templates';
+import updateModelApi from '@/pages/api/admin/system/model/update';
 
 const buildLlmDocument = () => ({
   type: ModelTypeEnum.llm,

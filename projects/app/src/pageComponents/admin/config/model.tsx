@@ -4,7 +4,7 @@ import { Input, Textarea } from '@chakra-ui/react';
 
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
-import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
+import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import FirstTitle from '@/pageComponents/admin/settings/FirstTitle';

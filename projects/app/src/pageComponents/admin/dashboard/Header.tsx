@@ -3,7 +3,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getInitFormData } from '@/web/admin/config/api';
+import { getInitFormData } from '@/web/admin/system/api';
 import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
 import {
   useDashboardFilters,

@@ -1,6 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
-import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { postHealth } from '@fastgpt/service/thirdProvider/fastgptPro/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { checkRedisHealth } from '@fastgpt/dal/redis';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
@@ -45,7 +45,7 @@ export const instrumentationCheck = async () => {
   // pro
   if (global.feConfigs?.isPlus) {
     try {
-      const data = await POST<{ auth: boolean; data: string }>('/health');
+      const data = await postHealth();
       if (!data.auth) {
         throw new Error('PRO_TOKEN is invalid');
       }

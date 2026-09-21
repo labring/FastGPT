@@ -32,7 +32,7 @@ export type GetAdminSystemToolsResponseType = z.infer<typeof GetAdminSystemTools
  * Route: GET /api/core/plugin/admin/tool/detail
  * Method: GET
  * Description: 管理员获取系统工具详情，支持按版本查看
- * Tags: ['管理员系统工具管理', 'Read']
+ * Tags: ['系统工具管理', 'Read']
  * ============================================================================ */
 
 export const GetAdminSystemToolDetailQuerySchema = z.object({
@@ -53,7 +53,7 @@ export type GetAdminSystemToolDetailResponseType = AdminSystemToolDetailType;
  * Route: GET /api/core/plugin/admin/tool/versions
  * Method: GET
  * Description: 管理员获取系统工具版本列表，工作流工具返回关联应用版本 ID 和版本名称
- * Tags: ['管理员系统工具管理', 'Read']
+ * Tags: ['系统工具管理', 'Read']
  * ============================================================================ */
 
 export const GetAdminSystemToolVersionsQuerySchema = z.object({

@@ -3,12 +3,15 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AppTemplate from '@/pageComponents/admin/templates/app';
-import { getSystemTemplates, putUpdateTemplateOrder } from '@/web/core/app/templates/api';
+import { getSystemTemplates, putUpdateTemplateOrder } from '@/web/admin/app/templates/api';
+import { getTemplateTypes } from '@/web/core/app/templates/api';
 
 const controls = vi.hoisted(() => ({ drag: undefined as any, list: [] as any[] }));
 vi.mock('@/web/core/app/templates/api', () => ({
+  getTemplateTypes: vi.fn().mockResolvedValue([])
+}));
+vi.mock('@/web/admin/app/templates/api', () => ({
   getSystemTemplates: vi.fn(),
-  getTemplateTypes: vi.fn().mockResolvedValue([]),
   putUpdateTemplateOrder: vi.fn().mockResolvedValue(undefined)
 }));
 vi.mock('@fastgpt/web/hooks/useRequest', async () => {

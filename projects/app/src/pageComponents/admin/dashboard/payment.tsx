@@ -1,10 +1,9 @@
 'use client';
 import React, { useState, useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
-import { GET } from '@/web/admin/common/request';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { GetPaysFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
+import { getPaysFormData } from '@/web/admin/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
@@ -35,13 +34,7 @@ export default function PaymentPage(): JSX.Element {
 
   const { data: paysData, loading } = useRequest(
     async () => {
-      return await GET<GetPaysFormDataResponseType>(
-        `/proApi/admin/core/dashboard/getPaysFormData`,
-        {
-          startTime,
-          granularity
-        }
-      ).then((res) => ({
+      return await getPaysFormData({ startTime, granularity }).then((res) => ({
         orderAmounts: formatList2ChartsData(res.orderAmounts, {
           defaultValues: {
             totalCount: 0,

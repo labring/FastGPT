@@ -17,8 +17,8 @@ vi.mock('@fastgpt/service/core/ai/config/utils', async (importOriginal) => {
   };
 });
 
-import updateWithJsonApi from '@/pages/api/admin/settings/model/updateWithJson';
-import getConfigJsonApi from '@/pages/api/admin/settings/model/getConfigJson';
+import updateWithJsonApi from '@/pages/api/admin/system/model/updateWithJson';
+import getConfigJsonApi from '@/pages/api/admin/system/model/getConfigJson';
 
 const buildLlmConfig = ({ modelId, model = 'test-llm' }: { modelId: string; model?: string }) => ({
   modelId,

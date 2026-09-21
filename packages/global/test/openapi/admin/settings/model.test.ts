@@ -10,15 +10,10 @@ import {
   TestAdminSystemModelQuerySchema,
   UpdateSystemModelBodySchema,
   UpdateSystemModelStatusBodySchema
-} from '../../../../openapi/admin/settings/model/api';
-import { AdminSystemModelPath } from '../../../../openapi/admin/settings/model';
-import { AdminSystemChannelPath } from '../../../../openapi/admin/settings/model/channel';
-import {
-  adminOpenAPITagGroups,
-  adminOpenAPIPaths,
-  openAPITagGroups,
-  openAPIPaths
-} from '../../../../openapi/path';
+} from '../../../../openapi/admin/system/model/api';
+import { AdminSystemModelPath } from '../../../../openapi/admin/system/model';
+import { AdminSystemChannelPath } from '../../../../openapi/admin/system/model/channel';
+import { openAPITagGroups, openAPIPaths } from '../../../../openapi/path';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { DevApiTagsMap } from '../../../../openapi/tag';
 
@@ -138,28 +133,21 @@ describe('admin system model API schemas', () => {
     ).toThrow();
   });
 
-  it('loads every admin model route into both documents under model management', () => {
-    expect(adminOpenAPITagGroups).toContainEqual({
-      name: '管理员-系统接口',
-      tags: [
-        DevApiTagsMap.adminSystemMigration,
-        DevApiTagsMap.adminSystemModel,
-        DevApiTagsMap.adminModelChannel,
-        DevApiTagsMap.adminModelLog
-      ]
-    });
+  it('loads every admin model route into the DevAPI document under system resources', () => {
     expect(openAPITagGroups).toContainEqual({
-      name: '管理员-系统接口',
+      name: '系统资源',
       tags: [
-        DevApiTagsMap.adminSystemMigration,
         DevApiTagsMap.adminSystemModel,
         DevApiTagsMap.adminModelChannel,
-        DevApiTagsMap.adminModelLog
+        DevApiTagsMap.adminModelLog,
+        DevApiTagsMap.pluginAdmin,
+        DevApiTagsMap.pluginToolAdmin,
+        DevApiTagsMap.adminTemplate,
+        DevApiTagsMap.adminTemplateType
       ]
     });
 
     for (const [path, operations] of Object.entries(AdminSystemModelPath)) {
-      expect(adminOpenAPIPaths[path]).toBe(operations);
       expect(openAPIPaths[path]).toBe(operations);
       expect(openAPIDocument.paths?.[path]).toBeDefined();
       for (const operation of Object.values(operations ?? {})) {
@@ -173,7 +161,6 @@ describe('admin system model API schemas', () => {
       '/aiproxy/api/dashboardv2/'
     ]);
     for (const [path, operations] of Object.entries(AdminSystemChannelPath)) {
-      expect(adminOpenAPIPaths[path]).toBe(operations);
       expect(openAPIPaths[path]).toBe(operations);
       expect(openAPIDocument.paths?.[path]).toBeDefined();
       for (const operation of Object.values(operations ?? {})) {
