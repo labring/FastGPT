@@ -29,7 +29,7 @@ export {
   LicenseTypeSchema
 } from '../license/schema';
 
-export const NavbarItemSchema = z.looseObject({
+export const NavbarItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   avatar: z.string(),
@@ -38,7 +38,7 @@ export const NavbarItemSchema = z.looseObject({
 });
 export type NavbarItemType = z.infer<typeof NavbarItemSchema>;
 
-export const ExternalProviderWorkflowVarSchema = z.looseObject({
+export const ExternalProviderWorkflowVarSchema = z.object({
   name: z.string(),
   key: z.string(),
   intro: z.string(),
