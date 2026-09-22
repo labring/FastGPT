@@ -293,7 +293,10 @@ export type GetTagFilterOptionsResponseType = z.infer<typeof GetTagFilterOptions
  * Route: GET /proApi/core/dataset/collection/collaborator/list
  * ============================================================================ */
 export const GetCollectionCollaboratorListQuerySchema = z.object({
-  collectionId: ObjectIdSchema.meta({ description: '集合 ID' })
+  collectionId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '集合 ID'
+  })
 });
 export type GetCollectionCollaboratorListQuery = z.infer<
   typeof GetCollectionCollaboratorListQuerySchema
@@ -311,15 +314,25 @@ export type GetCollectionCollaboratorListResponse = z.infer<
  * Description: 覆盖更新集合的协作者权限；配置即视为已设置 collection 权限（dataset 短路失效）。
  * Tags: ['协作者管理', '知识库权限管理']
  * ============================================================================ */
-export const UpdateCollectionCollaboratorBodySchema = z.object({
-  collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
-  // 暂沿用共享协作者 schema：当前仅校验正整数，未收紧为 collection 的 1/2/4/6/7 枚举。
-  // owner 必须随完整列表提交，并由服务端校验只能属于 collection.tmbId。
-  collaborators: CollaboratorUpdateListSchema.meta({
-    description:
-      '更新后的完整协作者权限列表（必须包含 owner），至少包含一个协作者且目标不可重复；权限值枚举校验待后续统一收紧'
+export const UpdateCollectionCollaboratorBodySchema = z
+  .object({
+    collectionId: ObjectIdSchema.meta({
+      example: '68ad85a7463006c963799a05',
+      description: '集合 ID'
+    }),
+    // 暂沿用共享协作者 schema：当前仅校验正整数，未收紧为 collection 的 1/2/4/6/7 枚举。
+    // owner 必须随完整列表提交，并由服务端校验只能属于 collection.tmbId。
+    collaborators: CollaboratorUpdateListSchema.meta({
+      description:
+        '更新后的完整协作者权限列表（必须包含 owner），至少包含一个协作者且目标不可重复；权限值枚举校验待后续统一收紧'
+    })
   })
-});
+  .meta({
+    example: {
+      collectionId: '68ad85a7463006c963799a05',
+      collaborators: [{ tmbId: '68ad85a7463006c963799a06', permission: 4 }]
+    }
+  });
 export type UpdateCollectionCollaboratorBody = z.infer<
   typeof UpdateCollectionCollaboratorBodySchema
 >;
@@ -339,7 +352,10 @@ export type UpdateCollectionCollaboratorResponse = z.infer<
  * Tags: ['知识库权限管理']
  * ============================================================================ */
 export const ResumeCollectionInheritPermissionBodySchema = z.object({
-  collectionId: ObjectIdSchema.meta({ description: '集合 ID' })
+  collectionId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '集合 ID'
+  })
 });
 export type ResumeCollectionInheritPermissionBody = z.infer<
   typeof ResumeCollectionInheritPermissionBodySchema
