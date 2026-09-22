@@ -30,11 +30,6 @@ export const AdminAuditListBodySchema = PaginationSchema.extend({
 }).meta({ description: '管理员审计日志筛选和分页参数' });
 export type AdminAuditListBodyType = z.infer<typeof AdminAuditListBodySchema>;
 
-const AdminAuditMetadataValueSchema = z.preprocess(
-  (value) => (value instanceof Date ? value.toISOString() : value),
-  z.union([z.string(), ObjectIdSchema, z.array(z.union([z.string(), ObjectIdSchema]))])
-);
-
 export const AdminAuditListItemSchema = z
   .object({
     _id: ObjectIdSchema.meta({
@@ -50,14 +45,10 @@ export const AdminAuditListItemSchema = z
       example: '2026-01-02T00:00:00.000Z',
       description: '操作发生时间'
     }),
-    metadata: z
-      .record(
-        z.string(),
-        AdminAuditMetadataValueSchema.meta({
-          description: '操作附加信息值，支持字符串、ObjectId 或数组'
-        })
-      )
-      .meta({ example: { name: '张三' }, description: '操作附加信息' })
+    metadata: z.record(z.string(), z.any()).meta({
+      example: { name: '张三' },
+      description: '操作附加信息，允许任意键值'
+    })
   })
   .meta({ description: '管理员审计日志' });
 export type AdminAuditListItemType = z.infer<typeof AdminAuditListItemSchema>;
