@@ -52,6 +52,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:

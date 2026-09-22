@@ -50,6 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Update submodules
         env:
           PRO_SUBMODULE_TOKEN: ${{ secrets.PRO_SUBMODULE_TOKEN }}
