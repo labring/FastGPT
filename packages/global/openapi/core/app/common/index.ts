@@ -21,8 +21,7 @@ import {
   TransitionWorkflowBodySchema,
   TransitionWorkflowResponseSchema,
   UpdateAppBodySchema,
-  UpdateAppQuerySchema,
-  UpdateAppResponseSchema
+  UpdateAppQuerySchema
 } from './api';
 
 export const AppCommonPath: OpenAPIPath = {
@@ -135,12 +134,7 @@ export const AppCommonPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新应用',
-          content: {
-            'application/json': {
-              schema: UpdateAppResponseSchema
-            }
-          }
+          description: '成功更新应用'
         }
       }
     }

@@ -502,10 +502,7 @@ export const UpdateAppBodySchema = z
   });
 export type UpdateAppBodyType = z.infer<typeof UpdateAppBodySchema>;
 
-export const UpdateAppResponseSchema = z.unknown().nullable().optional().meta({
-  description: 'MongoDB 更新结果；移动应用时无返回数据'
-});
-export type UpdateAppResponseType = z.infer<typeof UpdateAppResponseSchema>;
+export type UpdateAppResponseType = void;
 
 /* ============================================================================
  * API: 置顶应用

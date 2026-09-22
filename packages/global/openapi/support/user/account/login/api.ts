@@ -10,12 +10,14 @@ import {
   ShortAuthStringSchema
 } from '../../../../../support/user/account/verification/type';
 import { PublicAuthTrackRegisterParamsSchema } from '../common';
+import { OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
 
 const OpenAPITeamTmbItemSchema = TeamTmbItemSchema.omit({
   permission: true
 }).extend({
   permission: z.any().meta({
-    description: '团队权限实例。返回值为服务端权限对象，文档中按任意结构展示。'
+    ...OpenObjectOpenApiMeta,
+    description: '团队权限实例。具体权限字段取决于团队角色配置。'
   })
 });
 
@@ -25,13 +27,14 @@ export const OpenAPIUserSchema = UserSchema.omit({
 }).extend({
   team: OpenAPITeamTmbItemSchema,
   permission: z.any().meta({
-    description: '用户权限实例。返回值为服务端权限对象，文档中按任意结构展示。'
+    ...OpenObjectOpenApiMeta,
+    description: '用户权限实例。具体权限字段取决于团队角色配置。'
   })
 });
 export type OpenAPIUserType = z.infer<typeof OpenAPIUserSchema>;
 
 export const LoginSuccessResponseSchema = z.object({
-  user: z.any().meta({
+  user: OpenAPIUserSchema.meta({
     description: '用户详情'
   }),
   token: z.string().meta({

@@ -1,13 +1,7 @@
 import z from 'zod';
 import type { OpenAPIPath } from '../../type';
 import { DevApiTagsMap } from '../../tag';
-import {
-  GetTeamsBodySchema,
-  GetTeamsResponseSchema,
-  GetTeamMembersResponseSchema,
-  UpdateTeamBodySchema,
-  UpdateTeamResponseSchema
-} from './api';
+import { GetTeamsBodySchema, GetTeamsResponseSchema, GetTeamMembersResponseSchema } from './api';
 
 export const AdminTeamsPath: OpenAPIPath = {
   '/proApi/admin/team/getTeams': {
@@ -50,30 +44,6 @@ export const AdminTeamsPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetTeamMembersResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/proApi/admin/team/updateTeam': {
-    post: {
-      summary: '更新团队信息',
-      description: '管理员修改团队的名称或余额',
-      tags: [DevApiTagsMap.adminTeams],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: UpdateTeamBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '更新成功',
-          content: {
-            'application/json': {
-              schema: UpdateTeamResponseSchema
             }
           }
         }

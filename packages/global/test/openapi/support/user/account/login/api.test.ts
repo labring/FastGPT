@@ -168,7 +168,24 @@ describe('user account OpenAPI contracts', () => {
 
     expect(
       LoginSuccessResponseSchema.parse({
-        user: {},
+        user: {
+          _id: objectIdLike,
+          username: 'user@example.com',
+          avatar: '/icon/avatar.svg',
+          timezone: 'Asia/Shanghai',
+          hasPassword: true,
+          team: {
+            userId: objectIdLike,
+            teamId: objectIdLike,
+            teamName: 'FastGPT 团队',
+            memberName: '普通成员',
+            avatar: '/icon/avatar.svg',
+            tmbId: objectIdLike,
+            status: 'active',
+            permission: {}
+          },
+          permission: {}
+        },
         token: longToken
       }).token
     ).toBe(longToken);

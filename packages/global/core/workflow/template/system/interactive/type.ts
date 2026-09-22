@@ -4,6 +4,7 @@ import { WorkflowIOValueTypeEnum } from '../../../../../core/workflow/constants'
 import { AppFileSelectConfigTypeSchema } from '../../../../app/type/config.schema';
 import { RuntimeEdgeItemTypeSchema } from '../../../type/edge';
 import z from 'zod';
+import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../../common/zod/openapi';
 import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
 import { AgentAskQuestionSchema } from '../../../../ai/agent/type';
 
@@ -32,7 +33,11 @@ export type InteractiveNodeType = z.infer<typeof InteractiveNodeTypeSchema>;
 export const ChildrenInteractiveSchema = z.object({
   type: z.literal('childrenInteractive'),
   params: z.object({
-    childrenResponse: z.any()
+    // 递归结构（WorkflowInteractiveResponseType），运行时保持宽松。
+    childrenResponse: z.any().meta({
+      ...OpenObjectOpenApiMeta,
+      description: '子工作流交互响应'
+    })
   })
 });
 export type ChildrenInteractive = InteractiveNodeType & {
@@ -45,7 +50,10 @@ export type ChildrenInteractive = InteractiveNodeType & {
 export const ToolCallChildrenInteractiveSchema = z.object({
   type: z.literal('toolChildrenInteractive'),
   params: z.object({
-    childrenResponse: z.any(),
+    childrenResponse: z.any().meta({
+      ...OpenObjectOpenApiMeta,
+      description: '子工作流交互响应'
+    }),
     toolParams: z.object({
       // 兼容旧历史：新交互不再持久化完整 messages 快照，恢复时由 chat history 重建。
       memoryRequestMessages: z.array(ChatCompletionMessageParamSchema).optional(),
@@ -60,8 +68,11 @@ export type ToolCallChildrenInteractive = InteractiveNodeType &
 export const LoopInteractiveSchema = z.object({
   type: z.literal('loopInteractive'),
   params: z.object({
-    loopResult: z.array(z.any()),
-    childrenResponse: z.any(),
+    loopResult: z.array(z.any()).meta({ items: JsonValueOpenApiMeta, description: '各轮响应' }),
+    childrenResponse: z.any().meta({
+      ...OpenObjectOpenApiMeta,
+      description: '子工作流交互响应'
+    }),
     currentIndex: z.number()
   })
 });
@@ -77,10 +88,19 @@ export type LoopInteractive = InteractiveNodeType & {
 export const LoopRunInteractiveSchema = z.object({
   type: z.literal('loopRunInteractive'),
   params: z.object({
-    loopHistory: z.array(z.any()),
-    childrenResponse: z.any(),
+    loopHistory: z.array(z.any()).meta({ items: OpenObjectOpenApiMeta, description: '各轮快照' }),
+    childrenResponse: z.any().meta({
+      ...OpenObjectOpenApiMeta,
+      description: '子工作流交互响应'
+    }),
     iteration: z.number(),
-    pendingIterationSummary: z.any().optional()
+    pendingIterationSummary: z
+      .any()
+      .optional()
+      .meta({
+        ...OpenObjectOpenApiMeta,
+        description: '待执行轮次的摘要'
+      })
   })
 });
 export type LoopRunInteractive = InteractiveNodeType & {
@@ -146,10 +166,13 @@ export const UserInputFormItemSchema = AppFileSelectConfigTypeSchema.extend({
   type: z.enum(FlowNodeInputTypeEnum),
   key: z.string(),
   label: z.string(),
-  value: z.any(),
+  value: z.any().meta({ ...JsonValueOpenApiMeta, description: '当前填写值' }),
   valueType: z.enum(WorkflowIOValueTypeEnum),
   description: z.string().optional(),
-  defaultValue: z.any().optional(),
+  defaultValue: z
+    .any()
+    .optional()
+    .meta({ ...JsonValueOpenApiMeta, description: '默认值' }),
   required: z.boolean(),
 
   maxLength: z.number().optional(), // input & textarea

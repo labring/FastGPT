@@ -6,7 +6,6 @@ import { useRouter } from 'next/router';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { accountPageRootStyles } from '@/pageComponents/account/styles';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/model/ModelConfigTable'));
@@ -18,21 +17,16 @@ type TabType = 'config' | 'channel' | 'channel_log' | 'account_model';
 
 const ModelProvider = () => {
   const { t } = useClientTranslation(['config_model', 'config']);
-  const { feConfigs } = useSystemStore();
   const router = useRouter();
 
   const modelTabList = useMemo<{ label: string; value: TabType }[]>(
     () => [
       { label: t('config_model:config_model'), value: 'config' },
-      ...(feConfigs.show_aiproxy
-        ? [
-            { label: t('config_model:channel'), value: 'channel' as const },
-            { label: t('config_model:log'), value: 'channel_log' as const },
-            { label: t('config_model:monitoring'), value: 'account_model' as const }
-          ]
-        : [])
+      { label: t('config_model:channel'), value: 'channel' as const },
+      { label: t('config_model:log'), value: 'channel_log' as const },
+      { label: t('config_model:monitoring'), value: 'account_model' as const }
     ],
-    [feConfigs.show_aiproxy, t]
+    [t]
   );
   const queryModelTab = router.query.modelTab;
   const modelTab = modelTabList.find((item) => item.value === queryModelTab)?.value ?? 'config';

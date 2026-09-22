@@ -142,8 +142,6 @@ export const TestAdminSystemModelQuerySchema = AdminSystemModelReferenceSchema.e
   })
 });
 export type TestAdminSystemModelQuery = z.infer<typeof TestAdminSystemModelQuerySchema>;
-export const TestAdminSystemModelResponseSchema = z.unknown();
-export type TestAdminSystemModelResponse = z.infer<typeof TestAdminSystemModelResponseSchema>;
 
 /* ============================================================================
  * API: 测试新增或编辑中的管理员系统模型草稿
@@ -229,23 +227,10 @@ export type GetAdminModelTemplatesResponse = z.infer<typeof GetAdminModelTemplat
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
-const CreateSystemModelDataSchema = z
-  .unknown()
-  .superRefine((value, ctx) => {
-    if (
-      typeof value === 'object' &&
-      value !== null &&
-      Object.prototype.hasOwnProperty.call(value, 'modelId')
-    ) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['modelId'],
-        message: 'modelId is not allowed when creating a model'
-      });
-    }
-  })
-  .pipe(SystemModelDocumentDataSchema)
-  .meta({ description: '不含 modelId 的完整系统模型配置' });
+/** 创建时仅保留已声明的模型字段；额外字段按历史行为忽略，modelId 仍由服务端生成。 */
+const CreateSystemModelDataSchema = SystemModelDocumentDataSchema.meta({
+  description: '不含 modelId 的完整系统模型配置；未声明字段会被忽略，modelId 始终由服务端生成'
+});
 
 export const CreateSystemModelBodySchema = z
   .object({

@@ -5,6 +5,12 @@ export const SaveTemplateTypeBodySchema = z.object({
   typeName: z.string().meta({ description: '模板类型名称' }),
   typeOrder: z.number().meta({ description: '模板类型排序值' })
 });
+export type SaveTemplateTypeBodyType = z.infer<typeof SaveTemplateTypeBodySchema>;
+
+export const DeleteTemplateTypeQuerySchema = z.object({
+  typeId: z.string().meta({ description: '模板类型ID' })
+});
+export type DeleteTemplateTypeQueryType = z.infer<typeof DeleteTemplateTypeQuerySchema>;
 
 export const UpdateTemplateTypeOrderBodySchema = z.object({
   types: z
@@ -16,3 +22,4 @@ export const UpdateTemplateTypeOrderBodySchema = z.object({
     )
     .meta({ description: '模板类型排序列表' })
 });
+export type UpdateTemplateTypeOrderBodyType = z.infer<typeof UpdateTemplateTypeOrderBodySchema>;

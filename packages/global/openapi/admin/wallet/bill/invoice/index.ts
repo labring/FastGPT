@@ -1,6 +1,6 @@
 import type { OpenAPIPath } from '../../../../type';
 import { DevApiTagsMap } from '../../../../tag';
-import { InvoiceListBodySchema, InvoiceListResponseSchema, InvoiceFinishBodySchema } from './api';
+import { InvoiceListBodySchema, InvoiceListResponseSchema, InvoiceFinishFormSchema } from './api';
 import {
   InvoiceDownloadFileContentSchema,
   InvoiceDownloadFileQuerySchema
@@ -39,18 +39,14 @@ export const AdminInvoicePath: OpenAPIPath = {
       requestBody: {
         content: {
           'multipart/form-data': {
-            schema: InvoiceFinishBodySchema
+            schema: InvoiceFinishFormSchema,
+            encoding: { data: { contentType: 'application/json' } }
           }
         }
       },
       responses: {
         200: {
-          description: '发票开具成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '发票开具成功'
         }
       }
     }

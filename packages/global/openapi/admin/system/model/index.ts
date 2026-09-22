@@ -14,7 +14,6 @@ import {
   ReplaceSystemModelChannelsBodySchema,
   TestAdminSystemModelQuerySchema,
   TestDraftAdminSystemModelBodySchema,
-  TestAdminSystemModelResponseSchema,
   UpdateDefaultModelsBodySchema,
   UpdateSystemModelBodySchema,
   UpdateSystemModelStatusBodySchema,
@@ -118,10 +117,7 @@ export const AdminSystemModelPath: OpenAPIPath = {
       tags: [DevApiTagsMap.adminSystemModel],
       requestParams: { query: TestAdminSystemModelQuerySchema },
       responses: {
-        200: {
-          description: '模型测试结果',
-          content: { 'application/json': { schema: TestAdminSystemModelResponseSchema } }
-        }
+        200: { description: '测试成功' }
       }
     },
     post: {
@@ -132,10 +128,7 @@ export const AdminSystemModelPath: OpenAPIPath = {
         content: { 'application/json': { schema: TestDraftAdminSystemModelBodySchema } }
       },
       responses: {
-        200: {
-          description: '模型测试结果',
-          content: { 'application/json': { schema: TestAdminSystemModelResponseSchema } }
-        }
+        200: { description: '测试成功' }
       }
     }
   },

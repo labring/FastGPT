@@ -12,6 +12,7 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../../core/workflow/node';
 import z from 'zod';
+import { OpenAPIAppTemplateSchema } from '../../../core/app/template/api';
 
 const adminTemplateTypes = new Set<string>([
   AppTypeEnum.simple,
@@ -157,3 +158,13 @@ export const UpdateQuickTemplateBodySchema = z.object({
   templateIds: z.array(z.string()).meta({ description: '设置为快捷模板的模板ID列表' })
 });
 export type UpdateQuickTemplateBodyType = z.infer<typeof UpdateQuickTemplateBodySchema>;
+
+export const DeleteTemplateQuerySchema = z.object({
+  id: z.string().meta({ description: '模板ID' })
+});
+export type DeleteTemplateQueryType = z.infer<typeof DeleteTemplateQuerySchema>;
+
+export const GetAdminTemplatesResponseSchema = z
+  .array(OpenAPIAppTemplateSchema)
+  .meta({ description: '所有应用模板列表' });
+export type GetAdminTemplatesResponseType = z.infer<typeof GetAdminTemplatesResponseSchema>;

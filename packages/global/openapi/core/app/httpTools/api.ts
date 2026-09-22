@@ -1,4 +1,5 @@
 import z from 'zod';
+import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { StoreSecretValueTypeSchema } from '../../../../common/secret/type';
 import { CreateAppBodySchema } from '../common/api';
@@ -93,6 +94,7 @@ export const GetApiSchemaByUrlBodySchema = z
 export type GetApiSchemaByUrlBodyType = z.infer<typeof GetApiSchemaByUrlBodySchema>;
 
 export const GetApiSchemaByUrlResponseSchema = z.any().meta({
+  ...OpenObjectOpenApiMeta,
   description: '解析后的 OpenAPI Schema 对象'
 });
 export type GetApiSchemaByUrlResponseType = z.infer<typeof GetApiSchemaByUrlResponseSchema>;
@@ -156,9 +158,13 @@ export type RunHttpToolBodyType = z.infer<typeof RunHttpToolBodySchema>;
 
 export const RunHttpToolResponseSchema = z
   .object({
-    data: z.any().optional().meta({
-      description: '工具调用返回结果'
-    }),
+    data: z
+      .any()
+      .optional()
+      .meta({
+        ...JsonValueOpenApiMeta,
+        description: '工具调用返回结果'
+      }),
     errorMsg: z.string().optional().meta({
       example: '请求失败',
       description: '错误信息'

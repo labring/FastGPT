@@ -37,10 +37,12 @@ export const AddUserBodySchema = z.object({
   username: z.string().min(1).meta({ description: '用户名' }),
   password: z.string().min(1).meta({ description: '密码' })
 });
+export type AddUserBodyType = z.infer<typeof AddUserBodySchema>;
 export const AddUserResponseSchema = z.object({
   userId: z.string().meta({ description: '新创建的用户ID' }),
   teamId: z.string().meta({ description: '用户的团队ID' })
 });
+export type AddUserResponseType = z.infer<typeof AddUserResponseSchema>;
 
 // updateUser
 export const UpdateUserBodySchema = z.object({
@@ -49,8 +51,10 @@ export const UpdateUserBodySchema = z.object({
   password: z.string().min(1).optional().meta({ description: '新密码' }),
   status: z.enum(UserStatusEnum).optional().meta({ description: '用户状态' })
 });
+export type UpdateUserBodyType = z.infer<typeof UpdateUserBodySchema>;
 
 // delete
 export const DeleteUserBodySchema = z.object({
   username: z.string().min(1).meta({ description: '用户名' })
 });
+export type DeleteUserBodyType = z.infer<typeof DeleteUserBodySchema>;

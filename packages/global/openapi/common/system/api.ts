@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import type { FastGPTFeConfigsType } from '../../../common/system/types';
+import { NumSchema } from '../../../common/zod';
 
 /* ============================================================================
  * API: 获取系统初始化数据
@@ -19,8 +20,8 @@ export const GetSystemInitDataQuerySchema = z.object({
 export type GetSystemInitDataQuery = z.infer<typeof GetSystemInitDataQuerySchema>;
 
 const FastGPTFeConfigsSchema = z.looseObject({
-  uploadFileMaxAmount: z.number(),
-  uploadFileMaxSize: z.number(),
+  uploadFileMaxAmount: NumSchema,
+  uploadFileMaxSize: NumSchema,
   marketplaceUrl: z.string().url().optional().meta({
     example: 'https://v2.marketplace.fastgpt.cn',
     description: '插件市场服务地址'

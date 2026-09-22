@@ -1,4 +1,5 @@
 import z from 'zod';
+import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import { PublishChannelEnum } from '../../../support/outLink/constant';
 import { ObjectIdSchema } from '../../../common/type/mongo';
 
@@ -20,9 +21,15 @@ const OutLinkLimitSchema = z
   })
   .meta({ description: '发布渠道限制配置' });
 
-const OutLinkAppConfigSchema = z.any().optional().meta({
-  description: '第三方平台配置，不同发布渠道结构不同'
-});
+// 各发布渠道（公众号/企微/飞书/钉钉…）配置结构不同，且 type 字段是 app 的同级字段，
+// 无法在 app 上做 discriminatedUnion，这里声明为开放对象。
+const OutLinkAppConfigSchema = z
+  .any()
+  .optional()
+  .meta({
+    ...OpenObjectOpenApiMeta,
+    description: '第三方平台配置，不同发布渠道结构不同'
+  });
 
 export const OutLinkEditSchema = z.object({
   _id: ObjectIdSchema.optional().meta({ description: '发布渠道 ID，更新时必填' }),

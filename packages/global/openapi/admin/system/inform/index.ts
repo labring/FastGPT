@@ -25,12 +25,7 @@ export const AdminInformPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功发送系统通知',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '成功发送系统通知'
         }
       }
     }
@@ -66,12 +61,7 @@ export const AdminInformPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新系统弹窗',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '成功更新系统弹窗'
         }
       }
     }
@@ -107,12 +97,7 @@ export const AdminInformPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新运营广告',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '成功更新运营广告'
         }
       }
     }
@@ -148,12 +133,7 @@ export const AdminInformPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功更新活动广告',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '成功更新活动广告'
         }
       }
     }

@@ -150,7 +150,6 @@ export type ConfigFormType = {
     feConfigs: {
       show_workorder: boolean;
       appTemplateCourse: string;
-      show_emptyChat: boolean;
       show_openai_account: boolean;
       show_compliance_copywriting: boolean;
       show_dataset_feishu: boolean;
