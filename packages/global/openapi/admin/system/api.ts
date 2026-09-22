@@ -1,6 +1,6 @@
 import z from 'zod';
-import { SubPlanInputSchema } from '../../../support/wallet/sub/type';
-import { FastGPTConfigFileSchema } from '../../../common/system/types';
+import { SubPlanInputSchema, SubPlanSchema } from '../../../support/wallet/sub/type';
+import { FastGPTFeConfigsSchema, SystemEnvSchema } from '../../../common/system/types';
 
 /* ============================================================================
  * API: 获取系统配置
@@ -10,10 +10,13 @@ import { FastGPTConfigFileSchema } from '../../../common/system/types';
  * Tags: ['Admin', 'Settings', 'Read']
  * ============================================================================ */
 
-export const FastGPTConfigSchema = FastGPTConfigFileSchema.meta({
-  example: { feConfigs: {}, systemEnv: {} },
-  description: '系统 FastGPT 配置'
-});
+export const FastGPTConfigSchema = z
+  .looseObject({
+    feConfigs: FastGPTFeConfigsSchema.optional().meta({ description: '前端功能和展示配置' }),
+    systemEnv: SystemEnvSchema.optional().meta({ description: '服务端系统运行配置' }),
+    subPlans: SubPlanSchema.optional().meta({ description: '订阅套餐配置' })
+  })
+  .meta({ example: { feConfigs: {}, systemEnv: {} }, description: '系统 FastGPT 配置' });
 
 export const FastGPTProConfigSchema = z
   .looseObject({})

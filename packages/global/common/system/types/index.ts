@@ -277,8 +277,8 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '系统各项资源上限与速率限制' }),
 
-  uploadFileMaxAmount: NumSchema.meta({ description: '单次最多上传文件数量' }),
-  uploadFileMaxSize: NumSchema.meta({ description: '单文件最大大小限制（MB）' }),
+  uploadFileMaxAmount: NumSchema.default(1000).meta({ description: '单次最多上传文件数量' }),
+  uploadFileMaxSize: NumSchema.default(1000).meta({ description: '单文件最大大小限制（MB）' }),
   evalFileMaxLines: NumSchema.optional().meta({ description: '评测用例文件最大支持行数' }),
 
   // Compute by systemEnv.customPdfParse
@@ -395,13 +395,15 @@ export type customDomainType = z.infer<typeof CustomDomainSchema>;
 export const SystemEnvSchema = z.looseObject({
   openapiPrefix: z.string().optional(),
 
-  datasetParseMaxProcess: NumSchema.meta({ description: '知识库解析最大并发处理进程数' }),
-  vectorMaxProcess: NumSchema.meta({ description: '向量化处理最大并发进程数' }),
-  qaMaxProcess: NumSchema.meta({ description: 'QA 问答对拆分最大并发进程数' }),
-  vlmMaxProcess: NumSchema.meta({ description: '视觉语言模型处理最大并发进程数' }),
+  datasetParseMaxProcess: NumSchema.default(10).meta({
+    description: '知识库解析最大并发处理进程数'
+  }),
+  vectorMaxProcess: NumSchema.default(10).meta({ description: '向量化处理最大并发进程数' }),
+  qaMaxProcess: NumSchema.default(10).meta({ description: 'QA 问答对拆分最大并发进程数' }),
+  vlmMaxProcess: NumSchema.default(10).meta({ description: '视觉语言模型处理最大并发进程数' }),
 
-  hnswEfSearch: NumSchema.meta({ description: 'HNSW 向量检索 efSearch 参数' }),
-  hnswMaxScanTuples: NumSchema.meta({ description: 'HNSW 向量检索最大扫描元组数' }),
+  hnswEfSearch: NumSchema.default(100).meta({ description: 'HNSW 向量检索 efSearch 参数' }),
+  hnswMaxScanTuples: NumSchema.default(100000).meta({ description: 'HNSW 向量检索最大扫描元组数' }),
   customPdfParse: CustomPdfParseSchema.optional(),
   langfuse: LangfuseConfigSchema.optional(),
   fileUrlWhitelist: z.array(z.string()).optional(),
@@ -417,8 +419,8 @@ export type SystemEnvType = z.infer<typeof SystemEnvSchema>;
 
 /* fastgpt main */
 export const FastGPTConfigFileSchema = z.looseObject({
-  feConfigs: FastGPTFeConfigsSchema.optional(),
-  systemEnv: SystemEnvSchema.optional(),
+  feConfigs: FastGPTFeConfigsSchema,
+  systemEnv: SystemEnvSchema,
   subPlans: SubPlanSchema.optional()
 });
 export type FastGPTConfigFileType = z.infer<typeof FastGPTConfigFileSchema>;
