@@ -64,8 +64,9 @@ export const DatasetTagFilterFieldEnum = {
 export type DatasetTagFilterField =
   (typeof DatasetTagFilterFieldEnum)[keyof typeof DatasetTagFilterFieldEnum];
 
-/** 工作流标签过滤支持的标签类型。string 不进入条件行下拉。 */
+/** 工作流标签过滤支持的标签类型。string 只接受接口下发。 */
 const WorkflowTagFilterTagTypeSchema = z.enum([
+  DatasetCollectionTagTypeEnum.string,
   DatasetCollectionTagTypeEnum.number,
   DatasetCollectionTagTypeEnum.datetime,
   DatasetCollectionTagTypeEnum.array
@@ -108,6 +109,17 @@ const emptyValueOperators: TagFilterOperator[] = [
 const emptyOps = new Set(emptyValueOperators.map((item) => item.value));
 
 const tagFilterOperators: Record<WorkflowTagFilterTagType, TagFilterOperator[]> = {
+  // string 标签只能由接口下发，操作符与检索层 checkValue 的 string 分支对齐。
+  [DatasetCollectionTagTypeEnum.string]: [
+    { labelKey: 'workflow:tag_filter_op_is', value: '$eq' },
+    { labelKey: 'workflow:tag_filter_op_is_not', value: '$ne' },
+    { labelKey: 'workflow:tag_filter_op_contains', value: '$contains' },
+    { labelKey: 'workflow:tag_filter_op_not_contains', value: '$notContains' },
+    { labelKey: 'workflow:tag_filter_op_starts_with', value: '$startsWith' },
+    { labelKey: 'workflow:tag_filter_op_ends_with', value: '$endsWith' },
+    { labelKey: 'workflow:tag_filter_op_regex', value: '$regex' },
+    ...emptyValueOperators
+  ],
   [DatasetCollectionTagTypeEnum.number]: [
     { labelKey: 'workflow:tag_filter_op_eq', value: '$eq', icon: 'math/equal' },
     { labelKey: 'workflow:tag_filter_op_ne', value: '$ne', icon: 'math/notEqual' },
@@ -162,6 +174,13 @@ export const createEmptyTagFilterValue = (): DatasetTagFilterValue => ({
 export const isWorkflowTagFilterTagType = (
   tagType?: DatasetCollectionTagType
 ): tagType is WorkflowTagFilterTagType => WorkflowTagFilterTagTypeSchema.safeParse(tagType).success;
+
+/**
+ * 只由接口下发的标签类型：不进条件行下拉，界面也就没有入口创建它。
+ * 因此界面也无权按「下拉候选」判断它是否还有效，剪枝时必须放行。
+ */
+export const isInterfaceOnlyTagFilterTagType = (tagType?: DatasetCollectionTagType) =>
+  tagType === DatasetCollectionTagTypeEnum.string;
 
 /**
  * 判断节点/表单 value 是否为新版条件行结构。
@@ -228,6 +247,7 @@ export const parseTagOptionKey = (value: string) => {
 /**
  * 多知识库标签下拉：各库 number/datetime/array 标签按「名称 + 类型」取交集。
  * 只在部分库出现、或同名不同类型的项不进入下拉。array 的 options 取并集去重。
+ * string 只由接口下发，同样不进入下拉。
  */
 export const intersectWorkflowTagOptions = (
   tagLists: Pick<DatasetTagType, 'tag' | 'tagType' | 'options' | 'fromMigration'>[][]
@@ -238,6 +258,7 @@ export const intersectWorkflowTagOptions = (
     const map = new Map<string, WorkflowTagFilterOption>();
     for (const item of list) {
       if (!isWorkflowTagFilterTagType(item.tagType)) continue;
+      if (isInterfaceOnlyTagFilterTagType(item.tagType)) continue;
       const key = formatTagOptionKey(item.tag, item.tagType);
       const prev = map.get(key);
       const options = Array.from(
@@ -386,9 +407,48 @@ const resolveConditionValue = (
   return { ...condition, value: resolveReference(condition.value) };
 };
 
+/** JSON 字符串内的标签引用用 3 元组标记，与条件行的 2 元组 `[nodeId, outputKey]` 区分。 */
+const REF_MARKER = '$ref';
+
+const isEmbeddedRef = (value: unknown): value is [string, string, string] =>
+  Array.isArray(value) &&
+  value.length === 3 &&
+  value[0] === REF_MARKER &&
+  typeof value[1] === 'string' &&
+  typeof value[2] === 'string';
+
+/**
+ * 解引用 JSON 字符串里内嵌的 `['$ref', nodeId, outputId]`。
+ * 引用嵌套在字符串内部，getReferenceVariableValue 只能识别顶层引用，故在序列化前单独处理。
+ * 解不出值（或未注入 resolveReference）时保留原 `$ref`，避免产出检索层会拒绝的残缺条件对象。
+ */
+const resolveEmbeddedRefs = (
+  value: unknown,
+  resolveReference: (value: unknown) => unknown
+): unknown => {
+  if (Array.isArray(value)) {
+    if (isEmbeddedRef(value)) {
+      return resolveReference([value[1], value[2]]) ?? value;
+    }
+    const resolved = value.map((item) => resolveEmbeddedRefs(item, resolveReference));
+    return resolved.every((item, index) => item === value[index]) ? value : resolved;
+  }
+  if (value && typeof value === 'object') {
+    let changed = false;
+    const entries = Object.entries(value).map(([key, item]) => {
+      const resolvedItem = resolveEmbeddedRefs(item, resolveReference);
+      changed = changed || resolvedItem !== item;
+      return [key, resolvedItem] as const;
+    });
+    return changed ? Object.fromEntries(entries) : value;
+  }
+  return value;
+};
+
 /**
  * 运行时把 collectionFilterMatch 统一成检索 JSON 字符串。
  * 整段引用、旧 JSON 字符串原样（或解析后若是条件行再序列化）；条件行会先解析行内引用。
+ * JSON 字符串/对象里的内嵌 `$ref` 也会解引用，解不出时原样返回。
  */
 export const formatCollectionFilterMatchParam = ({
   value,
@@ -412,14 +472,18 @@ export const formatCollectionFilterMatchParam = ({
     return serializeDatasetTagFilterValue(resolved);
   }
 
-  if (typeof value === 'string') return value;
-  if (typeof value === 'object') return JSON.stringify(value);
+  const resolved = resolveEmbeddedRefs(parsed, resolveReference);
+  if (typeof value === 'string') {
+    return resolved === parsed ? value : JSON.stringify(resolved);
+  }
+  if (typeof value === 'object') return JSON.stringify(resolved);
   return undefined;
 };
 
 /**
  * 已选库变化后，丢掉不在新交集里的标签行。
- * 文件属性和尚未选择字段的空行都保留，否则「添加过滤条件」会被立刻清掉。
+ * 文件属性、尚未选择字段的空行、以及接口下发的 string 行都保留，
+ * 否则「添加过滤条件」会被立刻清掉，外部配置会被界面悄悄删掉。
  */
 export const pruneTagFilterConditions = (
   value: DatasetTagFilterValue,
@@ -428,6 +492,7 @@ export const pruneTagFilterConditions = (
   const valid = new Set(options.map((item) => formatTagOptionKey(item.tag, item.tagType)));
   const conditions = value.conditions.filter((condition) => {
     if (isTagFilterAttributeField(condition.field) || !condition.tag) return true;
+    if (isInterfaceOnlyTagFilterTagType(condition.tagType)) return true;
     return !!condition.tagType && valid.has(formatTagOptionKey(condition.tag, condition.tagType));
   });
   return {
