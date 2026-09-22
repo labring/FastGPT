@@ -111,7 +111,7 @@ describe('admin system model API schemas', () => {
     ).toThrow();
   });
 
-  it('does not include the immutable model identifier in update data', () => {
+  it('accepts optional model identifier in update data and rejects empty strings', () => {
     const modelId = '68ad85a7463006c963799a05';
     const modelData = {
       type: 'llm' as const,
@@ -125,10 +125,19 @@ describe('admin system model API schemas', () => {
       modelId,
       modelData
     });
-    expect(() =>
+    expect(
       UpdateSystemModelBodySchema.parse({
         modelId,
         modelData: { ...modelData, model: 'renamed-model' }
+      })
+    ).toEqual({
+      modelId,
+      modelData: { ...modelData, model: 'renamed-model' }
+    });
+    expect(() =>
+      UpdateSystemModelBodySchema.parse({
+        modelId,
+        modelData: { ...modelData, model: '   ' }
       })
     ).toThrow();
   });
