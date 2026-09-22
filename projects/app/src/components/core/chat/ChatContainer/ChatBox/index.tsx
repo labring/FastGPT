@@ -69,6 +69,7 @@ import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 import { requestStopAndAbortClient } from './utils/stop';
 import { getLastAiDataId } from './utils/resume';
+import ComplianceTip from '@/components/common/ComplianceTip/index';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -696,6 +697,7 @@ const ChatBox = ({
           ) : (
             <MobileHomeLayout inputSlot={HomeChatInput} />
           )}
+          <ComplianceTip type={'chat'} pt={0} pb={4} />
         </MyBox>
       ) : (
         <>
@@ -716,50 +718,53 @@ const ChatBox = ({
                 : undefined
             }
           />
-          {canRenderChatInput && (
-            <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
-              {resolvedFeatures.workorder && <WorkorderEntrance />}
-              <Box position="relative">
-                <ScrollToBottomButton
-                  isVisible={canRenderScrollToBottomButton}
-                  onClick={() => scrollToBottom('smooth')}
-                />
-
-                <Box display={isAgentAskPending ? 'none' : undefined}>
-                  <ChatInput
-                    onSendMessage={sendPromptWithDisabledGuard}
-                    lastInteractive={lastInteractive}
-                    onStopChat={requestStopChat}
-                    enableInputGuide={resolvedFeatures.inputGuide}
-                    enableVoiceInput={resolvedFeatures.voice}
-                    disableSend={isRoundPending}
-                    TextareaDom={TextareaDom}
-                    resetInputVal={resetInputVal}
-                    chatForm={chatForm}
+          <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
+            {canRenderChatInput && (
+              <>
+                {resolvedFeatures.workorder && <WorkorderEntrance />}
+                <Box position="relative">
+                  <ScrollToBottomButton
+                    isVisible={canRenderScrollToBottomButton}
+                    onClick={() => scrollToBottom('smooth')}
                   />
-                </Box>
-                {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
-                  <Box
-                    w={'100%'}
-                    maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
-                    mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
-                    pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
-                  >
-                    <AgentAskComposer
-                      questions={activeInteractive.params.questions}
-                      onSubmit={(answers) =>
-                        sendPromptWithDisabledGuard({
-                          text: JSON.stringify({ answers }),
-                          interactive: lastInteractive,
-                          hideInUI: true
-                        })
-                      }
+
+                  <Box display={isAgentAskPending ? 'none' : undefined}>
+                    <ChatInput
+                      onSendMessage={sendPromptWithDisabledGuard}
+                      lastInteractive={lastInteractive}
+                      onStopChat={requestStopChat}
+                      enableInputGuide={resolvedFeatures.inputGuide}
+                      enableVoiceInput={resolvedFeatures.voice}
+                      disableSend={isRoundPending}
+                      TextareaDom={TextareaDom}
+                      resetInputVal={resetInputVal}
+                      chatForm={chatForm}
                     />
                   </Box>
-                )}
-              </Box>
-            </Box>
-          )}
+                  {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
+                    <Box
+                      w={'100%'}
+                      maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                      mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                      pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
+                    >
+                      <AgentAskComposer
+                        questions={activeInteractive.params.questions}
+                        onSubmit={(answers) =>
+                          sendPromptWithDisabledGuard({
+                            text: JSON.stringify({ answers }),
+                            interactive: lastInteractive,
+                            hideInUI: true
+                          })
+                        }
+                      />
+                    </Box>
+                  )}
+                </Box>
+              </>
+            )}
+            <ComplianceTip type={'chat'} pt={0} pb={4} />
+          </Box>
         </>
       )}
 
