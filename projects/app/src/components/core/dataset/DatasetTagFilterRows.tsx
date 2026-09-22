@@ -159,6 +159,7 @@ const valueCellJoinedStyles = {
 
 /**
  * 根据过滤条件行的字段类型和操作符，推导出可接受的工作流引用变量类型。
+ * - string 标签：检索层会 String() 后比较，字符串和数字变量都可用
  * - number 标签：只允许数字类型变量 (number)
  * - datetime 标签 / createTime 属性：允许时间格式字符串 (string) 与毫秒时间戳 (number)
  * - collectionId 属性：允许 ID 列表 (arrayString) 或字符串 (string)
@@ -176,6 +177,9 @@ export const getTagFilterAllowedValueTypes = (
     return [WorkflowIOValueTypeEnum.arrayString, WorkflowIOValueTypeEnum.string];
   }
 
+  if (condition.tagType === DatasetCollectionTagTypeEnum.string) {
+    return [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number];
+  }
   if (condition.tagType === DatasetCollectionTagTypeEnum.datetime) {
     return [WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number];
   }
@@ -273,6 +277,17 @@ const TagFilterValueCell = ({
           value={typeof condition.value === 'number' ? condition.value : ''}
           placeholder={t('workflow:tag_filter_select_time')}
           onChange={(val) => onChange({ value: val })}
+        />
+      );
+    }
+    if (condition.tagType === DatasetCollectionTagTypeEnum.string) {
+      return (
+        <Input
+          {...tagInputBaseStyles}
+          {...valueCellJoinedStyles}
+          placeholder={t('workflow:tag_filter_input_value')}
+          value={typeof condition.value === 'string' ? condition.value : ''}
+          onChange={(e) => onChange({ value: e.target.value })}
         />
       );
     }
