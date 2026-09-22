@@ -102,6 +102,7 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.agentGenerated]: undefined,
   [FlowNodeInputTypeEnum.customVariable]: undefined,
   [FlowNodeInputTypeEnum.hidden]: undefined,
+  [FlowNodeInputTypeEnum.off]: undefined,
   [FlowNodeInputTypeEnum.custom]: undefined,
   [FlowNodeInputTypeEnum.selectSkill]: undefined,
   [FlowNodeInputTypeEnum.selectTool]: undefined
@@ -172,7 +173,12 @@ const RenderInput = ({
       const renderType = getSelectedInputRenderType(input);
       const isDynamic = !!input.canEdit;
 
-      if (renderType === FlowNodeInputTypeEnum.hidden || isDynamic) return false;
+      if (
+        renderType === FlowNodeInputTypeEnum.hidden ||
+        renderType === FlowNodeInputTypeEnum.off ||
+        isDynamic
+      )
+        return false;
 
       return true;
     });
