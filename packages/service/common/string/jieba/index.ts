@@ -1519,14 +1519,18 @@ const stopWords = new Set([
   ]
 ]);
 
-export async function jiebaSplit({ text }: { text: string }) {
+export async function jiebaSplit({ text, maxTokens }: { text: string; maxTokens?: number }) {
   text = text.replace(/[#*`_~>[\](){}|]|\S*https?\S*/g, '').trim();
   const tokens = (await jieba!.cutAsync(text, true)) as string[];
 
-  return (
-    tokens
-      .map((item) => item.replace(/[\u3000-\u303f\uff00-\uffef]/g, '').trim())
-      .filter((item) => item && !stopWords.has(item))
-      .join(' ') || ''
-  );
+  const words = tokens
+    .map((item) => item.replace(/[\u3000-\u303f\uff00-\uffef]/g, '').trim())
+    .filter((item) => item && !stopWords.has(item));
+
+  // 检索场景可传 maxTokens：$text 会把每个词变成一次 OR 匹配，超长查询
+  // （用户整段粘贴文档、查询扩展等）会让索引扫描代价随词数线性放大。
+  // 写入路径不传该参数，保持分词结果不变。
+  const boundedWords = maxTokens && maxTokens > 0 ? words.slice(0, maxTokens) : words;
+
+  return boundedWords.join(' ') || '';
 }

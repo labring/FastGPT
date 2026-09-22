@@ -39,7 +39,9 @@ export class MongoFullTextStore implements FullTextStore {
         {
           $match: {
             teamId: new Types.ObjectId(teamId),
-            $text: { $search: await jiebaSplit({ text: query }) },
+            // 超长查询会把 $text 变成海量 OR 匹配，限制参与检索的分词数（与 issue 中
+            // 维护者的 slice 方案一致）。
+            $text: { $search: await jiebaSplit({ text: query, maxTokens: 32 }) },
             datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) },
             ...(filterCollectionIdList
               ? {
