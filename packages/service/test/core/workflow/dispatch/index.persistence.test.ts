@@ -418,6 +418,43 @@ describe('runWorkflow node response persistence', () => {
     }
   });
 
+  it('streams a node response with inline child details when children were not published separately', async () => {
+    const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses({
+      textOutput: 'parent output'
+    });
+
+    try {
+      const streamedNodeResponses: ChatHistoryItemResType[] = [];
+      await runTextEditorWorkflowWithModuleChild({
+        apiVersion: 'v2',
+        chatId: 'workflow-module-child-inline-chat',
+        responseChatItemId: 'workflow-module-child-inline-ai-item',
+        workflowStreamResponse: (event) => {
+          if (
+            event.event === SseResponseEventEnum.flowNodeResponse &&
+            typeof event.data !== 'string'
+          ) {
+            streamedNodeResponses.push(event.data);
+          }
+        }
+      });
+
+      expect(streamedNodeResponses).toEqual([
+        expect.objectContaining({
+          nodeId: 'parent_text_editor',
+          childrenResponses: [
+            expect.objectContaining({
+              id: 'module-child-response',
+              moduleName: 'Module Child'
+            })
+          ]
+        })
+      ]);
+    } finally {
+      restoreTextEditorDispatch();
+    }
+  });
+
   it('streams the parent error with inline module child details', async () => {
     const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses({
       error: 'parent agent failed'
