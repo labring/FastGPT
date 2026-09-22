@@ -163,7 +163,7 @@ describe('admin settings model updateWithJson api', () => {
     expect(String(externalModel?._id)).not.toBe('external-system-model-id');
   });
 
-  it('keeps the stored model identifier when a local modelId imports a different model', async () => {
+  it('updates the stored model identifier when a local modelId imports a different model', async () => {
     const existingModel = await MongoAIModel.create(buildStoredLlm('stored-model'));
 
     const res = await callUpdateWithJson(
@@ -171,7 +171,7 @@ describe('admin settings model updateWithJson api', () => {
         {
           ...buildLlmConfig({
             modelId: String(existingModel._id),
-            model: 'accidental-renamed-model'
+            model: 'renamed-model'
           }),
           name: 'Updated display name'
         }
@@ -180,14 +180,12 @@ describe('admin settings model updateWithJson api', () => {
 
     expect(res.code).toBe(200);
     await expect(MongoAIModel.findById(existingModel._id).lean()).resolves.toMatchObject({
-      model: 'stored-model',
+      model: 'renamed-model',
       name: 'Updated display name',
       isActive: true,
       config: { maxContext: 16000 }
     });
-    await expect(
-      MongoAIModel.findOne({ model: 'accidental-renamed-model' }).lean()
-    ).resolves.toBeNull();
+    await expect(MongoAIModel.findOne({ model: 'stored-model' }).lean()).resolves.toBeNull();
   });
 
   it('ignores an imported type when a local modelId already exists', async () => {
@@ -196,7 +194,7 @@ describe('admin settings model updateWithJson api', () => {
     const res = await callUpdateWithJson(
       JSON.stringify([
         {
-          ...buildLlmConfig({ modelId: String(existingModel._id), model: 'accidental-model' }),
+          ...buildLlmConfig({ modelId: String(existingModel._id), model: 'stored-model' }),
           type: ModelTypeEnum.embedding,
           name: 'Imported as another type'
         }
@@ -329,5 +327,20 @@ describe('admin settings model updateWithJson api', () => {
     expect(res.error?.name).toBe('UserError');
     await expect(MongoAIModel.countDocuments({ model: 'shared-model' })).resolves.toBe(1);
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+  });
+
+  it('rejects update if target model name already exists for another model during JSON import', async () => {
+    const existing1 = await MongoAIModel.create(buildStoredLlm('model-1'));
+    const existing2 = await MongoAIModel.create(buildStoredLlm('model-2'));
+
+    const res = await callUpdateWithJson(
+      JSON.stringify([
+        buildLlmConfig({ modelId: String(existing1._id), model: 'model-2' }),
+        buildLlmConfig({ modelId: String(existing2._id), model: 'model-2-renamed' })
+      ])
+    );
+
+    expect(res.error?.name).toBe('UserError');
+    expect(res.error?.message).toContain('already in use');
   });
 });

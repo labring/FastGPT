@@ -442,14 +442,26 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(requests).toEqual([]);
     await updateSystemModel({
       modelId,
-      modelData: { ...editable, name: 'Renamed' },
+      modelData: { ...editable, model: 'renamed-model', name: 'Renamed' },
       channelIds: [2]
     });
     const updated = await MongoAIModel.findById(modelId).lean();
-    expect(updated).toMatchObject({ name: 'Renamed', model: 'editable', type: 'llm' });
+    expect(updated).toMatchObject({ name: 'Renamed', model: 'renamed-model', type: 'llm' });
     expect(updated).not.toHaveProperty('requestUrl');
     expect(updated).not.toHaveProperty('requestAuth');
-    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], ['editable']]);
+    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], ['renamed-model']]);
+
+    await updateSystemModel({
+      modelId,
+      modelData: { ...editable, model: 'renamed-model-v2', name: 'RenamedV2' }
+    });
+    const updatedV2 = await MongoAIModel.findById(modelId).lean();
+    expect(updatedV2).toMatchObject({
+      name: 'RenamedV2',
+      model: 'renamed-model-v2',
+      type: 'llm'
+    });
+    expect(channels.map(({ models }) => models)).toEqual([['unrelated'], ['renamed-model-v2']]);
   });
 
   it('keeps JSON import atomic and distinguishes legacy no-ID records from deliberate empty configuration', async () => {
@@ -484,7 +496,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       ]
     });
     const imported = await MongoAIModel.findById(modelId).lean();
-    expect(imported).toMatchObject({ model: 'json-original', type: 'llm', name: 'Imported' });
+    expect(imported).toMatchObject({ model: 'injected-name', type: 'llm', name: 'Imported' });
     expect(imported).not.toHaveProperty('inputPrice');
     expect(imported).not.toHaveProperty('outputPrice');
     expect(imported?.priceTiers).toEqual(

@@ -12,7 +12,7 @@ import {
 import {
   appendModelsToAIProxyChannels,
   removeModelsFromAIProxyChannels,
-  replaceModelInAIProxyChannels
+  syncModelInAIProxyChannels
 } from '@fastgpt/service/thirdProvider/aiproxy/channel';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
@@ -38,22 +38,49 @@ import {
   type UpdateSystemModelBody
 } from '@fastgpt/global/openapi/admin/system/model/api';
 
-/** 配置和渠道由同一已校验请求提交；外部写入前检查目标实例与不可变类型。 */
+/** 配置和渠道由同一已校验请求提交；外部写入前检查目标实例、类型与新标识可用性。 */
 export const updateSystemModel = async ({
   modelId,
   modelData,
   channelIds
 }: UpdateSystemModelBody): Promise<void> => {
-  if (channelIds !== undefined) {
-    const existing = await MongoAIModel.findOne({ _id: modelId, scope: ModelScopeEnum.system })
-      .select({ model: 1, type: 1 })
-      .lean();
-    if (!existing) throw ModelErrEnum.unExist;
-    if (existing.type !== modelData.type)
-      throw new UserError('System model type cannot be changed');
-    await replaceModelInAIProxyChannels({ model: existing.model, channelIds });
+  const existing = await MongoAIModel.findOne({ _id: modelId, scope: ModelScopeEnum.system })
+    .select({ model: 1, type: 1 })
+    .lean();
+  if (!existing) throw ModelErrEnum.unExist;
+  if (existing.type !== modelData.type) {
+    throw new UserError('System model type cannot be changed');
   }
-  await updateSystemModelConfig({ modelId, modelData });
+
+  const oldModel = existing.model;
+  const targetModel = modelData.model?.trim() || oldModel;
+  const isModelRenamed = targetModel !== oldModel;
+
+  if (isModelRenamed) {
+    const existingTarget = await MongoAIModel.exists({
+      scope: ModelScopeEnum.system,
+      model: targetModel,
+      _id: { $ne: modelId }
+    });
+    if (existingTarget) {
+      throw new UserError(ModelErrEnum.alreadyExists);
+    }
+  }
+
+  if (channelIds !== undefined || isModelRenamed) {
+    await syncModelInAIProxyChannels({
+      oldModel,
+      newModel: targetModel,
+      channelIds
+    });
+  }
+  await updateSystemModelConfig({
+    modelId,
+    modelData: {
+      ...modelData,
+      model: targetModel
+    }
+  });
 };
 
 /** 预检重名后先绑定渠道，再事务创建模型；数据库唯一索引负责并发兜底。 */
@@ -206,17 +233,35 @@ export const importSystemModels = async ({
         { modelId: String(model._id), model: model.model, type: model.type }
       ])
     );
+    const resolvedLocalModelIds = new Set<string>();
+
     const importedModels = latestRecords.map(({ record, modelId }, index) => {
-      const existingModel =
-        existingModelMap.get(modelId) ??
-        (typeof record.model === 'string' ? existingModelNameMap.get(record.model) : undefined);
-      // 本地已有模型的调用标识与类型均不可变，导入时在完整校验前使用持久化值覆盖输入。
+      const existingByModelId = existingModelMap.get(modelId);
+      const existingByModelName =
+        typeof record.model === 'string' ? existingModelNameMap.get(record.model) : undefined;
+      const existingModel = existingByModelId ?? existingByModelName;
+
+      if (existingModel) {
+        if (resolvedLocalModelIds.has(existingModel.modelId)) {
+          throw new UserError(
+            `Conflicting import: multiple records map to local model ${existingModel.modelId}`
+          );
+        }
+        resolvedLocalModelIds.add(existingModel.modelId);
+      }
+
+      // 本地已有模型的类型不可变更；本地 ID 命中时允许使用导入的 model，外部 model 命中时沿用本地 model 与 type
       const parsed = ImportedSystemModelSchema.safeParse(
         existingModel
           ? {
               ...record,
               modelId,
-              model: existingModel.model,
+              model:
+                existingByModelId &&
+                typeof record.model === 'string' &&
+                record.model.trim().length > 0
+                  ? record.model.trim()
+                  : existingModel.model,
               type: existingModel.type
             }
           : { ...record, modelId }
@@ -240,12 +285,15 @@ export const importSystemModels = async ({
           };
         }
 
-        // 本实例已存在的模型按持久化 ID 更新，导入的 model/type 均不参与写入。
-        const { model: _importedModel, ...editableModelData } = modelData;
+        // 本实例已存在的模型按持久化 ID 更新，model 允许更新，type 不参与写入。
+        const targetModel = modelData.model || existingModel.model;
         return {
           modelId: existingModel.modelId,
-          model: existingModel.model,
-          modelData: editableModelData,
+          model: targetModel,
+          modelData: {
+            ...modelData,
+            model: targetModel
+          },
           isExistingModel: true
         };
       }
@@ -255,11 +303,18 @@ export const importSystemModels = async ({
     for (const model of resolvedModels) {
       if (modelNames.has(model.model)) throw new UserError(`Duplicate model: ${model.model}`);
       modelNames.add(model.model);
-    }
-    const configuredModels = resolvedModels.map((model) => model.model);
 
+      const conflictingModel = existingModelNameMap.get(model.model);
+      if (conflictingModel && conflictingModel.modelId !== model.modelId) {
+        throw new UserError(`Model identifier already in use: ${model.model}`);
+      }
+    }
+
+    const retainedModelIds = new Set(
+      resolvedModels.filter((model) => model.isExistingModel).map((model) => model.modelId)
+    );
     const removedModelIds = existingModels
-      .filter(({ model }) => !configuredModels.includes(model))
+      .filter(({ _id }) => !retainedModelIds.has(String(_id)))
       .map(({ _id }) => _id);
     if (removedModelIds.length > 0) {
       // 配置替换只删除本地模型和权限，保留渠道配置供后续重新导入使用。

@@ -44,11 +44,14 @@ export const submitUpdatedSystemModel = async ({
   modelData: SystemModelDocumentDataType;
   channelIds: number[];
 }) => {
-  const { model: _model, ...editableModelData } = normalizeModelPricingForSave(modelData);
+  const normalizedModelData = normalizeModelPricingForSave(modelData);
 
   const input = UpdateSystemModelBodySchema.parse({
     modelId,
-    modelData: editableModelData,
+    modelData: {
+      ...normalizedModelData,
+      model: normalizedModelData.model.trim()
+    },
     channelIds
   });
   await putSystemModel(input);

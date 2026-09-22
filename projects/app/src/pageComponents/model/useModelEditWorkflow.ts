@@ -21,6 +21,7 @@ export const useModelEditWorkflow = ({ model, onSuccess, onClose }: ModelEditWor
   const { t } = useClientTranslation('config_model');
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [draftModel, setDraftModel] = useState(model.model);
   const modelFormGetValuesRef = useRef<ModelConfigFormGetValues | null>(null);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [selectedChannelIds, setSelectedChannelIds] = useState<Set<number>>(new Set());
@@ -119,6 +120,8 @@ export const useModelEditWorkflow = ({ model, onSuccess, onClose }: ModelEditWor
     loadingModelData,
     submitting,
     setSubmitting,
+    draftModel,
+    setDraftModel,
     modelFormGetValuesRef,
     selectedChannelIds,
     setSelectedChannelIds,

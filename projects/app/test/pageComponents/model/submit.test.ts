@@ -87,18 +87,35 @@ describe('admin model submit controllers', () => {
     });
   });
 
-  it('submits config and channels together without a separate external mutation', async () => {
+  it('submits config and channels together with trimmed model identifier', async () => {
     const modelId = '68ad85a7463006c963799a05';
 
-    await submitUpdatedSystemModel({ modelId, modelData, channelIds: [2, 7] });
+    await submitUpdatedSystemModel({
+      modelId,
+      modelData: { ...modelData, model: '  controller-test-model  ' },
+      channelIds: [2, 7]
+    });
 
     expect(mocks.postSystemModel).not.toHaveBeenCalled();
     expect(mocks.putReplaceSystemModelChannels).not.toHaveBeenCalled();
     expect(mocks.putSystemModel).toHaveBeenCalledWith({
       modelId,
       channelIds: [2, 7],
-      modelData: expect.not.objectContaining({ model: expect.anything() })
+      modelData: expect.objectContaining({
+        model: 'controller-test-model'
+      })
     });
+  });
+
+  it('rejects an empty model identifier before sending any mutation', async () => {
+    await expect(
+      submitUpdatedSystemModel({
+        modelId: '68ad85a7463006c963799a05',
+        modelData: { ...modelData, model: '   ' },
+        channelIds: [2]
+      })
+    ).rejects.toBeDefined();
+    expect(mocks.putSystemModel).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid edited alias before sending any mutation', async () => {

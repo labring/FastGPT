@@ -9,7 +9,9 @@ import { updatedReloadSystemModel } from './utils';
 import type { SystemModelSchemaType } from '../type';
 import type { UpdateQuery } from 'mongoose';
 
-type EditableSystemModelData = Omit<SystemModelDocumentDataType, 'model'>;
+export type EditableSystemModelData = Omit<SystemModelDocumentDataType, 'model'> & {
+  model?: string;
+};
 
 const optionalSystemModelConfigFields = [
   'requestUrl',
@@ -24,7 +26,7 @@ const optionalSystemModelConfigFields = [
 /**
  * 生成模型配置的替换式更新表达式。
  *
- * `model`、`type` 与 `scope` 都是实例身份的一部分，不参与 `$set`；已知可选字段缺失时
+ * `type` 与 `scope` 不可被修改，不参与 `$set`；`model` 若未显式传入则不更新；已知可选字段缺失时
  * 使用 `$unset`，避免普通 `$set` 让旧价格或旧请求配置残留。
  */
 export const getSystemModelConfigUpdate = (
@@ -33,6 +35,17 @@ export const getSystemModelConfigUpdate = (
   const mutableModelData = { ...modelData } as Record<string, unknown>;
   delete mutableModelData.type;
   delete mutableModelData.scope;
+
+  if (typeof mutableModelData.model === 'string') {
+    const trimmed = mutableModelData.model.trim();
+    if (trimmed.length > 0) {
+      mutableModelData.model = trimmed;
+    } else {
+      delete mutableModelData.model;
+    }
+  } else {
+    delete mutableModelData.model;
+  }
 
   // LLM 保存以新阶梯价格为准；即使客户端仍传旧字段，也必须从数据库清除。
   // 非 LLM 的 charsPointsPrice 仍是当前计费字段，不能一并删除。
@@ -105,13 +118,25 @@ export const updateSystemModelConfig = async ({
   await runSystemModelTransaction(async (session) => {
     const existingModel = await MongoAIModel.findOne(
       { _id: modelId, scope: ModelScopeEnum.system },
-      { type: 1 }
+      { type: 1, model: 1 }
     )
       .session(session)
       .lean();
     if (!existingModel) throw ModelErrEnum.unExist;
     if (existingModel.type !== modelData.type) {
       throw new UserError('System model type cannot be changed');
+    }
+
+    const trimmedModel = typeof modelData.model === 'string' ? modelData.model.trim() : undefined;
+    if (trimmedModel && trimmedModel !== existingModel.model) {
+      const duplicate = await MongoAIModel.exists({
+        scope: ModelScopeEnum.system,
+        model: trimmedModel,
+        _id: { $ne: modelId }
+      }).session(session);
+      if (duplicate) {
+        throw new UserError(ModelErrEnum.alreadyExists);
+      }
     }
 
     const result = await MongoAIModel.updateOne(
