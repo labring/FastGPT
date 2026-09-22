@@ -16,6 +16,7 @@ export const GetConfigResponseSchema = z.object({
     .optional()
     .meta({ description: '系统 FastGPT Pro 商业版配置（不含 license）' })
 });
+export type GetConfigResponse = z.infer<typeof GetConfigResponseSchema>;
 
 /* ============================================================================
  * API: 更新系统配置

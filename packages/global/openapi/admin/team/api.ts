@@ -1,4 +1,5 @@
 import z from 'zod';
+import { ObjectIdSchema } from '../../../common/type/mongo';
 import { PaginationResponseSchema, PaginationSchema } from '../../api';
 
 /* ============================================================================
@@ -37,16 +38,23 @@ export const TeamMemberItemSchema = z.object({
   status: z.string().meta({ description: '成员状态' })
 });
 
+export const GetTeamMembersQuerySchema = z.object({
+  teamId: z.string().meta({ description: '团队ID' })
+});
+export type GetTeamMembersQueryType = z.infer<typeof GetTeamMembersQuerySchema>;
+
 export const GetTeamMembersResponseSchema = z.object({
   members: z.array(TeamMemberItemSchema).meta({ description: '团队成员列表' }),
   team: z
     .object({
-      _id: z.string().meta({ description: '团队ID' }),
+      _id: ObjectIdSchema.meta({ description: '团队ID' }),
       name: z.string().meta({ description: '团队名称' })
     })
     .meta({ description: '团队基本信息' })
 });
 export type GetTeamMembersResponseType = z.infer<typeof GetTeamMembersResponseSchema>;
+export type UpdateTeamBodyType = z.infer<typeof UpdateTeamBodySchema>;
+export type UpdateTeamResponseType = z.infer<typeof UpdateTeamResponseSchema>;
 
 export const UpdateTeamBodySchema = z.object({
   id: z.string().meta({ description: '团队ID' }),

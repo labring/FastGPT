@@ -56,10 +56,13 @@ export const AddPlansBodySchema = z.object({
   startTime: z.string().meta({ description: '开始时间' }),
   expiredTime: z.string().meta({ description: '结束时间' }),
   price: NumSchema.meta({ description: '价格' }),
-  level: z.enum(StandardSubLevelEnum).meta({ description: '套餐等级（仅标准套餐需要）' }),
-  extraDatasetSize: z.number().optional().meta({ description: '额外知识库容量' }),
-  totalPoints: z.number().optional().meta({ description: '总积分' }),
-  surplusPoints: z.number().optional().meta({ description: '剩余积分' })
+  level: z
+    .enum(StandardSubLevelEnum)
+    .optional()
+    .meta({ description: '套餐等级（仅标准套餐需要）' }),
+  extraDatasetSize: NumSchema.optional().meta({ description: '额外知识库容量' }),
+  totalPoints: NumSchema.optional().meta({ description: '总积分' }),
+  surplusPoints: NumSchema.optional().meta({ description: '剩余积分' })
 });
 export type AddPlansBodyType = z.infer<typeof AddPlansBodySchema>;
 
