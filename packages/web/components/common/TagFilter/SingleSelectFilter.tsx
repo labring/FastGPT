@@ -22,6 +22,7 @@ import FilterSearchInput, {
 } from './FilterSearchInput';
 import {
   DEFAULT_FILTER_LIST_SIZE,
+  DEFAULT_FILTER_MENU_MAX_W,
   getFilterListBoxProps,
   filterPopoverProps,
   type FilterListSize
@@ -45,6 +46,8 @@ export type SingleSelectFilterProps<T> = {
   storageKey?: string;
   maxW?: string | number;
   minW?: string | number;
+  /** 下拉浮层最大宽度，默认 260px。 */
+  menuMaxW?: string | number;
   placement?: PlacementWithLogical;
   /** 为 true 时下拉里显示搜索框。封闭短枚举不要传。 */
   showSearch?: boolean;
@@ -90,6 +93,7 @@ function SingleSelectFilter<T>({
   storageKey,
   maxW = '180px',
   minW,
+  menuMaxW,
   placement = 'bottom-start',
   showSearch,
   searchPlaceholder,
@@ -172,6 +176,7 @@ function SingleSelectFilter<T>({
       {...filterPopoverProps}
       placement={placement}
       w={'max-content'}
+      maxW={menuMaxW ?? DEFAULT_FILTER_MENU_MAX_W}
       minW={triggerWidth ? `${triggerWidth}px` : minW}
       onOpenFunc={() => setOpenRevision((revision) => revision + 1)}
       onCloseFunc={() => setSearchKey('')}
@@ -186,7 +191,7 @@ function SingleSelectFilter<T>({
       }
     >
       {({ onClose }) => (
-        <Box p={'6px'} minW={'100%'}>
+        <Box p={'6px'} minW={'100%'} maxW={'100%'} overflow={'hidden'}>
           {showSearch && (
             <Box mb={'4px'}>
               <FilterSearchInput
@@ -213,7 +218,6 @@ function SingleSelectFilter<T>({
                   w={'100%'}
                   px={1}
                   py={'6px'}
-                  mb={'4px'}
                   cursor={'pointer'}
                   borderRadius={'xs'}
                   bg={isActive ? 'primary.50' : 'transparent'}
@@ -221,7 +225,6 @@ function SingleSelectFilter<T>({
                   fontSize={'sm'}
                   fontWeight={'medium'}
                   _hover={{ bg: isActive ? 'primary.50' : 'myGray.05' }}
-                  _last={{ mb: 0 }}
                   onClick={() => {
                     if (storageKey) {
                       restoredKeyRef.current = storageKey;
@@ -231,8 +234,8 @@ function SingleSelectFilter<T>({
                     onClose();
                   }}
                 >
-                  <Flex alignItems={'center'} gap={2} minW={0} overflow={'hidden'}>
-                    {item.avatar && <Avatar src={item.avatar} w={'1rem'} />}
+                  <Flex alignItems={'center'} gap={2} minW={0} flex={1}>
+                    {item.avatar && <Avatar src={item.avatar} w={'1rem'} flexShrink={0} />}
                     {item.icon && (
                       <MyIcon
                         name={item.icon}
