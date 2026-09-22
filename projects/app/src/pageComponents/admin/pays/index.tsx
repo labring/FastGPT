@@ -14,7 +14,7 @@ import {
   Input,
   InputLeftElement
 } from '@chakra-ui/react';
-import type { BillItemType } from '@fastgpt/global/openapi/admin/routes/pays/api';
+import type { BillItemType } from '@fastgpt/global/openapi/admin/wallet/pay/api';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -28,7 +28,7 @@ import MyTag from '@fastgpt/web/components/common/Tag';
 import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { getPays } from '@/web/admin/pays/api';
+import { getPays } from '@/web/admin/wallet/pay/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';

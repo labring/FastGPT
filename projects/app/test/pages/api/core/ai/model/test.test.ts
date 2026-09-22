@@ -33,7 +33,7 @@ vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => ({ debug: mocks.debug, info: vi.fn() })
 }));
 
-import handler from '@/pages/api/admin/settings/model/test';
+import handler from '@/pages/api/admin/system/model/test';
 
 const installedModel = {
   modelId: '68ad85a7463006c963799a05',

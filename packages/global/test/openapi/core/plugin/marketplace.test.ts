@@ -13,16 +13,17 @@ const marketplaceOperations = [
 ] as const;
 
 describe('marketplace OpenAPI contracts', () => {
-  it('places Marketplace after reverse invoke with only the system tools tag', () => {
+  it('places reverse invoke after Marketplace with only the system tools tag', () => {
     const reverseInvokeGroupIndex = openAPITagGroups.findIndex(
       ({ name }) => name === '通用-反向调用'
     );
 
     expect(DevApiTagsMap.appSystemTool).toBe('系统工具');
-    expect(DevApiTagsMap.pluginMarketplace).toBe('插件市场-系统工具');
-    expect(DevApiTagNameAliases[DevApiTagsMap.pluginMarketplace]).toBe('系统工具');
-    expect(openAPITagGroups[reverseInvokeGroupIndex + 1]).toEqual({
-      name: '插件市场',
+    expect(DevApiTagsMap.pluginMarketplace).toBe('工具');
+    // alias removed
+    expect(DevApiTagsMap.pluginMarketplace).toBe('工具');
+    expect(openAPITagGroups[reverseInvokeGroupIndex - 1]).toEqual({
+      name: '子服务-插件市场',
       tags: [DevApiTagsMap.pluginMarketplace]
     });
   });

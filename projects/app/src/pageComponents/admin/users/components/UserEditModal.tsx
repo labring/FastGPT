@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { POST } from '@/web/admin/common/request';
+import { deleteUser, updateUser } from '@/web/admin/user/api';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -37,7 +37,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
 
   const { runAsync: onSubmit, loading } = useRequest(
     async (formData: TFormData) => {
-      return POST(`/proApi/admin/routes/users/updateUser`, {
+      return updateUser({
         _id: data._id,
         username: formData.username,
         status: formData.status,
@@ -67,7 +67,7 @@ export default function UserEditModal(props: { data: any; getData: any }) {
 
   const { runAsync: onDeleteUser } = useRequest(
     () =>
-      POST(`/proApi/admin/routes/users/delete`, {
+      deleteUser({
         username: data.username
       }),
     {

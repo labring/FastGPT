@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { delTemplate, postCreateTemplate, putUpdateTemplate } from '@/web/core/app/templates/api';
+import { delTemplate, postCreateTemplate, putUpdateTemplate } from '@/web/admin/app/templates/api';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';

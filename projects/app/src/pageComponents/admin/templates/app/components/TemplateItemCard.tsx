@@ -1,4 +1,4 @@
-import { putUpdateTemplate, type AdminUpdateTemplateBodyType } from '@/web/core/app/templates/api';
+import { putUpdateTemplate, type AdminUpdateTemplateBodyType } from '@/web/admin/app/templates/api';
 import { Box, Checkbox, Flex, Switch, Td, Tr } from '@chakra-ui/react';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';

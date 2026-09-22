@@ -1,0 +1,27 @@
+import { GET, POST } from '@/web/admin/common/request';
+import type { LicenseDataType } from '@fastgpt/global/common/system/types';
+
+export type LicenseAuthResponse = LicenseDataType | undefined;
+
+/**
+ * 读取 license 状态。pro 服务未配置/不可达时返回 undefined（视为未激活），
+ * 由管理员主页展示激活入口。
+ */
+export const getLicenseData = async (): Promise<LicenseAuthResponse> => {
+  const res = await GET<LicenseDataType | { total?: number; list?: unknown[] }>(
+    '/proApi/admin/license/auth'
+  );
+  // 降级返回的统一空结构视为未激活
+  if (!res || typeof res !== 'object' || ('total' in res && 'list' in res)) {
+    return undefined;
+  }
+  return res as LicenseDataType;
+};
+
+export const postActiveLicense = (data: { license: string }) =>
+  POST('/proApi/admin/license/active', data);
+/** 获取当前部署实例 ID（决策版激活：客户提供 instanceId 给官方签发绑定 license） */
+export const getInstanceId = async (): Promise<string | undefined> => {
+  const res = await GET<{ instanceId?: string }>('/proApi/admin/license/instanceId');
+  return res?.instanceId;
+};

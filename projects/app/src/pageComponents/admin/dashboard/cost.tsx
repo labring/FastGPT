@@ -1,9 +1,8 @@
 'use client';
 import React, { useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
-import { POST } from '@/web/admin/common/request';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { GetCostFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
+import { getCostFormData } from '@/web/admin/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
@@ -31,13 +30,7 @@ export default function CostPage(): JSX.Element {
 
   const { data: costData, loading } = useRequest(
     async () => {
-      return await POST<GetCostFormDataResponseType>(
-        `/proApi/admin/core/dashboard/getCostFormData`,
-        {
-          startTime,
-          granularity
-        }
-      ).then((res) => ({
+      return await getCostFormData({ startTime, granularity }).then((res) => ({
         pointUsages: formatList2ChartsData(res.pointUsages, {
           defaultValues: {
             totalCount: 0

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
-import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
+import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
 import { useForm, useWatch } from 'react-hook-form';
 import SettingPage from '@/pageComponents/admin/settings/SettingPage';
 import FormItem from '@/pageComponents/admin/settings/FormItem';

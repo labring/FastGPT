@@ -26,9 +26,9 @@ vi.mock('@fastgpt/service/core/ai/config/entity', () => ({
   )
 }));
 
-import handler from '@/pages/api/admin/settings/model/updateStatus';
+import handler from '@/pages/api/admin/system/model/updateStatus';
 
-describe('PUT /api/admin/settings/model/updateStatus', () => {
+describe('PUT /api/admin/system/model/updateStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.updateModels.mockResolvedValue({ matchedCount: modelIds.length });

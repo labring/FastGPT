@@ -26,7 +26,9 @@ vi.mock('@fastgpt/service/core/dataset/read', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/read')>()),
   readDatasetSourceRawText: mocks.read
 }));
-vi.mock('@fastgpt/service/common/api/plusRequest', () => ({ POST: mocks.paragraph }));
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', () => ({
+  postCreateParagraphTitle: mocks.paragraph
+}));
 vi.mock('@/service/core/dataset/queues/utils', () => ({
   checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
 }));
@@ -156,9 +158,7 @@ describe('datasetParseQueue model validation', () => {
     await datasetParseQueue();
     expect(mocks.paragraph).toHaveBeenCalledTimes(5);
     expect(mocks.paragraph).toHaveBeenCalledWith(
-      '/core/dataset/training/llmPargraph',
-      expect.objectContaining({ modelId: 'missing-agent' }),
-      expect.anything()
+      expect.objectContaining({ modelId: 'missing-agent' })
     );
     expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
       mode: TrainingModeEnum.parse,

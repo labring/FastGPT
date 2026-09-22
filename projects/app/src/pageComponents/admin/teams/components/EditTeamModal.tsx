@@ -1,7 +1,7 @@
 import { Box, Button, FormControl, FormLabel, Input, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { POST } from '@/web/admin/common/request';
+import { updateTeam } from '@/web/admin/team/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 
@@ -20,7 +20,7 @@ export default function EditTeamModal(props: { data: any; updateData: any }) {
   });
 
   const onSubmit = async (formData: any) => {
-    POST(`/proApi/admin/routes/teams/updateTeam`, formData)
+    updateTeam(formData)
       .then(() => {
         toast({
           title: '变更成功',

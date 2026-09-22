@@ -12,7 +12,7 @@ import {
   CreateAdminAIProxyChannelResponseSchema,
   type CreateAdminAIProxyChannelBody,
   type CreateAdminAIProxyChannelResponse
-} from '@fastgpt/global/openapi/admin/settings/model/api_channel';
+} from '@fastgpt/global/openapi/admin/system/model/api_channel';
 
 /** 在同一写租约内保证名称唯一并解析旧版创建结果，禁止猜测或返回空渠道 ID。 */
 async function handler(

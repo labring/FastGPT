@@ -36,7 +36,7 @@ import {
   type ParsedSystemModelsWithJsonBody,
   type UpdateDefaultModelsBody,
   type UpdateSystemModelBody
-} from '@fastgpt/global/openapi/admin/settings/model/api';
+} from '@fastgpt/global/openapi/admin/system/model/api';
 
 /** 配置和渠道由同一已校验请求提交；外部写入前检查目标实例与不可变类型。 */
 export const updateSystemModel = async ({

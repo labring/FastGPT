@@ -1,6 +1,10 @@
 'use client';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
-import { finishInvoice, getInvoiceList } from '@/web/support/wallet/invoice/api';
+import {
+  finishInvoice,
+  getInvoiceDownloadUrl,
+  getInvoiceList
+} from '@/web/admin/wallet/bill/invoice/api';
 import {
   Table,
   Thead,
@@ -220,7 +224,7 @@ function InvoiceDetailModal({
   const { loading: isDownloading, run: downloadInvoice } = useRequest(
     async () => {
       await downloadFetch({
-        url: `/api/proApi/admin/support/wallet/bill/invoice/downloadFile?id=${encodeURIComponent(invoice._id)}`,
+        url: getInvoiceDownloadUrl(invoice._id),
         filename: `${invoice.teamName}.pdf`
       });
     },

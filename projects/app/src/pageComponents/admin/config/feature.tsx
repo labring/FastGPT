@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Box, Flex, Grid, Input, Textarea } from '@chakra-ui/react';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
-import { getInitFormData, postUpdateConfig } from '@/web/admin/config/api';
+import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
 import FormLabel from './components/FormLabel';
 import Switch from '@/pageComponents/admin/settings/Switch';
 import { useForm } from 'react-hook-form';

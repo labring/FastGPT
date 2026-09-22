@@ -1,7 +1,7 @@
 import { Box, Button, FormControl, FormLabel, Input, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { POST } from '@/web/admin/common/request';
+import { addUser } from '@/web/admin/user/api';
 import { AddIcon } from '@chakra-ui/icons';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -30,7 +30,7 @@ export default function UserAddModal(props: { data: any; updateData: any }) {
 
   const { runAsync: onSubmit, loading: isLoading } = useRequest(
     (formData: TFormData) => {
-      return POST(`/proApi/admin/routes/users/addUser`, {
+      return addUser({
         ...formData,
         password: hashStr(formData.password)
       });

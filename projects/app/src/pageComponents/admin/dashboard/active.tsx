@@ -1,10 +1,8 @@
 'use client';
 import React, { useMemo } from 'react';
 import { Box, useTheme, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
-import { GET } from '@/web/admin/common/request';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { GetChatFormDataResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
-import type { GetQpmRangeResponseType } from '@fastgpt/global/openapi/admin/core/dashboard/api';
+import { getChatFormData, getWorkflowQpmRange } from '@/web/admin/dashboard/api';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import {
@@ -33,18 +31,8 @@ export default function ActivePage(): JSX.Element {
   const { data: activeData, loading } = useRequest(
     async () => {
       const [chatFormData, qpmRangeData] = await Promise.all([
-        GET<GetChatFormDataResponseType>(
-          `/proApi/admin/core/dashboard/getChatFormData`,
-          {
-            startTime,
-            granularity
-          },
-          { timeout: 600000 }
-        ),
-        GET<GetQpmRangeResponseType>(`/proApi/admin/core/dashboard/getWorkflowQpmRange`, {
-          startTime,
-          granularity
-        })
+        getChatFormData({ startTime, granularity }, { timeout: 600000 }),
+        getWorkflowQpmRange({ startTime, granularity })
       ]);
 
       return {

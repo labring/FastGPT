@@ -9,12 +9,11 @@ import {
 } from '@chakra-ui/react';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { POST } from '@/web/admin/common/request';
+import { updatePlan, type AdminPlanType } from '@/web/admin/wallet/plan/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { StandardSubLevelEnum, SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import type { AdminPlanType as PlanType } from '@/web/admin/users/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
@@ -30,7 +29,7 @@ function transformDate(date: string) {
 }
 
 export default function PlanEditModal(props: {
-  data: PlanType;
+  data: AdminPlanType;
   getData: any;
   subType: `${SubTypeEnum}`;
 }) {
@@ -44,7 +43,7 @@ export default function PlanEditModal(props: {
     reset,
     control,
     formState: { errors }
-  } = useForm<PlanType>({
+  } = useForm<AdminPlanType>({
     defaultValues: {
       id: '',
       teamId: '',
@@ -75,7 +74,7 @@ export default function PlanEditModal(props: {
     }
   });
 
-  const { runAsync: onSubmit, loading } = useRequest(async (formData: PlanType) => {
+  const { runAsync: onSubmit, loading } = useRequest(async (formData: AdminPlanType) => {
     try {
       const startTimeISO = new Date(formData.startTime).toISOString();
       const expiredTimeISO = new Date(formData.expiredTime).toISOString();
@@ -86,7 +85,7 @@ export default function PlanEditModal(props: {
         throw new Error('剩余积分不能大于总积分');
       }
 
-      await POST(`/proApi/admin/routes/plans/updatePlan`, {
+      await updatePlan({
         id: data.id,
         type: formData.type,
         startTime: startTimeISO,

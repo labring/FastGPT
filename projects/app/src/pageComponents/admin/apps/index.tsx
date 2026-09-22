@@ -15,7 +15,7 @@ import {
   InputGroup
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getApps } from '@/web/admin/apps/api';
+import { getApps } from '@/web/admin/app/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';

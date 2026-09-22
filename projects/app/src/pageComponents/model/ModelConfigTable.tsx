@@ -50,7 +50,7 @@ import {
   getModelProviderListFromCache,
   type ModelProviderItemType
 } from '@fastgpt/global/core/ai/provider';
-import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/settings/model/api';
+import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/system/model/api';
 import { useLockFn, useSet } from 'ahooks';
 import ModelChannelCount from './ModelChannelCount';
 import ModelChannelModal from './ModelChannelModal';

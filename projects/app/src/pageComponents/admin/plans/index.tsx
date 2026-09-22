@@ -16,7 +16,7 @@ import {
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { getPlans } from '@/web/admin/users/api';
+import { getPlans } from '@/web/admin/wallet/plan/api';
 import { standardSubLevelMap } from '../pays';
 import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';

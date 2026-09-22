@@ -60,7 +60,7 @@ function Error() {
 
     const timer = setTimeout(() => {
       if (modelError) {
-        router.push('/admin/plugin/model?modelTab=config');
+        router.push('/admin/resources/model?modelTab=config');
       } else {
         router.push('/dashboard/agent');
       }

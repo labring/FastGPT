@@ -6,15 +6,11 @@ import { DatasetPath } from './core/dataset';
 import { PluginPath } from './core/plugin';
 import { WorkflowPath } from './core/workflow';
 import { SupportPath } from './support';
-import { AdminCorePath } from './admin/core';
-import { AdminSupportPath } from './admin/support';
-import { AdminSystemMigrationsPath } from './admin/common/system/migrations';
+import { AdminPath } from './admin';
 import { DevApiTagsMap } from './tag';
 import type { OpenAPIPath } from './type';
 import { CommonPath } from './common';
 import { InvokePath } from './plugin';
-import { AdminSystemModelPath } from './admin/settings/model';
-import { AdminSystemChannelPath } from './admin/settings/model/channel';
 
 export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...AppPath,
@@ -22,14 +18,13 @@ export const openAPIPaths: NonNullable<OpenAPIPath> = {
   ...DatasetPath,
   ...PluginPath,
   ...WorkflowPath,
+  // AdminPath 中包含完整管理员接口；SupportPath 放在后面以保留公共接口的通用 tag。
+  ...AdminPath,
   ...SupportPath,
   ...CommonPath,
   ...InvokePath,
   ...AIPath,
-  ...SkillPath,
-  ...AdminSystemModelPath,
-  ...AdminSystemChannelPath,
-  ...AdminSystemMigrationsPath
+  ...SkillPath
 };
 
 export const openAPITagGroups = [
@@ -150,74 +145,64 @@ export const openAPITagGroups = [
     ]
   },
   {
+    name: '数据面板',
+    tags: [DevApiTagsMap.adminDashboard]
+  },
+  {
+    name: '用户管理',
+    tags: [DevApiTagsMap.adminUsers, DevApiTagsMap.adminTeams, DevApiTagsMap.adminPlans]
+  },
+  {
+    name: '系统资源',
+    tags: [
+      DevApiTagsMap.adminSystemModel,
+      DevApiTagsMap.adminModelChannel,
+      DevApiTagsMap.adminModelLog,
+      DevApiTagsMap.pluginAdmin,
+      DevApiTagsMap.pluginToolAdmin,
+      DevApiTagsMap.adminTemplate,
+      DevApiTagsMap.adminTemplateType
+    ]
+  },
+  {
+    name: '用户资源',
+    tags: [DevApiTagsMap.adminApps, DevApiTagsMap.adminDatasets]
+  },
+  {
+    name: '系统配置',
+    tags: [DevApiTagsMap.adminSettings, DevApiTagsMap.adminAuth, DevApiTagsMap.adminSystemMigration]
+  },
+  {
+    name: '支付管理',
+    tags: [
+      DevApiTagsMap.adminPays,
+      DevApiTagsMap.adminWalletInvoice,
+      DevApiTagsMap.adminWalletRefund,
+      DevApiTagsMap.adminWalletCoupon
+    ]
+  },
+  {
+    name: '通知管理',
+    tags: [DevApiTagsMap.adminInform]
+  },
+  {
+    name: '审计日志',
+    tags: [DevApiTagsMap.adminAudit]
+  },
+  {
+    name: 'License 管理',
+    tags: [DevApiTagsMap.adminLicense]
+  },
+  {
+    name: '子服务-插件市场',
+    tags: [DevApiTagsMap.pluginMarketplace]
+  },
+  {
     name: '通用-反向调用',
     tags: [DevApiTagsMap.reverseInvokePlugin, DevApiTagsMap.reverseInvokeSandbox]
   },
   {
-    name: '插件市场',
-    tags: [DevApiTagsMap.pluginMarketplace]
-  },
-  {
-    name: '管理员-插件管理',
-    tags: [DevApiTagsMap.pluginAdmin, DevApiTagsMap.pluginToolAdmin]
-  },
-  {
-    name: '管理员-系统接口',
-    tags: [
-      DevApiTagsMap.adminSystemMigration,
-      DevApiTagsMap.adminSystemModel,
-      DevApiTagsMap.adminModelChannel,
-      DevApiTagsMap.adminModelLog
-    ]
-  }
-];
-
-export const adminOpenAPIPaths: NonNullable<OpenAPIPath> = {
-  ...AdminCorePath,
-  ...AdminSupportPath,
-  ...AdminSystemModelPath,
-  ...AdminSystemChannelPath
-};
-
-export const adminOpenAPITagGroups = [
-  {
-    name: '管理员-系统接口',
-    tags: [
-      DevApiTagsMap.adminSystemMigration,
-      DevApiTagsMap.adminSystemModel,
-      DevApiTagsMap.adminModelChannel,
-      DevApiTagsMap.adminModelLog
-    ]
-  },
-  {
-    name: '管理员-系统概览',
-    tags: [DevApiTagsMap.adminDashboard, DevApiTagsMap.adminLicense]
-  },
-  {
-    name: '管理员-资源管理',
-    tags: [
-      DevApiTagsMap.adminApps,
-      DevApiTagsMap.adminUsers,
-      DevApiTagsMap.adminTeams,
-      DevApiTagsMap.adminDatasets
-    ]
-  },
-  {
-    name: '管理员-套餐与支付',
-    tags: [
-      DevApiTagsMap.adminPlans,
-      DevApiTagsMap.adminPays,
-      DevApiTagsMap.adminWalletCoupon,
-      DevApiTagsMap.adminWalletInvoice,
-      DevApiTagsMap.adminWalletRefund
-    ]
-  },
-  {
-    name: '管理员-系统配置',
-    tags: [DevApiTagsMap.adminSettings, DevApiTagsMap.adminInform, DevApiTagsMap.adminAuth]
-  },
-  {
-    name: '管理员-模板管理',
-    tags: [DevApiTagsMap.adminTemplate, DevApiTagsMap.adminTemplateType]
+    name: '子服务-pro',
+    tags: [DevApiTagsMap.subserviceProDataset]
   }
 ];

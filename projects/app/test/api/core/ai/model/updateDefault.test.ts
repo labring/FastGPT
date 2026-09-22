@@ -33,12 +33,12 @@ vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
   updatedReloadSystemModel: mocks.updatedReloadSystemModel
 }));
 
-import handler from '@/pages/api/admin/settings/model/updateDefault';
+import handler from '@/pages/api/admin/system/model/updateDefault';
 vi.mock('@fastgpt/service/core/ai/config/entity', () => ({
   runSystemModelTransaction: (fn: (session: unknown) => Promise<unknown>) => fn(mocks.session)
 }));
 
-describe('PUT /api/admin/settings/model/updateDefault', () => {
+describe('PUT /api/admin/system/model/updateDefault', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue(undefined);

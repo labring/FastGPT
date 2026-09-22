@@ -5,11 +5,8 @@ import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleS
 import { useEffect, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  getSystemTemplates,
-  getTemplateTypes,
-  putUpdateTemplateOrder
-} from '@/web/core/app/templates/api';
+import { getSystemTemplates, putUpdateTemplateOrder } from '@/web/admin/app/templates/api';
+import { getTemplateTypes } from '@/web/core/app/templates/api';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
