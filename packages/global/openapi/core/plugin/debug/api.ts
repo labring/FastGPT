@@ -1,5 +1,5 @@
 import z from 'zod';
-import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
+import { I18nStringSchema } from '../../../../core/plugin/type';
 
 export const PluginDebugChannelStatusSchema = z.enum([
   'enabled',
@@ -118,25 +118,20 @@ export const PluginDebugChannelPluginSchema = z
       example: '0.0.1',
       description: '调试插件版本'
     }),
-    name: z.unknown().meta({
-      ...OpenObjectOpenApiMeta,
+    name: I18nStringSchema.meta({
       example: {
         en: 'Get Time',
         'zh-CN': '获取时间'
       },
-      description: '调试插件名称，保持 plugin-server 原始 i18n 结构'
+      description: '调试插件名称'
     }),
-    description: z
-      .unknown()
-      .optional()
-      .meta({
-        ...OpenObjectOpenApiMeta,
-        example: {
-          en: 'Get current time',
-          'zh-CN': '获取当前时间'
-        },
-        description: '调试插件简介，保持 plugin-server 原始 i18n 结构'
-      }),
+    description: I18nStringSchema.optional().meta({
+      example: {
+        en: 'Get current time',
+        'zh-CN': '获取当前时间'
+      },
+      description: '调试插件简介'
+    }),
     icon: z.string().optional().meta({
       example: 'https://fastgpt.example.com/icon.png',
       description: '调试插件图标'

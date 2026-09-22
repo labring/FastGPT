@@ -6,6 +6,7 @@ import {
   ChangeAppOwnerBodySchema,
   ChangeAppOwnerResponseSchema
 } from '../../../openapi/core/app/permission/api';
+import { UpdateAppResponseSchema } from '../../../openapi/core/app/common/api';
 import { UpdateAppCollaboratorBodySchema } from '../../../openapi/support/permission/api';
 import {
   GetTemplateTypesQuerySchema,
@@ -104,6 +105,7 @@ describe('App OpenAPI contracts', () => {
       ownerId: objectId
     });
     expect(ChangeAppOwnerResponseSchema.parse(undefined)).toBeUndefined();
+    expect(UpdateAppResponseSchema.parse(undefined)).toBeUndefined();
     expect(() =>
       UpdateAppCollaboratorBodySchema.parse({ appId: objectId, collaborators: [] })
     ).toThrow();

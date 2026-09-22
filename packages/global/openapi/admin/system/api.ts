@@ -1,5 +1,6 @@
 import z from 'zod';
 import { SubPlanInputSchema } from '../../../support/wallet/sub/type';
+import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 
 /* ============================================================================
  * API: 获取系统配置
@@ -10,11 +11,14 @@ import { SubPlanInputSchema } from '../../../support/wallet/sub/type';
  * ============================================================================ */
 
 export const GetConfigResponseSchema = z.object({
-  fastgpt: z.any().optional().meta({ description: '系统 FastGPT 配置' }),
+  fastgpt: z
+    .any()
+    .optional()
+    .meta({ ...OpenObjectOpenApiMeta, description: '系统 FastGPT 配置' }),
   fastgptPro: z
     .any()
     .optional()
-    .meta({ description: '系统 FastGPT Pro 商业版配置（不含 license）' })
+    .meta({ ...OpenObjectOpenApiMeta, description: '系统 FastGPT Pro 商业版配置（不含 license）' })
 });
 export type GetConfigResponse = z.infer<typeof GetConfigResponseSchema>;
 

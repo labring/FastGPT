@@ -34,10 +34,7 @@ export const OpenAPIUserSchema = UserSchema.omit({
 export type OpenAPIUserType = z.infer<typeof OpenAPIUserSchema>;
 
 export const LoginSuccessResponseSchema = z.object({
-  // 登录结果长期作为 UserDetailType 使用；在业务类型统一前保持运行时和 TS 兼容，
-  // 文档明确它是对象，避免客户端生成 null schema。
-  user: z.any().meta({
-    ...OpenObjectOpenApiMeta,
+  user: OpenAPIUserSchema.meta({
     description: '用户详情'
   }),
   token: z.string().meta({

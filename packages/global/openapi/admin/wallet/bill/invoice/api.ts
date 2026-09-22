@@ -1,6 +1,6 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../../common/type/mongo';
-import { NumSchema } from '../../../../../common/zod';
+import { IntSchema, NumSchema } from '../../../../../common/zod';
 import { InvoiceStatusEnum } from '../../../../../support/wallet/bill/invoice/constants';
 import { PaginationResponseSchema } from '../../../../api';
 
@@ -20,16 +20,15 @@ export const InvoiceItemSchema = z.object({
   status: z.nativeEnum(InvoiceStatusEnum).meta({
     description: '发票状态：1-申请中，2-已完成'
   }),
-  billIdList: z.array(ObjectIdSchema).optional().meta({ description: '关联订单ID列表' }),
+  billIdList: z.array(z.string()).optional().meta({ description: '关联订单ID列表' }),
   createTime: z.date().meta({ description: '创建时间' }),
-  finishTime: z.date().optional().meta({ description: '完成时间' }),
-  file: z.any().optional().meta({ description: '发票文件' })
+  finishTime: z.date().optional().meta({ description: '完成时间' })
 });
 export type InvoiceItemType = z.infer<typeof InvoiceItemSchema>;
 
 export const InvoiceListBodySchema = z.object({
-  pageNum: z.number().meta({ description: '页码' }),
-  pageSize: z.number().meta({ description: '每页条数' }),
+  pageNum: IntSchema.positive().optional().default(1).meta({ description: '页码' }),
+  pageSize: IntSchema.positive().optional().default(10).meta({ description: '每页条数' }),
   search: z.string().optional().meta({ description: '搜索关键词（团队名称）' })
 });
 export const InvoiceListResponseSchema = PaginationResponseSchema(InvoiceItemSchema);
@@ -37,10 +36,16 @@ export type InvoiceListBodyType = z.infer<typeof InvoiceListBodySchema>;
 export type InvoiceListResponseType = z.infer<typeof InvoiceListResponseSchema>;
 
 // invoice/finish is multipart/form-data
-export const InvoiceFinishBodySchema = z.object({
-  invoiceId: z.string().meta({ description: '发票ID' }),
-  file: z.string().optional().meta({ description: '发票文件（multipart 上传）' })
+export const InvoiceFinishDataSchema = z.object({
+  invoiceId: z.string().meta({ description: '发票ID' })
 });
-export const InvoiceFinishDataSchema = InvoiceFinishBodySchema;
-export type InvoiceFinishBodyType = z.infer<typeof InvoiceFinishBodySchema>;
-export type InvoiceFinishDataType = InvoiceFinishBodyType;
+export type InvoiceFinishDataType = z.infer<typeof InvoiceFinishDataSchema>;
+
+export const InvoiceFinishFormSchema = z.object({
+  file: z.string().meta({ format: 'binary', description: '发票文件（multipart 上传）' }),
+  data: InvoiceFinishDataSchema.meta({ description: 'JSON 序列化后的参数对象' })
+});
+export type InvoiceFinishFormType = z.infer<typeof InvoiceFinishFormSchema>;
+
+export const InvoiceFinishBodySchema = InvoiceFinishDataSchema;
+export type InvoiceFinishBodyType = InvoiceFinishDataType;

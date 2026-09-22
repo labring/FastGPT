@@ -62,7 +62,7 @@ describe('admin model test routing', () => {
       {} as any
     );
 
-    expect(result).toBe('ok');
+    expect(result).toBeUndefined();
     expect(mocks.createLLMResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         teamId: 'root-team',
@@ -240,7 +240,7 @@ describe('admin model test routing', () => {
       {} as any
     );
 
-    expect(result).toEqual(embeddingResult);
+    expect(result).toBeUndefined();
     expect(mocks.getVectors).toHaveBeenCalledWith(
       expect.objectContaining({
         inputs: [{ type: 'text', input: 'Hi' }],

@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   CreateTemplateBodySchema,
-  UpdateTemplateBodySchema
+  UpdateTemplateBodySchema,
+  GetAdminTemplatesResponseSchema
 } from '@fastgpt/global/openapi/admin/app/templates/api';
+import { AdminTemplatePath } from '@fastgpt/global/openapi/admin/app/templates';
+import { AdminTemplateTypePath } from '@fastgpt/global/openapi/admin/app/templateType';
 
 const templateBase = {
   name: 'Template',
@@ -127,5 +130,26 @@ describe('admin app template schemas', () => {
         workflow
       }).success
     ).toBe(false);
+  });
+
+  it('configures proper OpenAPI response schemas for template routes', () => {
+    const listRoute = AdminTemplatePath['/proApi/admin/app/templates/list']?.get;
+    expect(listRoute?.responses?.[200]?.content?.['application/json']?.schema).toBe(
+      GetAdminTemplatesResponseSchema
+    );
+
+    for (const route of [
+      AdminTemplatePath['/proApi/admin/app/templates/create']?.post,
+      AdminTemplatePath['/proApi/admin/app/templates/update']?.put,
+      AdminTemplatePath['/proApi/admin/app/templates/delete']?.delete,
+      AdminTemplatePath['/proApi/admin/app/templates/updateOrder']?.put,
+      AdminTemplatePath['/proApi/admin/app/templates/updateQuickTemplate']?.put,
+      AdminTemplateTypePath['/proApi/admin/app/templateType/save']?.post,
+      AdminTemplateTypePath['/proApi/admin/app/templateType/delete']?.delete,
+      AdminTemplateTypePath['/proApi/admin/app/templateType/updateOrder']?.put
+    ]) {
+      expect(route?.responses?.[200]).toBeDefined();
+      expect(route?.responses?.[200]?.content).toBeUndefined();
+    }
   });
 });

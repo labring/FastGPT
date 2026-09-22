@@ -1,6 +1,7 @@
 import z from 'zod';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { OpenObjectOpenApiMeta } from '../../../../common/zod/openapi';
 import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
@@ -176,9 +177,7 @@ export type GetPaginationRecordsBodyType = z.infer<typeof GetPaginationRecordsBo
 export type GetPaginationRecordsBodyRuntimeType = z.infer<typeof GetPaginationRecordsBodySchema>;
 
 export const GetPaginationRecordsResponseSchema = z.object({
-  list: z
-    .array(z.any())
-    .meta({ items: { type: 'object', additionalProperties: true }, description: '对话列表' }),
+  list: z.array(z.any()).meta({ items: OpenObjectOpenApiMeta, description: '对话列表' }),
   total: z.number().int().nonnegative().meta({ example: 10, description: '总数' })
 });
 export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecordsResponseSchema>;

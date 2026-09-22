@@ -1,5 +1,6 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import z from 'zod';
+import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import {
   ChatGenerateStatusSchema,
   createOutLinkChatTargetInputSchema,
@@ -112,7 +113,7 @@ export type ResumeStreamRuntimeParams = z.infer<typeof ResumeStreamParamsSchema>
 
 export const StreamResumeCompletedRecordsSchema = z.object({
   list: z.array(z.any()).meta({
-    items: { type: 'object', additionalProperties: true },
+    items: OpenObjectOpenApiMeta,
     description: '最新已落库的聊天记录'
   }),
   total: z.number().int().nonnegative().meta({

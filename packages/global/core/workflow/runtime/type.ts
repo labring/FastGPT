@@ -8,7 +8,7 @@ import { SearchDataResponseQuoteListItemSchema } from '../../dataset/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
 import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
-import { JsonValueOpenApiMeta } from '../../../common/zod/openapi';
+import { JsonValueOpenApiMeta, OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
 import type { JSONSchemaInputType } from '../../app/jsonschema';
 
 const AgentPlanNodeStatusSchema = z.enum(['set_plan', 'update_plan', 'ask_question']);
@@ -154,13 +154,10 @@ export const DispatchNodeResponseSchema = z
     // Tool
     toolInput: z.record(z.string(), z.any()).optional().meta({ description: '工具输入' }),
     pluginOutput: z.record(z.string(), z.any()).optional().meta({ description: '插件输出' }),
-    pluginDetail: z
-      .array(z.any())
-      .optional()
-      .meta({
-        items: { type: 'object', additionalProperties: true },
-        description: '插件执行详情（递归节点响应）'
-      }),
+    pluginDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '插件执行详情（递归节点响应）'
+    }),
     toolParamsResult: z
       .record(z.string(), z.any())
       .optional()
@@ -176,13 +173,10 @@ export const DispatchNodeResponseSchema = z
     // tool call
     toolCallInputTokens: z.number().optional().meta({ description: '工具调用输入 token' }),
     toolCallOutputTokens: z.number().optional().meta({ description: '工具调用输出 token' }),
-    toolDetail: z
-      .array(z.any())
-      .optional()
-      .meta({
-        items: { type: 'object', additionalProperties: true },
-        description: '工具执行详情（递归节点响应）'
-      }),
+    toolDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '工具执行详情（递归节点响应）'
+    }),
     toolStop: z.boolean().optional(),
 
     // Agent call
@@ -225,13 +219,10 @@ export const DispatchNodeResponseSchema = z
       .array(z.any())
       .optional()
       .meta({ items: JsonValueOpenApiMeta, description: '循环输入' }),
-    loopDetail: z
-      .array(z.any())
-      .optional()
-      .meta({
-        items: { type: 'object', additionalProperties: true },
-        description: '循环详情（递归节点响应）'
-      }),
+    loopDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '循环详情（递归节点响应）'
+    }),
     loopInputValue: z
       .any()
       .optional()
@@ -250,21 +241,15 @@ export const DispatchNodeResponseSchema = z
       .array(z.any())
       .optional()
       .meta({ items: JsonValueOpenApiMeta, description: '并行结果' }),
-    parallelRunDetail: z
-      .array(z.any())
-      .optional()
-      .meta({
-        items: { type: 'object', additionalProperties: true },
-        description: '各任务执行摘要（成功/失败状态）'
-      }),
-    parallelDetail: z
-      .array(z.any())
-      .optional()
-      .meta({
-        items: { type: 'object', additionalProperties: true },
-        description: '成功任务子工作流完整响应列表',
-        deprecated: true
-      }),
+    parallelRunDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '各任务执行摘要（成功/失败状态）'
+    }),
+    parallelDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: '成功任务子工作流完整响应列表',
+      deprecated: true
+    }),
 
     // loopRun
     loopRunInput: z
@@ -272,25 +257,19 @@ export const DispatchNodeResponseSchema = z
       .optional()
       .meta({ ...JsonValueOpenApiMeta, description: 'loopRun 循环输入（数组或条件模式标记）' }),
     loopRunIterations: z.number().optional().meta({ description: 'loopRun 实际执行轮数' }),
-    loopRunHistory: z
-      .array(z.any())
-      .optional()
-      .meta({
-        items: { type: 'object', additionalProperties: true },
-        description: 'loopRun 每轮快照'
-      }),
-    loopRunDetail: z
-      .array(z.any())
-      .optional()
-      .meta({
-        items: { type: 'object', additionalProperties: true },
-        description: 'loopRun 各轮子工作流节点响应聚合',
-        deprecated: true
-      }),
+    loopRunHistory: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: 'loopRun 每轮快照'
+    }),
+    loopRunDetail: z.array(z.any()).optional().meta({
+      items: OpenObjectOpenApiMeta,
+      description: 'loopRun 各轮子工作流节点响应聚合',
+      deprecated: true
+    }),
     childrenResponses: z
       .array(z.any())
       .optional()
-      .meta({ items: { type: 'object', additionalProperties: true }, description: '子节点响应' }),
+      .meta({ items: OpenObjectOpenApiMeta, description: '子节点响应' }),
 
     // Tools
     toolId: z.string().optional().meta({ description: '工具 ID' }),

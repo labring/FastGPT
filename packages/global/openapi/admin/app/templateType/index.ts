@@ -18,12 +18,7 @@ export const AdminTemplateTypePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '保存成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '保存成功'
         }
       }
     }
@@ -40,12 +35,7 @@ export const AdminTemplateTypePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '删除成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '删除成功'
         }
       }
     }
@@ -64,12 +54,7 @@ export const AdminTemplateTypePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '排序更新成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '排序更新成功'
         }
       }
     }

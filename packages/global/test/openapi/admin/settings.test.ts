@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createDocument } from 'zod-openapi';
 import {
+  GetConfigResponseSchema,
   UpdateConfigBodySchema,
   UpdateConfigResponseSchema
 } from '../../../openapi/admin/system/api';
@@ -68,5 +70,29 @@ describe('UpdateConfigBodySchema', () => {
 
   it('uses an empty success response contract', () => {
     expect(UpdateConfigResponseSchema.parse(undefined)).toBeUndefined();
+  });
+
+  it('declares open object schemas for dynamic system configurations', () => {
+    const parsed = GetConfigResponseSchema.parse({
+      fastgpt: { feConfigs: { isPlus: true } },
+      fastgptPro: { someProKey: 'val' }
+    });
+    expect(parsed.fastgpt).toEqual({ feConfigs: { isPlus: true } });
+    expect(parsed.fastgptPro).toEqual({ someProKey: 'val' });
+
+    const doc = createDocument({
+      openapi: '3.1.0',
+      info: { title: 'Test', version: '1.0.0' },
+      components: {
+        schemas: {
+          GetConfigResponse: GetConfigResponseSchema
+        }
+      }
+    });
+    const schema = doc.components?.schemas?.GetConfigResponse as any;
+    expect(schema.properties.fastgpt.type).toBe('object');
+    expect(schema.properties.fastgpt.additionalProperties).toBe(true);
+    expect(schema.properties.fastgptPro.type).toBe('object');
+    expect(schema.properties.fastgptPro.additionalProperties).toBe(true);
   });
 });

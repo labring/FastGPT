@@ -1,4 +1,4 @@
-import { requiredAlternatives } from '../../../../common/zod/openapi';
+import { OpenObjectOpenApiMeta, requiredAlternatives } from '../../../../common/zod/openapi';
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
@@ -144,10 +144,7 @@ export type CompletionsProps = z.infer<typeof CompletionsPropsSchema>;
 const ChatCompletionResponseMessageSchema = z.object({
   role: z.literal('assistant').meta({ description: '消息角色' }),
   content: z.any().meta({
-    anyOf: [
-      { type: 'string' },
-      { type: 'array', items: { type: 'object', additionalProperties: true } }
-    ],
+    anyOf: [{ type: 'string' }, { type: 'array', items: OpenObjectOpenApiMeta }],
     description:
       '消息内容。普通对话为字符串；detail=true 或工作流命中交互节点时，可能为按字段名区分的对象数组（如 text / interactive / tool / file / reasoning）。v1 会额外补充 type 字段，取值为 text / interactive / tool / file / reasoning；v2 不补充 type。当元素包含 interactive 字段时，只返回交互展示配置，不返回 entryNodeIds / memoryEdges / nodeOutputs 等内部运行态字段'
   }),
@@ -180,14 +177,11 @@ export const CompletionsResponseSchema = z.object({
     description: 'Token 用量。v1 接口为占位值，需要时请从 responseData 计算'
   }),
   choices: z.array(ChatCompletionChoiceSchema).meta({ description: '回复选项列表' }),
-  responseData: z
-    .array(z.any())
-    .optional()
-    .meta({
-      items: { type: 'object', additionalProperties: true },
-      description:
-        '各节点详细响应数据（仅 detail=true 时返回）。每项是一个节点的执行结果，常见字段如 moduleName / moduleType / runningTime / quoteList 等'
-    }),
+  responseData: z.array(z.any()).optional().meta({
+    items: OpenObjectOpenApiMeta,
+    description:
+      '各节点详细响应数据（仅 detail=true 时返回）。每项是一个节点的执行结果，常见字段如 moduleName / moduleType / runningTime / quoteList 等'
+  }),
   newVariables: z
     .record(z.string(), z.any())
     .optional()

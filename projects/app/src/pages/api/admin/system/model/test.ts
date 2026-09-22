@@ -24,10 +24,8 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   TestAdminSystemModelQuerySchema,
   TestDraftAdminSystemModelBodySchema,
-  TestAdminSystemModelResponseSchema,
   type TestDraftAdminSystemModelBody,
-  type TestAdminSystemModelQuery,
-  type TestAdminSystemModelResponse
+  type TestAdminSystemModelQuery
 } from '@fastgpt/global/openapi/admin/system/model/api';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -36,7 +34,7 @@ const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
 async function handler(
   req: ApiRequestProps<TestDraftAdminSystemModelBody, TestAdminSystemModelQuery>
-): Promise<TestAdminSystemModelResponse> {
+): Promise<void> {
   const { teamId } = await authSystemAdmin({ req });
 
   const { modelData, channelId } = await (async () => {
@@ -79,29 +77,24 @@ async function handler(
 
   const runTest = async () => {
     if (modelData.type === 'llm') {
-      return TestAdminSystemModelResponseSchema.parse(
-        await testLLMModel({ model: modelData, headers, teamId })
-      );
+      await testLLMModel({ model: modelData, headers, teamId });
+      return;
     }
     if (modelData.type === 'embedding') {
-      return TestAdminSystemModelResponseSchema.parse(
-        await testEmbeddingModel({ model: modelData, headers })
-      );
+      await testEmbeddingModel({ model: modelData, headers });
+      return;
     }
     if (modelData.type === 'tts') {
-      return TestAdminSystemModelResponseSchema.parse(
-        await testTTSModel({ model: modelData, headers })
-      );
+      await testTTSModel({ model: modelData, headers });
+      return;
     }
     if (modelData.type === 'stt') {
-      return TestAdminSystemModelResponseSchema.parse(
-        await testSTTModel({ model: modelData, headers })
-      );
+      await testSTTModel({ model: modelData, headers });
+      return;
     }
     if (modelData.type === 'rerank') {
-      return TestAdminSystemModelResponseSchema.parse(
-        await testReRankModel({ model: modelData, headers })
-      );
+      await testReRankModel({ model: modelData, headers });
+      return;
     }
 
     return Promise.reject('Model type not supported');

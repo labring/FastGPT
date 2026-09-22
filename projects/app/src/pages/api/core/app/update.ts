@@ -52,7 +52,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
 
   // 纯移动操作，无需执行后续属性更新
   if (!hasOtherFields) {
-    return UpdateAppResponseSchema.parse(null);
+    return UpdateAppResponseSchema.parse(undefined);
   }
 
   // 2. 基础属性更新
@@ -78,7 +78,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
 
     await getS3AvatarSource().refreshAvatar(avatar, app.avatar, session);
 
-    const result = await MongoApp.findByIdAndUpdate(
+    await MongoApp.findByIdAndUpdate(
       appId,
       {
         ...(name && { name }),
@@ -93,13 +93,12 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
     updateParentFoldersUpdateTime({
       parentId: app.parentId
     });
-
-    return result;
   };
 
   logAppUpdate({ tmbId, teamId, app, name, intro: intro ?? undefined });
 
-  return UpdateAppResponseSchema.parse(await onUpdate());
+  await onUpdate();
+  return UpdateAppResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);

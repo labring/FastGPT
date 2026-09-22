@@ -88,9 +88,7 @@ export type LoopInteractive = InteractiveNodeType & {
 export const LoopRunInteractiveSchema = z.object({
   type: z.literal('loopRunInteractive'),
   params: z.object({
-    loopHistory: z
-      .array(z.any())
-      .meta({ items: { type: 'object', additionalProperties: true }, description: '各轮快照' }),
+    loopHistory: z.array(z.any()).meta({ items: OpenObjectOpenApiMeta, description: '各轮快照' }),
     childrenResponse: z.any().meta({
       ...OpenObjectOpenApiMeta,
       description: '子工作流交互响应'

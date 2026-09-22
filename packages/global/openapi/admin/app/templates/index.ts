@@ -5,7 +5,8 @@ import {
   CreateTemplateBodySchema,
   UpdateTemplateBodySchema,
   UpdateTemplateOrderBodySchema,
-  UpdateQuickTemplateBodySchema
+  UpdateQuickTemplateBodySchema,
+  GetAdminTemplatesResponseSchema
 } from './api';
 
 export const AdminTemplatePath: OpenAPIPath = {
@@ -23,12 +24,7 @@ export const AdminTemplatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '创建成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '创建成功'
         }
       }
     }
@@ -43,7 +39,7 @@ export const AdminTemplatePath: OpenAPIPath = {
           description: '成功获取模板列表',
           content: {
             'application/json': {
-              schema: {}
+              schema: GetAdminTemplatesResponseSchema
             }
           }
         }
@@ -64,12 +60,7 @@ export const AdminTemplatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '更新成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '更新成功'
         }
       }
     }
@@ -86,12 +77,7 @@ export const AdminTemplatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '删除成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '删除成功'
         }
       }
     }
@@ -110,12 +96,7 @@ export const AdminTemplatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '排序更新成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '排序更新成功'
         }
       }
     }
@@ -134,12 +115,7 @@ export const AdminTemplatePath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '设置成功',
-          content: {
-            'application/json': {
-              schema: {}
-            }
-          }
+          description: '设置成功'
         }
       }
     }

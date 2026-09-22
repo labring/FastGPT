@@ -7,7 +7,6 @@ import {
   DeleteSystemModelsBodySchema,
   ImportedSystemModelSchema,
   ReplaceSystemModelChannelsBodySchema,
-  TestAdminSystemModelResponseSchema,
   TestAdminSystemModelQuerySchema,
   UpdateSystemModelBodySchema,
   UpdateSystemModelStatusBodySchema
@@ -59,16 +58,6 @@ describe('admin system model API schemas', () => {
 
     expect(modelData?.type).toBe('object');
     expect(modelData?.oneOf).toHaveLength(5);
-  });
-
-  it('describes each model test result without a documentation-only override', () => {
-    expect(TestAdminSystemModelResponseSchema.parse('Hello')).toBe('Hello');
-    expect(TestAdminSystemModelResponseSchema.parse({ tokens: 2, vectors: [[0.1, 0.2]] })).toEqual({
-      tokens: 2,
-      vectors: [[0.1, 0.2]]
-    });
-    expect(TestAdminSystemModelResponseSchema.parse(undefined)).toBeUndefined();
-    expect(() => TestAdminSystemModelResponseSchema.parse([[0.1, 0.2]])).toThrow();
   });
 
   it('validates unique model IDs for batch status and delete operations', () => {
@@ -249,4 +238,3 @@ describe('admin system model API schemas', () => {
     expect(parsed.config).not.toHaveProperty('unknownConfig');
   });
 });
-

@@ -32,7 +32,7 @@ export const GetTeamsResponseSchema = PaginationResponseSchema(TeamItemSchema);
 export type GetTeamsResponseType = z.infer<typeof GetTeamsResponseSchema>;
 
 export const TeamMemberItemSchema = z.object({
-  userName: z.string().meta({ description: '成员用户名' }),
+  userName: z.string().default('').meta({ description: '成员用户名' }),
   teamId: z.string().meta({ description: '团队ID' }),
   role: z.string().meta({ description: '成员角色' }),
   status: z.string().meta({ description: '成员状态' })
