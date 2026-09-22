@@ -228,17 +228,9 @@ export type GetAdminModelTemplatesResponse = z.infer<typeof GetAdminModelTemplat
  * ============================================================================ */
 
 /** 创建时仅保留已声明的模型字段；额外字段按历史行为忽略，modelId 仍由服务端生成。 */
-const CreateSystemModelDataSchema = z
-  .discriminatedUnion('type', [
-    LLMSystemModelDocumentSchema,
-    EmbeddingSystemModelDocumentSchema,
-    TTSSystemModelDocumentSchema,
-    STTSystemModelDocumentSchema,
-    RerankSystemModelDocumentSchema
-  ])
-  .meta({
-    description: '不含 modelId 的完整系统模型配置；未声明字段会被忽略，modelId 始终由服务端生成'
-  });
+const CreateSystemModelDataSchema = SystemModelDocumentDataSchema.meta({
+  description: '不含 modelId 的完整系统模型配置；未声明字段会被忽略，modelId 始终由服务端生成'
+});
 
 export const CreateSystemModelBodySchema = z
   .object({

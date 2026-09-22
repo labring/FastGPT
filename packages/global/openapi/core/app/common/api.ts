@@ -502,8 +502,7 @@ export const UpdateAppBodySchema = z
   });
 export type UpdateAppBodyType = z.infer<typeof UpdateAppBodySchema>;
 
-export const UpdateAppResponseSchema = z.undefined().meta({ description: '更新成功' });
-export type UpdateAppResponseType = z.infer<typeof UpdateAppResponseSchema>;
+export type UpdateAppResponseType = void;
 
 /* ============================================================================
  * API: 置顶应用

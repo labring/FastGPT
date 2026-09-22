@@ -1,6 +1,5 @@
 import z from 'zod';
-import { SubPlanInputSchema } from '../../../support/wallet/sub/type';
-import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
+import { SubPlanInputSchema, SubPlanSchema } from '../../../support/wallet/sub/type';
 
 /* ============================================================================
  * API: 获取系统配置
@@ -10,15 +9,21 @@ import { OpenObjectOpenApiMeta } from '../../../common/zod/openapi';
  * Tags: ['Admin', 'Settings', 'Read']
  * ============================================================================ */
 
+export const FastGPTConfigSchema = z
+  .looseObject({
+    feConfigs: z.looseObject({}).optional().meta({ description: '前端功能和展示配置' }),
+    systemEnv: z.looseObject({}).optional().meta({ description: '服务端系统运行配置' }),
+    subPlans: SubPlanSchema.optional().meta({ description: '订阅套餐配置' })
+  })
+  .meta({ example: { feConfigs: {}, systemEnv: {} }, description: '系统 FastGPT 配置' });
+
+export const FastGPTProConfigSchema = z
+  .looseObject({})
+  .meta({ example: {}, description: '系统 FastGPT Pro 商业版配置（不含 license）' });
+
 export const GetConfigResponseSchema = z.object({
-  fastgpt: z
-    .any()
-    .optional()
-    .meta({ ...OpenObjectOpenApiMeta, description: '系统 FastGPT 配置' }),
-  fastgptPro: z
-    .any()
-    .optional()
-    .meta({ ...OpenObjectOpenApiMeta, description: '系统 FastGPT Pro 商业版配置（不含 license）' })
+  fastgpt: FastGPTConfigSchema.optional(),
+  fastgptPro: FastGPTProConfigSchema.optional()
 });
 export type GetConfigResponse = z.infer<typeof GetConfigResponseSchema>;
 

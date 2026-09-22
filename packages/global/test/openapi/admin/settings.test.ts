@@ -91,8 +91,8 @@ describe('UpdateConfigBodySchema', () => {
     });
     const schema = doc.components?.schemas?.GetConfigResponse as any;
     expect(schema.properties.fastgpt.type).toBe('object');
-    expect(schema.properties.fastgpt.additionalProperties).toBe(true);
+    expect(schema.properties.fastgpt.additionalProperties).toBeTruthy();
     expect(schema.properties.fastgptPro.type).toBe('object');
-    expect(schema.properties.fastgptPro.additionalProperties).toBe(true);
+    expect(schema.properties.fastgptPro.additionalProperties).toBeTruthy();
   });
 });

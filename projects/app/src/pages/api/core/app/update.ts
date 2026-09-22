@@ -17,7 +17,6 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateAppBodySchema,
   UpdateAppQuerySchema,
-  UpdateAppResponseSchema,
   type UpdateAppBodyType,
   type UpdateAppQueryType
 } from '@fastgpt/global/openapi/core/app/common/api';
@@ -28,7 +27,7 @@ import { moveApp } from '@/service/core/app/move';
  * 1. 若包含 parentId，则复用 moveApp 服务完成鉴权、层级检查、权限继承与移动操作；
  * 2. 若包含基础信息（名称、类型、头像、介绍等），则校验写权限并更新。
  */
-async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryType>) {
+async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryType>): Promise<void> {
   const {
     query: { appId },
     body: { parentId, name, avatar, type, intro }
@@ -52,7 +51,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
 
   // 纯移动操作，无需执行后续属性更新
   if (!hasOtherFields) {
-    return UpdateAppResponseSchema.parse(undefined);
+    return;
   }
 
   // 2. 基础属性更新
@@ -98,7 +97,6 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
   logAppUpdate({ tmbId, teamId, app, name, intro: intro ?? undefined });
 
   await onUpdate();
-  return UpdateAppResponseSchema.parse(undefined);
 }
 
 export default NextAPI(handler);
