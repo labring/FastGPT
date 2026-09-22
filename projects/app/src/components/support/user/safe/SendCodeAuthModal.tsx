@@ -1,4 +1,7 @@
-import { getCaptchaPic, type UserVerificationPurpose } from '@/web/support/user/api';
+import {
+  getCaptchaPic as getDefaultCaptchaPic,
+  type UserVerificationPurpose
+} from '@/web/support/user/api';
 import { Button, FormControl, Input, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -8,13 +11,22 @@ import { useForm } from 'react-hook-form';
 import { useMemoizedFn } from 'ahooks';
 import { useEffect } from 'react';
 import { VerificationTtlSeconds } from '@fastgpt/global/support/user/account/verification/type';
+import type { GetImgCaptchaResponse } from '@fastgpt/global/openapi/support/user/account/captcha/api';
+
+/**
+ * 图片验证码获取适配器。
+ * 登录二次验证由调用方注入 Challenge 作用域的实现，普通场景留空时组件回退到账号作用域接口。
+ * 面板与弹窗共用这一份声明，避免两端的适配器契约各自漂移。
+ */
+export type GetCaptchaPic = () => Promise<GetImgCaptchaResponse>;
 
 const SendCodeAuthModal = ({
   username,
   purpose,
   onClose,
   onSending,
-  onSendCode
+  onSendCode,
+  getCaptchaPic
 }: {
   username: string;
   purpose: UserVerificationPurpose;
@@ -22,6 +34,8 @@ const SendCodeAuthModal = ({
 
   onSending: boolean;
   onSendCode: (e: { username: string; captcha: string }) => Promise<void>;
+  /** 登录二次验证使用 Challenge 作用域的图片验证码，普通场景使用账号作用域。 */
+  getCaptchaPic?: GetCaptchaPic;
 }) => {
   const { t } = useTranslation();
 
@@ -35,7 +49,10 @@ const SendCodeAuthModal = ({
     data,
     loading,
     run: getCaptcha
-  } = useRequest(() => getCaptchaPic(username, purpose), { manual: false });
+  } = useRequest(
+    useMemoizedFn(() => getCaptchaPic?.() ?? getDefaultCaptchaPic(username, purpose)),
+    { manual: false }
+  );
 
   const refreshCaptcha = useMemoizedFn(() => {
     getCaptcha();

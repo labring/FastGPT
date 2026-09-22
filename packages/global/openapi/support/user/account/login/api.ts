@@ -5,7 +5,11 @@ import { UserSchema } from '../../../../../support/user/type';
 import { TeamTmbItemSchema } from '../../../../../support/user/team/type';
 import {
   AccountLoginUsernameSchema,
+  AccountContactChannelSchema,
+  AccountContactUsernameSchema,
+  AccountKindSchema,
   AccountPasswordSchema,
+  AccountVerificationUnsupportedReasonSchema,
   ExternalAuthStringSchema,
   ShortAuthStringSchema
 } from '../../../../../support/user/account/verification/type';
@@ -43,6 +47,167 @@ export const LoginSuccessResponseSchema = z.object({
   })
 });
 export type LoginSuccessResponseType = z.infer<typeof LoginSuccessResponseSchema>;
+
+export const LoginVerificationRequiredResponseSchema = z
+  .object({
+    status: z.literal('verificationRequired').meta({ description: '密码正确，需要二次验证' }),
+    challenge: z.string().trim().min(1).max(128).meta({
+      description: '登录二次验证 Challenge，仅在内存中短期使用',
+      example: 'login-challenge-token'
+    }),
+    method: z.literal('code').meta({ description: '二次验证方式', example: 'code' }),
+    channel: AccountContactChannelSchema,
+    maskedTarget: z.string().meta({
+      description: '验证码接收目标的脱敏值',
+      example: 'us***@example.com'
+    }),
+    expiredAt: z.iso.datetime({ offset: true }).meta({
+      description: 'Challenge 过期时间',
+      example: '2026-01-02T00:05:00.000Z'
+    })
+  })
+  .strict();
+export type LoginVerificationRequiredResponseType = z.infer<
+  typeof LoginVerificationRequiredResponseSchema
+>;
+
+export const LoginByPasswordResponseSchema = z.union([
+  LoginSuccessResponseSchema,
+  LoginVerificationRequiredResponseSchema
+]);
+export type LoginByPasswordResponseType = z.infer<typeof LoginByPasswordResponseSchema>;
+
+/* ============================================================================
+ * API: 登录二次验证内部协议
+ * Routes: POST /api/support/user/account/login/verification/resolve
+ *         POST /api/support/user/account/login/verification/captcha
+ *         POST /api/support/user/account/login/verification/sendCode
+ * Description: FastGPT app 与 Pro 之间的登录二次验证能力协议，仅供服务端调用。
+ * Tags: ['User Login', 'Account Verification']
+ * ============================================================================ */
+
+export const LoginVerificationResolveBodySchema = z
+  .object({
+    username: AccountLoginUsernameSchema.meta({
+      description: '登录用户名',
+      example: 'user@example.com'
+    })
+  })
+  .strict();
+export type LoginVerificationResolveBodyType = z.infer<typeof LoginVerificationResolveBodySchema>;
+
+export const LoginVerificationResolveResponseSchema = z.discriminatedUnion('status', [
+  z
+    .object({
+      status: z.literal('supported').meta({ description: '账号具备登录二次验证能力' }),
+      // 能被支持的账号类型就是可投递验证码的联系方式，取值与 channel 完全一致，因此复用同一份声明
+      accountKind: AccountContactChannelSchema.meta({
+        description: '账号类型，登录二次验证只支持邮箱和手机号账号',
+        example: 'email'
+      }),
+      method: z.literal('code').meta({ description: '二次验证方式', example: 'code' }),
+      channel: AccountContactChannelSchema,
+      target: AccountContactUsernameSchema.meta({
+        description: '验证码实际接收目标',
+        example: 'user@example.com'
+      })
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('unsupported').meta({
+        description: '账号当前不具备登录二次验证能力，主服务回退密码登录'
+      }),
+      accountKind: AccountKindSchema.meta({ description: '账号类型识别结果', example: 'email' }),
+      unsupportedReason: AccountVerificationUnsupportedReasonSchema.meta({
+        description: '不支持二次验证的原因',
+        example: 'no_available_verification_method'
+      })
+    })
+    .strict()
+]);
+export type LoginVerificationResolveResponseType = z.infer<
+  typeof LoginVerificationResolveResponseSchema
+>;
+
+export const LoginVerificationChallengeBodySchema = z
+  .object({
+    challenge: z.string().trim().min(1).max(128).meta({
+      description: '登录二次验证 Challenge',
+      example: 'login-challenge-token'
+    })
+  })
+  .strict();
+export type LoginVerificationChallengeBodyType = z.infer<
+  typeof LoginVerificationChallengeBodySchema
+>;
+
+export const LoginVerificationSendCodeBodySchema = LoginVerificationChallengeBodySchema.extend({
+  captcha: ShortAuthStringSchema.max(64).meta({
+    description: '图片验证码答案',
+    example: 'A1B2C3'
+  })
+});
+export type LoginVerificationSendCodeBodyType = z.infer<typeof LoginVerificationSendCodeBodySchema>;
+
+export const LoginVerificationVerifyBodySchema = LoginVerificationChallengeBodySchema.extend({
+  code: ShortAuthStringSchema.meta({
+    description: '邮箱或手机验证码',
+    example: '123456'
+  })
+});
+export type LoginVerificationVerifyBodyType = z.infer<typeof LoginVerificationVerifyBodySchema>;
+
+export const LoginVerificationCaptchaBodySchema = z
+  .object({
+    challengeHash: z
+      .string()
+      .length(64)
+      .regex(/^[a-f0-9]+$/)
+      .meta({
+        description: 'Challenge 的 SHA-256 摘要',
+        example: 'a'.repeat(64)
+      })
+  })
+  .strict();
+export type LoginVerificationCaptchaBodyType = z.infer<typeof LoginVerificationCaptchaBodySchema>;
+
+export const LoginVerificationSendCodeInternalBodySchema =
+  LoginVerificationCaptchaBodySchema.extend({
+    target: AccountContactUsernameSchema.meta({
+      description: '验证码接收目标，由主服务从 Challenge 材料解析',
+      example: 'user@example.com'
+    }),
+    channel: AccountContactChannelSchema,
+    captcha: ShortAuthStringSchema.max(64).meta({
+      description: '图片验证码答案',
+      example: 'A1B2C3'
+    }),
+    lang: LanguageSchema.meta({
+      description: '验证码消息语言',
+      example: 'zh-CN'
+    })
+  });
+export type LoginVerificationSendCodeInternalBodyType = z.infer<
+  typeof LoginVerificationSendCodeInternalBodySchema
+>;
+
+export const LoginVerificationCaptchaResponseSchema = z.object({
+  captchaImage: z.string().meta({
+    description: 'Base64 编码的图片验证码',
+    example: 'data:image/png;base64,...'
+  })
+});
+export type LoginVerificationCaptchaResponseType = z.infer<
+  typeof LoginVerificationCaptchaResponseSchema
+>;
+
+export const LoginVerificationSendCodeResponseSchema = z.object({
+  message: z.string().meta({ description: '发送结果说明', example: '发送验证码成功' })
+});
+export type LoginVerificationSendCodeResponseType = z.infer<
+  typeof LoginVerificationSendCodeResponseSchema
+>;
 
 export const WxLoginExpiredResponseSchema = z.object({
   expired: z.literal(true).meta({

@@ -184,6 +184,14 @@ const UserSetting = () => {
         title="阿里云短信模板CODE（SMS_xxx）"
         // description="都分中文和英文模版，英文模版可以不配，会自动拿中文的"
       />
+      {!!feConfigs?.login2faEnabled && (
+        <FormItem
+          title="登录二次验证"
+          description="填写后，手机号账号登录时可以使用短信验证码完成二次验证。"
+        >
+          <Input {...register('sms.LOGIN')} placeholder="登录二次验证模板CODE" />
+        </FormItem>
+      )}
       <FormItem title="注册账号" description="填写后，将会开启手机号注册">
         <Input {...register('sms.REGISTER')} placeholder="注册账号" />
       </FormItem>

@@ -52,6 +52,9 @@ export type SystemConfigType = {
       secure?: boolean;
     };
     sms: {
+      /** 登录二次验证短信模板 CODE；未配置时手机号账号降级为纯密码登录。 */
+      LOGIN?: string;
+      LOGIN_EN?: string;
       REGISTER: string;
       RESET_PASSWORD: string;
       BIND_NOTIFICATION: string;
@@ -151,6 +154,8 @@ export type ConfigFormType = {
       show_workorder: boolean;
       appTemplateCourse: string;
       show_openai_account: boolean;
+      /** 由 Pro 的 LOGIN_2FA_ENABLED 下发，控制管理端是否展示登录二次验证短信模板配置项。 */
+      login2faEnabled?: boolean;
       show_compliance_copywriting: boolean;
       show_dataset_feishu: boolean;
       show_dataset_yuque: boolean;

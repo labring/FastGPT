@@ -110,6 +110,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   show_discount_coupon: z.boolean().optional().meta({ description: '是否展示优惠券/折扣券入口' }),
   show_enterprise_auth: z.boolean().optional().meta({ description: '是否展示企业实名认证入口' }),
   showWecomConfig: z.boolean().optional().meta({ description: '是否展示企业微信集成配置' }),
+  login2faEnabled: z
+    .boolean()
+    .optional()
+    .meta({ description: '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证' }),
   wecomLoginAutoRedirect: z
     .boolean()
     .optional()
