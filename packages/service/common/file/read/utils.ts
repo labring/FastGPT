@@ -1,6 +1,10 @@
 import FormData from 'form-data';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
@@ -399,7 +403,13 @@ const readFileContent = async ({
       return await pdfParseFn();
     }
     return await systemParse();
-  })();
+  })().catch((error) => {
+    // 本地解析管线的统一兜底：未知失败落通用「文档解析失败」诊断码（AC-1138030-060/061）。
+    // 已映射为诊断码的错误（sangfor provider 与各 worker extension 抛出的 UserError）原样透出；
+    // worker 边界序列化会丢失 Error 实例类型，因此同时按 name 识别。
+    if (error instanceof UserError || (error as Error)?.name === 'UserError') throw error;
+    throw new UserError(CommonErrEnum.pdfParseFailed);
+  });
   const { rawText, formatText, tableInfo } = parseResult;
   const sourceMetadata =
     parseResult.sourceMetadata ??

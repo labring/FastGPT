@@ -15,5 +15,11 @@
   "support_file_type": "Supports {{fileType}} file types",
   "template_csv_file_select_tip": "Only {{fileType}} files completed <highlight>exactly according to the template</highlight> are supported",
   "upload_error_description": "Only multiple files or a single folder can be uploaded at a time",
-  "upload_failed": "Upload Failed"
+  "upload_failed": "Upload Failed",
+  "pdf_parse_failed": "Failed to parse the document, please try again later",
+  "unsupported_parse_file_type": "Unsupported file type. Please upload a supported document format (e.g. PDF, Word, Excel, PPT)",
+  "invalid_parse_file": "The file is invalid or corrupted. Please check the file and upload it again",
+  "office_conversion_failed": "This file cannot be read right now. Please make sure it is not corrupted and in a supported format, then upload it again. If it still cannot be read, try again later.",
+  "docx_parse_invalid": "The document format is invalid or the file is corrupted. Please check the file and upload it again",
+  "docx_conversion_failed": "Failed to parse the document, please try again later"
 }

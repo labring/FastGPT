@@ -15,5 +15,11 @@
   "support_file_type": "支援 {{fileType}} 格式的檔案",
   "template_csv_file_select_tip": "僅支持<highlight>嚴格按照模板格式</highlight>的 {{fileType}} 文件",
   "upload_error_description": "單次僅支援上傳多個檔案或一個資料夾",
-  "upload_failed": "上傳失敗"
+  "upload_failed": "上傳失敗",
+  "pdf_parse_failed": "文件解析失敗，請稍後重試",
+  "unsupported_parse_file_type": "不支援的檔案類型，請上傳受支援的文件格式（如 PDF、Word、Excel、PPT）",
+  "invalid_parse_file": "檔案無效或已損毀，請檢查檔案後重新上傳",
+  "office_conversion_failed": "暫時無法讀取此檔案，請確認檔案未損毀且格式受支援後重新上傳。若仍無法讀取，請稍後再試。",
+  "docx_parse_invalid": "文件格式無效或檔案已損毀，請檢查檔案後重新上傳",
+  "docx_conversion_failed": "文件解析失敗，請稍後重試"
 }

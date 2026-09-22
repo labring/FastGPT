@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 // Hoist all mock functions so they're available in vi.mock factories
 const {
@@ -205,6 +206,36 @@ describe('readFileContentByBuffer', () => {
     expect(result.rawText).toBe('parsed-pdf-content');
   });
 
+  it('falls back to pdfParseFailed for unknown worker parse failures', async () => {
+    mockReadRawContentFromBuffer.mockRejectedValueOnce(new Error('unexpected worker crash'));
+
+    await expect(
+      readFileContentByBuffer({
+        teamId,
+        tmbId,
+        extension: 'md',
+        buffer: Buffer.from('md-content'),
+        encoding: 'utf-8'
+      })
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
+  });
+
+  it('keeps mapped diagnosis errors from the worker untouched', async () => {
+    const mapped = new Error('invalidParseFile');
+    mapped.name = 'UserError';
+    mockReadRawContentFromBuffer.mockRejectedValueOnce(mapped);
+
+    await expect(
+      readFileContentByBuffer({
+        teamId,
+        tmbId,
+        extension: 'ofd',
+        buffer: Buffer.from('ofd-content'),
+        encoding: 'utf-8'
+      })
+    ).rejects.toThrow('invalidParseFile');
+  });
+
   it('should use system parse for pdf when customPdfParse is true but no service configured', async () => {
     global.systemEnv = { customPdfParse: {} } as any;
 
@@ -353,7 +384,7 @@ describe('readFileContentByBuffer', () => {
         buffer: Buffer.from('docx content'),
         encoding: 'utf-8'
       })
-    ).rejects.toThrow('[sangfor] parse failed');
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
 
     expect(mockReadRawContentFromBuffer).not.toHaveBeenCalled();
     expect(mockAxiosPost).not.toHaveBeenCalled();
@@ -789,7 +820,7 @@ describe('readFileContentByBuffer', () => {
         encoding: 'utf-8',
         customPdfParse: true
       })
-    ).rejects.toBe('Parse failed');
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
   });
 
   it('should fallback to system parse when custom URL service url is empty', async () => {
