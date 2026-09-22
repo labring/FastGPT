@@ -35,6 +35,18 @@ export const GPT_TOKENIZER_ENCODING = 'o200k_base';
 type CountableContentPart = ChatCompletionContentPart | { type: 'refusal'; refusal: string };
 
 /**
+ * 内联二进制数据（base64 data URI、原始音频/文件数据）不能直接进 tokenizer：
+ * 对 MB 级 base64 做 BPE 编码可能把该 worker 拖过 60s 任务超时（worker 会被
+ * 终止并报 "Worker task execution timed out"）。供应商对这类媒体按固定档位
+ * 计费，这里只对有界前缀做近似估算。
+ */
+const maxInlineMediaChars = 1024;
+const inlineMediaToText = (data: unknown) => {
+  if (typeof data !== 'string') return '';
+  return data.length <= maxInlineMediaChars ? data : data.slice(0, maxInlineMediaChars);
+};
+
+/**
  * 将多模态 content part 转成可计数文本。
  *
  * 这里不尝试复刻各家模型对图片、音频、文件的精确计费规则，只把会进入上下文或
@@ -42,10 +54,16 @@ type CountableContentPart = ChatCompletionContentPart | { type: 'refusal'; refus
  */
 const contentPartToText = (part: CountableContentPart) => {
   if (part.type === 'text') return part.text;
-  if (part.type === 'image_url') return part.image_url.url;
-  if (part.type === 'input_audio') return part.input_audio.data;
+  if (part.type === 'image_url') return inlineMediaToText(part.image_url.url);
+  if (part.type === 'input_audio') return inlineMediaToText(part.input_audio.data);
   if (part.type === 'file')
-    return [part.file.filename, part.file.file_id, part.file.file_data].filter(Boolean).join(' ');
+    return [
+      part.file.filename,
+      part.file.file_id,
+      inlineMediaToText(part.file.file_data)
+    ]
+      .filter(Boolean)
+      .join(' ');
   if (part.type === 'file_url') return [part.name, part.url].filter(Boolean).join(' ');
   if (part.type === 'refusal') return part.refusal;
   return '';
