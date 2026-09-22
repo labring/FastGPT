@@ -31,6 +31,8 @@ const ModelEditModal = ({
     loadingModelData,
     submitting,
     setSubmitting,
+    draftModel,
+    setDraftModel,
     modelFormGetValuesRef,
     selectedChannelIds,
     setSelectedChannelIds,
@@ -84,7 +86,6 @@ const ModelEditModal = ({
               return documentData;
             })()}
             providers={providers}
-            isModelIdReadOnly
             channelSection={{
               title: t('config_model:associated_channels', {
                 count: detail.channels.filter((channel) => selectedChannelIds.has(channel.id))
@@ -110,6 +111,7 @@ const ModelEditModal = ({
               )
             }}
             onSubmittingChange={setSubmitting}
+            onModelChange={setDraftModel}
             onDirtyChange={setIsFormDirty}
             onSuccess={() => {
               onClose();
@@ -124,7 +126,7 @@ const ModelEditModal = ({
         <ModelChannelModal
           models={[
             {
-              model: detail.model.model,
+              model: draftModel.trim() || detail.model.model,
               getModelData: () => modelFormGetValuesRef.current?.(),
               avatar: detail.model.avatar
             }
@@ -141,8 +143,14 @@ const ModelEditModal = ({
 
       {detail && showCreateChannel && (
         <EditChannelModal
-          defaultConfig={{ ...defaultChannel, models: [detail.model.model] }}
-          fixedModel={{ model: detail.model.model, avatar: detail.model.avatar }}
+          defaultConfig={{
+            ...defaultChannel,
+            models: [draftModel.trim() || detail.model.model]
+          }}
+          fixedModel={{
+            model: draftModel.trim() || detail.model.model,
+            avatar: detail.model.avatar
+          }}
           onSuccess={refreshAfterChannelCreated}
           onClose={() => setShowCreateChannel(false)}
         />

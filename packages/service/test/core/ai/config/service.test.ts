@@ -2,6 +2,7 @@ import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  exists: vi.fn(),
   findOne: vi.fn(),
   updateOne: vi.fn(),
   updateMany: vi.fn(),
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../../../core/ai/config/schema', () => ({
   MongoAIModel: {
+    exists: mocks.exists,
     findOne: mocks.findOne,
     updateOne: mocks.updateOne,
     updateMany: mocks.updateMany
@@ -44,8 +46,11 @@ const modelData = {
 describe('system model update service', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.exists.mockReturnValue({
+      session: vi.fn().mockResolvedValue(null)
+    });
     mocks.querySession.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.llm })
+      lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.llm, model: 'old-model' })
     });
     mocks.findOne.mockReturnValue({ session: mocks.querySession });
     mocks.updateOne.mockResolvedValue({ matchedCount: 1 });
@@ -57,7 +62,7 @@ describe('system model update service', () => {
 
     expect(mocks.findOne).toHaveBeenCalledWith(
       { _id: 'model-1', scope: ModelScopeEnum.system },
-      { type: 1 }
+      { type: 1, model: 1 }
     );
     expect(mocks.updateOne).toHaveBeenCalledWith(
       { _id: 'model-1', scope: ModelScopeEnum.system, type: ModelTypeEnum.llm },
@@ -82,6 +87,44 @@ describe('system model update service', () => {
     );
     expect(mocks.querySession).toHaveBeenCalledWith(mocks.session);
     expect(mocks.updatedReloadSystemModel).toHaveBeenCalledOnce();
+  });
+
+  it('updates model identifier when provided and checks for duplicates', async () => {
+    await updateSystemModelConfig({
+      modelId: 'model-1',
+      modelData: { ...modelData, model: 'renamed-llm' }
+    });
+
+    expect(mocks.exists).toHaveBeenCalledWith({
+      scope: ModelScopeEnum.system,
+      model: 'renamed-llm',
+      _id: { $ne: 'model-1' }
+    });
+    expect(mocks.updateOne).toHaveBeenCalledWith(
+      { _id: 'model-1', scope: ModelScopeEnum.system, type: ModelTypeEnum.llm },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          model: 'renamed-llm'
+        })
+      }),
+      { session: mocks.session }
+    );
+  });
+
+  it('rejects update if target model name already exists for another model', async () => {
+    mocks.exists.mockReturnValueOnce({
+      session: vi.fn().mockResolvedValue(true)
+    });
+
+    await expect(
+      updateSystemModelConfig({
+        modelId: 'model-1',
+        modelData: { ...modelData, model: 'conflict-model' }
+      })
+    ).rejects.toMatchObject({
+      name: 'UserError'
+    });
+    expect(mocks.updateOne).not.toHaveBeenCalled();
   });
 
   it('rejects a missing configuration target without reloading the runtime snapshot', async () => {

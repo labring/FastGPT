@@ -142,7 +142,7 @@ export const AdminSystemModelPath: OpenAPIPath = {
   '/admin/system/model/update': {
     put: {
       summary: '更新模型配置',
-      description: '只按 modelId 更新已有系统模型的可编辑参数，模型标识不可修改',
+      description: '按 modelId 更新已有系统模型的可编辑参数，支持修改模型标识（model）',
       tags: [DevApiTagsMap.adminSystemModel],
       requestBody: {
         content: { 'application/json': { schema: UpdateSystemModelBodySchema } }
@@ -176,7 +176,7 @@ export const AdminSystemModelPath: OpenAPIPath = {
     put: {
       summary: '导入模型配置',
       description:
-        '忽略无 modelId 的旧记录；本实例 modelId 命中时保留原模型标识并只更新可编辑参数，外部 modelId 按 model 创建或更新',
+        '忽略无 modelId 的旧记录；本实例 modelId 命中时更新可编辑参数与模型标识，外部 modelId 按 model 创建或更新',
       tags: [DevApiTagsMap.adminSystemModel],
       requestBody: {
         content: { 'application/json': { schema: UpdateSystemModelsWithJsonBodySchema } }

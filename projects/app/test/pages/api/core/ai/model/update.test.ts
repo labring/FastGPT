@@ -12,7 +12,8 @@ const configMocks = vi.hoisted(() => ({
 }));
 const channelMocks = vi.hoisted(() => ({
   appendModelsToAIProxyChannels: vi.fn(),
-  replaceModelInAIProxyChannels: vi.fn()
+  replaceModelInAIProxyChannels: vi.fn(),
+  syncModelInAIProxyChannels: vi.fn()
 }));
 const providerMocks = vi.hoisted(() => ({ preloadModelProviders: vi.fn() }));
 
@@ -68,6 +69,7 @@ describe('admin settings model create/update api', () => {
     configMocks.refreshModelTemplates.mockReset().mockResolvedValue([]);
     channelMocks.appendModelsToAIProxyChannels.mockReset().mockResolvedValue(undefined);
     channelMocks.replaceModelInAIProxyChannels.mockReset().mockResolvedValue(undefined);
+    channelMocks.syncModelInAIProxyChannels.mockReset().mockResolvedValue(undefined);
     providerMocks.preloadModelProviders.mockReset().mockImplementation(async () => {
       global.ModelProviderRawCache = [];
     });
@@ -293,8 +295,9 @@ describe('admin settings model create/update api', () => {
       }
     });
     expect(res.error).toBeUndefined();
-    expect(channelMocks.replaceModelInAIProxyChannels).toHaveBeenCalledWith({
-      model: existing.model,
+    expect(channelMocks.syncModelInAIProxyChannels).toHaveBeenCalledWith({
+      oldModel: existing.model,
+      newModel: existing.model,
       channelIds: [7]
     });
     expect((await MongoAIModel.findById(existing._id).lean())?.name).toBe('Updated alias');
@@ -379,21 +382,50 @@ describe('admin settings model create/update api', () => {
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
-  it('rejects attempts to change the immutable model identifier', async () => {
+  it('allows changing model identifier by stable modelId, updating channels and database', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
         modelId: String(existing._id),
-        modelData: { ...buildLlmUpdateData(), model: 'renamed-llm' }
+        modelData: { ...buildLlmUpdateData(), model: 'renamed-llm' },
+        channelIds: [3]
       }
     });
 
-    expect(res.error?.name).toBe('ApiRequestInputParseError');
+    expect(res.error).toBeUndefined();
+    expect(channelMocks.syncModelInAIProxyChannels).toHaveBeenCalledWith({
+      oldModel: 'test-llm',
+      newModel: 'renamed-llm',
+      channelIds: [3]
+    });
     await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
+      model: 'renamed-llm'
+    });
+    expect(configMocks.updatedReloadSystemModel).toHaveBeenCalled();
+  });
+
+  it('rejects changing model identifier if new identifier conflicts with another model', async () => {
+    const existing1 = await MongoAIModel.create(buildLlmDocument());
+    await MongoAIModel.create({
+      ...buildLlmDocument(),
+      model: 'existing-other-llm',
+      name: 'Other'
+    });
+
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(existing1._id),
+        modelData: { ...buildLlmUpdateData(), model: 'existing-other-llm' }
+      }
+    });
+
+    expect(res.error?.name).toBe('UserError');
+    expect(channelMocks.syncModelInAIProxyChannels).not.toHaveBeenCalled();
+    await expect(MongoAIModel.findById(existing1._id).lean()).resolves.toMatchObject({
       model: 'test-llm'
     });
-    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
 
   it('accepts and persists a null max temperature', async () => {

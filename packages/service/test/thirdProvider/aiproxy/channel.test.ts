@@ -148,6 +148,28 @@ describe('appendModelsToAIProxyChannels', () => {
     expect(mocks.put).not.toHaveBeenCalled();
   });
 
+  it('preserves model order and does not rewrite channels with multiple models and nonzero balance threshold', async () => {
+    mocks.get.mockResolvedValue({
+      data: {
+        success: true,
+        data: [
+          {
+            ...channels[0],
+            models: ['existing-model', 'other-model'],
+            balance_threshold: 10
+          }
+        ]
+      }
+    });
+
+    await replaceModelInAIProxyChannels({
+      model: 'existing-model',
+      channelIds: [1]
+    });
+
+    expect(mocks.put).not.toHaveBeenCalled();
+  });
+
   it('accepts the null model mapping returned by AI Proxy', async () => {
     mocks.get.mockResolvedValue({
       data: {

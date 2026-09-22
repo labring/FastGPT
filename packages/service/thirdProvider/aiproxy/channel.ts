@@ -129,43 +129,87 @@ export const getAdminAIProxyChannelItems = async () => {
 };
 
 /**
- * 用目标渠道集合替换不可变模型标识的绑定。
+ * 同步模型在 AI Proxy 渠道中的绑定。
+ *
+ * 1. 若 oldModel === newModel 且 channelIds === undefined，无需变动；
+ * 2. 若 oldModel !== newModel 且 channelIds === undefined，将绑定了 oldModel 的渠道中的 oldModel 替换为 newModel；
+ * 3. 若 channelIds !== undefined，将 newModel 绑定到指定渠道，并从指定渠道之外及所有原有绑定中移除 oldModel（若存在改名）。
  *
  * 渠道按顺序更新且不补偿已成功项，保持已确认的跨 AI Proxy 操作失败语义。
  */
-export const replaceModelInAIProxyChannels = async ({
-  model,
+export const syncModelInAIProxyChannels = async ({
+  oldModel,
+  newModel = oldModel,
   channelIds
 }: {
-  model: string;
-  channelIds: number[];
+  oldModel: string;
+  newModel?: string;
+  channelIds?: number[];
 }) => {
-  const selectedIds = new Set(channelIds);
+  if (oldModel === newModel && channelIds === undefined) return;
+
+  const isRenamed = oldModel !== newModel;
+  const selectedIds = channelIds !== undefined ? new Set(channelIds) : undefined;
+
   return withAIProxyChannelMutation(async ({ signal, assertValid }) => {
     const { channels, baseUrl, headers } = await getAIProxyChannels();
     const channelMap = new Map(channels.map((channel) => [channel.id, channel]));
 
-    for (const channelId of selectedIds) {
-      if (!channelMap.has(channelId)) {
-        throw new Error(`AI Proxy channel does not exist: ${channelId}`);
+    if (selectedIds) {
+      for (const channelId of selectedIds) {
+        if (!channelMap.has(channelId)) {
+          throw new Error(`AI Proxy channel does not exist: ${channelId}`);
+        }
       }
     }
 
-    // 所有可提前识别的不兼容都必须在第一次外部写入前失败。
+    const updates: Array<{ channel: AIProxyChannel; nextModels: string[] }> = [];
+
     for (const channel of channels) {
-      const shouldBind = selectedIds.has(channel.id);
-      if (shouldBind !== channel.models.includes(model)) assertChannelUpdateSupported(channel);
+      let nextModels: string[];
+
+      if (selectedIds !== undefined) {
+        const shouldBind = selectedIds.has(channel.id);
+        if (shouldBind) {
+          if (!isRenamed) {
+            nextModels = channel.models.includes(newModel)
+              ? channel.models
+              : [...channel.models, newModel];
+          } else {
+            if (channel.models.includes(oldModel)) {
+              nextModels = [...new Set(channel.models.map((m) => (m === oldModel ? newModel : m)))];
+            } else {
+              nextModels = channel.models.includes(newModel)
+                ? channel.models
+                : [...channel.models, newModel];
+            }
+          }
+        } else {
+          const hasOld = channel.models.includes(oldModel);
+          const hasNew = channel.models.includes(newModel);
+          if (!hasOld && !hasNew) {
+            nextModels = channel.models;
+          } else {
+            nextModels = channel.models.filter((m) => m !== oldModel && m !== newModel);
+          }
+        }
+      } else {
+        if (!channel.models.includes(oldModel)) continue;
+        const replaced = channel.models.map((m) => (m === oldModel ? newModel : m));
+        nextModels = [...new Set(replaced)];
+      }
+
+      const hasChanged =
+        nextModels.length !== channel.models.length ||
+        nextModels.some((m, idx) => m !== channel.models[idx]);
+
+      if (hasChanged) {
+        assertChannelUpdateSupported(channel);
+        updates.push({ channel, nextModels });
+      }
     }
 
-    for (const channel of channels) {
-      const shouldBind = selectedIds.has(channel.id);
-      const hasModel = channel.models.includes(model);
-      if (shouldBind === hasModel) continue;
-
-      const nextModels = shouldBind
-        ? [...new Set([...channel.models, model])]
-        : channel.models.filter((channelModel) => channelModel !== model);
-
+    for (const { channel, nextModels } of updates) {
       assertValid();
       const { data: updateResponse } = await axiosWithoutSSRF.put(
         `${baseUrl}/api/channel/${channel.id}`,
@@ -175,6 +219,19 @@ export const replaceModelInAIProxyChannels = async ({
       AIProxyMutationResponseSchema.parse(updateResponse);
     }
   });
+};
+
+/**
+ * 用目标渠道集合替换模型标识的绑定。兼容历史调用。
+ */
+export const replaceModelInAIProxyChannels = async ({
+  model,
+  channelIds
+}: {
+  model: string;
+  channelIds: number[];
+}) => {
+  return syncModelInAIProxyChannels({ oldModel: model, newModel: model, channelIds });
 };
 
 /**

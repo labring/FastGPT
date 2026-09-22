@@ -335,20 +335,26 @@ export type ReplaceSystemModelChannelsBody = z.infer<typeof ReplaceSystemModelCh
  * API: 更新系统模型配置
  * Route: PUT /api/admin/system/model/update
  * Method: PUT
- * Description: 只按 modelId 更新已有系统模型的可编辑参数，模型标识不可修改
+ * Description: 按 modelId 更新已有系统模型的可编辑参数，支持修改模型标识（model）
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 
+const UpdateModelField = {
+  model: z.string().trim().min(1).optional().meta({
+    description: '模型标识；若未提供则保持当前模型标识不变'
+  })
+};
+
 export const UpdateSystemModelDataSchema = z
   .discriminatedUnion('type', [
-    LLMSystemModelDocumentSchema.omit({ model: true }).strict(),
-    EmbeddingSystemModelDocumentSchema.omit({ model: true }).strict(),
-    TTSSystemModelDocumentSchema.omit({ model: true }).strict(),
-    STTSystemModelDocumentSchema.omit({ model: true }).strict(),
-    RerankSystemModelDocumentSchema.omit({ model: true }).strict()
+    LLMSystemModelDocumentSchema.extend(UpdateModelField).strict(),
+    EmbeddingSystemModelDocumentSchema.extend(UpdateModelField).strict(),
+    TTSSystemModelDocumentSchema.extend(UpdateModelField).strict(),
+    STTSystemModelDocumentSchema.extend(UpdateModelField).strict(),
+    RerankSystemModelDocumentSchema.extend(UpdateModelField).strict()
   ])
   .meta({
-    description: '不含不可变模型标识的系统模型可编辑参数；type 仅用于分支校验，不参与更新'
+    description: '系统模型可编辑参数；model 为可选更新，type 仅用于分支校验不参与类型变更'
   });
 export type UpdateSystemModelData = z.infer<typeof UpdateSystemModelDataSchema>;
 
@@ -424,7 +430,7 @@ const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
  * API: 导入系统模型配置
  * Route: PUT /api/admin/system/model/updateWithJson
  * Method: PUT
- * Description: 忽略无 modelId 的旧记录；本实例 modelId 只更新可编辑参数并保留原 model，外部记录按 model 创建或更新
+ * Description: 忽略无 modelId 的旧记录；本实例 modelId 更新可编辑参数与模型标识，外部记录按 model 创建或更新
  * Tags: ['模型管理', 'Write']
  * ============================================================================ */
 

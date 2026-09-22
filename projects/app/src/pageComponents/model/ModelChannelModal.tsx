@@ -147,6 +147,7 @@ export const ModelChannelSelector = ({
       <FixedTableLayout
         scrollMode="normal"
         rootProps={{
+          px: 0,
           borderRadius: '12px',
           flex: '1 1 0',
           gap: 2,
