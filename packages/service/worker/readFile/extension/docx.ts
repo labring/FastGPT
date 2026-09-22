@@ -3,8 +3,6 @@ import { type ReadRawTextByBuffer, type ReadFileResponse, type UploadFileHandler
 import { html2md } from '../../htmlStr2Md/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { resolveMimeExtension } from '../../../common/s3/utils/mime';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 /**
  * read docx to markdown
@@ -60,6 +58,6 @@ export const readDocsFile = async (
     };
   } catch (error) {
     logger.error('Failed to parse docx file', { error });
-    return Promise.reject(new UserError(CommonErrEnum.docxConversionFailed));
+    return Promise.reject('Can not read doc file, please convert to PDF');
   }
 };

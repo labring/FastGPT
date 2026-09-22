@@ -1,5 +1,6 @@
 import FormData from 'form-data';
 import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock, mockEnv } = vi.hoisted(() => ({
@@ -174,7 +175,7 @@ describe('Sangfor provider', () => {
     );
   });
 
-  it('surfaces provider errors with an sangfor prefix', async () => {
+  it('provider 报错时落通用解析失败诊断码，原始错误不透出', async () => {
     postMock.mockResolvedValueOnce({ data: { error: 'document is unsupported' } });
 
     await expect(
@@ -182,7 +183,35 @@ describe('Sangfor provider', () => {
         fileBuffer: Buffer.from('content'),
         extension: 'docx'
       })
-    ).rejects.toThrow('[sangfor] document is unsupported');
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
+  });
+
+  it('白名单内的 statusText 透传为对应诊断码', async () => {
+    const axiosError = Object.assign(new Error('Request failed with status code 500'), {
+      response: { data: { statusText: CommonErrEnum.unsupportedParseFileType } }
+    });
+    postMock.mockRejectedValueOnce(axiosError);
+
+    await expect(
+      parseFromSangfor({
+        fileBuffer: Buffer.from('content'),
+        extension: 'docx'
+      })
+    ).rejects.toThrow(CommonErrEnum.unsupportedParseFileType);
+  });
+
+  it('响应体缺失 statusText 时落通用解析失败诊断码', async () => {
+    const axiosError = Object.assign(new Error('Request failed with status code 500'), {
+      response: { data: { detail: 'quota exceeded' } }
+    });
+    postMock.mockRejectedValueOnce(axiosError);
+
+    await expect(
+      parseFromSangfor({
+        fileBuffer: Buffer.from('content'),
+        extension: 'pdf'
+      })
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
   });
 
   it('rejects malformed success responses', async () => {
@@ -193,7 +222,7 @@ describe('Sangfor provider', () => {
         fileBuffer: Buffer.from('content'),
         extension: 'pdf'
       })
-    ).rejects.toThrow('[sangfor]');
+    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
   });
 
   it('rejects parsing when the provider URL is missing', async () => {

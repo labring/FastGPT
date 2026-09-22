@@ -3,15 +3,17 @@ import type { ReadFileResponse } from '../../../worker/readFile/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { useSomarkServer } from '../../../thirdProvider/somark';
-import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfor';
+import {
+  ACCEPTED_PARSE_STATUS_TEXTS,
+  parseFromSangfor,
+  useSangforParse
+} from '../../../thirdProvider/sangfor';
 import { appendIultmzhFileParseFields } from '../../../thirdProvider/sangfor/parseConfig';
 import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
@@ -404,10 +406,16 @@ const readFileContent = async ({
     }
     return await systemParse();
   })().catch((error) => {
-    // 本地解析管线的统一兜底：未知失败落通用「文档解析失败」诊断码（AC-1138030-060/061）。
-    // 已映射为诊断码的错误（sangfor provider 与各 worker extension 抛出的 UserError）原样透出；
-    // worker 边界序列化会丢失 Error 实例类型，因此同时按 name 识别。
-    if (error instanceof UserError || (error as Error)?.name === 'UserError') throw error;
+    // 本地解析管线的统一兜底：未知失败落通用「文档解析失败」诊断码。
+    // 已映射为诊断码的错误原样透出。worker 边界会丢失 Error 实例类型与自定义 name，只保留 message，
+    // 因此按诊断码白名单匹配 message 识别。
+    if (error instanceof UserError) throw error;
+
+    const message = (error as Error)?.message;
+    if (typeof message === 'string' && ACCEPTED_PARSE_STATUS_TEXTS.has(message)) {
+      throw new UserError(message as CommonErrEnum);
+    }
+
     throw new UserError(CommonErrEnum.pdfParseFailed);
   });
   const { rawText, formatText, tableInfo } = parseResult;
