@@ -1,4 +1,7 @@
-import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import {
+  FastGPTConfigFileSchema,
+  type FastGPTConfigFileType
+} from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
 import {
@@ -38,9 +41,18 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   };
 
-  global.feConfigs = config.feConfigs;
-  global.systemEnv = config.systemEnv;
-  global.subPlans = config.subPlans;
+  const parseResult = FastGPTConfigFileSchema.safeParse(config);
+  if (!parseResult.success) {
+    logger.error('FastGPT system config validation failed', {
+      error: parseResult.error
+    });
+  }
+
+  const safeConfig = parseResult.success ? parseResult.data : config;
+
+  global.feConfigs = safeConfig.feConfigs || config.feConfigs;
+  global.systemEnv = safeConfig.systemEnv || config.systemEnv;
+  global.subPlans = safeConfig.subPlans ?? config.subPlans;
 };
 
 export const systemStartCb = () => {

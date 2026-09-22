@@ -35,5 +35,21 @@ describe('initFastGPTConfig', () => {
 
     expect(global.feConfigs.showCustomPdfParse).toBe(true);
     expect(global.systemEnv.customPdfParse?.somarkApiKey).toBe('sk-test');
+    expect(global.systemEnv.datasetParseMaxProcess).toBe(10);
+    expect(global.systemEnv.hnswEfSearch).toBe(100);
+  });
+
+  it('配置校验失败时不中断，仍可降级挂载全局状态', () => {
+    initFastGPTConfig({
+      feConfigs: {
+        uploadFileMaxSize: 'invalid_size' as any
+      },
+      systemEnv: {
+        datasetParseMaxProcess: 'not_a_number' as any
+      }
+    } as any);
+
+    // 校验失败时不崩溃，保留原属性兜底挂载
+    expect(global.systemEnv.datasetParseMaxProcess).toBe('not_a_number');
   });
 });
