@@ -21,17 +21,24 @@ export type LicenseTimeFields = Pick<LicenseDataType, 'startTime' | 'expiredTime
 /** 试用版预警窗口（天）。 */
 export const TRIAL_EXPIRING_WINDOW_DAYS = 10;
 
+const UNLIMITED_EXPIRY = new Set(['不限制', 'unlimited']);
+
 /**
  * 解析 License 时间字段。
  *
  * 时间缺失或无法解析时都返回 undefined，由调用方按「不可用」处理，
  * 避免脏数据被当成长期有效。
+ *
+ * 无限期哨兵值解析为 `Infinity`：它表达的是「永不到期」，与「无法解析」必须区分开，
+ * 否则已激活的授权会被误判为未激活。
  */
 const parseTimeFields = (data: LicenseTimeFields | undefined) => {
   if (!data) return undefined;
 
   const start = new Date(data.startTime).getTime();
-  const end = new Date(data.expiredTime).getTime();
+  const end = UNLIMITED_EXPIRY.has(data.expiredTime)
+    ? Infinity
+    : new Date(data.expiredTime).getTime();
   if (Number.isNaN(start) || Number.isNaN(end)) return undefined;
 
   return { start, end, licenseType: data.licenseType };
