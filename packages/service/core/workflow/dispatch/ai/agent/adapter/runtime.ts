@@ -116,6 +116,8 @@ export const createWorkflowAgentLoopRuntime = ({
         node: context.node,
         workflowStreamResponse,
         streamReasoning: context.params.aiChatReasoning !== false,
+        // 关闭“返回答案”时停止把回答增量推给前端（data 输出不受影响）。
+        streamAnswer: context.params.isResponseAnswerText !== false,
         shouldStreamTool: () => true,
         nodeResponses: artifacts.nodeResponses,
         appendNodeResponse,
