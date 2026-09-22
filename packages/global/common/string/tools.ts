@@ -197,14 +197,32 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
   const isNegative = num < 0;
   const prefix = isNegative ? '-' : '';
 
-  if (locale === 'zh-CN') {
+  if (locale.startsWith('zh')) {
+    const isHant =
+      locale === 'zh-Hant' ||
+      locale.toLowerCase().includes('hant') ||
+      locale === 'zh-TW' ||
+      locale === 'zh-HK';
+    const yiUnit = isHant ? '億' : '亿';
+    const wanUnit = isHant ? '萬' : '万';
+
+    if (absNum >= 100000000) {
+      const value = absNum / 100000000;
+      const formatted = Number(value.toFixed(2)).toString();
+      return `${prefix}${formatted}${yiUnit}`;
+    }
     if (absNum >= 10000) {
       const value = absNum / 10000;
       const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}万`;
+      return `${prefix}${formatted}${wanUnit}`;
     }
     return num.toLocaleString(locale);
   } else {
+    if (absNum >= 1000000000) {
+      const value = absNum / 1000000000;
+      const formatted = Number(value.toFixed(2)).toString();
+      return `${prefix}${formatted}B`;
+    }
     if (absNum >= 1000000) {
       const value = absNum / 1000000;
       const formatted = Number(value.toFixed(2)).toString();
@@ -218,3 +236,4 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
     return num.toLocaleString(locale);
   }
 };
+
