@@ -74,10 +74,22 @@ describe('UpdateConfigBodySchema', () => {
 
   it('declares open object schemas for dynamic system configurations', () => {
     const parsed = GetConfigResponseSchema.parse({
-      fastgpt: { feConfigs: { isPlus: true } },
+      fastgpt: {
+        feConfigs: {
+          isPlus: true,
+          uploadFileMaxSize: '500',
+          uploadFileMaxAmount: '15'
+        }
+      },
       fastgptPro: { someProKey: 'val' }
     });
-    expect(parsed.fastgpt).toEqual({ feConfigs: { isPlus: true } });
+    expect(parsed.fastgpt).toEqual({
+      feConfigs: {
+        isPlus: true,
+        uploadFileMaxSize: 500,
+        uploadFileMaxAmount: 15
+      }
+    });
     expect(parsed.fastgptPro).toEqual({ someProKey: 'val' });
 
     const doc = createDocument({

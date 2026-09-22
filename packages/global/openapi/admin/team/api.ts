@@ -53,15 +53,3 @@ export const GetTeamMembersResponseSchema = z.object({
     .meta({ description: '团队基本信息' })
 });
 export type GetTeamMembersResponseType = z.infer<typeof GetTeamMembersResponseSchema>;
-export type UpdateTeamBodyType = z.infer<typeof UpdateTeamBodySchema>;
-export type UpdateTeamResponseType = z.infer<typeof UpdateTeamResponseSchema>;
-
-export const UpdateTeamBodySchema = z.object({
-  id: z.string().meta({ description: '团队ID' }),
-  name: z.string().optional().meta({ description: '新团队名称' }),
-  balance: z.number().optional().meta({ description: '新余额' })
-});
-
-export const UpdateTeamResponseSchema = z.object({
-  balance: z.number().optional().meta({ description: '更新后的余额' })
-});

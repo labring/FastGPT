@@ -17,7 +17,7 @@ export const SERVICE_LOCAL_HOST =
     : `${process.env.HOSTNAME || 'localhost'}:${SERVICE_LOCAL_PORT}`;
 
 export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
-  if (!config) return;
+  if (!config?.feConfigs || !config?.systemEnv) return;
 
   // Special config computed
   config.feConfigs.showCustomPdfParse =

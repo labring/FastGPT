@@ -73,10 +73,6 @@ export const Settings = () => {
         <SecondTitle title="展示配置" />
         <Grid gridTemplateColumns={['1fr', '1fr 1fr']}>
           <Flex alignItems={'center'} my={3}>
-            <FormLabel title="展示聊天空白页（都关闭即可）" description="" minW={'240px'} />
-            <Switch control={control} name="feConfigs.show_emptyChat" />
-          </Flex>
-          <Flex alignItems={'center'} my={3}>
             <FormLabel title="前端是否展示合规提示文案" description="" minW={'240px'} />
             <Switch control={control} name="feConfigs.show_compliance_copywriting" />
           </Flex>

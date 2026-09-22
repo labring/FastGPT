@@ -29,7 +29,6 @@ export function formatConfigStore2FormSchema({
 
   // 初始化配置
   const {
-    show_emptyChat = false,
     show_openai_account = false,
     show_workorder = false,
     favicon = '',
@@ -81,7 +80,6 @@ export function formatConfigStore2FormSchema({
     siteSettings: {
       feConfigs: {
         show_workorder,
-        show_emptyChat,
         show_openai_account,
         show_dataset_feishu,
         show_dataset_yuque,

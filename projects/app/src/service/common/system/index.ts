@@ -28,7 +28,6 @@ import {
   getAgentSandboxSkillMaxBytes
 } from '@fastgpt/service/core/ai/sandbox/interface/config';
 import { serviceEnv } from '@fastgpt/service/env';
-import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
@@ -95,7 +94,6 @@ export async function getInitConfig() {
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
-  show_emptyChat: true,
   show_git: true,
   docUrl: 'https://doc.fastgpt.io',
   openAPIDocUrl: 'https://doc.fastgpt.io/openapi/intro',
@@ -158,7 +156,6 @@ export async function initSystemConfig() {
       isProService: !!serviceEnv.PRO_URL,
       hideChatCopyrightSetting: appEnv.HIDE_CHAT_COPYRIGHT_SETTING,
       wecomLoginAutoRedirect: appEnv.WECOM_LOGIN_AUTO_REDIRECT,
-      show_aiproxy: hasAIProxyApiEndpoint(),
       show_coupon: appEnv.SHOW_COUPON,
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,

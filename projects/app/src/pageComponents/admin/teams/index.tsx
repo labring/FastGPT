@@ -17,7 +17,6 @@ import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import DetailTeamModal from './components/DetailTeamModal';
-import EditTeamModal from './components/EditTeamModal';
 import { getTeams } from '@/web/admin/team/api';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
@@ -107,15 +106,7 @@ const TeamTable = () => {
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
                 <Td>
-                  <Box display="flex" gap={2}>
-                    <DetailTeamModal teamId={item.id} />
-                    <EditTeamModal
-                      data={item}
-                      updateData={() => {
-                        getData(1);
-                      }}
-                    />
-                  </Box>
+                  <DetailTeamModal teamId={item.id} />
                 </Td>
               </Tr>
             ))}

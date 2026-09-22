@@ -131,6 +131,7 @@ export const useConfirm = (props?: {
 
       useEffect(() => {
         if (isOpen) {
+          setRequesting(false);
           setCountDownAmount(countDown);
           setInputValue('');
           timer.current = setInterval(() => {
@@ -262,7 +263,8 @@ export const useConfirm = (props?: {
                       setRequesting(false);
                       return;
                     }
-                    // 关闭后不再更新本地状态：弹窗退出动画期间的重渲染会让 portal 残留并持续拦截点击。
+                    // 确认成功后重置 requesting 并关闭弹窗，避免再次打开时残留 loading 态
+                    setRequesting(false);
                     onClose();
                   }}
                 >
