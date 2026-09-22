@@ -121,20 +121,20 @@ export type ChunkSettingsType = z.infer<typeof ChunkSettingsSchema>;
 
 /* ===== Iultmzh file parse config ===== */
 // 外部文档解析服务开关,整体校验、整体存取;仅当 collection 的 customPdfParse=true
-// 且系统配置了 customPdfParse.url 时生效。缺失字段由读取层用固定默认值补全。
+// 且系统配置了 customPdfParse.url 时生效。缺失字段由读取层按页眉页脚默认删除、附录默认保留、图片识别和图表转表默认关闭补全。
 export const sangforFileParseConfigSchema = z
   .object({
     keep_header_footer: z.boolean().optional().meta({
-      description: '是否保留页眉页脚,默认删除'
+      description: '是否保留页眉页脚，默认关闭（删除页眉页脚）'
     }),
     keep_appendix: z.boolean().optional().meta({
-      description: '是否保留附录,默认删除首个附录标题后的内容'
+      description: '是否保留附录，默认开启'
     }),
     image_analysis: z.boolean().optional().meta({
-      description: '是否保留图片识别(含印章)结果,默认关闭'
+      description: '是否保留图片识别（含印章）结果，默认关闭'
     }),
     chart_analysis: z.boolean().optional().meta({
-      description: '是否保留图表转表格结果(同时保留原图片),默认关闭'
+      description: '是否保留图表转表格结果（同时保留原图片），默认关闭'
     })
   })
   .meta({ description: '外部文档解析配置' });

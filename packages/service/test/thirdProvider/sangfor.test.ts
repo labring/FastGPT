@@ -211,17 +211,17 @@ describe('Sangfor provider', () => {
 });
 
 describe('getDatasetIultmzhFileParseConfig', () => {
-  const allDisabled = {
+  const defaultConfig = {
     keep_header_footer: false,
-    keep_appendix: false,
+    keep_appendix: true,
     image_analysis: false,
     chart_analysis: false
   };
 
   it('为空数据集/空配置补全四布尔默认值', () => {
-    expect(getDatasetIultmzhFileParseConfig(undefined)).toEqual(allDisabled);
-    expect(getDatasetIultmzhFileParseConfig(null)).toEqual(allDisabled);
-    expect(getDatasetIultmzhFileParseConfig({})).toEqual(allDisabled);
+    expect(getDatasetIultmzhFileParseConfig(undefined)).toEqual(defaultConfig);
+    expect(getDatasetIultmzhFileParseConfig(null)).toEqual(defaultConfig);
+    expect(getDatasetIultmzhFileParseConfig({})).toEqual(defaultConfig);
   });
 
   it('保留已配置字段,仅补全缺失字段', () => {
@@ -229,9 +229,27 @@ describe('getDatasetIultmzhFileParseConfig', () => {
       getDatasetIultmzhFileParseConfig({ sangforFileParseConfig: { keep_header_footer: true } })
     ).toEqual({
       keep_header_footer: true,
-      keep_appendix: false,
+      keep_appendix: true,
       image_analysis: false,
       chart_analysis: false
+    });
+  });
+
+  it('显式关闭页眉页脚时不被默认值覆盖', () => {
+    expect(
+      getDatasetIultmzhFileParseConfig({ sangforFileParseConfig: { keep_header_footer: false } })
+    ).toEqual({
+      ...defaultConfig,
+      keep_header_footer: false
+    });
+  });
+
+  it('显式关闭附录保留时不被默认值覆盖', () => {
+    expect(
+      getDatasetIultmzhFileParseConfig({ sangforFileParseConfig: { keep_appendix: false } })
+    ).toEqual({
+      ...defaultConfig,
+      keep_appendix: false
     });
   });
 });
