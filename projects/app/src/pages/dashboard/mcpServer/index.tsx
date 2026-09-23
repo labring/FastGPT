@@ -1,6 +1,5 @@
 'use client';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import React, { useState } from 'react';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { Box, Button, Flex, HStack, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
@@ -181,11 +180,3 @@ const McpServer = () => {
 };
 
 export default McpServer;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['dashboard_mcp']))
-    }
-  };
-}

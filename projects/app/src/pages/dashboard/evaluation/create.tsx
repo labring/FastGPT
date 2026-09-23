@@ -4,7 +4,6 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import AppSelect from '@/components/Select/AppSelect';
 import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { fileDownload } from '@/web/common/file/utils';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
 import { getAppDetailById } from '@/web/core/app/api';
@@ -365,11 +364,3 @@ const EvaluationCreating = () => {
 };
 
 export default EvaluationCreating;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['dashboard_evaluation', 'file']))
-    }
-  };
-}

@@ -493,21 +493,21 @@ client-only boundary 和默认语言配置组合共享能力。admin 本轮不�
 
 先迁移 `/account/apikey` 验证架构假设、构建产物、缓存和回滚链路，随后在同一实现上扩展账户页面和价格页。
 
-### 第二阶段：纯 i18n 页面（账户/价格批次已完成）
+### 第二阶段：纯 i18n 页面（账户/价格/Dashboard 批次已完成）
 
-已完成的账户/价格批次包括：
+已完成的账户/价格/Dashboard 批次包括：
 
 1. `/account/apikey`、`/account/bill`、`/account/inform`、`/account/setting`、
    `/account/customDomain`、`/account/thirdParty`。
 2. `/account/info`、`/account/team`、`/account/model`、`/account/usage`、`/price`。
+3. Dashboard 列表页：`/dashboard/agent`、`/dashboard/tool`、
+   `/dashboard/templateMarket`、`/dashboard/systemTool`、`/dashboard/mcpServer`、
+   `/dashboard/evaluation`、`/dashboard/evaluation/create`、`/dashboard/create`、
+   `/dashboard/skill`、`/dashboard/tool/marketplace`。
 
 仍待迁移的纯 i18n 页面包括：
 
-1. Dashboard 列表页：`/dashboard/agent`、`/dashboard/tool`、
-   `/dashboard/templateMarket`、`/dashboard/systemTool`、`/dashboard/mcpServer`、
-   `/dashboard/evaluation`、`/dashboard/evaluation/create`、`/dashboard/create`、
-   `/dashboard/skill`。
-2. 数据集、应用和其他页面：`/dataset/list`、`/config/tool`、`/app/detail`、
+1. 数据集、应用和其他页面：`/dataset/list`、`/config/tool`、`/app/detail`、
    `/skill/detail`、`/login`、`/login/provider`。
 
 每批都需要：把可达组件改为显式 `useTranslation(namespace)`、删除对应 `getServerSideProps`、验证

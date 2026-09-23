@@ -266,12 +266,16 @@ const List = () => {
           }
           if (AppFolderTypeList.includes(app.type)) {
             setSearchKey('');
-            router.push({
-              query: {
-                ...router.query,
-                parentId: app._id
-              }
-            });
+            router.push(
+              {
+                query: {
+                  ...router.query,
+                  parentId: app._id
+                }
+              },
+              undefined,
+              { shallow: true }
+            );
           } else if (app.permission.hasWritePer || app.permission.hasReadChatLogPer) {
             router.push(`/app/detail?appId=${app._id}`);
           } else {

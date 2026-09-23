@@ -1,4 +1,4 @@
-const standaloneClientOnlyRoutes = new Set(['/dashboard/tool/marketplace', '/price']);
+const standaloneClientOnlyRoutes = new Set(['/price']);
 
 const clientOnlyRouteExceptions = new Set(['/account/cancel']);
 
@@ -7,6 +7,10 @@ export const isClientOnlyRoute = (pathname: string) => {
   if (standaloneClientOnlyRoutes.has(pathname)) return true;
   if (clientOnlyRouteExceptions.has(pathname)) return false;
   return (
-    pathname.startsWith('/account/') || pathname === '/admin' || pathname.startsWith('/admin/')
+    pathname.startsWith('/account/') ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
+    pathname === '/dashboard' ||
+    pathname.startsWith('/dashboard/')
   );
 };
