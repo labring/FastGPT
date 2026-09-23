@@ -13,7 +13,7 @@ import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import { MongoTmpData } from '../../tmpData/schema';
 import type { ClientSession } from '../../../common/mongo';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getModelHandle } from '../../../core/ai/model';
 
 const myModelsCacheFilter = {

@@ -15,10 +15,10 @@ import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartC
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
-import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
+import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import DataTableComponent from './DataTableComponent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '../ModelTabHeader';
 

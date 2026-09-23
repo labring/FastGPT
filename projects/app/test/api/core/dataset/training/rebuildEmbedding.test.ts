@@ -17,7 +17,7 @@ vi.unmock('@fastgpt/service/core/ai/model');
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 

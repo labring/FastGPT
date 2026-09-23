@@ -2,7 +2,7 @@ import { getModelHandle } from '../model';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 
 import { getAxiosConfig } from '../config';
-import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { text2Chunks } from '../../../worker/function';

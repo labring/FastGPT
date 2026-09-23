@@ -1,5 +1,5 @@
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { connectionMongo, defineIndex, getMongoModel } from '../../../common/mongo';
 
 const { Schema } = connectionMongo;

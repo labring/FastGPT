@@ -15,7 +15,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
 import { getModelHandle } from '../../ai/model';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 type VersionResourceSource = Pick<AppVersionSchemaType, 'nodes' | 'chatConfig' | 'resources'> & {
   resourceRefs?: unknown;

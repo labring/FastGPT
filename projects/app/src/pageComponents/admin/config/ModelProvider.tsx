@@ -12,8 +12,9 @@ const ModelConfigTable = dynamic(() => import('@/pageComponents/model/ModelConfi
 const ChannelTable = dynamic(() => import('@/pageComponents/model/Channel'));
 const ChannelLog = dynamic(() => import('@/pageComponents/model/Log'));
 const ModelDashboard = dynamic(() => import('@/pageComponents/model/ModelDashboard'));
+const ModelStatus = dynamic(() => import('@/pageComponents/model/ModelStatus'));
 
-type TabType = 'config' | 'channel' | 'channel_log' | 'account_model';
+type TabType = 'config' | 'channel' | 'channel_log' | 'account_model' | 'status';
 
 const ModelProvider = () => {
   const { t } = useClientTranslation(['config_model', 'config']);
@@ -24,7 +25,8 @@ const ModelProvider = () => {
       { label: t('config_model:config_model'), value: 'config' },
       { label: t('config_model:channel'), value: 'channel' as const },
       { label: t('config_model:log'), value: 'channel_log' as const },
-      { label: t('config_model:monitoring'), value: 'account_model' as const }
+      { label: t('config_model:monitoring'), value: 'account_model' as const },
+      { label: t('config_model:model_status'), value: 'status' as const }
     ],
     [t]
   );
@@ -91,6 +93,7 @@ const ModelProvider = () => {
           {modelTab === 'channel' && <ChannelTable Tab={Tab} />}
           {modelTab === 'channel_log' && <ChannelLog Tab={Tab} />}
           {modelTab === 'account_model' && <ModelDashboard Tab={Tab} />}
+          {modelTab === 'status' && <ModelStatus Tab={Tab} />}
         </Flex>
       </Flex>
     </AdminContainer>

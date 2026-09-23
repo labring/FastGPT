@@ -1,5 +1,5 @@
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 
 type ClientModelReference = {
   modelId?: string | null;

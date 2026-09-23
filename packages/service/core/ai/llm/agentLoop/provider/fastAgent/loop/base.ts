@@ -11,7 +11,7 @@ import { compressRequestMessages, compressToolResponse } from '../../../../compr
 import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../../../common/string/tiktoken';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopInteractiveToolExecuteParams,

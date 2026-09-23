@@ -3,8 +3,8 @@ import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
-import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 export const pushGenerateVectorUsage = ({
   usageId,

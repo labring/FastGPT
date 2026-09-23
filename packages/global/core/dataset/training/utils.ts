@@ -1,7 +1,7 @@
 import {
   type EmbeddingSystemModelDataType,
   type LLMSystemModelDataType
-} from '../../ai/model.schema';
+} from '../../ai/model/schema';
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,

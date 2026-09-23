@@ -2,7 +2,7 @@ import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType,
   RerankSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import type { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';

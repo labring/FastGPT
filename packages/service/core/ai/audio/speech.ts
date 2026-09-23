@@ -1,7 +1,7 @@
 import type { NodeHttpResponse } from '../../../types/http';
 import { getAIApi } from '../config';
 import { Readable } from 'stream';
-import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 export async function text2Speech({
   res,

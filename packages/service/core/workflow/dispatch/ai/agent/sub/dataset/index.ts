@@ -34,7 +34,7 @@ import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 import { loadWorkflowDatasetResource } from '../../../../../utils/resource';
 import { resolveReadableCollectionIds } from '../../../../../../../support/permission/collection/auth';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 

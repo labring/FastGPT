@@ -11,12 +11,12 @@ import {
   SystemModelDocumentDataSchema,
   TTSModelConfigSchema,
   TTSSystemModelDocumentSchema
-} from '../../../../core/ai/model.schema';
+} from '../../../../core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '../../../../core/ai/constants';
 import { IntSchema } from '../../../../common/zod';
 import z from 'zod';
 import { ModelProviderSchema } from '../../../core/ai/model/api';
-import { ModelDefaultIdsSchema } from '../../../../core/ai/defaultModel';
+import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { I18nStringSchema } from '../../../../common/i18n/type';
 

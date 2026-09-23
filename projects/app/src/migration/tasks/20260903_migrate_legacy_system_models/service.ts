@@ -1,8 +1,8 @@
 import {
   SystemModelDocumentDataSchema,
   type SystemModelDocumentDataType
-} from '@fastgpt/global/core/ai/model.schema';
-import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+} from '@fastgpt/global/core/ai/model/schema';
+import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';

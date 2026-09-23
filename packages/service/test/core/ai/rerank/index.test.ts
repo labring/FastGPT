@@ -3,7 +3,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   RerankModelConfigType,
   RerankSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 // hoisted：让 mock 实例可在 beforeEach 中重设

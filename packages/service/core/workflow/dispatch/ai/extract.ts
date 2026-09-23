@@ -12,7 +12,7 @@ import {
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getNodeErrResponse, getHistories } from '../utils';
 
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';

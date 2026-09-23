@@ -16,7 +16,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 
 const embeddingModel: EmbeddingSystemModelDataType = {
   provider: 'test',

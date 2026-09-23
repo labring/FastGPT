@@ -1,4 +1,4 @@
-import { EmbeddingSystemModelDataSchema, LLMSystemModelDataSchema } from '../ai/model.schema';
+import { EmbeddingSystemModelDataSchema, LLMSystemModelDataSchema } from '../ai/model/schema';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,

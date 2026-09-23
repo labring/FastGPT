@@ -1,5 +1,5 @@
 /* v8 ignore file */
-import { ModelScopeEnum, ModelTypeEnum } from './constants';
+import { ModelScopeEnum, ModelTypeEnum } from '../constants';
 import z from 'zod';
 
 export const ModelPriceTierSchema = z

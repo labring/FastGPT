@@ -1,7 +1,7 @@
 import { useModelChannelTest } from './useModelChannelTest';
 import { ChannelStautsMap } from '@/global/aiproxy/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
 import {
   Box,

@@ -1,5 +1,5 @@
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import type { ModelReferenceType } from '@fastgpt/global/core/ai/model.schema';
+import type { ModelReferenceType } from '@fastgpt/global/core/ai/model/schema';
 
 type DatasetModelFields = Pick<
   DatasetSchemaType,

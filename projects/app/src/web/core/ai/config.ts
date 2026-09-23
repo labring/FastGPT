@@ -17,6 +17,12 @@ import type {
   UpdateSystemModelStatusBody,
   UpdateSystemModelsWithJsonBody
 } from '@fastgpt/global/openapi/admin/system/model/api';
+import type {
+  GetModelStatusResponse,
+  ModelStatusProbeConfigResponse,
+  RunModelStatusProbeResponse,
+  UpdateModelStatusProbeConfigBody
+} from '@fastgpt/global/openapi/admin/system/model/status';
 
 const adminModelPath = '/admin/system/model';
 
@@ -54,3 +60,9 @@ export const postTestDraftModel = (data: TestDraftAdminSystemModelBody) =>
 
 export const putUpdateDefaultModels = (data: UpdateDefaultModelsBody) =>
   PUT(`${adminModelPath}/updateDefault`, data);
+
+export const getModelStatus = () => GET<GetModelStatusResponse>(`${adminModelPath}/status`);
+export const putModelStatusProbeConfig = (data: UpdateModelStatusProbeConfigBody) =>
+  PUT<ModelStatusProbeConfigResponse>(`${adminModelPath}/status/config`, data);
+export const postModelStatusProbe = () =>
+  POST<RunModelStatusProbeResponse>(`${adminModelPath}/status/probe`, {}, { timeout: 600000 });

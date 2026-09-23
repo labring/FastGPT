@@ -20,7 +20,7 @@ import {
   type ReferenceItemValueType
 } from './type/io';
 import type { NodeToolConfigType, StoreNodeItemType } from './type/node';
-import { getModelReferenceValue, isEmptyModelValue } from '../ai/modelReference';
+import { getModelReferenceValue, isEmptyModelValue } from '../ai/model/reference';
 import { ToolSetToolSummarySchema } from '../app/tool/toolSet/type';
 import type { AppChatConfigType, AppWelcomeConfigType } from '../app/type';
 import type { VariableItemType } from '../app/variable/type';

@@ -1,6 +1,6 @@
 import { Box, Button, Flex, Input, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
-import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/pricing';
+import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useCallback, useState } from 'react';
 import {

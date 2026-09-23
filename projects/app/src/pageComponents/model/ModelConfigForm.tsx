@@ -2,14 +2,14 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
-import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/pricing';
-import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
+import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
+import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import {
   getRuntimeResolvedPriceTiers,
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
-} from '@fastgpt/global/core/ai/pricing';
+} from '@fastgpt/global/core/ai/model/pricing';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';

@@ -26,7 +26,7 @@ import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 const llmModel = {

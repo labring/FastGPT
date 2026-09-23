@@ -6,7 +6,7 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 

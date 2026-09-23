@@ -1,7 +1,7 @@
 import { getTestModel, postTestDraftModel } from '@/web/core/ai/config';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';

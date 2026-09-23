@@ -1,6 +1,6 @@
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { normalizeFlowNodeInputType } from '@fastgpt/global/core/app/formEdit/utils';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {

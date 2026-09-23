@@ -222,7 +222,7 @@ const AdminContainer = ({
       mobileScrollPositionKey={'admin-mobile-navigation'}
     >
       {/* 内容区白底铺满：各迁移页面自带内边距，这里不再叠一层灰底与 padding */}
-      <Box bg={'white'} h={'100%'} overflow={'hidden'}>
+      <Box bg={'white'} h={'100%'} overflow={['auto', 'hidden']}>
         {children}
       </Box>
     </SecondaryNavigationContainer>

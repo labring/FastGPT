@@ -6,7 +6,7 @@ import {
 import json5 from 'json5';
 import { createLLMResponse } from '../llm/request';
 import { getLogger, LogCategories } from '../../../common/logger';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 

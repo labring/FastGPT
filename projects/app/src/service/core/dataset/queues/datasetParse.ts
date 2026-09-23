@@ -36,7 +36,7 @@ import { postCreateParagraphTitle } from '@fastgpt/service/thirdProvider/fastgpt
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { createParseTaskLease, PARSE_QUEUE_LEASE_TIMEOUT_MINUTES } from './parseLease';
 

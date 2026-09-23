@@ -6,7 +6,7 @@ import {
   formatModelProviders,
   getModelProviderFromCache,
   getModelProviderListFromCache
-} from '@fastgpt/global/core/ai/provider';
+} from '@fastgpt/global/core/ai/model/provider';
 
 /** 管理员模型页面的独立数据源，不读取普通成员 useUserModelStore。 */
 export const useAdminModelConfig = () => {

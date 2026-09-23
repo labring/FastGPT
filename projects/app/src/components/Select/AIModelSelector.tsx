@@ -8,7 +8,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import Avatar from '@fastgpt/web/components/common/Avatar';

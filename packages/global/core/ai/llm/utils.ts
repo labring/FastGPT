@@ -1,4 +1,4 @@
-import type { LLMSystemModelDataType } from '../model.schema';
+import type { LLMSystemModelDataType } from '../model/schema';
 import { ChatCompletionRequestMessageRoleEnum } from '../constants';
 
 export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {

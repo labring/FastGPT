@@ -1,5 +1,5 @@
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import type { ClientSession } from '../../../common/mongo';
 import { MongoAIDefaultModel } from './schema';
 

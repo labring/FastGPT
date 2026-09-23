@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { createModelHandle, publishModelHandle } from '../../../core/ai/config/handle';
 import * as entity from '../../../core/ai/config/entity';
 vi.unmock('@fastgpt/service/core/ai/model');

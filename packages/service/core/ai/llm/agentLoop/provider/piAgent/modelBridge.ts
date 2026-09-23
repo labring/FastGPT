@@ -3,7 +3,7 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ThinkingLevel } from '@mariozechner/pi-agent-core';
 import { defaultUserOpenAIBaseUrl, openaiBaseUrl, openaiBaseKey } from '../../../../config';
 import { computedMaxToken } from '../../../../utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 

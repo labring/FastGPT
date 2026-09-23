@@ -28,7 +28,7 @@ import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/tr
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { moveDataset } from '@/service/core/dataset/move';
 
 /**

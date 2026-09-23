@@ -11,12 +11,12 @@ import {
   SystemModelDataSchema,
   type SystemModelDataType,
   type SystemModelDocumentDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { preloadModelProviders } from '../../../core/app/provider/controller';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
+import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/model/pricing';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { clearAllMyModelsCache } from '../../../support/permission/model/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';

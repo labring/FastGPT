@@ -22,7 +22,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const mockMongoDatasetCollectionTagsFind = vi.hoisted(() => vi.fn());

@@ -2,7 +2,7 @@ import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ClientSession } from '../../../common/mongo';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoAIDefaultModel } from '../defaultModel/schema';
-import { ModelDefaultIdsSchema } from '@fastgpt/global/core/ai/defaultModel';
+import { ModelDefaultIdsSchema } from '@fastgpt/global/core/ai/model/default';
 import { MongoAIModel } from './schema';
 
 /** 目录修订号与模型写入使用同一事务，避免数据成功但失效通知丢失。外部 I/O 不得放入回调。 */

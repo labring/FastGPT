@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { resolveEffectiveDefaultModelIds } from '../../../core/ai/catalog';
 
 const llm = (modelId: string, vision = false): SystemModelDataType => ({

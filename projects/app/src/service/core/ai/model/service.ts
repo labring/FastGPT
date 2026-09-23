@@ -23,7 +23,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
-} from '@fastgpt/global/core/ai/pricing';
+} from '@fastgpt/global/core/ai/model/pricing';
 import {
   ImportedSystemModelSchema,
   CreateSystemModelResponseSchema,
