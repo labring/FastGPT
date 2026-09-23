@@ -50,7 +50,8 @@ const RenderList = React.memo(function RenderList({
   SelectedItemRef
 }: RenderListProps) {
   const { t } = useTranslation();
-  const selectedValue = cloneValue[index];
+  const safeCloneValue = Array.isArray(cloneValue) ? cloneValue : [];
+  const selectedValue = safeCloneValue[index];
   const selectedIndex = list.findIndex((item) => item.value === selectedValue);
   const children = list[selectedIndex]?.children || [];
 
@@ -96,7 +97,7 @@ const RenderList = React.memo(function RenderList({
                 bg: 'primary.50'
               }}
               onClick={() => {
-                const newValue = [...cloneValue];
+                const newValue = [...safeCloneValue];
 
                 if (item.value === selectedValue) {
                   for (let i = index; i < newValue.length; i++) {
@@ -173,18 +174,18 @@ export const MultipleRowSelect = ({
   const ButtonRef = useRef<HTMLButtonElement>(null);
 
   const { isOpen, onOpen, onClose } = useDisclosure({ onClose: onCloseFunc });
-  const [cloneValue, setCloneValue] = useState(value);
+  const [cloneValue, setCloneValue] = useState<(string | undefined)[]>(() =>
+    Array.isArray(value) ? value : []
+  );
 
   const MenuRef = useRef<(HTMLDivElement | null)[]>([]);
   const SelectedItemRef = useRef<(HTMLDivElement | null)[]>([]);
 
   // 异步列表从单列切换为分组时，使用外部 value 恢复完整路径；有效的手动路径保持不变。
+  const safeValue = Array.isArray(value) ? value : [];
+  const safeCloneValue = Array.isArray(cloneValue) ? cloneValue : [];
   const resolvedCloneValue =
-    isOpen && !list.some((item) => item.value === cloneValue[0])
-      ? Array.isArray(value)
-        ? value
-        : []
-      : cloneValue;
+    isOpen && !list.some((item) => item.value === safeCloneValue[0]) ? safeValue : safeCloneValue;
 
   useEffect(() => {
     if (isOpen) {

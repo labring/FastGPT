@@ -187,7 +187,7 @@ const SingleReferenceSelector = ({
 }: SelectProps<false>) => {
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
-      if (!value) return undefined;
+      if (!value || !Array.isArray(value)) return undefined;
 
       const firstColumn = list.find((item) => item.value === value[0]);
       if (!firstColumn) {
@@ -222,7 +222,7 @@ const SingleReferenceSelector = ({
   }, [value, onSelect]);
 
   const ItemSelector = useMemo(() => {
-    const selectorVal = value as ReferenceItemValueType;
+    const selectorVal = (Array.isArray(value) ? value : []) as ReferenceItemValueType;
     const selected = getSelectValue(selectorVal);
 
     return (
