@@ -13,9 +13,13 @@ vi.mock('@fastgpt/service/core/ai/llm/promptCall', () => ({
   parsePromptToolCall: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/utils', () => ({
-  parseReasoningContent: vi.fn()
-}));
+vi.mock('@fastgpt/service/core/ai/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/utils')>();
+  return {
+    ...actual,
+    parseReasoningContent: vi.fn()
+  };
+});
 
 const mockRemoveDatasetCiteText = vi.mocked(removeDatasetCiteText);
 const mockParsePromptToolCall = vi.mocked(parsePromptToolCall);
@@ -123,6 +127,43 @@ describe('createCompleteResponse', () => {
     expect(result.answerText).toBe('final answer');
     expect(reasoningText).toBe('thinking');
     expect(answerText).toBe('final answer');
+  });
+
+  it('should emit message.reasoning when reasoning_content is absent', async () => {
+    let reasoningText = '';
+    let answerText = '';
+    const result = await createCompleteResponse({
+      body: {
+        model: createModel({ reasoning: true }),
+        messages: [],
+        stream: false
+      },
+      response: {
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'final answer',
+              reasoning: 'thinking from vllm'
+            },
+            finish_reason: 'stop'
+          }
+        ],
+        usage: { prompt_tokens: 5, completion_tokens: 3, total_tokens: 8 }
+      } as any,
+      onReasoning: ({ text }) => {
+        reasoningText += text;
+      },
+      onStreaming: ({ text }) => {
+        answerText += text;
+      }
+    });
+
+    expect(result.reasoningText).toBe('thinking from vllm');
+    expect(result.answerText).toBe('final answer');
+    expect(reasoningText).toBe('thinking from vllm');
+    expect(answerText).toBe('final answer');
+    expect(mockParseReasoningContent).not.toHaveBeenCalled();
   });
 
   it('should split think tag content when model supports reasoning but response has no reasoning_content', async () => {

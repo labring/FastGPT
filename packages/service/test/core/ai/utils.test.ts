@@ -4,7 +4,8 @@ import {
   parseLLMStreamResponse,
   computedMaxToken,
   computedTemperature,
-  parseReasoningContent
+  parseReasoningContent,
+  getMessageReasoningText
 } from '@fastgpt/service/core/ai/utils';
 import type { CompletionFinishReason } from '@fastgpt/global/core/ai/llm/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -123,6 +124,32 @@ describe('parseReasoningContent', () => {
   });
 });
 
+describe('getMessageReasoningText', () => {
+  it('returns empty string when source is missing', () => {
+    expect(getMessageReasoningText()).toBe('');
+    expect(getMessageReasoningText(null)).toBe('');
+    expect(getMessageReasoningText({})).toBe('');
+  });
+
+  it('prefers reasoning_content over reasoning', () => {
+    expect(
+      getMessageReasoningText({
+        reasoning_content: 'deepseek',
+        reasoning: 'vllm'
+      })
+    ).toBe('deepseek');
+  });
+
+  it('falls back to string reasoning when reasoning_content is absent', () => {
+    expect(getMessageReasoningText({ reasoning: 'vllm thinking' })).toBe('vllm thinking');
+  });
+
+  it('ignores non-string reasoning payloads', () => {
+    expect(getMessageReasoningText({ reasoning: { content: 'object' } })).toBe('');
+    expect(getMessageReasoningText({ reasoning_content: 1, reasoning: 'vllm' })).toBe('vllm');
+  });
+});
+
 describe('parseLLMStreamResponse', () => {
   describe('Parse reasoning stream content test', async () => {
     const partList = [
@@ -140,6 +167,23 @@ describe('parseLLMStreamResponse', () => {
           { content: '你好3' }
         ],
         correct: { answer: '你好1你好2你好3', reasoning: '这是思考过程' }
+      },
+      {
+        // vLLM / gpt-oss 把思考写在 reasoning，而不是 DeepSeek 的 reasoning_content
+        data: [
+          { reasoning: '这是' },
+          { reasoning: '思考' },
+          { reasoning: '过程' },
+          { content: '你好1' },
+          { content: '你好2' },
+          { content: '你好3' }
+        ],
+        correct: { answer: '你好1你好2你好3', reasoning: '这是思考过程' }
+      },
+      {
+        // 同一 chunk 里 reasoning_content 优先，避免双字段供应商把思考拼两遍
+        data: [{ reasoning_content: '正式思考', reasoning: '别名思考' }, { content: '你好1' }],
+        correct: { answer: '你好1', reasoning: '正式思考' }
       },
       {
         data: [
@@ -270,7 +314,8 @@ describe('parseLLMStreamResponse', () => {
                 delta: {
                   role: 'assistant',
                   content: item.content,
-                  reasoning_content: item.reasoning_content
+                  reasoning_content: item.reasoning_content,
+                  reasoning: (item as { reasoning?: string }).reasoning
                 }
               }
             ]

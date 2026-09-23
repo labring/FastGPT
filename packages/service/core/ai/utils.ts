@@ -49,6 +49,28 @@ export const computedTemperature = ({
 const normalizeFirstAnswerAfterReasoning = (answer: string) => answer.trimStart();
 
 /**
+ * 从模型 delta / message 上读取思考文本。
+ *
+ * DeepSeek 等仍输出 reasoning_content；vLLM 与 OpenAI gpt-oss 兼容接口已把该字段改名为
+ * reasoning。只接受字符串，避免把对象形态的 reasoning 误当成可见思考内容。
+ * 两个字段同时存在时以 reasoning_content 为准，防止把同一段思考拼两遍。
+ */
+export const getMessageReasoningText = (
+  source?: {
+    reasoning_content?: unknown;
+    reasoning?: unknown;
+  } | null
+) => {
+  if (typeof source?.reasoning_content === 'string' && source.reasoning_content) {
+    return source.reasoning_content;
+  }
+  if (typeof source?.reasoning === 'string' && source.reasoning) {
+    return source.reasoning;
+  }
+  return '';
+};
+
+/**
  * 从非流式模型结果中拆分 <think></think> 思考内容和最终回答。
  * </think> 后面的前导空白只用于分隔 reasoning 与 answer，不作为正文保留，
  * 避免 reasoning-only 输出被解析成 answerText="\n"。
@@ -128,6 +150,7 @@ export const parseLLMStreamResponse = () => {
         delta: {
           content?: string | null;
           reasoning_content?: string;
+          reasoning?: string;
         };
         finish_reason?: CompletionFinishReason;
       }[];
@@ -149,8 +172,7 @@ export const parseLLMStreamResponse = () => {
       buffer_finishReason = finishReason || buffer_finishReason;
 
       const content = part.choices?.[0]?.delta?.content || '';
-      // @ts-ignore
-      const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
+      const reasoningContent = getMessageReasoningText(part.choices?.[0]?.delta);
       const isStreamEnd = !!buffer_finishReason;
 
       // Parse think

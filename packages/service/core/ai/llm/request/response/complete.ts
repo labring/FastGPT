@@ -4,7 +4,7 @@ import type {
   UnStreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
-import { parseReasoningContent } from '../../../utils';
+import { getMessageReasoningText, parseReasoningContent } from '../../../utils';
 import { parsePromptToolCall } from '../../promptCall';
 import type { CompleteParams, CompleteResponse } from '../types';
 
@@ -29,8 +29,7 @@ export const createCompleteResponse = async ({
 
   const { content, reasoningContent } = (() => {
     const content = response.choices?.[0]?.message?.content || '';
-    const reasoningContent: string =
-      (response.choices?.[0]?.message as any)?.reasoning_content || '';
+    const reasoningContent = getMessageReasoningText(response.choices?.[0]?.message);
 
     if (reasoningContent || !modelData.config.reasoning) {
       return {
@@ -39,7 +38,7 @@ export const createCompleteResponse = async ({
       };
     }
 
-    // 部分模型不返回 reasoning_content，只把思考内容写在 <think> 标签里。
+    // 部分模型不返回 reasoning / reasoning_content，只把思考内容写在 <think> 标签里。
     const [think, answer] = parseReasoningContent(content);
     return {
       content: answer,
