@@ -12,8 +12,8 @@
   "scripts": {
     "dev": "pnpm run build:workers && next dev",
     "dev:pro": "pnpm run dev",
-    "build": "pnpm run build:workers && next build --debug",
-    "build:webpack": "pnpm run build:workers && next build --webpack --debug",
+    "build": "pnpm run build:workers && next build",
+    "build:webpack": "pnpm run build:workers && next build --webpack",
     "analyze": "next experimental-analyze",
     "start": "next start",
     "migrate:auth-code": "tsx scripts/migration/authCodeToTmpData.ts",

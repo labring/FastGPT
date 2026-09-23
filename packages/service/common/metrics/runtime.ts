@@ -5,7 +5,7 @@ import type {
   ObservableGauge
 } from '@opentelemetry/api';
 import { getMeter } from '@fastgpt-sdk/otel/metrics';
-import { cpus } from 'os';
+import { getSystemCpuInfo } from '../system/resource';
 
 type RuntimeMetricAttributes = Record<string, never>;
 
@@ -115,7 +115,7 @@ export function startRuntimeMetrics() {
           currentCpuUsage.user -
           previousCpuUsage.user +
           (currentCpuUsage.system - previousCpuUsage.system);
-        const coreCount = cpus().length || 1;
+        const coreCount = getSystemCpuInfo().availableCpuCount;
         const utilization = cpuDeltaUs / (elapsedUs * coreCount);
         result.observe(observables.processCpuUtilization, Math.min(1, Math.max(0, utilization)));
       }
