@@ -9,11 +9,7 @@ import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 import { useTextinServer } from '../../../thirdProvider/textin';
 import { useSomarkServer } from '../../../thirdProvider/somark';
-import {
-  ACCEPTED_PARSE_STATUS_TEXTS,
-  parseFromSangfor,
-  useSangforParse
-} from '../../../thirdProvider/sangfor';
+import { parseFromSangfor, useSangforParse } from '../../../thirdProvider/sangfor';
 import { appendIultmzhFileParseFields } from '../../../thirdProvider/sangfor/parseConfig';
 import { readRawContentFromBuffer, readRawContentFromSource } from '../../../worker/function';
 import { getLogger, LogCategories } from '../../logger';
@@ -406,15 +402,13 @@ const readFileContent = async ({
     }
     return await systemParse();
   })().catch((error) => {
-    // 本地解析管线的统一兜底：未知失败落通用「文档解析失败」诊断码。
-    // 已映射为诊断码的错误原样透出。worker 边界会丢失 Error 实例类型与自定义 name，只保留 message，
-    // 因此按诊断码白名单匹配 message 识别。
-    if (error instanceof UserError) throw error;
+    // 统一兜底（未知失败落通用「文档解析失败」诊断码）仅覆盖 sangfor 路径。
+    // 其余格式（含 OFD）保持错误原样透出，避免抹掉 docx「请转 PDF」等原有提示；
+    // 映射为诊断码的错误（message = statusText）在响应层经 ERROR_RESPONSE[message]
+    // 还原为正确的 code 与 i18n 文案。
+    if (!useSangforParse(extension)) throw error;
 
-    const message = (error as Error)?.message;
-    if (typeof message === 'string' && ACCEPTED_PARSE_STATUS_TEXTS.has(message)) {
-      throw new UserError(message as CommonErrEnum);
-    }
+    if (error instanceof UserError) throw error;
 
     throw new UserError(CommonErrEnum.pdfParseFailed);
   });

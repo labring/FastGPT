@@ -206,7 +206,7 @@ describe('readFileContentByBuffer', () => {
     expect(result.rawText).toBe('parsed-pdf-content');
   });
 
-  it('falls back to pdfParseFailed for unknown worker parse failures', async () => {
+  it('rethrows unknown worker parse failures for formats outside the sangfor path', async () => {
     mockReadRawContentFromBuffer.mockRejectedValueOnce(new Error('unexpected worker crash'));
 
     await expect(
@@ -217,7 +217,21 @@ describe('readFileContentByBuffer', () => {
         buffer: Buffer.from('md-content'),
         encoding: 'utf-8'
       })
-    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
+    ).rejects.toThrow('unexpected worker crash');
+  });
+
+  it('rethrows unknown OFD worker parse failures without the sangfor fallback', async () => {
+    mockReadRawContentFromBuffer.mockRejectedValueOnce(new Error('unexpected worker crash'));
+
+    await expect(
+      readFileContentByBuffer({
+        teamId,
+        tmbId,
+        extension: 'ofd',
+        buffer: Buffer.from('ofd-content'),
+        encoding: 'utf-8'
+      })
+    ).rejects.toThrow('unexpected worker crash');
   });
 
   it('keeps mapped diagnosis errors from the worker untouched', async () => {
@@ -820,7 +834,7 @@ describe('readFileContentByBuffer', () => {
         encoding: 'utf-8',
         customPdfParse: true
       })
-    ).rejects.toThrow(CommonErrEnum.pdfParseFailed);
+    ).rejects.toBe('Parse failed');
   });
 
   it('should fallback to system parse when custom URL service url is empty', async () => {
