@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -92,11 +91,15 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         localStorage.removeItem(`app_log_keys_${appId}`);
       });
 
-      router.replace({
-        query: {
-          parentId: folderDetail?.parentId
-        }
-      });
+      router.replace(
+        {
+          query: {
+            parentId: folderDetail?.parentId
+          }
+        },
+        undefined,
+        { shallow: true }
+      );
     },
     errorToast: 'Error'
   });
@@ -123,12 +126,16 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   hoverStyle={{ bg: 'myGray.200' }}
                   forbidLastClick
                   onClick={(parentId) => {
-                    router.push({
-                      query: {
-                        ...router.query,
-                        parentId
-                      }
-                    });
+                    router.push(
+                      {
+                        query: {
+                          ...router.query,
+                          parentId
+                        }
+                      },
+                      undefined,
+                      { shallow: true }
+                    );
                   }}
                 />
               </Box>
@@ -211,7 +218,9 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     paths={paths}
                     forbidLastClick
                     onClick={(parentId) => {
-                      router.push({ query: { ...router.query, parentId } });
+                      router.push({ query: { ...router.query, parentId } }, undefined, {
+                        shallow: true
+                      });
                     }}
                   />
                 </Box>
@@ -295,11 +304,3 @@ function ContextRender() {
 }
 
 export default ContextRender;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'user']))
-    }
-  };
-}

@@ -483,7 +483,9 @@ const List = ({
           onClick: () => {
             if (isFolder) {
               setSearchKey('');
-              router.push({ query: { ...router.query, parentId: skill._id } });
+              router.push({ query: { ...router.query, parentId: skill._id } }, undefined, {
+                shallow: true
+              });
             } else {
               if (isSkillReady && !guardSkillSandboxOperation()) return;
               router.push(`/skill/detail?skillId=${skill._id}`);

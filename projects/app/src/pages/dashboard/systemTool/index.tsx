@@ -1,6 +1,5 @@
 'use client';
 
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import {
   getTeamSystemPluginList,
   getTeamToolDetail,
@@ -790,11 +789,3 @@ function ContextRender() {
 }
 
 export default ContextRender;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'file']))
-    }
-  };
-}

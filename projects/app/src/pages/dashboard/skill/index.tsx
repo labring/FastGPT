@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 import { Box, Button, Flex } from '@chakra-ui/react';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -73,12 +72,16 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const onNavigate = (targetParentId: ParentIdType) => {
     setSearchKey('');
-    router.push({
-      query: {
-        ...router.query,
-        parentId: targetParentId ?? undefined
-      }
-    });
+    router.push(
+      {
+        query: {
+          ...router.query,
+          parentId: targetParentId ?? undefined
+        }
+      },
+      undefined,
+      { shallow: true }
+    );
   };
 
   const hasCreatePer = folderDetail
@@ -270,11 +273,3 @@ function ContextRender() {
 }
 
 export default ContextRender;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'common', 'file', 'skill', 'user']))
-    }
-  };
-}
