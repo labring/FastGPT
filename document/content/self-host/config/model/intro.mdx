@@ -399,22 +399,6 @@ FastGPT 提供了开箱即用的系统模型健康探测与监控功能。开启
 
 [点击查看部署 ReRank 模型教程](../../custom-models/bge-rerank.mdx)
 
-### 自定义请求地址说明
-
-如果填写了该值，则可以允许你绕过 `模型渠道`，直接向自定义请求地址发起请求。需要填写完整的请求地址，例如：
-
-- LLM: [host]/v1/chat/completions
-- Embedding: [host]/v1/embeddings
-- STT: [host]/v1/audio/transcriptions
-- TTS: [host]/v1/audio/speech
-- Rerank: [host]/v1/rerank
-
-自定义请求 Key，则是向自定义请求地址发起请求时候，携带请求头：Authorization: Bearer xxx 进行请求。
-
-所有接口均遵循 OpenAI 提供的模型格式，可参考 [OpenAI API 文档](https://platform.openai.com/docs/api-reference/guide) 进行配置。
-
-由于 OpenAI 没有提供 ReRank 模型，遵循的是 Cohere 的格式。[点击查看接口请求示例](../../troubleshooting/model-errors.mdx)
-
 ### 从 OneAPI 迁移到 AI Proxy
 
 对于旧版使用 OneAPI 的用户，可以通过脚本将 OneAPI 里的渠道配置迁移到 AI Proxy。

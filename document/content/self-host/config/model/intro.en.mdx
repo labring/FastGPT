@@ -403,22 +403,6 @@ Model calls made through channels are logged on the `Call Logs` page. Logs inclu
 
 [See the ReRank model deployment tutorial](../../custom-models/bge-rerank.en.mdx)
 
-### Custom Request URL
-
-If you set a custom request URL, requests will bypass `Model Channels` and be sent directly to the specified endpoint. You must provide the full request URL, for example:
-
-- LLM: [host]/v1/chat/completions
-- Embedding: [host]/v1/embeddings
-- STT: [host]/v1/audio/transcriptions
-- TTS: [host]/v1/audio/speech
-- Rerank: [host]/v1/rerank
-
-The custom request key is included as the `Authorization: Bearer xxx` header when sending requests to the custom URL.
-
-All endpoints follow the OpenAI model format. Refer to the [OpenAI API documentation](https://platform.openai.com/docs/api-reference/guide) for details.
-
-Since OpenAI does not provide a Rerank model, the Rerank endpoint follows the Cohere format. [See request examples](../../troubleshooting/model-errors.en.mdx)
-
 ### Migrating from OneAPI to AI Proxy
 
 If you were using OneAPI in an older version, you can migrate your channel configuration to AI Proxy using a script.
