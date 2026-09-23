@@ -290,7 +290,7 @@ Administrators can configure and toggle model probing directly in the admin cons
 3. **Configure Settings**:
    - **Enable Automatic Probes**: Toggle on to schedule automatic background health checks for all active models. When toggled off, the page displays an empty state ("Automatic probe is disabled"), and background probing and alerts are paused.
    - **Probe Interval (minutes)**: Set an integer between 5 and 60 minutes.
-   - **Alert Webhook URL** (optional): The HTTP/HTTPS endpoint to receive state change notifications.
+   - **Alert Webhook URL** (optional): The HTTP/HTTPS endpoint to receive state change notifications. Click the **Test** button next to the input to verify connectivity; the system will send simulated error and recovery test messages in sequence.
    - **Alert Token** (optional): Authorization token for authenticated Webhook endpoints. Sent as an `Authorization: Bearer <token>` header.
 4. **Save**: Click **Confirm** to apply changes.
 5. **Probe Now (Optional)**: When probing is enabled, a **Probe Now** button appears in the top-right corner. Click it to immediately trigger a full-batch probe and refresh the status.

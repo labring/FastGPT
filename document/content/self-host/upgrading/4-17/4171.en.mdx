@@ -43,6 +43,7 @@ The commercial edition no longer requires the Pro service to be started separate
 11. Added first-login onboarding and action orchestration. First login can require missing team member display names to be completed, automatically prompt users to handle pending team invitations, and orchestrate follow-up dialogs such as system announcements and enterprise verification.
 12. Administrators can now update a system model's identifier (`model`) directly using its stable `modelId`, with associated channel model mappings and model lists updated automatically.
 13. Added OFD file parsing support.
+14. Added integration guide and examples for TokenDance AI API gateway.
 
 ## ⚙️ Improvements
 
@@ -79,6 +80,7 @@ The commercial edition no longer requires the Pro service to be started separate
 20. Fixed streaming Node responses being unexpectedly interrupted when child Workflow details were not published.
 21. Fixed popup blockers on iOS Safari preventing source files from opening after asynchronous fetching.
 22. Fixed collaborator role assignment failing to honor group and organization administrator rights.
+23. Fixed runtime edge statuses being incorrectly reset to waiting during single-node workflow debugging, which caused the debug endpoint to return immediately while the frontend remained in a running state.
 
 ## 🛠️ Code Improvements
 
