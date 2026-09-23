@@ -17,7 +17,7 @@ const { postMock, parseMarkdownImagesMock, uploadParsedPdfImageMock, mockEnv } =
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axios: {
+  axiosWithoutSSRF: {
     post: postMock
   }
 }));

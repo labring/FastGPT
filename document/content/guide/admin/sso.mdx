@@ -99,6 +99,12 @@ env:
   - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
 ```
 
+<Alert context="info">
+  该地址由部署方通过环境变量配置，属于可信内部端点而非用户可控输入。SSO 授权、OAuth 回调与成员同步
+  都据此直连，不受 `CHECK_INTERNAL_IP` 影响；开启 `CHECK_INTERNAL_IP=true` 不会中断 SSO
+  登录与成员同步。
+</Alert>
+
 #### 2. 在 FastGPT 前台的 `管理员` -> `系统配置` -> `用户配置` 中配置按钮文字，图标等。
 
 <table className="table-hover table-striped-columns text-center">

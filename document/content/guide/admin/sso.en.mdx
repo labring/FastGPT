@@ -99,6 +99,13 @@ env:
   - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
 ```
 
+<Alert context="info">
+  This address is operator-configured and is a trusted internal endpoint rather than user-controlled
+  input. SSO authorization, the OAuth callback, and member sync all connect to it directly and are
+  unaffected by `CHECK_INTERNAL_IP`; enabling `CHECK_INTERNAL_IP=true` does not break SSO login or
+  member sync.
+</Alert>
+
 #### 2. In the FastGPT frontend, go to `Admin` -> `System Configuration` -> `User Configuration` to configure button text, icons, etc.
 
 <table className="table-hover table-striped-columns text-center">
