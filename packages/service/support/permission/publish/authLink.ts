@@ -4,6 +4,7 @@ import {
   type OutLinkSchemaType,
   type ShareOutLinkSchemaType
 } from '@fastgpt/global/support/outLink/type';
+import { MongoApp } from '../../../core/app/schema';
 import { MongoOutLink } from '../../outLink/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -65,7 +66,11 @@ export async function authOutLinkCrud({
   };
 }
 
-/* outLink exist and it app exist */
+/**
+ * 校验分享链接是否仍可访问。
+ * 链接记录存在不够：应用删除是先打 deleteTime 再异步清 outlink，
+ * 这段窗口里必须拒绝访客，否则删除后分享对话仍能继续。
+ */
 export async function authOutLinkValid<T extends OutlinkAppType = any>({
   shareId
 }: {
@@ -82,6 +87,15 @@ export async function authOutLinkValid<T extends OutlinkAppType = any>({
   if (!storedOutLinkConfig) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
+
+  const app = await MongoApp.findOne(
+    { _id: storedOutLinkConfig.appId, deleteTime: null },
+    '_id'
+  ).lean();
+  if (!app) {
+    return Promise.reject(OutLinkErrEnum.linkUnInvalid);
+  }
+
   const outLinkConfig = normalizeShareOutLinkAllowAnonymous(
     storedOutLinkConfig
   ) as ShareOutLinkSchemaType<T>;

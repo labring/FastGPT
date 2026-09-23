@@ -6,9 +6,14 @@ import {
   authOutLinkValid,
   loadOutlinkProviderConfig
 } from '@fastgpt/service/support/permission/publish/authLink';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { assertCancellation } from '@fastgpt/service/support/user/account/cancellation/guard';
 import { getUserIdByTmbId } from '@fastgpt/service/support/user/team/utils';
+
+vi.mock('@fastgpt/service/core/app/schema', () => ({
+  MongoApp: { findOne: vi.fn() }
+}));
 
 vi.mock('@fastgpt/service/support/outLink/schema', () => ({
   MongoOutLink: { findOne: vi.fn() }
@@ -44,16 +49,35 @@ const config = {
   }
 };
 
+const mockLeanFindOne = (model: { findOne: ReturnType<typeof vi.fn> }, value: unknown) => {
+  model.findOne.mockReturnValue({
+    lean: vi.fn().mockResolvedValue(value)
+  } as any);
+};
+
 describe('authOutLinkValid', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getUserIdByTmbId).mockResolvedValue('user-id');
+    mockLeanFindOne(vi.mocked(MongoApp), { _id: 'app-id' });
+  });
+
+  it('rejects a missing shareId', async () => {
+    await expect(authOutLinkValid({})).rejects.toBe(OutLinkErrEnum.linkUnInvalid);
+    expect(MongoOutLink.findOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects a shareId that does not match a share channel', async () => {
+    mockLeanFindOne(vi.mocked(MongoOutLink), null);
+
+    await expect(authOutLinkValid({ shareId: 'share-id' })).rejects.toBe(
+      OutLinkErrEnum.linkUnInvalid
+    );
+    expect(MongoApp.findOne).not.toHaveBeenCalled();
   });
 
   it('keeps legacy share links anonymously accessible', async () => {
-    vi.mocked(MongoOutLink.findOne).mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ ...config, type: PublishChannelEnum.share })
-    } as any);
+    mockLeanFindOne(vi.mocked(MongoOutLink), { ...config, type: PublishChannelEnum.share });
 
     const result = await authOutLinkValid({ shareId: 'share-id' });
 
@@ -61,22 +85,32 @@ describe('authOutLinkValid', () => {
       shareId: 'share-id',
       type: PublishChannelEnum.share
     });
+    expect(MongoApp.findOne).toHaveBeenCalledWith({ _id: 'app-id', deleteTime: null }, '_id');
     expect(result.outLinkConfig.allowAnonymous).toBe(true);
     expect(assertCancellation).toHaveBeenCalled();
   });
 
   it('preserves an explicit login requirement', async () => {
-    vi.mocked(MongoOutLink.findOne).mockReturnValue({
-      lean: vi.fn().mockResolvedValue({
-        ...config,
-        type: PublishChannelEnum.share,
-        allowAnonymous: false
-      })
-    } as any);
+    mockLeanFindOne(vi.mocked(MongoOutLink), {
+      ...config,
+      type: PublishChannelEnum.share,
+      allowAnonymous: false
+    });
 
     await expect(authOutLinkValid({ shareId: 'share-id' })).resolves.toMatchObject({
       outLinkConfig: { allowAnonymous: false }
     });
+  });
+
+  it('rejects a share link whose app is missing or soft deleted', async () => {
+    mockLeanFindOne(vi.mocked(MongoOutLink), { ...config, type: PublishChannelEnum.share });
+    mockLeanFindOne(vi.mocked(MongoApp), null);
+
+    await expect(authOutLinkValid({ shareId: 'share-id' })).rejects.toBe(
+      OutLinkErrEnum.linkUnInvalid
+    );
+    expect(MongoApp.findOne).toHaveBeenCalledWith({ _id: 'app-id', deleteTime: null }, '_id');
+    expect(assertCancellation).not.toHaveBeenCalled();
   });
 });
 
