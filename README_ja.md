@@ -122,6 +122,7 @@ docker compose up -d
 ## 🌿 サードパーティエコシステム
 
 - [AI Proxy: 大規模モデル集約サービス](https://sealos.run/aiproxy/?k=fastgpt-github/)
+- [TokenDance (词元跳动) - 統合 AI API ゲートウェイ](https://tokendance.space/)
 - [SiliconCloud - オープンソースモデルオンライン体験プラットフォーム](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 
 <a href="#readme">

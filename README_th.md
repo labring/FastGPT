@@ -122,6 +122,7 @@ docker compose up -d
 ## 🌿 ระบบนิเวศของบุคคลที่สาม
 
 - [AI Proxy: บริการรวมโมเดลขนาดใหญ่](https://sealos.run/aiproxy/?k=fastgpt-github/)
+- [TokenDance - เกตเวย์ AI API แบบครบวงจร](https://tokendance.space/)
 - [SiliconCloud - แพลตฟอร์มประสบการณ์โมเดล Open Source ออนไลน์](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 
 <a href="#readme">
