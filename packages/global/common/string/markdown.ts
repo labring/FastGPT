@@ -55,7 +55,9 @@ export const htmlTable2Md = (content: string): string => {
           tableData[rowIndex] = [];
         }
         let colIndex = 0;
-        const cells = row.match(/<td[^>]*\/>|<td[^>]*>.*?<\/td>/g) || [];
+        // HTML 表头用 <th>，数据用 <td>。只匹配 td 时，标准 thead/th
+        // 表格会丢掉列名，混用 th 行头的行也会缺列。
+        const cells = row.match(/<t[dh][^>]*\/>|<t[dh][^>]*>.*?<\/t[dh]>/g) || [];
 
         cells.forEach((cell) => {
           while (tableData[rowIndex][colIndex]) {
@@ -67,7 +69,7 @@ export const htmlTable2Md = (content: string): string => {
           if (cell.endsWith('/>')) {
             content = '';
           } else {
-            content = cell.replace(/<td[^>]*>|<\/td>/g, '').trim();
+            content = cell.replace(/<t[dh][^>]*>|<\/t[dh]>/g, '').trim();
           }
           for (let i = 0; i < rowspan; i++) {
             for (let j = 0; j < colspan; j++) {

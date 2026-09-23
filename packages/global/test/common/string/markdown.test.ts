@@ -177,6 +177,38 @@ describe('markdown 字符串处理函数测试', () => {
       expect(lines[3]).toBe('| 1 | 2 | 3 |');
     });
 
+    it('应该把 th 表头单元格转成 Markdown 表头，而不是丢掉列名', () => {
+      const html = `
+        <table>
+          <thead>
+            <tr><th>品名</th><th>单价</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>电缆</td><td>9 EUR</td></tr>
+          </tbody>
+        </table>
+      `;
+      const lines = htmlTable2Md(html).trim().split('\n');
+
+      expect(lines[0]).toBe('| 品名 | 单价 |');
+      expect(lines[1]).toBe('| --- | --- |');
+      expect(lines[2]).toBe('| 电缆 | 9 EUR |');
+    });
+
+    it('应该保留同一行里混用的 th 行头和 td 数据', () => {
+      const html = `
+        <table>
+          <tr><th>项目</th><td>Q1</td><td>Q2</td></tr>
+          <tr><th>营收</th><td>10</td><td>20</td></tr>
+        </table>
+      `;
+      const lines = htmlTable2Md(html).trim().split('\n');
+
+      expect(lines[0]).toBe('| 项目 | Q1 | Q2 |');
+      expect(lines[1]).toBe('| --- | --- | --- |');
+      expect(lines[2]).toBe('| 营收 | 10 | 20 |');
+    });
+
     it('应该处理无效的表格 HTML', () => {
       const invalidHtml = '<table><tr>invalid</tr></table>';
       const result = htmlTable2Md(invalidHtml);
