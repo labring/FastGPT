@@ -10,7 +10,7 @@ const { mockAxiosPost, mockRequest, mockGetRedisCache, mockSetRedisCache, mockDe
   }));
 
 vi.mock('../../../../../common/api/axios', () => ({
-  axios: {
+  axiosWithoutSSRF: {
     post: mockAxiosPost
   },
   createProxyAxios: vi.fn(() => ({

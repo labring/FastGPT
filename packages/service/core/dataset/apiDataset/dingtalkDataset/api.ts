@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset/type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type { Method } from 'axios';
-import { axios, createProxyAxios } from '../../../../common/api/axios';
+import { axiosWithoutSSRF, createProxyAxios } from '../../../../common/api/axios';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import { getDingtalkAppAccessToken } from '../../../../common/dingtalk/accessToken';
@@ -86,10 +86,14 @@ const dingtalkOapiBaseUrl = serviceEnv.DINGTALK_OAPI_BASE_URL;
 const dingtalkListPageSize = 100;
 const logger = getLogger(LogCategories.MODULE.DATASET.API_DATASET);
 
-const instance = createProxyAxios({
-  baseURL: dingtalkBaseUrl,
-  timeout: 60000
-});
+// DINGTALK_BASE_URL / DINGTALK_OAPI_BASE_URL 由部署方配置，可能指向内网代理，不使用 SSRF 拦截器。
+const instance = createProxyAxios(
+  {
+    baseURL: dingtalkBaseUrl,
+    timeout: 60000
+  },
+  false
+);
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -183,7 +187,7 @@ const getDingtalkOperatorId = async ({
   accessToken: string;
 }) => {
   try {
-    const { data } = await axios.post<DingtalkUserResponse>(
+    const { data } = await axiosWithoutSSRF.post<DingtalkUserResponse>(
       `${dingtalkOapiBaseUrl}/topapi/v2/user/get`,
       {
         userid: dingtalkServer.userId

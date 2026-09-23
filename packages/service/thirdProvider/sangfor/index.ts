@@ -5,7 +5,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import z from 'zod';
-import { axios } from '../../common/api/axios';
+import { axiosWithoutSSRF } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { uploadParsedPdfImage, type ParsedPdfImageKeyOptions } from '../../common/file/read/image';
@@ -85,7 +85,8 @@ export const parseFromSangfor = async ({
     const form = new FormData();
     form.append('file', fileBuffer, { filename: `file.${extension}` });
     appendIultmzhFileParseFields(form, sangforFileParseConfig);
-    const { data } = await axios.post<unknown>(url, form, {
+    // customPdfParse.url 由部署方/root 管理员配置，可能指向内网解析服务，不使用 SSRF 拦截器。
+    const { data } = await axiosWithoutSSRF.post<unknown>(url, form, {
       timeout: serviceEnv.SANGFOR_PARSE_TIMEOUT_SECONDS * 1000,
       headers: {
         ...form.getHeaders(),
