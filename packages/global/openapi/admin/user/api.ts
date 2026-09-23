@@ -8,7 +8,10 @@ export const UserItemSchema = z.object({
   contact: z.string().nullish().meta({ description: '联系方式' }),
   avatar: z.string().optional().meta({ description: '用户头像' }),
   status: z.enum(UserStatusEnum).meta({ description: '用户状态' }),
-  createTime: z.date().meta({ description: '创建时间' })
+  createTime: z.date().meta({ description: '创建时间' }),
+  isSsoUser: z
+    .boolean()
+    .meta({ description: '是否为 SSO 用户（SSO 关闭密码时用于禁用密码相关操作）' })
 });
 export type UserItemType = z.infer<typeof UserItemSchema>;
 
@@ -34,7 +37,7 @@ export type GetUsersResponseType = z.infer<typeof GetUsersResponseSchema>;
 
 // addUser
 export const AddUserBodySchema = z.object({
-  username: z.string().min(1).meta({ description: '用户名' }),
+  username: z.string().trim().min(1).meta({ description: '用户名' }),
   password: z.string().min(1).meta({ description: '密码' })
 });
 export type AddUserBodyType = z.infer<typeof AddUserBodySchema>;
