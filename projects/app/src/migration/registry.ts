@@ -347,7 +347,7 @@ export const systemMigrations = [
   },
   {
     id: '20260907_migrate_dataset_tags_v2',
-    version: '4.17.0',
+    version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.name'),
     descriptionKey: i18nT(
       'system_migration:migrations.20260907_migrate_dataset_tags_v2.description'
@@ -367,8 +367,8 @@ export const systemMigrations = [
         labelKey: i18nT('system_migration:migrations.20260907_migrate_dataset_tags_v2.validation')
       }
     ],
-    blockStartup: true,
-    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: migrateDatasetTagsV2
   },
   {
