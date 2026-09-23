@@ -15,7 +15,7 @@ import {
   Button,
   useDisclosure
 } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -86,7 +86,7 @@ const ModelEditButton = React.memo(
     onSuccess: () => Promise<void>;
     isDisabled?: boolean;
   }) => {
-    const { t } = useClientTranslation('config_model');
+    const { t } = useSafeTranslation();
     const [isOpen, setIsOpen] = useState(false);
 
     return (
@@ -113,7 +113,7 @@ const ModelEditButton = React.memo(
 ModelEditButton.displayName = 'ModelEditButton';
 
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();

@@ -1,10 +1,9 @@
 import { ScalarOpenApiPage } from '@/pageComponents/apidoc/ScalarOpenApiPage';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { DevApiTagNameAliases, DevApiTagsMap } from '@fastgpt/global/openapi/tag';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 function DevApiDocPage() {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
 
   return (
     <ScalarOpenApiPage
@@ -39,15 +38,6 @@ function DevApiDocPage() {
       }}
     />
   );
-}
-
-// 禁用静态生成
-export async function getServerSideProps(context: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(context))
-    }
-  };
 }
 
 export default DevApiDocPage;

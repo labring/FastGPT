@@ -3,7 +3,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useRef } from 'react';
@@ -35,7 +35,7 @@ const HandleInviteModal = ({
   onFinish?: () => void;
 }) => {
   const router = useRouter();
-  const { t } = useClientTranslation('account_team');
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const { initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();

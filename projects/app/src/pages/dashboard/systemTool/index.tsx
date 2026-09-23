@@ -8,7 +8,7 @@ import {
 import { deleteTeamPlugin } from '@/web/core/plugin/team/api';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
   Button,
@@ -65,7 +65,7 @@ type PluginDebugSessionState = Pick<
 
 const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const router = useRouter();
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useSafeTranslation();
   const { feConfigs, initd, setShowProModal } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
@@ -541,7 +541,7 @@ function PluginDebugModal({
   onRefreshTools: () => Promise<GetTeamPluginListResponseType>;
   onClose: () => void;
 }) {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { copyData } = useCopyData();
   const connectionKey = session?.connectionKey ?? '';
   const connectionUrl = useMemo(

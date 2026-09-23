@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { nanoid } from 'nanoid';
 import {
@@ -19,7 +19,7 @@ import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
-  const { t, i18n } = useClientTranslation('app');
+  const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
   const newTagInputRef = useRef<HTMLInputElement>(null);
 

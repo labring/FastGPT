@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, Grid, Link } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ModelTable from '@/components/core/ai/ModelTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getPublicModelList } from '@/web/common/system/api';
@@ -8,7 +8,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 
 const Points = () => {
-  const { t } = useClientTranslation('price');
+  const { t } = useSafeTranslation();
 
   return (
     <Flex
@@ -41,7 +41,7 @@ const Points = () => {
 export default React.memo(Points);
 
 export const AiPointsTable = () => {
-  const { t } = useClientTranslation('price');
+  const { t } = useSafeTranslation();
   const { data: modelList = [] } = useRequest(getPublicModelList, {
     manual: false,
     errorToast: ''

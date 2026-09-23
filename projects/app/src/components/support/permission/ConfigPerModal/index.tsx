@@ -1,6 +1,6 @@
 import React from 'react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import CollaboratorContextProvider, {
   type MemberManagerInputPropsType
 } from '../MemberManager/context';
@@ -35,7 +35,7 @@ const ConfigPerModal = ({
 }: ConfigPerModalProps & {
   onClose: () => void;
 }) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
   const {
     isOpen: isChangeOwnerModalOpen,
     onOpen: onOpenChangeOwnerModal,

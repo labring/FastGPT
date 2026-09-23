@@ -2,8 +2,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex, Button, InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
-import { serviceSideProps } from '@/web/common/i18n/utils';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import FolderPath from '@/components/common/folder/Path';
 import List from '@/pageComponents/dataset/list/List';
 import { DatasetsContext } from '../../../pageComponents/dataset/list/context';
@@ -46,7 +45,7 @@ const CreateModal = dynamic(() => import('@/pageComponents/dataset/list/CreateMo
 
 const Dataset = () => {
   const { isPc } = useSystem();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const parentId = normalizeParentId(router.query.parentId);
 
@@ -369,13 +368,6 @@ const Dataset = () => {
     </Flex>
   );
 };
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'common', 'dataset', 'user']))
-    }
-  };
-}
 
 function DatasetContextWrapper() {
   return (

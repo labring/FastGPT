@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { Box, Flex } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dayjs from 'dayjs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import {
@@ -21,7 +21,7 @@ type BillDetailModalProps = {
 };
 
 const BillDetailModal = ({ billId, onClose }: BillDetailModalProps) => {
-  const { t } = useClientTranslation(['account', 'discount_coupon']);
+  const { t } = useSafeTranslation();
 
   const { data: bill, loading } = useRequest(() => getBillDetail(billId), {
     refreshDeps: [billId],

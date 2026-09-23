@@ -1,7 +1,7 @@
 import React from 'react';
 import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
@@ -15,7 +15,7 @@ const OpenAIAccountModal = ({
   defaultData?: OpenaiAccountType;
   onClose: () => void;
 }) => {
-  const { t } = useClientTranslation('account_thirdParty');
+  const { t } = useSafeTranslation();
   const { userInfo, initUserInfo } = useUserStore();
   const { register, handleSubmit } = useForm({
     defaultValues: defaultData

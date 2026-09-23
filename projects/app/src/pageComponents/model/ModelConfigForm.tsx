@@ -18,7 +18,7 @@ import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSele
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useLockFn } from 'ahooks';
 import React, { useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import {
@@ -167,7 +167,7 @@ const ProviderField = React.memo(function ProviderField({
 }: {
   control: Control<SystemModelDocumentDataType>;
   providerList: { label: React.ReactNode; value: string }[];
-  t: ReturnType<typeof useClientTranslation>['t'];
+  t: ReturnType<typeof useSafeTranslation>['t'];
 }) {
   const {
     field: { value, onChange, onBlur, ref },
@@ -203,7 +203,7 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
 }: {
   control: Control<SystemModelDocumentDataType>;
   setValue: UseFormSetValue<SystemModelDocumentDataType>;
-  t: ReturnType<typeof useClientTranslation>['t'];
+  t: ReturnType<typeof useSafeTranslation>['t'];
 }) {
   const responseFormatList = useWatch({
     control,
@@ -293,7 +293,7 @@ const VoicesField = React.memo(function VoicesField({
   onDraftChange
 }: {
   control: Control<SystemModelDocumentDataType>;
-  t: ReturnType<typeof useClientTranslation>['t'];
+  t: ReturnType<typeof useSafeTranslation>['t'];
   onDraftChange?: () => void;
 }) {
   const [isValidJson, setIsValidJson] = useState(true);
@@ -375,7 +375,7 @@ const ModelConfigForm = ({
   onDirtyChange,
   getValuesRef
 }: ModelConfigFormProps) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const initialModelData = normalizeModelPricingForRead(modelData);
   const [hasJsonDraftChanges, setHasJsonDraftChanges] = useState(false);

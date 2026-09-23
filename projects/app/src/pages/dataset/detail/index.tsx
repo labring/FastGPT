@@ -6,8 +6,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
 import PageContainer from '@/components/PageContainer';
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MetaDataCard from '@/pageComponents/dataset/detail/MetaDataCard';
 import NavBar from '@/pageComponents/dataset/detail/NavBar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -49,7 +48,7 @@ const sliderStyles: FlexProps = {
 };
 
 const Detail = ({ datasetId, currentTab }: Props) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useSystem();
@@ -134,22 +133,18 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   );
 };
 
-const Render = (data: Props) => (
-  <DatasetPageContextProvider datasetId={data.datasetId}>
-    <Detail {...data} />
-  </DatasetPageContextProvider>
-);
-export default Render;
-
-export async function getServerSideProps(context: any) {
-  const currentTab = context?.query?.currentTab || TabEnum.collectionCard;
-  const datasetId = context?.query?.datasetId;
-
-  return {
-    props: {
-      currentTab,
-      datasetId,
-      ...(await serviceSideProps(context, ['dataset', 'file', 'user']))
-    }
+const Render = () => {
+  const router = useRouter();
+  const { currentTab = TabEnum.collectionCard, datasetId = '' } = router.query as {
+    currentTab?: TabEnum;
+    datasetId?: string;
   };
-}
+
+  return (
+    <DatasetPageContextProvider datasetId={datasetId}>
+      <Detail datasetId={datasetId} currentTab={currentTab} />
+    </DatasetPageContextProvider>
+  );
+};
+
+export default Render;

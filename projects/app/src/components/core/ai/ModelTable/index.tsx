@@ -38,7 +38,7 @@ import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ModelListFilters from '../ModelListFilters';
@@ -56,7 +56,7 @@ const ModelTable = ({
   permissionConfig?: boolean;
   contentPx?: FlexProps['px'];
 }) => {
-  const { t, i18n } = useClientTranslation();
+  const { t, i18n } = useSafeTranslation();
   const { modelProviders: memberModelProviders, getModelProvider: getMemberModelProvider } =
     useUserModelStore();
   const { modelList: availableModels } = useModelList({ enabled: permissionConfig });
@@ -490,7 +490,7 @@ export const ModelPriceModal = ({
 }: {
   children: ({ onOpen }: { onOpen: () => void }) => React.ReactNode;
 }) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (

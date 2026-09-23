@@ -5,7 +5,7 @@ import { getInforms, readInform } from '@/web/support/user/inform/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -18,7 +18,7 @@ import {
 } from '@/pageComponents/account/styles';
 
 const InformTable = () => {
-  const { t } = useClientTranslation(['account_inform', 'account']);
+  const { t } = useSafeTranslation();
   const theme = useTheme();
   const { Loading } = useLoading();
   const [selectedInform, setSelectedInform] = useState<any>(null);

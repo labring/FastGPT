@@ -16,7 +16,7 @@ import { toMultiSelectFilterQuery } from '@fastgpt/web/components/common/TagFilt
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 
@@ -31,7 +31,7 @@ const UsageTableList = ({
   Selectors: React.ReactNode;
   filterParams: UsageFilterParams;
 }) => {
-  const { t } = useClientTranslation('account_usage');
+  const { t } = useSafeTranslation();
 
   const { dateRange, memberFilter, sourceFilter, projectName } = filterParams;
   const scrollContainerRef = useRef<HTMLDivElement>(null);

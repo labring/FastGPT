@@ -24,7 +24,7 @@ import { useDebounce } from 'ahooks';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const allPluginStatuses: PluginStatusType[] = [
   PluginStatusEnum.Normal,
@@ -48,7 +48,7 @@ const WorkflowToolConfig = dynamic(
 const ImportPluginModal = dynamic(() => import('@/pageComponents/admin/config/ImportPluginModal'));
 
 const ToolProvider = () => {
-  const { t } = useClientTranslation(['app', 'file', 'admin', 'config']);
+  const { t } = useSafeTranslation();
   const router = useRouter();
 
   const [localTools, setLocalTools] = useState<GetAdminSystemToolsResponseType>([]);

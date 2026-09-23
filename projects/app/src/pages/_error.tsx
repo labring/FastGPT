@@ -1,5 +1,4 @@
 import React from 'react';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { errorLogger } from '@/web/common/utils/errorLogger';
@@ -9,7 +8,7 @@ import type { I18nStringType } from '@fastgpt/global/common/i18n/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useMount } from 'ahooks';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 
@@ -22,7 +21,7 @@ const errorText: I18nStringType = {
 };
 
 function Error() {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useSafeTranslation();
   const lang = i18n.language;
   const router = useRouter();
   const { toast } = useToast();
@@ -71,12 +70,6 @@ function Error() {
   return (
     <Box whiteSpace={'pre-wrap'}>{errorText[lang as keyof typeof errorText] ?? errorText.en}</Box>
   );
-}
-
-export async function getServerSideProps(context: any) {
-  return {
-    props: { ...(await serviceSideProps(context)) }
-  };
 }
 
 export default Error;

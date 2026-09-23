@@ -6,8 +6,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import { useEffect, useState } from 'react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { useState } from 'react';
 import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
@@ -29,7 +29,7 @@ function OrgMemberManageModal({
   refetchOrgs: () => void;
   onClose: () => void;
 }) {
-  const { t } = useClientTranslation('user');
+  const { t } = useSafeTranslation();
   const [searchKey, setSearchKey] = useState('');
 
   const { data: allMembers, ScrollData: MemberScrollData } = useScrollPagination(getTeamMembers, {
@@ -59,7 +59,9 @@ function OrgMemberManageModal({
 
   const [selected, setSelected] = useState<{ name: string; tmbId: string; avatar: string }[]>([]);
 
-  useEffect(() => {
+  const [prevOrgMembers, setPrevOrgMembers] = useState(orgMembers);
+  if (orgMembers !== prevOrgMembers) {
+    setPrevOrgMembers(orgMembers);
     setSelected(
       orgMembers.map((item) => ({
         name: item.memberName,
@@ -67,7 +69,7 @@ function OrgMemberManageModal({
         avatar: item.avatar
       }))
     );
-  }, [orgMembers]);
+  }
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest(
     () => {

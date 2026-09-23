@@ -1,7 +1,7 @@
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex, Grid, Progress, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
@@ -39,7 +39,7 @@ export type ThirdPartyAccountType = {
 };
 
 const ThirdParty = () => {
-  const { t } = useClientTranslation('account_thirdParty');
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();

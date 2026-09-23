@@ -10,7 +10,7 @@ import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { BillPayWayEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import {
   BillStatusEnum,
@@ -32,7 +32,7 @@ import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 /** 根据顶部操作栏传入的套餐类型加载账单，筛选变化时由分页 Hook 重置页码。 */
 const BillTable = ({ billType }: { billType?: GetBillListQueryType['type'] }) => {
-  const { t } = useClientTranslation('account_bill');
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const [billDetailId, setBillDetailId] = useState<string>();
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
