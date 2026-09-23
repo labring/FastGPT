@@ -85,6 +85,9 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional().meta({
       description: 'Agent 沙箱提供方，可选 sealosdevbox 或 opensandbox；为空时不启用沙箱'
     }),
+    AGENT_SANDBOX_SHOW_FREE_TIP: BoolSchema.default(false).meta({
+      description: '是否展示虚拟机“限时免费”标签；默认为 false，为空或未配置时不展示'
+    }),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional().meta({
       description: 'Sealos Devbox 服务地址'

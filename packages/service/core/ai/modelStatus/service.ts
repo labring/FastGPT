@@ -14,12 +14,16 @@ import type {
   ModelStatusProbeConfigResponse,
   ModelStatusProbeModel,
   ModelStatusProbeRecord,
+  ModelStatusProbeTimelinePoint,
   RunModelStatusProbeResponse,
-  UpdateModelStatusProbeConfigBody
+  UpdateModelStatusProbeConfigBody,
+  TestModelStatusWebhookBody,
+  TestModelStatusWebhookResponse
 } from '@fastgpt/global/openapi/admin/system/model/status';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { batchRun, delay } from '@fastgpt/global/common/system/utils';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { MongoSystemConfigs } from '../../../common/system/config/schema';
 import { getModelHandle } from '../model';
@@ -41,6 +45,8 @@ const MODEL_STATUS_RETRY_DELAY_MS = 500;
 const MODEL_STATUS_CONCURRENCY = 5;
 /** 状态历史查询窗口（48 小时） */
 const MODEL_STATUS_WINDOW_MS = 48 * 60 * 60 * 1000;
+/** 聚合时间柱步长：30 分钟一个时间桶 */
+const MODEL_STATUS_BUCKET_STEP_MS = 30 * 60 * 1000;
 /** 手动全量探测的 Redis lease TTL；由 LeaseCache 自动续约，30 秒不是任务总时长。 */
 const MANUAL_MODEL_STATUS_PROBE_LEASE_TTL_MS = 30_000;
 
@@ -167,6 +173,61 @@ const toRecordResponse = (record: ModelStatusProbeRecordType): ModelStatusProbeR
 });
 
 /**
+ * 将 48 小时内的原始探测记录按固定时间桶（30 分钟）聚合为时间柱点位。
+ * 仅输出包含有效探测记录的时间桶，避免输出空白占位；
+ * 桶内聚合规则：
+ * 1. 存在任意一次 red（失败），则桶状态判定为 red；
+ * 2. 无 red 但存在 yellow（高延迟），则判定为 yellow；
+ * 3. 否则判定为 green；
+ * 4. 记录该时间桶内的总次数、失败次数、最后一次有效延迟及最近一次报错。
+ */
+export const aggregateRecordsToTimelinePoints = ({
+  records,
+  bucketStepMs = MODEL_STATUS_BUCKET_STEP_MS
+}: {
+  records: ModelStatusProbeRecordType[];
+  bucketStepMs?: number;
+}): ModelStatusProbeTimelinePoint[] => {
+  if (records.length === 0) return [];
+
+  const buckets = new Map<number, ModelStatusProbeRecordType[]>();
+  for (const record of records) {
+    const time = record.requestEndedAt.getTime();
+    const bucketKey = Math.floor(time / bucketStepMs) * bucketStepMs;
+    const list = buckets.get(bucketKey) ?? [];
+    list.push(record);
+    buckets.set(bucketKey, list);
+  }
+
+  const sortedKeys = Array.from(buckets.keys()).sort((a, b) => a - b);
+  return sortedKeys.map((bucketStart) => {
+    const list = buckets.get(bucketStart)!;
+    const totalChecks = list.length;
+    const failedChecks = list.filter((r) => r.status === ModelStatusProbeStatusEnum.red).length;
+    const hasYellow = list.some((r) => r.status === ModelStatusProbeStatusEnum.yellow);
+    const latestSuccess = list.filter((r) => r.status !== ModelStatusProbeStatusEnum.red).at(-1);
+    const latestError = list.filter((r) => !!r.error).at(-1)?.error;
+
+    const status =
+      failedChecks > 0
+        ? ModelStatusProbeStatusEnum.red
+        : hasYellow
+          ? ModelStatusProbeStatusEnum.yellow
+          : ModelStatusProbeStatusEnum.green;
+
+    return {
+      startTime: new Date(bucketStart).toISOString(),
+      endTime: new Date(bucketStart + bucketStepMs).toISOString(),
+      status,
+      ...(latestSuccess?.latencyMs === undefined ? {} : { latencyMs: latestSuccess.latencyMs }),
+      totalChecks,
+      failedChecks,
+      ...(latestError ? { error: latestError } : {})
+    };
+  });
+};
+
+/**
  * 将单个模型及其 48 小时内的探测历史聚合为模型状态展示对象。
  * 包含：
  * - 最新一次探测状态与详情；
@@ -197,7 +258,7 @@ const getModelStatusItem = ({
     type: model.type,
     status: latest?.status ?? 'unknown',
     latest: latest ? toRecordResponse(latest) : null,
-    records: records.map(toRecordResponse),
+    points: aggregateRecordsToTimelinePoints({ records }),
     stabilityPercent,
     totalChecks: records.length
   };
@@ -338,6 +399,47 @@ export const probeModelStatus = async ({
  * - 状态无变化时（持续正常或持续异常）不重复发送，避免告警风暴。
  * 单次 Webhook 请求超时限制为 5 秒，失败仅记录日志不阻断探测流程。
  */
+/**
+ * 向指定 Webhook 地址推送 JSON 通知。
+ * 若服务端返回非 2xx 或网络超时/异常则抛出 Error。
+ */
+const postWebhookNotification = async ({
+  webhookUrl,
+  webhookToken,
+  payload,
+  timeoutMs = 5000
+}: {
+  webhookUrl: string;
+  webhookToken?: string;
+  payload: Record<string, unknown>;
+  timeoutMs?: number;
+}) => {
+  let response: Response;
+  try {
+    response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(webhookToken ? { Authorization: `Bearer ${webhookToken}` } : {})
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+  } catch (error: any) {
+    const errorMsg =
+      error?.name === 'TimeoutError'
+        ? `Request timed out (${timeoutMs / 1000}s)`
+        : error?.message || String(error);
+    throw new Error(errorMsg);
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    const detail = errorText ? `: ${errorText.slice(0, 200)}` : '';
+    throw new Error(`HTTP ${response.status}${detail}`);
+  }
+};
+
 const sendModelWebhook = async ({
   config,
   record,
@@ -359,13 +461,10 @@ const sendModelWebhook = async ({
   if (!event) return;
 
   try {
-    const response = await fetch(config.webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(config.webhookToken ? { Authorization: `Bearer ${config.webhookToken}` } : {})
-      },
-      body: JSON.stringify({
+    await postWebhookNotification({
+      webhookUrl: config.webhookUrl,
+      webhookToken: config.webhookToken,
+      payload: {
         event,
         status: record.status,
         model: {
@@ -383,13 +482,8 @@ const sendModelWebhook = async ({
           requestStartedAt: record.requestStartedAt.toISOString(),
           requestEndedAt: record.requestEndedAt.toISOString()
         }
-      }),
-      signal: AbortSignal.timeout(5000)
+      }
     });
-
-    if (!response.ok) {
-      throw new Error(`Webhook responded with HTTP ${response.status}`);
-    }
   } catch (error) {
     logger.warn('Model status webhook failed', {
       event,
@@ -501,7 +595,7 @@ export const runManualModelStatusProbe = async ({
     });
   } catch (error) {
     if (error instanceof RedisLeaseUnavailableError) {
-      throw new UserError('A manual model status probe is already running. Please wait.');
+      throw new UserError(ModelErrEnum.probeTaskRunning);
     }
     throw error;
   }
@@ -533,3 +627,93 @@ export const getModelStatusProbeConstants = () => ({
   maxRetries: MODEL_STATUS_MAX_RETRIES,
   requestTimeoutMs: MODEL_STATUS_REQUEST_TIMEOUT_MS
 });
+
+/**
+ * 测试系统模型状态告警 Webhook 连通性。
+ * 会依次发送一条模拟失败消息（model_status_error）与一条模拟恢复消息（model_status_recovered）。
+ * 遇到网络异常或服务端非 2xx 响应时抛出清晰的 UserError。
+ */
+export const testModelStatusWebhook = async (
+  input?: TestModelStatusWebhookBody
+): Promise<TestModelStatusWebhookResponse> => {
+  const [config, modelHandle] = await Promise.all([getStoredConfig(), getModelHandle()]);
+  const targetUrl = input?.webhookUrl?.trim() || config.webhookUrl;
+  if (!targetUrl) {
+    throw new UserError('Webhook URL is required');
+  }
+
+  const targetToken =
+    input?.webhookToken !== undefined && input.webhookToken !== ''
+      ? input.webhookToken
+      : config.webhookToken;
+
+  const activeModels = [...modelHandle.getActiveModels()] as SystemModelDataType[];
+  const sampleModel =
+    activeModels[0] || (modelHandle.getAllModels()[0] as SystemModelDataType | undefined);
+
+  const modelInfo = sampleModel
+    ? {
+        modelId: sampleModel.modelId,
+        name: sampleModel.name,
+        model: sampleModel.model,
+        provider: sampleModel.provider,
+        type: sampleModel.type
+      }
+    : {
+        modelId: 'test-model',
+        name: 'Test Model',
+        model: 'test-model',
+        provider: 'FastGPT',
+        type: 'llm' as const
+      };
+
+  const now = new Date();
+
+  // 1. 发送模拟异常通知 (model_status_error)
+  try {
+    await postWebhookNotification({
+      webhookUrl: targetUrl,
+      webhookToken: targetToken,
+      payload: {
+        event: 'model_status_error',
+        status: ModelStatusProbeStatusEnum.red,
+        model: modelInfo,
+        probe: {
+          attempts: 4,
+          latencyMs: 5000,
+          error: 'Connection timeout (test probe alert)',
+          startedAt: now.toISOString(),
+          requestStartedAt: now.toISOString(),
+          requestEndedAt: now.toISOString()
+        }
+      }
+    });
+  } catch (error: any) {
+    throw new UserError(`Webhook error event failed: ${error?.message || getErrText(error)}`);
+  }
+
+  // 2. 发送模拟恢复通知 (model_status_recovered)
+  try {
+    await postWebhookNotification({
+      webhookUrl: targetUrl,
+      webhookToken: targetToken,
+      payload: {
+        event: 'model_status_recovered',
+        status: ModelStatusProbeStatusEnum.green,
+        model: modelInfo,
+        probe: {
+          attempts: 1,
+          latencyMs: 350,
+          error: null,
+          startedAt: now.toISOString(),
+          requestStartedAt: now.toISOString(),
+          requestEndedAt: now.toISOString()
+        }
+      }
+    });
+  } catch (error: any) {
+    throw new UserError(`Webhook recovered event failed: ${error?.message || getErrText(error)}`);
+  }
+
+  return { success: true };
+};

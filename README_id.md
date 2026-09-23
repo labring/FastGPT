@@ -122,6 +122,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 ## 🌿 Ekosistem Pihak Ketiga
 
 - [AI Proxy: Layanan Agregasi Model Besar](https://sealos.run/aiproxy/?k=fastgpt-github/)
+- [TokenDance - Gateway AI API Terpadu](https://tokendance.space/)
 - [SiliconCloud - Platform Pengalaman Online Model Open Source](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 
 <a href="#readme">

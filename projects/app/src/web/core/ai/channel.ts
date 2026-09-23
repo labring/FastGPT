@@ -14,12 +14,15 @@ import {
   FASTGPT_WEB_REQUEST_HEADER,
   FASTGPT_WEB_REQUEST_VALUE
 } from '@fastgpt/global/common/system/constants';
+import { REASONING_FIELD_MAPPING_CHANNEL_TYPES } from '@fastgpt/global/core/ai/channel';
 
 interface ResponseDataType {
   success: boolean;
   message: string;
   data: any;
 }
+
+const reasoningFieldMappingChannelTypes = new Set<number>(REASONING_FIELD_MAPPING_CHANNEL_TYPES);
 
 /**
  * 请求成功,检查请求头
@@ -153,6 +156,9 @@ export const postCreateChannel = async (data: CreateChannelProps) => {
     base_url: data.base_url,
     models: data.models,
     model_mapping: data.model_mapping,
+    configs: reasoningFieldMappingChannelTypes.has(data.type)
+      ? { map_reasoning_to_reasoning_content: true }
+      : undefined,
     key: data.key,
     priority: 1
   });

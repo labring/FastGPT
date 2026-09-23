@@ -65,6 +65,22 @@ export const ModelStatusProbeRecordSchema = z.object({
 });
 export type ModelStatusProbeRecord = z.infer<typeof ModelStatusProbeRecordSchema>;
 
+/** 48 小时时间线上聚合后的单根时间柱点位 Schema */
+export const ModelStatusProbeTimelinePointSchema = z.object({
+  startTime: z.string().meta({ description: '时间窗口开始时间 (ISO 8601)' }),
+  endTime: z.string().meta({ description: '时间窗口结束时间 (ISO 8601)' }),
+  status: ModelStatusProbeStatusSchema.meta({ description: '时间窗口内综合健康状态' }),
+  latencyMs: z
+    .number()
+    .nonnegative()
+    .optional()
+    .meta({ description: '时间窗口内最后一次成功调用的响应耗时 (ms)' }),
+  totalChecks: IntSchema.min(1).meta({ description: '时间窗口内执行探测的总次数' }),
+  failedChecks: IntSchema.nonnegative().meta({ description: '时间窗口内探测失败的次数' }),
+  error: z.string().optional().meta({ description: '时间窗口内最近一次失败的错误详情' })
+});
+export type ModelStatusProbeTimelinePoint = z.infer<typeof ModelStatusProbeTimelinePointSchema>;
+
 /** 单个模型的健康状态及 48 小时汇总 Schema */
 export const ModelStatusProbeModelSchema = z.object({
   modelId: z.string(),
@@ -75,7 +91,7 @@ export const ModelStatusProbeModelSchema = z.object({
   type: ModelTypeSchema,
   status: ModelStatusSchema,
   latest: ModelStatusProbeRecordSchema.nullable(),
-  records: z.array(ModelStatusProbeRecordSchema),
+  points: z.array(ModelStatusProbeTimelinePointSchema).meta({ description: '聚合后的时间柱列表' }),
   stabilityPercent: z.number().min(0).max(100),
   totalChecks: IntSchema
 });
@@ -103,3 +119,18 @@ export const RunModelStatusProbeResponseSchema = z.object({
   records: z.array(ModelStatusProbeRecordSchema)
 });
 export type RunModelStatusProbeResponse = z.infer<typeof RunModelStatusProbeResponseSchema>;
+
+/** 测试模型状态告警 Webhook 连通性入参 Schema */
+export const TestModelStatusWebhookBodySchema = z
+  .object({
+    webhookUrl: WebhookUrlSchema.optional(),
+    webhookToken: z.string().trim().max(2048).optional()
+  })
+  .strict();
+export type TestModelStatusWebhookBody = z.infer<typeof TestModelStatusWebhookBodySchema>;
+
+/** 测试模型状态告警 Webhook 响应 Schema */
+export const TestModelStatusWebhookResponseSchema = z.object({
+  success: z.boolean()
+});
+export type TestModelStatusWebhookResponse = z.infer<typeof TestModelStatusWebhookResponseSchema>;

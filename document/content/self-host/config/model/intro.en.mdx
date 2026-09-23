@@ -290,7 +290,7 @@ Administrators can configure and toggle model probing directly in the admin cons
 3. **Configure Settings**:
    - **Enable Automatic Probes**: Toggle on to schedule automatic background health checks for all active models. When toggled off, the page displays an empty state ("Automatic probe is disabled"), and background probing and alerts are paused.
    - **Probe Interval (minutes)**: Set an integer between 5 and 60 minutes.
-   - **Alert Webhook URL** (optional): The HTTP/HTTPS endpoint to receive state change notifications.
+   - **Alert Webhook URL** (optional): The HTTP/HTTPS endpoint to receive state change notifications. Click the **Test** button next to the input to verify connectivity; the system will send simulated error and recovery test messages in sequence.
    - **Alert Token** (optional): Authorization token for authenticated Webhook endpoints. Sent as an `Authorization: Bearer <token>` header.
 4. **Save**: Click **Confirm** to apply changes.
 5. **Probe Now (Optional)**: When probing is enabled, a **Probe Now** button appears in the top-right corner. Click it to immediately trigger a full-batch probe and refresh the status.
@@ -402,22 +402,6 @@ Model calls made through channels are logged on the `Call Logs` page. Logs inclu
 ### Self-Hosted Models
 
 [See the ReRank model deployment tutorial](../../custom-models/bge-rerank.en.mdx)
-
-### Custom Request URL
-
-If you set a custom request URL, requests will bypass `Model Channels` and be sent directly to the specified endpoint. You must provide the full request URL, for example:
-
-- LLM: [host]/v1/chat/completions
-- Embedding: [host]/v1/embeddings
-- STT: [host]/v1/audio/transcriptions
-- TTS: [host]/v1/audio/speech
-- Rerank: [host]/v1/rerank
-
-The custom request key is included as the `Authorization: Bearer xxx` header when sending requests to the custom URL.
-
-All endpoints follow the OpenAI model format. Refer to the [OpenAI API documentation](https://platform.openai.com/docs/api-reference/guide) for details.
-
-Since OpenAI does not provide a Rerank model, the Rerank endpoint follows the Cohere format. [See request examples](../../troubleshooting/model-errors.en.mdx)
 
 ### Migrating from OneAPI to AI Proxy
 

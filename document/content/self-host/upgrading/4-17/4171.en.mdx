@@ -9,19 +9,24 @@ upgradeTags:
 
 ### Image updates
 
-- Update the AI Proxy image tag to `v0.7.2`
+- Update the AI Proxy image tag to `v0.7.3`
 
 ### Admin entry changes
 
-The FastGPT Pro admin interface is now part of the main FastGPT app. After signing in as root, use the Admin entry to access system settings, operations management, and License activation and renewal. System settings are under `/admin/settings/*`; system tools and models are at `/admin/resources/tool` and `/admin/resources/model`. Legacy routes have been removed.
+The commercial edition's admin interface is now part of the main FastGPT app. After signing in as root, use the Admin entry to access system settings, operations management, and License activation and renewal. System settings are under `/admin/settings/*`; system tools and models are at `/admin/resources/tool` and `/admin/resources/model`. Legacy routes have been removed.
 
 The FastGPT Pro service is still required. If you use custom health checks for Pro, update the probe path to `/api/health`.
 
 ### Upgrade scripts
 
-This upgrade includes the following automated script:
+This upgrade includes the following automated scripts:
 
 1. Backfill App resource permission snapshots and validate published App versions. The migration task does not block startup; its progress and failed records are available in system upgrade tasks.
+2. Enable reasoning mapping for compatible channels: enable `map_reasoning_to_reasoning_content: true` response-field conversion for existing AIProxy OpenAI channels while preserving their other configuration. This resolves reasoning-field differences for reasoning models such as DeepSeek-R1. Channels that already have this setting enabled are not updated again, and the migration task does not block startup.
+
+## Compatibility notes
+
+The commercial edition no longer requires the Pro service to be started separately. Its configuration has moved to the FastGPT client.
 
 ## 🚀 New Features
 
@@ -31,19 +36,25 @@ This upgrade includes the following automated script:
 4. Agent V2 Dataset search now supports Dataset citations, so chats can display the citations returned by the current search.
 5. Apps now include a Token usage dashboard, and usage records also show Token consumption.
 6. App, Agent, Skill, Tool, and Dataset lists now support batch selection, moving, and deletion, with available actions restricted by management permissions.
-
 7. Admin features are now integrated into the main app, with menus and feature status based on License permissions.
 8. File-reading Node debugging now supports local file uploads and file URLs, and prevents execution while uploads are pending or files have errors.
-9. Added collection-level permission for Datasets: assign collaborators to an individual file or folder, with inherit and independent states, resuming inheritance, and ownership transfer. The switch is off by default, so existing Datasets keep their behavior; once enabled, lists, details, and search recall are authorized per file, and disabling clears every file permission configuration. See [Collection-level Permission](/en/guide/dataset/collection_permission).
+9. Added collection-level permission for Datasets: assign collaborators to individual files or folders, with inherited and independent states, inheritance restoration, and ownership transfer. The switch is off by default, so existing Datasets keep their behavior; once enabled, lists, details, and retrieval results are authorized file by file, and disabling clears all file permission configurations. See [Collection-level Permission](../../../guide/dataset/collection_permission).
+10. Added system model health probing and monitoring. Administrators can enable scheduled health probes, view a 48-hour status chart, and configure an alert Webhook and Token to receive notifications when model status changes. See [System Model Configuration and Monitoring](../../config/model/intro).
+11. Added first-login onboarding and action orchestration. First login can require missing team member display names to be completed, automatically prompt users to handle pending team invitations, and orchestrate follow-up dialogs such as system announcements and enterprise verification.
+12. Administrators can now update a system model's identifier (`model`) directly using its stable `modelId`, with associated channel model mappings and model lists updated automatically.
+13. Added OFD file parsing support.
+14. Added integration guide and examples for TokenDance AI API gateway.
 
 ## ⚙️ Improvements
 
 1. Updated the Dataset Collection batch action bar, tag spacing, and tag management empty state.
 2. App log user filters now load only after the filter is opened, with server-side search and pagination instead of a fixed 100-user limit.
-
 3. Dataset search Nodes can now record candidates before reranking to help compare retrieval and reranking results. Set the recording limit with `RETRIEVAL_RESULTS_LIMIT`; recording is disabled by default.
 4. Beta models now appear at the end of the model selector.
 5. Fixed the default Dataset image model being automatically restored after clearing it. The image model can now remain unconfigured.
+6. Redesigned admin system configuration forms with improved navigation and category layouts.
+7. Supported unlimited expiration time for commercial License activation, improving display and validation for non-expiring licenses.
+8. Improved large-number formatting in Chinese locales, including localized ten-thousand and hundred-million units.
 
 ## 🐛 Fixes
 
@@ -54,7 +65,7 @@ This upgrade includes the following automated script:
 5. Fixed MongoDB transaction errors caused by concurrently writing human and AI chat items in the same chat round.
 6. Fixed HTML images in parsed documents failing to preview, and converted S3 object keys inside HTML tags to preview URLs.
 7. Fixed text cleanup removing `]]` from content and failing to remove all consecutive whitespace between Chinese characters.
-8. Fixed selecting, copying, and pasting variable and Skill tags in the prompt editor.
+8. Fixed selecting, copying, and pasting Variable and Skill tags in the prompt editor.
 9. Fixed JSON extraction including trailing explanations containing brackets after a model-generated JSON value.
 10. Fixed soft line breaks in PowerPoint paragraphs being dropped and causing adjacent text to be joined.
 11. Fixed Markdown table corruption when a cell contains a backslash and when an HTML table has no explicit header row.
@@ -64,9 +75,16 @@ This upgrade includes the following automated script:
 15. Fixed Tool inputs incorrectly switching to a JSON editor in manual input mode. They now use the input control declared by the Node.
 16. Fixed MongoDB change streams failing to recover after termination by adding automatic reconnection and configuration reloads.
 17. Fixed MongoDB transaction errors caused by concurrent system configuration updates.
+18. Fixed inactive or non-reasoning model Nodes incorrectly displaying empty reasoning output cards in Workflows.
+19. Fixed HTML table to Markdown conversion failing to recognize `<th>` cells, which caused standard HTML tables to lose header names.
+20. Fixed streaming Node responses being unexpectedly interrupted when child Workflow details were not published.
+21. Fixed popup blockers on iOS Safari preventing source files from opening after asynchronous fetching.
+22. Fixed collaborator role assignment failing to honor group and organization administrator rights.
+23. Fixed runtime edge statuses being incorrectly reset to waiting during single-node workflow debugging, which caused the debug endpoint to return immediately while the frontend remained in a running state.
 
 ## 🛠️ Code Improvements
 
 1. The model test endpoint can now be called without configuring a channel.
 2. Added APIs for pinning Apps and folders, with opt-in pinned-first sorting in list endpoints.
 3. Dataset APIs now support external document parsing options for retaining headers and footers, appendices, image recognition results, and chart analysis results. These options apply only when an external parsing service is enabled.
+4. Refactored scheduled timer tasks and distributed locking with `checkTimerLock`, consolidating model status probing in the service layer to prevent concurrent probes across nodes.

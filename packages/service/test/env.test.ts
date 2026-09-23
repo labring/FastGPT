@@ -16,6 +16,7 @@ const originalEnv = {
   AGENT_SANDBOX_STORAGE_SIZE_GI: process.env.AGENT_SANDBOX_STORAGE_SIZE_GI,
   FE_DOMAIN: process.env.FE_DOMAIN,
   AGENT_SANDBOX_SUSPEND_MINUTES: process.env.AGENT_SANDBOX_SUSPEND_MINUTES,
+  AGENT_SANDBOX_SHOW_FREE_TIP: process.env.AGENT_SANDBOX_SHOW_FREE_TIP,
   AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS: process.env.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS,
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   FILE_URL_EXPIRED_DAYS: process.env.FILE_URL_EXPIRED_DAYS,
@@ -69,6 +70,7 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_STORAGE_SIZE_GI', originalEnv.AGENT_SANDBOX_STORAGE_SIZE_GI);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('AGENT_SANDBOX_SUSPEND_MINUTES', originalEnv.AGENT_SANDBOX_SUSPEND_MINUTES);
+    vi.stubEnv('AGENT_SANDBOX_SHOW_FREE_TIP', originalEnv.AGENT_SANDBOX_SHOW_FREE_TIP);
     vi.stubEnv(
       'AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS',
       originalEnv.AGENT_SANDBOX_ARCHIVE_INACTIVE_DAYS
@@ -557,6 +559,20 @@ describe('serviceEnv', () => {
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(4096);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(5);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe('custom-volume');
+  });
+
+  it('defaults AGENT_SANDBOX_SHOW_FREE_TIP to false and supports enabling it', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_SHOW_FREE_TIP', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP).toBe(false);
+
+    vi.stubEnv('AGENT_SANDBOX_SHOW_FREE_TIP', 'true');
+    const enabledEnv = await importServiceEnv();
+    expect(enabledEnv.serviceEnv.AGENT_SANDBOX_SHOW_FREE_TIP).toBe(true);
   });
 
   it('reads the optional Agent Sandbox apt mirror value', async () => {

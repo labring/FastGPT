@@ -221,8 +221,9 @@
   "model_status_interval": "探測間隔（分鐘）",
   "model_status_interval_tip": "可設定 5-60 分鐘；狀態圖最多顯示最近 48 小時。",
   "model_status_webhook_url": "告警 Webhook 位址",
+  "model_status_webhook_url_tip": "只在發生異常或恢復時逐模型發送",
   "model_status_webhook_token": "告警 Token",
-  "model_status_webhook_token_tip": "只在發生異常或恢復時逐模型發送；已儲存的 Token 不會回顯。",
+  "model_status_webhook_token_tip": "攜帶在 Authorization Bearer 內，已儲存的 Token 不會回顯。",
   "model_status_token_configured": "已設定 Token，留白表示保持不變",
   "model_status_token_placeholder": "選填",
   "model_status_clear_token": "清除已儲存的 Token",
@@ -249,5 +250,10 @@
   "model_status_red": "異常",
   "model_status_tip_normal": "正常",
   "model_status_tip_high_latency": "延遲過高",
-  "model_status_tip_error_prefix": "錯誤："
+  "model_status_tip_error_prefix": "錯誤：",
+  "model_status_tip_checks": "{{total}} 次探測",
+  "model_status_tip_checks_with_failed": "{{total}} 次探測，{{failed}} 次失敗",
+  "model_status_test_webhook": "測試 Webhook",
+  "model_status_test_webhook_success": "Webhook 測試成功，已發送異常與恢復通知",
+  "model_status_webhook_url_empty": "請先填寫告警 Webhook 地址"
 }

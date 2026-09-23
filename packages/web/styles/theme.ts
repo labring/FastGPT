@@ -427,6 +427,13 @@ const NumberInput = numInputMultiStyle({
         fontSize: 'sm'
       }
     }),
+    md: defineStyle({
+      field: {
+        h: '36px',
+        borderRadius: 'sm',
+        fontSize: 'sm'
+      }
+    }),
     lg: defineStyle({
       field: {
         h: '40px',
@@ -532,6 +539,7 @@ const NumberInput = numInputMultiStyle({
     })
   },
   defaultProps: {
+    size: 'md',
     variant: 'outline'
   }
 });

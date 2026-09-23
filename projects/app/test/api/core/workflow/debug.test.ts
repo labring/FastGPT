@@ -186,4 +186,41 @@ describe('workflow debug API chatId', () => {
       expect.objectContaining({ chatConfig: requestChatConfig })
     );
   });
+
+  it('preserves client runtime edge statuses when calling workflow dispatch', async () => {
+    const requestEdges = [
+      {
+        source: 'workflowStartNodeId',
+        sourceHandle: 'workflowStartNodeId-source-right',
+        target: 'aiChatNodeId',
+        targetHandle: 'aiChatNodeId-target-left',
+        status: 'active'
+      },
+      {
+        source: 'aiChatNodeId',
+        sourceHandle: 'aiChatNodeId-source-right',
+        target: 'docParserNodeId',
+        targetHandle: 'docParserNodeId-target-left',
+        status: 'waiting'
+      }
+    ];
+
+    await handler(
+      {
+        body: {
+          appId,
+          edges: requestEdges,
+          usageId: 'usage-id'
+        },
+        headers: {}
+      } as any,
+      {} as any
+    );
+
+    expect(mocks.dispatchWorkFlow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeEdges: requestEdges
+      })
+    );
+  });
 });

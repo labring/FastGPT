@@ -8,10 +8,7 @@ import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/ut
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import {
-  getLastInteractiveValue,
-  storeEdges2RuntimeEdges
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { createChatUsageRecord } from '@fastgpt/service/support/wallet/usage/controller';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -102,7 +99,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<Workf
     chatId: debugChatId ?? getNanoid(),
     responseChatItemId,
     runtimeNodes: nodes,
-    runtimeEdges: storeEdges2RuntimeEdges(edges),
+    runtimeEdges: edges,
     defaultSkipNodeQueue: skipNodeQueue,
     lastInteractive: interactive,
     variables,

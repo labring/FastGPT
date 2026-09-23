@@ -93,5 +93,9 @@
   "migrations.20260916_backfill_app_resource_snapshots.versions": "回填應用版本資源快照",
   "migrations.20260916_backfill_app_resource_snapshots.apps": "回填應用正式版本指標",
   "migrations.20260916_backfill_app_resource_snapshots.validation": "驗證應用資源遷移結果",
-  "migrations.20260916_backfill_app_resource_snapshots.result": "已檢查並遷移 {{versionsProcessedCount}} 個應用版本和 {{appsProcessedCount}} 個應用。"
+  "migrations.20260916_backfill_app_resource_snapshots.result": "已檢查並遷移 {{versionsProcessedCount}} 個應用版本和 {{appsProcessedCount}} 個應用。",
+  "migrations.20260923_enable_channel_reasoning_mapping.name": "為 OpenAI 協議渠道啟用 reasoning 映射",
+  "migrations.20260923_enable_channel_reasoning_mapping.description": "為現有 AIProxy OpenAI 協議渠道啟用 reasoning 到 reasoning_content 的回應欄位轉換，並保留渠道的其他設定。",
+  "migrations.20260923_enable_channel_reasoning_mapping.channels": "更新渠道設定",
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "已檢查 {{channelCount}} 個渠道，更新 {{updatedCount}} 個渠道。"
 }

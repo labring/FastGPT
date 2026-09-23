@@ -14,12 +14,15 @@ import {
   Switch,
   Text
 } from '@chakra-ui/react';
+import dayjs from 'dayjs';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -29,12 +32,15 @@ import type {
   GetModelStatusResponse,
   ModelStatusProbeModel,
   ModelStatusProbeRecord,
+  ModelStatusProbeTimelinePoint,
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
+import { ModelStatusProbeStatusEnum } from '@fastgpt/global/core/ai/model/status';
 import {
   getModelStatus,
   postModelStatusProbe,
-  putModelStatusProbeConfig
+  putModelStatusProbeConfig,
+  postTestModelStatusWebhook
 } from '@/web/core/ai/config';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '../ModelTabHeader';
@@ -50,6 +56,16 @@ const formatTime = (time?: string | null) => {
   if (!time) return '-';
   return new Date(time).toLocaleString();
 };
+
+const formatTimeToMinute = (time?: string | null) => {
+  if (!time) return '-';
+  const d = dayjs(time);
+  return d.isValid() ? d.format('YYYY/MM/DD HH:mm') : '-';
+};
+
+const TIMELINE_BAR_MIN_WIDTH = 4;
+const TIMELINE_BAR_MAX_WIDTH = 10;
+const TIMELINE_BAR_GAP = 2;
 
 const StatusBadge = ({
   status,
@@ -90,13 +106,50 @@ const StatusSummaryCard = ({
 );
 
 const ProbeTimeline = ({
-  records,
+  points,
   t
 }: {
-  records: ModelStatusProbeRecord[];
+  points: ModelStatusProbeTimelinePoint[];
   t: (key: string, options?: Record<string, unknown>) => string;
 }) => {
-  if (records.length === 0) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [maxBars, setMaxBars] = useState<number>(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    const updateMaxBars = () => {
+      const clientWidth = container.clientWidth;
+      if (clientWidth > 0) {
+        // 容器两边内边距 px={2} (共 16px)
+        const availableWidth = Math.max(0, clientWidth - 16);
+        // 单柱最小宽度 4px，间距 2px；N 根柱子总宽 N * minW + (N - 1) * gap <= availableWidth
+        const count = Math.floor(
+          (availableWidth + TIMELINE_BAR_GAP) / (TIMELINE_BAR_MIN_WIDTH + TIMELINE_BAR_GAP)
+        );
+        setMaxBars(Math.max(count, 0));
+      }
+    };
+
+    updateMaxBars();
+    const resizeObserver = new ResizeObserver(updateMaxBars);
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const displayPoints = useMemo(() => {
+    if (maxBars > 0 && points.length > maxBars) {
+      // 放不下时截断较早的历史数据，仅保留最新的柱子展示
+      return points.slice(-maxBars);
+    }
+    return points;
+  }, [points, maxBars]);
+
+  if (points.length === 0) {
     return (
       <Flex
         h={'28px'}
@@ -112,22 +165,26 @@ const ProbeTimeline = ({
     );
   }
 
-  const renderTooltipContent = (record: ModelStatusProbeRecord) => {
+  const renderTooltipContent = (point: ModelStatusProbeTimelinePoint) => {
     const probeTimes = (
       <Box color={'myGray.500'} mb={1}>
         <Text>
-          {t('config_model:model_status_task_started')}: {formatTime(record.startedAt)}
+          {formatTimeToMinute(point.startTime)} ~ {formatTimeToMinute(point.endTime)}
         </Text>
         <Text>
-          {t('config_model:model_status_request_started')}: {formatTime(record.requestStartedAt)}
-        </Text>
-        <Text>
-          {t('config_model:model_status_request_ended')}: {formatTime(record.requestEndedAt)}
+          {point.failedChecks > 0
+            ? t('config_model:model_status_tip_checks_with_failed', {
+                total: point.totalChecks,
+                failed: point.failedChecks
+              })
+            : t('config_model:model_status_tip_checks', {
+                total: point.totalChecks
+              })}
         </Text>
       </Box>
     );
 
-    if (record.status === 'green') {
+    if (point.status === 'green') {
       return (
         <Box fontSize={'xs'}>
           {probeTimes}
@@ -135,15 +192,13 @@ const ProbeTimeline = ({
             <Text fontWeight={'semibold'} color={'green.600'}>
               {t('config_model:model_status_tip_normal')}
             </Text>
-            {record.latencyMs !== undefined && (
-              <Text color={'myGray.600'}>{record.latencyMs}ms</Text>
-            )}
+            {point.latencyMs !== undefined && <Text color={'myGray.600'}>{point.latencyMs}ms</Text>}
           </Flex>
         </Box>
       );
     }
 
-    if (record.status === 'yellow') {
+    if (point.status === 'yellow') {
       return (
         <Box fontSize={'xs'}>
           {probeTimes}
@@ -151,15 +206,13 @@ const ProbeTimeline = ({
             <Text fontWeight={'semibold'} color={'yellow.600'}>
               {t('config_model:model_status_tip_high_latency')}
             </Text>
-            {record.latencyMs !== undefined && (
-              <Text color={'myGray.600'}>{record.latencyMs}ms</Text>
-            )}
+            {point.latencyMs !== undefined && <Text color={'myGray.600'}>{point.latencyMs}ms</Text>}
           </Flex>
         </Box>
       );
     }
 
-    const errorMsg = record.error || t('config_model:model_status_red');
+    const errorMsg = point.error || t('config_model:model_status_red');
 
     return (
       <Box maxW={'320px'} fontSize={'xs'}>
@@ -173,28 +226,43 @@ const ProbeTimeline = ({
   };
 
   return (
-    <Box overflowX={'auto'} borderRadius={'md'} bg={'myGray.50'} px={2} py={1.5}>
-      <Flex minW={Math.max(records.length * 6, 240)} h={'28px'} alignItems={'center'} gap={'2px'}>
-        {records.map((record, index) => (
+    <Box
+      ref={containerRef}
+      overflow={'hidden'}
+      borderRadius={'md'}
+      bg={'myGray.50'}
+      px={2}
+      py={1.5}
+    >
+      <Flex
+        w={'100%'}
+        h={'28px'}
+        alignItems={'center'}
+        justifyContent={'flex-end'}
+        gap={`${TIMELINE_BAR_GAP}px`}
+      >
+        {displayPoints.map((point, index) => (
           <MyTooltip
-            key={`${record.requestEndedAt}-${index}`}
-            label={renderTooltipContent(record)}
+            key={point.startTime}
+            label={renderTooltipContent(point)}
             shouldWrapChildren={false}
             openDelay={100}
           >
             <Box
               data-testid={'model-probe-timeline-bar'}
-              flex={'0 0 4px'}
+              flex={1}
+              minW={`${TIMELINE_BAR_MIN_WIDTH}px`}
+              maxW={`${TIMELINE_BAR_MAX_WIDTH}px`}
               h={'20px'}
               borderRadius={'xs'}
-              bg={`${statusColorMap[record.status]}.400`}
+              bg={statusColorMap[point.status] + '.400'}
               cursor={'pointer'}
               transition={
                 'transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease'
               }
               _hover={{
                 transform: 'scaleY(1.4) scaleX(1.3)',
-                bg: `${statusColorMap[record.status]}.500`,
+                bg: statusColorMap[point.status] + '.500',
                 boxShadow: '0 0 6px rgba(0, 0, 0, 0.2)',
                 zIndex: 2
               }}
@@ -241,7 +309,7 @@ const ModelStatusCard = ({
       </Text>
 
       <Box mt={3}>
-        <ProbeTimeline records={model.records} t={t} />
+        <ProbeTimeline points={model.points} t={t} />
       </Box>
 
       <Flex mt={3} justifyContent={'space-between'} gap={3} color={'myGray.500'} fontSize={'xs'}>
@@ -271,7 +339,9 @@ const ProbeConfigModal = ({
   const { t } = useClientTranslation('config_model');
   const { toast } = useToast();
   const [enabled, setEnabled] = useState(config.enabled);
-  const [intervalMinutes, setIntervalMinutes] = useState(String(config.intervalMinutes));
+  const [intervalMinutes, setIntervalMinutes] = useState<number | undefined>(
+    config.intervalMinutes
+  );
   const [webhookUrl, setWebhookUrl] = useState(config.webhookUrl ?? '');
   const [webhookToken, setWebhookToken] = useState('');
   const [clearWebhookToken, setClearWebhookToken] = useState(false);
@@ -287,16 +357,44 @@ const ProbeConfigModal = ({
     }
   );
 
+  const { runAsync: testWebhook, loading: testLoading } = useRequest(
+    async () => {
+      const trimmedUrl = webhookUrl.trim();
+      if (!trimmedUrl && !config.webhookUrl) {
+        toast({ title: t('config_model:model_status_webhook_url_empty'), status: 'warning' });
+        return;
+      }
+      return postTestModelStatusWebhook({
+        ...(trimmedUrl ? { webhookUrl: trimmedUrl } : {}),
+        ...(webhookToken ? { webhookToken } : {})
+      });
+    },
+    {
+      onSuccess: (res) => {
+        if (res?.success) {
+          toast({
+            title: t('config_model:model_status_test_webhook_success'),
+            status: 'success'
+          });
+        }
+      }
+    }
+  );
+
   const onSubmit = () => {
-    const parsedInterval = Number(intervalMinutes);
-    if (!Number.isInteger(parsedInterval) || parsedInterval < 5 || parsedInterval > 60) {
+    if (
+      intervalMinutes === undefined ||
+      !Number.isInteger(intervalMinutes) ||
+      intervalMinutes < 5 ||
+      intervalMinutes > 60
+    ) {
       toast({ title: t('config_model:model_status_interval_invalid'), status: 'warning' });
       return;
     }
 
     void runAsync({
       enabled,
-      intervalMinutes: parsedInterval,
+      intervalMinutes,
       webhookUrl,
       ...(webhookToken ? { webhookToken } : {}),
       clearWebhookToken
@@ -309,14 +407,24 @@ const ProbeConfigModal = ({
       onClose={onClose}
       title={t('config_model:model_status_config')}
       footer={
-        <>
-          <Button variant={'whiteBase'} onClick={onClose} isDisabled={loading}>
-            {t('common:Cancel')}
+        <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Button
+            variant={'whitePrimary'}
+            isLoading={testLoading}
+            isDisabled={loading}
+            onClick={() => void testWebhook()}
+          >
+            {t('config_model:model_status_test_webhook')}
           </Button>
-          <Button isLoading={loading} onClick={onSubmit}>
-            {t('common:Confirm')}
-          </Button>
-        </>
+          <HStack spacing={3}>
+            <Button variant={'whiteBase'} onClick={onClose} isDisabled={loading || testLoading}>
+              {t('common:Cancel')}
+            </Button>
+            <Button isLoading={loading} isDisabled={testLoading} onClick={onSubmit}>
+              {t('common:Confirm')}
+            </Button>
+          </HStack>
+        </Flex>
       }
     >
       <Stack spacing={5}>
@@ -329,20 +437,30 @@ const ProbeConfigModal = ({
         </FormControl>
 
         <FormControl>
-          <FormLabel>{t('config_model:model_status_interval')}</FormLabel>
-          <Input
-            type={'number'}
+          <FormLabel display={'flex'} alignItems={'center'}>
+            {t('config_model:model_status_interval')}
+            <QuestionTip ml={1} label={t('config_model:model_status_interval_tip')} />
+          </FormLabel>
+          <MyNumberInput
+            h={'36px'}
+            bg={'white'}
+            inputFieldProps={{ bg: 'white', h: '36px' }}
             min={5}
             max={60}
+            step={1}
             value={intervalMinutes}
-            onChange={(event) => setIntervalMinutes(event.target.value)}
+            onChange={(val) => setIntervalMinutes(val)}
           />
-          <FormHelperText>{t('config_model:model_status_interval_tip')}</FormHelperText>
         </FormControl>
 
         <FormControl>
-          <FormLabel>{t('config_model:model_status_webhook_url')}</FormLabel>
+          <FormLabel display={'flex'} alignItems={'center'}>
+            {t('config_model:model_status_webhook_url')}
+            <QuestionTip ml={1} label={t('config_model:model_status_webhook_url_tip')} />
+          </FormLabel>
           <Input
+            h={'36px'}
+            bg={'white'}
             type={'url'}
             autoComplete={'off'}
             name={'model-status-webhook-url'}
@@ -353,8 +471,13 @@ const ProbeConfigModal = ({
         </FormControl>
 
         <FormControl>
-          <FormLabel>{t('config_model:model_status_webhook_token')}</FormLabel>
+          <FormLabel display={'flex'} alignItems={'center'}>
+            {t('config_model:model_status_webhook_token')}
+            <QuestionTip ml={1} label={t('config_model:model_status_webhook_token_tip')} />
+          </FormLabel>
           <Input
+            h={'36px'}
+            bg={'white'}
             type={'password'}
             autoComplete={'new-password'}
             name={'model-status-webhook-token'}
@@ -366,7 +489,6 @@ const ProbeConfigModal = ({
             value={webhookToken}
             onChange={(event) => setWebhookToken(event.target.value)}
           />
-          <FormHelperText>{t('config_model:model_status_webhook_token_tip')}</FormHelperText>
         </FormControl>
 
         {config.webhookTokenConfigured && (

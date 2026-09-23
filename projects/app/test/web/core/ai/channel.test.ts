@@ -81,11 +81,28 @@ describe('postCreateChannel', () => {
         base_url: 'https://example.com/v1',
         models: ['model-a'],
         model_mapping: {},
+        configs: { map_reasoning_to_reasoning_content: true },
         key: 'secret',
         priority: 1
       },
       params: undefined
     });
+  });
+
+  it('does not add reasoning field mapping to unrelated channel types', async () => {
+    mocks.request
+      .mockResolvedValueOnce({ data: { success: true, data: [] } })
+      .mockResolvedValueOnce({ data: { success: true, data: { id: 4 } } });
+
+    await postCreateChannel({ ...channelInput, type: 14 });
+
+    expect(mocks.request).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        url: '/createChannel',
+        data: expect.not.objectContaining({ configs: expect.anything() })
+      })
+    );
   });
 
   it('preserves advanced channel fields during a full channel update', async () => {

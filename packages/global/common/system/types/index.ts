@@ -113,7 +113,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   login2faEnabled: z
     .boolean()
     .optional()
-    .meta({ description: '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证' }),
+    .meta({
+      description:
+        '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
+    }),
   wecomLoginAutoRedirect: z
     .boolean()
     .optional()
@@ -185,6 +188,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .boolean()
     .optional()
     .meta({ description: '是否开启 Agent 代码沙箱执行环境' }),
+  show_agent_sandbox_free_tip: z
+    .boolean()
+    .optional()
+    .meta({ description: '是否展示虚拟机限时免费标签' }),
   pluginRemoteDebug: z.boolean().optional().meta({ description: '是否允许团队远程调试自定义插件' }),
   enable_team_plugin_upload: z
     .boolean()
