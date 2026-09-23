@@ -1,13 +1,18 @@
 import FormData from 'form-data';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import z from 'zod';
 import { axios } from '../../common/api/axios';
+import { getLogger, LogCategories } from '../../common/logger';
 import { getImageBuffer } from '../../common/file/image/utils';
 import { uploadParsedPdfImage, type ParsedPdfImageKeyOptions } from '../../common/file/read/image';
 import { serviceEnv } from '../../env';
 import { appendIultmzhFileParseFields } from './parseConfig';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
 const SangforParseResponseSchema = z.object({
   pages: z.number().int().nonnegative(),
@@ -24,6 +29,36 @@ export const useSangforParse = (extension: string): boolean => {
     .map(normalizeExtension)
     .filter(Boolean);
   return extensions.includes(normalizeExtension(extension));
+};
+
+/** 服务可返回的失败标识白名单 = 已注册的 6 个 statusText（不含任何厂商私有码）。 */
+export const ACCEPTED_PARSE_STATUS_TEXTS = new Set<string>([
+  CommonErrEnum.pdfParseFailed,
+  CommonErrEnum.unsupportedParseFileType,
+  CommonErrEnum.invalidParseFile,
+  CommonErrEnum.officeConversionFailed,
+  CommonErrEnum.docxParseInvalid,
+  CommonErrEnum.docxConversionFailed
+]);
+
+/** 取服务返回的通用失败标识（响应体顶层 `statusText`）。 */
+export const resolveParseStatusText = (error: unknown): string | undefined => {
+  const e = error as any;
+  const v = e?.response?.data?.statusText;
+  return typeof v === 'string' && v ? v : undefined;
+};
+
+/**
+ * 通用失败标识 → UserError。始终返回，保证用户永远看不到内部错误文本。
+ * 标识缺失 / 不在白名单 → 兜底 pdfParseFailed。
+ */
+export const toParseFailedError = (error: unknown): UserError => {
+  const statusText = resolveParseStatusText(error);
+  const accepted =
+    statusText && ACCEPTED_PARSE_STATUS_TEXTS.has(statusText)
+      ? statusText
+      : CommonErrEnum.pdfParseFailed;
+  return new UserError(accepted);
 };
 
 /**
@@ -97,7 +132,14 @@ export const parseFromSangfor = async ({
       text
     };
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('[sangfor]')) throw error;
-    throw new Error(`[sangfor] ${getErrText(error)}`);
+    const statusText = resolveParseStatusText(error);
+    const mapped = toParseFailedError(error);
+    // 原始信息只进日志，不进用户可见文案；不透传 error 对象，避免记录完整厂商响应体
+    logger.warn('Sangfor document parse request failed', {
+      statusText,
+      mappedStatusText: mapped.message,
+      detail: getErrText(error)
+    });
+    throw mapped;
   }
 };

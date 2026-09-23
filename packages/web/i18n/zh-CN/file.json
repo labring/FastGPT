@@ -15,5 +15,11 @@
   "support_file_type": "支持 {{fileType}} 类型文件",
   "template_csv_file_select_tip": "仅支持<highlight>严格按照模板</highlight>填写的 {{fileType}} 文件",
   "upload_error_description": "单次只支持上传多个文件或者一个文件夹",
-  "upload_failed": "上传异常"
+  "upload_failed": "上传异常",
+  "pdf_parse_failed": "文档解析失败，请稍后重试",
+  "unsupported_parse_file_type": "不支持的文件类型，请上传受支持的文档格式（如 PDF、Word、Excel、PPT）",
+  "invalid_parse_file": "文件无效或已损坏，请检查文件后重新上传",
+  "office_conversion_failed": "暂时无法读取此文件，请确认文件未损坏且格式受支持后重新上传。若仍无法读取，请稍后再试。",
+  "docx_parse_invalid": "文档格式无效或文件已损坏，请检查文件后重新上传",
+  "docx_conversion_failed": "文档解析失败，请稍后重试"
 }

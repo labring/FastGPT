@@ -1,5 +1,7 @@
 import FormData from 'form-data';
 import type { ReadFileResponse } from '../../../worker/readFile/type';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { IultmzhFileParseConfigType } from '@fastgpt/global/core/dataset/type';
 import { axios } from '../../api/axios';
 import { parseMarkdownBase64Images } from '@fastgpt/global/common/string/markdown';
@@ -399,7 +401,17 @@ const readFileContent = async ({
       return await pdfParseFn();
     }
     return await systemParse();
-  })();
+  })().catch((error) => {
+    // 统一兜底（未知失败落通用「文档解析失败」诊断码）仅覆盖 sangfor 路径。
+    // 其余格式（含 OFD）保持错误原样透出，避免抹掉 docx「请转 PDF」等原有提示；
+    // 映射为诊断码的错误（message = statusText）在响应层经 ERROR_RESPONSE[message]
+    // 还原为正确的 code 与 i18n 文案。
+    if (!useSangforParse(extension)) throw error;
+
+    if (error instanceof UserError) throw error;
+
+    throw new UserError(CommonErrEnum.pdfParseFailed);
+  });
   const { rawText, formatText, tableInfo } = parseResult;
   const sourceMetadata =
     parseResult.sourceMetadata ??
