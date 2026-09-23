@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Box, Flex, Button, ModalBody } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import dayjs from 'dayjs';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -14,7 +14,7 @@ import BillDetailModal from '@/pageComponents/account/bill/BillDetailModal';
 import { DiscountCouponStatusEnum } from '@fastgpt/global/support/wallet/sub/discountCoupon/constants';
 
 const DiscountCouponsModal = ({ onClose }: { onClose: () => void }) => {
-  const { t, i18n } = useClientTranslation('discount_coupon');
+  const { t, i18n } = useSafeTranslation();
   const { userInfo } = useUserStore();
   const router = useRouter();
   const isZh = i18n.language === 'zh-CN';

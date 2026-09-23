@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Flex, HStack, Input, Button, useDisclosure } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -19,7 +19,7 @@ export function TransferOwnershipModal({
   onSuccess: () => void;
   onClose: () => void;
 }) {
-  const { t } = useClientTranslation('account_team');
+  const { t } = useSafeTranslation();
   const { userInfo, initUserInfo } = useUserStore();
 
   const [searchKey, setSearchKey] = useState('');

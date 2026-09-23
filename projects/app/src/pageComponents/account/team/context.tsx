@@ -7,7 +7,7 @@ import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRouter } from 'next/router';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { accountCancellationActiveStatuses } from '@fastgpt/global/support/user/account/cancellation/constants';
@@ -44,7 +44,7 @@ export const TeamContext = createContext<TeamModalContextType>({
 });
 
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
 
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();

@@ -14,7 +14,7 @@ import {
   useDisclosure,
   VStack
 } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   delRemoveMember,
@@ -55,7 +55,7 @@ const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const { userInfo, initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();

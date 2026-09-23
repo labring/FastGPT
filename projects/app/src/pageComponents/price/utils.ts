@@ -1,7 +1,7 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 export const formatActivityExpirationTime = (date?: Date) => {
-  const { t } = useClientTranslation('price');
+  const { t } = useSafeTranslation();
   if (!date) {
     return {
       text: ''

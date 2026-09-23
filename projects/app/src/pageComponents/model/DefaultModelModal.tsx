@@ -11,7 +11,7 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
 
@@ -73,7 +73,7 @@ const DefaultModelModal = ({
   onSuccess: () => void | Promise<void>;
   onClose: () => void;
 }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const activeModels = useMemo(() => models.filter((model) => model.isActive), [models]);
   const modelsByType = useMemo(
     () =>

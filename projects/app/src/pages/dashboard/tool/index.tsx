@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
@@ -39,7 +39,7 @@ const EditFolderModal = dynamic(
 );
 
 const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
   const {
@@ -91,15 +91,11 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         localStorage.removeItem(`app_log_keys_${appId}`);
       });
 
-      router.replace(
-        {
-          query: {
-            parentId: folderDetail?.parentId
-          }
-        },
-        undefined,
-        { shallow: true }
-      );
+      router.replace({
+        query: {
+          parentId: folderDetail?.parentId
+        }
+      });
     },
     errorToast: 'Error'
   });
@@ -126,16 +122,12 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   hoverStyle={{ bg: 'myGray.200' }}
                   forbidLastClick
                   onClick={(parentId) => {
-                    router.push(
-                      {
-                        query: {
-                          ...router.query,
-                          parentId
-                        }
-                      },
-                      undefined,
-                      { shallow: true }
-                    );
+                    router.push({
+                      query: {
+                        ...router.query,
+                        parentId
+                      }
+                    });
                   }}
                 />
               </Box>
@@ -218,9 +210,7 @@ const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     paths={paths}
                     forbidLastClick
                     onClick={(parentId) => {
-                      router.push({ query: { ...router.query, parentId } }, undefined, {
-                        shallow: true
-                      });
+                      router.push({ query: { ...router.query, parentId } });
                     }}
                   />
                 </Box>

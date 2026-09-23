@@ -2,7 +2,7 @@
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { Box, Button, Flex, Grid, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -48,7 +48,7 @@ const TemplateMarket = ({
   MenuIcon: JSX.Element;
 }) => {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const { isPc } = useSystem();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -134,7 +134,7 @@ const TemplateMarket = ({
 
   const TemplateCard = useCallback(
     ({ item }: { item: AppTemplateListItemType }) => {
-      const { t } = useTranslation();
+      const { t } = useSafeTranslation();
       const icon = appTypeTagMap[item.type as keyof typeof appTypeTagMap]?.icon;
 
       return (

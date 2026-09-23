@@ -3,7 +3,7 @@ import { Box, type BoxProps, Button, Flex, Input, HStack } from '@chakra-ui/reac
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -45,7 +45,7 @@ const EditChannelModal = ({
   onClose: () => void;
   onSuccess: (createdChannelId?: number) => unknown | Promise<unknown>;
 }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const {
     aiproxyChannels,
     getModelProvider,
