@@ -176,8 +176,8 @@ const { t } = useTranslation(['apikey'] as const, {
    “碰巧已经加载”。
 2. 动态弹窗、抽屉和懒加载组件仍声明自己的 namespace，但挂载时资源已经存在，不需要额外骨架。
 3. 完整语言包由 CSR 初始化门禁先加载，保证 `NextHead`、`Layout` 和公共组件不会展示 key；
-   已迁移组件统一使用 `useClientTranslation(namespace)`，hook 内置 `common` 并关闭 Suspense。仅使用
-   `common` 的组件调用 `useClientTranslation()`。
+   已迁移组件统一使用 `useSafeTranslation(namespace)`，hook 内置 `common` 并关闭 Suspense。仅使用
+   `common` 的组件调用 `useSafeTranslation()`。
    `Layout` 根部声明 `price`，而 `serviceSideProps` 统一预加载 `price`，因此 SSR 页面无需再逐页声明该 namespace。
 4. 原 `serviceSideProps(context, namespaces)` 数组只能作为迁移扫描起点，必须检查页面实际组件树中的
    `useTranslation`、`Trans` 和带 namespace 前缀的 key。
@@ -186,7 +186,7 @@ const { t } = useTranslation(['apikey'] as const, {
 页面根组件的首屏预加载声明为：
 
 ```tsx
-useClientTranslation('apikey');
+useSafeTranslation('apikey');
 ```
 
 API key 专属文案统一收敛到 `apikey`，`AccountContainer`、`ApiKeyTable`、`TagMultiSelect` 和
@@ -244,7 +244,7 @@ i18n 和静态 chunk，且不渲染不完整翻译。
 
 `localStorage`/Cookie 仅继续存语言偏好，不存翻译正文。
 
-已迁移组件使用 `useClientTranslation('业务 namespace')`。该共享 hook 内部组合
+已迁移组件使用 `useSafeTranslation('业务 namespace')`。该共享 hook 内部组合
 `['common', namespace]` 并关闭 Suspense，调用方不重复声明 `common`，同时保留带 namespace 前缀的
 翻译 key 类型检查。
 

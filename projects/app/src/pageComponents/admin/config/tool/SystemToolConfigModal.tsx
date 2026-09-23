@@ -41,7 +41,7 @@ import { i18nT, parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { InputConfigType } from '@fastgpt/global/core/workflow/type/io';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
@@ -177,7 +177,7 @@ const SystemToolConfigModal = ({
   onSuccess: () => void;
   onClose: () => void;
 }) => {
-  const { t, i18n } = useClientTranslation(['app', 'admin']);
+  const { t, i18n } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { register, reset, handleSubmit, setValue, watch } = useForm<UpdateSystemToolBodyType>();

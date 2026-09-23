@@ -24,7 +24,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getSystemMigrationFailedRecords,
@@ -83,7 +83,7 @@ const MigrationProgressStage = ({
   progress: SystemMigrationProgressListItem;
   onViewFailedRecords: (progress: SystemMigrationProgressListItem) => void;
 }) => {
-  const { t } = useClientTranslation('system_migration');
+  const { t } = useSafeTranslation();
   // lease 是否过期属于任务执行权状态；阶段仍保持其真实的 running 状态。
   const displayStatus = progress.status;
   const visual = statusVisual[displayStatus];
@@ -177,7 +177,7 @@ const MigrationCard = ({
   onRetry: (migrationId: string) => void;
   retrying: boolean;
 }) => {
-  const { t } = useClientTranslation('system_migration');
+  const { t } = useSafeTranslation();
   const displayStatus = getSystemMigrationDisplayStatus({ migration, serverTime });
   const visual = statusVisual[displayStatus];
   const resultText = migration.result
@@ -364,7 +364,7 @@ const FailedRecordsModal = ({
   progress: SystemMigrationProgressListItem;
   onClose: () => void;
 }) => {
-  const { t } = useClientTranslation('system_migration');
+  const { t } = useSafeTranslation();
   const { data, isLoading, isError, refetch } = useQuery(
     // migrationId 进入 query key，切换任务时不会复用上一任务的错误正文。
     ['systemMigrationFailedRecords', migration.id, progress.key],
@@ -414,7 +414,7 @@ const FailedRecordsModal = ({
 
 /** Root 管理员的升级状态页：轮询轻量摘要，所有执行动作仍通过服务端 lease runner 完成。 */
 const SystemMigrationsPage = () => {
-  const { t } = useClientTranslation('system_migration');
+  const { t } = useSafeTranslation();
   const { data, isFetching, isError, refetch } = useQuery(
     ['systemMigrationList'],
     getSystemMigrationList,

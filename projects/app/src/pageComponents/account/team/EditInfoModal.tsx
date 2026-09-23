@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useForm } from 'react-hook-form';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { Box, Button, Flex, HStack, Input, useDisclosure } from '@chakra-ui/react';
@@ -34,7 +34,7 @@ function EditModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
 
   const { register, setValue, handleSubmit, watch } = useForm<CreateTeamProps>({
     defaultValues: defaultData

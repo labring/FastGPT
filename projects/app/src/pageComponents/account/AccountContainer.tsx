@@ -4,7 +4,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import SecondaryNavigationContainer from '@/pageComponents/common/SecondaryNavigationContainer';
 
 export enum TabEnum {
@@ -29,7 +29,7 @@ const AccountContainer = ({
   children: React.ReactNode;
   isLoading?: boolean;
 }) => {
-  const { t } = useClientTranslation('account');
+  const { t } = useSafeTranslation();
   const { userInfo, setUserInfo } = useUserStore();
   const { feConfigs, systemVersion } = useSystemStore();
   const router = useRouter();

@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const ChannelTableColumns = () => (
   <colgroup>
@@ -39,7 +39,7 @@ const ModelLinkedChannels = ({
   testingChannelIds: ReadonlySet<number>;
   onRemove: (channelId: number) => void;
 }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const linkedChannels = channels.filter((channel) => selectedIds.has(channel.id));
 
   return (

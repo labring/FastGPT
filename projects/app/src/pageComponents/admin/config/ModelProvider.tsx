@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { accountPageRootStyles } from '@/pageComponents/account/styles';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/model/ModelConfigTable'));
@@ -17,7 +17,7 @@ const ModelStatus = dynamic(() => import('@/pageComponents/model/ModelStatus'));
 type TabType = 'config' | 'channel' | 'channel_log' | 'account_model' | 'status';
 
 const ModelProvider = () => {
-  const { t } = useClientTranslation(['config_model', 'config']);
+  const { t } = useSafeTranslation();
   const router = useRouter();
 
   const modelTabList = useMemo<{ label: string; value: TabType }[]>(

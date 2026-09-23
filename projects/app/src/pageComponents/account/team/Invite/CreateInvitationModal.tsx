@@ -8,7 +8,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useForm } from 'react-hook-form';
 
 function CreateInvitationModal({
@@ -18,7 +18,7 @@ function CreateInvitationModal({
   onSuccess: (linkId: string) => void;
   onClose: () => void;
 }) {
-  const { t } = useClientTranslation('account_team');
+  const { t } = useSafeTranslation();
   const expiresOptions: Array<{ label: string; value: InvitationLinkExpiresType }> = [
     { label: t('account_team:30mins'), value: '30m' }, // 30 mins
     { label: t('account_team:7days'), value: '7d' }, // 7 days

@@ -2,7 +2,6 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import SkillDetailContextProvider, {
   SkillDetailContext
 } from '@/pageComponents/dashboard/skill/detail/context';
@@ -62,11 +61,3 @@ const SkillDetail = () => {
 };
 
 export default SkillDetail;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'chat', 'common', 'skill', 'user']))
-    }
-  };
-}

@@ -25,7 +25,7 @@ import { getEmptyAppsTemplate } from '@/web/core/app/templates';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
@@ -70,7 +70,7 @@ export type CreateAppType =
   | AppTypeEnum.httpToolSet;
 
 const CreateAppsPage = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
   const { query } = router;

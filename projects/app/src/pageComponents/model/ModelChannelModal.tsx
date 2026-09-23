@@ -24,7 +24,7 @@ import MyTag, { type ColorSchemaType } from '@fastgpt/web/components/common/Tag'
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useLockFn } from 'ahooks';
 import { useMemo, useState } from 'react';
 
@@ -73,7 +73,7 @@ export const ModelChannelSelector = ({
   showSelectedModelCount?: boolean;
   showTest?: boolean;
 }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const selectedIds = useMemo(() => new Set(selectedChannelIds), [selectedChannelIds]);
   const selectedChannelCount = channels.filter((channel) => selectedIds.has(channel.id)).length;
   const isAllSelected = channels.length > 0 && selectedChannelCount === channels.length;
@@ -306,7 +306,7 @@ const ModelChannelModal = ({
   showCurrentModel?: boolean;
   showTest?: boolean;
 }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const [selection, setSelection] = useState(selectedChannelIds);
   const { runAsync: confirmRequest, loading: confirming } = useRequest(async () => {
     await onConfirm(selection);

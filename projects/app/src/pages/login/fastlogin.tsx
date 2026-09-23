@@ -5,9 +5,8 @@ import { clearToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
@@ -15,21 +14,23 @@ import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
 import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
-const FastLogin = ({
-  code,
-  token,
-  callbackUrl,
-  lastTmbId
-}: {
-  code: string;
-  token: string;
-  callbackUrl: string;
-  lastTmbId?: string;
-}) => {
-  const { setUserInfo } = useUserStore();
+const FastLogin = () => {
   const router = useRouter();
+  const {
+    code = '',
+    token = '',
+    callbackUrl = '/dashboard/agent',
+    lastTmbId = ''
+  } = router.query as {
+    code?: string;
+    token?: string;
+    callbackUrl?: string;
+    lastTmbId?: string;
+  };
+
+  const { setUserInfo } = useUserStore();
   const { toast } = useToast();
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useSafeTranslation();
   const resolveLoginRedirect = useLoginRedirectAfterLogin();
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -85,25 +86,14 @@ const FastLogin = ({
   );
 
   useEffect(() => {
+    if (!router.isReady) return;
     clearToken();
     const safeCallbackUrl = validateRedirectUrl(callbackUrl);
     router.prefetch(safeCallbackUrl);
     authCode(code, token);
-  }, [authCode, callbackUrl, code, router, token]);
+  }, [authCode, callbackUrl, code, router.isReady, router, token]);
 
   return <Loading />;
 };
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      code: content?.query?.code || '',
-      token: content?.query?.token || '',
-      callbackUrl: content?.query?.callbackUrl || '/dashboard/agent',
-      lastTmbId: content?.query?.lastTmbId || '',
-      ...(await serviceSideProps(content, ['login']))
-    }
-  };
-}
 
 export default FastLogin;

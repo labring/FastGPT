@@ -15,7 +15,7 @@ import {
   Flex
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getTeamPlans } from '@/web/support/user/team/api';
@@ -32,7 +32,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 type packageStatus = 'active' | 'inactive' | 'expired';
 
 const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
-  const { t } = useClientTranslation('account_info');
+  const { t } = useSafeTranslation();
   const { Loading } = useLoading();
   const { subPlans } = useSystemStore();
   const { userInfo } = useUserStore();
@@ -155,7 +155,7 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
 };
 
 function StatusTag({ status }: { status: packageStatus }) {
-  const { t } = useClientTranslation('account_info');
+  const { t } = useSafeTranslation();
   const statusText = useMemo(() => {
     return {
       inactive: t('account_info:pending_usage'),

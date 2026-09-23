@@ -8,7 +8,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { createOpenApiTag, deleteOpenApiTag, updateOpenApiTag } from '@/web/support/openapi/api';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
 
 const ApiKeyTagBox = ({ name }: { name: string }) => (
@@ -41,7 +41,7 @@ const TagManageModal = ({
   onRefreshTags: () => void;
   onRefreshKeys?: () => void;
 }) => {
-  const { t } = useClientTranslation('apikey');
+  const { t } = useSafeTranslation();
   const tagInputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const [orderedTags, setOrderedTags] = useState<OpenApiTagType[] | undefined>(undefined);

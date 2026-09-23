@@ -26,7 +26,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type {
   GetModelStatusResponse,
@@ -282,7 +282,7 @@ const ModelStatusCard = ({
   t: (key: string, options?: Record<string, unknown>) => string;
 }) => {
   const statusLabel = t(`config_model:model_status_${model.status}`);
-  const { i18n } = useClientTranslation();
+  const { i18n } = useSafeTranslation();
   const getModelProvider = useUserModelStore((state) => state.getModelProvider);
   const avatar = model.avatar || getModelProvider(model.provider, i18n.language)?.avatar;
 
@@ -336,7 +336,7 @@ const ProbeConfigModal = ({
   onClose: () => void;
   onSuccess: () => Promise<void>;
 }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const [enabled, setEnabled] = useState(config.enabled);
   const [intervalMinutes, setIntervalMinutes] = useState<number | undefined>(
@@ -505,7 +505,7 @@ const ProbeConfigModal = ({
 };
 
 const ModelStatus = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const {
