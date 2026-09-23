@@ -1,3 +1,4 @@
+import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import type { UploadConstraints } from '../contracts/type';
 import type { UploadFileHint, UploadPolicy } from '../uploadPolicy/type';
 import { decodeS3Filename } from '../filename';
@@ -49,6 +50,9 @@ export async function validateUploadFile({
   const hint = fileHint || {
     filename: decodeS3Filename(filename || 'file')
   };
+  if (!buffer?.length) {
+    throw new Error(S3ErrEnum.emptyUploadFile);
+  }
   const policy =
     uploadPolicy ??
     createUploadPolicy({

@@ -51,6 +51,9 @@ export function parseS3UploadError({
   if (errorText.includes('EntityTooLarge')) {
     return t('common:error.s3_upload_file_too_large', { max: maxSizeStr });
   }
+  if (errorText.includes(S3ErrEnum.emptyUploadFile)) {
+    return t('common:empty_file');
+  }
   if (
     errorText.includes(S3ErrEnum.uploadFileTypeMismatch) ||
     errorText.includes(S3ErrEnum.invalidUploadFileType)

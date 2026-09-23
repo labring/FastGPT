@@ -15,6 +15,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
+import { resolveDatasetImageUpload } from '@fastgpt/service/common/file/image/utils';
 import {
   InsertImagesBodySchema,
   InsertImagesResponseSchema,
@@ -74,18 +76,21 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
     });
 
     const imageIds = await Promise.all(
-      result.fileMetadata.map(async (file) =>
-        uploadImage2S3Bucket('private', {
-          buffer: await fs.promises.readFile(file.path),
+      result.fileMetadata.map(async (file) => {
+        const buffer = await fs.promises.readFile(file.path);
+        const filename = path.basename(decodeMultipartFilename(file.originalname || file.filename));
+        const { mimetype } = resolveDatasetImageUpload({ buffer, filename });
+        return uploadImage2S3Bucket('private', {
+          buffer,
           uploadKey: getFileS3Key.dataset({
             datasetId: dataset._id,
-            filename: path.basename(file.filename)
+            filename
           }).fileKey,
-          mimetype: file.mimetype,
-          filename: path.basename(file.filename),
+          mimetype,
+          filename,
           expiredTime: addDays(new Date(), 7)
-        })
-      )
+        });
+      })
     );
 
     await mongoSessionRun(async (session) => {

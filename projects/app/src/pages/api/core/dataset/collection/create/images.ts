@@ -18,6 +18,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
+import { resolveDatasetImageUpload } from '@fastgpt/service/common/file/image/utils';
 import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
 import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
@@ -75,12 +77,14 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
 
     const imageIds = await Promise.all(
       result.fileMetadata.map(async (file) => {
-        const filename = path.basename(file.filename);
+        const buffer = await fs.promises.readFile(file.path);
+        const filename = path.basename(decodeMultipartFilename(file.originalname || file.filename));
+        const { mimetype } = resolveDatasetImageUpload({ buffer, filename });
         const { fileKey } = getFileS3Key.dataset({ datasetId, filename });
         return uploadImage2S3Bucket('private', {
-          buffer: await fs.promises.readFile(file.path),
+          buffer,
           uploadKey: fileKey,
-          mimetype: file.mimetype,
+          mimetype,
           filename,
           expiredTime: addDays(new Date(), 7)
         });
