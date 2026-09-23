@@ -197,12 +197,14 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
   const isNegative = num < 0;
   const prefix = isNegative ? '-' : '';
 
-  if (locale.startsWith('zh')) {
+  const normalizedLocale = locale.trim().toLowerCase().replaceAll('_', '-');
+
+  if (normalizedLocale.startsWith('zh')) {
     const isHant =
-      locale === 'zh-Hant' ||
-      locale.toLowerCase().includes('hant') ||
-      locale === 'zh-TW' ||
-      locale === 'zh-HK';
+      normalizedLocale === 'zh-hant' ||
+      normalizedLocale.includes('hant') ||
+      normalizedLocale === 'zh-tw' ||
+      normalizedLocale === 'zh-hk';
     const yiUnit = isHant ? '億' : '亿';
     const wanUnit = isHant ? '萬' : '万';
 
@@ -236,4 +238,3 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
     return num.toLocaleString(locale);
   }
 };
-

@@ -145,10 +145,13 @@ describe('string tools', () => {
     expect(formatNumberWithUnit(123456, 'zh')).toBe('12.35万');
     expect(formatNumberWithUnit(100000000, 'zh-Hant')).toBe('1億');
     expect(formatNumberWithUnit(20000, 'zh-Hant')).toBe('2萬');
+    expect(formatNumberWithUnit(100000000, 'zh-tw')).toBe('1億');
+    expect(formatNumberWithUnit(20000, 'zh-hk')).toBe('2萬');
+    expect(formatNumberWithUnit(100000000, 'zh_hant_tw')).toBe('1億');
+    expect(formatNumberWithUnit(123456, 'ZH-CN')).toBe('12.35万');
     expect(formatNumberWithUnit(1200, 'en')).toBe('1.2K');
     expect(formatNumberWithUnit(1250000, 'en')).toBe('1.25M');
     expect(formatNumberWithUnit(1500000000, 'en')).toBe('1.5B');
     expect(formatNumberWithUnit(999, 'en')).toBe('999');
   });
 });
-
