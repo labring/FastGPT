@@ -1,7 +1,6 @@
 'use client';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import DashboardContainer from '../../../pageComponents/dashboard/Container';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, IconButton, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
@@ -291,11 +290,3 @@ const Evaluation = () => {
 };
 
 export default Evaluation;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['dashboard_evaluation']))
-    }
-  };
-}

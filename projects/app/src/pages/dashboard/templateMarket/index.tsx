@@ -1,5 +1,4 @@
 'use client';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { Box, Button, Flex, Grid, HStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
@@ -408,11 +407,3 @@ const TemplateMarketContainer = () => {
 };
 
 export default TemplateMarketContainer;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app']))
-    }
-  };
-}

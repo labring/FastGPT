@@ -33,7 +33,6 @@ import {
   getTemplateMarketItemList
 } from '@/web/core/app/api/template';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
@@ -622,11 +621,3 @@ const CreateAppsPage = () => {
 };
 
 export default CreateAppsPage;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'user', 'workflow']))
-    }
-  };
-}
