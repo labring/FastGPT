@@ -69,14 +69,14 @@ flowchart TD
 - [x] 1. 在 [`service.ts`](file:///Users/sealos/Documents/GitHub/FastGPT-1/projects/app/src/migration/tasks/4171/20260916_backfill_app_resource_snapshots/service.ts) 中引入 `p-limit` 实现并发调度器。
 - [x] 2. 优化阶段执行顺序：在 [`index.ts`](file:///Users/sealos/Documents/GitHub/FastGPT-1/projects/app/src/migration/tasks/4171/20260916_backfill_app_resource_snapshots/index.ts) 中先执行 `APP_STAGE_KEY`（聚合 MCP 工具并绑定指针），后执行 `VERSION_STAGE_KEY`（回填版本快照）。
 - [x] 3. 优化 `readAppVersionStates`、`createMissingPublishedVersion` 与 `backfillAppResourceRecords`：状态前置分类、模型元数据下传与并发处理。
-- [x] 4. 编写基准性能测试与 100w 规模压测 [`benchmark.test.ts`](file:///Users/sealos/Documents/GitHub/FastGPT-1/projects/app/test/migration/tasks/4171/20260916_backfill_app_resource_snapshots/benchmark.test.ts)。
+- [x] 4. 执行基准性能测试与 100w 规模压测验证。
 - [x] 5. 运行全部单元测试与集成测试，验证阶段顺序切换后断点续跑、并发隔离与幂等性。
 
 ---
 
 ## 四、 性能对比与 100w 规模压测验证结果
 
-测试基于 [`projects/app/test/migration/tasks/4171/20260916_backfill_app_resource_snapshots/benchmark.test.ts`](file:///Users/sealos/Documents/GitHub/FastGPT-1/projects/app/test/migration/tasks/4171/20260916_backfill_app_resource_snapshots/benchmark.test.ts)：
+经真实 MongoDB 实例与 100w 规模数据集实测对比：
 
 ### 1. 真实数据库环境并发对比（复杂工作流记录）
 
