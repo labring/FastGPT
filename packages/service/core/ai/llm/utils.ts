@@ -359,8 +359,8 @@ export const loadRequestMessages = async ({
   };
 
   /**
-   * 归一化图片输入：内部文件转 base64，远程图片先做可访问性校验。
-   * 返回 undefined 表示图片不可访问，需要从请求消息中过滤。
+   * 归一化图片输入：内部文件或强制配置时转 base64，远程图片直接透传给模型服务。
+   * 不在 FastGPT 服务端做 HEAD 可访问性校验，避免多图并发请求引发外部连接耗尽 DoS。
    */
   const normalizeImageContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'image_url' }>
@@ -372,39 +372,23 @@ export const loadRequestMessages = async ({
       return imageItem;
     }
 
-    try {
-      if (shouldLoadMediaAsBase64(imgUrl)) {
-        try {
-          const { completeBase64: base64 } = await getImageBase64(imgUrl);
+    if (shouldLoadMediaAsBase64(imgUrl)) {
+      try {
+        const { completeBase64: base64 } = await getImageBase64(imgUrl);
 
-          return {
-            ...imageItem,
-            image_url: {
-              ...imageItem.image_url,
-              url: base64
-            }
-          };
-        } catch (error) {
-          return Promise.reject(`Cannot load image ${imgUrl}, because ${getErrText(error)}`);
-        }
+        return {
+          ...imageItem,
+          image_url: {
+            ...imageItem.image_url,
+            url: base64
+          }
+        };
+      } catch (error) {
+        return Promise.reject(`Cannot load image ${imgUrl}, because ${getErrText(error)}`);
       }
-
-      // 检查下这个图片是否可以被访问，如果不行的话，则过滤掉
-      const response = await axios.head(imgUrl, {
-        timeout: 10000
-      });
-      if (response.status < 200 || response.status >= 400) {
-        logger.info('Filtered invalid image URL', { url: imgUrl });
-        return;
-      }
-
-      return imageItem;
-    } catch (error: any) {
-      if (error?.response?.status === 405 || error?.response?.status === 403) {
-        return imageItem;
-      }
-      logger.warn('Failed to validate image URL', { url: imgUrl, error });
     }
+
+    return imageItem;
   };
 
   /**
