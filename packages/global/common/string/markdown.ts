@@ -205,7 +205,7 @@ const findMarkdownImageUrlEnd = (text: string, startIndex: number) => {
  * 普通正则 `!\[...\]\(([^)]+)\)` 会在 `https://a.com/img(1).png` 的第一个 `)` 截断，
  * 导致 http 图片转存失败；这里用轻量扫描保留完整节点范围。
  */
-const matchMarkdownImages = (text: string) => {
+export const matchMarkdownImages = (text: string) => {
   const matches: MarkdownImageBase[] = [];
   let start = 0;
 

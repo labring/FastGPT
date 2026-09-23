@@ -35,6 +35,20 @@ describe('formatDatasetDataValue', () => {
     });
   });
 
+  it('should keep parenthetical image URLs when attaching descriptions', async () => {
+    const result = await formatDatasetDataValue({
+      q: 'See ![img](https://cdn.example.com/img(1).png)',
+      imageDescMap: {
+        'https://cdn.example.com/img(1).png': 'cable photo'
+      }
+    });
+
+    expect(result).toEqual({
+      q: 'See ![img - cable photo](https://cdn.example.com/img(1).png)',
+      a: undefined
+    });
+  });
+
   it('should batch duplicate keys across q, a and imageId', async () => {
     const result = await formatDatasetDataValues([
       {
