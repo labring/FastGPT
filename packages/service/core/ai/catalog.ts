@@ -1,6 +1,6 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 
 /**
  * 按成员实际可用模型计算有效默认 ID。管理员配置不可用时仅在同类型内回退；图片数据集

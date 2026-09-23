@@ -1,6 +1,6 @@
 import { getUserModelSummaries } from '@/web/common/system/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { ModelSummary } from '@fastgpt/global/openapi/core/ai/model/summary';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';

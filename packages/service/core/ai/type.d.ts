@@ -6,12 +6,12 @@ import type {
   STTSystemModelDataType,
   SystemModelDocumentDataType,
   TTSSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import type {
   I18nStringStrictType,
   AiproxyMapProviderItemType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
-import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
+import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 
 export type SystemModelSchemaType = SystemModelDocumentDataType & {
   _id: string;

@@ -28,7 +28,7 @@ import {
   formatModelProviders,
   getModelProviderFromCache,
   getModelProviderListFromCache
-} from '@fastgpt/global/core/ai/provider';
+} from '@fastgpt/global/core/ai/model/provider';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';

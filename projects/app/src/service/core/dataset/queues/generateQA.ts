@@ -12,7 +12,7 @@ import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/dat
 
 import { checkTeamAiPointsAndLock } from './utils';
 import { addMinutes } from 'date-fns';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize

@@ -5,7 +5,7 @@ import {
   getModelProviderListFromCache,
   type langType,
   type ModelProviderItemType
-} from '@fastgpt/global/core/ai/provider';
+} from '@fastgpt/global/core/ai/model/provider';
 import type {
   MyModelItemType,
   MyLLMModelItemType,
@@ -14,7 +14,7 @@ import type {
   MySTTModelItemType,
   MyRerankModelItemType
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import {
   GetModelCatalogResponseSchema,
   type GetModelCatalogResponse

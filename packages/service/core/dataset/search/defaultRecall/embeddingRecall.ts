@@ -7,7 +7,7 @@ import type {
 import { recallFromVectorStore } from '../../../../common/vectorDB/controller';
 import { getVectors } from '../../../ai/embedding';
 import { isImageEmbeddingModel } from '../../../ai/model';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetData } from '../../data/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';

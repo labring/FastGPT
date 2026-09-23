@@ -5,7 +5,7 @@ import type {
   EmbeddingSystemModelDataType,
   LLMModelConfigType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import {
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum,

@@ -2,13 +2,14 @@ import { setCron } from '@fastgpt/service/common/system/cron';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { clearTmpUploadFiles } from '@fastgpt/service/common/file/utils';
 import { checkInvalidDatasetData, checkInvalidVector } from './cronTask';
-import { checkTimerLock } from '@fastgpt/service/common/system/timerLock/utils';
+import { checkTimerLock, deleteTimerLock } from '@fastgpt/service/common/system/timerLock/utils';
 import { TimerIdEnum } from '@fastgpt/service/common/system/timerLock/constants';
 import { addHours } from 'date-fns';
 import { getScheduleTriggerApp } from '@/service/core/app/utils';
 import { runSandboxArchiveCron as sandboxCronJob } from '@fastgpt/service/core/ai/sandbox/interface/admin';
 import { clearExpiredS3FilesCron } from '@fastgpt/service/common/s3/lifecycle/cleanup';
 import { cleanStaleGeneratingChats } from '@fastgpt/service/core/chat/cleanStaleGeneratingChats';
+import { checkAndRunModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
 
 // Try to run train every minute
 const setTrainingQueueCron = () => {
@@ -78,6 +79,25 @@ const cleanStaleGeneratingChatCron = () => {
   });
 };
 
+/** 每分钟先获取 timer lock，进入后由服务层统一校验开关与探测间隔。 */
+const modelStatusProbeCron = () => {
+  setCron('*/1 * * * *', async () => {
+    if (
+      await checkTimerLock({
+        timerId: TimerIdEnum.modelStatusProbe,
+        // 正常完成后会主动释放；10 分钟只作为进程异常退出时的兜底 TTL。
+        lockMinuted: 10
+      })
+    ) {
+      try {
+        await checkAndRunModelStatusProbe();
+      } finally {
+        await deleteTimerLock({ timerId: TimerIdEnum.modelStatusProbe });
+      }
+    }
+  });
+};
+
 export const startCron = () => {
   setTrainingQueueCron();
   setClearTmpUploadFilesCron();
@@ -86,4 +106,5 @@ export const startCron = () => {
   clearExpiredS3FilesCron();
   sandboxCronJob();
   cleanStaleGeneratingChatCron();
+  modelStatusProbeCron();
 };

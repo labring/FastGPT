@@ -196,7 +196,11 @@ describe('admin model test routing', () => {
         response_format: 'mp3',
         speed: 1
       },
-      { headers: { 'Aiproxy-Channel': '10' } }
+      expect.objectContaining({
+        headers: { 'Aiproxy-Channel': '10' },
+        maxRetries: 0,
+        signal: expect.any(AbortSignal)
+      })
     );
   });
 
@@ -292,7 +296,11 @@ describe('admin model test routing', () => {
         response_format: 'mp3',
         speed: 1
       },
-      { headers: { 'Aiproxy-Channel': '13' } }
+      expect.objectContaining({
+        headers: { 'Aiproxy-Channel': '13' },
+        maxRetries: 0,
+        signal: expect.any(AbortSignal)
+      })
     );
   });
 

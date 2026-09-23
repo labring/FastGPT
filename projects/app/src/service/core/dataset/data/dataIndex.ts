@@ -13,7 +13,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   isImageEmbeddingIndex,
   isValidImageEmbeddingSource,

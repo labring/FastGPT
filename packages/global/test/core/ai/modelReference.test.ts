@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getModelReferenceValue, isEmptyModelValue } from '../../../core/ai/modelReference';
+import { getModelReferenceValue, isEmptyModelValue } from '../../../core/ai/model/reference';
 
 describe('isEmptyModelValue', () => {
   it.each([undefined, null, '', ' \t\n'])('recognizes an unconfigured model (%s)', (value) => {

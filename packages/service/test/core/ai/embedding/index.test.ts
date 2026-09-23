@@ -2,7 +2,7 @@ import { decodeEmbedding, formatVectors } from '@fastgpt/service/core/ai/embeddi
 import type {
   EmbeddingModelConfigType,
   EmbeddingSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { EmbeddingTypeEnm, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 

@@ -21,7 +21,9 @@ export enum TimerIdEnum {
   accountCancellationReminder = 'accountCancellationReminder',
   accountCancellationFinalize = 'accountCancellationFinalize',
   /** 纠正长时间卡在 generating 的会话状态 */
-  cleanStaleGeneratingChat = 'cleanStaleGeneratingChat'
+  cleanStaleGeneratingChat = 'cleanStaleGeneratingChat',
+  /** 全局模型状态探测，避免多实例重复调用供应商接口 */
+  modelStatusProbe = 'modelStatusProbe'
 }
 
 export enum LockNotificationEnum {

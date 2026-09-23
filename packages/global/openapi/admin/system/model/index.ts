@@ -19,6 +19,11 @@ import {
   UpdateSystemModelStatusBodySchema,
   UpdateSystemModelsWithJsonBodySchema
 } from './api';
+import {
+  GetModelStatusResponseSchema,
+  RunModelStatusProbeResponseSchema,
+  UpdateModelStatusProbeConfigBodySchema
+} from './status';
 
 export const AdminSystemModelPath: OpenAPIPath = {
   '/admin/system/model/list': {
@@ -186,6 +191,41 @@ export const AdminSystemModelPath: OpenAPIPath = {
         content: { 'application/json': { schema: UpdateDefaultModelsBodySchema } }
       },
       responses: { 200: { description: '更新成功' } }
+    }
+  },
+  '/admin/system/model/status': {
+    get: {
+      summary: '获取模型状态',
+      description: '获取启用模型最近 48 小时探测记录和状态汇总',
+      tags: [DevApiTagsMap.adminSystemModel],
+      responses: {
+        200: {
+          description: '模型状态及探测配置（不返回 webhook token）',
+          content: { 'application/json': { schema: GetModelStatusResponseSchema } }
+        }
+      }
+    }
+  },
+  '/admin/system/model/status/config': {
+    put: {
+      summary: '更新模型状态探测配置',
+      tags: [DevApiTagsMap.adminSystemModel],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateModelStatusProbeConfigBodySchema } }
+      },
+      responses: { 200: { description: '更新成功' } }
+    }
+  },
+  '/admin/system/model/status/probe': {
+    post: {
+      summary: '立即探测模型状态',
+      tags: [DevApiTagsMap.adminSystemModel],
+      responses: {
+        200: {
+          description: '本轮探测结果',
+          content: { 'application/json': { schema: RunModelStatusProbeResponseSchema } }
+        }
+      }
     }
   }
 };

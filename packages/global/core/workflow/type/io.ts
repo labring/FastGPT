@@ -1,4 +1,4 @@
-import type { LLMSystemModelDataType } from '../../ai/model.schema';
+import type { LLMSystemModelDataType } from '../../ai/model/schema';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 import { SecretValueTypeSchema } from '../../../common/secret/type';

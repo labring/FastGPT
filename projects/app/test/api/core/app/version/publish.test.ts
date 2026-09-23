@@ -5,7 +5,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   RerankSystemModelDataType,
   TTSSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {

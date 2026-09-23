@@ -1,7 +1,7 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useUserModelStore } from './useUserModelStore';

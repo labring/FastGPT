@@ -4,7 +4,7 @@ import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType,
   STTSystemModelDataType
-} from './model.schema';
+} from './model/schema';
 
 export const getLLMDefaultUsage = (): CompletionUsage => {
   return {

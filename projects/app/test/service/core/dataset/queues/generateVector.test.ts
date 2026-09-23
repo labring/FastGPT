@@ -8,7 +8,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum

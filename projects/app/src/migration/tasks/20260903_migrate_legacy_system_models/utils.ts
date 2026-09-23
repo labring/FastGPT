@@ -9,7 +9,7 @@ import {
   ModelPriceTierSchema,
   SystemModelDocumentDataSchema,
   type SystemModelDocumentDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 
 const modelTypes = new Set(Object.values(ModelTypeEnum));
 const baseBooleanKeys = ['isActive', 'testMode'] as const;

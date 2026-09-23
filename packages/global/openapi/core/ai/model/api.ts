@@ -6,13 +6,13 @@ import {
   RerankModelConfigSchema,
   STTModelConfigSchema,
   TTSModelConfigSchema
-} from '../../../../core/ai/model.schema';
+} from '../../../../core/ai/model/schema';
 import z from 'zod';
 import {
   CollaboratorItemSchema,
   CollaboratorListSchema
 } from '../../../../support/permission/collaborator.schema';
-import { ModelDefaultIdsSchema } from '../../../../core/ai/defaultModel';
+import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 
 const MyModelBaseSchema = z.object({

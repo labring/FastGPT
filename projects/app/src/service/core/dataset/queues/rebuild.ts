@@ -12,7 +12,7 @@ import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/datase
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 type DatasetRebuildContext = {

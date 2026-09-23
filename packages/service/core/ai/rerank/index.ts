@@ -2,7 +2,7 @@ import { getModelHandle } from '../model';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 
 import { getAxiosConfig } from '../config';
-import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { text2Chunks } from '../../../worker/function';
@@ -33,12 +33,18 @@ export async function reRankRecall({
   model: inputModel,
   query,
   documents,
-  headers
+  headers,
+  timeoutMs,
+  signal,
+  onRequestStart
 }: {
   model?: RerankSystemModelDataType;
   query: string;
   documents: { id: string; text: string }[];
   headers?: Record<string, string>;
+  timeoutMs?: number;
+  signal?: AbortSignal;
+  onRequestStart?: () => void;
 }): Promise<ReRankCallResult> {
   const model = inputModel ?? (await getModelHandle()).getDefaultModelData('rerank');
 
@@ -107,13 +113,15 @@ export async function reRankRecall({
     ...model.config.defaultConfig
   };
 
+  onRequestStart?.();
   const apiResult = await axiosWithoutSSRF
     .post<PostReRankResponse>(requestUrl, requestBody, {
       headers: {
         Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization,
         ...headers
       },
-      timeout: 30000
+      timeout: timeoutMs ?? 30000,
+      signal
     })
     .then((res) => res.data)
     .then(async (data) => {

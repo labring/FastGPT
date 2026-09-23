@@ -1,5 +1,5 @@
 import { getModelDetail } from '@/web/core/ai/model/modelData';
-import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { workflowModelKeyMappings } from '@fastgpt/global/core/workflow/utils';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
 import {
   bootstrapAIModelsFromLegacy,

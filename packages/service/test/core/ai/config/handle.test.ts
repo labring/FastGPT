@@ -5,7 +5,7 @@ import type {
   LLMSystemModelDataType,
   ModelReferenceType,
   SystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError, getErrText } from '@fastgpt/global/common/error/utils';
 import { createModelHandle } from '../../../../core/ai/config/handle';

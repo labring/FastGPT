@@ -4,7 +4,7 @@ import {
   getRuntimeResolvedPriceTiers,
   MAX_MODEL_PRICE_TIERS,
   sanitizeModelPriceTiers
-} from '@fastgpt/global/core/ai/pricing';
+} from '@fastgpt/global/core/ai/model/pricing';
 
 describe('sanitizeModelPriceTiers', () => {
   it('should return empty array for non-array input', () => {

@@ -33,7 +33,7 @@ import {
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const debugChatMocks = vi.hoisted(() => ({
   dispatchWorkFlow: vi.fn(),

@@ -24,7 +24,7 @@ import {
   workflowModelKeyMappings
 } from '@fastgpt/global/core/workflow/utils';
 import type { TFunction } from 'next-i18next';
-import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import type {
   FlowNodeInputItemType,

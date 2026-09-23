@@ -7,7 +7,7 @@ import { OpenGaussVectorCtrl } from './opengauss';
 import { getVectors } from '../../core/ai/embedding';
 import type { GetVectorsProps } from '../../core/ai/embedding';
 import type { VectorControllerType, InsertVectorControllerPropsType } from './type';
-import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getVectorType } from './constants';
 import { MilvusCtrl } from './milvus';
 import { retryFn } from '@fastgpt/global/common/system/utils';

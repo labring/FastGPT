@@ -102,7 +102,7 @@ export type ToolDispatchContext = Pick<
   | 'stream'
   | 'nodeResponseSink'
 > & {
-  modelData: import('@fastgpt/global/core/ai/model.schema').LLMSystemModelDataType;
+  modelData: import('@fastgpt/global/core/ai/model/schema').LLMSystemModelDataType;
   nodeResponseParentId?: string;
   systemPrompt?: string;
   getSubAppInfo: GetSubAppInfoFnType;

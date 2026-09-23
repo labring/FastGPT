@@ -1,6 +1,6 @@
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { getQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { replaceVariable } from '../../../../../common/string/replaceVariable';

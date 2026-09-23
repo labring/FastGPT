@@ -1,5 +1,5 @@
 import { SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import type { RerankSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { RerankSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { reRankRecall } from '../../../../core/ai/rerank';
 import { concatWeightedRecallLists, removeDuplicateSearchResults } from './result';

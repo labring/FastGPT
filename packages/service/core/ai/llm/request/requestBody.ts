@@ -6,7 +6,7 @@ import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import json5 from 'json5';
 import { computedMaxToken, computedTemperature } from '../../utils';
 import type { InferCompletionsBody, LLMRequestBodyType } from './types';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const privateToolSchemaKeys = new Set([
   'toolDescription',

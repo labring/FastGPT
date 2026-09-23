@@ -2,11 +2,11 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { putUpdateDefaultModels } from '@/web/core/ai/config';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import type {
   LLMSystemModelDataType,
   SystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';

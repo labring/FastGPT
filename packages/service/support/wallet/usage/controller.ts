@@ -10,7 +10,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { formatModelChars2Points } from './utils';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoUsageItem } from './usageItemSchema';
 import { getLogger, LogCategories } from '../../../common/logger';

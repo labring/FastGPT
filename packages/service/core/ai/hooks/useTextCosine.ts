@@ -4,7 +4,7 @@
 */
 
 import { getVectors } from '../embedding';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 class PriorityQueue<T> {
   private heap: Array<{ item: T; priority: number }> = [];

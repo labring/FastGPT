@@ -8,7 +8,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
-import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import { type LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';

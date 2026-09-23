@@ -19,7 +19,7 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {

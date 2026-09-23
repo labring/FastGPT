@@ -10,7 +10,7 @@ import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants
 import type {
   LLMSystemModelDataType,
   RerankSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
 import { getDatasetSearchAuxiliaryModels as resolveModels } from '../../../../core/dataset/search/auxiliaryModels';

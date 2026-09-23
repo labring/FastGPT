@@ -1,7 +1,7 @@
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';
 import { modelTypeList } from '@fastgpt/global/core/ai/constants';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
+import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';

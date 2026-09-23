@@ -1,4 +1,4 @@
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getCachedModelHandle, type ModelHandle } from './config/handle';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';

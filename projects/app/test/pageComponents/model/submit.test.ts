@@ -17,7 +17,7 @@ import {
 import {
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
-} from '@fastgpt/global/core/ai/pricing';
+} from '@fastgpt/global/core/ai/model/pricing';
 
 const modelData = {
   type: ModelTypeEnum.llm,

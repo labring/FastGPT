@@ -3,7 +3,7 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import type {
   LLMSystemModelDataType,
   SystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import type { CompletionFinishReason, CompletionUsage } from '@fastgpt/global/core/ai/llm/type';
 import { getLLMDefaultUsage, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';

@@ -2,7 +2,7 @@ import { getForbidCollectionIdList, filterCollectionByMetadata } from './collect
 import { filterLegacyCollectionByMetadata } from './legacy/collectionFilter';
 import { embeddingRecall } from './embeddingRecall';
 import { fullTextRecall } from './fullTextRecall';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { CollectionFilterMode } from '../type';
 import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
 

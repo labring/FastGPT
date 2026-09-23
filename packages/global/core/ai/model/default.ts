@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ModelTypeEnum } from './constants';
+import { ModelTypeEnum } from '../constants';
 
 /** 各业务槽位配置的默认模型稳定 ID。 */
 export const ModelDefaultIdsSchema = z.object({

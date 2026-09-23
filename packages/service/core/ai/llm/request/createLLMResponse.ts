@@ -99,11 +99,14 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         modelData,
         userKey,
         timeout,
+        onRequestStart: args.onRequestStart,
         options: {
           headers: {
             Accept: 'application/json, text/plain, */*',
             ...custonHeaders
-          }
+          },
+          signal: args.signal,
+          maxRetries: args.maxRetries
         }
       });
       aiRequestMeta = requestMeta;

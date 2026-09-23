@@ -7,8 +7,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { DashboardDataItemType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { calculateModelPrice } from '@fastgpt/global/core/ai/pricing';
-import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 export type DashboardDataEntry = {

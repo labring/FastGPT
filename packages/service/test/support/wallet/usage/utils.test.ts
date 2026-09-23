@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const createModel = (
   data: Pick<SystemModelDataType, 'modelId' | 'name' | 'model'> &

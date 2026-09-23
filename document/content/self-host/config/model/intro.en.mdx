@@ -258,6 +258,127 @@ If you find it tedious to configure models through the UI, you can use a configu
 
 </Accordions>
 
+## Model Status Probing
+
+### Overview
+
+FastGPT provides built-in model health checking and monitoring. When enabled, the system periodically tests all active models, plots a 48-hour stability timeline, and sends real-time Webhook alerts when a model encounters failures or recovers.
+
+![Model Status Dashboard](../../../../public/imgs/model-probe-status.png)
+
+1. **Scope**: Only active models (`isActive = true`) in the system catalog are probed. Inactive models do not generate records.
+2. **Retry Mechanism**: If an initial probe request fails, the system automatically retries up to 3 times (up to 4 attempts total). A single successful response marks the probe as passed; the model is marked as failed only when all 4 attempts fail. This prevents false alarms caused by intermittent network glitches.
+3. **Health Statuses**:
+   - **Healthy (Green)**: The probe succeeded, with latency ≤ 30s.
+   - **High Latency (Yellow)**: The probe succeeded, but latency > 30s.
+   - **Error (Red)**: All 4 attempts failed.
+4. **UI Features**:
+   - **48-Hour Status Bar**: Visualizes chronological probe history with hover animations. Hovering over a tick shows the probe timestamp, status (Normal / High Latency / Error details), and response latency.
+   - **Stability Percentage**: Displays the 48-hour success rate formatted to two decimal places (e.g., `100.00%` or `98.50%`).
+   - **Latest Error Retention**: Directly displays the latest detailed error message at the bottom of error cards for rapid troubleshooting.
+   - **Silent Background Refresh**: While probing is enabled, the page automatically refreshes every minute in the background without UI flashes or loading overlays.
+
+### Configuration & Usage
+
+Administrators can configure and toggle model probing directly in the admin console:
+
+1. **Navigate to Status**: Go to **System Models** in the left navigation and switch to the **Model Probes** tab.
+2. **Open Configuration**: Click **Probe Configuration** in the top right corner.
+
+![Model Probe Configuration Modal](../../../../public/imgs/model-probe-config.png)
+
+3. **Configure Settings**:
+   - **Enable Automatic Probes**: Toggle on to schedule automatic background health checks for all active models. When toggled off, the page displays an empty state ("Automatic probe is disabled"), and background probing and alerts are paused.
+   - **Probe Interval (minutes)**: Set an integer between 5 and 60 minutes.
+   - **Alert Webhook URL** (optional): The HTTP/HTTPS endpoint to receive state change notifications.
+   - **Alert Token** (optional): Authorization token for authenticated Webhook endpoints. Sent as an `Authorization: Bearer <token>` header.
+4. **Save**: Click **Confirm** to apply changes.
+5. **Probe Now (Optional)**: When probing is enabled, a **Probe Now** button appears in the top-right corner. Click it to immediately trigger a full-batch probe and refresh the status.
+
+### Webhook Specifications
+
+When an Alert Webhook URL is configured, notifications are dispatched on **state edge transitions** on a per-model basis (individual requests per model, rather than batched).
+
+#### Trigger Rules
+
+- **Failure Alert**: Sent when a model transitions from non-red (green/yellow) to red (error). Event type: `model_status_error`.
+- **Recovery Notification**: Sent when a model transitions from red (error) back to green or yellow. Event type: `model_status_recovered`.
+- **Suppression**: Consecutive probes with unchanged error status do not trigger duplicate alerts, preventing alert storms.
+
+#### Protocol Specification
+
+- **Method**: `POST`
+- **Timeout**: 5 seconds
+- **Headers**:
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <AlertToken>` (included only when configured)
+
+#### Payload Parameters
+
+| Path                     | Type   | Description                                                                 |
+| :----------------------- | :----- | :-------------------------------------------------------------------------- |
+| `event`                  | string | Alert event type: `model_status_error` or `model_status_recovered`          |
+| `status`                 | string | Current probe status: `red`, `green`, or `yellow`                           |
+| `model.modelId`          | string | Unique database ID of the model                                             |
+| `model.name`             | string | Display name of the model                                                   |
+| `model.model`            | string | Model identifier                                                            |
+| `model.provider`         | string | Provider identifier (e.g., `OpenAI`, `DeepSeek`)                            |
+| `model.type`             | string | Model type (`llm`, `embedding`, `rerank`, `tts`, `stt`)                     |
+| `probe.attempts`         | number | Actual attempts made in this round (1–4)                                    |
+| `probe.latencyMs`        | number | Response latency in milliseconds (omitted on error)                         |
+| `probe.error`            | string | Detailed error message on failure (omitted on success)                      |
+| `probe.startedAt`        | string | ISO 8601 time when this model's probe task started, including retry waits   |
+| `probe.requestStartedAt` | string | ISO 8601 time when the last model request started                           |
+| `probe.requestEndedAt`   | string | ISO 8601 time when the last model request ended and the status was recorded |
+
+#### Webhook Payload Examples
+
+##### 1. Failure Alert (`model_status_error`)
+
+```json
+{
+  "event": "model_status_error",
+  "status": "red",
+  "model": {
+    "modelId": "6732f10283c7ab1289de4567",
+    "name": "gpt-5.4-mini",
+    "model": "gpt-5.4-mini",
+    "provider": "OpenAI",
+    "type": "llm"
+  },
+  "probe": {
+    "attempts": 4,
+    "error": "404 The model `gpt-5.4-mini` does not exist or you do not have access to it.",
+    "startedAt": "2026-09-23T01:44:00.000Z",
+    "requestStartedAt": "2026-09-23T01:45:14.000Z",
+    "requestEndedAt": "2026-09-23T01:45:15.000Z"
+  }
+}
+```
+
+##### 2. Recovery Notification (`model_status_recovered`)
+
+```json
+{
+  "event": "model_status_recovered",
+  "status": "green",
+  "model": {
+    "modelId": "6732f10283c7ab1289de4567",
+    "name": "gpt-5.4-mini",
+    "model": "gpt-5.4-mini",
+    "provider": "OpenAI",
+    "type": "llm"
+  },
+  "probe": {
+    "attempts": 1,
+    "latencyMs": 1630,
+    "startedAt": "2026-09-23T01:50:13.000Z",
+    "requestStartedAt": "2026-09-23T01:50:13.000Z",
+    "requestEndedAt": "2026-09-23T01:50:15.000Z"
+  }
+}
+```
+
 ## Other
 
 ### Channel Priority

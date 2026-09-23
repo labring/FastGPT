@@ -15,7 +15,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
 import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 

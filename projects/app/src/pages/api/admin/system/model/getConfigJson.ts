@@ -2,7 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
-import { SystemModelDocumentDataSchema } from '@fastgpt/global/core/ai/model.schema';
+import { SystemModelDocumentDataSchema } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   GetSystemModelConfigJsonResponseSchema,

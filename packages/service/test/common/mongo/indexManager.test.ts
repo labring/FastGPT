@@ -13,6 +13,7 @@ import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
+import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 
 const logger = {
   debug: vi.fn(),
@@ -242,6 +243,38 @@ describe('MongoIndexManager.syncModelIndexes', () => {
           partialFilterExpression: { scope: 'system' }
         })
       ])
+    );
+  });
+
+  it('replaces model status testedAt indexes with requestEndedAt indexes', async () => {
+    const schema = new Schema({}, { autoIndex: false });
+    defineIndex(schema, { key: { modelId: 1, requestEndedAt: -1 } });
+    defineIndex(schema, {
+      key: { requestEndedAt: 1 },
+      options: { expireAfterSeconds: 30 * 24 * 60 * 60 }
+    });
+    defineDeprecatedTestIndexes(
+      schema,
+      getSchemaDeprecatedMongoIndexes(MongoModelStatusProbeRecord.schema)
+    );
+    const model = createModel({ schema, prefix: 'ModelStatusProbeIndex' });
+    await model.collection.createIndex(
+      { modelId: 1, testedAt: -1 },
+      { name: 'modelId_1_testedAt_-1' }
+    );
+    await model.collection.createIndex(
+      { testedAt: 1 },
+      { name: 'testedAt_1', expireAfterSeconds: 30 * 24 * 60 * 60 }
+    );
+
+    await MongoIndexManager.syncModelIndexes({ model, logger });
+
+    const indexes = await model.collection.indexes();
+    expect(indexes.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(['modelId_1_requestEndedAt_-1', 'requestEndedAt_1', '_id_'])
+    );
+    expect(indexes.map(({ name }) => name)).not.toEqual(
+      expect.arrayContaining(['modelId_1_testedAt_-1', 'testedAt_1'])
     );
   });
 });

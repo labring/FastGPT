@@ -5,7 +5,7 @@ import type {
   DatasetDataItemType,
   CreateDatasetDataPropsType
 } from '@fastgpt/global/core/dataset/type';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';

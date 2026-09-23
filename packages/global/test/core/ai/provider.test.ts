@@ -4,7 +4,7 @@ import {
   formatModelProviders,
   getModelProviderFromCache,
   getModelProviderListFromCache
-} from '@fastgpt/global/core/ai/provider';
+} from '@fastgpt/global/core/ai/model/provider';
 
 // Mock I18nStringStrictType for testing
 type MockI18nStringStrictType = {

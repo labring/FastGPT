@@ -8,7 +8,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import type {
   LLMModelConfigType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // Mock dependencies

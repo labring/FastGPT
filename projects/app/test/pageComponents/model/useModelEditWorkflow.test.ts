@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   AdminSystemModelListItem,
   GetAdminSystemModelDetailResponse

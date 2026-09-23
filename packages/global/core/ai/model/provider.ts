@@ -1,4 +1,4 @@
-import type { I18nStringStrictType } from '../../sdk/fastgpt-plugin';
+import type { I18nStringStrictType } from '../../../sdk/fastgpt-plugin';
 
 export type ModelProviderItemType = {
   id: string;

@@ -1,5 +1,5 @@
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { useCallback } from 'react';
 import { getModelDetail, type ModelFilter } from './modelData';
 import { useModelQuery } from './useModelQuery';

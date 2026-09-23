@@ -9,7 +9,7 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
+} from '@fastgpt/global/core/ai/model/schema';
 
 const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 

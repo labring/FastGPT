@@ -3,7 +3,7 @@ import {
   formatModelProviders,
   getModelProviderFromCache,
   getModelProviderListFromCache
-} from '@fastgpt/global/core/ai/provider';
+} from '@fastgpt/global/core/ai/model/provider';
 
 // Preload model providers
 export async function preloadModelProviders(): Promise<void> {

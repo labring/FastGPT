@@ -9,12 +9,12 @@ import type {
   STTSystemModelDataType,
   SystemModelDataType,
   TTSSystemModelDataType
-} from '@fastgpt/global/core/ai/model.schema';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/defaultModel';
+} from '@fastgpt/global/core/ai/model/schema';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import type { SystemDefaultModelType } from '../type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/modelReference';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 
 type ModelSnapshot = {
   models: SystemModelDataType[];

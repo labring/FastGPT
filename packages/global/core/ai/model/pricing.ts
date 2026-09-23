@@ -1,5 +1,5 @@
-import type { ModelPriceTierType, PriceType, SystemModelDocumentDataType } from './model.schema';
-import { ModelTypeEnum } from './constants';
+import type { ModelPriceTierType, PriceType, SystemModelDocumentDataType } from './schema';
+import { ModelTypeEnum } from '../constants';
 
 export const MAX_MODEL_PRICE_TIERS = 5;
 

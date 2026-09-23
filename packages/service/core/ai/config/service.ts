@@ -1,4 +1,4 @@
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model.schema';
+import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
