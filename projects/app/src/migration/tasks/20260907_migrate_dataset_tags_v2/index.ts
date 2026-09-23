@@ -61,9 +61,9 @@ const stageQueries: Record<StageKey, Record<string, unknown>> = {
 };
 
 /**
- * 4.17.0 阻塞升级：标签定义和 Collection 标签值是新版运行时的前置条件。
+ * 4.17.1 非阻塞升级：标签定义和 Collection 标签值迁移。
  * 任务按两个原始 Mongo 集合的 ObjectId 固定上界分批扫描；单记录写入幂等，业务提交后才推进 checkpoint。
- * 失败直接交给 Runner 阻止 ready，不使用阻塞任务禁止的 failedRecords。
+ * 失败直接交给 Runner 记录失败并继续后续任务，不使用 failedRecords。
  */
 export const migrateDatasetTagsV2 = async (context: SystemMigrationContext) => {
   let checkpoint = (await context.getCheckpoint(CheckpointSchema)) ?? createCheckpoint();

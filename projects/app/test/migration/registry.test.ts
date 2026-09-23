@@ -48,9 +48,9 @@ describe('validateSystemMigrationRegistry', () => {
     });
     expect(systemMigrations.at(-3)).toMatchObject({
       id: '20260907_migrate_dataset_tags_v2',
-      version: '4.17.0',
-      blockStartup: true,
-      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      version: '4.17.1',
+      blockStartup: false,
+      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'datasets' }, { key: 'collections' }, { key: 'validation' }]
     });
     expect(systemMigrations.at(-2)).toMatchObject({
