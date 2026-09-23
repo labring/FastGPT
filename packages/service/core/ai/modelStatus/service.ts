@@ -649,7 +649,7 @@ export const testModelStatusWebhook = async (
 
   const activeModels = [...modelHandle.getActiveModels()] as SystemModelDataType[];
   const sampleModel =
-    activeModels[0] || (modelHandle.getSystemModels()[0] as SystemModelDataType | undefined);
+    activeModels[0] || (modelHandle.getAllModels()[0] as SystemModelDataType | undefined);
 
   const modelInfo = sampleModel
     ? {

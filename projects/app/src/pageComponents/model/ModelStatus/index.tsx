@@ -22,6 +22,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -338,7 +339,9 @@ const ProbeConfigModal = ({
   const { t } = useClientTranslation('config_model');
   const { toast } = useToast();
   const [enabled, setEnabled] = useState(config.enabled);
-  const [intervalMinutes, setIntervalMinutes] = useState(String(config.intervalMinutes));
+  const [intervalMinutes, setIntervalMinutes] = useState<number | undefined>(
+    config.intervalMinutes
+  );
   const [webhookUrl, setWebhookUrl] = useState(config.webhookUrl ?? '');
   const [webhookToken, setWebhookToken] = useState('');
   const [clearWebhookToken, setClearWebhookToken] = useState(false);
@@ -379,15 +382,19 @@ const ProbeConfigModal = ({
   );
 
   const onSubmit = () => {
-    const parsedInterval = Number(intervalMinutes);
-    if (!Number.isInteger(parsedInterval) || parsedInterval < 5 || parsedInterval > 60) {
+    if (
+      intervalMinutes === undefined ||
+      !Number.isInteger(intervalMinutes) ||
+      intervalMinutes < 5 ||
+      intervalMinutes > 60
+    ) {
       toast({ title: t('config_model:model_status_interval_invalid'), status: 'warning' });
       return;
     }
 
     void runAsync({
       enabled,
-      intervalMinutes: parsedInterval,
+      intervalMinutes,
       webhookUrl,
       ...(webhookToken ? { webhookToken } : {}),
       clearWebhookToken
@@ -430,15 +437,17 @@ const ProbeConfigModal = ({
         </FormControl>
 
         <FormControl>
-          <FormLabel>{t('config_model:model_status_interval')}</FormLabel>
-          <Input
-            type={'number'}
+          <FormLabel display={'flex'} alignItems={'center'}>
+            {t('config_model:model_status_interval')}
+            <QuestionTip ml={1} label={t('config_model:model_status_interval_tip')} />
+          </FormLabel>
+          <MyNumberInput
             min={5}
             max={60}
+            step={1}
             value={intervalMinutes}
-            onChange={(event) => setIntervalMinutes(event.target.value)}
+            onChange={(val) => setIntervalMinutes(val)}
           />
-          <FormHelperText>{t('config_model:model_status_interval_tip')}</FormHelperText>
         </FormControl>
 
         <FormControl>
