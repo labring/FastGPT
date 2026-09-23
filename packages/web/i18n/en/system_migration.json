@@ -93,5 +93,9 @@
   "migrations.20260916_backfill_app_resource_snapshots.versions": "Backfill App Version resource snapshots",
   "migrations.20260916_backfill_app_resource_snapshots.apps": "Backfill App published Version pointers",
   "migrations.20260916_backfill_app_resource_snapshots.validation": "Validate App resource migration",
-  "migrations.20260916_backfill_app_resource_snapshots.result": "Checked and migrated {{versionsProcessedCount}} App Versions and {{appsProcessedCount}} Apps."
+  "migrations.20260916_backfill_app_resource_snapshots.result": "Checked and migrated {{versionsProcessedCount}} App Versions and {{appsProcessedCount}} Apps.",
+  "migrations.20260923_enable_channel_reasoning_mapping.name": "Enable reasoning mapping for OpenAI channels",
+  "migrations.20260923_enable_channel_reasoning_mapping.description": "Enable reasoning-to-reasoning_content response-field mapping for existing AIProxy OpenAI channels while preserving their other configuration.",
+  "migrations.20260923_enable_channel_reasoning_mapping.channels": "Update channel configuration",
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "Checked {{channelCount}} channels and updated {{updatedCount}}."
 }

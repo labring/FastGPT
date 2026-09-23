@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@fastgpt/service/env', () => ({
   hasAgentSandboxConfig: vi.fn(() => false),
   serviceEnv: {
+    AGENT_SANDBOX_SHOW_FREE_TIP: false,
     UPLOAD_FILE_MAX_SIZE: 1000,
     UPLOAD_FILE_MAX_AMOUNT: 1000,
     MAX_FOLDER_DEPTH: 4
@@ -51,5 +52,19 @@ describe('initFastGPTConfig', () => {
 
     // 校验失败时不崩溃，保留原属性兜底挂载
     expect(global.systemEnv.datasetParseMaxProcess).toBe('not_a_number');
+  });
+
+  it('正确挂载 show_agent_sandbox_free_tip 配置', () => {
+    initFastGPTConfig({
+      feConfigs: {},
+      systemEnv: {}
+    } as any);
+    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(false);
+
+    initFastGPTConfig({
+      feConfigs: { agentSandboxFree: true },
+      systemEnv: {}
+    } as any);
+    expect(global.feConfigs.show_agent_sandbox_free_tip).toBe(true);
   });
 });

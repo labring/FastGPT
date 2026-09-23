@@ -5,7 +5,8 @@ import { i18nT } from '../../i18n/utils';
 export enum ModelErrEnum {
   unExist = 'modelUnExist',
   unConfigured = 'modelUnConfigured',
-  alreadyExists = 'modelAlreadyExists'
+  alreadyExists = 'modelAlreadyExists',
+  probeTaskRunning = 'modelProbeTaskRunning'
 }
 
 const modelErrList = [
@@ -20,6 +21,10 @@ const modelErrList = [
   {
     statusText: ModelErrEnum.alreadyExists,
     message: i18nT('common:model_id_already_exists')
+  },
+  {
+    statusText: ModelErrEnum.probeTaskRunning,
+    message: i18nT('common:model_probe_task_running')
   }
 ];
 

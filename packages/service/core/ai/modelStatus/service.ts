@@ -14,12 +14,14 @@ import type {
   ModelStatusProbeConfigResponse,
   ModelStatusProbeModel,
   ModelStatusProbeRecord,
+  ModelStatusProbeTimelinePoint,
   RunModelStatusProbeResponse,
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { batchRun, delay } from '@fastgpt/global/common/system/utils';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { MongoSystemConfigs } from '../../../common/system/config/schema';
 import { getModelHandle } from '../model';
@@ -41,6 +43,8 @@ const MODEL_STATUS_RETRY_DELAY_MS = 500;
 const MODEL_STATUS_CONCURRENCY = 5;
 /** 状态历史查询窗口（48 小时） */
 const MODEL_STATUS_WINDOW_MS = 48 * 60 * 60 * 1000;
+/** 聚合时间柱步长：30 分钟一个时间桶 */
+const MODEL_STATUS_BUCKET_STEP_MS = 30 * 60 * 1000;
 /** 手动全量探测的 Redis lease TTL；由 LeaseCache 自动续约，30 秒不是任务总时长。 */
 const MANUAL_MODEL_STATUS_PROBE_LEASE_TTL_MS = 30_000;
 
@@ -167,6 +171,61 @@ const toRecordResponse = (record: ModelStatusProbeRecordType): ModelStatusProbeR
 });
 
 /**
+ * 将 48 小时内的原始探测记录按固定时间桶（30 分钟）聚合为时间柱点位。
+ * 仅输出包含有效探测记录的时间桶，避免输出空白占位；
+ * 桶内聚合规则：
+ * 1. 存在任意一次 red（失败），则桶状态判定为 red；
+ * 2. 无 red 但存在 yellow（高延迟），则判定为 yellow；
+ * 3. 否则判定为 green；
+ * 4. 记录该时间桶内的总次数、失败次数、最后一次有效延迟及最近一次报错。
+ */
+export const aggregateRecordsToTimelinePoints = ({
+  records,
+  bucketStepMs = MODEL_STATUS_BUCKET_STEP_MS
+}: {
+  records: ModelStatusProbeRecordType[];
+  bucketStepMs?: number;
+}): ModelStatusProbeTimelinePoint[] => {
+  if (records.length === 0) return [];
+
+  const buckets = new Map<number, ModelStatusProbeRecordType[]>();
+  for (const record of records) {
+    const time = record.requestEndedAt.getTime();
+    const bucketKey = Math.floor(time / bucketStepMs) * bucketStepMs;
+    const list = buckets.get(bucketKey) ?? [];
+    list.push(record);
+    buckets.set(bucketKey, list);
+  }
+
+  const sortedKeys = Array.from(buckets.keys()).sort((a, b) => a - b);
+  return sortedKeys.map((bucketStart) => {
+    const list = buckets.get(bucketStart)!;
+    const totalChecks = list.length;
+    const failedChecks = list.filter((r) => r.status === ModelStatusProbeStatusEnum.red).length;
+    const hasYellow = list.some((r) => r.status === ModelStatusProbeStatusEnum.yellow);
+    const latestSuccess = list.filter((r) => r.status !== ModelStatusProbeStatusEnum.red).at(-1);
+    const latestError = list.filter((r) => !!r.error).at(-1)?.error;
+
+    const status =
+      failedChecks > 0
+        ? ModelStatusProbeStatusEnum.red
+        : hasYellow
+          ? ModelStatusProbeStatusEnum.yellow
+          : ModelStatusProbeStatusEnum.green;
+
+    return {
+      startTime: new Date(bucketStart).toISOString(),
+      endTime: new Date(bucketStart + bucketStepMs).toISOString(),
+      status,
+      ...(latestSuccess?.latencyMs === undefined ? {} : { latencyMs: latestSuccess.latencyMs }),
+      totalChecks,
+      failedChecks,
+      ...(latestError ? { error: latestError } : {})
+    };
+  });
+};
+
+/**
  * 将单个模型及其 48 小时内的探测历史聚合为模型状态展示对象。
  * 包含：
  * - 最新一次探测状态与详情；
@@ -197,7 +256,7 @@ const getModelStatusItem = ({
     type: model.type,
     status: latest?.status ?? 'unknown',
     latest: latest ? toRecordResponse(latest) : null,
-    records: records.map(toRecordResponse),
+    points: aggregateRecordsToTimelinePoints({ records }),
     stabilityPercent,
     totalChecks: records.length
   };
@@ -501,7 +560,7 @@ export const runManualModelStatusProbe = async ({
     });
   } catch (error) {
     if (error instanceof RedisLeaseUnavailableError) {
-      throw new UserError('A manual model status probe is already running. Please wait.');
+      throw new UserError(ModelErrEnum.probeTaskRunning);
     }
     throw error;
   }

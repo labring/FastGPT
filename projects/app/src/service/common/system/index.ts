@@ -165,7 +165,9 @@ export async function initSystemConfig() {
       payFormUrl: appEnv.PAY_FORM_URL || '',
       marketplaceUrl: appEnv.MARKETPLACE_URL,
 
-      agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP,
+      agentSandboxFree: appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
+      show_agent_sandbox_free_tip:
+        appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
       agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL || ''
     },
     systemEnv: Object.assign(

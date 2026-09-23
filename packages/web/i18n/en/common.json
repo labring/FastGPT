@@ -929,6 +929,7 @@
   "model_disabled": "{{model}} has been disabled",
   "model_delisted": "This model has been removed",
   "model_id_already_exists": "Model ID already exists",
+  "model_probe_task_running": "Probe task is running",
   "month_text": "month",
   "move.confirm": "Confirm move",
   "move_success": "Moved Successfully",

@@ -280,7 +280,9 @@ const RenderInput = ({
               RenderComponent ? (
                 <Flex alignItems={'center'} gap={1}>
                   {showSandbox && enableSandbox ? (
-                    <MyTag>{t('app:sandbox_free_tip')}</MyTag>
+                    feConfigs.show_agent_sandbox_free_tip && (
+                      <MyTag>{t('app:sandbox_free_tip')}</MyTag>
+                    )
                   ) : (
                     <MyTag>
                       {t(

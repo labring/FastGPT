@@ -1,9 +1,14 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  aggregateRecordsToTimelinePoints,
   checkAndRunModelStatusProbe,
-  probeModelStatus
+  probeModelStatus,
+  runManualModelStatusProbe
 } from '../../../../core/ai/modelStatus/service';
 import { MongoModelStatusProbeRecord } from '../../../../core/ai/modelStatus/schema';
 import { MongoSystemConfigs } from '../../../../common/system/config/schema';
@@ -141,6 +146,49 @@ describe('probeModelStatus', () => {
   });
 });
 
+describe('aggregateRecordsToTimelinePoints', () => {
+  it('aggregates raw records into 30-minute buckets and elevates errors to red', () => {
+    const records: any[] = [
+      {
+        modelId: 'test-1',
+        status: 'green',
+        latencyMs: 120,
+        requestEndedAt: new Date('2026-09-23T10:05:00.000Z')
+      },
+      {
+        modelId: 'test-1',
+        status: 'red',
+        error: 'timeout',
+        requestEndedAt: new Date('2026-09-23T10:25:00.000Z')
+      },
+      {
+        modelId: 'test-1',
+        status: 'yellow',
+        latencyMs: 32000,
+        requestEndedAt: new Date('2026-09-23T10:35:00.000Z')
+      }
+    ];
+
+    const points = aggregateRecordsToTimelinePoints({ records });
+    expect(points).toHaveLength(2);
+    expect(points[0]).toMatchObject({
+      startTime: new Date('2026-09-23T10:00:00.000Z').toISOString(),
+      status: 'red',
+      totalChecks: 2,
+      failedChecks: 1,
+      error: 'timeout',
+      latencyMs: 120
+    });
+    expect(points[1]).toMatchObject({
+      startTime: new Date('2026-09-23T10:30:00.000Z').toISOString(),
+      status: 'yellow',
+      totalChecks: 1,
+      failedChecks: 0,
+      latencyMs: 32000
+    });
+  });
+});
+
 describe('checkAndRunModelStatusProbe', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -177,5 +225,24 @@ describe('checkAndRunModelStatusProbe', () => {
 
     expect(result).toBeUndefined();
     expect(runSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('runManualModelStatusProbe', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('throws ModelErrEnum.probeTaskRunning when Redis lease is unavailable', async () => {
+    vi.spyOn(LeaseCache.prototype, 'withLease').mockRejectedValueOnce(
+      new RedisLeaseUnavailableError({
+        key: 'ai:model-status:manual-probe',
+        label: 'manual-model-status-probe'
+      })
+    );
+
+    const promise = runManualModelStatusProbe({ teamId: 'test-team' });
+    await expect(promise).rejects.toThrowError(ModelErrEnum.probeTaskRunning);
+    await expect(promise).rejects.toBeInstanceOf(UserError);
   });
 });

@@ -19,6 +19,7 @@ import { cleanupTeamMemberRoles } from './tasks/4170/20260907_cleanup_team_membe
 import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legacy_invited_members';
 import { migrateDatasetTagsV2 } from './tasks/20260907_migrate_dataset_tags_v2';
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
+import { enableChannelReasoningMapping } from './tasks/20260923_enable_channel_reasoning_mapping';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -400,6 +401,29 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: backfillAppResourceSnapshots
+  },
+  {
+    id: '20260923_enable_channel_reasoning_mapping',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260923_enable_channel_reasoning_mapping.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260923_enable_channel_reasoning_mapping.description'
+    ),
+    resultKey: i18nT(
+      'system_migration:migrations.20260923_enable_channel_reasoning_mapping.result'
+    ),
+    progressSteps: [
+      {
+        key: 'channels',
+        labelKey: i18nT(
+          'system_migration:migrations.20260923_enable_channel_reasoning_mapping.channels'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    delay: true,
+    run: enableChannelReasoningMapping
   }
 ] as const satisfies readonly SystemMigration[];
 

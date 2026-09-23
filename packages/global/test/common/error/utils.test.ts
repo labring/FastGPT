@@ -7,6 +7,10 @@ describe('getErrText', () => {
   it('maps the model domain error code to the user-facing message', () => {
     expect(getErrText(ModelErrEnum.unExist)).toBe(ERROR_RESPONSE[ModelErrEnum.unExist].message);
     expect(getErrText(ModelErrEnum.unExist)).toBe('common:model_delisted');
+    expect(getErrText(ModelErrEnum.probeTaskRunning)).toBe(
+      ERROR_RESPONSE[ModelErrEnum.probeTaskRunning].message
+    );
+    expect(getErrText(ModelErrEnum.probeTaskRunning)).toBe('common:model_probe_task_running');
   });
   it('preserves the machine code while exposing and sanitizing a specific model message', () => {
     const error = new UserError(ModelErrEnum.unExist, 'Model is disabled: GPT-5');

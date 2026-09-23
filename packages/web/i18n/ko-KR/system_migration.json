@@ -93,5 +93,9 @@
   "migrations.20260916_backfill_app_resource_snapshots.versions": "앱 버전 리소스 스냅샷 백필",
   "migrations.20260916_backfill_app_resource_snapshots.apps": "앱 게시 버전 포인터 백필",
   "migrations.20260916_backfill_app_resource_snapshots.validation": "앱 리소스 마이그레이션 검증",
-  "migrations.20260916_backfill_app_resource_snapshots.result": "앱 버전 {{versionsProcessedCount}}개와 앱 {{appsProcessedCount}}개를 확인하고 마이그레이션했습니다."
+  "migrations.20260916_backfill_app_resource_snapshots.result": "앱 버전 {{versionsProcessedCount}}개와 앱 {{appsProcessedCount}}개를 확인하고 마이그레이션했습니다.",
+  "migrations.20260923_enable_channel_reasoning_mapping.name": "OpenAI 채널 reasoning 매핑 사용",
+  "migrations.20260923_enable_channel_reasoning_mapping.description": "기존 AIProxy OpenAI 채널에서 reasoning을 reasoning_content 응답 필드로 변환하도록 설정하고 나머지 구성은 유지합니다.",
+  "migrations.20260923_enable_channel_reasoning_mapping.channels": "채널 구성 업데이트",
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "채널 {{channelCount}}개를 확인하고 {{updatedCount}}개를 업데이트했습니다."
 }
