@@ -16,6 +16,8 @@ export enum CommonErrEnum {
   unsupportedParseFileType = 'unsupportedParseFileType',
   invalidParseFile = 'invalidParseFile',
   officeConversionFailed = 'officeConversionFailed',
+  // 本地管线不抛这两个码：仅作为 sangfor 外部解析服务的返回契约保留，
+  // 服务解析 docx 失败时可能返回，勿因本地无引用而清理。
   docxParseInvalid = 'docxParseInvalid',
   docxConversionFailed = 'docxConversionFailed'
 }
