@@ -21,6 +21,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -441,7 +442,10 @@ const ProbeConfigModal = ({
         </FormControl>
 
         <FormControl>
-          <FormLabel>{t('config_model:model_status_webhook_url')}</FormLabel>
+          <FormLabel display={'flex'} alignItems={'center'}>
+            {t('config_model:model_status_webhook_url')}
+            <QuestionTip ml={1} label={t('config_model:model_status_webhook_url_tip')} />
+          </FormLabel>
           <Input
             type={'url'}
             autoComplete={'off'}
@@ -453,7 +457,10 @@ const ProbeConfigModal = ({
         </FormControl>
 
         <FormControl>
-          <FormLabel>{t('config_model:model_status_webhook_token')}</FormLabel>
+          <FormLabel display={'flex'} alignItems={'center'}>
+            {t('config_model:model_status_webhook_token')}
+            <QuestionTip ml={1} label={t('config_model:model_status_webhook_token_tip')} />
+          </FormLabel>
           <Input
             type={'password'}
             autoComplete={'new-password'}
@@ -466,7 +473,6 @@ const ProbeConfigModal = ({
             value={webhookToken}
             onChange={(event) => setWebhookToken(event.target.value)}
           />
-          <FormHelperText>{t('config_model:model_status_webhook_token_tip')}</FormHelperText>
         </FormControl>
 
         {config.webhookTokenConfigured && (
