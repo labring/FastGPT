@@ -30,6 +30,12 @@ The switch is the only entry point for creating collection-level permissions. Wh
 - **Effect**: you can then assign permissions per file/folder. Permission-related operations become slower because snapshots must be maintained.
 - **Duration and safety**: materialization runs synchronously within the request and can take a while for large Datasets. The switch is flipped only after materialization succeeds; on failure it stays disabled and you can simply run it again (the operation is idempotent).
 
+Once enabled, the Dataset info panel shows the enabled notice and the disable entry:
+
+![](/imgs/collection-permission-1.png)
+
+> The collaborators shown here are the Dataset-level ones; the disable entry is `Click to disable` after the notice.
+
 ### Disable
 
 - **Where**: Dataset detail page → file list → bottom of the right info panel → `Click to disable` after the enabled notice.
@@ -46,19 +52,22 @@ There are three equivalent entry points:
 2. Right sidebar after opening a file → `Collaborator`;
 3. Right sidebar after entering a folder → `Collaborator`.
 
-The dialog lets you pick members, member groups, or organizations and assign one of these roles:
+![](/imgs/collection-permission-2.webp)
+
+The dialog lets you pick members, member groups, or organizations and assign one of these roles (matching the UI wording):
 
 | Role   | Description                                                                        |
 | ------ | ---------------------------------------------------------------------------------- |
-| Read   | Can view the file/folder content                                                   |
-| Write  | Can modify content (update / sync / adjust training parameters)                    |
-| Manage | Can manage the file/folder and assign permissions                                  |
+| Read   | Can view collection content                                                        |
+| Write  | Can modify collection content (update / sync / adjust training params)             |
+| Manage | Can manage the whole collection and assign permissions                             |
 | Owner  | Each file/folder has a unique Owner, created on creation or via ownership transfer |
 
 Notes:
 
-- **Owner cannot be granted through collaborator configuration.** The submitted collaborator list must include the current Owner, otherwise the request is rejected — a full replacement could otherwise delete the Owner record.
+- **Owner cannot be granted or changed through collaborator configuration.** The submitted collaborator list must include the current Owner, otherwise the request is rejected — a full replacement could otherwise delete the Owner record.
 - Collaborator configuration uses **full replacement** semantics: the submitted list becomes the final state.
+- The role descriptions say "collection" because they are shared wording; they describe the single file/folder being configured.
 
 ### Inherit and independent states
 
@@ -69,14 +78,15 @@ Notes:
 
 ## Permission requirements per operation
 
-| Operation                                    | Requirement                                                                                                                         |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| View file list / detail                      | Dataset `Read` + that file `Read`; the list is filtered per current member (unreadable files are removed, pagination stays correct) |
-| Rename / update / move a file                | That file `Write`; moving also requires manage permission on the source and target locations                                        |
-| Configure collaborators / resume inheritance | That file `Manage`, and collection permission enabled for the Dataset                                                               |
-| Delete a file / folder                       | **Owner only**. Collaborators with `Manage` or `Write` cannot delete; batch delete filters out non-owned items and tells you so     |
-| Transfer ownership                           | Owner only; transfers to another team member and also transfers ownership of subfolders                                             |
-| Transfer Dataset ownership                   | Cascades to files/folders under that Dataset that are owned by the previous owner                                                   |
+| Operation                                    | Requirement                                                                                                                                     |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| View file list / detail                      | Dataset `Read` + that file `Read`; the list is filtered per current member (unreadable files are removed, pagination stays correct)             |
+| Update file info                             | That file `Write`                                                                                                                               |
+| Move a file / folder                         | `Manage` on both the source and target locations; moving between the Dataset root and a folder also requires the team Dataset-create permission |
+| Configure collaborators / resume inheritance | That file `Manage`, and collection permission enabled for the Dataset                                                                           |
+| Delete a file / folder                       | **Owner only**. Collaborators with `Manage` or `Write` cannot delete; batch delete filters out non-owned items and tells you so                 |
+| Transfer ownership                           | Owner only; transfers to another team member and also transfers ownership of subfolders                                                         |
+| Transfer Dataset ownership                   | Cascades to files/folders under that Dataset that are owned by the previous owner                                                               |
 
 ### Search recall
 
