@@ -23,7 +23,9 @@ import {
   UpdateDatasetBodySchema,
   ResumeDatasetInheritPermissionBodySchema,
   EnableCollectionPermissionBodySchema,
+  EnableCollectionPermissionResponseSchema,
   DisableCollectionPermissionBodySchema,
+  DisableCollectionPermissionResponseSchema,
   CreateDatasetFolderBodySchema,
   SearchDatasetTestBodySchema,
   ExportDatasetQuerySchema,
@@ -333,7 +335,12 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功启用文件级权限'
+          description: '成功启用文件级权限',
+          content: {
+            'application/json': {
+              schema: EnableCollectionPermissionResponseSchema
+            }
+          }
         }
       }
     }
@@ -353,7 +360,12 @@ export const DatasetPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功关闭文件级权限'
+          description: '成功关闭文件级权限',
+          content: {
+            'application/json': {
+              schema: DisableCollectionPermissionResponseSchema
+            }
+          }
         }
       }
     }

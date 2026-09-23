@@ -9,15 +9,17 @@ import { APIFileItemSchema } from '../../../../core/dataset/apiDataset/type';
  * 公共基础 Schema
  * ============================================================================ */
 
+const InheritPermissionSchema = z.boolean().optional().meta({
+  description:
+    '是否继承父级权限（默认 true）。true=继承父级（根 collection 继承 dataset）；false=独立配置，子树停止传播。传 false 时所属知识库必须已启用文件级权限，否则返回 collectionPermissionDisabled'
+});
+
 // 集合存储数据基础 Schema（扩展自 ChunkSettings）
 const DatasetCollectionStoreDataSchema = ChunkSettingsSchema.extend({
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '元数据' }),
   customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' }),
-  inheritPermission: z.boolean().optional().meta({
-    description:
-      '是否继承父级权限（默认 true）。true=继承父级（根 collection 继承 dataset）；false=独立配置，子树停止传播'
-  })
+  inheritPermission: InheritPermissionSchema
 });
 
 const CollectionTagsInputSchema = z.array(CollectionTagLabelSchema).optional().meta({
@@ -60,9 +62,7 @@ export const CreateCollectionBodySchema = z.object({
     .enum([DatasetCollectionTypeEnum.folder, DatasetCollectionTypeEnum.virtual])
     .meta({ description: '集合类型（folder: 文件夹，virtual: 手动集合）' }),
   tags: CollectionTagsInputSchema,
-  inheritPermission: z.boolean().optional().meta({
-    description: '是否继承父级权限（默认 true）。true=继承父级；false=独立配置，子树停止传播'
-  })
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateCollectionBodyType = z.infer<typeof CreateCollectionBodySchema>;
 
@@ -168,9 +168,7 @@ export const CreateImageCollectionDataSchema = z.object({
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   collectionName: z.string().meta({ description: '集合名称' }),
   tags: CollectionTagsInputSchema,
-  inheritPermission: z.boolean().optional().meta({
-    description: '是否继承父级权限（默认 true）。true=继承父级；false=独立配置，子树停止传播'
-  })
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateImageCollectionDataType = z.infer<typeof CreateImageCollectionDataSchema>;
 // handler 内 parse 用

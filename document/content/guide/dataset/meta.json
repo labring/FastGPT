@@ -1,5 +1,14 @@
 {
   "title": "知识库",
   "root": false,
-  "pages": ["rag", "dataset_engine", "collection_tags", "websync", "third-party", "template", "faq"]
+  "pages": [
+    "rag",
+    "dataset_engine",
+    "collection_tags",
+    "collection_permission",
+    "websync",
+    "third-party",
+    "template",
+    "faq"
+  ]
 }
