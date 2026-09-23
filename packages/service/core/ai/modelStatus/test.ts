@@ -7,7 +7,6 @@ import type {
   TTSSystemModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { isProduction } from '@fastgpt/global/common/system/constants';
-import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getAIApi } from '../config';
@@ -19,6 +18,9 @@ import * as fs from 'fs';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
+/** 管理员手动测试与后台探测统一使用的单次模型请求超时。 */
+export const MODEL_STATUS_REQUEST_TIMEOUT_MS = 60000;
+
 /**
  * 使用管理员「测试模型」的同一条调用链探测一个系统模型。
  * 支持 LLM、Embedding、TTS、STT、Rerank 五种模型类型：
@@ -28,51 +30,71 @@ const logger = getLogger(LogCategories.MODULE.AI.MODEL);
  * - STT: 读取预置的 test.mp3 样例音频进行转写测试；
  * - Rerank: 对单条文档进行重排打分测试。
  *
- * 支持传入 channelId 指定渠道测试；支持传入 timeoutMs 设置单次探测最大超时时间。
- * `timeoutMs` 只供后台探测设置请求上限，普通管理员手动测试不传入时保持原有行为。
+ * 支持传入 channelId 指定渠道测试；所有模型类型统一使用 60 秒请求超时。
+ * 超时由 AbortSignal 传到实际 HTTP 客户端，终止底层请求，而不是只提前结束外层 Promise。
  */
 export const testSystemModel = async ({
   model,
   teamId,
   channelId,
-  timeoutMs
+  timeoutMs = MODEL_STATUS_REQUEST_TIMEOUT_MS,
+  signal: parentSignal,
+  onRequestStart
 }: {
   model: SystemModelDataType;
   teamId?: string;
   channelId?: number;
   timeoutMs?: number;
+  signal?: AbortSignal;
+  onRequestStart?: () => void;
 }) => {
   const headers: Record<string, string> =
     channelId === undefined ? {} : { 'Aiproxy-Channel': String(channelId) };
 
-  const runTest = async () => {
+  const runTest = async (signal: AbortSignal) => {
     if (model.type === 'llm') {
       if (!teamId) throw new UserError('LLM model test requires a team');
-      await testLLMModel({ model, headers, teamId });
+      await testLLMModel({ model, headers, teamId, timeoutMs, signal, onRequestStart });
       return;
     }
     if (model.type === 'embedding') {
-      await testEmbeddingModel({ model, headers });
+      await testEmbeddingModel({ model, headers, timeoutMs, signal, onRequestStart });
       return;
     }
     if (model.type === 'tts') {
-      await testTTSModel({ model, headers, timeoutMs });
+      await testTTSModel({ model, headers, timeoutMs, signal, onRequestStart });
       return;
     }
     if (model.type === 'stt') {
-      await testSTTModel({ model, headers });
+      await testSTTModel({ model, headers, timeoutMs, signal, onRequestStart });
       return;
     }
     if (model.type === 'rerank') {
-      await testReRankModel({ model, headers });
+      await testReRankModel({ model, headers, timeoutMs, signal, onRequestStart });
       return;
     }
 
     return Promise.reject('Model type not supported');
   };
 
-  if (timeoutMs === undefined) return runTest();
-  return withTimeout(runTest(), timeoutMs, `Model test timed out after ${timeoutMs}ms`);
+  const timeoutController = new AbortController();
+  const timeoutHandle = setTimeout(
+    () => timeoutController.abort(new Error(`Model test timed out after ${timeoutMs}ms`)),
+    timeoutMs
+  );
+  const signal = parentSignal
+    ? AbortSignal.any([parentSignal, timeoutController.signal])
+    : timeoutController.signal;
+
+  try {
+    return await runTest(signal);
+  } catch (error) {
+    // OpenAI/Axios may normalize abort errors; preserve the actionable timeout reason.
+    if (timeoutController.signal.aborted) throw timeoutController.signal.reason ?? error;
+    throw error;
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
 };
 
 /**
@@ -82,11 +104,17 @@ export const testSystemModel = async ({
 const testLLMModel = async ({
   model,
   headers,
-  teamId
+  teamId,
+  timeoutMs,
+  signal,
+  onRequestStart
 }: {
   model: LLMSystemModelDataType;
   headers: Record<string, string>;
   teamId: string;
+  timeoutMs: number;
+  signal: AbortSignal;
+  onRequestStart?: () => void;
 }) => {
   const { answerText } = await createLLMResponse({
     teamId,
@@ -96,7 +124,11 @@ const testLLMModel = async ({
       messages: [{ role: 'user', content: 'hi' }],
       stream: true
     },
-    custonHeaders: headers
+    custonHeaders: headers,
+    timeout: timeoutMs,
+    signal,
+    maxRetries: 0,
+    onRequestStart
   });
 
   if (answerText) return answerText;
@@ -109,15 +141,24 @@ const testLLMModel = async ({
  */
 const testEmbeddingModel = ({
   model,
-  headers
+  headers,
+  timeoutMs,
+  signal,
+  onRequestStart
 }: {
   model: EmbeddingSystemModelDataType;
   headers: Record<string, string>;
+  timeoutMs: number;
+  signal: AbortSignal;
+  onRequestStart?: () => void;
 }) =>
   getVectors({
     model,
     inputs: [{ type: 'text', input: 'Hi' }],
-    headers
+    headers,
+    timeoutMs,
+    signal,
+    onRequestStart
   });
 
 /**
@@ -127,16 +168,21 @@ const testEmbeddingModel = ({
 const testTTSModel = async ({
   model,
   headers,
-  timeoutMs
+  timeoutMs,
+  signal,
+  onRequestStart
 }: {
   model: TTSSystemModelDataType;
   headers: Record<string, string>;
-  timeoutMs?: number;
+  timeoutMs: number;
+  signal: AbortSignal;
+  onRequestStart?: () => void;
 }) => {
   const voice = model.config.voices[0]?.value;
   if (!voice) throw new UserError('TTS model test requires at least one voice');
 
-  const { ai } = getAIApi({ timeout: timeoutMs ?? 60000 });
+  const { ai } = getAIApi({ timeout: timeoutMs });
+  onRequestStart?.();
   await ai.audio.speech.create(
     {
       model: model.model,
@@ -151,9 +197,11 @@ const testTTSModel = async ({
           headers: {
             ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
             ...headers
-          }
+          },
+          signal,
+          maxRetries: 0
         }
-      : { headers }
+      : { headers, signal, maxRetries: 0 }
   );
 };
 
@@ -163,17 +211,26 @@ const testTTSModel = async ({
  */
 const testSTTModel = async ({
   model,
-  headers
+  headers,
+  timeoutMs,
+  signal,
+  onRequestStart
 }: {
   model: STTSystemModelDataType;
   headers: Record<string, string>;
+  timeoutMs: number;
+  signal: AbortSignal;
+  onRequestStart?: () => void;
 }) => {
   const path = isProduction ? '/app/data/test.mp3' : 'data/test.mp3';
   const { text } = await aiTranscriptions({
     model,
     fileStream: fs.createReadStream(path),
     filename: 'test.mp3',
-    headers
+    headers,
+    timeoutMs,
+    signal,
+    onRequestStart
   });
   logger.info(`STT result: ${text}`);
 };
@@ -184,15 +241,24 @@ const testSTTModel = async ({
  */
 const testReRankModel = async ({
   model,
-  headers
+  headers,
+  timeoutMs,
+  signal,
+  onRequestStart
 }: {
   model: RerankSystemModelDataType;
   headers: Record<string, string>;
+  timeoutMs: number;
+  signal: AbortSignal;
+  onRequestStart?: () => void;
 }) => {
   await reRankRecall({
     model,
     query: 'Hi',
     documents: [{ id: '1', text: 'Hi' }],
-    headers
+    headers,
+    timeoutMs,
+    signal,
+    onRequestStart
   });
 };

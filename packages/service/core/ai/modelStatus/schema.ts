@@ -51,21 +51,41 @@ const ModelStatusProbeRecordSchema = new Schema({
   error: {
     type: String
   },
-  testedAt: {
+  startedAt: {
     type: Date,
     required: true,
     default: () => new Date()
+  },
+  requestStartedAt: {
+    type: Date,
+    required: true
+  },
+  requestEndedAt: {
+    type: Date,
+    required: true
   }
 });
 
-/** 按 modelId 与 testedAt 逆序索引，加速查询单个模型最近 48 小时的探测时间线 */
+/** 按 modelId 与请求结束时间逆序索引，加速查询单个模型最近 48 小时的探测时间线 */
 defineIndex(ModelStatusProbeRecordSchema, {
-  key: { modelId: 1, testedAt: -1 }
+  key: { modelId: 1, requestEndedAt: -1 }
 });
 /** TTL 自动过期索引：探测历史记录保留 30 天，超时后由 MongoDB 自动清理，避免数据无限膨胀 */
 defineIndex(ModelStatusProbeRecordSchema, {
-  key: { testedAt: 1 },
+  key: { requestEndedAt: 1 },
   options: { expireAfterSeconds: 30 * 24 * 60 * 60 }
+});
+
+/** 清理旧版探测记录按 testedAt 创建的查询索引。 */
+defineIndex(ModelStatusProbeRecordSchema, {
+  key: { modelId: 1, testedAt: -1 },
+  deprecated: true
+});
+/** 清理旧版探测记录基于 testedAt 的 30 天 TTL 索引。 */
+defineIndex(ModelStatusProbeRecordSchema, {
+  key: { testedAt: 1 },
+  options: { expireAfterSeconds: 30 * 24 * 60 * 60 },
+  deprecated: true
 });
 
 /** 模型探测历史记录 MongoDB 操作模型 */

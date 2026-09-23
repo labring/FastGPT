@@ -311,19 +311,21 @@ FastGPT 提供了开箱即用的系统模型健康探测与监控功能。开启
 
 #### 请求体参数说明
 
-| 参数路径          | 类型   | 说明                                                                                  |
-| :---------------- | :----- | :------------------------------------------------------------------------------------ |
-| `event`           | string | 告警事件类型：`model_status_error`（模型异常）或 `model_status_recovered`（模型恢复） |
-| `status`          | string | 当前探测结果状态：`red`（异常）、`green`（正常）、`yellow`（高延迟）                  |
-| `model.modelId`   | string | 模型在系统中的唯一数据库 ID                                                           |
-| `model.name`      | string | 模型别名/展示名称                                                                     |
-| `model.model`     | string | 真实模型标识                                                                          |
-| `model.provider`  | string | 模型厂商标识（如 `OpenAI`、`DeepSeek` 等）                                            |
-| `model.type`      | string | 模型类型（`llm`、`embedding`、`rerank`、`tts`、`stt`）                                |
-| `probe.attempts`  | number | 本轮探测实际尝试的次数（1～4）                                                        |
-| `probe.latencyMs` | number | 响应耗时（毫秒，异常状态时通常不存在）                                                |
-| `probe.error`     | string | 发生异常时的具体错误信息（恢复或正常时通常不存在）                                    |
-| `probe.testedAt`  | string | 探测完成的 ISO 8601 时间戳（例如 `2026-09-23T01:45:15.000Z`）                         |
+| 参数路径                 | 类型   | 说明                                                                                  |
+| :----------------------- | :----- | :------------------------------------------------------------------------------------ |
+| `event`                  | string | 告警事件类型：`model_status_error`（模型异常）或 `model_status_recovered`（模型恢复） |
+| `status`                 | string | 当前探测结果状态：`red`（异常）、`green`（正常）、`yellow`（高延迟）                  |
+| `model.modelId`          | string | 模型在系统中的唯一数据库 ID                                                           |
+| `model.name`             | string | 模型别名/展示名称                                                                     |
+| `model.model`            | string | 真实模型标识                                                                          |
+| `model.provider`         | string | 模型厂商标识（如 `OpenAI`、`DeepSeek` 等）                                            |
+| `model.type`             | string | 模型类型（`llm`、`embedding`、`rerank`、`tts`、`stt`）                                |
+| `probe.attempts`         | number | 本轮探测实际尝试的次数（1～4）                                                        |
+| `probe.latencyMs`        | number | 响应耗时（毫秒，异常状态时通常不存在）                                                |
+| `probe.error`            | string | 发生异常时的具体错误信息（恢复或正常时通常不存在）                                    |
+| `probe.startedAt`        | string | 单模型探测任务开始的 ISO 8601 时间戳，包含重试等待                                    |
+| `probe.requestStartedAt` | string | 最后一次模型请求开始的 ISO 8601 时间戳                                                |
+| `probe.requestEndedAt`   | string | 最后一次模型请求结束的 ISO 8601 时间戳，也是状态记录时间                              |
 
 #### Webhook 请求示例
 
@@ -343,7 +345,9 @@ FastGPT 提供了开箱即用的系统模型健康探测与监控功能。开启
   "probe": {
     "attempts": 4,
     "error": "404 The model `gpt-5.4-mini` does not exist or you do not have access to it.",
-    "testedAt": "2026-09-23T01:45:15.000Z"
+    "startedAt": "2026-09-23T01:44:00.000Z",
+    "requestStartedAt": "2026-09-23T01:45:14.000Z",
+    "requestEndedAt": "2026-09-23T01:45:15.000Z"
   }
 }
 ```
@@ -364,7 +368,9 @@ FastGPT 提供了开箱即用的系统模型健康探测与监控功能。开启
   "probe": {
     "attempts": 1,
     "latencyMs": 1630,
-    "testedAt": "2026-09-23T01:50:15.000Z"
+    "startedAt": "2026-09-23T01:50:13.000Z",
+    "requestStartedAt": "2026-09-23T01:50:13.000Z",
+    "requestEndedAt": "2026-09-23T01:50:15.000Z"
   }
 }
 ```

@@ -66,6 +66,12 @@ export type CreateLLMResponseProps<
   custonHeaders?: Record<string, string>;
   // 单次底层模型请求超时时间。辅助类 LLM 请求可传较短值，避免阻塞主链路。
   timeout?: number;
+  /** 可取消底层 HTTP 请求，并在流式响应读取期间继续生效。 */
+  signal?: AbortSignal;
+  /** 覆盖 SDK 自动重试次数；探测调用由上层统一重试，避免隐藏的额外请求。 */
+  maxRetries?: number;
+  /** 即将发出底层模型请求时调用，用于记录真实请求起始时间。 */
+  onRequestStart?: () => void;
   // finish_reason=length 时最多连续请求的次数，避免模型一直返回 length 造成死循环。
   maxContinuations?: number;
   // 是否保存 LLM 请求响应详情。内部辅助调用可关闭，避免污染用户可见的请求记录。
@@ -123,6 +129,8 @@ export type CreateChatCompletionProps = {
   body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   userKey?: OpenaiAccountType;
   timeout?: number;
+  /** 即将发出底层模型请求时调用，用于记录真实请求起始时间。 */
+  onRequestStart?: () => void;
   // 仅透传给 OpenAI SDK 的请求配置，业务字段不要放这里。
   options?: OpenAI.RequestOptions;
 };

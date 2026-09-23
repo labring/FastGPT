@@ -1,6 +1,7 @@
 import { assertModelAvailable } from '@fastgpt/service/core/ai/utils';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { runSystemModelTransaction } from '@fastgpt/service/core/ai/config/entity';
+import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 import {
   refreshModelTemplates,
   updatedReloadSystemModel
@@ -163,7 +164,7 @@ export const createSystemModelsFromTemplates = async ({
   });
 };
 
-/** 按稳定 ID 先事务删除模型与权限并刷新缓存，再解绑渠道；解绑失败不回退删除。 */
+/** 按稳定 ID 在同一事务删除模型、权限和探测历史，刷新缓存后解绑渠道；解绑失败不回退删除。 */
 export const deleteSystemModels = async ({ modelIds }: DeleteSystemModelsBody): Promise<void> => {
   const models = await MongoAIModel.find({ _id: { $in: modelIds }, scope: ModelScopeEnum.system })
     .select({ model: 1 })
@@ -176,6 +177,8 @@ export const deleteSystemModels = async ({ modelIds }: DeleteSystemModelsBody): 
       { session }
     );
     if (result.deletedCount !== modelIds.length) return Promise.reject(ModelErrEnum.unExist);
+
+    await MongoModelStatusProbeRecord.deleteMany({ modelId: { $in: modelIds } }, { session });
 
     await MongoResourcePermission.deleteMany(
       {
@@ -192,7 +195,7 @@ export const deleteSystemModels = async ({ modelIds }: DeleteSystemModelsBody): 
   await removeModelsFromAIProxyChannels({ models: models.map((model) => model.model) });
 };
 
-/** 替换系统模型配置，保留命中实例身份；事务删除缺失模型及权限，不修改 AI Proxy 渠道关联。 */
+/** 替换系统模型配置，保留命中实例身份；事务删除缺失模型、权限和探测历史，不修改 AI Proxy 渠道关联。 */
 export const importSystemModels = async ({
   config
 }: ParsedSystemModelsWithJsonBody): Promise<void> => {
@@ -327,6 +330,10 @@ export const importSystemModels = async ({
           resourceType: PerResourceTypeEnum.model,
           resourceId: { $in: removedModelIds }
         },
+        { session }
+      );
+      await MongoModelStatusProbeRecord.deleteMany(
+        { modelId: { $in: removedModelIds.map(String) } },
         { session }
       );
     }

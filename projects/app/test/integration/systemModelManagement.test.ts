@@ -36,6 +36,7 @@ import {
 } from '@/service/core/ai/model/service';
 import { updateSystemModelStatus } from '@fastgpt/service/core/ai/config/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import * as catalogEntity from '@fastgpt/service/core/ai/config/entity';
@@ -139,6 +140,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     external.listModels.mockReset().mockResolvedValue([]);
     await Promise.all([
       MongoAIModel.deleteMany({}),
+      MongoModelStatusProbeRecord.deleteMany({}),
       MongoAIDefaultModel.deleteMany({}),
       MongoResourcePermission.deleteMany({})
     ]);
@@ -194,7 +196,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
   });
 
-  it('installs templates as inactive models and removes channel bindings and permissions on delete', async () => {
+  it('removes probe records, permissions, and channel bindings when deleting models', async () => {
     external.listModels.mockResolvedValue([createDraft('template-a'), createDraft('template-b')]);
     const result = await createSystemModelsFromTemplates({
       templates: [
@@ -206,6 +208,20 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(result.models).toHaveLength(2);
     expect(await MongoAIModel.countDocuments({ isActive: false })).toBe(2);
     const modelIds = result.models.map(({ modelId }) => modelId);
+    await MongoModelStatusProbeRecord.create(
+      modelIds.map((modelId, index) => ({
+        modelId,
+        name: `template-${index}`,
+        model: `template-${index}`,
+        provider: 'OpenAI',
+        type: ModelTypeEnum.llm,
+        status: 'green',
+        attempts: 1,
+        startedAt: new Date(),
+        requestStartedAt: new Date(),
+        requestEndedAt: new Date()
+      }))
+    );
     // 原生 collection 写入只准备权限夹具；删除仍经过真实应用服务和事务。
     await MongoResourcePermission.collection.insertOne({
       resourceType: PerResourceTypeEnum.model,
@@ -215,6 +231,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     await deleteSystemModels({ modelIds });
 
     expect(await MongoAIModel.countDocuments()).toBe(0);
+    expect(await MongoModelStatusProbeRecord.countDocuments()).toBe(0);
     expect(await MongoResourcePermission.countDocuments()).toBe(0);
     expect(channels.map(({ models }) => models)).toEqual([['unrelated'], []]);
     expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
@@ -233,10 +250,22 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await catalogEntity.readSystemModelRevision()).toBe(0);
   });
 
-  it('rolls back model deletion and revision when permission deletion fails inside the transaction', async () => {
+  it('rolls back model, probe, and permission deletion when a transactional write fails', async () => {
     const { modelId } = await createSystemModel({
       modelData: createDraft('rollback-delete'),
       channelIds: [1]
+    });
+    await MongoModelStatusProbeRecord.create({
+      modelId,
+      name: 'rollback-delete',
+      model: 'rollback-delete',
+      provider: 'OpenAI',
+      type: ModelTypeEnum.llm,
+      status: 'green',
+      attempts: 1,
+      startedAt: new Date(),
+      requestStartedAt: new Date(),
+      requestEndedAt: new Date()
     });
     // 在事务内模型删除之后注入下一条数据库操作失败，验证真实 MongoDB 回滚。
     vi.spyOn(MongoResourcePermission, 'deleteMany').mockImplementationOnce(() => {
@@ -248,6 +277,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     );
 
     expect(await MongoAIModel.findById(modelId).lean()).not.toBeNull();
+    expect(await MongoModelStatusProbeRecord.countDocuments({ modelId })).toBe(1);
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
     // 数据库事务失败时尚未开始外部解绑。
     expect(channels[0].models).toEqual(['unrelated', 'rollback-delete']);
@@ -506,11 +536,24 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       resourceType: PerResourceTypeEnum.model,
       resourceId: new connectionMongo.Types.ObjectId(modelId)
     });
+    await MongoModelStatusProbeRecord.create({
+      modelId,
+      name: 'json-original',
+      model: 'json-original',
+      provider: 'OpenAI',
+      type: ModelTypeEnum.llm,
+      status: 'green',
+      attempts: 1,
+      startedAt: new Date(),
+      requestStartedAt: new Date(),
+      requestEndedAt: new Date()
+    });
     const channelsBeforeImport = structuredClone(channels);
     requests = [];
     await importSystemModels({ config: [] });
     expect(await MongoAIModel.findById(modelId).lean()).toBeNull();
     expect(await MongoAIModel.countDocuments()).toBe(0);
+    expect(await MongoModelStatusProbeRecord.countDocuments()).toBe(0);
     expect(await MongoResourcePermission.countDocuments()).toBe(0);
     expect(channels).toEqual(channelsBeforeImport);
     expect(channels[0].models).toContain('json-original');

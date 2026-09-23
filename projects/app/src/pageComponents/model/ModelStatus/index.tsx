@@ -113,12 +113,24 @@ const ProbeTimeline = ({
   }
 
   const renderTooltipContent = (record: ModelStatusProbeRecord) => {
+    const probeTimes = (
+      <Box color={'myGray.500'} mb={1}>
+        <Text>
+          {t('config_model:model_status_task_started')}: {formatTime(record.startedAt)}
+        </Text>
+        <Text>
+          {t('config_model:model_status_request_started')}: {formatTime(record.requestStartedAt)}
+        </Text>
+        <Text>
+          {t('config_model:model_status_request_ended')}: {formatTime(record.requestEndedAt)}
+        </Text>
+      </Box>
+    );
+
     if (record.status === 'green') {
       return (
         <Box fontSize={'xs'}>
-          <Text color={'myGray.500'} mb={0.5}>
-            {formatTime(record.testedAt)}
-          </Text>
+          {probeTimes}
           <Flex alignItems={'center'} gap={1.5}>
             <Text fontWeight={'semibold'} color={'green.600'}>
               {t('config_model:model_status_tip_normal')}
@@ -134,9 +146,7 @@ const ProbeTimeline = ({
     if (record.status === 'yellow') {
       return (
         <Box fontSize={'xs'}>
-          <Text color={'myGray.500'} mb={0.5}>
-            {formatTime(record.testedAt)}
-          </Text>
+          {probeTimes}
           <Flex alignItems={'center'} gap={1.5}>
             <Text fontWeight={'semibold'} color={'yellow.600'}>
               {t('config_model:model_status_tip_high_latency')}
@@ -153,9 +163,7 @@ const ProbeTimeline = ({
 
     return (
       <Box maxW={'320px'} fontSize={'xs'}>
-        <Text color={'myGray.500'} mb={0.5}>
-          {formatTime(record.testedAt)}
-        </Text>
+        {probeTimes}
         <Text fontWeight={'semibold'} color={'red.600'} wordBreak={'break-word'}>
           {t('config_model:model_status_tip_error_prefix')}
           {errorMsg}
@@ -169,7 +177,7 @@ const ProbeTimeline = ({
       <Flex minW={Math.max(records.length * 6, 240)} h={'28px'} alignItems={'center'} gap={'2px'}>
         {records.map((record, index) => (
           <MyTooltip
-            key={`${record.testedAt}-${index}`}
+            key={`${record.requestEndedAt}-${index}`}
             label={renderTooltipContent(record)}
             shouldWrapChildren={false}
             openDelay={100}
@@ -238,7 +246,7 @@ const ModelStatusCard = ({
 
       <Flex mt={3} justifyContent={'space-between'} gap={3} color={'myGray.500'} fontSize={'xs'}>
         <Text>
-          {t('config_model:model_status_last_probe')}: {formatTime(model.latest?.testedAt)}
+          {t('config_model:model_status_last_probe')}: {formatTime(model.latest?.requestEndedAt)}
         </Text>
         <Text>{model.latest?.latencyMs === undefined ? '-' : `${model.latest.latencyMs}ms`}</Text>
       </Flex>

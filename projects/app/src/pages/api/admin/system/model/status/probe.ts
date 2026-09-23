@@ -5,7 +5,7 @@ import {
   RunModelStatusProbeResponseSchema,
   type RunModelStatusProbeResponse
 } from '@fastgpt/global/openapi/admin/system/model/status';
-import { runModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
+import { runManualModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/service';
 
 /**
  * 管理员手动立即触发一轮全量已启用模型的可用性探测。
@@ -13,9 +13,7 @@ import { runModelStatusProbe } from '@fastgpt/service/core/ai/modelStatus/servic
  */
 async function handler(req: ApiRequestProps): Promise<RunModelStatusProbeResponse> {
   const { teamId } = await authSystemAdmin({ req });
-  return RunModelStatusProbeResponseSchema.parse(
-    await runModelStatusProbe({ teamId, force: true })
-  );
+  return RunModelStatusProbeResponseSchema.parse(await runManualModelStatusProbe({ teamId }));
 }
 
 export default NextAPI(handler);

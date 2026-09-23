@@ -25,6 +25,10 @@ export type ModelStatusProbeRecordType = {
   attempts: number;
   /** 探测失败时的具体错误文本，仅在 red 状态时记录 */
   error?: string;
-  /** 探测完成的时间戳 */
-  testedAt: Date;
+  /** 单模型探测任务开始时间，包含重试等待 */
+  startedAt: Date;
+  /** 最后一次模型请求的开始时间 */
+  requestStartedAt: Date;
+  /** 最后一次模型请求完成时间，也是状态记录的排序时间 */
+  requestEndedAt: Date;
 };

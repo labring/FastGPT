@@ -17,8 +17,9 @@ import type {
   RunModelStatusProbeResponse,
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
+import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { batchRun, delay } from '@fastgpt/global/common/system/utils';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { MongoSystemConfigs } from '../../../common/system/config/schema';
 import { getModelHandle } from '../model';
@@ -26,7 +27,7 @@ import { MongoUser } from '../../../support/user/schema';
 import { getUserDefaultTeam } from '../../../support/user/team/controller';
 import { MongoModelStatusProbeRecord } from './schema';
 import type { ModelStatusProbeRecordType } from './type';
-import { testSystemModel } from './test';
+import { MODEL_STATUS_REQUEST_TIMEOUT_MS, testSystemModel } from './test';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -34,17 +35,20 @@ const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 const MODEL_STATUS_HIGH_LATENCY_MS = 30000;
 /** 探测单次调用失败后的最大重试次数（首次 + 3 次重试共 4 次） */
 const MODEL_STATUS_MAX_RETRIES = 3;
-/** 探测单次网络调用的超时时间（毫秒） */
-const MODEL_STATUS_REQUEST_TIMEOUT_MS = 60000;
 /** 探测失败后的重试间隔等待时间（毫秒） */
 const MODEL_STATUS_RETRY_DELAY_MS = 500;
 /** 多模型并发探测的最大并发数 */
 const MODEL_STATUS_CONCURRENCY = 5;
 /** 状态历史查询窗口（48 小时） */
 const MODEL_STATUS_WINDOW_MS = 48 * 60 * 60 * 1000;
+/** 手动全量探测的 Redis lease TTL；由 LeaseCache 自动续约，30 秒不是任务总时长。 */
+const MANUAL_MODEL_STATUS_PROBE_LEASE_TTL_MS = 30_000;
 
 /** 记录当前正在执行的探测 Promise，用于同一进程防并发重入 */
 let modelStatusProbeInFlight: Promise<RunModelStatusProbeResponse> | undefined;
+const manualModelStatusProbeLease = new LeaseCache({
+  logger: getLogger(LogCategories.INFRA.REDIS)
+});
 
 /**
  * 读取数据库中存储的模型探测配置。
@@ -157,7 +161,9 @@ const toRecordResponse = (record: ModelStatusProbeRecordType): ModelStatusProbeR
   ...(record.latencyMs === undefined ? {} : { latencyMs: record.latencyMs }),
   attempts: record.attempts,
   ...(record.error ? { error: record.error } : {}),
-  testedAt: record.testedAt.toISOString()
+  startedAt: record.startedAt.toISOString(),
+  requestStartedAt: record.requestStartedAt.toISOString(),
+  requestEndedAt: record.requestEndedAt.toISOString()
 });
 
 /**
@@ -209,9 +215,9 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
   const records = modelIds.length
     ? await MongoModelStatusProbeRecord.find({
         modelId: { $in: modelIds },
-        testedAt: { $gte: since }
+        requestEndedAt: { $gte: since }
       })
-        .sort({ testedAt: 1 })
+        .sort({ requestEndedAt: 1 })
         .lean()
     : [];
 
@@ -233,7 +239,7 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
     },
     { enabledModels: models.length, green: 0, yellow: 0, red: 0, unknown: 0 }
   );
-  const lastProbeTime = records.at(-1)?.testedAt.toISOString() ?? null;
+  const lastProbeTime = records.at(-1)?.requestEndedAt.toISOString() ?? null;
 
   return {
     config: toConfigResponse(config),
@@ -253,25 +259,38 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
 export const probeModelStatus = async ({
   model,
   teamId,
-  testedAt,
+  signal,
   test = testSystemModel
 }: {
   model: SystemModelDataType;
   teamId?: string;
-  testedAt: Date;
+  signal?: AbortSignal;
   test?: typeof testSystemModel;
 }): Promise<ModelStatusProbeRecordType> => {
   let lastError: unknown;
+  const startedAt = new Date();
+  let requestStartedAt = startedAt;
+  let requestEndedAt = startedAt;
+  let hasObservedRequestStart = false;
 
   for (let retry = 0; retry <= MODEL_STATUS_MAX_RETRIES; retry++) {
-    const startedAt = Date.now();
+    signal?.throwIfAborted();
+    let requestStartedInAttempt = false;
+    if (!hasObservedRequestStart) requestStartedAt = new Date();
     try {
       await test({
         model,
         teamId,
-        timeoutMs: MODEL_STATUS_REQUEST_TIMEOUT_MS
+        timeoutMs: MODEL_STATUS_REQUEST_TIMEOUT_MS,
+        signal,
+        onRequestStart: () => {
+          hasObservedRequestStart = true;
+          requestStartedInAttempt = true;
+          requestStartedAt = new Date();
+        }
       });
-      const latencyMs = Date.now() - startedAt;
+      if (requestStartedInAttempt || !hasObservedRequestStart) requestEndedAt = new Date();
+      const latencyMs = requestEndedAt.getTime() - requestStartedAt.getTime();
       return {
         modelId: model.modelId,
         name: model.name,
@@ -284,9 +303,13 @@ export const probeModelStatus = async ({
             : ModelStatusProbeStatusEnum.green,
         latencyMs,
         attempts: retry + 1,
-        testedAt
+        startedAt,
+        requestStartedAt,
+        requestEndedAt
       };
     } catch (error) {
+      if (signal?.aborted) signal.throwIfAborted();
+      if (requestStartedInAttempt || !hasObservedRequestStart) requestEndedAt = new Date();
       lastError = error;
       if (retry < MODEL_STATUS_MAX_RETRIES) await delay(MODEL_STATUS_RETRY_DELAY_MS);
     }
@@ -301,7 +324,9 @@ export const probeModelStatus = async ({
     status: ModelStatusProbeStatusEnum.red,
     attempts: MODEL_STATUS_MAX_RETRIES + 1,
     error: String(getErrText(lastError, 'Model test failed')).slice(0, 1000),
-    testedAt
+    startedAt,
+    requestStartedAt,
+    requestEndedAt
   };
 };
 
@@ -354,7 +379,9 @@ const sendModelWebhook = async ({
           attempts: record.attempts,
           latencyMs: record.latencyMs,
           error: record.error,
-          testedAt: record.testedAt.toISOString()
+          startedAt: record.startedAt.toISOString(),
+          requestStartedAt: record.requestStartedAt.toISOString(),
+          requestEndedAt: record.requestEndedAt.toISOString()
         }
       }),
       signal: AbortSignal.timeout(5000)
@@ -383,7 +410,7 @@ const saveProbeRecord = async ({
   record: ModelStatusProbeRecordType;
 }) => {
   const previous = await MongoModelStatusProbeRecord.findOne({ modelId: record.modelId })
-    .sort({ testedAt: -1 })
+    .sort({ requestEndedAt: -1 })
     .lean();
 
   await MongoModelStatusProbeRecord.create(record);
@@ -396,57 +423,87 @@ const saveProbeRecord = async ({
   return record;
 };
 
-/**
- * 执行一轮模型探测。定时任务在调用前判断开关；管理员的立即探测允许在关闭定时任务时手动执行。
- * 控制逻辑：
- * 1. 检查 enabled 开关，若未开启且未设置 force=true 则跳过；
- * 2. 同一进程内防并发重入：若已有探测在执行，复用正在进行的 Promise；
- * 3. 并发控制：以并发度 5 批处理所有已启用的系统模型，每完成一个模型入库并按需触发告警。
- */
-export const runModelStatusProbe = async ({
+/** 执行一轮探测；可选 lease 上下文用于让手动探测在失去租约时中止请求。 */
+const executeModelStatusProbe = async ({
   teamId,
-  force = false
+  config,
+  signal,
+  assertLeaseValid
 }: {
   teamId?: string;
-  force?: boolean;
+  config: ModelStatusProbeConfig;
+  signal?: AbortSignal;
+  assertLeaseValid?: () => void;
+}): Promise<RunModelStatusProbeResponse> => {
+  const startedAt = new Date();
+  const [modelHandle, resolvedTeamId] = await Promise.all([
+    getModelHandle(),
+    teamId ? Promise.resolve(teamId) : getRootTeamId()
+  ]);
+  const models = modelHandle.getActiveModels();
+  const records = await batchRun(
+    models,
+    async (model) => {
+      signal?.throwIfAborted();
+      assertLeaseValid?.();
+      const record = await probeModelStatus({ model, teamId: resolvedTeamId, signal });
+      signal?.throwIfAborted();
+      assertLeaseValid?.();
+      return saveProbeRecord({ config, record });
+    },
+    MODEL_STATUS_CONCURRENCY
+  );
+
+  return {
+    skipped: false,
+    startedAt: startedAt.toISOString(),
+    records: records.map(toRecordResponse)
+  };
+};
+
+/** 定时任务调用入口；仅 cron 共享本进程 Promise，手动探测通过独立 Redis lease 互斥。 */
+export const runModelStatusProbe = async ({
+  teamId
+}: {
+  teamId?: string;
 } = {}): Promise<RunModelStatusProbeResponse> => {
   const config = await getStoredConfig();
-  if (!config.enabled && !force) {
-    return { skipped: true, testedAt: new Date().toISOString(), records: [] };
-  }
-
-  // 手动探测可能和整点 cron 同时触发；同一进程只保留一轮真实请求，避免重复打供应商。
+  if (!config.enabled) return { skipped: true, startedAt: new Date().toISOString(), records: [] };
   if (modelStatusProbeInFlight) return modelStatusProbeInFlight;
 
-  const probePromise = (async () => {
-    const [modelHandle, resolvedTeamId] = await Promise.all([
-      getModelHandle(),
-      teamId ? Promise.resolve(teamId) : getRootTeamId()
-    ]);
-    const models = modelHandle.getActiveModels();
-    const testedAt = new Date();
-    const records = await batchRun(
-      models,
-      async (model) =>
-        saveProbeRecord({
-          config,
-          record: await probeModelStatus({ model, teamId: resolvedTeamId, testedAt })
-        }),
-      MODEL_STATUS_CONCURRENCY
-    );
-
-    return {
-      skipped: false,
-      testedAt: testedAt.toISOString(),
-      records: records.map(toRecordResponse)
-    };
-  })();
-
+  const probePromise = executeModelStatusProbe({ teamId, config });
   modelStatusProbeInFlight = probePromise;
   try {
     return await probePromise;
   } finally {
     if (modelStatusProbeInFlight === probePromise) modelStatusProbeInFlight = undefined;
+  }
+};
+
+/** 手动探测单独记录一轮状态；Redis LeaseCache 阻止多节点重复手动触发并自动续约。 */
+export const runManualModelStatusProbe = async ({
+  teamId
+}: {
+  teamId: string;
+}): Promise<RunModelStatusProbeResponse> => {
+  try {
+    return await manualModelStatusProbeLease.withLease({
+      key: 'ai:model-status:manual-probe',
+      label: 'manual-model-status-probe',
+      ttlMs: MANUAL_MODEL_STATUS_PROBE_LEASE_TTL_MS,
+      fn: async ({ signal, assertValid }) =>
+        executeModelStatusProbe({
+          teamId,
+          config: await getStoredConfig(),
+          signal,
+          assertLeaseValid: assertValid
+        })
+    });
+  } catch (error) {
+    if (error instanceof RedisLeaseUnavailableError) {
+      throw new UserError('A manual model status probe is already running. Please wait.');
+    }
+    throw error;
   }
 };
 

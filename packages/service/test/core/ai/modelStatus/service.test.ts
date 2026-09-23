@@ -8,6 +8,7 @@ import {
 import { MongoModelStatusProbeRecord } from '../../../../core/ai/modelStatus/schema';
 import { MongoSystemConfigs } from '../../../../common/system/config/schema';
 import * as modelStatusService from '../../../../core/ai/modelStatus/service';
+import { MODEL_STATUS_REQUEST_TIMEOUT_MS } from '../../../../core/ai/modelStatus/test';
 
 const model: SystemModelDataType = {
   modelId: 'model-status-test-id',
@@ -26,6 +27,7 @@ const model: SystemModelDataType = {
 
 describe('probeModelStatus', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -39,7 +41,6 @@ describe('probeModelStatus', () => {
 
     const result = await probeModelStatus({
       model,
-      testedAt: new Date('2026-09-23T00:00:00.000Z'),
       test
     });
 
@@ -53,15 +54,62 @@ describe('probeModelStatus', () => {
   });
 
   it('marks a successful request over thirty seconds as yellow', async () => {
-    vi.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(32001);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-23T00:00:00.000Z'));
 
     const result = await probeModelStatus({
       model,
-      testedAt: new Date('2026-09-23T00:00:00.000Z'),
-      test: vi.fn().mockResolvedValue(undefined)
+      test: vi.fn().mockImplementation(async () => {
+        await vi.advanceTimersByTimeAsync(31001);
+      })
     });
 
     expect(result).toMatchObject({ status: 'yellow', latencyMs: 31001, attempts: 1 });
+    expect(result.requestEndedAt.getTime() - result.requestStartedAt.getTime()).toBe(31001);
+    vi.useRealTimers();
+  });
+
+  it('records task start and the final request interval, using a 60-second timeout', async () => {
+    vi.useFakeTimers();
+    const taskStartedAt = new Date('2026-09-23T00:00:00.000Z');
+    vi.setSystemTime(taskStartedAt);
+    const test = vi
+      .fn()
+      .mockImplementation(async ({ onRequestStart }: { onRequestStart?: () => void }) => {
+        onRequestStart?.();
+        await vi.advanceTimersByTimeAsync(250);
+      });
+
+    const result = await probeModelStatus({ model, test });
+
+    expect(test).toHaveBeenCalledWith({
+      model,
+      teamId: undefined,
+      timeoutMs: MODEL_STATUS_REQUEST_TIMEOUT_MS,
+      signal: undefined,
+      onRequestStart: expect.any(Function)
+    });
+    expect(result.startedAt).toEqual(taskStartedAt);
+    expect(result.requestStartedAt).toEqual(taskStartedAt);
+    expect(result.requestEndedAt.getTime() - result.requestStartedAt.getTime()).toBe(250);
+    vi.useRealTimers();
+  });
+
+  it('does not retry after its lease signal is aborted', async () => {
+    const controller = new AbortController();
+    const test = vi.fn(
+      ({ signal }: { signal?: AbortSignal }) =>
+        new Promise<void>((_, reject) => {
+          signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+        })
+    );
+    const probe = probeModelStatus({ model, signal: controller.signal, test });
+    const expectation = expect(probe).rejects.toThrow('lease lost');
+
+    controller.abort(new Error('lease lost'));
+
+    await expectation;
+    expect(test).toHaveBeenCalledTimes(1);
   });
 
   it('marks the model red after all four attempts fail and keeps a safe error message', async () => {
@@ -69,7 +117,6 @@ describe('probeModelStatus', () => {
 
     const result = await probeModelStatus({
       model,
-      testedAt: new Date('2026-09-23T00:00:00.000Z'),
       test
     });
 
@@ -84,10 +131,11 @@ describe('probeModelStatus', () => {
   it('declares the model-time lookup index and 30-day TTL index', () => {
     const indexes = MongoModelStatusProbeRecord.schema.indexes();
 
+    expect(MongoModelStatusProbeRecord.schema.path('requestEndedAt')?.defaultValue).toBeUndefined();
     expect(indexes).toEqual(
       expect.arrayContaining([
-        [{ modelId: 1, testedAt: -1 }, expect.any(Object)],
-        [{ testedAt: 1 }, expect.objectContaining({ expireAfterSeconds: 30 * 24 * 60 * 60 })]
+        [{ modelId: 1, requestEndedAt: -1 }, expect.any(Object)],
+        [{ requestEndedAt: 1 }, expect.objectContaining({ expireAfterSeconds: 30 * 24 * 60 * 60 })]
       ])
     );
   });

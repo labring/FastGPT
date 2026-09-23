@@ -59,7 +59,9 @@ export const ModelStatusProbeRecordSchema = z.object({
   latencyMs: z.number().nonnegative().optional(),
   attempts: IntSchema.min(1).max(4),
   error: z.string().optional(),
-  testedAt: z.string()
+  startedAt: z.string(),
+  requestStartedAt: z.string(),
+  requestEndedAt: z.string()
 });
 export type ModelStatusProbeRecord = z.infer<typeof ModelStatusProbeRecordSchema>;
 
@@ -97,7 +99,7 @@ export type GetModelStatusResponse = z.infer<typeof GetModelStatusResponseSchema
 /** 触发全量模型探测接口响应 Schema */
 export const RunModelStatusProbeResponseSchema = z.object({
   skipped: z.boolean(),
-  testedAt: z.string(),
+  startedAt: z.string(),
   records: z.array(ModelStatusProbeRecordSchema)
 });
 export type RunModelStatusProbeResponse = z.infer<typeof RunModelStatusProbeResponseSchema>;
