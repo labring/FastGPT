@@ -249,5 +249,10 @@
   "model_status_red": "Error",
   "model_status_tip_normal": "Normal",
   "model_status_tip_high_latency": "High Latency",
-  "model_status_tip_error_prefix": "Error: "
+  "model_status_tip_error_prefix": "Error: ",
+  "model_status_tip_checks": "{{total}} checks",
+  "model_status_tip_checks_with_failed": "{{total}} checks, {{failed}} failed",
+  "model_status_test_webhook": "Test Webhook",
+  "model_status_test_webhook_success": "Webhook test succeeded, error and recovery notifications sent",
+  "model_status_webhook_url_empty": "Please enter the alert Webhook URL first"
 }

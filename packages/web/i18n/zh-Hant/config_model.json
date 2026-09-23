@@ -249,5 +249,10 @@
   "model_status_red": "異常",
   "model_status_tip_normal": "正常",
   "model_status_tip_high_latency": "延遲過高",
-  "model_status_tip_error_prefix": "錯誤："
+  "model_status_tip_error_prefix": "錯誤：",
+  "model_status_tip_checks": "{{total}} 次探測",
+  "model_status_tip_checks_with_failed": "{{total}} 次探測，{{failed}} 次失敗",
+  "model_status_test_webhook": "測試 Webhook",
+  "model_status_test_webhook_success": "Webhook 測試成功，已發送異常與恢復通知",
+  "model_status_webhook_url_empty": "請先填寫告警 Webhook 地址"
 }

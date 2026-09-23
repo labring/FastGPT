@@ -22,7 +22,7 @@ The FastGPT Pro service is still required. If you use custom health checks for P
 This upgrade includes the following automated scripts:
 
 1. Backfill App resource permission snapshots and validate published App versions. The migration task does not block startup; its progress and failed records are available in system upgrade tasks.
-2. Enable reasoning mapping for compatible channels: enable `map_reasoning_to_reasoning_content: true` response-field conversion for existing AIProxy channels using the OpenAI and Baidu Qianfan protocols while preserving their other configuration. This resolves reasoning-field differences for reasoning models such as DeepSeek-R1 across gateway protocols. The migration task does not block startup.
+2. Enable reasoning mapping for compatible channels: enable `map_reasoning_to_reasoning_content: true` response-field conversion for existing AIProxy OpenAI channels while preserving their other configuration. This resolves reasoning-field differences for reasoning models such as DeepSeek-R1. Channels that already have this setting enabled are not updated again, and the migration task does not block startup.
 
 ## Compatibility notes
 

@@ -8,7 +8,8 @@ import {
   aggregateRecordsToTimelinePoints,
   checkAndRunModelStatusProbe,
   probeModelStatus,
-  runManualModelStatusProbe
+  runManualModelStatusProbe,
+  testModelStatusWebhook
 } from '../../../../core/ai/modelStatus/service';
 import { MongoModelStatusProbeRecord } from '../../../../core/ai/modelStatus/schema';
 import { MongoSystemConfigs } from '../../../../common/system/config/schema';
@@ -244,5 +245,81 @@ describe('runManualModelStatusProbe', () => {
     const promise = runManualModelStatusProbe({ teamId: 'test-team' });
     await expect(promise).rejects.toThrowError(ModelErrEnum.probeTaskRunning);
     await expect(promise).rejects.toBeInstanceOf(UserError);
+  });
+});
+
+describe('testModelStatusWebhook', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('throws UserError when webhookUrl is not provided and not configured', async () => {
+    vi.spyOn(MongoSystemConfigs, 'findOne').mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue(null)
+      })
+    } as any);
+
+    await expect(testModelStatusWebhook()).rejects.toThrowError(UserError);
+  });
+
+  it('sends one error and one recovered message sequentially with bearer token', async () => {
+    vi.spyOn(MongoSystemConfigs, 'findOne').mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({
+          value: { enabled: true, intervalMinutes: 5, webhookToken: 'stored-token' }
+        })
+      })
+    } as any);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: vi.fn().mockResolvedValue('ok')
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await testModelStatusWebhook({
+      webhookUrl: 'https://example.com/webhook',
+      webhookToken: 'custom-token'
+    });
+
+    expect(res).toEqual({ success: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const firstCall = fetchMock.mock.calls[0];
+    expect(firstCall[0]).toBe('https://example.com/webhook');
+    expect(firstCall[1].headers).toEqual({
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer custom-token'
+    });
+    const firstBody = JSON.parse(firstCall[1].body);
+    expect(firstBody.event).toBe('model_status_error');
+    expect(firstBody.status).toBe('red');
+
+    const secondCall = fetchMock.mock.calls[1];
+    expect(secondCall[0]).toBe('https://example.com/webhook');
+    const secondBody = JSON.parse(secondCall[1].body);
+    expect(secondBody.event).toBe('model_status_recovered');
+    expect(secondBody.status).toBe('green');
+  });
+
+  it('throws UserError if webhook returns non-2xx status', async () => {
+    vi.spyOn(MongoSystemConfigs, 'findOne').mockReturnValue({
+      sort: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue(null)
+      })
+    } as any);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: vi.fn().mockResolvedValue('Internal Server Error')
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      testModelStatusWebhook({ webhookUrl: 'https://example.com/webhook' })
+    ).rejects.toThrowError(UserError);
   });
 });

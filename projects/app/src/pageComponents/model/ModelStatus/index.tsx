@@ -37,7 +37,8 @@ import { ModelStatusProbeStatusEnum } from '@fastgpt/global/core/ai/model/status
 import {
   getModelStatus,
   postModelStatusProbe,
-  putModelStatusProbeConfig
+  putModelStatusProbeConfig,
+  postTestModelStatusWebhook
 } from '@/web/core/ai/config';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '../ModelTabHeader';
@@ -170,8 +171,13 @@ const ProbeTimeline = ({
         </Text>
         <Text>
           {point.failedChecks > 0
-            ? point.totalChecks + ' checks, ' + point.failedChecks + ' failed'
-            : point.totalChecks + ' checks'}
+            ? t('config_model:model_status_tip_checks_with_failed', {
+                total: point.totalChecks,
+                failed: point.failedChecks
+              })
+            : t('config_model:model_status_tip_checks', {
+                total: point.totalChecks
+              })}
         </Text>
       </Box>
     );
@@ -347,6 +353,30 @@ const ProbeConfigModal = ({
     }
   );
 
+  const { runAsync: testWebhook, loading: testLoading } = useRequest(
+    async () => {
+      const trimmedUrl = webhookUrl.trim();
+      if (!trimmedUrl && !config.webhookUrl) {
+        toast({ title: t('config_model:model_status_webhook_url_empty'), status: 'warning' });
+        return;
+      }
+      return postTestModelStatusWebhook({
+        ...(trimmedUrl ? { webhookUrl: trimmedUrl } : {}),
+        ...(webhookToken ? { webhookToken } : {})
+      });
+    },
+    {
+      onSuccess: (res) => {
+        if (res?.success) {
+          toast({
+            title: t('config_model:model_status_test_webhook_success'),
+            status: 'success'
+          });
+        }
+      }
+    }
+  );
+
   const onSubmit = () => {
     const parsedInterval = Number(intervalMinutes);
     if (!Number.isInteger(parsedInterval) || parsedInterval < 5 || parsedInterval > 60) {
@@ -369,14 +399,24 @@ const ProbeConfigModal = ({
       onClose={onClose}
       title={t('config_model:model_status_config')}
       footer={
-        <>
-          <Button variant={'whiteBase'} onClick={onClose} isDisabled={loading}>
-            {t('common:Cancel')}
+        <Flex w={'100%'} alignItems={'center'} justifyContent={'space-between'}>
+          <Button
+            variant={'whitePrimary'}
+            isLoading={testLoading}
+            isDisabled={loading}
+            onClick={() => void testWebhook()}
+          >
+            {t('config_model:model_status_test_webhook')}
           </Button>
-          <Button isLoading={loading} onClick={onSubmit}>
-            {t('common:Confirm')}
-          </Button>
-        </>
+          <HStack spacing={3}>
+            <Button variant={'whiteBase'} onClick={onClose} isDisabled={loading || testLoading}>
+              {t('common:Cancel')}
+            </Button>
+            <Button isLoading={loading} isDisabled={testLoading} onClick={onSubmit}>
+              {t('common:Confirm')}
+            </Button>
+          </HStack>
+        </Flex>
       }
     >
       <Stack spacing={5}>

@@ -22,7 +22,7 @@ FastGPT Pro 服务仍需保留；若为 Pro 配置了自定义健康检查，请
 本次升级包含以下自动化脚本
 
 1. 回填应用资源权限快照，并校验应用正式版本；迁移任务不阻塞服务启动，可在系统升级任务中查看进度和失败记录。
-2. 为兼容渠道启用 reasoning 映射：为现有 AIProxy OpenAI、百度千帆等协议渠道开启 `map_reasoning_to_reasoning_content: true` 的响应字段转换，解决深度思考模型（如 DeepSeek-R1）在不同网关协议下的思考内容字段兼容问题，并保留渠道的原有配置；迁移任务不阻塞服务启动。
+2. 为兼容渠道启用 reasoning 映射：为现有 AIProxy OpenAI 协议渠道开启 `map_reasoning_to_reasoning_content: true` 的响应字段转换，解决深度思考模型（如 DeepSeek-R1）的思考内容字段兼容问题，并保留渠道的原有配置；已配置该项的渠道不会重复更新，迁移任务不阻塞服务启动。
 
 ## 兼容说明
 

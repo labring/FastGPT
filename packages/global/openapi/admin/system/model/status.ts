@@ -119,3 +119,18 @@ export const RunModelStatusProbeResponseSchema = z.object({
   records: z.array(ModelStatusProbeRecordSchema)
 });
 export type RunModelStatusProbeResponse = z.infer<typeof RunModelStatusProbeResponseSchema>;
+
+/** 测试模型状态告警 Webhook 连通性入参 Schema */
+export const TestModelStatusWebhookBodySchema = z
+  .object({
+    webhookUrl: WebhookUrlSchema.optional(),
+    webhookToken: z.string().trim().max(2048).optional()
+  })
+  .strict();
+export type TestModelStatusWebhookBody = z.infer<typeof TestModelStatusWebhookBodySchema>;
+
+/** 测试模型状态告警 Webhook 响应 Schema */
+export const TestModelStatusWebhookResponseSchema = z.object({
+  success: z.boolean()
+});
+export type TestModelStatusWebhookResponse = z.infer<typeof TestModelStatusWebhookResponseSchema>;

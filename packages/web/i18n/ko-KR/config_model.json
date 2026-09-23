@@ -249,5 +249,10 @@
   "model_status_red": "오류",
   "model_status_tip_normal": "정상",
   "model_status_tip_high_latency": "지연 시간 높음",
-  "model_status_tip_error_prefix": "오류: "
+  "model_status_tip_error_prefix": "오류: ",
+  "model_status_tip_checks": "탐지 {{total}}회",
+  "model_status_tip_checks_with_failed": "탐지 {{total}}회, 실패 {{failed}}회",
+  "model_status_test_webhook": "Webhook 테스트",
+  "model_status_test_webhook_success": "Webhook 테스트 성공, 오류 및 복구 알림 전송됨",
+  "model_status_webhook_url_empty": "경고 Webhook URL을 먼저 입력하세요"
 }
