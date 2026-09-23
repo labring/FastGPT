@@ -1004,8 +1004,6 @@ export class WorkflowQueue {
       })();
       const currentNodeError =
         formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
-      const hasChildResponses =
-        hasPublishedChildResponses || (currentNodeChildResponseCount ?? 0) > 0;
 
       // Queue 只合并 callback 主动贡献的增量；所有 nodeResponse
       // 均交给当前 workflow 的 sink scope 统一提取 summary。
@@ -1022,7 +1020,8 @@ export class WorkflowQueue {
               // child 已经通过共享 sink 发布时，父 wrapper 只入库，不重复发送 SSE。
               emit:
                 response.id === formatCurrentNodeResponse?.id
-                  ? !!formatCurrentNodeResponse && (!hasChildResponses || !!currentNodeError)
+                  ? !!formatCurrentNodeResponse &&
+                    (!hasPublishedChildResponses || !!currentNodeError)
                   : true
             }))
           )
