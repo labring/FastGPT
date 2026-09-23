@@ -532,4 +532,134 @@ describe('logs list API - errorFilter', () => {
     expect(res.code).toBe(200);
     expect(res.data).toEqual({ list: [], total: 0 });
   });
+
+  it('does not expose members outside the app team and keeps former share members visible', async () => {
+    const foreignUser = await MongoUser.create({
+      username: 'foreign-user-logs-list',
+      password: 'test-password'
+    });
+    const foreignTeam = await MongoTeam.create({
+      name: 'Foreign Team Logs List',
+      ownerId: foreignUser._id,
+      avatar: 'foreign-avatar',
+      createTime: new Date(),
+      balance: 0
+    });
+    const foreignMember = await MongoTeamMember.create({
+      teamId: foreignTeam._id,
+      userId: foreignUser._id,
+      name: 'Foreign Member',
+      role: TeamMemberRoleEnum.owner,
+      status: 'active',
+      createTime: new Date(),
+      defaultTeam: true
+    });
+    const inactiveUser = await MongoUser.create({
+      username: 'inactive-user-logs-list',
+      password: 'test-password'
+    });
+    const inactiveMember = await MongoTeamMember.create({
+      teamId: testTeamId,
+      userId: inactiveUser._id,
+      name: 'Inactive Member',
+      status: 'leave',
+      createTime: new Date(),
+      defaultTeam: false
+    });
+    const now = new Date();
+    const foreignTmbId = String(foreignMember._id);
+    const inactiveTmbId = String(inactiveMember._id);
+    await MongoChat.create([
+      {
+        chatId: 'share-foreign-member',
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        outLinkUid: foreignTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'share',
+        updateTime: now,
+        title: 'Foreign share chat'
+      },
+      {
+        chatId: 'share-inactive-member',
+        appId: testAppId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        outLinkUid: inactiveTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        source: 'share',
+        updateTime: now,
+        title: 'Inactive share chat'
+      }
+    ]);
+
+    const res = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+        body: {
+          appId: testAppId,
+          dateStart: new Date(now.getTime() - 1000).toISOString(),
+          dateEnd: new Date(now.getTime() + 1000).toISOString()
+        }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.list.find((item) => item.chatId === 'share-foreign-member')?.sourceMember).toBe(
+      undefined
+    );
+    expect(
+      res.data.list.find((item) => item.chatId === 'share-inactive-member')?.sourceMember
+    ).toEqual(expect.objectContaining({ name: 'Inactive Member', status: 'leave' }));
+  });
+
+  it('uses the source-member fallback for a share visitor with a missing name', async () => {
+    const visitor = await MongoUser.create({
+      username: 'nameless-share-visitor',
+      password: 'test-password'
+    });
+    const visitorMember = await MongoTeamMember.create({
+      teamId: testTeamId,
+      userId: visitor._id,
+      name: 'Temporary name',
+      status: 'active',
+      createTime: new Date(),
+      defaultTeam: false
+    });
+    await MongoTeamMember.updateOne({ _id: visitorMember._id }, { $unset: { name: 1 } });
+
+    const now = new Date();
+    await MongoChat.create({
+      chatId: 'share-nameless-member',
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      outLinkUid: String(visitorMember._id),
+      sourceType: ChatSourceTypeEnum.app,
+      source: 'share',
+      updateTime: now,
+      title: 'Nameless share chat'
+    });
+
+    const res = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        headers: { cookie: 'NEXT_LOCALE=zh-CN' },
+        body: {
+          appId: testAppId,
+          dateStart: new Date(now.getTime() - 1000).toISOString(),
+          dateEnd: new Date(now.getTime() + 1000).toISOString()
+        }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(
+      res.data.list.find((item) => item.chatId === 'share-nameless-member')?.sourceMember
+    ).toEqual(expect.objectContaining({ name: 'unknown', status: 'active' }));
+  });
 });

@@ -131,9 +131,10 @@ describe('GET /api/core/ai/model/catalog', () => {
 
   it('uses the server-side outlink member identity instead of login auth', async () => {
     const outLinkAuthData = { shareId: 'share-id', outLinkUid: 'outlink-user' };
-    await handler({ query: { outLinkAuthData: JSON.stringify(outLinkAuthData) } } as any);
+    const req = { query: { outLinkAuthData: JSON.stringify(outLinkAuthData) } } as any;
+    await handler(req);
 
-    expect(mocks.authOutLink).toHaveBeenCalledWith(outLinkAuthData);
+    expect(mocks.authOutLink).toHaveBeenCalledWith({ ...outLinkAuthData, req });
     expect(mocks.authUserPer).not.toHaveBeenCalled();
     expect(mocks.findTeamMember).toHaveBeenCalledWith(
       { _id: 'outlink-member', teamId: 'outlink-team' },

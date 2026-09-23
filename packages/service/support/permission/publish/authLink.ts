@@ -1,18 +1,23 @@
 import { type AppWithPermissionType } from '@fastgpt/global/core/app/type';
-import { type OutlinkAppType, type OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
+import {
+  type OutlinkAppType,
+  type OutLinkSchemaType,
+  type ShareOutLinkSchemaType
+} from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../outLink/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../app/auth';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { parseHeaderCert } from '../auth/common';
-import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { z } from 'zod';
 import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.OUTLINK);
 import { assertCancellation } from '../../user/account/cancellation/guard';
 import { getUserIdByTmbId } from '../../user/team/utils';
+import { normalizeShareOutLinkAllowAnonymous } from '../../outLink/compatibility';
 
 /* crud outlink permission */
 export async function authOutLinkCrud({
@@ -69,11 +74,17 @@ export async function authOutLinkValid<T extends OutlinkAppType = any>({
   if (!shareId) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
-  const outLinkConfig = await MongoOutLink.findOne({ shareId }).lean<OutLinkSchemaType<T>>();
+  const storedOutLinkConfig = await MongoOutLink.findOne({
+    shareId,
+    type: PublishChannelEnum.share
+  }).lean<OutLinkSchemaType<T>>();
 
-  if (!outLinkConfig) {
+  if (!storedOutLinkConfig) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
+  const outLinkConfig = normalizeShareOutLinkAllowAnonymous(
+    storedOutLinkConfig
+  ) as ShareOutLinkSchemaType<T>;
 
   // 分享链接没有用户 Session，使用发布链接绑定的 tmb/team 校验账号可用性
   await assertCancellation({

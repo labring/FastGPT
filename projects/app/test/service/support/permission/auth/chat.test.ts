@@ -55,6 +55,7 @@ const buildOutLinkConfig = (
     showFullText: false,
     canDownloadSource: false,
     showWholeResponse: false,
+    allowAnonymous: true,
     app: undefined,
     ...overrides
   };

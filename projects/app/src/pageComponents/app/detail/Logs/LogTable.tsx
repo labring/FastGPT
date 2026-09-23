@@ -365,10 +365,10 @@ const LogTable = ({
       [AppLogKeysEnum.USER]: (
         <Td key={AppLogKeysEnum.USER}>
           <Box>
-            {!!item.outLinkUid ? (
-              item.outLinkUid
-            ) : item.sourceMember ? (
+            {item.sourceMember ? (
               <UserBox sourceMember={item.sourceMember} />
+            ) : !!item.outLinkUid ? (
+              item.outLinkUid
             ) : (
               '-'
             )}

@@ -98,6 +98,8 @@ export type OutLinkSchemaType<T extends OutlinkAppType = undefined> = {
   canDownloadSource: boolean;
   // whether to show the whole response button
   showWholeResponse: boolean;
+  // Only share links use this field; legacy share links may omit it.
+  allowAnonymous?: boolean;
 
   // response when request
   immediateResponse?: string;
@@ -138,6 +140,14 @@ export type OutLinkEditType<T extends OutlinkAppType = undefined> = {
 
   // config for specific platform
   app?: T;
+};
+
+export type ShareOutLinkSchemaType<T extends OutlinkAppType = undefined> = Omit<
+  OutLinkSchemaType<T>,
+  'type' | 'allowAnonymous'
+> & {
+  type: PublishChannelEnum.share;
+  allowAnonymous: boolean;
 };
 
 export type OutLinkSchema<T extends OutlinkAppType = undefined> = OutLinkSchemaType<T>;

@@ -119,12 +119,18 @@ export async function addSourceMember<T extends { tmbId: string }>({
 
       return {
         ...formatItem,
-        sourceMember: {
-          name: member.name || 'unknown',
-          avatar: member.avatar,
-          status: member.status ?? TeamMemberStatusEnum.active
-        }
+        sourceMember: formatSourceMember(member)
       };
     })
     .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;
 }
+
+export const formatSourceMember = (member: {
+  name?: string | null;
+  avatar?: string | null;
+  status?: TeamMemberStatusEnum | null;
+}): SourceMemberType => ({
+  name: member.name?.trim() ? member.name : 'unknown',
+  avatar: member.avatar,
+  status: member.status ?? TeamMemberStatusEnum.active
+});
