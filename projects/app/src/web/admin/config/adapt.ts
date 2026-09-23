@@ -145,6 +145,8 @@ export function formatConfigStore2FormSchema({
         secure: fastgptPro?.auth?.email?.secure ?? true
       },
       sms: {
+        LOGIN: fastgptPro?.auth?.sms?.LOGIN || '',
+        LOGIN_EN: fastgptPro?.auth?.sms?.LOGIN_EN || '',
         REGISTER: fastgptPro?.auth?.sms?.REGISTER || '',
         RESET_PASSWORD: fastgptPro?.auth?.sms?.RESET_PASSWORD || '',
         BIND_NOTIFICATION: fastgptPro?.auth?.sms?.BIND_NOTIFICATION || '',

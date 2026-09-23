@@ -11,6 +11,9 @@ import type {
   WxLoginBodyType,
   GetWXLoginQRResponseType,
   LoginSuccessResponseType,
+  LoginByPasswordResponseType,
+  LoginVerificationCaptchaResponseType,
+  LoginVerificationSendCodeResponseType,
   WxLoginResultResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type {
@@ -21,6 +24,7 @@ import type { UpdatePasswordByCodeBodyType } from '@fastgpt/global/openapi/suppo
 import type { UpdateContactBodyType } from '@fastgpt/global/openapi/support/user/account/update/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { CaptchaVerificationPurpose } from '@fastgpt/global/support/user/account/verification/type';
+import type { GetImgCaptchaResponse } from '@fastgpt/global/openapi/support/user/account/captcha/api';
 
 export type UserVerificationPurpose = CaptchaVerificationPurpose;
 
@@ -28,9 +32,10 @@ export type UserVerificationPurpose = CaptchaVerificationPurpose;
 export const sendAuthCode = (data: SendAuthCodeBodyType) =>
   POST<SendAuthCodeResponseType>('/proApi/support/user/inform/sendAuthCode', data);
 export const getCaptchaPic = (username: string, purpose: UserVerificationPurpose) =>
-  GET<{
-    captchaImage: string;
-  }>('/proApi/support/user/account/captcha/getImgCaptcha', { username, purpose });
+  GET<GetImgCaptchaResponse>('/proApi/support/user/account/captcha/getImgCaptcha', {
+    username,
+    purpose
+  });
 
 /* ===== login ===== */
 export const getPreLogin = (username: string) =>
@@ -43,10 +48,21 @@ export const oauthLogin = (params: OauthLoginBodyType) =>
 export const postFastLogin = (params: FastLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/fastLogin', params);
 export const postLogin = ({ password, ...props }: LoginByPasswordBodyType) =>
-  POST<LoginSuccessResponseType>('/support/user/account/loginByPassword', {
+  POST<LoginByPasswordResponseType>('/support/user/account/loginByPassword', {
     ...props,
     password: hashStr(password)
   });
+export const getLoginVerificationCaptcha = (challenge: string) =>
+  POST<LoginVerificationCaptchaResponseType>('/support/user/account/login/verification/captcha', {
+    challenge
+  });
+export const sendLoginVerificationCode = (params: { challenge: string; captcha: string }) =>
+  POST<LoginVerificationSendCodeResponseType>(
+    '/support/user/account/login/verification/sendCode',
+    params
+  );
+export const verifyLoginVerificationCode = (params: { challenge: string; code: string }) =>
+  POST<LoginSuccessResponseType>('/support/user/account/login/verification/verify', params);
 // wx login
 export const getWXLoginQR = () =>
   GET<GetWXLoginQRResponseType>('/proApi/support/user/account/login/wx/getQR');
