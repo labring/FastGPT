@@ -442,6 +442,8 @@ const ProbeConfigModal = ({
             <QuestionTip ml={1} label={t('config_model:model_status_interval_tip')} />
           </FormLabel>
           <MyNumberInput
+            bg={'white'}
+            inputFieldProps={{ bg: 'white' }}
             min={5}
             max={60}
             step={1}
@@ -456,6 +458,7 @@ const ProbeConfigModal = ({
             <QuestionTip ml={1} label={t('config_model:model_status_webhook_url_tip')} />
           </FormLabel>
           <Input
+            bg={'white'}
             type={'url'}
             autoComplete={'off'}
             name={'model-status-webhook-url'}
@@ -471,6 +474,7 @@ const ProbeConfigModal = ({
             <QuestionTip ml={1} label={t('config_model:model_status_webhook_token_tip')} />
           </FormLabel>
           <Input
+            bg={'white'}
             type={'password'}
             autoComplete={'new-password'}
             name={'model-status-webhook-token'}
