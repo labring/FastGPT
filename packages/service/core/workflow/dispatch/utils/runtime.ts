@@ -1,4 +1,4 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -10,9 +10,13 @@ import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
+import { replaceJsonBodyString } from './replaceJsonBodyString';
 
 /**
  * 解析单个工作流节点运行参数。
@@ -54,6 +58,22 @@ export const getWorkflowNodeRunParams = ({
     return runtimeVariables;
   };
 
+  // JSON Editor / object / array 入参是 JSON 文本，变量替换必须按 JSON 转义。
+  // 普通文本替换遇到引号、换行、反斜杠会弄坏 JSON，valueTypeFormat 随后把对象解析成 {}。
+  const isJsonRuntimeInput = (input: (typeof node.inputs)[number]) => {
+    if (getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.JSONEditor) return true;
+    const valueType = input.valueType;
+    return (
+      valueType === WorkflowIOValueTypeEnum.object ||
+      valueType === WorkflowIOValueTypeEnum.chatHistory ||
+      valueType === WorkflowIOValueTypeEnum.datasetQuote ||
+      valueType === WorkflowIOValueTypeEnum.dynamic ||
+      valueType === WorkflowIOValueTypeEnum.selectDataset ||
+      valueType === WorkflowIOValueTypeEnum.selectApp ||
+      (!!valueType && valueType.startsWith('array'))
+    );
+  };
+
   node.inputs.forEach((input) => {
     // Special input, not format
     if (input.key === dynamicInput?.key) return;
@@ -82,11 +102,19 @@ export const getWorkflowNodeRunParams = ({
       });
     } else {
       if (needsTextReplace) {
-        value = replaceEditorVariable({
-          text: value,
-          nodesMap: runtimeNodesMap,
-          variables: getRuntimeVariables()
-        });
+        value = isJsonRuntimeInput(input)
+          ? replaceJsonBodyString(
+              { text: value },
+              {
+                allVariables: getRuntimeVariables(),
+                runtimeNodesMap
+              }
+            )
+          : replaceEditorVariable({
+              text: value,
+              nodesMap: runtimeNodesMap,
+              variables: getRuntimeVariables()
+            });
       }
 
       if (isReferenceInput) {
