@@ -19,7 +19,7 @@ const authOutLinkAppAccess = async ({
   outLinkConfig
 }: {
   req: NodeHttpRequest;
-  outLinkConfig: Pick<ShareOutLinkSchemaType<any>, 'allowAnonymous' | 'appId' | 'teamId'>;
+  outLinkConfig: Pick<ShareOutLinkSchemaType, 'allowAnonymous' | 'appId' | 'teamId'>;
 }) => {
   if (outLinkConfig.allowAnonymous) return;
 
@@ -42,7 +42,7 @@ const authOutLinkAppAccess = async ({
     teamId: outLinkConfig.teamId,
     status: notLeaveStatus
   }).lean();
-  if (!member) return Promise.reject(AppErrEnum.unAuthApp);
+  if (!member) throw AppErrEnum.unAuthApp;
 
   const memberTmbId = String(member._id);
   await authAppByTmbId({
@@ -100,6 +100,9 @@ export async function authOutLinkChatStart({
     ? await authOutLinkLimit({ outLink: outLinkConfig, outLinkUid, question })
     : { uid: outLinkUid };
 
+  // `tmbId` 是分享链接发布者，决定应用和团队上下文。
+  // `uid` 是当前访问者，最终会作为 `outLinkUid` 持久化。
+  // 两者的鉴权和审计语义不同，不可互换。
   return {
     sourceName: outLinkConfig.name,
     teamId: outLinkConfig.teamId,
