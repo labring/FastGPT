@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   findModelData: vi.fn(),
   removeModelsFromAIProxyChannels: vi.fn(),
   deleteModels: vi.fn(),
+  deleteProbeRecords: vi.fn(),
   deletePermissions: vi.fn(),
   updatedReloadSystemModel: vi.fn(),
   session: { id: 'session-1' }
@@ -48,6 +49,10 @@ vi.mock('@fastgpt/service/support/permission/schema', () => ({
   MongoResourcePermission: { deleteMany: mocks.deletePermissions }
 }));
 
+vi.mock('@fastgpt/service/core/ai/modelStatus/schema', () => ({
+  MongoModelStatusProbeRecord: { deleteMany: mocks.deleteProbeRecords }
+}));
+
 vi.mock('@fastgpt/service/core/ai/config/entity', () => ({
   runSystemModelTransaction: vi.fn(async (callback: (session: unknown) => Promise<unknown>) =>
     callback(mocks.session)
@@ -67,6 +72,7 @@ describe('DELETE /api/admin/system/model/delete', () => {
     }));
     mocks.removeModelsFromAIProxyChannels.mockResolvedValue(undefined);
     mocks.deleteModels.mockResolvedValue({ deletedCount: 1 });
+    mocks.deleteProbeRecords.mockResolvedValue({ deletedCount: 1 });
     mocks.deletePermissions.mockResolvedValue({ deletedCount: 1 });
     mocks.updatedReloadSystemModel.mockResolvedValue(undefined);
   });
@@ -79,6 +85,10 @@ describe('DELETE /api/admin/system/model/delete', () => {
     });
     expect(mocks.deleteModels).toHaveBeenCalledWith(
       { _id: { $in: [modelId] }, scope: 'system' },
+      { session: mocks.session }
+    );
+    expect(mocks.deleteProbeRecords).toHaveBeenCalledWith(
+      { modelId: { $in: [modelId] } },
       { session: mocks.session }
     );
     expect(mocks.deletePermissions).toHaveBeenCalledWith(
