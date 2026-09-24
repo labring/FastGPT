@@ -13,6 +13,9 @@ import {
 import Content from '@/pageComponents/dashboard/skill/detail/Content';
 import SkillPreview from '@/pageComponents/dashboard/skill/detail/preview/SkillPreview';
 
+import Loading from '@fastgpt/web/components/common/MyLoading';
+import { useRequiredQueryParam } from '@fastgpt/web/hooks/useRequiredQueryParam';
+
 const MainLayout = () => {
   const chatId = useContextSelector(SkillDetailContext, (v) => v.chatId);
 
@@ -53,6 +56,14 @@ const MainLayout = () => {
 };
 
 const SkillDetail = () => {
+  const { isReady } = useRequiredQueryParam('skillId', {
+    fallbackRoute: '/dashboard/skill'
+  });
+
+  if (!isReady) {
+    return <Loading />;
+  }
+
   return (
     <SkillDetailContextProvider>
       <MainLayout />
