@@ -90,7 +90,8 @@ const getWorkflowSnapshot = (record: AppResourceMigrationRecord, isVersion: bool
 
 const isFolderApp = (type: unknown) =>
   typeof type === 'string' &&
-  AppFolderTypeList.includes(type as (typeof AppFolderTypeList)[number]);
+  (AppFolderTypeList.includes(type as (typeof AppFolderTypeList)[number]) ||
+    type === AppTypeEnum.hidden);
 
 /** 从历史工作流字段确定性生成资源快照。 */
 export const buildAppResourceSnapshot = (

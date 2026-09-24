@@ -358,12 +358,13 @@ describe('App resource snapshot migration service', () => {
     expect(result.failures[1].message).toContain('Cannot find app owner tmbId');
   });
 
-  it('validates missing snapshots, invalid pointers, missing published Versions, and folders', async () => {
+  it('validates missing snapshots, invalid pointers, missing published Versions, folders, and hidden apps', async () => {
     const app = createApp();
     const folder = createApp({ type: 'folder' });
+    const hiddenApp = createApp({ type: 'hidden', name: 'Home App' });
     const version = createVersion({ appId: app._id });
     await Promise.all([
-      MongoApp.collection.insertMany([app, folder]),
+      MongoApp.collection.insertMany([app, folder, hiddenApp]),
       MongoAppVersion.collection.insertOne(version)
     ]);
 
@@ -378,7 +379,7 @@ describe('App resource snapshot migration service', () => {
     expect(validateAppVersionResourceRecords([invalidVersion])).toEqual([
       expect.objectContaining({ message: expect.stringContaining('invalid_union') })
     ]);
-    await expect(validateAppResourceRecords([app, folder])).resolves.toEqual([
+    await expect(validateAppResourceRecords([app, folder, hiddenApp])).resolves.toEqual([
       expect.objectContaining({
         record: expect.objectContaining({ _id: app._id }),
         message: 'App published Version pointer is still missing or invalid'
