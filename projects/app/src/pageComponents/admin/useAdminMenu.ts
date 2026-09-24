@@ -68,7 +68,7 @@ export const getCommunityAdminMenuList = (): AdminMenuItem[] => [
     ]
   },
   {
-    icon: 'common/layer',
+    icon: 'common/systemResourceLight',
     label: '系统资源',
     value: '/admin/resources/model',
     children: [
@@ -114,12 +114,12 @@ export const getProAdminMenuList = ({
     ]
   },
   {
-    icon: 'chart',
+    icon: 'common/dashboardLight',
     label: '数据面板',
     value: '/admin/dashboard'
   },
   {
-    icon: 'support/user/informLight',
+    icon: 'common/operationLight',
     label: '运营管理',
     value: '/admin/inform',
     children: [
@@ -130,7 +130,7 @@ export const getProAdminMenuList = ({
     ]
   },
   {
-    icon: 'common/administrator',
+    icon: 'common/userGroupLight',
     label: '用户与团队',
     value: '/admin/users',
     children: [
@@ -147,7 +147,7 @@ export const getProAdminMenuList = ({
   ...(hasPayCapability
     ? [
         {
-          icon: 'common/billing',
+          icon: 'common/commercialLight',
           label: '商业化',
           value: '/admin/plans',
           isProOnly: true,
@@ -173,7 +173,7 @@ export const getProAdminMenuList = ({
       ]
     : []),
   {
-    icon: 'book',
+    icon: 'common/userResourceLight',
     label: '用户资源',
     value: '/admin/apps',
     children: [
@@ -188,7 +188,7 @@ export const getProAdminMenuList = ({
     ]
   },
   {
-    icon: 'common/layer',
+    icon: 'common/systemResourceLight',
     label: '系统资源',
     value: '/admin/resources/model',
     children: [
@@ -207,7 +207,7 @@ export const getProAdminMenuList = ({
     ]
   },
   {
-    icon: 'core/app/type/plugin',
+    icon: 'common/subserviceLight',
     label: '子服务',
     value: '/admin/subservice/plugin',
     isProOnly: true,
@@ -231,7 +231,7 @@ export const getProAdminMenuList = ({
     ]
   },
   {
-    icon: 'common/settingLight',
+    icon: 'common/systemSettingLight',
     label: '系统配置',
     value: '/admin/settings/site',
     children: [

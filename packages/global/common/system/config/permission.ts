@@ -42,8 +42,6 @@ export const isConfigFieldAllowed = (
 
 /**
  * 获取指定 Domain 下当前版本所有被允许的相对字段路径集合。
- * 例如 domain="commercial", edition="community" -> 空集合；
- * domain="site", edition="community" -> Set { "name", "description", ... }
  */
 export const getDomainAllowedKeys = (
   domain: SystemInstanceConfigDomainKey,
@@ -109,4 +107,108 @@ export const filterDomainDataByEdition = <T>(
   };
 
   return cleanObject(data) as Partial<T>;
+};
+
+export const SECRET_MASK = '******';
+
+const secretKeysByDomain: Record<SystemInstanceConfigDomainKey, Set<string>> = (() => {
+  const result: Record<string, Set<string>> = {};
+  for (const item of systemInstanceConfigRegistry) {
+    if (!item.secret) continue;
+    const [domain, ...rest] = item.key.split('.');
+    const relativeKey = rest.join('.');
+    if (!result[domain]) {
+      result[domain] = new Set();
+    }
+    result[domain].add(relativeKey);
+  }
+  return result as Record<SystemInstanceConfigDomainKey, Set<string>>;
+})();
+
+/**
+ * 获取指定 Domain 下所有标记为 secret: true 的相对字段路径。
+ */
+export const getDomainSecretKeys = (domain: SystemInstanceConfigDomainKey): Set<string> => {
+  return secretKeysByDomain[domain] ?? new Set();
+};
+
+/**
+ * 对配置数据中的敏感字段进行脱敏，非空敏感字符串替换为 '******'。
+ */
+export const maskDomainSecrets = <T>(domain: SystemInstanceConfigDomainKey, data: T): T => {
+  if (!isPlainObject(data)) {
+    return data;
+  }
+
+  const secretKeys = getDomainSecretKeys(domain);
+  if (secretKeys.size === 0) {
+    return structuredClone(data);
+  }
+
+  const maskObject = (obj: Record<string, unknown>, currentPath = ''): Record<string, unknown> => {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined) continue;
+
+      const path = currentPath ? `${currentPath}.${key}` : key;
+
+      if (isPlainObject(value)) {
+        result[key] = maskObject(value, path);
+      } else if (secretKeys.has(path) && typeof value === 'string' && value.trim().length > 0) {
+        result[key] = SECRET_MASK;
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  };
+
+  return maskObject(data) as T;
+};
+
+/**
+ * 当客户端提交保存时，若敏感字段提交了掩码 '******'，则自动从上一版本恢复已有密钥，避免误覆写。
+ */
+export const restorePreservedSecrets = <T>(
+  domain: SystemInstanceConfigDomainKey,
+  submitted: T,
+  previous?: unknown
+): T => {
+  if (!isPlainObject(submitted) || !isPlainObject(previous)) {
+    return submitted;
+  }
+
+  const secretKeys = getDomainSecretKeys(domain);
+  if (secretKeys.size === 0) {
+    return submitted;
+  }
+
+  const restoreObject = (
+    subObj: Record<string, unknown>,
+    prevObj: Record<string, unknown>,
+    currentPath = ''
+  ): Record<string, unknown> => {
+    const result: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(subObj)) {
+      if (value === undefined) continue;
+
+      const path = currentPath ? `${currentPath}.${key}` : key;
+      const prevValue = prevObj[key];
+
+      if (isPlainObject(value)) {
+        result[key] = isPlainObject(prevValue) ? restoreObject(value, prevValue, path) : value;
+      } else if (secretKeys.has(path) && value === SECRET_MASK && typeof prevValue === 'string') {
+        result[key] = prevValue;
+      } else {
+        result[key] = value;
+      }
+    }
+
+    return result;
+  };
+
+  return restoreObject(submitted, previous) as T;
 };
