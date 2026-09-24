@@ -261,7 +261,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
       if (hasEmptyFile) {
         toast({
           status: 'warning',
-          title: t('file:empty_file')
+          title: t('common:empty_file')
         });
       }
       if (hasLockFile) {

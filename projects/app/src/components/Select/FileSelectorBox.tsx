@@ -75,7 +75,7 @@ const FileSelector = ({
       if (hasEmptyFile) {
         toast({
           status: 'warning',
-          title: t('file:empty_file')
+          title: t('common:empty_file')
         });
       }
       if (hasLockFile) {
@@ -84,6 +84,7 @@ const FileSelector = ({
           title: t('common:error.s3_upload_invalid_file_type')
         });
       }
+      if (files.length === 0) return;
 
       const fileList = files.map((file) => ({
         file,

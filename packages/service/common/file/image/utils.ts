@@ -1,12 +1,8 @@
-import path from 'node:path';
 import { axios } from '../../api/axios';
 import { serverRequestBaseUrl } from '../../api/serverRequest';
 import { getAxiosContentType, getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
-import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
-import { isOfficeLockFilename } from '@fastgpt/global/common/file/utils';
 import { getLogger, LogCategories } from '../../logger';
 import { serviceEnv } from '../../../env';
-import { normalizeFileExtension } from '../s3/utils/extension';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -88,49 +84,6 @@ export class ImageBase64TooLargeError extends Error {
 export const isValidImageContentType = (contentType: string): boolean => {
   if (!contentType) return false;
   return VALID_IMAGE_TYPES.has(contentType);
-};
-
-const datasetImageMimeByExtension: Record<string, string> = {
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.png': 'image/png'
-};
-
-/**
- * 校验图片数据集直传文件：拒绝空文件和 Office 锁文件，并用魔数校正 MIME。
- * 不能信任客户端声明的 mimetype，否则空文件或改后缀的文本会被当成图片入库。
- */
-export const resolveDatasetImageUpload = ({
-  buffer,
-  filename
-}: {
-  buffer: Buffer;
-  filename: string;
-}) => {
-  if (!buffer?.length) {
-    throw new Error(S3ErrEnum.emptyUploadFile);
-  }
-
-  const normalizedFilename = path.basename(filename);
-  if (isOfficeLockFilename(normalizedFilename)) {
-    throw new Error(S3ErrEnum.invalidUploadFileType);
-  }
-
-  const extension = normalizeFileExtension(path.extname(normalizedFilename));
-  const expectedMime = datasetImageMimeByExtension[extension];
-  if (!expectedMime) {
-    throw new Error(S3ErrEnum.invalidUploadFileType);
-  }
-
-  const detectedMime = detectImageTypeFromBuffer(buffer);
-  if (!detectedMime || detectedMime !== expectedMime) {
-    throw new Error(S3ErrEnum.uploadFileTypeMismatch);
-  }
-
-  return {
-    filename: normalizedFilename,
-    mimetype: detectedMime
-  };
 };
 
 export const detectImageTypeFromBuffer = (buffer: Buffer): string | undefined => {

@@ -11,7 +11,6 @@
   "select_and_drag_file_tip": "Click or Drag Files Here to Upload",
   "select_file_amount_limit": "You can select up to {{max}} files",
   "some_file_count_exceeds_limit": "Exceeded {{maxCount}} files, automatically truncated",
-  "empty_file": "Empty files cannot be uploaded",
   "some_file_size_exceeds_limit": "Some files exceed {{maxSize}}, filtered out",
   "support_file_type": "Supports {{fileType}} file types",
   "template_csv_file_select_tip": "Only {{fileType}} files completed <highlight>exactly according to the template</highlight> are supported",

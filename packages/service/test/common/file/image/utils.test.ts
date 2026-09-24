@@ -3,7 +3,6 @@ import { Readable } from 'node:stream';
 import {
   isValidImageContentType,
   detectImageTypeFromBuffer,
-  resolveDatasetImageUpload,
   guessBase64ImageType,
   getImageBuffer,
   getImageBase64
@@ -139,38 +138,6 @@ describe('detectImageTypeFromBuffer', () => {
       0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x41, 0x42, 0x43, 0x44
     ]);
     expect(detectImageTypeFromBuffer(fakeWebpBuffer)).toBe(undefined);
-  });
-});
-
-describe('resolveDatasetImageUpload', () => {
-  const pngBuffer = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-    'base64'
-  );
-
-  it('accepts png content and returns the detected mime', () => {
-    expect(resolveDatasetImageUpload({ buffer: pngBuffer, filename: 'cat.png' })).toEqual({
-      filename: 'cat.png',
-      mimetype: 'image/png'
-    });
-  });
-
-  it('rejects empty files', () => {
-    expect(() =>
-      resolveDatasetImageUpload({ buffer: Buffer.alloc(0), filename: 'cat.png' })
-    ).toThrow('EmptyUploadFile');
-  });
-
-  it('rejects Office lock files', () => {
-    expect(() => resolveDatasetImageUpload({ buffer: pngBuffer, filename: '~$cat.png' })).toThrow(
-      'InvalidUploadFileType'
-    );
-  });
-
-  it('rejects text renamed as png', () => {
-    expect(() =>
-      resolveDatasetImageUpload({ buffer: Buffer.from('not an image'), filename: 'cat.png' })
-    ).toThrow('UploadFileTypeMismatch');
   });
 });
 

@@ -11,7 +11,6 @@
   "select_and_drag_file_tip": "點選或拖曳檔案至此處上傳",
   "select_file_amount_limit": "最多可選擇 {{max}} 個檔案",
   "some_file_count_exceeds_limit": "已超過 {{maxCount}} 個檔案上限，系統已自動截斷",
-  "empty_file": "不能上傳空檔案",
   "some_file_size_exceeds_limit": "部分檔案超過 {{maxSize}} 大小限制，已自動過濾",
   "support_file_type": "支援 {{fileType}} 格式的檔案",
   "template_csv_file_select_tip": "僅支持<highlight>嚴格按照模板格式</highlight>的 {{fileType}} 文件",

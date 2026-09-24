@@ -11,7 +11,6 @@
   "select_and_drag_file_tip": "클릭하거나 파일을 이곳으로 드래그하여 업로드",
   "select_file_amount_limit": "최대 {{max}}개의 파일을 선택할 수 있습니다",
   "some_file_count_exceeds_limit": "{{maxCount}}개를 초과하여 자동으로 잘렸습니다",
-  "empty_file": "빈 파일은 업로드할 수 없습니다",
   "some_file_size_exceeds_limit": "일부 파일이 {{maxSize}}를 초과하여 제외되었습니다",
   "support_file_type": "{{fileType}} 파일 형식을 지원합니다",
   "template_csv_file_select_tip": "<highlight>템플릿을 정확히 준수하여</highlight> 작성한 {{fileType}} 파일만 지원합니다",
