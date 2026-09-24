@@ -766,9 +766,7 @@ describe('loadRequestMessages function tests', () => {
       const imageParts = content.filter((item: any) => item.type === 'image_url');
       expect(imageParts).toHaveLength(1);
       expect(imageParts[0].image_url.url).toBe(imageUrl);
-      expect(mockAxiosHead).toHaveBeenCalledWith(imageUrl, {
-        timeout: 10000
-      });
+      expect(mockAxiosHead).not.toHaveBeenCalled();
     });
 
     it('should extract image url before newline terminators', async () => {
@@ -925,50 +923,22 @@ describe('loadRequestMessages function tests', () => {
       expect(mockGetImageBase64).not.toHaveBeenCalled();
     });
 
-    it('should handle invalid remote images gracefully', async () => {
+    it('should pass through remote image URLs in array content without axios.head validation', async () => {
       serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
-
       const messages: ChatCompletionMessageParam[] = [
         {
           role: ChatCompletionRequestMessageRoleEnum.User,
           content: [
             { type: 'text', text: 'Text' },
-            { type: 'image_url', image_url: { url: 'https://invalid.com/image.png' } }
+            { type: 'image_url', image_url: { url: 'https://example.com/remote-image.png' } }
           ]
         }
       ];
-
-      mockAxiosHead.mockRejectedValue(new Error('Network error'));
-
-      try {
-        const result = await loadRequestMessages({ messages, useVision: true });
-
-        expect(result).toHaveLength(1);
-        expect(result[0].content).toBe('Text');
-      } finally {
-        serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
-      }
-    });
-
-    it('should handle 405 status as valid image', async () => {
-      const messages: ChatCompletionMessageParam[] = [
-        {
-          role: ChatCompletionRequestMessageRoleEnum.User,
-          content: [
-            { type: 'text', text: 'Check this image:' },
-            { type: 'image_url', image_url: { url: 'https://example.com/image.png' } }
-          ]
-        }
-      ];
-
-      const error = new Error('Method not allowed');
-      (error as any).response = { status: 405 };
-      mockAxiosHead.mockRejectedValue(error);
 
       const result = await loadRequestMessages({ messages, useVision: true });
 
       expect(result).toHaveLength(1);
-      // 405 status is treated as valid, so image is kept and content is array
+      expect(mockAxiosHead).not.toHaveBeenCalled();
       expect(Array.isArray(result[0].content)).toBe(true);
       const content = result[0].content as any[];
       expect(content.some((item: any) => item.type === 'text')).toBe(true);
