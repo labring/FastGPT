@@ -141,7 +141,7 @@ const WorkflowBuilderChatContent = ({
 
   useEffect(() => {
     if (focusRequestId === 0) return;
-    const frame = window.requestAnimationFrame(() => ChatBoxRef?.current?.focusInput());
+    const frame = window.requestAnimationFrame(() => ChatBoxRef?.current?.focusInput?.());
     return () => window.cancelAnimationFrame(frame);
   }, [ChatBoxRef, focusRequestId]);
 
