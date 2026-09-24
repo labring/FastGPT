@@ -49,7 +49,8 @@ export const useChatTest = ({
       responseChatItemId,
       controller,
       generatingMessage,
-      variables
+      variables,
+      autoExecute
     }: StartChatFnProps) => {
       const histories = messages.slice(-1);
 
@@ -78,7 +79,8 @@ export const useChatTest = ({
           appId,
           appName: t('chat:chat_test_app', { name: appDetail.name }),
           chatId,
-          chatConfig
+          chatConfig,
+          autoExecute
         },
         onMessage: generatingMessage,
         abortCtrl: controller

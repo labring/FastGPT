@@ -63,6 +63,8 @@ export type StartChatFnProps = {
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;
+  /** 本轮是否由「自动执行」配置触发；页面层需原样透传给对话接口，服务端据此写固定会话标题。 */
+  autoExecute?: boolean;
 };
 
 export type onStartChatType = (e: StartChatFnProps) => Promise<

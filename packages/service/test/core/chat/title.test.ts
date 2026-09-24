@@ -7,6 +7,10 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
+  AUTO_EXECUTE_QUERY_SENTINEL,
+  CHAT_FIXED_TITLE_I18N
+} from '@fastgpt/global/core/chat/constants';
+import {
   CHAT_TITLE_GENERATION_TIMEOUT_MS,
   CHAT_TITLE_SEND_WAIT_TIMEOUT_MS,
   createGeneratedChatTitleSender,
@@ -50,6 +54,30 @@ const createChat = (override: Record<string, unknown> = {}) =>
     ...override
   });
 
+const fileOnlyContent = {
+  obj: ChatRoleEnum.Human,
+  value: [
+    {
+      file: {
+        type: ChatFileTypeEnum.file,
+        name: 'readme.md',
+        url: '',
+        key: 'file-key'
+      }
+    }
+  ]
+} as const;
+
+const textContent = (content: string) => ({
+  obj: ChatRoleEnum.Human,
+  value: [{ text: { content } }]
+});
+
+const readStoredTitle = async () => {
+  const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
+  return chat?.title;
+};
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -89,10 +117,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
 
     const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
     expect(chat?.title).toBe('FastGPT Docker Deployment');
-    expect(result).toEqual({
-      title: 'FastGPT Docker Deployment',
-      updated: true
-    });
+    expect(result).toBe('FastGPT Docker Deployment');
     expect(createLLMResponseMock).toHaveBeenCalledWith(
       expect.objectContaining({
         teamId: base.teamId,
@@ -161,10 +186,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
 
     const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
     expect(chat?.title).toBe('How do I deploy Fast');
-    expect(result).toEqual({
-      title: 'How do I deploy Fast',
-      updated: true
-    });
+    expect(result).toBe('How do I deploy Fast');
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
@@ -216,10 +238,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
 
     const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
     expect(chat?.title).toBe('2026-06-16 12:30');
-    expect(result).toEqual({
-      title: '2026-06-16 12:30',
-      updated: true
-    });
+    expect(result).toBe('2026-06-16 12:30');
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
@@ -325,10 +344,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
 
     const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
     expect(chat?.title).toBe('FastGPT Docker Deployment');
-    expect(result).toEqual({
-      title: 'FastGPT Docker Deployment',
-      updated: true
-    });
+    expect(result).toBe('FastGPT Docker Deployment');
     expect(createLLMResponseMock).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
@@ -411,30 +427,222 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(result).toBeUndefined();
   });
 
-  it('does not write or return a title for file-only questions', async () => {
+  it('writes the localized upload-file title for file-only questions', async () => {
     await createChat();
 
     const result = await syncGeneratedChatTitleFromUserContent({
       ...base,
+      userContent: fileOnlyContent,
+      locale: 'zh-CN'
+    });
+
+    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN']);
+    expect(result).toBe(CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN']);
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('falls back to zh-CN upload-file title when locale is missing', async () => {
+    await createChat();
+
+    await syncGeneratedChatTitleFromUserContent({ ...base, userContent: fileOnlyContent });
+
+    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN']);
+  });
+
+  it('writes the English upload-file title for an English locale', async () => {
+    await createChat();
+
+    await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: fileOnlyContent,
+      locale: 'en'
+    });
+
+    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.uploadFile.en);
+  });
+
+  it('overwrites the upload-file title with the next text round', async () => {
+    await createChat({ title: CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN'] });
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent('How do I deploy FastGPT with Docker?'),
+      shouldGenerateTitle: true
+    });
+
+    expect(await readStoredTitle()).toBe('FastGPT Docker Deployment');
+    expect(result).toBe('FastGPT Docker Deployment');
+  });
+
+  it('does not return a title again for consecutive file-only rounds', async () => {
+    await createChat({ title: CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN'] });
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: fileOnlyContent,
+      locale: 'zh-CN'
+    });
+
+    // 库里已经是同一个固定文案，不再重复下发 chatTitle 事件
+    expect(result).toBeUndefined();
+    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN']);
+  });
+
+  it('keeps generating titles from text when files are attached', async () => {
+    await createChat();
+
+    await syncGeneratedChatTitleFromUserContent({
+      ...base,
       userContent: {
         obj: ChatRoleEnum.Human,
         value: [
+          ...fileOnlyContent.value,
           {
-            file: {
-              type: ChatFileTypeEnum.file,
-              name: 'readme.md',
-              url: '',
-              key: 'file-key'
+            text: {
+              content: 'How do I deploy FastGPT with Docker?'
             }
           }
         ]
-      }
+      },
+      locale: 'zh-CN'
     });
 
-    const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
-    expect(chat?.title).toBe('');
+    expect(await readStoredTitle()).toBe('FastGPT Docker Deployment');
+  });
+
+  it('writes the auto-run title without calling the model when autoExecute is set', async () => {
+    await createChat();
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent('Generate today sales report'),
+      autoExecute: true,
+      locale: 'zh-CN'
+    });
+
+    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.autoExecute['zh-CN']);
+    expect(result).toBe(CHAT_FIXED_TITLE_I18N.autoExecute['zh-CN']);
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('writes the auto-run title for the sentinel question', async () => {
+    await createChat();
+
+    await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent(AUTO_EXECUTE_QUERY_SENTINEL),
+      autoExecute: true,
+      locale: 'en'
+    });
+
+    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.autoExecute.en);
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('overwrites the English auto-run title on the next round', async () => {
+    // 英文固定文案与 sentinel（AUTO_EXECUTE）是两个独立白名单条目，
+    // 这里锁定英文首轮写入后第二轮仍能被真实标题覆盖。
+    expect(CHAT_FIXED_TITLE_I18N.autoExecute.en).not.toBe(AUTO_EXECUTE_QUERY_SENTINEL);
+    await createChat();
+
+    await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent(AUTO_EXECUTE_QUERY_SENTINEL),
+      autoExecute: true,
+      locale: 'en'
+    });
+    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.autoExecute.en);
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent('How do I deploy FastGPT with Docker?')
+    });
+
+    expect(await readStoredTitle()).toBe('FastGPT Docker Deployment');
+    expect(result).toBe('FastGPT Docker Deployment');
+  });
+
+  it('overwrites the auto-run title on the next round', async () => {
+    await createChat({ title: CHAT_FIXED_TITLE_I18N.autoExecute['zh-CN'] });
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent('How do I deploy FastGPT with Docker?')
+    });
+
+    expect(await readStoredTitle()).toBe('FastGPT Docker Deployment');
+    expect(result).toBe('FastGPT Docker Deployment');
+  });
+
+  it('overwrites a legacy AUTO_EXECUTE title on the next round', async () => {
+    await createChat({ title: AUTO_EXECUTE_QUERY_SENTINEL });
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent('How do I deploy FastGPT with Docker?')
+    });
+
+    expect(await readStoredTitle()).toBe('FastGPT Docker Deployment');
+    expect(result).toBe('FastGPT Docker Deployment');
+  });
+
+  it('prefers the caller fixed title over the auto-run title', async () => {
+    await createChat();
+
+    await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent('Generate today sales report'),
+      autoExecute: true,
+      fixedTitle: '2026-06-16 12:30',
+      locale: 'zh-CN'
+    });
+
+    expect(await readStoredTitle()).toBe('2026-06-16 12:30');
+  });
+
+  it('does not write the upload-file title for empty text without files', async () => {
+    // 定时触发未配默认提示词时也是空 text，但没有文件，不能误标成「上传文件」
+    await createChat();
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: textContent(''),
+      locale: 'zh-CN'
+    });
+
+    expect(await readStoredTitle()).toBe('');
     expect(result).toBeUndefined();
     expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('does not write the upload-file title when every file was filtered out', async () => {
+    // 应用关闭文件上传或超出额度时，prepareWorkflowFileQuery 会过滤掉全部 file 项，
+    // userContent.value 变成空数组。文件根本没被接受，不应把会话命名为「上传文件」。
+    await createChat();
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: { obj: ChatRoleEnum.Human, value: [] },
+      locale: 'zh-CN'
+    });
+
+    expect(await readStoredTitle()).toBe('');
+    expect(result).toBeUndefined();
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('does not overwrite a custom title with a fixed title', async () => {
+    await createChat({ title: 'Manual Title', customTitle: 'Manual Title' });
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      userContent: fileOnlyContent,
+      autoExecute: true,
+      locale: 'zh-CN'
+    });
+
+    expect(await readStoredTitle()).toBe('Manual Title');
+    expect(result).toBeUndefined();
   });
 
   it('generates model titles for non UI sources too', async () => {
@@ -456,10 +664,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
 
     const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
     expect(chat?.title).toBe('FastGPT Docker Deployment');
-    expect(result).toEqual({
-      title: 'FastGPT Docker Deployment',
-      updated: true
-    });
+    expect(result).toBe('FastGPT Docker Deployment');
     expect(createLLMResponseMock).toHaveBeenCalledWith(
       expect.objectContaining({
         timeout: CHAT_TITLE_GENERATION_TIMEOUT_MS
@@ -472,10 +677,7 @@ describe('createGeneratedChatTitleSender', () => {
   it('writes a stream title as soon as generation resolves', async () => {
     const writeChatTitle = vi.fn();
     const titleSender = createGeneratedChatTitleSender({
-      titleGeneration: Promise.resolve({
-        title: 'Generated Title',
-        updated: true
-      }),
+      titleGeneration: Promise.resolve('Generated Title'),
       stream: true,
       detail: true,
       writeChatTitle
@@ -494,14 +696,10 @@ describe('createGeneratedChatTitleSender', () => {
 
   it('reuses the in-flight title send promise without writing duplicate title events', async () => {
     const writeChatTitle = vi.fn();
-    let resolveTitle:
-      | ((value: { title: string; updated: boolean } | undefined) => void)
-      | undefined;
-    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
-      (resolve) => {
-        resolveTitle = resolve;
-      }
-    );
+    let resolveTitle: ((value: string | undefined) => void) | undefined;
+    const titleGeneration = new Promise<string | undefined>((resolve) => {
+      resolveTitle = resolve;
+    });
     const titleSender = createGeneratedChatTitleSender({
       titleGeneration,
       stream: true,
@@ -511,10 +709,7 @@ describe('createGeneratedChatTitleSender', () => {
 
     const firstTitle = titleSender.send();
     const secondTitle = titleSender.send();
-    resolveTitle?.({
-      title: 'Generated Title',
-      updated: true
-    });
+    resolveTitle?.('Generated Title');
 
     await expect(firstTitle).resolves.toBe('Generated Title');
     await expect(secondTitle).resolves.toBe('Generated Title');
@@ -529,7 +724,7 @@ describe('createGeneratedChatTitleSender', () => {
 
   it('does not wait more than the send timeout for slow title generation', async () => {
     const writeChatTitle = vi.fn();
-    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(() => {});
+    const titleGeneration = new Promise<string | undefined>(() => {});
     const titleSender = createGeneratedChatTitleSender({
       titleGeneration,
       stream: true,
@@ -548,14 +743,10 @@ describe('createGeneratedChatTitleSender', () => {
 
   it('can send a title after an earlier send call timed out', async () => {
     const writeChatTitle = vi.fn();
-    let resolveTitle:
-      | ((value: { title: string; updated: boolean } | undefined) => void)
-      | undefined;
-    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
-      (resolve) => {
-        resolveTitle = resolve;
-      }
-    );
+    let resolveTitle: ((value: string | undefined) => void) | undefined;
+    const titleGeneration = new Promise<string | undefined>((resolve) => {
+      resolveTitle = resolve;
+    });
     const titleSender = createGeneratedChatTitleSender({
       titleGeneration,
       stream: true,
@@ -568,10 +759,7 @@ describe('createGeneratedChatTitleSender', () => {
     await vi.advanceTimersByTimeAsync(CHAT_TITLE_SEND_WAIT_TIMEOUT_MS);
     await expect(timeoutTitle).resolves.toBeUndefined();
 
-    resolveTitle?.({
-      title: 'Generated Title',
-      updated: true
-    });
+    resolveTitle?.('Generated Title');
     await vi.runAllTimersAsync();
 
     await expect(titleSender.send()).resolves.toBe('Generated Title');
@@ -586,14 +774,10 @@ describe('createGeneratedChatTitleSender', () => {
 
   it('keeps the background sender alive after the workflow end wait times out', async () => {
     const writeChatTitle = vi.fn();
-    let resolveTitle:
-      | ((value: { title: string; updated: boolean } | undefined) => void)
-      | undefined;
-    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
-      (resolve) => {
-        resolveTitle = resolve;
-      }
-    );
+    let resolveTitle: ((value: string | undefined) => void) | undefined;
+    const titleGeneration = new Promise<string | undefined>((resolve) => {
+      resolveTitle = resolve;
+    });
     const titleSender = createGeneratedChatTitleSender({
       titleGeneration,
       stream: true,
@@ -609,10 +793,7 @@ describe('createGeneratedChatTitleSender', () => {
     await expect(workflowEndTitle).resolves.toBeUndefined();
     expect(writeChatTitle).not.toHaveBeenCalled();
 
-    resolveTitle?.({
-      title: 'Generated Title',
-      updated: true
-    });
+    resolveTitle?.('Generated Title');
     await expect(backgroundTitle).resolves.toBe('Generated Title');
     expect(writeChatTitle).toHaveBeenCalledTimes(1);
     expect(writeChatTitle).toHaveBeenCalledWith({
@@ -625,14 +806,10 @@ describe('createGeneratedChatTitleSender', () => {
 
   it('does not write a late stream title after the response is closed', async () => {
     const writeChatTitle = vi.fn();
-    let resolveTitle:
-      | ((value: { title: string; updated: boolean } | undefined) => void)
-      | undefined;
-    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
-      (resolve) => {
-        resolveTitle = resolve;
-      }
-    );
+    let resolveTitle: ((value: string | undefined) => void) | undefined;
+    const titleGeneration = new Promise<string | undefined>((resolve) => {
+      resolveTitle = resolve;
+    });
     const titleSender = createGeneratedChatTitleSender({
       titleGeneration,
       stream: true,
@@ -648,10 +825,7 @@ describe('createGeneratedChatTitleSender', () => {
     await expect(workflowEndTitle).resolves.toBeUndefined();
     titleSender.close();
 
-    resolveTitle?.({
-      title: 'Generated Title',
-      updated: true
-    });
+    resolveTitle?.('Generated Title');
     await expect(backgroundTitle).resolves.toBe('Generated Title');
     expect(writeChatTitle).not.toHaveBeenCalled();
   });

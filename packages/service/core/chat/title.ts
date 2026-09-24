@@ -6,12 +6,19 @@ import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { withTimeout } from '@fastgpt/global/common/system/utils';
+import { LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
 
 import { MongoChat } from './chatSchema';
 import { buildChatSourceQuery, type ChatSourceParams } from './source';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  AUTO_EXECUTE_QUERY_SENTINEL,
+  CHAT_FIXED_TITLE_I18N,
+  ChatSourceTypeEnum,
+  type ChatFixedTitleKey
+} from '@fastgpt/global/core/chat/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -22,7 +29,54 @@ const FALLBACK_CHAT_TITLE_MAX_LENGTH = 20;
 const CHAT_TITLE_QUESTION_MAX_LENGTH = 1000;
 export const CHAT_TITLE_GENERATION_TIMEOUT_MS = 30_000;
 export const CHAT_TITLE_SEND_WAIT_TIMEOUT_MS = 3_000;
-const titlePlaceholderValues = ['', DEFAULT_CHAT_TITLE, '历史记录'];
+
+const normalizeGeneratedTitle = (title: string) =>
+  title
+    .trim()
+    .replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, '')
+    .replace(/^[#*\-\s]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, GENERATED_CHAT_TITLE_MAX_LENGTH);
+
+/**
+ * 禁止作为标题写入的无效值。
+ *
+ * 这里故意不包含固定文案：同一份列表还被 `canWriteGeneratedTitle` 和写库条件复用，语义是
+ * “可以被后续轮次覆盖”；而本列表的语义是“不得写入”。两者合并会让 `normalizeFixedChatTitle`
+ * 把固定文案自己判为无效，进而用空 question 去调标题模型。
+ */
+const invalidGeneratedTitleValues = ['', DEFAULT_CHAT_TITLE, '历史记录'];
+
+/**
+ * 允许被后续轮次覆盖的标题值。
+ *
+ * 除历史遗留占位值外，还包含：
+ * - 各语言的固定文案：首轮写死「上传文件」/「自动执行」，第二轮起按用户问题重新生成；
+ * - 存量 `AUTO_EXECUTE`：旧逻辑无标题模型时会把哨兵文本直接当标题落库，加进来才能自愈。
+ *
+ * 值必须经 `normalizeGeneratedTitle` 归一，与最终入库形态保持一致；否则带标点或多余空白的
+ * 文案会与入库值对不上，导致第二轮覆盖静默失效。
+ */
+const overwritableTitleValues = Array.from(
+  new Set([
+    ...invalidGeneratedTitleValues,
+    AUTO_EXECUTE_QUERY_SENTINEL,
+    ...Object.values(CHAT_FIXED_TITLE_I18N).flatMap((item) =>
+      Object.values(item).map(normalizeGeneratedTitle)
+    )
+  ])
+);
+
+/**
+ * 取归一后的本地化固定标题。
+ *
+ * `locale` 缺失时回退 `zh-CN`：cron 定时任务、MCP 和 IM 发布渠道（飞书/企微/公众号/钉钉）
+ * 没有请求上下文，也不存在“平台语言”概念；`getLocale` 的全局兜底是 `en`，不能直接复用。
+ */
+const getFixedChatTitle = (key: ChatFixedTitleKey, locale?: localeType) =>
+  normalizeGeneratedTitle(parseI18nString(CHAT_FIXED_TITLE_I18N[key], locale ?? LangEnum.zh_CN));
+
 const prompt = `You generate chat titles.
 
 Process:
@@ -65,20 +119,21 @@ export const canWriteGeneratedTitle = (
   if (customTitle) return false;
 
   const title = chat?.title?.trim() || '';
-  return titlePlaceholderValues.includes(title);
+  return overwritableTitleValues.includes(title);
 };
 
 const getQuestionText = (userContent: UserChatItemType) =>
   chatValue2RuntimePrompt(userContent.value).text.trim();
 
-const normalizeGeneratedTitle = (title: string) =>
-  title
-    .trim()
-    .replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, '')
-    .replace(/^[#*\-\s]+/, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, GENERATED_CHAT_TITLE_MAX_LENGTH);
+/**
+ * 本轮用户消息是否带文件。
+ *
+ * 只用于区分“只发文件开启对话”：调用方已先确认 text 为空，因此这里不需要再判文字。
+ * 不能只用“text 为空”判定，否则 cron 定时任务未配默认提示词时（`[{ text: { content: '' } }]`）
+ * 会被误标成「上传文件」。
+ */
+const hasFileContent = (userContent: UserChatItemType) =>
+  userContent.value.some((item) => !!item.file);
 
 export const getFallbackChatTitleFromUserContent = (
   userContent?: UserChatItemType,
@@ -144,7 +199,7 @@ Return only the title.`;
   }
 
   const normalizedTitle = normalizeGeneratedTitle(answerText);
-  if (!normalizedTitle || titlePlaceholderValues.includes(normalizedTitle)) {
+  if (!normalizedTitle || invalidGeneratedTitleValues.includes(normalizedTitle)) {
     logger.warn('Failed to generate chat title with model', {
       model: titleModel.model,
       reason: 'empty_or_placeholder_title',
@@ -160,7 +215,7 @@ const normalizeFixedChatTitle = (title?: string) => {
   if (!title) return;
 
   const normalizedTitle = normalizeGeneratedTitle(title);
-  if (!normalizedTitle || titlePlaceholderValues.includes(normalizedTitle)) return;
+  if (!normalizedTitle || invalidGeneratedTitleValues.includes(normalizedTitle)) return;
 
   return normalizedTitle;
 };
@@ -172,11 +227,22 @@ const normalizeFixedChatTitle = (title?: string) => {
  * `customTitle` 和 `title`，避免异步生成结果覆盖用户手动改名或已有有效标题。
  * 标题模型失败、当前问题无可用文本或返回空标题时不写库、不返回给客户端，让下一轮标题
  * 仍为空的对话继续尝试。
+ *
+ * 标题优先级：调用方显式 `fixedTitle`（工作流工具的运行时间、MCP 调用）> 自动执行固定文案 >
+ * 只发文件固定文案 > 标题模型生成。三类固定文案都在可覆盖白名单里，因此下一轮带文字的请求
+ * 仍会用真实问题覆盖它们；用户手动改名（`customTitle`）或已有有效标题时一律不覆盖。
  */
-export type GeneratedChatTitleResult = {
-  title: string;
-  updated: boolean;
-};
+export type GeneratedChatTitleParams = {
+  chatId: string;
+  teamId: string;
+  userContent: UserChatItemType;
+  shouldGenerateTitle?: boolean;
+  fixedTitle?: string;
+  /** 本轮是否由前端「自动执行」触发；不论是否配置 defaultPrompt 都使用固定文案。 */
+  autoExecute?: boolean;
+  /** 固定文案的目标语言；缺失时回退 zh-CN，见 `getFixedChatTitle`。 */
+  locale?: localeType;
+} & ChatSourceParams;
 
 export const syncGeneratedChatTitleFromUserContent = async ({
   sourceType,
@@ -185,25 +251,27 @@ export const syncGeneratedChatTitleFromUserContent = async ({
   teamId,
   userContent,
   shouldGenerateTitle = true,
-  fixedTitle
-}: {
-  chatId: string;
-  teamId: string;
-  userContent: UserChatItemType;
-  shouldGenerateTitle?: boolean;
-  fixedTitle?: string;
-} & ChatSourceParams): Promise<GeneratedChatTitleResult | undefined> => {
+  fixedTitle,
+  autoExecute,
+  locale
+}: GeneratedChatTitleParams): Promise<string | undefined> => {
   try {
     // Skill Edit 调试会话不需要模型生成标题，也不写入固定标题，避免调试链路产生额外模型调用。
     if (sourceType === ChatSourceTypeEnum.skillEdit) return;
     if (!shouldGenerateTitle) return;
 
     const questionText = getQuestionText(userContent);
-    if (!questionText && !fixedTitle) return;
+    // 只发文件、没有用户问题时使用固定文案；文件 + 文字仍只按文字生成，文件不参与。
+    const isFileOnlyQuestion = !questionText && hasFileContent(userContent);
+    const nextFixedTitle =
+      normalizeFixedChatTitle(fixedTitle) ??
+      (autoExecute ? getFixedChatTitle('autoExecute', locale) : undefined) ??
+      (isFileOnlyQuestion ? getFixedChatTitle('uploadFile', locale) : undefined);
+
+    if (!questionText && !nextFixedTitle) return;
 
     const nextTitle =
-      normalizeFixedChatTitle(fixedTitle) ||
-      (await generateChatTitleFromQuestion({ question: questionText, teamId }));
+      nextFixedTitle ?? (await generateChatTitleFromQuestion({ question: questionText, teamId }));
     if (!nextTitle) return;
 
     const customTitleCondition = {
@@ -213,7 +281,7 @@ export const syncGeneratedChatTitleFromUserContent = async ({
       $or: [
         { title: { $exists: false } },
         { title: null },
-        { title: { $in: titlePlaceholderValues } }
+        { title: { $in: overwritableTitleValues } }
       ]
     };
 
@@ -230,12 +298,11 @@ export const syncGeneratedChatTitleFromUserContent = async ({
       }
     );
 
-    if (result.matchedCount === 0) return;
+    // 未命中说明已有 customTitle 或有效标题；命中但未修改说明库里已经是同一个固定文案
+    // （例如连续多轮只发文件），两种情况都不向客户端重复下发 chatTitle 事件。
+    if (result.matchedCount === 0 || result.modifiedCount === 0) return;
 
-    return {
-      title: nextTitle,
-      updated: result.modifiedCount > 0
-    };
+    return nextTitle;
   } catch (error) {
     logger.warn('Failed to generate chat title', { sourceType, sourceId, chatId, error });
   }
@@ -247,15 +314,7 @@ export const syncGeneratedChatTitleFromUserContent = async ({
  * 这里故意不 await 标题模型请求，避免 `preChatRound` 阻塞主对话流启动。内部 helper 已经
  * 自行捕获错误，因此调度失败不会影响对话保存。
  */
-export const scheduleGeneratedChatTitleFromUserContent = (
-  params: {
-    chatId: string;
-    teamId: string;
-    userContent: UserChatItemType;
-    shouldGenerateTitle?: boolean;
-    fixedTitle?: string;
-  } & ChatSourceParams
-) => {
+export const scheduleGeneratedChatTitleFromUserContent = (params: GeneratedChatTitleParams) => {
   return syncGeneratedChatTitleFromUserContent(params);
 };
 
@@ -272,7 +331,7 @@ export const createGeneratedChatTitleSender = ({
   detail,
   writeChatTitle
 }: {
-  titleGeneration?: Promise<GeneratedChatTitleResult | undefined>;
+  titleGeneration?: Promise<string | undefined>;
   stream: boolean;
   detail: boolean;
   writeChatTitle?: (payload: WorkflowTypedSseEvent<SseResponseEventEnum.chatTitle>) => void;
@@ -299,10 +358,8 @@ export const createGeneratedChatTitleSender = ({
   const sendTitle = (timeoutMs?: number) => {
     return (async () => {
       try {
-        const titleResult = await waitForTitleResult(timeoutMs);
-        if (!titleResult) return;
-
-        const { title } = titleResult;
+        const title = await waitForTitleResult(timeoutMs);
+        if (!title) return;
 
         if (stream && detail && !titleEventWritten && !closed) {
           writeChatTitle?.(workflowSseEvent.chatTitle(title));

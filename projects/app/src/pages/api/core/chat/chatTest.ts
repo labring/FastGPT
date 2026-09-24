@@ -73,7 +73,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     appName,
     appId,
     chatConfig,
-    chatId
+    chatId,
+    autoExecute
   } = chatTestProps;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
@@ -217,7 +218,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
-      fixedTitle: pluginFixedTitle
+      fixedTitle: pluginFixedTitle,
+      autoExecute,
+      locale: getLocale(req)
     });
 
     const runningChatId = preparedRound.chatId;
