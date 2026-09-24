@@ -28,7 +28,7 @@ const AiProxySubserviceConfigSchema = z.strictObject({
 const AgentSandboxSubserviceConfigSchema = z.strictObject({
   provider: z.enum(['none', 'sealosdevbox', 'opensandbox']).default('none'),
   common: z
-    .object({
+    .strictObject({
       cpuCount: positiveNumber(1),
       memoryMiB: positiveInteger(2048),
       storageSizeGi: positiveNumber(1),
@@ -44,7 +44,7 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
     })
     .prefault({}),
   sealosdevbox: z
-    .object({
+    .strictObject({
       baseUrl: urlWithDefault(),
       token: textWithDefault(),
       workDirectory: z.string().default('/home/devbox/workspace'),
@@ -57,7 +57,7 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       image: ''
     }),
   opensandbox: z
-    .object({
+    .strictObject({
       baseUrl: urlWithDefault(),
       apiKey: textWithDefault(),
       runtime: z.enum(['docker', 'kubernetes']).default('docker'),
@@ -79,9 +79,67 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
     })
 });
 
-export const SubserviceConfigSchema = z.strictObject({
+export const SubserviceConfigBaseSchema = z.strictObject({
   plugin: PluginSubserviceConfigSchema.prefault({}),
   codeSandbox: CodeSandboxSubserviceConfigSchema.prefault({}),
   aiProxy: AiProxySubserviceConfigSchema.prefault({}),
   agentSandbox: AgentSandboxSubserviceConfigSchema.prefault({})
+});
+
+export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((subservice, ctx) => {
+  const { aiProxy, agentSandbox, codeSandbox, plugin } = subservice;
+
+  if (plugin.enabled && !plugin.token.trim()) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['plugin', 'token'],
+      message: 'token is required when the plugin service is enabled'
+    });
+  }
+
+  if (codeSandbox.enabled && !codeSandbox.token.trim()) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['codeSandbox', 'token'],
+      message: 'token is required when the code sandbox is enabled'
+    });
+  }
+
+  if (aiProxy.enabled && !aiProxy.token.trim()) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['aiProxy', 'token'],
+      message: 'token is required when AI Proxy is enabled'
+    });
+  }
+
+  if (agentSandbox.provider === 'sealosdevbox') {
+    const { baseUrl, image, token } = agentSandbox.sealosdevbox;
+    if (!baseUrl || !token.trim() || !image.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['agentSandbox', 'sealosdevbox'],
+        message: 'baseUrl, token and image are required for sealosdevbox'
+      });
+    }
+  }
+
+  if (agentSandbox.provider === 'opensandbox') {
+    const { apiKey, baseUrl, image, volumeManagerToken, volumeManagerUrl } =
+      agentSandbox.opensandbox;
+    if (
+      !baseUrl ||
+      !apiKey.trim() ||
+      !image.trim() ||
+      !volumeManagerUrl ||
+      !volumeManagerToken.trim()
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['agentSandbox', 'opensandbox'],
+        message:
+          'baseUrl, apiKey, image, volumeManagerUrl and volumeManagerToken are required for opensandbox'
+      });
+    }
+  }
 });
