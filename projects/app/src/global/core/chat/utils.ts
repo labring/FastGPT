@@ -14,8 +14,17 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 export const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
 
+// Workflow CLI 通过 Workflow Builder 的共享 Sandbox 执行，也应沿用通用 Sandbox 入口展示规则。
+const workflowBuilderSandboxToolIds = new Set([
+  'workflow_cli_query',
+  'workflow_cli_stage',
+  'workflow_cli_commit'
+]);
+
 const isSandboxToolId = (toolId?: string) =>
-  !!toolId && Object.prototype.hasOwnProperty.call(sandboxToolMap, toolId);
+  !!toolId &&
+  (Object.prototype.hasOwnProperty.call(sandboxToolMap, toolId) ||
+    workflowBuilderSandboxToolIds.has(toolId));
 
 const isSandboxChatTool = (tool?: { functionName?: string } | null) =>
   isSandboxToolId(tool?.functionName);

@@ -61,11 +61,13 @@ const ChatRecordContextProvider = ({
   children,
   params,
   feedbackRecordId,
-  fetchFn
+  fetchFn,
+  showInitialLoading = true
 }: {
   children: ReactNode;
   params: ChatRecordProviderParams;
   feedbackRecordId?: string;
+  showInitialLoading?: boolean;
   fetchFn?: (
     data: LinkedPaginationProps<ChatRecordProviderParams>
   ) => Promise<GetRecordsV2ResponseType>;
@@ -116,7 +118,8 @@ const ChatRecordContextProvider = ({
       params,
       currentData,
       defaultScroll: 'bottom',
-      showErrorToast: false
+      showErrorToast: false,
+      showInitialLoading
     }
   );
 

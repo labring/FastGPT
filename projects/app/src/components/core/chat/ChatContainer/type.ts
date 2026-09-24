@@ -8,10 +8,15 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowToolDeltaType } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type {
+  AgentPlanAskResponse,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import type { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import type { WorkflowBuilderApplied } from '@fastgpt/global/openapi/core/workflow/builder/api';
+import type { WorkflowBuilderVersion } from '@fastgpt/global/core/workflow/builder/type';
 
 type BaseGeneratingMessageProps = {
   responseValueId?: string;
@@ -33,6 +38,8 @@ type BaseGeneratingMessageProps = {
   // Sandbox
   sandboxStatus?: SandboxStatusItemType;
   skill?: SkillModuleResponseItemType;
+  workflowBuilderApplied?: WorkflowBuilderApplied;
+  workflowBuilderVersion?: WorkflowBuilderVersion;
 
   formData?: ChatAgentConfigFormDataType;
 };
@@ -60,6 +67,7 @@ export type StartChatFnProps = {
   messages: ChatCompletionMessageParam[];
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
+  agentPlanAskResponse?: AgentPlanAskResponse;
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;

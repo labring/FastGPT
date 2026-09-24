@@ -71,6 +71,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolChildPending,
   onToolStop,
   getMessages,
+  getAssistantContent,
   onToolCall,
   onToolResult
 }: {
@@ -82,6 +83,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolChildPending?: (pause: { childrenResponse: TChildrenResponse; toolCallId: string }) => void;
   onToolStop?: () => void;
   getMessages: () => ChatCompletionMessageParam[];
+  getAssistantContent: () => string;
   onToolCall: (call: ChatCompletionMessageToolCall) => void;
   onToolResult: (params: {
     call: ChatCompletionMessageToolCall;
@@ -220,7 +222,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     }
   }
 
-  if (runtime.systemTools?.ask?.enabled) {
+  const askSystemTool = runtime.systemTools?.ask;
+  if (askSystemTool?.enabled) {
     const askTool = createAskUserAgentTool();
     tools.push({
       name: askTool.function.name,
@@ -238,6 +241,17 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             response
           });
           return { content: [{ type: 'text' as const, text: response }], details: {} };
+        }
+
+        const validationError = await askSystemTool.validate?.(parsed.data, {
+          assistantContent: getAssistantContent()
+        });
+        if (validationError) {
+          onToolResult({
+            call: createToolCall({ id: callId, name: askTool.function.name, args: toolArgs }),
+            response: validationError
+          });
+          return { content: [{ type: 'text' as const, text: validationError }], details: {} };
         }
 
         setPendingAsk(parsed.data, callId);
@@ -261,7 +275,10 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     });
   }
 
-  if (runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client) {
+  if (
+    runtime.systemTools?.sandbox?.enabled &&
+    (runtime.systemTools.sandbox.client || runtime.systemTools.sandbox.executor)
+  ) {
     for (const sandboxTool of createAgentLoopSandboxTools()) {
       const agentLoopToolName = sandboxTool.function.name;
       const sandboxToolName = toSandboxToolName(agentLoopToolName);
@@ -281,16 +298,22 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
           const result = await executeOrdinaryTool({
             call,
             execute: async () => {
+              const sandboxExecutor = runtime.systemTools?.sandbox?.executor;
               const sandboxClient = runtime.systemTools?.sandbox?.client;
-              if (!sandboxClient) {
+              if (!sandboxExecutor && !sandboxClient) {
                 const response = 'Sandbox executor is not available.';
                 return { response, assistantMessages: [], usages: [], errorMessage: response };
               }
-              const sandboxResult = await runSandboxTools({
-                toolName: sandboxToolName,
-                args: call.function.arguments ?? '',
-                sandboxClient
-              });
+              const sandboxResult = sandboxExecutor
+                ? await sandboxExecutor({
+                    toolName: sandboxToolName,
+                    args: call.function.arguments ?? ''
+                  })
+                : await runSandboxTools({
+                    toolName: sandboxToolName,
+                    args: call.function.arguments ?? '',
+                    sandboxClient: sandboxClient!
+                  });
               return {
                 response: sandboxResult.response,
                 assistantMessages: [],

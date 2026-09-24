@@ -6,6 +6,15 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { ChatTypeEnum, textareaMinH } from '../constants';
 import type { ChatBoxInputFormType, ChatBoxInputType } from '../type';
 
+/** 生成带 sourceKey 的草稿 key，避免不同聊天来源碰巧复用同一 chatId 时串草稿。 */
+export const getChatInputDraftKey = ({
+  sourceKey,
+  chatId
+}: {
+  sourceKey?: string;
+  chatId?: string;
+}) => `chatInput_${sourceKey ?? ''}:${chatId ?? ''}`;
+
 /**
  * 管理 ChatBox 输入表单、输入草稿和“对话是否已开始”的派生状态。
  *
@@ -25,7 +34,7 @@ import type { ChatBoxInputFormType, ChatBoxInputType } from '../type';
  * - `resetInputVal` 会同时重置文本、文件、草稿和 textarea 高度。
  *
  * 关键边界：
- * - 草稿按 `chatInput_${chatId}` 存储，避免不同会话之间串输入内容。
+ * - 草稿按 `sourceKey + chatId` 存储，避免不同来源复用相同 chatId 时串输入内容。
  * - `chatStarted` 必须先确认 source 匹配；否则 target 切换时旧 records 或旧表单可能让新会话误判已开始。
  * - custom 变量属于外部变量输入，internal 变量不需要用户填写，二者都不应当按普通变量阻塞开始。
  */
@@ -46,6 +55,8 @@ export const useChatInputForm = ({
   variableList: VariableItemType[];
   TextareaDom: RefObject<HTMLTextAreaElement>;
 }) => {
+  const draftKey = useMemo(() => getChatInputDraftKey({ sourceKey, chatId }), [chatId, sourceKey]);
+  const legacyDraftKey = `chatInput_${chatId}`;
   // 只有这些聊天入口会在 ChatBox 内展示外部变量；其它入口即使存在 custom 变量，
   // 也不应该用这里的判断改变输入区启动状态。
   const showExternalVariable = useMemo(() => {
@@ -62,7 +73,8 @@ export const useChatInputForm = ({
     defaultValues: {
       // react-hook-form 的 defaultValues 只在初始化时读取一次。这里沿用原逻辑：
       // 首次进入某个 chatId 时恢复草稿，后续切换由 ChatBox 重新挂载/状态流驱动。
-      input: sessionStorage.getItem(`chatInput_${chatId}`) || '',
+      // 先读新 key；仅在新 key 不存在时读取旧 key，保证单 ChatBox 用户升级后不丢草稿。
+      input: sessionStorage.getItem(draftKey) ?? sessionStorage.getItem(legacyDraftKey) ?? '',
       files: [],
       chatStarted: false
     }
@@ -76,12 +88,14 @@ export const useChatInputForm = ({
       // 输入过程中写 sessionStorage 会比较频繁，保持 debounce 可以减少同步 IO。
       // 空值直接删除 key，避免用户清空输入后下次进入会话仍恢复空草稿。
       if (inputValue) {
-        sessionStorage.setItem(`chatInput_${chatId}`, inputValue);
+        sessionStorage.setItem(draftKey, inputValue);
+        sessionStorage.removeItem(legacyDraftKey);
       } else {
-        sessionStorage.removeItem(`chatInput_${chatId}`);
+        sessionStorage.removeItem(draftKey);
+        sessionStorage.removeItem(legacyDraftKey);
       }
     },
-    [inputValue, chatId],
+    [draftKey, inputValue, legacyDraftKey],
     { wait: 300 }
   );
 
@@ -117,7 +131,8 @@ export const useChatInputForm = ({
     setValue('files', files);
     setValue('input', text);
 
-    sessionStorage.removeItem(`chatInput_${chatId}`);
+    sessionStorage.removeItem(draftKey);
+    sessionStorage.removeItem(legacyDraftKey);
 
     setTimeout(() => {
       /* 回到最小高度 */

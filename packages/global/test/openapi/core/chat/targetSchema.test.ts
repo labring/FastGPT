@@ -26,6 +26,7 @@ import {
 import { SandboxCheckExistBodySchema } from '../../../../openapi/core/ai/sandbox/api';
 import { CreateQuestionGuideV2BodySchema } from '../../../../openapi/core/ai/agent/api';
 import { ExportCollectionBodySchema } from '../../../../openapi/core/dataset/collection/api';
+import { buildChatTargetResponse } from '../../../../openapi/core/chat/api';
 
 const appId = '68ad85a7463006c963799a05';
 const skillId = '68ad85a7463006c963799a06';
@@ -78,6 +79,38 @@ describe('openapi/core/chat target schema', () => {
     expect('appId' in result).toBe(false);
   });
 
+  it('transforms raw appId with workflowBuilder sourceType to internal builder source', () => {
+    const result = SandboxCheckExistBodySchema.parse({
+      appId,
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      chatId: 'chat-1'
+    });
+
+    expect(result).toMatchObject({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: appId,
+      chatId: 'chat-1'
+    });
+    expect(buildChatTargetResponse(result)).toEqual({
+      appId,
+      sourceType: ChatSourceTypeEnum.workflowBuilder
+    });
+  });
+
+  it('allows workflowBuilder source for audio transcription', () => {
+    expect(
+      AudioTranscriptionsDataSchema.parse({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId: appId,
+        chatId: 'chat-1'
+      })
+    ).toMatchObject({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: appId,
+      chatId: 'chat-1'
+    });
+  });
+
   it('transforms question guide skillId to internal skillEdit source with debug model config', () => {
     const result = CreateQuestionGuideV2BodySchema.parse({
       skillId,
@@ -112,6 +145,13 @@ describe('openapi/core/chat target schema', () => {
       StopV2ChatSchema.parse({
         skillId,
         sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        chatId: 'chat-1'
+      })
+    ).toThrow();
+    expect(() =>
+      StopV2ChatSchema.parse({
+        skillId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
         chatId: 'chat-1'
       })
     ).toThrow();

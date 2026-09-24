@@ -12,8 +12,10 @@ import {
   Portal
 } from '@chakra-ui/react';
 
-interface Props extends PopoverContentProps {
+type Props = PopoverContentProps & {
   Trigger: React.ReactNode;
+  /** 传入时由调用方控制显隐；省略时保持原有 useDisclosure 行为。 */
+  isOpen?: boolean;
   placement?: PlacementWithLogical;
   offset?: [number, number];
   trigger?: 'hover' | 'click';
@@ -27,10 +29,11 @@ interface Props extends PopoverContentProps {
   flip?: boolean;
   /** hover 模式下仅由 Trigger 控制开关；鼠标进入浮层不会保持打开。 */
   closeOnTriggerLeave?: boolean;
-}
+};
 
 const MyPopover = ({
   Trigger,
+  isOpen: controlledIsOpen,
   placement,
   offset,
   trigger,
@@ -47,7 +50,21 @@ const MyPopover = ({
 }: Props) => {
   const firstFieldRef = React.useRef(null);
 
-  const { onOpen, onClose, isOpen } = useDisclosure();
+  const {
+    onOpen: onInternalOpen,
+    onClose: onInternalClose,
+    isOpen: internalIsOpen
+  } = useDisclosure();
+  const isControlled = controlledIsOpen !== undefined;
+  const isOpen = controlledIsOpen ?? internalIsOpen;
+  const onOpen = () => {
+    if (!isControlled) onInternalOpen();
+    onOpenFunc?.();
+  };
+  const onClose = () => {
+    if (!isControlled) onInternalClose();
+    onCloseFunc?.();
+  };
 
   const popoverContent = (
     <PopoverContent zIndex={1001} {...props}>
@@ -57,21 +74,13 @@ const MyPopover = ({
   );
 
   const triggerOnlyHover = trigger === 'hover' && closeOnTriggerLeave;
-  const handleOpen = () => {
-    onOpen();
-    onOpenFunc?.();
-  };
-  const handleClose = () => {
-    onClose();
-    onCloseFunc?.();
-  };
 
   return (
     <Popover
       isOpen={isOpen}
       initialFocusRef={firstFieldRef}
-      onOpen={handleOpen}
-      onClose={handleClose}
+      onOpen={onOpen}
+      onClose={onClose}
       placement={placement}
       offset={offset}
       flip={flip}
@@ -85,7 +94,7 @@ const MyPopover = ({
     >
       {triggerOnlyHover ? (
         <PopoverAnchor>
-          <Box display="inline-block" onMouseEnter={handleOpen} onMouseLeave={handleClose}>
+          <Box display="inline-block" onMouseEnter={onOpen} onMouseLeave={onClose}>
             {Trigger}
           </Box>
         </PopoverAnchor>

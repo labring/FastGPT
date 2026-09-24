@@ -47,7 +47,9 @@ const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <ToolSetList
           toolList={toolList}
           onSaveDescription={onSaveDescription}
-          title={<IOTitle text={t('app:MCP_tools_list')} {...data} catchError={undefined} />}
+          title={
+            <IOTitle text={t('app:MCP_tools_list')} nodeId={data.nodeId} inputs={data.inputs} />
+          }
         />
       </Container>
     </NodeCard>

@@ -8,7 +8,7 @@ import { useEffect, type RefObject } from 'react';
  *
  * 输入约定：
  * - `ScrollContainerRef` 必须绑定聊天滚动容器。
- * - 变量表单节点继续沿用 `#variable-input` 作为查询锚点，避免 PR 2 同时改动 UI 结构。
+ * - 变量表单使用当前滚动容器内的 data attribute 定位，不依赖页面唯一 DOM id。
  * - `setIsVariableVisible` 来自 ChatItemContext，负责把可见性同步给外层。
  *
  * 边界行为：
@@ -27,8 +27,8 @@ export const useVariableInputVisibility = ({
     const checkVariableVisibility = () => {
       if (!ScrollContainerRef.current) return;
       const container = ScrollContainerRef.current;
-      // 继续使用现有 DOM id 作为边界，避免变量表单组件被迫感知这个 hook。
-      const variableInput = container.querySelector('#variable-input');
+      // 查询严格限定在当前 ChatBox 的滚动容器内，双面板不会读取到另一侧变量表单。
+      const variableInput = container.querySelector('[data-chat-variable-input]');
       if (!variableInput) return;
 
       const containerRect = container.getBoundingClientRect();

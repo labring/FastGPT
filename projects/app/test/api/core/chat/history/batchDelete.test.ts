@@ -12,7 +12,11 @@ import { Call } from '@test/utils/request';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
-import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  AuthUserTypeEnum,
+  PerResourceTypeEnum,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -292,6 +296,131 @@ describe('batchDelete api test', () => {
         chatId: helperChatId
       })
     ).toBe(0);
+  });
+
+  it('should batch delete workflow builder records from its isolated source', async () => {
+    const builderChatId = getNanoid();
+    await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId,
+        source: ChatSourceEnum.test
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId,
+        dataId: getNanoid(),
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'builder response' } }]
+      }),
+      MongoChatItemResponse.create({
+        teamId: testUser.teamId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId,
+        chatItemDataId: getNanoid(),
+        data: { nodeId: 'builder-node' }
+      })
+    ]);
+
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        chatIds: [builderChatId]
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(
+      await MongoChat.countDocuments({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId
+      })
+    ).toBe(0);
+    expect(
+      await MongoChatItem.countDocuments({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId
+      })
+    ).toBe(0);
+    expect(
+      await MongoChatItemResponse.countDocuments({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId
+      })
+    ).toBe(0);
+  });
+
+  it('should not delete another member workflow builder chat', async () => {
+    const otherMember = await getUser('workflow-builder-batch-delete-other', testUser.teamId);
+    await MongoResourcePermission.create({
+      teamId: testUser.teamId,
+      tmbId: otherMember.tmbId,
+      resourceId: appId,
+      permission: WritePermissionVal,
+      resourceType: PerResourceTypeEnum.app
+    });
+    const builderChatId = getNanoid();
+    await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId,
+        source: ChatSourceEnum.test
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId,
+        dataId: getNanoid(),
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'private builder response' } }]
+      })
+    ]);
+
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
+      auth: otherMember,
+      body: {
+        appId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        chatIds: [builderChatId]
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(
+      await MongoChat.countDocuments({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId
+      })
+    ).toBe(1);
+    expect(
+      await MongoChatItem.countDocuments({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        appId,
+        chatId: builderChatId
+      })
+    ).toBe(1);
   });
 
   it('should delete single chat', async () => {

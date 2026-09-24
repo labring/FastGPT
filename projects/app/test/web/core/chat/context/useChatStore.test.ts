@@ -18,7 +18,8 @@ const mockStorage = {
 vi.stubGlobal('sessionStorage', mockStorage);
 vi.stubGlobal('localStorage', mockStorage);
 
-const { useChatStore, createCustomStorage } = await import('@/web/core/chat/context/useChatStore');
+const { useChatStore, createCustomStorage, createStorageListener } =
+  await import('@/web/core/chat/context/useChatStore');
 
 describe('useChatStore', () => {
   beforeAll(async () => {
@@ -447,5 +448,32 @@ describe('createCustomStorage', () => {
     storage.removeItem('test');
     expect(mockStorage.removeItem).toHaveBeenCalledTimes(2);
     expect(mockStorage.removeItem).toHaveBeenCalledWith('test');
+  });
+});
+
+describe('createStorageListener', () => {
+  it('should rehydrate external localStorage changes without writing them back', () => {
+    const addEventListener = vi.fn();
+    const removeEventListener = vi.fn();
+    vi.stubGlobal('window', {
+      addEventListener,
+      removeEventListener
+    });
+    const rehydrate = vi.fn().mockResolvedValue(undefined);
+    const cleanup = createStorageListener({
+      persist: { rehydrate }
+    } as unknown as typeof useChatStore);
+    const storageListener = addEventListener.mock.calls.at(-1)?.[1] as EventListener;
+
+    storageListener({
+      key: 'chatStore',
+      newValue: JSON.stringify({ state: { sourceChatIdMap: {} }, version: 0 }),
+      storageArea: localStorage
+    } as StorageEvent);
+
+    expect(rehydrate).toHaveBeenCalledTimes(1);
+
+    cleanup();
+    expect(removeEventListener).toHaveBeenCalledWith('storage', storageListener);
   });
 });

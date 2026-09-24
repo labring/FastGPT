@@ -6,6 +6,9 @@ type AppEditorUIState = {
   systemConfig: {
     hasCompletedFirstEntryGuide: boolean;
   };
+  workflowBuilder?: {
+    hasCompletedFirstEntryGuide: boolean;
+  };
 };
 
 const APP_EDITOR_UI_STATE_STORAGE_KEY = 'app-editor-ui-state';
@@ -13,6 +16,9 @@ const APP_EDITOR_UI_STATE_STORAGE_KEY = 'app-editor-ui-state';
 const DEFAULT_APP_EDITOR_UI_STATE: AppEditorUIState = {
   welcomeTextFoldedAppIds: {},
   systemConfig: {
+    hasCompletedFirstEntryGuide: false
+  },
+  workflowBuilder: {
     hasCompletedFirstEntryGuide: false
   }
 };
@@ -62,11 +68,27 @@ export const useAppEditorUIState = (appId = '') => {
     });
   }, [setState]);
 
+  const completeWorkflowBuilderFirstEntryGuide = useCallback(() => {
+    setState((state = DEFAULT_APP_EDITOR_UI_STATE) => {
+      if (state.workflowBuilder?.hasCompletedFirstEntryGuide) return state;
+
+      return {
+        ...state,
+        workflowBuilder: {
+          hasCompletedFirstEntryGuide: true
+        }
+      };
+    });
+  }, [setState]);
+
   return {
     isWelcomeTextFolded,
     toggleWelcomeTextFold,
     hasCompletedSystemConfigFirstEntryGuide: state.systemConfig.hasCompletedFirstEntryGuide,
-    completeSystemConfigFirstEntryGuide
+    completeSystemConfigFirstEntryGuide,
+    hasCompletedWorkflowBuilderFirstEntryGuide:
+      state.workflowBuilder?.hasCompletedFirstEntryGuide ?? false,
+    completeWorkflowBuilderFirstEntryGuide
   };
 };
 
