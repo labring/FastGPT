@@ -31,7 +31,7 @@ const Logs = () => {
 
   return (
     <Flex flexDirection={'column'} h={'full'} rounded={'lg'} py={[4, 6]}>
-      <Flex px={[4, 8]}>
+      <Flex>
         <Flex
           w={'full'}
           gap={2}

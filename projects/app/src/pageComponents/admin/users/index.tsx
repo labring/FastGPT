@@ -89,7 +89,6 @@ const UserTable = () => {
         position={'relative'}
         h={'100%'}
         maxH={'none'}
-        horizontalScroll
         px={[4, 6]}
         py={6}
         footer={

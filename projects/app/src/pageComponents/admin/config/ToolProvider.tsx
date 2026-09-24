@@ -207,7 +207,6 @@ const ToolProvider = () => {
         >
           <Box flex={'1 0 0'} minH={0}>
             <FixedTableLayout
-              horizontalScroll
               scrollMode={'normal'}
               rootProps={{ flex: '1 0 0', minH: 0 }}
               headerProps={{ px: [4, 6], bg: 'myGray.100', borderRadius: 'md' }}

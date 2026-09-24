@@ -115,7 +115,6 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
         flexDirection={'column'}
       >
         <FixedTableContainer
-          horizontalScroll
           maxH="none"
           ref={scrollContainerRef}
           px={4}

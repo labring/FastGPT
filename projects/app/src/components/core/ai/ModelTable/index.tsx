@@ -289,7 +289,6 @@ const ModelTable = ({
         onSearchChange={setSearch}
       />
       <FixedTableLayout
-        horizontalScroll
         scrollMode="virtual"
         bodyRef={containerRef}
         rootProps={{
