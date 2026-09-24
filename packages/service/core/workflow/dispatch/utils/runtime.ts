@@ -16,7 +16,7 @@ import {
   isDatasetTagFilterValue,
   parseMaybeJson
 } from '@fastgpt/global/core/dataset/workflowTagFilter';
-import { adaptSangforCollectionFilterMatch } from '../../../thirdProvider/sangfor/workflowTagAdapter';
+import { adaptSangforCollectionFilterMatch } from '../../../../thirdProvider/sangfor/workflowTagAdapter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**
