@@ -20,7 +20,6 @@ import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legac
 import { migrateDatasetTagsV2 } from './tasks/20260907_migrate_dataset_tags_v2';
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
 import { enableChannelReasoningMapping } from './tasks/20260923_enable_channel_reasoning_mapping';
-import { recomputeAppResourceSnapshots } from './tasks/20260924_recompute_app_resource_snapshots';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -425,29 +424,6 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: enableChannelReasoningMapping
-  },
-  {
-    id: '20260924_recompute_app_resource_snapshots',
-    version: '4.17.1',
-    nameKey: i18nT('system_migration:migrations.20260924_recompute_app_resource_snapshots.name'),
-    descriptionKey: i18nT(
-      'system_migration:migrations.20260924_recompute_app_resource_snapshots.description'
-    ),
-    resultKey: i18nT(
-      'system_migration:migrations.20260924_recompute_app_resource_snapshots.result'
-    ),
-    progressSteps: [
-      {
-        key: 'versions',
-        labelKey: i18nT(
-          'system_migration:migrations.20260924_recompute_app_resource_snapshots.versions'
-        )
-      }
-    ],
-    blockStartup: false,
-    onFailure: SystemMigrationFailurePolicyEnum.continue,
-    delay: true,
-    run: recomputeAppResourceSnapshots
   }
 ] as const satisfies readonly SystemMigration[];
 

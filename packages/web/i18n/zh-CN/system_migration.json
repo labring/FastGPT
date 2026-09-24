@@ -97,9 +97,5 @@
   "migrations.20260923_enable_channel_reasoning_mapping.name": "为 OpenAI 协议渠道启用 reasoning 映射",
   "migrations.20260923_enable_channel_reasoning_mapping.description": "为现有 AIProxy OpenAI 协议渠道开启 reasoning 到 reasoning_content 的响应字段转换，并保留渠道的其他配置。",
   "migrations.20260923_enable_channel_reasoning_mapping.channels": "更新渠道配置",
-  "migrations.20260923_enable_channel_reasoning_mapping.result": "已检查 {{channelCount}} 个渠道，更新 {{updatedCount}} 个渠道。",
-  "migrations.20260924_recompute_app_resource_snapshots.name": "重新计算应用版本资源快照",
-  "migrations.20260924_recompute_app_resource_snapshots.description": "使用应用所有者权限重新计算并回填所有应用版本的资源快照。",
-  "migrations.20260924_recompute_app_resource_snapshots.versions": "更新版本快照",
-  "migrations.20260924_recompute_app_resource_snapshots.result": "已完成全部 {{processedCount}} 个应用版本资源快照的重新计算。"
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "已检查 {{channelCount}} 个渠道，更新 {{updatedCount}} 个渠道。"
 }
