@@ -66,6 +66,34 @@ describe('readXlsxRawText', () => {
     expect(result.formatText).not.toContain('|  |  |  |');
   });
 
+  it('writes a long whole number in full instead of in scientific notation', async () => {
+    // Excel's General format shows a number past 11 digits as 1.23457E+12, and
+    // an order number or phone number read that way has lost its digits.
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['订单号', '手机号', '金额', '比例', '极小值', '科学计数'],
+      [1234567890123, 8613812345678, 1234.5, 0.1 + 0.2, 1.5e-10, 1234567890123]
+    ]);
+    // A format the author chose is kept as it is.
+    worksheet['F2'].z = '0.00E+00';
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const result = await readXlsxRawText({
+      extension: 'xlsx',
+      buffer,
+      encoding: 'utf-8'
+    });
+
+    expect(Papa.parse(result.rawText).data).toEqual([
+      ['订单号', '手机号', '金额', '比例', '极小值', '科学计数'],
+      ['1234567890123', '8613812345678', '1234.5', '0.3', '1.5E-10', '1.23E+12']
+    ]);
+    expect(result.formatText).toContain(
+      '| 1234567890123 | 8613812345678 | 1234.5 | 0.3 | 1.5E-10 | 1.23E+12 |'
+    );
+  });
+
   it('should fill merged cells before formatting xlsx content', async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ['部门', '姓名', '区域', '', ''],
