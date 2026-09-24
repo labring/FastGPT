@@ -237,6 +237,17 @@ describe('formatCollectionFilterMatchParam', () => {
       formatCollectionFilterMatchParam({ value: unresolved, resolveReference: () => undefined })
     ).toBe(unresolved);
 
+    // 未解出的引用不能触发重新序列化，需保留调用方原始 JSON 文本
+    const formattedUnresolved = `{
+  "tags": { "${'$'}and": [{ "price": { "${'$'}gte": ["${'$'}ref", "node", "missing"] } }] }
+}`;
+    expect(
+      formatCollectionFilterMatchParam({
+        value: formattedUnresolved,
+        resolveReference: () => undefined
+      })
+    ).toBe(formattedUnresolved);
+
     // 普通数组值不受影响
     const plain = '{"tags":{"$and":[{"category":{"$in":["a","b"]}}]}}';
     expect(formatCollectionFilterMatchParam({ value: plain, resolveReference })).toBe(plain);
@@ -247,6 +258,14 @@ describe('formatCollectionFilterMatchParam', () => {
         resolveReference
       })
     ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 42 } }] } }));
+
+    // 历史非对象条件项原样保留，同时继续解析同数组中的合法条件
+    expect(
+      formatCollectionFilterMatchParam({
+        value: { tags: { $and: ['legacy', { price: { $gte: ['$ref', 'node', 'price'] } }] } },
+        resolveReference
+      })
+    ).toBe(JSON.stringify({ tags: { $and: ['legacy', { price: { $gte: 42 } }] } }));
   });
 
   it('only resolves $ref on tags conditions and passes every other value through', () => {
