@@ -146,7 +146,7 @@ export const JsonSchemaPropertiesItemSchema = z
 
     // 对象约束
     properties: z.record(z.string(), z.any()).optional(), // 对象属性
-    required: z.array(z.string()).optional(), // 必填字段
+    required: z.union([z.array(z.string()), z.boolean()]).optional(), // 必填字段
     additionalProperties: z.union([z.boolean(), z.any()]).optional(), // 额外属性
 
     // 元数据
@@ -213,15 +213,17 @@ export const ToolParamJsonSchemaSchema: z.ZodType<JsonSchemaPropertiesItemType> 
     }
 
     const propertyKeys = new Set(Object.keys(schema.properties ?? {}));
-    schema.required?.forEach((key, index) => {
-      if (!propertyKeys.has(key)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['required', index],
-          message: `required field ${key} is not defined in properties`
-        });
-      }
-    });
+    if (Array.isArray(schema.required)) {
+      schema.required.forEach((key, index) => {
+        if (!propertyKeys.has(key)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['required', index],
+            message: `required field ${key} is not defined in properties`
+          });
+        }
+      });
+    }
   })
 );
 
@@ -534,7 +536,10 @@ export const jsonSchema2NodeInput = ({
           : schemaType === 'systemTool'
             ? value['toolDescription'] || value.description
             : value.description || key,
-      required: jsonSchema?.required?.includes(key)
+      required:
+        (Array.isArray(jsonSchema?.required) && jsonSchema.required.includes(key)) ||
+        value?.required === true ||
+        jsonSchema?.required?.includes(key)
     };
   });
 };
@@ -557,7 +562,10 @@ export const jsonSchema2NodeOutput = ({
       id: key,
       key,
       label: value.title || key,
-      required: jsonSchema?.required?.includes(key),
+      required:
+        (Array.isArray(jsonSchema?.required) && jsonSchema.required.includes(key)) ||
+        value?.required === true ||
+        jsonSchema?.required?.includes(key),
       type: nodeMetadata?.type ?? FlowNodeOutputTypeEnum.static,
       valueType: nodeMetadata?.valueType ?? valueType,
       description: value.description
@@ -713,7 +721,10 @@ export const jsonSchema2SecretInput = ({
       key,
       label: value.title ?? key,
       description: value.description,
-      required: jsonSchema?.required?.includes(key),
+      required:
+        (Array.isArray(jsonSchema?.required) && jsonSchema.required.includes(key)) ||
+        value?.required === true ||
+        jsonSchema?.required?.includes(key),
       ...(enumValues
         ? { list: enumValues.map((v: unknown) => ({ label: String(v), value: String(v) })) }
         : {})

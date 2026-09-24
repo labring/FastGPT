@@ -14,7 +14,9 @@ import {
   nodeInputs2JsonSchema,
   nodeOutputs2JsonSchema,
   parseToolParamJsonSchema,
-  str2OpenApiSchema
+  str2OpenApiSchema,
+  JsonSchemaPropertiesItemSchema,
+  JSONSchemaInputTypeSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { bundleOpenAPISchema } from '@fastgpt/global/common/string/swagger';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -2095,5 +2097,43 @@ describe('bundleOpenAPISchema', () => {
         }
       })
     ).rejects.toThrow('Unable to resolve $ref pointer');
+  });
+});
+
+describe('JSONSchema property required support', () => {
+  it('should accept boolean required on property schema (OpenAPI 2.0 / legacy MCP compatibility)', () => {
+    const parsed = JsonSchemaPropertiesItemSchema.parse({
+      type: 'string',
+      description: 'task identifier',
+      required: true
+    });
+    expect(parsed.required).toBe(true);
+  });
+
+  it('should parse MCP tool inputSchema with property-level boolean required', () => {
+    const schema = JSONSchemaInputTypeSchema.parse({
+      type: 'object',
+      properties: {
+        task_id: {
+          type: 'string',
+          description: 'task id',
+          required: true
+        },
+        optional_flag: {
+          type: 'boolean',
+          required: false
+        }
+      }
+    });
+    expect(schema.properties?.task_id.required).toBe(true);
+
+    const inputs = jsonSchema2NodeInput({
+      jsonSchema: schema,
+      schemaType: 'mcp'
+    });
+    const taskIdInput = inputs.find((i) => i.key === 'task_id');
+    const optionalInput = inputs.find((i) => i.key === 'optional_flag');
+    expect(taskIdInput?.required).toBe(true);
+    expect(optionalInput?.required).toBeFalsy();
   });
 });
