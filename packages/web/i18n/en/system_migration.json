@@ -97,5 +97,9 @@
   "migrations.20260923_enable_channel_reasoning_mapping.name": "Enable reasoning mapping for OpenAI channels",
   "migrations.20260923_enable_channel_reasoning_mapping.description": "Enable reasoning-to-reasoning_content response-field mapping for existing AIProxy OpenAI channels while preserving their other configuration.",
   "migrations.20260923_enable_channel_reasoning_mapping.channels": "Update channel configuration",
-  "migrations.20260923_enable_channel_reasoning_mapping.result": "Checked {{channelCount}} channels and updated {{updatedCount}}."
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "Checked {{channelCount}} channels and updated {{updatedCount}}.",
+  "migrations.20260924_recompute_app_resource_snapshots.name": "Recompute App Version resource snapshots",
+  "migrations.20260924_recompute_app_resource_snapshots.description": "Recompute and backfill resource snapshots for all App Versions using App Owner permissions.",
+  "migrations.20260924_recompute_app_resource_snapshots.versions": "Update Version snapshots",
+  "migrations.20260924_recompute_app_resource_snapshots.result": "Completed recomputing resource snapshots for all {{processedCount}} App Versions."
 }
