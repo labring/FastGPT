@@ -1,4 +1,8 @@
 import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  formatCollectionFilterMatchParam,
+  isDatasetTagFilterValue
+} from '@fastgpt/global/core/dataset/workflowTagFilter';
 
 /**
  * Sangfor (深信服) OpenAPI / 三方工作流接口检索过滤载荷适配器。
@@ -7,6 +11,7 @@ import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
  * 1. 识别 Sangfor 下发的检索 JSON 结构（`{ tags: { $and | $or: 条件项[] }, createTime?, collectionIds? }`）。
  * 2. 运行时解析内嵌在操作符值中的 3 元组引用 `['$ref', nodeId, outputKey]`，并替换为动态计算后的实际值。
  * 3. 保持与原生 FastGPT 核心逻辑解耦；当载荷无任何引用变更时保留原始文本，避免重排 JSON 键值顺序。
+ * 4. 提供 `formatWorkflowCollectionFilterMatch` 统一调度格式化入口，屏蔽底层三方与原生 AST 分流细节。
  */
 
 const REF_MARKER = '$ref';
@@ -159,4 +164,45 @@ export const adaptSangforCollectionFilterMatch = ({
     return resolved === parsed ? value : JSON.stringify(resolved);
   }
   return JSON.stringify(resolved);
+};
+
+/**
+ * 格式化工作流运行时的 collectionFilterMatch 参数：
+ * 统一处理 FastGPT 原生结构化条件行求值与 Sangfor 三方检索载荷适配。
+ *
+ * 1. FastGPT 原生结构化条件行（表单 AST）：解析行内 2 元组引用并序列化，立即返回，零三方开销；
+ * 2. Sangfor 检索载荷：单趟解析 tags 中的 3 元组 $ref 引用并动态计算；
+ * 3. 兜底透传：普通字符串原样返回，非检索对象转 JSON，无意义原始值丢弃。
+ */
+export const formatWorkflowCollectionFilterMatch = ({
+  value,
+  resolveReference = () => undefined
+}: {
+  value: unknown;
+  resolveReference?: (ref: ReferenceValueType) => unknown;
+}): string | undefined => {
+  if (value === undefined || value === null || value === '') return undefined;
+
+  const parsed = typeof value === 'string' ? parseMaybeJson(value) : value;
+
+  // 1. FastGPT 原生结构化条件行（表单 AST）：解析 2 元组引用后序列化
+  if (isDatasetTagFilterValue(parsed)) {
+    return formatCollectionFilterMatchParam({
+      value: parsed,
+      resolveReference
+    });
+  }
+
+  // 2. Sangfor 检索载荷适配：复用已解析的 parsed 结构
+  const adapted = adaptSangforCollectionFilterMatch({
+    value,
+    parsedValue: parsed,
+    resolveReference
+  });
+  if (adapted !== undefined) return adapted;
+
+  // 3. 兜底透传：字符串原样返回，非检索对象转 JSON
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') return JSON.stringify(value);
+  return undefined;
 };
