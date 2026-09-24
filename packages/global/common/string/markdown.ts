@@ -127,12 +127,14 @@ export type MatchedImageUploadResult = {
   previewUrl?: string;
 };
 
-type MarkdownImageBase = {
+export type MarkdownImageMatchItem = {
   altText: string;
   url: string;
   fullMatch: string;
   index: number;
 };
+
+export type MarkdownImageBase = MarkdownImageMatchItem;
 
 export type MarkdownImage = MarkdownImageBase &
   (
@@ -205,8 +207,10 @@ const findMarkdownImageUrlEnd = (text: string, startIndex: number) => {
  * 普通正则 `!\[...\]\(([^)]+)\)` 会在 `https://a.com/img(1).png` 的第一个 `)` 截断，
  * 导致 http 图片转存失败；这里用轻量扫描保留完整节点范围。
  */
-export const matchMarkdownImages = (text: string) => {
-  const matches: MarkdownImageBase[] = [];
+export const matchMarkdownImages = (text = ''): MarkdownImageMatchItem[] => {
+  if (!text || typeof text !== 'string') return [];
+
+  const matches: MarkdownImageMatchItem[] = [];
   let start = 0;
 
   while (start < text.length) {
@@ -230,7 +234,7 @@ export const matchMarkdownImages = (text: string) => {
     const fullMatch = text.slice(imageStart, urlEnd + 1);
     matches.push({
       altText: text.slice(altStart, altEnd),
-      url: text.slice(urlStart, urlEnd),
+      url: text.slice(urlStart, urlEnd).trim(),
       fullMatch,
       index: imageStart
     });

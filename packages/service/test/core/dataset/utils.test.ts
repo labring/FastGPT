@@ -117,6 +117,19 @@ describe('matchDatasetDataMarkdownImageUrls', () => {
       }
     ]);
   });
+
+  it('应过滤空 URL 并对图片 URL 进行 trim 处理', () => {
+    const result = matchDatasetDataMarkdownImages('![empty]() ![space](  dataset/team/cat.png  )');
+
+    expect(result).toEqual([
+      {
+        raw: '![space](  dataset/team/cat.png  )',
+        alt: 'space',
+        url: 'dataset/team/cat.png',
+        index: 11
+      }
+    ]);
+  });
 });
 
 describe('getDatasetImageTrainingMode', () => {

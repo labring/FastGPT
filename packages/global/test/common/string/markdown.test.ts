@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   simpleMarkdownText,
   htmlTable2Md,
+  matchMarkdownImages,
   parseMarkdownBase64Images
 } from '@fastgpt/global/common/string/markdown';
 
@@ -654,6 +655,79 @@ describe('markdown 字符串处理函数测试', () => {
 
       expect(result).not.toContain('data:image/png;base64');
       expect(duration).toBeLessThan(1000); // 应该在 1 秒内完成
+    });
+  });
+
+  describe('matchMarkdownImages', () => {
+    it('应该正确提取普通 markdown 图片', () => {
+      const text = '前置文字 ![avatar](https://example.com/avatar.png) 后置文字';
+      const result = matchMarkdownImages(text);
+
+      expect(result).toEqual([
+        {
+          altText: 'avatar',
+          url: 'https://example.com/avatar.png',
+          fullMatch: '![avatar](https://example.com/avatar.png)',
+          index: 5
+        }
+      ]);
+    });
+
+    it('应该正确处理 URL 中带括号的图片地址，避免在第一个右括号截断', () => {
+      const text = '![figure](https://cdn.example.com/figure(1).png)';
+      const result = matchMarkdownImages(text);
+
+      expect(result).toEqual([
+        {
+          altText: 'figure',
+          url: 'https://cdn.example.com/figure(1).png',
+          fullMatch: '![figure](https://cdn.example.com/figure(1).png)',
+          index: 0
+        }
+      ]);
+    });
+
+    it('应该正确处理 URL 中带转义括号的图片地址', () => {
+      const text = String.raw`![figure](https://cdn.example.com/figure\(1\).png)`;
+      const result = matchMarkdownImages(text);
+
+      expect(result).toEqual([
+        {
+          altText: 'figure',
+          url: String.raw`https://cdn.example.com/figure\(1\).png`,
+          fullMatch: String.raw`![figure](https://cdn.example.com/figure\(1\).png)`,
+          index: 0
+        }
+      ]);
+    });
+
+    it('应该对 url 进行 trim 处理并保留完整 fullMatch', () => {
+      const text = '![img](  https://example.com/space.png  )';
+      const result = matchMarkdownImages(text);
+
+      expect(result).toEqual([
+        {
+          altText: 'img',
+          url: 'https://example.com/space.png',
+          fullMatch: '![img](  https://example.com/space.png  )',
+          index: 0
+        }
+      ]);
+    });
+
+    it('应该提取多个图片节点并忽略普通 markdown 超链接', () => {
+      const text = '![a](https://a.com/1.png) [link](https://b.com) ![b](https://c.com/2.png)';
+      const result = matchMarkdownImages(text);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].url).toBe('https://a.com/1.png');
+      expect(result[1].url).toBe('https://c.com/2.png');
+    });
+
+    it('传入空字符串或非法输入时不报错且返回空数组', () => {
+      expect(matchMarkdownImages('')).toEqual([]);
+      expect(matchMarkdownImages(null as any)).toEqual([]);
+      expect(matchMarkdownImages(undefined as any)).toEqual([]);
     });
   });
 });

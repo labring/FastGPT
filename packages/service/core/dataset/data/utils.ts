@@ -21,13 +21,13 @@ export const matchDatasetDataMarkdownImages = (text = ''): DatasetDataMarkdownIm
   if (typeof text !== 'string' || !text) return [];
 
   return matchMarkdownImages(text)
+    .filter((match) => !!match.url)
     .map((match) => ({
       raw: match.fullMatch,
       alt: match.altText,
-      url: match.url.trim(),
+      url: match.url,
       index: match.index
-    }))
-    .filter((item) => !!item.url);
+    }));
 };
 
 /**
