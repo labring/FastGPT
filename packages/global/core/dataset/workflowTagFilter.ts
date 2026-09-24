@@ -419,7 +419,8 @@ const isEmbeddedRef = (value: unknown): value is [string, string, string] =>
 
 /**
  * 检索载荷结构：顶层放文件属性，tags 下按逻辑词挂条件项数组。
- * `{ tags: { $and | $or: 条件项[] }, createTime?, collectionIds? }`
+ * `{ tags: { $and | $or: unknown[] }, createTime?, collectionIds? }`
+ * 合法条件项是对象；历史字符串等非对象项由解引用层原样放回。
  */
 type DatasetSearchValue = {
   tags?: { $and?: unknown[]; $or?: unknown[] };
@@ -431,7 +432,6 @@ const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * 把「检索载荷」和任意 JSON 区分开：只有它才走 $ref 解引用，其余值原样透传。
- * 条件行结构是本文件的另一种输入，由调用方先行处理，不在这里判断。
  */
 const isDatasetSearchValue = (value: unknown): value is DatasetSearchValue => {
   if (!isPlainRecord(value)) return false;
@@ -445,7 +445,9 @@ const isDatasetSearchValue = (value: unknown): value is DatasetSearchValue => {
 
 /**
  * 解一条条件项。
- * 条件项结构：`{ [tag]: { [$op]: 值 } }`，值若是 `['$ref', nodeId, outputId]` 就解成引用值。
+ * 条件项结构：`{ [tag]: { [$op]: 值 } }`，是对象不是字符串；
+ * 只有「值」位上是 `['$ref', nodeId, outputId]` 才解成引用值，字符串等其它值直接放回。
+ * 历史 JSON 里混进来的字符串等非对象项在这里原样放回。
  * 只在真有替换时重建对象，未变化时返回原引用，供上层判断要不要重新序列化。
  */
 const resolveConditionRef = (
@@ -461,8 +463,12 @@ const resolveConditionRef = (
     let opChanged = false;
     const ops = Object.entries(opObject).map(([op, opValue]) => {
       if (!isEmbeddedRef(opValue)) return [op, opValue] as const;
+      const resolvedValue = resolveReference([opValue[1], opValue[2]]);
+      if (resolvedValue === undefined || resolvedValue === null) {
+        return [op, opValue] as const;
+      }
       opChanged = true;
-      return [op, resolveReference([opValue[1], opValue[2]]) ?? opValue] as const;
+      return [op, resolvedValue] as const;
     });
     if (!opChanged) return [tag, opObject] as const;
 
@@ -477,8 +483,8 @@ const resolveConditionRef = (
  * 解检索载荷里内嵌的 `['$ref', nodeId, outputId]`。
  *
  * 检索载荷结构：`{ tags: { $and | $or: 条件项[] }, createTime?, collectionIds? }`。
- * 条件项结构：`{ [tag]: { [$op]: 值 } }`，引用只可能出现在「值」这一位上，
- * 故只走 tags → 条件项 → 操作符值这一层，不做全树递归。
+ * 条件项是对象 `{ [tag]: { [$op]: 值 } }`，引用只可能出现在「值」这一位上，
+ * 项本身不是对象（含字符串）时原样放回，故只走 tags → 条件项 → 操作符值这一层，不做全树递归。
  *
  * 解不出值（或未注入 resolveReference）时保留原 `$ref`，避免产出检索层会拒绝的残缺条件对象。
  * 一处都没解到时返回入参本身（引用相等），调用方据此决定要不要重新序列化：
@@ -540,8 +546,8 @@ export const formatCollectionFilterMatchParam = ({
     return serializeDatasetTagFilterValue(resolved);
   }
 
-  // 检索载荷结构：{ tags: { $and | $or: 条件项[] }, createTime?, collectionIds? }
-  // 解 tags 条件值上的 $ref；字符串输入若一处都没解到，原样返回它本身
+  // 检索载荷结构：{ tags: { $and | $or: [{ [tag]: { [$op]: 值 } }] }, createTime?, collectionIds? }
+  // 条件项是对象，值上的 $ref 才解；字符串输入若一处都没解到，原样返回它本身
   if (isDatasetSearchValue(parsed)) {
     const resolved = resolveSearchValueRefs(parsed, resolveReference);
     if (typeof value === 'string') return resolved === parsed ? value : JSON.stringify(resolved);
