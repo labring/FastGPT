@@ -1,10 +1,10 @@
 import {
-  SYSTEM_INSTANCE_CONFIG_ID,
+  SYSTEM_INSTANCE_CONFIG_DOMAINS,
   SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
-  SystemInstanceConfigSchema,
-  parseSystemInstanceConfig
+  type SystemInstanceConfigDomainKey,
+  resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
-import type { SystemInstanceConfigDocumentType } from '@fastgpt/global/common/system/config/type';
+import type { SystemInstanceDomainDocumentType } from '@fastgpt/global/common/system/config/type';
 import { connectionMongo, getMongoModel } from '../../mongo';
 
 const { Schema } = connectionMongo;
@@ -29,16 +29,16 @@ const systemInstanceConfigUpdatedBySchema = new Schema(
 );
 
 /**
- * 实例级运行配置的持久化模型。整个实例只有一份文档，config 保存完整生效值。
+ * 实例级运行配置持久化模型：按 Domain 存储为独立文档，_id 为 domainKey。
+ * overrides 字段仅存储相对于代码内置默认值的稀疏增量。
  */
 const systemInstanceConfigSchema = new Schema(
   {
     _id: {
       type: String,
       required: true,
-      default: SYSTEM_INSTANCE_CONFIG_ID,
       immutable: true,
-      enum: [SYSTEM_INSTANCE_CONFIG_ID]
+      enum: SYSTEM_INSTANCE_CONFIG_DOMAINS
     },
     schemaVersion: {
       type: Number,
@@ -55,13 +55,29 @@ const systemInstanceConfigSchema = new Schema(
       default: 0,
       validate: Number.isInteger
     },
-    config: {
+    overrides: {
       type: Schema.Types.Mixed,
       required: true,
-      default: () => parseSystemInstanceConfig({}),
+      default: () => ({}),
       validate: {
-        validator: (value: unknown) => SystemInstanceConfigSchema.safeParse(value).success,
-        message: 'Invalid instance config payload'
+        validator: function (this: any, value: unknown) {
+          const domain: SystemInstanceConfigDomainKey | undefined =
+            this?._id ??
+            (typeof this?.get === 'function' ? this.get('_id') : undefined) ??
+            this?.getFilter?.()?._id;
+
+          if (!domain || !SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) {
+            return false;
+          }
+
+          try {
+            resolveDomainEffectiveConfig(domain, value);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        message: 'Invalid overrides payload for domain'
       }
     },
     updatedBy: {
@@ -77,7 +93,7 @@ const systemInstanceConfigSchema = new Schema(
   }
 );
 
-export const MongoSystemInstanceConfig = getMongoModel<SystemInstanceConfigDocumentType>(
+export const MongoSystemInstanceConfig = getMongoModel<SystemInstanceDomainDocumentType>(
   systemInstanceConfigCollectionName,
   systemInstanceConfigSchema
 );

@@ -1,80 +1,196 @@
 import { describe, expect, it } from 'vitest';
 import {
-  SystemInstanceConfigDocumentSchema,
-  SystemInstanceConfigSchema,
+  getDomainDefaultConfig,
+  parseDomainOverrides,
+  resolveDomainEffectiveConfig,
+  resolveSystemInstanceConfig,
   parseSystemInstanceConfig,
-  parseSystemInstanceConfigDocument
+  parseSystemInstanceDomainDocument
 } from '@fastgpt/global/common/system/config/schema';
+import { deepMergeConfig, pruneDefaultOverrides } from '@fastgpt/global/common/system/config/merge';
 import {
   getSystemInstanceConfigRegistry,
   systemInstanceConfigRegistry
 } from '@fastgpt/global/common/system/config/registry';
 
-describe('SystemInstanceConfigSchema', () => {
-  it('creates a complete default configuration from an empty object', () => {
-    const config = parseSystemInstanceConfig({});
+describe('Domain default config and overrides validation', () => {
+  it('returns complete default config for any domain', () => {
+    const siteConfig = getDomainDefaultConfig('site');
+    expect(siteConfig.name).toBe('AI');
+    expect(siteConfig.docUrl).toBe('https://doc.fastgpt.io');
 
-    expect(config.site.name).toBe('AI');
-    expect(config.performance.workflow.parallelMaxConcurrency).toBe(10);
-    expect(config.subservice.agentSandbox.provider).toBe('none');
-    expect(config.providers.crm.enabled).toBe(false);
+    const performanceConfig = getDomainDefaultConfig('performance');
+    expect(performanceConfig.workflow.parallelMaxConcurrency).toBe(10);
+    expect(performanceConfig.dataset.retrievalResultsLimit).toBe(0);
   });
 
-  it('rejects unknown fields at every configuration section', () => {
-    expect(
-      SystemInstanceConfigSchema.safeParse({
-        site: { unknownField: true }
-      }).success
-    ).toBe(false);
-  });
+  it('validates sparse overrides and rejects unknown fields in root and nested objects', () => {
+    // Valid sparse override
+    const parsed = parseDomainOverrides('site', { name: 'Custom Site' });
+    expect(parsed.name).toBe('Custom Site');
+    expect(parsed.description).toBeUndefined();
 
-  it('validates cross-field concurrency constraints', () => {
-    const result = SystemInstanceConfigSchema.safeParse({
-      performance: {
+    // Rejects unknown field on top level of domain
+    expect(() => parseDomainOverrides('site', { unknownKey: true })).toThrow();
+
+    // Rejects unknown field in deep nested object
+    expect(() =>
+      parseDomainOverrides('performance', {
         workflow: {
-          maxLoopTimes: 10,
-          parallelMaxConcurrency: 11
+          unknownWorkflowKey: 123
         }
-      }
-    });
+      })
+    ).toThrow();
 
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues).toContainEqual(
-        expect.objectContaining({
-          path: ['performance', 'workflow', 'parallelMaxConcurrency']
-        })
-      );
-    }
-  });
-
-  it('validates enabled provider dependencies', () => {
-    const result = SystemInstanceConfigSchema.safeParse({
-      providers: {
-        crm: { enabled: true }
-      }
-    });
-
-    expect(result.success).toBe(false);
+    expect(() =>
+      parseDomainOverrides('providers', {
+        documentParse: {
+          customPdf: {
+            unknownPdfKey: 'foo'
+          }
+        }
+      })
+    ).toThrow();
   });
 });
 
-describe('SystemInstanceConfigDocumentSchema', () => {
-  it('fills the fixed instance identity and document defaults', () => {
-    const document = parseSystemInstanceConfigDocument({});
+describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
+  it('merges overrides with defaults while preserving untouched default fields', () => {
+    const effective = resolveDomainEffectiveConfig('site', {
+      name: 'Custom FastGPT',
+      description: 'Modified description'
+    });
 
-    expect(document._id).toBe('instance');
-    expect(document.schemaVersion).toBe(1);
-    expect(document.revision).toBe(0);
-    expect(document.createdAt).toBeInstanceOf(Date);
-    expect(document.updatedAt).toBeInstanceOf(Date);
+    expect(effective.name).toBe('Custom FastGPT');
+    expect(effective.description).toBe('Modified description');
+    // untouched fields retain code defaults
+    expect(effective.docUrl).toBe('https://doc.fastgpt.io');
+    expect(effective.systemTitle).toBe('FastGPT');
   });
 
-  it('rejects a document for another instance or schema version', () => {
-    expect(SystemInstanceConfigDocumentSchema.safeParse({ _id: 'another-instance' }).success).toBe(
-      false
-    );
-    expect(SystemInstanceConfigDocumentSchema.safeParse({ schemaVersion: 2 }).success).toBe(false);
+  it('enforces cross-field superRefine constraints on merged result', () => {
+    // parallelMaxConcurrency (default 10) > maxLoopTimes (override to 5) -> must fail!
+    expect(() =>
+      resolveDomainEffectiveConfig('performance', {
+        workflow: {
+          maxLoopTimes: 5
+        }
+      })
+    ).toThrowError(/parallelMaxConcurrency cannot exceed maxLoopTimes/);
+
+    // Both updated compatibly -> must succeed
+    const valid = resolveDomainEffectiveConfig('performance', {
+      workflow: {
+        maxLoopTimes: 5,
+        parallelMaxConcurrency: 5
+      }
+    });
+    expect(valid.workflow.maxLoopTimes).toBe(5);
+    expect(valid.workflow.parallelMaxConcurrency).toBe(5);
+  });
+
+  it('enforces provider credentials when provider is enabled', () => {
+    // Enabling CRM without apiUrl / apiKey should fail
+    expect(() =>
+      resolveDomainEffectiveConfig('providers', {
+        crm: {
+          enabled: true
+        }
+      })
+    ).toThrowError(/apiUrl and apiKey are required/);
+
+    // Valid CRM credentials
+    const valid = resolveDomainEffectiveConfig('providers', {
+      crm: {
+        enabled: true,
+        apiUrl: 'https://crm.example.com',
+        apiKey: 'crm-key-123'
+      }
+    });
+    expect(valid.crm.enabled).toBe(true);
+    expect(valid.crm.apiUrl).toBe('https://crm.example.com');
+  });
+});
+
+describe('deepMergeConfig and pruneDefaultOverrides', () => {
+  it('deep merges nested objects without altering unmodified fields or concatenating arrays', () => {
+    const defaults = {
+      nested: { a: 1, b: 2 },
+      list: ['orig1', 'orig2'],
+      flag: false
+    };
+
+    const overrides = {
+      nested: { b: 20 },
+      list: ['new1'],
+      flag: true
+    };
+
+    const merged = deepMergeConfig(defaults, overrides);
+    expect(merged).toEqual({
+      nested: { a: 1, b: 20 },
+      list: ['new1'],
+      flag: true
+    });
+  });
+
+  it('prunes redundant overrides that equal defaults', () => {
+    const defaults = {
+      a: 1,
+      nested: { b: 2, c: 3 }
+    };
+
+    const overrides = {
+      a: 1, // redundant
+      nested: {
+        b: 2, // redundant
+        c: 30 // kept
+      }
+    };
+
+    const pruned = pruneDefaultOverrides(overrides, defaults);
+    expect(pruned).toEqual({
+      nested: { c: 30 }
+    });
+  });
+});
+
+describe('resolveSystemInstanceConfig', () => {
+  it('aggregates all 11 domains into a complete instance configuration', () => {
+    const fullConfig = resolveSystemInstanceConfig({
+      site: { name: 'My AI' },
+      performance: { workflow: { maxRunTimes: 800 } }
+    });
+
+    expect(fullConfig.site.name).toBe('My AI');
+    expect(fullConfig.site.systemTitle).toBe('FastGPT');
+    expect(fullConfig.performance.workflow.maxRunTimes).toBe(800);
+    expect(fullConfig.subservice.agentSandbox.provider).toBe('none');
+    expect(fullConfig.security.csrfEnabled).toBe(true);
+  });
+});
+
+describe('SystemInstanceDomainDocumentSchema', () => {
+  it('validates a domain document structure', () => {
+    const doc = parseSystemInstanceDomainDocument({
+      _id: 'site',
+      overrides: { name: 'Custom Name' }
+    });
+
+    expect(doc._id).toBe('site');
+    expect(doc.schemaVersion).toBe(1);
+    expect(doc.revision).toBe(0);
+    expect(doc.overrides).toEqual({ name: 'Custom Name' });
+    expect(doc.createdAt).toBeInstanceOf(Date);
+  });
+
+  it('rejects an invalid domain key as _id', () => {
+    expect(() =>
+      parseSystemInstanceDomainDocument({
+        _id: 'non-existing-domain',
+        overrides: {}
+      })
+    ).toThrow();
   });
 });
 
@@ -91,17 +207,29 @@ describe('systemInstanceConfigRegistry', () => {
     );
   });
 
-  it('only registers paths that exist in the default configuration', () => {
+  it('covers all leaf configuration fields in the registry', () => {
     const config = parseSystemInstanceConfig({}) as unknown as Record<string, unknown>;
 
-    for (const item of systemInstanceConfigRegistry) {
-      const value = item.key.split('.').reduce<unknown>((current, key) => {
-        if (!current || typeof current !== 'object') return undefined;
-        return (current as Record<string, unknown>)[key];
-      }, config);
+    const getLeafPaths = (obj: Record<string, unknown>, prefix = ''): string[] => {
+      const paths: string[] = [];
+      for (const [key, value] of Object.entries(obj)) {
+        const currentPath = prefix ? `${prefix}.${key}` : key;
+        if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+          paths.push(...getLeafPaths(value as Record<string, unknown>, currentPath));
+        } else {
+          paths.push(currentPath);
+        }
+      }
+      return paths;
+    };
 
-      expect(value, item.key).not.toBeUndefined();
+    const leafPaths = getLeafPaths(config);
+    const registryKeys = new Set(systemInstanceConfigRegistry.map((item) => item.key));
+
+    for (const leafPath of leafPaths) {
+      expect(registryKeys.has(leafPath), `Missing registry entry for ${leafPath}`).toBe(true);
     }
+    expect(registryKeys.size).toBe(leafPaths.length);
   });
 
   it('filters commercial fields from the community edition', () => {

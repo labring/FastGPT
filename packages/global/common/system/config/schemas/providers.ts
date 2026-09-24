@@ -4,7 +4,7 @@ import { positiveInteger, textWithDefault, urlWithDefault } from './primitives';
 const DocumentParseProviderConfigSchema = z.strictObject({
   provider: z.enum(['none', 'customPdf', 'sangfor']).default('none'),
   customPdf: z
-    .object({
+    .strictObject({
       url: urlWithDefault(),
       key: textWithDefault(),
       somarkApiKey: textWithDefault(),
@@ -21,7 +21,7 @@ const DocumentParseProviderConfigSchema = z.strictObject({
       textinSecretCode: ''
     }),
   sangfor: z
-    .object({
+    .strictObject({
       url: urlWithDefault(),
       key: textWithDefault(),
       extensions: z.string().default('pdf'),
@@ -50,9 +50,45 @@ const DataSourceProviderConfigSchema = z.strictObject({
   yuqueDatasetBaseUrl: urlWithDefault('https://www.yuque.com')
 });
 
-export const ProvidersConfigSchema = z.strictObject({
+export const ProvidersConfigBaseSchema = z.strictObject({
   documentParse: DocumentParseProviderConfigSchema.prefault({}),
   chunk: ChunkProviderConfigSchema.prefault({}),
   crm: CrmProviderConfigSchema.prefault({}),
   dataSource: DataSourceProviderConfigSchema.prefault({})
+});
+
+export const ProvidersConfigSchema = ProvidersConfigBaseSchema.superRefine((providers, ctx) => {
+  const { chunk, crm, documentParse } = providers;
+
+  if (chunk.enabled && (!chunk.url || !chunk.key.trim())) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['chunk'],
+      message: 'url and key are required when intelligent chunking is enabled'
+    });
+  }
+
+  if (crm.enabled && (!crm.apiUrl || !crm.apiKey.trim())) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['crm'],
+      message: 'apiUrl and apiKey are required when CRM is enabled'
+    });
+  }
+
+  if (documentParse.provider === 'customPdf' && !documentParse.customPdf.url) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['documentParse', 'customPdf', 'url'],
+      message: 'url is required when custom PDF parsing is selected'
+    });
+  }
+
+  if (documentParse.provider === 'sangfor' && !documentParse.sangfor.url) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['documentParse', 'sangfor', 'url'],
+      message: 'url is required when Sangfor parsing is selected'
+    });
+  }
 });

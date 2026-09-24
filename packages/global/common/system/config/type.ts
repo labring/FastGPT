@@ -1,9 +1,11 @@
 import type { SystemConfigsTypeEnum } from './constants';
 import type { z } from 'zod';
 import type {
-  SystemInstanceConfigDocumentSchema,
+  SystemInstanceConfigDomainKey,
+  SystemInstanceConfigDomainMap,
   SystemInstanceConfigSchema,
-  SystemInstanceConfigUpdatedBySchema
+  SystemInstanceConfigUpdatedBySchema,
+  SystemInstanceDomainDocumentSchema
 } from './schema';
 
 export type SystemConfigsType = {
@@ -13,7 +15,35 @@ export type SystemConfigsType = {
   createTime: Date;
 };
 
+export type DeepPartial<T> = T extends (...args: any[]) => any
+  ? T
+  : T extends Array<infer U>
+    ? _DeepPartialArray<U>
+    : T extends object
+      ? _DeepPartialObject<T>
+      : T | undefined;
+
+type _DeepPartialArray<T> = Array<DeepPartial<T>>;
+type _DeepPartialObject<T> = { [P in keyof T]?: DeepPartial<T[P]> };
+
 export type SystemInstanceConfigType = z.infer<typeof SystemInstanceConfigSchema>;
-export type SystemInstanceConfigDocumentType = z.infer<typeof SystemInstanceConfigDocumentSchema>;
+export type SystemInstanceDomainDocumentType = z.infer<typeof SystemInstanceDomainDocumentSchema>;
+export type SystemInstanceConfigDocumentType = SystemInstanceDomainDocumentType;
 export type SystemInstanceConfigUpdatedByType = z.infer<typeof SystemInstanceConfigUpdatedBySchema>;
 export type SystemInstanceConfigActorType = SystemInstanceConfigUpdatedByType['actor'];
+
+export type SystemInstanceDomainOverridesType<
+  T extends SystemInstanceConfigDomainKey = SystemInstanceConfigDomainKey
+> = DeepPartial<SystemInstanceConfigDomainMap[T]>;
+
+export type SystemInstanceDomainDocument<
+  T extends SystemInstanceConfigDomainKey = SystemInstanceConfigDomainKey
+> = {
+  _id: T;
+  schemaVersion: number;
+  revision: number;
+  overrides: SystemInstanceDomainOverridesType<T>;
+  updatedBy?: SystemInstanceConfigUpdatedByType;
+  createdAt: Date;
+  updatedAt: Date;
+};
