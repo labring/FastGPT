@@ -484,6 +484,7 @@
   "core.dataset.import.Web link": "웹 링크",
   "core.dataset.import.Web link desc": "정적 웹 페이지 콘텐츠를 읽어 컬렉션으로 사용합니다",
   "core.dataset.import.import_success": "가져오기 성공, 학습을 기다려 주세요",
+  "core.dataset.import.api_dataset_partial_failed": "{{failedCount}}개 노드 가져오기에 실패했습니다. 다시 시도하세요",
   "core.dataset.link": "링크",
   "core.dataset.search.Dataset Search Params": "데이터셋 검색 설정",
   "core.dataset.search.Empty result response": "빈 검색 응답",

@@ -190,24 +190,52 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
     return metas[0].url;
   };
 
+  /**
+   * 飞书特殊：`/open-apis/docx/v1/documents/{token}` 只认云文档，传 folder token 必定报错，
+   * 而同步流程会对每个本地根节点都调一次 getFileDetail —— 于是「只同步一个子文件夹」会整轮失败。
+   * 改用 drive 的 metas 接口（doc_type 必须与 token 的真实类型一致），先按 docx 查，失败再按 folder 查。
+   */
   const getFileDetail = async ({
     apiFileId
   }: {
     apiFileId: string;
   }): Promise<ApiDatasetDetailResponse> => {
-    const { document } = await request<{ document: { title: string; type: string } }>(
-      `/open-apis/docx/v1/documents/${apiFileId}`,
-      {},
-      'GET'
-    );
+    const queryMeta = async (docType: 'docx' | 'folder') => {
+      const { metas } = await request<{ metas: { title: string; doc_type: string }[] }>(
+        `/open-apis/drive/v1/metas/batch_query`,
+        {
+          request_docs: [
+            {
+              doc_token: apiFileId,
+              doc_type: docType
+            }
+          ]
+        },
+        'POST'
+      );
+      return metas?.[0];
+    };
+
+    let meta = await queryMeta('docx').catch(() => undefined);
+
+    // batch_query 在类型不匹配时也可能正常返回、但 metas 为空；这种情况不会进入 catch，
+    // 仍需按 folder 再查一次，避免把真实文件夹误判成「文件不存在」。
+    if (!meta) {
+      // 两种类型都查不到时统一 reject，让调用方按「远端已删除」处理
+      meta = await queryMeta('folder').catch(() => undefined);
+    }
+
+    if (!meta) {
+      return Promise.reject('文件不存在');
+    }
 
     return {
       rawId: apiFileId,
-      name: document?.title,
+      name: meta.title,
       parentId: null,
       id: apiFileId,
-      type: document.type === 'folder' ? ('folder' as const) : ('file' as const),
-      hasChild: document.type === 'folder',
+      type: meta.doc_type === 'folder' ? ('folder' as const) : ('file' as const),
+      hasChild: meta.doc_type === 'folder',
       updateTime: new Date(),
       createTime: new Date()
     };

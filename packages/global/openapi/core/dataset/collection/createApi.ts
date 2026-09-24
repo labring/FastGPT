@@ -139,7 +139,13 @@ export type CreateTextCollectionBodyType = z.infer<typeof CreateTextCollectionBo
  * ============================================================================ */
 export const CreateApiCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
   name: z.string().meta({ description: '集合名称' }),
-  apiFileId: z.string().meta({ description: 'API 文件 ID' })
+  apiFileId: z.string().meta({ description: 'API 文件 ID' }),
+  // 覆盖基础 schema 的描述：本路由与 V2 共用 createApiDatasetCollection，对已存在的节点只做层级
+  // 校正、从不改写权限状态，所以该字段只在本次新建节点时生效
+  inheritPermission: z.boolean().optional().meta({
+    description:
+      '是否继承父级权限（默认 true）。**仅对本次新建的节点生效**：已存在的节点（按 apiFileId 命中）保持原权限状态不变，重复导入时传该字段不会有任何效果。false=独立配置，子树停止传播'
+  })
 });
 export type CreateApiCollectionBodyType = z.infer<typeof CreateApiCollectionBodySchema>;
 
@@ -148,6 +154,17 @@ export type CreateApiCollectionBodyType = z.infer<typeof CreateApiCollectionBody
  * Route: POST /core/dataset/collection/create/apiCollectionV2
  * ============================================================================ */
 export const CreateApiCollectionV2BodySchema = ApiCreateCollectionBaseSchema.extend({
+  // 覆盖基础 schema 的描述：api 文件库的落位一律由 server 层级推导（本地树镜像 server 树），
+  // 该字段服务端不读，仅为兼容保留
+  parentId: ParentIdSchema.optional().meta({
+    description: '已忽略：api 文件库的层级以 server 文件树为准，导入时所处目录不影响落位'
+  }),
+  // 覆盖基础 schema 的描述：本路由对已存在的节点只做层级校正、从不改写权限状态（与同步路径同口径），
+  // 所以该字段只在本次新建节点时生效
+  inheritPermission: z.boolean().optional().meta({
+    description:
+      '是否继承父级权限（默认 true）。**仅对本次新建的节点生效**：已存在的节点（按 apiFileId 命中）保持原权限状态不变，把已导入过的文件库重复导入并传该字段不会有任何效果。该值只作用于显式选中的节点，全选导入时由根哨兵承载、整棵展开树继承它；false=独立配置，子树停止传播'
+  }),
   apiFiles: z.array(APIFileItemSchema).meta({ description: 'API 文件列表（支持文件夹递归导入）' })
 });
 export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2BodySchema>;

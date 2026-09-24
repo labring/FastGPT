@@ -80,7 +80,7 @@ const Upload = () => {
           .filter((item) => item.apiFile)
           .map((item) => item.apiFile!);
 
-        await postCreateDatasetApiDatasetCollection({
+        const { failedCount } = await postCreateDatasetApiDatasetCollection({
           ...data,
           parentId,
           datasetId: datasetDetail._id,
@@ -88,6 +88,14 @@ const Upload = () => {
           customPdfParse,
           apiFiles
         });
+
+        // 服务端对「部分节点没进去」仍返回 200（已建成的目录/文件不回滚，重试幂等），
+        // 不在这里拦截就会走到 onSuccess 弹「导入成功」并关掉导入页，用户以为全进去了
+        if (failedCount > 0) {
+          throw new Error(
+            t('common:core.dataset.import.api_dataset_partial_failed', { failedCount })
+          );
+        }
       } else {
         // Batch create collection and upload chunks
         for await (const item of filterWaitingSources) {

@@ -244,6 +244,8 @@ const parseDingtalkDate = (value?: string | number) => {
   return new Date(value);
 };
 
+/** 钉钉特殊：节点类型的字段名不固定（type / nodeType / docType / fileType / extension 都可能带），
+ *  拼串后按关键字判断，单一字段判断会漏 */
 const isDingtalkFolderNode = (node: DingtalkNode) => {
   const typeText = [node.type, node.nodeType, node.docType, node.fileType, node.extension]
     .filter(Boolean)
@@ -308,6 +310,8 @@ const formatDingtalkNodeItem = (node: DingtalkNode): APIFileItemType | undefined
   if (!id || !name) return undefined;
 
   const isFolder = isDingtalkFolderNode(node);
+  // 钉钉特殊：只有 folder 与在线文档能取正文，其余类型（图片/压缩包/本地文件）直接丢弃，
+  // 不导入也不参与层级 —— 否则会在本地留下永远解析不出来的空节点
   if (!isFolder && !isDingtalkOnlineDocNode(node)) return undefined;
 
   return {
@@ -582,6 +586,8 @@ export const useDingtalkDatasetRequest = ({
   }: {
     apiFileId: string;
   }): Promise<ApiDatasetDetailResponse> => {
+    // 钉钉特殊：配置里填的根节点可能是「知识库（workspace）」本身，它不是真实 dentry，
+    // 查详情接口必然查不到，只能用配置里的名字合成，否则整库同步第一轮就因根节点失败而中止
     if (apiFileId === dingtalkServer.rootNodeId && dingtalkServer.workspaceName) {
       return {
         id: apiFileId,

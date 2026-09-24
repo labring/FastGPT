@@ -39,7 +39,10 @@ import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
 import {
   createCollectionPermission,
-  deleteCollectionPermissions
+  createCollectionPermissionsBatch,
+  deleteCollectionPermissions,
+  moveCollectionPermissionsBatch,
+  syncMovedCollectionPermissionDescendants
 } from '../../../support/permission/collection/controller';
 import type {
   CreateCollectionWithResultResponseType,
@@ -50,8 +53,17 @@ const logger = getLogger(LogCategories.MODULE.DATASET);
 
 /** folder 骨架按层 insertMany 的批大小 */
 export const API_FILE_FOLDER_BATCH_SIZE = 500;
-/** file 单个事务覆盖的节点数上限 */
+/** 自动同步补建 file 时单个事务覆盖的节点数上限；首次导入不使用该值分批 */
 export const API_FILE_FILE_BATCH_SIZE = 200;
+/**
+ * API 文件批量写入事务的提交时长上限。
+ * 创建接口刻意让本轮全部 file 共用一个事务，以保证调用方只会观察到「全部提交」或「全部回滚」。
+ * 目标部署的 MongoDB 事务配置已经用 10 万条完整数据验证；这里不再按该常量拆分创建批次。
+ * `maxCommitTimeMS` 只控制提交阶段，不会修改服务端 `transactionLifetimeLimitSeconds`，部署时需保持
+ * 与 10 万条压测环境一致的事务生命周期配置。
+ * 须明显小于调用方的 HTTP 超时，否则客户端先断连、服务端事务仍会提交。
+ */
+export const API_FILE_FILE_COMMIT_TIMEOUT_MS = 5 * 60 * 1000;
 
 export type BulkInsertCollectionDoc = {
   /** 调用方预生成的 ObjectId，以便同轮后续节点直接引用 */
@@ -61,13 +73,19 @@ export type BulkInsertCollectionDoc = {
   apiFileId: string;
   apiFileParentId?: string | null;
   parentId: Types.ObjectId | null;
+  /**
+   * 缺省 = 继承父级（与 schema default 一致）。必须与同一轮 file 的取值一致，
+   * 否则一次导入里目录与文件权限口径不同：目录名与层级会按继承态外泄
+   */
+  inheritPermission?: boolean;
 };
 
 /**
- * 分批 insertMany 建 **folder** 骨架，不走事务。
+ * 分批 insertMany 建 **folder** 骨架。
  * 只适用于 folder：folder 无关联账单/队列，可容忍批级部分失败；file 走 createApiFileCollectionsBatch（全事务）。
- * 批失败时按 _id 回查实际落库情况：insertMany 非原子，整批标记失败会漏掉已落库文档，
- * 后续重新导入又会因 apiFileId 已存在而跳过它们。
+ * 每批（insertMany + ACL 初始化）在**同一事务**内：ACL 行与 collection 必须同时落库，
+ * 否则启用态下会出现「有目录但没有任何权限行」的不可见节点。
+ * 批失败时按 _id 回查实际落库情况：事务失败即整批未落库，回查主要作为兜底与观测。
  */
 export const bulkInsertFolderCollections = async ({
   teamId,
@@ -88,16 +106,30 @@ export const bulkInsertFolderCollections = async ({
     const batch = docs.slice(i, i + API_FILE_FOLDER_BATCH_SIZE);
 
     try {
-      // 不写 tags：folder 沿用旧行为不带标签（走 createOneCollection 的旧代码也没传），schema default 为 []
-      await MongoDatasetCollection.insertMany(
-        batch.map((doc) => ({
-          ...doc,
+      await mongoSessionRun(async (session) => {
+        // 不写 tags：folder 沿用旧行为不带标签（走 createOneCollection 的旧代码也没传），schema default 为 []
+        await MongoDatasetCollection.insertMany(
+          batch.map((doc) => ({
+            ...doc,
+            teamId,
+            tmbId,
+            datasetId
+          })),
+          { ordered: false, session }
+        );
+
+        await createCollectionPermissionsBatch({
           teamId,
-          tmbId,
-          datasetId
-        })),
-        { ordered: false }
-      );
+          resources: batch.map((doc) => ({
+            collectionId: String(doc._id),
+            datasetId,
+            parentId: doc.parentId ? String(doc.parentId) : null,
+            tmbId,
+            inheritPermission: doc.inheritPermission
+          })),
+          session
+        });
+      });
       successApiFileIds.push(...batch.map((doc) => doc.apiFileId));
     } catch (error) {
       try {
@@ -139,16 +171,20 @@ export const bulkInsertFolderCollections = async ({
 export type BulkUpdateCollectionParentItem = {
   _id: string;
   parentId: Types.ObjectId;
+  /** server 侧父节点 id；挂到知识库根时是根哨兵 id，不会为空 */
   apiFileParentId: string;
 };
 
 /** 批量校正已存在节点的层级；按目标值直接 $set，重复执行天然幂等。不抛异常。 */
 export const bulkUpdateCollectionsParent = async ({
   teamId,
-  updates
+  updates,
+  session
 }: {
   teamId: string;
   updates: BulkUpdateCollectionParentItem[];
+  /** 与 ACL 迁移同事务时传入，避免 parentId 与权限快照各自成功 */
+  session?: ClientSession;
 }): Promise<{
   successIds: string[];
   failedIds: string[];
@@ -178,7 +214,7 @@ export const bulkUpdateCollectionsParent = async ({
           }
         }
       })),
-      { ordered: false }
+      { ordered: false, ...(session ? { session } : {}) }
     );
     matchedCount = result.matchedCount ?? 0;
 
@@ -196,6 +232,82 @@ export const bulkUpdateCollectionsParent = async ({
   }
 
   return { successIds, failedIds, matchedCount };
+};
+
+export type BulkMoveCollectionParentItem = {
+  /** collection _id，同时也是 ACL 的 resourceId */
+  _id: string;
+  datasetId: string;
+  type: DatasetCollectionTypeEnum;
+  inheritPermission?: boolean;
+  /** 变更前的父级 collection _id；null = dataset 根 */
+  oldParentId: string | null;
+  /** 变更后的父级 collection _id */
+  newParentId: Types.ObjectId;
+  /** server 侧父节点 id；挂到知识库根时是根哨兵 id，不会为空 */
+  apiFileParentId: string;
+};
+
+/**
+ * 批量校正父级 = ACL 迁移 + parentId 写入。
+ *
+ * 两者必须在同一事务内：ACL 要读**变更前**的父级才能剥离旧继承位，所以它先于 parentId 写入；
+ * 只剩一半会留下「快照按新父级算、parentId 仍是旧父级」的错位节点。
+ * 调用方负责开事务（`mongoSessionRun`）。
+ */
+export const bulkMoveCollectionsParent = async ({
+  teamId,
+  items,
+  session
+}: {
+  teamId: string;
+  items: BulkMoveCollectionParentItem[];
+  session: ClientSession;
+}) => {
+  if (items.length === 0) return { successIds: [], failedIds: [], matchedCount: 0 };
+
+  // 第一阶段：parentId 仍是旧值，因此 ACL 可以从旧父级剥离继承位；函数同时按新拓扑算出移动节点的新快照。
+  const movedFolders = await moveCollectionPermissionsBatch({
+    teamId,
+    items: items.map((item) => ({
+      collectionId: item._id,
+      datasetId: item.datasetId,
+      oldParentId: item.oldParentId,
+      newParentId: String(item.newParentId),
+      type: item.type,
+      inheritPermission: item.inheritPermission
+    })),
+    session
+  });
+
+  // 第二阶段：所有节点的 parentId 一次性写入。失败必须抛错，让第一阶段的 ACL 写入同事务回滚。
+  const result = await bulkUpdateCollectionsParent({
+    teamId,
+    updates: items.map((item) => ({
+      _id: item._id,
+      parentId: item.newParentId,
+      apiFileParentId: item.apiFileParentId
+    })),
+    session
+  });
+
+  // bulkUpdateCollectionsParent 为兼容独立调用会把写入异常转换成结果；组合迁移不能沿用该语义，
+  // 否则 ACL 已按新父级重算、parentId 却仍是旧值。这里抛错交给外层事务整体回滚。
+  if (result.failedIds.length > 0 || result.matchedCount !== items.length) {
+    throw new Error(
+      `Bulk move collection parent failed: expected=${items.length}, matched=${result.matchedCount}, failed=${result.failedIds.length}`
+    );
+  }
+
+  // 第三阶段：此时递归读取的是新树；同批迁移节点在第一阶段已各自处理，必须作为递归停止点。
+  await syncMovedCollectionPermissionDescendants({
+    teamId,
+    folders: movedFolders,
+    movedCollectionIds: new Set(items.map((item) => item._id)),
+    session
+  });
+
+  return result;
 };
 
 /**
@@ -557,8 +669,19 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
 export type CreateApiFileCollectionItem = {
   name: string;
   apiFileId: string;
+  /**
+   * server 侧父节点 id；带子文档的 file 与不带子文档的同级文件取值相同。
+   * 调用方须先归一：无 server 父级时不传（而不是传 null），与 createOneCollection 的落库形态一致，
+   * 否则同一知识库里会出现「null」与「缺字段」两种形态
+   */
   apiFileParentId?: string;
+  /** 本地父目录 collection _id；调用方已解析好，缺省表示落在 dataset 根 */
   parentId?: string;
+  /**
+   * 缺省 = 继承父级。**逐文件**取值，不取请求级：一次导入里只有用户显式选中的节点
+   * 该落独立态，展开出的后代必须保持继承，否则 4w 节点各自维护 ACL 且互不传播
+   */
+  inheritPermission?: boolean;
   metadata?: Record<string, any>;
 };
 
@@ -578,9 +701,10 @@ export const createApiFileCollectionsBatch = async ({
 }: {
   dataset: DatasetSchemaType;
   files: CreateApiFileCollectionItem[];
+  /** inheritPermission 逐文件取自 files：不在此处接收，避免整批被同一个请求级值覆盖 */
   createCollectionParams: Omit<
     CreateOneCollectionParams,
-    'name' | 'apiFileId' | 'apiFileParentId' | 'parentId' | 'session'
+    'name' | 'apiFileId' | 'apiFileParentId' | 'parentId' | 'session' | 'inheritPermission'
   >;
   session: ClientSession;
 }): Promise<{ collectionIds: string[] }> => {
@@ -646,6 +770,8 @@ export const createApiFileCollectionsBatch = async ({
       parentId: file.parentId ?? null,
       apiFileId: file.apiFileId,
       apiFileParentId: file.apiFileParentId,
+      // 逐文件字段必须写在 ...formatCreateCollectionParams 之后：请求级同名值不能覆盖它
+      inheritPermission: file.inheritPermission,
       metadata: file.metadata,
       // 展开的 formatCreateCollectionParams 里是原始 tags，须用解析后的标签文档覆盖
       tags: collectionTags,
@@ -659,6 +785,19 @@ export const createApiFileCollectionsBatch = async ({
     })),
     { session, ordered: true }
   );
+
+  // ACL 快照与 collection 同一事务：启用态下缺快照的 collection 对所有非 owner 不可见
+  await createCollectionPermissionsBatch({
+    teamId,
+    resources: files.map((file, index) => ({
+      collectionId: String(objectIds[index]),
+      datasetId: String(dataset._id),
+      parentId: file.parentId ?? null,
+      tmbId,
+      inheritPermission: file.inheritPermission
+    })),
+    session
+  });
 
   await pushDatasetToParseQueue({
     teamId,

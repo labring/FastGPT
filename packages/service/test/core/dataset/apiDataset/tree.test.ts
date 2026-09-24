@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RootCollectionId } from '@fastgpt/global/core/dataset/collection/constants';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
-import { buildApiFileTree, type ApiFileTreeNode } from '../../../../core/dataset/apiDataset/tree';
+import {
+  buildApiFileRecords,
+  buildApiFileTree,
+  type ApiFileTreeNode
+} from '../../../../core/dataset/apiDataset/tree';
 
 /** 造一个 listFiles 返回的 server 节点；name 刻意与 id 不同，用于断言 name 被原样透传 */
 const file = (id: string, type: 'file' | 'folder', hasChild = false): APIFileItemType => ({
@@ -120,6 +124,7 @@ describe('buildApiFileTree', () => {
       {
         serverId: 'empty-folder',
         serverParentId: null,
+        dirId: 'empty-folder',
         type: 'folder',
         name: 'name-empty-folder',
         depth: 0,
@@ -229,6 +234,115 @@ describe('buildApiFileTree', () => {
   });
 });
 
+describe('buildApiFileRecords', () => {
+  const listFiles = vi.fn();
+  const request = { listFiles } as any;
+
+  /** server 树：dir(folder) > doc(file, 挂子文档) / plain(file)；doc 下还有 child(file) */
+  const mockTreeWithDocChildren = () => {
+    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
+      if (parentId === 'dir') return [file('doc', 'file', true), file('plain', 'file')];
+      if (parentId === 'doc') return [file('child', 'file')];
+      return [];
+    });
+  };
+
+  beforeEach(() => {
+    listFiles.mockReset();
+    mockTreeWithDocChildren();
+  });
+
+  const buildRecords = async () => {
+    const nodes = await buildApiFileTree({ request, seeds: [file('dir', 'folder', true)] });
+    return { nodes, records: buildApiFileRecords(nodes) };
+  };
+
+  /**
+   * 被测函数名: buildApiFileRecords  等级: 3-High
+   * 思路（正常场景）: 三种节点各自的记录形态 —— folder 只出目录记录；带子文档的 file 出
+   * 「同名目录 + 正文」，正文挂在该目录下；普通 file 只出正文，与兄弟同级
+   */
+  it('T2-1: folder / 带子文档的 file / 普通 file 产出各自的记录', async () => {
+    const { records } = await buildRecords();
+
+    expect(
+      records.map((record) => [
+        record.apiFileId,
+        record.apiFileParentId,
+        record.parentDirId,
+        record.type,
+        record.depth
+      ])
+    ).toEqual([
+      ['dir', null, null, 'folder', 0],
+      ['doc#dir', 'dir', 'dir', 'folder', 1],
+      ['doc', 'dir', 'doc#dir', 'file', 1],
+      ['plain', 'dir', 'dir', 'file', 1],
+      ['child', 'doc', 'doc#dir', 'file', 2]
+    ]);
+  });
+
+  /**
+   * 被测函数名: buildApiFileRecords  等级: 3-High
+   * 思路（回归场景）: 旧实现只给 `type === 'folder'` 预建目录，带子文档的 file 的子级无处可挂。
+   * 现在每个 hasChild 节点都必须有一条同名目录记录
+   */
+  it('T2-2: 每个 hasChild 节点都有对应的目录记录', async () => {
+    const { nodes, records } = await buildRecords();
+    const dirIds = new Set(
+      records.filter((record) => record.type === 'folder').map((record) => record.apiFileId)
+    );
+
+    for (const node of nodes.filter((item) => item.hasChild)) {
+      expect(dirIds.has(node.dirId), `${node.serverId} 的目录记录`).toBe(true);
+    }
+  });
+
+  /**
+   * 被测函数名: buildApiFileRecords  等级: 3-High
+   * 思路（不变量）: 父先子后 —— 任何记录的父目录记录都排在它前面，且父目录一定是目录记录。
+   * 调用方据此「先按层写全部目录、再写全部文件」即可满足父子依赖
+   */
+  it('T2-3: 父先子后，且父级一律是目录记录', async () => {
+    const { records } = await buildRecords();
+    const indexOf = new Map(records.map((record, index) => [record.apiFileId, index]));
+    const dirIds = new Set(
+      records.filter((record) => record.type === 'folder').map((record) => record.apiFileId)
+    );
+
+    for (const [index, record] of records.entries()) {
+      if (record.parentDirId === null) {
+        expect(indexOf.get(record.apiFileId)).toBe(index);
+        continue;
+      }
+      expect(dirIds.has(record.parentDirId), `${record.apiFileId} 的父目录是目录记录`).toBe(true);
+      expect(indexOf.get(record.parentDirId)!, `${record.apiFileId} 的父目录在其之前`).toBeLessThan(
+        index
+      );
+    }
+  });
+
+  /**
+   * 安全边界：派生目录 `doc#dir` 不能和 provider 的真实节点 id 重名。
+   * 否则创建路径按 apiFileId 建 Map 时会静默覆盖其中一个节点，必须在任何写入前拒绝本轮导入。
+   */
+  it('T2-4: 派生目录 id 与 provider id 冲突时拒绝生成记录', async () => {
+    listFiles.mockImplementation(async ({ parentId }: { parentId: string }) => {
+      if (parentId === 'root') {
+        return [file('doc', 'file', true), file('doc#dir', 'folder')];
+      }
+      if (parentId === 'doc') return [file('child', 'file')];
+      return [];
+    });
+
+    const nodes = await buildApiFileTree({ request, seeds: [file('root', 'folder', true)] });
+
+    expect(() => buildApiFileRecords(nodes)).toThrow(
+      'Api file directory id conflicts with provider id: doc#dir'
+    );
+  });
+});
+
 /**
  * INT-3：同一份 mock server 树分别喂给创建路径的 seeds 与同步路径的 seeds，断言两条路径
  * 对每个节点的本地父级解析结果一致。
@@ -242,8 +356,9 @@ describe('buildApiFileTree', () => {
  *
  * 注意：解析规则在生产代码里是各自内联的闭包（apiCollectionV2.ts 的 resolveParentId /
  * sync.ts 的 resolveCreateParentId），本文件只是把规则逐行照抄成语义等价物，因此这里通过只能
- * 证明「规则应当如此」，不能证明生产实现没漂移。绑定生产实现的回归证据是 INT-4
- * （test/integrationTest/apiFileHierarchy/，两条真实路径跑在同一份内存 Mongo 上）。
+ * 证明「规则应当如此」，不能证明生产实现没漂移。绑定生产实现的回归证据在两条真实路径的用例里：
+ * projects/app 的 apiCollectionV2.test.ts（T3-*，创建路径）与 pro/admin 的 sync.test.ts
+ * （T4-*，同步路径），两者都走真实的 buildApiFileTree / buildApiFileRecords 与层级解析。
  */
 describe('INT-3 创建路径与同步路径的层级对齐（纯函数）', () => {
   const listFiles = vi.fn();
