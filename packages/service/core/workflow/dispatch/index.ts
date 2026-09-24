@@ -850,11 +850,11 @@ export class WorkflowQueue {
         runtimeNodesMap: this.runtimeNodesMap,
         variableState: this.data.variableState
       });
-      await assertWorkflowNodeModelResources({
-        node,
-        params,
-        tmbId: this.data.runningUserInfo.tmbId
-      });
+      // await assertWorkflowNodeModelResources({
+      //   node,
+      //   params,
+      //   tmbId: this.data.runningUserInfo.tmbId
+      // });
       const nodeSummary = createNodeSummary();
       const nodeResponseActivity = createWorkflowNodeResponseActivity();
 
