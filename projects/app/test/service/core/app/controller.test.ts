@@ -729,6 +729,7 @@ describe('resolveAppResourcesByPermission', () => {
   it('filters unauthorized resources from an unmigrated draft (missing resources) to prevent bypass', async () => {
     const owner = await getUser(`unmigrated-draft-owner-${getNanoid(6)}`);
     const member = await getUser(`unmigrated-draft-member-${getNanoid(6)}`, owner.teamId);
+    const stranger = await getUser(`unmigrated-draft-stranger-${getNanoid(6)}`);
     const workflowApp = await MongoApp.create({
       name: 'Workflow app with unmigrated draft',
       type: AppTypeEnum.workflow,
@@ -742,12 +743,13 @@ describe('resolveAppResourcesByPermission', () => {
       type: AppTypeEnum.mcpToolSet,
       modules: [],
       edges: [],
-      teamId: owner.teamId,
-      tmbId: owner.tmbId
+      teamId: stranger.teamId,
+      tmbId: stranger.tmbId
     });
 
     // 模拟尚未跑迁移的历史草稿：未包含 resources 字段，但 nodes 中已引用受保护工具
-    await MongoAppVersion.create({
+    await MongoAppVersion.collection.insertOne({
+      _id: new Types.ObjectId(),
       appId: workflowApp._id,
       tmbId: member.tmbId,
       nodes: [
@@ -781,5 +783,62 @@ describe('resolveAppResourcesByPermission', () => {
         blockOnUnauthorized: false
       })
     ).resolves.toEqual([]);
+  });
+
+  it('retains authorized resources from an unmigrated draft based on app owner permissions', async () => {
+    const owner = await getUser(`owner-baseline-${getNanoid(6)}`);
+    const member = await getUser(`member-baseline-${getNanoid(6)}`, owner.teamId);
+    const workflowApp = await MongoApp.create({
+      name: 'Workflow app owned by owner',
+      type: AppTypeEnum.workflow,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const toolset = await MongoApp.create({
+      name: 'Toolset with owner permission',
+      type: AppTypeEnum.mcpToolSet,
+      modules: [],
+      edges: [],
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+
+    // 仅授权 owner 拥有该工具集的权限，member 无个人权限
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.app,
+      resourceId: toolset._id,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      permission: ReadPermissionVal
+    });
+
+    // 模拟历史草稿（未包含 resources），由 member 创建但包含 owner 有权访问的工具
+    await MongoAppVersion.collection.insertOne({
+      _id: new Types.ObjectId(),
+      appId: workflowApp._id,
+      tmbId: member.tmbId,
+      nodes: [
+        {
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          pluginId: String(toolset._id),
+          inputs: []
+        }
+      ],
+      edges: []
+    });
+
+    const toolResource = { type: 'tool' as const, id: String(toolset._id) };
+
+    // 增量鉴权基线按 app.tmbId（owner）过滤，该工具应作为合法 baseline 进入 kept，member 发布时不被阻断
+    await expect(
+      resolveAppResourcesByPermission({
+        appId: String(workflowApp._id),
+        extracted: [toolResource],
+        tmbId: member.tmbId,
+        blockOnUnauthorized: true
+      })
+    ).resolves.toEqual([toolResource]);
   });
 });

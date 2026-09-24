@@ -26,6 +26,7 @@ type LegacyResourceRefs = {
 
 export type AppResourceMigrationRecord = {
   _id: unknown;
+  appId?: unknown;
   nodes?: unknown;
   modules?: unknown;
   edges?: unknown;
@@ -174,7 +175,7 @@ export const readAppVersionResourceBatch = (params: {
     ...params,
     projection: {
       _id: 1,
-      tmbId: 1,
+      appId: 1,
       nodes: 1,
       edges: 1,
       chatConfig: 1,
@@ -215,7 +216,7 @@ export const readAppVersionResourceRecord = (id: string) =>
     {
       projection: {
         _id: 1,
-        tmbId: 1,
+        appId: 1,
         nodes: 1,
         edges: 1,
         chatConfig: 1,
@@ -271,8 +272,10 @@ const runWithConcurrency = async <Input, Output>({
  * 使用工作流读取快照作为 compare-and-set 条件回填 Version.resources。
  * 1. 批量预加载模型列表，避免每条记录重复查询模型 handle；
  * 2. 内存快速跳过已有合法快照的记录；
- * 3. 使用 Worker Pool (并发度 20) 并发执行工作流解析、权限过滤与 CAS 写入；
- * 4. 已有合法快照保持不变，并发写已产出合法快照也视为该记录完成。
+ * 3. 批量查询关联 App 的应用所有者 tmbId，严格按应用所有者权限过滤资源快照；
+ * 4. 找不到应用所有者 tmbId 时直接记录失败，不进行模糊兜底；
+ * 5. 使用 Worker Pool (并发度 20) 并发执行工作流解析、权限过滤与 CAS 写入；
+ * 6. 已有合法快照保持不变，并发写已产出合法快照也视为该记录完成。
  */
 export const backfillAppVersionResourceRecords = async (
   records: AppResourceMigrationRecord[]
@@ -292,16 +295,40 @@ export const backfillAppVersionResourceRecords = async (
 
   const models = (await getModelHandle()).getAllModels();
 
+  const appIds = recordsToProcess.map((record) => record.appId).filter(Boolean);
+  const apps =
+    appIds.length === 0
+      ? []
+      : await MongoApp.collection
+          .find({ _id: { $in: appIds as never } }, { projection: { _id: 1, tmbId: 1 } })
+          .toArray();
+  const appOwnerTmbIdByAppId = new Map(
+    apps.map((app) => [String(app._id), app.tmbId ? String(app.tmbId) : undefined])
+  );
+
   const processResults = await runWithConcurrency({
     items: recordsToProcess,
     action: async (
       record
     ): Promise<{ updated: boolean; failure?: AppResourceMigrationFailure }> => {
       try {
+        const appOwnerTmbId = record.appId
+          ? appOwnerTmbIdByAppId.get(String(record.appId))
+          : undefined;
+        if (!appOwnerTmbId) {
+          return {
+            updated: false,
+            failure: {
+              record,
+              message: `Cannot find app owner tmbId for version ${String(record._id)}`
+            }
+          };
+        }
+
         const snapshot = buildAppResourceSnapshot(record, models);
         const authorizedResources = await filterAuthorizedAppResources({
           resources: snapshot.resources,
-          tmbId: record.tmbId
+          tmbId: appOwnerTmbId
         });
         const updateResult = await MongoAppVersion.collection.updateOne(
           {

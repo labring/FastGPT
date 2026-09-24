@@ -89,7 +89,10 @@ describe('App resource snapshot migration service', () => {
   it('accepts a concurrent Version update when it already produced a legal snapshot', async () => {
     const app = createApp();
     const version = createVersion({ appId: app._id });
-    await MongoAppVersion.collection.insertOne(version);
+    await Promise.all([
+      MongoApp.collection.insertOne(app),
+      MongoAppVersion.collection.insertOne(version)
+    ]);
     const originalUpdateOne = MongoAppVersion.collection.updateOne.bind(MongoAppVersion.collection);
     let changed = false;
     vi.spyOn(MongoAppVersion.collection, 'updateOne').mockImplementation(
@@ -258,6 +261,101 @@ describe('App resource snapshot migration service', () => {
     });
     const updatedVersion = await MongoAppVersion.collection.findOne({ _id: version._id });
     expect(updatedVersion?.resources).toEqual([]);
+  });
+
+  it('backfills Version resources using App Owner tmbId rather than Version creator tmbId', async () => {
+    const ownerTmbId = new Types.ObjectId('65f000000000000000000088');
+    const creatorTmbId = new Types.ObjectId('65f000000000000000000099');
+
+    let passedTmbId: unknown;
+    vi.spyOn(appResourcePermission, 'filterAuthorizedAppResources').mockImplementation(
+      async ({ resources, tmbId }) => {
+        passedTmbId = tmbId;
+        return resources;
+      }
+    );
+
+    const app = createApp({
+      tmbId: ownerTmbId
+    });
+    const version = createVersion({
+      appId: app._id,
+      tmbId: creatorTmbId,
+      nodes: [
+        {
+          nodeId: 'legacy-agent-node',
+          flowNodeType: 'appModule',
+          name: 'Legacy agent',
+          pluginId: 'legacy-agent-id',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+    await Promise.all([
+      MongoApp.collection.insertOne(app),
+      MongoAppVersion.collection.insertOne(version)
+    ]);
+
+    await expect(backfillAppVersionResourceRecords([version])).resolves.toMatchObject({
+      updatedCount: 1,
+      failures: []
+    });
+
+    // 验证传递给 filterAuthorizedAppResources 的是 App Owner 的 tmbId 而非 Version Creator
+    expect(String(passedTmbId)).toBe(String(ownerTmbId));
+
+    const updatedVersion = await MongoAppVersion.collection.findOne({ _id: version._id });
+    expect(updatedVersion?.resources).toEqual([
+      { type: 'agent', id: 'legacy-agent-id' },
+      { type: 'skill', id: 'published-skill' }
+    ]);
+  });
+
+  it('fails Version backfill when App is missing or App has no tmbId without fallback', async () => {
+    const missingAppId = new Types.ObjectId();
+    const orphanVersion = createVersion({
+      appId: missingAppId,
+      nodes: [
+        {
+          nodeId: 'legacy-agent-node',
+          flowNodeType: 'appModule',
+          name: 'Legacy agent',
+          pluginId: 'legacy-agent-id',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    const appWithoutTmbId = createApp({
+      tmbId: undefined
+    });
+    const versionWithInvalidApp = createVersion({
+      appId: appWithoutTmbId._id,
+      nodes: [
+        {
+          nodeId: 'legacy-agent-node',
+          flowNodeType: 'appModule',
+          name: 'Legacy agent',
+          pluginId: 'legacy-agent-id',
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    await Promise.all([
+      MongoApp.collection.insertOne(appWithoutTmbId),
+      MongoAppVersion.collection.insertMany([orphanVersion, versionWithInvalidApp])
+    ]);
+
+    const result = await backfillAppVersionResourceRecords([orphanVersion, versionWithInvalidApp]);
+
+    expect(result.updatedCount).toBe(0);
+    expect(result.failures).toHaveLength(2);
+    expect(result.failures[0].message).toContain('Cannot find app owner tmbId');
+    expect(result.failures[1].message).toContain('Cannot find app owner tmbId');
   });
 
   it('validates missing snapshots, invalid pointers, missing published Versions, and folders', async () => {
