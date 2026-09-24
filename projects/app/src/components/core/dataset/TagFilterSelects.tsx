@@ -23,7 +23,10 @@ import {
   type DatasetTagFilterValueMode,
   type WorkflowTagFilterOption
 } from '@fastgpt/global/core/dataset/workflowTagFilter';
-import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTagTypeEnum,
+  type TagFilterOperator
+} from '@fastgpt/global/core/dataset/constants';
 
 const FILE_TAGS = 'fileTags';
 const FILE_ATTRS = 'fileAttrs';
@@ -300,13 +303,6 @@ export const TagFilterFieldSelect = ({
   );
 };
 
-type OpItem = {
-  labelKey: string;
-  value: string;
-  icon?: string;
-  iconFlip?: boolean;
-};
-
 /** 条件操作符。数字类用稿上的 16px 符号图标 + 12px 文案。 */
 export const TagFilterOpSelect = ({
   value,
@@ -314,7 +310,7 @@ export const TagFilterOpSelect = ({
   onChange
 }: {
   value?: string;
-  list: OpItem[];
+  list: TagFilterOperator[];
   onChange: (value: string) => void;
 }) => {
   const { t } = useTranslation();
@@ -344,7 +340,7 @@ export const TagFilterOpSelect = ({
           rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
         >
           <Box w={'100%'} minW={0} noOfLines={1} color={selected ? 'myGray.700' : 'myGray.500'}>
-            {selected ? t(selected.labelKey) : t('workflow:tag_filter_select_condition')}
+            {selected ? t(selected.label) : t('workflow:tag_filter_select_condition')}
           </Box>
         </Button>
       </PopoverTrigger>
@@ -390,7 +386,7 @@ export const TagFilterOpSelect = ({
                   transform={item.iconFlip ? 'scaleX(-1)' : undefined}
                 />
               )}
-              <Box>{t(item.labelKey)}</Box>
+              <Box>{t(item.label)}</Box>
             </Flex>
           ))}
         </Flex>
