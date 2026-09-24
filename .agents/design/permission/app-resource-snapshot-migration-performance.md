@@ -59,8 +59,9 @@ flowchart TD
 - 在 `backfillAppVersionResourceRecords` 中前置过滤合法记录，若当前批所有记录均已迁移，直接返回 0 开销；
 - 在 `backfillAppResourceRecords` 中结合 `readAppVersionStates` 结果前置分类出 `update_pointer` 与 `create_version` 动作列表，仅对需要变更的记录进行并发分发。
 
-### 5. 状态查询与聚合优化
-- `readAppVersionStates` 中对 `appIds.length === 0` 与 `pointerIds.length === 0` 做空集防御，避免无效的 MongoDB Aggregate 执行。
+### 5. 状态查询与版本指针查找优化 (规避 Mongo 100MB 排序内存超限)
+- `readAppVersionStates` 中对 `appIds.length === 0` 与 `pointerIds.length === 0` 做空集防御；
+- 移除历史重度 Aggregation 管道（因缺失 `$project` 导致全量包含巨大 `nodes`/`edges` 的文档被塞入 `$sort` 内存缓冲区，极易冲破 Mongo 100MB 单阶段排序 RAM 限制），改用带极简字段投影的 `find({ appId: { $in: appIds }, isPublish: true }, { projection: { _id: 1, appId: 1, time: 1 } })` + 内存 Map 归并，充分利用 `{ appId: 1, time: -1 }` 索引并彻底消除服务端内存排序压力。
 
 ---
 

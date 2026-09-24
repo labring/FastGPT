@@ -367,16 +367,11 @@ const readAppVersionStates = async (records: AppResourceMigrationRecord[]) => {
     appIds.length === 0
       ? []
       : MongoAppVersion.collection
-          .aggregate<{ _id: unknown; latestPublishedVersionId: unknown }>([
-            { $match: { appId: { $in: appIds }, isPublish: true } },
-            { $sort: { time: -1, _id: -1 } },
-            {
-              $group: {
-                _id: '$appId',
-                latestPublishedVersionId: { $first: '$_id' }
-              }
-            }
-          ])
+          .find(
+            { appId: { $in: appIds }, isPublish: true },
+            { projection: { _id: 1, appId: 1, time: 1 } }
+          )
+          .sort({ appId: 1, time: -1, _id: -1 })
           .toArray(),
     pointerIds.length === 0
       ? []
@@ -384,12 +379,13 @@ const readAppVersionStates = async (records: AppResourceMigrationRecord[]) => {
           .find({ _id: { $in: pointerIds } }, { projection: { _id: 1, appId: 1 } })
           .toArray()
   ]);
-  const latestPublishedVersionByAppId = new Map(
-    latestPublishedVersions.map((version) => [
-      String(version._id),
-      version.latestPublishedVersionId
-    ])
-  );
+  const latestPublishedVersionByAppId = new Map<string, unknown>();
+  for (const version of latestPublishedVersions) {
+    const appId = String(version.appId);
+    if (!latestPublishedVersionByAppId.has(appId)) {
+      latestPublishedVersionByAppId.set(appId, version._id);
+    }
+  }
   const pointerOwnerById = new Map(
     pointerVersions.map((version) => [String(version._id), String(version.appId)])
   );
