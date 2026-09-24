@@ -422,7 +422,8 @@ export class S3BaseBucket {
 
       if (
         message === S3ErrEnum.invalidUploadFileType ||
-        message === S3ErrEnum.uploadFileTypeMismatch
+        message === S3ErrEnum.uploadFileTypeMismatch ||
+        message === S3ErrEnum.emptyUploadFile
       ) {
         logger.info('Rejected S3 upload request', {
           key: params.rawKey,
@@ -599,7 +600,8 @@ export class S3BaseBucket {
       const message = error instanceof Error ? error.message : String(error);
       if (
         message === S3ErrEnum.invalidUploadFileType ||
-        message === S3ErrEnum.uploadFileTypeMismatch
+        message === S3ErrEnum.uploadFileTypeMismatch ||
+        message === S3ErrEnum.emptyUploadFile
       ) {
         return Promise.reject(error);
       }

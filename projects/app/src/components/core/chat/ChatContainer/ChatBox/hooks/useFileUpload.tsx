@@ -6,6 +6,7 @@ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
+import { isOfficeLockFilename } from '@fastgpt/global/common/file/utils';
 import { clone } from 'lodash-es';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type FieldArrayWithId, type UseFieldArrayReturn } from 'react-hook-form';
@@ -252,6 +253,23 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
         });
       }
 
+      if (files.length === 0) return [];
+
+      const hasEmptyFile = files.some((file) => file.size <= 0);
+      const hasLockFile = files.some((file) => isOfficeLockFilename(file.name));
+      files = files.filter((file) => file.size > 0 && !isOfficeLockFilename(file.name));
+      if (hasEmptyFile) {
+        toast({
+          status: 'warning',
+          title: t('common:empty_file')
+        });
+      }
+      if (hasLockFile) {
+        toast({
+          status: 'warning',
+          title: t('common:error.s3_upload_invalid_file_type')
+        });
+      }
       if (files.length === 0) return [];
 
       // Filter files by max size
