@@ -1,5 +1,5 @@
 import z from 'zod';
-import { positiveInteger, urlWithDefault } from './primitives';
+import { nonNegativeInteger, positiveInteger, urlWithDefault } from './primitives';
 
 const WorkflowPerformanceConfigSchema = z.strictObject({
   maxRunTimes: positiveInteger(500),
@@ -20,7 +20,8 @@ const DatasetPerformanceConfigSchema = z.strictObject({
   parseMaxProcess: positiveInteger(10),
   vectorMaxProcess: positiveInteger(10),
   qaMaxProcess: positiveInteger(10),
-  vlmMaxProcess: positiveInteger(10)
+  vlmMaxProcess: positiveInteger(10),
+  retrievalResultsLimit: nonNegativeInteger(0)
 });
 
 const ChatPerformanceConfigSchema = z.strictObject({
@@ -42,7 +43,7 @@ const TrackingPerformanceConfigSchema = z.strictObject({
   retentionHours: positiveInteger(6)
 });
 
-export const PerformanceConfigSchema = z.strictObject({
+export const PerformanceConfigBaseSchema = z.strictObject({
   workflow: WorkflowPerformanceConfigSchema.prefault({}),
   parse: ParsePerformanceConfigSchema.prefault({}),
   dataset: DatasetPerformanceConfigSchema.prefault({}),
@@ -52,3 +53,15 @@ export const PerformanceConfigSchema = z.strictObject({
   task: z.strictObject({ evalConcurrency: positiveInteger(3) }).prefault({}),
   channel: z.strictObject({ wechatConcurrency: positiveInteger(1000) }).prefault({})
 });
+
+export const PerformanceConfigSchema = PerformanceConfigBaseSchema.superRefine(
+  (performance, ctx) => {
+    if (performance.workflow.parallelMaxConcurrency > performance.workflow.maxLoopTimes) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['workflow', 'parallelMaxConcurrency'],
+        message: 'parallelMaxConcurrency cannot exceed maxLoopTimes'
+      });
+    }
+  }
+);

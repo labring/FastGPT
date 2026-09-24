@@ -6,44 +6,51 @@ describe('MongoSystemInstanceConfig schema', () => {
     expect(MongoSystemInstanceConfig.collection.name).toBe('system_instance_configs');
   });
 
-  it('uses a fixed instance document without namespace or overrides', () => {
+  it('uses domain-keyed documents with sparse overrides', () => {
     expect(MongoSystemInstanceConfig.schema.path('_id')?.options.immutable).toBe(true);
-    expect(MongoSystemInstanceConfig.schema.path('namespace')).toBeUndefined();
-    expect(MongoSystemInstanceConfig.schema.path('overrides')).toBeUndefined();
-    expect(MongoSystemInstanceConfig.schema.path('secretOverrides')).toBeUndefined();
+    expect(MongoSystemInstanceConfig.schema.path('overrides')).toBeDefined();
+    expect(MongoSystemInstanceConfig.schema.path('revision')).toBeDefined();
   });
 
-  it('validates the complete config payload through the shared Zod schema', () => {
+  it('validates a valid sparse overrides payload for a domain', () => {
     const document = new MongoSystemInstanceConfig({
-      config: {
-        site: {
-          name: 'FastGPT'
-        }
+      _id: 'site',
+      overrides: {
+        name: 'FastGPT'
       }
     });
 
     expect(document.validateSync()).toBeUndefined();
   });
 
-  it('rejects an invalid config payload', () => {
+  it('rejects overrides containing unknown fields for the domain', () => {
     const document = new MongoSystemInstanceConfig({
-      config: {
-        performance: {
-          workflow: {
-            maxLoopTimes: 10,
-            parallelMaxConcurrency: 11
-          }
+      _id: 'site',
+      overrides: {
+        unknownSiteField: 'invalid'
+      }
+    });
+
+    expect(document.validateSync()?.errors.overrides).toBeDefined();
+  });
+
+  it('rejects overrides that violate cross-field constraints on effective config', () => {
+    const document = new MongoSystemInstanceConfig({
+      _id: 'performance',
+      overrides: {
+        workflow: {
+          maxLoopTimes: 5 // parallelMaxConcurrency default is 10 > 5!
         }
       }
     });
 
-    expect(document.validateSync()?.errors.config).toBeDefined();
+    expect(document.validateSync()?.errors.overrides).toBeDefined();
   });
 
-  it('rejects a document with a non-instance identifier', () => {
+  it('rejects a document with a non-domain identifier', () => {
     const document = new MongoSystemInstanceConfig({
-      _id: 'another-instance',
-      config: {}
+      _id: 'not-a-valid-domain',
+      overrides: {}
     });
 
     expect(document.validateSync()?.errors._id).toBeDefined();

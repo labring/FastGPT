@@ -3,137 +3,208 @@ import { AuthConfigSchema } from './schemas/auth';
 import { CommercialConfigSchema } from './schemas/commercial';
 import { FeatureConfigSchema } from './schemas/feature';
 import { nonNegativeInteger } from './schemas/primitives';
-import { PerformanceConfigSchema } from './schemas/performance';
-import { ProvidersConfigSchema } from './schemas/providers';
+import { PerformanceConfigBaseSchema, PerformanceConfigSchema } from './schemas/performance';
+import { ProvidersConfigBaseSchema, ProvidersConfigSchema } from './schemas/providers';
 import { ResourceConfigSchema } from './schemas/resource';
 import { SecurityConfigSchema } from './schemas/security';
 import { SiteConfigSchema } from './schemas/site';
 import { StorageConfigSchema } from './schemas/storage';
-import { SubserviceConfigSchema } from './schemas/subservice';
+import { SubserviceConfigBaseSchema, SubserviceConfigSchema } from './schemas/subservice';
 import { VectorConfigSchema } from './schemas/vector';
+import { deepMergeConfig } from './merge';
+import type { DeepPartial } from './type';
 
-export const SYSTEM_INSTANCE_CONFIG_ID = 'instance' as const;
 export const SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION = 1 as const;
 
+export const SYSTEM_INSTANCE_CONFIG_DOMAINS = [
+  'site',
+  'auth',
+  'security',
+  'feature',
+  'commercial',
+  'resource',
+  'performance',
+  'storage',
+  'vector',
+  'providers',
+  'subservice'
+] as const;
+
+export type SystemInstanceConfigDomainKey = (typeof SYSTEM_INSTANCE_CONFIG_DOMAINS)[number];
+
+export const SystemInstanceConfigDomainKeySchema = z.enum(SYSTEM_INSTANCE_CONFIG_DOMAINS);
+
 /**
- * 实例级配置的唯一结构来源。所有字段都必须有默认值，确保首次初始化后 Mongo 文档就是完整快照。
+ * 递归将 ZodObject 内的所有叶子和嵌套对象转换为严格且可选的 Partial Schema。
  */
-export const SystemInstanceConfigSchema = z
-  .strictObject({
-    site: SiteConfigSchema.prefault({}),
-    auth: AuthConfigSchema.prefault({}),
-    security: SecurityConfigSchema.prefault({}),
-    feature: FeatureConfigSchema.prefault({}),
-    commercial: CommercialConfigSchema.prefault({}),
-    resource: ResourceConfigSchema.prefault({}),
-    performance: PerformanceConfigSchema.prefault({}),
-    storage: StorageConfigSchema.prefault({}),
-    vector: VectorConfigSchema.prefault({}),
-    providers: ProvidersConfigSchema.prefault({}),
-    subservice: SubserviceConfigSchema.prefault({})
-  })
-  .superRefine((config, ctx) => {
-    if (
-      config.performance.workflow.parallelMaxConcurrency > config.performance.workflow.maxLoopTimes
-    ) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['performance', 'workflow', 'parallelMaxConcurrency'],
-        message: 'parallelMaxConcurrency cannot exceed maxLoopTimes'
-      });
-    }
+export const makeDomainOverrideSchema = <T extends z.ZodRawShape>(
+  schema: z.ZodObject<T>
+): z.ZodObject<{ [K in keyof T]: z.ZodTypeAny }> => {
+  const shape = schema.shape;
+  const newShape: Record<string, z.ZodTypeAny> = {};
 
-    const { aiProxy, agentSandbox, codeSandbox, plugin } = config.subservice;
-    const { chunk, crm, documentParse } = config.providers;
+  for (const key in shape) {
+    newShape[key] = makeFieldPartial(shape[key] as any);
+  }
 
-    if (plugin.enabled && !plugin.token.trim()) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['subservice', 'plugin', 'token'],
-        message: 'token is required when the plugin service is enabled'
-      });
-    }
+  return z.strictObject(newShape) as any;
+};
 
-    if (codeSandbox.enabled && !codeSandbox.token.trim()) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['subservice', 'codeSandbox', 'token'],
-        message: 'token is required when the code sandbox is enabled'
-      });
-    }
+const makeFieldPartial = (fieldSchema: z.ZodTypeAny): z.ZodTypeAny => {
+  const type = (fieldSchema as any)?.type ?? (fieldSchema as any)?._def?.type;
 
-    if (aiProxy.enabled && !aiProxy.token.trim()) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['subservice', 'aiProxy', 'token'],
-        message: 'token is required when AI Proxy is enabled'
-      });
-    }
+  if (type === 'object') {
+    return makeDomainOverrideSchema(fieldSchema as any).optional();
+  }
+  if (type === 'default' || type === 'prefault') {
+    const inner = (fieldSchema as any)?.def?.innerType ?? (fieldSchema as any)?._def?.innerType;
+    return makeFieldPartial(inner);
+  }
+  if (type === 'optional') {
+    const inner = (fieldSchema as any)?.def?.innerType ?? (fieldSchema as any)?._def?.innerType;
+    return makeFieldPartial(inner).optional();
+  }
+  if (type === 'nullable') {
+    const inner = (fieldSchema as any)?.def?.innerType ?? (fieldSchema as any)?._def?.innerType;
+    return makeFieldPartial(inner).nullable().optional();
+  }
+  if (type === 'effects' || type === 'transform') {
+    const inner = (fieldSchema as any)?.def?.schema ?? (fieldSchema as any)?._def?.schema;
+    return makeFieldPartial(inner);
+  }
+  return fieldSchema.optional();
+};
 
-    if (chunk.enabled && (!chunk.url || !chunk.key.trim())) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['providers', 'chunk'],
-        message: 'url and key are required when intelligent chunking is enabled'
-      });
-    }
+/**
+ * 各 Domain 完整配置 Schema 映射表（含跨字段 superRefine 校验）。
+ */
+export const systemInstanceConfigDomainSchemaMap = {
+  site: SiteConfigSchema,
+  auth: AuthConfigSchema,
+  security: SecurityConfigSchema,
+  feature: FeatureConfigSchema,
+  commercial: CommercialConfigSchema,
+  resource: ResourceConfigSchema,
+  performance: PerformanceConfigSchema,
+  storage: StorageConfigSchema,
+  vector: VectorConfigSchema,
+  providers: ProvidersConfigSchema,
+  subservice: SubserviceConfigSchema
+} as const;
 
-    if (crm.enabled && (!crm.apiUrl || !crm.apiKey.trim())) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['providers', 'crm'],
-        message: 'apiUrl and apiKey are required when CRM is enabled'
-      });
-    }
+export type SystemInstanceConfigDomainMap = {
+  site: z.infer<typeof SiteConfigSchema>;
+  auth: z.infer<typeof AuthConfigSchema>;
+  security: z.infer<typeof SecurityConfigSchema>;
+  feature: z.infer<typeof FeatureConfigSchema>;
+  commercial: z.infer<typeof CommercialConfigSchema>;
+  resource: z.infer<typeof ResourceConfigSchema>;
+  performance: z.infer<typeof PerformanceConfigSchema>;
+  storage: z.infer<typeof StorageConfigSchema>;
+  vector: z.infer<typeof VectorConfigSchema>;
+  providers: z.infer<typeof ProvidersConfigSchema>;
+  subservice: z.infer<typeof SubserviceConfigSchema>;
+};
 
-    if (documentParse.provider === 'customPdf' && !documentParse.customPdf.url) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['providers', 'documentParse', 'customPdf', 'url'],
-        message: 'url is required when custom PDF parsing is selected'
-      });
-    }
+/**
+ * 阶段 1: 各 Domain 稀疏 Overrides 校验 Schema 映射表。
+ * - 递归派生自 strictObject；
+ * - 严格继承 strict 语义，杜绝未知字段；
+ * - 所有字段均为 optional。
+ */
+export const systemInstanceConfigDomainOverrideSchemaMap = {
+  site: makeDomainOverrideSchema(SiteConfigSchema),
+  auth: makeDomainOverrideSchema(AuthConfigSchema),
+  security: makeDomainOverrideSchema(SecurityConfigSchema),
+  feature: makeDomainOverrideSchema(FeatureConfigSchema),
+  commercial: makeDomainOverrideSchema(CommercialConfigSchema),
+  resource: makeDomainOverrideSchema(ResourceConfigSchema),
+  performance: makeDomainOverrideSchema(PerformanceConfigBaseSchema),
+  storage: makeDomainOverrideSchema(StorageConfigSchema),
+  vector: makeDomainOverrideSchema(VectorConfigSchema),
+  providers: makeDomainOverrideSchema(ProvidersConfigBaseSchema),
+  subservice: makeDomainOverrideSchema(SubserviceConfigBaseSchema)
+} as const;
 
-    if (documentParse.provider === 'sangfor' && !documentParse.sangfor.url) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['providers', 'documentParse', 'sangfor', 'url'],
-        message: 'url is required when Sangfor parsing is selected'
-      });
-    }
+/**
+ * 获取指定 Domain 的完整内置默认配置。
+ */
+export const getDomainDefaultConfig = <T extends SystemInstanceConfigDomainKey>(
+  domain: T
+): SystemInstanceConfigDomainMap[T] => {
+  const schema = systemInstanceConfigDomainSchemaMap[domain];
+  return schema.parse({}) as SystemInstanceConfigDomainMap[T];
+};
 
-    if (agentSandbox.provider === 'sealosdevbox') {
-      const { baseUrl, image, token } = agentSandbox.sealosdevbox;
-      if (!baseUrl || !token.trim() || !image.trim()) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['subservice', 'agentSandbox', 'sealosdevbox'],
-          message: 'baseUrl, token and image are required for sealosdevbox'
-        });
-      }
-    }
+/**
+ * 阶段 1 校验：校验提交的 overrides 形态与字段类型（拒绝未知字段）。
+ */
+export const parseDomainOverrides = <T extends SystemInstanceConfigDomainKey>(
+  domain: T,
+  overrides: unknown
+): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
+  const schema = systemInstanceConfigDomainOverrideSchemaMap[domain];
+  return schema.parse(overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+};
 
-    if (agentSandbox.provider === 'opensandbox') {
-      const { apiKey, baseUrl, image, volumeManagerToken, volumeManagerUrl } =
-        agentSandbox.opensandbox;
-      if (
-        !baseUrl ||
-        !apiKey.trim() ||
-        !image.trim() ||
-        !volumeManagerUrl ||
-        !volumeManagerToken.trim()
-      ) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['subservice', 'agentSandbox', 'opensandbox'],
-          message:
-            'baseUrl, apiKey, image, volumeManagerUrl and volumeManagerToken are required for opensandbox'
-        });
-      }
-    }
-  });
+/**
+ * 两阶段校验核心：
+ * 1. 阶段 1 校验 overrides 自身形态；
+ * 2. 深度合并默认值与 overrides；
+ * 3. 阶段 2 执行完整 DomainSchema（含 superRefine 跨字段校验）终审并返回生效配置。
+ */
+export const resolveDomainEffectiveConfig = <T extends SystemInstanceConfigDomainKey>(
+  domain: T,
+  overrides?: unknown
+): SystemInstanceConfigDomainMap[T] => {
+  const defaultValues = getDomainDefaultConfig(domain);
+  const parsedOverrides = parseDomainOverrides(domain, overrides);
+  const merged = deepMergeConfig(defaultValues, parsedOverrides);
+  const fullSchema = systemInstanceConfigDomainSchemaMap[domain];
+  return fullSchema.parse(merged) as SystemInstanceConfigDomainMap[T];
+};
+
+/**
+ * 完整实例配置 Schema（包含所有 11 个 domain 的最终生效结构）。
+ */
+export const SystemInstanceConfigSchema = z.strictObject({
+  site: SiteConfigSchema.prefault({}),
+  auth: AuthConfigSchema.prefault({}),
+  security: SecurityConfigSchema.prefault({}),
+  feature: FeatureConfigSchema.prefault({}),
+  commercial: CommercialConfigSchema.prefault({}),
+  resource: ResourceConfigSchema.prefault({}),
+  performance: PerformanceConfigSchema.prefault({}),
+  storage: StorageConfigSchema.prefault({}),
+  vector: VectorConfigSchema.prefault({}),
+  providers: ProvidersConfigSchema.prefault({}),
+  subservice: SubserviceConfigSchema.prefault({})
+});
 
 export type SystemInstanceConfig = z.infer<typeof SystemInstanceConfigSchema>;
+
+/**
+ * 给定各 Domain 的 overrides 字典，合成全量生效实例配置快照。
+ */
+export const resolveSystemInstanceConfig = (
+  domainOverridesMap: Partial<{
+    [K in SystemInstanceConfigDomainKey]: unknown;
+  }> = {}
+): SystemInstanceConfig => {
+  return {
+    site: resolveDomainEffectiveConfig('site', domainOverridesMap.site),
+    auth: resolveDomainEffectiveConfig('auth', domainOverridesMap.auth),
+    security: resolveDomainEffectiveConfig('security', domainOverridesMap.security),
+    feature: resolveDomainEffectiveConfig('feature', domainOverridesMap.feature),
+    commercial: resolveDomainEffectiveConfig('commercial', domainOverridesMap.commercial),
+    resource: resolveDomainEffectiveConfig('resource', domainOverridesMap.resource),
+    performance: resolveDomainEffectiveConfig('performance', domainOverridesMap.performance),
+    storage: resolveDomainEffectiveConfig('storage', domainOverridesMap.storage),
+    vector: resolveDomainEffectiveConfig('vector', domainOverridesMap.vector),
+    providers: resolveDomainEffectiveConfig('providers', domainOverridesMap.providers),
+    subservice: resolveDomainEffectiveConfig('subservice', domainOverridesMap.subservice)
+  };
+};
 
 export const SystemInstanceConfigUpdatedBySchema = z.strictObject({
   userId: z.string().min(1).max(128).optional(),
@@ -141,25 +212,28 @@ export const SystemInstanceConfigUpdatedBySchema = z.strictObject({
   username: z.string().min(1).max(128).optional()
 });
 
-/** MongoDB 中 system_instance_configs 的完整单实例文档结构。 */
-export const SystemInstanceConfigDocumentSchema = z.strictObject({
-  _id: z.literal(SYSTEM_INSTANCE_CONFIG_ID).default(SYSTEM_INSTANCE_CONFIG_ID),
+/**
+ * MongoDB 中 system_instance_configs 的单个 Domain 文档结构。
+ */
+export const SystemInstanceDomainDocumentSchema = z.strictObject({
+  _id: SystemInstanceConfigDomainKeySchema,
   schemaVersion: z
     .literal(SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION)
     .default(SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION),
   revision: nonNegativeInteger(0),
-  config: SystemInstanceConfigSchema.prefault({}),
+  overrides: z.record(z.string(), z.unknown()).default({}),
   updatedBy: SystemInstanceConfigUpdatedBySchema.optional(),
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date())
 });
 
-export type SystemInstanceConfigDocument = z.infer<typeof SystemInstanceConfigDocumentSchema>;
+export const SystemInstanceConfigDocumentSchema = SystemInstanceDomainDocumentSchema;
 
-/** 解析并补全实例配置，供首次初始化、迁移和运行时快照加载复用。 */
+/** 解析全量生效配置，可用于初始快照构建。 */
 export const parseSystemInstanceConfig = (input: unknown): SystemInstanceConfig =>
   SystemInstanceConfigSchema.parse(input);
 
-/** 解析并补全 system_instance_configs MongoDB 文档，同时校验固定实例标识和 schema 版本。 */
-export const parseSystemInstanceConfigDocument = (input: unknown): SystemInstanceConfigDocument =>
-  SystemInstanceConfigDocumentSchema.parse(input);
+/** 解析单个 Domain MongoDB 文档。 */
+export const parseSystemInstanceDomainDocument = (input: unknown) =>
+  SystemInstanceDomainDocumentSchema.parse(input);
+export const parseSystemInstanceConfigDocument = parseSystemInstanceDomainDocument;
