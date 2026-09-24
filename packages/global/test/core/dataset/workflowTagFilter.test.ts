@@ -218,82 +218,8 @@ describe('formatCollectionFilterMatchParam', () => {
     const legacy = '{"tags":{"$and":["legacy"]}}';
     expect(formatCollectionFilterMatchParam({ value: legacy })).toBe(legacy);
     expect(formatCollectionFilterMatchParam({ value: undefined })).toBeUndefined();
-  });
 
-  it('resolves embedded $ref inside JSON strings', () => {
-    const resolveReference = (ref: unknown) => (ref[1] === 'price' ? 42 : undefined);
-
-    expect(
-      formatCollectionFilterMatchParam({
-        value: '{"tags":{"$and":[{"price":{"$gte":["$ref","node","price"]}}]}}',
-        resolveReference
-      })
-    ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 42 } }] } }));
-
-    // 无 resolveReference / 解不出值时原样保留
-    const unresolved = '{"tags":{"$and":[{"price":{"$gte":["$ref","node","price"]}}]}}';
-    expect(formatCollectionFilterMatchParam({ value: unresolved })).toBe(unresolved);
-    expect(
-      formatCollectionFilterMatchParam({ value: unresolved, resolveReference: () => undefined })
-    ).toBe(unresolved);
-
-    // 未解出的引用不能触发重新序列化，需保留调用方原始 JSON 文本
-    const formattedUnresolved = `{
-  "tags": { "${'$'}and": [{ "price": { "${'$'}gte": ["${'$'}ref", "node", "missing"] } }] }
-}`;
-    expect(
-      formatCollectionFilterMatchParam({
-        value: formattedUnresolved,
-        resolveReference: () => undefined
-      })
-    ).toBe(formattedUnresolved);
-
-    // 普通数组值不受影响
-    const plain = '{"tags":{"$and":[{"category":{"$in":["a","b"]}}]}}';
-    expect(formatCollectionFilterMatchParam({ value: plain, resolveReference })).toBe(plain);
-
-    expect(
-      formatCollectionFilterMatchParam({
-        value: { tags: { $and: [{ price: { $gte: ['$ref', 'node', 'price'] } }] } },
-        resolveReference
-      })
-    ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 42 } }] } }));
-
-    // 历史非对象条件项原样保留，同时继续解析同数组中的合法条件
-    expect(
-      formatCollectionFilterMatchParam({
-        value: { tags: { $and: ['legacy', { price: { $gte: ['$ref', 'node', 'price'] } }] } },
-        resolveReference
-      })
-    ).toBe(JSON.stringify({ tags: { $and: ['legacy', { price: { $gte: 42 } }] } }));
-  });
-
-  it('only resolves $ref on tags conditions and passes every other value through', () => {
-    const resolveReference = (ref: unknown) => (ref[1] === 'price' ? 42 : undefined);
-
-    // $ref 只在 tags 条件值上解，其它位置不再全树递归
-    const outsideTags = '{"collectionIds":[["$ref","node","price"]]}';
-    expect(formatCollectionFilterMatchParam({ value: outsideTags, resolveReference })).toBe(
-      outsideTags
-    );
-
-    // $or 与 $and 同等处理
-    expect(
-      formatCollectionFilterMatchParam({
-        value: '{"tags":{"$or":[{"price":{"$lt":["$ref","node","price"]}}]}}',
-        resolveReference
-      })
-    ).toBe(JSON.stringify({ tags: { $or: [{ price: { $lt: 42 } }] } }));
-
-    // tags 形状不合法时不当作检索载荷，原样透传
-    expect(formatCollectionFilterMatchParam({ value: { tags: { $xor: [] } } })).toBe(
-      '{"tags":{"$xor":[]}}'
-    );
-    expect(formatCollectionFilterMatchParam({ value: '{"tags":{"$and":"not-array"}}' })).toBe(
-      '{"tags":{"$and":"not-array"}}'
-    );
-
-    // 非检索载荷：字符串原样，对象保持 JSON 化
+    // 非结构化载荷：字符串原样，对象保持 JSON 化
     expect(formatCollectionFilterMatchParam({ value: 'open' })).toBe('open');
     expect(formatCollectionFilterMatchParam({ value: { a: 1 } })).toBe('{"a":1}');
 

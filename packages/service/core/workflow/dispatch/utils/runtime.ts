@@ -11,7 +11,12 @@ import {
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
-import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import {
+  formatCollectionFilterMatchParam,
+  isDatasetTagFilterValue,
+  parseMaybeJson
+} from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { adaptSangforCollectionFilterMatch } from '../../../thirdProvider/sangfor/workflowTagAdapter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**
@@ -99,6 +104,45 @@ export const getWorkflowNodeRunParams = ({
       }
     }
 
+    const formatWorkflowCollectionFilterMatch = (filterVal: unknown) => {
+      if (filterVal === undefined || filterVal === null || filterVal === '') return undefined;
+
+      const parsed = typeof filterVal === 'string' ? parseMaybeJson(filterVal) : filterVal;
+
+      // 1. FastGPT 原生结构化条件行（表单 AST）：解析 2 元组引用后序列化，立即返回，零三方开销
+      if (isDatasetTagFilterValue(parsed)) {
+        return formatCollectionFilterMatchParam({
+          value: parsed,
+          resolveReference: (refValue) =>
+            getReferenceVariableValue({
+              value: refValue as ReferenceValueType,
+              nodesMap: runtimeNodesMap,
+              variables: getRuntimeVariables(),
+              isReferenceVal: true
+            })
+        });
+      }
+
+      // 2. Sangfor 检索载荷适配：复用已解析的 parsed 结构，单趟解析，无需二次 parse
+      const adapted = adaptSangforCollectionFilterMatch({
+        value: filterVal,
+        parsedValue: parsed,
+        resolveReference: (refValue) =>
+          getReferenceVariableValue({
+            value: refValue as ReferenceValueType,
+            nodesMap: runtimeNodesMap,
+            variables: getRuntimeVariables(),
+            isReferenceVal: true
+          })
+      });
+      if (adapted !== undefined) return adapted;
+
+      // 3. 兜底透传：字符串原样返回，非检索对象转 JSON
+      if (typeof filterVal === 'string') return filterVal;
+      if (typeof filterVal === 'object') return JSON.stringify(filterVal);
+      return undefined;
+    };
+
     if (
       input.key === NodeInputKeyEnum.datasetParams &&
       value &&
@@ -108,30 +152,14 @@ export const getWorkflowNodeRunParams = ({
       const datasetParams = value as Record<string, unknown>;
       value = {
         ...datasetParams,
-        collectionFilterMatch: formatCollectionFilterMatchParam({
-          value: datasetParams.collectionFilterMatch,
-          resolveReference: (refValue) =>
-            getReferenceVariableValue({
-              value: refValue as ReferenceValueType,
-              nodesMap: runtimeNodesMap,
-              variables: getRuntimeVariables(),
-              isReferenceVal: true
-            })
-        })
+        collectionFilterMatch: formatWorkflowCollectionFilterMatch(
+          datasetParams.collectionFilterMatch
+        )
       };
     }
 
     if (input.key === NodeInputKeyEnum.collectionFilterMatch) {
-      const formatted = formatCollectionFilterMatchParam({
-        value,
-        resolveReference: (refValue) =>
-          getReferenceVariableValue({
-            value: refValue as ReferenceValueType,
-            nodesMap: runtimeNodesMap,
-            variables: getRuntimeVariables(),
-            isReferenceVal: true
-          })
-      });
+      const formatted = formatWorkflowCollectionFilterMatch(value);
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = formatted;
       }

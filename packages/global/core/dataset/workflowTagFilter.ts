@@ -64,12 +64,20 @@ export const DatasetTagFilterFieldEnum = {
 export type DatasetTagFilterField =
   (typeof DatasetTagFilterFieldEnum)[keyof typeof DatasetTagFilterFieldEnum];
 
-/** 工作流标签过滤支持的标签类型。string 只接受接口下发。 */
-const WorkflowTagFilterTagTypeSchema = z.enum([
-  DatasetCollectionTagTypeEnum.string,
+/**
+ * 界面下拉支持配置的标签类型。
+ * string 类型仅由接口/OpenAPI 下发，不进入界面选择器下拉。
+ */
+export const UI_SUPPORTED_TAG_TYPES = [
   DatasetCollectionTagTypeEnum.number,
   DatasetCollectionTagTypeEnum.datetime,
   DatasetCollectionTagTypeEnum.array
+] as const;
+
+/** 工作流标签过滤支持的标签类型。string 只接受接口下发。 */
+export const WorkflowTagFilterTagTypeSchema = z.enum([
+  DatasetCollectionTagTypeEnum.string,
+  ...UI_SUPPORTED_TAG_TYPES
 ] as const);
 export type WorkflowTagFilterTagType = z.infer<typeof WorkflowTagFilterTagTypeSchema>;
 
@@ -152,12 +160,19 @@ const tagFilterOperators: Record<WorkflowTagFilterTagType, TagFilterOperator[]> 
   ]
 };
 
-const createTimeOperators = tagFilterOperators[DatasetCollectionTagTypeEnum.number].filter(
-  (item) => item.value === '$gte' || item.value === '$lte'
-);
-const collectionIdOperators = tagFilterOperators[DatasetCollectionTagTypeEnum.array].filter(
-  (item) => item.value === '$in'
-);
+const createTimeOperators: TagFilterOperator[] = [
+  { labelKey: 'workflow:tag_filter_op_gte', value: '$gte', icon: 'math/greaterEqual' },
+  {
+    labelKey: 'workflow:tag_filter_op_lte',
+    value: '$lte',
+    icon: 'math/greaterEqual',
+    iconFlip: true
+  }
+];
+
+const collectionIdOperators: TagFilterOperator[] = [
+  { labelKey: 'workflow:tag_filter_op_in', value: '$in' }
+];
 
 export const createEmptyTagFilterCondition = (): DatasetTagFilterCondition => ({
   tag: '',
@@ -176,8 +191,8 @@ export const isWorkflowTagFilterTagType = (
 ): tagType is WorkflowTagFilterTagType => WorkflowTagFilterTagTypeSchema.safeParse(tagType).success;
 
 /**
- * 只由接口下发的标签类型：不进条件行下拉，界面也就没有入口创建它。
- * 因此界面也无权按「下拉候选」判断它是否还有效，剪枝时必须放行。
+ * 只由接口下发的标签类型：不进条件行下拉，界面无入口创建。
+ * 因此界面按下拉候选求交集时不予展示，剪枝时必须保留。
  */
 export const isInterfaceOnlyTagFilterTagType = (tagType?: DatasetCollectionTagType) =>
   tagType === DatasetCollectionTagTypeEnum.string;
@@ -212,7 +227,7 @@ export const getTagFilterOpsByCondition = (condition: DatasetTagFilterCondition)
   return getTagFilterOpsByType(condition.tagType);
 };
 
-const parseMaybeJson = (value: unknown): unknown => {
+export const parseMaybeJson = (value: unknown): unknown => {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   if (!trimmed) return value;
@@ -254,11 +269,15 @@ export const intersectWorkflowTagOptions = (
 ): WorkflowTagFilterOption[] => {
   if (tagLists.length === 0) return [];
 
-  const maps = tagLists.map((list) => {
+  const datasetMaps = tagLists.map((list) => {
     const map = new Map<string, WorkflowTagFilterOption>();
     for (const item of list) {
-      if (!isWorkflowTagFilterTagType(item.tagType)) continue;
-      if (isInterfaceOnlyTagFilterTagType(item.tagType)) continue;
+      if (
+        !isWorkflowTagFilterTagType(item.tagType) ||
+        isInterfaceOnlyTagFilterTagType(item.tagType)
+      ) {
+        continue;
+      }
       const key = formatTagOptionKey(item.tag, item.tagType);
       const prev = map.get(key);
       const options = Array.from(
@@ -269,14 +288,14 @@ export const intersectWorkflowTagOptions = (
     return map;
   });
 
-  const [first, ...rest] = maps;
-  if (!first) return [];
+  const [firstMap, ...restMaps] = datasetMaps;
+  if (!firstMap) return [];
 
   const result: WorkflowTagFilterOption[] = [];
-  for (const [key, option] of first) {
-    if (!rest.every((item) => item.has(key))) continue;
+  for (const [key, option] of firstMap) {
+    if (!restMaps.every((item) => item.has(key))) continue;
     const mergedOptions = new Set(option.options);
-    for (const item of rest) {
+    for (const item of restMaps) {
       const other = item.get(key);
       other?.options.forEach((value) => mergedOptions.add(value));
     }
@@ -340,6 +359,33 @@ const toIdList = (value: unknown): string[] => {
   return [];
 };
 
+const mergeTimeRange = (conditions: DatasetTagFilterCondition[]) => {
+  const createTime: { $gte?: string; $lte?: string } = {};
+  for (const condition of conditions) {
+    if (condition.field !== DatasetTagFilterFieldEnum.createTime || !condition.op) continue;
+    const time = toCreateTimeString(condition.value);
+    if (!time) continue;
+    if (condition.op === '$gte') {
+      if (!createTime.$gte || time > createTime.$gte) createTime.$gte = time;
+    } else if (condition.op === '$lte') {
+      if (!createTime.$lte || time < createTime.$lte) createTime.$lte = time;
+    }
+  }
+  return Object.keys(createTime).length > 0 ? createTime : undefined;
+};
+
+const mergeCollectionIds = (conditions: DatasetTagFilterCondition[]) => {
+  const idLists = conditions
+    .filter(
+      (condition) =>
+        condition.field === DatasetTagFilterFieldEnum.collectionId && condition.op === '$in'
+    )
+    .map((condition) => toIdList(condition.value))
+    .filter((list) => list.length > 0);
+  const collectionIds = [...new Set(idLists.flat())];
+  return collectionIds.length > 0 ? collectionIds : undefined;
+};
+
 /**
  * 把条件行编成检索入口 JSON：tags + 可选 createTime / collectionIds。
  * logic 只作用于 tags；文件属性在检索协议中是顶层约束，始终与标签结果求交集。
@@ -353,38 +399,18 @@ export const serializeDatasetTagFilterValue = (
     .map(buildTagConditionObject)
     .filter((item): item is TagConditionObject => Boolean(item));
 
-  const createTime: { $gte?: string; $lte?: string } = {};
-  for (const condition of value.conditions) {
-    if (condition.field !== DatasetTagFilterFieldEnum.createTime || !condition.op) continue;
-    const time = toCreateTimeString(condition.value);
-    if (!time) continue;
-    if (condition.op === '$gte') {
-      if (!createTime.$gte || time > createTime.$gte) createTime.$gte = time;
-      continue;
-    }
-    if (condition.op === '$lte') {
-      if (!createTime.$lte || time < createTime.$lte) createTime.$lte = time;
-    }
-  }
-
-  const idLists = value.conditions
-    .filter(
-      (condition) =>
-        condition.field === DatasetTagFilterFieldEnum.collectionId && condition.op === '$in'
-    )
-    .map((condition) => toIdList(condition.value))
-    .filter((list) => list.length > 0);
-  const collectionIds = [...new Set(idLists.flat())];
+  const createTime = mergeTimeRange(value.conditions);
+  const collectionIds = mergeCollectionIds(value.conditions);
 
   const payload: Record<string, unknown> = {};
   if (tagConditions.length > 0) {
     const key = value.logic === DatasetTagFilterLogicEnum.OR ? '$or' : '$and';
     payload.tags = { [key]: tagConditions };
   }
-  if (createTime.$gte || createTime.$lte) {
+  if (createTime) {
     payload.createTime = createTime;
   }
-  if (collectionIds.length > 0) {
+  if (collectionIds) {
     payload.collectionIds = collectionIds;
   }
   if (Object.keys(payload).length === 0) return undefined;
@@ -407,120 +433,10 @@ const resolveConditionValue = (
   return { ...condition, value: resolveReference(condition.value) };
 };
 
-/** JSON 字符串内的标签引用用 3 元组标记，与条件行的 2 元组 `[nodeId, outputKey]` 区分。 */
-const REF_MARKER = '$ref';
-
-const isEmbeddedRef = (value: unknown): value is [string, string, string] =>
-  Array.isArray(value) &&
-  value.length === 3 &&
-  value[0] === REF_MARKER &&
-  typeof value[1] === 'string' &&
-  typeof value[2] === 'string';
-
-/**
- * 检索载荷结构：顶层放文件属性，tags 下按逻辑词挂条件项数组。
- * `{ tags: { $and | $or: unknown[] }, createTime?, collectionIds? }`
- * 合法条件项是对象；历史字符串等非对象项由解引用层原样放回。
- */
-type DatasetSearchValue = {
-  tags?: { $and?: unknown[]; $or?: unknown[] };
-};
-
-/** 排除 null 与数组，只认普通对象。 */
-const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
-
-/**
- * 把「检索载荷」和任意 JSON 区分开：只有它才走 $ref 解引用，其余值原样透传。
- */
-const isDatasetSearchValue = (value: unknown): value is DatasetSearchValue => {
-  if (!isPlainRecord(value)) return false;
-  const tags = value.tags;
-  if (tags === undefined) return true;
-  if (!isPlainRecord(tags)) return false;
-  return Object.entries(tags).every(
-    ([logic, conditions]) => (logic === '$and' || logic === '$or') && Array.isArray(conditions)
-  );
-};
-
-/**
- * 解一条条件项。
- * 条件项结构：`{ [tag]: { [$op]: 值 } }`，是对象不是字符串；
- * 只有「值」位上是 `['$ref', nodeId, outputId]` 才解成引用值，字符串等其它值直接放回。
- * 历史 JSON 里混进来的字符串等非对象项在这里原样放回。
- * 只在真有替换时重建对象，未变化时返回原引用，供上层判断要不要重新序列化。
- */
-const resolveConditionRef = (
-  condition: unknown,
-  resolveReference: (value: unknown) => unknown
-): unknown => {
-  if (!isPlainRecord(condition)) return condition;
-
-  let changed = false;
-  const entries = Object.entries(condition).map(([tag, opObject]) => {
-    if (!isPlainRecord(opObject)) return [tag, opObject] as const;
-
-    let opChanged = false;
-    const ops = Object.entries(opObject).map(([op, opValue]) => {
-      if (!isEmbeddedRef(opValue)) return [op, opValue] as const;
-      const resolvedValue = resolveReference([opValue[1], opValue[2]]);
-      if (resolvedValue === undefined || resolvedValue === null) {
-        return [op, opValue] as const;
-      }
-      opChanged = true;
-      return [op, resolvedValue] as const;
-    });
-    if (!opChanged) return [tag, opObject] as const;
-
-    changed = true;
-    return [tag, Object.fromEntries(ops)] as const;
-  });
-
-  return changed ? Object.fromEntries(entries) : condition;
-};
-
-/**
- * 解检索载荷里内嵌的 `['$ref', nodeId, outputId]`。
- *
- * 检索载荷结构：`{ tags: { $and | $or: 条件项[] }, createTime?, collectionIds? }`。
- * 条件项是对象 `{ [tag]: { [$op]: 值 } }`，引用只可能出现在「值」这一位上，
- * 项本身不是对象（含字符串）时原样放回，故只走 tags → 条件项 → 操作符值这一层，不做全树递归。
- *
- * 解不出值（或未注入 resolveReference）时保留原 `$ref`，避免产出检索层会拒绝的残缺条件对象。
- * 一处都没解到时返回入参本身（引用相等），调用方据此决定要不要重新序列化：
- * 字符串输入没变就原样返回，不去重排用户原来的 JSON 文本。
- */
-const resolveSearchValueRefs = (
-  value: DatasetSearchValue,
-  resolveReference: (value: unknown) => unknown
-): DatasetSearchValue => {
-  if (!value.tags) return value;
-
-  let changed = false;
-  const tags: NonNullable<DatasetSearchValue['tags']> = {};
-
-  for (const logic of ['$and', '$or'] as const) {
-    const conditions = value.tags[logic];
-    if (!conditions) continue;
-
-    const resolved = conditions.map((condition) =>
-      resolveConditionRef(condition, resolveReference)
-    );
-    if (resolved.every((item, index) => item === conditions[index])) {
-      tags[logic] = conditions;
-      continue;
-    }
-
-    changed = true;
-    tags[logic] = resolved;
-  }
-
-  return changed ? { ...value, tags } : value;
-};
-
 /**
  * 运行时把 collectionFilterMatch 统一成检索 JSON 字符串。
- * 输入可能是条件行结构、检索载荷 JSON（字符串或对象）、或历史遗留的普通字符串。
+ * 输入是条件行结构时，先解析行内引用再序列化为检索载荷；
+ * 输入是普通字符串或对象时保持透传或序列化。
  */
 export const formatCollectionFilterMatchParam = ({
   value,
@@ -546,15 +462,7 @@ export const formatCollectionFilterMatchParam = ({
     return serializeDatasetTagFilterValue(resolved);
   }
 
-  // 检索载荷结构：{ tags: { $and | $or: [{ [tag]: { [$op]: 值 } }] }, createTime?, collectionIds? }
-  // 条件项是对象，值上的 $ref 才解；字符串输入若一处都没解到，原样返回它本身
-  if (isDatasetSearchValue(parsed)) {
-    const resolved = resolveSearchValueRefs(parsed, resolveReference);
-    if (typeof value === 'string') return resolved === parsed ? value : JSON.stringify(resolved);
-    return JSON.stringify(resolved);
-  }
-
-  // 两种结构都不是：字符串原样返回，对象保持 JSON 化，其它原始值丢弃
+  // 字符串原样返回，对象保持 JSON 化，其它无检索表达的原始值丢弃
   if (typeof value === 'string') return value;
   if (typeof value === 'object') return JSON.stringify(value);
   return undefined;
