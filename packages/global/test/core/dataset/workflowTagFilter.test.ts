@@ -13,7 +13,8 @@ import {
   normalizeLegacyDatasetTagFilterValue,
   pruneTagFilterConditions,
   resolveDatasetTagFilterVersion,
-  serializeDatasetTagFilterValue
+  serializeDatasetTagFilterValue,
+  type DatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/workflowTagFilter';
 
 describe('dataset tag filter version', () => {
@@ -102,6 +103,47 @@ describe('dataset tag filter options', () => {
       '$empty',
       '$notEmpty'
     ]);
+    expect(
+      getTagFilterOpsByCondition({ tagType: DatasetCollectionTagTypeEnum.string }).map(
+        (item) => item.value
+      )
+    ).toEqual([
+      '$eq',
+      '$ne',
+      '$contains',
+      '$notContains',
+      '$startsWith',
+      '$endsWith',
+      '$regex',
+      '$empty',
+      '$notEmpty'
+    ]);
+  });
+
+  it('accepts interface-only string conditions without offering them as options', () => {
+    const value: DatasetTagFilterValue = {
+      logic: DatasetTagFilterLogicEnum.AND,
+      conditions: [
+        {
+          tag: 'title',
+          tagType: DatasetCollectionTagTypeEnum.string,
+          op: '$contains',
+          value: 'guide'
+        }
+      ]
+    };
+
+    expect(isDatasetTagFilterValue(value)).toBe(true);
+    expect(serializeDatasetTagFilterValue(value)).toBe(
+      JSON.stringify({ tags: { $and: [{ title: { $contains: 'guide' } }] } })
+    );
+
+    expect(
+      intersectWorkflowTagOptions([
+        [{ tag: 'title', tagType: DatasetCollectionTagTypeEnum.string, options: [] }],
+        [{ tag: 'title', tagType: DatasetCollectionTagTypeEnum.string, options: [] }]
+      ])
+    ).toEqual([]);
   });
 });
 
@@ -176,6 +218,14 @@ describe('formatCollectionFilterMatchParam', () => {
     const legacy = '{"tags":{"$and":["legacy"]}}';
     expect(formatCollectionFilterMatchParam({ value: legacy })).toBe(legacy);
     expect(formatCollectionFilterMatchParam({ value: undefined })).toBeUndefined();
+
+    // 非结构化载荷：字符串原样，对象保持 JSON 化
+    expect(formatCollectionFilterMatchParam({ value: 'open' })).toBe('open');
+    expect(formatCollectionFilterMatchParam({ value: { a: 1 } })).toBe('{"a":1}');
+
+    // 无检索表达的原始值丢弃
+    expect(formatCollectionFilterMatchParam({ value: 42 })).toBeUndefined();
+    expect(formatCollectionFilterMatchParam({ value: true })).toBeUndefined();
   });
 });
 
@@ -196,5 +246,27 @@ describe('pruneTagFilterConditions', () => {
       { field: DatasetTagFilterFieldEnum.createTime, op: '$gte', value: 1 }
     ]);
     expect(isDatasetTagFilterValue(result)).toBe(true);
+  });
+
+  it('keeps interface-only string rows the page cannot render', () => {
+    const stringCondition = {
+      tag: 'title',
+      tagType: DatasetCollectionTagTypeEnum.string,
+      op: '$eq',
+      value: 'guide'
+    };
+
+    const result = pruneTagFilterConditions(
+      {
+        logic: DatasetTagFilterLogicEnum.AND,
+        conditions: [
+          stringCondition,
+          { tag: 'gone', tagType: DatasetCollectionTagTypeEnum.number, op: '$eq', value: 1 }
+        ]
+      },
+      []
+    );
+
+    expect(result.conditions).toEqual([stringCondition]);
   });
 });

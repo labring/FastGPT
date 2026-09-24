@@ -4,14 +4,13 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { WorkflowVariableStateLike } from '../../types/runtime';
 import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
-import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { formatWorkflowCollectionFilterMatch } from './tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**
@@ -99,6 +98,14 @@ export const getWorkflowNodeRunParams = ({
       }
     }
 
+    const resolveReferenceValue = (refValue: any) =>
+      getReferenceVariableValue({
+        value: refValue,
+        nodesMap: runtimeNodesMap,
+        variables: getRuntimeVariables(),
+        isReferenceVal: true
+      });
+
     if (
       input.key === NodeInputKeyEnum.datasetParams &&
       value &&
@@ -108,29 +115,17 @@ export const getWorkflowNodeRunParams = ({
       const datasetParams = value as Record<string, unknown>;
       value = {
         ...datasetParams,
-        collectionFilterMatch: formatCollectionFilterMatchParam({
+        collectionFilterMatch: formatWorkflowCollectionFilterMatch({
           value: datasetParams.collectionFilterMatch,
-          resolveReference: (refValue) =>
-            getReferenceVariableValue({
-              value: refValue as ReferenceValueType,
-              nodesMap: runtimeNodesMap,
-              variables: getRuntimeVariables(),
-              isReferenceVal: true
-            })
+          resolveReference: resolveReferenceValue
         })
       };
     }
 
     if (input.key === NodeInputKeyEnum.collectionFilterMatch) {
-      const formatted = formatCollectionFilterMatchParam({
+      const formatted = formatWorkflowCollectionFilterMatch({
         value,
-        resolveReference: (refValue) =>
-          getReferenceVariableValue({
-            value: refValue as ReferenceValueType,
-            nodesMap: runtimeNodesMap,
-            variables: getRuntimeVariables(),
-            isReferenceVal: true
-          })
+        resolveReference: resolveReferenceValue
       });
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = formatted;

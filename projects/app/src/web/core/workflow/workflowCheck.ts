@@ -134,10 +134,11 @@ const isEmptyWorkflowInputValue = (value: unknown) =>
   value === '' ||
   (Array.isArray(value) && value.length === 0);
 
-/** hidden / 非必填 any 不参与通用必填校验，避免系统 hidden 字段误报或与节点特判重复。 */
+/** hidden / off 不渲染，非必填 any 不参与通用必填校验，避免系统 hidden 字段误报或与节点特判重复。 */
 const shouldSkipGenericRequiredInputCheck = (input: FlowNodeInputItemType) => {
   const renderType = getSelectedInputRenderType(input);
-  if (renderType === FlowNodeInputTypeEnum.hidden) return true;
+  if (renderType === FlowNodeInputTypeEnum.hidden || renderType === FlowNodeInputTypeEnum.off)
+    return true;
   if (!input.valueType) return true;
   if (input.valueType === WorkflowIOValueTypeEnum.boolean) return true;
   if (input.valueType === WorkflowIOValueTypeEnum.any) {

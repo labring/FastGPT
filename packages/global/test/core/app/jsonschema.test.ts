@@ -1446,6 +1446,47 @@ describe('nodeInputs2JsonSchema', () => {
       renderTypeList: [FlowNodeInputTypeEnum.hidden]
     });
   });
+
+  it('should keep off inputs exposed to third-party callers with metadata preserved', () => {
+    const inputs = [
+      {
+        key: 'offInput',
+        label: 'Off',
+        valueType: WorkflowIOValueTypeEnum.number,
+        defaultValue: 3,
+        required: true,
+        renderTypeList: [FlowNodeInputTypeEnum.off]
+      }
+    ] as FlowNodeInputItemType[];
+
+    const jsonSchema = nodeInputs2JsonSchema({
+      inputs,
+      includeNodeMetadata: true,
+      filterInternalInputs: true
+    });
+    const restored = jsonSchema2NodeInput({
+      jsonSchema,
+      schemaType: 'systemTool'
+    });
+
+    // 与 hidden 不同：off 只是不渲染，第三方入参 schema 仍需暴露
+    expect(jsonSchema.properties?.offInput).toMatchObject({
+      type: 'number',
+      default: 3,
+      'x-fastgpt-node-input': {
+        valueType: WorkflowIOValueTypeEnum.number,
+        defaultValue: 3,
+        renderTypeList: [FlowNodeInputTypeEnum.off]
+      }
+    });
+    expect(jsonSchema.required).toEqual(['offInput']);
+    expect(restored[0]).toMatchObject({
+      key: 'offInput',
+      valueType: WorkflowIOValueTypeEnum.number,
+      defaultValue: 3,
+      renderTypeList: [FlowNodeInputTypeEnum.off]
+    });
+  });
 });
 
 describe('nodeOutputs2JsonSchema', () => {

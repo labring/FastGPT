@@ -32,6 +32,14 @@ describe('getTagFilterAllowedValueTypes', () => {
     expect(types).toEqual([WorkflowIOValueTypeEnum.number]);
   });
 
+  it('returns [string, number] for string tag, which the search layer stringifies', () => {
+    const types = getTagFilterAllowedValueTypes({
+      tagType: DatasetCollectionTagTypeEnum.string,
+      op: '$contains'
+    });
+    expect(types).toEqual([WorkflowIOValueTypeEnum.string, WorkflowIOValueTypeEnum.number]);
+  });
+
   it('returns [arrayString] for array tag with $in/$is/$isNot/$notIn', () => {
     for (const op of ['$in', '$notIn', '$is', '$isNot']) {
       const types = getTagFilterAllowedValueTypes({
