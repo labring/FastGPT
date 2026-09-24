@@ -101,7 +101,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
           </HStack>
           <Button onClick={onOpenCreate}>{t('account_team:create_invitation_link')}</Button>
         </Flex>
-        <FixedTableContainer horizontalScroll flush>
+        <FixedTableContainer flush>
           <Table fontSize={'sm'} overflow={'unset'}>
             <Thead>
               <Tr bgColor={'white !important'}>

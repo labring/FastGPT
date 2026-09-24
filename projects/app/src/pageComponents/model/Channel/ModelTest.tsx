@@ -196,7 +196,6 @@ const ModelTest = ({
     >
       <Flex flex={'1 0 0'} h={0} minH={0} flexDirection="column" overflow="hidden">
         <FixedTableLayout
-          horizontalScroll
           scrollMode="normal"
           rootProps={{ flex: '1 0 0', h: 0 }}
           bodyProps={{ flex: '1 0 0', h: 0, fontSize: 'sm' }}

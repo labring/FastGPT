@@ -20,7 +20,7 @@ export type FixedTableRenderContext = {
 type FixedTableLayoutProps = {
   /** virtual 模式由调用方渲染虚拟 Body，normal 模式由调用方渲染普通 Body。 */
   scrollMode: FixedTableScrollMode;
-  /** 默认按容器宽度分配列；仅显式开启时允许内容自由撑宽。 */
+  /** 默认允许内容自由撑宽并横向滚动；显式设为 false 时按容器宽度分配列。 */
   horizontalScroll?: boolean;
   renderHeader?: (context: FixedTableRenderContext) => ReactNode;
   renderBody: (context: FixedTableRenderContext) => ReactNode;
@@ -150,7 +150,7 @@ const splitHorizontalPadding = (props: BoxProps = {}) => {
 /** 固定表头与单一表体滚动区；横向留白只由各自的内容外层 Box 承担。 */
 export const FixedTableLayout = ({
   scrollMode,
-  horizontalScroll = false,
+  horizontalScroll = true,
   renderHeader,
   renderBody,
   footer,
@@ -164,7 +164,7 @@ export const FixedTableLayout = ({
   const { headerContainerRef, bodyContainerRef, headerTableWidth } = useFixedTableLayout(bodyRef);
   const renderContext = { bodyContainerRef, headerTableWidth };
   const { paddingProps, layoutProps } = splitHorizontalPadding(rootProps);
-  const contentPadding = { px: 4, ...paddingProps };
+  const contentPadding = { px: 0, ...paddingProps };
   const { paddingProps: headerPadding, layoutProps: headerStyles } =
     splitHorizontalPadding(headerProps);
   const { paddingProps: bodyPadding, layoutProps: bodyStyles } = splitHorizontalPadding(bodyProps);
@@ -411,7 +411,7 @@ export const FixedTableContainer = React.forwardRef<HTMLDivElement, FixedTableCo
       children,
       footer,
       scrollContainer,
-      horizontalScroll = false,
+      horizontalScroll = true,
       flush = false,
       tableVariant,
       bodyBg,

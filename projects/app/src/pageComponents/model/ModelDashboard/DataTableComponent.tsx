@@ -280,7 +280,6 @@ const DataTableComponent = ({
   return (
     <MyBox h={'100%'} minH={0} display="flex" flexDirection="column" overflow="hidden">
       <FixedTableLayout
-        horizontalScroll
         scrollMode="normal"
         bodyProps={{ fontSize: 'sm' }}
         renderHeader={({ headerTableWidth }) => (

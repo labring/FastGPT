@@ -139,7 +139,7 @@ const Wecom = ({
         </Flex>
       </Flex>
       <FixedTableContainer mt={3} flex={'1 1 0'} h={0} maxH="none">
-        <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
+        <Table variant={'simple'} w={'100%'} fontSize={'sm'}>
           <Thead>
             <Tr>
               <Th>{t('common:Name')} </Th>
