@@ -25,26 +25,45 @@ import {
 } from './api';
 import { DatasetCollectionCreatePath } from './createPath';
 import {
-  BatchDownloadDatasetCollectionsBodySchema,
+  BatchDownloadDatasetCollectionsQuerySchema,
+  GetDownloadTicketDatasetCollectionsBodySchema,
+  GetDownloadTicketDatasetCollectionsResponseSchema,
   BatchDownloadDatasetCollectionsResponseSchema
 } from './batchDownloadApi';
 
 export const DatasetCollectionPath: OpenAPIPath = {
   ...DatasetCollectionCreatePath,
-  '/core/dataset/collection/batchDownload': {
+  '/core/dataset/collection/getDownloadTicket': {
     post: {
-      summary: '批量下载知识库集合原始文件',
-      description: '将选中的通用知识库文件和文件夹流式归档为 ZIP 文件',
+      summary: '申请知识库集合批量下载凭证',
+      description: '校验并准备通用知识库集合批量下载所需的短效一次性凭证',
       tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
       requestBody: {
         content: {
           'application/json': {
-            schema: BatchDownloadDatasetCollectionsBodySchema
-          },
-          'application/x-www-form-urlencoded': {
-            schema: BatchDownloadDatasetCollectionsBodySchema
+            schema: GetDownloadTicketDatasetCollectionsBodySchema
           }
         }
+      },
+      responses: {
+        200: {
+          description: '成功返回短效一次性下载凭证',
+          content: {
+            'application/json': {
+              schema: GetDownloadTicketDatasetCollectionsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/collection/batchDownload': {
+    get: {
+      summary: '下载知识库集合归档文件',
+      description: '使用短效凭证将预检后的集合原始文件流式归档为 ZIP 文件',
+      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      requestParams: {
+        query: BatchDownloadDatasetCollectionsQuerySchema
       },
       responses: {
         200: {

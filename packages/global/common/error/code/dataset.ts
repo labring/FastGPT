@@ -36,7 +36,8 @@ export enum DatasetErrEnum {
   archiveMemberBusy = 'archiveMemberBusy',
   archiveUnavailable = 'archiveUnavailable',
   archiveInvalidFile = 'archiveInvalidFile',
-  archiveUnsupportedDataset = 'archiveUnsupportedDataset'
+  archiveUnsupportedDataset = 'archiveUnsupportedDataset',
+  archiveInvalidTicket = 'archiveInvalidTicket'
 }
 const datasetErr = [
   {
@@ -161,6 +162,11 @@ const datasetErr = [
     statusText: DatasetErrEnum.archiveUnsupportedDataset,
     message: i18nT('dataset:archive.unsupported_dataset'),
     httpStatus: 422
+  },
+  {
+    statusText: DatasetErrEnum.archiveInvalidTicket,
+    message: i18nT('dataset:archive.invalid_ticket'),
+    httpStatus: 410
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

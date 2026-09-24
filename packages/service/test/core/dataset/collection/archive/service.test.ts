@@ -4,7 +4,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const mocks = vi.hoisted(() => ({
   findArchiveCollectionsByIds: vi.fn(),
-  findArchiveCollectionsByParentIds: vi.fn()
+  iterateArchiveCollectionsByParentIds: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/archive/entity', () => mocks);
@@ -102,6 +102,15 @@ const collections = [
   })
 ];
 
+const iterateCollections = <T>(items: T[], onClose?: () => void) =>
+  (async function* () {
+    try {
+      yield* items;
+    } finally {
+      onClose?.();
+    }
+  })();
+
 describe('buildDatasetArchivePlan', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -109,9 +118,11 @@ describe('buildDatasetArchivePlan', () => {
       async ({ collectionIds }: { collectionIds: string[] }) =>
         collections.filter((item) => collectionIds.includes(item._id))
     );
-    mocks.findArchiveCollectionsByParentIds.mockImplementation(
-      async ({ parentIds }: { parentIds: string[] }) =>
-        collections.filter((item) => item.parentId && parentIds.includes(item.parentId))
+    mocks.iterateArchiveCollectionsByParentIds.mockImplementation(
+      ({ parentIds }: { parentIds: string[] }) =>
+        iterateCollections(
+          collections.filter((item) => item.parentId && parentIds.includes(item.parentId))
+        )
     );
   });
 
@@ -151,6 +162,83 @@ describe('buildDatasetArchivePlan', () => {
     expect(plan.files).toEqual([]);
   });
 
+  it('reads every file from a wide folder through the bounded cursor', async () => {
+    const wideFolder = collection({
+      _id: ids.folder,
+      parentId: null,
+      name: 'Wide folder',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const children = Array.from({ length: 501 }, (_, index) =>
+      collection({
+        _id: (index + 1).toString(16).padStart(24, '0'),
+        parentId: wideFolder._id,
+        name: `File ${index + 1}`,
+        type: DatasetCollectionTypeEnum.file,
+        fileId: `dataset/${datasetId}/file-${index + 1}`
+      })
+    );
+    mocks.findArchiveCollectionsByIds.mockResolvedValueOnce([wideFolder]);
+    mocks.iterateArchiveCollectionsByParentIds.mockReturnValue(iterateCollections(children));
+
+    const plan = await buildDatasetArchivePlan({
+      teamId,
+      datasetId,
+      datasetName: 'Knowledge Base',
+      collectionIds: [wideFolder._id],
+      maxFiles: 1000
+    });
+
+    expect(plan.files).toHaveLength(501);
+    expect(mocks.iterateArchiveCollectionsByParentIds).toHaveBeenCalledOnce();
+  });
+
+  it('stops and closes the cursor as soon as the file limit is exceeded', async () => {
+    const wideFolder = collection({
+      _id: ids.folder,
+      parentId: null,
+      name: 'Wide folder',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const children = Array.from({ length: 500 }, (_, index) =>
+      collection({
+        _id: (index + 1).toString(16).padStart(24, '0'),
+        parentId: wideFolder._id,
+        name: `File ${index + 1}`,
+        type: DatasetCollectionTypeEnum.file,
+        fileId: `dataset/${datasetId}/file-${index + 1}`
+      })
+    );
+    let yieldedCount = 0;
+    let iteratorClosed = false;
+    mocks.findArchiveCollectionsByIds.mockResolvedValueOnce([wideFolder]);
+    mocks.iterateArchiveCollectionsByParentIds.mockReturnValue(
+      (async function* () {
+        try {
+          for (const child of children) {
+            yieldedCount += 1;
+            yield child;
+          }
+        } finally {
+          iteratorClosed = true;
+        }
+      })()
+    );
+
+    await expect(
+      buildDatasetArchivePlan({
+        teamId,
+        datasetId,
+        datasetName: 'Knowledge Base',
+        collectionIds: [wideFolder._id],
+        maxFiles: 200
+      })
+    ).rejects.toBe(DatasetErrEnum.archiveLimitExceeded);
+
+    expect(yieldedCount).toBe(201);
+    expect(iteratorClosed).toBe(true);
+  });
+
   it('excludes path-only ancestors from collection permission checks', async () => {
     const plan = await buildDatasetArchivePlan({
       teamId,
@@ -172,10 +260,12 @@ describe('buildDatasetArchivePlan', () => {
         return collections.filter((item) => item._id === ids.folder);
       });
     } else {
-      mocks.findArchiveCollectionsByParentIds.mockImplementationOnce(async () => {
-        cancelled = true;
-        return collections.filter((item) => item.parentId === ids.folder);
-      });
+      mocks.iterateArchiveCollectionsByParentIds.mockImplementationOnce(() =>
+        (async function* () {
+          cancelled = true;
+          yield* collections.filter((item) => item.parentId === ids.folder);
+        })()
+      );
     }
     await expect(
       buildDatasetArchivePlan({
@@ -189,7 +279,7 @@ describe('buildDatasetArchivePlan', () => {
       })
     ).rejects.toBe(error);
     expect(mocks.findArchiveCollectionsByIds).toHaveBeenCalledTimes(phase === 'ancestors' ? 1 : 2);
-    expect(mocks.findArchiveCollectionsByParentIds).toHaveBeenCalledTimes(
+    expect(mocks.iterateArchiveCollectionsByParentIds).toHaveBeenCalledTimes(
       phase === 'ancestors' ? 0 : 1
     );
   });
@@ -232,9 +322,11 @@ describe('buildDatasetArchivePlan', () => {
       async ({ collectionIds }: { collectionIds: string[] }) =>
         cycleCollections.filter((item) => collectionIds.includes(item._id))
     );
-    mocks.findArchiveCollectionsByParentIds.mockImplementation(
-      async ({ parentIds }: { parentIds: string[] }) =>
-        cycleCollections.filter((item) => item.parentId && parentIds.includes(item.parentId))
+    mocks.iterateArchiveCollectionsByParentIds.mockImplementation(
+      ({ parentIds }: { parentIds: string[] }) =>
+        iterateCollections(
+          cycleCollections.filter((item) => item.parentId && parentIds.includes(item.parentId))
+        )
     );
 
     const plan = await buildDatasetArchivePlan({
@@ -247,7 +339,7 @@ describe('buildDatasetArchivePlan', () => {
     expect(new Set(plan.directories.map((item) => item.collectionId))).toEqual(
       new Set([ids.folder, ids.childFolder])
     );
-    expect(mocks.findArchiveCollectionsByParentIds).toHaveBeenCalledTimes(2);
+    expect(mocks.iterateArchiveCollectionsByParentIds).toHaveBeenCalledTimes(2);
   });
 });
 

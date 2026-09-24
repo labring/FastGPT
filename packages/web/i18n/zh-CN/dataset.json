@@ -16,6 +16,7 @@
   "batch_download": "批量下载",
   "archive.download_failed": "下载失败，请在浏览器下载列表中查看详情",
   "archive.invalid_file": "选中的文件无法下载",
+  "archive.invalid_ticket": "下载链接已过期或已使用",
   "archive.limit_exceeded": "下载内容超过归档限制",
   "archive.member_busy": "已有下载任务正在准备，请稍后重试",
   "archive.no_downloadable_file": "没有可下载的文件",

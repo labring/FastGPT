@@ -16,6 +16,7 @@
   "batch_download": "Batch download",
   "archive.download_failed": "Download failed. Check your browser downloads for details.",
   "archive.invalid_file": "The selected file cannot be downloaded",
+  "archive.invalid_ticket": "The download link has expired or has already been used",
   "archive.limit_exceeded": "The download exceeds the archive limit",
   "archive.member_busy": "Another download is being prepared. Try again shortly.",
   "archive.no_downloadable_file": "No downloadable files",

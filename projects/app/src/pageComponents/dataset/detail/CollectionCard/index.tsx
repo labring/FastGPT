@@ -326,9 +326,10 @@ const CollectionCard = () => {
 
   const onBatchDownload = () => {
     batchDownloadSubmitterRef.current.submit({
+      datasetId: datasetDetail._id,
       collectionIds: selectedItems.map((item) => item._id),
       onSubmittingChange: setIsBatchDownloading,
-      onPreflightError: (error) => {
+      onError: (error) => {
         toast({
           status: 'error',
           title: getErrText(error, t('dataset:archive.download_failed'))

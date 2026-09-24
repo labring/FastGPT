@@ -16,6 +16,7 @@
   "batch_download": "일괄 다운로드",
   "archive.download_failed": "다운로드에 실패했습니다. 자세한 내용은 브라우저 다운로드 목록을 확인하세요.",
   "archive.invalid_file": "선택한 파일을 다운로드할 수 없습니다",
+  "archive.invalid_ticket": "다운로드 링크가 만료되었거나 이미 사용되었습니다",
   "archive.limit_exceeded": "다운로드 내용이 압축 파일 제한을 초과했습니다",
   "archive.member_busy": "다른 다운로드를 준비 중입니다. 잠시 후 다시 시도하세요.",
   "archive.no_downloadable_file": "다운로드할 파일이 없습니다",

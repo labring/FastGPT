@@ -3,12 +3,15 @@ import JSZip from 'jszip';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import type { DatasetArchiveManifest } from '@fastgpt/service/core/dataset/collection/archive/service';
+import {
+  buildDatasetArchivePlan,
+  type DatasetArchiveManifest
+} from '@fastgpt/service/core/dataset/collection/archive/service';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const preparationMocks = vi.hoisted(() => ({
   findArchiveCollectionsByIds: vi.fn(),
-  findArchiveCollectionsByParentIds: vi.fn(),
+  iterateArchiveCollectionsByParentIds: vi.fn(),
   findArchiveCollectionPermissionItems: vi.fn(),
   getFileMetadata: vi.fn()
 }));
@@ -86,6 +89,34 @@ describe('createDatasetArchiveResourceRunner', () => {
       DatasetErrEnum.archiveUnavailable
     );
   });
+
+  it('can briefly retry cluster slots before running the download task', async () => {
+    let slotAttempts = 0;
+    const leaseCache = {
+      withLease: vi.fn(async ({ key, label, fn }: any) => {
+        if (key === 'dataset-archive:slot:0') {
+          slotAttempts += 1;
+          if (slotAttempts === 1) throw new RedisLeaseUnavailableError({ key, label });
+        }
+
+        const controller = new AbortController();
+        return fn({ signal: controller.signal, assertValid: vi.fn() });
+      })
+    };
+    const run = createDatasetArchiveResourceRunner({ leaseCache: leaseCache as any });
+    const task = vi.fn(async () => 'done');
+
+    await expect(
+      run({
+        tmbId: 'member-1',
+        concurrency: 1,
+        waitForSlot: true,
+        fn: task
+      })
+    ).resolves.toBe('done');
+    expect(slotAttempts).toBe(2);
+    expect(task).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('prepareDatasetArchive', () => {
@@ -100,7 +131,9 @@ describe('prepareDatasetArchive', () => {
   const options = { teamId: 'team', datasetId, datasetName: 'KB', collectionIds: [file._id] };
   beforeEach(() => {
     vi.clearAllMocks();
-    preparationMocks.findArchiveCollectionsByParentIds.mockResolvedValue([]);
+    preparationMocks.iterateArchiveCollectionsByParentIds.mockImplementation(() =>
+      (async function* () {})()
+    );
     preparationMocks.getFileMetadata.mockResolvedValue({ filename: 'file.txt', contentLength: 1 });
   });
   afterEach(() => vi.useRealTimers());
@@ -144,6 +177,35 @@ describe('prepareDatasetArchive', () => {
     ).rejects.toBe(DatasetErrEnum.unAuthDatasetCollection);
     expect(assertCollectionsReadable).toHaveBeenCalledWith([file._id]);
     expect(preparationMocks.getFileMetadata).not.toHaveBeenCalled();
+  });
+
+  it('stops folder expansion as soon as the file limit is exceeded', async () => {
+    const folder = {
+      _id: 'folder-1',
+      parentId: null,
+      name: 'Folder',
+      type: DatasetCollectionTypeEnum.folder
+    };
+    const children = [
+      { ...file, _id: 'file-1', parentId: folder._id },
+      { ...file, _id: 'file-2', parentId: folder._id }
+    ];
+    preparationMocks.findArchiveCollectionsByIds.mockResolvedValueOnce([folder]);
+    preparationMocks.iterateArchiveCollectionsByParentIds.mockImplementationOnce(() =>
+      (async function* () {
+        yield* children;
+      })()
+    );
+
+    await expect(
+      buildDatasetArchivePlan({
+        teamId: 'team',
+        datasetId,
+        datasetName: 'KB',
+        collectionIds: [folder._id],
+        maxFiles: 1
+      })
+    ).rejects.toBe(DatasetErrEnum.archiveLimitExceeded);
   });
 
   it('checks only downloadable collections and not ancestors used solely for ZIP paths', async () => {
@@ -336,9 +398,7 @@ describe('assertDatasetArchiveCollectionsReadable', () => {
       async ({ collectionPermissionEnabled }: { collectionPermissionEnabled?: boolean }) =>
         collectionPermissionEnabled ? [] : [permissionCollection._id]
     );
-    preparationMocks.findArchiveCollectionPermissionItems.mockResolvedValue([
-      permissionCollection
-    ]);
+    preparationMocks.findArchiveCollectionPermissionItems.mockResolvedValue([permissionCollection]);
 
     await expect(
       assertDatasetArchiveCollectionsReadable({

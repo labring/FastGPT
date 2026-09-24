@@ -6,6 +6,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 
 type NextAPIOptions = {
   csrf?: boolean;
+  redactQueryParams?: string[];
 };
 
 export const NextAPI = (
@@ -30,6 +31,7 @@ export const NextAPI = (
   };
 
   return createApiEntry<NextApiRequest, NextApiResponse>({
-    beforeCallback: [beforeRequest]
+    beforeCallback: [beforeRequest],
+    redactQueryParams: options.redactQueryParams
   })(...handlers);
 };

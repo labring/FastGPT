@@ -10,8 +10,7 @@ export type DatasetArchiveCollection = {
 };
 
 const archiveCollectionFields = '_id parentId name type fileId';
-const archiveCollectionPermissionFields =
-  '_id datasetId tmbId parentId inheritPermission type';
+const archiveCollectionPermissionFields = '_id datasetId tmbId parentId inheritPermission type';
 
 export type DatasetArchiveCollectionPermissionItem = Pick<
   DatasetCollectionSchemaType,
@@ -50,8 +49,11 @@ export const findArchiveCollectionsByIds = async ({
   return collections.map(normalizeArchiveCollection);
 };
 
-/** 按可信团队和知识库边界批量读取一层子 Collection。 */
-export const findArchiveCollectionsByParentIds = async ({
+/**
+ * 按可信团队和知识库边界流式读取一层子 Collection。
+ * MongoDB cursor 使用固定批次拉取，调用方提前退出迭代时也会关闭服务端游标。
+ */
+export async function* iterateArchiveCollectionsByParentIds({
   teamId,
   datasetId,
   parentIds
@@ -59,14 +61,22 @@ export const findArchiveCollectionsByParentIds = async ({
   teamId: string;
   datasetId: string;
   parentIds: string[];
-}) => {
-  const collections = await MongoDatasetCollection.find(
+}) {
+  const cursor = MongoDatasetCollection.find(
     { teamId, datasetId, parentId: { $in: parentIds } },
     archiveCollectionFields
-  ).lean();
+  )
+    .lean()
+    .cursor({ batchSize: 500 });
 
-  return collections.map(normalizeArchiveCollection);
-};
+  try {
+    for await (const collection of cursor) {
+      yield normalizeArchiveCollection(collection);
+    }
+  } finally {
+    await cursor.close().catch(() => undefined);
+  }
+}
 
 /** 按归档边界读取 Collection 权限解析所需的完整字段。 */
 export const findArchiveCollectionPermissionItems = ({

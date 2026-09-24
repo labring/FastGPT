@@ -3,7 +3,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { isAuthorizedDatasetFileS3Key } from '../../../../common/s3/sources/dataset/key';
 import {
   findArchiveCollectionsByIds,
-  findArchiveCollectionsByParentIds,
+  iterateArchiveCollectionsByParentIds,
   type DatasetArchiveCollection
 } from './entity';
 import { reserveUniqueArchiveName, sanitizeArchivePathSegment } from './utils';
@@ -45,13 +45,15 @@ export const buildDatasetArchivePlan = async ({
   datasetId,
   datasetName,
   collectionIds,
-  assertActive
+  assertActive,
+  maxFiles
 }: {
   teamId: string;
   datasetId: string;
   datasetName: string;
   collectionIds: string[];
   assertActive?: () => void;
+  maxFiles?: number;
 }): Promise<DatasetArchivePlan> => {
   assertActive?.();
   const selectedIds = [...new Set(collectionIds.map(String))];
@@ -112,6 +114,13 @@ export const buildDatasetArchivePlan = async ({
   if (selectedRoots.length === 0) {
     throw DatasetErrEnum.archiveNoDownloadableFile;
   }
+  if (
+    maxFiles !== undefined &&
+    selectedRoots.filter((collection) => collection.type === DatasetCollectionTypeEnum.file)
+      .length > maxFiles
+  ) {
+    throw DatasetErrEnum.archiveLimitExceeded;
+  }
 
   const includedDirectories = new Map<string, NormalizedCollection>();
   const includedFiles = new Map<string, NormalizedCollection>();
@@ -142,6 +151,9 @@ export const buildDatasetArchivePlan = async ({
       includedFiles.set(root.collectionId, root);
     }
   }
+  if (maxFiles !== undefined && includedFiles.size > maxFiles) {
+    throw DatasetErrEnum.archiveLimitExceeded;
+  }
 
   const expandedFolders = new Set<string>();
   while (folderFrontier.length > 0) {
@@ -152,13 +164,18 @@ export const buildDatasetArchivePlan = async ({
     if (currentFolderIds.length === 0) break;
     currentFolderIds.forEach((folderId) => expandedFolders.add(folderId));
 
-    const children = (
-      await findArchiveCollectionsByParentIds({ teamId, datasetId, parentIds: currentFolderIds })
-    ).map(normalizeCollection);
-    assertActive?.();
     folderFrontier = [];
 
-    for (const child of children) {
+    assertActive?.();
+    for await (const item of iterateArchiveCollectionsByParentIds({
+      teamId,
+      datasetId,
+      parentIds: currentFolderIds
+    })) {
+      // cursor 的单次拉取无法取消；结果返回后先检查，避免失效任务继续处理或读取下一批。
+      assertActive?.();
+      const child = normalizeCollection(item);
+
       knownCollections.set(child.collectionId, child);
       if (child.type === DatasetCollectionTypeEnum.folder) {
         permissionCollectionIds.add(child.collectionId);
@@ -167,6 +184,9 @@ export const buildDatasetArchivePlan = async ({
       } else if (child.type === DatasetCollectionTypeEnum.file) {
         permissionCollectionIds.add(child.collectionId);
         includedFiles.set(child.collectionId, child);
+        if (maxFiles !== undefined && includedFiles.size > maxFiles) {
+          throw DatasetErrEnum.archiveLimitExceeded;
+        }
       }
     }
   }

@@ -27,6 +27,8 @@ import type { NextApiResponse } from 'next';
 
 const DATASET_ARCHIVE_LEASE_TTL_MS = 60_000;
 const DATASET_ARCHIVE_LEASE_RENEW_INTERVAL_MS = 10_000;
+const DATASET_ARCHIVE_SLOT_RETRY_COUNT = 10;
+const DATASET_ARCHIVE_SLOT_RETRY_INTERVAL_MS = 200;
 const archiveLeaseCache = new LeaseCache({ logger: getLogger(LogCategories.INFRA.REDIS) });
 
 type LeaseCacheLike = Pick<LeaseCache, 'withLease'>;
@@ -95,10 +97,13 @@ export const createDatasetArchiveResourceRunner = ({
   return async function runWithDatasetArchiveResources<T>({
     tmbId,
     concurrency,
+    waitForSlot = false,
     fn
   }: {
     tmbId: string;
     concurrency: number;
+    /** 下载阶段短暂等待阶段间竞争的槽位；预检阶段保持快速失败。 */
+    waitForSlot?: boolean;
     fn: (context: { signals: AbortSignal[]; assertValid: () => void }) => Promise<T>;
   }): Promise<T> {
     try {
@@ -108,27 +113,36 @@ export const createDatasetArchiveResourceRunner = ({
         ttlMs: DATASET_ARCHIVE_LEASE_TTL_MS,
         renewIntervalMs: DATASET_ARCHIVE_LEASE_RENEW_INTERVAL_MS,
         fn: async (memberLease) => {
-          for (let slot = 0; slot < concurrency; slot += 1) {
-            try {
-              return await leaseCache.withLease({
-                key: `dataset-archive:slot:${slot}`,
-                label: 'dataset archive cluster slot',
-                ttlMs: DATASET_ARCHIVE_LEASE_TTL_MS,
-                renewIntervalMs: DATASET_ARCHIVE_LEASE_RENEW_INTERVAL_MS,
-                fn: (slotLease) =>
-                  fn({
-                    signals: [memberLease.signal, slotLease.signal],
-                    assertValid: () => {
-                      memberLease.assertValid();
-                      slotLease.assertValid();
-                    }
-                  })
-              });
-            } catch (error) {
-              if (error instanceof RedisLeaseUnavailableError) continue;
-              if (isRedisLeaseError(error)) throw DatasetErrEnum.archiveUnavailable;
-              throw error;
+          const maxAttempts = waitForSlot ? DATASET_ARCHIVE_SLOT_RETRY_COUNT + 1 : 1;
+          for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+            for (let slot = 0; slot < concurrency; slot += 1) {
+              try {
+                return await leaseCache.withLease({
+                  key: `dataset-archive:slot:${slot}`,
+                  label: 'dataset archive cluster slot',
+                  ttlMs: DATASET_ARCHIVE_LEASE_TTL_MS,
+                  renewIntervalMs: DATASET_ARCHIVE_LEASE_RENEW_INTERVAL_MS,
+                  fn: (slotLease) =>
+                    fn({
+                      signals: [memberLease.signal, slotLease.signal],
+                      assertValid: () => {
+                        memberLease.assertValid();
+                        slotLease.assertValid();
+                      }
+                    })
+                });
+              } catch (error) {
+                if (error instanceof RedisLeaseUnavailableError) continue;
+                if (isRedisLeaseError(error)) throw DatasetErrEnum.archiveUnavailable;
+                throw error;
+              }
             }
+
+            if (attempt === maxAttempts - 1) break;
+            await new Promise((resolve) =>
+              setTimeout(resolve, DATASET_ARCHIVE_SLOT_RETRY_INTERVAL_MS)
+            );
+            memberLease.assertValid();
           }
 
           throw DatasetErrEnum.archiveUnavailable;
@@ -191,7 +205,8 @@ export const prepareDatasetArchive = async ({
         datasetId,
         datasetName,
         collectionIds,
-        assertActive
+        assertActive,
+        maxFiles: serviceEnv.DATASET_ARCHIVE_MAX_FILES
       });
       assertActive();
       await assertCollectionsReadable?.(plan.permissionCollectionIds);
