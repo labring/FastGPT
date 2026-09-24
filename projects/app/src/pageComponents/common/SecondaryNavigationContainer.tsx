@@ -6,7 +6,7 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 export type SecondaryNavigationTab<ValueType extends string> = {
-  icon: string;
+  icon?: string;
   label: string;
   value: ValueType;
   /** 分组子项：有 children 时渲染为可展开的分组父级，否则为单级项（兼容账号页） */
