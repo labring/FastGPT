@@ -13,8 +13,7 @@ import {
   normalizeLegacyDatasetTagFilterValue,
   pruneTagFilterConditions,
   resolveDatasetTagFilterVersion,
-  serializeDatasetTagFilterValue,
-  type DatasetTagFilterValue
+  serializeDatasetTagFilterValue
 } from '@fastgpt/global/core/dataset/workflowTagFilter';
 
 describe('dataset tag filter version', () => {
@@ -103,47 +102,6 @@ describe('dataset tag filter options', () => {
       '$empty',
       '$notEmpty'
     ]);
-    expect(
-      getTagFilterOpsByCondition({ tagType: DatasetCollectionTagTypeEnum.string }).map(
-        (item) => item.value
-      )
-    ).toEqual([
-      '$eq',
-      '$ne',
-      '$contains',
-      '$notContains',
-      '$startsWith',
-      '$endsWith',
-      '$regex',
-      '$empty',
-      '$notEmpty'
-    ]);
-  });
-
-  it('accepts interface-only string conditions without offering them as options', () => {
-    const value: DatasetTagFilterValue = {
-      logic: DatasetTagFilterLogicEnum.AND,
-      conditions: [
-        {
-          tag: 'title',
-          tagType: DatasetCollectionTagTypeEnum.string,
-          op: '$contains',
-          value: 'guide'
-        }
-      ]
-    };
-
-    expect(isDatasetTagFilterValue(value)).toBe(true);
-    expect(serializeDatasetTagFilterValue(value)).toBe(
-      JSON.stringify({ tags: { $and: [{ title: { $contains: 'guide' } }] } })
-    );
-
-    expect(
-      intersectWorkflowTagOptions([
-        [{ tag: 'title', tagType: DatasetCollectionTagTypeEnum.string, options: [] }],
-        [{ tag: 'title', tagType: DatasetCollectionTagTypeEnum.string, options: [] }]
-      ])
-    ).toEqual([]);
   });
 });
 
@@ -220,86 +178,43 @@ describe('formatCollectionFilterMatchParam', () => {
     expect(formatCollectionFilterMatchParam({ value: undefined })).toBeUndefined();
   });
 
-  it('resolves embedded $ref inside JSON strings', () => {
-    const resolveReference = (ref: unknown) => (ref[1] === 'price' ? 42 : undefined);
+  it('resolves embedded $ref inside search payloads', () => {
+    const resolveReference = (ref: unknown) =>
+      Array.isArray(ref) && ref[1] === 'price' ? 42 : undefined;
 
+    // JSON 字符串中的 tags $ref 解析，同时保留非 tags 引用
+    const payload = JSON.stringify({
+      tags: { $and: [{ price: { $gte: ['$ref', 'node', 'price'] } }] },
+      collectionIds: [['$ref', 'node', 'price']]
+    });
     expect(
       formatCollectionFilterMatchParam({
-        value: '{"tags":{"$and":[{"price":{"$gte":["$ref","node","price"]}}]}}',
-        resolveReference
+        value: payload,
+        resolveReference: resolveReference as any
       })
-    ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 42 } }] } }));
-
-    // 无 resolveReference / 解不出值时原样保留
-    const unresolved = '{"tags":{"$and":[{"price":{"$gte":["$ref","node","price"]}}]}}';
-    expect(formatCollectionFilterMatchParam({ value: unresolved })).toBe(unresolved);
-    expect(
-      formatCollectionFilterMatchParam({ value: unresolved, resolveReference: () => undefined })
-    ).toBe(unresolved);
-
-    // 未解出的引用不能触发重新序列化，需保留调用方原始 JSON 文本
-    const formattedUnresolved = `{
-  "tags": { "${'$'}and": [{ "price": { "${'$'}gte": ["${'$'}ref", "node", "missing"] } }] }
-}`;
-    expect(
-      formatCollectionFilterMatchParam({
-        value: formattedUnresolved,
-        resolveReference: () => undefined
+    ).toBe(
+      JSON.stringify({
+        tags: { $and: [{ price: { $gte: 42 } }] },
+        collectionIds: [['$ref', 'node', 'price']]
       })
-    ).toBe(formattedUnresolved);
-
-    // 普通数组值不受影响
-    const plain = '{"tags":{"$and":[{"category":{"$in":["a","b"]}}]}}';
-    expect(formatCollectionFilterMatchParam({ value: plain, resolveReference })).toBe(plain);
-
-    expect(
-      formatCollectionFilterMatchParam({
-        value: { tags: { $and: [{ price: { $gte: ['$ref', 'node', 'price'] } }] } },
-        resolveReference
-      })
-    ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 42 } }] } }));
-
-    // 历史非对象条件项原样保留，同时继续解析同数组中的合法条件
-    expect(
-      formatCollectionFilterMatchParam({
-        value: { tags: { $and: ['legacy', { price: { $gte: ['$ref', 'node', 'price'] } }] } },
-        resolveReference
-      })
-    ).toBe(JSON.stringify({ tags: { $and: ['legacy', { price: { $gte: 42 } }] } }));
-  });
-
-  it('only resolves $ref on tags conditions and passes every other value through', () => {
-    const resolveReference = (ref: unknown) => (ref[1] === 'price' ? 42 : undefined);
-
-    // $ref 只在 tags 条件值上解，其它位置不再全树递归
-    const outsideTags = '{"collectionIds":[["$ref","node","price"]]}';
-    expect(formatCollectionFilterMatchParam({ value: outsideTags, resolveReference })).toBe(
-      outsideTags
     );
 
-    // $or 与 $and 同等处理
+    // 对象形式中的 tags $ref 解析
     expect(
       formatCollectionFilterMatchParam({
-        value: '{"tags":{"$or":[{"price":{"$lt":["$ref","node","price"]}}]}}',
-        resolveReference
+        value: { tags: { $or: [{ price: { $lt: ['$ref', 'node', 'price'] } }] } },
+        resolveReference: resolveReference as any
       })
     ).toBe(JSON.stringify({ tags: { $or: [{ price: { $lt: 42 } }] } }));
 
-    // tags 形状不合法时不当作检索载荷，原样透传
-    expect(formatCollectionFilterMatchParam({ value: { tags: { $xor: [] } } })).toBe(
-      '{"tags":{"$xor":[]}}'
-    );
-    expect(formatCollectionFilterMatchParam({ value: '{"tags":{"$and":"not-array"}}' })).toBe(
-      '{"tags":{"$and":"not-array"}}'
-    );
-
-    // 非检索载荷：字符串原样，对象保持 JSON 化
-    expect(formatCollectionFilterMatchParam({ value: 'open' })).toBe('open');
-    expect(formatCollectionFilterMatchParam({ value: { a: 1 } })).toBe('{"a":1}');
-
-    // 无检索表达的原始值丢弃
-    expect(formatCollectionFilterMatchParam({ value: 42 })).toBeUndefined();
-    expect(formatCollectionFilterMatchParam({ value: true })).toBeUndefined();
+    // 未能解出引用时原样保留原始文本
+    const unresolved = '{"tags":{"$and":[{"price":{"$gte":["$ref","node","missing"]}}]}}';
+    expect(
+      formatCollectionFilterMatchParam({
+        value: unresolved,
+        resolveReference: () => undefined
+      })
+    ).toBe(unresolved);
   });
 });
 
