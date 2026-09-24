@@ -246,6 +246,28 @@ export const matchMarkdownImages = (text = ''): MarkdownImageMatchItem[] => {
 };
 
 /**
+ * 按 matchMarkdownImages 识别出的完整节点替换 markdown 图片。
+ *
+ * 与 `!\[...\]\([^)]+\)` 的正则替换不同，URL 中带括号（如 `img(1).png`）时不会在第一个 `)`
+ * 截断，也就不会把 `.png)` 这样的残片留在文本里。
+ */
+export const replaceMarkdownImages = (
+  text: string,
+  replacer: (image: MarkdownImageMatchItem) => string
+): string => {
+  const images = matchMarkdownImages(text);
+  if (images.length === 0) return text;
+
+  let result = '';
+  let cursor = 0;
+  for (const image of images) {
+    result += text.slice(cursor, image.index) + replacer(image);
+    cursor = image.index + image.fullMatch.length;
+  }
+  return result + text.slice(cursor);
+};
+
+/**
  * 处理 markdown 图片语法中的图片，并统一执行 markdown 文本清理。
  *
  * base64 图片默认会被解析：传入上传回调时替换成对象存储 key，不传回调或上传失败时删除，

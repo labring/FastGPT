@@ -3,6 +3,7 @@ import {
   simpleMarkdownText,
   htmlTable2Md,
   matchMarkdownImages,
+  replaceMarkdownImages,
   parseMarkdownBase64Images
 } from '@fastgpt/global/common/string/markdown';
 
@@ -655,6 +656,27 @@ describe('markdown 字符串处理函数测试', () => {
 
       expect(result).not.toContain('data:image/png;base64');
       expect(duration).toBeLessThan(1000); // 应该在 1 秒内完成
+    });
+  });
+
+  describe('replaceMarkdownImages', () => {
+    it('应该替换 URL 中带括号的完整图片节点，不留下残片', () => {
+      const text = '图1 ![figure](https://cdn.example.com/figure(1).png) 结束';
+      expect(replaceMarkdownImages(text, ({ altText }) => `[${altText}]`)).toBe(
+        '图1 [figure] 结束'
+      );
+    });
+
+    it('应该按顺序替换多个图片并保留其余文本', () => {
+      const text = '![a](a.png) 中间 ![b](b(2).png)';
+      expect(replaceMarkdownImages(text, ({ altText, url }) => `<${altText}:${url}>`)).toBe(
+        '<a:a.png> 中间 <b:b(2).png>'
+      );
+    });
+
+    it('没有图片时应原样返回', () => {
+      const text = '没有图片 [link](https://example.com/a(1))';
+      expect(replaceMarkdownImages(text, () => 'X')).toBe(text);
     });
   });
 

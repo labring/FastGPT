@@ -1194,6 +1194,22 @@ describe('compressLargeContent', () => {
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
+  it('should replace markdown images whose url contains parentheses without leaving a fragment', async () => {
+    countPromptTokensMock
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(900)
+      .mockResolvedValueOnce(10);
+
+    const result = await compressLargeContent({
+      content: 'see ![diagram](https://cdn.example.com/image(1).png) here\n\n\nend',
+      model,
+      compressedTokenLimit: 100
+    });
+
+    expect(result.compressed).toBe('see [diagram] here\n\nend');
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
   it('should use LLM chunk compression when rule cleanup is not enough', async () => {
     mockPromptTokensForLlmCompression();
     countGptMessagesTokensMock.mockResolvedValue(50);
@@ -1757,6 +1773,20 @@ describe('compressToolResponse', () => {
     expect(result.compressed).not.toContain('https://example.com');
     expect(result.compressed).toContain('tool response');
     expect(result.compressed).toContain('[chart]');
+  });
+
+  it('should lightly process tool responses with parenthesized image urls without leaving a fragment', async () => {
+    countPromptTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(4500);
+
+    const result = await compressToolResponse({
+      response: 'tool response with image ![chart](https://example.com/chart(1).png) end',
+      model: toolCompressionModel,
+      reasoningEffort: 'high'
+    });
+
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+    expect(result.compressed).toContain('[chart] end');
+    expect(result.compressed).not.toContain('.png)');
   });
 
   it('should compress large tool responses with 20 percent context as target', async () => {

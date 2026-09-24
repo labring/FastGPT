@@ -38,6 +38,7 @@ import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import { replaceMarkdownImages } from '@fastgpt/global/common/string/markdown';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
@@ -441,8 +442,7 @@ const lightProcessToolResponse = async ({
     // Non-JSON tool responses continue through text cleanup.
   }
 
-  return response
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '[$1]')
+  return replaceMarkdownImages(response, ({ altText }) => `[${altText}]`)
     .replace(/https?:\/\/[^\s"'(),}\]]+/gi, '')
     .replace(/\b[a-zA-Z0-9+\/]{100,}={0,2}\b/g, '[BASE64_DATA]')
     .replace(/[\/\w\-_]+\/[\w\-_]+\.\w+/g, (match) => {
@@ -1049,7 +1049,7 @@ export const compressLargeContent = async ({
   }
 
   // 3. 移除 Markdown 图片标记
-  content = content.replace(/!\[([^\]]*)\]\([^)]+\)/g, '[$1]');
+  content = replaceMarkdownImages(content, ({ altText }) => `[${altText}]`);
 
   // 4. 移除文件路径（保留文件名）
   content = content.replace(/[\/\w\-_]+\/[\w\-_]+\.\w+/g, (match) => {
