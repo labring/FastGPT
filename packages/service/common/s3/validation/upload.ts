@@ -1,5 +1,5 @@
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
-import type { UploadConstraints } from '../contracts/type';
+import type { UploadConstraints, UploadConstraintsInput } from '../contracts/type';
 import type { UploadFileHint, UploadPolicy } from '../uploadPolicy/type';
 import { decodeS3Filename } from '../filename';
 import {
@@ -41,7 +41,7 @@ export async function validateUploadFile({
 }: {
   buffer: Buffer;
   filename?: string;
-  uploadConstraints?: UploadConstraints;
+  uploadConstraints?: UploadConstraints | UploadConstraintsInput;
   uploadPolicy?: UploadPolicy;
   fileHint?: UploadFileHint;
 }) {
