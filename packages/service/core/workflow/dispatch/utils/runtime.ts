@@ -10,7 +10,7 @@ import {
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
-import { formatWorkflowCollectionFilterMatch } from '../../../../thirdProvider/sangfor/workflowTagAdapter';
+import { formatWorkflowCollectionFilterMatch } from './tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**
@@ -98,6 +98,14 @@ export const getWorkflowNodeRunParams = ({
       }
     }
 
+    const resolveReferenceValue = (refValue: any) =>
+      getReferenceVariableValue({
+        value: refValue,
+        nodesMap: runtimeNodesMap,
+        variables: getRuntimeVariables(),
+        isReferenceVal: true
+      });
+
     if (
       input.key === NodeInputKeyEnum.datasetParams &&
       value &&
@@ -109,13 +117,7 @@ export const getWorkflowNodeRunParams = ({
         ...datasetParams,
         collectionFilterMatch: formatWorkflowCollectionFilterMatch({
           value: datasetParams.collectionFilterMatch,
-          resolveReference: (refValue) =>
-            getReferenceVariableValue({
-              value: refValue,
-              nodesMap: runtimeNodesMap,
-              variables: getRuntimeVariables(),
-              isReferenceVal: true
-            })
+          resolveReference: resolveReferenceValue
         })
       };
     }
@@ -123,13 +125,7 @@ export const getWorkflowNodeRunParams = ({
     if (input.key === NodeInputKeyEnum.collectionFilterMatch) {
       const formatted = formatWorkflowCollectionFilterMatch({
         value,
-        resolveReference: (refValue) =>
-          getReferenceVariableValue({
-            value: refValue,
-            nodesMap: runtimeNodesMap,
-            variables: getRuntimeVariables(),
-            isReferenceVal: true
-          })
+        resolveReference: resolveReferenceValue
       });
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = formatted;

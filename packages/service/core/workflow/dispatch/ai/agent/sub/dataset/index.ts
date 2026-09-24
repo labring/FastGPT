@@ -21,7 +21,7 @@ import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import type { DispatchSubAppResponse } from '../../type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchToolSchema } from './utils';
-import { formatWorkflowCollectionFilterMatch } from '../../../../../../../thirdProvider/sangfor/workflowTagAdapter';
+import { formatWorkflowCollectionFilterMatch } from '../../../../utils/tagFilter';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
