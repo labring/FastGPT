@@ -14,6 +14,7 @@
  */
 export const unlicensedAdminRoutes = [
   '/admin/license',
+  '/admin/version',
   '/admin/resources/model',
   '/admin/resources/tool',
   '/admin/migration'
