@@ -100,7 +100,8 @@ export const DatasetPageContextProvider = ({
 
   // training and rebuild queue
   const { data: { rebuildingCount = 0, trainingCount = 0 } = {}, refetch: refetchDatasetTraining } =
-    useQuery(['getDatasetTrainingQueue'], () => getDatasetTrainingQueue(datasetId), {
+    useQuery(['getDatasetTrainingQueue', datasetId], () => getDatasetTrainingQueue(datasetId), {
+      enabled: !!datasetId,
       refetchInterval: 10000
     });
 

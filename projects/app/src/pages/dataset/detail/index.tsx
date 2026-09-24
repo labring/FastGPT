@@ -1,4 +1,3 @@
-'use client';
 import React from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';
@@ -6,6 +5,9 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
 import PageContainer from '@/components/PageContainer';
+import Loading from '@fastgpt/web/components/common/MyLoading';
+import { defaultDatasetDetail } from '@/web/core/dataset/constants';
+import { useRequiredQueryParam } from '@fastgpt/web/hooks/useRequiredQueryParam';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MetaDataCard from '@/pageComponents/dataset/detail/MetaDataCard';
 import NavBar from '@/pageComponents/dataset/detail/NavBar';
@@ -58,16 +60,23 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   const queryParentId = router.query.parentId;
   const parentId = typeof queryParentId === 'string' ? queryParentId : '';
 
-  useRequest(() => loadDatasetDetail(datasetId), {
-    onError(err: any) {
-      router.replace(`/dataset/list`);
-      toast({
-        title: t(getErrText(err, t('common:load_failed')) as any),
-        status: 'error'
-      });
+  useRequest(
+    () => {
+      if (!datasetId) return Promise.resolve(defaultDatasetDetail);
+      return loadDatasetDetail(datasetId);
     },
-    manual: false
-  });
+    {
+      refreshDeps: [datasetId],
+      onError(err: any) {
+        router.replace(`/dataset/list`);
+        toast({
+          title: t(getErrText(err, t('common:load_failed')) as any),
+          status: 'error'
+        });
+      },
+      manual: false
+    }
+  );
 
   return (
     <>
@@ -134,14 +143,21 @@ const Detail = ({ datasetId, currentTab }: Props) => {
 };
 
 const Render = () => {
-  const router = useRouter();
-  const { currentTab = TabEnum.collectionCard, datasetId = '' } = router.query as {
-    currentTab?: TabEnum;
-    datasetId?: string;
-  };
+  const {
+    isReady,
+    value: datasetId,
+    query
+  } = useRequiredQueryParam('datasetId', {
+    fallbackRoute: '/dataset/list'
+  });
+  const currentTab = (query.currentTab as TabEnum) || TabEnum.collectionCard;
+
+  if (!isReady) {
+    return <Loading />;
+  }
 
   return (
-    <DatasetPageContextProvider datasetId={datasetId}>
+    <DatasetPageContextProvider key={datasetId} datasetId={datasetId}>
       <Detail datasetId={datasetId} currentTab={currentTab} />
     </DatasetPageContextProvider>
   );
