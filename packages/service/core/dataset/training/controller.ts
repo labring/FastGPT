@@ -5,6 +5,7 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
+import { Types } from '../../../common/mongo';
 import { isImageEmbeddingModel } from '../../ai/model';
 import type {
   EmbeddingSystemModelDataType,
@@ -17,8 +18,90 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { checkTimerLock, deleteTimerLock } from '../../../common/system/timerLock/utils';
 import { BLOCKED_LOCK_TIME } from './query';
+import { MongoDatasetData } from '../data/schema';
+import { getDatasetSynonymTransformContext, isDatasetSynonymEnabled } from '../synonym/entity';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
+
+/** 队列内部使用的数据类型：对外 API（PushDataChunkSchema）不开放 dataId。 */
+export type PushDataChunkWithDataIdType = PushDataChunkType & {
+  /** 提前落库数据的 _id，写入训练任务用于下游定位同一条数据。 */
+  dataId?: string;
+};
+
+/** 各训练阶段的分块上限与权重，预落库与队列写入共用同一份口径。 */
+const getTrainingModeLimit = async ({
+  mode,
+  agentModel,
+  vectorModel,
+  vlmModel,
+  vlmModelConfigured
+}: {
+  mode: TrainingModeEnum;
+  agentModel?: LLMSystemModelDataType;
+  vectorModel: EmbeddingSystemModelDataType;
+  vlmModel?: LLMSystemModelDataType;
+  vlmModelConfigured: boolean;
+}): Promise<{ maxToken: number; weight: number }> => {
+  if (mode === TrainingModeEnum.chunk) {
+    return {
+      maxToken: Infinity,
+      weight: vectorModel.config.weight
+    };
+  }
+  if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
+    return {
+      maxToken: agentModel ? getLLMMaxChunkSize(agentModel) : Infinity,
+      weight: 0
+    };
+  }
+  if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
+    const vllmModelData = vlmModel;
+    if (!vlmModelConfigured) {
+      if (mode === TrainingModeEnum.image && isImageEmbeddingModel(vectorModel)) {
+        return {
+          maxToken: Infinity,
+          weight: vectorModel.config.weight
+        };
+      }
+      return Promise.reject(i18nT('common:error_vlm_not_config'));
+    }
+    return {
+      maxToken: vllmModelData ? getLLMMaxChunkSize(vllmModelData) : Infinity,
+      weight: 0
+    };
+  }
+
+  return Promise.reject(`Training mode "${mode}" is inValid`);
+};
+
+/** 过滤空内容与超长内容。预落库必须在建数据行之前调用，避免写入无人处理的数据。 */
+const filterTrainingDataList = <T extends { q?: string; a?: string; imageId?: string }>({
+  data,
+  maxToken
+}: {
+  data: T[];
+  maxToken: number;
+}) =>
+  data.filter((item) => {
+    const q = item.q || '';
+    const a = item.a || '';
+
+    // filter repeat content
+    if (!item.imageId && !q) {
+      return;
+    }
+
+    const text = q + a;
+
+    // Oversize llm tokens
+    if (text.length > maxToken) {
+      return;
+    }
+
+    return true;
+  });
 
 export const lockTrainingDataByTeamId = async (
   teamId: string,
@@ -98,7 +181,7 @@ export const pushDataListToTrainingQueue = async ({
   datasetId: string;
   collectionId: string;
 
-  data: PushDataChunkType[];
+  data: PushDataChunkWithDataIdType[];
   mode?: TrainingModeEnum;
 
   agentModel?: LLMSystemModelDataType;
@@ -115,58 +198,16 @@ export const pushDataListToTrainingQueue = async ({
   const vectorModelData = vectorModel;
   const agentModelData = agentModel;
 
-  const { maxToken, weight } = await (async () => {
-    if (mode === TrainingModeEnum.chunk) {
-      return {
-        maxToken: Infinity,
-        weight: vectorModelData.config.weight
-      };
-    }
-    if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
-      return {
-        maxToken: agentModelData ? getLLMMaxChunkSize(agentModelData) : Infinity,
-        weight: 0
-      };
-    }
-    if (mode === TrainingModeEnum.image || mode === TrainingModeEnum.imageParse) {
-      const vllmModelData = vlmModel;
-      if (!vlmModelConfigured) {
-        if (mode === TrainingModeEnum.image && isImageEmbeddingModel(vectorModelData)) {
-          return {
-            maxToken: Infinity,
-            weight: vectorModelData.config.weight
-          };
-        }
-        return Promise.reject(i18nT('common:error_vlm_not_config'));
-      }
-      return {
-        maxToken: vllmModelData ? getLLMMaxChunkSize(vllmModelData) : Infinity,
-        weight: 0
-      };
-    }
-
-    return Promise.reject(`Training mode "${mode}" is inValid`);
-  })();
+  const { maxToken, weight } = await getTrainingModeLimit({
+    mode,
+    agentModel: agentModelData,
+    vectorModel: vectorModelData,
+    vlmModel,
+    vlmModelConfigured
+  });
 
   // format q and a, remove empty char
-  data = data.filter((item) => {
-    const q = item.q || '';
-    const a = item.a || '';
-
-    // filter repeat content
-    if (!item.imageId && !q) {
-      return;
-    }
-
-    const text = q + a;
-
-    // Oversize llm tokens
-    if (text.length > maxToken) {
-      return;
-    }
-
-    return true;
-  });
+  data = filterTrainingDataList({ data, maxToken });
 
   // insert data to db
   const batchSize = 500; // Batch insert size
@@ -194,6 +235,7 @@ export const pushDataListToTrainingQueue = async ({
           ...(item.q && { q: item.q }),
           ...(item.a && { a: item.a }),
           ...(item.imageId && { imageId: item.imageId }),
+          ...(item.dataId && { dataId: item.dataId }),
           ...(item.metadata && { dataMetadata: item.metadata }),
           chunkIndex: item.chunkIndex ?? 0,
           indexSize,
@@ -261,6 +303,137 @@ export const pushDataListToTrainingQueue = async ({
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
     return { insertLen: insertedCount };
   }
+};
+
+/** 预落库批量写入的批大小，与训练任务写入保持一致。 */
+const preCreateBatchSize = 500;
+
+/**
+ * Worker 首次领取提前落库的数据时，把 parsed 推进为 indexing。
+ *
+ * 条件更新只作用于 parsed，重复领取或已被其它路径改写的行不会被覆盖；
+ * 已经处于 indexing 的数据继续走现有流程。
+ */
+export const markDatasetDataIndexing = async ({
+  dataId,
+  session
+}: {
+  dataId: string;
+  session?: ClientSession;
+}) => {
+  await MongoDatasetData.updateOne(
+    { _id: dataId, indexStatus: DatasetDataIndexStatusEnum.parsed },
+    { $set: { indexStatus: DatasetDataIndexStatusEnum.indexing } },
+    { session }
+  );
+};
+
+/**
+ * 提前落库：在调用方 session 内先写入 parsed 数据，再创建携带相同 dataId 的训练任务。
+ *
+ * 数据与任务共享同一 `dataId`，下游按 DS-07 分流把向量结果写回同一条数据，全流程只有一条数据行。
+ * 只由解析最终分块、图片导入和问答叶子这几条入口使用，其他 `pushDataListToTrainingQueue` 调用方行为不变。
+ *
+ * 说明：
+ * - 过滤（空内容/超长）在建数据行之前完成，避免写出无人处理的数据。
+ * - `indexes` 保持为空：自定义/question/summary/image 索引草稿仍留在训练任务里。
+ * - `synonymVersion` 与创建路径同源写入，避免预落库数据被同义词重建误选。
+ * - 图片 `imageId` 不在本阶段移除临时对象过期设置，过期兜底保留到索引完成。
+ */
+export const preCreateDatasetDataAndPushToTrainingQueue = async ({
+  teamId,
+  tmbId,
+  datasetId,
+  collectionId,
+  agentModel,
+  vectorModel,
+  vlmModel,
+  vlmModelConfigured = !!vlmModel,
+  data,
+  billId,
+  mode = TrainingModeEnum.chunk,
+  indexSize,
+  session
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  collectionId: string;
+
+  data: PushDataChunkType[];
+  mode?: TrainingModeEnum;
+
+  agentModel?: LLMSystemModelDataType;
+  vectorModel: EmbeddingSystemModelDataType;
+  vlmModel?: LLMSystemModelDataType;
+  vlmModelConfigured?: boolean;
+
+  indexSize?: number;
+
+  billId: string;
+  session: ClientSession;
+}): Promise<PushDataResponseType> => {
+  const { maxToken } = await getTrainingModeLimit({
+    mode,
+    agentModel,
+    vectorModel,
+    vlmModel,
+    vlmModelConfigured
+  });
+  const dataList = filterTrainingDataList({ data, maxToken });
+
+  if (dataList.length === 0) {
+    return { insertLen: 0 };
+  }
+
+  const synonymContext = isDatasetSynonymEnabled()
+    ? await getDatasetSynonymTransformContext({ teamId, datasetId })
+    : undefined;
+
+  // 预先分配 dataId，数据行与训练任务使用同一个 ID。
+  const dataWithIds = dataList.map((item) => ({
+    ...item,
+    dataId: String(new Types.ObjectId())
+  }));
+
+  for (let i = 0; i < dataWithIds.length; i += preCreateBatchSize) {
+    const batch = dataWithIds.slice(i, i + preCreateBatchSize);
+
+    await MongoDatasetData.create(
+      batch.map((item) => ({
+        _id: item.dataId,
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q: item.q || '',
+        a: item.a,
+        imageId: item.imageId,
+        ...(item.metadata && { metadata: item.metadata }),
+        chunkIndex: item.chunkIndex ?? 0,
+        indexes: [],
+        indexStatus: DatasetDataIndexStatusEnum.parsed,
+        ...(synonymContext && { synonymVersion: synonymContext.version })
+      })),
+      { session, ordered: true }
+    );
+  }
+
+  return pushDataListToTrainingQueue({
+    teamId,
+    tmbId,
+    datasetId,
+    collectionId,
+    agentModel,
+    vectorModel,
+    vlmModel,
+    vlmModelConfigured,
+    data: dataWithIds,
+    mode,
+    indexSize,
+    billId,
+    session
+  });
 };
 
 export const pushDatasetToParseQueue = async ({

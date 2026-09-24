@@ -451,6 +451,7 @@
   "core.dataset.error.Data not found": "Data Not Found or Deleted",
   "core.dataset.error.Start Sync Failed": "Failed to Start Sync",
   "core.dataset.error.canNotEditAdminPermission": "Can not edit admin permission",
+  "core.dataset.error.dataNotIndexed": "Data is being indexed, please try again later",
   "core.dataset.error.invalidVectorModelOrQAModel": "Invalid embedding model or QA model",
   "core.dataset.error.noApiServer": "API server does not exist",
   "core.dataset.error.notSupportSync": "This collection does not support synchronization",

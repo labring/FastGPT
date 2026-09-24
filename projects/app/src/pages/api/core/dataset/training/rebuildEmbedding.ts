@@ -19,6 +19,7 @@ import {
   type RebuildEmbeddingResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
+import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -105,7 +106,10 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     await MongoDatasetData.updateMany(
       {
         teamId,
-        datasetId
+        datasetId,
+        // 只标记已完成索引的数据：待索引数据还没有向量，向量必然按处理时刻的模型生成，
+        // 无需重建；该过滤同时避免同一 dataId 出现原链路任务与重建任务双写。
+        ...indexedDatasetDataMatch
       },
       {
         $set: {
