@@ -55,3 +55,5 @@ export const AdminSystemPath: OpenAPIPath = {
   ...AdminAuditPath,
   ...AdminSystemMigrationsPath
 };
+
+export * from './instanceConfig';
