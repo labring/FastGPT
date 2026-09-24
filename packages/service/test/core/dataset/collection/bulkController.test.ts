@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { Types } from '@fastgpt/service/common/mongo';
+import { OwnerRoleVal, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { Types, type ClientSession } from '@fastgpt/service/common/mongo';
 import type {
   BulkInsertCollectionDoc,
+  BulkMoveCollectionParentItem,
   BulkUpdateCollectionParentItem
 } from '@fastgpt/service/core/dataset/collection/controller';
 
@@ -13,7 +15,11 @@ const {
   mockLogger,
   mockCreateTrainingUsage,
   mockTrainingInsertMany,
-  mockCreateOrGetCollectionTags
+  mockCreateOrGetCollectionTags,
+  mockPermissionEnabled,
+  mockFindByResource,
+  mockFindByResourceIds,
+  mockReplaceResources
 } = vi.hoisted(() => ({
   mockInsertMany: vi.fn(),
   mockFind: vi.fn(),
@@ -21,8 +27,31 @@ const {
   mockLogger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   mockCreateTrainingUsage: vi.fn(),
   mockTrainingInsertMany: vi.fn(),
-  mockCreateOrGetCollectionTags: vi.fn()
+  mockCreateOrGetCollectionTags: vi.fn(),
+  mockPermissionEnabled: vi.fn(),
+  mockFindByResource: vi.fn(),
+  mockFindByResourceIds: vi.fn(),
+  mockReplaceResources: vi.fn()
 }));
+
+// 开关要回查 dataset 文档、ACL 快照要读写 MongoResourcePermission：都是真库读写，且集合权限
+// 生命周期本身由 support/permission 下的测试覆盖。此处只钉「批量路径有没有在**同一事务**里
+// 初始化 ACL」，故替换掉这两处 IO。
+vi.mock('@fastgpt/service/support/permission/collection/datasetSwitch', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  getDatasetCollectionPermissionEnabled: mockPermissionEnabled
+}));
+vi.mock(
+  '@fastgpt/service/support/permission/repository/resourcePermissionRepo',
+  async (importOriginal) => ({
+    ...(await importOriginal<object>()),
+    resourcePermissionRepo: {
+      findByResource: mockFindByResource,
+      findByResourceIds: mockFindByResourceIds,
+      replaceResources: mockReplaceResources
+    }
+  })
+);
 
 // 标签解析要读写真库，且其正确性由上游标签模块自身测试覆盖；此处只钉「批量路径有没有把
 // 解析结果写进 doc」，故直接 mock 掉解析结果
@@ -90,6 +119,7 @@ import {
   API_FILE_FILE_BATCH_SIZE,
   API_FILE_FOLDER_BATCH_SIZE,
   bulkInsertFolderCollections,
+  bulkMoveCollectionsParent,
   bulkUpdateCollectionsParent,
   createApiFileCollectionsBatch,
   formatCollectionParamsByDataset
@@ -119,6 +149,18 @@ const makeUpdates = (count: number): BulkUpdateCollectionParentItem[] =>
     apiFileParentId: `api-parent-${i}`
   }));
 
+/** 造 ACL 迁移与层级校正的组合入参 */
+const makeMoveItems = (count: number): BulkMoveCollectionParentItem[] =>
+  Array.from({ length: count }, (_, i) => ({
+    _id: `collection-${i}`,
+    datasetId,
+    type: DatasetCollectionTypeEnum.apiFile,
+    inheritPermission: true,
+    oldParentId: `old-parent-${i}`,
+    newParentId: new Types.ObjectId(),
+    apiFileParentId: `api-parent-${i}`
+  }));
+
 /** mock MongoDatasetCollection.find(...).lean() 返回已落库文档 */
 const mockFindLanded = (landed: Array<{ _id: Types.ObjectId }>) => {
   mockFind.mockReturnValue({ lean: vi.fn().mockResolvedValue(landed) });
@@ -136,6 +178,8 @@ const makeFile = (apiFileId: string) => ({
 describe('bulkInsertFolderCollections', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // 默认关闭态：本组用例断言的是 insertMany 本身，ACL 写入由 T2-12 单独覆盖
+    mockPermissionEnabled.mockResolvedValue(false);
   });
 
   /**
@@ -155,8 +199,9 @@ describe('bulkInsertFolderCollections', () => {
     expect(mockInsertMany).toHaveBeenCalledTimes(2);
     expect(mockInsertMany.mock.calls[0][0]).toHaveLength(500);
     expect(mockInsertMany.mock.calls[1][0]).toHaveLength(100);
-    // ordered:false 才会逐条落库，是回查语义的前提
-    expect(mockInsertMany.mock.calls[0][1]).toEqual({ ordered: false });
+    // ordered:false 才会逐条落库，是回查语义的前提；session 是 ACL 与 collection 同事务的载体
+    expect(mockInsertMany.mock.calls[0][1]).toMatchObject({ ordered: false });
+    expect(mockInsertMany.mock.calls[0][1]).toHaveProperty('session');
     expect(mockInsertMany.mock.calls[0][0][0]).toMatchObject({ teamId, tmbId, datasetId });
     expect(result.successApiFileIds).toHaveLength(600);
     expect(result.failedApiFileIds).toEqual([]);
@@ -238,6 +283,85 @@ describe('bulkInsertFolderCollections', () => {
       error: insertError,
       recoveryError
     });
+  });
+
+  /**
+   * 被测函数名: bulkInsertFolderCollections  等级: 3-High
+   * 思路（回归场景）: 批量建骨架曾是一条裸 insertMany —— 启用 collection 权限的 dataset 下，
+   * 落库的目录没有任何 ACL 行，除 owner 外全员看不到这些目录（读路径按物化快照解析）。
+   * 本用例钉住两件事：必须初始化 ACL，且与 insertMany 用**同一个 session**（同事务）。
+   */
+  it('T2-12: 启用集合权限时，ACL 与 collection 在同一 session 内写入', async () => {
+    const docs = makeDocs(2);
+    mockInsertMany.mockResolvedValue([]);
+    mockPermissionEnabled.mockResolvedValue(true);
+    // 目录挂在 dataset 根（parentId 为 null），父级贡献取 dataset 快照
+    mockFindByResource.mockResolvedValue([]);
+
+    await bulkInsertFolderCollections({ teamId, tmbId, datasetId, docs });
+
+    expect(mockPermissionEnabled).toHaveBeenCalledWith({
+      teamId,
+      datasetId,
+      // 与 insertMany 同一 session：ACL 行与 collection 必须同事务落库
+      session: mockInsertMany.mock.calls[0][1].session
+    });
+    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
+    const call = mockReplaceResources.mock.calls[0][0];
+    expect(call.resourceType).toBe(PerResourceTypeEnum.collection);
+    expect(call.session).toBe(mockInsertMany.mock.calls[0][1].session);
+    expect(call.resources).toEqual(
+      docs.map((doc) =>
+        expect.objectContaining({
+          resourceId: String(doc._id),
+          collaborators: [expect.objectContaining({ tmbId, permission: OwnerRoleVal })]
+        })
+      )
+    );
+  });
+
+  /**
+   * 被测函数名: bulkInsertFolderCollections  等级: 3-High
+   * 思路（回归场景）: 批量建目录曾整个丢掉 inheritPermission —— 落库文档退化为 schema default
+   * （继承态），ACL 也按 merge(父级快照, owner) 物化。同一轮导入里 file 走 `...body` 已是
+   * 独立态，folder 却仍是继承态：请求 inheritPermission=false 的语义是「这部分内容不随
+   * 父级扩散」，而目录名与层级恰恰按继承态对父级协作者可见。
+   * 本用例钉住两点：独立态目录落库 false，且其快照只含 owner（父级贡献被排除）。
+   */
+  it('T2-17: inheritPermission=false 的目录落库独立态，ACL 只有 owner', async () => {
+    const [inherited, independent] = makeDocs(2);
+    const docs: BulkInsertCollectionDoc[] = [
+      inherited,
+      { ...independent, inheritPermission: false }
+    ];
+    mockInsertMany.mockResolvedValue([]);
+    mockPermissionEnabled.mockResolvedValue(true);
+    // 父级快照非空才有判别力：继承态目录必须合并它，独立态目录必须无视它
+    mockFindByResource.mockResolvedValue([{ tmbId: 'parent-tmb', permission: OwnerRoleVal }]);
+
+    await bulkInsertFolderCollections({ teamId, tmbId, datasetId, docs });
+
+    const [inserted] = mockInsertMany.mock.calls[0];
+    expect(inserted[1]).toMatchObject({ inheritPermission: false });
+    // 未指定时保持 schema default（继承），不能顺手改成独立态
+    expect(inserted[0].inheritPermission).not.toBe(false);
+
+    const call = mockReplaceResources.mock.calls[0][0];
+    const collaboratorsOf = (id: Types.ObjectId) =>
+      call.resources.find((item: { resourceId: string }) => item.resourceId === String(id))
+        .collaborators;
+    // 独立态：父级贡献不参与，只有 owner
+    expect(collaboratorsOf(independent._id)).toEqual([
+      expect.objectContaining({ tmbId, permission: OwnerRoleVal })
+    ]);
+    // 继承态：合并父级快照
+    expect(collaboratorsOf(inherited._id)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tmbId: 'parent-tmb' }),
+        expect.objectContaining({ tmbId })
+      ])
+    );
+    expect(collaboratorsOf(inherited._id)).toHaveLength(2);
   });
 });
 
@@ -362,12 +486,75 @@ describe('bulkUpdateCollectionsParent', () => {
   });
 });
 
+describe('bulkMoveCollectionsParent', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockPermissionEnabled.mockResolvedValue(true);
+    mockFindByResource.mockResolvedValue([]);
+    mockFindByResourceIds.mockResolvedValue([]);
+    mockReplaceResources.mockResolvedValue(undefined);
+  });
+
+  /**
+   * 被测函数名: bulkMoveCollectionsParent  等级: 3-High
+   * 思路（正常场景）: ACL 重算与 parentId 写入都成功时返回批量更新结果，不触发回滚。
+   */
+  it('T2-14: ACL 与 parentId 全部迁移成功时正常返回', async () => {
+    const items = makeMoveItems(2);
+    mockBulkWrite.mockResolvedValue({ matchedCount: 2 });
+
+    await expect(
+      bulkMoveCollectionsParent({ teamId, items, session: {} as ClientSession })
+    ).resolves.toEqual({
+      successIds: items.map((item) => item._id),
+      failedIds: [],
+      matchedCount: 2
+    });
+    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * 被测函数名: bulkMoveCollectionsParent  等级: 3-High
+   * 思路（异常场景）: mongoose 在 ordered:false 下可只跳过校验失败的 op；组合迁移必须抛错，
+   * 让外层事务回滚此前已经写入的 ACL，不能留下「ACL 新父级、parentId 旧父级」。
+   */
+  it('T2-15: 任一 parentId 写入失败时抛错触发事务回滚', async () => {
+    const items = makeMoveItems(2);
+    mockBulkWrite.mockResolvedValue({
+      matchedCount: 1,
+      mongoose: { results: [null, new Error('cast failed')] }
+    });
+
+    await expect(
+      bulkMoveCollectionsParent({ teamId, items, session: {} as ClientSession })
+    ).rejects.toThrow('Bulk move collection parent failed: expected=2, matched=1, failed=1');
+    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * 被测函数名: bulkMoveCollectionsParent  等级: 3-High
+   * 思路（并发边界）: 快照读取后目标 collection 被删/重建时 bulkWrite 不报错但 matchedCount 变少；
+   * 仍须抛错回滚 ACL，不能把未命中的静默空操作当成迁移成功。
+   */
+  it('T2-16: parentId 写入未完全命中时抛错触发事务回滚', async () => {
+    const items = makeMoveItems(2);
+    mockBulkWrite.mockResolvedValue({ matchedCount: 1 });
+
+    await expect(
+      bulkMoveCollectionsParent({ teamId, items, session: {} as ClientSession })
+    ).rejects.toThrow('Bulk move collection parent failed: expected=2, matched=1, failed=0');
+    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('createApiFileCollectionsBatch', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockCreateTrainingUsage.mockResolvedValue({ usageId: 'usage-1' });
     mockInsertMany.mockResolvedValue({});
     mockTrainingInsertMany.mockResolvedValue([]);
+    // 默认关闭态：本组用例断言的是落库文档内容，ACL 由 T2-13 单独覆盖
+    mockPermissionEnabled.mockResolvedValue(false);
   });
 
   /**
@@ -432,5 +619,79 @@ describe('createApiFileCollectionsBatch', () => {
     // 关键断言：展开的 formatCreateCollectionParams 里的原始 tags 必须被解析结果覆盖，不能是 undefined
     expect(docs[0].tags).toEqual(resolvedTags);
     expect(docs[1].tags).toEqual(resolvedTags);
+  });
+
+  /**
+   * 被测函数名: createApiFileCollectionsBatch  等级: 3-High
+   * 思路（回归场景）: 同 T2-12，只是 file 路径。file 走整批事务，ACL 也必须在事务内用同一
+   * session 写入，否则事务回滚后只剩 ACL 行（或反之）——两种残留在启用态下都是脏数据。
+   */
+  it('T2-13: 启用集合权限时，file 的 ACL 用同一 session 写入', async () => {
+    mockPermissionEnabled.mockResolvedValue(true);
+    mockFindByResource.mockResolvedValue([]);
+    const session = {} as any;
+
+    await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files: [makeFile('f-1'), makeFile('f-2')],
+      // teamId / tmbId 由 createCollectionParams 带入，ACL 的 owner 行取自这里
+      createCollectionParams: { teamId, tmbId } as any,
+      session
+    });
+
+    expect(mockReplaceResources).toHaveBeenCalledTimes(1);
+    const call = mockReplaceResources.mock.calls[0][0];
+    expect(call.session).toBe(session);
+    expect(call.resources).toHaveLength(2);
+    // 每个 file 都要有自己的 owner 快照；缺失即该文件对非 owner 不可见
+    for (const resource of call.resources) {
+      expect(resource.collaborators).toEqual([
+        expect.objectContaining({ tmbId, permission: OwnerRoleVal })
+      ]);
+    }
+    // collectionId 必须与 insertMany 落库的 _id 对齐，否则快照挂在不存在的资源上
+    const [docs] = mockInsertMany.mock.calls[0];
+    expect(call.resources.map((item: { resourceId: string }) => item.resourceId)).toEqual(
+      docs.map((doc: { _id: string }) => String(doc._id))
+    );
+  });
+
+  /**
+   * 被测函数名: createApiFileCollectionsBatch  等级: 3-High
+   * 思路（回归场景）: file 的 inheritPermission 曾整批取请求级值，于是「展开出的后代文件」也
+   * 全落独立态 —— 给选中的上层目录授权不会传给它们，4w 规模的导入变成逐个维护 ACL。
+   * 正确口径是逐文件取值：只有调用方标记为选中的那些文件落独立态，其余保持继承。
+   * 本用例钉住落库文档与 ACL 快照都按**文件自身**的取值分支。
+   */
+  it('T2-18: file 的 inheritPermission 逐文件取值，缺省保持继承', async () => {
+    mockPermissionEnabled.mockResolvedValue(true);
+    // 父级快照非空才有判别力：继承态文件必须合并它，独立态文件必须无视它
+    mockFindByResource.mockResolvedValue([{ tmbId: 'parent-tmb', permission: OwnerRoleVal }]);
+
+    await createApiFileCollectionsBatch({
+      dataset: makeDataset(),
+      files: [
+        { ...makeFile('f-selected'), inheritPermission: false },
+        // 展开出的后代：调用方不标记，应保持继承
+        makeFile('f-descendant')
+      ],
+      createCollectionParams: { teamId, tmbId } as any,
+      session: {} as any
+    });
+
+    const [docs] = mockInsertMany.mock.calls[0];
+    expect(docs[0]).toMatchObject({ inheritPermission: false });
+    expect(docs[1].inheritPermission).not.toBe(false);
+
+    const call = mockReplaceResources.mock.calls[0][0];
+    const collaboratorsOf = (id: unknown) =>
+      call.resources.find((item: { resourceId: string }) => item.resourceId === String(id))
+        .collaborators;
+    // 独立态：父级贡献不参与，只有 owner
+    expect(collaboratorsOf(docs[0]._id)).toEqual([
+      expect.objectContaining({ tmbId, permission: OwnerRoleVal })
+    ]);
+    // 继承态：合并父级快照
+    expect(collaboratorsOf(docs[1]._id)).toHaveLength(2);
   });
 });

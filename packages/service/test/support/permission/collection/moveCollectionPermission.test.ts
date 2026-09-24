@@ -9,6 +9,7 @@ import type { Model } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { bulkMoveCollectionsParent } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   createCollectionPermission,
   moveCollectionPermission,
@@ -469,6 +470,118 @@ describe.sequential('moveCollectionPermission', () => {
       collectionClbs(String(users.owner.teamId), String(child._id)).then(toPermissionMap)
     ).resolves.toEqual(expectedMap);
     expect(await datasetSwitchState(String(dataset._id))).toBe(false);
+  });
+
+  it('uses the moved parent snapshot for a child moved in the same batch', async () => {
+    const users = await getFakeUsers(3);
+    const dataset = await createDataset({ user: users.owner });
+    await enableDatasetCollectionPermissions({
+      teamId: String(users.owner.teamId),
+      datasetId: String(dataset._id)
+    });
+    const targetFolder = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'target-folder',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const oldParent = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'old-parent',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const movingParent = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'moving-parent',
+      type: DatasetCollectionTypeEnum.folder
+    });
+    const movingChild = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'moving-child',
+      type: DatasetCollectionTypeEnum.folder,
+      parentId: String(oldParent._id)
+    });
+    const untouchedDescendant = await createCollection({
+      user: users.owner,
+      datasetId: String(dataset._id),
+      name: 'untouched-descendant',
+      parentId: String(movingChild._id)
+    });
+
+    await setCollaborators({
+      resource: {
+        _id: String(targetFolder._id),
+        type: targetFolder.type,
+        teamId: String(targetFolder.teamId)
+      },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[0].tmbId), permission: ReadRoleVal }
+      ]
+    });
+    await setCollaborators({
+      resource: {
+        _id: String(oldParent._id),
+        type: oldParent.type,
+        teamId: String(oldParent.teamId)
+      },
+      resourceModel: MongoDatasetCollection,
+      resourceType: PerResourceTypeEnum.collection,
+      collaborators: [
+        { tmbId: String(users.owner.tmbId), permission: OwnerRoleVal },
+        { tmbId: String(users.members[1].tmbId), permission: ReadRoleVal }
+      ]
+    });
+
+    await mongoSessionRun((session) =>
+      // 故意把 child 放在 parent 前面，验证实现不依赖调用方输入顺序。
+      bulkMoveCollectionsParent({
+        teamId: String(users.owner.teamId),
+        items: [
+          {
+            _id: String(movingChild._id),
+            datasetId: String(dataset._id),
+            type: movingChild.type,
+            inheritPermission: movingChild.inheritPermission,
+            oldParentId: String(oldParent._id),
+            newParentId: movingParent._id,
+            apiFileParentId: 'moving-parent'
+          },
+          {
+            _id: String(movingParent._id),
+            datasetId: String(dataset._id),
+            type: movingParent.type,
+            inheritPermission: movingParent.inheritPermission,
+            oldParentId: null,
+            newParentId: targetFolder._id,
+            apiFileParentId: 'target-folder'
+          }
+        ],
+        session
+      })
+    );
+
+    const expectedMap = new Map([
+      [String(users.owner.tmbId), OwnerRoleVal],
+      [String(users.members[0].tmbId), ReadRoleVal]
+    ]);
+    for (const collectionId of [
+      String(movingParent._id),
+      String(movingChild._id),
+      String(untouchedDescendant._id)
+    ]) {
+      await expect(
+        collectionClbs(String(users.owner.teamId), collectionId).then(toPermissionMap)
+      ).resolves.toEqual(expectedMap);
+    }
+    await expect(MongoDatasetCollection.findById(movingChild._id).lean()).resolves.toMatchObject({
+      parentId: String(movingParent._id)
+    });
   });
 });
 
