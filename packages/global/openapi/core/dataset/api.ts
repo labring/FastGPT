@@ -241,7 +241,9 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
  * Description: 分页获取当前用户有权限访问的知识库列表。
  * Tags: ['Dataset', 'Read']
  * ============================================================================ */
-export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend(PaginationSchema.shape);
+export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
+  withAppCount: z.boolean().optional().meta({ description: '是否返回被正式应用引用的数量' })
+}).extend(PaginationSchema.shape);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;
 
 // 出参复用 DatasetListItemSchema
@@ -250,6 +252,11 @@ export type GetDatasetListResponse = z.infer<typeof GetDatasetListResponseSchema
 
 export const GetDatasetListV2ResponseSchema = PaginationResponseSchema(DatasetListItemSchema);
 export type GetDatasetListV2Response = z.infer<typeof GetDatasetListV2ResponseSchema>;
+
+export const GetAppsByDatasetIdQuerySchema = z.object({
+  datasetId: ObjectIdSchema
+});
+export type GetAppsByDatasetIdQuery = z.infer<typeof GetAppsByDatasetIdQuerySchema>;
 
 /* ============================================================================
  * API: 获取知识库路径
