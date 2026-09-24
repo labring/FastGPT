@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import QueryClientContext from '@/web/context/QueryClient';
 import ChakraUIContext from '@/web/context/ChakraUI';
 import { useInitApp } from '@/web/context/useInitApp';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import NextHead from '@/components/common/NextHead';
 import { type ReactElement, type ReactNode, useEffect } from 'react';
 import { type NextPage } from 'next';
@@ -33,7 +33,7 @@ const routesWithoutLayout = openAPIReferenceRoutes;
 /** 渲染依赖 common 翻译资源的 Head、应用初始化、Layout 和页面内容。 */
 const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) => {
   const { feConfigs, scripts, title } = useInitApp();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   useEffect(() => {
     document.addEventListener(
@@ -76,7 +76,7 @@ const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) =>
 
 /** 完整语言包就绪后再挂载 client-only 应用，避免页面内出现 key 或二次骨架切换。 */
 const ClientI18nRoot = ({ children }: { children: ReactNode }) => {
-  const { i18n } = useTranslation();
+  const { i18n } = useSafeTranslation();
 
   return (
     <ClientI18nGate defaultLanguage="en" storageKey={LANG_KEY} fallback={null}>

@@ -3,7 +3,7 @@ import { Table, Thead, Tbody, Tr, Th, Td, Box, Flex, Button, HStack } from '@cha
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useEffect, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -33,7 +33,7 @@ const ModelTest = ({
   models: string[];
   onClose: () => void;
 }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const { getModelProvider, systemModelList, loading: loadingModels } = useAdminModelConfig();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);

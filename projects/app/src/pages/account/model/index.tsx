@@ -1,14 +1,14 @@
 import { Box, Flex } from '@chakra-ui/react';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import ModelTable from '@/components/core/ai/ModelTable';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 
 const ModelProvider = () => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
   const { feConfigs, initd } = useSystemStore();
   const router = useRouter();
 

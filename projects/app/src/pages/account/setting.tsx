@@ -1,7 +1,7 @@
 'use client';
 import { Box, Flex } from '@chakra-ui/react';
 import React, { useCallback } from 'react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type UserType } from '@fastgpt/global/support/user/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -13,7 +13,7 @@ import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const Individuation = () => {
-  const { t } = useClientTranslation(['account_setting', 'account']);
+  const { t } = useSafeTranslation();
   const { userInfo, updateUserInfo } = useUserStore();
   const { toast } = useToast();
 

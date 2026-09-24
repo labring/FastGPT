@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Table, Thead, Tbody, Tr, Th, Td, Button } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -49,7 +49,7 @@ const DataTableComponent = ({
   modelPriceMap,
   isLLMModel
 }: DataTableComponentProps) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const showBilling = !!feConfigs?.isPlus;
   const [sortField, setSortField] = useState<SortFieldType>('totalCalls');

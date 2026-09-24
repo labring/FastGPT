@@ -33,7 +33,15 @@ vi.mock('react', async (importOriginal) => ({
   useEffect: (effect: () => void) => {
     mocks.effects.push(effect);
   },
+  useMemo: <T>(factory: () => T) => factory(),
   useRef: <T>(value?: T) => ({ current: value })
+}));
+
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en' }
+  })
 }));
 
 vi.mock('next/router', () => ({

@@ -1,7 +1,7 @@
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Trans } from 'next-i18next';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Flex, Button, Link } from '@chakra-ui/react';
 import { checkBalancePayResult, putUpdatePayment } from '@/web/support/wallet/bill/api';
 import LightTip from '@fastgpt/web/components/common/LightTip';
@@ -42,7 +42,7 @@ const QRCodePayModal = ({
   onSuccess?: () => any;
   onClose?: () => void;
 }) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const { feConfigs } = useSystemStore();

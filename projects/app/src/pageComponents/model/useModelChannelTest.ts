@@ -4,7 +4,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRef, useState } from 'react';
 import { prepareDraftSystemModelForTest } from './submit';
 
@@ -23,7 +23,7 @@ export const useModelChannelTest = ({
   target?: ModelChannelTestTarget;
   channels: Pick<AdminModelChannel, 'id' | 'name'>[];
 }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const inFlight = useRef(new Set<number>());
   const [testingChannelIds, setTestingChannelIds] = useState<ReadonlySet<number>>(new Set());

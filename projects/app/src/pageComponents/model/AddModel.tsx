@@ -36,7 +36,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useLockFn } from 'ahooks';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -110,7 +110,7 @@ export const AddModelButton = ({
   onCreateFromTemplate?: () => void;
   buttonBoxProps?: BoxProps;
 } & ButtonProps) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
 
   return (
     <MyMenu
@@ -185,7 +185,7 @@ const ModelTypeSelector = ({
   value: ModelTypeEnum;
   onChange: (type: ModelTypeEnum) => void;
 }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
 
   return (
     <Grid templateColumns={['1fr', 'repeat(2, 1fr)']} gap={3}>
@@ -243,7 +243,7 @@ export const BlankModelCreateModal = ({
   onSuccess: () => unknown | Promise<unknown>;
   onClose: () => void;
 }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const [step, setStep] = useState<'type' | 'config'>('type');
   const [selectedType, setSelectedType] = useState<ModelTypeEnum>(ModelTypeEnum.llm);
@@ -435,7 +435,7 @@ const TemplateCreateModal = ({
   onSuccess: () => Promise<void>;
   onRefresh?: () => Promise<void>;
 }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [providerFilter, setProviderFilter] = useState('');

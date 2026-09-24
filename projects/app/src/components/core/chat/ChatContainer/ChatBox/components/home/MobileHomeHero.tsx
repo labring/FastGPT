@@ -1,11 +1,11 @@
 import { DEFAULT_LOGO_BANNER_COLLAPSED_URL } from '@/pageComponents/chat/constants';
 import { Box, Flex, Image } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
 
 const MobileHomeHero = () => {
-  const { t } = useClientTranslation('chat');
+  const { t } = useSafeTranslation();
   const squareLogo = useContextSelector(ChatBoxContext, (v) => v.squareLogo);
   const slogan = useContextSelector(ChatBoxContext, (v) => v.slogan);
   const displaySlogan = slogan || t('chat:setting.home.slogan.default');

@@ -1,7 +1,7 @@
 'use client';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import React, { useMemo } from 'react';
@@ -37,7 +37,7 @@ const Team = () => {
 
   const { teamTab = TeamTabEnum.member } = router.query as { teamTab: `${TeamTabEnum}` };
 
-  const { t } = useClientTranslation(['account', 'account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { userInfo, teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standard;
   const level = standardPlan?.currentSubLevel;

@@ -1,9 +1,9 @@
 import React from 'react';
 import { Box, Flex, Grid } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const FAQ = () => {
-  const { t } = useClientTranslation('price');
+  const { t } = useSafeTranslation();
   const faqs = [
     {
       title: t('price:FAQ.switch_package_q'),

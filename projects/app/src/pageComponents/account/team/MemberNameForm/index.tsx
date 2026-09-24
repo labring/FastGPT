@@ -2,7 +2,7 @@ import { Box, Button, FormControl, FormErrorMessage, Input } from '@chakra-ui/re
 import type { UserType } from '@fastgpt/global/support/user/type';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { memberNameButtonStyles, memberNameInputStyles, memberNameLabelStyles } from './styles';
@@ -31,7 +31,7 @@ const MemberNameFormModal = ({
   onSubmitted,
   onClose
 }: MemberNameFormModalProps) => {
-  const { t } = useClientTranslation('account_team');
+  const { t } = useSafeTranslation();
   const { initUserInfo } = useUserStore();
   const { memberName, nameError, showNameError, markInteracted, onNameChange, parseMemberName } =
     useMemberNameForm({ defaultName });

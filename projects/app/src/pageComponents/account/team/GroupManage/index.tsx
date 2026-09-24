@@ -12,7 +12,7 @@ import {
   Tr,
   useDisclosure
 } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
@@ -32,7 +32,7 @@ const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));
 const GroupManageMember = dynamic(() => import('./GroupManageMember'));
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { userInfo } = useUserStore();
 
   const {

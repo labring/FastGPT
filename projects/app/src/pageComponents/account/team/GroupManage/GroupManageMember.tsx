@@ -4,8 +4,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useEffect, useMemo, useState } from 'react';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import React, { useMemo, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { putUpdateGroup } from '@/web/support/user/team/group/api';
 import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
@@ -39,7 +39,7 @@ function GroupEditModal({
   group: MemberGroupListItemType<true>;
   onSuccess: () => void;
 }) {
-  const { t } = useClientTranslation('user');
+  const { t } = useSafeTranslation();
   const { userInfo } = useUserStore();
   const { toast } = useToast();
 
@@ -81,17 +81,20 @@ function GroupEditModal({
     }
   });
 
-  useEffect(() => {
-    if (!groupId) return;
-    setSelected(
-      groupMembers.map((item) => ({
-        name: item.memberName,
-        tmbId: item.tmbId,
-        avatar: item.avatar,
-        role: (item.groupRole ?? 'member') as `${GroupMemberRole}`
-      }))
-    );
-  }, [groupId, groupMembers]);
+  const [prevGroupMembers, setPrevGroupMembers] = useState(groupMembers);
+  if (groupMembers !== prevGroupMembers) {
+    setPrevGroupMembers(groupMembers);
+    if (groupId) {
+      setSelected(
+        groupMembers.map((item) => ({
+          name: item.memberName,
+          tmbId: item.tmbId,
+          avatar: item.avatar,
+          role: (item.groupRole ?? 'member') as `${GroupMemberRole}`
+        }))
+      );
+    }
+  }
 
   const [hoveredMemberId, setHoveredMemberId] = useState<string>();
 

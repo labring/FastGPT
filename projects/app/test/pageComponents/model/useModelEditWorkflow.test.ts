@@ -45,8 +45,8 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({
 vi.mock('@fastgpt/web/hooks/useConfirm', () => ({
   useConfirm: () => ({ openConfirm: vi.fn(() => vi.fn()), ConfirmModal: () => null })
 }));
-vi.mock('@fastgpt/web/i18n/useClientTranslation', () => ({
-  useClientTranslation: () => ({ t: (key: string) => key })
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: (key: string) => key })
 }));
 vi.mock('next/router', () => ({
   useRouter: () => ({ pathname: '/config/model', query: {}, push: vi.fn() })

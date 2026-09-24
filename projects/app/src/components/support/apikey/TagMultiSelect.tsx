@@ -10,7 +10,7 @@ import {
   FilterSummaryValue,
   getMultiSelectFilterSummary
 } from '@fastgpt/web/components/common/TagFilter';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 /**
  * API Key 标签多选。
@@ -49,7 +49,7 @@ const TagMultiSelect = ({
   popoverW?: string;
   onClose?: (value: string[]) => void | Promise<void>;
 }) => {
-  const { t } = useClientTranslation('apikey');
+  const { t } = useSafeTranslation();
   const [search, setSearch] = useState('');
   const latestValueRef = useRef(value);
   const tagsContainerRef = useRef<HTMLDivElement>(null);

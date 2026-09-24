@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { Box, Button, Flex, Grid, GridItem, Link, Skeleton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import LicenseInput from '@/components/admin/License/Input';
 import { commercialDocUrl } from '@/components/admin/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -69,7 +69,7 @@ const LICENSE_STATUS_DISPLAY: Record<
 /** 管理员首页的 License 概览，按设计稿展示租户信息、额度和授权能力。 */
 const AdminHome = () => {
   const { licenseData, licenseLoading, feConfigs } = useSystemStore();
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [showLicenseInput, setShowLicenseInput] = useState(false);
   // 未接入 pro 服务 = 社区版部署，没有授权概念：不展示租户名、额度与激活状态，只保留功能能力清单。
   const isCommunityEdition = !feConfigs?.isProService;

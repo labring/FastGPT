@@ -3,7 +3,7 @@ import type { BoxProps } from '@chakra-ui/react';
 import { Box, Flex, Grid, useTheme } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { addHours } from 'date-fns';
 import dayjs from 'dayjs';
 import DateRangePicker, {
@@ -60,7 +60,7 @@ const getDefaultDateRange = (): DateRangeType => {
 };
 
 const ModelDashboard = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
   const { getModelProvider, systemModelList } = useAdminModelConfig();

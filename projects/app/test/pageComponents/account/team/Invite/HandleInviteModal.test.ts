@@ -52,8 +52,8 @@ vi.mock('@/web/common/system/useSystemStore', () => ({
 vi.mock('@fastgpt/web/hooks/useToast', () => ({
   useToast: () => ({ toast: mocks.toast })
 }));
-vi.mock('@fastgpt/web/i18n/useClientTranslation', () => ({
-  useClientTranslation: () => ({ t: (key: string) => key })
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: (key: string) => key })
 }));
 vi.mock('@/pageComponents/account/team/MemberNameForm/useMemberNameForm', () => ({
   useMemberNameForm: () => ({

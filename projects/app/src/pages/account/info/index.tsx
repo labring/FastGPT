@@ -18,7 +18,7 @@ import type { UserType } from '@fastgpt/global/support/user/type';
 import { getTeamMemberDisplayName } from '@fastgpt/global/support/user/team/memberName';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -132,7 +132,7 @@ export default React.memo(Info);
 const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs, initd } = useSystemStore();
-  const { t } = useClientTranslation('account_info');
+  const { t } = useSafeTranslation();
   const { userInfo, updateUserInfo, teamPlanStatus } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: {
@@ -475,7 +475,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
 const PlanUsage = () => {
   const router = useRouter();
-  const { t } = useClientTranslation('account_info');
+  const { t } = useSafeTranslation();
   const { userInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans, feConfigs } = useSystemStore();
 
@@ -852,7 +852,7 @@ const ButtonStyles = {
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { feConfigs, setNotSufficientModalType, subPlans } = useSystemStore();
   const { teamPlanStatus, userInfo } = useUserStore();
-  const { t } = useClientTranslation('account_info');
+  const { t } = useSafeTranslation();
   const { isPc } = useSystem();
   const router = useRouter();
   const {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Checkbox, Flex, Grid, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -163,7 +163,7 @@ const parseTeamInstallFailure = (error: unknown): PluginInstallFailureType[] | u
 };
 
 export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team' }) => {
-  const { t, i18n } = useClientTranslation(['app', 'marketplace']);
+  const { t, i18n } = useSafeTranslation();
   const router = useRouter();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();

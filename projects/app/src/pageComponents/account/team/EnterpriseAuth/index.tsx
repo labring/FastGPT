@@ -8,7 +8,7 @@ import {
   type ButtonProps
 } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { TFunction } from 'i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -86,7 +86,7 @@ const EnterpriseAuthStatusRow = ({
   onAutoOpenFinish,
   ...props
 }: EnterpriseAuthStatusRowProps) => {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { feConfigs } = useSystemStore();
   const { userInfo, initUserInfo } = useUserStore();
   const { toast } = useToast();

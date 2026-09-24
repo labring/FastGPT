@@ -11,7 +11,7 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCheckCoupon } from './hooks/checkCoupon';
 import SupportBot from './SupportBot';
@@ -70,7 +70,7 @@ export const navbarWidth = '64px';
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { toast } = useToast();
-  const { t } = useClientTranslation('price');
+  const { t } = useSafeTranslation();
   const { Loading } = useLoading();
   const {
     setLastRoute,

@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MemberNameFormModal from '@/pageComponents/account/team/MemberNameForm';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
@@ -7,7 +7,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
  * 弹窗不可关闭；提交后刷新用户信息仍处于待补齐状态时保留弹窗，允许用户重试。
  */
 const ForceMemberNameModal = ({ onSuccess }: { onSuccess: () => void }) => {
-  const { t } = useClientTranslation('account_team');
+  const { t } = useSafeTranslation();
   const { userInfo } = useUserStore();
 
   return (

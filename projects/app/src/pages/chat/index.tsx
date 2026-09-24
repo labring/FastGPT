@@ -4,7 +4,6 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import PageContainer from '@/components/PageContainer';
 import ChatSlider from '@/pageComponents/chat/slider';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import ChatContextProvider from '@/web/core/chat/context/chatContext';
 import { useContextSelector } from 'use-context-selector';
@@ -21,16 +20,12 @@ import HomeChatWindow from '@/pageComponents/chat/ChatWindow/HomeChatWindow';
 import { ChatPageContext, ChatPageContextProvider } from '@/web/core/chat/context/chatPageContext';
 import ChatAllApp from '@/pageComponents/chat/ChatAllApp';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 import { AUTH_ERROR_EVENT_NAME } from '@/web/common/api/request';
 import { clearToken } from '@/web/support/user/auth';
 import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
-
-const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
+import { useRouter } from 'next/router';
 
 const Chat = () => {
   const { isPc } = useSystem();
@@ -127,14 +122,13 @@ const Chat = () => {
 
 type ChatPageProps = {
   appId: string;
-  shouldInitUserInfo: boolean;
   isStandalone?: string;
-  showRunningStatus: boolean;
-  showSkillReferences: boolean;
-  showCite: boolean;
-  showFullText: boolean;
-  canDownloadSource: boolean;
-  showWholeResponse: boolean;
+  showRunningStatus?: boolean;
+  showSkillReferences?: boolean;
+  showCite?: boolean;
+  showFullText?: boolean;
+  canDownloadSource?: boolean;
+  showWholeResponse?: boolean;
 };
 
 const ChatLogin = ({ onSuccess }: { onSuccess: (res: LoginSuccessResponseType) => void }) => {
@@ -213,12 +207,12 @@ const ChatContent = (props: ChatPageProps) => {
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={isStandalone !== '1'}
-        showRunningStatus={props.showRunningStatus}
-        showSkillReferences={props.showSkillReferences}
-        canDownloadSource={props.canDownloadSource}
-        isShowCite={props.showCite}
-        isShowFullText={props.showFullText}
-        showWholeResponse={props.showWholeResponse}
+        showRunningStatus={props.showRunningStatus ?? true}
+        showSkillReferences={props.showSkillReferences ?? false}
+        canDownloadSource={props.canDownloadSource ?? true}
+        isShowCite={props.showCite ?? true}
+        isShowFullText={props.showFullText ?? true}
+        showWholeResponse={props.showWholeResponse ?? true}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <Chat />
@@ -228,10 +222,15 @@ const ChatContent = (props: ChatPageProps) => {
   );
 };
 
-const Render = (props: ChatPageProps) => {
+const Render = () => {
+  const router = useRouter();
+  const { appId = '', isStandalone } = router.query as {
+    appId?: string;
+    isStandalone?: string;
+  };
   const { feConfigs } = useSystemStore();
   const { userInfo, setUserInfo, initUserInfo } = useUserStore();
-  const [isInitedUser, setIsInitedUser] = useState(!props.shouldInitUserInfo);
+  const [isInitedUser, setIsInitedUser] = useState(!!userInfo);
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -255,7 +254,7 @@ const Render = (props: ChatPageProps) => {
   }, [setUserInfo]);
 
   useEffect(() => {
-    if (!props.shouldInitUserInfo) return;
+    if (userInfo) return;
 
     let isUnmounted = false;
 
@@ -274,7 +273,7 @@ const Render = (props: ChatPageProps) => {
     return () => {
       isUnmounted = true;
     };
-  }, [initUserInfo, props.shouldInitUserInfo]);
+  }, [initUserInfo, userInfo]);
 
   if (!isInitedUser) {
     return (
@@ -289,48 +288,10 @@ const Render = (props: ChatPageProps) => {
   }
 
   return (
-    <ChatPageContextProvider appId={props.appId}>
-      <ChatContent {...props} />
+    <ChatPageContextProvider appId={appId}>
+      <ChatContent appId={appId} isStandalone={isStandalone} />
     </ChatPageContextProvider>
   );
 };
 
 export default Render;
-
-export async function getServerSideProps(context: any) {
-  const appId = context?.query?.appId || '';
-  const shouldInitUserInfo = !!context.req?.cookies?.fastgpt_token;
-
-  const chatQuoteReaderConfig = await (async () => {
-    try {
-      if (!appId) return null;
-
-      const config = await MongoOutLink.findOne(
-        {
-          appId,
-          type: PublishChannelEnum.playground
-        },
-        'showRunningStatus showSkillReferences showCite showFullText canDownloadSource showWholeResponse'
-      ).lean();
-
-      return config;
-    } catch (error) {
-      logger.error('getServerSideProps failed', { error, appId });
-      return null;
-    }
-  })();
-
-  return {
-    props: {
-      appId,
-      shouldInitUserInfo,
-      showRunningStatus: chatQuoteReaderConfig?.showRunningStatus ?? true,
-      showSkillReferences: chatQuoteReaderConfig?.showSkillReferences ?? false,
-      showCite: chatQuoteReaderConfig?.showCite ?? true,
-      showFullText: chatQuoteReaderConfig?.showFullText ?? true,
-      canDownloadSource: chatQuoteReaderConfig?.canDownloadSource ?? true,
-      showWholeResponse: chatQuoteReaderConfig?.showWholeResponse ?? true,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'login', 'user']))
-    }
-  };
-}
