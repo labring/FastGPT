@@ -87,6 +87,49 @@ describe('matchDatasetDataMarkdownImageUrls', () => {
 
     expect(result).toEqual(['dataset/team/a.png', 'https://example.com/b.jpg']);
   });
+
+  it('应保留 URL 中未转义的括号，而不是在第一个 ) 处截断', () => {
+    const result = matchDatasetDataMarkdownImages(
+      '见图 ![img](https://cdn.example.com/img(1).png) 结束'
+    );
+
+    expect(result).toEqual([
+      {
+        raw: '![img](https://cdn.example.com/img(1).png)',
+        alt: 'img',
+        url: 'https://cdn.example.com/img(1).png',
+        index: 3
+      }
+    ]);
+  });
+
+  it('应保留 URL 中转义的右括号', () => {
+    const result = matchDatasetDataMarkdownImages(
+      String.raw`![img](https://cdn.example.com/a\).png)`
+    );
+
+    expect(result).toEqual([
+      {
+        raw: String.raw`![img](https://cdn.example.com/a\).png)`,
+        alt: 'img',
+        url: String.raw`https://cdn.example.com/a\).png`,
+        index: 0
+      }
+    ]);
+  });
+
+  it('应过滤空 URL 并对图片 URL 进行 trim 处理', () => {
+    const result = matchDatasetDataMarkdownImages('![empty]() ![space](  dataset/team/cat.png  )');
+
+    expect(result).toEqual([
+      {
+        raw: '![space](  dataset/team/cat.png  )',
+        alt: 'space',
+        url: 'dataset/team/cat.png',
+        index: 11
+      }
+    ]);
+  });
 });
 
 describe('getDatasetImageTrainingMode', () => {

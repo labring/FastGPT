@@ -1,3 +1,5 @@
+import { matchMarkdownImages } from '@fastgpt/global/common/string/markdown';
+
 export type DatasetDataMarkdownImageItem = {
   raw: string;
   alt: string;
@@ -11,19 +13,21 @@ export type DatasetDataMarkdownImageItem = {
  * 这里只负责识别 `![alt](url)`，用于 VLM 图片描述索引、imageEmbedding 图片向量索引、
  * 展示态描述回填等链路共用同一套图片提取语义。图片来源合法性校验、S3/base64 转换、
  * 向量生成都在后续链路处理。
+ *
+ * URL 扫描复用 `matchMarkdownImages`：`/!\[...\]\((.*?)\)/` 会在
+ * `https://a.com/img(1).png` 的第一个 `)` 截断，图片索引和描述回填都会对不上。
  */
 export const matchDatasetDataMarkdownImages = (text = ''): DatasetDataMarkdownImageItem[] => {
   if (typeof text !== 'string' || !text) return [];
 
-  const regex = /!\[([\s\S]*?)\]\((.*?)\)/g;
-  return Array.from(text.matchAll(regex))
+  return matchMarkdownImages(text)
+    .filter((match) => !!match.url)
     .map((match) => ({
-      raw: match[0],
-      alt: match[1] || '',
-      url: match[2]?.trim() || '',
-      index: match.index ?? 0
-    }))
-    .filter((item) => !!item.url);
+      raw: match.fullMatch,
+      alt: match.altText,
+      url: match.url,
+      index: match.index
+    }));
 };
 
 /**
