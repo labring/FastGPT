@@ -24,6 +24,9 @@ export const systemInstanceConfigSectionList = [
 ] as const;
 export type SystemInstanceConfigSection = (typeof systemInstanceConfigSectionList)[number];
 
+export const systemInstanceConfigDomainList = systemInstanceConfigSectionList;
+export type SystemInstanceConfigDomain = SystemInstanceConfigSection;
+
 export type SystemInstanceConfigRegistryItem = {
   key: string;
   section: SystemInstanceConfigSection;
@@ -132,6 +135,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'dataset.vectorMaxProcess',
       'dataset.qaMaxProcess',
       'dataset.vlmMaxProcess',
+      'dataset.retrievalResultsLimit',
       'chat.maxQpm',
       'chat.logUrl',
       'chat.logInterval',
