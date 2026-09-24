@@ -248,6 +248,40 @@ describe('formatCollectionFilterMatchParam', () => {
       })
     ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 42 } }] } }));
   });
+
+  it('only resolves $ref on tags conditions and passes every other value through', () => {
+    const resolveReference = (ref: unknown) => (ref[1] === 'price' ? 42 : undefined);
+
+    // $ref 只在 tags 条件值上解，其它位置不再全树递归
+    const outsideTags = '{"collectionIds":[["$ref","node","price"]]}';
+    expect(formatCollectionFilterMatchParam({ value: outsideTags, resolveReference })).toBe(
+      outsideTags
+    );
+
+    // $or 与 $and 同等处理
+    expect(
+      formatCollectionFilterMatchParam({
+        value: '{"tags":{"$or":[{"price":{"$lt":["$ref","node","price"]}}]}}',
+        resolveReference
+      })
+    ).toBe(JSON.stringify({ tags: { $or: [{ price: { $lt: 42 } }] } }));
+
+    // tags 形状不合法时不当作检索载荷，原样透传
+    expect(formatCollectionFilterMatchParam({ value: { tags: { $xor: [] } } })).toBe(
+      '{"tags":{"$xor":[]}}'
+    );
+    expect(formatCollectionFilterMatchParam({ value: '{"tags":{"$and":"not-array"}}' })).toBe(
+      '{"tags":{"$and":"not-array"}}'
+    );
+
+    // 非检索载荷：字符串原样，对象保持 JSON 化
+    expect(formatCollectionFilterMatchParam({ value: 'open' })).toBe('open');
+    expect(formatCollectionFilterMatchParam({ value: { a: 1 } })).toBe('{"a":1}');
+
+    // 无检索表达的原始值丢弃
+    expect(formatCollectionFilterMatchParam({ value: 42 })).toBeUndefined();
+    expect(formatCollectionFilterMatchParam({ value: true })).toBeUndefined();
+  });
 });
 
 describe('pruneTagFilterConditions', () => {
