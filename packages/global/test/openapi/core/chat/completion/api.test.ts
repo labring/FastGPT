@@ -17,6 +17,7 @@ describe('CompletionsPropsSchema defaults', () => {
       detail: value,
       retainDatasetCite: value,
       showSkillReferences: value,
+      autoExecute: value,
       responseChatItemId: value
     });
     expect(result).toMatchObject({
@@ -25,11 +26,13 @@ describe('CompletionsPropsSchema defaults', () => {
       variables: {},
       detail: false,
       retainDatasetCite: false,
-      showSkillReferences: false
+      showSkillReferences: false,
+      autoExecute: false
     });
     expect(result.responseChatItemId).toEqual(expect.any(String));
     expectTypeOf(result.stream).toEqualTypeOf<boolean>();
     expectTypeOf(result.variables).toEqualTypeOf<Record<string, any>>();
+    expectTypeOf(result.autoExecute).toEqualTypeOf<boolean>();
   });
 });
 
@@ -47,6 +50,44 @@ describe('CompletionsPropsSchema chatId', () => {
     const result = CompletionsPropsSchema.parse({ chatId: 'existing-chat-id' });
 
     expect(result.chatId).toBe('existing-chat-id');
+  });
+});
+
+/**
+ * `autoExecute` 是固定会话标题特性的开关：前端只在自动执行轮置 true，服务端据此写本地化
+ * 固定文案而不是调标题模型。字段缺失时必须默认 false，否则普通对话会被误标成「自动执行」；
+ * 同时沿用 `BoolSchema` 的字符串/数字容错，避免客户端序列化差异导致整个特性静默失效。
+ */
+describe('autoExecute flag', () => {
+  const chatTestBase = {
+    messages: [],
+    nodes: [],
+    edges: [],
+    chatConfig: {},
+    appId: '68ad85a7463006c963799a05',
+    appName: 'Test app',
+    chatId: 'chat-1'
+  };
+
+  it.each([
+    { input: undefined, expected: false },
+    { input: null, expected: false },
+    { input: false, expected: false },
+    { input: true, expected: true },
+    { input: 'true', expected: true },
+    { input: 'false', expected: false },
+    { input: 1, expected: true },
+    { input: 0, expected: false }
+  ])('coerces $input to $expected on both completion schemas', ({ input, expected }) => {
+    expect(CompletionsPropsSchema.parse({ autoExecute: input }).autoExecute).toBe(expected);
+    expect(ChatTestPropsSchema.parse({ ...chatTestBase, autoExecute: input }).autoExecute).toBe(
+      expected
+    );
+  });
+
+  it('is inherited by the Pro chat home body schema', () => {
+    expect(ChatHomeBodySchema.parse({ ...chatTestBase, autoExecute: true }).autoExecute).toBe(true);
+    expect(ChatHomeBodySchema.parse({ ...chatTestBase }).autoExecute).toBe(false);
   });
 });
 

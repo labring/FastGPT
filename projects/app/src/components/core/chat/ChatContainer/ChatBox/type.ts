@@ -40,6 +40,8 @@ export type ChatBoxInputType = {
   hideInUI?: boolean;
   /** 发送后是否清空输入框；默认不清空，只有主输入框确认发送等占用输入框内容的场景显式设为 true。 */
   clearInput?: boolean;
+  /** 本轮是否由「自动执行」配置触发；仅用于服务端选定固定会话标题，不影响工作流 query。 */
+  autoExecute?: boolean;
 };
 
 export type SendPromptFnType = (
