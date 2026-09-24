@@ -9,7 +9,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -103,7 +103,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
         return usageId;
       })();
 
-      await pushDataListToTrainingQueue({
+      await preCreateDatasetDataAndPushToTrainingQueue({
         teamId,
         tmbId,
         datasetId: dataset._id,

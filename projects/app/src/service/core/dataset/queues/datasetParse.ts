@@ -27,7 +27,7 @@ import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/team
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -388,8 +388,8 @@ export const datasetParseQueue = async (): Promise<any> => {
             { session }
           );
 
-          // 6. Push to chunk queue
-          await pushDataListToTrainingQueue({
+          // 6. 预落库最终分块并推送 chunk 队列：数据与任务共享 dataId，调用方事务提交后立即可读
+          await preCreateDatasetDataAndPushToTrainingQueue({
             teamId: data.teamId,
             tmbId: data.tmbId,
             datasetId: dataset._id,

@@ -1,3 +1,7 @@
+import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+
 export type DatasetDataMarkdownImageItem = {
   raw: string;
   alt: string;
@@ -44,3 +48,17 @@ export const uniqueDatasetDataMarkdownImageUrls = (texts: Array<string | null | 
       texts.filter((text): text is string => !!text).flatMap(matchDatasetDataMarkdownImageUrls)
     )
   );
+
+/**
+ * 待索引数据的写保护断言。
+ *
+ * parsed/indexing 的向量和全文记录尚未产出（或正在产出），允许数据级写操作会与在途
+ * 索引任务争抢同一条数据。字段缺失的历史数据按已索引处理。
+ *
+ * 只由数据级写接口触发；读取、集合删除和 Worker 内部的状态推进不经过该断言。
+ */
+export const assertDatasetDataWritable = (indexStatus?: DatasetDataIndexStatusEnum) => {
+  if (isDatasetDataIndexed(indexStatus)) return;
+
+  return Promise.reject(DatasetErrEnum.dataNotIndexed);
+};
