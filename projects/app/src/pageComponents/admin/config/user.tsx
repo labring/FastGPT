@@ -131,6 +131,16 @@ const UserSetting = () => {
           >
             <Switch control={control} name="sso.autoLogin" />
           </FormItem>
+          <FormItem
+            title="禁止 SSO 用户使用密码"
+            description={
+              '开启后，SSO 同步过来的账号（用户名形如 “租户-账号”）不再允许使用平台密码：\n' +
+              '登录、找回密码、管理端改密均会被服务端拒绝，登录页首屏改为登录方式选择页。\n' +
+              '历史已存密码不会被清除，关闭开关后即恢复可用。'
+            }
+          >
+            <Switch control={control} name="sso.disablePasswordForSsoUsers" />
+          </FormItem>
         </>
       )}
 

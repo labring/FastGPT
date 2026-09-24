@@ -234,7 +234,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       autoLogin: z
         .boolean()
         .optional()
-        .meta({ description: '是否在首次进入页面时自动跳转 SSO 登录' })
+        .meta({ description: '是否在首次进入页面时自动跳转 SSO 登录' }),
+      disablePasswordForSsoUsers: z.boolean().optional().meta({
+        description: '是否禁止 SSO 账号使用平台密码登录与改密；仅在配置了 sso.url 时生效'
+      })
     })
     .optional()
     .meta({ description: '企业单点登录（SSO）配置' }),
