@@ -1,5 +1,6 @@
 import json5 from 'json5';
 import safeRegex from 'safe-regex';
+import type { DatasetTagCompareOp } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetCollectionTagsV2 } from '../../tag/schemaV2';
 import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
@@ -37,25 +38,6 @@ const hasAmbiguousAlternation = (pattern: string): boolean => {
   return false;
 };
 
-type CompareOp =
-  | '$eq'
-  | '$ne'
-  | '$gt'
-  | '$lt'
-  | '$gte'
-  | '$lte'
-  | '$contains'
-  | '$notContains'
-  | '$startsWith'
-  | '$endsWith'
-  | '$regex'
-  | '$is'
-  | '$isNot'
-  | '$in'
-  | '$notIn'
-  | '$empty'
-  | '$notEmpty';
-
 /**
  * 判定操作符是否为否定或允许未打标（absent）条件。
  * 当集合未配置该标签时：
@@ -82,7 +64,7 @@ export const isAbsentAllowedOp = (op: string): boolean => {
  * - string：支持正则、包含、前缀、后缀、等值比对。
  */
 export function checkValue(
-  op: CompareOp,
+  op: DatasetTagCompareOp,
   target: unknown,
   storedVal: string | number | string[] | null | undefined,
   tagType: string
@@ -279,7 +261,7 @@ export async function filterCollectionByKeyValueTags({
     if (!entry) {
       return isAbsentAllowedOp(op);
     }
-    return checkValue(op as CompareOp, opObj[op], entry.value, tagInfo.type);
+    return checkValue(op as DatasetTagCompareOp, opObj[op], entry.value, tagInfo.type);
   };
 
   const allCollectionIds: string[] = [];
