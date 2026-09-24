@@ -29,6 +29,27 @@ export const getXlsxParseLimits = (fileSizeBytes: number) => ({
 });
 
 /**
+ * Excel 的“常规”格式会把超过 11 位的数字显示为科学计数法，SheetJS 格式化时也一样：
+ * 8613812345678 这样的编号或手机号会变成 "8.61381E+12"，原始位数在表格和 CSV 中都丢失了。
+ * 对常规格式的整数改为写出完整数值；用户显式设置的数字格式保持不变。
+ */
+const keepWholeNumberDigits = (worksheet: XLSX.WorkSheet) => {
+  for (const address of Object.keys(worksheet)) {
+    if (address.startsWith('!')) continue;
+    const cell = worksheet[address] as XLSX.CellObject;
+    if (
+      cell.t === 'n' &&
+      cell.z === 'General' &&
+      typeof cell.v === 'number' &&
+      Number.isInteger(cell.v) &&
+      cell.w?.includes('E')
+    ) {
+      cell.w = String(cell.v);
+    }
+  }
+};
+
+/**
  * 将 XLSX 转换为 CSV 原文和 Markdown 表格。
  *
  * 工作簿会在生成二维数组和回填合并单元格前完成范围校验；任何工作表范围、
@@ -46,6 +67,8 @@ export const readXlsxRawText = async ({
   const workbook = XLSX.read(buffer, {
     type: 'buffer',
     cellDates: true,
+    // 保留单元格数字格式，用于识别被“常规”格式改写为科学计数法的整数。
+    cellNF: true,
     // 预检已验证真实坐标；这里继续截断，避免后续依赖升级意外绕过纵深保护。
     sheetRows: XLSX_PARSE_LIMITS.maxRows
   });
@@ -135,6 +158,7 @@ export const readXlsxRawText = async ({
   });
 
   const result = worksheets.map(({ name, worksheet, merges, sheetRange }) => {
+    keepWholeNumberDigits(worksheet);
     const data = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
       header: 1,
       defval: '',
