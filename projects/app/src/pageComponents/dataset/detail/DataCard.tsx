@@ -40,6 +40,8 @@ import {
   getCollectionTrainingStatusColorSchema,
   getCollectionTrainingStatusText
 } from '@/web/core/dataset/trainingStatus';
+import { getDatasetDataIndexStatusMapData } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
 
 const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
   ssr: false
@@ -296,157 +298,176 @@ const DataCard = () => {
         {/* data */}
         <ScrollData px={5} pb={5}>
           <Flex flexDir={'column'} gap={2}>
-            {datasetDataList.map((item, index) => (
-              <Card
-                key={item._id}
-                cursor={'pointer'}
-                p={3}
-                userSelect={'none'}
-                boxShadow={'none'}
-                bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
-                border={'sm'}
-                position={'relative'}
-                overflow={'hidden'}
-                _hover={{
-                  borderColor: 'blue.600',
-                  boxShadow: 'lg',
-                  '& .header': { visibility: 'visible' },
-                  '& .footer': { visibility: 'visible' },
-                  bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditDataId(item._id);
-                }}
-              >
-                {/* Data tag */}
-                <Flex
-                  position={'absolute'}
-                  zIndex={1}
-                  alignItems={'center'}
-                  visibility={'hidden'}
-                  className="header"
-                >
-                  <MyTag
-                    px={2}
-                    type="borderFill"
-                    borderRadius={'sm'}
-                    border={'1px'}
-                    color={'myGray.200'}
-                    bg={'white'}
-                    fontWeight={'500'}
-                  >
-                    <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
-                    <Box
-                      ml={1.5}
-                      className={'textEllipsis'}
-                      fontSize={'mini'}
-                      textAlign={'right'}
-                      color={'myGray.500'}
-                    >
-                      ID:{item._id}
-                    </Box>
-                  </MyTag>
-                </Flex>
+            {datasetDataList.map((item, index) => {
+              // 待索引数据只读可见：不进入编辑弹层，也不渲染删除入口。
+              const isIndexed = isDatasetDataIndexed(item.indexStatus);
+              const indexStatusInfo = getDatasetDataIndexStatusMapData(item.indexStatus);
 
-                {/* Data content */}
-                {item.imagePreviewUrl ? (
-                  <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
-                    <Box flex="1 0 0">
-                      <MyImage
-                        src={item.imagePreviewUrl}
-                        alt={''}
-                        w={'100%'}
-                        h="100%"
-                        maxH={'300px'}
-                        objectFit="contain"
-                      />
-                    </Box>
-                    <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
-                      <Markdown source={item.q} isDisabled />
-                    </Box>
-                  </Box>
-                ) : (
-                  <Box wordBreak={'break-all'} fontSize={'sm'}>
-                    <Markdown source={item.q} isDisabled />
-                    {!!item.a && (
-                      <>
-                        <MyDivider />
-                        <Markdown source={item.a} isDisabled />
-                      </>
-                    )}
-                  </Box>
-                )}
-
-                {/* Footer */}
-                <Flex
-                  className="footer"
-                  position={'absolute'}
-                  bottom={2}
-                  right={2}
-                  zIndex={2}
+              return (
+                <Card
+                  key={item._id}
+                  cursor={isIndexed ? 'pointer' : 'default'}
+                  p={3}
+                  userSelect={'none'}
+                  boxShadow={'none'}
+                  bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
+                  border={'sm'}
+                  position={'relative'}
                   overflow={'hidden'}
-                  alignItems={'flex-end'}
-                  visibility={'hidden'}
-                  fontSize={'mini'}
+                  _hover={{
+                    borderColor: isIndexed ? 'blue.600' : undefined,
+                    boxShadow: isIndexed ? 'lg' : 'none',
+                    '& .header': { visibility: 'visible' },
+                    '& .footer': { visibility: 'visible' },
+                    bg: index % 2 === 1 ? 'myGray.200' : 'blue.100'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isIndexed) return;
+                    setEditDataId(item._id);
+                  }}
                 >
+                  {/* Data tag */}
                   <Flex
+                    position={'absolute'}
+                    zIndex={1}
                     alignItems={'center'}
-                    bg={'white'}
-                    color={'myGray.600'}
-                    borderRadius={'sm'}
-                    border={'1px'}
-                    borderColor={'myGray.200'}
-                    h={'24px'}
-                    px={2}
-                    fontSize={'mini'}
-                    boxShadow={'1'}
-                    py={1}
-                    mr={2}
+                    visibility={'hidden'}
+                    className="header"
                   >
-                    {item.imageSize ? (
-                      <>{formatFileSize(item.imageSize)}</>
-                    ) : (
-                      <>
-                        <MyIcon
-                          bg={'white'}
-                          color={'myGray.600'}
-                          borderRadius={'sm'}
-                          border={'1px'}
-                          borderColor={'myGray.200'}
-                          name="common/text/t"
-                          w={'14px'}
-                          mr={1}
-                        />
-                        {getTextValidLength((item?.q || '') + (item?.a || ''))}
-                      </>
-                    )}
+                    <MyTag
+                      px={2}
+                      type="borderFill"
+                      borderRadius={'sm'}
+                      border={'1px'}
+                      color={'myGray.200'}
+                      bg={'white'}
+                      fontWeight={'500'}
+                    >
+                      <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
+                      <Box
+                        ml={1.5}
+                        className={'textEllipsis'}
+                        fontSize={'mini'}
+                        textAlign={'right'}
+                        color={'myGray.500'}
+                      >
+                        ID:{item._id}
+                      </Box>
+                    </MyTag>
                   </Flex>
 
-                  {canWrite && (
-                    <PopoverConfirm
-                      Trigger={
-                        <IconButton
-                          display={'flex'}
-                          p={1}
-                          boxShadow={'1'}
-                          icon={<MyIcon name={'common/trash'} w={'14px'} />}
-                          variant={'whiteDanger'}
-                          size={'xsSquare'}
-                          aria-label={''}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                          }}
+                  {/* Index status */}
+                  <Flex position={'absolute'} zIndex={1} top={2} right={2}>
+                    <MyTag
+                      px={2}
+                      type="fill"
+                      borderRadius={'sm'}
+                      colorSchema={indexStatusInfo.colorSchema}
+                    >
+                      {t(indexStatusInfo.label)}
+                    </MyTag>
+                  </Flex>
+
+                  {/* Data content */}
+                  {item.imagePreviewUrl ? (
+                    <Box display={['block', 'flex']} alignItems={'center'} gap={[3, 6]}>
+                      <Box flex="1 0 0">
+                        <MyImage
+                          src={item.imagePreviewUrl}
+                          alt={''}
+                          w={'100%'}
+                          h="100%"
+                          maxH={'300px'}
+                          objectFit="contain"
                         />
-                      }
-                      content={t('common:dataset.Confirm to delete the data')}
-                      type="delete"
-                      onConfirm={() => onDeleteOneData(item._id)}
-                    />
+                      </Box>
+                      <Box flex="1 0 0" maxH={'300px'} overflow={'hidden'} fontSize="sm">
+                        <Markdown source={item.q} isDisabled />
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Box wordBreak={'break-all'} fontSize={'sm'}>
+                      <Markdown source={item.q} isDisabled />
+                      {!!item.a && (
+                        <>
+                          <MyDivider />
+                          <Markdown source={item.a} isDisabled />
+                        </>
+                      )}
+                    </Box>
                   )}
-                </Flex>
-              </Card>
-            ))}
+
+                  {/* Footer */}
+                  <Flex
+                    className="footer"
+                    position={'absolute'}
+                    bottom={2}
+                    right={2}
+                    zIndex={2}
+                    overflow={'hidden'}
+                    alignItems={'flex-end'}
+                    visibility={'hidden'}
+                    fontSize={'mini'}
+                  >
+                    <Flex
+                      alignItems={'center'}
+                      bg={'white'}
+                      color={'myGray.600'}
+                      borderRadius={'sm'}
+                      border={'1px'}
+                      borderColor={'myGray.200'}
+                      h={'24px'}
+                      px={2}
+                      fontSize={'mini'}
+                      boxShadow={'1'}
+                      py={1}
+                      mr={2}
+                    >
+                      {item.imageSize ? (
+                        <>{formatFileSize(item.imageSize)}</>
+                      ) : (
+                        <>
+                          <MyIcon
+                            bg={'white'}
+                            color={'myGray.600'}
+                            borderRadius={'sm'}
+                            border={'1px'}
+                            borderColor={'myGray.200'}
+                            name="common/text/t"
+                            w={'14px'}
+                            mr={1}
+                          />
+                          {getTextValidLength((item?.q || '') + (item?.a || ''))}
+                        </>
+                      )}
+                    </Flex>
+
+                    {canWrite && isIndexed && (
+                      <PopoverConfirm
+                        Trigger={
+                          <IconButton
+                            display={'flex'}
+                            p={1}
+                            boxShadow={'1'}
+                            icon={<MyIcon name={'common/trash'} w={'14px'} />}
+                            variant={'whiteDanger'}
+                            size={'xsSquare'}
+                            aria-label={''}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                          />
+                        }
+                        content={t('common:dataset.Confirm to delete the data')}
+                        type="delete"
+                        onConfirm={() => onDeleteOneData(item._id)}
+                      />
+                    )}
+                  </Flex>
+                </Card>
+              );
+            })}
           </Flex>
         </ScrollData>
       </Flex>

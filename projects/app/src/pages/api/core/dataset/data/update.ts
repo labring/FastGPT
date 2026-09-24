@@ -42,7 +42,8 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
     authToken: true,
     authApiKey: true,
     dataId,
-    per: WritePermissionVal
+    per: WritePermissionVal,
+    assertWritable: true
   });
 
   const dataset = collection.dataset;

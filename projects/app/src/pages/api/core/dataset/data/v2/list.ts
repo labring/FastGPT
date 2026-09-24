@@ -55,7 +55,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
   };
 
   const [list, total] = await Promise.all([
-    MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex imageId')
+    MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex imageId indexStatus')
       .sort({ chunkIndex: 1, _id: -1 })
       .skip(offset)
       .limit(pageSize)
