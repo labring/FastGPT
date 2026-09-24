@@ -91,16 +91,20 @@ const resolveMcpConnectAddress = async (hostname: string): Promise<ResolvedAddre
   }
 
   // lookup 按约定只返回 IP；拒绝异常值，避免把 hostname 再交给底层隐式解析。
-  if (resolved.some(({ address, family }) => isIP(address) !== family)) {
-    throw new Error('DNS lookup returned an invalid address');
-  }
+  const validatedResolved = resolved.map(({ address, family }) => {
+    const addressFamily = isIP(address);
+    if (addressFamily !== family || (addressFamily !== 4 && addressFamily !== 6)) {
+      throw new Error('DNS lookup returned an invalid address');
+    }
+    return { address, family: addressFamily } as ResolvedAddress;
+  });
 
   // 不能只检查第一条记录，否则 Node 的地址选择可能落到未校验的内网地址。
-  if (resolved.some(({ address }) => isInternalResolvedIP(address))) {
+  if (validatedResolved.some(({ address }) => isInternalResolvedIP(address))) {
     throw new Error(PRIVATE_URL_TEXT);
   }
 
-  const firstAddress = resolved[0];
+  const firstAddress = validatedResolved[0];
   if (!firstAddress) throw new Error('DNS lookup returned no address');
 
   return {
