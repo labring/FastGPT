@@ -255,18 +255,18 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
   };
 
   await runStage({
-    stageKey: VERSION_STAGE_KEY,
-    collection: MongoAppVersion.collection,
-    readBatch: readAppVersionResourceBatch,
-    readRecord: readAppVersionResourceRecord,
-    processRecords: backfillAppVersionResourceRecords
-  });
-  await runStage({
     stageKey: APP_STAGE_KEY,
     collection: MongoApp.collection,
     readBatch: readAppResourceBatch,
     readRecord: readAppResourceRecord,
     processRecords: backfillAppResourceRecords
+  });
+  await runStage({
+    stageKey: VERSION_STAGE_KEY,
+    collection: MongoAppVersion.collection,
+    readBatch: readAppVersionResourceBatch,
+    readRecord: readAppVersionResourceRecord,
+    processRecords: backfillAppVersionResourceRecords
   });
 
   await context.reportProgress({

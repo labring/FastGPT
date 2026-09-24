@@ -10,6 +10,7 @@ import {
   mergeAppResources,
   splitExtractedAppResources
 } from '../../../core/app/resources';
+import { MongoApp } from '../../../core/app/schema';
 import {
   getAppDraftResourceBaseline,
   getAppLatestVersion
@@ -222,6 +223,7 @@ export const filterAuthorizedAppResources = async ({
 /**
  * 按当前应用草稿快照解析资源，并只校验相对快照新增的 ACL 资源。
  * 保存/自动保存不阻断无权限新增；发布和 Test/Debug 通过 blockOnUnauthorized 阻断。
+ * 历史未迁移草稿（缺失 resources 字段）统一按所属应用的所有者 app.tmbId 过滤基线。
  */
 export const resolveAppResourcesByPermission = async ({
   appId,
@@ -240,20 +242,20 @@ export const resolveAppResourcesByPermission = async ({
   allowRootCrossTeam?: boolean;
   session?: ClientSession;
 }) => {
-  const baseline = await getAppDraftResourceBaseline(
-    appId,
-    session,
-    async (rawResources, draftTmbId) => {
-      const authorTmbId = draftTmbId || tmbId;
-      if (!authorTmbId) return [];
-      return filterAuthorizedAppResources({
-        resources: rawResources,
-        tmbId: authorTmbId,
-        isRoot,
-        allowRootCrossTeam
-      });
-    }
-  );
+  const appQuery = MongoApp.findById(appId, 'tmbId');
+  if (session) appQuery.session(session);
+  const app = await appQuery.lean();
+  const appOwnerTmbId = app?.tmbId ? String(app.tmbId) : undefined;
+
+  const baseline = await getAppDraftResourceBaseline(appId, session, async (rawResources) => {
+    if (!appOwnerTmbId) return [];
+    return filterAuthorizedAppResources({
+      resources: rawResources,
+      tmbId: appOwnerTmbId,
+      isRoot,
+      allowRootCrossTeam
+    });
+  });
   const { kept, added } = splitExtractedAppResources({ extracted, baseline });
   if (added.length === 0) return mergeAppResources(kept);
 

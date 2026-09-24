@@ -187,13 +187,11 @@ describe('4170 App resource snapshot migration', () => {
     await expect(backfillAppResourceSnapshots(state.context)).rejects.toThrow(
       'checkpoint unavailable'
     );
-    await expect(
-      MongoAppVersion.collection.findOne({ _id: records.version._id })
-    ).resolves.toMatchObject({
-      resources: [{ type: 'skill', id: 'published-skill' }]
+    await expect(MongoApp.collection.findOne({ _id: records.app._id })).resolves.toMatchObject({
+      publishedVersionId: records.version._id
     });
     expect(state.getCheckpoint()).toMatchObject({
-      stages: { versions: { processedCount: 0, lastId: null } }
+      stages: { apps: { processedCount: 0, lastId: null } }
     });
 
     await expect(backfillAppResourceSnapshots(state.context)).resolves.toMatchObject({
@@ -254,8 +252,18 @@ describe('4170 App resource snapshot migration', () => {
       MongoAppVersion.collection.insertOne(records.version)
     ]);
     const state = createContext();
-    state.context.assertActive.mockImplementationOnce(async () => {
-      await MongoAppVersion.collection.insertOne(lateVersion);
+    let versionStageStarted = false;
+    let lateVersionInserted = false;
+    state.context.reportProgress.mockImplementation(async (value) => {
+      if (value.key === 'versions' && value.status === SystemMigrationStatusEnum.running) {
+        versionStageStarted = true;
+      }
+    });
+    state.context.assertActive.mockImplementation(async () => {
+      if (versionStageStarted && !lateVersionInserted) {
+        lateVersionInserted = true;
+        await MongoAppVersion.collection.insertOne(lateVersion);
+      }
     });
 
     await expect(backfillAppResourceSnapshots(state.context)).resolves.toMatchObject({
