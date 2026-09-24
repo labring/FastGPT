@@ -33,6 +33,7 @@ export const InitChatResponseSchema = createChatTargetResponseSchema({
   chatId: z.string().optional().describe('会话ID'),
   userAvatar: z.string().optional().describe('用户头像'),
   title: z.string().describe('对话标题'),
+  customTitle: z.string().optional().describe('用户手动改名的标题；展示时优先于 title'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),
   chatGenerateStatus: ChatGenerateStatusSchema.optional(),
   hasBeenRead: z.boolean().optional().describe('是否已读'),

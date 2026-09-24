@@ -18,6 +18,8 @@
   "chat.waiting_for_response": "正在努力思考中",
   "chat_history": "對話紀錄",
   "chat_test_app": "除錯-{{name}}",
+  "chat_title_auto_execute": "自動執行",
+  "chat_title_upload_file": "檔案上傳",
   "citation_card_prefix": "共 ",
   "citation_card_suffix": " 筆引用",
   "citation_card_title": "共 {{num}} 筆引用",

@@ -3,6 +3,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { writePrimary } from '../../../common/mongo/utils';
@@ -11,11 +12,7 @@ import { MongoChat } from '../chatSchema';
 import { tryStartGenerateChat, updateChatGenerateStatus } from '../chatGenerateStatus';
 import { validateChatRoundDataIds } from './dataIdValidation';
 import { getInteractiveResponseStatus } from '../interactiveResponseDataId';
-import {
-  canWriteGeneratedTitle,
-  syncGeneratedChatTitleFromUserContent,
-  type GeneratedChatTitleResult
-} from '../title';
+import { canWriteGeneratedTitle, syncGeneratedChatTitleFromUserContent } from '../title';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
 
 export const NO_RECORD_CHAT_ID = 'NO_RECORD_HISTORIES';
@@ -69,6 +66,10 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
   fixedTitle?: string;
+  /** 本轮是否由前端「自动执行」触发，标题改用本地化固定文案。 */
+  autoExecute?: boolean;
+  /** 固定文案的目标语言；cron / MCP / IM 渠道无请求上下文时缺省，由标题模块回退 zh-CN。 */
+  locale?: localeType;
 };
 
 export type PreChatRoundResult = {
@@ -76,7 +77,7 @@ export type PreChatRoundResult = {
   responseChatItemId: string;
   shouldPersistChatRound: boolean;
   shouldFinalizePreparedRound: boolean;
-  titleGeneration?: Promise<GeneratedChatTitleResult | undefined>;
+  titleGeneration?: Promise<string | undefined>;
 };
 
 /**
@@ -310,7 +311,9 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       teamId: params.teamId,
       userContent: params.userContent,
       shouldGenerateTitle: preparedChatRound.shouldGenerateTitle,
-      fixedTitle: params.fixedTitle
+      fixedTitle: params.fixedTitle,
+      autoExecute: params.autoExecute,
+      locale: params.locale
     });
 
     return {

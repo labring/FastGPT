@@ -84,6 +84,7 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
       sourceId: app._id
     }),
     title: chat?.title || '',
+    customTitle: chat?.customTitle || '',
     userAvatar: getRandomUserAvatar(),
     variables,
     chatGenerateStatus: chat?.chatGenerateStatus,

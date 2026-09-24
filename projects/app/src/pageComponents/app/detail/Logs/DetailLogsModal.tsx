@@ -23,6 +23,7 @@ import { DetailLogsModalFeedbackTypeFilter } from './FeedbackTypeFilter';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
@@ -89,7 +90,11 @@ const DetailLogsModal = ({
     }
   );
 
-  const title = chat?.title;
+  // 与日志表格、对话页侧栏保持一致：customTitle 优先，都为空时兜底「新对话」
+  const title = getDisplayHistoryTitle({
+    customTitle: chat?.customTitle,
+    title: chat?.title
+  });
   const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染

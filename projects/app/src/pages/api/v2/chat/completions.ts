@@ -102,7 +102,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     messages,
     responseChatItemId,
     metadata,
-    authProxy
+    authProxy,
+    autoExecute
   } = completionBody;
   const { retainDatasetCite } = completionBody;
   let { detail, variables } = completionBody;
@@ -323,7 +324,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
-      fixedTitle: pluginFixedTitle
+      fixedTitle: pluginFixedTitle,
+      autoExecute,
+      locale: getLocale(req)
     });
 
     const saveChatId = preparedRound.chatId;

@@ -16,7 +16,7 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { AppChatConfigInputSchema } from '../../app/common/api';
-import { optionalNullToUndefined } from '../../../../common/zod';
+import { BoolSchema, optionalNullToUndefined } from '../../../../common/zod';
 
 /** 带默认值的字段仅归一空值，保留原 Schema 的必填输出类型和默认值。 */
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
@@ -125,6 +125,10 @@ export const CompletionsPropsSchema = WebCompletionsSchema.extend({
   }),
   showSkillReferences: nullishToUndefined(z.boolean().default(false)).meta({
     description: '是否显示技能引用'
+  }),
+  autoExecute: nullishToUndefined(BoolSchema.default(false)).meta({
+    description:
+      '本轮是否由应用「自动执行」配置触发。FastGPT 对话界面内部信号，仅影响会话标题：为 true 时首轮标题使用本地化固定文案（中文「自动执行」）而不是根据问题生成，第二轮起恢复正常生成。第三方集成无需传入'
   })
 }).superRefine(({ outLinkAuthData }, ctx) => {
   const hasShareId = !!outLinkAuthData?.shareId;
@@ -258,6 +262,11 @@ export const ChatTestPropsSchema = z.object({
   chatId: z.string().meta({
     example: 'chat-id',
     description: '会话 ID'
+  }),
+  autoExecute: nullishToUndefined(BoolSchema.default(false)).meta({
+    example: false,
+    description:
+      '本轮是否由应用「自动执行」配置触发。FastGPT 对话界面内部信号，仅影响会话标题：为 true 时首轮标题使用本地化固定文案（中文「自动执行」）而不是根据问题生成，第二轮起恢复正常生成'
   })
 });
 export type ChatTestPropsType = z.infer<typeof ChatTestPropsSchema>;

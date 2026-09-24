@@ -353,7 +353,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 **event 取值**（\`stream=true\` 且 \`detail=true\` 场景下才会返回非 answer 的 event）
 
 - \`answer\`：返回给客户端的文本（最终会算作回答）。
-- \`chatTitle\`：根据本轮用户问题生成的对话标题，payload 为 \`{"title":"..."}\`。仅 \`detail=true\`、未命名会话标题生成成功时返回；生成失败、手动标题或已有有效标题不会返回。工作流工具应用会使用本轮运行时间作为默认标题。
+- \`chatTitle\`：根据本轮用户问题生成的对话标题，payload 为 \`{"title":"..."}\`。仅 \`detail=true\`、未命名会话标题生成成功时返回；生成失败、手动标题或已有有效标题不会返回。工作流工具应用会使用本轮运行时间作为默认标题。另有两类本地化固定文案：\`autoExecute=true\` 的自动执行首轮为「自动执行」，只上传文件、没有用户问题的首轮为「上传文件」；两者均会在下一轮带文字的请求中被真实标题覆盖。
 - \`fastAnswer\`：指定回复返回给客户端的文本（最终会算作回答）。
 - \`toolCall\` / \`toolParams\` / \`toolResponse\`：工具相关。
 - \`flowNodeStatus\`：运行到的节点状态。
@@ -512,7 +512,7 @@ ${interactiveStreamExample}
 **event 取值**（\`stream=true\` 且 \`detail=true\` 场景下才会返回非 answer 的 event）
 
 - \`answer\`：返回给客户端的文本（最终会算作回答）。
-- \`chatTitle\`：根据本轮用户问题生成的对话标题，payload 为 \`{"title":"..."}\`。仅 \`detail=true\`、未命名会话标题生成成功时返回；生成失败、手动标题或已有有效标题不会返回。工作流工具应用会使用本轮运行时间作为默认标题。
+- \`chatTitle\`：根据本轮用户问题生成的对话标题，payload 为 \`{"title":"..."}\`。仅 \`detail=true\`、未命名会话标题生成成功时返回；生成失败、手动标题或已有有效标题不会返回。工作流工具应用会使用本轮运行时间作为默认标题。另有两类本地化固定文案：\`autoExecute=true\` 的自动执行首轮为「自动执行」，只上传文件、没有用户问题的首轮为「上传文件」；两者均会在下一轮带文字的请求中被真实标题覆盖。
 - \`fastAnswer\`：指定回复返回给客户端的文本（最终会算作回答）。
 - \`toolCall\` / \`toolParams\` / \`toolResponse\`：工具相关。
 - \`flowNodeStatus\`：运行到的节点状态。

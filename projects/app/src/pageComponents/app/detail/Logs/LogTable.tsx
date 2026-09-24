@@ -26,6 +26,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useLocalStorageState } from 'ahooks';
 import { getLogKeys } from '@/web/core/app/api/log';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 import type { AppLogKeysType } from '@fastgpt/global/core/app/logs/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
@@ -390,7 +391,8 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.TITLE]: (
         <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
-          {item.customTitle || item.title}
+          {/* 与对话页侧栏使用同一套兜底，避免标题未生成时两边不一致 */}
+          {getDisplayHistoryTitle({ customTitle: item.customTitle, title: item.title })}
         </Td>
       ),
       [AppLogKeysEnum.SESSION_ID]: (
