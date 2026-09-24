@@ -5,10 +5,7 @@ import {
   StreamableHTTPError
 } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
-import {
-  McpToolDataTypeSchema,
-  type McpToolConfigType
-} from '@fastgpt/global/core/app/tool/mcpTool/type';
+import type { McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import {
   SecretValueTypeSchema,
   StoreSecretValueTypeSchema,
@@ -22,7 +19,15 @@ import { MongoApp } from './schema';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
-import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
+import dns from 'dns/promises';
+import { isIP, type LookupFunction } from 'net';
+import { Agent, type Dispatcher } from 'undici';
+import { getProxyForUrl } from 'proxy-from-env';
+import {
+  isInternalAddress,
+  isInternalResolvedIP,
+  PRIVATE_URL_TEXT
+} from '../../common/system/utils';
 import { decodeMcpToolSetNodesFromStorage } from './jsonSchemaStorage';
 import { McpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
 import { getAppLatestVersion, type AppPublishedWorkflow } from './version/controller';
@@ -40,7 +45,83 @@ const MCP_SAFE_FETCH_MAX_REDIRECTS = 5;
 const MCP_REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 const MCP_SENSITIVE_REDIRECT_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization']);
 
-type McpFetch = (url: string | URL, init?: RequestInit) => Promise<Response>;
+type McpRequestInit = RequestInit & {
+  dispatcher?: Dispatcher;
+};
+
+type McpFetch = (url: string | URL, init?: McpRequestInit) => Promise<Response>;
+
+type McpSafeFetch = McpFetch & {
+  close: () => Promise<void>;
+};
+
+type ResolvedAddress = {
+  address: string;
+  family: 4 | 6;
+};
+
+/**
+ * 解析 MCP 目标将要使用的地址，并在返回给 socket 前完成最终 SSRF 校验。
+ *
+ * 预检使用的是独立的 DNS 请求，不能防止 DNS rebinding；这里的地址会被
+ * createPinnedLookup 固定交给 Node 建连，因此校验结果和实际连接目标保持一致。
+ */
+const resolveMcpConnectAddress = async (hostname: string): Promise<ResolvedAddress> => {
+  const normalizedHostname = hostname.replace(/^\[|\]$/g, '');
+  const ipFamily = isIP(normalizedHostname);
+
+  if (ipFamily) {
+    if (isInternalResolvedIP(normalizedHostname)) {
+      throw new Error(PRIVATE_URL_TEXT);
+    }
+
+    return {
+      address: normalizedHostname,
+      family: ipFamily as 4 | 6
+    };
+  }
+
+  const resolved = await dns.lookup(normalizedHostname, {
+    all: true,
+    verbatim: true
+  });
+
+  if (resolved.length === 0) {
+    throw new Error('DNS lookup returned no address');
+  }
+
+  // lookup 按约定只返回 IP；拒绝异常值，避免把 hostname 再交给底层隐式解析。
+  if (resolved.some(({ address, family }) => isIP(address) !== family)) {
+    throw new Error('DNS lookup returned an invalid address');
+  }
+
+  // 不能只检查第一条记录，否则 Node 的地址选择可能落到未校验的内网地址。
+  if (resolved.some(({ address }) => isInternalResolvedIP(address))) {
+    throw new Error(PRIVATE_URL_TEXT);
+  }
+
+  const firstAddress = resolved[0];
+  if (!firstAddress) throw new Error('DNS lookup returned no address');
+
+  return {
+    address: firstAddress.address,
+    family: firstAddress.family
+  };
+};
+
+/**
+ * 返回只提供已校验地址的 lookup，阻止 undici 在真正建连时再次解析 hostname。
+ */
+const createPinnedLookup = (resolved: ResolvedAddress): LookupFunction => {
+  return (_hostname, options, callback) => {
+    if (options.all) {
+      callback(null, [resolved]);
+      return;
+    }
+
+    callback(null, resolved.address, resolved.family);
+  };
+};
 
 export const assertMCPUrlNotInternal = async (url: string) => {
   if (await isInternalAddress(url)) {
@@ -166,6 +247,8 @@ const getMcpRedirectRequestInit = ({
  * 这会让“初始 URL 合法，Location 跳到内网地址”的场景绕过 SSRF 防护。
  * 该 fetch 通过 `redirect: manual` 接管重定向流程，并对每一跳目标重新执行
  * 内网地址校验；跨 host/protocol 跳转时还会移除鉴权类 header，避免 MCP 密钥泄露。
+ * 直连请求还会把最终校验过的 DNS 地址固定到 undici dispatcher，避免
+ * “检查时是公网 IP、建连时变成内网 IP”的 DNS rebinding TOCTOU。
  */
 export const createMcpSafeFetch = ({
   maxRedirects = MCP_SAFE_FETCH_MAX_REDIRECTS,
@@ -173,12 +256,44 @@ export const createMcpSafeFetch = ({
 }: {
   maxRedirects?: number;
   fetchImpl?: McpFetch;
-} = {}): McpFetch => {
+} = {}): McpSafeFetch => {
   const redirectLimit = Math.max(0, maxRedirects);
+  const dispatchers = new Map<string, Dispatcher>();
 
-  return async (url, init) => {
+  const getDispatcher = async (url: string): Promise<Dispatcher> => {
+    const parsedUrl = new URL(url);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      throw new Error('MCP URL only supports http/https protocol');
+    }
+
+    // 代理端会重新解析目标域名，本进程无法保证它连接的是已校验的 IP；必须拒绝。
+    if (getProxyForUrl(url)) {
+      throw new Error('MCP requests through an HTTP proxy are not supported by SSRF protection');
+    }
+
+    const resolved = await resolveMcpConnectAddress(parsedUrl.hostname);
+    const key = `${parsedUrl.origin}|${resolved.address}|${resolved.family}`;
+    const existing = dispatchers.get(key);
+    if (existing) return existing;
+
+    const dispatcher = new Agent({
+      connect: {
+        lookup: createPinnedLookup(resolved)
+      }
+    });
+    dispatchers.set(key, dispatcher);
+    return dispatcher;
+  };
+
+  const close = async () => {
+    const currentDispatchers = [...dispatchers.values()];
+    dispatchers.clear();
+    await Promise.all(currentDispatchers.map((dispatcher) => dispatcher.close().catch(() => {})));
+  };
+
+  const safeFetch = (async (url, init) => {
     let currentUrl = new URL(url.toString()).toString();
-    let currentInit: RequestInit = {
+    let currentInit: McpRequestInit = {
       ...init,
       redirect: 'manual'
     };
@@ -186,7 +301,12 @@ export const createMcpSafeFetch = ({
     for (let redirectCount = 0; redirectCount <= redirectLimit; redirectCount++) {
       await assertMCPUrlNotInternal(currentUrl);
 
-      const response = await fetchImpl(currentUrl, currentInit);
+      const dispatcher = await getDispatcher(currentUrl);
+      // dispatcher 必须覆盖调用方传入值，避免自定义 dispatcher 绕过安全 lookup。
+      const response = await fetchImpl(currentUrl, {
+        ...currentInit,
+        dispatcher
+      });
 
       if (!isMcpRedirectResponse(response)) {
         return response;
@@ -211,7 +331,10 @@ export const createMcpSafeFetch = ({
     }
 
     throw new Error(`Maximum MCP redirects exceeded: ${redirectLimit}`);
-  };
+  }) as McpSafeFetch;
+
+  safeFetch.close = close;
+  return safeFetch;
 };
 
 const shouldFallbackToSSE = (error: unknown): boolean => {
@@ -236,6 +359,7 @@ export class MCPClient {
   private url: string;
   private headers: Record<string, any> = {};
   private connectionPromise: Promise<Client> | null = null;
+  private safeFetch: McpSafeFetch | null = null;
 
   constructor(config: { url: string; headers: Record<string, any> }) {
     this.url = config.url;
@@ -262,10 +386,11 @@ export class MCPClient {
 
   private async doConnect(): Promise<Client> {
     await assertMCPUrlNotInternal(this.url);
-    const safeFetch = createMcpSafeFetch();
 
     // 避免连接重复，强制关闭一次
     await this.client.close().catch(() => {});
+    const safeFetch = createMcpSafeFetch();
+    this.safeFetch = safeFetch;
 
     logger.debug('Start connect mcp client', { url: this.url });
     try {
@@ -278,6 +403,7 @@ export class MCPClient {
       await this.client.connect(transport);
     } catch (streamableError: any) {
       if (!shouldFallbackToSSE(streamableError)) {
+        await this.closeSafeFetch();
         logger.info('Streamable HTTP error', streamableError);
         throw streamableError;
       }
@@ -292,6 +418,7 @@ export class MCPClient {
           })
         );
       } catch (sseError: any) {
+        await this.closeSafeFetch();
         logger.info('SSE error', sseError);
         throw new Error(
           `MCP connection failed. Streamable HTTP: ${getErrorMessage(
@@ -306,12 +433,24 @@ export class MCPClient {
       if (error?.message?.includes('SSE stream: Not Found')) return;
       logger.warn('MCP client connection error', { url: this.url, error });
       this.connectionPromise = null;
+      void this.closeSafeFetch();
     };
     this.client.onclose = () => {
       this.connectionPromise = null;
+      void this.closeSafeFetch();
     };
 
     return this.client;
+  }
+
+  /**
+   * 关闭 MCP fetch 使用的 dispatcher。
+   * MCP 工作流可能复用同一个 client，因此 dispatcher 必须跟随 client 生命周期释放。
+   */
+  private async closeSafeFetch() {
+    const safeFetch = this.safeFetch;
+    this.safeFetch = null;
+    await safeFetch?.close().catch(() => {});
   }
 
   // 内部方法：关闭连接
@@ -319,8 +458,10 @@ export class MCPClient {
     this.connectionPromise = null;
     try {
       await retryFn(() => this.client.close(), 3);
+      await this.closeSafeFetch();
       logger.debug('MCP client connection closed', { url: this.url });
     } catch (error) {
+      await this.closeSafeFetch();
       logger.error('MCP client failed to close connection', { url: this.url, error });
     }
   }

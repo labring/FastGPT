@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
+import dns from 'dns/promises';
 
 // --- Hoisted mocks ---
 const { mockDereference } = vi.hoisted(() => ({
@@ -47,6 +48,7 @@ const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
 
 afterEach(() => {
   mutableServiceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+  vi.unstubAllEnvs();
 });
 
 const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
@@ -136,6 +138,22 @@ describe('MCPClient', () => {
       client.close = vi.fn().mockRejectedValue(new Error('close failed'));
 
       await expect(mcpClient.closeConnection()).resolves.toBeUndefined();
+    });
+
+    it('should close the MCP fetch dispatcher with the client', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      client.close = vi.fn().mockResolvedValue(undefined);
+      client.connect = vi.fn().mockResolvedValue(undefined);
+
+      await (mcpClient as any).getConnection();
+      const safeFetch = (mcpClient as any).safeFetch;
+      const close = vi.spyOn(safeFetch, 'close');
+
+      await mcpClient.closeConnection();
+
+      expect(close).toHaveBeenCalledOnce();
+      expect((mcpClient as any).safeFetch).toBeNull();
     });
   });
 
@@ -558,6 +576,138 @@ describe('MCPClient', () => {
 });
 
 describe('createMcpSafeFetch', () => {
+  beforeEach(() => {
+    // pnpm may inject npm_config_*_proxy into the test process; isolate direct-connect tests.
+    for (const key of [
+      'HTTP_PROXY',
+      'http_proxy',
+      'HTTPS_PROXY',
+      'https_proxy',
+      'ALL_PROXY',
+      'all_proxy',
+      'npm_config_http_proxy',
+      'npm_config_https_proxy',
+      'npm_config_proxy'
+    ]) {
+      vi.stubEnv(key, '');
+    }
+  });
+
+  it('should reject a DNS rebinding answer before sending the request', async () => {
+    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: '127.0.0.1', family: 4 }]);
+    const fetchImpl = vi.fn();
+    const safeFetch = createMcpSafeFetch({ fetchImpl });
+
+    try {
+      await expect(safeFetch('http://rebind.example.test/mcp')).rejects.toThrow(PRIVATE_URL_TEXT);
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      await safeFetch.close();
+    }
+  });
+
+  it('should reject mixed public and private DNS answers', async () => {
+    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup').mockResolvedValue([
+      { address: '198.51.100.12', family: 4 },
+      { address: '169.254.169.254', family: 4 }
+    ]);
+    const fetchImpl = vi.fn();
+    const safeFetch = createMcpSafeFetch({ fetchImpl });
+
+    try {
+      await expect(safeFetch('http://mixed.example.test/mcp')).rejects.toThrow(PRIVATE_URL_TEXT);
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      await safeFetch.close();
+    }
+  });
+
+  it('should validate the socket address again for every redirect target', async () => {
+    mutableServiceEnv.CHECK_INTERNAL_IP = true;
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup')
+      .mockResolvedValueOnce([{ address: '8.8.8.8', family: 4 }])
+      .mockResolvedValueOnce([{ address: '127.0.0.1', family: 4 }]);
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('redirect', {
+        status: 302,
+        headers: { Location: 'http://redirected.example.test/mcp' }
+      })
+    );
+    const safeFetch = createMcpSafeFetch({ fetchImpl });
+
+    try {
+      await expect(safeFetch('http://initial.example.test/mcp')).rejects.toThrow(PRIVATE_URL_TEXT);
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      await safeFetch.close();
+    }
+  });
+
+  it('should reject unexpected non-IP lookup results rather than resolving them again', async () => {
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: 'unexpected.example.test', family: 4 }]);
+    const fetchImpl = vi.fn();
+    const safeFetch = createMcpSafeFetch({ fetchImpl });
+
+    try {
+      await expect(safeFetch('http://invalid.example.test/mcp')).rejects.toThrow(
+        'DNS lookup returned an invalid address'
+      );
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      await safeFetch.close();
+    }
+  });
+
+  it('should connect using the validated IP without another DNS lookup', async () => {
+    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    const carrierHost = getReachablePrivateHost();
+    if (!carrierHost) return;
+
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    const lookup = vi.spyOn(dns, 'lookup').mockResolvedValue([{ address: carrierHost, family: 4 }]);
+    const server = await listen((req, res) => res.end(req.headers.host), '0.0.0.0');
+    const safeFetch = createMcpSafeFetch();
+    const hostname = 'pinned.example.test';
+
+    try {
+      const response = await safeFetch(`http://${hostname}:${getServerPort(server)}/mcp`);
+      expect(await response.text()).toBe(`${hostname}:${getServerPort(server)}`);
+      expect(lookup).toHaveBeenCalledTimes(1);
+    } finally {
+      await safeFetch.close();
+      await closeServer(server);
+    }
+  });
+
+  it('should fail closed when an HTTP proxy would resolve the target', async () => {
+    vi.stubEnv('HTTP_PROXY', 'http://127.0.0.1:3128');
+    vi.stubEnv('NO_PROXY', '');
+    vi.spyOn(dns, 'resolve4').mockResolvedValue(['198.51.100.12']);
+    vi.spyOn(dns, 'resolve6').mockResolvedValue([]);
+    const fetchImpl = vi.fn();
+    const safeFetch = createMcpSafeFetch({ fetchImpl });
+
+    try {
+      await expect(safeFetch('http://proxy.example.test/mcp')).rejects.toThrow(
+        'MCP requests through an HTTP proxy are not supported by SSRF protection'
+      );
+      expect(fetchImpl).not.toHaveBeenCalled();
+    } finally {
+      await safeFetch.close();
+    }
+  });
+
   it('should follow safe redirects hop by hop', async () => {
     mutableServiceEnv.CHECK_INTERNAL_IP = false;
     const carrierHost = getReachablePrivateHost();
