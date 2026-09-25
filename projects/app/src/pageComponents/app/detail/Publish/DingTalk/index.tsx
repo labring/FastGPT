@@ -42,7 +42,7 @@ const DingTalk = ({
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
   const { t } = useSafeTranslation();
-  const { Loading, setIsLoading } = useLoading();
+  const { Loading } = useLoading();
   const { feConfigs } = useSystemStore();
   const [editDingTalkLinkData, setEditDingTalkLinkData] =
     useState<OutLinkEditType<DingtalkAppType>>();
@@ -61,6 +61,17 @@ const DingTalk = ({
     () => getShareChatList<DingtalkAppType>({ appId, type: PublishChannelEnum.dingtalk }),
     {
       manual: false
+    }
+  );
+
+  const { runAsync: onDelShareChat, loading: isDeleting } = useRequest(
+    async (id: string) => {
+      await delShareChatById(id);
+      void Promise.all([refetchShareChatList(), onRefreshOutLinkCounts()]);
+    },
+    {
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
     }
   );
 
@@ -202,19 +213,7 @@ const DingTalk = ({
                           {
                             label: t('common:Delete'),
                             icon: 'delete',
-                            onClick: async () => {
-                              setIsLoading(true);
-                              try {
-                                await delShareChatById(item._id);
-                                void Promise.all([
-                                  refetchShareChatList(),
-                                  onRefreshOutLinkCounts()
-                                ]);
-                              } catch (error) {
-                                console.log(error);
-                              }
-                              setIsLoading(false);
-                            }
+                            onClick: () => onDelShareChat(item._id)
                           }
                         ]
                       }
@@ -242,7 +241,7 @@ const DingTalk = ({
           isEdit={isEdit}
         />
       )}
-      <Loading loading={isFetching} fixed={false} />
+      <Loading loading={isFetching || isDeleting} fixed={false} />
       {showShareLinkModalOpen && (
         <ShowShareLinkModal
           shareLink={showShareLink ?? ''}

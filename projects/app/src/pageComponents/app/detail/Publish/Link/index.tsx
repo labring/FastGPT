@@ -19,7 +19,6 @@ import {
   HStack
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
 import {
   getShareChatList,
@@ -59,7 +58,6 @@ const Share = ({
   onRefreshOutLinkCounts: () => Promise<unknown>;
 }) => {
   const { t } = useSafeTranslation();
-  const { setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
@@ -76,6 +74,17 @@ const Share = ({
     refetch: refetchShareChatList
   } = useQuery(['initShareChatList', appId], () =>
     getShareChatList({ appId, type: PublishChannelEnum.share })
+  );
+
+  const { runAsync: onDelShareChat } = useRequest(
+    async (id: string) => {
+      await delShareChatById(id);
+      void Promise.all([refetchShareChatList(), onRefreshOutLinkCounts()]);
+    },
+    {
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
+    }
   );
 
   return (
@@ -212,19 +221,7 @@ const Share = ({
                             type: 'danger',
                             onClick: () =>
                               openConfirm({
-                                onConfirm: async () => {
-                                  setIsLoading(true);
-                                  try {
-                                    await delShareChatById(item._id);
-                                    void Promise.all([
-                                      refetchShareChatList(),
-                                      onRefreshOutLinkCounts()
-                                    ]);
-                                  } catch (error) {
-                                    console.log(error);
-                                  }
-                                  setIsLoading(false);
-                                }
+                                onConfirm: () => onDelShareChat(item._id)
                               })()
                           }
                         ]

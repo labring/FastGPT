@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/support/outLink/type';
 import { MongoOutLink } from '../../outLink/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../app/auth';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { parseHeaderCert } from '../auth/common';
@@ -22,7 +22,7 @@ import { normalizeShareOutLinkAllowAnonymous } from '../../outLink/compatibility
 /* crud outlink permission */
 export async function authOutLinkCrud({
   outLinkId,
-  per = OwnerPermissionVal,
+  per = ManagePermissionVal,
   ...props
 }: AuthModeType & {
   outLinkId: string;
