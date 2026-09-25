@@ -251,6 +251,42 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
+  it('converts the final assistant transcript, including child tool messages, for storage', async () => {
+    runAgentLoopMock.mockResolvedValue({
+      ...createLoopResult({ usages: [] }),
+      assistantMessages: [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'child answer',
+          tool_calls: [
+            {
+              id: 'call_child',
+              type: 'function',
+              function: {
+                name: 'nested_search',
+                arguments: '{"query":"FastGPT"}'
+              }
+            }
+          ]
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_child',
+          content: 'child result'
+        }
+      ]
+    });
+
+    const result = await runToolCall(createProps());
+
+    expect(result.assistantResponses).toEqual([
+      expect.objectContaining({ text: { content: 'child answer' } }),
+      expect.objectContaining({
+        tools: [expect.objectContaining({ id: 'call_child', response: 'child result' })]
+      })
+    ]);
+  });
+
   it('records context and tool-response compression as separate ToolCall detail rows', async () => {
     const contextCompressUsage = {
       moduleName: 'account_usage:compress_llm_messages',
