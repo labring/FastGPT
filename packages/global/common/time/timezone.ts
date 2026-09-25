@@ -96,9 +96,10 @@ export const getTimezoneCodeFromStr = (timeString: string | Date) => {
   return '+00:00';
 };
 
+/**
+ * 返回指定时区的当前时间文本。
+ * 直接按目标时区格式化，不依赖进程本地时区：给本地时间再叠加时区偏移，会在非 UTC 进程里多算一次偏移。
+ */
 export const getSystemTime = (timeZone: string) => {
-  const timezoneDiff = getTimezoneOffset(timeZone);
-  const now = Date.now();
-  const targetTime = now + timezoneDiff * 60 * 60 * 1000;
-  return dayjs(targetTime).format('YYYY-MM-DD HH:mm:ss dddd');
+  return dayjs().tz(timeZone).format('YYYY-MM-DD HH:mm:ss dddd');
 };

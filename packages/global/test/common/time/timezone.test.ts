@@ -7,15 +7,6 @@ import {
   timeZoneList
 } from '@fastgpt/global/common/time/timezone';
 
-const formatLocalTime = (date: Date) => {
-  const pad = (value: number) => value.toString().padStart(2, '0');
-  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
-    date.getHours()
-  )}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${weekdays[date.getDay()]}`;
-};
-
 describe('getTimezoneOffset', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -71,6 +62,8 @@ describe('getTimezoneCodeFromStr', () => {
 });
 
 describe('getSystemTime', () => {
+  const originalTZ = process.env.TZ;
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2024-02-03T04:05:06Z'));
@@ -78,12 +71,24 @@ describe('getSystemTime', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    if (originalTZ === undefined) {
+      delete process.env.TZ;
+    } else {
+      process.env.TZ = originalTZ;
+    }
   });
 
-  it('should format time using local date components', () => {
-    const now = new Date();
-    const expected = formatLocalTime(now);
+  it('should format the current time in the requested time zone', () => {
+    expect(getSystemTime('UTC')).toBe('2024-02-03 04:05:06 Saturday');
+    expect(getSystemTime('Asia/Shanghai')).toBe('2024-02-03 12:05:06 Saturday');
+    expect(getSystemTime('America/New_York')).toBe('2024-02-02 23:05:06 Friday');
+  });
 
-    expect(getSystemTime('UTC')).toBe(expected);
+  it('should not depend on the process time zone', () => {
+    process.env.TZ = 'Asia/Shanghai';
+
+    expect(getSystemTime('Asia/Shanghai')).toBe('2024-02-03 12:05:06 Saturday');
+    expect(getSystemTime('UTC')).toBe('2024-02-03 04:05:06 Saturday');
+    expect(getSystemTime('Asia/Kolkata')).toBe('2024-02-03 09:35:06 Saturday');
   });
 });
