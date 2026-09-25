@@ -303,5 +303,10 @@
   "workflow_local_draft_auth_expired_notice": "登录已过期，当前编辑内容已自动保存至本地。请不要关闭页面，在此标签页重新登录后，即可恢复编排内容。",
   "workflow_local_draft_auth_expired_title": "已自动保存",
   "workflow_local_draft_relogin": "重新登录",
-  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。"
+  "workflow.exit_tips": "您的更改尚未保存，「直接退出」将不会保存您的编辑记录。",
+  "list_options": "选项",
+  "list_options_mode_manual": "手动填写",
+  "list_options_mode_reference": "引用变量",
+  "list_options_variable": "选项变量",
+  "no_available_options": "暂无可选项"
 }

@@ -15,6 +15,7 @@ import {
 import { getWorkflowFileContext, getWorkflowFileRegistrar } from '../../utils/context';
 import type { WorkflowFileRegistrar } from '../../utils/fileContext';
 import { getModuleFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
+import { resolveInteractiveDynamicOptions } from './dynamicOptions';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.INTERACTIVE);
 const DEFAULT_FORM_FILE_INPUT_MAX_FILES = 5;
@@ -86,9 +87,30 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     node,
     params: { description, userInputForms },
     query,
-    lastInteractive
+    lastInteractive,
+    runtimeNodesMap,
+    variableState,
+    chatConfig
   } = props;
   const { isEntry } = node;
+  const resolvedUserInputForms = userInputForms.map((form) => {
+    const isOptionInput = [
+      FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.multipleSelect
+    ].includes(form.type);
+    if (!isOptionInput || form.listInputType !== FlowNodeInputTypeEnum.reference) return form;
+
+    return {
+      ...form,
+      defaultValue: form.type === FlowNodeInputTypeEnum.multipleSelect ? [] : '',
+      list: resolveInteractiveDynamicOptions({
+        references: form.listReference,
+        runtimeNodesMap,
+        variableState,
+        variablesConfig: chatConfig?.variables
+      }).map((value) => ({ label: value, value }))
+    };
+  });
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userInput') {
@@ -97,7 +119,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
         type: 'userInput',
         params: {
           description,
-          inputForm: userInputForms
+          inputForm: resolvedUserInputForms
         }
       }
     };
@@ -119,7 +141,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   const userMaxFileAmount =
     getWorkflowFileContext()?.limits.maxFileAmount ?? DEFAULT_FORM_FILE_INPUT_MAX_FILES;
   const fileRegistrar = getWorkflowFileRegistrar();
-  const inputConfigMap = new Map(userInputForms.map((form) => [form.key, form]));
+  const inputConfigMap = new Map(resolvedUserInputForms.map((form) => [form.key, form]));
   const userInputEntries = await Promise.all(
     Object.entries(rawUserInputVal).map(async ([key, value]) => {
       const inputConfig = inputConfigMap.get(key);

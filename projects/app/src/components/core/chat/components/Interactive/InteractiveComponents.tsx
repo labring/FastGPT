@@ -8,6 +8,7 @@ import type {
   UserSelectInteractive,
   UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -49,11 +50,17 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
   interactiveParams: UserSelectInteractive['params'];
   onSelect: (value: string) => void;
 }) {
+  const { t } = useTranslation();
   const { description, userSelectOptions, userSelectedVal } = interactiveParams;
 
   return (
     <Box maxW={'100%'}>
       <DescriptionBox description={description} />
+      {userSelectOptions.length === 0 && !userSelectedVal && (
+        <Box color={'#666'} fontSize={'12px'}>
+          {t('workflow:no_available_options')}
+        </Box>
+      )}
       <Box w={'250px'}>
         <LeftRadio<string>
           py={3.5}
@@ -148,6 +155,15 @@ export const FormInputComponent = React.memo(function FormInputComponent({
               rules={{
                 required: input.required,
                 validate: (value) => {
+                  if (
+                    input.required &&
+                    [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect].includes(
+                      input.type
+                    ) &&
+                    (!value || (Array.isArray(value) && value.length === 0))
+                  ) {
+                    return t('common:required');
+                  }
                   if (input.type === 'password' && input.minLength) {
                     if (!value || typeof value !== 'object' || !value.value) {
                       return t('common:required');
@@ -193,6 +209,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                       isDisabled={submitted}
                       isInvalid={!!error}
                       isRichText={false}
+                      isSearchable
                       onFileErrorChange={(hasError) => updateFileError(input.key, hasError)}
                     />
                     {error && error.message && <FormErrorMessage>{error.message}</FormErrorMessage>}

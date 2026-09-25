@@ -138,6 +138,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 <InputFormEditModal
                   defaultValue={editField}
                   keys={inputs.map((item) => item.key)}
+                  nodeId={nodeId}
                   onClose={() => {
                     setEditField(undefined);
                   }}

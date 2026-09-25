@@ -1,14 +1,16 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { getHandleId, getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 import type { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
+import { resolveInteractiveDynamicOptions } from './dynamicOptions';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.description]: string;
-  [NodeInputKeyEnum.userSelectOptions]: UserSelectOptionItemType[];
+  [NodeInputKeyEnum.userSelectOptions]: UserSelectOptionItemType[] | ReferenceArrayValueType;
 }>;
 type UserSelectResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.selectResult]?: string;
@@ -18,11 +20,25 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   const {
     histories,
     node,
-    params: { description, userSelectOptions },
+    params: { description, userSelectOptions: rawOptions },
     query,
-    lastInteractive
+    lastInteractive,
+    runtimeNodesMap,
+    variableState,
+    chatConfig
   } = props;
   const { nodeId, isEntry } = node;
+  const optionInput = node.inputs.find((input) => input.key === NodeInputKeyEnum.userSelectOptions);
+  const isReferenceMode =
+    optionInput && getSelectedInputRenderType(optionInput) === FlowNodeInputTypeEnum.reference;
+  const userSelectOptions = isReferenceMode
+    ? resolveInteractiveDynamicOptions({
+        references: rawOptions as ReferenceArrayValueType,
+        runtimeNodesMap,
+        variableState,
+        variablesConfig: chatConfig?.variables
+      }).map((value, index) => ({ key: `reference_${index}`, value }))
+    : (rawOptions as UserSelectOptionItemType[]);
 
   // Interactive node is not the entry node, return interactive result
   if (!isEntry || lastInteractive?.type !== 'userSelect') {
@@ -44,9 +60,9 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
   // Error status
   if (userSelectedVal === undefined) {
     return {
-      [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions.map((item) =>
-        getHandleId(nodeId, 'source', item.value)
-      )
+      [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
+        ? [getHandleId(nodeId, 'source', 'ref_default')]
+        : userSelectOptions.map((item) => getHandleId(nodeId, 'source', item.key))
     };
   }
 
@@ -55,9 +71,11 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
       [NodeOutputKeyEnum.selectResult]: userSelectedVal
     },
     [DispatchNodeResponseKeyEnum.rewriteHistories]: histories.slice(0, -2), // Removes the current session record as the history of subsequent nodes
-    [DispatchNodeResponseKeyEnum.skipHandleId]: userSelectOptions
-      .filter((item) => item.value !== userSelectedVal)
-      .map((item: any) => getHandleId(nodeId, 'source', item.key)),
+    [DispatchNodeResponseKeyEnum.skipHandleId]: isReferenceMode
+      ? []
+      : userSelectOptions
+          .filter((item) => item.value !== userSelectedVal)
+          .map((item) => getHandleId(nodeId, 'source', item.key)),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       userSelectResult: userSelectedVal
     },
