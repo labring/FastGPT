@@ -29,7 +29,8 @@ describe('assertMemberRateLimit', () => {
       getMemberRateLimitKey(MemberRateLimitPolicy.Transcriptions, 'another-member'),
       getMemberRateLimitKey(MemberRateLimitPolicy.RedeemCoupon, memberId),
       getMemberRateLimitKey(MemberRateLimitPolicy.CheckPayResult, memberId),
-      getMemberRateLimitKey(MemberRateLimitPolicy.ExportDataset, memberId)
+      getMemberRateLimitKey(MemberRateLimitPolicy.ExportDataset, memberId),
+      getMemberRateLimitKey(MemberRateLimitPolicy.DownloadDatasetArchive, memberId)
     );
   });
 
@@ -70,15 +71,19 @@ describe('assertMemberRateLimit', () => {
   });
 
   it('applies a one-minute window to export policies', async () => {
-    const params = { policy: MemberRateLimitPolicy.ExportDataset, memberId } as const;
+    const params = { policy: MemberRateLimitPolicy.DownloadDatasetArchive, memberId } as const;
 
     await expect(assertMemberRateLimit(params)).resolves.toBeUndefined();
     await expect(assertMemberRateLimit(params)).rejects.toBeTruthy();
 
     const ttl = await getRedisConnection().ttl(
-      getMemberRateLimitKey(MemberRateLimitPolicy.ExportDataset, memberId)
+      getMemberRateLimitKey(MemberRateLimitPolicy.DownloadDatasetArchive, memberId)
     );
     expect(ttl).toBeGreaterThan(0);
     expect(ttl).toBeLessThanOrEqual(60);
+
+    await expect(
+      assertMemberRateLimit({ policy: MemberRateLimitPolicy.ExportDataset, memberId })
+    ).resolves.toBeUndefined();
   });
 });
