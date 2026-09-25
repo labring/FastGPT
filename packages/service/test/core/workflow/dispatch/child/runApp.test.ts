@@ -145,6 +145,123 @@ describe('dispatchRunAppNode', () => {
     ]);
   });
 
+  it('keeps streaming and child assistant responses when a child app contains ToolCall output', async () => {
+    const workflowStreamResponse = vi.fn();
+    const childAssistantResponses = [
+      { text: { content: 'direct child answer' } },
+      {
+        tools: [
+          {
+            id: 'call_nested',
+            toolName: 'Nested search',
+            toolAvatar: 'nested-avatar',
+            functionName: 'nested_search',
+            params: '{"q":"nested"}',
+            response: 'nested result'
+          }
+        ]
+      }
+    ];
+    mocks.runWorkflow.mockImplementationOnce(async (args: any) => {
+      expect(args.stream).toBe(true);
+      expect(args.workflowStreamResponse).toBe(workflowStreamResponse);
+      args.workflowStreamResponse?.({ event: 'toolResponse', data: 'nested tool delta' });
+      return {
+        flowUsages: [{ moduleName: 'Child App', totalPoints: 10 }],
+        assistantResponses: childAssistantResponses,
+        runTimes: 1,
+        workflowInteractiveResponse: undefined,
+        system_memories: [],
+        customFeedbacks: [],
+        workflowRuntimeSummary: {
+          responseIds: [],
+          finishedNodeIds: [],
+          childResponseCount: 1
+        }
+      };
+    });
+
+    const parentVariableState = await createParentVariableState();
+    const result = await dispatchRunAppNode({
+      runningAppInfo: {
+        id: 'parent-app',
+        teamId: 'parent-team',
+        tmbId: 'parent-owner-tmb',
+        name: 'Parent App'
+      },
+      runningUserInfo: {
+        username: 'caller-user',
+        teamName: 'Caller Team',
+        memberName: 'Caller Member',
+        contact: '',
+        teamId: 'caller-team-id',
+        tmbId: 'caller-tmb-id'
+      },
+      histories: [],
+      query: [{ type: 'text', text: { content: 'hello' } }],
+      node: { pluginId: 'child-app-id', version: 'v1' },
+      params: { userChatInput: 'hello to child' },
+      variableState: parentVariableState,
+      timezone: 'Asia/Shanghai',
+      uid: 'caller-uid',
+      chatId: 'chat-1',
+      responseChatItemId: 'resp-1',
+      stream: true,
+      workflowStreamResponse,
+      usagePush: vi.fn(),
+      nodeSummary: createNodeSummary()
+    } as any);
+
+    expect(result.assistantResponses).toEqual(childAssistantResponses);
+    expect(result.data?.[NodeOutputKeyEnum.answerText]).toBe('direct child answer');
+    expect(workflowStreamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'toolResponse', data: 'nested tool delta' })
+    );
+    expect(mocks.runWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stream: true,
+        workflowStreamResponse,
+        runningAppInfo: expect.objectContaining({ isChildApp: true })
+      })
+    );
+  });
+
+  it('only disables child streaming when forbidStream is explicitly enabled', async () => {
+    const workflowStreamResponse = vi.fn();
+    const parentVariableState = await createParentVariableState();
+
+    await dispatchRunAppNode({
+      runningAppInfo: {
+        id: 'parent-app',
+        teamId: 'parent-team',
+        tmbId: 'parent-owner-tmb',
+        name: 'Parent App'
+      },
+      runningUserInfo: { teamId: 'caller-team-id', tmbId: 'caller-tmb-id' },
+      histories: [],
+      query: [{ type: 'text', text: { content: 'hello' } }],
+      node: { pluginId: 'child-app-id', version: 'v1' },
+      params: { userChatInput: 'hello to child', system_forbid_stream: true },
+      variableState: parentVariableState,
+      timezone: 'Asia/Shanghai',
+      uid: 'caller-uid',
+      chatId: 'chat-1',
+      responseChatItemId: 'resp-1',
+      stream: true,
+      workflowStreamResponse,
+      usagePush: vi.fn(),
+      nodeSummary: createNodeSummary()
+    } as any);
+
+    expect(mocks.runWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stream: false,
+        workflowStreamResponse: undefined
+      })
+    );
+    expect(workflowStreamResponse).not.toHaveBeenCalled();
+  });
+
   it('should return error when input is empty', async () => {
     const parentVariableState = await createParentVariableState();
     const props: any = {
