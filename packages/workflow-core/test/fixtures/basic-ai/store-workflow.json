@@ -1,0 +1,303 @@
+{
+  "nodes": [
+    {
+      "flowNodeType": "chatNode",
+      "avatar": "core/workflow/template/aiChat",
+      "avatarLinear": "core/workflow/template/aiChatLinear",
+      "colorSchema": "blueDark",
+      "name": "AI Chat",
+      "intro": "AI Large Model Chat",
+      "showStatus": true,
+      "version": "4.9.7",
+      "catchError": false,
+      "inputs": [
+        {
+          "key": "model",
+          "label": "AI Model",
+          "valueType": "string",
+          "renderTypeList": [
+            "settingLLMModel",
+            "reference"
+          ]
+        },
+        {
+          "key": "temperature",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "maxToken",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "isResponseAnswerText",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true
+        },
+        {
+          "key": "aiChatQuoteRole",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": "system"
+        },
+        {
+          "key": "quoteTemplate",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "quotePrompt",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "aiChatVision",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true
+        },
+        {
+          "key": "aiChatAudio",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": false
+        },
+        {
+          "key": "aiChatVideo",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": false
+        },
+        {
+          "key": "aiChatExtractFiles",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true
+        },
+        {
+          "key": "aiChatReasoning",
+          "label": "",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "value": true
+        },
+        {
+          "key": "aiChatReasoningEffort",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "aiChatTopP",
+          "label": "",
+          "valueType": "number",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "aiChatStopSign",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "aiChatResponseFormat",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "aiChatJsonSchema",
+          "label": "",
+          "valueType": "string",
+          "renderTypeList": [
+            "hidden"
+          ]
+        },
+        {
+          "key": "systemPrompt",
+          "label": "Prompt",
+          "valueType": "string",
+          "isRichText": true,
+          "placeholder": "Enter a prompt here",
+          "maxLength": 100000,
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "value": "You are a helpful assistant",
+          "description": "Fixed guide words for the model. By adjusting this content, you can guide the model's chat direction. This content will be fixed at the beginning of the context. You can use / to insert variables.\nIf a Dataset is associated, you can also guide the model when to call the Dataset search by appropriate description. For example:\nYou are an assistant for the movie 'Interstellar'. When users ask about content related to 'Interstellar', please search the Dataset and answer based on the search results.",
+          "selectedType": "textarea"
+        },
+        {
+          "key": "history",
+          "label": "Chat History",
+          "valueType": "chatHistory",
+          "required": true,
+          "max": 50,
+          "min": 0,
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
+          "value": 6,
+          "description": "Maximum Number of Dialog Rounds"
+        },
+        {
+          "key": "quoteQA",
+          "label": "",
+          "valueType": "datasetQuote",
+          "renderTypeList": [
+            "settingDatasetQuotePrompt"
+          ],
+          "debugLabel": "Dataset Reference"
+        },
+        {
+          "key": "fileUrlList",
+          "label": "File Link",
+          "valueType": "arrayString",
+          "renderTypeList": [
+            "reference",
+            "input"
+          ],
+          "debugLabel": "File Link",
+          "description": "Links to documents and images uploaded by users."
+        },
+        {
+          "key": "userChatInput",
+          "label": "User Question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "value": [
+            "start",
+            "userChatInput"
+          ],
+          "toolDescription": "User Question",
+          "selectedType": "reference"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "history",
+          "key": "history",
+          "type": "static",
+          "valueType": "chatHistory",
+          "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+          "label": "New Context",
+          "description": "Splice the current reply content with the history records and return it as the new context",
+          "required": true
+        },
+        {
+          "id": "answerText",
+          "key": "answerText",
+          "type": "static",
+          "valueType": "string",
+          "label": "AI Response Content",
+          "description": "Will be triggered after the stream reply is completed",
+          "required": true
+        },
+        {
+          "id": "reasoningText",
+          "key": "reasoningText",
+          "type": "static",
+          "valueType": "string",
+          "label": "Thinking text",
+          "required": false,
+          "invalid": true
+        },
+        {
+          "id": "system_error_text",
+          "key": "system_error_text",
+          "type": "error",
+          "valueType": "string",
+          "label": "Error text"
+        }
+      ],
+      "nodeId": "ai"
+    },
+    {
+      "flowNodeType": "workflowStart",
+      "avatar": "core/workflow/template/workflowStart",
+      "avatarLinear": "core/workflow/template/workflowStartLinear",
+      "colorSchema": "blue",
+      "name": "Start",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "label": "User Question",
+          "valueType": "string",
+          "required": true,
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "toolDescription": "User Question"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "type": "static",
+          "valueType": "string",
+          "label": "User Question"
+        }
+      ],
+      "nodeId": "start"
+    }
+  ],
+  "edges": [
+    {
+      "source": "start",
+      "sourceHandle": "start-source-right",
+      "target": "ai",
+      "targetHandle": "ai-target-left"
+    }
+  ],
+  "chatConfig": {}
+}

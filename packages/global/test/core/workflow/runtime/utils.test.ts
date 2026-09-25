@@ -921,6 +921,55 @@ describe('getLastInteractiveValue', () => {
 
     expect(getLastInteractiveValue(histories)).toBeUndefined();
   });
+
+  it('should return an unanswered workflow builder preview', () => {
+    const interactive = {
+      type: 'workflowBuilderPreview',
+      previewId: 'preview-1',
+      entryNodeIds: ['node1'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        title: 'Workflow preview',
+        mermaid: 'flowchart LR\n  A --> B',
+        sections: [],
+        actions: [
+          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+          { value: 'revise', label: 'Revise', inputMode: 'text' },
+          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+        ]
+      }
+    } as WorkflowInteractiveResponseType;
+
+    expect(getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])).toBe(
+      interactive
+    );
+  });
+
+  it('should not return a workflow builder preview after an answer', () => {
+    const interactive = {
+      type: 'workflowBuilderPreview',
+      previewId: 'preview-1',
+      entryNodeIds: ['node1'],
+      memoryEdges: [],
+      nodeOutputs: [],
+      params: {
+        title: 'Workflow preview',
+        mermaid: 'flowchart LR\n  A --> B',
+        sections: [],
+        actions: [
+          { value: 'confirm', label: 'Confirm', inputMode: 'none' },
+          { value: 'revise', label: 'Revise', inputMode: 'text' },
+          { value: 'cancel', label: 'Cancel', inputMode: 'none' }
+        ],
+        answerValue: 'confirm'
+      }
+    } as WorkflowInteractiveResponseType;
+
+    expect(
+      getLastInteractiveValue([{ obj: ChatRoleEnum.AI, value: [{ interactive }] }])
+    ).toBeUndefined();
+  });
 });
 
 describe('storeEdges2RuntimeEdges', () => {

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { FastGPTMaxUrl } from '@fastgpt/service/common/system/constants';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
@@ -28,6 +29,21 @@ const buildRequestPath = (req: NextApiRequest): string => {
  * SSE 响应以流方式回传。服务内部完成鉴权与生成。
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const abortController = new AbortController();
+  let responseStream: Readable | undefined;
+  const abortUpstream = () => {
+    abortController.abort();
+    responseStream?.destroy();
+  };
+  const handleResponseClose = () => {
+    // ServerResponse 正常完成后也会触发 close，只有客户端提前断开时才取消上游。
+    if (!res.writableEnded) abortUpstream();
+  };
+
+  req.once('aborted', abortUpstream);
+  res.once('close', handleResponseClose);
+  if (req.aborted) abortUpstream();
+
   try {
     const requestPath = buildRequestPath(req);
 
@@ -64,6 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const request = new Request(targetUrl, {
       method: req.method,
       headers,
+      signal: abortController.signal,
       ...(body ? { body, duplex: 'half' } : {})
     });
 
@@ -88,18 +105,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(response.status);
 
     if (response.body) {
-      const nodeStream = Readable.fromWeb(
+      responseStream = Readable.fromWeb(
         response.body as unknown as import('stream/web').ReadableStream
       );
-      nodeStream.pipe(res);
+      await pipeline(responseStream, res);
     } else {
       res.end();
     }
   } catch (error) {
+    if (abortController.signal.aborted || res.destroyed || res.writableEnded || res.headersSent) {
+      return;
+    }
     jsonRes(res, {
       code: 500,
       error
     });
+  } finally {
+    req.off('aborted', abortUpstream);
+    res.off('close', handleResponseClose);
   }
 }
 

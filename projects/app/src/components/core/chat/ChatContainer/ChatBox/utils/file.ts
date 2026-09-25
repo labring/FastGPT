@@ -5,7 +5,7 @@ import { ChatTypeEnum } from '../constants';
 
 /**
  * 决定 Chat 文件上传使用正式策略还是客户端草稿策略。
- * 只有编辑态测试使用临时配置；Home Chat 和 Helper 都是服务端授权的正式运行态。
+ * 只有编辑态测试使用临时配置；Home Chat 和辅助生成会话都使用服务端授权的正式配置。
  */
 export const resolveChatFileUploadMode = ({
   chatType,
@@ -14,7 +14,12 @@ export const resolveChatFileUploadMode = ({
   chatType: ChatTypeEnum;
   sourceType: ChatSourceTypeEnum;
 }): 'runtime' | 'draft' => {
-  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) return 'runtime';
+  if (
+    sourceType === ChatSourceTypeEnum.chatAgentHelper ||
+    sourceType === ChatSourceTypeEnum.workflowBuilder
+  ) {
+    return 'runtime';
+  }
   if (chatType === ChatTypeEnum.test) return 'draft';
   return 'runtime';
 };

@@ -13,6 +13,14 @@ export type BuildDefaultAgentSystemPromptParams = {
   sandboxEnabled?: boolean;
 };
 
+export type AgentLoopSystemPromptBuilderInput = {
+  systemPrompt?: string;
+  hasExecutableTools: boolean;
+};
+
+/** AgentLoop 顶层系统提示词构建策略。 */
+export type AgentLoopSystemPromptBuilder = (input: AgentLoopSystemPromptBuilderInput) => string;
+
 /**
  * 构建 Agent 的最终 system prompt。
  *
@@ -34,3 +42,14 @@ export const buildDefaultAgentSystemPrompt = ({
   ]
     .filter(Boolean)
     .join('\n\n');
+
+/**
+ * 解析当前 AgentLoop 使用的最终系统提示词。
+ * 默认保留调用方已组装的提示词，只在业务场景注入 builder 时替换顶层角色。
+ */
+export const resolveAgentLoopSystemPrompt = ({
+  systemPromptBuilder,
+  ...input
+}: AgentLoopSystemPromptBuilderInput & {
+  systemPromptBuilder?: AgentLoopSystemPromptBuilder;
+}) => systemPromptBuilder?.(input) ?? input.systemPrompt ?? '';

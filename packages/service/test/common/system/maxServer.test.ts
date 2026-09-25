@@ -10,6 +10,7 @@ vi.stubGlobal('fetch', mocks.fetch);
 import {
   checkMaxServerAvailable,
   initMaxServerStatus,
+  refreshMaxServerStatus,
   resetMaxServerProbeCache
 } from '@fastgpt/service/common/system/maxServer';
 
@@ -140,5 +141,45 @@ describe('initMaxServerStatus', () => {
 
     expect(result).toBe(true);
     expect(global.hasMax).toBe(true);
+  });
+});
+
+describe('refreshMaxServerStatus', () => {
+  const originalMaxUrl = serviceEnv.MAX_URL;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetMaxServerProbeCache();
+    Reflect.set(serviceEnv, 'MAX_URL', undefined);
+    global.hasMax = undefined;
+    global.feConfigs = {} as any;
+  });
+
+  afterEach(() => {
+    Reflect.set(serviceEnv, 'MAX_URL', originalMaxUrl);
+    global.hasMax = undefined;
+    global.feConfigs = undefined as any;
+    vi.restoreAllMocks();
+  });
+
+  it('updates global.hasMax and global.feConfigs.hasMax when Max becomes available', async () => {
+    Reflect.set(serviceEnv, 'MAX_URL', 'http://127.0.0.1:3002');
+    mocks.fetch.mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const result = await refreshMaxServerStatus();
+    expect(result).toBe(true);
+    expect(global.hasMax).toBe(true);
+    expect(global.feConfigs.hasMax).toBe(true);
+  });
+
+  it('updates global.hasMax and global.feConfigs.hasMax to false when Max is down', async () => {
+    global.hasMax = true;
+    global.feConfigs.hasMax = true;
+    Reflect.set(serviceEnv, 'MAX_URL', undefined);
+
+    const result = await refreshMaxServerStatus();
+    expect(result).toBe(false);
+    expect(global.hasMax).toBe(false);
+    expect(global.feConfigs.hasMax).toBe(false);
   });
 });

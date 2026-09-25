@@ -14,6 +14,7 @@ import {
 import { loadRequestMessages } from '../../../utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { AgentUsageModuleName } from '../../domain/usage';
+import { resolveAgentLoopSystemPrompt } from '../../domain/mainPrompt';
 import {
   askUserToolName,
   formatAgentAskToolResponse,
@@ -21,6 +22,7 @@ import {
 } from '../../domain/systemTool/ask';
 import { setPlanToolName, updatePlanToolName } from '../../domain/systemTool/plan';
 import {
+  hasAgentLoopExecutableTools,
   normalizeAgentLoopUsages,
   type AgentLoopInput,
   type AgentLoopResult,
@@ -79,6 +81,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     useVision: runtime.llmParams.useVision && modelData.config.vision,
     useAudio: runtime.llmParams.useAudio && modelData.config.audio,
     useVideo: runtime.llmParams.useVideo && modelData.config.video,
+    forceMediaToBase64: runtime.llmParams.forceMediaToBase64,
     extractFiles: runtime.llmParams.extractFiles,
     supportReason: modelData.config.reasoning
   });
@@ -86,6 +89,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   let requestIndex = 0;
   let answerText = '';
   let reasoningText = '';
+  let currentAssistantContent = '';
   let inputTokens = 0;
   let outputTokens = 0;
   let llmTotalPoints = 0;
@@ -393,6 +397,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       abortCurrentRunRef.current?.();
     },
     getMessages: () => completeMessages,
+    getAssistantContent: () => currentAssistantContent,
     onToolCall: emitOrdinaryToolExecution,
     onToolResult: ({ call, response, assistantMessages }) => {
       recordToolResult({
@@ -410,9 +415,14 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     firstTokenAt?: number;
   }> = [];
   const maxRunAgentTimes = Math.max(1, runtime.maxRunAgentTimes ?? 100);
+  const systemPrompt = resolveAgentLoopSystemPrompt({
+    systemPrompt: input.systemPrompt,
+    hasExecutableTools: hasAgentLoopExecutableTools(runtime),
+    systemPromptBuilder: runtime.systemPromptBuilder
+  });
   const agent = new Agent({
     initialState: {
-      systemPrompt: input.systemPrompt ?? '',
+      systemPrompt,
       model: piModel,
       thinkingLevel: getPiThinkingLevel(modelData, runtime.llmParams.reasoningEffort),
       tools,
@@ -423,6 +433,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     toolExecution: 'sequential',
     getApiKey: () => getModelApiKey(modelData, runtime.llmParams.userKey),
     onPayload: (payload) => {
+      currentAssistantContent = '';
       if (requestIndex >= maxRunAgentTimes) {
         reachedRunLimit = true;
         throw new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
@@ -521,6 +532,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         const request = pendingRequests[0];
         if (request) request.firstTokenAt ??= Date.now();
         answerText += assistantEvent.delta;
+        currentAssistantContent += assistantEvent.delta;
         runtime.emitEvent?.({
           type: 'answer_delta',
           text: assistantEvent.delta
@@ -583,6 +595,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         ? normalizedMessage
         : event.message;
       const messageData = readAssistantMessage(assistantMessage);
+      currentAssistantContent = messageData.answerText;
       messageData.toolCalls.forEach(emitOrdinaryToolCall);
       if (!answerText && messageData.answerText) {
         answerText = messageData.answerText;
@@ -693,6 +706,32 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       } else {
         await agent.prompt(prompt);
       }
+    }
+
+    while (
+      runtime.completionPolicy &&
+      !pendingAsk &&
+      !pendingToolChild &&
+      !pendingToolStop &&
+      !runtime.checkIsStopping?.() &&
+      !latestError &&
+      !agent.state.errorMessage &&
+      !reachedRunLimit
+    ) {
+      const decision = await runtime.completionPolicy({ requestIndex });
+      if (decision.action === 'complete') break;
+      if (requestIndex >= maxRunAgentTimes) {
+        reachedRunLimit = true;
+        latestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
+        break;
+      }
+
+      const continuationMessage: ChatCompletionMessageParam = {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: decision.message
+      };
+      completeMessages.push(continuationMessage);
+      await agent.prompt(decision.message);
     }
   } catch (error) {
     latestError = error;
@@ -828,6 +867,20 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   }
 
   if (reachedRunLimit) {
+    if (runtime.completionPolicy) {
+      return {
+        status: 'error',
+        activePlan,
+        providerState: nextProviderState,
+        completeMessages,
+        assistantMessages,
+        requestIds,
+        contextCheckpoint: latestContextCheckpoint,
+        finishReason: 'error',
+        usages: resultUsages,
+        error: latestError || new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`)
+      };
+    }
     return {
       status: 'done',
       activePlan,

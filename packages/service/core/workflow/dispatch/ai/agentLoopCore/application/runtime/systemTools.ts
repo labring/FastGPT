@@ -1,4 +1,7 @@
-import type { AgentLoopSystemTools } from '../../../../../../ai/llm/agentLoop/interface';
+import type {
+  AgentLoopSandboxExecutor,
+  AgentLoopSystemTools
+} from '../../../../../../ai/llm/agentLoop/interface';
 import type { SandboxClient } from '../../../../../../ai/sandbox/interface/runtime';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopReadFileExecutor } from '../../../../../../ai/llm/agentLoop/interface';
@@ -7,6 +10,7 @@ export type CreateAgentLoopCoreSystemToolsParams = {
   planEnabled: boolean;
   askEnabled: boolean;
   sandboxClient?: SandboxClient;
+  sandboxExecutor?: AgentLoopSandboxExecutor;
   readFile?: {
     enabled: boolean;
     maxFileAmount: number;
@@ -29,6 +33,7 @@ export const createAgentLoopCoreSystemTools = ({
   planEnabled,
   askEnabled,
   sandboxClient,
+  sandboxExecutor,
   readFile,
   datasetSearch
 }: CreateAgentLoopCoreSystemToolsParams): AgentLoopSystemTools => ({
@@ -38,11 +43,12 @@ export const createAgentLoopCoreSystemTools = ({
   ask: {
     enabled: askEnabled
   },
-  ...(sandboxClient
+  ...(sandboxClient || sandboxExecutor
     ? {
         sandbox: {
           enabled: true,
-          client: sandboxClient
+          ...(sandboxClient ? { client: sandboxClient } : {}),
+          ...(sandboxExecutor ? { executor: sandboxExecutor } : {})
         }
       }
     : {}),

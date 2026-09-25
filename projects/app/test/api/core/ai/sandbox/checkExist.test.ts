@@ -74,4 +74,37 @@ describe('sandbox checkExist API', () => {
     });
     expect(mocks.checkSandboxSessionExist).toHaveBeenCalledOnce();
   });
+
+  it('uses the authenticated workflow builder identity to locate its sandbox', async () => {
+    mocks.authSandboxSession.mockResolvedValueOnce({
+      uid: 'member-1',
+      teamId: 'team-1',
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: appId
+    });
+    mocks.buildSandboxClientQueryFromChatSource.mockReturnValueOnce({
+      sandboxId: 'builder-sandbox-1',
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: appId,
+      userId: 'member-1',
+      chatId: 'chat-1'
+    });
+
+    await expect(
+      handler({
+        body: {
+          appId,
+          sourceType: ChatSourceTypeEnum.workflowBuilder,
+          chatId: 'chat-1'
+        }
+      } as any)
+    ).resolves.toEqual({ exists: true });
+
+    expect(mocks.buildSandboxClientQueryFromChatSource).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: appId,
+      userId: 'member-1',
+      chatId: 'chat-1'
+    });
+  });
 });

@@ -10,11 +10,22 @@ import {
   type GetSystemInitDataResponse
 } from '@fastgpt/global/openapi/common/system/api';
 import { getRuntimeSubPlansConfig } from '@fastgpt/global/support/wallet/sub/utils';
+import { refreshMaxServerStatus } from '@fastgpt/service/common/system/maxServer';
+import { serviceEnv } from '@fastgpt/service/env';
 
 async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<GetSystemInitDataResponse> {
+  // 动态感知 Max 服务可用性（内置 30s/5s TTL 缓存，零额外开销），自动规避并发启动时序差
+  if (serviceEnv.MAX_URL) {
+    const prevHasMax = global.hasMax;
+    const currentHasMax = await refreshMaxServerStatus();
+    if (prevHasMax !== currentHasMax) {
+      global.systemInitBufferId = `${Date.now()}`;
+    }
+  }
+
   const { bufferId } = parseApiInput({
     req,
     querySchema: GetSystemInitDataQuerySchema

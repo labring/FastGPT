@@ -32,6 +32,27 @@ export function resetMaxServerProbeCache() {
 export async function initMaxServerStatus(force = true): Promise<boolean> {
   const isAvailable = await checkMaxServerAvailable(force);
   global.hasMax = isAvailable;
+  if (global.feConfigs) {
+    global.feConfigs.hasMax = isAvailable;
+  }
+  return isAvailable;
+}
+
+/**
+ * 刷新全局 Max 服务可用性状态。
+ * 利用内置 TTL 缓存检查 Max 服务健康度；若状态变化，则同步更新 global.hasMax 及 global.feConfigs.hasMax。
+ *
+ * @param force 是否强制跳过缓存重新探测
+ * @returns 当前是否可用
+ */
+export async function refreshMaxServerStatus(force = false): Promise<boolean> {
+  const isAvailable = await checkMaxServerAvailable(force);
+  if (global.hasMax !== isAvailable) {
+    global.hasMax = isAvailable;
+    if (global.feConfigs) {
+      global.feConfigs.hasMax = isAvailable;
+    }
+  }
   return isAvailable;
 }
 

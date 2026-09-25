@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileUploadSchema } from '@fastgpt/service/common/s3/sources/chat/type';
 
 const { S3ChatSource } = await vi.importActual<
   typeof import('@fastgpt/service/common/s3/sources/chat')
@@ -47,5 +49,19 @@ describe('S3ChatSource.parseChatUrl', () => {
       extension: 'pdf',
       imageParsePrefix: `chat/app/app-1/user-1/chat-1/parsed/${fileId}`
     });
+  });
+});
+
+describe('ChatFileUploadSchema', () => {
+  it('accepts workflow builder chat archives', () => {
+    const result = ChatFileUploadSchema.safeParse({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: '67f4c91c79a4d61b1f116b2a',
+      chatId: 'chat-1',
+      uId: 'user-1',
+      filename: 'input.txt'
+    });
+
+    expect(result.success).toBe(true);
   });
 });
