@@ -408,6 +408,24 @@ export const parseToolParamJsonSchema = (schemaString: string) => {
   };
 };
 
+/** 严格枚举控件的初始值优先取 schema.default 里的合法枚举值，没有时才回退到第一个枚举值。 */
+const getStrictEnumInitialValue = ({
+  schema,
+  enumValues,
+  multiple
+}: {
+  schema: JsonSchemaPropertiesItemType;
+  enumValues: unknown[];
+  multiple: boolean;
+}) => {
+  if (multiple) {
+    return Array.isArray(schema.default)
+      ? schema.default.filter((item) => enumValues.includes(item))
+      : [];
+  }
+  return enumValues.includes(schema.default) ? schema.default : enumValues[0];
+};
+
 const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesItemType) => {
   const type = getJsonSchemaType(schema);
   const enumSchema = type === 'array' ? schema.items : schema;
@@ -417,24 +435,25 @@ const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesI
   const hasCandidateOptions = Boolean(enumList?.length) && !isStrictEnum;
   const candidateOptions = enumList?.length ? { list: enumList } : {};
 
-  if (type === 'array' && isStrictEnum && enumList?.length) {
+  if (type === 'array' && isStrictEnum && enumValues?.length) {
+    const value = getStrictEnumInitialValue({ schema, enumValues, multiple: true });
     const itemType = getJsonSchemaType(schema.items);
     if (itemType !== 'string') {
       return {
-        value: [],
+        value,
         renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
       };
     }
     return {
-      value: [],
+      value,
       renderTypeList: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference],
       list: enumList
     };
   }
 
-  if (type === 'string' && isStrictEnum && enumList?.length) {
+  if (type === 'string' && isStrictEnum && enumValues?.length) {
     return {
-      value: enumValues?.[0],
+      value: getStrictEnumInitialValue({ schema, enumValues, multiple: false }),
       renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
       list: enumList
     };
@@ -453,7 +472,9 @@ const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesI
   if (type === 'number' || type === 'integer') {
     return {
       ...candidateOptions,
-      ...(isStrictEnum ? { value: enumValues?.[0] } : {}),
+      ...(isStrictEnum && enumValues?.length
+        ? { value: getStrictEnumInitialValue({ schema, enumValues, multiple: false }) }
+        : {}),
       renderTypeList: [
         FlowNodeInputTypeEnum.numberInput,
         ...(hasCandidateOptions ? [FlowNodeInputTypeEnum.select] : []),
@@ -466,7 +487,9 @@ const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesI
   if (type === 'boolean') {
     return {
       ...candidateOptions,
-      ...(isStrictEnum ? { value: enumValues?.[0] } : {}),
+      ...(isStrictEnum && enumValues?.length
+        ? { value: getStrictEnumInitialValue({ schema, enumValues, multiple: false }) }
+        : {}),
       renderTypeList: [
         FlowNodeInputTypeEnum.switch,
         ...(hasCandidateOptions ? [FlowNodeInputTypeEnum.select] : []),
