@@ -223,6 +223,41 @@ describe('jsonSchema2NodeInput', () => {
     });
   });
 
+  it('should initialize strict enum inputs from the schema default', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['fast', 'full'], default: 'full' },
+          level: { type: 'number', enum: [1, 2, 3], default: 3 },
+          enabled: { type: 'boolean', enum: [true, false], default: false },
+          sources: {
+            type: 'array',
+            items: { type: 'string', enum: ['zhihu', 'weibo', 'juejin'] },
+            default: ['weibo', 'juejin']
+          },
+          unknown: { type: 'string', enum: ['a', 'b'], default: 'c' }
+        }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      value: 'full',
+      defaultValue: 'full',
+      renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference]
+    });
+    expect(result[1]).toMatchObject({ value: 3, defaultValue: 3 });
+    expect(result[2]).toMatchObject({ value: false, defaultValue: false });
+    expect(result[3]).toMatchObject({
+      value: ['weibo', 'juejin'],
+      defaultValue: ['weibo', 'juejin'],
+      renderTypeList: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference]
+    });
+    // default 不在枚举内时回退到第一个枚举值，避免选择器出现不存在的选项
+    expect(result[4]).toMatchObject({ value: 'a', defaultValue: 'c' });
+  });
+
   it('should map isToolParam from input schema properties to NodeIO defaults', () => {
     const result = jsonSchema2NodeInput({
       schemaType: 'systemTool',
