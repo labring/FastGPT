@@ -160,6 +160,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     const formattedFiles = files.map((file) => ({
       ...file,
       rawId: file.id,
+      // 自定义接口特殊：folder 可以没有子级、file 也可以挂子级（语雀一类），
+      // 因此只在对方没给 hasChild 时才回退到 type，不能反过来由 type 覆盖
       hasChild: file.hasChild ?? file.type === 'folder'
     }));
 
@@ -281,6 +283,9 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         name: fileData.name,
         parentId: fileData.parentId === null ? '' : fileData.parentId,
         type: fileData.type,
+        // 与 listFiles 同一口径。同步拿它当根种子：漏了 hasChild 会退化为 false，
+        // 子树不再被遍历 → 后代全部落入删除集，整棵删掉
+        hasChild: fileData.hasChild ?? fileData.type === 'folder',
         updateTime: fileData.updateTime,
         createTime: fileData.createTime
       };

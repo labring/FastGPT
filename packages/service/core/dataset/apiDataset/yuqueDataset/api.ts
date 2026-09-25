@@ -121,6 +121,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       let allData: YuqueRepoListResponse = [];
 
       while (true) {
+        // 获取知识库列表
         const data = await request<YuqueRepoListResponse>(
           `/api/v2/groups/${yuqueServer.userId}/repos`,
           {
@@ -154,6 +155,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     } else {
       const numParentId = Number(parentId);
       if (!isNaN(numParentId)) {
+        // 获取目录树
         const data = await request<YuqueTocListResponse>(
           `/api/v2/repos/${parentId}/toc`,
           {},
@@ -290,6 +292,10 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
         hasChild: true
       };
     } else {
+      // 语雀特殊：一个 TOC 节点有三套 id（repoId / docId / uuid），单用 docId 在同 repo 内唯一但跨 repo 会撞。
+      // 因此 `listFiles` 统一用复合 id `repoId-docId-uuid` 作为 `id`，`getFileDetail`/`getFileContent` 必须按同一
+      // 复合形态返回/解析 —— 否则 buildSeeds 拿到裸 docId 去比对本地 apiFileId 会全部落空，
+      // 把本地已有 collection 误判为「远端已删除」后删掉重建。
       const [repoId, parentUuid, fileId] = apiFileId.split(/-(.*?)-(.*)/);
       const data = await request<YuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
       const file = data.find((item) => item.uuid === fileId);
@@ -298,12 +304,13 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       }
       const parentfile = data.find((item) => item.uuid === file.parent_uuid);
       const parentId = `${repoId}-${parentfile?.id}-${parentfile?.uuid}`;
+      const id = `${repoId}-${file.id}-${file.uuid}`;
 
       //判断如果parent_uuid为空，则认为是知识库的根目录，返回知识库
       if (file.parent_uuid) {
         return {
-          id: file.id,
-          rawId: file.id,
+          id,
+          rawId: String(file.uuid),
           name: file.title,
           parentId: parentId,
           type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
@@ -313,8 +320,8 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
         };
       } else {
         return {
-          id: file.id,
-          rawId: file.id,
+          id,
+          rawId: String(file.uuid),
           name: file.title,
           parentId: repoId,
           type: file.type === 'TITLE' ? ('folder' as const) : ('file' as const),
