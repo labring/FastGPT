@@ -1,7 +1,7 @@
 import z from 'zod';
 import { ExecutionSourcePortRefSchema } from '../edge/type';
-import { VariableRefSchema } from '../reference/type';
-import { NodeTemplateRefSchema } from '../template/type';
+import { VariableRefSchema, parseVariableRef } from '../reference/type';
+import { NodeTemplateRefSchema, parseNodeTemplateRef } from '../template/type';
 import { WorkflowExecutionEdgeSchema } from '../edge/type';
 import { VariableItemTypeSchema } from '@fastgpt/global/core/app/variable/type';
 import {
@@ -10,10 +10,24 @@ import {
 } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowDiagnosticSchema } from '../domain/diagnostic';
 
+const CompatibleNodeTemplateRefSchema = z.preprocess((val) => {
+  if (typeof val === 'string') {
+    return parseNodeTemplateRef(val);
+  }
+  return val;
+}, NodeTemplateRefSchema);
+
+const CompatibleVariableRefSchema = z.preprocess((val) => {
+  if (typeof val === 'string') {
+    return parseVariableRef(val);
+  }
+  return val;
+}, VariableRefSchema);
+
 const NodeAddCommandSchema = z.object({
   type: z.literal('node.add'),
   nodeId: z.string().min(1),
-  template: NodeTemplateRefSchema,
+  template: CompatibleNodeTemplateRefSchema,
   name: z.string().min(1).optional(),
   position: z.object({ x: z.number(), y: z.number() }).optional(),
   parentNodeId: z.string().min(1).optional(),
@@ -32,7 +46,7 @@ const InputRefCommandSchema = z.object({
   type: z.literal('input.ref'),
   nodeId: z.string().min(1),
   inputKey: z.string().min(1),
-  ref: VariableRefSchema
+  ref: CompatibleVariableRefSchema
 });
 
 const PositionSchema = z.object({ x: z.number(), y: z.number() });
@@ -57,7 +71,7 @@ const NodeMoveCommandSchema = z
 const NodeInsertCommandSchema = z.object({
   type: z.literal('node.insert'),
   nodeId: z.string().min(1),
-  template: NodeTemplateRefSchema,
+  template: CompatibleNodeTemplateRefSchema,
   from: ExecutionSourcePortRefSchema,
   to: z.object({ kind: z.literal('target'), nodeId: z.string().min(1) }),
   position: PositionSchema.optional()
