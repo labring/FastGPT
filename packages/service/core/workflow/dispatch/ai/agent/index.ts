@@ -55,6 +55,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
+  [NodeInputKeyEnum.aiChatIsResponseText]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.aiModelId]?: string;
   [NodeInputKeyEnum.aiModel]?: string;
@@ -137,7 +138,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       sandboxEntrypoint,
       modelId,
       model,
-      aiChatReasoning
+      aiChatReasoning,
+      // 模板已声明该隐藏输入（NodeInputKeyEnum.aiChatIsResponseText），AI 对话/工具调用
+      // 节点都会消费它；Agent 节点此前忽略该开关，导致“指定回复”等下游节点再次输出时
+      // 出现重复答案（issue #2136）。
+      isResponseAnswerText = true
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
@@ -398,7 +403,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({
         nodeId
       }),
-      [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses
+      // 与 AI 对话/工具调用节点一致：关闭“返回答案”时不再把回答写入聊天时间线，
+      // data.answerText 仍保留给下游节点消费。
+      [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+        ? finalOutput.assistantResponses
+        : undefined
     };
   } catch (error) {
     // dispatch 层兜底：异常仍要清理 pending memory；内部详情已经由 sink 发布。
