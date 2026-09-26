@@ -27,7 +27,10 @@ import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/team
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import {
+  preCreateDatasetDataAndPushToTrainingQueue,
+  pushDataListToTrainingQueue
+} from '@fastgpt/service/core/dataset/training/controller';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
@@ -388,22 +391,40 @@ export const datasetParseQueue = async (): Promise<any> => {
             { session }
           );
 
-          // 6. Push to chunk queue
-          await pushDataListToTrainingQueue({
-            teamId: data.teamId,
-            tmbId: data.tmbId,
-            datasetId: dataset._id,
-            collectionId: collection._id,
-            agentModel: agentModelData,
-            vectorModel: embeddingModelData,
-            vlmModel: vlmModelData,
-            vlmModelConfigured,
-            indexSize: collection.indexSize,
-            mode: trainingMode,
-            billId: data.billId,
-            data: trainingData,
-            session
-          });
+          // QA 需要先完成模型生成，成功后才创建最终数据；其它模式可以先写 indexing 数据。
+          if (trainingMode === TrainingModeEnum.qa) {
+            await pushDataListToTrainingQueue({
+              teamId: data.teamId,
+              tmbId: data.tmbId,
+              datasetId: dataset._id,
+              collectionId: collection._id,
+              agentModel: agentModelData,
+              vectorModel: embeddingModelData,
+              vlmModel: vlmModelData,
+              vlmModelConfigured,
+              indexSize: collection.indexSize,
+              mode: TrainingModeEnum.qa,
+              billId: data.billId,
+              data: trainingData,
+              session
+            });
+          } else {
+            await preCreateDatasetDataAndPushToTrainingQueue({
+              teamId: data.teamId,
+              tmbId: data.tmbId,
+              datasetId: dataset._id,
+              collectionId: collection._id,
+              agentModel: agentModelData,
+              vectorModel: embeddingModelData,
+              vlmModel: vlmModelData,
+              vlmModelConfigured,
+              indexSize: collection.indexSize,
+              mode: trainingMode,
+              billId: data.billId,
+              data: trainingData,
+              session
+            });
+          }
 
           // 7. Delete task
           const deleteResult = await MongoDatasetTraining.deleteOne(taskLease.getFilter(), {

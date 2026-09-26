@@ -7,7 +7,10 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import { serviceEnv } from '../../../env';
 
 export const DatasetDataCollectionName = 'dataset_datas';
@@ -84,6 +87,11 @@ const DatasetDataSchema = new Schema({
     default: 0
   },
   rebuilding: Boolean,
+  indexStatus: {
+    type: String,
+    enum: Object.values(DatasetDataIndexStatusEnum)
+  },
+  indexErrorMsg: String,
   synonymVersion: Number,
   synonymRebuildingVersion: Number,
 

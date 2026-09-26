@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     streams,
     generateQA: vi.fn(),
     generateVector: vi.fn(),
+    generatePreCreatedData: vi.fn(),
     datasetParseQueue: vi.fn()
   };
 });
@@ -24,6 +25,9 @@ vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
 vi.mock('@/service/core/dataset/queues/generateQA', () => ({ generateQA: mocks.generateQA }));
 vi.mock('@/service/core/dataset/queues/generateVector', () => ({
   generateVector: mocks.generateVector
+}));
+vi.mock('@/service/core/dataset/queues/generatePreCreatedData', () => ({
+  generatePreCreatedData: mocks.generatePreCreatedData
 }));
 vi.mock('@/service/core/dataset/queues/datasetParse', () => ({
   datasetParseQueue: mocks.datasetParseQueue
@@ -48,6 +52,12 @@ describe('createDatasetTrainingMongoWatch', () => {
 
     stream.emit('change', {
       operationType: 'insert',
+      fullDocument: { mode: TrainingModeEnum.index }
+    });
+    await vi.waitFor(() => expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce());
+
+    stream.emit('change', {
+      operationType: 'insert',
       fullDocument: { mode: TrainingModeEnum.chunk }
     });
     await vi.waitFor(() => expect(mocks.generateVector).toHaveBeenCalledOnce());
@@ -64,6 +74,7 @@ describe('createDatasetTrainingMongoWatch', () => {
 
     expect(mocks.generateQA).toHaveBeenCalledOnce();
     expect(mocks.generateVector).toHaveBeenCalledOnce();
+    expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce();
     expect(mocks.datasetParseQueue).toHaveBeenCalledOnce();
   });
 
@@ -79,10 +90,10 @@ describe('createDatasetTrainingMongoWatch', () => {
 
     streamAt(1).emit('change', {
       operationType: 'insert',
-      fullDocument: { mode: TrainingModeEnum.chunk }
+      fullDocument: { mode: TrainingModeEnum.index }
     });
     await vi.advanceTimersByTimeAsync(0);
-    expect(mocks.generateVector).toHaveBeenCalledOnce();
+    expect(mocks.generatePreCreatedData).toHaveBeenCalledOnce();
     vi.useRealTimers();
   });
 });

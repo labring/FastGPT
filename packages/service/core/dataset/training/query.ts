@@ -17,7 +17,8 @@ export const trainingModeRankMap: Record<TrainingModeEnum, number> = {
   [TrainingModeEnum.qa]: 2,
   [TrainingModeEnum.image]: 3,
   [TrainingModeEnum.auto]: 4,
-  [TrainingModeEnum.chunk]: 5
+  [TrainingModeEnum.chunk]: 5,
+  [TrainingModeEnum.index]: 5
 };
 
 export const trainingModeRanks = Object.values(TrainingModeEnum).map((mode) => ({

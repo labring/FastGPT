@@ -100,7 +100,7 @@ export async function generateVector(): Promise<any> {
   const max = global.systemEnv?.vectorMaxProcess || 10;
   logger.debug('Vector queue size check', { queueSize: global.vectorQueueLen, max });
 
-  if (global.vectorQueueLen >= max) return;
+  if (global.vectorQueueLen + global.preCreatedQueueLen >= max) return;
   global.vectorQueueLen++;
 
   try {
@@ -199,11 +199,8 @@ export async function generateVector(): Promise<any> {
 
       try {
         const { tokens } = await (async () => {
-          if (data.dataId) {
-            return rebuildData({ trainingData: data });
-          } else {
-            return insertData({ trainingData: data });
-          }
+          if (!data.dataId) return insertData({ trainingData: data });
+          return rebuildData({ trainingData: data });
         })();
 
         // push usage

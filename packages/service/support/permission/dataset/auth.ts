@@ -21,6 +21,7 @@ import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/co
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
+import { assertDatasetDataWritable } from '../../../core/dataset/data/utils';
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -289,18 +290,25 @@ export async function authDatasetCollection({
 
 /*
   DatasetData permission is inherited from collection.
+  assertWritable 只在数据级写接口开启，读取接口传 false 以保留待索引数据的查看能力。
 */
 export async function authDatasetData({
   dataId,
+  assertWritable = false,
   ...props
 }: AuthModeType & {
   dataId: string;
+  assertWritable?: boolean;
 }) {
   // get mongo dataset.data
   const datasetData = await MongoDatasetData.findById(dataId);
 
   if (!datasetData) {
     return Promise.reject(i18nT('common:core.dataset.error.Data not found'));
+  }
+
+  if (assertWritable) {
+    await assertDatasetDataWritable(datasetData.indexStatus);
   }
 
   const result = await authDatasetCollection({
@@ -327,6 +335,7 @@ export async function authDatasetData({
         : undefined,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,
+    indexStatus: datasetData.indexStatus,
     datasetId: String(datasetData.datasetId),
     collectionId: String(datasetData.collectionId),
     metadata: datasetData.metadata,

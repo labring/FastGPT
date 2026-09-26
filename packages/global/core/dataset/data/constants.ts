@@ -10,6 +10,13 @@ export enum DatasetDataIndexTypeEnum {
   custom = 'custom'
 }
 
+/** 数据索引状态。新数据先写入 indexing，向量和全文索引完成后变为 indexed。 */
+export enum DatasetDataIndexStatusEnum {
+  indexing = 'indexing',
+  indexed = 'indexed',
+  error = 'error'
+}
+
 export const DatasetDataIndexMap: Record<
   `${DatasetDataIndexTypeEnum}`,
   {
@@ -46,3 +53,29 @@ export const defaultDatasetIndexData = DatasetDataIndexMap[DatasetDataIndexTypeE
 export const getDatasetIndexMapData = (type: `${DatasetDataIndexTypeEnum}`) => {
   return DatasetDataIndexMap[type] || defaultDatasetIndexData;
 };
+
+/** 数据索引状态的展示信息。字段缺失的历史数据按 indexed 展示。 */
+export const DatasetDataIndexStatusMap: Record<
+  `${DatasetDataIndexStatusEnum}`,
+  {
+    label: any;
+    colorSchema: 'gray' | 'blue' | 'green';
+  }
+> = {
+  [DatasetDataIndexStatusEnum.indexing]: {
+    label: i18nT('dataset:data_index_status_indexing'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.indexed]: {
+    label: i18nT('dataset:data_index_status_indexed'),
+    colorSchema: 'green'
+  },
+  [DatasetDataIndexStatusEnum.error]: {
+    label: i18nT('dataset:data_index_status_error'),
+    colorSchema: 'gray'
+  }
+};
+
+export const getDatasetDataIndexStatusMapData = (status?: DatasetDataIndexStatusEnum) =>
+  DatasetDataIndexStatusMap[status ?? DatasetDataIndexStatusEnum.indexed] ??
+  DatasetDataIndexStatusMap[DatasetDataIndexStatusEnum.indexed];

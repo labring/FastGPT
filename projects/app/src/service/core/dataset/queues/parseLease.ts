@@ -1,5 +1,10 @@
-export const PARSE_QUEUE_LEASE_TIMEOUT_MINUTES = 10;
-export const PARSE_QUEUE_LEASE_HEARTBEAT_INTERVAL_MS = 60 * 1000;
+import {
+  TRAINING_LEASE_HEARTBEAT_MS,
+  TRAINING_LEASE_TIMEOUT_MS
+} from '@fastgpt/global/core/dataset/training/constant';
+
+export const PARSE_QUEUE_LEASE_TIMEOUT_MINUTES = TRAINING_LEASE_TIMEOUT_MS / 60 / 1000;
+export const PARSE_QUEUE_LEASE_HEARTBEAT_INTERVAL_MS = TRAINING_LEASE_HEARTBEAT_MS;
 
 export type ParseTaskLeaseFilter<TTaskId = unknown> = {
   _id: TTaskId;

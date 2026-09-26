@@ -1,7 +1,6 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
@@ -11,19 +10,21 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 import { checkTeamAiPointsAndLock } from './utils';
-import { addMinutes } from 'date-fns';
 import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import {
+  claimTrainingTask,
+  TrainingLeaseLostError
+} from '@fastgpt/service/core/dataset/training/service';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -52,62 +53,30 @@ export async function generateQA(): Promise<any> {
     while (true) {
       const startTime = Date.now();
       // get training data
-      const {
-        data,
-        text,
-        done = false,
-        error = false
-      } = await (async () => {
-        try {
-          const data = await MongoDatasetTraining.findOneAndUpdate(
+      let claimed;
+      try {
+        claimed = await claimTrainingTask<PopulateType>({
+          mode: TrainingModeEnum.qa,
+          populate: [
             {
-              mode: TrainingModeEnum.qa,
-              retryCount: { $gt: 0 },
-              lockTime: { $lte: addMinutes(new Date(), -10) }
+              path: 'dataset',
+              select: 'agentModelId agentModel vectorModelId vectorModel vlmModelId vlmModel'
             },
             {
-              lockTime: new Date(),
-              $inc: { retryCount: -1 }
+              path: 'collection',
+              select: 'qaPrompt'
             }
-          )
-            .populate<PopulateType>([
-              {
-                path: 'dataset',
-                select: 'agentModelId agentModel vectorModelId vectorModel vlmModelId vlmModel'
-              },
-              {
-                path: 'collection',
-                select: 'qaPrompt'
-              }
-            ])
-            .lean();
-
-          // task preemption
-          if (!data) {
-            return {
-              done: true
-            };
-          }
-          return {
-            data,
-            text: data.q
-          };
-        } catch {
-          return {
-            error: true
-          };
-        }
-      })();
-
-      if (done || !data) {
-        break;
-      }
-      if (error) {
+          ]
+        });
+      } catch (error) {
         logger.error('QA queue fetch task failed', { error });
         await delay(500);
         continue;
       }
 
+      if (!claimed) break;
+      const { data, lease } = claimed;
+      const text = data.q;
       if (!data.dataset || !data.collection) {
         logger.info('QA queue task skipped: dataset or collection missing', {
           datasetId: data.datasetId,
@@ -115,11 +84,13 @@ export async function generateQA(): Promise<any> {
           trainingId: data._id
         });
         // Delete data
-        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        // 关联对象缺失时仍使用同一租约删除，避免误删新任务。
+        await lease.complete();
         continue;
       }
       // auth balance
       if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
+        await lease.stop();
         continue;
       }
 
@@ -169,25 +140,33 @@ export async function generateQA(): Promise<any> {
 
         const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
-        // get vector and insert
-        await pushDataListToTrainingQueue({
-          teamId: data.teamId,
-          tmbId: data.tmbId,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          mode: TrainingModeEnum.chunk,
-          data: qaArr.map((item) => ({
-            ...item,
-            chunkIndex: data.chunkIndex
-          })),
-          billId: data.billId,
-          vectorModel: embeddingModelData,
-          agentModel: modelData,
-          vlmModel: vlmModelData
-        });
+        // QA 成功后才创建最终数据。数据和后续 chunk 任务在同一事务中提交，
+        // 避免 QA 处理中出现用户可见的临时数据。
+        const result = await lease.complete(async (session) => {
+          const result = await preCreateDatasetDataAndPushToTrainingQueue({
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            mode: TrainingModeEnum.chunk,
+            data: qaArr.map((item) => ({
+              ...item,
+              ...(data.dataMetadata && { metadata: data.dataMetadata }),
+              chunkIndex: data.chunkIndex
+            })),
+            billId: data.billId,
+            vectorModel: embeddingModelData,
+            agentModel: modelData,
+            vlmModel: vlmModelData,
+            session
+          });
 
-        // delete data from training
-        await MongoDatasetTraining.findByIdAndDelete(data._id);
+          if (result.insertLen === 0) {
+            throw new Error('QA 未生成有效结果');
+          }
+
+          return result;
+        });
 
         // Push usage
         pushLLMTrainingUsage({
@@ -214,16 +193,13 @@ export async function generateQA(): Promise<any> {
           datasetId: data.datasetId,
           collectionId: data.collectionId
         });
-        await MongoDatasetTraining.updateOne(
-          {
-            _id: data._id
-          },
-          {
-            errorMsg: getErrText(err, 'unknown error')
-          }
-        );
+        if (!(err instanceof TrainingLeaseLostError)) {
+          await lease.fail(err);
+        }
 
         await delay(100);
+      } finally {
+        await lease.stop();
       }
     }
   } catch (error) {
