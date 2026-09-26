@@ -144,7 +144,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       expect.objectContaining({
         mode: TrainingModeEnum.image,
         q: 'question with ![cat](dataset/team/cat.png)',
-        retryCount: 50
+        retryCount: 3
       })
     );
     expect(training?.indexes).toEqual([
@@ -186,7 +186,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(training).toEqual(
       expect.objectContaining({
         mode: TrainingModeEnum.chunk,
-        retryCount: 50
+        retryCount: 3
       })
     );
     expect(training?.q).toBe('');
@@ -225,7 +225,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       expect.objectContaining({
         mode: TrainingModeEnum.imageParse,
         imageId: 'dataset/team/main.png',
-        retryCount: 50
+        retryCount: 3
       })
     );
   });

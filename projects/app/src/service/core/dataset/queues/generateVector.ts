@@ -18,16 +18,11 @@ import type {
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
-import {
-  DatasetDataIndexStatusEnum,
-  DatasetDataIndexTypeEnum
-} from '@fastgpt/global/core/dataset/data/constants';
-import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { enqueueNextDatasetRebuildTask } from './rebuild';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
-import { markDatasetDataIndexing } from '@fastgpt/service/core/dataset/training/controller';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -46,7 +41,6 @@ type PopulateType = {
     a?: string;
     imageId?: string;
     indexes: DatasetDataSchemaType['indexes'];
-    indexStatus?: DatasetDataIndexStatusEnum;
   };
 };
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
@@ -106,7 +100,7 @@ export async function generateVector(): Promise<any> {
   const max = global.systemEnv?.vectorMaxProcess || 10;
   logger.debug('Vector queue size check', { queueSize: global.vectorQueueLen, max });
 
-  if (global.vectorQueueLen >= max) return;
+  if (global.vectorQueueLen + global.preCreatedQueueLen >= max) return;
   global.vectorQueueLen++;
 
   try {
@@ -145,7 +139,7 @@ export async function generateVector(): Promise<any> {
               },
               {
                 path: 'data',
-                select: '_id q a imageId indexes indexStatus'
+                select: '_id q a imageId indexes'
               }
             ])
             .lean();
@@ -205,17 +199,7 @@ export async function generateVector(): Promise<any> {
 
       try {
         const { tokens } = await (async () => {
-          if (!data.dataId) {
-            // 无 dataId：旧创建数据路径。
-            return insertData({ trainingData: data });
-          }
-          if (data.data && !isDatasetDataIndexed(data.data.indexStatus)) {
-            // 有 dataId 且数据待索引：提前落库路径，向量回写同一条数据。
-            // 领取时先把 parsed 推进为 indexing，与 Pro/QA 链路保持一致。
-            await markDatasetDataIndexing({ dataId: String(data.dataId) });
-            return updatePreCreatedData({ trainingData: data });
-          }
-          // 其余（关联数据无状态或已 indexed）继续正式数据重建路径。
+          if (!data.dataId) return insertData({ trainingData: data });
           return rebuildData({ trainingData: data });
         })();
 
@@ -327,53 +311,6 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
   });
 
   await mongoSessionRun(async (session) => {
-    await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
-  });
-
-  return { tokens };
-};
-
-/**
- * 提前落库数据的向量回写。
- *
- * 与重建入口的区别：不调用 `enqueueFollowingDatasetRebuild`，因此不会为每条数据补充一条
- * 重建任务。数据更新、全文写入、indexed 标记、图片过期设置移除和训练任务删除共用同一次
- * Mongo 写入边界，避免出现"全文已可见但状态仍待索引"或"已标记 indexed 但向量缺失"的窗口。
- */
-const updatePreCreatedData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
-  const datasetData = trainingData.data!;
-
-  // 重建来源的任务不应落到待索引数据上；命中说明下发时存在并发改写，记录告警且不做重建接力。
-  if (trainingData.synonymVersion) {
-    logger.warn('Rebuild training task points to pending index data', {
-      trainingId: trainingData._id,
-      dataId: datasetData._id,
-      synonymVersion: trainingData.synonymVersion
-    });
-  }
-
-  const modelHandle = await getModelHandle();
-  const embModel = modelHandle.getEmbeddingModelData(
-    getDatasetModelReference(trainingData.dataset, 'embedding')
-  );
-  const rebuildUpdateInput = await getRebuildUpdateInput(trainingData);
-
-  let tokens = 0;
-  await mongoSessionRun(async (session) => {
-    ({ tokens } = await updateDatasetDataByIndexes({
-      dataId: String(datasetData._id),
-      ...rebuildUpdateInput,
-      imageIndex: !!trainingData.collection.imageIndex,
-      model: embModel,
-      indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
-      indexPrefix: trainingData.collection.indexPrefixTitle
-        ? `# ${trainingData.collection.name}`
-        : undefined,
-      indexStatus: DatasetDataIndexStatusEnum.indexed,
-      removeImageTTL: true,
-      session
-    }));
-
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
   });
 

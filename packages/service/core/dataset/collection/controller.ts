@@ -227,7 +227,7 @@ export const createCollectionAndInsertData = async ({
     // 5. insert to training queue
     const insertResults = await (async () => {
       if (imageIds) {
-        // 图片先落库为 parsed 数据，再由 ImageParse/向量处理接力更新同一条数据。
+        // 图片先落库为 indexing 数据，再由 ImageParse/向量处理接力更新同一条数据。
         return preCreateDatasetDataAndPushToTrainingQueue({
           teamId,
           tmbId,

@@ -255,7 +255,7 @@ const updateTraining = async ({
     },
     {
       $set: {
-        retryCount: 5,
+        retryCount: 3,
         lockTime: new Date('2000/1/1')
       }
     }

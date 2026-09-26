@@ -10,16 +10,11 @@ export enum DatasetDataIndexTypeEnum {
   custom = 'custom'
 }
 
-/**
- * 数据索引状态。仅新链路（提前落库）写入该字段，历史数据字段缺失。
- *
- * parsed -> indexing -> indexed 为主链路；问答一对多会从 indexing 回落到 parsed，
- * 两个待索引状态对外语义一致：可查看，不参与检索，不可写。
- */
+/** 数据索引状态。新数据先写入 indexing，向量和全文索引完成后变为 indexed。 */
 export enum DatasetDataIndexStatusEnum {
-  parsed = 'parsed',
   indexing = 'indexing',
-  indexed = 'indexed'
+  indexed = 'indexed',
+  error = 'error'
 }
 
 export const DatasetDataIndexMap: Record<
@@ -67,10 +62,6 @@ export const DatasetDataIndexStatusMap: Record<
     colorSchema: 'gray' | 'blue' | 'green';
   }
 > = {
-  [DatasetDataIndexStatusEnum.parsed]: {
-    label: i18nT('dataset:data_index_status_parsed'),
-    colorSchema: 'gray'
-  },
   [DatasetDataIndexStatusEnum.indexing]: {
     label: i18nT('dataset:data_index_status_indexing'),
     colorSchema: 'blue'
@@ -78,6 +69,10 @@ export const DatasetDataIndexStatusMap: Record<
   [DatasetDataIndexStatusEnum.indexed]: {
     label: i18nT('dataset:data_index_status_indexed'),
     colorSchema: 'green'
+  },
+  [DatasetDataIndexStatusEnum.error]: {
+    label: i18nT('dataset:data_index_status_error'),
+    colorSchema: 'gray'
   }
 };
 

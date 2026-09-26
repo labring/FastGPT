@@ -1,7 +1,6 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
@@ -11,27 +10,21 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 import { checkTeamAiPointsAndLock } from './utils';
-import { addMinutes } from 'date-fns';
 import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { text2Chunks } from '@fastgpt/service/worker/function';
-import {
-  markDatasetDataIndexing,
-  pushDataListToTrainingQueue
-} from '@fastgpt/service/core/dataset/training/controller';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { Types } from '@fastgpt/service/common/mongo';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import {
+  claimTrainingTask,
+  TrainingLeaseLostError
+} from '@fastgpt/service/core/dataset/training/service';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -60,62 +53,30 @@ export async function generateQA(): Promise<any> {
     while (true) {
       const startTime = Date.now();
       // get training data
-      const {
-        data,
-        text,
-        done = false,
-        error = false
-      } = await (async () => {
-        try {
-          const data = await MongoDatasetTraining.findOneAndUpdate(
+      let claimed;
+      try {
+        claimed = await claimTrainingTask<PopulateType>({
+          mode: TrainingModeEnum.qa,
+          populate: [
             {
-              mode: TrainingModeEnum.qa,
-              retryCount: { $gt: 0 },
-              lockTime: { $lte: addMinutes(new Date(), -10) }
+              path: 'dataset',
+              select: 'agentModelId agentModel vectorModelId vectorModel vlmModelId vlmModel'
             },
             {
-              lockTime: new Date(),
-              $inc: { retryCount: -1 }
+              path: 'collection',
+              select: 'qaPrompt'
             }
-          )
-            .populate<PopulateType>([
-              {
-                path: 'dataset',
-                select: 'agentModelId agentModel vectorModelId vectorModel vlmModelId vlmModel'
-              },
-              {
-                path: 'collection',
-                select: 'qaPrompt'
-              }
-            ])
-            .lean();
-
-          // task preemption
-          if (!data) {
-            return {
-              done: true
-            };
-          }
-          return {
-            data,
-            text: data.q
-          };
-        } catch {
-          return {
-            error: true
-          };
-        }
-      })();
-
-      if (done || !data) {
-        break;
-      }
-      if (error) {
+          ]
+        });
+      } catch (error) {
         logger.error('QA queue fetch task failed', { error });
         await delay(500);
         continue;
       }
 
+      if (!claimed) break;
+      const { data, lease } = claimed;
+      const text = data.q;
       if (!data.dataset || !data.collection) {
         logger.info('QA queue task skipped: dataset or collection missing', {
           datasetId: data.datasetId,
@@ -123,17 +84,14 @@ export async function generateQA(): Promise<any> {
           trainingId: data._id
         });
         // Delete data
-        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        // 关联对象缺失时仍使用同一租约删除，避免误删新任务。
+        await lease.complete();
         continue;
       }
       // auth balance
       if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
+        await lease.stop();
         continue;
-      }
-
-      // 提前落库的数据在领取时推进为 indexing；问答事务提交后源数据回到 parsed。
-      if (data.dataId) {
-        await markDatasetDataIndexing({ dataId: String(data.dataId) });
       }
 
       logger.info('QA queue task started', {
@@ -182,18 +140,10 @@ export async function generateQA(): Promise<any> {
 
         const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
-        if (data.dataId) {
-          // 提前落库的问答分支：源数据复用为第一条叶子，其余叶子新建 parsed 数据与任务。
-          await replacePreCreatedDataWithQALeaves({
-            trainingData: data,
-            qaArr,
-            vectorModel: embeddingModelData,
-            agentModel: modelData,
-            vlmModel: vlmModelData
-          });
-        } else {
-          // 旧任务：继续创建数据。
-          await pushDataListToTrainingQueue({
+        // QA 成功后才创建最终数据。数据和后续 chunk 任务在同一事务中提交，
+        // 避免 QA 处理中出现用户可见的临时数据。
+        const result = await lease.complete(async (session) => {
+          const result = await preCreateDatasetDataAndPushToTrainingQueue({
             teamId: data.teamId,
             tmbId: data.tmbId,
             datasetId: data.datasetId,
@@ -201,17 +151,22 @@ export async function generateQA(): Promise<any> {
             mode: TrainingModeEnum.chunk,
             data: qaArr.map((item) => ({
               ...item,
+              ...(data.dataMetadata && { metadata: data.dataMetadata }),
               chunkIndex: data.chunkIndex
             })),
             billId: data.billId,
             vectorModel: embeddingModelData,
             agentModel: modelData,
-            vlmModel: vlmModelData
+            vlmModel: vlmModelData,
+            session
           });
 
-          // delete data from training
-          await MongoDatasetTraining.findByIdAndDelete(data._id);
-        }
+          if (result.insertLen === 0) {
+            throw new Error('QA 未生成有效结果');
+          }
+
+          return result;
+        });
 
         // Push usage
         pushLLMTrainingUsage({
@@ -238,16 +193,13 @@ export async function generateQA(): Promise<any> {
           datasetId: data.datasetId,
           collectionId: data.collectionId
         });
-        await MongoDatasetTraining.updateOne(
-          {
-            _id: data._id
-          },
-          {
-            errorMsg: getErrText(err, 'unknown error')
-          }
-        );
+        if (!(err instanceof TrainingLeaseLostError)) {
+          await lease.fail(err);
+        }
 
         await delay(100);
+      } finally {
+        await lease.stop();
       }
     }
   } catch (error) {
@@ -259,137 +211,6 @@ export async function generateQA(): Promise<any> {
   }
   logger.debug('QA queue loop exit', { queueSize: global.qaQueueLen });
 }
-
-/**
- * 问答一对多：把提前落库的源数据替换为第一条 QA 叶子，其余叶子创建新的 parsed 数据与 chunk 任务。
- *
- * 数据替换、任务改派和叶子创建在同一个 Mongo 事务内提交：事务前列表显示原始分块，事务后显示
- * 最终 QA 叶子，不出现中间数据状态。源数据保留自己的 metadata，叶子复制源 metadata。
- *
- * N=0 时业务上等同 QA 未产出：源数据回到 parsed，不删除也不新增数据行，任务按现有失败语义处理。
- */
-const replacePreCreatedDataWithQALeaves = async ({
-  trainingData,
-  qaArr,
-  vectorModel,
-  agentModel,
-  vlmModel
-}: {
-  trainingData: {
-    _id: string;
-    dataId?: string;
-    teamId: string;
-    tmbId: string;
-    datasetId: string;
-    collectionId: string;
-    billId: string;
-    chunkIndex?: number;
-  };
-  qaArr: PushDataChunkType[];
-  vectorModel: EmbeddingSystemModelDataType;
-  agentModel: LLMSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
-}) => {
-  if (qaArr.length === 0) {
-    await MongoDatasetData.updateOne(
-      { _id: trainingData.dataId },
-      { $set: { indexStatus: DatasetDataIndexStatusEnum.parsed } }
-    );
-    return Promise.reject('QA 未生成任何结果');
-  }
-
-  return mongoSessionRun(async (session) => {
-    const sourceData = await MongoDatasetData.findById(trainingData.dataId).session(session).lean();
-    if (!sourceData) {
-      return Promise.reject('Dataset data not found');
-    }
-
-    const chunkIndex = sourceData.chunkIndex ?? trainingData.chunkIndex ?? 0;
-    const [firstLeaf, ...restLeaves] = qaArr;
-
-    // 1. 源数据复用为第一条叶子，保留 metadata，状态回到 parsed。
-    //    indexes 显式清空：状态从待索引回退时必须与清空向量引用在同一写入边界（DS-17）。
-    await MongoDatasetData.updateOne(
-      { _id: sourceData._id },
-      {
-        $set: {
-          q: firstLeaf.q || '',
-          a: firstLeaf.a,
-          indexes: [],
-          indexStatus: DatasetDataIndexStatusEnum.parsed,
-          updateTime: new Date()
-        }
-      },
-      { session }
-    );
-
-    // 2. 原任务改派为第一条叶子的 chunk 任务，保留 _id/dataId/billId，只改写叶子内容。
-    await MongoDatasetTraining.updateOne(
-      { _id: trainingData._id },
-      {
-        $set: {
-          mode: TrainingModeEnum.chunk,
-          q: firstLeaf.q || '',
-          a: firstLeaf.a,
-          chunkIndex,
-          weight: vectorModel.config.weight,
-          lockTime: new Date('2000/1/1'),
-          retryCount: 5
-        },
-        $unset: { errorMsg: '' }
-      },
-      { session }
-    );
-
-    if (restLeaves.length === 0) return;
-
-    // 3. 其余叶子复制源 metadata，分别创建 parsed 数据和带对应 dataId 的 chunk 任务。
-    const leaves = restLeaves.map((item) => ({
-      dataId: String(new Types.ObjectId()),
-      q: item.q || '',
-      a: item.a
-    }));
-
-    await MongoDatasetData.create(
-      leaves.map((leaf) => ({
-        _id: leaf.dataId,
-        teamId: trainingData.teamId,
-        tmbId: trainingData.tmbId,
-        datasetId: trainingData.datasetId,
-        collectionId: trainingData.collectionId,
-        q: leaf.q,
-        a: leaf.a,
-        ...(sourceData.metadata && { metadata: sourceData.metadata }),
-        chunkIndex,
-        indexes: [],
-        indexStatus: DatasetDataIndexStatusEnum.parsed,
-        ...(sourceData.synonymVersion !== undefined && {
-          synonymVersion: sourceData.synonymVersion
-        })
-      })),
-      { session, ordered: true }
-    );
-
-    await pushDataListToTrainingQueue({
-      teamId: trainingData.teamId,
-      tmbId: trainingData.tmbId,
-      datasetId: trainingData.datasetId,
-      collectionId: trainingData.collectionId,
-      mode: TrainingModeEnum.chunk,
-      data: leaves.map((leaf) => ({
-        dataId: leaf.dataId,
-        q: leaf.q,
-        a: leaf.a,
-        chunkIndex
-      })),
-      billId: trainingData.billId,
-      vectorModel,
-      agentModel,
-      vlmModel,
-      session
-    });
-  });
-};
 
 // Format qa answer
 async function formatSplitText({

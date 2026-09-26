@@ -5,7 +5,6 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
-import { Types } from '../../../common/mongo';
 import { isImageEmbeddingModel } from '../../ai/model';
 import type {
   EmbeddingSystemModelDataType,
@@ -44,7 +43,7 @@ const getTrainingModeLimit = async ({
   vlmModel?: LLMSystemModelDataType;
   vlmModelConfigured: boolean;
 }): Promise<{ maxToken: number; weight: number }> => {
-  if (mode === TrainingModeEnum.chunk) {
+  if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.index) {
     return {
       maxToken: Infinity,
       weight: vectorModel.config.weight
@@ -241,7 +240,7 @@ export const pushDataListToTrainingQueue = async ({
           indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
-          retryCount: 5
+          retryCount: 3
         })),
         {
           session,
@@ -273,6 +272,16 @@ export const pushDataListToTrainingQueue = async ({
       chunkSize
     });
 
+    // 预落库会把数据行和训练任务放在调用方事务中。此时不能再开启独立事务，
+    // 否则训练任务可能先提交而数据行随后回滚，留下无法处理的孤儿任务。
+    if (session) {
+      const insertedCount = await insertDataIterative(data, session);
+      logger.info('Large dataset inserted in caller transaction', {
+        durationMs: Date.now() - start
+      });
+      return { insertLen: insertedCount, dataIds: [] };
+    }
+
     let totalInserted = 0;
 
     for (let i = 0; i < data.length; i += chunkSize) {
@@ -288,20 +297,20 @@ export const pushDataListToTrainingQueue = async ({
 
     logger.info('Chunked transactions completed', { durationMs: Date.now() - start });
 
-    return { insertLen: totalInserted };
+    return { insertLen: totalInserted, dataIds: [] };
   }
 
   // 小数据量单事务处理
   if (session) {
     const insertedCount = await insertDataIterative(data, session);
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
-    return { insertLen: insertedCount };
+    return { insertLen: insertedCount, dataIds: [] };
   } else {
     const insertedCount = await mongoSessionRun(async (session) => {
       return insertDataIterative(data, session);
     });
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
-    return { insertLen: insertedCount };
+    return { insertLen: insertedCount, dataIds: [] };
   }
 };
 
@@ -309,27 +318,7 @@ export const pushDataListToTrainingQueue = async ({
 const preCreateBatchSize = 500;
 
 /**
- * Worker 首次领取提前落库的数据时，把 parsed 推进为 indexing。
- *
- * 条件更新只作用于 parsed，重复领取或已被其它路径改写的行不会被覆盖；
- * 已经处于 indexing 的数据继续走现有流程。
- */
-export const markDatasetDataIndexing = async ({
-  dataId,
-  session
-}: {
-  dataId: string;
-  session?: ClientSession;
-}) => {
-  await MongoDatasetData.updateOne(
-    { _id: dataId, indexStatus: DatasetDataIndexStatusEnum.parsed },
-    { $set: { indexStatus: DatasetDataIndexStatusEnum.indexing } },
-    { session }
-  );
-};
-
-/**
- * 提前落库：在调用方 session 内先写入 parsed 数据，再创建携带相同 dataId 的训练任务。
+ * 提前落库：在调用方 session 内先写入 indexing 数据，再创建携带相同 dataId 的训练任务。
  *
  * 数据与任务共享同一 `dataId`，下游按 DS-07 分流把向量结果写回同一条数据，全流程只有一条数据行。
  * 只由解析最终分块、图片导入和问答叶子这几条入口使用，其他 `pushDataListToTrainingQueue` 调用方行为不变。
@@ -383,25 +372,20 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   const dataList = filterTrainingDataList({ data, maxToken });
 
   if (dataList.length === 0) {
-    return { insertLen: 0 };
+    return { insertLen: 0, dataIds: [] };
   }
 
   const synonymContext = isDatasetSynonymEnabled()
     ? await getDatasetSynonymTransformContext({ teamId, datasetId })
     : undefined;
 
-  // 预先分配 dataId，数据行与训练任务使用同一个 ID。
-  const dataWithIds = dataList.map((item) => ({
-    ...item,
-    dataId: String(new Types.ObjectId())
-  }));
+  const dataWithIds: Array<PushDataChunkWithDataIdType> = [];
 
-  for (let i = 0; i < dataWithIds.length; i += preCreateBatchSize) {
-    const batch = dataWithIds.slice(i, i + preCreateBatchSize);
+  for (let i = 0; i < dataList.length; i += preCreateBatchSize) {
+    const batch = dataList.slice(i, i + preCreateBatchSize);
 
-    await MongoDatasetData.create(
+    const createdData = await MongoDatasetData.create(
       batch.map((item) => ({
-        _id: item.dataId,
         teamId,
         tmbId,
         datasetId,
@@ -412,14 +396,21 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
         ...(item.metadata && { metadata: item.metadata }),
         chunkIndex: item.chunkIndex ?? 0,
         indexes: [],
-        indexStatus: DatasetDataIndexStatusEnum.parsed,
+        indexStatus: DatasetDataIndexStatusEnum.indexing,
         ...(synonymContext && { synonymVersion: synonymContext.version })
       })),
       { session, ordered: true }
     );
+
+    dataWithIds.push(
+      ...createdData.map((item, index) => ({
+        ...batch[index],
+        dataId: String(item._id)
+      }))
+    );
   }
 
-  return pushDataListToTrainingQueue({
+  const result = await pushDataListToTrainingQueue({
     teamId,
     tmbId,
     datasetId,
@@ -429,11 +420,16 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     vlmModel,
     vlmModelConfigured,
     data: dataWithIds,
-    mode,
+    mode: mode === TrainingModeEnum.chunk ? TrainingModeEnum.index : mode,
     indexSize,
     billId,
     session
   });
+
+  return {
+    ...result,
+    dataIds: dataWithIds.map((item) => item.dataId!).filter(Boolean)
+  };
 };
 
 export const pushDatasetToParseQueue = async ({
