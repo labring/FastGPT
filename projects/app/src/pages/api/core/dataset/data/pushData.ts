@@ -4,7 +4,7 @@ import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
@@ -77,7 +77,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
       return newUsageId;
     })();
 
-    return pushDataListToTrainingQueue({
+    return preCreateDatasetDataAndPushToTrainingQueue({
       ...body,
       session,
       billId: traingUsageId,

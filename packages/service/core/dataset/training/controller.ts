@@ -5,7 +5,6 @@ import type {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from '../../../common/mongo';
-import { Types } from '../../../common/mongo';
 import { isImageEmbeddingModel } from '../../ai/model';
 import type {
   EmbeddingSystemModelDataType,
@@ -280,7 +279,7 @@ export const pushDataListToTrainingQueue = async ({
       logger.info('Large dataset inserted in caller transaction', {
         durationMs: Date.now() - start
       });
-      return { insertLen: insertedCount };
+      return { insertLen: insertedCount, dataIds: [] };
     }
 
     let totalInserted = 0;
@@ -298,20 +297,20 @@ export const pushDataListToTrainingQueue = async ({
 
     logger.info('Chunked transactions completed', { durationMs: Date.now() - start });
 
-    return { insertLen: totalInserted };
+    return { insertLen: totalInserted, dataIds: [] };
   }
 
   // 小数据量单事务处理
   if (session) {
     const insertedCount = await insertDataIterative(data, session);
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
-    return { insertLen: insertedCount };
+    return { insertLen: insertedCount, dataIds: [] };
   } else {
     const insertedCount = await mongoSessionRun(async (session) => {
       return insertDataIterative(data, session);
     });
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
-    return { insertLen: insertedCount };
+    return { insertLen: insertedCount, dataIds: [] };
   }
 };
 
@@ -373,25 +372,20 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   const dataList = filterTrainingDataList({ data, maxToken });
 
   if (dataList.length === 0) {
-    return { insertLen: 0 };
+    return { insertLen: 0, dataIds: [] };
   }
 
   const synonymContext = isDatasetSynonymEnabled()
     ? await getDatasetSynonymTransformContext({ teamId, datasetId })
     : undefined;
 
-  // 预先分配 dataId，数据行与训练任务使用同一个 ID。
-  const dataWithIds = dataList.map((item) => ({
-    ...item,
-    dataId: String(new Types.ObjectId())
-  }));
+  const dataWithIds: Array<PushDataChunkWithDataIdType> = [];
 
-  for (let i = 0; i < dataWithIds.length; i += preCreateBatchSize) {
-    const batch = dataWithIds.slice(i, i + preCreateBatchSize);
+  for (let i = 0; i < dataList.length; i += preCreateBatchSize) {
+    const batch = dataList.slice(i, i + preCreateBatchSize);
 
-    await MongoDatasetData.create(
+    const createdData = await MongoDatasetData.create(
       batch.map((item) => ({
-        _id: item.dataId,
         teamId,
         tmbId,
         datasetId,
@@ -407,9 +401,16 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
       })),
       { session, ordered: true }
     );
+
+    dataWithIds.push(
+      ...createdData.map((item, index) => ({
+        ...batch[index],
+        dataId: String(item._id)
+      }))
+    );
   }
 
-  return pushDataListToTrainingQueue({
+  const result = await pushDataListToTrainingQueue({
     teamId,
     tmbId,
     datasetId,
@@ -424,6 +425,11 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     billId,
     session
   });
+
+  return {
+    ...result,
+    dataIds: dataWithIds.map((item) => item.dataId!).filter(Boolean)
+  };
 };
 
 export const pushDatasetToParseQueue = async ({
