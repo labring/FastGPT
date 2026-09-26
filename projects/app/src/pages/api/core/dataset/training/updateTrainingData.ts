@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getDatasetIndexTrainingMode } from '@fastgpt/service/core/dataset/training/service';
 import {
   UpdateTrainingDataBodySchema,
   UpdateTrainingDataResponseSchema,
@@ -14,6 +14,8 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
   const body = parseApiInput({ req, bodySchema: UpdateTrainingDataBodySchema }).body;
@@ -51,17 +53,26 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       };
     })();
 
-    await MongoDatasetTraining.updateMany(
-      {
-        ...retryMatch,
-        ...finalErrorTrainingMatch
-      },
-      {
-        $unset: { errorMsg: '' },
-        retryCount: 3,
-        lockTime: new Date('2000')
-      }
-    );
+    const taskMatch = {
+      ...retryMatch,
+      ...finalErrorTrainingMatch
+    };
+    const failedTasks = await MongoDatasetTraining.find(taskMatch).select('dataId').lean();
+    await MongoDatasetTraining.updateMany(taskMatch, {
+      $unset: { errorMsg: '' },
+      retryCount: 3,
+      lockTime: new Date('2000')
+    });
+    const dataIds = failedTasks.flatMap((task) => (task.dataId ? [task.dataId] : []));
+    if (dataIds.length) {
+      await MongoDatasetData.updateMany(
+        { _id: { $in: dataIds }, indexStatus: DatasetDataIndexStatusEnum.error },
+        {
+          $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
+          $unset: { indexErrorMsg: '' }
+        }
+      );
+    }
     return UpdateTrainingDataResponseSchema.parse(undefined);
   }
 
@@ -96,12 +107,19 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     _id: data._id
   };
 
+  if (data.dataId) {
+    await MongoDatasetData.updateOne(
+      { _id: data.dataId, indexStatus: DatasetDataIndexStatusEnum.error },
+      { $set: { indexStatus: DatasetDataIndexStatusEnum.indexing }, $unset: { indexErrorMsg: '' } }
+    );
+  }
+
   // Add to chunk
   if (data.imageId && q) {
     await MongoDatasetTraining.updateOne(trainingMatch, {
       $unset: { errorMsg: '' },
       retryCount: 3,
-      mode: TrainingModeEnum.chunk,
+      mode: await getDatasetIndexTrainingMode(data),
       ...(q !== undefined && { q }),
       ...(a !== undefined && { a }),
       ...(chunkIndex !== undefined && { chunkIndex }),

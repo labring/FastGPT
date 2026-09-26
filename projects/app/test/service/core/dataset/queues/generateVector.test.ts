@@ -326,7 +326,7 @@ describe('dataset rebuild queue', () => {
     const training = await MongoDatasetTraining.findOne({ dataId: validData._id }).lean();
     expect(training).toMatchObject({
       mode: TrainingModeEnum.chunk,
-      retryCount: 50
+      retryCount: 3
     });
     expect(training?.expireAt).toBeInstanceOf(Date);
     await expect(

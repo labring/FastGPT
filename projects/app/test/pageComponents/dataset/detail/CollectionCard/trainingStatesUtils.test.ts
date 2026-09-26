@@ -17,6 +17,7 @@ const createTrainingDetail = (
     parse: 0,
     qa: 0,
     chunk: 0,
+    index: 0,
     image: 0,
     auto: 0,
     imageParse: 0

@@ -309,6 +309,7 @@ export const GetDataListItemSchema = z.object({
     .enum(DatasetDataIndexStatusEnum)
     .optional()
     .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
+  indexErrorMsg: z.string().optional().meta({ description: '索引错误信息' }),
   updated: z.boolean().optional().meta({ description: '是否已更新' })
 });
 

@@ -106,7 +106,7 @@ export async function generateVector(): Promise<any> {
   const max = global.systemEnv?.vectorMaxProcess || 10;
   logger.debug('Vector queue size check', { queueSize: global.vectorQueueLen, max });
 
-  if (global.vectorQueueLen >= max) return;
+  if (global.vectorQueueLen + global.preCreatedQueueLen >= max) return;
   global.vectorQueueLen++;
 
   try {
@@ -205,17 +205,7 @@ export async function generateVector(): Promise<any> {
 
       try {
         const { tokens } = await (async () => {
-          if (!data.dataId) {
-            // 无 dataId：旧创建数据路径。
-            return insertData({ trainingData: data });
-          }
-          if (data.data && !isDatasetDataIndexed(data.data.indexStatus)) {
-            // 有 dataId 且数据待索引：提前落库路径，向量回写同一条数据。
-            // 领取时先把 parsed 推进为 indexing，与 Pro/QA 链路保持一致。
-            await markDatasetDataIndexing({ dataId: String(data.dataId) });
-            return updatePreCreatedData({ trainingData: data });
-          }
-          // 其余（关联数据无状态或已 indexed）继续正式数据重建路径。
+          if (!data.dataId) return insertData({ trainingData: data });
           return rebuildData({ trainingData: data });
         })();
 

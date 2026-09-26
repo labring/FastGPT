@@ -18,7 +18,8 @@ export const getTrainingStageText = (mode?: TrainingModeEnum) => {
     [TrainingModeEnum.qa]: i18nT('dataset:process.Get QA'),
     [TrainingModeEnum.image]: i18nT('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: i18nT('dataset:process.Auto_Index'),
-    [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing')
+    [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing'),
+    [TrainingModeEnum.index]: i18nT('dataset:process.Vectorizing')
   };
 
   return mode ? textMap[mode] : i18nT('dataset:process.Waiting');
@@ -92,6 +93,7 @@ export const getCollectionTrainingStatusColorSchema = ({
     case TrainingModeEnum.auto:
       return 'cyan';
     case TrainingModeEnum.chunk:
+    case TrainingModeEnum.index:
       return 'adora';
     default:
       return 'lightGray';

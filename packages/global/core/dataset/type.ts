@@ -326,6 +326,7 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
     .enum(DatasetDataIndexStatusEnum)
     .optional()
     .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
+  indexErrorMsg: z.string().optional().meta({ description: '索引错误信息' }),
   synonymVersion: z.number().int().nonnegative().optional().meta({ description: '同义词索引版本' }),
   synonymRebuildingVersion: z
     .number()
@@ -514,6 +515,7 @@ export const DatasetDataItemSchema = DatasetDataFieldSchema.extend({
     .enum(DatasetDataIndexStatusEnum)
     .optional()
     .meta({ description: '索引状态，字段缺失表示已索引的历史数据' }),
+  indexErrorMsg: z.string().optional().meta({ description: '索引错误信息' }),
   imageDescMap: z.record(z.string(), z.string()).optional().meta({ description: '图片描述映射' }),
   isOwner: z.boolean().meta({ description: '是否为 owner' }),
   metadata: z.record(z.string(), z.any()).optional().meta({ description: '自定义元数据' })

@@ -186,7 +186,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
       agentModel: agentModelData,
       vectorModel: vectorModelData,
       vlmModel: undefined,
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.index,
       billId: 'usage-id',
       data: [{ imageId: 'dataset/team/cat.png' }],
       session: 'session'

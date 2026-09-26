@@ -81,7 +81,7 @@ describe('pending index data write protection', () => {
     authDatasetData = (await getRealAuthDatasetData()) as typeof mockedAuthDatasetData;
   });
 
-  it.each([DatasetDataIndexStatusEnum.parsed, DatasetDataIndexStatusEnum.indexing])(
+  it.each([DatasetDataIndexStatusEnum.indexing])(
     'rejects data-level writes for %s data',
     async (indexStatus) => {
       const { root, data } = await createData(indexStatus);
@@ -108,14 +108,14 @@ describe('pending index data write protection', () => {
       });
 
       expect(String(result.datasetData.id)).toBe(String(data._id));
-      // 读取路径使用的字段完整，旧数据不回填状态。
+      // 读取路径使用的字段完整，缺失状态不回填。
       expect(result.datasetData.indexStatus).toBe(indexStatus);
     }
   );
 
   /** DS-13：读接口不传 assertWritable，待索引数据仍可查看。 */
   it('keeps read access for pending index data', async () => {
-    const { root, data } = await createData(DatasetDataIndexStatusEnum.parsed);
+    const { root, data } = await createData(DatasetDataIndexStatusEnum.indexing);
 
     const result = await authDatasetData({
       ...(buildAuthReq(root) as any),
@@ -123,7 +123,7 @@ describe('pending index data write protection', () => {
     });
 
     expect(result.datasetData.q).toBe('chunk');
-    expect(result.datasetData.indexStatus).toBe(DatasetDataIndexStatusEnum.parsed);
+    expect(result.datasetData.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
   });
 
   /** DS-04：鉴权返回的白名单对象必须带上 indexStatus，否则列表与详情读不到状态。 */

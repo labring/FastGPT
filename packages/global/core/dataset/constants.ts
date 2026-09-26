@@ -264,6 +264,7 @@ export enum ImportDataSourceEnum {
 export enum TrainingModeEnum {
   parse = 'parse',
   chunk = 'chunk',
+  index = 'index', // 为预先创建的数据生成并写回索引
   qa = 'qa',
   auto = 'auto',
   image = 'image',
