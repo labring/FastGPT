@@ -392,6 +392,103 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
+  it('keeps the partial assistant transcript when a child workflow pauses', async () => {
+    const childrenResponse = {
+      type: 'userSelect',
+      entryNodeIds: ['search']
+    };
+    runAgentLoopMock.mockResolvedValueOnce({
+      ...createLoopResult({ usages: [] }),
+      status: 'paused',
+      pause: {
+        type: 'tool_child',
+        childrenResponse,
+        toolCallId: 'call_child'
+      },
+      assistantMessages: [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'before pause',
+          tool_calls: [
+            {
+              id: 'call_child',
+              type: 'function',
+              function: {
+                name: 'search',
+                arguments: '{"q":"FastGPT"}'
+              }
+            }
+          ]
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_child',
+          content: 'partial child output'
+        }
+      ]
+    });
+
+    const result = await runToolCall(createProps());
+
+    expect(result.toolWorkflowInteractiveResponse).toEqual({
+      type: 'toolChildrenInteractive',
+      params: {
+        childrenResponse,
+        toolParams: {
+          toolCallId: 'call_child'
+        }
+      }
+    });
+    expect(result.assistantResponses).toEqual([
+      expect.objectContaining({ text: { content: 'before pause' } }),
+      expect.objectContaining({
+        tools: [expect.objectContaining({ id: 'call_child', response: 'partial child output' })]
+      })
+    ]);
+  });
+
+  it('preserves the order of multiple tool responses in the final transcript', async () => {
+    runAgentLoopMock.mockResolvedValueOnce({
+      ...createLoopResult({ usages: [] }),
+      assistantMessages: [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: '',
+          tool_calls: [
+            {
+              id: 'call_first',
+              type: 'function',
+              function: { name: 'first_tool', arguments: '{}' }
+            },
+            {
+              id: 'call_second',
+              type: 'function',
+              function: { name: 'second_tool', arguments: '{}' }
+            }
+          ]
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_first',
+          content: 'first result'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_second',
+          content: 'second result'
+        }
+      ]
+    });
+
+    const result = await runToolCall(createProps());
+    const tools = result.assistantResponses.flatMap((response) => response.tools ?? []);
+
+    expect(tools.map((tool) => ({ id: tool.id, response: tool.response }))).toEqual([
+      { id: 'call_first', response: 'first result' },
+      { id: 'call_second', response: 'second result' }
+    ]);
+  });
+
   it('records context and tool-response compression as separate ToolCall detail rows', async () => {
     const contextCompressUsage = {
       moduleName: 'account_usage:compress_llm_messages',
