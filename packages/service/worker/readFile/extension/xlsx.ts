@@ -31,7 +31,8 @@ export const getXlsxParseLimits = (fileSizeBytes: number) => ({
 /**
  * Excel 的“常规”格式会把超过 11 位的数字显示为科学计数法，SheetJS 格式化时也一样：
  * 8613812345678 这样的编号或手机号会变成 "8.61381E+12"，原始位数在表格和 CSV 中都丢失了。
- * 对常规格式的整数改为写出完整数值；用户显式设置的数字格式保持不变。
+ * 对常规格式且仍能被 JavaScript 精确表示的整数改为写出完整数值；用户显式设置的数字格式和
+ * 已超出安全整数范围的值保持 SheetJS 原有文本，避免输出一个已经失真的数字。
  */
 const keepWholeNumberDigits = (worksheet: XLSX.WorkSheet) => {
   for (const address of Object.keys(worksheet)) {
@@ -41,7 +42,7 @@ const keepWholeNumberDigits = (worksheet: XLSX.WorkSheet) => {
       cell.t === 'n' &&
       cell.z === 'General' &&
       typeof cell.v === 'number' &&
-      Number.isInteger(cell.v) &&
+      Number.isSafeInteger(cell.v) &&
       cell.w?.includes('E')
     ) {
       cell.w = String(cell.v);

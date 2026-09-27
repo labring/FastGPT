@@ -94,6 +94,27 @@ describe('readXlsxRawText', () => {
     );
   });
 
+  it('keeps SheetJS formatting for integers outside the safe range', async () => {
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ['unsafe', 'huge'],
+      [9007199254740992, 1e21]
+    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    const result = await readXlsxRawText({
+      extension: 'xlsx',
+      buffer,
+      encoding: 'utf-8'
+    });
+
+    expect(Papa.parse(result.rawText).data).toEqual([
+      ['unsafe', 'huge'],
+      ['9.0072E+15', '1E+21']
+    ]);
+  });
+
   it('should fill merged cells before formatting xlsx content', async () => {
     const worksheet = XLSX.utils.aoa_to_sheet([
       ['部门', '姓名', '区域', '', ''],
