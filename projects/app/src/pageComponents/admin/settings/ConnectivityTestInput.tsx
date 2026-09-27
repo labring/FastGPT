@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Box, Button, HStack, Input, Tag, Text } from '@chakra-ui/react';
+import { Box, Button, HStack, Tag, Text } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
 import type { ProbeConnectionResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig';
+import AdminReadonlyInput from './AdminReadonlyInput';
 
 export type ConnectivityTestInputProps = {
   url: string;
@@ -13,7 +14,7 @@ export type ConnectivityTestInputProps = {
 
 /**
  * 连通性测试组件：
- * - 由 readonly input 与测试按钮构成；
+ * - 由只读地址展示与测试按钮构成；
  * - 接收 URL 参数，点击按钮后由后端服务发起实际 HTTP 探测并展示连通状态与延迟结果。
  */
 const ConnectivityTestInput = ({
@@ -52,15 +53,9 @@ const ConnectivityTestInput = ({
   return (
     <Box w={'100%'}>
       <HStack spacing={3} w={'100%'}>
-        <Input
-          isReadOnly
-          value={url}
-          placeholder={placeholder}
-          bg={'myGray.50'}
-          borderColor={'myGray.200'}
-          color={'myGray.800'}
-          _focus={{ borderColor: 'primary.500' }}
-        />
+        <Box flex={'1 0 0'} minW={0}>
+          <AdminReadonlyInput value={url} placeholder={placeholder} isTruncate />
+        </Box>
         <Button
           colorScheme={'blue'}
           variant={'outline'}
