@@ -184,6 +184,9 @@ const toToolRunResult = <TChildrenResponse = unknown>(
           : errorMessage,
       ...(errorMessage ? { errorMessage } : {}),
       assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
+      ...(toolRunResponse.assistantResponses?.length
+        ? { assistantResponses: toolRunResponse.assistantResponses }
+        : {}),
       usages: toolRunResponse.flowUsages,
       interactive: toolRunResponse.workflowInteractiveResponse as TChildrenResponse | undefined,
       stop:

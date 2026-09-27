@@ -83,6 +83,8 @@ export type AgentLoopEvent =
       response: string;
       /** 工具内部产生、需要随本轮 assistant 一起持久化的标准消息。 */
       assistantMessages?: ChatCompletionMessageParam[];
+      /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */
+      assistantResponses?: unknown[];
       errorMessage?: string;
       seconds: number;
       usages?: AgentLoopUsage[];

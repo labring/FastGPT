@@ -251,60 +251,74 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
-  it('converts the final assistant transcript, including child tool messages, for storage', async () => {
-    runAgentLoopMock.mockResolvedValue({
-      ...createLoopResult({ usages: [] }),
-      assistantMessages: [
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: 'child answer',
-          tool_calls: [
-            {
-              id: 'call_child',
-              type: 'function',
-              function: {
-                name: 'nested_search',
-                arguments: '{"query":"FastGPT"}'
+  it('persists original child responses through tool_run_end', async () => {
+    runAgentLoopMock.mockImplementation(async (options) => {
+      const call = {
+        id: 'call_child',
+        type: 'function' as const,
+        function: { name: 'nested_search', arguments: '{"query":"FastGPT"}' }
+      };
+      options.runtime.emitEvent({ type: 'tool_call', call });
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call,
+        rawResponse: 'child result',
+        response: 'child result',
+        seconds: 0.1,
+        assistantResponses: [
+          { text: { content: 'child answer' } },
+          {
+            id: 'call_child_nested',
+            tools: [
+              {
+                id: 'call_child_nested',
+                toolName: 'Nested search',
+                toolAvatar: '',
+                functionName: 'nested_search',
+                params: '{}',
+                response: 'nested result'
               }
-            }
-          ]
-        },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Tool,
-          tool_call_id: 'call_child',
-          content: 'child result'
-        }
-      ]
+            ]
+          }
+        ]
+      });
+      return createLoopResult({ usages: [] });
     });
 
     const result = await runToolCall(createProps());
 
     expect(result.assistantResponses).toEqual([
-      expect.objectContaining({ text: { content: 'child answer' } }),
       expect.objectContaining({
         tools: [expect.objectContaining({ id: 'call_child', response: 'child result' })]
+      }),
+      expect.objectContaining({ text: { content: 'child answer' } }),
+      expect.objectContaining({
+        tools: [expect.objectContaining({ id: 'call_child_nested', response: 'nested result' })]
       })
     ]);
   });
 
-  it('does not persist an empty tool card for an unmatched child tool message', async () => {
-    runAgentLoopMock.mockResolvedValue({
-      ...createLoopResult({ usages: [] }),
-      assistantMessages: [
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: 'before child workflow'
-        },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Tool,
-          tool_call_id: 'call_child',
-          content: 'child result'
-        },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: 'final answer'
-        }
-      ]
+  it('does not synthesize tool cards from assistant messages', async () => {
+    runAgentLoopMock.mockImplementation(async (options) => {
+      options.runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 0,
+        modelName: 'GPT-4',
+        requestId: 'req_main',
+        finishReason: 'stop',
+        answerText: 'before child workflowfinal answer',
+        seconds: 0.1
+      });
+      return {
+        ...createLoopResult({ usages: [] }),
+        assistantMessages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: 'call_child',
+            content: 'child result'
+          }
+        ]
+      };
     });
 
     const result = await runToolCall(createProps());
@@ -365,7 +379,8 @@ describe('runToolCall compression node responses', () => {
         rawResponse: childResult.response,
         response: childResult.response,
         seconds: 0.1,
-        assistantMessages: childResult.assistantMessages
+        assistantMessages: childResult.assistantMessages,
+        assistantResponses: childResult.assistantResponses
       });
 
       return {
@@ -428,40 +443,41 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
-  it('keeps the partial assistant transcript when a child workflow pauses', async () => {
+  it('keeps partial responses when a child workflow pauses', async () => {
     const childrenResponse = {
       type: 'userSelect',
       entryNodeIds: ['search']
     };
-    runAgentLoopMock.mockResolvedValueOnce({
-      ...createLoopResult({ usages: [] }),
-      status: 'paused',
-      pause: {
-        type: 'tool_child',
-        childrenResponse,
-        toolCallId: 'call_child'
-      },
-      assistantMessages: [
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: 'before pause',
-          tool_calls: [
-            {
-              id: 'call_child',
-              type: 'function',
-              function: {
-                name: 'search',
-                arguments: '{"q":"FastGPT"}'
-              }
-            }
-          ]
-        },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Tool,
-          tool_call_id: 'call_child',
-          content: 'partial child output'
-        }
-      ]
+    runAgentLoopMock.mockImplementationOnce(async (options) => {
+      const call = {
+        id: 'call_child',
+        type: 'function' as const,
+        function: { name: 'search', arguments: '{"q":"FastGPT"}' }
+      };
+      options.runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 0,
+        modelName: 'GPT-4',
+        requestId: 'req_main',
+        finishReason: 'tool_calls',
+        answerText: 'before pause',
+        toolCalls: [call],
+        seconds: 0.1
+      });
+      options.runtime.emitEvent({ type: 'tool_call', call });
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call,
+        rawResponse: 'partial child output',
+        response: 'partial child output',
+        seconds: 0.1,
+        assistantResponses: []
+      });
+      return {
+        ...createLoopResult({ usages: [] }),
+        status: 'paused',
+        pause: { type: 'tool_child', childrenResponse, toolCallId: 'call_child' }
+      };
     });
 
     const result = await runToolCall(createProps());
@@ -483,37 +499,23 @@ describe('runToolCall compression node responses', () => {
     ]);
   });
 
-  it('preserves the order of multiple tool responses in the final transcript', async () => {
-    runAgentLoopMock.mockResolvedValueOnce({
-      ...createLoopResult({ usages: [] }),
-      assistantMessages: [
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: '',
-          tool_calls: [
-            {
-              id: 'call_first',
-              type: 'function',
-              function: { name: 'first_tool', arguments: '{}' }
-            },
-            {
-              id: 'call_second',
-              type: 'function',
-              function: { name: 'second_tool', arguments: '{}' }
-            }
-          ]
-        },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Tool,
-          tool_call_id: 'call_first',
-          content: 'first result'
-        },
-        {
-          role: ChatCompletionRequestMessageRoleEnum.Tool,
-          tool_call_id: 'call_second',
-          content: 'second result'
-        }
-      ]
+  it('preserves the order of multiple tool responses from events', async () => {
+    runAgentLoopMock.mockImplementationOnce(async (options) => {
+      for (const [id, name, response] of [
+        ['call_first', 'first_tool', 'first result'],
+        ['call_second', 'second_tool', 'second result']
+      ] as const) {
+        const call = { id, type: 'function' as const, function: { name, arguments: '{}' } };
+        options.runtime.emitEvent({ type: 'tool_call', call });
+        options.runtime.emitEvent({
+          type: 'tool_run_end',
+          call,
+          rawResponse: response,
+          response,
+          seconds: 0.1
+        });
+      }
+      return createLoopResult({ usages: [] });
     });
 
     const result = await runToolCall(createProps());

@@ -100,6 +100,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     execute: () => Promise<{
       response: string;
       assistantMessages?: ChatCompletionMessageParam[];
+      assistantResponses?: unknown[];
       usages?: AgentLoopUsage[];
       interactive?: TChildrenResponse;
       stop?: boolean;
@@ -129,6 +130,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages,
+      assistantResponses: result.assistantResponses,
       usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,

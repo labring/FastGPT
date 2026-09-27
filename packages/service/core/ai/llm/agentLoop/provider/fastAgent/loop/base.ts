@@ -84,6 +84,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     rawResponse: string;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
+    assistantResponses?: unknown[];
     errorMessage?: string;
     seconds: number;
     usages?: AgentLoopUsage[];
@@ -287,6 +288,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     const {
       response,
       assistantMessages: toolAssistantMessages,
+      assistantResponses: toolAssistantResponses,
       usages: toolUsages,
       interactive,
       stop,
@@ -315,6 +317,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       rawResponse: response,
       response: normalizeToolResponseContent(response),
       assistantMessages: toolAssistantMessages,
+      assistantResponses: toolAssistantResponses,
       errorMessage: interactiveToolErrorMessage || errorMessage,
       seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
       usages: toolUsages,
@@ -544,6 +547,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         const {
           response,
           assistantMessages: toolAssistantMessages,
+          assistantResponses: toolAssistantResponses,
           usages: toolUsages,
           interactive,
           stop: stopLoop,
@@ -608,6 +612,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           rawResponse: response,
           response: toolFinalResponse,
           assistantMessages: toolAssistantMessages,
+          assistantResponses: toolAssistantResponses,
           ...(toolErrorMessage || errorMessage
             ? { errorMessage: toolErrorMessage || errorMessage }
             : {}),

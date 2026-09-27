@@ -25,6 +25,8 @@ export type AgentLoopReadFileExecuteParams = {
 export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   response: string;
   assistantMessages: ChatCompletionMessageParam[];
+  /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */
+  assistantResponses?: unknown[];
   usages: AgentLoopUsage[];
   interactive?: TChildrenResponse;
   stop?: boolean;

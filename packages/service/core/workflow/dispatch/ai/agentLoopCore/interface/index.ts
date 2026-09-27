@@ -22,7 +22,6 @@ export {
   buildAgentLoopCoreFinalAssistantOutput,
   getAgentLoopCorePersistedTextOutput
 } from '../application/output/assistantResponses';
-export { buildAgentLoopCoreAssistantResponsesFromMessages } from '../adapter/assistantResponses/fromMessages';
 
 export {
   createAgentLoopCoreRuntimeEnvironment,

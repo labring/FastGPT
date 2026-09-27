@@ -15,7 +15,6 @@ import {
   createAgentLoopCoreRuntimeEnvironment,
   createAgentLoopCoreRuntimeWithEnvironment,
   buildAgentLoopCoreInput,
-  buildAgentLoopCoreAssistantResponsesFromMessages,
   runAgentLoopCoreWithSummary,
   type AgentLoopCoreToolRunFlowResponse
 } from '../agentLoopCore/interface';
@@ -112,7 +111,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     (message) => message.role !== ChatCompletionRequestMessageRoleEnum.System
   );
 
-  const { result: loopResult, summary: outputSummary } =
+  const { summary: outputSummary } =
     await runAgentLoopCoreWithSummary<WorkflowInteractiveResponseType>({
       provider: 'fastAgent',
       input: buildAgentLoopCoreInput({
@@ -183,30 +182,6 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       }
     });
 
-  /**
-   * SSE 已由 runtime environment 在事件到达时实时发送；持久化内容在 loop 结束后
-   * 直接以 agent-loop 返回的完整 assistant transcript 为准，避免在每个工具事件中
-   * 重复拼装子工作流消息。上下文压缩 checkpoint 仍沿用事件 collector 的隐藏元数据。
-   */
-  const assistantResponses = [
-    ...buildAgentLoopCoreAssistantResponsesFromMessages({
-      messages: loopResult.assistantMessages,
-      reserveTool: true,
-      reserveReason: true,
-      // 交互暂停需要保留子流程 tool message 以恢复上下文，完成态则过滤掉未配对消息，避免空 tool 卡片。
-      preserveStandaloneToolResponses: outputSummary.status === 'interactive',
-      getToolInfo
-    }).map((response) =>
-      !aiChatReasoning && response.reasoning
-        ? {
-            ...response,
-            hideReason: true
-          }
-        : response
-    ),
-    ...outputSummary.assistantResponses.filter((response) => response.contextCheckpoint)
-  ];
-
   return {
     requestIds: outputSummary.requestIds,
     firstTokenTime: outputSummary.firstTokenTime,
@@ -216,8 +191,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     toolCallOutputTokens: outputSummary.outputTokens,
     toolCallTotalPoints: outputSummary.llmTotalPoints,
     completeMessages: outputSummary.completeMessages,
-    assistantResponses:
-      assistantResponses.length > 0 ? assistantResponses : outputSummary.assistantResponses,
+    assistantResponses: outputSummary.assistantResponses,
     finish_reason: outputSummary.finishReason,
     toolWorkflowInteractiveResponse: outputSummary.interactive
   };
