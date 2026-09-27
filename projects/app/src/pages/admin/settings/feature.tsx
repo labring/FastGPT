@@ -1,13 +1,14 @@
 'use client';
+import React from 'react';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
-import Settings from '@/pageComponents/admin/config/feature';
+import FeatureSettingComponent from '@/pageComponents/admin/settings/feature';
 
-const AdminPage = () => {
+const FeatureSettingPage = () => {
   return (
     <AdminContainer>
-      <Settings />
+      <FeatureSettingComponent />
     </AdminContainer>
   );
 };
 
-export default AdminPage;
+export default FeatureSettingPage;
