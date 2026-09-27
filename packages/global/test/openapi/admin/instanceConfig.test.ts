@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   GetDomainConfigQuerySchema,
   GetDomainConfigResponseSchema,
-  UpdateDomainConfigBodySchema
+  UpdateDomainConfigBodySchema,
+  ProbeConnectionBodySchema,
+  ProbeConnectionResponseSchema
 } from '../../../openapi/admin/system/instanceConfig';
 
 describe('Instance config OpenAPI schemas', () => {
@@ -60,5 +62,24 @@ describe('Instance config OpenAPI schemas', () => {
     expect(response.domain).toBe('site');
     expect(response.revision).toBe(2);
     expect(response.updatedBy?.username).toBe('root');
+  });
+
+  it('validates ProbeConnection schemas', () => {
+    const validBody = ProbeConnectionBodySchema.parse({
+      url: 'https://example.com'
+    });
+    expect(validBody.url).toBe('https://example.com');
+    expect(validBody.timeoutMs).toBe(5000); // default
+
+    expect(ProbeConnectionBodySchema.safeParse({ url: 'not-a-valid-url' }).success).toBe(false);
+
+    const validRes = ProbeConnectionResponseSchema.parse({
+      connected: true,
+      status: 200,
+      statusText: 'OK',
+      responseTimeMs: 35
+    });
+    expect(validRes.connected).toBe(true);
+    expect(validRes.responseTimeMs).toBe(35);
   });
 });
