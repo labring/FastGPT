@@ -306,6 +306,36 @@ describe('createAgentLoopCoreEventDispatcher', () => {
     );
   });
 
+  it('keeps the same SSE answer value for a later model request without child assistant responses', () => {
+    const workflowStreamResponse = vi.fn();
+    const eventStream = createAgentLoopCoreEventStream({
+      workflowStreamResponse,
+      getToolInfo: () => ({ name: 'Search' })
+    });
+    const dispatcher = createAgentLoopCoreEventDispatcher({ eventStream });
+
+    dispatcher.emitEvent({
+      type: 'llm_request_start',
+      requestIndex: 0,
+      modelName: 'GPT-4'
+    });
+    dispatcher.emitEvent({ type: 'answer_delta', text: 'first answer' });
+    dispatcher.emitEvent({
+      type: 'llm_request_start',
+      requestIndex: 1,
+      modelName: 'GPT-4'
+    });
+    dispatcher.emitEvent({ type: 'answer_delta', text: 'second answer' });
+
+    const answerEvents = workflowStreamResponse.mock.calls
+      .map(([event]) => event)
+      .filter((event) => event.event === SseResponseEventEnum.answer);
+
+    expect(answerEvents).toHaveLength(2);
+    expect(answerEvents[0]).not.toHaveProperty('id');
+    expect(answerEvents[1]).not.toHaveProperty('id');
+  });
+
   it('passes context checkpoints to compression records when request ids are absent', () => {
     const eventStream = createAgentLoopCoreEventStream({
       workflowStreamResponse: vi.fn(),

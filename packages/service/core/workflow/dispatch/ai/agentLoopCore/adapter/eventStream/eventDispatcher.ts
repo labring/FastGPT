@@ -36,7 +36,6 @@ export const createAgentLoopCoreEventDispatcher = ({
     Extract<AgentLoopEvent, { type: 'tool_call' }>['call']
   >();
   const completedToolCallIds = new Set<string>();
-  let hasLlmRequest = false;
 
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
@@ -59,9 +58,6 @@ export const createAgentLoopCoreEventDispatcher = ({
         eventStream.streamAnswer(event.text);
         return;
       case 'llm_request_start':
-        // 每次模型请求对应一个可持久化 assistant value；首轮沿用前端占位 value。
-        if (hasLlmRequest) eventStream.startNewAnswerBlock();
-        hasLlmRequest = true;
         eventStream.streamFlowNodeStatus({
           status: 'running',
           name: event.modelName
