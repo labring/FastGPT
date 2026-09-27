@@ -11,6 +11,8 @@ export type CreateAgentLoopCoreEventStreamParams = {
 };
 
 export type AgentLoopCoreEventStream = {
+  /** 标记后续 assistant 文本开始新的展示块。 */
+  startNewAnswerBlock: () => void;
   streamReasoning: (text: string) => void;
   streamAnswer: (text: string) => void;
   streamToolCall: (call: ChatCompletionMessageToolCall) => void;
