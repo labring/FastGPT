@@ -12,7 +12,7 @@ export type WorkflowNodeResponseInput = {
   parentId?: string;
   /** 当前响应是否写入请求级 writer。 */
   record?: boolean;
-  /** 父节点只入库不实时展示时设为 false，避免与已展示的内部明细重复。 */
+  /** 是否实时发布；仅在调用方明确隐藏该响应时设为 false。 */
   emit?: boolean;
 };
 
