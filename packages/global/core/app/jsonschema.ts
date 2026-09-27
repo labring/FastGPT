@@ -16,7 +16,7 @@ import type { OpenApiJsonSchema } from './tool/httpTool/type';
 import { i18nT } from '../../common/i18n/utils';
 import z from 'zod';
 import { parseOpenAPISchemaString } from '../../common/string/swagger';
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep, isEqual } from 'lodash-es';
 import { getToolInputManualRenderType } from './formEdit/utils';
 
 const JsonSchemaNodeInputMetadataKey = 'x-fastgpt-node-input' as const;
@@ -418,12 +418,17 @@ const getStrictEnumInitialValue = ({
   enumValues: unknown[];
   multiple: boolean;
 }) => {
+  const findMatchingEnumValue = (value: unknown) =>
+    enumValues.find((enumValue) => isEqual(enumValue, value));
+
   if (multiple) {
-    return Array.isArray(schema.default)
-      ? schema.default.filter((item) => enumValues.includes(item))
-      : [];
+    if (!Array.isArray(schema.default)) return [];
+    return schema.default.flatMap((item) => {
+      const matchedValue = findMatchingEnumValue(item);
+      return matchedValue === undefined ? [] : [matchedValue];
+    });
   }
-  return enumValues.includes(schema.default) ? schema.default : enumValues[0];
+  return findMatchingEnumValue(schema.default) ?? enumValues[0];
 };
 
 const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesItemType) => {

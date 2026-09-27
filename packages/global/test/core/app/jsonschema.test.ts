@@ -237,6 +237,11 @@ describe('jsonSchema2NodeInput', () => {
             items: { type: 'string', enum: ['zhihu', 'weibo', 'juejin'] },
             default: ['weibo', 'juejin']
           },
+          objectSources: {
+            type: 'array',
+            items: { type: 'object', enum: [{ id: 'zhihu' }, { id: 'weibo' }] },
+            default: [{ id: 'weibo' }]
+          },
           unknown: { type: 'string', enum: ['a', 'b'], default: 'c' }
         }
       }
@@ -254,8 +259,13 @@ describe('jsonSchema2NodeInput', () => {
       defaultValue: ['weibo', 'juejin'],
       renderTypeList: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference]
     });
+    expect(result[4]).toMatchObject({
+      value: [{ id: 'weibo' }],
+      defaultValue: [{ id: 'weibo' }],
+      renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+    });
     // default 不在枚举内时回退到第一个枚举值，避免选择器出现不存在的选项
-    expect(result[4]).toMatchObject({ value: 'a', defaultValue: 'c' });
+    expect(result[5]).toMatchObject({ value: 'a', defaultValue: 'c' });
   });
 
   it('should map isToolParam from input schema properties to NodeIO defaults', () => {
