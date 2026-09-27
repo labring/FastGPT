@@ -587,14 +587,9 @@ describe('agent sub app dispatchPlugin', () => {
     );
     expect(result).toMatchObject({
       response: 'waiting for plugin input',
-      interactive: nextInteractive,
-      assistantMessages: [
-        expect.objectContaining({
-          role: 'assistant',
-          content: 'waiting for plugin input'
-        })
-      ]
+      interactive: nextInteractive
     });
+    expect(result.assistantMessages).toBeUndefined();
   });
 });
 
@@ -619,7 +614,7 @@ describe('agent sub app dispatchApp', () => {
     });
   });
 
-  it('returns child assistant messages and interactive state to the agent-loop tool provider', async () => {
+  it('returns child response and interactive state without child transcript messages', async () => {
     const previousInteractive = {
       type: 'userSelect',
       entryNodeIds: ['select_1']
@@ -691,18 +686,11 @@ describe('agent sub app dispatchApp', () => {
       })
     );
     expect(result.response).toBe('child answer');
-    expect(result.assistantMessages).toEqual([
-      expect.objectContaining({
-        role: 'assistant',
-        content: 'child answer',
-        tool_calls: [expect.objectContaining({ id: 'call_nested' })]
-      }),
-      {
-        role: 'tool',
-        tool_call_id: 'call_nested',
-        content: 'nested result'
-      }
-    ]);
+    expect(result.assistantMessages).toBeUndefined();
+    expect(result.nodeResponse).toMatchObject({
+      moduleType: FlowNodeTypeEnum.appModule,
+      toolRes: 'child answer'
+    });
     expect(result.interactive).toBe(nextInteractive);
   });
 

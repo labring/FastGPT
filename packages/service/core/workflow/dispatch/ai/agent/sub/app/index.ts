@@ -33,7 +33,7 @@ import {
   WorkflowVariableState
 } from '../../../../utils/variables';
 import { getWorkflowRuntimeSummary, runtimeSummaryToNodeSummary } from '../../../../utils/summary';
-import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
 import {
   computedAppToolUsage,
@@ -176,21 +176,13 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     workflowRuntimeSummary
   });
 
+  // AgentV2 子应用固定关闭 stream；子流程 transcript 不属于父 Agent 的上下文，
+  // 仅通过 response/nodeResponse/usage/interactive 返回，避免 child answer 被重复拼入最终回答。
   return {
     response: text,
     ...(runtimeSummary.hasError
       ? { errorMessage: runtimeSummary.errorText || 'Run workflow failed' }
       : {}),
-    assistantMessages: chats2GPTMessages({
-      messages: [
-        {
-          obj: ChatRoleEnum.AI,
-          value: assistantResponses
-        }
-      ],
-      reserveId: false,
-      reserveTool: true
-    }),
     usages: flowUsages,
     nodeSummary: runtimeSummaryToNodeSummary(runtimeSummary),
     interactive: workflowInteractiveResponse,
@@ -488,19 +480,10 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       ]
     : flowUsages;
 
+  // AgentV2 插件子流程同样固定关闭 stream，不把 child transcript 透传给父 Agent。
   return {
     response,
     ...(errorMessage ? { errorMessage } : {}),
-    assistantMessages: chats2GPTMessages({
-      messages: [
-        {
-          obj: ChatRoleEnum.AI,
-          value: assistantResponses
-        }
-      ],
-      reserveId: false,
-      reserveTool: true
-    }),
     usages,
     nodeSummary,
     interactive: workflowInteractiveResponse,
