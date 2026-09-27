@@ -69,7 +69,8 @@ describe('buildAgentLoopCoreAssistantResponsesFromMessages', () => {
         }
       ],
       reserveTool: true,
-      reserveReason: true
+      reserveReason: true,
+      preserveStandaloneToolResponses: true
     });
 
     expect(responses).toEqual([
@@ -121,6 +122,7 @@ describe('buildAgentLoopCoreAssistantResponsesFromMessages', () => {
       ],
       reserveTool: true,
       reserveReason: true,
+      preserveStandaloneToolResponses: true,
       getToolInfo: () => ({ name: 'Parent tool' })
     });
 
@@ -137,5 +139,35 @@ describe('buildAgentLoopCoreAssistantResponsesFromMessages', () => {
         }
       ]
     });
+  });
+
+  it('drops standalone tool responses from completed transcripts', () => {
+    const responses = buildAgentLoopCoreAssistantResponsesFromMessages({
+      messages: [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'before child workflow'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_child',
+          content: 'child result'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'final answer'
+        }
+      ],
+      reserveTool: true,
+      reserveReason: true
+    });
+
+    expect(responses).toEqual([
+      {
+        text: {
+          content: 'before child workflowfinal answer'
+        }
+      }
+    ]);
   });
 });

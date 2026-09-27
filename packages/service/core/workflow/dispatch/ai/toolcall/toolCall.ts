@@ -193,6 +193,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       messages: loopResult.assistantMessages,
       reserveTool: true,
       reserveReason: true,
+      // 交互暂停需要保留子流程 tool message 以恢复上下文，完成态则过滤掉未配对消息，避免空 tool 卡片。
+      preserveStandaloneToolResponses: outputSummary.status === 'interactive',
       getToolInfo
     }).map((response) =>
       !aiChatReasoning && response.reasoning

@@ -13,6 +13,7 @@ export const buildAgentLoopCoreAssistantResponsesFromMessages = ({
   messages,
   reserveTool = true,
   reserveReason = true,
+  preserveStandaloneToolResponses = false,
   getToolInfo
 }: BuildAgentLoopCoreAssistantResponsesFromMessagesParams): AIChatItemValueItemType[] => {
   const convertMessages = (
@@ -36,6 +37,16 @@ export const buildAgentLoopCoreAssistantResponsesFromMessages = ({
         : []
     )
   );
+
+  if (!preserveStandaloneToolResponses) {
+    return convertMessages(
+      messages.filter(
+        (message) =>
+          message.role !== ChatCompletionRequestMessageRoleEnum.Tool ||
+          pairedToolCallIds.has(message.tool_call_id)
+      )
+    );
+  }
 
   const responses: AIChatItemValueItemType[] = [];
   let chunkStart = 0;

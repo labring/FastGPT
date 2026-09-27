@@ -287,6 +287,42 @@ describe('runToolCall compression node responses', () => {
     ]);
   });
 
+  it('does not persist an empty tool card for an unmatched child tool message', async () => {
+    runAgentLoopMock.mockResolvedValue({
+      ...createLoopResult({ usages: [] }),
+      assistantMessages: [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'before child workflow'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_child',
+          content: 'child result'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'final answer'
+        }
+      ]
+    });
+
+    const result = await runToolCall(createProps());
+
+    expect(result.assistantResponses).toEqual([
+      expect.objectContaining({
+        text: { content: 'before child workflowfinal answer' }
+      })
+    ]);
+    expect(result.assistantResponses).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tools: [expect.objectContaining({ id: 'call_child', toolName: '' })]
+        })
+      ])
+    );
+  });
+
   it('streams child workflow output and persists its direct and nested tool messages', async () => {
     const workflowStreamResponse = vi.fn();
     const childAssistantResponses = [
