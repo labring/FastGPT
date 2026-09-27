@@ -245,9 +245,9 @@ export const resolveAppResourcesByPermission = async ({
   const baseline = await getAppDraftResourceBaseline(appId, session, async (rawResources) => {
     // 只有历史草稿缺少 resources、需要从旧字段重建基线时，才查询应用所有者。
     // 已有合法快照会在 getAppDraftResourceBaseline 内直接返回，避免额外一次数据库请求。
-    const appQuery = MongoApp.findById(appId, 'tmbId');
-    if (session) appQuery.session(session);
-    const app = await appQuery.lean();
+    const app = await MongoApp.findById(appId, 'tmbId')
+      .session(session ?? null)
+      .lean();
     const appOwnerTmbId = app?.tmbId ? String(app.tmbId) : undefined;
     if (!appOwnerTmbId) return [];
 
