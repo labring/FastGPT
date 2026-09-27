@@ -1,16 +1,12 @@
 'use client';
 import React from 'react';
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
-import AdminPlaceholder from '@/pageComponents/admin/AdminPlaceholder';
+import AgentSandboxSubserviceComponent from '@/pageComponents/admin/subservice/agent-sandbox';
 
 const AgentSandboxSubservicePage = () => {
   return (
     <AdminContainer>
-      <AdminPlaceholder
-        title={'Agent Sandbox 管理'}
-        domain={'subservice.agentSandbox'}
-        description={'多沙箱 Provider 调度、CPU/内存/存储资源规格与生命周期策略管理。'}
-      />
+      <AgentSandboxSubserviceComponent />
     </AdminContainer>
   );
 };

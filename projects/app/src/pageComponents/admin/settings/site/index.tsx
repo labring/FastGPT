@@ -7,6 +7,7 @@ import {
   AdminSettingPage,
   AdminSettingSection,
   AdminFormItem,
+  AdminReadonlyInput,
   type SettingTOCItem
 } from '@/pageComponents/admin/settings';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
@@ -44,9 +45,11 @@ const SiteSettingComponent = () => {
     () => ({
       feDomain: typeof window !== 'undefined' ? window.location.origin : '',
       basePath: process.env.NEXT_PUBLIC_BASE_URL || '/',
-      mcpProxy: feConfigs?.mcpServerProxyEndpoint || '未配置'
+      mcpProxy: feConfigs?.mcpServerProxyEndpoint || '未配置',
+      fileDomain: (feConfigs as any)?.fileDomain || '与服务域名一致',
+      fileDownloadPrefix: (feConfigs as any)?.fileDownloadPublicUrlPrefix || '未独立配置'
     }),
-    [feConfigs?.mcpServerProxyEndpoint]
+    [feConfigs]
   );
 
   return (
@@ -124,36 +127,35 @@ const SiteSettingComponent = () => {
       <AdminSettingSection id="deployment" title="部署拓扑（只读）" showDivider>
         <SimpleGrid columns={[1, 2]} spacing={5}>
           <AdminFormItem label="当前访问域名" tooltip="通过浏览器当前访问环境解析的 Origin">
-            <Input
-              isReadOnly
-              value={deploymentInfo.feDomain}
-              bg={'myGray.50'}
-              color={'myGray.600'}
-            />
+            <AdminReadonlyInput value={deploymentInfo.feDomain} />
           </AdminFormItem>
 
           <AdminFormItem
             label="站点 BasePath"
             tooltip="环境变量 NEXT_PUBLIC_BASE_URL 指定的基础路由前缀"
           >
-            <Input
-              isReadOnly
-              value={deploymentInfo.basePath}
-              bg={'myGray.50'}
-              color={'myGray.600'}
-            />
+            <AdminReadonlyInput value={deploymentInfo.basePath} />
           </AdminFormItem>
 
           <AdminFormItem
             label="MCP SSE 代理地址"
             tooltip="环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT 提供的代理地址"
           >
-            <Input
-              isReadOnly
-              value={deploymentInfo.mcpProxy}
-              bg={'myGray.50'}
-              color={'myGray.600'}
-            />
+            <AdminReadonlyInput value={deploymentInfo.mcpProxy} />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label="文件服务独立域名"
+            tooltip="环境变量 FILE_DOMAIN 提供的文件存储专用域名"
+          >
+            <AdminReadonlyInput value={deploymentInfo.fileDomain} />
+          </AdminFormItem>
+
+          <AdminFormItem
+            label="文件下载公开前缀"
+            tooltip="环境变量 FILE_DOWNLOAD_PUBLIC_URL_PREFIX 提供的外部下载前缀"
+          >
+            <AdminReadonlyInput value={deploymentInfo.fileDownloadPrefix} />
           </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
