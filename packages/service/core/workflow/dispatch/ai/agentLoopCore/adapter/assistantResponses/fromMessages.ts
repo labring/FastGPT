@@ -15,16 +15,19 @@ export const buildAgentLoopCoreAssistantResponsesFromMessages = ({
   reserveReason = true,
   getToolInfo
 }: BuildAgentLoopCoreAssistantResponsesFromMessagesParams): AIChatItemValueItemType[] => {
-  const responses = GPTMessages2Chats({
-    messages,
-    reserveTool,
-    reserveReason,
-    getToolInfo
-  })
-    .map((item) => item.value as AIChatItemValueItemType[])
-    .flat();
+  const convertMessages = (
+    messagesToConvert: BuildAgentLoopCoreAssistantResponsesFromMessagesParams['messages']
+  ) =>
+    GPTMessages2Chats({
+      messages: messagesToConvert,
+      reserveTool,
+      reserveReason,
+      getToolInfo
+    })
+      .map((item) => item.value as AIChatItemValueItemType[])
+      .flat();
 
-  if (!reserveTool) return responses;
+  if (!reserveTool) return convertMessages(messages);
 
   const pairedToolCallIds = new Set(
     messages.flatMap((message) =>
@@ -34,32 +37,35 @@ export const buildAgentLoopCoreAssistantResponsesFromMessages = ({
     )
   );
 
-  const standaloneToolResponses = messages.flatMap<AIChatItemValueItemType>((message) => {
-    if (
-      message.role !== ChatCompletionRequestMessageRoleEnum.Tool ||
-      pairedToolCallIds.has(message.tool_call_id)
-    ) {
-      return [];
-    }
+  const responses: AIChatItemValueItemType[] = [];
+  let chunkStart = 0;
 
-    return [
-      {
-        tools: [
-          {
-            id: message.tool_call_id,
-            toolName: '',
-            toolAvatar: '',
-            functionName: '',
-            params: '',
-            response:
-              typeof message.content === 'string'
-                ? message.content
-                : JSON.stringify(message.content)
-          }
-        ]
-      }
-    ];
+  messages.forEach((message, index) => {
+    const isStandaloneToolResponse =
+      message.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+      !pairedToolCallIds.has(message.tool_call_id);
+
+    if (!isStandaloneToolResponse) return;
+
+    // 未配对的 tool message 可能来自子工作流 transcript。它仍然需要保留，
+    // 但必须插回原始消息位置，不能统一追加到所有 assistant 文本之后。
+    responses.push(...convertMessages(messages.slice(chunkStart, index)));
+    responses.push({
+      tools: [
+        {
+          id: message.tool_call_id,
+          toolName: '',
+          toolAvatar: '',
+          functionName: '',
+          params: '',
+          response:
+            typeof message.content === 'string' ? message.content : JSON.stringify(message.content)
+        }
+      ]
+    });
+    chunkStart = index + 1;
   });
 
-  return [...responses, ...standaloneToolResponses];
+  responses.push(...convertMessages(messages.slice(chunkStart)));
+  return responses;
 };

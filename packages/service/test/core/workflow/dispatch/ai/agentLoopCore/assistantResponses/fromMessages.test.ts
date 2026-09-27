@@ -87,4 +87,55 @@ describe('buildAgentLoopCoreAssistantResponsesFromMessages', () => {
       }
     ]);
   });
+
+  it('keeps standalone tool responses at their transcript position', () => {
+    const responses = buildAgentLoopCoreAssistantResponsesFromMessages({
+      messages: [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          tool_calls: [
+            {
+              id: 'call_parent',
+              type: 'function',
+              function: {
+                name: 'parent_tool',
+                arguments: '{}'
+              }
+            }
+          ]
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_parent',
+          content: 'parent result'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call_child',
+          content: 'child result'
+        },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: 'final answer'
+        }
+      ],
+      reserveTool: true,
+      reserveReason: true,
+      getToolInfo: () => ({ name: 'Parent tool' })
+    });
+
+    expect(responses.map((item) => Object.keys(item))).toEqual([['tools'], ['tools'], ['text']]);
+    expect(responses[1]).toEqual({
+      tools: [
+        {
+          id: 'call_child',
+          toolName: '',
+          toolAvatar: '',
+          functionName: '',
+          params: '',
+          response: 'child result'
+        }
+      ]
+    });
+  });
 });
