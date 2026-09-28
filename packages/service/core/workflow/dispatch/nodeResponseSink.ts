@@ -2,6 +2,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
 import {
   childrenResponseFields,
+  getNodeResponseIdentityKey,
   normalizeNodeResponseChildren
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
@@ -44,15 +45,15 @@ type WorkflowNodeResponseOutputPolicy = {
  */
 const removePublishedChildren = (
   response: ChatHistoryItemResType,
-  publishedResponseIds: Set<string>
+  publishedResponseKeys: Set<string>
 ): ChatHistoryItemResType =>
   childrenResponseFields.reduce<ChatHistoryItemResType>((current, field) => {
     const children = current[field] as ChatHistoryItemResType[] | undefined;
     if (!children?.length) return current;
 
     const nextChildren = children
-      .filter((child) => !child.id || !publishedResponseIds.has(child.id))
-      .map((child) => removePublishedChildren(child, publishedResponseIds));
+      .filter((child) => !child.id || !publishedResponseKeys.has(getNodeResponseIdentityKey(child)))
+      .map((child) => removePublishedChildren(child, publishedResponseKeys));
 
     const nextResponse = { ...current };
     if (nextChildren.length > 0) {
@@ -270,7 +271,7 @@ class WorkflowNodeResponseScope implements WorkflowNodeResponseSinkLike {
  */
 export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
   readonly hasOutput = true;
-  private readonly publishedResponseIds = new Set<string>();
+  private readonly publishedResponseKeys = new Set<string>();
   private readonly writer: WorkflowNodeResponseWriter;
   private readonly apiVersion?: 'v1' | 'v2';
   private readonly responseAllData: boolean;
@@ -308,7 +309,7 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
         ...response,
         ...(normalizedParentId !== undefined ? { parentId: normalizedParentId } : {})
       });
-      return removePublishedChildren(normalizedResponse, this.publishedResponseIds);
+      return removePublishedChildren(normalizedResponse, this.publishedResponseKeys);
     });
     const responsesToRecord = responses.filter((_, index) => inputs[index]?.record !== false);
     const recordedResponses =
@@ -322,7 +323,9 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
     });
 
     responses.forEach((response) => {
-      if (response.id) this.publishedResponseIds.add(response.id);
+      if (response.id) {
+        this.publishedResponseKeys.add(getNodeResponseIdentityKey(response));
+      }
     });
 
     if (this.apiVersion !== 'v2' || !this.workflowStreamResponse) {
