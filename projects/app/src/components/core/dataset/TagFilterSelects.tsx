@@ -22,7 +22,7 @@ import {
   type DatasetTagFilterField,
   type DatasetTagFilterValueMode,
   type WorkflowTagFilterOption
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 import {
   DatasetCollectionTagTypeEnum,
   type TagFilterOperator

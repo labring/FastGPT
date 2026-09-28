@@ -53,7 +53,7 @@ import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   isDatasetTagFilterValue,
   type DatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));

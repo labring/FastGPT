@@ -53,7 +53,7 @@ import {
   normalizeLegacyDatasetTagFilterValue,
   resolveDatasetTagFilterVersion,
   type DatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 import { form2AppWorkflow } from './utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));

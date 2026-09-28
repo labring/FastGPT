@@ -11,7 +11,7 @@ import {
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
-import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
 /**

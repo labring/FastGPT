@@ -4,7 +4,7 @@ import { WorkflowIOValueTypeEnum } from '../constants';
 import { chatNodeSystemPromptTip, systemPromptTip } from './tip';
 import { type FlowNodeInputItemType } from '../type/io';
 import { i18nT } from '../../../common/i18n/utils';
-import { DatasetTagFilterVersionEnum } from '../../dataset/workflowTagFilter';
+import { DatasetTagFilterVersionEnum } from '../../dataset/search/tagFilter';
 
 export const Input_Template_Dataset_Tag_Filter_Version: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.collectionFilterVersion,

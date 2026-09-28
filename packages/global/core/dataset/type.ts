@@ -43,6 +43,9 @@ export const DatasetCollectionTagOptionsSchema = z
 /** 旧字符串标签承载记录首次创建时使用的默认名称；身份只由 fromMigration 标识。 */
 export const DEFAULT_TAG = 'default_tag';
 
+/** 迁移承载标签在条件表达式中的内部专用标识符；身份只由 fromMigration: true 标识，不依赖可修改的标签名称。 */
+export const FROM_MIGRATION_CARRIER = '$fromMigration';
+
 /** Collection 标签值字段：string/number 存对应值，datetime 存 UTC 毫秒时间戳，array 存 string 数组 */
 export const CollectionTagValueFieldSchema = z.union([z.string(), z.number(), z.array(z.string())]);
 

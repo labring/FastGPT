@@ -14,7 +14,7 @@ import {
   pruneTagFilterConditions,
   resolveDatasetTagFilterVersion,
   serializeDatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 
 describe('dataset tag filter version', () => {
   it('uses structured only when explicitly marked and does not infer from the filter value', () => {
@@ -174,7 +174,9 @@ describe('formatCollectionFilterMatchParam', () => {
     ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 10 } }] } }));
 
     const legacy = '{"tags":{"$and":["legacy"]}}';
-    expect(formatCollectionFilterMatchParam({ value: legacy })).toBe(legacy);
+    expect(formatCollectionFilterMatchParam({ value: legacy })).toBe(
+      JSON.stringify({ tags: { $and: [{ $fromMigration: { $contains: 'legacy' } }] } })
+    );
     expect(formatCollectionFilterMatchParam({ value: undefined })).toBeUndefined();
   });
 

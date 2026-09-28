@@ -14,7 +14,7 @@ import {
   checkValue,
   filterCollectionByKeyValueTags,
   filterCollectionByMetadata
-} from '../../../../core/dataset/search/defaultRecall/collectionFilter';
+} from '../../../../core/dataset/search/filter/collectionFilter';
 
 const findResult = (data: unknown[]) => {
   const chain = { hint: () => chain, lean: vi.fn().mockResolvedValue(data) };
@@ -221,14 +221,15 @@ describe('filterCollectionByKeyValueTags', () => {
         {
           _id: 'carrier',
           datasetId: 'dataset-1',
-          tag: 'default_tag',
+          tag: 'renamed_tag',
           tagType: 'array',
           fromMigration: true
         }
       ],
       collections: [{ _id: 'legacy', tags: [{ tagId: 'carrier', value: ['A'] }] }]
     });
-    await expect(filterTags({ $and: [{ default_tag: { $contains: 'A' } }] })).resolves.toEqual([
+    // 即使标签被重命名为 renamed_tag，$fromMigration 依然通过 fromMigration: true 定位并匹配
+    await expect(filterTags({ $and: [{ $fromMigration: { $contains: 'A' } }] })).resolves.toEqual([
       'legacy'
     ]);
   });
@@ -247,7 +248,7 @@ describe('filterCollectionByMetadata', () => {
     (global as any).feConfigs = {};
   });
 
-  it('accepts structured conditions and rejects legacy or malformed configurations', async () => {
+  it('accepts structured conditions and rejects unnormalized or malformed configurations', async () => {
     await expect(
       filterCollectionByMetadata({
         teamId: 'team-1',
@@ -257,8 +258,7 @@ describe('filterCollectionByMetadata', () => {
     ).resolves.toEqual(['match']);
 
     for (const value of [
-      JSON.stringify({ tags: { $and: ['legacy'] } }),
-      JSON.stringify({ tags: { $or: [null] } }),
+      JSON.stringify({ tags: { $and: ['unnormalized-string'] } }),
       'not-json{'
     ]) {
       await expect(

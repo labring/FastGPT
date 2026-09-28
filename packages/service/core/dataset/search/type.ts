@@ -8,9 +8,6 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import type { DatasetTagFilterVersion } from '@fastgpt/global/core/dataset/workflowTagFilter';
-
-export type CollectionFilterMode = DatasetTagFilterVersion;
 
 export type SearchDatasetDataProps = {
   histories: ChatItemMiniType[];
@@ -50,8 +47,6 @@ export type SearchDatasetDataProps = {
     }
   */
   collectionFilterMatch?: string;
-  /** 由节点 Dispatcher 明确指定，不根据过滤值形状推断。 */
-  collectionFilterMode?: CollectionFilterMode;
 
   // Collection 级权限可读 file collection ID 列表（检索权限过滤）。
   // undefined = 无需 collection 级过滤（短路 / 全部可读）；空数组 = 无可读集合（直接空结果）。

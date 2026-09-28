@@ -239,7 +239,7 @@ describe('dispatchDatasetSearch', () => {
     expect(result.data?.quoteQA).toEqual([]);
   });
 
-  it('uses explicit versions and sends unconfigured historical nodes to structured filtering', async () => {
+  it('passes collectionFilterMatch directly to defaultSearchDatasetData', async () => {
     defaultSearchDatasetDataMock.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 0,
@@ -268,34 +268,9 @@ describe('dispatchDatasetSearch', () => {
     } as any;
 
     await dispatchDatasetSearch(props);
-    await dispatchDatasetSearch({
-      ...props,
-      params: { ...props.params, collectionFilterVersion: 'structured' }
-    });
-    await dispatchDatasetSearch({
-      ...props,
-      params: { ...props.params, collectionFilterVersion: 'unknown' }
-    });
-    await dispatchDatasetSearch({
-      ...props,
-      params: {
-        ...props.params,
-        collectionFilterVersion: undefined,
-        collectionFilterMatch: undefined
-      }
-    });
 
     expect(defaultSearchDatasetDataMock.mock.calls[0][0]).toMatchObject({
-      collectionFilterMode: 'legacy'
-    });
-    expect(defaultSearchDatasetDataMock.mock.calls[1][0]).toMatchObject({
-      collectionFilterMode: 'structured'
-    });
-    expect(defaultSearchDatasetDataMock.mock.calls[2][0]).toMatchObject({
-      collectionFilterMode: 'legacy'
-    });
-    expect(defaultSearchDatasetDataMock.mock.calls[3][0]).toMatchObject({
-      collectionFilterMode: 'structured'
+      collectionFilterMatch: '{"tags":{"$and":["legacy"]}}'
     });
   });
 

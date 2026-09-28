@@ -48,7 +48,7 @@ import { getGlobalVariableNode } from './adapt';
 import {
   DatasetTagFilterVersionEnum,
   resolveDatasetTagFilterVersion
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 
 /**
  * 将节点模板转换为画布节点，并按创建时语言初始化可编辑文本。

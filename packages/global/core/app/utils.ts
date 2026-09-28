@@ -3,7 +3,7 @@ import { DatasetSearchModeEnum } from '../dataset/constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
-import { DatasetTagFilterVersionEnum } from '../dataset/workflowTagFilter';
+import { DatasetTagFilterVersionEnum } from '../dataset/search/tagFilter';
 
 const deletedPluginErrorList = new Set([
   'plugin.team_not_installed',

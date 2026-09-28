@@ -1,22 +1,22 @@
 import json5 from 'json5';
 import safeRegex from 'safe-regex';
 import type { DatasetTagCompareOp } from '@fastgpt/global/core/dataset/constants';
+import { FROM_MIGRATION_CARRIER } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetCollectionTagsV2 } from '../../tag/schemaV2';
 import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
 import { readFromSecondary } from '../../../../common/mongo/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { applySharedCollectionMetadataFilters } from './collectionFilterShared';
+import { applySharedCollectionMetadataFilters } from './shared';
 
-/* ========== New format key-value tag filtering types ========== */
+/* ========== Key-Value 标签过滤类型 ========== */
 
-/** A single key-value tag condition: { tagName: { $op: value } } */
+/** 单条 Key-Value 标签条件：{ tagName: { $op: value } } */
 type TagCondition = Record<string, Record<string, unknown>>;
 
-/* ========== checkValue: pure value comparsion ========== */
+/* ========== checkValue: 纯值比对算法 ========== */
 
 // safe-regex 漏检带分支的量词组（如 (a|aa)+ 在 V8 下呈指数回溯），补充首字符重叠检测：
-// 逐层展平分组，量词作用域内含分支且分支首字符重叠 → 不安全
 const hasAmbiguousAlternation = (pattern: string): boolean => {
   let s = pattern
     .replace(/\\./g, ' ')
@@ -85,7 +85,6 @@ export function checkValue(
   switch (tagType) {
     case 'number':
     case 'datetime': {
-      // 优先按数值解析；若为标准日期时间字符串（如工作流自定义时间变量输出的 YYYY-MM-DD HH:mm:ss、ISO 串）则转为毫秒时间戳
       const toNumericOrTimestamp = (val: unknown): number => {
         if (typeof val === 'number') return val;
         if (typeof val === 'string') {
@@ -103,7 +102,6 @@ export function checkValue(
       const t = toNumericOrTimestamp(target);
       if (isNaN(t)) return false;
       if (isNaN(stored)) {
-        // 存储值不是有效数字或时间（如打标但值为空/非法），$ne 满足，其余不满足
         return op === '$ne';
       }
       switch (op) {
@@ -174,7 +172,6 @@ export function checkValue(
         case '$endsWith':
           return stored.toLowerCase().endsWith(t.toLowerCase());
         case '$regex':
-          // 用户可控 pattern：限制长度并拦截灾难性回溯，防止 ReDoS
           try {
             if (t.length > 64 || stored.length > 256) return false;
             if (!safeRegex(t) || hasAmbiguousAlternation(t)) return false;
@@ -192,7 +189,7 @@ export function checkValue(
 /* ========== filterCollectionByKeyValueTags ========== */
 
 /**
- * Filter collections by key-value tag conditions (new format).
+ * Filter collections by key-value tag conditions.
  *
  * AND conditions must all be satisfied; OR conditions need at least one match.
  * A condition whose tag does not exist in a dataset fails that condition:
@@ -218,13 +215,17 @@ export async function filterCollectionByKeyValueTags({
   }
   if (tagNames.size === 0) return undefined;
 
+  const hasMigrationCondition = tagNames.has(FROM_MIGRATION_CARRIER);
   const tagDocs = await MongoDatasetCollectionTagsV2.find(
     {
       teamId,
       datasetId: { $in: datasetIds },
-      tag: { $in: [...tagNames] }
+      $or: [
+        { tag: { $in: [...tagNames] } },
+        ...(hasMigrationCondition ? [{ fromMigration: true }] : [])
+      ]
     },
-    '_id datasetId tag tagType',
+    '_id datasetId tag tagType fromMigration',
     { ...readFromSecondary }
   ).lean();
 
@@ -239,13 +240,18 @@ export async function filterCollectionByKeyValueTags({
   };
   for (const doc of tagDocs) {
     addToMap(String(doc.datasetId), doc.tag, String(doc._id), doc.tagType ?? 'string');
+    // 迁移承载记录的身份唯一由 fromMigration: true 标识，不依赖可修改的标签名称
+    if (doc.fromMigration) {
+      addToMap(
+        String(doc.datasetId),
+        FROM_MIGRATION_CARRIER,
+        String(doc._id),
+        doc.tagType ?? 'array'
+      );
+    }
   }
   if (datasetTagMap.size === 0) return [];
 
-  // 3. Check a single value condition against one collection's tags.
-  // Tag missing in the dataset → not satisfied; entry missing in the collection:
-  // - Negative or empty operators ($empty, $ne, $isNot, $notContains, $notIn) → satisfied
-  // - Positive operators ($eq, $contains, $gt, $notEmpty, etc.) → not satisfied
   const matchCondition = (
     cond: TagCondition,
     tagMap: Map<string, { id: string; type: string }>,
@@ -266,7 +272,6 @@ export async function filterCollectionByKeyValueTags({
 
   const allCollectionIds: string[] = [];
 
-  // 4. Iterate each dataset (the same tag name may map to different tagIds per dataset)
   for (const [dsId, tagMap] of datasetTagMap) {
     const andTagIds = $and
       .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
@@ -275,16 +280,13 @@ export async function filterCollectionByKeyValueTags({
       .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
       .filter((id): id is string => Boolean(id));
 
-    // 若 $and 中有条件引用的标签在当前知识库根本未定义，则无法满足全部 AND 条件，直接跳过当前知识库
     if ($and.length > 0 && andTagIds.length < $and.length) {
       continue;
     }
-    // 若 $and 为空，且 $or 引用的所有标签在当前知识库都未定义，直接跳过当前知识库
     if ($and.length === 0 && orTagIds.length === 0) {
       continue;
     }
 
-    // 提取 $and 中属于“肯定型（必须打标）”的 tagId
     const positiveAndTagIds = $and
       .filter((cond) => {
         const tagName = Object.keys(cond)[0];
@@ -302,8 +304,6 @@ export async function filterCollectionByKeyValueTags({
       tagIdQuery = { 'tags.tagId': { $all: positiveAndTagIds } };
       useTagIndexHint = true;
     } else if ($and.length === 0 && $or.length > 0) {
-      // 仅当没有 AND 条件且 OR 条件全为肯定型条件时，才可通过 tags.tagId: { $in } 粗筛；
-      // 若 OR 中包含任何否定/空值型条件，未打标集合亦可命中，不可粗筛截断。
       const allOrPositive = $or.every((cond) => {
         const tagName = Object.keys(cond)[0];
         const opObj = cond[tagName] as Record<string, unknown> | undefined;
@@ -332,15 +332,12 @@ export async function filterCollectionByKeyValueTags({
     }
     const collections = await findQuery.lean();
 
-    // 5. Application-layer value comparison
     for (const col of collections) {
       const tagsArr = (col.tags ?? []).filter(isCollectionTagValue);
 
-      // AND: all must pass
       const andOk = $and.every((cond) => matchCondition(cond, tagMap, tagsArr));
       if (!andOk) continue;
 
-      // OR: at least one must pass
       if ($or.length > 0) {
         const orOk = $or.some((cond) => matchCondition(cond, tagMap, tagsArr));
         if (!orOk) continue;
@@ -372,7 +369,10 @@ export const getForbidCollectionIdList = async ({
   return collections.map((item) => String(item._id));
 };
 
-/** 新版知识库检索节点元数据过滤，只接受结构化标签条件。 */
+/**
+ * 知识库检索元数据过滤核心（只兼容结构化数组）。
+ * 输入必须是经过搜索入口归一化后的标准结构化 JSON。
+ */
 export const filterCollectionByMetadata = async ({
   teamId,
   datasetIds,
@@ -389,6 +389,7 @@ export const filterCollectionByMetadata = async ({
     createTime?: { $gte?: string; $lte?: string };
     collectionIds?: string[];
   };
+
   const isConditionObject = (item: unknown): item is TagCondition => {
     if (typeof item !== 'object' || Array.isArray(item) || item === null) return false;
     const tagNames = Object.keys(item);
@@ -401,13 +402,16 @@ export const filterCollectionByMetadata = async ({
       Object.keys(operation).length === 1
     );
   };
+
   const parseConditions = (items?: unknown[]): TagCondition[] => {
     if (!items) return [];
     if (!items.every(isConditionObject)) throw CommonErrEnum.invalidParams;
     return items;
   };
+
   const andTags = parseConditions(metadataMatch.tags?.$and);
   const orTags = parseConditions(metadataMatch.tags?.$or);
+
   const tagCollectionIds =
     andTags.length > 0 || orTags.length > 0
       ? await filterCollectionByKeyValueTags({

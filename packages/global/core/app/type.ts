@@ -4,7 +4,7 @@ import { DatasetSearchModeEnum } from '../dataset/constants';
 import {
   DatasetTagFilterValueSchema,
   DatasetTagFilterVersionSchema
-} from '../dataset/workflowTagFilter';
+} from '../dataset/search/tagFilter';
 import type { ReasoningEffort } from '../ai/llm/type';
 import type { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/type';
