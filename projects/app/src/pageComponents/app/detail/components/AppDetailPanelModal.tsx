@@ -40,8 +40,6 @@ export const usePanelContentMounted = (isOpen: boolean) => {
   const [mounted, setMounted] = useState(isOpen);
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
 
-  // 展开在渲染期就挂载（React「按 props 调整 state」写法）：挪进 effect 会晚一帧才出内容，
-  // 而 effect 里同步 setState 本身就会触发级联渲染。
   if (prevIsOpen !== isOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) setMounted(true);
@@ -54,7 +52,8 @@ export const usePanelContentMounted = (isOpen: boolean) => {
     return () => clearTimeout(timer);
   }, [isOpen]);
 
-  return mounted;
+  // 展开首帧直接由 isOpen 保证挂载，避免依赖 render-phase state 更新完成后再显示内容。
+  return isOpen || mounted;
 };
 
 /**
