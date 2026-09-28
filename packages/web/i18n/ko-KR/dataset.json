@@ -282,5 +282,6 @@
   "delete_datasets_confirm_title": "{{count}}개 지식베이스 삭제 확인",
   "delete_folders_confirm_title": "{{count}}개 폴더 삭제 확인",
   "delete_following_datasets_tip": "다음 지식베이스를 삭제하면 연결된 인덱스와 데이터도 함께 삭제됩니다.",
-  "delete_following_folders_tip": "삭제 후 해당 폴더와 내부의 모든 지식베이스 및 데이터가 함께 삭제됩니다."
+  "delete_following_folders_tip": "삭제 후 해당 폴더와 내부의 모든 지식베이스 및 데이터가 함께 삭제됩니다.",
+  "data_indexing_cannot_modify": "데이터 색인 중이므로 현재 수정할 수 없습니다"
 }
