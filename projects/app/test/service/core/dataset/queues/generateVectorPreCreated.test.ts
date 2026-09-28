@@ -205,8 +205,7 @@ describe('pre-created data queue routing', () => {
     await generateVector();
 
     const updated = await MongoDatasetData.findById(data._id).lean();
-    // 正式重建路径不改写 indexStatus 字段。
-    expect(updated?.indexStatus).toBeUndefined();
+    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
     expect(updated!.indexes.map((index) => index.text)).toContain('legacy custom index');
   });
 });

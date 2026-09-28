@@ -16,7 +16,7 @@ import type {
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { delay } from '@fastgpt/global/common/system/utils';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
 import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -196,14 +196,8 @@ const updatePreCreatedData = async ({
       indexPrefix: trainingData.collection.indexPrefixTitle
         ? `# ${trainingData.collection.name}`
         : undefined,
-      indexStatus: DatasetDataIndexStatusEnum.indexed,
       session
     }));
-    await MongoDatasetData.updateOne(
-      { _id: datasetData._id },
-      { $unset: { indexErrorMsg: '' } },
-      { session }
-    );
   });
 
   return { tokens };
