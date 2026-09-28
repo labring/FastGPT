@@ -11,6 +11,7 @@ import {
   sangforFileParseConfigSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
+import { BoolSchema } from '../../../common/zod';
 import { AppListSortEnum } from '../../../core/app/constants';
 import {
   CollaboratorListSchema,
@@ -242,7 +243,7 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
  * Tags: ['Dataset', 'Read']
  * ============================================================================ */
 export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
-  withAppCount: z.boolean().optional().meta({ description: '是否返回被正式应用引用的数量' })
+  withAppCount: BoolSchema.optional().meta({ description: '是否返回被正式应用引用的数量' })
 }).extend(PaginationSchema.shape);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;
 

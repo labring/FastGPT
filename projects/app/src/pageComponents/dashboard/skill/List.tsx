@@ -35,7 +35,7 @@ import {
 import { SkillRoleList } from '@fastgpt/global/support/permission/skill/constant';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/ai/skill/api';
+import type { ReferencedAppsResponse } from '@fastgpt/global/openapi/core/app/common/api';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -62,7 +62,7 @@ const RELATED_APPS_MAX_H = '240px';
 
 const RelatedAppsContent = ({ skillId }: { skillId: string }) => {
   const { t } = useTranslation();
-  const [data, setData] = useState<ListAppsBySkillIdResponse>({ list: [], hiddenCount: 0 });
+  const [data, setData] = useState<ReferencedAppsResponse>({ list: [], hiddenCount: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

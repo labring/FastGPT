@@ -134,21 +134,24 @@ describe('findTeamAppsByPublishedResource', () => {
       }
     ]);
 
+    const folderNodes = [
+      { _id: 'child-1', parentId: 'folder-1', type: 'dataset' },
+      { _id: 'child-2', parentId: 'folder-1', type: 'dataset' }
+    ];
     const counts = await countTeamAppsByPublishedResourceGroups({
       teamId: String(teamId),
-      resourceIdsByGroup: new Map([
-        [
-          'folder-1',
-          [
-            { type: 'dataset', id: 'child-1' },
-            { type: 'dataset', id: 'child-2' }
-          ]
-        ],
-        ['child-2', [{ type: 'dataset', id: 'child-2' }]]
-      ])
+      resourceGroups: [
+        { id: 'folder-1', isOwner: true, resources: [], folderId: 'folder-1' },
+        { id: 'child-2', isOwner: true, resources: [{ type: 'dataset', id: 'child-2' }] },
+        { id: 'non-owner', isOwner: false, resources: [{ type: 'dataset', id: 'child-2' }] }
+      ],
+      fetchChildren: async (parentIds) =>
+        folderNodes.filter((node) => node.parentId && parentIds.includes(String(node.parentId))),
+      shouldTraverse: () => false,
+      getResource: (node) => ({ type: 'dataset', id: String(node._id) })
     });
 
-    expect(counts.get('folder-1')).toBe(2);
+    expect(counts.get('non-owner')).toBeUndefined();
     expect(counts.get('child-2')).toBe(2);
   });
 
@@ -197,18 +200,23 @@ describe('findTeamAppsByPublishedResource', () => {
       }
     ]);
 
+    const folderNodes = [
+      { _id: 'app-child', parentId: 'folder-1', type: 'workflow' },
+      { _id: 'tool-child', parentId: 'folder-1', type: 'tool' }
+    ];
     const counts = await countTeamAppsByPublishedResourceGroups({
       teamId: String(teamId),
-      resourceIdsByGroup: new Map([
-        [
-          'folder-1',
-          [
-            { type: 'agent', id: 'app-child' },
-            { type: 'tool', id: 'tool-child' }
-          ]
-        ],
-        ['app-child', [{ type: 'agent', id: 'app-child' }]]
-      ])
+      resourceGroups: [
+        { id: 'folder-1', isOwner: true, resources: [], folderId: 'folder-1' },
+        { id: 'app-child', isOwner: true, resources: [{ type: 'agent', id: 'app-child' }] }
+      ],
+      fetchChildren: async (parentIds) =>
+        folderNodes.filter((node) => node.parentId && parentIds.includes(String(node.parentId))),
+      shouldTraverse: () => false,
+      getResource: (node) => {
+        const id = String(node._id);
+        return node.type === 'tool' ? { type: 'tool', id } : { type: 'agent', id };
+      }
     });
 
     expect(counts.get('folder-1')).toBe(2);

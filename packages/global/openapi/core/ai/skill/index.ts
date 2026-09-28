@@ -2,7 +2,6 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import { ChatWorkflowSseResponseSchema } from '../../chat/completion/api';
 import {
-  ListAppsBySkillIdResponseSchema,
   CreateSkillBodySchema,
   CreateSkillFolderBodySchema,
   CreateSkillFolderResponseSchema,
@@ -41,6 +40,7 @@ import {
   UpdateSkillCollaboratorResponseSchema
 } from './api';
 import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
+import { ReferencedAppsResponseSchema } from '../../app/common/api';
 import { SkillBatchPath } from './batch';
 
 export const SkillPath: OpenAPIPath = {
@@ -350,7 +350,7 @@ export const SkillPath: OpenAPIPath = {
           description: '成功返回引用应用列表',
           content: {
             'application/json': {
-              schema: ListAppsBySkillIdResponseSchema
+              schema: ReferencedAppsResponseSchema
             }
           }
         }

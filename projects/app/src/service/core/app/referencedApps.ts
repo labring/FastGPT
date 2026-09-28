@@ -15,9 +15,8 @@ type PublishedApp = Pick<
 >;
 
 /**
- * Applies the same App read-permission filtering used by the existing Skill
- * reference endpoint. Counts include inaccessible Apps, while list only
- * contains Apps that the requester may read.
+ * 按照 Skill 引用接口使用的 App 读取权限过滤引用结果。
+ * hiddenCount 统计无权读取的 App，list 仅包含请求者可读取的 App。
  */
 export const formatReadableReferencedApps = async ({
   apps,
@@ -60,8 +59,8 @@ export const formatReadableReferencedApps = async ({
     .map((app) => ({
       _id: String(app._id),
       name: app.name,
-      avatar: app.avatar || '',
-      intro: app.intro || '',
+      avatar: app.avatar ?? '',
+      intro: app.intro ?? '',
       tmbId: String(app.tmbId),
       type: app.type,
       updateTime: app.updateTime

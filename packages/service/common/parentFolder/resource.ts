@@ -1,13 +1,12 @@
-type FolderTreeNode = {
+export type FolderTreeNode = {
   _id: unknown;
   parentId?: unknown;
   type: string;
 };
 
 /**
- * Expands all visible folder roots breadth-first. Each database fetch covers one
- * tree level for every root, so a page with many folders does not issue a
- * separate recursive query for each folder.
+ * 按层级批量遍历所有文件夹根节点，返回各根节点下满足资源条件的后代。
+ * 每轮对所有前沿父节点只查询一次，避免逐目录递归查询；访问集合用于避免循环和重复节点。
  */
 export const getFolderDescendantResources = async ({
   folderIds,

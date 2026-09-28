@@ -19,7 +19,7 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
@@ -371,8 +371,9 @@ export const AppListItemSchema = z
     private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
     hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
-    relatedAppCount: NumSchema.optional().meta({
-      description: '被正式应用引用的 App、工具或文件夹数量'
+    relatedAppCount: IntSchema.optional().meta({
+      example: 0,
+      description: '被正式应用引用的 App、工具或文件夹数量，仅资源 Owner 且显式请求时返回'
     }),
     isPinned: BoolSchema.optional().meta({
       description: '是否置顶。仅在请求启用置顶排序时返回'
@@ -406,7 +407,7 @@ export type ReferencedApp = z.infer<typeof ReferencedAppSchema>;
 
 export const ReferencedAppsResponseSchema = z.object({
   list: z.array(ReferencedAppSchema),
-  hiddenCount: NumSchema.int().nonnegative().describe('当前用户无权限查看的引用应用数量')
+  hiddenCount: IntSchema.describe('当前用户无权限查看的引用应用数量')
 });
 export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
 

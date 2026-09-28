@@ -32,7 +32,6 @@ import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
-import { getFolderDescendantResources } from '@fastgpt/service/common/parentFolder/resource';
 
 async function handler(
   req: ApiRequestProps<GetDatasetListV2Body>
@@ -186,33 +185,32 @@ async function handler(
 
   const appCountMap = withAppCount
     ? await (async () => {
-        const ownerDatasets = formatDatasets.filter((dataset) => dataset.permission.isOwner);
-        const resourceIdsByGroup = new Map<string, { type: 'dataset'; id: string }[]>();
-        const folderIds = ownerDatasets
-          .filter((dataset) => dataset.type === DatasetTypeEnum.folder)
-          .map((dataset) => String(dataset._id));
-        const descendantResourcesByFolder = await getFolderDescendantResources({
-          folderIds,
+        return countTeamAppsByPublishedResourceGroups({
+          teamId,
+          resourceGroups: formatDatasets.map((dataset) => {
+            const id = String(dataset._id);
+            const isFolder = dataset.type === DatasetTypeEnum.folder;
+            const resources: { type: 'dataset'; id: string }[] = isFolder
+              ? []
+              : [{ type: 'dataset', id }];
+            return {
+              id,
+              isOwner: dataset.permission.isOwner,
+              resources,
+              ...(isFolder ? { folderId: id } : {})
+            };
+          }),
           fetchChildren: (parentIds) =>
             MongoDataset.find(
               { teamId, deleteTime: null, parentId: { $in: parentIds } },
               '_id parentId type'
             ).lean(),
           shouldTraverse: (dataset) => dataset.type === DatasetTypeEnum.folder,
-          isResource: (dataset) => dataset.type !== DatasetTypeEnum.folder
-        });
-        ownerDatasets.forEach((dataset) => {
-          const datasetId = String(dataset._id);
-          const resourceIds =
+          getResource: (dataset) =>
             dataset.type === DatasetTypeEnum.folder
-              ? (descendantResourcesByFolder.get(datasetId) ?? []).map(({ _id }) => String(_id))
-              : [datasetId];
-          resourceIdsByGroup.set(
-            datasetId,
-            resourceIds.map((id) => ({ type: 'dataset', id }))
-          );
+              ? undefined
+              : { type: 'dataset', id: String(dataset._id) }
         });
-        return countTeamAppsByPublishedResourceGroups({ teamId, resourceIdsByGroup });
       })()
     : undefined;
   const list = await addSourceMember({

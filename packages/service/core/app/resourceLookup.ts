@@ -3,6 +3,8 @@ import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
 import { AppVersionCollectionName } from './version/schema';
 import { buildAppResourceMongoQuery } from './resources';
+import { getFolderDescendantResources } from '../../common/parentFolder/resource';
+import type { FolderTreeNode } from '../../common/parentFolder/resource';
 
 type PublishedAppResource = { type: AppResourceType; id: string };
 type MatchedPublishedApp = Pick<
@@ -23,7 +25,17 @@ type MatchedPublishedApp = Pick<
 
 type PublishedResourceGroups = Map<string, PublishedAppResource[]>;
 type PublishedResourceIdsByType = Map<AppResourceType, Set<string>>;
+type PublishedResourceGroup = {
+  id: string;
+  isOwner: boolean;
+  resources: PublishedAppResource[];
+  folderId?: string;
+};
 
+/**
+ * 查找当前团队发布版本中引用指定资源的 App。
+ * 查询条件按资源类型分组；没有有效资源 ID 时不访问 MongoDB。
+ */
 const findMatchedTeamAppsByPublishedResources = async ({
   teamId,
   resourceIdsByType
@@ -39,7 +51,7 @@ const findMatchedTeamAppsByPublishedResources = async ({
   });
   if (resourceQueries.length === 0) return [];
 
-  // 聚合 $match 不做 mongoose 的 find 式自动转型，团队 id 需显式转 ObjectId。
+  // Mongo 聚合的 $match 不会执行 Mongoose 查询的自动转型，因此需要显式转换团队 ID。
   const teamObjectId = Types.ObjectId.isValid(teamId) ? new Types.ObjectId(teamId) : teamId;
   return MongoApp.aggregate<MatchedPublishedApp>([
     {
@@ -77,9 +89,8 @@ const findMatchedTeamAppsByPublishedResources = async ({
 };
 
 /**
- * 按当前正式 Version 反查引用了指定资源的团队 App。
- * 只查已有 publishedVersionId 的 App；4171 会给非文件夹 App 补齐该指针。
- * 通过 $lookup 把资源匹配下推到 Mongo，并一次返回固定的最小 App 字段与资源计数。
+ * 反查团队内当前正式发布版本引用指定资源的 App，并按资源 ID 统计唯一 App 数量。
+ * 只读取 publishedVersionId 指向的版本，草稿和历史版本不参与统计。
  */
 export const findTeamAppsByPublishedResource = async ({
   teamId,
@@ -114,16 +125,42 @@ export const findTeamAppsByPublishedResource = async ({
 };
 
 /**
- * Count unique published Apps per UI resource. A group may contain different
- * resource types; an App referencing more than one member still counts once.
+ * 统一展开 Owner 可见资源的文件夹后代，并统计当前发布 App 对每个资源组的引用数。
+ * 一个发布 App 在同一资源组内即使引用多个成员，也只计数一次。
  */
 export const countTeamAppsByPublishedResourceGroups = async ({
   teamId,
-  resourceIdsByGroup
+  resourceGroups,
+  fetchChildren,
+  shouldTraverse,
+  getResource
 }: {
   teamId: string;
-  resourceIdsByGroup: PublishedResourceGroups;
+  resourceGroups: PublishedResourceGroup[];
+  fetchChildren: (parentIds: string[]) => Promise<FolderTreeNode[]>;
+  shouldTraverse: (node: FolderTreeNode) => boolean;
+  getResource: (node: FolderTreeNode) => PublishedAppResource | undefined;
 }) => {
+  const ownerResourceGroups = resourceGroups.filter(({ isOwner }) => isOwner);
+  const folderIds = ownerResourceGroups.flatMap(({ folderId }) => (folderId ? [folderId] : []));
+  const descendantResourcesByFolder = await getFolderDescendantResources({
+    folderIds,
+    fetchChildren,
+    shouldTraverse,
+    isResource: (node) => getResource(node) !== undefined
+  });
+  const resourceIdsByGroup = new Map<string, PublishedAppResource[]>();
+
+  ownerResourceGroups.forEach(({ id, resources, folderId }) => {
+    const descendantResources = folderId
+      ? (descendantResourcesByFolder.get(folderId) ?? []).flatMap((node) => {
+          const resource = getResource(node);
+          return resource ? [resource] : [];
+        })
+      : [];
+    resourceIdsByGroup.set(id, [...resources, ...descendantResources]);
+  });
+
   const getResourceKey = ({ type, id }: PublishedAppResource) => JSON.stringify([type, id]);
   const resourceGroupsByKey = new Map<string, Set<string>>();
   const resourceIdsByType = new Map<AppResourceType, Set<string>>();

@@ -76,6 +76,17 @@ describe('referenced app visibility', () => {
       expect.objectContaining({ tmbId: 'requester', isTeamOwner: false })
     );
   });
+  it('returns the shared reference payload for owner skill lookups', async () => {
+    mocks.formatReadableReferencedApps.mockResolvedValueOnce({
+      list: [],
+      hiddenCount: 0,
+      hiddenOwnerGroups: []
+    });
+
+    const response = await skillHandler({} as never);
+
+    expect(response).toEqual({ list: [], hiddenCount: 0 });
+  });
 
   it.each([
     {

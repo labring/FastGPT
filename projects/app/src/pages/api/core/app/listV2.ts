@@ -15,7 +15,6 @@ import {
 import { findAppsPage } from '@fastgpt/service/core/app/entity';
 import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { getFolderDescendantResources } from '@fastgpt/service/common/parentFolder/resource';
 import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -192,8 +191,6 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
 
   const relatedAppCountMap = withRelatedAppCount
     ? await (async () => {
-        const ownerApps = formatApps.filter((app) => app.permission.isOwner);
-        const resourceIdsByGroup = new Map<string, { type: 'agent' | 'tool'; id: string }[]>();
         const isAppFolderType = (type: string) =>
           AppFolderTypeList.some((folderType) => folderType === type);
         const getReferenceType = (type: string): 'agent' | 'tool' | undefined => {
@@ -203,34 +200,32 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
           if (AppTypeList.some((appType) => appType === type)) return 'agent';
           return undefined;
         };
-        const folderIds = ownerApps
-          .filter((app) => isAppFolderType(app.type))
-          .map((app) => String(app._id));
-        const descendantResourcesByFolder = await getFolderDescendantResources({
-          folderIds,
+        return countTeamAppsByPublishedResourceGroups({
+          teamId,
+          resourceGroups: formatApps.map((app) => {
+            const id = String(app._id);
+            const referenceType = getReferenceType(app.type);
+            const resources: { type: 'agent' | 'tool'; id: string }[] = referenceType
+              ? [{ type: referenceType, id }]
+              : [];
+            return {
+              id,
+              isOwner: app.permission.isOwner,
+              resources,
+              ...(isAppFolderType(app.type) ? { folderId: id } : {})
+            };
+          }),
           fetchChildren: (parentIds) =>
             MongoApp.find(
               { teamId, deleteTime: null, parentId: { $in: parentIds } },
               '_id parentId type'
             ).lean(),
           shouldTraverse: (app) => isAppFolderType(app.type),
-          isResource: (app) => getReferenceType(app.type) !== undefined
-        });
-        ownerApps.forEach((app) => {
-          const appId = String(app._id);
-          const referenceType = getReferenceType(app.type);
-          if (referenceType) resourceIdsByGroup.set(appId, [{ type: referenceType, id: appId }]);
-          if (isAppFolderType(app.type)) {
-            resourceIdsByGroup.set(
-              appId,
-              (descendantResourcesByFolder.get(appId) ?? []).flatMap((resource) => {
-                const type = getReferenceType(resource.type);
-                return type ? [{ type, id: String(resource._id) }] : [];
-              })
-            );
+          getResource: (app) => {
+            const type = getReferenceType(app.type);
+            return type ? { type, id: String(app._id) } : undefined;
           }
         });
-        return countTeamAppsByPublishedResourceGroups({ teamId, resourceIdsByGroup });
       })()
     : undefined;
   const list = await addSourceMember({
