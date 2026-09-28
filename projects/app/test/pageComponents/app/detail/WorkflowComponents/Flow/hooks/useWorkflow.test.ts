@@ -12,6 +12,8 @@ import {
   collectNearestNodes,
   collectClearSelectionIds,
   collectSelectionConflictIds,
+  collectGeometryUpdates,
+  collectCommittedGeometryNodeIds,
   computeHelperLines as computeHelperLinesWithNode,
   dropEdgeDisconnectsOfRemovedNodes,
   popoverWidth,
@@ -54,6 +56,52 @@ const computeHelperLines = (change: NodePositionChange, nodes: Node[], distance?
     nodes,
     distance
   });
+
+describe('collectGeometryUpdates', () => {
+  it('keeps dragging frames out of Runtime geometry commits', () => {
+    expect([
+      ...collectCommittedGeometryNodeIds([buildPositionChange('dragging', { x: 11, y: 20 })])
+    ]).toEqual([]);
+    expect([
+      ...collectCommittedGeometryNodeIds([
+        buildPositionChange('dragging', { x: 11, y: 20 }),
+        buildPositionChange('committed', { x: 12, y: 20 }, false)
+      ])
+    ]).toEqual(['committed']);
+  });
+
+  it('drops zero-delta container children and keeps moved nodes', () => {
+    const currentNodes = [buildNode('parent', 10, 20), buildNode('child', 30, 40)];
+    const previousPositions = new Map([
+      ['parent', { x: 10, y: 20 }],
+      ['child', { x: 30, y: 40 }]
+    ]);
+
+    expect(
+      collectGeometryUpdates({
+        nodeIds: ['parent', 'child'],
+        currentNodes,
+        getPreviousPosition: (nodeId) => previousPositions.get(nodeId)
+      })
+    ).toEqual([]);
+  });
+
+  it('only emits the moved node from a multi-selection batch', () => {
+    const currentNodes = [buildNode('moved', 11, 20), buildNode('steady', 30, 40)];
+    const previousPositions = new Map([
+      ['moved', { x: 10, y: 20 }],
+      ['steady', { x: 30, y: 40 }]
+    ]);
+
+    expect(
+      collectGeometryUpdates({
+        nodeIds: ['moved', 'steady'],
+        currentNodes,
+        getPreviousPosition: (nodeId) => previousPositions.get(nodeId)
+      })
+    ).toEqual([{ nodeId: 'moved', position: { x: 11, y: 20 } }]);
+  });
+});
 
 describe('createBoundedMaxHeap', () => {
   it('should start empty', () => {

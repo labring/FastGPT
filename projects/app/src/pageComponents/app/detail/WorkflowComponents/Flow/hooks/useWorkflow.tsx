@@ -34,6 +34,42 @@ import { WorkflowModalContext } from '../context/workflowModalContext';
 import { type HelperLinesController } from '../components/HelperLines';
 import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
 
+/** 只为真实发生位置变化的节点创建 geometry command；节点查找一次完成。 */
+export const collectGeometryUpdates = ({
+  nodeIds,
+  currentNodes,
+  getPreviousPosition
+}: {
+  nodeIds: Iterable<string>;
+  currentNodes: readonly Pick<Node, 'id' | 'position'>[];
+  getPreviousPosition: (nodeId: string) => XYPosition | undefined;
+}) => {
+  const currentNodesById = new Map(currentNodes.map((node) => [node.id, node]));
+  return [...nodeIds].flatMap((nodeId) => {
+    const node = currentNodesById.get(nodeId);
+    if (!node) return [];
+    const previousPosition = getPreviousPosition(nodeId);
+    if (
+      previousPosition &&
+      previousPosition.x === node.position.x &&
+      previousPosition.y === node.position.y
+    ) {
+      return [];
+    }
+    return [{ nodeId, position: node.position }];
+  });
+};
+
+/** 只把拖拽结束的 position change 交给 Runtime；拖拽帧留在画布本地。 */
+export const collectCommittedGeometryNodeIds = (changes: readonly NodeChange[]) =>
+  new Set(
+    changes
+      .filter(
+        (change): change is NodePositionChange => change.type === 'position' && !change.dragging
+      )
+      .map((change) => change.id)
+  );
+
 /*
   限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
   辅助线拖动热路径不再依赖该结构。
@@ -803,21 +839,15 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
     if (removableNodeIds.length > 0) actions.removeNodes(removableNodeIds);
 
-    const geometryNodeIds = new Set(
-      [...changes, ...childChanges]
-        .filter(
-          (change): change is NodePositionChange => change.type === 'position' && !change.dragging
-        )
-        .map((change) => change.id)
-    );
+    const geometryNodeIds = collectCommittedGeometryNodeIds([...changes, ...childChanges]);
     if (geometryNodeIds.size > 0) {
       const currentNodes = getNodes();
-      canvas.commitGeometry(
-        [...geometryNodeIds].flatMap((nodeId) => {
-          const node = currentNodes.find((item) => item.id === nodeId);
-          return node ? [{ nodeId, position: node.position }] : [];
-        })
-      );
+      const geometryUpdates = collectGeometryUpdates({
+        nodeIds: geometryNodeIds,
+        currentNodes,
+        getPreviousPosition: (nodeId) => runtime?.getNodeView(nodeId)?.position
+      });
+      if (geometryUpdates.length > 0) canvas.commitGeometry(geometryUpdates);
     }
   });
 

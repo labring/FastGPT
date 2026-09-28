@@ -318,6 +318,27 @@ describe('workflow editor runtime modules', () => {
     expect(changes).toHaveLength(3);
   });
 
+  it('does not publish a geometry change when every position is unchanged', () => {
+    const editor = createRuntime();
+    const first = editor.dispatch({
+      type: 'commitGeometry',
+      nodeId: 'answer',
+      position: { x: 20, y: 30 }
+    });
+    expect(first.ok).toBe(true);
+    const workflow = editor.getWorkflow();
+    const history = editor.getHistory();
+
+    const result = editor.dispatch([
+      { type: 'commitGeometry', nodeId: 'answer', position: { x: 20, y: 30 } },
+      { type: 'commitGeometry', nodeId: 'start', position: undefined }
+    ] satisfies readonly WorkflowCommand[]);
+
+    expect(result).toEqual({ ok: true });
+    expect(editor.getWorkflow()).toBe(workflow);
+    expect(editor.getHistory()).toEqual(history);
+  });
+
   it('removes all runtime behavior after disposal', () => {
     const editor = createRuntime();
     const result: WorkflowDispatchResult = editor.dispatch({
