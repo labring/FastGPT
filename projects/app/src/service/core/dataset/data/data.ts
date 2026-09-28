@@ -39,13 +39,11 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   session?: ClientSession;
   /** 写入完成后要落库的索引状态；提前落库数据由向量回写标记为 indexed。 */
   indexStatus?: DatasetDataIndexStatusEnum;
-  /** 在同一写入边界内移除图片的临时对象过期设置（提前落库数据首次完成索引时）。 */
-  removeImageTTL?: boolean;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
   UpdateDatasetDataByIndexesProps,
-  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session' | 'indexStatus' | 'removeImageTTL'
+  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session' | 'indexStatus'
 > & {
   q?: string;
   imageIndex?: boolean;
@@ -272,8 +270,7 @@ export class DatasetDataOperation {
     forceRebuild = false,
     imageDescMap,
     session,
-    indexStatus,
-    removeImageTTL = false
+    indexStatus
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
 
@@ -388,12 +385,6 @@ export class DatasetDataOperation {
           ],
           mongoSession
         );
-
-        // 提前落库改走更新路径、不经过创建路径，图片的过期设置必须在这里显式移除，
-        // 否则已成功索引的图片仍会按临时对象被清理。
-        if (removeImageTTL && isS3ObjectKey(nextImageId, 'dataset')) {
-          await removeS3TTL({ key: nextImageId, bucketName: 'private', session: mongoSession });
-        }
 
         await this.indexOperation.deleteVectors({
           teamId: mongoData.teamId,

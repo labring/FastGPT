@@ -197,7 +197,6 @@ const updatePreCreatedData = async ({
         ? `# ${trainingData.collection.name}`
         : undefined,
       indexStatus: DatasetDataIndexStatusEnum.indexed,
-      removeImageTTL: true,
       session
     }));
     await MongoDatasetData.updateOne(
