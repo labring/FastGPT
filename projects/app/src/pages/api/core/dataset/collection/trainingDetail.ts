@@ -23,6 +23,7 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   parse: 0,
   qa: 0,
   chunk: 0,
+  index: 0,
   image: 0,
   auto: 0,
   imageParse: 0
@@ -32,6 +33,7 @@ const MODE_LOCK_TIMEOUT_MINUTES: Record<TrainingModeEnum, number> = {
   parse: 10,
   qa: 10,
   chunk: 3,
+  index: 3,
   image: 10,
   auto: 10,
   imageParse: 10

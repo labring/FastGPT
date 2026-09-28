@@ -39,7 +39,6 @@ describe('indexStatus schema contract', () => {
   it('treats missing indexStatus as indexed without backfilling', () => {
     expect(isDatasetDataIndexed(undefined)).toBe(true);
     expect(isDatasetDataIndexed(DatasetDataIndexStatusEnum.indexed)).toBe(true);
-    expect(isDatasetDataIndexed(DatasetDataIndexStatusEnum.parsed)).toBe(false);
     expect(isDatasetDataIndexed(DatasetDataIndexStatusEnum.indexing)).toBe(false);
   });
 
@@ -87,14 +86,14 @@ describe('indexStatus schema contract', () => {
         datasetId: new Types.ObjectId(),
         collectionId: new Types.ObjectId(),
         q: 'question',
-        indexStatus: DatasetDataIndexStatusEnum.parsed
+        indexStatus: DatasetDataIndexStatusEnum.indexing
       }).indexStatus
-    ).toBe(DatasetDataIndexStatusEnum.parsed);
+    ).toBe(DatasetDataIndexStatusEnum.indexing);
   });
 });
 
 describe('indexStatus display contract', () => {
-  /** DS-11 / DS-14：三态都有展示信息，缺失字段按 indexed 展示。 */
+  /** DS-11 / DS-14：两态都有展示信息，缺失字段按 indexed 展示。 */
   it('maps every status to a display entry and falls back to indexed', () => {
     Object.values(DatasetDataIndexStatusEnum).forEach((status) => {
       const info = getDatasetDataIndexStatusMapData(status);

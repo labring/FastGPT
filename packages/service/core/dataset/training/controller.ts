@@ -44,7 +44,7 @@ const getTrainingModeLimit = async ({
   vlmModel?: LLMSystemModelDataType;
   vlmModelConfigured: boolean;
 }): Promise<{ maxToken: number; weight: number }> => {
-  if (mode === TrainingModeEnum.chunk) {
+  if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.index) {
     return {
       maxToken: Infinity,
       weight: vectorModel.config.weight
@@ -241,7 +241,7 @@ export const pushDataListToTrainingQueue = async ({
           indexSize,
           weight: weight ?? 0,
           indexes: item.indexes,
-          retryCount: 5
+          retryCount: 3
         })),
         {
           session,
@@ -272,6 +272,16 @@ export const pushDataListToTrainingQueue = async ({
       itemCount: data.length,
       chunkSize
     });
+
+    // 预落库会把数据行和训练任务放在调用方事务中。此时不能再开启独立事务，
+    // 否则训练任务可能先提交而数据行随后回滚，留下无法处理的孤儿任务。
+    if (session) {
+      const insertedCount = await insertDataIterative(data, session);
+      logger.info('Large dataset inserted in caller transaction', {
+        durationMs: Date.now() - start
+      });
+      return { insertLen: insertedCount };
+    }
 
     let totalInserted = 0;
 
@@ -309,27 +319,7 @@ export const pushDataListToTrainingQueue = async ({
 const preCreateBatchSize = 500;
 
 /**
- * Worker 首次领取提前落库的数据时，把 parsed 推进为 indexing。
- *
- * 条件更新只作用于 parsed，重复领取或已被其它路径改写的行不会被覆盖；
- * 已经处于 indexing 的数据继续走现有流程。
- */
-export const markDatasetDataIndexing = async ({
-  dataId,
-  session
-}: {
-  dataId: string;
-  session?: ClientSession;
-}) => {
-  await MongoDatasetData.updateOne(
-    { _id: dataId, indexStatus: DatasetDataIndexStatusEnum.parsed },
-    { $set: { indexStatus: DatasetDataIndexStatusEnum.indexing } },
-    { session }
-  );
-};
-
-/**
- * 提前落库：在调用方 session 内先写入 parsed 数据，再创建携带相同 dataId 的训练任务。
+ * 提前落库：在调用方 session 内先写入 indexing 数据，再创建携带相同 dataId 的训练任务。
  *
  * 数据与任务共享同一 `dataId`，下游按 DS-07 分流把向量结果写回同一条数据，全流程只有一条数据行。
  * 只由解析最终分块、图片导入和问答叶子这几条入口使用，其他 `pushDataListToTrainingQueue` 调用方行为不变。
@@ -412,7 +402,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
         ...(item.metadata && { metadata: item.metadata }),
         chunkIndex: item.chunkIndex ?? 0,
         indexes: [],
-        indexStatus: DatasetDataIndexStatusEnum.parsed,
+        indexStatus: DatasetDataIndexStatusEnum.indexing,
         ...(synonymContext && { synonymVersion: synonymContext.version })
       })),
       { session, ordered: true }
@@ -429,7 +419,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     vlmModel,
     vlmModelConfigured,
     data: dataWithIds,
-    mode,
+    mode: mode === TrainingModeEnum.chunk ? TrainingModeEnum.index : mode,
     indexSize,
     billId,
     session

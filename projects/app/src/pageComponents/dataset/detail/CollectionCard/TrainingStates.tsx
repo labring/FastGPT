@@ -27,7 +27,6 @@ const ProgressView = ({
   trainingDetail: GetCollectionTrainingDetailResponseType;
 }) => {
   const { t } = useTranslation();
-
   const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;
   const isImageParse =
     trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
@@ -42,7 +41,8 @@ const ProgressView = ({
       ...(isQA ? [TrainingModeEnum.qa] : []),
       ...(isImageIndex ? [TrainingModeEnum.image] : []),
       ...(isAutoIndexes ? [TrainingModeEnum.auto] : []),
-      TrainingModeEnum.chunk
+      TrainingModeEnum.chunk,
+      TrainingModeEnum.index
     ];
 
     const getTrainingStatus = (mode: TrainingModeEnum) =>
@@ -126,6 +126,12 @@ const ProgressView = ({
         label: t(TrainingProcess.vectorizing.label),
         statusText: getStatusText(TrainingModeEnum.chunk),
         status: getTrainingStatus(TrainingModeEnum.chunk)
+      },
+      {
+        errorCount: trainingDetail.errorCounts.index,
+        label: t(TrainingProcess.vectorizing.label),
+        statusText: getStatusText(TrainingModeEnum.index),
+        status: getTrainingStatus(TrainingModeEnum.index)
       },
       {
         errorCount: 0,
