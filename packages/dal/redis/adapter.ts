@@ -49,6 +49,14 @@ end
 return 0
 `;
 
+const GET_AND_DELETE_SCRIPT = `
+local value = redis.call("get", KEYS[1])
+if value then
+  redis.call("del", KEYS[1])
+end
+return value
+`;
+
 /**
  * Redis-backed Cache 的最小协议 adapter。
  *
@@ -470,6 +478,35 @@ export class RedisCacheAdapter {
           throw new RedisInvalidResponseError({
             operation: 'string.get',
             message: 'Redis GET returned an unsupported response'
+          });
+        }
+        return value;
+      }
+    });
+
+  /**
+   * 原子读取并删除字符串 key。优先使用 Redis GETDEL；旧版本 Redis 不支持时，
+   * 在 Adapter 内部降级为等价 Lua 原子操作，业务 Cache 不感知具体实现。
+   */
+  getAndDelete = (key: RedisLogicalKey) =>
+    this.operationExecutor.uncertainWrite({
+      operation: 'string.getAndDelete',
+      execute: async () => {
+        const client = this.getCommandClient();
+        const physicalKey = toPhysicalRedisKey(key);
+        let value: unknown;
+        try {
+          value = await client.call('GETDEL', physicalKey);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (!message.toLowerCase().includes('unknown command')) throw error;
+          value = await client.eval(GET_AND_DELETE_SCRIPT, 1, physicalKey);
+        }
+
+        if (value !== null && typeof value !== 'string') {
+          throw new RedisInvalidResponseError({
+            operation: 'string.getAndDelete',
+            message: 'Redis GETDEL returned an unsupported response'
           });
         }
         return value;
