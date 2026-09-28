@@ -62,8 +62,7 @@ type Props = {
 export const childAppSystemKey: string[] = [
   NodeInputKeyEnum.forbidStream,
   NodeInputKeyEnum.history,
-  NodeInputKeyEnum.historyMaxAmount,
-  NodeInputKeyEnum.userChatInput
+  NodeInputKeyEnum.historyMaxAmount
 ];
 
 enum TemplateTypeEnum {
