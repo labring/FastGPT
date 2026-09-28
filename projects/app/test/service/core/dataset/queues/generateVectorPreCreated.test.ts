@@ -18,6 +18,10 @@ import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/e
 import { serviceEnv } from '@fastgpt/service/env';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
+vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
+  countPromptTokens: vi.fn(async (text: string) => text.length),
+  countGptMessagesTokens: vi.fn(async () => 10)
+}));
 vi.mock('@/service/core/dataset/queues/utils', () => ({
   checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
 }));
