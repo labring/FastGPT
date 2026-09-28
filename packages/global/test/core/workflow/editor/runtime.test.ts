@@ -140,6 +140,37 @@ describe('workflow editor runtime modules', () => {
     expect(editor.getHistory()).toEqual(beforeHistory);
   });
 
+  it('separates general chat config changes from variable source changes', () => {
+    const editor = createRuntime();
+
+    const welcomeChange = editor.dispatch({
+      type: 'updateChatConfig',
+      chatConfig: { welcomeText: 'Hello' }
+    });
+    expect(welcomeChange.change?.changedRecords).toMatchObject({
+      chatConfig: true,
+      chatConfigVariablesChanged: false
+    });
+
+    const variableChange = editor.dispatch({
+      type: 'updateChatConfig',
+      chatConfig: {
+        variables: [
+          {
+            key: 'customerName',
+            label: 'Customer name',
+            type: 'input',
+            description: 'Name used by the workflow'
+          }
+        ]
+      }
+    });
+    expect(variableChange.change?.changedRecords).toMatchObject({
+      chatConfig: true,
+      chatConfigVariablesChanged: true
+    });
+  });
+
   it('replaces a node record and carries its delete protection forward', () => {
     const editor = createRuntime();
     const result = editor.dispatch({

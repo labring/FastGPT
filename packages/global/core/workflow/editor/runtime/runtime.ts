@@ -67,6 +67,7 @@ const createMutationMeta = (kind: MutationMeta['kind'] = 'semantic'): MutationMe
   affectedFieldIds: new Map(),
   structureChanged: false,
   chatConfigChanged: false,
+  chatConfigVariablesChanged: false,
   nodeChanges: new Map(),
   nodeViewChanges: new Map(),
   addedEdges: new Map(),
@@ -167,7 +168,8 @@ export const createWorkflowEditor = (
       nodeViewIds: [...meta.nodeViewChanges.keys()],
       fieldIds: [...meta.changedFieldIds.values()],
       edgeIds: [...meta.changedEdgeIds],
-      chatConfig: meta.chatConfigChanged
+      chatConfig: meta.chatConfigChanged,
+      chatConfigVariablesChanged: meta.chatConfigVariablesChanged
     };
     const affectedRecords: WorkflowAffectedRecords = {
       nodeIds: [...meta.affectedNodeIds],
@@ -461,6 +463,8 @@ export const createWorkflowEditor = (
       );
       originalChange.changedRecords.edgeIds.forEach((edgeId) => meta.changedEdgeIds.add(edgeId));
       meta.chatConfigChanged = meta.chatConfigChanged || originalChange.changedRecords.chatConfig;
+      meta.chatConfigVariablesChanged =
+        meta.chatConfigVariablesChanged || originalChange.changedRecords.chatConfigVariablesChanged;
       originalChange.affectedRecords.nodeIds.forEach((nodeId) => meta.affectedNodeIds.add(nodeId));
       originalChange.affectedRecords.fieldIds.forEach((field) =>
         addFieldIdentity(meta.affectedFieldIds, field)

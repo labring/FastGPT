@@ -309,9 +309,8 @@ const getReferenceSource = ({
   }
 
   const sourceKey = getSourceIdentityKey(reference);
-  // ponytail: 线性扫快照数组。只在来源缺失的 miss 路径走到，条数等于「仍被引用的已删来源」，
-  // 实测 1000 节点链上 50 条快照对 refreshIssues('all') 是噪声级（1.87ms -> 1.96ms）。
-  // 真出现成百上千条快照时，再按数组身份缓存一份 Map：快照数组整体替换、从不原地改，身份可直接当 key。
+  // 线性扫描只发生在来源缺失的 miss 路径，成本与仍被引用的已删来源数量相关。
+  // 若快照数量显著增长，可按数组身份缓存 Map；快照数组整体替换且不原地修改，身份可直接作 key。
   const snapshot = snapshots?.find((item) => getSourceIdentityKey(item.reference) === sourceKey);
   return snapshot
     ? {
@@ -443,7 +442,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
       fieldIds: cacheOnlyFieldIds
     });
 
-    if (meta.chatConfigChanged) {
+    if (meta.chatConfigVariablesChanged) {
       const variableSources = new Set([VARIABLE_NODE_ID]);
       addAffectedConsumerFields({ meta, graph: beforeGraph, sourceNodeIds: variableSources });
       addAffectedConsumerFields({ meta, graph: committedGraph, sourceNodeIds: variableSources });
@@ -725,7 +724,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         changedSourceNodeIds.add(edge.data.target);
       }
     });
-    if (meta.chatConfigChanged) changedSourceNodeIds.add(VARIABLE_NODE_ID);
+    if (meta.chatConfigVariablesChanged) changedSourceNodeIds.add(VARIABLE_NODE_ID);
 
     const sourceKeys = new Set<string>();
     changedSourceNodeIds.forEach((nodeId) => {

@@ -204,6 +204,7 @@ export type WorkflowChangedRecords = {
   fieldIds: WorkflowFieldIdentity[];
   edgeIds: RuntimeEdgeId[];
   chatConfig: boolean;
+  chatConfigVariablesChanged: boolean;
 };
 
 export type WorkflowAffectedRecords = {

@@ -183,8 +183,8 @@ export const createDocumentModule = (initial: CanonicalResult) => {
    * applyGraphIndexChanges），所以桶身份不变就等于该入参的结构没变，可以复用同一份数组身份；
    * 桶被替换时缓存自然失效。条目按入参覆盖，缓存大小不超过被查询过的 id 数。
    *
-   * ponytail: 节点删除后条目仍持有那个已 drop 的桶（连带 EdgeRecord），到下一次 clear() 才释放；
-   * 上界是「被查询过的不同 id 数」，量级很小。要收紧就在 applyGraphIndexChanges 处理 removed 时顺手删条目。
+   * 节点删除后条目会持有已 drop 的桶（连带 EdgeRecord），直到下一次 clear() 才释放；
+   * 缓存上界是被查询过的不同 id 数。若需要更早释放，可在 applyGraphIndexChanges 处理 removed 时删除条目。
    */
   const incomingEdgesCache = new Map<
     string,
@@ -795,6 +795,10 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       case 'updateChatConfig': {
         const nextChatConfig = AppChatConfigTypeSchema.parse(cloneValue(command.chatConfig));
         meta.chatConfigChanged = !valuesEqual(working.chatConfig, nextChatConfig);
+        meta.chatConfigVariablesChanged = !valuesEqual(
+          working.chatConfig.variables,
+          nextChatConfig.variables
+        );
         working.chatConfig = nextChatConfig;
         return;
       }
@@ -804,7 +808,8 @@ export const createDocumentModule = (initial: CanonicalResult) => {
           meta.nodeViewChanges.size > 0 ||
           meta.changedFieldIds.size > 0 ||
           meta.changedEdgeIds.size > 0 ||
-          meta.chatConfigChanged
+          meta.chatConfigChanged ||
+          meta.chatConfigVariablesChanged
         ) {
           throw getError(
             'invalid_command',

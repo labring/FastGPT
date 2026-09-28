@@ -93,6 +93,7 @@ export type MutationMeta = {
   affectedFieldIds: Map<string, WorkflowFieldIdentity>;
   structureChanged: boolean;
   chatConfigChanged: boolean;
+  chatConfigVariablesChanged: boolean;
   nodeChanges: Map<string, { before?: NodeRecord; after?: NodeRecord; afterIndex?: number }>;
   /** 视图变化按 nodeId 保存事务前后值；公开事件的 nodeViewIds 与 history 都由它推导。 */
   nodeViewChanges: Map<string, { before?: NodeViewState; after?: NodeViewState }>;
