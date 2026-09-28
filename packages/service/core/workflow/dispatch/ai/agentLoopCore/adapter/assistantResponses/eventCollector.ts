@@ -375,7 +375,12 @@ export const createAgentLoopCoreAssistantEventCollector = ({
           }));
         }
 
-        appendToolAssistantResponses(event.call.id, event.assistantResponses);
+        // The low-level loop intentionally keeps these values opaque. This
+        // adapter is the boundary that owns the concrete persisted chat type.
+        appendToolAssistantResponses(
+          event.call.id,
+          event.assistantResponses as AIChatItemValueItemType[] | undefined
+        );
 
         return;
       }

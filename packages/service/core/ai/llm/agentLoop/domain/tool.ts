@@ -3,7 +3,6 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { SandboxClient } from '../../../sandbox/interface/runtime';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
 import type { AgentLoopUsage } from './usage';
@@ -19,7 +18,14 @@ export type AgentLoopToolCatalog = {
  * agent-loop 不解释这些字段，只负责沿工具执行结果和标准事件链路透传；
  * workflow adapter 负责按顺序合并到最终 assistantResponses。
  */
-export type AgentLoopAssistantResponse = AIChatItemValueItemType;
+/**
+ * Tool-generated assistant transcript kept opaque to the low-level agent loop.
+ *
+ * The workflow adapter owns the concrete chat value schema. Keeping this as an
+ * object contract avoids coupling the model loop to workflow/chat modules while
+ * still documenting that tool responses are structured assistant values.
+ */
+export type AgentLoopAssistantResponse = Record<string, unknown>;
 
 export type AgentLoopToolExecuteParams = {
   call: ChatCompletionMessageToolCall;
