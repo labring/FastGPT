@@ -18,6 +18,7 @@ import { getLogger, LogCategories } from '../../../common/logger';
 import { checkTimerLock, deleteTimerLock } from '../../../common/system/timerLock/utils';
 import { BLOCKED_LOCK_TIME } from './query';
 import { MongoDatasetData } from '../data/schema';
+import { isS3ObjectKey, removeS3TTL } from '../../../common/s3/utils';
 import { getDatasetSynonymTransformContext, isDatasetSynonymEnabled } from '../synonym/entity';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 
@@ -401,6 +402,13 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
       })),
       { session, ordered: true }
     );
+
+    const imageKeys = batch
+      .map((item) => item.imageId)
+      .filter((id): id is string => Boolean(id) && isS3ObjectKey(id, 'dataset'));
+    if (imageKeys.length > 0) {
+      await removeS3TTL({ key: imageKeys, bucketName: 'private', session });
+    }
 
     dataWithIds.push(
       ...createdData.map((item, index) => ({
