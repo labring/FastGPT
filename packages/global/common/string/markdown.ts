@@ -163,6 +163,47 @@ const mdHttpImageSrcRegex = /^https?:\/\/.+/;
 const markdownImageUploadConcurrency = 5;
 const unescapeMarkdownUrl = (url: string) => url.replace(/\\([\\()])/g, '$1');
 
+const htmlImgTagRegex = /<img\b(?:(?:[^"'<>])|"[^"]*"|'[^']*')*>/gi;
+
+const getHtmlImgAttr = (tag: string, attr: string) => {
+  const match = new RegExp(`\\s${attr}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\`]+))`, 'i').exec(
+    tag
+  );
+  return (match?.[1] ?? match?.[2] ?? match?.[3])?.trim();
+};
+
+const replaceHtmlImgSrc = (tag: string, key: string) =>
+  tag.replace(/\ssrc\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+)/i, () => ` src="${key}"`);
+
+/**
+ * 扫描 HTML <img> 标签中的图片。
+ *
+ * 外部解析服务（docx/xlsx 等）的表格以 HTML 保留，单元格内的图片形如
+ * <img src="data:image/...;base64,...">；matchMarkdownImages 只认 markdown
+ * 语法会漏掉它们，导致超大 base64 原样进入 chunk。这里补齐 HTML 形态。
+ */
+export const matchHtmlImages = (text = ''): MarkdownImageMatchItem[] => {
+  if (!text || typeof text !== 'string') return [];
+
+  const matches: MarkdownImageMatchItem[] = [];
+  htmlImgTagRegex.lastIndex = 0;
+
+  let match: RegExpExecArray | null;
+  while ((match = htmlImgTagRegex.exec(text)) !== null) {
+    const url = getHtmlImgAttr(match[0], 'src');
+    if (!url) continue;
+
+    matches.push({
+      altText: getHtmlImgAttr(match[0], 'alt') ?? '',
+      url,
+      fullMatch: match[0],
+      index: match.index
+    });
+  }
+
+  return matches;
+};
+
 const findClosingBracket = (text: string, startIndex: number) => {
   for (let i = startIndex; i < text.length; i++) {
     if (text[i] === '\\') {
@@ -245,6 +286,16 @@ export const matchMarkdownImages = (text = ''): MarkdownImageMatchItem[] => {
   return matches;
 };
 
+type HtmlMarkdownImage = MarkdownImage & { fromHtml: true };
+
+/** markdown 图替换为 `![alt](key)`；HTML img 保留标签结构，仅将 src 换成对象存储 key（表格 HTML 块内的 markdown 语法不会被渲染）。 */
+const buildImageReplacement = (image: MarkdownImage | HtmlMarkdownImage, key: string): string => {
+  if ('fromHtml' in image) {
+    return replaceHtmlImgSrc(image.fullMatch, key);
+  }
+  return `![${image.altText}](${key})`;
+};
+
 /**
  * 处理 markdown 图片语法中的图片，并统一执行 markdown 文本清理。
  *
@@ -261,13 +312,51 @@ export const parseMarkdownBase64Images = async (
     parseHttp = false,
     controller = imageOptions.controler
   } = imageOptions;
-  const images = matchMarkdownImages(text).flatMap<MarkdownImage>((match) => {
-    const { fullMatch, altText, url: rawUrl, index } = match;
-    const url = unescapeMarkdownUrl(rawUrl);
-    const base64Match = url.match(mdBase64ImageSrcRegex);
+  const images: (MarkdownImage | HtmlMarkdownImage)[] = [
+    ...matchMarkdownImages(text).flatMap<MarkdownImage>((match) => {
+      const { fullMatch, altText, url: rawUrl, index } = match;
+      const url = unescapeMarkdownUrl(rawUrl);
+      const base64Match = url.match(mdBase64ImageSrcRegex);
 
-    if (parseBase64 && base64Match) {
+      if (parseBase64 && base64Match) {
+        const [, mime, base64] = base64Match;
+
+        return [
+          {
+            type: 'base64',
+            altText,
+            url,
+            dataUrl: url,
+            mime: `image/${mime}`,
+            base64,
+            fullMatch,
+            index
+          }
+        ];
+      }
+
+      if (parseHttp && mdHttpImageSrcRegex.test(url)) {
+        return [
+          {
+            type: 'http',
+            altText,
+            url,
+            fullMatch,
+            index
+          }
+        ];
+      }
+
+      return [];
+    }),
+    ...matchHtmlImages(text).flatMap<HtmlMarkdownImage>((match) => {
+      if (!parseBase64) return [];
+
+      const base64Match = match.url.match(mdBase64ImageSrcRegex);
+      if (!base64Match) return [];
+
       const [, mime, base64] = base64Match;
+      const { fullMatch, altText, url, index } = match;
 
       return [
         {
@@ -278,25 +367,12 @@ export const parseMarkdownBase64Images = async (
           mime: `image/${mime}`,
           base64,
           fullMatch,
-          index
+          index,
+          fromHtml: true
         }
       ];
-    }
-
-    if (parseHttp && mdHttpImageSrcRegex.test(url)) {
-      return [
-        {
-          type: 'http',
-          altText,
-          url,
-          fullMatch,
-          index
-        }
-      ];
-    }
-
-    return [];
-  });
+    })
+  ].sort((a, b) => a.index - b.index);
 
   if (images.length === 0) return simpleMarkdownText(text);
 
@@ -314,7 +390,7 @@ export const parseMarkdownBase64Images = async (
           try {
             // 上传回调返回的是对象存储 key，markdown 中先保留 key，后续业务层再决定是否签名成 URL。
             const { key } = await controller(image);
-            return key ? `![${image.altText}](${key})` : '';
+            return key ? buildImageReplacement(image, key) : '';
           } catch {
             return image.type === 'http' ? preserveMarkdownImage(image, index) : '';
           }
