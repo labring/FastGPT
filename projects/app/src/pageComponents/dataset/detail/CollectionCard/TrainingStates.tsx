@@ -41,7 +41,6 @@ const ProgressView = ({
       ...(isQA ? [TrainingModeEnum.qa] : []),
       ...(isImageIndex ? [TrainingModeEnum.image] : []),
       ...(isAutoIndexes ? [TrainingModeEnum.auto] : []),
-      TrainingModeEnum.chunk,
       TrainingModeEnum.index
     ];
 
@@ -121,12 +120,6 @@ const ProgressView = ({
             }
           ]
         : []),
-      {
-        errorCount: trainingDetail.errorCounts.chunk,
-        label: t(TrainingProcess.vectorizing.label),
-        statusText: getStatusText(TrainingModeEnum.chunk),
-        status: getTrainingStatus(TrainingModeEnum.chunk)
-      },
       {
         errorCount: trainingDetail.errorCounts.index,
         label: t(TrainingProcess.vectorizing.label),
