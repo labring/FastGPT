@@ -19,6 +19,7 @@ import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
 import { mapMarkdownBlockSources, splitMarkdownBlocks } from './streamMarkdownBlocks';
 import { CachedMarkdown } from './CachedMarkdown';
+import { isSafeImgSrc } from '@fastgpt/global/common/string/url';
 import {
   getStreamAnimationNow,
   resolveStreamRenderMode,
@@ -46,7 +47,12 @@ const markdownBaseRehypePlugins: PluggableList = [
   [RehypeExternalLinks, { target: '_blank' }],
   rehypeImageCitations
 ];
-const markdownUrlTransform = (val: string) => val;
+const markdownUrlTransform = (val: string, key?: string) => {
+  if (key === 'src') {
+    return isSafeImgSrc(val) ? val : '';
+  }
+  return val;
+};
 
 const isMarkdownStreamDebugEnabled = process.env.NODE_ENV !== 'production';
 let markdownDebugInstanceId = 0;

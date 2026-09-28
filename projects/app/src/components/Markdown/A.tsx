@@ -23,6 +23,7 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import Markdown from '.';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { isObjectId } from '@fastgpt/global/common/string/utils';
+import { isSafeHref } from '@fastgpt/global/common/string/url';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 
 type MarkdownChatAuthData = ChatAuthTargetInput & {
@@ -255,6 +256,10 @@ const A = ({
         showAnimation={showAnimation}
       />
     );
+  }
+
+  if (!isSafeHref(props.href)) {
+    return <Box as={'span'}>{children || props?.href}</Box>;
   }
 
   return <Link {...props}>{children || props?.href}</Link>;
