@@ -11,7 +11,7 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchFlowResponse } from '../../../../type';
-import type { AgentLoopChildrenInteractiveParams } from '../../../../../../ai/llm/agentLoop/interface';
+import type { AgentLoopInteractiveToolExecuteParams } from '../../../../../../ai/llm/agentLoop/interface';
 import type { AgentLoopDatasetSearchExecutor } from '../../../../../../ai/llm/agentLoop/interface';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../domain/toolProvider';
@@ -439,15 +439,18 @@ export const createAgentLoopCoreWorkflowToolRunner = <TChildrenResponse = unknow
   };
 
   const runInteractiveTool = async ({
+    call,
     childrenResponse,
     toolParams
-  }: AgentLoopChildrenInteractiveParams<TChildrenResponse>) => {
+  }: AgentLoopInteractiveToolExecuteParams<TChildrenResponse>) => {
     const entryNodeIds = (childrenResponse as { entryNodeIds?: string[] }).entryNodeIds ?? [];
+    const startParams = parseJsonArgs(call?.function?.arguments) ?? {};
 
     // 交互恢复沿用原 toolCallId，最终仍由统一 tool_run_end 落 SSE 和运行详情。
     const toolRunResponse = await runIsolatedWorkflowTool({
       callId: toolParams.toolCallId,
       entryNodeIds,
+      startParams,
       lastInteractive: childrenResponse
     });
     const { result, flowResponse } = toToolRunResult<TChildrenResponse>(toolRunResponse);

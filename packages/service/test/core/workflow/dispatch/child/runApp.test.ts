@@ -279,4 +279,40 @@ describe('dispatchRunAppNode', () => {
     expect(result.error?.[NodeOutputKeyEnum.errorText]).toBe('Input is empty');
     expect(mocks.runWorkflow).not.toHaveBeenCalled();
   });
+
+  it('does not return Input is empty error when resuming child interactive', async () => {
+    const parentVariableState = await createParentVariableState();
+    const props: any = {
+      runningAppInfo: { id: 'app', teamId: 't', tmbId: 'owner', name: 'App' },
+      runningUserInfo: { tmbId: 'caller' },
+      histories: [],
+      query: [{ type: 'text', text: { content: '{"selection":"Confirm"}' } }],
+      node: { pluginId: 'child-app-id', version: 'v1' },
+      params: { userChatInput: '' },
+      lastInteractive: {
+        type: 'childrenInteractive',
+        params: {
+          childrenResponse: {
+            type: 'userSelect',
+            entryNodeIds: ['select_node']
+          }
+        }
+      },
+      variableState: parentVariableState,
+      usagePush: vi.fn(),
+      nodeSummary: createNodeSummary()
+    };
+
+    const result = await dispatchRunAppNode(props);
+    expect(result.error).toBeUndefined();
+    expect(mocks.runWorkflow).toHaveBeenCalledTimes(1);
+    expect(mocks.runWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastInteractive: {
+          type: 'userSelect',
+          entryNodeIds: ['select_node']
+        }
+      })
+    );
+  });
 });

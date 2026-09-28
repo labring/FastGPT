@@ -53,6 +53,11 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   } = params;
   const { files } = chatValue2RuntimePrompt(query);
 
+  const childrenInteractive =
+    lastInteractive?.type === 'childrenInteractive'
+      ? lastInteractive.params.childrenResponse
+      : undefined;
+
   const userInputFiles = (() => {
     if (fileUrlList) {
       return fileUrlList
@@ -63,7 +68,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     return files;
   })();
 
-  if (!userChatInput && userInputFiles.length === 0) {
+  if (!childrenInteractive && !userChatInput && userInputFiles.length === 0) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
   if (!appId) {
@@ -87,10 +92,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
 
     const chatHistories = getHistories(history, histories);
 
-    const childrenInteractive =
-      lastInteractive?.type === 'childrenInteractive'
-        ? lastInteractive.params.childrenResponse
-        : undefined;
     const runtimeNodes = rewriteNodeOutputByHistories(
       storeNodes2RuntimeNodes(
         nodes,
