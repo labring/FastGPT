@@ -185,7 +185,6 @@ export const getClientToolPreviewNode = (data: GetPreviewNodeQuery) =>
 export const getNewToolPreviewNode = (
   data: Omit<GetPreviewNodeQuery, 'versionId' | 'getLatestVersion'>
 ) =>
-  getClientToolPreviewNode({
-    ...data,
-    getLatestVersion: splitCombineToolId(data.appId).source !== AppToolSourceEnum.personal
-  });
+  splitCombineToolId(data.appId).source === AppToolSourceEnum.personal
+    ? getClientToolPreviewNode(data)
+    : getClientToolPreviewNode({ ...data, getLatestVersion: true });

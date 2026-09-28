@@ -355,8 +355,8 @@ describe('getNewToolPreviewNode', () => {
   });
 
   it.each([
-    ['507f1f77bcf86cd799439011', false],
-    ['personal-507f1f77bcf86cd799439011', false],
+    ['507f1f77bcf86cd799439011', undefined],
+    ['personal-507f1f77bcf86cd799439011', undefined],
     ['systemTool-search', true],
     ['commercial-507f1f77bcf86cd799439011', true],
     ['mcp-507f1f77bcf86cd799439011/search', true],
@@ -366,11 +366,12 @@ describe('getNewToolPreviewNode', () => {
     mocks.GET.mockResolvedValueOnce(preview);
 
     expect(await getNewToolPreviewNode({ appId, source: 'system' })).toBe(preview);
-    expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', {
+    const expectedQuery = {
       appId,
       source: 'system',
-      getLatestVersion
-    });
+      ...(getLatestVersion === true ? { getLatestVersion: true } : {})
+    };
+    expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', expectedQuery);
   });
 });
 
