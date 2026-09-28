@@ -3,7 +3,6 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
-
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -20,39 +19,48 @@ import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
 
-export type GroupFormType = {
-  members: {
-    tmbId: string;
-    role: `${GroupMemberRole}`;
-  }[];
+export type GroupMemberSelectedType = {
+  name: string;
+  tmbId: string;
+  avatar: string;
+  role: `${GroupMemberRole}`;
+};
+
+type GroupEditContentProps = {
+  group: MemberGroupListItemType<true>;
+  initialMembers: TeamMemberItemType<{
+    withOrgs: true;
+    withPermission: true;
+    withGroupRole: true;
+  }>[];
+  onClose: () => void;
+  onSuccess: () => void;
 };
 
 // 1. Owner can not be deleted, toast
 // 2. Owner/Admin can manage members
 // 3. Owner can add/remove admins
-function GroupEditModal({
-  onClose,
+function GroupEditModalContent({
   group,
+  initialMembers,
+  onClose,
   onSuccess
-}: {
-  onClose: () => void;
-  group: MemberGroupListItemType<true>;
-  onSuccess: () => void;
-}) {
+}: GroupEditContentProps) {
   const { t } = useSafeTranslation();
   const { userInfo } = useUserStore();
   const { toast } = useToast();
 
   const [searchKey, setSearchKey] = useState('');
-  const [selected, setSelected] = useState<
-    { name: string; tmbId: string; avatar: string; role: `${GroupMemberRole}` }[]
-  >([]);
+  const [selected, setSelected] = useState<GroupMemberSelectedType[]>(() =>
+    initialMembers.map((item) => ({
+      name: item.memberName,
+      tmbId: item.tmbId,
+      avatar: item.avatar,
+      role: (item.groupRole ?? 'member') as `${GroupMemberRole}`
+    }))
+  );
 
-  const {
-    data: allMembers = [],
-    ScrollData: MemberScrollData,
-    refreshList
-  } = useScrollPagination<
+  const { data: allMembers = [], ScrollData: MemberScrollData } = useScrollPagination<
     any,
     PaginationResponse<TeamMemberItemType<{ withOrgs: true; withPermission: true }>>
   >(getTeamMembers, {
@@ -67,40 +75,11 @@ function GroupEditModal({
     refreshDeps: [searchKey]
   });
 
-  const groupId = useMemo(() => String(group._id), [group._id]);
-
-  const { data: groupMembers = [], ScrollData: GroupScrollData } = useScrollPagination<
-    any,
-    PaginationResponse<
-      TeamMemberItemType<{ withOrgs: true; withPermission: true; withGroupRole: true }>
-    >
-  >(getTeamMembers, {
-    pageSize: 100000,
-    params: {
-      groupId: groupId
-    }
-  });
-
-  const [prevGroupMembers, setPrevGroupMembers] = useState(groupMembers);
-  if (groupMembers !== prevGroupMembers) {
-    setPrevGroupMembers(groupMembers);
-    if (groupId) {
-      setSelected(
-        groupMembers.map((item) => ({
-          name: item.memberName,
-          tmbId: item.tmbId,
-          avatar: item.avatar,
-          role: (item.groupRole ?? 'member') as `${GroupMemberRole}`
-        }))
-      );
-    }
-  }
-
   const [hoveredMemberId, setHoveredMemberId] = useState<string>();
 
   const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest(
     async () => {
-      if (!group._id || !groupMembers.length) return;
+      if (!group._id) return;
 
       return putUpdateGroup({
         groupId: group._id,
@@ -120,13 +99,15 @@ function GroupEditModal({
     if (userInfo?.team.permission.hasManagePer) {
       return 'owner';
     }
-    return groupMembers.find((item) => item.tmbId === userInfo?.team.tmbId)?.groupRole ?? 'member';
-  }, [groupMembers, userInfo]);
+    return (
+      initialMembers.find((item) => item.tmbId === userInfo?.team.tmbId)?.groupRole ?? 'member'
+    );
+  }, [initialMembers, userInfo]);
 
   const handleToggleSelect = (memberId: string) => {
     if (
       myRole === 'owner' &&
-      memberId === groupMembers.find((item) => item.groupRole === 'owner')?.tmbId
+      memberId === initialMembers.find((item) => item.groupRole === 'owner')?.tmbId
     ) {
       toast({
         title: t('user:team.group.toast.can_not_delete_owner'),
@@ -161,30 +142,16 @@ function GroupEditModal({
 
   const handleToggleAdmin = (memberId: string) => {
     if (myRole === 'owner' && isSelected(memberId)) {
-      const oldRole = groupMembers.find((item) => item.tmbId === memberId)?.groupRole;
-      if (oldRole === 'admin') {
-        setSelected(
-          selected.map((item) => (item.tmbId === memberId ? { ...item, role: 'member' } : item))
-        );
-      } else {
-        setSelected(
-          selected.map((item) => (item.tmbId === memberId ? { ...item, role: 'admin' } : item))
-        );
-      }
+      const currentRole = selected.find((item) => item.tmbId === memberId)?.role;
+      const nextRole = currentRole === 'admin' ? 'member' : 'admin';
+      setSelected(
+        selected.map((item) => (item.tmbId === memberId ? { ...item, role: nextRole } : item))
+      );
     }
   };
 
-  const isLoading = isLoadingUpdate;
   return (
-    <MyModal
-      onClose={onClose}
-      title={t('user:team.group.manage_member')}
-      iconSrc={group?.avatar ?? DEFAULT_TEAM_AVATAR}
-      iconColor="primary.600"
-      minW="800px"
-      h={'100%'}
-      isCentered
-    >
+    <>
       <ModalBody flex={1}>
         <Grid
           border="1px solid"
@@ -221,7 +188,7 @@ function GroupEditModal({
             <Box mt={2} mb={3}>
               {t('common:chosen') + ': ' + selected.length}
             </Box>
-            <GroupScrollData flex={'1 0 0'} h={0}>
+            <Box flex={'1 0 0'} h={0} overflow={'auto'}>
               {selected.map((member) => {
                 return (
                   <HStack
@@ -292,7 +259,7 @@ function GroupEditModal({
                   </HStack>
                 );
               })}
-            </GroupScrollData>
+            </Box>
           </Flex>
         </Grid>
       </ModalBody>
@@ -300,10 +267,65 @@ function GroupEditModal({
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common:Close')}
         </Button>
-        <Button isLoading={isLoading} onClick={onUpdate}>
+        <Button isLoading={isLoadingUpdate} onClick={onUpdate}>
           {t('common:Save')}
         </Button>
       </ModalFooter>
+    </>
+  );
+}
+
+function GroupEditModal({
+  onClose,
+  group,
+  onSuccess
+}: {
+  onClose: () => void;
+  group: MemberGroupListItemType<true>;
+  onSuccess: () => void;
+}) {
+  const { t } = useSafeTranslation();
+  const groupId = useMemo(() => String(group._id), [group._id]);
+
+  const { data: groupMembers, loading: isLoadingGroupMembers } = useRequest(
+    async () => {
+      const res = await getTeamMembers({
+        groupId,
+        pageSize: 100000,
+        pageNum: 1
+      });
+      return res.list as TeamMemberItemType<{
+        withOrgs: true;
+        withPermission: true;
+        withGroupRole: true;
+      }>[];
+    },
+    {
+      manual: false,
+      refreshDeps: [groupId]
+    }
+  );
+
+  return (
+    <MyModal
+      onClose={onClose}
+      title={t('user:team.group.manage_member')}
+      iconSrc={group?.avatar ?? DEFAULT_TEAM_AVATAR}
+      iconColor="primary.600"
+      minW="800px"
+      h={'100%'}
+      isCentered
+      isLoading={isLoadingGroupMembers || !groupMembers}
+    >
+      {groupMembers && !isLoadingGroupMembers && (
+        <GroupEditModalContent
+          key={groupId}
+          group={group}
+          initialMembers={groupMembers}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />
+      )}
     </MyModal>
   );
 }

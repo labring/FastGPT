@@ -192,6 +192,8 @@ const provider = () => {
   );
 
   useEffect(() => {
+    if (!router.isReady || !initd) return;
+
     if (error) {
       toast({
         status:
@@ -209,7 +211,11 @@ const provider = () => {
       return;
     }
 
-    if (!props || !initd) return;
+    const hasCallbackParams = Boolean(state || Object.keys(props).length > 0);
+    if (!hasCallbackParams) {
+      router.replace(errorRedirectPage);
+      return;
+    }
 
     const callbackKey = router.asPath;
     if (handledCallbackRef.current === callbackKey) return;
@@ -241,7 +247,19 @@ const provider = () => {
         authProps(props);
       }
     })();
-  }, [initd, authProps, error, loginStore, router, state, t, toast, props, errorRedirectPage]);
+  }, [
+    router.isReady,
+    initd,
+    authProps,
+    error,
+    loginStore,
+    router,
+    state,
+    t,
+    toast,
+    props,
+    errorRedirectPage
+  ]);
 
   return <Loading />;
 };

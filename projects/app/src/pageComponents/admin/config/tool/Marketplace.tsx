@@ -7,7 +7,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useDebounce, useMount, useSet } from 'ahooks';
+import { useDebounceFn, useSet } from 'ahooks';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
 import ToolTagFilterBox, {
   type MarketplaceSourceFilterValue
@@ -186,21 +186,39 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
   // Type filter
   const [installedFilter, setInstalledFilter] = useState<boolean>(false);
 
-  // Input value for controlled component and debounce
+  // Input value for controlled component
   const [inputValue, setInputValue] = useState(searchText);
-  const debouncedSearchText = useDebounce(inputValue, { wait: 500 });
+  const [prevSearchText, setPrevSearchText] = useState(searchText);
 
-  // Initialize inputValue from URL
-  useMount(() => {
+  // Render-phase sync: When URL query param updates (hydration, browser navigation, or external filter change),
+  // sync to local input value without an Effect.
+  if (searchText !== prevSearchText) {
+    setPrevSearchText(searchText);
     setInputValue(searchText);
-  });
+  }
 
-  // Update URL when debounced search text changes (triggers API call)
-  useEffect(() => {
-    if (router.isReady) {
-      updateParams({ newSearch: debouncedSearchText });
-    }
-  }, [debouncedSearchText, router.isReady, updateParams]);
+  // Event-driven URL updater: debounced only upon user typing in the input
+  const { run: debounceUpdateUrl, cancel: cancelDebounceUpdateUrl } = useDebounceFn(
+    (term: string) => {
+      updateParams({ newSearch: term });
+    },
+    { wait: 500 }
+  );
+
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setInputValue(value);
+      debounceUpdateUrl(value);
+    },
+    [debounceUpdateUrl]
+  );
+
+  const handleClearSearch = useCallback(() => {
+    setInputValue('');
+    cancelDebounceUpdateUrl();
+    updateParams({ newSearch: '' });
+  }, [cancelDebounceUpdateUrl, updateParams]);
 
   // Handle tag selection - update URL immediately
   const handleTagSelect = useCallback(
@@ -804,7 +822,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                         borderRadius={'sm'}
                         placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
+                        onChange={handleSearchChange}
                         onFocus={handleSearchFocus}
                         onBlur={handleSearchBlur}
                       />
@@ -819,9 +837,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                           transform={'translateY(-50%)'}
                           color={'myGray.500'}
                           cursor={'pointer'}
-                          onClick={() => {
-                            setInputValue('');
-                          }}
+                          onClick={handleClearSearch}
                         />
                       )}
                     </InputGroup>
@@ -916,7 +932,7 @@ export const ToolkitMarketplace = ({ mode = 'admin' }: { mode?: 'admin' | 'team'
                   borderRadius={'10px'}
                   placeholder={t('marketplace:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={handleSearchChange}
                   onFocus={handleSearchFocus}
                   onBlur={handleSearchBlur}
                 />
