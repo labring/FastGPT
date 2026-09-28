@@ -68,6 +68,8 @@ export type WorkflowNodeHandle = {
   ) => WorkflowDispatchResult;
 };
 
+export type WorkflowNodeActions = Pick<WorkflowNodeHandle, 'setName' | 'setFolded' | 'updateNode'>;
+
 export type WorkflowFieldHandle = {
   data: WorkflowFieldSnapshot;
   reference: WorkflowFieldSnapshot['references'];
@@ -94,6 +96,7 @@ export type WorkflowStructureCommands = {
   ) => WorkflowDispatchResult;
   connectEdge: (edge: StoreEdgeItemType) => WorkflowDispatchResult;
   disconnectEdge: (command: WorkflowDisconnectEdge) => WorkflowDispatchResult;
+  disconnectEdges: (commands: readonly WorkflowDisconnectEdge[]) => WorkflowDispatchResult;
   removeNodes: (nodeIds: readonly string[]) => WorkflowDispatchResult;
   attachToContainer: (nodeId: string, containerId: string) => WorkflowDispatchResult;
 };
@@ -180,6 +183,7 @@ export type WorkflowEditorAdapter = {
   getWorkflowSnapshot: () => WorkflowStructureHandle;
   subscribeWorkflow: (listener: Listener) => () => void;
   getNodeSnapshot: (nodeId: string) => WorkflowNodeHandle | undefined;
+  getNodeActions: (nodeId: string) => WorkflowNodeActions | undefined;
   subscribeNode: (nodeId: string, listener: Listener) => () => void;
   getFieldSnapshot: (query: WorkflowFieldQuery) => WorkflowFieldHandle | undefined;
   subscribeField: (query: WorkflowFieldQuery, listener: Listener) => () => void;
@@ -220,6 +224,10 @@ export const createWorkflowEditorAdapter = (
     connectEdge: (edge: StoreEdgeItemType) => runtime.dispatch({ type: 'connectEdge', edge }),
     disconnectEdge: (command: WorkflowDisconnectEdge) =>
       runtime.dispatch({ type: 'disconnectEdge', ...command }),
+    disconnectEdges: (commands: readonly WorkflowDisconnectEdge[]) =>
+      runtime.dispatch(
+        commands.map((command) => ({ type: 'disconnectEdge' as const, ...command }))
+      ),
     removeNodes: (nodeIds: readonly string[]) =>
       runtime.dispatch({ type: 'removeNodes', nodeIds: [...nodeIds] }),
     attachToContainer: (nodeId: string, containerId: string) =>
@@ -347,6 +355,18 @@ export const createWorkflowEditorAdapter = (
     } satisfies WorkflowNodeHandle;
     nodeHandles.set(nodeId, handle);
     return handle;
+  };
+
+  const getNodeActions = (nodeId: string): WorkflowNodeActions | undefined => {
+    if (disposed || !runtime.getNode(nodeId) || !runtime.getNodeView(nodeId)) {
+      dropNodeHandle(nodeId);
+      return undefined;
+    }
+    return {
+      setName: getSetName(nodeId),
+      setFolded: getSetFolded(nodeId),
+      updateNode: getUpdateNode(nodeId)
+    };
   };
 
   const setFieldValue = (identity: WorkflowFieldIdentity, value: unknown): WorkflowDispatchResult =>
@@ -488,6 +508,7 @@ export const createWorkflowEditorAdapter = (
       return () => workflowListeners.delete(listener);
     },
     getNodeSnapshot,
+    getNodeActions,
     subscribeNode: (nodeId, listener) => {
       if (disposed) return () => undefined;
       connect();
@@ -580,6 +601,12 @@ export const useNode = (nodeId: string): WorkflowNodeHandle | undefined => {
   );
   const getSnapshot = useMemo(() => () => adapter.getNodeSnapshot(nodeId), [adapter, nodeId]);
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+};
+
+/** 只读取节点写能力，不订阅节点数据；字段叶子用于结构编辑按钮。 */
+export const useNodeActions = (nodeId: string): WorkflowNodeActions | undefined => {
+  const adapter = useWorkflowEditorAdapter();
+  return useMemo(() => adapter.getNodeActions(nodeId), [adapter, nodeId]);
 };
 
 /**

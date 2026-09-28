@@ -1,7 +1,5 @@
 import { Popover, PopoverBody, PopoverContent } from '@chakra-ui/react';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
-  EDGE_TYPE,
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -67,35 +65,26 @@ const NodeTemplatesPopover = () => {
     }
 
     const storeNodes = validNewNodes.map(canvasNodeToStoreNode);
+    const connectedNode = validNewNodes.find(
+      (node) => !isNestedChildSystemNodeType(node.data.flowNodeType)
+    );
+    const newEdge =
+      handleParams && connectedNode
+        ? {
+            source: handleParams.nodeId as string,
+            sourceHandle: handleParams.handleId || '',
+            target: connectedNode.id,
+            targetHandle: isToolHandle ? 'selectedTools' : `${connectedNode.id}-target-left`
+          }
+        : undefined;
+
     clearCanvasSelection();
-    const result = actions.addNodes(storeNodes);
-    // 添加被拒时不再连边：节点没进文档，连边只会产生一串无效命令。
+    const result = actions.addNodes(storeNodes, newEdge);
+    // 节点与首条连线在同一事务内提交，撤销只需一步。
     if (!result.ok) {
       setHandleParams(null);
       return result;
     }
-
-    if (!handleParams) return result;
-
-    const newEdges = validNewNodes
-      .filter((node) => !isNestedChildSystemNodeType(node.data.flowNodeType))
-      .map((node) => ({
-        id: getNanoid(),
-        source: handleParams.nodeId as string,
-        sourceHandle: handleParams.handleId,
-        target: node.id,
-        targetHandle: isToolHandle ? 'selectedTools' : `${node.id}-target-left`,
-        type: EDGE_TYPE
-      }));
-
-    newEdges.forEach((edge) =>
-      actions.connectEdge({
-        source: edge.source,
-        target: edge.target,
-        sourceHandle: edge.sourceHandle || '',
-        targetHandle: edge.targetHandle || ''
-      })
-    );
 
     setHandleParams(null);
     return result;

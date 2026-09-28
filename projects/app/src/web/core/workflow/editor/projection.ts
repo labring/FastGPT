@@ -44,6 +44,7 @@ moduleTemplatesFlat.forEach((template) => {
 
 type NodeCacheEntry = {
   snapshot: WorkflowNodeSnapshot;
+  structureKey: string;
   view: WorkflowNodeViewSnapshot | undefined;
   overlay: Partial<Record<ViewDataKey, unknown>> | undefined;
   isError: boolean;
@@ -79,6 +80,16 @@ export const createProjectionCache = (): ProjectionCache => ({
 
 /** 交互字段只在本地数组上维护；重投影时按 id 保留，避免手势中被 runtime 值覆盖。 */
 const INTERACTION_FIELDS = ['selected', 'dragging', 'width', 'height', 'measured'] as const;
+
+/** 字段值和 Issue 由 scoped field/issue 订阅承载，不改变节点外壳的缓存身份。 */
+const getNodeStructureKey = (snapshot: WorkflowNodeSnapshot) => {
+  const { inputs, outputs, issues: _issues, ...nodeMetadata } = snapshot;
+  return JSON.stringify({
+    ...nodeMetadata,
+    inputs: inputs.map(({ value: _value, ...metadata }) => metadata),
+    outputs: outputs.map(({ value: _value, ...metadata }) => metadata)
+  });
+};
 
 /**
  * 把 Runtime 当前状态投影成画布数组。
@@ -119,11 +130,12 @@ export const projectRuntimeCanvas = ({
     const zIndex = snapshot.parentNodeId ? 1001 : undefined;
     const width = local?.width;
     const height = local?.height;
+    const structureKey = getNodeStructureKey(snapshot);
 
     const cached = cache.nodes.get(nodeId);
     if (
       cached &&
-      cached.snapshot === snapshot &&
+      cached.structureKey === structureKey &&
       cached.view === view &&
       cached.overlay === overlay &&
       cached.isError === isError &&
@@ -135,6 +147,8 @@ export const projectRuntimeCanvas = ({
       cached.posX === position.x &&
       cached.posY === position.y
     ) {
+      // 保留最新 snapshot，下一次 metadata 变化必须与当前基线比较。
+      cached.snapshot = snapshot;
       return cached.node;
     }
 
@@ -163,6 +177,7 @@ export const projectRuntimeCanvas = ({
 
     cache.nodes.set(nodeId, {
       snapshot,
+      structureKey,
       view,
       overlay,
       isError,

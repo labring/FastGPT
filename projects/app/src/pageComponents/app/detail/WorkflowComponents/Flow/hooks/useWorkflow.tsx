@@ -488,7 +488,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     edgeDisconnectScheduled.current = false;
     const edges = pendingEdgeDisconnects.current;
     pendingEdgeDisconnects.current = [];
-    edges.forEach((edge) => actions.disconnectEdge({ edge }));
+    if (edges.length > 0) actions.disconnectEdges(edges.map((edge) => ({ edge })));
   });
 
   /** 同步应用吸附结果，并命令式绘制当前帧辅助线。 */

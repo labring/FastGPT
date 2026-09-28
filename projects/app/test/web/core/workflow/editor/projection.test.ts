@@ -9,7 +9,10 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
+import type {
+  WorkflowCommand,
+  WorkflowRuntimePort
+} from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import type { CanvasNode } from '@/web/core/workflow/editor/canvas';
 import {
@@ -190,7 +193,7 @@ describe('workflow editor projection', () => {
     });
   });
 
-  it('reuses node and edge objects until their inputs change', () => {
+  it('reuses node and edge objects until their structure changes', () => {
     const runtime = createRuntime();
     const cache = createProjectionCache();
     const first = project(runtime, { cache });
@@ -208,6 +211,32 @@ describe('workflow editor projection', () => {
     expect(third.nodes[1]).not.toBe(first.nodes[1]);
     expect(nodeById(third.nodes, 'http').data.name).toBe('Renamed');
     expect(third.edges[0]).toBe(first.edges[0]);
+  });
+
+  it('keeps node identity stable for input and output value changes', () => {
+    const runtime = createRuntime();
+    const cache = createProjectionCache();
+    const first = project(runtime, { cache });
+
+    runtime.dispatch([
+      {
+        type: 'updateField',
+        nodeId: 'start',
+        fieldKey: NodeOutputKeyEnum.userChatInput,
+        kind: 'output',
+        value: 'user input'
+      },
+      {
+        type: 'updateField',
+        nodeId: 'answer',
+        fieldKey: NodeInputKeyEnum.answerText,
+        value: 'answer value'
+      }
+    ] satisfies readonly WorkflowCommand[]);
+    const second = project(runtime, { cache });
+
+    expect(second.nodes[0]).toBe(first.nodes[0]);
+    expect(second.nodes[2]).toBe(first.nodes[2]);
   });
 
   it('projects runtime edges by index and prunes stale cache entries', () => {

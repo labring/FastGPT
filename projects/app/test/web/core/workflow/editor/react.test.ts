@@ -111,6 +111,24 @@ describe('WorkflowNodeHandle.updateNode', () => {
     runtime.dispose();
   });
 
+  it('batches standalone edge disconnects into one history entry', () => {
+    const runtime = hydrateRuntime({ input: createStoreWorkflow(), t });
+    const adapter = createWorkflowEditorAdapter(runtime);
+    const undoCount = runtime.getHistory().undoCount;
+
+    const res = adapter.getWorkflowSnapshot().disconnectEdges([{ index: 0 }]);
+
+    expect(res.ok).toBe(true);
+    expect(runtime.getHistory().undoCount).toBe(undoCount + 1);
+    expect(runtime.getWorkflow().edges).toHaveLength(0);
+
+    runtime.undo();
+    expect(runtime.getWorkflow().edges).toHaveLength(1);
+
+    adapter.dispose();
+    runtime.dispose();
+  });
+
   it('returns not_found for a missing node and drops the handle', () => {
     const runtime = hydrateRuntime({ input: createStoreWorkflow(), t });
     const adapter = createWorkflowEditorAdapter(runtime);
