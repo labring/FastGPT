@@ -638,16 +638,18 @@ export const collectNodeIssues = (
       const hasReferenceItems =
         input.key !== NodeInputKeyEnum.childrenNodeIdList &&
         getWorkflowReferenceItemsFromValue(effectiveValue).length > 0;
-      const referenceIssueCode =
-        isReferenceInput || hasReferenceItems
-          ? pickReferenceIssueCode(
-              reference.getValueStatuses({
-                value: effectiveValue,
-                targetNodeId: nodeId,
-                targetType: input.valueType
-              })
-            )
-          : undefined;
+      // 独立 reference 字段复用字段身份缓存；ifElse、variableUpdate、动态入参等结构化值
+      // 仍按值展开，保留其嵌套引用与畸形数组语义。
+      const referenceStatuses = isReferenceInput
+        ? reference.getFieldStatuses(nodeId, input)
+        : hasReferenceItems
+          ? reference.getValueStatuses({
+              value: effectiveValue,
+              targetNodeId: nodeId,
+              targetType: input.valueType
+            })
+          : [];
+      const referenceIssueCode = pickReferenceIssueCode(referenceStatuses);
       if (referenceIssueCode) {
         addIssue(referenceIssueCode, input.key, { inputName: getInputName(input) });
       }

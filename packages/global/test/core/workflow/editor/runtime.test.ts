@@ -358,6 +358,83 @@ describe('workflow editor runtime modules', () => {
     ]);
   });
 
+  it('keeps malformed reference arrays consistent between field status and issue rules', () => {
+    const editor = createRuntime();
+    const query = { nodeId: 'answer', fieldKey: NodeInputKeyEnum.answerText };
+    editor.dispatch({
+      type: 'updateField',
+      ...query,
+      value: [['start', 'missing'], 'malformed']
+    });
+
+    const fieldStatuses = editor.getField(query)?.references.map((status) => status.code);
+    expect(fieldStatuses).toEqual(['invalid_reference', 'invalid_reference']);
+    expect(editor.getNode('answer')?.issues.map((issue) => issue.code)).toEqual([
+      'invalid_reference'
+    ]);
+  });
+
+  it('keeps structured and dynamic values on value-based reference checks', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'update',
+          flowNodeType: FlowNodeTypeEnum.variableUpdate,
+          name: 'Update',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.updateList,
+              label: 'Updates',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: [
+                {
+                  variable: ['missing', 'value'],
+                  value: ['', ''],
+                  renderType: FlowNodeInputTypeEnum.reference
+                }
+              ]
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'dynamic',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Dynamic',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.addInputParam,
+              label: '',
+              renderTypeList: [FlowNodeInputTypeEnum.addInputParam]
+            },
+            {
+              key: 'dynamicName',
+              label: 'Dynamic name',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: '{{$missing.value$}}',
+              canEdit: true
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+
+    expect(editor.getNode('update')?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid_reference', inputKey: 'updateList[0].variable' })
+      ])
+    );
+    expect(editor.getNode('dynamic')?.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'invalid_reference', inputKey: 'dynamicName' })
+      ])
+    );
+  });
+
   it('marks downstream consumers as affected without changing them', () => {
     const editor = createRuntime();
     editor.dispatch({

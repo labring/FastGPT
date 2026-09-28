@@ -72,6 +72,8 @@ export type ReferenceSource = {
   sourceLabel?: string;
   outputLabel?: string;
   icon?: string;
+  /** 扁平来源元数据表直接消费的类型字段；output 存在时与其 valueType 一致。 */
+  valueType?: WorkflowIOValueTypeEnum;
 };
 
 export type ReferenceGraph = {

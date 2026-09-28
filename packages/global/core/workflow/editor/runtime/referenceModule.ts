@@ -53,8 +53,17 @@ import type {
 const getSourceIdentityKey = ([nodeId, outputId]: ReferenceItemValueType) =>
   `${nodeId}\0${outputId}`;
 
-const toSnapshotMap = (snapshots: readonly WorkflowReferenceSnapshot[]) =>
-  new Map(snapshots.map((snapshot) => [getSourceIdentityKey(snapshot.reference), snapshot]));
+const snapshotMapCache = new WeakMap<object, Map<string, WorkflowReferenceSnapshot>>();
+
+const toSnapshotMap = (snapshots: readonly WorkflowReferenceSnapshot[]) => {
+  const cached = snapshotMapCache.get(snapshots);
+  if (cached) return cached;
+  const snapshotMap = new Map(
+    snapshots.map((snapshot) => [getSourceIdentityKey(snapshot.reference), snapshot])
+  );
+  snapshotMapCache.set(snapshots, snapshotMap);
+  return snapshotMap;
+};
 
 /** selectedTools 入边即「被 Agent 挂成工具」：这条语义只在此处定义，实时与定格文档共用。 */
 const isMountedToolEdge = ({ data }: EdgeRecord) =>
@@ -250,18 +259,13 @@ type ReferenceSourceScope = {
   isMountedTool: (nodeId: string) => boolean;
 };
 
-/**
- * 按稳定引用身份读取来源展示元数据：实时来源优先，来源缺失时回落历史快照。
- * 回落只补展示字段，output 依然为空，因此状态判定照旧报 invalid_reference。
- */
-const getReferenceSource = ({
+/** 按稳定引用身份读取当前来源的扁平元数据；不读取历史快照。 */
+const getCurrentReferenceSource = ({
   reference,
-  scope,
-  snapshots
+  scope
 }: {
   reference: ReferenceItemValueType;
   scope: ReferenceSourceScope;
-  snapshots?: readonly WorkflowReferenceSnapshot[];
 }): ReferenceSource => {
   const [sourceNodeId, outputId] = reference;
   if (sourceNodeId === VARIABLE_NODE_ID) {
@@ -279,7 +283,8 @@ const getReferenceSource = ({
         },
         sourceLabel: i18nT('common:core.module.Variable'),
         outputLabel: variable.label,
-        icon: 'core/workflow/template/variable'
+        icon: 'core/workflow/template/variable',
+        valueType: variable.valueType
       };
     }
   } else {
@@ -303,22 +308,40 @@ const getReferenceSource = ({
         output,
         sourceLabel: node.data.name,
         outputLabel: output.label,
-        ...(node.data.avatar ? { icon: node.data.avatar } : {})
+        ...(node.data.avatar ? { icon: node.data.avatar } : {}),
+        ...(output.valueType ? { valueType: output.valueType } : {})
       };
     }
   }
 
+  return {};
+};
+
+/**
+ * 按稳定引用身份读取来源展示元数据：实时来源优先，来源缺失时回落历史快照。
+ * 回落只补展示字段，output 依然为空，因此状态判定照旧报 invalid_reference。
+ */
+const getReferenceSource = ({
+  reference,
+  scope,
+  snapshots
+}: {
+  reference: ReferenceItemValueType;
+  scope: ReferenceSourceScope;
+  snapshots?: readonly WorkflowReferenceSnapshot[];
+}): ReferenceSource => {
+  const currentSource = getCurrentReferenceSource({ reference, scope });
+  if (currentSource.output || !snapshots) return currentSource;
+
   const sourceKey = getSourceIdentityKey(reference);
-  // 线性扫描只发生在来源缺失的 miss 路径，成本与仍被引用的已删来源数量相关。
-  // 若快照数量显著增长，可按数组身份缓存 Map；快照数组整体替换且不原地修改，身份可直接作 key。
-  const snapshot = snapshots?.find((item) => getSourceIdentityKey(item.reference) === sourceKey);
+  const snapshot = toSnapshotMap(snapshots).get(sourceKey);
   return snapshot
     ? {
         ...(snapshot.sourceLabel ? { sourceLabel: snapshot.sourceLabel } : {}),
         ...(snapshot.outputLabel ? { outputLabel: snapshot.outputLabel } : {}),
         ...(snapshot.icon ? { icon: snapshot.icon } : {})
       }
-    : {};
+    : currentSource;
 };
 
 /** 把来源节点的下游消费字段并入 affected records；graph 可以是 committed 或 staged 版本。 */
@@ -350,6 +373,8 @@ const addAffectedConsumerFields = ({
 export const createReferenceModule = (document: DocumentReadApi) => {
   let referenceGraph = buildReferenceGraph(document.getDocument().nodes);
   const fieldStatusCache = new Map<string, FieldStatusCache>();
+  /** 来源展示字段按稳定 sourceKey 缓存；失效只删受影响来源，避免复制引用图。 */
+  const sourceMetadataCache = new Map<string, ReferenceSource>();
 
   /**
    * 每轮派生共享的上游可达性记忆化：同一字段的多个引用、同一轮 rebuild 里的多个节点
@@ -357,22 +382,60 @@ export const createReferenceModule = (document: DocumentReadApi) => {
    * 返回的 Set 是共享只读对象，调用方只能读（.has 或展开后排序），不要原地修改。
    */
   const incomingSourcesCache = new Map<string, ReadonlySet<string>>();
-  /** 边、引用输入或整份文档变化都会让上游集合失效，因此各失效点统一整体清空。 */
-  const invalidateIncomingSources = () => incomingSourcesCache.clear();
+  /**
+   * 可达性查询按派生轮次缓存精确的 target/source 结果；每次失效推进轮次并清表，避免旧图结果残留。
+   * 只物化 DFS 已访问路径，命中目标即返回，不构造完整上游集合。
+   */
+  const reachabilityCache = new Map<string, { stamp: number; result: boolean }>();
+  let reachabilityStamp = 0;
+  /** 边、引用输入或整份文档变化都会让上游集合与可达性结果失效。 */
+  const invalidateIncomingSources = () => {
+    incomingSourcesCache.clear();
+    reachabilityStamp += 1;
+    reachabilityCache.clear();
+  };
+
+  const invalidateSourceMetadata = (sourceNodeIds?: Iterable<string>) => {
+    if (!sourceNodeIds) {
+      sourceMetadataCache.clear();
+      return;
+    }
+    const sourceKeys = new Set(sourceNodeIds);
+    sourceMetadataCache.forEach((_source, sourceKey) => {
+      const separator = sourceKey.indexOf('\0');
+      if (separator >= 0 && sourceKeys.has(sourceKey.slice(0, separator))) {
+        sourceMetadataCache.delete(sourceKey);
+      }
+    });
+  };
 
   /** 读当前已提交文档的来源元数据；来源缺失时回落文档上的历史快照。 */
   const resolveCurrentSource = (reference: ReferenceItemValueType): ReferenceSource => {
+    const sourceKey = getSourceIdentityKey(reference);
+    const cached = sourceMetadataCache.get(sourceKey);
     const { chatConfig, referenceSnapshots } = document.getDocument();
     const byTarget = document.getGraphIndex().byTarget;
-    return getReferenceSource({
-      reference,
-      scope: {
-        chatConfig,
-        getNodeById: document.getNodeById,
-        isMountedTool: (nodeId) => isMountedToolNode(byTarget.get(nodeId))
-      },
-      snapshots: referenceSnapshots
-    });
+    const currentSource =
+      cached ??
+      getCurrentReferenceSource({
+        reference,
+        scope: {
+          chatConfig,
+          getNodeById: document.getNodeById,
+          isMountedTool: (nodeId) => isMountedToolNode(byTarget.get(nodeId))
+        }
+      });
+    if (!cached) sourceMetadataCache.set(sourceKey, currentSource);
+    if (currentSource.output) return currentSource;
+    const snapshot = toSnapshotMap(referenceSnapshots).get(sourceKey);
+    return snapshot
+      ? {
+          ...currentSource,
+          ...(snapshot.sourceLabel ? { sourceLabel: snapshot.sourceLabel } : {}),
+          ...(snapshot.outputLabel ? { outputLabel: snapshot.outputLabel } : {}),
+          ...(snapshot.icon ? { icon: snapshot.icon } : {})
+        }
+      : currentSource;
   };
 
   const getGraph = () => referenceGraph;
@@ -383,6 +446,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   const rebuildGraph = () => {
     referenceGraph = buildReferenceGraph(document.getDocument().nodes);
     invalidateIncomingSources();
+    invalidateSourceMetadata();
   };
 
   /**
@@ -429,6 +493,11 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         changedSourceNodeIds.add(edge.data.target);
       }
     });
+    invalidateSourceMetadata(
+      meta.chatConfigVariablesChanged
+        ? [...changedSourceNodeIds, VARIABLE_NODE_ID]
+        : changedSourceNodeIds
+    );
     addAffectedConsumerFields({
       meta,
       graph: beforeGraph,
@@ -498,8 +567,9 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     const containerNodeIdSet = new Set(containerNodeIds);
     const queue = [...containerNodeIds];
     const searchedTargetIds = new Set<string>();
-    while (queue.length > 0) {
-      const targetId = queue.shift();
+    let queueIndex = 0;
+    while (queueIndex < queue.length) {
+      const targetId = queue[queueIndex++];
       if (!targetId) continue;
       if (searchedTargetIds.has(targetId)) continue;
       searchedTargetIds.add(targetId);
@@ -534,6 +604,66 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     targetType?: WorkflowIOValueTypeEnum;
     targetNodeId: string;
   }): WorkflowReferenceStatus => {
+    /** 反向 DFS 只判断单个来源是否可达；命中即停，不物化目标的完整上游集合。 */
+    const canReachUpstream = (sourceNodeId: string): boolean => {
+      const cacheKey = `${targetNodeId}\0${sourceNodeId}`;
+      const cached = reachabilityCache.get(cacheKey);
+      if (cached?.stamp === reachabilityStamp) return cached.result;
+
+      const graphIndex = document.getGraphIndex();
+      const containerNodeIds = [targetNodeId];
+      const containerNodeIdSet = new Set(containerNodeIds);
+      let parentNodeId = graphIndex.parentByChild.get(targetNodeId);
+      while (parentNodeId && !containerNodeIdSet.has(parentNodeId)) {
+        containerNodeIds.push(parentNodeId);
+        containerNodeIdSet.add(parentNodeId);
+        parentNodeId = graphIndex.parentByChild.get(parentNodeId);
+      }
+
+      const stack = [...containerNodeIds];
+      const searchedTargetIds = new Set<string>();
+      let result = false;
+      while (stack.length > 0 && !result) {
+        const targetId = stack.pop();
+        if (!targetId || searchedTargetIds.has(targetId)) continue;
+        searchedTargetIds.add(targetId);
+
+        if (targetId !== targetNodeId && containerNodeIdSet.has(targetId)) {
+          const container = document.getNodeById(targetId);
+          for (const input of container?.data.inputs ?? []) {
+            if (!nodeInputIsReference(input)) continue;
+            for (const [candidateSourceId] of getInputReferences(input)) {
+              if (
+                candidateSourceId === VARIABLE_NODE_ID ||
+                !document.getNodeById(candidateSourceId)
+              ) {
+                continue;
+              }
+              if (candidateSourceId === sourceNodeId) {
+                result = true;
+                break;
+              }
+              stack.push(candidateSourceId);
+            }
+            if (result) break;
+          }
+        }
+        if (result) break;
+
+        for (const edge of graphIndex.byTarget.get(targetId) ?? []) {
+          if (!document.isSourceEdgeValid(edge)) continue;
+          if (edge.data.source === sourceNodeId) {
+            result = true;
+            break;
+          }
+          stack.push(edge.data.source);
+        }
+      }
+
+      reachabilityCache.set(cacheKey, { stamp: reachabilityStamp, result });
+      return result;
+    };
+
     const [sourceNodeId] = reference;
     const source = resolveCurrentSource(reference);
     const sourceMetadata = {
@@ -563,7 +693,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     });
     if (selectableOutputs.length === 0)
       return { code: 'invalid_reference', reference, ...sourceMetadata };
-    if (!getIncomingSources(targetNodeId).has(sourceNodeId)) {
+    if (!canReachUpstream(sourceNodeId)) {
       return {
         code: 'unreachable_reference',
         sourceType: sourceOutput.valueType,
@@ -819,6 +949,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   /** 事务提交后按字段身份丢弃缓存，避免 scoped snapshot 复用过期状态。 */
   const invalidateFieldStatuses = (fields: Iterable<WorkflowFieldIdentity>) => {
     invalidateIncomingSources();
+    // commitTransaction 已按 changedSourceNodeIds 定向失效来源 metadata；这里仅清字段状态。
     for (const field of fields) {
       fieldStatusCache.delete(getFieldIdentityKey(field));
     }
@@ -827,6 +958,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   /** 全量重建后按字段对象身份清理缓存；字段对象已替换的条目不再有效。 */
   const pruneFieldStatusCache = () => {
     invalidateIncomingSources();
+    invalidateSourceMetadata();
     fieldStatusCache.forEach((cached, cacheKey) => {
       const identity = parseFieldIdentityKey(cacheKey);
       const field =
@@ -843,11 +975,13 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   const clearFieldStatusCache = () => {
     fieldStatusCache.clear();
     invalidateIncomingSources();
+    invalidateSourceMetadata();
   };
 
   const clear = () => {
     fieldStatusCache.clear();
     invalidateIncomingSources();
+    invalidateSourceMetadata();
     referenceGraph = createReferenceGraph();
   };
 
