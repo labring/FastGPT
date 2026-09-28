@@ -273,5 +273,6 @@
   "delete_datasets_confirm_title": "確認刪除 {{count}} 個知識庫",
   "delete_folders_confirm_title": "確認刪除 {{count}} 個文件夾",
   "delete_following_datasets_tip": "刪除以下知識庫會將其關聯的索引和數據一併刪除。",
-  "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部知識庫、關聯索引和數據將被一併刪除。"
+  "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部知識庫、關聯索引和數據將被一併刪除。",
+  "data_indexing_cannot_modify": "資料索引中，暫不可更改"
 }
