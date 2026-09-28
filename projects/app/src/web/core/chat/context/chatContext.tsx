@@ -83,8 +83,9 @@ export const ChatContext = createContext<ChatContextType>({
 
 const ChatContextProvider = ({
   children,
-  params
-}: ChatContextValueType & { children: ReactNode }) => {
+  params,
+  disabled = false
+}: ChatContextValueType & { children: ReactNode; disabled?: boolean }) => {
   const router = useRouter();
 
   const forbidLoadChat = useRef(false);
@@ -155,6 +156,9 @@ const ChatContextProvider = ({
   } = useScrollPagination(getChatHistories, {
     pageSize: 20,
     params,
+    // /chat without an appId is the app-picker entry. It still needs this
+    // context for the picker UI, but must not query history with an empty ID.
+    disabled,
     refreshDeps: [params],
     showErrorToast: false,
     showNoMoreTip: false
@@ -335,7 +339,7 @@ const ChatContextProvider = ({
   // 轮询同步侧栏 chatGenerateStatus / hasBeenRead（以服务端为准）。
   // 条件轮询：仅当列表里至少有一条 generating 时挂 interval；否则每次依赖变化仍会先 poll 一次，且切回标签页会再拉一次。
   useEffect(() => {
-    if (!historiesRef.current.length) return;
+    if (disabled || !historyAppId || !historiesRef.current.length) return;
 
     const poll = () => {
       const chatIds = historiesRef.current.map((h) => h.chatId);
@@ -390,7 +394,14 @@ const ChatContextProvider = ({
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [historyTargetParams, historyChatIdsKey, hasGeneratingInSidebar, setHistories]);
+  }, [
+    disabled,
+    historyAppId,
+    historyTargetParams,
+    historyChatIdsKey,
+    hasGeneratingInSidebar,
+    setHistories
+  ]);
 
   const isLoading = isDeletingHistory || isClearingHistory || isPaginationLoading;
 

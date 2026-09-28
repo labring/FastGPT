@@ -20,13 +20,13 @@ describe('clientOnlyRouteConfig', () => {
     expect(isClientOnlyRoute('/dataset/list')).toBe(true);
     expect(isClientOnlyRoute('/dataset/detail')).toBe(true);
     expect(isClientOnlyRoute('/app/detail')).toBe(true);
-    expect(isClientOnlyRoute('/chat')).toBe(true);
     expect(isClientOnlyRoute('/price')).toBe(true);
     expect(isClientOnlyRoute('/login')).toBe(true);
     expect(isClientOnlyRoute('/')).toBe(true);
   });
 
-  it('仅 /chat/share 保持 SSR 模式', () => {
+  it('/chat 与 /chat/share 保持 SSR 模式', () => {
+    expect(isClientOnlyRoute('/chat')).toBe(false);
     expect(isClientOnlyRoute('/chat/share')).toBe(false);
   });
 

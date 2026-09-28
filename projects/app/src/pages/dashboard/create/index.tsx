@@ -21,6 +21,7 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { useRouter } from 'next/router';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 import { getEmptyAppsTemplate } from '@/web/core/app/templates';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -69,7 +70,7 @@ export type CreateAppType =
   | AppTypeEnum.mcpToolSet
   | AppTypeEnum.httpToolSet;
 
-const CreateAppsPage = () => {
+const CreateAppsContent = () => {
   const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
@@ -618,6 +619,16 @@ const CreateAppsPage = () => {
       <AvatarUploader />
     </Box>
   );
+};
+
+const CreateAppsPage = () => {
+  const router = useRouter();
+
+  if (!router.isReady) {
+    return <Loading />;
+  }
+
+  return <CreateAppsContent />;
 };
 
 export default CreateAppsPage;

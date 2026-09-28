@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   router: {
+    isReady: true,
     query: {} as Record<string, string>,
     asPath: '/login/provider?state=oauth-state',
     pathname: '/login/provider',
@@ -217,5 +218,24 @@ describe('login page invitation redirects', () => {
       });
       expect(mocks.router.replace).toHaveBeenCalledWith(invitationRoute);
     });
+  });
+
+  it('waits for router.isReady before executing OAuth callback', async () => {
+    mocks.loginStore = {
+      provider: 'sso',
+      lastRoute: invitationRoute,
+      lastTmbId: 'tmb-a',
+      state: 'oauth-state'
+    };
+    mocks.router.isReady = false;
+    mocks.router.query = {};
+
+    Provider();
+    expect(mocks.effects).toHaveLength(1);
+    mocks.effects[0]();
+
+    expect(mocks.oauthLogin).not.toHaveBeenCalled();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    expect(mocks.setLoginStore).not.toHaveBeenCalled();
   });
 });
