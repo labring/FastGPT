@@ -20,7 +20,7 @@ import {
   DatasetDataIndexOperation,
   type DatasetDataIndexDraft
 } from '@/service/core/dataset/data/dataIndex';
-import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   getDatasetSynonymTransformContext,
   isDatasetSynonymEnabled
@@ -38,13 +38,11 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   forceRebuild?: boolean;
   /** 传入时复用调用方事务，用于把训练任务删除、状态推进并入同一次写入边界。 */
   session?: ClientSession;
-  /** 写入完成后要落库的索引状态；提前落库数据由向量回写标记为 indexed。 */
-  indexStatus?: DatasetDataIndexStatusEnum;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
   UpdateDatasetDataByIndexesProps,
-  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session' | 'indexStatus'
+  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session'
 > & {
   q?: string;
   imageIndex?: boolean;
@@ -274,8 +272,7 @@ export class DatasetDataOperation {
     metadata,
     forceRebuild = false,
     imageDescMap,
-    session,
-    indexStatus
+    session
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
 
@@ -363,11 +360,14 @@ export class DatasetDataOperation {
               ...(metadata !== undefined ? { metadata } : {}),
               ...(imageDescMap !== undefined ? { imageDescMap } : {}),
               indexes: newIndexes,
-              ...(indexStatus !== undefined ? { indexStatus } : {}),
+              indexStatus: DatasetDataIndexStatusEnum.indexed,
               ...(synonymContext && { synonymVersion: synonymContext.version }),
               updateTime: new Date()
             },
-            ...(synonymContext && { $unset: { synonymRebuildingVersion: '' } })
+            $unset: {
+              ...(synonymContext ? { synonymRebuildingVersion: '' } : {}),
+              indexErrorMsg: ''
+            }
           },
           { session: mongoSession }
         );
