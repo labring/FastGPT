@@ -21,7 +21,12 @@ vi.mock('@/web/core/app/api', () => ({
   getMyAppsV2: mocks.getMyAppsV2
 }));
 
-import { getTeamAppTemplates, getTeamAppTemplatesV2 } from '@/web/core/app/api/tool';
+import {
+  getTeamAppTemplates,
+  getTeamAppTemplatesV2,
+  getNewToolPreviewNode,
+  getClientToolPreviewNode
+} from '@/web/core/app/api/tool';
 
 describe('getTeamAppTemplates', () => {
   beforeEach(() => {
@@ -342,4 +347,44 @@ describe('getTeamAppTemplates', () => {
       undefined
     );
   });
+});
+
+describe('getNewToolPreviewNode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    ['507f1f77bcf86cd799439011', false],
+    ['personal-507f1f77bcf86cd799439011', false],
+    ['systemTool-search', true],
+    ['commercial-507f1f77bcf86cd799439011', true],
+    ['mcp-507f1f77bcf86cd799439011/search', true],
+    ['http-507f1f77bcf86cd799439011/search', true]
+  ])('uses the correct initial version policy for %s', async (appId, getLatestVersion) => {
+    const preview = { pluginId: appId, inputs: [], outputs: [] };
+    mocks.GET.mockResolvedValueOnce(preview);
+
+    expect(await getNewToolPreviewNode({ appId, source: 'system' })).toBe(preview);
+    expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', {
+      appId,
+      source: 'system',
+      getLatestVersion
+    });
+  });
+});
+
+describe('getClientToolPreviewNode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each(['507f1f77bcf86cd799439099', ''])(
+    'preserves explicitly selected version %s',
+    async (versionId) => {
+      const data = { appId: '507f1f77bcf86cd799439011', versionId };
+      await getClientToolPreviewNode(data);
+      expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', data);
+    }
+  );
 });

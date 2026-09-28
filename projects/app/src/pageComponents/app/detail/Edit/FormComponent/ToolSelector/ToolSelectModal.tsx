@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/core/workflow/type/node';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
-  getClientToolPreviewNode,
+  getNewToolPreviewNode,
   getAppToolTemplates,
   getAppToolPaths
 } from '@/web/core/app/api/tool';
@@ -347,9 +347,8 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
-      const res = await getClientToolPreviewNode({
+      const res = await getNewToolPreviewNode({
         appId: template.id,
-        getLatestVersion: true,
         source: template.source
       });
       const toolValid = validateToolConfiguration({

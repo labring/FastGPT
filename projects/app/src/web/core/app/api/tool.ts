@@ -1,3 +1,5 @@
+import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { GET, POST } from '@/web/common/api/request';
 import type {
   FlowNodeTemplateType,
@@ -175,3 +177,15 @@ export const getAppToolPaths = (data: GetToolPathQueryType) => {
 
 export const getClientToolPreviewNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', data);
+
+/**
+ * 添加工具时，个人工作流和 Agent 默认跟随最新发布版本；系统工具保留固定最新版本的策略。
+ * 显式切换版本和加载已保存配置仍使用 getClientToolPreviewNode，避免覆盖用户的固定版本。
+ */
+export const getNewToolPreviewNode = (
+  data: Omit<GetPreviewNodeQuery, 'versionId' | 'getLatestVersion'>
+) =>
+  getClientToolPreviewNode({
+    ...data,
+    getLatestVersion: splitCombineToolId(data.appId).source !== AppToolSourceEnum.personal
+  });
