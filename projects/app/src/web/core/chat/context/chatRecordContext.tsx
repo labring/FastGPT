@@ -61,7 +61,8 @@ const ChatRecordContextProvider = ({
   children,
   params,
   feedbackRecordId,
-  fetchFn
+  fetchFn,
+  showPrevLoading = true
 }: {
   children: ReactNode;
   params: ChatRecordProviderParams;
@@ -69,6 +70,7 @@ const ChatRecordContextProvider = ({
   fetchFn?: (
     data: LinkedPaginationProps<ChatRecordProviderParams>
   ) => Promise<GetRecordsV2ResponseType>;
+  showPrevLoading?: boolean;
 }) => {
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
   const [totalRecordsCount, setTotalRecordsCount] = useState(0);
@@ -116,6 +118,7 @@ const ChatRecordContextProvider = ({
       params,
       currentData,
       defaultScroll: 'bottom',
+      showPrevLoading,
       showErrorToast: false
     }
   );

@@ -1,5 +1,9 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
+import {
+  childrenResponseFields,
+  normalizeNodeResponseChildren
+} from '@fastgpt/global/core/chat/utils/mergeNode';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { WorkflowNodeResponseWriter } from '../../chat/nodeResponseStorage';
@@ -31,6 +35,33 @@ type WorkflowNodeResponseOutputPolicy = {
   record?: boolean;
   emit?: boolean;
 };
+
+/**
+ * 删除已经作为独立响应发布过的内嵌 child，避免前端把同一节点当成增量再次累加。
+ *
+ * 父响应可能同时保留旧版 childrenResponses，而 child workflow 已经通过共享 sink 发布了
+ * flat row；此时 flat row 是唯一实时来源，父响应只保留尚未独立发布的内嵌节点。
+ */
+const removePublishedChildren = (
+  response: ChatHistoryItemResType,
+  publishedResponseIds: Set<string>
+): ChatHistoryItemResType =>
+  childrenResponseFields.reduce<ChatHistoryItemResType>((current, field) => {
+    const children = current[field] as ChatHistoryItemResType[] | undefined;
+    if (!children?.length) return current;
+
+    const nextChildren = children
+      .filter((child) => !child.id || !publishedResponseIds.has(child.id))
+      .map((child) => removePublishedChildren(child, publishedResponseIds));
+
+    const nextResponse = { ...current };
+    if (nextChildren.length > 0) {
+      nextResponse[field] = nextChildren;
+    } else {
+      delete nextResponse[field];
+    }
+    return nextResponse;
+  }, response);
 
 export type WorkflowNodeResponseSinkLike = {
   publish: (inputs: WorkflowNodeResponseInput[]) => Promise<ChatHistoryItemResType[]>;
@@ -239,6 +270,7 @@ class WorkflowNodeResponseScope implements WorkflowNodeResponseSinkLike {
  */
 export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
   readonly hasOutput = true;
+  private readonly publishedResponseIds = new Set<string>();
   private readonly writer: WorkflowNodeResponseWriter;
   private readonly apiVersion?: 'v1' | 'v2';
   private readonly responseAllData: boolean;
@@ -272,10 +304,11 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
     const responses = inputs.map(({ response, parentId }) => {
       const normalizedParentId = response.parentId ?? parentId;
 
-      return {
+      const normalizedResponse = normalizeNodeResponseChildren({
         ...response,
         ...(normalizedParentId !== undefined ? { parentId: normalizedParentId } : {})
-      };
+      });
+      return removePublishedChildren(normalizedResponse, this.publishedResponseIds);
     });
     const responsesToRecord = responses.filter((_, index) => inputs[index]?.record !== false);
     const recordedResponses =
@@ -286,6 +319,10 @@ export class WorkflowNodeResponseSink implements WorkflowNodeResponseSinkLike {
       const recordedResponse = recordedResponses[recordedResponseIndex];
       recordedResponseIndex += 1;
       return recordedResponse ?? response;
+    });
+
+    responses.forEach((response) => {
+      if (response.id) this.publishedResponseIds.add(response.id);
     });
 
     if (this.apiVersion !== 'v2' || !this.workflowStreamResponse) {

@@ -210,7 +210,7 @@ describe('runWorkflow node response persistence', () => {
     parentNodeResponse: Partial<ChatHistoryItemResType> = {
       textOutput: 'parent output'
     },
-    options: { publishChildResponse?: boolean } = {}
+    options: { publishChildResponse?: boolean; includeInlineChild?: boolean } = {}
   ) => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
     callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(
@@ -236,7 +236,9 @@ describe('runWorkflow node response persistence', () => {
           },
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             ...parentNodeResponse,
-            ...(options.publishChildResponse ? {} : { childrenResponses: [childResponse] })
+            ...(options.includeInlineChild || !options.publishChildResponse
+              ? { childrenResponses: [childResponse] }
+              : {})
           }
         };
       }
@@ -421,6 +423,62 @@ describe('runWorkflow node response persistence', () => {
       expect(nodeResponseWriter.getFlatNodeResponses().map((response) => response.id)).toEqual(
         streamedNodeResponses.map((response) => response.id)
       );
+    } finally {
+      restoreTextEditorDispatch();
+    }
+  });
+
+  it('deduplicates a child that is both published separately and included by the parent', async () => {
+    const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses(
+      { textOutput: 'parent output' },
+      { publishChildResponse: true, includeInlineChild: true }
+    );
+
+    try {
+      const streamedNodeResponses: ChatHistoryItemResType[] = [];
+      const { appId, nodeResponseWriter } = await runTextEditorWorkflowWithModuleChild({
+        apiVersion: 'v2',
+        chatId: 'workflow-module-child-duplicate-chat',
+        responseChatItemId: 'workflow-module-child-duplicate-ai-item',
+        retainInMemory: true,
+        workflowStreamResponse: (event) => {
+          if (
+            event.event === SseResponseEventEnum.flowNodeResponse &&
+            typeof event.data !== 'string'
+          ) {
+            streamedNodeResponses.push(event.data);
+          }
+        }
+      });
+
+      const flatResponses = nodeResponseWriter.getFlatNodeResponses();
+      expect(flatResponses).toHaveLength(2);
+      expect(flatResponses.map((response) => response.id)).toEqual([
+        'module-child-response',
+        expect.any(String)
+      ]);
+      expect(streamedNodeResponses).toHaveLength(2);
+      expect(streamedNodeResponses.map((response) => response.id)).toEqual([
+        'module-child-response',
+        expect.any(String)
+      ]);
+      expect(streamedNodeResponses[1].childrenResponses).toBeUndefined();
+
+      const detail = await getChatItemResponseData({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
+        chatId: 'workflow-module-child-duplicate-chat',
+        chatItemDataId: 'workflow-module-child-duplicate-ai-item'
+      });
+
+      expect(detail).toHaveLength(1);
+      expect(detail[0].childResponseCount).toBe(1);
+      expect(detail[0].childrenResponses).toEqual([
+        expect.objectContaining({
+          id: 'module-child-response',
+          nodeId: 'module-child-node'
+        })
+      ]);
     } finally {
       restoreTextEditorDispatch();
     }
