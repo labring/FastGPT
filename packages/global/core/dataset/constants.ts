@@ -187,6 +187,13 @@ export const DatasetCollectionTagTypeMap = {
   }
 };
 
+/* ===== Collection Tag Constants ===== */
+/** 旧字符串标签承载记录首次创建时使用的默认名称；身份只由 fromMigration 标识。 */
+export const DEFAULT_TAG = 'default_tag';
+
+/** 迁移承载标签在条件表达式中的内部专用标识符；身份只由 fromMigration: true 标识，不依赖可修改的标签名称。 */
+export const FROM_MIGRATION_CARRIER = '$fromMigration';
+
 /* ------------ collection tag filter operators -------------- */
 export type DatasetTagCompareOp =
   | '$eq'
@@ -266,6 +273,38 @@ export const tagFilterOperators: Record<`${DatasetCollectionTagTypeEnum}`, TagFi
     ...emptyValueOperators
   ]
 };
+
+export const DatasetTagFilterLogicEnum = {
+  AND: 'AND',
+  OR: 'OR'
+} as const;
+
+export const DatasetTagFilterValueModeEnum = {
+  input: 'input',
+  reference: 'reference'
+} as const;
+
+/** 条件行字段来源：知识库标签或固定文件属性。 */
+export const DatasetTagFilterFieldEnum = {
+  tag: 'tag',
+  createTime: 'createTime',
+  collectionId: 'collectionId'
+} as const;
+
+export const DatasetTagFilterVersionEnum = {
+  legacy: 'legacy',
+  structured: 'structured'
+} as const;
+
+/**
+ * 界面下拉支持配置的标签类型。
+ * string 类型仅由接口/OpenAPI 下发，不进入界面选择器下拉。
+ */
+export const UI_SUPPORTED_TAG_TYPES = [
+  DatasetCollectionTagTypeEnum.number,
+  DatasetCollectionTagTypeEnum.datetime,
+  DatasetCollectionTagTypeEnum.array
+] as const;
 
 export const createTimeOperators: TagFilterOperator[] = [
   { label: i18nT('workflow:tag_filter_op_gte'), value: '$gte', icon: 'math/greaterEqual' },

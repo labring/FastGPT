@@ -1,38 +1,23 @@
 import { z } from 'zod';
 import { JsonValueOpenApiMeta } from '../../../../common/zod/openapi';
-import { DatasetCollectionTagTypeEnum } from '../../constants';
+import {
+  DatasetCollectionTagTypeEnum,
+  DatasetTagFilterFieldEnum,
+  DatasetTagFilterLogicEnum,
+  DatasetTagFilterValueModeEnum,
+  DatasetTagFilterVersionEnum,
+  UI_SUPPORTED_TAG_TYPES
+} from '../../constants';
 import type { DatasetCollectionTagType } from '../../type';
 
-export const DatasetTagFilterLogicEnum = {
-  AND: 'AND',
-  OR: 'OR'
-} as const;
-
-export const DatasetTagFilterValueModeEnum = {
-  input: 'input',
-  reference: 'reference'
-} as const;
 export type DatasetTagFilterValueMode =
   (typeof DatasetTagFilterValueModeEnum)[keyof typeof DatasetTagFilterValueModeEnum];
 
-/** 条件行字段来源：知识库标签或固定文件属性。 */
-export const DatasetTagFilterFieldEnum = {
-  tag: 'tag',
-  createTime: 'createTime',
-  collectionId: 'collectionId'
-} as const;
 export type DatasetTagFilterField =
   (typeof DatasetTagFilterFieldEnum)[keyof typeof DatasetTagFilterFieldEnum];
 
-/**
- * 界面下拉支持配置的标签类型。
- * string 类型仅由接口/OpenAPI 下发，不进入界面选择器下拉。
- */
-export const UI_SUPPORTED_TAG_TYPES = [
-  DatasetCollectionTagTypeEnum.number,
-  DatasetCollectionTagTypeEnum.datetime,
-  DatasetCollectionTagTypeEnum.array
-] as const;
+export const DatasetTagFilterVersionSchema = z.enum(DatasetTagFilterVersionEnum);
+export type DatasetTagFilterVersion = z.infer<typeof DatasetTagFilterVersionSchema>;
 
 /** 标签过滤支持的标签类型。string 只接受接口下发。 */
 export const WorkflowTagFilterTagTypeSchema = z.enum([

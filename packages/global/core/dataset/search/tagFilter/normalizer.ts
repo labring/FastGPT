@@ -1,16 +1,54 @@
+import json5 from 'json5';
 import { formatTime2YMDHM } from '../../../../common/string/time';
-import { FROM_MIGRATION_CARRIER } from '../../type';
 import {
+  FROM_MIGRATION_CARRIER,
   DatasetTagFilterFieldEnum,
   DatasetTagFilterLogicEnum,
   DatasetTagFilterValueModeEnum,
+  DatasetTagFilterVersionEnum
+} from '../../constants';
+import {
   type DatasetSearchValue,
   type DatasetTagFilterCondition,
   type DatasetTagFilterValue,
+  type DatasetTagFilterVersion,
   type TagConditionObject,
   isDatasetTagFilterValue
 } from './type';
 import { isTagFilterOpWithoutValue } from './uiUtils';
+
+const hasDatasetTagFilterConfiguration = (value: unknown) => {
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  return value !== undefined && value !== null;
+};
+
+/**
+ * 解析知识库标签过滤版本。
+ * 显式版本优先；存量节点缺少版本时，有过滤配置走 legacy，无配置直接使用 structured。
+ */
+export const resolveDatasetTagFilterVersion = ({
+  version,
+  filterValue
+}: {
+  version: unknown;
+  filterValue: unknown;
+}): DatasetTagFilterVersion => {
+  if (version === DatasetTagFilterVersionEnum.structured) {
+    return DatasetTagFilterVersionEnum.structured;
+  }
+  if (version === DatasetTagFilterVersionEnum.legacy) return DatasetTagFilterVersionEnum.legacy;
+  if (version !== undefined && version !== null && version !== '') {
+    return DatasetTagFilterVersionEnum.legacy;
+  }
+  return hasDatasetTagFilterConfiguration(filterValue)
+    ? DatasetTagFilterVersionEnum.legacy
+    : DatasetTagFilterVersionEnum.structured;
+};
+
+/** 归一化旧版编辑器字符串过滤值。 */
+export const normalizeLegacyDatasetTagFilterValue = (value: unknown) =>
+  typeof value === 'string' ? value : '';
 
 /* ===== 引用解析助手 ===== */
 const REF_MARKER = '$ref';
@@ -104,16 +142,8 @@ export const parseMaybeJson = (value: unknown): unknown => {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   if (!trimmed) return value;
-  if (
-    !(
-      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-      (trimmed.startsWith('[') && trimmed.endsWith(']'))
-    )
-  ) {
-    return value;
-  }
   try {
-    return JSON.parse(trimmed);
+    return json5.parse(trimmed);
   } catch {
     return value;
   }
@@ -132,13 +162,20 @@ const buildTagConditionObject = (
   if (isTagFilterOpWithoutValue(op)) {
     return { [tag]: { [op]: true } };
   }
-  if (
-    condition.value === undefined ||
-    condition.value === null ||
-    condition.value === '' ||
-    (Array.isArray(condition.value) && condition.value.length === 0)
-  ) {
-    return;
+  // 引用模式下解析失败时生成 null 条件以在匹配时拒绝，防止静默丢弃导致检索范围扩大
+  if (condition.valueMode === DatasetTagFilterValueModeEnum.reference) {
+    if (condition.value === undefined || condition.value === null) {
+      return { [tag]: { [op]: null } };
+    }
+  } else {
+    if (
+      condition.value === undefined ||
+      condition.value === null ||
+      condition.value === '' ||
+      (Array.isArray(condition.value) && condition.value.length === 0)
+    ) {
+      return;
+    }
   }
   return { [tag]: { [op]: condition.value } };
 };
@@ -237,8 +274,9 @@ const resolveConditionValue = (
   resolveReference: (value: unknown) => unknown
 ): DatasetTagFilterCondition => {
   if (condition.valueMode !== DatasetTagFilterValueModeEnum.reference) return condition;
-  if (!isReferenceTuple(condition.value)) return { ...condition, value: undefined };
-  return { ...condition, value: resolveReference(condition.value) };
+  if (!isReferenceTuple(condition.value)) return { ...condition, value: null };
+  const resolved = resolveReference(condition.value);
+  return { ...condition, value: resolved === undefined ? null : resolved };
 };
 
 /**
@@ -255,7 +293,20 @@ export const formatCollectionFilterMatchParam = ({
 }): string | undefined => {
   if (value === undefined || value === null || value === '') return undefined;
 
-  const parsed = parseMaybeJson(value);
+  let parsed: unknown = value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    try {
+      parsed = json5.parse(trimmed);
+    } catch {
+      if (/[{}[\]]/.test(trimmed)) {
+        return undefined;
+      }
+      parsed = trimmed;
+    }
+  }
+
   const structured = isDatasetTagFilterValue(parsed) ? parsed : undefined;
 
   // 1. 表单 AST 结构：解析 reference 模式下的引用变量并序列化为检索 JSON
@@ -270,7 +321,7 @@ export const formatCollectionFilterMatchParam = ({
   }
 
   // 2. 检索载荷结构（包含外部接口/深信服下发的 $ref 引用及老版 tags 格式）
-  if (isPlainRecord(parsed)) {
+  if (isDatasetSearchValue(parsed)) {
     const payload = parsed as {
       tags?: { $and?: unknown[]; $or?: unknown[] };
       createTime?: { $gte?: string; $lte?: string };
@@ -284,14 +335,18 @@ export const formatCollectionFilterMatchParam = ({
       const rawAnd = payload.tags.$and;
       const rawOr = payload.tags.$or;
 
-      const isLegacyArray = (items?: unknown[]): boolean =>
+      const isLegacyArray = (items?: unknown[]): items is (string | null | unknown)[] =>
         Array.isArray(items) &&
         items.length > 0 &&
         items.some((item) => typeof item === 'string' || item === null);
 
       if (isLegacyArray(rawAnd) || isLegacyArray(rawOr)) {
         // 老版 string / null 数组归一化为结构化 TagCondition 数组
-        const activeRaw = isLegacyArray(rawAnd) && rawAnd.length > 0 ? rawAnd : rawOr;
+        const activeRaw: (string | null | unknown)[] = isLegacyArray(rawAnd)
+          ? rawAnd
+          : isLegacyArray(rawOr)
+            ? rawOr
+            : [];
         const isAnd = activeRaw === rawAnd;
 
         const hasNull = activeRaw.includes(null);
@@ -334,7 +389,7 @@ export const formatCollectionFilterMatchParam = ({
       normalizedResult.createTime = payload.createTime;
     }
     if (Array.isArray(payload.collectionIds)) {
-      normalizedResult.collectionIds = payload.collectionIds.map(String);
+      normalizedResult.collectionIds = payload.collectionIds;
     }
 
     return Object.keys(normalizedResult).length > 0 ? JSON.stringify(normalizedResult) : undefined;

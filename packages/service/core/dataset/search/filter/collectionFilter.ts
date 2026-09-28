@@ -1,7 +1,10 @@
 import json5 from 'json5';
 import safeRegex from 'safe-regex';
-import type { DatasetTagCompareOp } from '@fastgpt/global/core/dataset/constants';
-import { FROM_MIGRATION_CARRIER } from '@fastgpt/global/core/dataset/type';
+import {
+  FROM_MIGRATION_CARRIER,
+  type DatasetTagCompareOp
+} from '@fastgpt/global/core/dataset/constants';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetCollectionTagsV2 } from '../../tag/schemaV2';
 import { isCollectionTagValue } from '@fastgpt/global/core/dataset/tagUtils';
@@ -230,6 +233,10 @@ export async function filterCollectionByKeyValueTags({
   ).lean();
 
   const datasetTagMap = new Map<string, Map<string, { id: string; type: string }>>();
+  for (const dsId of datasetIds) {
+    datasetTagMap.set(dsId, new Map());
+  }
+
   const addToMap = (dsId: string, tagName: string, id: string, type: string) => {
     const tagMap = datasetTagMap.get(dsId);
     if (tagMap) {
@@ -250,7 +257,6 @@ export async function filterCollectionByKeyValueTags({
       );
     }
   }
-  if (datasetTagMap.size === 0) return [];
 
   const matchCondition = (
     cond: TagCondition,
@@ -258,10 +264,18 @@ export async function filterCollectionByKeyValueTags({
     tagsArr: Array<{ tagId: string; value?: string | number | string[] }>
   ): boolean => {
     const tagName = Object.keys(cond)[0];
-    const tagInfo = tagMap.get(tagName);
-    if (!tagInfo) return false;
     const opObj = cond[tagName] as Record<string, unknown>;
     const op = Object.keys(opObj)[0];
+
+    // 来自旧版 null 的 $fromMigration $empty：严格只匹配完全未打任何标签的集合（tags 数组为空）
+    if (tagName === FROM_MIGRATION_CARRIER && op === '$empty') {
+      return tagsArr.length === 0;
+    }
+
+    const tagInfo = tagMap.get(tagName);
+    if (!tagInfo) {
+      return false;
+    }
 
     const entry = tagsArr.find((t) => t.tagId === tagInfo.id);
     if (!entry) {
@@ -273,19 +287,14 @@ export async function filterCollectionByKeyValueTags({
   const allCollectionIds: string[] = [];
 
   for (const [dsId, tagMap] of datasetTagMap) {
-    const andTagIds = $and
-      .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
-      .filter((id): id is string => Boolean(id));
-    const orTagIds = $or
-      .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
-      .filter((id): id is string => Boolean(id));
-
-    if ($and.length > 0 && andTagIds.length < $and.length) {
-      continue;
-    }
-    if ($and.length === 0 && orTagIds.length === 0) {
-      continue;
-    }
+    // 只有肯定型（必须打标）的条件才要求该标签在知识库中必须有定义；
+    // 纯否定/空值型条件（如 $fromMigration: { $empty: true }）在未定义该标签的知识库中也是满足的
+    const requiredPositiveAndCount = $and.filter((cond) => {
+      const tagName = Object.keys(cond)[0];
+      const opObj = cond[tagName] as Record<string, unknown> | undefined;
+      const op = opObj ? Object.keys(opObj)[0] : undefined;
+      return op ? !isAbsentAllowedOp(op) : true;
+    }).length;
 
     const positiveAndTagIds = $and
       .filter((cond) => {
@@ -296,6 +305,25 @@ export async function filterCollectionByKeyValueTags({
       })
       .map((cond) => tagMap.get(Object.keys(cond)[0])?.id)
       .filter((id): id is string => Boolean(id));
+
+    if (positiveAndTagIds.length < requiredPositiveAndCount) {
+      continue;
+    }
+
+    // 若无 AND 条件，且 OR 中引用的标签没有一个是已定义的肯定型标签，也没有任何允许缺失的条件，跳过该库
+    if ($and.length === 0) {
+      const hasExecutableOr = $or.some((cond) => {
+        const tagName = Object.keys(cond)[0];
+        const opObj = cond[tagName] as Record<string, unknown> | undefined;
+        const op = opObj ? Object.keys(opObj)[0] : undefined;
+        if (!op) return false;
+        if (isAbsentAllowedOp(op)) return true;
+        return Boolean(tagMap.get(tagName));
+      });
+      if (!hasExecutableOr && $or.length > 0) {
+        continue;
+      }
+    }
 
     let tagIdQuery: Record<string, unknown> | undefined;
     let useTagIndexHint = false;
@@ -371,7 +399,7 @@ export const getForbidCollectionIdList = async ({
 
 /**
  * 知识库检索元数据过滤核心（只兼容结构化数组）。
- * 输入必须是经过搜索入口归一化后的标准结构化 JSON。
+ * 输入自动做防御性归一化，确保所有服务层入口安全执行。
  */
 export const filterCollectionByMetadata = async ({
   teamId,
@@ -384,11 +412,24 @@ export const filterCollectionByMetadata = async ({
 }): Promise<string[] | undefined> => {
   if (!collectionFilterMatch || !global.feConfigs.isPlus) return;
 
-  const metadataMatch = json5.parse(collectionFilterMatch) as {
+  const normalizedMatchParam = formatCollectionFilterMatchParam({
+    value: collectionFilterMatch
+  });
+  if (!normalizedMatchParam) return;
+
+  let metadataMatch: {
     tags?: { $and?: unknown[]; $or?: unknown[] };
     createTime?: { $gte?: string; $lte?: string };
     collectionIds?: string[];
   };
+
+  try {
+    const parsed = json5.parse(normalizedMatchParam);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return;
+    metadataMatch = parsed;
+  } catch {
+    return;
+  }
 
   const isConditionObject = (item: unknown): item is TagCondition => {
     if (typeof item !== 'object' || Array.isArray(item) || item === null) return false;
@@ -403,14 +444,18 @@ export const filterCollectionByMetadata = async ({
     );
   };
 
-  const parseConditions = (items?: unknown[]): TagCondition[] => {
+  const parseConditions = (items?: unknown[]): TagCondition[] | undefined => {
     if (!items) return [];
-    if (!items.every(isConditionObject)) throw CommonErrEnum.invalidParams;
+    if (!Array.isArray(items)) return undefined;
+    if (!items.every(isConditionObject)) return undefined;
     return items;
   };
 
   const andTags = parseConditions(metadataMatch.tags?.$and);
   const orTags = parseConditions(metadataMatch.tags?.$or);
+  if (andTags === undefined || orTags === undefined) {
+    return undefined;
+  }
 
   const tagCollectionIds =
     andTags.length > 0 || orTags.length > 0

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
-  createEmptyTagFilterValue,
+  DatasetCollectionTagTypeEnum,
   DatasetTagFilterFieldEnum,
   DatasetTagFilterLogicEnum,
   DatasetTagFilterValueModeEnum,
-  DatasetTagFilterVersionEnum,
+  DatasetTagFilterVersionEnum
+} from '@fastgpt/global/core/dataset/constants';
+import {
+  createEmptyTagFilterValue,
   formatCollectionFilterMatchParam,
   getTagFilterOpsByCondition,
   intersectWorkflowTagOptions,
@@ -154,7 +156,7 @@ describe('serializeDatasetTagFilterValue', () => {
 });
 
 describe('formatCollectionFilterMatchParam', () => {
-  it('resolves structured row references and preserves legacy strings without converting them', () => {
+  it('resolves structured row references and normalizes legacy strings to $fromMigration conditions', () => {
     expect(
       formatCollectionFilterMatchParam({
         value: {
@@ -172,6 +174,25 @@ describe('formatCollectionFilterMatchParam', () => {
         resolveReference: () => 10
       })
     ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 10 } }] } }));
+
+    // 引用未解析时生成 null 条件以在匹配时拒绝，防止静默丢弃扩大检索范围
+    expect(
+      formatCollectionFilterMatchParam({
+        value: {
+          logic: DatasetTagFilterLogicEnum.AND,
+          conditions: [
+            {
+              tag: 'price',
+              tagType: DatasetCollectionTagTypeEnum.number,
+              op: '$gte',
+              valueMode: DatasetTagFilterValueModeEnum.reference,
+              value: ['node', 'unresolved']
+            }
+          ]
+        },
+        resolveReference: () => undefined
+      })
+    ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: null } }] } }));
 
     const legacy = '{"tags":{"$and":["legacy"]}}';
     expect(formatCollectionFilterMatchParam({ value: legacy })).toBe(

@@ -1,9 +1,9 @@
 import type { AppFormEditFormType } from './formEdit/type';
-import { DatasetSearchModeEnum } from '../dataset/constants';
+import { DatasetSearchModeEnum, DatasetTagFilterVersionEnum } from '../dataset/constants';
 import { NodeInputKeyEnum } from '../workflow/constants';
+import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
-import { DatasetTagFilterVersionEnum } from '../dataset/search/tagFilter';
 
 const deletedPluginErrorList = new Set([
   'plugin.team_not_installed',
@@ -48,11 +48,19 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppFormEditFormT
     return AppTypeEnum.simple;
   }
 
-  if (!('nodes' in config)) return '';
-  if (config.nodes.some((node) => node.flowNodeType === 'workflowStart')) {
+  if (!('nodes' in config) || !Array.isArray(config.nodes)) return '';
+  if (
+    config.nodes.some(
+      (node: { flowNodeType?: string }) => node?.flowNodeType === FlowNodeTypeEnum.workflowStart
+    )
+  ) {
     return AppTypeEnum.workflow;
   }
-  if (config.nodes.some((node) => node.flowNodeType === 'pluginInput')) {
+  if (
+    config.nodes.some(
+      (node: { flowNodeType?: string }) => node?.flowNodeType === FlowNodeTypeEnum.pluginInput
+    )
+  ) {
     return AppTypeEnum.workflowTool;
   }
   return '';

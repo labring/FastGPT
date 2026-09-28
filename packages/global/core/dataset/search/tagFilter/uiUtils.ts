@@ -1,5 +1,6 @@
 import {
   DatasetCollectionTagTypeEnum,
+  DatasetTagFilterFieldEnum,
   tagFilterOperators,
   createTimeOperators,
   collectionIdOperators,
@@ -7,7 +8,6 @@ import {
 } from '../../constants';
 import type { DatasetCollectionTagType, DatasetTagType } from '../../type';
 import {
-  DatasetTagFilterFieldEnum,
   type DatasetTagFilterField,
   type DatasetTagFilterCondition,
   type DatasetTagFilterValue,

@@ -46,9 +46,9 @@ import SandboxConfigButton from '../../components/SandboxConfigButton';
 import ToolSelect from '../FormComponent/ToolSelector/ToolSelect';
 import { useInitializeQueryExtensionModel } from '../FormComponent/useInitializeQueryExtensionModel';
 import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   createEmptyTagFilterValue,
-  DatasetTagFilterVersionEnum,
   isDatasetTagFilterValue,
   normalizeLegacyDatasetTagFilterValue,
   resolveDatasetTagFilterVersion,

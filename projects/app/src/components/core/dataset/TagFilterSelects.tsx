@@ -14,8 +14,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import {
-  DatasetTagFilterFieldEnum,
-  DatasetTagFilterValueModeEnum,
   formatTagOptionKey,
   parseTagOptionKey,
   type DatasetTagFilterCondition,
@@ -25,6 +23,8 @@ import {
 } from '@fastgpt/global/core/dataset/search/tagFilter';
 import {
   DatasetCollectionTagTypeEnum,
+  DatasetTagFilterFieldEnum,
+  DatasetTagFilterValueModeEnum,
   type TagFilterOperator
 } from '@fastgpt/global/core/dataset/constants';
 

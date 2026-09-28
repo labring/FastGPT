@@ -1,10 +1,8 @@
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  DatasetTagFilterVersionEnum,
-  resolveDatasetTagFilterVersion
-} from '@fastgpt/global/core/dataset/search/tagFilter';
+import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
+import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { Input_Template_Dataset_Tag_Filter_Version } from '@fastgpt/global/core/workflow/template/input';
 
 /** 从节点输入读取唯一的过滤版本来源，不检查 collectionFilterMatch 的值形状。 */

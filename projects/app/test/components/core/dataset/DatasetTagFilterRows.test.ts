@@ -3,8 +3,10 @@ import {
   getTagFilterAllowedValueTypes,
   isTagFilterValueTypeCompatible
 } from '@/components/core/dataset/DatasetTagFilterRows';
-import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetTagFilterFieldEnum } from '@fastgpt/global/core/dataset/search/tagFilter';
+import {
+  DatasetCollectionTagTypeEnum,
+  DatasetTagFilterFieldEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 describe('getTagFilterAllowedValueTypes', () => {

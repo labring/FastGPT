@@ -1,11 +1,16 @@
 import type { LangEnum } from '../../../../common/i18n/type';
 import { parseI18nString } from '../../../../common/i18n/utils';
+import type { FastGPTFeConfigsType } from '../../../../common/system/types';
 import type { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
 import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from './constants';
 import type { SystemToolListItemType } from './type';
 import { isDebugToolSource } from '../utils';
+
+declare global {
+  var feConfigs: FastGPTFeConfigsType;
+}
 
 type SystemToolConfigLike = SystemPluginToolCollectionType & {
   toObject?: () => SystemPluginToolCollectionType;
@@ -93,7 +98,7 @@ export const SystemToolCodec = {
     return {
       id: this.getDBPluginId(tool.pluginId),
       etag: tool.etag,
-      author: tool.author ?? global.feConfigs.systemTitle ?? '',
+      author: tool.author ?? global.feConfigs?.systemTitle ?? '',
       avatar: tool.icon,
       currentCost: config?.currentCost ?? 0,
       hasSystemSecret,

@@ -29,7 +29,14 @@ const mockTagsAndCollections = ({
   collections?: any[];
 }) => {
   tagFindMock.mockReturnValue({ lean: vi.fn().mockResolvedValue(tags) });
-  collectionFindMock.mockReturnValue(findResult(collections));
+  collectionFindMock.mockImplementation((query?: any) => {
+    let result = collections;
+    if (query?._id?.$in) {
+      const ids = new Set(query._id.$in.map(String));
+      result = collections.filter((c) => ids.has(String(c._id)));
+    }
+    return findResult(result);
+  });
 };
 
 const filterTags = (params: { $and?: any[]; $or?: any[] }) =>
@@ -233,6 +240,28 @@ describe('filterCollectionByKeyValueTags', () => {
       'legacy'
     ]);
   });
+
+  it('matches only truly untagged collections on $fromMigration $empty (legacy null)', async () => {
+    mockTagsAndCollections({
+      tags: [], // 该知识库没有迁移承载标签
+      collections: [
+        { _id: 'col-untagged', tags: [] },
+        { _id: 'col-other-tagged', tags: [{ tagId: 'other-tag', value: 'val' }] }
+      ]
+    });
+
+    // 严格只匹配未打标集合
+    await expect(filterTags({ $and: [{ $fromMigration: { $empty: true } }] })).resolves.toEqual([
+      'col-untagged'
+    ]);
+
+    // OR 中包含 $empty 也能正确匹配未打标集合
+    await expect(
+      filterTags({
+        $or: [{ $fromMigration: { $empty: true } }, { $fromMigration: { $contains: 'A' } }]
+      })
+    ).resolves.toEqual(['col-untagged']);
+  });
 });
 
 describe('filterCollectionByMetadata', () => {
@@ -248,7 +277,24 @@ describe('filterCollectionByMetadata', () => {
     (global as any).feConfigs = {};
   });
 
-  it('accepts structured conditions and rejects unnormalized or malformed configurations', async () => {
+  it('accepts structured conditions, defensively normalizes legacy strings, and returns undefined on malformed inputs', async () => {
+    mockTagsAndCollections({
+      tags: [
+        { _id: 'tag-1', datasetId: 'dataset-1', tag: 'field', tagType: 'string' },
+        {
+          _id: 'carrier',
+          datasetId: 'dataset-1',
+          tag: 'renamed_tag',
+          tagType: 'array',
+          fromMigration: true
+        }
+      ],
+      collections: [
+        { _id: 'match', tags: [{ tagId: 'tag-1', value: 'A' }] },
+        { _id: 'match-legacy', tags: [{ tagId: 'carrier', value: ['legacy-tag'] }] }
+      ]
+    });
+
     await expect(
       filterCollectionByMetadata({
         teamId: 'team-1',
@@ -257,18 +303,23 @@ describe('filterCollectionByMetadata', () => {
       })
     ).resolves.toEqual(['match']);
 
-    for (const value of [
-      JSON.stringify({ tags: { $and: ['unnormalized-string'] } }),
-      'not-json{'
-    ]) {
-      await expect(
-        filterCollectionByMetadata({
-          teamId: 'team-1',
-          datasetIds: ['dataset-1'],
-          collectionFilterMatch: value
-        })
-      ).rejects.toBeTruthy();
-    }
+    // 防御性归一化直接调用的老版字符串
+    await expect(
+      filterCollectionByMetadata({
+        teamId: 'team-1',
+        datasetIds: ['dataset-1'],
+        collectionFilterMatch: JSON.stringify({ tags: { $and: ['legacy-tag'] } })
+      })
+    ).resolves.toEqual(['match-legacy']);
+
+    // malformed JSON 优雅降级返回 undefined
+    await expect(
+      filterCollectionByMetadata({
+        teamId: 'team-1',
+        datasetIds: ['dataset-1'],
+        collectionFilterMatch: 'not-json{'
+      })
+    ).resolves.toBeUndefined();
   });
 });
 
