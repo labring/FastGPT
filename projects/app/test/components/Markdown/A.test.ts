@@ -88,4 +88,16 @@ describe('Markdown A component', () => {
     expect(unsafeHtml).toContain('<span');
     expect(unsafeHtml).toContain('Unsafe');
   });
+
+  it('should keep links with non-UTF-8 percent-escapes clickable in CachedMarkdown', () => {
+    // GBK 编码的查询参数，decodeURIComponent 无法解码，但链接本身合法
+    const html = renderToStaticMarkup(
+      React.createElement(CachedMarkdown, {
+        source: '[搜索](https://www.baidu.com/s?wd=%D6%D0%CE%C4&ie=gbk)',
+        components: { a: A } as any
+      })
+    );
+    expect(html).toContain('<a');
+    expect(html).toContain('href="https://www.baidu.com/s?wd=%D6%D0%CE%C4&amp;ie=gbk"');
+  });
 });

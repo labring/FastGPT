@@ -78,6 +78,18 @@ describe('url utils', () => {
       expect(isSafeHref('customscheme:test')).toBe(false);
     });
 
+    it('should allow links whose percent-escapes are not UTF-8', () => {
+      // GBK 编码的查询参数（%D6%D0%CE%C4 = 中文）是合法 URL，只是 decodeURIComponent 解不出来
+      expect(isSafeHref('https://www.baidu.com/s?wd=%D6%D0%CE%C4&ie=gbk')).toBe(true);
+      expect(isSafeHref('https://example.com/caf%E9.html')).toBe(true);
+    });
+
+    it('should still block encoded pseudo-protocols next to non-UTF-8 escapes', () => {
+      expect(isSafeHref('javascript%3Aalert(1)%D6')).toBe(false);
+      expect(isSafeHref('%6a%61%76%61%73%63%72%69%70%74:alert(1)%E4')).toBe(false);
+      expect(isSafeHref('java%09script:alert(1)%FF')).toBe(false);
+    });
+
     it('should return false for empty or non-string inputs', () => {
       expect(isSafeHref('')).toBe(false);
       expect(isSafeHref('   ')).toBe(false);
@@ -98,6 +110,10 @@ describe('url utils', () => {
       expect(isSafeImgSrc('data:image/png;base64,iVBORw0KGgo=')).toBe(true);
       expect(isSafeImgSrc('data:image/jpeg;base64,/9j/4AAQSkZJRg==')).toBe(true);
       expect(isSafeImgSrc('data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=')).toBe(true);
+    });
+
+    it('should allow image URLs whose percent-escapes are not UTF-8', () => {
+      expect(isSafeImgSrc('https://img.example.com/%D6%D0%CE%C4.png')).toBe(true);
     });
 
     it('should block dangerous image sources', () => {
