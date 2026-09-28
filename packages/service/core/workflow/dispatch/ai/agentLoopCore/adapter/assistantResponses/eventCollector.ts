@@ -2,7 +2,6 @@ import type {
   AIChatItemValueItemType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { AIChatItemValueSchema } from '@fastgpt/global/core/chat/type';
 import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/interface';
 import {
   appendAgentLoopCoreAssistantResponseFromEvent,
@@ -228,16 +227,12 @@ export const createAgentLoopCoreAssistantEventCollector = ({
   };
 
   /** 子输出归属对应工具，保留子流程自己的展示字段；父模型后续输出另起一段。 */
-  const appendToolAssistantResponses = (callId: string, values?: unknown[]) => {
+  const appendToolAssistantResponses = (callId: string, values?: AIChatItemValueItemType[]) => {
     if (!values?.length) return;
-    // 底层 loop 只透传 opaque 数据，在 workflow adapter 边界恢复业务类型。
-    const responses = values.filter(
-      (value): value is AIChatItemValueItemType => AIChatItemValueSchema.safeParse(value).success
-    );
 
     const responseIndex = findToolResponseIndex(callId);
     const insertIndex = responseIndex >= 0 ? responseIndex + 1 : assistantResponses.length;
-    assistantResponses.splice(insertIndex, 0, ...responses);
+    assistantResponses.splice(insertIndex, 0, ...values);
     currentAssistantTextIndex = undefined;
   };
 

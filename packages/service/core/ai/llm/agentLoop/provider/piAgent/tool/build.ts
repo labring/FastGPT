@@ -26,6 +26,7 @@ import {
 } from '../../../domain/systemTool/datasetSearch';
 import {
   normalizeAgentLoopUsages,
+  type AgentLoopAssistantResponse,
   type AgentLoopEvent,
   type AgentLoopRuntime,
   type AgentLoopUsage
@@ -100,7 +101,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     execute: () => Promise<{
       response: string;
       assistantMessages?: ChatCompletionMessageParam[];
-      assistantResponses?: unknown[];
+      assistantResponses?: AgentLoopAssistantResponse[];
       usages?: AgentLoopUsage[];
       interactive?: TChildrenResponse;
       stop?: boolean;

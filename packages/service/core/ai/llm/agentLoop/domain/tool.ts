@@ -3,6 +3,7 @@ import type {
   ChatCompletionMessageToolCall,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
+import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { SandboxClient } from '../../../sandbox/interface/runtime';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
 import type { AgentLoopUsage } from './usage';
@@ -11,6 +12,14 @@ export type AgentLoopToolCatalog = {
   runtimeTools: ChatCompletionTool[];
   batchToolSize?: number;
 };
+
+/**
+ * 工具内部产生的可持久化 assistant 展示项。
+ *
+ * agent-loop 不解释这些字段，只负责沿工具执行结果和标准事件链路透传；
+ * workflow adapter 负责按顺序合并到最终 assistantResponses。
+ */
+export type AgentLoopAssistantResponse = AIChatItemValueItemType;
 
 export type AgentLoopToolExecuteParams = {
   call: ChatCompletionMessageToolCall;
@@ -26,7 +35,7 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   response: string;
   assistantMessages: ChatCompletionMessageParam[];
   /** 工具内部产生的展示层 assistant responses，由上层 adapter 解释。 */
-  assistantResponses?: unknown[];
+  assistantResponses?: AgentLoopAssistantResponse[];
   usages: AgentLoopUsage[];
   interactive?: TChildrenResponse;
   stop?: boolean;

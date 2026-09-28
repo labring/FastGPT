@@ -12,6 +12,7 @@ import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../../../common/string/tiktoken';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
 import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AgentLoopAssistantResponse } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopInteractiveToolExecuteParams,
@@ -84,7 +85,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     rawResponse: string;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
-    assistantResponses?: unknown[];
+    assistantResponses?: AgentLoopAssistantResponse[];
     errorMessage?: string;
     seconds: number;
     usages?: AgentLoopUsage[];
