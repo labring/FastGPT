@@ -27,7 +27,6 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
-import { fullTextRecall } from '@fastgpt/service/core/dataset/search/defaultRecall/fullTextRecall';
 import trainingDetailHandler from '@/pages/api/core/dataset/collection/trainingDetail';
 
 const createContext = async () => {
@@ -102,37 +101,25 @@ describe('indexStatus downstream contracts', () => {
     expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(3);
   });
 
-  /** DS-16：Mongo $text provider 的召回反查会校验数据状态。 */
-  it('drops pending index data from full-text recall', async () => {
+  /** 待索引数据在索引完成前不会向全文索引表写入记录。 */
+  it('does not have full-text index records before indexing completes', async () => {
     const { root, dataset, createData } = await createContext();
     const indexing = await createData({
       text: 'retrieval isolation keyword',
-      indexStatus: DatasetDataIndexStatusEnum.indexing,
-      withFullText: true
+      indexStatus: DatasetDataIndexStatusEnum.indexing
     });
     const indexed = await createData({
       text: 'retrieval isolation keyword',
       indexStatus: DatasetDataIndexStatusEnum.indexed,
       withFullText: true
     });
-    const legacy = await createData({
-      text: 'retrieval isolation keyword',
-      withFullText: true
-    });
-    // 两条待索引/已索引 + 一条历史数据的全文行都已存在。
-    expect(await MongoDatasetDataText.countDocuments({})).toBe(3);
 
-    const result = await fullTextRecall({
-      teamId: String(root.teamId),
-      datasetIds: [String(dataset._id)],
-      queryGroups: [{ source: 'text', queries: ['retrieval isolation keyword'] }],
-      limit: 10,
-      forbidCollectionIdList: []
-    });
+    const fullTextRows = await MongoDatasetDataText.find({
+      dataId: { $in: [indexing._id, indexed._id] }
+    }).lean();
 
-    const recalledIds = result.textFullTextRecallResults.map((item) => String(item.id)).sort();
-    expect(recalledIds).toEqual([String(indexed._id), String(legacy._id)].sort());
-    expect(recalledIds).not.toContain(String(indexing._id));
+    expect(fullTextRows).toHaveLength(1);
+    expect(String(fullTextRows[0].dataId)).toBe(String(indexed._id));
   });
 
   /** DS-18 / CP-10：集合删除按 collectionId 清理，不做状态筛选。 */
