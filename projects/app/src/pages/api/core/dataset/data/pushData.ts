@@ -4,7 +4,11 @@ import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import {
+  preCreateDatasetDataAndPushToTrainingQueue,
+  pushDataListToTrainingQueue
+} from '@fastgpt/service/core/dataset/training/controller';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
@@ -51,6 +55,9 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
 
   const mode = getTrainingModeByCollection({
     ...collection,
+    ...(body.trainingType && { trainingType: body.trainingType }),
+    ...(body.autoIndexes !== undefined && { autoIndexes: body.autoIndexes }),
+    ...(body.imageIndex !== undefined && { imageIndex: body.imageIndex }),
     supportImageIndex: getDatasetImageIndexCapability({
       vectorModel: vectorModelData,
       vlmModel: vlmModelData
@@ -88,6 +95,21 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
       });
       return newUsageId;
     })();
+
+    if (mode === TrainingModeEnum.qa) {
+      return pushDataListToTrainingQueue({
+        ...body,
+        session,
+        billId: traingUsageId,
+        mode,
+        teamId,
+        tmbId,
+        datasetId: collection.datasetId,
+        vectorModel: vectorModelData,
+        agentModel: agentModelData,
+        vlmModel: vlmModelData
+      });
+    }
 
     return preCreateDatasetDataAndPushToTrainingQueue({
       ...body,
