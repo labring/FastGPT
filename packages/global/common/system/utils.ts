@@ -48,10 +48,18 @@ export const batchRun = async <T, R>(
 ): Promise<R[]> => {
   const result: R[] = new Array(arr.length);
   let nextIndex = 0;
+  // 任一任务失败后，其余并发槽不再领取新任务：调用方已经收到错误，
+  // 继续跑剩下的任务只会在后台产生无人接收的副作用（例如继续调用模型）。
+  let failed = false;
   const batchFn = async () => {
-    while (nextIndex < arr.length) {
+    while (!failed && nextIndex < arr.length) {
       const currentIndex = nextIndex++;
-      result[currentIndex] = await fn(arr[currentIndex], currentIndex);
+      try {
+        result[currentIndex] = await fn(arr[currentIndex], currentIndex);
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
     }
   };
   await Promise.all(Array.from({ length: Math.min(batchSize, arr.length) }, () => batchFn()));
