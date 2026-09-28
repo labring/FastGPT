@@ -2,15 +2,11 @@ import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
 import { createDatasetData, updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
-import { addMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import type {
   DatasetDataSchemaType,
@@ -23,6 +19,11 @@ import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { enqueueNextDatasetRebuildTask } from './rebuild';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import {
+  claimTrainingTask,
+  TrainingLeaseLostError,
+  type TrainingTaskLease
+} from '@fastgpt/service/core/dataset/training/service';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -108,67 +109,41 @@ export async function generateVector(): Promise<any> {
       const start = Date.now();
 
       // get training data
-      const {
-        data,
-        done = false,
-        error = false
-      } = await (async () => {
-        try {
-          const data = await MongoDatasetTraining.findOneAndUpdate(
+      let claimed;
+      try {
+        claimed = await claimTrainingTask<PopulateType>({
+          mode: TrainingModeEnum.chunk,
+          filter: {
+            ...(!isDatasetSynonymEnabled() && {
+              synonymVersion: { $exists: false }
+            })
+          },
+          populate: [
             {
-              mode: TrainingModeEnum.chunk,
-              retryCount: { $gt: 0 },
-              lockTime: { $lte: addMinutes(new Date(), -3) },
-              ...(!isDatasetSynonymEnabled() && {
-                synonymVersion: { $exists: false }
-              })
+              path: 'dataset',
+              select: 'vectorModelId vectorModel vlmModelId vlmModel'
             },
             {
-              lockTime: new Date(),
-              $inc: { retryCount: -1 }
+              path: 'collection',
+              select: 'name indexPrefixTitle imageIndex'
+            },
+            {
+              path: 'data',
+              select: '_id q a imageId indexes'
             }
-          )
-            .populate<PopulateType>([
-              {
-                path: 'dataset',
-                select: 'vectorModelId vectorModel vlmModelId vlmModel'
-              },
-              {
-                path: 'collection',
-                select: 'name indexPrefixTitle imageIndex'
-              },
-              {
-                path: 'data',
-                select: '_id q a imageId indexes'
-              }
-            ])
-            .lean();
-
-          // task preemption
-          if (!data) {
-            return {
-              done: true
-            };
-          }
-          return {
-            data
-          };
-        } catch {
-          return {
-            error: true
-          };
-        }
-      })();
-
-      // Break loop
-      if (done || !data) {
-        break;
-      }
-      if (error) {
+          ]
+        });
+      } catch (error) {
         logger.error('Vector queue fetch task failed', { error });
         await delay(500);
         continue;
       }
+
+      // Break loop
+      if (!claimed) {
+        break;
+      }
+      const { data, lease } = claimed;
 
       if (!data.dataset || !data.collection) {
         logger.info('Vector queue task skipped: dataset or collection missing', {
@@ -179,12 +154,13 @@ export async function generateVector(): Promise<any> {
         if (data.synonymVersion && data.dataset && data.dataId) {
           await enqueueFollowingDatasetRebuild({ trainingData: data });
         }
-        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        await lease.complete();
         continue;
       }
 
       // auth balance
       if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
+        await lease.stop();
         continue;
       }
 
@@ -199,8 +175,8 @@ export async function generateVector(): Promise<any> {
 
       try {
         const { tokens } = await (async () => {
-          if (!data.dataId) return insertData({ trainingData: data });
-          return rebuildData({ trainingData: data });
+          if (!data.dataId) return insertData({ trainingData: data, lease });
+          return rebuildData({ trainingData: data, lease });
         })();
 
         // push usage
@@ -230,15 +206,12 @@ export async function generateVector(): Promise<any> {
           collectionId: data.collectionId,
           dataId: data.dataId
         });
-        await MongoDatasetTraining.updateOne(
-          {
-            _id: data._id
-          },
-          {
-            errorMsg: getErrText(err, 'unknown error')
-          }
-        );
+        if (!(err instanceof TrainingLeaseLostError)) {
+          await lease.fail(err);
+        }
         await delay(100);
+      } finally {
+        await lease.stop();
       }
     }
   } catch (error) {
@@ -278,7 +251,13 @@ const enqueueFollowingDatasetRebuild = async ({
   );
 };
 
-const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
+const rebuildData = async ({
+  trainingData,
+  lease
+}: {
+  trainingData: TrainingDataType;
+  lease: TrainingTaskLease;
+}) => {
   // 同义词重建需要可靠续接；普通模型重建保持原有的尽力续接语义。
   if (trainingData.synonymVersion) {
     await enqueueFollowingDatasetRebuild({ trainingData });
@@ -287,7 +266,7 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
   }
 
   if (!trainingData.data) {
-    await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
+    await lease.complete();
     if (trainingData.synonymVersion) return { tokens: 0 };
     return Promise.reject('Not data');
   }
@@ -298,35 +277,42 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
   );
   const rebuildUpdateInput = await getRebuildUpdateInput(trainingData);
 
-  const { tokens } = await updateDatasetDataByIndexes({
-    dataId: String(datasetData._id),
-    ...rebuildUpdateInput,
-    imageIndex: !!trainingData.collection.imageIndex,
-    model: embModel,
-    indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
-    indexPrefix: trainingData.collection.indexPrefixTitle
-      ? `# ${trainingData.collection.name}`
-      : undefined,
-    forceRebuild: true
-  });
-
-  await mongoSessionRun(async (session) => {
-    await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+  let tokens = 0;
+  await lease.complete(async (session) => {
+    ({ tokens } = await updateDatasetDataByIndexes({
+      dataId: String(datasetData._id),
+      ...rebuildUpdateInput,
+      imageIndex: !!trainingData.collection.imageIndex,
+      model: embModel,
+      indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
+      indexPrefix: trainingData.collection.indexPrefixTitle
+        ? `# ${trainingData.collection.name}`
+        : undefined,
+      forceRebuild: true,
+      session
+    }));
   });
 
   return { tokens };
 };
 
-const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
+const insertData = async ({
+  trainingData,
+  lease
+}: {
+  trainingData: TrainingDataType;
+  lease: TrainingTaskLease;
+}) => {
   // 在业务事务开始前获取目录，避免刷新等待延长持锁时间。
   const modelHandle = await getModelHandle();
-  return mongoSessionRun(async (session) => {
-    const embModel = modelHandle.getEmbeddingModelData(
-      getDatasetModelReference(trainingData.dataset, 'embedding')
-    );
+  const embModel = modelHandle.getEmbeddingModelData(
+    getDatasetModelReference(trainingData.dataset, 'embedding')
+  );
 
+  let tokens = 0;
+  await lease.complete(async (session) => {
     // insert new data to dataset
-    const { tokens } = await createDatasetData({
+    ({ tokens } = await createDatasetData({
       teamId: trainingData.teamId,
       tmbId: trainingData.tmbId,
       datasetId: trainingData.datasetId,
@@ -345,13 +331,10 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       embeddingModel: embModel,
       imageIndex: !!trainingData.collection.imageIndex,
       session
-    });
-
-    // delete data from training
-    await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
-
-    return {
-      tokens
-    };
+    }));
   });
+
+  return {
+    tokens
+  };
 };

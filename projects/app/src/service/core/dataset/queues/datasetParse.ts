@@ -110,7 +110,7 @@ export const datasetParseQueue = async (): Promise<any> => {
     while (true) {
       const startTime = Date.now();
 
-      // 1. Get task and lock 10 minutes ago
+      // 1. Get task and lock 5 minutes ago (lease)
       const {
         data,
         done = false,
