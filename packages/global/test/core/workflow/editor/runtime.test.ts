@@ -408,9 +408,14 @@ describe('workflow editor runtime modules', () => {
 
   it('keeps the public edge list stable across unrelated edits', () => {
     const editor = createRuntime();
-    const before = editor.getWorkflow().edges;
+    const beforeWorkflow = editor.getWorkflow();
+    const beforeEdge = beforeWorkflow.edges[0];
+    const beforeChatConfig = beforeWorkflow.chatConfig;
     editor.dispatch({ type: 'updateNode', nodeId: 'answer', patch: { name: 'Renamed' } });
-    expect(editor.getWorkflow().edges).toEqual(before);
+    const afterNodeEdit = editor.getWorkflow();
+    expect(afterNodeEdit).not.toBe(beforeWorkflow);
+    expect(afterNodeEdit.edges[0]).toBe(beforeEdge);
+    expect(afterNodeEdit.chatConfig).toBe(beforeChatConfig);
 
     const result = editor.dispatch({
       type: 'disconnectEdge',
@@ -418,7 +423,7 @@ describe('workflow editor runtime modules', () => {
     });
     expect(result.ok).toBe(true);
     expect(result.change?.changedRecords.edgeIds).toHaveLength(1);
-    expect(editor.getWorkflow().edges).toHaveLength(before.length - 1);
+    expect(editor.getWorkflow().edges).toHaveLength(beforeWorkflow.edges.length - 1);
   });
 
   it('replaces the whole document as an exclusive transaction', () => {
@@ -1001,6 +1006,8 @@ describe('workflow environment facts', () => {
 
     const savepoint = editor.getSavepoint();
     const history = editor.getHistory();
+    const workflowBeforeRefresh = editor.getWorkflow();
+    const issuesBeforeRefresh = editor.getWorkflowIssues();
     environment.models = LLM_MODELS;
     const update = editor.refreshIssues('all');
 
@@ -1008,6 +1015,8 @@ describe('workflow environment facts', () => {
     expect(update.nodeIds).toEqual(['chat', 'tool']);
     expect(updates).toEqual([update]);
     expect(editor.getNode('chat')?.issues.map((issue) => issue.code)).toContain('model_required');
+    expect(editor.getWorkflow()).toBe(workflowBeforeRefresh);
+    expect(editor.getWorkflowIssues()).not.toBe(issuesBeforeRefresh);
     // 环境刷新不是 Workflow Change，也不改 Content Revision、History 与 dirty。
     expect(changes).toHaveLength(0);
     expect(editor.getSavepoint()).toEqual(savepoint);
@@ -1052,9 +1061,11 @@ describe('workflow environment facts', () => {
       }
     );
     // chatConfig 的模型问题不属于任何画布节点，单独成桶供 gate 排在提示文案最后。
-    expect(editor.getWorkflow().chatConfigIssues.map((issue) => issue.code)).toEqual([
-      'model_unavailable_short'
-    ]);
-    expect(editor.getWorkflow().issues.every((issue) => !!issue.nodeId)).toBe(true);
+    const issues = editor.getWorkflowIssues();
+    expect(issues.chatConfigIssues.map((issue) => issue.code)).toEqual(['model_unavailable_short']);
+    expect(issues.issues.every((issue) => !!issue.nodeId)).toBe(true);
+    expect(Object.isFrozen(issues)).toBe(true);
+    expect(Object.isFrozen(issues.issues)).toBe(true);
+    expect(Object.isFrozen(issues.chatConfigIssues)).toBe(true);
   });
 });

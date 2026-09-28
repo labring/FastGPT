@@ -12,14 +12,17 @@ import type {
   WorkflowFieldIdentity,
   WorkflowFieldQuery,
   WorkflowFieldSnapshot,
+  WorkflowConfigIssue,
   WorkflowIssueScope,
   WorkflowIssueUpdate,
+  WorkflowIssuesSnapshot,
   WorkflowNodeSnapshot,
   WorkflowRuntimePort,
   WorkflowRuntimeOptions,
   WorkflowSavepoint,
   WorkflowSnapshot
 } from '../types';
+import type { AppChatConfigType } from '../../../app/type';
 import {
   addFieldIdentity,
   cloneValue,
@@ -43,6 +46,7 @@ import type {
   GeometryCommand,
   MutationMeta,
   NodeRecord,
+  EdgeRecord,
   RuntimeDocument,
   TransactionContext
 } from './types';
@@ -140,6 +144,7 @@ export const createWorkflowEditor = (
     string,
     { record: NodeRecord; issues: WorkflowCheckIssue[]; snapshot: WorkflowNodeSnapshot }
   >();
+  const edgeSnapshotCache = new Map<EdgeRecord, WorkflowEdgeSnapshot>();
   const fieldSnapshotCache = new Map<
     string,
     {
@@ -151,6 +156,16 @@ export const createWorkflowEditor = (
     }
   >();
   let workflowSnapshotCache: { version: number; snapshot: WorkflowSnapshot } | undefined;
+  let workflowIssuesCache:
+    | {
+        issuesByNode: Map<string, WorkflowCheckIssue[]>;
+        configIssues: WorkflowConfigIssue[];
+        snapshot: WorkflowIssuesSnapshot;
+      }
+    | undefined;
+  let chatConfigSnapshotCache:
+    | { record: AppChatConfigType; snapshot: AppChatConfigType }
+    | undefined;
 
   const ensureActive = () => {
     if (disposed) throw new Error('Workflow editor has been disposed');
@@ -208,6 +223,13 @@ export const createWorkflowEditor = (
       const current = document.getNodeById(nodeId);
       if (!current || cached.record.data !== current.data) nodeSnapshotCache.delete(nodeId);
     });
+    const currentEdges = new Set(document.getDocument().edges);
+    edgeSnapshotCache.forEach((_snapshot, record) => {
+      if (!currentEdges.has(record)) edgeSnapshotCache.delete(record);
+    });
+    if (chatConfigSnapshotCache?.record !== document.getDocument().chatConfig) {
+      chatConfigSnapshotCache = undefined;
+    }
     nodeView.pruneSnapshotCache();
   };
 
@@ -227,6 +249,40 @@ export const createWorkflowEditor = (
     return snapshot;
   };
 
+  const getEdgeSnapshot = (edge: EdgeRecord): WorkflowEdgeSnapshot => {
+    const cached = edgeSnapshotCache.get(edge);
+    if (cached) return cached;
+    const snapshot = freezeValue(cloneValue(edge.data)) as WorkflowEdgeSnapshot;
+    edgeSnapshotCache.set(edge, snapshot);
+    return snapshot;
+  };
+
+  const getChatConfigSnapshot = (chatConfig: AppChatConfigType): AppChatConfigType => {
+    if (chatConfigSnapshotCache?.record === chatConfig) return chatConfigSnapshotCache.snapshot;
+    const snapshot = freezeValue(cloneValue(chatConfig)) as AppChatConfigType;
+    chatConfigSnapshotCache = { record: chatConfig, snapshot };
+    return snapshot;
+  };
+
+  /** Gate 专用问题视图按 Issue Map 身份缓存，避免普通字段读取携带全量问题深拷贝。 */
+  const getWorkflowIssues = (): WorkflowIssuesSnapshot => {
+    ensureActive();
+    const issuesByNode = issue.getIssuesByNode();
+    const configIssues = issue.getConfigIssues();
+    if (
+      workflowIssuesCache?.issuesByNode === issuesByNode &&
+      workflowIssuesCache.configIssues === configIssues
+    ) {
+      return workflowIssuesCache.snapshot;
+    }
+    const snapshot = freezeValue({
+      issues: Array.from(issuesByNode.values()).flatMap((issues) => cloneValue(issues)),
+      chatConfigIssues: cloneValue(configIssues)
+    }) as WorkflowIssuesSnapshot;
+    workflowIssuesCache = { issuesByNode, configIssues, snapshot };
+    return snapshot;
+  };
+
   /** 返回 workflow scoped snapshot；版本不变时保持对象身份稳定。 */
   const getWorkflowSnapshot = (): WorkflowSnapshot => {
     ensureActive();
@@ -234,10 +290,8 @@ export const createWorkflowEditor = (
     const current = document.getDocument();
     const snapshot = freezeValue({
       nodes: current.nodes.map((node) => getNodeSnapshot(node.data.nodeId)!),
-      edges: current.edges.map((edge) => cloneValue(edge.data)) as WorkflowEdgeSnapshot[],
-      chatConfig: cloneValue(current.chatConfig),
-      issues: Array.from(issue.getIssuesByNode().values()).flatMap((issues) => cloneValue(issues)),
-      chatConfigIssues: cloneValue(issue.getConfigIssues())
+      edges: current.edges.map(getEdgeSnapshot),
+      chatConfig: getChatConfigSnapshot(current.chatConfig)
     }) as WorkflowSnapshot;
     workflowSnapshotCache = { version: semanticVersion, snapshot };
     return snapshot;
@@ -392,6 +446,7 @@ export const createWorkflowEditor = (
       issue.rebuildIssues();
       reference.pruneFieldStatusCache();
       fieldSnapshotCache.clear();
+      workflowIssuesCache = undefined;
     } else {
       document.updateNodeIndexIncrementally(meta);
       document.updateGraphIndexIncrementally(meta);
@@ -491,6 +546,7 @@ export const createWorkflowEditor = (
         issue.rebuildIssues();
         reference.rebuildGraph();
         fieldSnapshotCache.clear();
+        workflowIssuesCache = undefined;
       }
       // 事件粒度取最宽的一条：混入语义记录后不能再按 geometry 通知，否则数据订阅者收不到刷新。
       if (entry.change.kind === 'replace') meta.kind = 'replace';
@@ -520,6 +576,7 @@ export const createWorkflowEditor = (
 
   const port: WorkflowRuntimePort = {
     getWorkflow: getWorkflowSnapshot,
+    getWorkflowIssues,
     /** 返回不含 runtime-only state 的 canonical 深拷贝；runtime disposed 后拒绝读取。 */
     getWorkflowData: () => {
       ensureActive();
@@ -562,15 +619,13 @@ export const createWorkflowEditor = (
     /**
      * Issue-only 刷新：按当前环境事实重算 Issue View。
      * Content Revision、History、Savepoint 与 dirty 一律不动，也不发布 Workflow Change；
-     * Issue View 会进入 workflow snapshot，因此只作废 snapshot 缓存。
+     * Issue View 通过独立 gate 读取；普通 workflow snapshot identity 保持不变。
      */
     refreshIssues: (scope: WorkflowIssueScope = 'all') => {
       // 刷新可能由 host effect 在 runtime 释放后触发：此时没有可刷新的状态，静默返回空结果。
       if (disposed) return EMPTY_ISSUE_UPDATE;
       const { nodeIds, configChanged } = issue.refreshIssues(scope);
-      // 工作流级问题不挂在节点上，但同样存在 snapshot 里，变化时也要作废缓存。
       if (nodeIds.length === 0 && !configChanged) return EMPTY_ISSUE_UPDATE;
-      workflowSnapshotCache = undefined;
       const update = freezeValue({ nodeIds }) as WorkflowIssueUpdate;
       issueListeners.forEach((listener) => {
         try {
@@ -604,8 +659,11 @@ export const createWorkflowEditor = (
       changeLog.length = 0;
       history.clear();
       nodeSnapshotCache.clear();
+      edgeSnapshotCache.clear();
       fieldSnapshotCache.clear();
       workflowSnapshotCache = undefined;
+      workflowIssuesCache = undefined;
+      chatConfigSnapshotCache = undefined;
       nodeView.clear();
       reference.clear();
       issue.clear();

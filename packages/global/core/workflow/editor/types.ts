@@ -125,11 +125,15 @@ export type WorkflowFieldQuery = {
   kind?: 'input' | 'output';
 };
 
-/** 工作流 scoped snapshot，issues 为当前所有节点问题的扁平只读视图。 */
+/** 工作流 scoped snapshot；工作流级问题通过独立 gate 读取，不进入普通语义快照。 */
 export type WorkflowSnapshot = DeepReadonly<{
   nodes: WorkflowNodeSnapshot[];
   edges: WorkflowEdgeSnapshot[];
   chatConfig: AppChatConfigType;
+}>;
+
+/** 保存/发布/调试 gate 使用的深冻结问题视图。 */
+export type WorkflowIssuesSnapshot = DeepReadonly<{
   issues: WorkflowCheckIssue[];
   /** 工作流级问题桶：chatConfig 的模型问题不属于任何画布节点。 */
   chatConfigIssues: WorkflowConfigIssue[];
@@ -324,6 +328,7 @@ export type WorkflowDispatchResult = {
 /** Workflow Runtime Port 的唯一行为测试与 adapter seam。 */
 export type WorkflowRuntimePort = {
   getWorkflow: () => WorkflowSnapshot;
+  getWorkflowIssues: () => WorkflowIssuesSnapshot;
   getWorkflowData: () => CanonicalWorkflowData;
   getNode: (nodeId: string) => WorkflowNodeSnapshot | undefined;
   getNodeView: (nodeId: string) => WorkflowNodeViewSnapshot | undefined;

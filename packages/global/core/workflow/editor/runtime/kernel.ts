@@ -32,11 +32,15 @@ export const cloneValue = <T>(value: T, seen = new WeakMap<object, unknown>()): 
 };
 
 /** 深冻结仅用于对外 snapshot；内部 runtime 记录不会被冻结。 */
+const deeplyFrozenValues = new WeakSet<object>();
+
 export const freezeValue = <T>(value: T, seen = new WeakSet<object>()): T => {
-  if (!isObject(value) || seen.has(value)) return value;
+  if (!isObject(value) || deeplyFrozenValues.has(value) || seen.has(value)) return value;
   seen.add(value);
   Object.keys(value).forEach((key) => freezeValue(value[key], seen));
-  return Object.freeze(value);
+  const frozen = Object.freeze(value);
+  deeplyFrozenValues.add(value);
+  return frozen;
 };
 
 /** 对 fixture 数据执行支持循环引用的结构比较，避免引入深比较依赖。 */

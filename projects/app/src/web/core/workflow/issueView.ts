@@ -38,7 +38,7 @@ export const getWorkflowIssueUIStatus = (code: WorkflowIssueCode): WorkflowIssue
  */
 export const collectWorkflowErrorIssues = (runtime: WorkflowRuntimePort) => {
   runtime.refreshIssues('all');
-  const { issues, chatConfigIssues } = runtime.getWorkflow();
+  const { issues, chatConfigIssues } = runtime.getWorkflowIssues();
   return [...issues, ...chatConfigIssues].filter((issue) => issue.level === 'error');
 };
 
