@@ -23,6 +23,7 @@ This upgrade includes the following automated scripts:
 
 1. Backfill App resource permission snapshots and validate published App versions. The migration task does not block startup; its progress and failed records are available in system upgrade tasks.
 2. Enable reasoning mapping for compatible channels: enable `map_reasoning_to_reasoning_content: true` response-field conversion for existing AIProxy OpenAI channels while preserving their other configuration. This resolves reasoning-field differences for reasoning models such as DeepSeek-R1. Channels that already have this setting enabled are not updated again, and the migration task does not block startup.
+3. Upgrade Dataset tag data: migrate legacy Collection tags to typed tags and clean duplicate tag definitions. The migration task does not block startup.
 
 ## Compatibility notes
 
@@ -45,6 +46,7 @@ The commercial edition no longer requires the Pro service to be started separate
 13. Added OFD file parsing support.
 14. Added integration guide and examples for TokenDance AI API gateway.
 15. Added an SSO password policy. Administrators can prevent SSO namespace accounts from using or changing platform passwords, and the login page now shows only the available authentication methods.
+16. Personal workflow tools now support tracking the latest published version, eliminating the need to manually reselect tool versions after updating an App.
 
 ## ⚙️ Improvements
 
@@ -57,6 +59,7 @@ The commercial edition no longer requires the Pro service to be started separate
 7. Supported unlimited expiration time for commercial License activation, improving display and validation for non-expiring licenses.
 8. Improved large-number formatting in Chinese locales, including localized ten-thousand and hundred-million units.
 9. Tables now enable horizontal scrolling by default and remove redundant side padding, improving browsing on narrow screens.
+10. Fixed Workflow array variables receiving a single object JSON string being parsed as a plain object rather than an array, automatically wrapping it into a single-element array to prevent errors in loop and parallel nodes.
 
 ## 🐛 Fixes
 
@@ -93,6 +96,12 @@ The commercial edition no longer requires the Pro service to be started separate
 31. Fixed outlink delete-permission checks and frontend feedback, and removed outlinks and quick references immediately when an App is deleted.
 32. Fixed long whole numbers from spreadsheets being converted to scientific notation or losing precision.
 33. Fixed strict enum inputs ignoring JSON Schema `default` and always selecting the first enum value.
+34. Fixed Workflow and Agent execution dropping intermediate ToolCall assistant messages and corrupting response order during streaming and persistence, ensuring complete tool transcripts and node response logs.
+35. Fixed interactive state loss when resuming paused child workflows and interactive tools, correctly passing current query and user input context upon resumption.
+36. Sanitized link `href` targets in Markdown rendering to prevent stored click-XSS vulnerabilities from dangerous URL protocols such as `javascript:`.
+37. Fixed Dataset retrieval result fusion (RRF) mutating the input search result score objects in place, ensuring candidate scores recorded prior to reranking retain their original values.
+38. Fixed the concurrent task runner `batchRun` continuing to pull remaining tasks across other concurrency slots after a task failure, immediately stopping new task pickup on error.
+39. Fixed deployer-configured internal endpoints (such as chat log push, DingTalk token fetching, third-party API dataset sync, and custom PDF parsing) being incorrectly blocked when `CHECK_INTERNAL_IP=true` is enabled.
 
 ## 🛠️ Code Improvements
 
@@ -100,3 +109,4 @@ The commercial edition no longer requires the Pro service to be started separate
 2. Added APIs for pinning Apps and folders, with opt-in pinned-first sorting in list endpoints.
 3. Dataset APIs now support external document parsing options for retaining headers and footers, appendices, image recognition results, and chart analysis results. These options apply only when an external parsing service is enabled.
 4. Refactored scheduled timer tasks and distributed locking with `checkTimerLock`, consolidating model status probing in the service layer to prevent concurrent probes across nodes.
+5. Optimized sensitive data encryption/decryption performance by caching derived scrypt keys and eliminating blocking CPU queries; switched main application Dockerfile base image to debian-slim.
