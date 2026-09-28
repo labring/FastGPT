@@ -314,7 +314,11 @@ const Render = (props: Props) => {
       showSkillReferences={true}
       showWholeResponse={true}
     >
-      <ChatRecordContextProvider params={params} feedbackRecordId={feedbackRecordId}>
+      <ChatRecordContextProvider
+        params={params}
+        feedbackRecordId={feedbackRecordId}
+        showPrevLoading={false}
+      >
         <DetailLogsModal
           {...props}
           feedbackRecordId={feedbackRecordId}

@@ -38,7 +38,7 @@ import {
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
+import { getNewToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
@@ -465,9 +465,8 @@ export const loadGeneratedTools = async ({
         }
 
         // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getClientToolPreviewNode({
+        const tool = await getNewToolPreviewNode({
           appId: toolId,
-          getLatestVersion: true,
           source
         });
         // 验证工具配置

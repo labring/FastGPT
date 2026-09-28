@@ -244,7 +244,11 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // 转化成请求的 messages
-    const requestMessages = [...rewrittenHistories, currentUserMessage];
+    // 交互恢复时，query 只是用户对交互节点的回答/恢复参数，provider 会把它写入
+    // 对应的 tool response；不能再次作为新的 user message 追加到模型上下文。
+    const requestMessages = lastInteractive
+      ? rewrittenHistories
+      : [...rewrittenHistories, currentUserMessage];
     const loopMessages = buildAgentLoopCoreRequestMessages({
       messages: requestMessages,
       removeSystemMessages: true

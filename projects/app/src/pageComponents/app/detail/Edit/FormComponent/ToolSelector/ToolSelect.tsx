@@ -133,14 +133,16 @@ const ToolSelect = ({
                 }}
               >
                 <Avatar src={item.avatar} w={'28px'} h={'28px'} borderRadius={'sm'} />
-                <Box
-                  minW={0}
-                  className={'textEllipsis'}
-                  fontSize={'sm'}
-                  color={hasToolError ? 'red.600' : 'myGray.900'}
-                >
-                  {item.name}
-                </Box>
+                <MyTooltip label={item.name} showOnlyWhenOverflow shouldWrapChildren={false}>
+                  <Box
+                    minW={0}
+                    className={'textEllipsis'}
+                    fontSize={'sm'}
+                    color={hasToolError ? 'red.600' : 'myGray.900'}
+                  >
+                    {item.name}
+                  </Box>
+                </MyTooltip>
 
                 <Flex gap={1} minW={0} justifySelf={'end'} alignItems={'center'}>
                   {status === PluginStatusEnum.SoonOffline && (

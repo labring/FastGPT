@@ -208,7 +208,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it('stores the tool result without persisting child assistant messages', () => {
+  it('stores child assistant responses after the parent tool result', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       getToolInfo: (name) => ({
         name: name === 'nested_search' ? 'Nested search' : name,
@@ -227,25 +227,21 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       rawResponse: 'workflow result',
       response: 'workflow result',
       seconds: 0.1,
-      assistantMessages: [
+      assistantMessages: [{ role: 'assistant', content: 'context only' }],
+      assistantResponses: [
+        { text: { content: 'child answer' } },
         {
-          role: 'assistant',
-          content: 'child answer',
-          tool_calls: [
+          id: 'call_nested',
+          tools: [
             {
               id: 'call_nested',
-              type: 'function',
-              function: {
-                name: 'nested_search',
-                arguments: '{"query":"FastGPT"}'
-              }
+              toolName: 'Nested search',
+              toolAvatar: 'tool-avatar',
+              params: '{"query":"FastGPT"}',
+              response: 'nested result',
+              functionName: 'nested_search'
             }
           ]
-        },
-        {
-          role: 'tool',
-          tool_call_id: 'call_nested',
-          content: 'nested result'
         }
       ]
     });
@@ -255,14 +251,30 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       rawResponse: 'duplicate',
       response: 'duplicate',
       seconds: 0.2,
-      assistantMessages: [{ role: 'assistant', content: 'duplicate child answer' }]
+      assistantMessages: [{ role: 'assistant', content: 'duplicate child answer' }],
+      assistantResponses: [{ text: { content: 'duplicate child answer' } }]
+    });
+    collector.emitEvent({
+      type: 'llm_request_end',
+      requestIndex: 1,
+      modelName: 'GPT-4',
+      requestId: 'req_after_child',
+      finishReason: 'stop',
+      answerText: 'parent answer',
+      seconds: 0.1
     });
 
     expect(collector.assistantResponses).toEqual([
       expect.objectContaining({
         id: 'call_workflow',
         tools: [expect.objectContaining({ response: 'workflow result' })]
-      })
+      }),
+      { text: { content: 'child answer' } },
+      expect.objectContaining({
+        id: 'call_nested',
+        tools: [expect.objectContaining({ response: 'nested result' })]
+      }),
+      { text: { content: 'parent answer' } }
     ]);
   });
 

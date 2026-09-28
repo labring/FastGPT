@@ -210,7 +210,7 @@ describe('runWorkflow node response persistence', () => {
     parentNodeResponse: Partial<ChatHistoryItemResType> = {
       textOutput: 'parent output'
     },
-    options: { publishChildResponse?: boolean } = {}
+    options: { publishChildResponse?: boolean; includeInlineChild?: boolean } = {}
   ) => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
     callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(
@@ -236,7 +236,9 @@ describe('runWorkflow node response persistence', () => {
           },
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             ...parentNodeResponse,
-            ...(options.publishChildResponse ? {} : { childrenResponses: [childResponse] })
+            ...(options.includeInlineChild || !options.publishChildResponse
+              ? { childrenResponses: [childResponse] }
+              : {})
           }
         };
       }
@@ -385,7 +387,7 @@ describe('runWorkflow node response persistence', () => {
     }
   });
 
-  it('does not stream a parent response when child details were already published', async () => {
+  it('streams both parent and separately published child responses', async () => {
     const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses(
       { textOutput: 'parent output' },
       { publishChildResponse: true }
@@ -393,10 +395,11 @@ describe('runWorkflow node response persistence', () => {
 
     try {
       const streamedNodeResponses: ChatHistoryItemResType[] = [];
-      await runTextEditorWorkflowWithModuleChild({
+      const { nodeResponseWriter } = await runTextEditorWorkflowWithModuleChild({
         apiVersion: 'v2',
         chatId: 'workflow-module-child-stream-chat',
         responseChatItemId: 'workflow-module-child-stream-ai-item',
+        retainInMemory: true,
         workflowStreamResponse: (event) => {
           if (
             event.event === SseResponseEventEnum.flowNodeResponse &&
@@ -411,6 +414,69 @@ describe('runWorkflow node response persistence', () => {
         expect.objectContaining({
           id: 'module-child-response',
           parentId: expect.any(String)
+        }),
+        expect.objectContaining({
+          nodeId: 'parent_text_editor',
+          textOutput: 'parent output'
+        })
+      ]);
+      expect(nodeResponseWriter.getFlatNodeResponses().map((response) => response.id)).toEqual(
+        streamedNodeResponses.map((response) => response.id)
+      );
+    } finally {
+      restoreTextEditorDispatch();
+    }
+  });
+
+  it('deduplicates a child that is both published separately and included by the parent', async () => {
+    const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses(
+      { textOutput: 'parent output' },
+      { publishChildResponse: true, includeInlineChild: true }
+    );
+
+    try {
+      const streamedNodeResponses: ChatHistoryItemResType[] = [];
+      const { appId, nodeResponseWriter } = await runTextEditorWorkflowWithModuleChild({
+        apiVersion: 'v2',
+        chatId: 'workflow-module-child-duplicate-chat',
+        responseChatItemId: 'workflow-module-child-duplicate-ai-item',
+        retainInMemory: true,
+        workflowStreamResponse: (event) => {
+          if (
+            event.event === SseResponseEventEnum.flowNodeResponse &&
+            typeof event.data !== 'string'
+          ) {
+            streamedNodeResponses.push(event.data);
+          }
+        }
+      });
+
+      const flatResponses = nodeResponseWriter.getFlatNodeResponses();
+      expect(flatResponses).toHaveLength(2);
+      expect(flatResponses.map((response) => response.id)).toEqual([
+        'module-child-response',
+        expect.any(String)
+      ]);
+      expect(streamedNodeResponses).toHaveLength(2);
+      expect(streamedNodeResponses.map((response) => response.id)).toEqual([
+        'module-child-response',
+        expect.any(String)
+      ]);
+      expect(streamedNodeResponses[1].childrenResponses).toBeUndefined();
+
+      const detail = await getChatItemResponseData({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
+        chatId: 'workflow-module-child-duplicate-chat',
+        chatItemDataId: 'workflow-module-child-duplicate-ai-item'
+      });
+
+      expect(detail).toHaveLength(1);
+      expect(detail[0].childResponseCount).toBe(1);
+      expect(detail[0].childrenResponses).toEqual([
+        expect.objectContaining({
+          id: 'module-child-response',
+          nodeId: 'module-child-node'
         })
       ]);
     } finally {
@@ -449,6 +515,30 @@ describe('runWorkflow node response persistence', () => {
             })
           ]
         })
+      ]);
+    } finally {
+      restoreTextEditorDispatch();
+    }
+  });
+
+  it('keeps separately published parent and child rows in the v1 final response', async () => {
+    const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses(
+      { textOutput: 'parent output' },
+      { publishChildResponse: true }
+    );
+
+    try {
+      const { result, nodeResponseWriter } = await runTextEditorWorkflowWithModuleChild({
+        apiVersion: 'v1',
+        chatId: 'workflow-v1-module-child-stream-chat',
+        responseChatItemId: 'workflow-v1-module-child-stream-ai-item',
+        retainInMemory: true
+      });
+
+      expect('flowResponses' in result).toBe(false);
+      expect(nodeResponseWriter.getFlatNodeResponses().map((response) => response.id)).toEqual([
+        'module-child-response',
+        expect.any(String)
       ]);
     } finally {
       restoreTextEditorDispatch();

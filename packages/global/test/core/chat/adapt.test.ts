@@ -986,6 +986,58 @@ describe('chats2GPTMessages', () => {
     expect(result[0].content).toBe('Part 1 Part 2');
   });
 
+  it('should preserve serial tool boundaries inside one AI message', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            tools: [
+              {
+                id: 'call_1',
+                functionName: 'agent_tool',
+                params: '{}',
+                response: 'result 1'
+              }
+            ]
+          },
+          {
+            tools: [
+              {
+                id: 'call_2',
+                functionName: 'agent_tool',
+                params: '{}',
+                response: 'result 2'
+              }
+            ]
+          },
+          {
+            tools: [
+              {
+                id: 'call_3',
+                functionName: 'agent_tool',
+                params: '{}',
+                response: 'result 3'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect(result.map((message) => message.role)).toEqual([
+      ChatCompletionRequestMessageRoleEnum.Assistant,
+      ChatCompletionRequestMessageRoleEnum.Tool,
+      ChatCompletionRequestMessageRoleEnum.Assistant,
+      ChatCompletionRequestMessageRoleEnum.Tool,
+      ChatCompletionRequestMessageRoleEnum.Assistant,
+      ChatCompletionRequestMessageRoleEnum.Tool
+    ]);
+    expect(result.filter((message) => message.role === 'assistant')).toHaveLength(3);
+  });
+
   it('should preserve dataId when reserveId is true', () => {
     const messages: ChatItemMiniType[] = [
       {
