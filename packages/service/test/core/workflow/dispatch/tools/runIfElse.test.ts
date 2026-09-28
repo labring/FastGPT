@@ -31,7 +31,7 @@ const buildProps = ({
   sourceHandles
 }: {
   ifElseList: IfElseListItemType[];
-  value: string;
+  value: unknown;
   sourceHandles: string[];
 }) =>
   ({
@@ -105,5 +105,37 @@ describe('dispatchIfElse branch handles', () => {
       getHandleId('ifElse', 'source', 'stableB'),
       getHandleId('ifElse', 'source', IfElseResultEnum.ELSE)
     ]);
+  });
+});
+
+describe('dispatchIfElse startWith / endWith', () => {
+  const run = (value: unknown, condition: VariableConditionEnum, target: string) =>
+    dispatchIfElse(
+      buildProps({
+        value,
+        ifElseList: [
+          {
+            condition: 'AND',
+            list: [{ variable: ref('input'), condition, value: target }]
+          }
+        ],
+        sourceHandles: [
+          getHandleId('ifElse', 'source', IfElseResultEnum.IF),
+          getHandleId('ifElse', 'source', IfElseResultEnum.ELSE)
+        ]
+      })
+    );
+
+  it('should compare a non-string value of an any-typed variable as text', async () => {
+    const startWith = await run(200, VariableConditionEnum.startWith, '2');
+    expect(startWith.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const endWith = await run(200, VariableConditionEnum.endWith, '1');
+    expect(endWith.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should not match a missing value', async () => {
+    const result = await run(undefined, VariableConditionEnum.startWith, 'a');
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
 });
