@@ -125,16 +125,6 @@ export const canWriteGeneratedTitle = (
 const getQuestionText = (userContent: UserChatItemType) =>
   chatValue2RuntimePrompt(userContent.value).text.trim();
 
-/**
- * 本轮用户消息是否带文件。
- *
- * 只用于区分“只发文件开启对话”：调用方已先确认 text 为空，因此这里不需要再判文字。
- * 不能只用“text 为空”判定，否则 cron 定时任务未配默认提示词时（`[{ text: { content: '' } }]`）
- * 会被误标成「上传文件」。
- */
-const hasFileContent = (userContent: UserChatItemType) =>
-  userContent.value.some((item) => !!item.file);
-
 export const getFallbackChatTitleFromUserContent = (
   userContent?: UserChatItemType,
   defaultValue = DEFAULT_CHAT_TITLE
@@ -262,7 +252,9 @@ export const syncGeneratedChatTitleFromUserContent = async ({
 
     const questionText = getQuestionText(userContent);
     // 只发文件、没有用户问题时使用固定文案；文件 + 文字仍只按文字生成，文件不参与。
-    const isFileOnlyQuestion = !questionText && hasFileContent(userContent);
+    // 不能只用“text 为空”判定是否只发文件，否则 cron 定时任务未配默认提示词时
+    // （`[{ text: { content: '' } }]`）会被误标成「上传文件」。
+    const isFileOnlyQuestion = !questionText && userContent.value.some((item) => !!item.file);
     const nextFixedTitle =
       normalizeFixedChatTitle(fixedTitle) ??
       (autoExecute ? getFixedChatTitle('autoExecute', locale) : undefined) ??
