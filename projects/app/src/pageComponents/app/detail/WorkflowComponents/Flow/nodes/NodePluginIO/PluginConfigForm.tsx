@@ -5,18 +5,17 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import ChatFunctionTip from '@/components/core/app/Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import type { AppDetailType } from '@fastgpt/global/core/app/type';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../../../../context';
 
 export type PluginConfigFormProps = {
-  chatConfig: AppChatConfigType;
   setAppDetail: Dispatch<React.SetStateAction<AppDetailType>>;
 };
 
-export function PluginConfigForm({
-  chatConfig: { instruction },
-  setAppDetail
-}: PluginConfigFormProps) {
+export function PluginConfigForm({ setAppDetail }: PluginConfigFormProps) {
   const { t } = useTranslation();
+  const instruction = useContextSelector(AppContext, (v) => v.appDetail.chatConfig?.instruction);
 
   return (
     <>

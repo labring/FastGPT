@@ -24,8 +24,7 @@ export const useWorkflowSnapshotGetter = () => {
 };
 
 /**
- * Runtime 图查询对象：按已提交的图索引查容器子节点与连线，代替 app 侧自建
- * nodeMap / childrenNodeIdListMap（06 总纲决策 4、5）。
+ * Runtime 图查询对象：按已提交的图索引查容器子节点与连线，避免 app 侧重复维护节点和子节点索引。
  *
  * 非订阅读取：对象身份在 runtime 生命周期内不变，可直接当 memo 依赖；
  * 重算时机由调用方的语义快照（`useWorkflowDocument().workflow`）或 `useWorkflowValue` 决定。
@@ -158,7 +157,7 @@ const createUpstreamRevisionStore = ({
     // 几何提交不进语义快照，派生列表与它无关。
     if (change.kind === 'geometry') return;
     const structureChanged = change.kind === 'replace' || change.affectedRecords.structure;
-    let hit = structureChanged || change.changedRecords.chatConfig;
+    let hit = structureChanged || change.changedRecords.chatConfigVariablesChanged;
     if (!hit) {
       const { sources, own } = ensureNodeSets();
       const fieldIds = change.changedRecords.fieldIds;

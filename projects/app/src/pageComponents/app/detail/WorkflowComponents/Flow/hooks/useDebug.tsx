@@ -17,6 +17,7 @@ import {
 import { WorkflowRuntimeContext } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -30,7 +31,6 @@ import {
   useGraphQueries,
   useWorkflowSnapshotGetter
 } from '../nodes/render/useWorkflowDocument';
-import { AppContext } from '../../../context';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import {
   checkInputShouldRenderInDebug,
@@ -72,24 +72,8 @@ export const useDebug = () => {
     (v) => v.serializeWorkflowAndCheck
   );
 
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-
-  const { filteredVar, customVar, internalVar, variables } = useMemo(() => {
-    const variables = appDetail.chatConfig?.variables || [];
-    return {
-      filteredVar:
-        variables.filter(
-          (item) =>
-            item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
-        ) || [],
-      customVar: variables.filter((item) => item.type === VariableInputEnum.custom) || [],
-      internalVar: variables.filter((item) => item.type === VariableInputEnum.internal) || [],
-      variables
-    };
-  }, [appDetail.chatConfig?.variables]);
-
-  const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
-    variables.reduce(
+  const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(() =>
+    (getWorkflow()?.chatConfig?.variables ?? []).reduce(
       (acc, item) => {
         acc[item.key] = item.defaultValue;
         return acc;
@@ -144,17 +128,52 @@ export const useDebug = () => {
 
     if (!runtimeNode) return <></>;
     const workflow = getWorkflow();
+    const chatConfig = workflow?.chatConfig;
+    const variables = chatConfig?.variables ?? [];
+    const debugFileSelectConfig = chatConfig?.fileSelectConfig
+      ? {
+          ...chatConfig.fileSelectConfig,
+          customFileExtensionList: chatConfig.fileSelectConfig.customFileExtensionList?.map(
+            (item) => item
+          )
+        }
+      : undefined;
+    const getFormVariable = (item: (typeof variables)[number]) =>
+      getDebugGlobalVariableFormProps({
+        ...item,
+        list: item.list?.map((option) => ({ ...option })),
+        enums: item.enums?.map((option) => ({ ...option })),
+        markList: item.markList?.map((option) => ({ ...option })),
+        customFileExtensionList: item.customFileExtensionList?.map((item) => item),
+        datasetOptions: item.datasetOptions?.map((dataset) => ({
+          ...dataset,
+          vectorModel: { ...dataset.vectorModel }
+        })),
+        customInputConfig: item.customInputConfig
+          ? {
+              ...item.customInputConfig,
+              selectValueTypeList: item.customInputConfig.selectValueTypeList
+                ? [...item.customInputConfig.selectValueTypeList]
+                : undefined
+            }
+          : undefined
+      });
+    const filteredVar = variables.filter(
+      (item) => item.type !== VariableInputEnum.custom && item.type !== VariableInputEnum.internal
+    );
+    const customVar = variables.filter((item) => item.type === VariableInputEnum.custom);
+    const internalVar = variables.filter((item) => item.type === VariableInputEnum.internal);
     const referenceSourceNodes = getNodeAllSource({
       nodeId: runtimeNode.nodeId,
       getNodeById,
       edges: workflow?.edges ?? [],
-      chatConfig: appDetail.chatConfig,
+      chatConfig: chatConfig as AppChatConfigType,
       t: workflowT,
       getChildNodeIds: graph?.getChildNodeIds
     });
     const workflowStartFileInput = getWorkflowStartDebugFileInput({
       flowNodeType: runtimeNode.flowNodeType,
-      fileSelectConfig: appDetail.chatConfig?.fileSelectConfig
+      fileSelectConfig: debugFileSelectConfig
     });
     const renderInputs = [
       ...runtimeNode.inputs.filter((input) => {
@@ -272,7 +291,7 @@ export const useDebug = () => {
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
             {customVar.map((item) => (
               <LabelAndFormRender
-                {...item}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -285,7 +304,7 @@ export const useDebug = () => {
             ))}
             {internalVar.map((item) => (
               <LabelAndFormRender
-                {...item}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -298,7 +317,7 @@ export const useDebug = () => {
             ))}
             {filteredVar.map((item) => (
               <LabelAndFormRender
-                {...getDebugGlobalVariableFormProps(item)}
+                {...getFormVariable(item)}
                 key={item.key}
                 label={item.label}
                 required={item.required}
@@ -324,16 +343,12 @@ export const useDebug = () => {
     defaultGlobalVariables,
     t,
     workflowT,
-    variables.length,
-    customVar,
-    internalVar,
-    filteredVar,
     runtimeNodeId,
     onStartNodeDebug,
     getWorkflow,
     getNodeById,
     graph,
-    appDetail.chatConfig
+    serializeWorkflowAndCheck
   ]);
 
   return {

@@ -33,6 +33,7 @@ type ExportConfigPopoverProps = {
     | {
         nodes: StoreNodeItemType[];
         edges: StoreEdgeItemType[];
+        chatConfig?: AppChatConfigType;
         referenceSnapshots?: WorkflowReferenceSnapshot[];
       }
     | undefined;
@@ -94,7 +95,7 @@ const ExportConfigPopover = ({
         const nodes = cloneDeep(
           filterSensitiveInfo ? filterSensitiveNodesData(workflowData.nodes) : workflowData.nodes
         );
-        const exportChatConfig = cloneDeep(chatConfig);
+        const exportChatConfig = cloneDeep(workflowData.chatConfig ?? chatConfig);
         addModelNamesToWorkflow({ nodes, chatConfig: exportChatConfig, models: modelList });
         config = JSON.stringify(
           {

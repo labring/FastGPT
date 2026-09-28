@@ -13,7 +13,6 @@ import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import React, { useCallback, useMemo } from 'react';
 import { type NodeProps } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
 
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -24,7 +23,6 @@ import RenderOutput from '../render/RenderOutput';
 import CatchError from '../render/RenderOutput/CatchError';
 import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 
-import { AppContext } from '@/pageComponents/app/detail/context';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode, useNodeWorkflowDocument } from '../render/useWorkflowDocument';
 import { useField, useNode } from '@/web/core/workflow/editor';
@@ -108,7 +106,6 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const sandboxField = useField(nodeId, NodeInputKeyEnum.useAgentSandbox, 'input');
   const authTmbIdField = useField(nodeId, NodeInputKeyEnum.authTmbId, 'input');
   const datasetSelectField = useField(nodeId, NodeInputKeyEnum.datasetSelectList, 'input');
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const { feConfigs } = useSystemStore();
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
   const externalProviderWorkflowVariables = feConfigs?.externalProviderWorkflowVariables;
@@ -135,11 +132,11 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       nodeId,
       getNodeById,
       edges: workflow.edges,
-      appDetail,
+      chatConfig: workflow.chatConfig,
       t,
       getIncomingEdges: graph?.getIncomingEdges
     });
-  }, [nodeId, workflow, getNodeById, graph, appDetail, t]);
+  }, [nodeId, workflow, getNodeById, graph, t]);
   const externalVariables = useMemo(
     () =>
       externalProviderWorkflowVariables?.map((item) => ({

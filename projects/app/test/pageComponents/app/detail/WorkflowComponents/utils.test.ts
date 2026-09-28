@@ -11,7 +11,6 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { AppDetailType } from '@fastgpt/global/core/app/type';
 
 describe('WorkflowComponents utils', () => {
   describe('uiWorkflow2StoreWorkflow', () => {
@@ -709,17 +708,13 @@ describe('WorkflowComponents utils', () => {
         }
       ];
       const edges = [];
-      const appDetail = {
-        chatConfig: {}
-      } as AppDetailType;
       const t = (key: string) => key;
 
       const result = getEditorVariables({
         nodeId,
-        nodeList,
-        getNodeById: (nodeId: string) => nodeList.find((node) => node.nodeId === nodeId),
+        getNodeById: (nodeId) => nodeList.find((node) => node.nodeId === nodeId),
         edges,
-        appDetail,
+        chatConfig: {},
         t
       });
 
@@ -737,10 +732,9 @@ describe('WorkflowComponents utils', () => {
     it('should return empty array when node not found', () => {
       const result = getEditorVariables({
         nodeId: 'nonexistent',
-        nodeList: [],
         getNodeById: () => undefined,
         edges: [],
-        appDetail: {} as AppDetailType,
+        chatConfig: {},
         t: (key: string) => key
       });
 
@@ -759,14 +753,11 @@ describe('WorkflowComponents utils', () => {
 
       const result = getEditorVariables({
         nodeId: 'node1',
-        nodeList,
-        getNodeById: (nodeId: string) => nodeList.find((node) => node.nodeId === nodeId),
+        getNodeById: (nodeId) => nodeList.find((node) => node.nodeId === nodeId),
         edges: [],
-        appDetail: {
-          chatConfig: {
-            variables: [{ key: 'name', label: 'name', description: '', type: 'input' }]
-          }
-        } as AppDetailType,
+        chatConfig: {
+          variables: [{ key: 'name', label: 'name', description: '', type: 'input' }]
+        },
         t: (key: string) =>
           ({
             name: '名称',

@@ -70,11 +70,11 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       nodeId,
       getNodeById,
       edges: workflow.edges,
-      appDetail,
+      chatConfig: workflow.chatConfig,
       t,
       getIncomingEdges: graph?.getIncomingEdges
     });
-  }, [nodeId, getNodeById, graph, workflow, appDetail, t]);
+  }, [nodeId, getNodeById, graph, workflow, t]);
   const { feConfigs } = useSystemStore();
   const externalProviderWorkflowVariables = useMemo(() => {
     return (

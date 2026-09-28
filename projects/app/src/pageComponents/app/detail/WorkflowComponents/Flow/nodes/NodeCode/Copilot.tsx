@@ -28,8 +28,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { nanoid } from 'nanoid';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../../../../context';
 import { getEditorVariables } from '../../../utils';
 import { extractCodeFromMarkdown } from './parser';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
@@ -62,7 +60,6 @@ const NodeCopilot = ({
   const node = useNode(nodeId);
   // 边集合只在应用生成代码的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const [optimizerInput, setOptimizerInput] = useState('');
   const [codeResult, setCodeResult] = useState('');
@@ -79,11 +76,11 @@ const NodeCopilot = ({
       nodeId,
       getNodeById,
       edges: workflow.edges,
-      appDetail,
+      chatConfig: workflow.chatConfig,
       t,
       getIncomingEdges: graph?.getIncomingEdges
     }).filter((item) => item.parent.id !== nodeId);
-  }, [nodeId, getNodeById, graph, workflow, appDetail, t]);
+  }, [nodeId, getNodeById, graph, workflow, t]);
 
   const { codeType, code, dynamicInputs, dynamicOutputs } = useMemo(() => {
     const codeTypeInput = realTimeInputs?.find((input) => input.key === NodeInputKeyEnum.codeType);

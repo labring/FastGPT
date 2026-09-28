@@ -40,7 +40,9 @@ const Header = () => {
     }
   });
 
-  const { appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
+  const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
+  const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
+  const parentId = useContextSelector(AppContext, (v) => v.appDetail.parentId);
   const {
     isOpen: isOpenBackConfirm,
     onOpen: onOpenBackConfirm,
@@ -65,10 +67,8 @@ const Header = () => {
   const isSaved = useContextSelector(WorkflowHostContext, (v) => v.isSaved);
   const leaveSaveSignRef = useContextSelector(WorkflowHostContext, (v) => v.leaveSaveSign);
 
-  const { activePanel, setActivePanel } = useContextSelector(WorkflowModalContext, (v) => ({
-    activePanel: v.activePanel,
-    setActivePanel: v.setActivePanel
-  }));
+  const activePanel = useContextSelector(WorkflowModalContext, (v) => v.activePanel);
+  const setActivePanel = useContextSelector(WorkflowModalContext, (v) => v.setActivePanel);
   const showHistoryModal = activePanel === 'history';
 
   const { lastAppListRouteType } = useSystemStore();
@@ -88,7 +88,6 @@ const Header = () => {
           ...data,
           isPublish,
           versionName,
-          chatConfig: appDetail.chatConfig,
           //@ts-ignore
           version: 'v2'
         });
@@ -97,7 +96,7 @@ const Header = () => {
     },
     {
       manual: true,
-      refreshDeps: [onSaveApp, markSaved, serializeWorkflow, appDetail.chatConfig]
+      refreshDeps: [onSaveApp, markSaved, serializeWorkflow]
     }
   );
 
@@ -106,11 +105,11 @@ const Header = () => {
     router.push({
       pathname: '/dashboard/agent',
       query: {
-        parentId: appDetail.parentId,
+        parentId,
         type: lastAppListRouteType
       }
     });
-  }, [appDetail.parentId, lastAppListRouteType, leaveSaveSignRef, router]);
+  }, [lastAppListRouteType, leaveSaveSignRef, parentId, router]);
 
   const Render = useMemo(() => {
     return (

@@ -8,8 +8,16 @@ import InputGuideConfig from '@/components/core/app/InputGuideConfig';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
-import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import { AppChatConfigTypeSchema, type AppDetailType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
+import { normalizeAndParseVariableList } from '@fastgpt/global/core/app/variable/utils';
+import {
+  defaultAutoExecuteConfig,
+  defaultChatInputGuideConfig,
+  defaultQGConfig,
+  defaultTTSConfig,
+  defaultWhisperConfig
+} from '@fastgpt/global/core/app/constants';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
@@ -32,7 +40,6 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useWorkflowDocument } from '../nodes/render/useWorkflowDocument';
 
 type ComponentProps = {
-  chatConfig: AppChatConfigType;
   setAppDetail: Dispatch<React.SetStateAction<AppDetailType>>;
   mode?: 'node' | 'drawer';
   isWelcomeTextFolded?: boolean;
@@ -148,7 +155,6 @@ function ConfigSection({
 }
 
 function WelcomeText({
-  chatConfig: { welcomeConfig, welcomeText },
   setAppDetail,
   mode,
   isFolded,
@@ -157,7 +163,10 @@ function WelcomeText({
   isFolded?: boolean;
   onToggleFold?: () => void;
 }) {
-  const resolvedWelcomeText = welcomeConfig?.welcomeText ?? welcomeText;
+  const resolvedWelcomeText = useContextSelector(AppContext, (v) => {
+    const chatConfig = v.appDetail.chatConfig;
+    return chatConfig?.welcomeConfig?.welcomeText ?? chatConfig?.welcomeText;
+  });
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const value = e.target.value;
@@ -190,7 +199,11 @@ function WelcomeText({
   );
 }
 
-function WelcomeQuestions({ chatConfig: { welcomeConfig }, setAppDetail, mode }: ComponentProps) {
+function WelcomeQuestions({ setAppDetail, mode }: ComponentProps) {
+  const welcomeQuestions = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.welcomeConfig?.welcomeQuestions
+  );
   const updateWelcomeQuestions = useCallback(
     (value: string[]) => {
       setAppDetail((state) => ({
@@ -209,15 +222,19 @@ function WelcomeQuestions({ chatConfig: { welcomeConfig }, setAppDetail, mode }:
 
   return (
     <Box className="nodrag" w={'100%'} mt={mode === 'drawer' ? 0 : 2}>
-      <WelcomeQuestionsConfig
-        value={welcomeConfig?.welcomeQuestions}
-        onChange={updateWelcomeQuestions}
-      />
+      <WelcomeQuestionsConfig value={welcomeQuestions} onChange={updateWelcomeQuestions} />
     </Box>
   );
 }
 
-function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: ComponentProps) {
+const emptyVariables: VariableItemType[] = [];
+
+function ChatStartVariable({ setAppDetail }: ComponentProps) {
+  const variables = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.variables ?? emptyVariables
+  );
+  const normalizedVariables = useMemo(() => normalizeAndParseVariableList(variables), [variables]);
   const updateVariables = useCallback(
     (value: VariableItemType[]) => {
       setAppDetail((state) => ({
@@ -231,10 +248,14 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
     [setAppDetail]
   );
 
-  return <VariableEdit variables={variables} onChange={updateVariables} />;
+  return <VariableEdit variables={normalizedVariables} onChange={updateVariables} />;
 }
 
-function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentProps) {
+function AutoExecute({ setAppDetail }: ComponentProps) {
+  const autoExecute = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.autoExecute ?? defaultAutoExecuteConfig
+  );
   return (
     <AutoExecConfig
       value={autoExecute}
@@ -251,7 +272,11 @@ function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentPro
   );
 }
 
-function QuestionGuide({ chatConfig: { questionGuide }, setAppDetail }: ComponentProps) {
+function QuestionGuide({ setAppDetail }: ComponentProps) {
+  const questionGuide = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.questionGuide ?? defaultQGConfig
+  );
   return (
     <QGConfig
       value={questionGuide}
@@ -268,7 +293,11 @@ function QuestionGuide({ chatConfig: { questionGuide }, setAppDetail }: Componen
   );
 }
 
-function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
+function TTSGuide({ setAppDetail }: ComponentProps) {
+  const ttsConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.ttsConfig ?? defaultTTSConfig
+  );
   return (
     <TTSSelect
       value={ttsConfig}
@@ -285,7 +314,15 @@ function TTSGuide({ chatConfig: { ttsConfig }, setAppDetail }: ComponentProps) {
   );
 }
 
-function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }: ComponentProps) {
+function WhisperGuide({ setAppDetail }: ComponentProps) {
+  const whisperConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.whisperConfig ?? defaultWhisperConfig
+  );
+  const ttsConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.ttsConfig ?? defaultTTSConfig
+  );
   return (
     <WhisperConfig
       isOpenAudio={ttsConfig?.type !== TTSTypeEnum.none}
@@ -303,10 +340,11 @@ function WhisperGuide({ chatConfig: { whisperConfig, ttsConfig }, setAppDetail }
   );
 }
 
-function ScheduledTrigger({
-  chatConfig: { scheduledTriggerConfig },
-  setAppDetail
-}: ComponentProps) {
+function ScheduledTrigger({ setAppDetail }: ComponentProps) {
+  const scheduledTriggerConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.scheduledTriggerConfig
+  );
   return (
     <ScheduledTriggerConfig
       value={scheduledTriggerConfig}
@@ -323,8 +361,12 @@ function ScheduledTrigger({
   );
 }
 
-function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: ComponentProps) {
+function QuestionInputGuide({ setAppDetail }: ComponentProps) {
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
+  const chatInputGuide = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.chatInputGuide ?? defaultChatInputGuideConfig
+  );
   return appId ? (
     <InputGuideConfig
       appId={appId}
@@ -342,7 +384,11 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
   ) : null;
 }
 
-function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
+function FileSelectConfig({ setAppDetail }: ComponentProps) {
+  const fileSelectConfig = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.chatConfig?.fileSelectConfig
+  );
   // 文件上传开关同时更新开始节点输出和下游自动填充引用，合并为一个 Runtime 事务。
   const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
   const { workflow } = useWorkflowDocument();
@@ -360,14 +406,6 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
     <FileSelect
       value={fileSelectConfig}
       onChange={(e) => {
-        setAppDetail((state) => ({
-          ...state,
-          chatConfig: {
-            ...state.chatConfig,
-            fileSelectConfig: e
-          }
-        }));
-
         // 自动填充按当前画布整体扫描；读取时机在点击回调内，取 store 最新值即可。
         const nodes = (nodeList ?? []).map((data) => ({
           id: data.nodeId,
@@ -386,6 +424,13 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
           e.canSelectAudio ||
           e.canSelectCustomFileExtension;
         const repeatKey = workflowStartNode.outputs.find((item) => item.key === userFilesInput.key);
+        const updateChatConfigCommand: WorkflowCommand = {
+          type: 'updateChatConfig',
+          chatConfig: AppChatConfigTypeSchema.parse({
+            ...runtime?.getWorkflow().chatConfig,
+            fileSelectConfig: e
+          })
+        };
         const buildInputUpdateCommands = (
           inputPatches: Array<{ nodeId: string; key: string; value: unknown }>
         ): WorkflowCommand[] => {
@@ -410,6 +455,16 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
             patch: { inputs }
           }));
         };
+        if (!runtime || runtime.isDisposed()) {
+          setAppDetail((state) => ({
+            ...state,
+            chatConfig: {
+              ...state.chatConfig,
+              fileSelectConfig: e
+            }
+          }));
+          return;
+        }
         if (canUploadFiles) {
           const patches = collectWorkflowStartInputAutoFillPatches({
             nodes,
@@ -422,8 +477,7 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
             }
           });
 
-          if (!runtime || runtime.isDisposed()) return;
-          const commands: WorkflowCommand[] = [];
+          const commands: WorkflowCommand[] = [updateChatConfigCommand];
           if (!repeatKey) {
             const node = runtime.getNode(workflowStartNode.nodeId);
             if (node)
@@ -448,8 +502,7 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
             outputKey: userFilesInput.key
           });
 
-          if (!runtime || runtime.isDisposed()) return;
-          const commands: WorkflowCommand[] = [];
+          const commands: WorkflowCommand[] = [updateChatConfigCommand];
           commands.push(...buildInputUpdateCommands(patches));
           const startNode = runtime.getNode(workflowStartNode.nodeId);
           if (startNode)
@@ -463,6 +516,8 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
               }
             });
           runtime.dispatch(commands);
+        } else {
+          runtime.dispatch(updateChatConfigCommand);
         }
       }}
     />

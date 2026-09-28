@@ -32,7 +32,11 @@ export const useWorkflowDraftLifecycle = ({
   leaveSaveSign
 }: UseWorkflowDraftLifecycleProps) => {
   const { t } = useTranslation();
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
+  const hasWritePermission = useContextSelector(
+    AppContext,
+    (v) => v.appDetail.permission.hasWritePer
+  );
   const { userInfo } = useUserStore();
   const loginTmbId = userInfo?.team?.tmbId;
   const leavePageTip = t('common:core.tip.leave page');
@@ -42,21 +46,18 @@ export const useWorkflowDraftLifecycle = ({
     if (!data || !loginTmbId) return false;
 
     return saveWorkflowLocalDraft({
-      appId: appDetail._id,
+      appId,
       // 团队切换会立即改写全站共享 cookie/session；草稿恢复必须和保存草稿时的 tmbId 对齐。
       tmbId: loginTmbId,
-      data: {
-        ...data,
-        chatConfig: appDetail.chatConfig
-      }
+      data
     });
-  }, [appDetail._id, appDetail.chatConfig, serializeWorkflow, loginTmbId]);
+  }, [appId, serializeWorkflow, loginTmbId]);
 
   const removeCurrentLocalDraft = useCallback(() => {
     removeWorkflowLocalDraftByApp({
-      appId: appDetail._id
+      appId
     });
-  }, [appDetail._id]);
+  }, [appId]);
 
   const {
     authExpiredModal,
@@ -92,13 +93,12 @@ export const useWorkflowDraftLifecycle = ({
       }
 
       try {
-        if (!appDetail.permission.hasWritePer) {
+        if (!hasWritePermission) {
           return;
         }
-        await postPublishApp(appDetail._id, {
+        await postPublishApp(appId, {
           ...data,
           isPublish: false,
-          chatConfig: appDetail.chatConfig,
           autoSave: true
         });
         removeCurrentLocalDraft();
@@ -111,9 +111,8 @@ export const useWorkflowDraftLifecycle = ({
       }
     },
     [
-      appDetail._id,
-      appDetail.chatConfig,
-      appDetail.permission.hasWritePer,
+      appId,
+      hasWritePermission,
       serializeWorkflow,
       isSaved,
       leaveSaveSign,
@@ -130,7 +129,7 @@ export const useWorkflowDraftLifecycle = ({
 
       const { isAuthExpiredRedirecting } = handleBeforeUnloadAuthExpired();
 
-      if (!isAuthExpiredRedirecting && appDetail.permission.hasWritePer) {
+      if (!isAuthExpiredRedirecting && hasWritePermission) {
         saveLocalDraft();
       }
 
@@ -150,7 +149,7 @@ export const useWorkflowDraftLifecycle = ({
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [
-    appDetail.permission.hasWritePer,
+    hasWritePermission,
     autoSaveFn,
     handleBeforeUnloadAuthExpired,
     isSaved,

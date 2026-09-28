@@ -1,11 +1,12 @@
 import { getNodeAllSource, type WorkflowGraphEdge } from '@/web/core/workflow/utils';
 import { workflowSystemVariables } from '@/web/core/app/utils';
-import { type AppDetailType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID
 } from '@fastgpt/global/core/workflow/constants';
+import type { DeepReadonly } from '@fastgpt/global/core/workflow/editor/types';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -135,14 +136,14 @@ export const getEditorVariables = ({
   nodeId,
   getNodeById,
   edges,
-  appDetail,
+  chatConfig,
   t,
   getIncomingEdges
 }: {
   nodeId: string;
   getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
   edges: readonly WorkflowGraphEdge[];
-  appDetail: AppDetailType;
+  chatConfig: DeepReadonly<AppChatConfigType>;
   t: TFunction;
   /** Runtime 入边索引；传了上游遍历就是 O(入度) 而不是每个节点全量扫一遍边。 */
   getIncomingEdges?: (nodeId: string) => readonly WorkflowGraphEdge[];
@@ -166,7 +167,7 @@ export const getEditorVariables = ({
     nodeId,
     getNodeById,
     edges,
-    chatConfig: appDetail.chatConfig,
+    chatConfig: chatConfig as AppChatConfigType,
     t,
     getIncomingEdges
   });

@@ -62,7 +62,10 @@ export const getWorkflowStartDebugFileInput = ({
     value: [],
     canLocalUpload: true,
     canUrlUpload: true,
-    ...fileSelectConfig
+    ...fileSelectConfig,
+    ...(fileSelectConfig?.customFileExtensionList
+      ? { customFileExtensionList: [...fileSelectConfig.customFileExtensionList] }
+      : {})
   };
 };
 
@@ -113,7 +116,8 @@ export const getDebugGlobalVariableFormProps = (variable: VariableItemType) => {
   return {
     ...variable,
     canSelectFile: variable.canSelectFile ?? true,
-    canLocalUpload: variable.canLocalUpload ?? true
+    canLocalUpload: variable.canLocalUpload ?? true,
+    ...(variable.list ? { list: variable.list.map((item) => ({ ...item })) } : {})
   };
 };
 
@@ -162,15 +166,16 @@ export const getDebugInputFormProps = (input: FlowNodeInputItemType) => {
   delete props.value;
   delete props.defaultValue;
 
-  if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
-    return {
-      ...props,
-      canSelectFile: props.canSelectFile ?? true,
-      canLocalUpload: props.canLocalUpload ?? true
-    };
-  }
-
-  return props;
+  return {
+    ...props,
+    ...(props.list ? { list: props.list.map((item) => ({ ...item })) } : {}),
+    ...(input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+      ? {
+          canSelectFile: props.canSelectFile ?? true,
+          canLocalUpload: props.canLocalUpload ?? true
+        }
+      : {})
+  };
 };
 
 const parseDebugInputFormValue = (input: FlowNodeInputItemType, value: any) => {

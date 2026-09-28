@@ -1,10 +1,9 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Box, CloseButton, Flex, IconButton, Portal, Text, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AppContext } from '../../context';
-import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { SystemConfigForm } from './components/SystemConfigForm';
 import { PluginConfigForm } from './nodes/NodePluginIO/PluginConfigForm';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -21,30 +20,22 @@ const SystemConfigDrawer = () => {
   const { isOpen, onOpen, onToggle, onClose } = useDisclosure();
   // 收起动画跑完再卸载表单，否则内容会在动画第一帧就消失。
   const isContentMounted = usePanelContentMounted(isOpen);
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const isWorkflowTool = appDetail.type === AppTypeEnum.workflowTool;
+  const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
+  const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
+  const isWorkflowTool = appType === AppTypeEnum.workflowTool;
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const {
     isWelcomeTextFolded,
     toggleWelcomeTextFold,
     hasCompletedSystemConfigFirstEntryGuide,
     completeSystemConfigFirstEntryGuide
-  } = useAppEditorUIState(appDetail._id);
+  } = useAppEditorUIState(appId);
   useSystemConfigAutoOpen({
-    appId: appDetail._id,
+    appId,
     hasCompletedFirstEntryGuide: hasCompletedSystemConfigFirstEntryGuide,
     onCompleteFirstEntryGuide: completeSystemConfigFirstEntryGuide,
     onOpen
   });
-
-  const chatConfig = useMemo(
-    () =>
-      getAppChatConfig({
-        chatConfig: appDetail.chatConfig,
-        isPublicFetch: true
-      }),
-    [appDetail.chatConfig]
-  );
 
   return (
     <>
@@ -111,10 +102,9 @@ const SystemConfigDrawer = () => {
             {/* 收起后不挂 DOM：整份配置表单（含全局变量表与文件上传配置）挂着会跟着每次文档提交重渲染。 */}
             {isContentMounted &&
               (isWorkflowTool ? (
-                <PluginConfigForm chatConfig={chatConfig} setAppDetail={setAppDetail} />
+                <PluginConfigForm setAppDetail={setAppDetail} />
               ) : (
                 <SystemConfigForm
-                  chatConfig={chatConfig}
                   setAppDetail={setAppDetail}
                   mode={'drawer'}
                   isWelcomeTextFolded={isWelcomeTextFolded}

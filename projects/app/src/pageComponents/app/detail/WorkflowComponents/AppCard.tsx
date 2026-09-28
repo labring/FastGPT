@@ -21,7 +21,11 @@ const ExportConfigPopover = dynamic(
 const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved: boolean }) => {
   const { t } = useTranslation();
 
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
+  const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
+  const appIntro = useContextSelector(AppContext, (v) => v.appDetail.intro);
+  const appAvatar = useContextSelector(AppContext, (v) => v.appDetail.avatar);
+  const isOwner = useContextSelector(AppContext, (v) => v.appDetail.permission.isOwner);
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
   const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
   const flowData2StoreData = useContextSelector(WorkflowHostContext, (v) => v.serializeWorkflow);
@@ -91,14 +95,13 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                 cursor={'pointer'}
               >
                 <ExportConfigPopover
-                  appType={appDetail.type}
-                  chatConfig={appDetail.chatConfig}
-                  appName={appDetail.name}
-                  appIntro={appDetail.intro}
+                  appType={appType}
+                  appName={appName}
+                  appIntro={appIntro}
                   getWorkflowData={flowData2StoreData}
                 />
               </MyBox>
-              {appDetail.permission.isOwner && (
+              {isOwner && (
                 <>
                   <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
 
@@ -124,12 +127,11 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
       );
     },
     [
-      appDetail.chatConfig,
-      appDetail.intro,
-      appDetail.name,
-      appDetail.permission.isOwner,
-      appDetail.type,
+      appIntro,
+      appName,
+      appType,
       flowData2StoreData,
+      isOwner,
       onDelApp,
       onOpenImport,
       onOpenInfoEdit,
@@ -141,12 +143,12 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
     return (
       <HStack flex={1} justifyContent={'space-between'}>
         <HStack minW={0}>
-          <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} flexShrink={0} />
+          <Avatar src={appAvatar} w={'1.75rem'} borderRadius={'md'} flexShrink={0} />
           <Box minW={0}>
             <HStack spacing={1} minW={0}>
-              <MyTooltip label={appDetail.name} showOnlyWhenOverflow>
+              <MyTooltip label={appName} showOnlyWhenOverflow>
                 <Box color={'myGray.900'} maxW={['45vw', '280px']} className="textEllipsis">
-                  {appDetail.name}
+                  {appName}
                 </Box>
               </MyTooltip>
             </HStack>
@@ -195,16 +197,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
         {isOpenImport && <ImportSettings onClose={onCloseImport} />}
       </HStack>
     );
-  }, [
-    appDetail.avatar,
-    appDetail.name,
-    isOpenImport,
-    isSaved,
-    onCloseImport,
-    renderInfoMenu,
-    showSaveStatus,
-    t
-  ]);
+  }, [appAvatar, appName, isOpenImport, isSaved, onCloseImport, renderInfoMenu, showSaveStatus, t]);
 
   return Render;
 };
