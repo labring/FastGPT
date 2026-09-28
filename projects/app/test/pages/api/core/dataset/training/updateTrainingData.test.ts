@@ -14,6 +14,7 @@ const foreignDatasetId = '507f1f77bcf86cd799439014';
 
 vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
   MongoDatasetTraining: {
+    find: vi.fn(),
     findById: vi.fn(),
     updateOne: vi.fn(),
     updateMany: vi.fn()
@@ -28,6 +29,11 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 describe('updateTrainingData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(MongoDatasetTraining.find).mockReturnValue({
+      select: () => ({
+        lean: vi.fn().mockResolvedValue([])
+      })
+    } as any);
     vi.mocked(authDatasetCollection).mockResolvedValue({
       collection: {
         _id: collectionId,
