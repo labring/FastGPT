@@ -2,7 +2,8 @@ import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -235,20 +236,22 @@ describe('backup / template pre-created data', () => {
     expect(tasks.every((task) => Boolean(task.dataId))).toBe(true);
   });
 
-  /** 集合同步等其它 rawText 调用方继续走原有创建路径，不被本次改造波及。 */
-  it('keeps the legacy create path for other rawText callers', async () => {
+  /** 普通 rawText 分块同样统一先落库再更新索引。 */
+  it('pre-creates data for plain rawText chunk collections as well', async () => {
     const { collectionId } = await insertCollection({
       trainingType: DatasetCollectionDataProcessModeEnum.chunk,
       name: 'plain-chunk.md',
-      rawText: '普通文本导入，走既有的先索引后创建路径。'
+      rawText: '普通文本导入，同样走统一的先落库再更新索引路径。'
     });
 
     const rows = await MongoDatasetData.find({ collectionId }).lean();
-    expect(rows).toHaveLength(0);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.indexing)).toBe(true);
 
     const tasks = await MongoDatasetTraining.find({ collectionId }).lean();
-    expect(tasks.length).toBeGreaterThan(0);
-    expect(tasks.every((task) => !task.dataId)).toBe(true);
+    expect(tasks.length).toBe(rows.length);
+    expect(tasks.every((task) => Boolean(task.dataId))).toBe(true);
+    expect(tasks.every((task) => task.mode === TrainingModeEnum.index)).toBe(true);
   });
 
   /** 备份携带的自定义索引必须活到索引完成，一条不少。 */

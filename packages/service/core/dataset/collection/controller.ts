@@ -2,7 +2,8 @@ import { getModelHandle } from '../../ai/model';
 import { getDatasetModelReference } from '../model';
 import {
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetCollection } from './schema';
 import type {
@@ -261,13 +262,9 @@ export const createCollectionAndInsertData = async ({
           chunkIndex: index
         }));
 
-        // 备份/模板的分块在请求内已经切好，先落库再更新索引，与文件、图片导入保持一致；
-        // 集合同步等其它 rawText 调用方继续走原有创建路径。
-        if (
-          trainingType === DatasetCollectionDataProcessModeEnum.backup ||
-          trainingType === DatasetCollectionDataProcessModeEnum.template
-        ) {
-          return preCreateDatasetDataAndPushToTrainingQueue({
+        // QA 模式在生成前不预落库，由 downstream generateQA 拆分叶子分块后批量落库
+        if (trainingMode === TrainingModeEnum.qa) {
+          return pushDataListToTrainingQueue({
             teamId,
             tmbId,
             datasetId: dataset._id,
@@ -283,7 +280,8 @@ export const createCollectionAndInsertData = async ({
           });
         }
 
-        return pushDataListToTrainingQueue({
+        // rawText（手动输入文本、备份、模板、集合同步等）均先落库为 indexing 数据，再派发索引任务
+        return preCreateDatasetDataAndPushToTrainingQueue({
           teamId,
           tmbId,
           datasetId: dataset._id,
