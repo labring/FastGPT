@@ -314,5 +314,11 @@ describe('dispatchRunAppNode', () => {
         }
       })
     );
+    expect(result.data?.[NodeOutputKeyEnum.history]).toEqual([
+      {
+        obj: ChatRoleEnum.AI,
+        value: [{ type: 'text', text: { content: 'child output' } }]
+      }
+    ]);
   });
 });

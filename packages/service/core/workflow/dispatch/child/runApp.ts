@@ -179,16 +179,20 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       }
     });
 
-    const completeMessages = filteredChildHistories.concat([
-      {
-        obj: ChatRoleEnum.Human,
-        value: filteredChildQuery
-      },
+    const completeMessages = filteredChildHistories.concat(
+      childrenInteractive
+        ? []
+        : [
+            {
+              obj: ChatRoleEnum.Human,
+              value: filteredChildQuery
+            }
+          ],
       {
         obj: ChatRoleEnum.AI,
         value: assistantResponses
       }
-    ]);
+    );
 
     const { text } = chatValue2RuntimePrompt(assistantResponses);
 
