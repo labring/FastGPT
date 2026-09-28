@@ -589,12 +589,14 @@ describe('agent sub app dispatchPlugin', () => {
       checkIsStopping: vi.fn(() => false),
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
-      lastInteractive: previousInteractive
+      lastInteractive: previousInteractive,
+      query: [{ text: { content: '{"selection":"Confirm"}' } }]
     } as any);
 
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         lastInteractive: previousInteractive,
+        query: [{ text: { content: '{"selection":"Confirm"}' } }],
         runtimeEdges: previousInteractive.memoryEdges,
         runtimeNodes: [
           expect.objectContaining({
@@ -709,12 +711,14 @@ describe('agent sub app dispatchApp', () => {
       checkIsStopping: vi.fn(() => false),
       maxRunTimes: 20,
       workflowDispatchDeep: 0,
-      lastInteractive: previousInteractive
+      lastInteractive: previousInteractive,
+      query: [{ text: { content: '{"ces ":"33"}' } }]
     } as any);
 
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         lastInteractive: previousInteractive,
+        query: [{ text: { content: '{"ces ":"33"}' } }],
         runtimeEdges: previousInteractive.memoryEdges,
         runtimeNodes: [
           expect.objectContaining({

@@ -63,6 +63,7 @@ type Props = Pick<
   | 'nodeResponseParentId'
   | 'variableState'
   | 'lastInteractive'
+  | 'query'
 > & {
   app: {
     name: string;
@@ -162,13 +163,17 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
           histories: [],
           variableState: childrenVariableState,
           isToolCall: true,
-          query: [
-            {
-              text: {
-                content: userChatInput
-              }
-            }
-          ],
+          // 初次调用使用工具参数；交互恢复时必须使用当前外层用户输入，
+          // 其中包含表单/选择节点提交的 JSON，否则子流程会从暂停节点再次生成交互。
+          query: data.lastInteractive
+            ? data.query
+            : [
+                {
+                  text: {
+                    content: userChatInput
+                  }
+                }
+              ],
           stream: false,
           workflowStreamResponse: undefined
         });
@@ -406,13 +411,15 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         histories: [],
         variableState: childrenVariableState,
         isToolCall: true,
-        query: serverGetWorkflowToolRunUserQuery({
-          pluginInputs,
-          variables: {
-            ...runtimeVariables,
-            ...workflowToolVariables
-          }
-        }).value,
+        query: data.lastInteractive
+          ? data.query
+          : serverGetWorkflowToolRunUserQuery({
+              pluginInputs,
+              variables: {
+                ...runtimeVariables,
+                ...workflowToolVariables
+              }
+            }).value,
         stream: false,
         workflowStreamResponse: undefined
       });
