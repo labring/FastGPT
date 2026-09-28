@@ -114,10 +114,14 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     name: appData.name,
     isChildApp: true
   };
+  // 恢复 AgentV2 子工作流时，入口节点、节点输出和记忆边必须沿用暂停快照。
+  // 仅把 lastInteractive 传给 runWorkflow 不足以恢复队列：运行时节点和边在进入
+  // WorkflowQueue 前已经被重新初始化了。
   const runtimeNodes = rewriteNodeOutputByHistories(
-    storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes))
+    storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, data.lastInteractive)),
+    data.lastInteractive
   );
-  const runtimeEdges = storeEdges2RuntimeEdges(edges);
+  const runtimeEdges = storeEdges2RuntimeEdges(edges, data.lastInteractive);
 
   const { assistantResponses, flowUsages, workflowRuntimeSummary, workflowInteractiveResponse } =
     await runWithDerivedWorkflowFileContext({
@@ -340,47 +344,49 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         resolveInputFile
       });
       const runtimeVariables = childrenVariableState.toRuntimeRecord();
-      const runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)).map(
-        (node) => {
-          // Update plugin input value
-          if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
-            return {
-              ...node,
-              showStatus: false,
-              inputs: node.inputs.map((input) => {
-                const hasExternalValue = Object.prototype.hasOwnProperty.call(
-                  workflowToolVariables,
-                  input.key
-                );
-                let val = hasExternalValue ? workflowToolVariables[input.key] : input.value;
-                val ??= input.defaultValue;
-                if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
-                  val = anyValueDecrypt(val);
-                } else if (
-                  input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
-                  Array.isArray(val)
-                ) {
-                  val = filterFiles(val);
-                  if (hasExternalValue) {
-                    workflowToolVariables[input.key] = val.map((item: any) =>
-                      typeof item === 'string' ? item : item.url
-                    );
-                  }
-                }
-
-                return {
-                  ...input,
-                  value: val
-                };
-              })
-            };
-          }
+      const restoredRuntimeNodes = rewriteNodeOutputByHistories(
+        storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, data.lastInteractive)),
+        data.lastInteractive
+      );
+      const runtimeNodes = restoredRuntimeNodes.map((node) => {
+        // Update plugin input value
+        if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
           return {
             ...node,
-            showStatus: false
+            showStatus: false,
+            inputs: node.inputs.map((input) => {
+              const hasExternalValue = Object.prototype.hasOwnProperty.call(
+                workflowToolVariables,
+                input.key
+              );
+              let val = hasExternalValue ? workflowToolVariables[input.key] : input.value;
+              val ??= input.defaultValue;
+              if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+                val = anyValueDecrypt(val);
+              } else if (
+                input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+                Array.isArray(val)
+              ) {
+                val = filterFiles(val);
+                if (hasExternalValue) {
+                  workflowToolVariables[input.key] = val.map((item: any) =>
+                    typeof item === 'string' ? item : item.url
+                  );
+                }
+              }
+
+              return {
+                ...input,
+                value: val
+              };
+            })
           };
         }
-      );
+        return {
+          ...node,
+          showStatus: false
+        };
+      });
 
       return runWorkflow({
         ...data,
@@ -395,7 +401,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         },
         runningUserInfo,
         runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges),
+        runtimeEdges: storeEdges2RuntimeEdges(edges, data.lastInteractive),
         chatConfig,
         histories: [],
         variableState: childrenVariableState,

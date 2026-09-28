@@ -524,7 +524,9 @@ describe('agent sub app dispatchPlugin', () => {
   it('returns plugin child interactive state and forwards lastInteractive on resume', async () => {
     const previousInteractive = {
       type: 'userSelect',
-      entryNodeIds: ['select_1']
+      entryNodeIds: ['select_1'],
+      memoryEdges: [{ source: 'before', target: 'select_1', status: 'active' }],
+      nodeOutputs: [{ nodeId: 'select_1', key: 'result', value: 'restored' }]
     };
     const nextInteractive = {
       type: 'userInput',
@@ -540,8 +542,18 @@ describe('agent sub app dispatchPlugin', () => {
     });
     mocks.getAppVersionById.mockResolvedValue({
       resources: [],
-      nodes: [],
-      edges: [],
+      nodes: [
+        {
+          nodeId: 'select_1',
+          name: 'Input',
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          inputs: [],
+          outputs: [{ key: 'result', value: 'initial' }]
+        }
+      ],
+      edges: [
+        { source: 'before', sourceHandle: 'output', target: 'select_1', targetHandle: 'input' }
+      ],
       chatConfig: { variables: [] }
     });
     mocks.runWorkflow.mockResolvedValue({
@@ -582,7 +594,15 @@ describe('agent sub app dispatchPlugin', () => {
 
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        lastInteractive: previousInteractive
+        lastInteractive: previousInteractive,
+        runtimeEdges: previousInteractive.memoryEdges,
+        runtimeNodes: [
+          expect.objectContaining({
+            nodeId: 'select_1',
+            isEntry: true,
+            outputs: [{ key: 'result', value: 'restored' }]
+          })
+        ]
       })
     );
     expect(result).toMatchObject({
@@ -617,12 +637,30 @@ describe('agent sub app dispatchApp', () => {
   it('returns child response and interactive state without child transcript messages', async () => {
     const previousInteractive = {
       type: 'userSelect',
-      entryNodeIds: ['select_1']
+      entryNodeIds: ['select_1'],
+      memoryEdges: [{ source: 'before', target: 'select_1', status: 'active' }],
+      nodeOutputs: [{ nodeId: 'select_1', key: 'result', value: 'restored' }]
     };
     const nextInteractive = {
       type: 'userInput',
       entryNodeIds: ['input_2']
     };
+    mocks.getAppVersionById.mockResolvedValue({
+      resources: [],
+      nodes: [
+        {
+          nodeId: 'select_1',
+          name: 'Input',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
+          inputs: [],
+          outputs: [{ key: 'result', value: 'initial' }]
+        }
+      ],
+      edges: [
+        { source: 'before', sourceHandle: 'output', target: 'select_1', targetHandle: 'input' }
+      ],
+      chatConfig: { variables: [] }
+    });
     mocks.runWorkflow.mockResolvedValue({
       assistantResponses: [
         { text: { content: 'child answer' } },
@@ -676,7 +714,15 @@ describe('agent sub app dispatchApp', () => {
 
     expect(mocks.runWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        lastInteractive: previousInteractive
+        lastInteractive: previousInteractive,
+        runtimeEdges: previousInteractive.memoryEdges,
+        runtimeNodes: [
+          expect.objectContaining({
+            nodeId: 'select_1',
+            isEntry: true,
+            outputs: [{ key: 'result', value: 'restored' }]
+          })
+        ]
       })
     );
     expect(mocks.getAppVersionById).toHaveBeenCalledWith(
@@ -686,11 +732,11 @@ describe('agent sub app dispatchApp', () => {
       })
     );
     expect(result.response).toBe('child answer');
-    expect(result.assistantMessages).toBeUndefined();
     expect(result.nodeResponse).toMatchObject({
       moduleType: FlowNodeTypeEnum.appModule,
       toolRes: 'child answer'
     });
+    expect(result.assistantMessages).toBeUndefined();
     expect(result.interactive).toBe(nextInteractive);
   });
 
