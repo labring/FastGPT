@@ -19,7 +19,7 @@ import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/a
 import type { ListSkillsV2Query } from '@fastgpt/global/core/ai/skill/api';
 import { AppListSortEnum, appListSortMongoMap } from '@fastgpt/global/core/app/constants';
 import { countTeamAppsByPublishedResourceGroups } from '../../../app/resourceLookup';
-import { getFolderDescendantResourceIds } from '../../../../common/parentFolder/resource';
+import { getFolderDescendantResources } from '../../../../common/parentFolder/resource';
 
 type TeamPermission = {
   isOwner: boolean;
@@ -243,14 +243,14 @@ export const listReadableAgentSkills = async ({
 
   const appCountMap =
     withAppCount === false
-      ? new Map<string, number>()
+      ? undefined
       : await (async () => {
           const ownerSkills = pagedSkills.filter((skill) => skill.permission.isOwner);
-          const resourceIdsByGroup = new Map<string, string[]>();
+          const resourceIdsByGroup = new Map<string, { type: 'skill'; id: string }[]>();
           const folderIds = ownerSkills
             .filter((skill) => skill.type === AgentSkillTypeEnum.folder)
             .map((skill) => String(skill._id));
-          const descendantIdsByFolder = await getFolderDescendantResourceIds({
+          const descendantResourcesByFolder = await getFolderDescendantResources({
             folderIds,
             fetchChildren: (parentIds) =>
               MongoAgentSkills.find(
@@ -262,23 +262,23 @@ export const listReadableAgentSkills = async ({
           });
           ownerSkills.forEach((skill) => {
             const skillId = String(skill._id);
+            const resourceIds =
+              skill.type === AgentSkillTypeEnum.folder
+                ? (descendantResourcesByFolder.get(skillId) ?? []).map(({ _id }) => String(_id))
+                : [skillId];
             resourceIdsByGroup.set(
               skillId,
-              skill.type === AgentSkillTypeEnum.folder
-                ? (descendantIdsByFolder.get(skillId) ?? [])
-                : [skillId]
+              resourceIds.map((id) => ({ type: 'skill', id }))
             );
           });
-          return countTeamAppsByPublishedResourceGroups({
-            teamId,
-            type: 'skill',
-            resourceIdsByGroup
-          });
+          return countTeamAppsByPublishedResourceGroups({ teamId, resourceIdsByGroup });
         })();
 
   const listWithAppCount = pagedSkills.map((skill) => ({
     ...skill,
-    ...(skill.permission.isOwner ? { appCount: appCountMap.get(skill._id.toString()) ?? 0 } : {})
+    ...(appCountMap !== undefined && skill.permission.isOwner
+      ? { appCount: appCountMap.get(skill._id.toString()) ?? 0 }
+      : {})
   }));
   const list = withSourceMember
     ? await addSourceMember({ list: listWithAppCount })

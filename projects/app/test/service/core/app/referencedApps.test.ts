@@ -65,11 +65,7 @@ describe('formatReadableReferencedApps', () => {
 
     expect(result).toEqual({
       list: [],
-      hiddenCount: 3,
-      hiddenOwnerGroups: [
-        { tmbId: 'another-member', count: 2 },
-        { tmbId: 'third-member', count: 1 }
-      ]
+      hiddenCount: 3
     });
   });
 });

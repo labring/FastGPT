@@ -9,7 +9,7 @@ type FolderTreeNode = {
  * tree level for every root, so a page with many folders does not issue a
  * separate recursive query for each folder.
  */
-export const getFolderDescendantResourceIds = async ({
+export const getFolderDescendantResources = async ({
   folderIds,
   fetchChildren,
   shouldTraverse,
@@ -19,7 +19,7 @@ export const getFolderDescendantResourceIds = async ({
   fetchChildren: (parentIds: string[]) => Promise<FolderTreeNode[]>;
   shouldTraverse: (node: FolderTreeNode) => boolean;
   isResource: (node: FolderTreeNode) => boolean;
-}): Promise<Map<string, string[]>> => {
+}): Promise<Map<string, FolderTreeNode[]>> => {
   const uniqueFolderIds = Array.from(new Set(folderIds));
   const childrenByParent = new Map<string, FolderTreeNode[]>();
   const discoveredIds = new Set(uniqueFolderIds);
@@ -48,7 +48,7 @@ export const getFolderDescendantResourceIds = async ({
 
   return new Map(
     uniqueFolderIds.map((folderId) => {
-      const resourceIds: string[] = [];
+      const resources: FolderTreeNode[] = [];
       const visited = new Set<string>([folderId]);
       const stack = [...(childrenByParent.get(folderId) ?? [])];
 
@@ -59,11 +59,11 @@ export const getFolderDescendantResourceIds = async ({
         if (visited.has(nodeId)) continue;
         visited.add(nodeId);
 
-        if (isResource(node)) resourceIds.push(nodeId);
+        if (isResource(node)) resources.push(node);
         if (shouldTraverse(node)) stack.push(...(childrenByParent.get(nodeId) ?? []));
       }
 
-      return [folderId, resourceIds];
+      return [folderId, resources];
     })
   );
 };

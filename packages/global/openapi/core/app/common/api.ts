@@ -349,7 +349,7 @@ export const ListAppV2BodySchema = ListAppBodySchema.extend({
     description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
   }),
   withRelatedAppCount: BoolSchema.optional().meta({
-    description: '是否返回工具或工具文件夹被正式应用引用的数量'
+    description: '是否返回 App、工具及其文件夹被正式应用引用的数量'
   })
 }).extend(PaginationSchema.shape);
 export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
@@ -372,7 +372,7 @@ export const AppListItemSchema = z
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
     hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
     relatedAppCount: NumSchema.optional().meta({
-      description: '工具或工具文件夹关联的正式应用数量'
+      description: '被正式应用引用的 App、工具或文件夹数量'
     }),
     isPinned: BoolSchema.optional().meta({
       description: '是否置顶。仅在请求启用置顶排序时返回'
@@ -404,19 +404,9 @@ export const ReferencedAppSchema = z.object({
 });
 export type ReferencedApp = z.infer<typeof ReferencedAppSchema>;
 
-export const HiddenReferencedAppOwnerSchema = z.object({
-  tmbId: ObjectIdSchema,
-  count: NumSchema.int().positive(),
-  sourceMember: SourceMemberSchema.optional()
-});
-export type HiddenReferencedAppOwner = z.infer<typeof HiddenReferencedAppOwnerSchema>;
-
 export const ReferencedAppsResponseSchema = z.object({
   list: z.array(ReferencedAppSchema),
-  hiddenCount: NumSchema.int().nonnegative().describe('当前用户无权限查看的引用应用数量'),
-  // Commercial clients may use this extension to group inaccessible apps by owner.
-  // Keep it optional so existing open-source clients remain source-compatible.
-  hiddenOwnerGroups: z.array(HiddenReferencedAppOwnerSchema).optional()
+  hiddenCount: NumSchema.int().nonnegative().describe('当前用户无权限查看的引用应用数量')
 });
 export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
 

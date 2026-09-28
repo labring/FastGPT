@@ -32,7 +32,7 @@ import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
-import { getFolderDescendantResourceIds } from '@fastgpt/service/common/parentFolder/resource';
+import { getFolderDescendantResources } from '@fastgpt/service/common/parentFolder/resource';
 
 async function handler(
   req: ApiRequestProps<GetDatasetListV2Body>
@@ -187,11 +187,11 @@ async function handler(
   const appCountMap = withAppCount
     ? await (async () => {
         const ownerDatasets = formatDatasets.filter((dataset) => dataset.permission.isOwner);
-        const resourceIdsByGroup = new Map<string, string[]>();
+        const resourceIdsByGroup = new Map<string, { type: 'dataset'; id: string }[]>();
         const folderIds = ownerDatasets
           .filter((dataset) => dataset.type === DatasetTypeEnum.folder)
           .map((dataset) => String(dataset._id));
-        const descendantIdsByFolder = await getFolderDescendantResourceIds({
+        const descendantResourcesByFolder = await getFolderDescendantResources({
           folderIds,
           fetchChildren: (parentIds) =>
             MongoDataset.find(
@@ -203,18 +203,16 @@ async function handler(
         });
         ownerDatasets.forEach((dataset) => {
           const datasetId = String(dataset._id);
+          const resourceIds =
+            dataset.type === DatasetTypeEnum.folder
+              ? (descendantResourcesByFolder.get(datasetId) ?? []).map(({ _id }) => String(_id))
+              : [datasetId];
           resourceIdsByGroup.set(
             datasetId,
-            dataset.type === DatasetTypeEnum.folder
-              ? (descendantIdsByFolder.get(datasetId) ?? [])
-              : [datasetId]
+            resourceIds.map((id) => ({ type: 'dataset', id }))
           );
         });
-        return countTeamAppsByPublishedResourceGroups({
-          teamId,
-          type: 'dataset',
-          resourceIdsByGroup
-        });
+        return countTeamAppsByPublishedResourceGroups({ teamId, resourceIdsByGroup });
       })()
     : undefined;
   const list = await addSourceMember({

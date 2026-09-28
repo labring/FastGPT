@@ -136,14 +136,82 @@ describe('findTeamAppsByPublishedResource', () => {
 
     const counts = await countTeamAppsByPublishedResourceGroups({
       teamId: String(teamId),
-      type: 'dataset',
       resourceIdsByGroup: new Map([
-        ['folder-1', ['child-1', 'child-2']],
-        ['child-2', ['child-2']]
+        [
+          'folder-1',
+          [
+            { type: 'dataset', id: 'child-1' },
+            { type: 'dataset', id: 'child-2' }
+          ]
+        ],
+        ['child-2', [{ type: 'dataset', id: 'child-2' }]]
       ])
     });
 
     expect(counts.get('folder-1')).toBe(2);
     expect(counts.get('child-2')).toBe(2);
+  });
+
+  it('counts an app once when its published version references multiple resource types in a group', async () => {
+    const agentOnlyAppId = new Types.ObjectId('65f000000000000000000081');
+    const agentOnlyVersionId = new Types.ObjectId('65f000000000000000000082');
+    await MongoApp.collection.insertMany([
+      {
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'App using an app and a tool',
+        type: 'workflow',
+        publishedVersionId,
+        deleteTime: null
+      },
+      {
+        _id: agentOnlyAppId,
+        teamId,
+        tmbId,
+        name: 'App using an app',
+        type: 'workflow',
+        publishedVersionId: agentOnlyVersionId,
+        deleteTime: null
+      }
+    ]);
+    await MongoAppVersion.collection.insertMany([
+      {
+        _id: publishedVersionId,
+        appId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [
+          { type: 'agent', id: 'app-child' },
+          { type: 'tool', id: 'tool-child' }
+        ]
+      },
+      {
+        _id: agentOnlyVersionId,
+        appId: agentOnlyAppId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [{ type: 'agent', id: 'app-child' }]
+      }
+    ]);
+
+    const counts = await countTeamAppsByPublishedResourceGroups({
+      teamId: String(teamId),
+      resourceIdsByGroup: new Map([
+        [
+          'folder-1',
+          [
+            { type: 'agent', id: 'app-child' },
+            { type: 'tool', id: 'tool-child' }
+          ]
+        ],
+        ['app-child', [{ type: 'agent', id: 'app-child' }]]
+      ])
+    });
+
+    expect(counts.get('folder-1')).toBe(2);
+    expect(counts.get('app-child')).toBe(2);
   });
 });

@@ -5,6 +5,7 @@ import {
   ReferencedAppsResponseSchema,
   type GetAppsByToolIdQuery
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -27,7 +28,7 @@ async function handler(req: ApiRequestProps<unknown, GetAppsByToolIdQuery>) {
     })
   ]);
   if (!appPer.isOwner) {
-    return ReferencedAppsResponseSchema.parse({ list: [], hiddenCount: 0 });
+    return Promise.reject(AppErrEnum.unAuthApp);
   }
   const appsInToolTree = await findAppAndAllChildren({
     teamId,

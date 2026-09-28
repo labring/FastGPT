@@ -14,6 +14,7 @@ import type {
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { updateAppPin } from '@fastgpt/service/core/app/controller';
 import { onCreateApp } from '@/pages/api/core/app/create';
@@ -768,5 +769,147 @@ describe('POST /api/core/app/list', () => {
       expect(res.code).toBe(200);
       expect(res.data.map((app) => app.name)).toEqual(['客服 置顶', '客服 普通']);
     });
+  });
+  it('counts published agent references for apps and their folders', async () => {
+    const user = await getUser(`app-list-agent-ref-${getNanoid(6)}`);
+    const targetAppId = new Types.ObjectId();
+    const folderAppId = new Types.ObjectId();
+    const referencingAppId = new Types.ObjectId();
+    const publishedVersionId = new Types.ObjectId();
+    const now = new Date();
+    await MongoApp.create([
+      {
+        _id: folderAppId,
+        name: 'App folder',
+        type: AppTypeEnum.folder,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: null,
+        createTime: now,
+        updateTime: now,
+        deleteTime: null
+      },
+      {
+        _id: targetAppId,
+        name: 'Referenced app',
+        type: AppTypeEnum.workflow,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: folderAppId,
+        createTime: now,
+        updateTime: now,
+        deleteTime: null
+      },
+      {
+        _id: referencingAppId,
+        name: 'Referencing app',
+        type: AppTypeEnum.workflow,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: null,
+        createTime: now,
+        updateTime: now,
+        publishedVersionId,
+        deleteTime: null
+      }
+    ]);
+    await MongoAppVersion.collection.insertOne({
+      _id: publishedVersionId,
+      appId: referencingAppId,
+      tmbId: new Types.ObjectId(user.tmbId),
+      time: new Date(),
+      isPublish: true,
+      resources: [{ type: 'agent', id: String(targetAppId) }]
+    });
+
+    const rootResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, {
+      auth: user,
+      body: { parentId: null, withRelatedAppCount: true }
+    });
+    expect(
+      rootResponse.data.list.find((app) => String(app._id) === String(folderAppId))?.relatedAppCount
+    ).toBe(1);
+
+    const childResponse = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, {
+      auth: user,
+      body: { parentId: String(folderAppId), withRelatedAppCount: true }
+    });
+    expect(
+      childResponse.data.list.find((app) => String(app._id) === String(targetAppId))
+        ?.relatedAppCount
+    ).toBe(1);
+  });
+  it('omits related app counts when disabled or unspecified', async () => {
+    const user = await getUser(`app-list-count-disabled-${getNanoid(6)}`);
+    const app = await MongoApp.create({
+      name: 'App without requested count',
+      type: AppTypeEnum.workflow,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      parentId: null,
+      modules: []
+    });
+
+    const withoutOption = await Call<
+      ListAppV2BodyType,
+      Record<string, never>,
+      ListAppV2ResponseType
+    >(handlerV2, { auth: user, body: { parentId: null, type: AppTypeEnum.workflow } });
+    expect(withoutOption.data.list.map((item) => item.name)).toEqual([
+      'App without requested count'
+    ]);
+    expect(withoutOption.data.list[0]?.relatedAppCount).toBeUndefined();
+
+    const disabled = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+      handlerV2,
+      {
+        auth: user,
+        body: { parentId: null, type: AppTypeEnum.workflow, withRelatedAppCount: false }
+      }
+    );
+    expect(disabled.data.list.map((item) => item.name)).toEqual(['App without requested count']);
+    expect(disabled.data.list[0]?.relatedAppCount).toBeUndefined();
+  });
+
+  it('omits related app counts for shared apps when requested by non-owners', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [sharedApp] = await MongoApp.create([
+      {
+        name: 'Shared app',
+        type: AppTypeEnum.workflow,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        parentId: null,
+        modules: []
+      }
+    ]);
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.app,
+      teamId: owner.teamId,
+      resourceId: sharedApp._id,
+      tmbId: members[0].tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const response = await Call<ListAppV2BodyType, Record<string, never>, ListAppV2ResponseType>(
+      handlerV2,
+      {
+        auth: members[0],
+        body: { parentId: null, type: AppTypeEnum.workflow, withRelatedAppCount: true }
+      }
+    );
+
+    expect(response.code).toBe(200);
+    expect(response.data.list.map((item) => item.name)).toEqual(['Shared app']);
+    expect(response.data.list[0]?.permission.isOwner).toBe(false);
+    expect(response.data.list[0]?.relatedAppCount).toBeUndefined();
   });
 });

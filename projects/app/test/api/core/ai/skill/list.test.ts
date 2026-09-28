@@ -76,6 +76,7 @@ describe('POST /api/core/ai/skill/list', () => {
       'Newer skill',
       'Older folder'
     ]);
+    expect(result.data.list.every((item) => item.appCount === undefined)).toBe(true);
   });
 
   it('按创建者筛选并支持创建时间排序和空选择', async () => {
@@ -417,12 +418,13 @@ describe('POST /api/core/ai/skill/list', () => {
         source: 'mine',
         skillIds: [String(inheritedSkill._id)],
         parentId: null,
-        withAppCount: false
+        withAppCount: true
       }
     });
 
     expect(res.code).toBe(200);
     expect(res.data.list.map((item) => String(item._id))).toEqual([String(inheritedSkill._id)]);
+    expect(res.data.list[0]?.appCount).toBeUndefined();
   });
 
   it('appCount 基于已发布版本的 resources，草稿保存不影响统计', async () => {

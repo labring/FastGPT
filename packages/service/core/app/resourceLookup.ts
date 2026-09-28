@@ -21,22 +21,24 @@ type MatchedPublishedApp = Pick<
   publishedResources?: PublishedAppResource[];
 };
 
-type PublishedResourceGroups = Map<string, string[]>;
+type PublishedResourceGroups = Map<string, PublishedAppResource[]>;
+type PublishedResourceIdsByType = Map<AppResourceType, Set<string>>;
 
-const findMatchedTeamAppsByPublishedResource = async ({
+const findMatchedTeamAppsByPublishedResources = async ({
   teamId,
-  type,
-  ids,
-  limit
+  resourceIdsByType
 }: {
   teamId: string;
-  type: AppResourceType;
-  ids: string[];
-  limit?: number;
+  resourceIdsByType: PublishedResourceIdsByType;
 }) => {
-  if (ids.length === 0) return [];
+  const resourceQueries = Array.from(resourceIdsByType).flatMap(([type, resourceIds]) => {
+    const ids = Array.from(resourceIds);
+    return ids.length > 0
+      ? [{ 'published.resources': buildAppResourceMongoQuery({ type, ids }).resources }]
+      : [];
+  });
+  if (resourceQueries.length === 0) return [];
 
-  const resourceQuery = buildAppResourceMongoQuery({ type, ids }).resources;
   // 聚合 $match 不做 mongoose 的 find 式自动转型，团队 id 需显式转 ObjectId。
   const teamObjectId = Types.ObjectId.isValid(teamId) ? new Types.ObjectId(teamId) : teamId;
   return MongoApp.aggregate<MatchedPublishedApp>([
@@ -56,8 +58,7 @@ const findMatchedTeamAppsByPublishedResource = async ({
       }
     },
     { $unwind: { path: '$published' } },
-    { $match: { 'published.resources': resourceQuery } },
-    ...(limit ? [{ $limit: limit }] : []),
+    { $match: { $or: resourceQueries } },
     {
       $project: {
         parentId: 1,
@@ -90,7 +91,10 @@ export const findTeamAppsByPublishedResource = async ({
   ids: string | string[];
 }) => {
   const idList = Array.isArray(ids) ? ids : [ids];
-  const matched = await findMatchedTeamAppsByPublishedResource({ teamId, type, ids: idList });
+  const matched = await findMatchedTeamAppsByPublishedResources({
+    teamId,
+    resourceIdsByType: new Map([[type, new Set(idList)]])
+  });
 
   const counts = new Map<string, number>();
   matched.forEach((app) => {
@@ -110,40 +114,42 @@ export const findTeamAppsByPublishedResource = async ({
 };
 
 /**
- * Count unique published Apps per UI resource. A folder group may contain many
- * concrete resource IDs; an App using two children must still be counted once.
+ * Count unique published Apps per UI resource. A group may contain different
+ * resource types; an App referencing more than one member still counts once.
  */
 export const countTeamAppsByPublishedResourceGroups = async ({
   teamId,
-  type,
   resourceIdsByGroup
 }: {
   teamId: string;
-  type: AppResourceType;
   resourceIdsByGroup: PublishedResourceGroups;
 }) => {
-  const resourceIdToGroups = new Map<string, Set<string>>();
-  resourceIdsByGroup.forEach((resourceIds, groupId) => {
-    resourceIds.forEach((resourceId) => {
-      const groups = resourceIdToGroups.get(resourceId) ?? new Set<string>();
-      groups.add(groupId);
-      resourceIdToGroups.set(resourceId, groups);
+  const getResourceKey = ({ type, id }: PublishedAppResource) => JSON.stringify([type, id]);
+  const resourceGroupsByKey = new Map<string, Set<string>>();
+  const resourceIdsByType = new Map<AppResourceType, Set<string>>();
+
+  resourceIdsByGroup.forEach((resources, groupId) => {
+    resources.forEach((resource) => {
+      const resourceKey = getResourceKey(resource);
+      const groupIds = resourceGroupsByKey.get(resourceKey) ?? new Set<string>();
+      groupIds.add(groupId);
+      resourceGroupsByKey.set(resourceKey, groupIds);
+
+      const resourceIds = resourceIdsByType.get(resource.type) ?? new Set<string>();
+      resourceIds.add(resource.id);
+      resourceIdsByType.set(resource.type, resourceIds);
     });
   });
 
-  const matched = await findMatchedTeamAppsByPublishedResource({
-    teamId,
-    type,
-    ids: [...resourceIdToGroups.keys()]
-  });
+  const matched = await findMatchedTeamAppsByPublishedResources({ teamId, resourceIdsByType });
   const appIdsByGroup = new Map<string, Set<string>>();
   matched.forEach((app) => {
     const groupsForApp = new Set<string>();
-    (app.publishedResources ?? [])
-      .filter((resource) => resource.type === type)
-      .forEach((resource) => {
-        resourceIdToGroups.get(resource.id)?.forEach((groupId) => groupsForApp.add(groupId));
-      });
+    (app.publishedResources ?? []).forEach((resource) => {
+      resourceGroupsByKey
+        .get(getResourceKey(resource))
+        ?.forEach((groupId) => groupsForApp.add(groupId));
+    });
     groupsForApp.forEach((groupId) => {
       const appIds = appIdsByGroup.get(groupId) ?? new Set<string>();
       appIds.add(String(app._id));

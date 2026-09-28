@@ -11,7 +11,12 @@ import type {
   GetDatasetListV2Body,
   GetDatasetListV2Response
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { getUser } from '@test/datas/users';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getFakeUsers, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { Types } from '@fastgpt/service/common/mongo';
 
@@ -168,6 +173,72 @@ describe('POST /api/core/dataset/list', () => {
     expect(res.data.total).toBe(3);
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0].name).toBe('Dataset 2');
+  });
+  it('preserves owner app counts only when requested', async () => {
+    const user = await getUser(`dataset-list-app-count-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      name: 'Dataset without references',
+      type: DatasetTypeEnum.dataset,
+      teamId: user.teamId,
+      tmbId: user.tmbId
+    });
+
+    const withCount = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: user,
+      body: { type: DatasetTypeEnum.dataset, withAppCount: true }
+    });
+    const countedDataset = withCount.data.list.find(
+      (item) => String(item._id) === String(dataset._id)
+    );
+    expect(countedDataset).toMatchObject({ appCount: 0 });
+
+    const withoutCount = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: user,
+      body: { type: DatasetTypeEnum.dataset, withAppCount: false }
+    });
+    expect(
+      withoutCount.data.list.find((item) => String(item._id) === String(dataset._id))
+    ).not.toHaveProperty('appCount');
+  });
+  it('omits dataset app counts for non-owners when requested', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const dataset = await MongoDataset.create({
+      name: 'Shared dataset',
+      type: DatasetTypeEnum.dataset,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId: owner.teamId,
+      resourceId: String(dataset._id),
+      tmbId: members[0].tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const response = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: members[0],
+      body: { type: DatasetTypeEnum.dataset, withAppCount: true }
+    });
+    const visibleDataset = response.data.list.find(
+      (item) => String(item._id) === String(dataset._id)
+    );
+
+    expect(response.code).toBe(200);
+    expect(visibleDataset).toBeDefined();
+    expect(visibleDataset?.appCount).toBeUndefined();
   });
 
   it('normalizes nullish avatar and intro from legacy records in V2', async () => {

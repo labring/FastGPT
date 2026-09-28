@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getFolderDescendantResourceIds } from '@fastgpt/service/common/parentFolder/resource';
+import { getFolderDescendantResources } from '@fastgpt/service/common/parentFolder/resource';
 
 type Node = {
   _id: string;
@@ -7,7 +7,7 @@ type Node = {
   type: 'folder' | 'resource';
 };
 
-describe('getFolderDescendantResourceIds', () => {
+describe('getFolderDescendantResources', () => {
   it('queries each tree level once for all folders and returns each folder resource union', async () => {
     const nodes: Node[] = [
       { _id: 'a-child', parentId: 'folder-a', type: 'resource' },
@@ -17,7 +17,7 @@ describe('getFolderDescendantResourceIds', () => {
     ];
     const calls: string[][] = [];
 
-    const result = await getFolderDescendantResourceIds({
+    const result = await getFolderDescendantResources({
       folderIds: ['folder-a', 'folder-b'],
       fetchChildren: async (parentIds) => {
         calls.push(parentIds.sort());
@@ -28,8 +28,16 @@ describe('getFolderDescendantResourceIds', () => {
     });
 
     expect(calls).toEqual([['folder-a', 'folder-b'], ['a-nested']]);
-    expect(result.get('folder-a')?.sort()).toEqual(['a-child', 'a-leaf']);
-    expect(result.get('folder-b')).toEqual(['b-child']);
+    expect(
+      result
+        .get('folder-a')
+        ?.map(({ _id, type }) => ({ id: String(_id), type }))
+        .sort((a, b) => a.id.localeCompare(b.id))
+    ).toEqual([
+      { id: 'a-child', type: 'resource' },
+      { id: 'a-leaf', type: 'resource' }
+    ]);
+    expect(result.get('folder-b')?.map(({ _id }) => _id)).toEqual(['b-child']);
   });
 
   it('keeps a nested folder visible as an independent page item without losing its parent union', async () => {
@@ -38,7 +46,7 @@ describe('getFolderDescendantResourceIds', () => {
       { _id: 'leaf', parentId: 'nested', type: 'resource' }
     ];
 
-    const result = await getFolderDescendantResourceIds({
+    const result = await getFolderDescendantResources({
       folderIds: ['parent', 'nested'],
       fetchChildren: async (parentIds) =>
         nodes.filter((node) => node.parentId && parentIds.includes(node.parentId)),
@@ -46,7 +54,7 @@ describe('getFolderDescendantResourceIds', () => {
       isResource: (node) => node.type === 'resource'
     });
 
-    expect(result.get('parent')).toEqual(['leaf']);
-    expect(result.get('nested')).toEqual(['leaf']);
+    expect(result.get('parent')?.map(({ _id }) => _id)).toEqual(['leaf']);
+    expect(result.get('nested')?.map(({ _id }) => _id)).toEqual(['leaf']);
   });
 });

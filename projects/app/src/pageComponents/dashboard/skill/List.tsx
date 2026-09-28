@@ -336,7 +336,6 @@ const List = ({
     });
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
     const isPersonal = skill.source === AgentSkillSourceEnum.personal;
-    const relatedAppsCount = skill.appCount ?? 0;
     const isSkillReady =
       isFolder ||
       (skill.creationStatus === AgentSkillCreationStatusEnum.ready && !!skill.currentVersionId);
@@ -414,10 +413,10 @@ const List = ({
                   onClick: () =>
                     openConfirmDelete({
                       customContent:
-                        !isFolder && relatedAppsCount > 0 ? (
+                        !isFolder && skill.appCount !== undefined && skill.appCount > 0 ? (
                           <Trans
                             i18nKey={i18nT('skill:confirm_delete_with_refs')}
-                            values={{ count: relatedAppsCount }}
+                            values={{ count: skill.appCount }}
                             components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
                           />
                         ) : null,
@@ -565,16 +564,18 @@ const List = ({
             />
             {!isFolder && isSkillReady && (
               <>
-                {relatedAppsCount > 0 ? (
-                  <RelatedAppsPopover skillId={skill._id} count={relatedAppsCount} />
-                ) : (
-                  <HStack spacing={1}>
-                    <Box color={'myGray.500'}>{t('skill:related_count')}</Box>
-                    <Box color={'myGray.500'} fontWeight={'medium'}>
-                      0
-                    </Box>
-                  </HStack>
-                )}
+                {typeof skill.appCount === 'number' ? (
+                  skill.appCount > 0 ? (
+                    <RelatedAppsPopover skillId={skill._id} count={skill.appCount} />
+                  ) : (
+                    <HStack spacing={1}>
+                      <Box color={'myGray.500'}>{t('skill:related_count')}</Box>
+                      <Box color={'myGray.500'} fontWeight={'medium'}>
+                        0
+                      </Box>
+                    </HStack>
+                  )
+                ) : null}
               </>
             )}
           </HStack>

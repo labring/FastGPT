@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -33,7 +34,7 @@ async function handler(
     })
   ]);
   if (!skillPer.isOwner) {
-    return { list: [], hiddenCount: 0, hiddenOwnerGroups: [] };
+    return Promise.reject(SkillErrEnum.unAuthSkill);
   }
 
   const { apps } = await findTeamAppsByPublishedResource({

@@ -1,9 +1,13 @@
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   authDataset: vi.fn(),
   authApp: vi.fn(),
+  authSkill: vi.fn(),
   findDatasetAndAllChildren: vi.fn(),
   findAppAndAllChildren: vi.fn(),
   findTeamAppsByPublishedResource: vi.fn(),
@@ -18,6 +22,7 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: mocks.authDataset
 }));
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({ authApp: mocks.authApp }));
+vi.mock('@fastgpt/service/support/permission/skill/auth', () => ({ authSkill: mocks.authSkill }));
 vi.mock('@fastgpt/service/core/dataset/controller', () => ({
   findDatasetAndAllChildren: mocks.findDatasetAndAllChildren
 }));
@@ -31,9 +36,11 @@ vi.mock('@/service/core/app/referencedApps', () => ({
   formatReadableReferencedApps: mocks.formatReadableReferencedApps
 }));
 vi.mock('@fastgpt/service/common/zod/requestParseError', () => ({
-  parseApiInput: () => ({ query: { datasetId: 'dataset-1', toolId: 'tool-1' } })
+  parseApiInput: () => ({ query: { datasetId: 'dataset-1', toolId: 'tool-1', skillId: 'skill-1' } })
 }));
 
+// Import handlers after vi.mock so their dependencies use the test doubles.
+const { default: skillHandler } = await import('@/pages/api/core/ai/skill/apps');
 const { default: datasetHandler } = await import('@/pages/api/core/dataset/apps');
 const { default: toolHandler } = await import('@/pages/api/core/app/appsByToolId');
 
@@ -47,6 +54,7 @@ describe('referenced app visibility', () => {
     });
     mocks.authDataset.mockResolvedValue({ permission: { isOwner: true } });
     mocks.authApp.mockResolvedValue({ permission: { isOwner: true } });
+    mocks.authSkill.mockResolvedValue({ permission: { isOwner: true } });
     mocks.findDatasetAndAllChildren.mockResolvedValue([]);
     mocks.findAppAndAllChildren.mockResolvedValue([]);
     mocks.findTeamAppsByPublishedResource.mockResolvedValue({ apps: [] });
@@ -69,12 +77,34 @@ describe('referenced app visibility', () => {
     );
   });
 
-  it('does not query reference relationships when the requester is not the resource owner', async () => {
-    mocks.authDataset.mockResolvedValueOnce({ permission: { isOwner: false } });
+  it.each([
+    {
+      resource: 'dataset',
+      setNonOwner: () =>
+        mocks.authDataset.mockResolvedValueOnce({ permission: { isOwner: false } }),
+      invoke: () => datasetHandler({} as never),
+      error: DatasetErrEnum.unAuthDataset
+    },
+    {
+      resource: 'tool',
+      setNonOwner: () => mocks.authApp.mockResolvedValueOnce({ permission: { isOwner: false } }),
+      invoke: () => toolHandler({} as never),
+      error: AppErrEnum.unAuthApp
+    },
+    {
+      resource: 'skill',
+      setNonOwner: () => mocks.authSkill.mockResolvedValueOnce({ permission: { isOwner: false } }),
+      invoke: () => skillHandler({} as never),
+      error: SkillErrEnum.unAuthSkill
+    }
+  ])('rejects non-owner $resource reference lookup', async ({ setNonOwner, invoke, error }) => {
+    setNonOwner();
 
-    await datasetHandler({} as never);
+    await expect(invoke()).rejects.toBe(error);
 
     expect(mocks.findDatasetAndAllChildren).not.toHaveBeenCalled();
+    expect(mocks.findAppAndAllChildren).not.toHaveBeenCalled();
+    expect(mocks.findTeamAppsByPublishedResource).not.toHaveBeenCalled();
     expect(mocks.formatReadableReferencedApps).not.toHaveBeenCalled();
   });
 });

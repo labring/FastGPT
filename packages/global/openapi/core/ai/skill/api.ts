@@ -23,7 +23,7 @@ import {
 } from '../../../../support/permission/collaborator.schema';
 import { AppListSortEnum } from '../../../../core/app/constants';
 import { IntSchema } from '../../../../common/zod';
-import { HiddenReferencedAppOwnerSchema, ReferencedAppSchema } from '../../app/common/api';
+import { ReferencedAppSchema } from '../../app/common/api';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -389,8 +389,7 @@ export type AppsBySkillIdItem = z.infer<typeof AppsBySkillIdItemSchema>;
 
 export const ListAppsBySkillIdResponseSchema = z.object({
   list: z.array(AppsBySkillIdItemSchema),
-  hiddenCount: z.number().int().nonnegative().describe('当前用户无权限查看的引用应用数量'),
-  hiddenOwnerGroups: z.array(HiddenReferencedAppOwnerSchema).optional()
+  hiddenCount: z.number().int().nonnegative().describe('当前用户无权限查看的引用应用数量')
 });
 export type ListAppsBySkillIdResponse = z.infer<typeof ListAppsBySkillIdResponseSchema>;
 

@@ -4,6 +4,7 @@ import {
   GetAppsByDatasetIdQuerySchema,
   type GetAppsByDatasetIdQuery
 } from '@fastgpt/global/openapi/core/dataset/api';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ReferencedAppsResponseSchema } from '@fastgpt/global/openapi/core/app/common/api';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -26,7 +27,7 @@ async function handler(req: ApiRequestProps<unknown, GetAppsByDatasetIdQuery>) {
     })
   ]);
   if (!datasetPer.isOwner) {
-    return ReferencedAppsResponseSchema.parse({ list: [], hiddenCount: 0 });
+    return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
   const datasets = await findDatasetAndAllChildren({ teamId, datasetId, fields: '_id deleteTime' });
   const { apps } = await findTeamAppsByPublishedResource({

@@ -67,27 +67,8 @@ export const formatReadableReferencedApps = async ({
       updateTime: app.updateTime
     }));
 
-  const visibleAppIds = new Set(visibleApps.map((app) => app._id));
-  const hiddenGroups = new Map<string, number>();
-  apps.forEach((app) => {
-    if (visibleAppIds.has(String(app._id))) return;
-    const ownerId = String(app.tmbId);
-    hiddenGroups.set(ownerId, (hiddenGroups.get(ownerId) ?? 0) + 1);
-  });
-  const hiddenOwnerGroupList = Array.from(hiddenGroups, ([tmbId, count]) => ({ tmbId, count }));
-  const hiddenOwnersWithMember = await addSourceMember({ list: hiddenOwnerGroupList });
-  const hiddenOwnerMemberMap = new Map(
-    hiddenOwnersWithMember.map((owner) => [owner.tmbId, owner.sourceMember])
-  );
-
   return {
     list: await addSourceMember({ list: visibleApps }),
-    hiddenCount: apps.length - visibleApps.length,
-    hiddenOwnerGroups: hiddenOwnerGroupList.map((owner) => ({
-      ...owner,
-      ...(hiddenOwnerMemberMap.get(owner.tmbId)
-        ? { sourceMember: hiddenOwnerMemberMap.get(owner.tmbId) }
-        : {})
-    }))
+    hiddenCount: apps.length - visibleApps.length
   };
 };
