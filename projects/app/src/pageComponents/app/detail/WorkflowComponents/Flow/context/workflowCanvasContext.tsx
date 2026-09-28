@@ -26,6 +26,12 @@ import {
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
 import { createProjectionCache, projectRuntimeCanvas } from '@/web/core/workflow/editor/projection';
 import type { CanvasNode } from '@/web/core/workflow/editor/canvas';
+import {
+  createDimensionBatcher,
+  type DimensionMeasurement,
+  type DimensionRegistration,
+  type NodeCardDimension
+} from './dimensionIndex';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -34,6 +40,9 @@ type WorkflowCanvasContextType = {
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
+  dimensionIndex: ReadonlyMap<string, NodeCardDimension>;
+  getNodeDimension: (nodeId: string) => NodeCardDimension | undefined;
+  registerNodeMeasurement: (nodeId: string) => DimensionRegistration;
   edges: Edge<any>[];
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
@@ -47,6 +56,13 @@ export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
     throw new Error('Function not implemented.');
   },
   getNodes: function () {
+    throw new Error('Function not implemented.');
+  },
+  dimensionIndex: new Map(),
+  getNodeDimension: function () {
+    throw new Error('Function not implemented.');
+  },
+  registerNodeMeasurement: function () {
     throw new Error('Function not implemented.');
   },
   edges: [],
@@ -72,6 +88,76 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const nodesRef = useRef<CanvasNode[]>(nodes);
   const edgesRef = useRef<Edge<any>[]>(edges);
   const projectionCache = useRef(createProjectionCache());
+  const [dimensionIndex, setDimensionIndex] = useState<ReadonlyMap<string, NodeCardDimension>>(
+    () => new Map()
+  );
+  const dimensionIndexRef = useRef(new Map<string, NodeCardDimension>());
+  const activeNodeIdsRef = useRef(new Set(nodes.map((node) => node.id)));
+  const measurementGenerationsRef = useRef(new Map<string, number>());
+  const nextMeasurementGenerationRef = useRef(0);
+  const flushDimensionMeasurements = useMemoizedFn((updates: DimensionMeasurement[]) => {
+    const next = new Map(dimensionIndexRef.current);
+    let changed = false;
+
+    updates.forEach((update) => {
+      if (
+        !activeNodeIdsRef.current.has(update.nodeId) ||
+        measurementGenerationsRef.current.get(update.nodeId) !== update.generation
+      ) {
+        return;
+      }
+
+      const previous = next.get(update.nodeId);
+      if (
+        previous?.width === update.dimension.width &&
+        previous?.height === update.dimension.height
+      ) {
+        return;
+      }
+
+      next.set(update.nodeId, update.dimension);
+      changed = true;
+    });
+
+    if (changed) {
+      dimensionIndexRef.current = next;
+      setDimensionIndex(next);
+    }
+  });
+  const [dimensionBatcher] = useState(() =>
+    createDimensionBatcher({ onFlush: flushDimensionMeasurements })
+  );
+
+  const pruneDimensions = (activeNodeIds: Set<string>) => {
+    measurementGenerationsRef.current.forEach((_generation, nodeId) => {
+      if (!activeNodeIds.has(nodeId)) {
+        measurementGenerationsRef.current.delete(nodeId);
+        dimensionBatcher.remove(nodeId);
+      }
+    });
+
+    const next = new Map(dimensionIndexRef.current);
+    let changed = false;
+    next.forEach((_dimension, nodeId) => {
+      if (!activeNodeIds.has(nodeId)) {
+        next.delete(nodeId);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      dimensionIndexRef.current = next;
+      setDimensionIndex(next);
+    }
+  };
+
+  const setRenderedNodes = (next: CanvasNode[]) => {
+    const activeNodeIds = new Set(next.map((node) => node.id));
+    activeNodeIdsRef.current = activeNodeIds;
+    pruneDimensions(activeNodeIds);
+    nodesRef.current = next;
+    setNodesRaw(next);
+  };
 
   const isRuntimeActive = () => !!runtime && !runtime.isDisposed();
 
@@ -86,9 +172,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       localEdges: edgesRef.current,
       cache: projectionCache.current
     });
-    nodesRef.current = projected.nodes;
+    setRenderedNodes(projected.nodes);
     edgesRef.current = projected.edges;
-    setNodesRaw(projected.nodes);
     setEdgesRaw(projected.edges);
   });
 
@@ -108,8 +193,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     const current = nodesRef.current;
     const next = typeof action === 'function' ? action(current) : action;
     if (next === current) return;
-    nodesRef.current = next;
-    setNodesRaw(next);
+    setRenderedNodes(next);
   });
 
   const setEdges = useMemoizedFn((action: SetStateAction<Edge<any>[]>) => {
@@ -151,8 +235,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
     const next = applyNodeChanges(effectiveChanges, prev);
     if (next !== prev) {
-      nodesRef.current = next;
-      setNodesRaw(next);
+      setRenderedNodes(next);
     }
   });
 
@@ -166,6 +249,34 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const getNodes = useMemoizedFn(() => nodesRef.current);
+  const getNodeDimension = useMemoizedFn((nodeId: string) => dimensionIndexRef.current.get(nodeId));
+
+  const registerNodeMeasurement = useMemoizedFn((nodeId: string): DimensionRegistration => {
+    const generation = ++nextMeasurementGenerationRef.current;
+    measurementGenerationsRef.current.set(nodeId, generation);
+
+    const report = (dimension: NodeCardDimension) => {
+      if (measurementGenerationsRef.current.get(nodeId) !== generation) return;
+      dimensionBatcher.enqueue({ nodeId, generation, dimension });
+    };
+
+    const dispose = () => {
+      if (measurementGenerationsRef.current.get(nodeId) !== generation) return;
+      measurementGenerationsRef.current.delete(nodeId);
+      dimensionBatcher.remove(nodeId);
+
+      const current = dimensionIndexRef.current;
+      if (!current.has(nodeId)) return;
+      const next = new Map(current);
+      next.delete(nodeId);
+      dimensionIndexRef.current = next;
+      setDimensionIndex(next);
+    };
+
+    return { report, dispose };
+  });
+
+  useEffect(() => () => dimensionBatcher.dispose(), [dimensionBatcher]);
 
   const contextValue = useMemo(
     () => ({
@@ -173,11 +284,25 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       setNodes,
       onNodesChange,
       getNodes,
+      dimensionIndex,
+      getNodeDimension,
+      registerNodeMeasurement,
       edges,
       setEdges,
       onEdgesChange
     }),
-    [nodes, setNodes, onNodesChange, getNodes, edges, setEdges, onEdgesChange]
+    [
+      nodes,
+      setNodes,
+      onNodesChange,
+      getNodes,
+      dimensionIndex,
+      getNodeDimension,
+      registerNodeMeasurement,
+      edges,
+      setEdges,
+      onEdgesChange
+    ]
   );
 
   return (

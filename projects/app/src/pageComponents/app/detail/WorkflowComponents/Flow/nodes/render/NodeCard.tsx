@@ -399,6 +399,7 @@ const NodeCard = (props: Props) => {
       {...customStyle}
     >
       <Flex
+        data-workflow-node-card="true"
         hidden={hidden}
         flexDirection={'column'}
         {...(isFolded

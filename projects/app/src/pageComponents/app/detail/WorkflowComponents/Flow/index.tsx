@@ -32,7 +32,9 @@ const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
 ));
 NodeStopTool.displayName = 'NodeStopTool';
 
-const nodeTypes: Record<FlowNodeTypeEnum, any> = {
+type CanvasNodeComponent = React.ElementType<NodeProps<FlowNodeItemType>>;
+
+const baseNodeTypes: Record<FlowNodeTypeEnum, CanvasNodeComponent> = {
   [FlowNodeTypeEnum.emptyNode]: NodeSimple,
   [FlowNodeTypeEnum.globalVariable]: NodeSimple,
   [FlowNodeTypeEnum.textEditor]: NodeSimple,
@@ -72,6 +74,87 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.formInput]: dynamic(() => import('./nodes/NodeFormInput')),
   [FlowNodeTypeEnum.comment]: dynamic(() => import('./nodes/NodeComment'))
 };
+
+const MeasuredNode = React.memo(
+  ({
+    nodeComponent,
+    ...props
+  }: NodeProps<FlowNodeItemType> & {
+    nodeComponent: CanvasNodeComponent;
+  }) => {
+    const registerNodeMeasurement = useContextSelector(
+      WorkflowCanvasContext,
+      (v) => v.registerNodeMeasurement
+    );
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const nodeId = props.id;
+    const measurementIdentity = props.data;
+
+    useEffect(() => {
+      const wrapper = wrapperRef.current;
+      const registration = registerNodeMeasurement(nodeId);
+      if (!wrapper) return registration.dispose;
+
+      let target: HTMLElement | null = null;
+      let resizeObserver: ResizeObserver | undefined;
+      let mutationObserver: MutationObserver | undefined;
+
+      const findTarget = () => wrapper.querySelector<HTMLElement>('[data-workflow-node-card]');
+
+      const reportSize = () => {
+        if (!target) return;
+        const rect = target.getBoundingClientRect();
+        registration.report({ width: rect.width, height: rect.height });
+      };
+
+      const observeTarget = () => {
+        const nextTarget = findTarget();
+        if (!nextTarget || nextTarget === target) return !!nextTarget;
+
+        resizeObserver?.disconnect();
+        target = nextTarget;
+        reportSize();
+
+        if (typeof ResizeObserver === 'function') {
+          resizeObserver = new ResizeObserver(reportSize);
+          resizeObserver.observe(nextTarget);
+        }
+        return true;
+      };
+
+      if (!observeTarget() && typeof MutationObserver === 'function') {
+        mutationObserver = new MutationObserver(() => {
+          if (observeTarget()) mutationObserver?.disconnect();
+        });
+        mutationObserver.observe(wrapper, { childList: true, subtree: true });
+      }
+
+      return () => {
+        mutationObserver?.disconnect();
+        resizeObserver?.disconnect();
+        registration.dispose();
+      };
+    }, [measurementIdentity, nodeId, registerNodeMeasurement]);
+
+    return (
+      <div ref={wrapperRef} style={{ display: 'contents' }}>
+        {React.createElement(nodeComponent, props)}
+      </div>
+    );
+  }
+);
+MeasuredNode.displayName = 'MeasuredNode';
+
+const nodeTypes = Object.fromEntries(
+  Object.entries(baseNodeTypes).map(([type, nodeComponent]) => {
+    const MeasuredNodeType = React.memo((props: NodeProps<FlowNodeItemType>) => (
+      <MeasuredNode nodeComponent={nodeComponent} {...props} />
+    ));
+    MeasuredNodeType.displayName = `MeasuredNodeType(${type})`;
+    return [type, MeasuredNodeType];
+  })
+);
+
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
 };
