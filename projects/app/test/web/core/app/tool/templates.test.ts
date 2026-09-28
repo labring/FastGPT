@@ -355,21 +355,37 @@ describe('getNewToolPreviewNode', () => {
   });
 
   it.each([
-    ['507f1f77bcf86cd799439011', undefined],
-    ['personal-507f1f77bcf86cd799439011', undefined],
+    ['507f1f77bcf86cd799439011', true],
+    ['personal-507f1f77bcf86cd799439011', true],
     ['systemTool-search', true],
     ['commercial-507f1f77bcf86cd799439011', true],
     ['mcp-507f1f77bcf86cd799439011/search', true],
     ['http-507f1f77bcf86cd799439011/search', true]
   ])('uses the correct initial version policy for %s', async (appId, getLatestVersion) => {
-    const preview = { pluginId: appId, inputs: [], outputs: [] };
+    const preview = {
+      pluginId: appId,
+      inputs: [],
+      outputs: [],
+      version: 'latest-version',
+      versionLabel: 'Latest'
+    };
     mocks.GET.mockResolvedValueOnce(preview);
 
-    expect(await getNewToolPreviewNode({ appId, source: 'system' })).toBe(preview);
+    const result = await getNewToolPreviewNode({ appId, source: 'system' });
+    if (
+      appId.startsWith('systemTool') ||
+      appId.startsWith('commercial-') ||
+      appId.startsWith('mcp-') ||
+      appId.startsWith('http-')
+    ) {
+      expect(result).toBe(preview);
+    } else {
+      expect(result).toMatchObject({ version: '', versionLabel: undefined, isLatestVersion: true });
+    }
     const expectedQuery = {
       appId,
       source: 'system',
-      ...(getLatestVersion === true ? { getLatestVersion: true } : {})
+      getLatestVersion
     };
     expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', expectedQuery);
   });

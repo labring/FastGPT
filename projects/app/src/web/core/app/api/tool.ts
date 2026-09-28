@@ -182,9 +182,20 @@ export const getClientToolPreviewNode = (data: GetPreviewNodeQuery) =>
  * 添加工具时，个人工作流和 Agent 默认跟随最新发布版本；系统工具保留固定最新版本的策略。
  * 显式切换版本和加载已保存配置仍使用 getClientToolPreviewNode，避免覆盖用户的固定版本。
  */
-export const getNewToolPreviewNode = (
+export const getNewToolPreviewNode = async (
   data: Omit<GetPreviewNodeQuery, 'versionId' | 'getLatestVersion'>
-) =>
-  splitCombineToolId(data.appId).source === AppToolSourceEnum.personal
-    ? getClientToolPreviewNode(data)
-    : getClientToolPreviewNode({ ...data, getLatestVersion: true });
+) => {
+  const preview = await getClientToolPreviewNode({ ...data, getLatestVersion: true });
+
+  if (splitCombineToolId(data.appId).source !== AppToolSourceEnum.personal) {
+    return preview;
+  }
+
+  // 预览需要读取最新版本，但新添加的个人工具不能固化该版本号。
+  return {
+    ...preview,
+    version: '',
+    versionLabel: undefined,
+    isLatestVersion: true
+  };
+};
