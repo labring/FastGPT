@@ -75,6 +75,7 @@ import {
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
 
 import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { WorkflowCanvasContext } from '../../context/workflowCanvasContext';
 import { useDebug } from '../../hooks/useDebug';
 import { useNodeOutputValidity } from '../../hooks/useNodeOutputValidity';
 import { useClearCanvasSelection } from '../../hooks/useWorkflow';
@@ -195,6 +196,7 @@ const NodeCard = (props: Props) => {
   const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
   const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
   const { fitView } = useReactFlow();
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
 
   const nodeActions = useNodeActions(nodeId);
   const inputConfigField = useField(nodeId, NodeInputKeyEnum.systemInputConfig, 'input');
@@ -208,12 +210,14 @@ const NodeCard = (props: Props) => {
 
     // Fit view to show this node in center
     setTimeout(() => {
+      const dimension = getNodeDimension(nodeId);
+      if (!dimension) return;
       fitView({
-        nodes: [{ id: nodeId }],
+        nodes: [{ id: nodeId, ...dimension }],
         padding: 0.3
       });
     }, 100);
-  }, [nodeActions, setPresentationMode, fitView, nodeId]);
+  }, [getNodeDimension, nodeActions, setPresentationMode, fitView, nodeId]);
 
   const showToolHandle = isTool;
 

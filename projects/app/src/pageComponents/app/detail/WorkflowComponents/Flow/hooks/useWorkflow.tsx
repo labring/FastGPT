@@ -33,6 +33,11 @@ import { WorkflowUIContext } from '../context/workflowUIContext';
 import { WorkflowModalContext } from '../context/workflowModalContext';
 import { type HelperLinesController } from '../components/HelperLines';
 import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
+import {
+  areNodeRectsIntersecting,
+  getNodeRect,
+  type DimensionReader
+} from '../context/dimensionIndex';
 
 /** 只为真实发生位置变化的节点创建 geometry command；节点查找一次完成。 */
 export const collectGeometryUpdates = ({
@@ -151,13 +156,15 @@ type CreateHelperLineScannerParams = {
   change: NodePositionChange;
   node?: Node;
   distance?: number;
+  getNodeDimension: DimensionReader;
 };
 
 /** 创建单次扫描器，调用方可在遍历节点的同时完成其他拖动计算。 */
 export const createHelperLineScanner = ({
   change,
   node: nodeA,
-  distance = 8
+  distance = 8,
+  getNodeDimension
 }: CreateHelperLineScannerParams) => {
   const result: GetHelperLinesResult = {
     snapPosition: { x: undefined, y: undefined }
@@ -170,16 +177,16 @@ export const createHelperLineScanner = ({
     };
   }
 
-  const nodeABounds = {
-    left: change.position.x,
-    right: change.position.x + (nodeA.width ?? 0),
-    top: change.position.y,
-    bottom: change.position.y + (nodeA.height ?? 0),
-    width: nodeA.width ?? 0,
-    height: nodeA.height ?? 0,
-    centerX: change.position.x + (nodeA.width ?? 0) / 2,
-    centerY: change.position.y + (nodeA.height ?? 0) / 2
-  };
+  const nodeABounds = getNodeRect(
+    { ...nodeA, position: change.position },
+    getNodeDimension(nodeA.id)
+  );
+  if (!nodeABounds) {
+    return {
+      scanNode: (_node: Node) => {},
+      getResult: () => result
+    };
+  }
 
   let horizontalDistance = distance;
   let verticalDistance = distance;
@@ -201,16 +208,8 @@ export const createHelperLineScanner = ({
       };
     }
 
-    const nodeBBounds = {
-      left: nodeB.position.x,
-      right: nodeB.position.x + (nodeB.width ?? 0),
-      top: nodeB.position.y,
-      bottom: nodeB.position.y + (nodeB.height ?? 0),
-      width: nodeB.width ?? 0,
-      height: nodeB.height ?? 0,
-      centerX: nodeB.position.x + (nodeB.width ?? 0) / 2,
-      centerY: nodeB.position.y + (nodeB.height ?? 0) / 2
-    };
+    const nodeBBounds = getNodeRect(nodeB, getNodeDimension(nodeB.id));
+    if (!nodeBBounds) return;
 
     const distanceLeftLeft = Math.abs(nodeABounds.left - nodeBBounds.left);
     const distanceRightRight = Math.abs(nodeABounds.right - nodeBBounds.right);
@@ -392,9 +391,10 @@ export const computeHelperLines = ({
   node,
   nodes,
   isCandidate,
-  distance
+  distance,
+  getNodeDimension
 }: ComputeHelperLinesParams): GetHelperLinesResult => {
-  const scanner = createHelperLineScanner({ change, node, distance });
+  const scanner = createHelperLineScanner({ change, node, distance, getNodeDimension });
   for (const candidate of nodes) {
     if (!isCandidate || isCandidate(candidate)) scanner.scanNode(candidate);
   }
@@ -508,8 +508,9 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   const setConnectingEdge = useContextSelector(WorkflowUIContext, (v) => v.setConnectingEdge);
   const setHandleParams = useContextSelector(WorkflowModalContext, (v) => v.setHandleParams);
 
-  const { getIntersectingNodes, flowToScreenPosition, getZoom, getNode, getEdge } = useReactFlow();
+  const { flowToScreenPosition, getZoom, getNode, getEdge } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
 
   /*
     删除批次里 onEdgesChange 早于 onNodesChange，此时还不知道节点会不会真被删掉。
@@ -545,11 +546,17 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
     if (!node || node.data.parentNodeId) return;
 
-    // 获取所有与当前节点相交的节点中，类型为嵌套父容器且未折叠的节点
-    const intersections = getIntersectingNodes(node);
-    const parentNode = intersections.find(
-      (item) => !item.data.isFolded && isNestedParentNodeType(item.type ?? '')
-    );
+    const nodeRect = getNodeRect(node, getNodeDimension(node.id));
+    if (!nodeRect) return;
+
+    // ReactFlow bounds 只作为兼容字段；容器归属判定统一使用 Dimension Index。
+    const parentNode = getNodes().find((item) => {
+      if (item.id === node.id || item.data.isFolded || !isNestedParentNodeType(item.type ?? '')) {
+        return false;
+      }
+      const parentRect = getNodeRect(item, getNodeDimension(item.id));
+      return !!parentRect && areNodeRectsIntersecting(nodeRect, parentRect);
+    });
 
     if (parentNode) {
       // 断连用的边集合在 attach 之前取：与改造前的渲染期快照同一时点，
@@ -594,7 +601,8 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
     const zoom = getZoom();
 
-    let x = position.x + (node.width || 0) * zoom;
+    const nodeWidth = getNodeDimension(node.id)?.width ?? 0;
+    let x = position.x + nodeWidth * zoom;
     let y = position.y;
 
     const viewportWidth = window.innerWidth;
@@ -604,7 +612,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
     // Check right boundary
     if (x + popoverWidth + margin > viewportWidth) {
-      x = Math.max(margin, position.x + (node.width || 0) * zoom - popoverWidth - 30);
+      x = Math.max(margin, position.x + nodeWidth * zoom - popoverWidth - 30);
     }
 
     // Check bottom boundary
@@ -625,14 +633,16 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       if (!node) return { x: 0, y: 0 };
 
       if (handleId === 'selectedTools') {
+        const nodeHeight = getNodeDimension(node.id)?.height ?? 0;
         return {
           x: node.position.x,
-          y: node.position.y + (node.height || 0) + 80
+          y: node.position.y + nodeHeight + 80
         };
       }
 
+      const nodeWidth = getNodeDimension(node.id)?.width ?? 0;
       return {
-        x: node.position.x + (node.width || 0) + 120,
+        x: node.position.x + nodeWidth + 120,
         y: node.position.y
       };
     }
@@ -677,7 +687,8 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
             change,
             node,
             nodes,
-            isCandidate: (candidate) => candidate.data.parentNodeId === parentId
+            isCandidate: (candidate) => candidate.data.parentNodeId === parentId,
+            getNodeDimension
           });
           applyHelperLineResult(change, helperLines);
         } else {
@@ -692,7 +703,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         const parentId = node.id;
         const helperLineScanner =
           change.dragging && change.position
-            ? createHelperLineScanner({ change, node })
+            ? createHelperLineScanner({ change, node, getNodeDimension })
             : undefined;
 
         // 一次遍历同时收集子节点并扫描顶层吸附候选。
@@ -747,7 +758,8 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
           change,
           node,
           nodes,
-          isCandidate: (candidate) => !candidate.data.parentNodeId
+          isCandidate: (candidate) => !candidate.data.parentNodeId,
+          getNodeDimension
         });
         applyHelperLineResult(change, helperLines);
       } else {

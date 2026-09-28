@@ -54,7 +54,11 @@ const computeHelperLines = (change: NodePositionChange, nodes: Node[], distance?
     change,
     node: nodes.find((node) => node.id === change.id),
     nodes,
-    distance
+    distance,
+    getNodeDimension: (nodeId) => {
+      const node = nodes.find((item) => item.id === nodeId);
+      return node ? { width: node.width ?? 0, height: node.height ?? 0 } : undefined;
+    }
   });
 
 describe('collectGeometryUpdates', () => {
@@ -287,7 +291,11 @@ describe('computeHelperLines', () => {
       change,
       node: nodes[0],
       nodes,
-      isCandidate
+      isCandidate,
+      getNodeDimension: (nodeId) => {
+        const node = nodes.find((item) => item.id === nodeId);
+        return node ? { width: node.width ?? 0, height: node.height ?? 0 } : undefined;
+      }
     });
 
     expect(isCandidate).toHaveBeenCalledTimes(nodes.length);

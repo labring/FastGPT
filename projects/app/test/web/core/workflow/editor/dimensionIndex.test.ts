@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  areNodeRectsIntersecting,
   createDimensionBatcher,
+  getDimensionedNodes,
+  getNodeRect,
   type DimensionMeasurement
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/context/dimensionIndex';
 
@@ -85,5 +88,22 @@ describe('workflow dimension batcher', () => {
     frames[0]();
 
     expect(flushed).toEqual([]);
+  });
+});
+
+describe('workflow dimension geometry', () => {
+  it('derives rectangles and filters nodes without an index entry', () => {
+    const first = { id: 'first', position: { x: 10, y: 20 } };
+    const second = { id: 'second', position: { x: 50, y: 30 } };
+    const firstRect = getNodeRect(first, { width: 100, height: 60 });
+    const secondRect = getNodeRect(second, { width: 80, height: 40 });
+
+    expect(firstRect).toMatchObject({ right: 110, bottom: 80, centerX: 60, centerY: 50 });
+    expect(areNodeRectsIntersecting(firstRect!, secondRect!)).toBe(true);
+    expect(
+      getDimensionedNodes([first, second], (nodeId) =>
+        nodeId === 'first' ? { width: 100, height: 60 } : undefined
+      )
+    ).toEqual([{ ...first, width: 100, height: 60 }]);
   });
 });

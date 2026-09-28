@@ -11,6 +11,7 @@ import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
 import type { ViewOverlayPatch } from '@/web/core/workflow/editor/canvas';
 import { useWorkflowSnapshotGetter } from '../../WorkflowComponents/Flow/nodes/render/useWorkflowDocument';
 import { WorkflowCanvasContext } from '../../WorkflowComponents/Flow/context/workflowCanvasContext';
+import { getDimensionedNodes } from '../../WorkflowComponents/Flow/context/dimensionIndex';
 
 const SearchButton = (props: ButtonProps) => {
   const { t } = useTranslation();
@@ -19,6 +20,7 @@ const SearchButton = (props: ButtonProps) => {
   const patchViewData = useContextSelector(WorkflowHostContext, (state) => state.patchViewData);
   const { fitView } = useReactFlow();
   const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
   const onNodesChange = useContextSelector(WorkflowCanvasContext, (v) => v.onNodesChange);
   const { isMac } = useSystem();
 
@@ -74,7 +76,9 @@ const SearchButton = (props: ButtonProps) => {
 
     setSearchedNodeCount(matchedNodeIds.length);
     const activeNodeId = matchedNodeIds[searchIndex] ?? matchedNodeIds[0];
-    fitView({ nodes: [{ id: activeNodeId }], padding: 0.6 });
+    const activeNode = getNodes().find((node) => node.id === activeNodeId);
+    const [dimensionedNode] = activeNode ? getDimensionedNodes([activeNode], getNodeDimension) : [];
+    if (dimensionedNode) fitView({ nodes: [dimensionedNode], padding: 0.6 });
     /**
      * 只对选中态真的要变的节点发 select 变更。受控模式下 `useReactFlow().setNodes` 会把整份数组
      * 转成 N 个 reset 变更，而 `applyNodeChanges` 一见 reset 就整份重建（06 总纲决策 13）；
@@ -88,7 +92,16 @@ const SearchButton = (props: ButtonProps) => {
         selected: node.id === activeNodeId
       }));
     if (changes.length > 0) onNodesChange(changes);
-  }, [fitView, getNodes, getWorkflow, keyword, onNodesChange, patchViewData, searchIndex]);
+  }, [
+    fitView,
+    getNodeDimension,
+    getNodes,
+    getWorkflow,
+    keyword,
+    onNodesChange,
+    patchViewData,
+    searchIndex
+  ]);
 
   useThrottleEffect(
     () => {

@@ -25,6 +25,7 @@ import { WorkflowSelectionProvider } from './context/workflowSelectionContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { getDimensionedNodes } from './context/dimensionIndex';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
@@ -210,6 +211,8 @@ CanvasOverlays.displayName = 'CanvasOverlays';
 
 const WorkflowCanvas = () => {
   const nodes = useContextSelector(WorkflowCanvasContext, (v) => v.nodes);
+  const dimensionIndex = useContextSelector(WorkflowCanvasContext, (v) => v.dimensionIndex);
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
   const edges = useContextSelector(WorkflowCanvasContext, (v) => v.edges);
   const helperLinesRef = useRef<HelperLinesController>(null);
   // 按字段订阅：整体订阅会让 hover / 鼠标进出画布带动整个画布组件重渲染，
@@ -220,6 +223,8 @@ const WorkflowCanvas = () => {
   );
   const workflowControlMode = useContextSelector(WorkflowUIContext, (v) => v.workflowControlMode);
   const menu = useContextSelector(WorkflowUIContext, (v) => v.menu);
+  const issueFocusRef = useContextSelector(WorkflowHostContext, (v) => v.issueFocusRef);
+  const issueFocusTick = useContextSelector(WorkflowHostContext, (v) => v.issueFocusTick);
 
   const {
     handleNodesChange,
@@ -246,26 +251,23 @@ const WorkflowCanvas = () => {
   const onMoveEnd = useCallback(() => setMovingCanvas(false), []);
 
   const { fitView } = useReactFlow();
-  const fitViewDone = useRef(false);
-  const reactFlowInitialized = useRef(false);
-
-  const onInit = useCallback(() => {
-    reactFlowInitialized.current = true;
-  }, []);
+  const fittedIssueNodeRef = useRef<string>();
 
   useEffect(() => {
-    // 自动定位画布：需等待 ReactFlow 初始化完成(onInit) + 节点数据加载并渲染出宽高后执行，仅执行一次
-    if (
-      !reactFlowInitialized.current ||
-      fitViewDone.current ||
-      !nodes.length ||
-      !nodes.every((node) => node.width && node.height)
-    )
+    const focusedNodeId = issueFocusRef.current;
+    if (!focusedNodeId) {
+      fittedIssueNodeRef.current = undefined;
       return;
+    }
+    if (fittedIssueNodeRef.current === focusedNodeId) return;
 
-    fitViewDone.current = true;
-    setTimeout(() => fitView({ padding: 0.3, nodes }), 0);
-  }, [nodes, fitView]);
+    const focusedNode = nodes.find((node) => node.id === focusedNodeId);
+    if (!focusedNode) return;
+    const [node] = getDimensionedNodes([focusedNode], getNodeDimension);
+    if (!node) return;
+    fittedIssueNodeRef.current = focusedNodeId;
+    fitView({ nodes: [node], padding: 0.3 });
+  }, [dimensionIndex, fitView, getNodeDimension, issueFocusTick, issueFocusRef, nodes]);
 
   return (
     <>
@@ -292,7 +294,6 @@ const WorkflowCanvas = () => {
           edges={edges}
           minZoom={minZoom}
           maxZoom={maxZoom}
-          onInit={onInit}
           defaultEdgeOptions={defaultEdgeOptions}
           elevateEdgesOnSelect
           connectionLineComponent={CustomConnectionLine}

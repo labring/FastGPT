@@ -55,6 +55,8 @@ import { useContextSelector } from 'use-context-selector';
 import type { WorkflowDispatchResult } from '@/web/core/workflow/editor';
 import { useDocumentGetNodeById } from '../../nodes/render/useWorkflowDocument';
 import { WorkflowModalContext } from '../../context/workflowModalContext';
+import { WorkflowCanvasContext } from '../../context/workflowCanvasContext';
+import { areNodeRectsIntersecting, getNodeRect } from '../../context/dimensionIndex';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { TemplateTypeEnum } from './header';
@@ -255,7 +257,8 @@ const NodeTemplateList = ({
   const { computedNewNodeName } = useWorkflowUtils();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  const { getIntersectingNodes } = useReactFlow();
+  const getCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
   // 落点归属读文档：只用来解析来源节点的父容器，容器合法性由 runtime 判定。
   const getNodeById = useDocumentGetNodeById();
   const [lastSelectedModelId] = useLocalStorageState<string>('workflow_default_llm_model', {
@@ -319,12 +322,12 @@ const NodeTemplateList = ({
         // 这里只决定落点，不做容器校验：拖入容器与快捷添加走同一套 runtime 规则，无法通过拖拽绕过。
         let effectiveParentNodeId: string | undefined = currentNode?.parentNodeId;
         if (!effectiveParentNodeId && !handleParams) {
-          const dropContainer = getIntersectingNodes({
-            x: position.x,
-            y: position.y,
-            width: 1,
-            height: 1
-          }).find((n) => isNestedParentNodeType(n.type ?? '') && !n.data?.isFolded);
+          const dropRect = getNodeRect({ id: 'template-drop', position }, { width: 1, height: 1 })!;
+          const dropContainer = getCanvasNodes().find((n) => {
+            if (n.data?.isFolded || !isNestedParentNodeType(n.type ?? '')) return false;
+            const containerRect = getNodeRect(n, getNodeDimension(n.id));
+            return !!containerRect && areNodeRectsIntersecting(dropRect, containerRect);
+          });
           if (dropContainer) {
             effectiveParentNodeId = dropContainer.id;
           }
@@ -459,7 +462,8 @@ const NodeTemplateList = ({
       getNodeById,
       handleParams,
       isToolSelector,
-      getIntersectingNodes,
+      getCanvasNodes,
+      getNodeDimension,
       onAddNode,
       lastSelectedModelId,
       t,

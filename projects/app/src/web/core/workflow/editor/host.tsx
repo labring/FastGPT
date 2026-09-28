@@ -21,7 +21,6 @@ import React, {
 import { useMemoizedFn } from 'ahooks';
 import { isEqual } from 'lodash-es';
 import { useTranslation } from 'next-i18next';
-import { useReactFlow } from 'reactflow';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
@@ -53,8 +52,6 @@ import type { ViewDataOverlayMap } from './projection';
 import type { ViewOverlayPatch } from './canvas';
 import { WorkflowEditorProvider } from './react';
 
-/** 定位问题节点时的视口留白，与画布其它 fitView 调用一致。 */
-const ISSUE_FOCUS_FIT_PADDING = 0.3;
 /** Runtime 最多保留 100 笔 history；版本列表包含当前状态，因此最多 101 项。 */
 const MAX_VERSION_ENTRIES = 101;
 
@@ -83,6 +80,8 @@ export type WorkflowHostValue = {
    * 因此拖拽落点、单字段提交都不会带动只关心 overlay 的消费者，反之亦然。
    */
   viewTick: number;
+  /** 问题焦点变化序号；画布据此用 Dimension Index 重新定位视口。 */
+  issueFocusTick: number;
 
   /**
    * renderer view 通道：host 持有的按节点视图数据（debug 结果、搜索高亮、教程元信息），
@@ -127,6 +126,7 @@ const notImplemented = (): never => {
 export const WorkflowHostContext = createContext<WorkflowHostValue>({
   runtime: null,
   viewTick: 0,
+  issueFocusTick: 0,
   overlaysRef: { current: {} },
   patchViewData: notImplemented,
   undo: notImplemented,
@@ -183,8 +183,6 @@ export const useWorkflowSnapshot = (): WorkflowSnapshot | undefined => {
 export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  // host 在 ReactFlowProvider 内，问题焦点定位直接用画布视口 API。
-  const { fitView } = useReactFlow();
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const appDetailChatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
   const { feConfigs } = useSystemStore();
@@ -195,6 +193,7 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
   const [runtime, setRuntime] = useState<WorkflowRuntimePort | null>(null);
   const runtimeRef = useRef<WorkflowRuntimePort | null>(null);
   const [viewTick, setViewTick] = useState(0);
+  const [issueFocusTick, setIssueFocusTick] = useState(0);
   /**
    * host 自身的重渲染触发：canUndo / canRedo / isSaved 都是渲染期从 runtime 读出来的派生值，
    * 任何 runtime 事件之后都要重算。它不进 context value，消费者拿不到，因此不可能被当成
@@ -314,15 +313,15 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
 
   /**
    * 问题焦点：标红哪个节点由 host 单点持有（旧行为同一时刻只标红一个），投影合并进节点 data。
-   * 传入 nodeId 时同时 fitView 定位，保存/发布 gate 与调试入口共用；传 undefined 只清除标红，
-   * 用于节点被点击或取消选中的场景，此时不应移动视口。
+   * 传入 nodeId 时更新焦点序号，画布在尺寸进入 Dimension Index 后负责定位；传 undefined 只清除
+   * 标红，用于节点被点击或取消选中的场景，此时不应移动视口。
    */
   const focusIssueNode = useMemoizedFn((nodeId?: string) => {
     if (issueFocusRef.current !== nodeId) {
       issueFocusRef.current = nodeId;
+      setIssueFocusTick((tick) => tick + 1);
       bumpView();
     }
-    if (nodeId) fitView({ nodes: [{ id: nodeId }], padding: ISSUE_FOCUS_FIT_PADDING });
   });
 
   const serializeWorkflow = useMemoizedFn((): StoreWorkflow | undefined => {
@@ -558,6 +557,7 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
     () => ({
       runtime,
       viewTick,
+      issueFocusTick,
       overlaysRef,
       patchViewData,
       undo,
@@ -580,6 +580,7 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
     [
       runtime,
       viewTick,
+      issueFocusTick,
       patchViewData,
       undo,
       redo,

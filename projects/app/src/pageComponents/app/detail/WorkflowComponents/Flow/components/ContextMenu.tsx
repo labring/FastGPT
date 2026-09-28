@@ -18,6 +18,11 @@ import { useCanvas, useWorkflowActions } from '@/web/core/workflow/editor';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
 import { WorkflowHostContext, useWorkflowSnapshot } from '@/web/core/workflow/editor/host';
 import { useClearCanvasSelection } from '../hooks/useWorkflow';
+import {
+  getDimensionedNodes,
+  type DimensionReader,
+  type NodeCardDimension
+} from '../context/dimensionIndex';
 
 /** 右键菜单单项：执行动作后关闭菜单。不依赖父组件状态，放模块级避免每次渲染重建组件。 */
 const ContextMenuItem = ({
@@ -62,7 +67,9 @@ const ContextMenu = () => {
 
   // 自动对齐只读 renderer 交互状态（位置、测量尺寸）；写入走画布本地数组，
   // 受控模式下 useReactFlow().setNodes 会被转成整份 reset 变更。
-  const { fitView, screenToFlowPosition, getNodes, getEdges } = useReactFlow();
+  const { fitView, screenToFlowPosition, getEdges } = useReactFlow();
+  const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
   const setCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.setNodes);
   const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
   // 语义通道：快照只在语义版本变化时换身份，节点增删会带动下面的折叠判定重算。
@@ -85,13 +92,17 @@ const ContextMenu = () => {
     const updateChildNodesPosition = ({
       startNode,
       nodes,
-      edges
+      edges,
+      getDimension
     }: {
       startNode: Node<FlowNodeItemType>;
       nodes: Node<FlowNodeItemType>[];
       edges: any[];
+      getDimension: DimensionReader;
     }) => {
       const startPosition = { x: startNode.position.x, y: startNode.position.y };
+      const startDimension = getDimension(startNode.id);
+      if (!startDimension) return;
 
       const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
       dagreGraph.setGraph({
@@ -101,7 +112,8 @@ const ContextMenu = () => {
       });
 
       nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
+        const dimension = getDimension(node.id);
+        if (dimension) dagreGraph.setNode(node.id, dimension);
       });
 
       // Find connected nodes
@@ -115,8 +127,8 @@ const ContextMenu = () => {
 
       dagre.layout(dagreGraph);
       const layoutedStartNode = dagreGraph.node(startNode.data.nodeId);
-      const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
-      const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
+      const offsetX = startPosition.x - (layoutedStartNode.x - startDimension.width / 2);
+      const offsetY = startPosition.y - (layoutedStartNode.y - startDimension.height / 2);
 
       // Group nodes by rank (horizontal position in LR layout)
       const nodesByRank: Map<
@@ -144,7 +156,9 @@ const ContextMenu = () => {
         // Find the minimum left position (for left alignment)
         let minLeft = Infinity;
         nodesInRank.forEach(({ node, dagreNode }) => {
-          const left = dagreNode.x - node.width! / 2;
+          const dimension = getDimension(node.id);
+          if (!dimension) return;
+          const left = dagreNode.x - dimension.width / 2;
           minLeft = Math.min(minLeft, left);
         });
 
@@ -178,24 +192,34 @@ const ContextMenu = () => {
 
         // Assign Y positions in sorted order
         let currentY =
-          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
-          offsetY;
+          Math.min(
+            ...nodesInRank.map(({ dagreNode, node }) => {
+              const dimension = getDimension(node.id);
+              return dagreNode.y - (dimension?.height ?? 0) / 2;
+            })
+          ) + offsetY;
         nodesInRank.forEach(({ node }) => {
+          const dimension = getDimension(node.id);
+          if (!dimension) return;
           node.position = { x: minLeft + offsetX, y: currentY };
-          currentY += node.height! + 80;
+          currentY += dimension.height + 80;
         });
       });
     };
     const updateParentNodesPosition = ({
       startNode,
       nodes,
-      edges
+      edges,
+      getDimension
     }: {
       startNode: Node<FlowNodeItemType>;
       nodes: Node<FlowNodeItemType>[];
       edges: any[];
+      getDimension: DimensionReader;
     }) => {
       const startPosition = { x: startNode.position.x, y: startNode.position.y };
+      const startDimension = getDimension(startNode.id);
+      if (!startDimension) return;
 
       const childNodeIdsSet = new Set(
         nodes.filter((node) => !!node.data.parentNodeId).map((node) => node.data.nodeId)
@@ -210,7 +234,8 @@ const ContextMenu = () => {
 
       nodes.forEach((node) => {
         if (childNodeIdsSet.has(node.data.nodeId)) return;
-        dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
+        const dimension = getDimension(node.id);
+        if (dimension) dagreGraph.setNode(node.id, dimension);
       });
 
       // Find connected nodes
@@ -226,8 +251,8 @@ const ContextMenu = () => {
 
       dagre.layout(dagreGraph);
       const layoutedStartNode = dagreGraph.node(startNode.data.nodeId);
-      const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
-      const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
+      const offsetX = startPosition.x - (layoutedStartNode.x - startDimension.width / 2);
+      const offsetY = startPosition.y - (layoutedStartNode.y - startDimension.height / 2);
 
       // Group nodes by rank (horizontal position in LR layout)
       const nodesByRank: Map<
@@ -255,7 +280,9 @@ const ContextMenu = () => {
         // Find the minimum left position (for left alignment)
         let minLeft = Infinity;
         nodesInRank.forEach(({ node, dagreNode }) => {
-          const left = dagreNode.x - node.width! / 2;
+          const dimension = getDimension(node.id);
+          if (!dimension) return;
+          const left = dagreNode.x - dimension.width / 2;
           minLeft = Math.min(minLeft, left);
         });
 
@@ -289,15 +316,21 @@ const ContextMenu = () => {
 
         // Assign Y positions in sorted order
         let currentY =
-          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
-          offsetY;
+          Math.min(
+            ...nodesInRank.map(({ dagreNode, node }) => {
+              const dimension = getDimension(node.id);
+              return dagreNode.y - (dimension?.height ?? 0) / 2;
+            })
+          ) + offsetY;
         nodesInRank.forEach(({ node }) => {
+          const dimension = getDimension(node.id);
+          if (!dimension) return;
           const targetX = minLeft + offsetX;
           const diffX = targetX - node.position.x;
           const diffY = currentY - node.position.y;
 
           node.position = { x: targetX, y: currentY };
-          currentY += node.height! + 80;
+          currentY += dimension.height + 80;
 
           // Sync child nodes position
           nodes.forEach((childNode) => {
@@ -312,7 +345,16 @@ const ContextMenu = () => {
       });
     };
 
-    const newNodes = cloneDeep(getNodes()) as Node<FlowNodeItemType>[];
+    const sourceNodes = getNodes();
+    const layoutDimensions = new Map<string, NodeCardDimension>();
+    sourceNodes.forEach((node) => {
+      const dimension = getNodeDimension(node.id);
+      if (dimension) layoutDimensions.set(node.id, dimension);
+    });
+    if (layoutDimensions.size !== sourceNodes.length) return;
+
+    const getLayoutDimension: DimensionReader = (nodeId) => layoutDimensions.get(nodeId);
+    const newNodes = cloneDeep(sourceNodes) as Node<FlowNodeItemType>[];
     const edges = getEdges();
     const previousPositions = new Map(
       newNodes.map((node) => [node.id, { x: node.position.x, y: node.position.y }])
@@ -324,24 +366,31 @@ const ContextMenu = () => {
     newNodes.forEach((node) => {
       const parentId = node.data.parentNodeId;
       if (parentId) {
-        if (!node.width || !node.height) return;
         childNodesIdSet.add(parentId);
         (childNodesMap[parentId] ??= []).push(node);
       }
     });
     Object.values(childNodesMap).forEach((childNodes) => {
-      updateChildNodesPosition({ startNode: childNodes[0], nodes: childNodes, edges });
+      updateChildNodesPosition({
+        startNode: childNodes[0],
+        nodes: childNodes,
+        edges,
+        getDimension: getLayoutDimension
+      });
     });
 
     // 2. Reset parent node size and position. Dimensions remain renderer-local;
     // container size persistence is intentionally outside this ticket.
     const parentNodes = newNodes.filter((node) => childNodesIdSet.has(node.data.nodeId));
     parentNodes.forEach((node) => {
-      const res = getParentNodeSizeAndPosition({ nodes: newNodes, parentId: node.data.nodeId });
+      const res = getParentNodeSizeAndPosition({
+        nodes: newNodes,
+        parentId: node.data.nodeId,
+        getNodeDimension: getLayoutDimension
+      });
       if (!res) return;
       node.position = { x: res.parentX, y: res.parentY };
-      node.width = res.nodeWidth;
-      node.height = res.nodeHeight;
+      layoutDimensions.set(node.id, { width: res.nodeWidth, height: res.nodeHeight });
     });
 
     // 3. Layout parent node
@@ -354,13 +403,18 @@ const ContextMenu = () => {
       updateParentNodesPosition({
         startNode: startNode || newNodes[0],
         nodes: newNodes,
-        edges
+        edges,
+        getDimension: getLayoutDimension
       });
     }
 
-    setCanvasNodes(newNodes);
+    const renderNodes = newNodes.map((node) => {
+      const dimension = getLayoutDimension(node.id);
+      return dimension ? { ...node, ...dimension } : node;
+    });
+    setCanvasNodes(renderNodes);
     canvas.commitGeometry(
-      newNodes.flatMap((node) => {
+      renderNodes.flatMap((node) => {
         const previous = previousPositions.get(node.id);
         return previous && (previous.x !== node.position.x || previous.y !== node.position.y)
           ? [{ nodeId: node.data.nodeId, position: node.position }]
@@ -369,10 +423,10 @@ const ContextMenu = () => {
     );
 
     setTimeout(() => {
-      const validNodes = newNodes.filter((node) => node.width && node.height);
+      const validNodes = getDimensionedNodes(newNodes, getLayoutDimension);
       fitView({ nodes: validNodes, padding: 0.3 });
     });
-  }, [canvas, fitView, getEdges, getNodes, setCanvasNodes]);
+  }, [canvas, fitView, getEdges, getNodeDimension, getNodes, setCanvasNodes]);
 
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)

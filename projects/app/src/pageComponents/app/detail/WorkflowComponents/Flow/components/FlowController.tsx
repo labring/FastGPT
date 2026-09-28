@@ -21,6 +21,8 @@ import {
   isExternalHistoryTarget,
   isWorkflowShortcutInputtingTarget
 } from '../hooks/keyboard';
+import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
+import { getDimensionedNodes } from '../context/dimensionIndex';
 
 const buttonStyle = {
   border: 'none',
@@ -29,7 +31,9 @@ const buttonStyle = {
 };
 
 const FlowController = React.memo(function FlowController() {
-  const { fitView, zoomIn, zoomOut, getNodes, getNode } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getNode } = useReactFlow();
+  const getCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
   const undo = useContextSelector(WorkflowHostContext, (v) => v.undo);
   const redo = useContextSelector(WorkflowHostContext, (v) => v.redo);
   const canUndo = useContextSelector(WorkflowHostContext, (v) => v.canUndo);
@@ -220,7 +224,7 @@ const FlowController = React.memo(function FlowController() {
           <MyTooltip label={t('common:page_center')}>
             <ControlButton
               onClick={() => {
-                const validNodes = getNodes().filter((node) => node.width && node.height);
+                const validNodes = getDimensionedNodes(getCanvasNodes(), getNodeDimension);
                 fitView({ nodes: validNodes, padding: 0.3 });
               }}
               style={buttonStyle}
@@ -245,7 +249,8 @@ const FlowController = React.memo(function FlowController() {
     presentationMode,
     setWorkflowControlMode,
     setPresentationMode,
-    getNodes,
+    getCanvasNodes,
+    getNodeDimension,
     fitView
   ]);
 
