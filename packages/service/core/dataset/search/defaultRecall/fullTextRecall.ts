@@ -11,7 +11,6 @@ import { MongoDatasetData } from '../../data/schema';
 import { getFullTextStore, type FullTextSearchItem } from '../../data/textStore';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
-import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATA);
 
@@ -36,11 +35,7 @@ const buildDataCollectionMaps = async (
   const [dataMaps, collectionMaps] = await Promise.all([
     MongoDatasetData.find(
       {
-        _id: { $in: dataIds },
-        // Mongo $text provider 的全文行与 indexed 标记在同一写入边界完成，但召回按 _id 反查
-        // 主数据、不校验状态，因此这里补上状态条件：待索引数据不参与全文召回。
-        // milvus provider 的召回靠向量 ID 反查并丢弃未命中项，该条件对它是恒真的。
-        ...indexedDatasetDataMatch
+        _id: { $in: dataIds }
       },
       datasetDataSelectField,
       { ...readFromSecondary }
