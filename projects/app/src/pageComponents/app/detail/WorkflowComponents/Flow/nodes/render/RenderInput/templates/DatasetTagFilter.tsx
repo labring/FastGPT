@@ -21,7 +21,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useTranslation } from 'next-i18next';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField, useNodeActions } from '@/web/core/workflow/editor';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 import {
@@ -32,9 +32,13 @@ import {
 const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const field = useField(nodeId, item.key, 'input');
+  const currentInput = field?.data.input ?? item;
+  const datasetSelectField = useField(nodeId, NodeInputKeyEnum.datasetSelectList, 'input');
+  const datasetSelectInput =
+    datasetSelectField?.data.input ??
+    inputs.find((input) => input.key === NodeInputKeyEnum.datasetSelectList);
   // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const { feConfigs } = useSystemStore();
   const isLegacyNode = datasetSearchUsesLegacyFilter(inputs);
 
@@ -43,9 +47,7 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
     valueType: WorkflowIOValueTypeEnum.any
   });
   const datasetIds = useMemo(() => {
-    const datasetValue = inputs.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    )?.value;
+    const datasetValue = datasetSelectInput?.value;
     if (!Array.isArray(datasetValue)) return [];
     return datasetValue
       .map((dataset) =>
@@ -54,7 +56,7 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
           : ''
       )
       .filter(Boolean);
-  }, [inputs]);
+  }, [datasetSelectInput?.value]);
 
   const editorVariables = useMemoEnhance(() => {
     if (!workflow) return [];
@@ -62,11 +64,11 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
       nodeId,
       getNodeById,
       edges: workflow.edges,
-      appDetail,
+      chatConfig: workflow.chatConfig,
       t,
       getIncomingEdges: graph?.getIncomingEdges
     });
-  }, [nodeId, workflow, getNodeById, graph, appDetail, t]);
+  }, [nodeId, workflow, getNodeById, graph, t]);
 
   const externalVariables = useMemo(() => {
     return (
@@ -92,7 +94,7 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
   if (isLegacyNode) {
     return (
       <DatasetTagFilterDeprecated
-        value={normalizeLegacyDatasetTagFilterValue(item.value)}
+        value={normalizeLegacyDatasetTagFilterValue(currentInput.value)}
         onChange={onChange}
         variables={allVariables}
         variableLabels={editorVariables}
@@ -102,7 +104,7 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
 
   return (
     <DatasetTagFilterRows
-      value={item.value}
+      value={currentInput.value}
       onChange={onChange}
       datasetIds={datasetIds}
       referenceList={referenceList}
@@ -117,12 +119,12 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
   nodeId
 }: RenderInputProps) {
   const field = useField(nodeId, item.key, 'input');
-  const node = useNode(nodeId);
+  const currentInput = field?.data.input ?? item;
+  const nodeActions = useNodeActions(nodeId);
   /** 升级要先持久化整份工作流，出站序列化直接读 host。 */
   const serializeWorkflow = useContextSelector(WorkflowHostContext, (v) => v.serializeWorkflow);
   // 只订阅真正读到的两个字段：AppContext 值随 currentTab / appLatestVersion / loadingApp 变化，
   // 整体订阅会让切 tab 也重渲染本节点组件。
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const isLegacyNode = datasetSearchUsesLegacyFilter(inputs);
 
@@ -156,11 +158,11 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
                 ...workflow,
                 nodes,
                 isPublish: false,
-                chatConfig: appDetail.chatConfig
+                chatConfig: workflow.chatConfig
               }),
             commit: (upgradedNode) =>
               // 持久化成功后再把升级结果写回文档：整份 inputs 替换，一次提交。
-              node?.updateNode(() => ({ inputs: upgradedNode.inputs }))
+              nodeActions?.updateNode(() => ({ inputs: upgradedNode.inputs }))
           });
         }}
       />
@@ -169,7 +171,11 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
 
   return (
     <TagFilterLogicToggle
-      value={isDatasetTagFilterValue(item.value) ? item.value : createEmptyTagFilterValue()}
+      value={
+        isDatasetTagFilterValue(currentInput.value)
+          ? currentInput.value
+          : createEmptyTagFilterValue()
+      }
       onChange={(value) => {
         field?.setValue(value);
       }}

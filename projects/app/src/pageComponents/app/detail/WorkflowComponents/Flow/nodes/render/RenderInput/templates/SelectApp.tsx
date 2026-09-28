@@ -15,6 +15,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const currentAppId = useContextSelector(AppContext, (ctx) => ctx.appDetail._id);
   const field = useField(nodeId, item.key, 'input');
+  const currentInput = field?.data.input ?? item;
 
   const {
     isOpen: isOpenSelectApp,
@@ -22,7 +23,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
     onClose: onCloseSelectApp
   } = useDisclosure();
 
-  const value = item.value as SelectAppItemType | undefined;
+  const value = currentInput.value as SelectAppItemType | undefined;
   const { data: appDetail, loading } = useRequest(
     () => {
       if (value?.id) return getAppDetailById(value.id);
@@ -61,7 +62,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
 
         {isOpenSelectApp && (
           <SelectAppModal
-            value={item.value}
+            value={currentInput.value}
             filterAppIds={[currentAppId]}
             onClose={onCloseSelectApp}
             onSuccess={(e) => {

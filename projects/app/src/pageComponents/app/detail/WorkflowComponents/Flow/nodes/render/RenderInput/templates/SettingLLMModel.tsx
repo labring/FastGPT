@@ -3,7 +3,7 @@ import type { RenderInputProps } from '../type';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useNode } from '@/web/core/workflow/editor';
+import { useField, useNodeActions, type WorkflowFieldHandle } from '@/web/core/workflow/editor';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { Input_Template_SettingAiModel } from '@fastgpt/global/core/workflow/template/input';
@@ -14,7 +14,52 @@ import { Input_Template_SettingAiModel } from '@fastgpt/global/core/workflow/tem
  * 保证一次交互只产生一条可撤销历史。
  */
 const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: RenderInputProps) => {
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
+  const aiModelIdField = useField(nodeId, NodeInputKeyEnum.aiModelId, 'input');
+  const aiModelField = useField(nodeId, NodeInputKeyEnum.aiModel, 'input');
+  const maxTokenField = useField(nodeId, NodeInputKeyEnum.aiChatMaxToken, 'input');
+  const temperatureField = useField(nodeId, NodeInputKeyEnum.aiChatTemperature, 'input');
+  const responseTextField = useField(nodeId, NodeInputKeyEnum.aiChatIsResponseText, 'input');
+  const visionField = useField(nodeId, NodeInputKeyEnum.aiChatVision, 'input');
+  const audioField = useField(nodeId, NodeInputKeyEnum.aiChatAudio, 'input');
+  const videoField = useField(nodeId, NodeInputKeyEnum.aiChatVideo, 'input');
+  const extractFilesField = useField(nodeId, NodeInputKeyEnum.aiChatExtractFiles, 'input');
+  const reasoningField = useField(nodeId, NodeInputKeyEnum.aiChatReasoning, 'input');
+  const reasoningEffortField = useField(nodeId, NodeInputKeyEnum.aiChatReasoningEffort, 'input');
+  const topPField = useField(nodeId, NodeInputKeyEnum.aiChatTopP, 'input');
+  const stopSignField = useField(nodeId, NodeInputKeyEnum.aiChatStopSign, 'input');
+  const responseFormatField = useField(nodeId, NodeInputKeyEnum.aiChatResponseFormat, 'input');
+  const jsonSchemaField = useField(nodeId, NodeInputKeyEnum.aiChatJsonSchema, 'input');
+
+  const getCurrentInput = useCallback(
+    (key: string, field: WorkflowFieldHandle | undefined) =>
+      field?.data.input ?? inputs.find((input) => input.key === key),
+    [inputs]
+  );
+  const aiModelIdInput = getCurrentInput(NodeInputKeyEnum.aiModelId, aiModelIdField);
+  const aiModelInput = getCurrentInput(NodeInputKeyEnum.aiModel, aiModelField);
+  const maxTokenInput = getCurrentInput(NodeInputKeyEnum.aiChatMaxToken, maxTokenField);
+  const temperatureInput = getCurrentInput(NodeInputKeyEnum.aiChatTemperature, temperatureField);
+  const responseTextInput = getCurrentInput(
+    NodeInputKeyEnum.aiChatIsResponseText,
+    responseTextField
+  );
+  const visionInput = getCurrentInput(NodeInputKeyEnum.aiChatVision, visionField);
+  const audioInput = getCurrentInput(NodeInputKeyEnum.aiChatAudio, audioField);
+  const videoInput = getCurrentInput(NodeInputKeyEnum.aiChatVideo, videoField);
+  const extractFilesInput = getCurrentInput(NodeInputKeyEnum.aiChatExtractFiles, extractFilesField);
+  const reasoningInput = getCurrentInput(NodeInputKeyEnum.aiChatReasoning, reasoningField);
+  const reasoningEffortInput = getCurrentInput(
+    NodeInputKeyEnum.aiChatReasoningEffort,
+    reasoningEffortField
+  );
+  const topPInput = getCurrentInput(NodeInputKeyEnum.aiChatTopP, topPField);
+  const stopSignInput = getCurrentInput(NodeInputKeyEnum.aiChatStopSign, stopSignField);
+  const responseFormatInput = getCurrentInput(
+    NodeInputKeyEnum.aiChatResponseFormat,
+    responseFormatField
+  );
+  const jsonSchemaInput = getCurrentInput(NodeInputKeyEnum.aiChatJsonSchema, jsonSchemaField);
   const [, setDefaultModel] = useLocalStorageState<string>('workflow_default_llm_model', {
     defaultValue: ''
   });
@@ -27,7 +72,7 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
       if (typeof modelIdValue === 'string') setDefaultModel(modelIdValue);
 
       // 整表合并以派发瞬间的 inputs 为基线，避免覆盖同一 tick 内的其他写入。
-      node?.updateNode((current) => {
+      nodeActions?.updateNode((current) => {
         const nextInputs = [...current.inputs];
         const setValueByKey = (key: string, value: unknown) => {
           const index = nextInputs.findIndex((input) => input.key === key);
@@ -68,46 +113,44 @@ const SelectAiModelRender = ({ inputs = [], nodeId, settingLLMModelProps }: Rend
         return { inputs: nextInputs };
       });
     },
-    [node, setDefaultModel]
+    [nodeActions, setDefaultModel]
   );
 
-  const model = useMemoEnhance(() => {
-    const aiModelInput =
-      inputs.find((input) => input.key === NodeInputKeyEnum.aiModelId) ||
-      inputs.find((input) => input.key === NodeInputKeyEnum.aiModel);
-    return aiModelInput?.value as string | undefined;
-  }, [inputs]);
+  const model = (aiModelIdInput ?? aiModelInput)?.value as string | undefined;
 
   const llmModelData: SettingAIDataType = useMemoEnhance(
     () => ({
       modelId: model,
-      maxToken: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value,
-      temperature: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)?.value,
-      isResponseAnswerText: inputs.find(
-        (input) => input.key === NodeInputKeyEnum.aiChatIsResponseText
-      )?.value,
-      aiChatVision:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatVision)?.value ?? true,
-      aiChatAudio:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatAudio)?.value ?? false,
-      aiChatVideo:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatVideo)?.value ?? false,
-      aiChatExtractFiles:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatExtractFiles)?.value ?? true,
-      aiChatReasoning:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatReasoning)?.value ?? true,
-      aiChatReasoningEffort: inputs.find(
-        (input) => input.key === NodeInputKeyEnum.aiChatReasoningEffort
-      )?.value,
-      aiChatTopP: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTopP)?.value,
-      aiChatStopSign: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatStopSign)?.value,
-      aiChatResponseFormat: inputs.find(
-        (input) => input.key === NodeInputKeyEnum.aiChatResponseFormat
-      )?.value,
-      aiChatJsonSchema: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatJsonSchema)
-        ?.value
+      maxToken: maxTokenInput?.value,
+      temperature: temperatureInput?.value,
+      isResponseAnswerText: responseTextInput?.value,
+      aiChatVision: visionInput?.value ?? true,
+      aiChatAudio: audioInput?.value ?? false,
+      aiChatVideo: videoInput?.value ?? false,
+      aiChatExtractFiles: extractFilesInput?.value ?? true,
+      aiChatReasoning: reasoningInput?.value ?? true,
+      aiChatReasoningEffort: reasoningEffortInput?.value,
+      aiChatTopP: topPInput?.value,
+      aiChatStopSign: stopSignInput?.value,
+      aiChatResponseFormat: responseFormatInput?.value,
+      aiChatJsonSchema: jsonSchemaInput?.value
     }),
-    [inputs, model]
+    [
+      audioInput,
+      extractFilesInput,
+      jsonSchemaInput,
+      maxTokenInput,
+      model,
+      reasoningEffortInput,
+      reasoningInput,
+      responseFormatInput,
+      responseTextInput,
+      stopSignInput,
+      temperatureInput,
+      topPInput,
+      videoInput,
+      visionInput
+    ]
   );
 
   return (

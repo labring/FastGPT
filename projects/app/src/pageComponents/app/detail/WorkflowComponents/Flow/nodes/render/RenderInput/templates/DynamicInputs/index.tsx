@@ -19,7 +19,7 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField, useNodeActions } from '@/web/core/workflow/editor';
 
 const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
@@ -36,7 +36,7 @@ const defaultInput: FlowNodeInputItemType = {
  */
 const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
 
   const dynamicInputs = useMemoEnhance(() => inputs.filter((item) => item.canEdit), [inputs]);
   const existsKeys = useMemoEnhance(() => inputs.map((item) => item.key), [inputs]);
@@ -66,7 +66,7 @@ const DynamicInputs = ({ item, inputs = [], nodeId }: RenderInputProps) => {
                     bg: 'adora.100'
                   }}
                   onClick={() => {
-                    node?.updateNode((current) => ({
+                    nodeActions?.updateNode((current) => ({
                       inputs: current.inputs.filter((input) => input.key !== item.key)
                     }));
                   }}
@@ -128,11 +128,12 @@ const Reference = ({
 }) => {
   const { t } = useSafeTranslation();
   const { toast } = useToast();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   // 已选内容的展示读字段引用状态，因此可选列表可以等到打开选择器时再计算。
   const field = useField(nodeId, inputChildren.key, 'input');
+  const currentInput = (field?.data.input ?? inputChildren) as FlowNodeInputItemType;
 
-  const isEmptyItem = !inputChildren.key;
+  const isEmptyItem = !currentInput.key;
 
   const [tempLabel, setTempLabel] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -148,7 +149,7 @@ const Reference = ({
     (label: string) => {
       setIsEditing(false);
       if (!label.trim()) return;
-      if (existsKeys.includes(label) && !isEmptyItem && label !== inputChildren.key) {
+      if (existsKeys.includes(label) && !isEmptyItem && label !== currentInput.key) {
         toast({
           status: 'warning',
           title: t('workflow:field_name_already_exists')
@@ -166,18 +167,18 @@ const Reference = ({
             valueType: WorkflowIOValueTypeEnum.any,
             required: true
           };
-          node?.updateNode((current) => ({ inputs: [...current.inputs, newInput] }));
+          nodeActions?.updateNode((current) => ({ inputs: [...current.inputs, newInput] }));
         } else if (!isEmptyItem) {
-          node?.updateNode((current) => ({
+          nodeActions?.updateNode((current) => ({
             inputs: current.inputs.map((input) =>
-              input.key === inputChildren.key ? { ...input, label, key: label || input.key } : input
+              input.key === currentInput.key ? { ...input, label, key: label || input.key } : input
             )
           }));
         }
       }, 50);
       setTempLabel('');
     },
-    [existsKeys, toast, t, isEmptyItem, item, node, inputChildren.key]
+    [currentInput.key, existsKeys, toast, t, isEmptyItem, item, nodeActions]
   );
   const onSelectReference = useCallback(
     (e?: ReferenceValueType) => {
@@ -187,9 +188,9 @@ const Reference = ({
         .find((item) => item.value === e[0])
         ?.children.find((item) => item.value === e[1]);
 
-      node?.updateNode((current) => ({
+      nodeActions?.updateNode((current) => ({
         inputs: current.inputs.map((input) =>
-          input.key === inputChildren.key
+          input.key === currentInput.key
             ? {
                 ...input,
                 value: e,
@@ -200,22 +201,22 @@ const Reference = ({
         )
       }));
     },
-    [inputChildren.key, node, referenceList]
+    [currentInput.key, nodeActions, referenceList]
   );
   const onDeleteInput = useCallback(() => {
-    node?.updateNode((current) => ({
-      inputs: current.inputs.filter((input) => input.key !== inputChildren.key)
+    nodeActions?.updateNode((current) => ({
+      inputs: current.inputs.filter((input) => input.key !== currentInput.key)
     }));
-  }, [inputChildren.key, node]);
+  }, [currentInput.key, nodeActions]);
 
   return (
     <Flex alignItems={'center'} mb={1} gap={2}>
       <Flex flex={'1'} bg={'white'} rounded={'md'}>
         <Input
           placeholder={t('workflow:Variable_name')}
-          value={isEditing ? tempLabel : inputChildren.label || ''}
+          value={isEditing ? tempLabel : currentInput.label || ''}
           onFocus={() => {
-            setTempLabel(inputChildren.label || '');
+            setTempLabel(currentInput.label || '');
             setIsEditing(true);
           }}
           onChange={(e) => setTempLabel(e.target.value.trim())}
@@ -226,7 +227,7 @@ const Reference = ({
         <ReferSelector
           placeholder={t('common:select_reference_variable')}
           list={referenceList}
-          value={inputChildren.value}
+          value={currentInput.value}
           onSelect={onSelectReference}
           onOpenList={loadReferenceList}
           reference={field?.reference}
@@ -255,7 +256,7 @@ const Reference = ({
           fontSize={'sm'}
           fontWeight={'medium'}
         >
-          {t(getFlowValueTypeMeta(inputChildren.valueType).label)}
+          {t(getFlowValueTypeMeta(currentInput.valueType).label)}
         </Flex>
       </Flex>
       {!isEmptyItem && (

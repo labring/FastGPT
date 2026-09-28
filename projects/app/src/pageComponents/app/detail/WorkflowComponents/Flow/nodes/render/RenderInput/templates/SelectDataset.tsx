@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, Flex, Grid, Switch, useDisclosure } from '@chakra-ui/react';
 import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -15,19 +14,12 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
 export const SelectDatasetRender = React.memo(function SelectDatasetRender({
-  inputs = [],
   item,
   nodeId
 }: RenderInputProps) {
   const { t } = useTranslation();
   const field = useField(nodeId, item.key, 'input');
-
-  const [data, setData] = useState({
-    searchMode: DatasetSearchModeEnum.embedding,
-    limit: 5,
-    similarity: 0.5,
-    usingReRank: true
-  });
+  const currentInput = field?.data.input ?? item;
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -36,21 +28,9 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
   } = useDisclosure();
 
   const selectedDatasets = useMemo(() => {
-    if (Array.isArray(item.value)) return item.value as SelectedDatasetType[];
+    if (Array.isArray(currentInput.value)) return currentInput.value as SelectedDatasetType[];
     return [] as SelectedDatasetType[];
-  }, [item.value]);
-
-  useEffect(() => {
-    inputs.forEach((input) => {
-      // @ts-ignore
-      if (data[input.key] !== undefined) {
-        setData((state) => ({
-          ...state,
-          [input.key]: input.value
-        }));
-      }
-    });
-  }, [inputs]);
+  }, [currentInput.value]);
 
   const onDeleteDataset = useCallback(
     (datasetId: string) => {
@@ -123,6 +103,7 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
     () => inputs.find((v) => v.key === NodeInputKeyEnum.authTmbId),
     [inputs]
   );
+  const authTmbIdValue = authTmbField?.data.input?.value ?? authTmbIdInput?.value;
 
   return feConfigs?.isPlus && authTmbIdInput ? (
     <Flex alignItems={'center'}>
@@ -131,7 +112,7 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
       <Switch
         ml={1}
         size={'sm'}
-        isChecked={!!authTmbIdInput.value}
+        isChecked={!!authTmbIdValue}
         onChange={(e) => {
           authTmbField?.setValue(e.target.checked);
         }}

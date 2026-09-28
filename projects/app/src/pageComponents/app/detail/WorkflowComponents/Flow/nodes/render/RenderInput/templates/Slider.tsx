@@ -6,24 +6,25 @@ import { useField } from '@/web/core/workflow/editor';
 
 const SliderRender = ({ item, nodeId }: RenderInputProps) => {
   const field = useField(nodeId, item.key, 'input');
+  const currentInput = field?.data.input ?? item;
 
   const Render = useMemo(() => {
     return (
       <Box px={2}>
         <MySlider
-          markList={item.markList}
+          markList={currentInput.markList?.map(({ label, value }) => ({ label, value }))}
           width={'100%'}
-          min={item.min || 0}
-          max={item.max}
-          step={item.step || 1}
-          value={item.value}
+          min={currentInput.min || 0}
+          max={currentInput.max}
+          step={currentInput.step || 1}
+          value={currentInput.value}
           onChange={(e) => {
             field?.setValue(e);
           }}
         />
       </Box>
     );
-  }, [field, item]);
+  }, [currentInput, field]);
 
   return Render;
 };

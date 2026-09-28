@@ -66,7 +66,12 @@ import { useReactFlow } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { omit } from 'lodash-es';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
-import { useField, useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import {
+  useField,
+  useNodeActions,
+  useNodeValue,
+  useWorkflowActions
+} from '@/web/core/workflow/editor';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
 
 import { WorkflowUIContext } from '../../context/workflowUIContext';
@@ -83,7 +88,7 @@ import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 /**
  * 节点卡片入参：只保留 renderer 交互状态与画布视图数据。
  *
- * 名称、头像、简介、版本、类型、错误标记一律由卡片自己读 useNode 与 host 问题存储，
+ * 名称、头像、简介、版本、类型、错误标记一律由卡片自己读文档与 host 问题存储，
  * 不再从投影塞满的 FlowNodeItemType props 里取；调用点仍可整体展开 data，多余字段被忽略。
  */
 type Props = {
@@ -130,6 +135,11 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
   }
 };
 
+const NodeOutputValidity = ({ nodeId }: { nodeId: string }) => {
+  useNodeOutputValidity(nodeId);
+  return null;
+};
+
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
   const {
@@ -149,14 +159,11 @@ const NodeCard = (props: Props) => {
     rtDoms
   } = props;
 
-  useNodeOutputValidity(nodeId);
-  const nodeHandle = useNode(nodeId);
-
-  // 文档快照是 DeepReadonly；卡片内展示逻辑沿用既有 FlowNodeItemType 形状，这里只做只读透传。
-  const node = nodeHandle?.data as unknown as FlowNodeItemType | undefined;
-  const isFolded = !!nodeHandle?.view.isFolded;
+  // 投影节点只承载结构/元数据；字段值由叶子订阅，避免卡片跟随普通输入变化。
+  const node = props as unknown as FlowNodeItemType;
+  const isFolded = useNodeValue(nodeId, (handle) => !!handle?.view.isFolded);
   // 容器折叠时子节点整体隐藏：折叠状态存在父容器的 Node View 上。
-  const hidden = !!useNode(node?.parentNodeId ?? '')?.view.isFolded;
+  const hidden = useNodeValue(node?.parentNodeId ?? '', (handle) => !!handle?.view.isFolded);
   // 工具子流程节点：结构快照里指向本节点的 selectedTools 入边即可判定；
   // 该入边必然来自工具调用节点，不必再额外确认画布上存在工具调用节点。
   const isTool = useIsToolNode(nodeId);
@@ -171,7 +178,7 @@ const NodeCard = (props: Props) => {
   const inputs = node?.inputs;
 
   // 问题文案归 Runtime：直接读节点 snapshot 的 Issue View，标红焦点仍由 host 单点持有。
-  const nodeIssues = nodeHandle?.data.issues;
+  const nodeIssues = useNodeValue(nodeId, (handle) => handle?.data.issues);
   const isError = useContextSelector(
     WorkflowHostContext,
     (v) => v.issueFocusRef.current === nodeId
@@ -189,13 +196,14 @@ const NodeCard = (props: Props) => {
   const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
   const { fitView } = useReactFlow();
 
-  const inputConfig = useMemo(
-    () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),
-    [inputs]
-  );
+  const nodeActions = useNodeActions(nodeId);
+  const inputConfigField = useField(nodeId, NodeInputKeyEnum.systemInputConfig, 'input');
+  const inputConfig =
+    inputConfigField?.data.input ??
+    inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
 
   const handleDoubleClick = useCallback(() => {
-    nodeHandle?.setFolded(false);
+    nodeActions?.setFolded(false);
     setPresentationMode(false);
 
     // Fit view to show this node in center
@@ -205,7 +213,7 @@ const NodeCard = (props: Props) => {
         padding: 0.3
       });
     }, 100);
-  }, [nodeHandle, setPresentationMode, fitView, nodeId]);
+  }, [nodeActions, setPresentationMode, fitView, nodeId]);
 
   const showToolHandle = isTool;
 
@@ -424,6 +432,7 @@ const NodeCard = (props: Props) => {
         onMouseLeave={() => setHoverNodeId(undefined)}
         {...(isError ? { onMouseDownCapture: () => focusIssueNode(undefined) } : {})}
       >
+        <NodeOutputValidity nodeId={nodeId} />
         {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
 
         {foldedOverlay}
@@ -496,7 +505,7 @@ const NodeCard = (props: Props) => {
                       pluginId={node?.pluginId}
                       source={node?.source}
                       systemKeyCost={node?.systemKeyCost}
-                      inputConfig={inputConfig}
+                      inputConfig={inputConfig as unknown as FlowNodeInputItemType}
                     />
                   ) : (
                     children
@@ -629,7 +638,7 @@ const NodeTitleSection = React.memo<{
 }>(({ nodeId, avatar, name, searchedText, appId }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const nodeHandle = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
 
   const childAppId = useMemo(() => {
     if (!appId) return;
@@ -665,11 +674,11 @@ const NodeTitleSection = React.memo<{
         return false;
       }
       if (trimmed !== name) {
-        nodeHandle?.setName(trimmed);
+        nodeActions?.setName(trimmed);
       }
       return true;
     },
-    [name, nodeHandle, toast, t]
+    [name, nodeActions, toast, t]
   );
 
   const renderDisplay = useCallback(
@@ -722,18 +731,18 @@ const NodeIntro = React.memo(function NodeIntro({
   flowNodeType?: FlowNodeTypeEnum;
 }) {
   const { t } = useTranslation();
-  const nodeHandle = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   const [isIntroEditing, setIsIntroEditing] = useState(false);
 
   const handleSave = useCallback(
     (newVal: string) => {
       const trimmed = newVal.trim();
       if (trimmed !== intro) {
-        nodeHandle?.updateNode(() => ({ intro: trimmed }));
+        nodeActions?.updateNode(() => ({ intro: trimmed }));
       }
       return true;
     },
-    [intro, nodeHandle]
+    [intro, nodeActions]
   );
 
   return (
@@ -772,7 +781,7 @@ const NodeIntro = React.memo(function NodeIntro({
 const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
   const { t } = useTranslation();
 
-  const nodeHandle = useNode(node.nodeId);
+  const nodeActions = useNodeActions(node.nodeId);
   const { openConfirm: openKeepLatestConfirm, ConfirmModal: KeepLatestConfirmModal } = useConfirm({
     content: t('app:keep_the_latest_confirm_tip')
   });
@@ -847,7 +856,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
           // Node View 覆盖 patch 里的 position/isFolded，教程地址等视图字段也不进文档。
           // 覆盖基线取派发瞬间的记录：拉模板是异步的，用渲染期快照会把期间的其他写入冲掉。
           const sourceInputMap = new Map(node.inputs.map((input) => [input.key, input]));
-          nodeHandle?.updateNode(
+          nodeActions?.updateNode(
             (current) =>
               omit(
                 {
@@ -864,7 +873,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       }
     },
     {
-      refreshDeps: [node, nodeHandle]
+      refreshDeps: [node, nodeActions]
     }
   );
   const onSelectVersion = useCallback(
@@ -936,14 +945,15 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
   const actions = useWorkflowActions();
-  const nodeHandle = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
+  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
   const clearCanvasSelection = useClearCanvasSelection();
   // 删除走 ReactFlow 的 deleteElements：它派生的 remove 变更由画布变更漏斗接管。
   const { deleteElements } = useReactFlow();
 
   const { computedNewNodeName } = useWorkflowUtils();
 
-  const isFolded = !!nodeHandle?.view.isFolded;
+  const isFolded = useNodeValue(nodeId, (handle) => !!handle?.view.isFolded);
 
   /**
    * 复制当前节点：从文档快照取字段、Node View 取坐标，生成新 nodeId 后走 adapter 写入文档。
@@ -951,10 +961,9 @@ const MenuRender = React.memo(function MenuRender({
    * 文档快照是 DeepReadonly，item 仅做结构透传，这里整体断言回可变形状。
    */
   const onCopyNode = useCallback(() => {
-    if (!nodeHandle) return;
-    const data = nodeHandle.data;
-    const position = nodeHandle.view.position;
-    if (!position) return;
+    const data = runtime?.getNode(nodeId);
+    const position = runtime?.getNodeView(nodeId)?.position;
+    if (!data || !position) return;
     const newNode = storeNode2FlowNode({
       item: {
         flowNodeType: data.flowNodeType,
@@ -986,7 +995,7 @@ const MenuRender = React.memo(function MenuRender({
     });
     clearCanvasSelection();
     actions.addNode(canvasNodeToStoreNode(newNode));
-  }, [actions, clearCanvasSelection, computedNewNodeName, nodeHandle, t]);
+  }, [actions, clearCanvasSelection, computedNewNodeName, nodeId, runtime, t]);
   const Render = useMemo(() => {
     const menuList = [
       ...(menuForbid?.fold
@@ -997,7 +1006,7 @@ const MenuRender = React.memo(function MenuRender({
               label: isFolded ? t('workflow:Unfold') : t('workflow:Fold'),
               variant: 'whiteBase',
               onClick: () => {
-                nodeHandle?.setFolded(!isFolded);
+                nodeActions?.setFolded(!isFolded);
               }
             }
           ]),
@@ -1079,7 +1088,8 @@ const MenuRender = React.memo(function MenuRender({
     onCopyNode,
     deleteElements,
     isFolded,
-    nodeHandle
+    nodeActions,
+    runtime
   ]);
 
   return Render;

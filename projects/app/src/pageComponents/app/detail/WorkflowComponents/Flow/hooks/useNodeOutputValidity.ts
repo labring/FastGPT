@@ -6,7 +6,7 @@ import type {
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { useEffect } from 'react';
-import { useNode } from '@/web/core/workflow/editor';
+import { useNodeActions, useNodeValue } from '@/web/core/workflow/editor';
 
 /**
  * 按当前模型能力刷新节点输出的 `invalid` 派生标记，结果写回文档（节点折叠时也照常同步）。
@@ -16,9 +16,9 @@ import { useNode } from '@/web/core/workflow/editor';
  * 输入被改过时 snapshot 身份变化会带着新值重跑，旧详情不会写回过期结论。
  */
 export const useNodeOutputValidity = (nodeId: string) => {
-  const node = useNode(nodeId);
-  const inputs = node?.data.inputs;
-  const outputs = node?.data.outputs;
+  const nodeActions = useNodeActions(nodeId);
+  const inputs = useNodeValue(nodeId, (node) => node?.data.inputs);
+  const outputs = useNodeValue(nodeId, (node) => node?.data.outputs);
   const needsModel = outputs?.some((output) => !!output.invalidCondition);
   const { model, loading, error } = useModelDetail({
     modelType: ModelTypeEnum.llm,
@@ -31,7 +31,7 @@ export const useNodeOutputValidity = (nodeId: string) => {
   });
 
   useEffect(() => {
-    if (!node || !inputs || !outputs || !needsModel || loading || error) return;
+    if (!inputs || !outputs || !needsModel || loading || error) return;
     const llmModelMap = model ? { [model.modelId]: model, [model.model]: model } : {};
     const nextOutputs = outputs.map((output) =>
       output.invalidCondition
@@ -46,6 +46,6 @@ export const useNodeOutputValidity = (nodeId: string) => {
         : output
     );
     if (nextOutputs.every((output, index) => output.invalid === outputs[index].invalid)) return;
-    node.updateNode(() => ({ outputs: nextOutputs as FlowNodeOutputItemType[] }));
-  }, [node, inputs, outputs, needsModel, model, loading, error]);
+    nodeActions?.updateNode(() => ({ outputs: nextOutputs as FlowNodeOutputItemType[] }));
+  }, [inputs, outputs, needsModel, model, loading, error, nodeActions]);
 };

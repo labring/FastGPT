@@ -41,9 +41,7 @@ import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
-import { useContextSelector } from 'use-context-selector';
 import { useMemoizedFn } from 'ahooks';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getEditorVariables } from '../../../utils';
@@ -98,7 +96,6 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const node = useNode(nodeId);
   const urlField = useField(nodeId, NodeInputKeyEnum.httpReqUrl, 'input');
   const methodField = useField(nodeId, NodeInputKeyEnum.httpMethod, 'input');
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const { feConfigs } = useSystemStore();
   const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
@@ -162,11 +159,11 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
       nodeId,
       getNodeById,
       edges: workflow.edges,
-      appDetail,
+      chatConfig: workflow.chatConfig,
       t,
       getIncomingEdges: graph?.getIncomingEdges
     });
-  }, [nodeId, workflow, getNodeById, graph, appDetail, t]);
+  }, [nodeId, workflow, getNodeById, graph, t]);
 
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
@@ -241,7 +238,6 @@ export function RenderHttpProps({
 
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
   const headerSecretField = useField(nodeId, NodeInputKeyEnum.headerSecret, 'input');
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const { feConfigs } = useSystemStore();
 
   const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod)?.value;
@@ -272,11 +268,11 @@ export function RenderHttpProps({
       nodeId,
       getNodeById,
       edges: workflow.edges,
-      appDetail,
+      chatConfig: workflow.chatConfig,
       t,
       getIncomingEdges: graph?.getIncomingEdges
     });
-  }, [nodeId, workflow, getNodeById, graph, appDetail, t]);
+  }, [nodeId, workflow, getNodeById, graph, t]);
 
   const variableText = useMemo(() => {
     return variables

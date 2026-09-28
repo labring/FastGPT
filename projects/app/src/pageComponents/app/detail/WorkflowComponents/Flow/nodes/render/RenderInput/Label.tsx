@@ -14,7 +14,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
-import { useNode } from '@/web/core/workflow/editor';
+import { useNodeActions } from '@/web/core/workflow/editor/react';
 
 type Props = {
   nodeId: string;
@@ -26,7 +26,7 @@ type Props = {
 
 const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Props) => {
   const { t } = useSafeTranslation();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
 
   const labelText = t(input.label as any);
   const descriptionText = input.description ? t(input.description as any) : undefined;
@@ -56,11 +56,11 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
       };
 
       // 切换渲染类型整条替换输入记录（含清空 value），属于记录级变更。
-      node?.updateNode((current) => ({
+      nodeActions?.updateNode((current) => ({
         inputs: current.inputs.map((item) => (item.key === input.key ? nextInput : item))
       }));
     },
-    [displayRenderTypeList, input, node]
+    [displayRenderTypeList, input, nodeActions]
   );
 
   return (
@@ -107,7 +107,7 @@ const InputLabel = ({ nodeId, input, RightComponent, rightInline, isTool }: Prop
                 bg: 'adora.100'
               }}
               onClick={() => {
-                node?.updateNode((current) => ({
+                nodeActions?.updateNode((current) => ({
                   inputs: current.inputs.filter((item) => item.key !== input.key)
                 }));
               }}

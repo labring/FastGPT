@@ -4,10 +4,10 @@ import InputRender from '@/components/core/app/formRender';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
-import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import {
   getSelectedInputRenderType,
@@ -17,9 +17,9 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import { useContextSelector } from 'use-context-selector';
 import type { RenderInputProps } from '../type';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
+import { useNodeActions } from '@/web/core/workflow/editor/react';
 
 /**
  * 通用输入模板：文本/多行文本/数字/开关/单选多选/JSON/模型选择等渲染类型共用。
@@ -30,20 +30,20 @@ import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
  */
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const node = useNode(nodeId);
+  const nodeActions = useNodeActions(nodeId);
   const field = useField(nodeId, item.key, 'input');
+  const currentInput = (field?.data.input ?? item) as FlowNodeInputItemType;
   // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const { feConfigs } = useSystemStore();
 
   const [, setDefaultModel] = useLocalStorageState<string>('workflow_default_llm_model', {
     defaultValue: ''
   });
 
-  const selectedRenderType = getSelectedInputRenderType(item);
+  const selectedRenderType = getSelectedInputRenderType(currentInput);
   const inputType = nodeInputTypeToInputType(
-    selectedRenderType ? [selectedRenderType] : item.renderTypeList
+    selectedRenderType ? [selectedRenderType] : currentInput.renderTypeList
   );
 
   const editorVariables = useMemoEnhance(() => {
@@ -52,11 +52,11 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       nodeId,
       getNodeById,
       edges: workflow.edges,
-      appDetail,
+      chatConfig: workflow.chatConfig,
       t,
       getIncomingEdges: graph?.getIncomingEdges
     });
-  }, [nodeId, workflow, getNodeById, graph, appDetail, t]);
+  }, [nodeId, workflow, getNodeById, graph, t]);
 
   const externalVariables = useMemo(() => {
     return (
@@ -76,18 +76,21 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
           value = value.slice(0, 1000000);
         }
       }
-      if (item.key === NodeInputKeyEnum.aiModel || item.key === NodeInputKeyEnum.aiModelId) {
+      if (
+        currentInput.key === NodeInputKeyEnum.aiModel ||
+        currentInput.key === NodeInputKeyEnum.aiModelId
+      ) {
         setDefaultModel(value);
       }
 
       const modelIdKey = workflowModelKeyMappings.find(
-        ([legacyKey]) => legacyKey === item.key
+        ([legacyKey]) => legacyKey === currentInput.key
       )?.[1];
       if (inputType === InputTypeEnum.selectLLMModel && modelIdKey) {
         // 记录级改名：以派发瞬间的 inputs 为基准整份替换，避免用 props 里的过滤后数组覆盖文档。
-        node?.updateNode((current) => ({
+        nodeActions?.updateNode((current) => ({
           inputs: current.inputs.map((input) =>
-            input.key === item.key ? { ...input, key: modelIdKey, value } : input
+            input.key === currentInput.key ? { ...input, key: modelIdKey, value } : input
           )
         }));
         return;
@@ -95,35 +98,35 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
 
       field?.setValue(value);
     },
-    [field, inputType, item.key, node, setDefaultModel]
+    [currentInput.key, field, inputType, nodeActions, setDefaultModel]
   );
 
   // 嵌套容器节点（loop/parallelRun/loopRun）里的 select 下拉向上展开，避免被子节点覆盖。
-  const flowNodeType = node?.data.flowNodeType;
+  const flowNodeType = workflow?.nodes.find((node) => node.nodeId === nodeId)?.flowNodeType;
   const menuPlacement = useMemo(() => {
     if (!flowNodeType) return undefined;
     return isNestedParentNodeType(flowNodeType) ? ('top-start' as const) : undefined;
   }, [flowNodeType]);
 
-  const canOptimizePrompt = item.key === NodeInputKeyEnum.aiSystemPrompt;
+  const canOptimizePrompt = currentInput.key === NodeInputKeyEnum.aiSystemPrompt;
   const OptimizerPopverComponent = useCallback(
     ({ iconButtonStyle }: { iconButtonStyle: Record<string, any> }) => {
       return (
         <OptimizerPopover
           iconButtonStyle={iconButtonStyle}
-          defaultPrompt={item.value}
+          defaultPrompt={currentInput.value}
           onChangeText={(e) => {
             handleChange(e);
           }}
         />
       );
     },
-    [item.value, handleChange]
+    [currentInput.value, handleChange]
   );
 
   // item.key 是字段名，直接展开会被 React 当成元素 key：既触发 key-spread 警告，
   // 也会在 aiModel → aiModelId 记录级改名时把输入框整个 remount 掉。
-  const { key: _itemKey, ...inputProps } = item;
+  const { key: _itemKey, ...inputProps } = currentInput;
 
   return (
     // 字段撤销由 Runtime 统一托管：打上标记后画布快捷键在捕获阶段接管，
@@ -131,7 +134,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     <Box data-workflow-history="external">
       <InputRender
         inputType={inputType}
-        value={item.value}
+        value={currentInput.value}
         onChange={handleChange}
         variables={[...(editorVariables || []), ...(externalVariables || [])]}
         variableLabels={editorVariables}

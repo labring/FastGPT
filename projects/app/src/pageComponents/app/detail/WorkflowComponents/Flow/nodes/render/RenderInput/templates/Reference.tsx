@@ -10,6 +10,7 @@ import {
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
+  FlowNodeInputItemType,
   ReferenceArrayValueType,
   ReferenceItemValueType,
   ReferenceValueType
@@ -24,7 +25,7 @@ import { getWorkflowReferenceItems } from '@fastgpt/global/core/workflow/editor/
 import type { TFunction } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor';
 import {
   useDocumentGetNodeById,
   useGraphQueries,
@@ -220,14 +221,15 @@ export const useLazyReferenceList = ({
  */
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
-  const node = useNode(nodeId);
   const field = useField(nodeId, item.key, 'input');
+  const currentInput = (field?.data.input ?? item) as FlowNodeInputItemType;
+  const getWorkflow = useWorkflowSnapshotGetter();
   const { referenceList, loadReferenceList } = useLazyReferenceList({
     nodeId,
-    valueType: item.valueType
+    valueType: currentInput.valueType
   });
 
-  const isArray = item.valueType?.includes('array') ?? false;
+  const isArray = currentInput.valueType?.includes('array') ?? false;
 
   const onSelect = useCallback(
     (e?: ReferenceValueType) => {
@@ -236,7 +238,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     [field]
   );
 
-  const flowNodeType = node?.data.flowNodeType;
+  const flowNodeType = getWorkflow()?.nodes.find((node) => node.nodeId === nodeId)?.flowNodeType;
   // 嵌套容器节点（loop/parallelRun/loopRun）里的下拉向上展开，避免被子节点覆盖。
   const popDirection = useMemo(
     () => (flowNodeType && isNestedParentNodeType(flowNodeType) ? 'top' : 'bottom'),
@@ -245,9 +247,11 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
 
   return (
     <ReferSelector
-      placeholder={t(item.referencePlaceholder as any) || t('common:select_reference_variable')}
+      placeholder={
+        t(currentInput.referencePlaceholder as any) || t('common:select_reference_variable')
+      }
       list={referenceList}
-      value={item.value}
+      value={currentInput.value}
       onSelect={onSelect}
       popDirection={popDirection}
       isArray={isArray}

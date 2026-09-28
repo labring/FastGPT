@@ -15,19 +15,20 @@ import { getFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 const FileSelectRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const field = useField(nodeId, item.key, 'input');
+  const currentInput = field?.data.input ?? item;
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
 
   const [urlInput, setUrlInput] = useState('');
   const values = useMemo(() => {
-    if (Array.isArray(item.value)) {
-      return item.value;
+    if (Array.isArray(currentInput.value)) {
+      return currentInput.value;
     }
     return [];
-  }, [item.value]);
+  }, [currentInput.value]);
 
   const maxSelectFiles = getFileAmountLimit({
-    moduleMaxFileAmount: item.maxFiles,
+    moduleMaxFileAmount: currentInput.maxFiles,
     defaultModuleMaxFileAmount: 5,
     teamMaxFileAmount: teamPlanStatus?.standard?.maxUploadFileCount,
     systemMaxFileAmount: feConfigs.uploadFileMaxAmount
