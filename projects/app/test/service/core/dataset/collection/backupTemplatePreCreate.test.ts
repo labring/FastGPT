@@ -47,7 +47,7 @@ vi.mock('@/service/core/dataset/queues/utils', () => ({
 }));
 
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import { generateVector } from '@/service/core/dataset/queues/generateVector';
+import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
 
 let embeddingModel: NonNullable<ReturnType<typeof getModelTestDefaults>['embedding']>;
 
@@ -73,7 +73,7 @@ const buildBackupCsv = (rows: { q: string; a?: string; index?: string }[]) => {
  */
 const drainVectorQueue = async (collectionId: string) => {
   for (let attempt = 0; attempt < 3; attempt++) {
-    await generateVector();
+    await generatePreCreatedData();
 
     if ((await MongoDatasetTraining.countDocuments({ collectionId })) === 0) return;
 
@@ -205,7 +205,7 @@ describe('backup / template pre-created data', () => {
 
     const rows = await MongoDatasetData.find({ collectionId }).lean();
     expect(rows).toHaveLength(2);
-    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.parsed)).toBe(true);
+    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.indexing)).toBe(true);
     // 待索引数据尚无向量，索引数组应为空。
     expect(rows.every((row) => (row.indexes ?? []).length === 0)).toBe(true);
 
@@ -228,7 +228,7 @@ describe('backup / template pre-created data', () => {
 
     const rows = await MongoDatasetData.find({ collectionId }).lean();
     expect(rows).toHaveLength(2);
-    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.parsed)).toBe(true);
+    expect(rows.every((row) => row.indexStatus === DatasetDataIndexStatusEnum.indexing)).toBe(true);
 
     const tasks = await MongoDatasetTraining.find({ collectionId }).lean();
     expect(tasks).toHaveLength(2);

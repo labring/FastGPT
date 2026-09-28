@@ -123,7 +123,7 @@ export const enqueueNextDatasetRebuildTask = async (
               q: data.q,
               indexes: data.indexes
             }),
-            retryCount: 50
+            retryCount: 3
           }
         ],
         { session, ordered: true }

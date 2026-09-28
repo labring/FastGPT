@@ -91,6 +91,7 @@ const DatasetDataSchema = new Schema({
     type: String,
     enum: Object.values(DatasetDataIndexStatusEnum)
   },
+  indexErrorMsg: String,
   synonymVersion: Number,
   synonymRebuildingVersion: Number,
 

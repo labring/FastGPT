@@ -23,15 +23,18 @@ vi.mock('@/service/core/dataset/queues/utils', () => ({
 }));
 
 import { generateVector } from '@/service/core/dataset/queues/generateVector';
+import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
 
 let embeddingModel: NonNullable<ReturnType<typeof getModelTestDefaults>['embedding']>;
 
 const createContext = async ({
   indexStatus,
-  indexes = []
+  indexes = [],
+  mode = TrainingModeEnum.index
 }: {
   indexStatus?: DatasetDataIndexStatusEnum;
   indexes?: { type: DatasetDataIndexTypeEnum; text: string; dataId: string }[];
+  mode?: TrainingModeEnum;
 } = {}) => {
   const root = await getRootUser();
   const dataset = await MongoDataset.create({
@@ -65,7 +68,7 @@ const createContext = async ({
     tmbId: root.tmbId,
     datasetId: dataset._id,
     collectionId: collection._id,
-    mode: TrainingModeEnum.chunk,
+    mode,
     billId: new Types.ObjectId().toString(),
     dataId: data._id,
     q: 'chunk content',
@@ -77,10 +80,11 @@ const createContext = async ({
   return { root, dataset, collection, data, task };
 };
 
-describe('generateVector pre-created data routing', () => {
+describe('pre-created data queue routing', () => {
   beforeEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = false;
     global.vectorQueueLen = 0;
+    global.preCreatedQueueLen = 0;
     resetVectorMocks();
     embeddingModel = {
       ...getModelTestDefaults().embedding!,
@@ -99,10 +103,10 @@ describe('generateVector pre-created data routing', () => {
   /** CP-04 / DS-07 规则 3：待索引数据走提前落库路径，更新同一条数据。 */
   it('updates the same pre-created data and marks it indexed', async () => {
     const { data, task } = await createContext({
-      indexStatus: DatasetDataIndexStatusEnum.parsed
+      indexStatus: DatasetDataIndexStatusEnum.indexing
     });
 
-    await generateVector();
+    await generatePreCreatedData();
 
     const updated = await MongoDatasetData.findById(data._id).lean();
     expect(updated).toMatchObject({
@@ -117,13 +121,26 @@ describe('generateVector pre-created data routing', () => {
     expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
   });
 
+  it('does not consume pre-created tasks', async () => {
+    const { data, task } = await createContext({
+      indexStatus: DatasetDataIndexStatusEnum.indexing
+    });
+
+    await generateVector();
+
+    expect(await MongoDatasetTraining.findById(task._id)).not.toBeNull();
+    expect((await MongoDatasetData.findById(data._id).lean())?.indexStatus).toBe(
+      DatasetDataIndexStatusEnum.indexing
+    );
+  });
+
   /**
-   * DS-07：新路径开始处理时把 parsed 更新为 indexing。
-   * 向量调用发生在一步之后，因此在该回调里读库能观察到标记是否已经落盘。
+   * DS-07：新路径在向量处理前已经是 indexing。
+   * 向量调用发生在领取任务之后，因此在该回调里读库能观察到状态保持不变。
    */
-  it('marks the pre-created data as indexing before writing vectors', async () => {
+  it('keeps pre-created data indexing before writing vectors', async () => {
     const { data } = await createContext({
-      indexStatus: DatasetDataIndexStatusEnum.parsed
+      indexStatus: DatasetDataIndexStatusEnum.indexing
     });
 
     const statusesDuringVectorWrite: (string | undefined)[] = [];
@@ -133,7 +150,7 @@ describe('generateVector pre-created data routing', () => {
       return createMockVectorsResponse(inputs.map((input) => input.input));
     });
 
-    await generateVector();
+    await generatePreCreatedData();
 
     expect(statusesDuringVectorWrite).not.toHaveLength(0);
     expect(statusesDuringVectorWrite).toContain(DatasetDataIndexStatusEnum.indexing);
@@ -149,7 +166,7 @@ describe('generateVector pre-created data routing', () => {
       indexStatus: DatasetDataIndexStatusEnum.indexing
     });
 
-    await generateVector();
+    await generatePreCreatedData();
 
     expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
       indexStatus: DatasetDataIndexStatusEnum.indexed
@@ -160,10 +177,10 @@ describe('generateVector pre-created data routing', () => {
   /** DS-07：提前落库路径不得触发重建接力，任务表不产生重建链残留。 */
   it('does not enqueue a following rebuild task', async () => {
     const { dataset, data } = await createContext({
-      indexStatus: DatasetDataIndexStatusEnum.parsed
+      indexStatus: DatasetDataIndexStatusEnum.indexing
     });
 
-    await generateVector();
+    await generatePreCreatedData();
 
     expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
     const updated = await MongoDatasetData.findById(data._id).lean();
@@ -175,6 +192,7 @@ describe('generateVector pre-created data routing', () => {
   /** CP-03：关联数据无状态时继续走现有正式数据重建路径。 */
   it('keeps the rebuild path for data without indexStatus', async () => {
     const { data } = await createContext({
+      mode: TrainingModeEnum.chunk,
       indexes: [
         {
           type: DatasetDataIndexTypeEnum.custom,

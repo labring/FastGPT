@@ -86,7 +86,6 @@ describe('indexStatus downstream contracts', () => {
   /** DS-12 / UI-08：trainedCount 只统计已索引（含无状态）数据。 */
   it('counts only indexed data in trainedCount while dataAmount stays complete', async () => {
     const { root, collection, createData } = await createContext();
-    await createData({ text: 'parsed chunk', indexStatus: DatasetDataIndexStatusEnum.parsed });
     await createData({ text: 'indexing chunk', indexStatus: DatasetDataIndexStatusEnum.indexing });
     await createData({ text: 'indexed chunk', indexStatus: DatasetDataIndexStatusEnum.indexed });
     await createData({ text: 'legacy chunk' });
@@ -100,17 +99,12 @@ describe('indexStatus downstream contracts', () => {
     // 已训练数只包含 indexed 与无状态历史数据。
     expect(res.data.trainedCount).toBe(2);
     // 数据量不做状态过滤，解析后立即计入。
-    expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(4);
+    expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(3);
   });
 
   /** DS-16：Mongo $text provider 的召回反查会校验数据状态。 */
   it('drops pending index data from full-text recall', async () => {
     const { root, dataset, createData } = await createContext();
-    const parsed = await createData({
-      text: 'retrieval isolation keyword',
-      indexStatus: DatasetDataIndexStatusEnum.parsed,
-      withFullText: true
-    });
     const indexing = await createData({
       text: 'retrieval isolation keyword',
       indexStatus: DatasetDataIndexStatusEnum.indexing,
@@ -125,8 +119,8 @@ describe('indexStatus downstream contracts', () => {
       text: 'retrieval isolation keyword',
       withFullText: true
     });
-    // 三条待索引/已索引 + 一条历史数据的全文行都已存在。
-    expect(await MongoDatasetDataText.countDocuments({})).toBe(4);
+    // 两条待索引/已索引 + 一条历史数据的全文行都已存在。
+    expect(await MongoDatasetDataText.countDocuments({})).toBe(3);
 
     const result = await fullTextRecall({
       teamId: String(root.teamId),
@@ -138,16 +132,15 @@ describe('indexStatus downstream contracts', () => {
 
     const recalledIds = result.textFullTextRecallResults.map((item) => String(item.id)).sort();
     expect(recalledIds).toEqual([String(indexed._id), String(legacy._id)].sort());
-    expect(recalledIds).not.toContain(String(parsed._id));
     expect(recalledIds).not.toContain(String(indexing._id));
   });
 
   /** DS-18 / CP-10：集合删除按 collectionId 清理，不做状态筛选。 */
   it('cleans pending index data and in-flight tasks on collection delete', async () => {
     const { root, dataset, collection, createData } = await createContext();
-    const parsed = await createData({
+    const indexing = await createData({
       text: 'pending chunk',
-      indexStatus: DatasetDataIndexStatusEnum.parsed,
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
       withFullText: true
     });
     await MongoDatasetTraining.create({
@@ -157,7 +150,7 @@ describe('indexStatus downstream contracts', () => {
       collectionId: collection._id,
       mode: 'chunk',
       billId: 'bill-id',
-      dataId: parsed._id,
+      dataId: indexing._id,
       retryCount: 5
     });
 

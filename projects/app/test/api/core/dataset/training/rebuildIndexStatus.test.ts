@@ -90,11 +90,11 @@ describe('rebuild paths skip pending index data', () => {
   /** CP-08：索引进行中切换向量模型，待索引数据不被标记 rebuilding、不产生第二条任务。 */
   it('marks only indexed data as rebuilding and leaves pending data alone', async () => {
     const { root, dataset, collection } = await createContext();
-    const parsed = await createData({
+    const indexingPending = await createData({
       root,
       dataset,
       collection,
-      indexStatus: DatasetDataIndexStatusEnum.parsed
+      indexStatus: DatasetDataIndexStatusEnum.indexing
     });
     const indexing = await createData({
       root,
@@ -129,28 +129,28 @@ describe('rebuild paths skip pending index data', () => {
 
     // 待索引数据不被选中，也没有重建标记残留。
     const rows = await MongoDatasetData.find({ datasetId: dataset._id }).lean();
-    for (const pendingId of [String(parsed._id), String(indexing._id)]) {
+    for (const pendingId of [String(indexingPending._id), String(indexing._id)]) {
       const row = rows.find((item) => String(item._id) === pendingId);
       expect(row?.rebuilding).toBeUndefined();
       expect(row?.synonymRebuildingVersion).toBeUndefined();
     }
-    expect(await MongoDatasetData.findById(parsed._id).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.parsed
+    expect(await MongoDatasetData.findById(indexingPending._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.indexing
     });
     expect(await MongoDatasetData.findById(indexing._id).lean()).toMatchObject({
       indexStatus: DatasetDataIndexStatusEnum.indexing
     });
   });
 
-  /** CP-09：同义词重建不选中 parsed/indexing 数据，不产生第二条任务。 */
+  /** CP-09：同义词重建不选中 indexing 数据，不产生第二条任务。 */
   it('does not select pending index data for synonym rebuild', async () => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     const { root, dataset, collection } = await createContext();
-    const parsed = await createData({
+    const indexingPending = await createData({
       root,
       dataset,
       collection,
-      indexStatus: DatasetDataIndexStatusEnum.parsed,
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
       synonymVersion: 1
     });
     const indexed = await createData({
@@ -177,9 +177,9 @@ describe('rebuild paths skip pending index data', () => {
     expect(tasks[0].mode).toBe(TrainingModeEnum.chunk);
 
     // 待索引数据保持原状，标记未被推进。
-    expect(await MongoDatasetData.findById(parsed._id).lean()).toMatchObject({
+    expect(await MongoDatasetData.findById(indexingPending._id).lean()).toMatchObject({
       synonymVersion: 1,
-      indexStatus: DatasetDataIndexStatusEnum.parsed
+      indexStatus: DatasetDataIndexStatusEnum.indexing
     });
   });
 
@@ -191,7 +191,7 @@ describe('rebuild paths skip pending index data', () => {
       root,
       dataset,
       collection,
-      indexStatus: DatasetDataIndexStatusEnum.parsed,
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
       synonymVersion: 1
     });
 

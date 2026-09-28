@@ -30,7 +30,10 @@ vi.mock('@fastgpt/service/core/dataset/read', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/read')>()),
   readDatasetSourceRawText: mocks.read
 }));
-vi.mock('@fastgpt/service/common/api/plusRequest', () => ({ POST: mocks.paragraph }));
+vi.mock('@fastgpt/service/thirdProvider/fastgptPro/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/thirdProvider/fastgptPro/api')>()),
+  postCreateParagraphTitle: mocks.paragraph
+}));
 vi.mock('@/service/core/dataset/queues/utils', () => ({
   checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
 }));
@@ -48,10 +51,12 @@ import { datasetParseQueue } from '@/service/core/dataset/queues/datasetParse';
 /** 创建真实的解析任务；原文读取与 AI 分段请求单独模拟，落库走测试数据库。 */
 const createTask = async ({
   agentModelId,
-  paragraphChunkAIMode = ParagraphChunkAIModeEnum.forbid
+  paragraphChunkAIMode = ParagraphChunkAIModeEnum.forbid,
+  trainingType = DatasetCollectionDataProcessModeEnum.chunk
 }: {
   agentModelId?: string;
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
+  trainingType?: DatasetCollectionDataProcessModeEnum;
 } = {}) => {
   const user = await getRootUser();
   const dataset = await MongoDataset.create({
@@ -68,7 +73,7 @@ const createTask = async ({
     name: 'source',
     type: DatasetCollectionTypeEnum.file,
     fileId: 'test-file',
-    trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+    trainingType,
     paragraphChunkAIMode
   });
   const task = await MongoDatasetTraining.create({
@@ -104,7 +109,7 @@ const createEmptyContext = async () => {
   return { user, dataset, collection };
 };
 
-describe('datasetParseQueue pre-creates parsed data', () => {
+describe('datasetParseQueue creates index-ready data', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.read.mockResolvedValue({ rawText: 'Original source text.' });
@@ -128,8 +133,8 @@ describe('datasetParseQueue pre-creates parsed data', () => {
     expect(await MongoDatasetData.countDocuments({ datasetId: dataset._id })).toBe(0);
   });
 
-  /** CT-02：解析完成后写入 parsed 数据、indexes 为空且任务携带对应 dataId。 */
-  it('persists parsed data sharing dataId with the downstream training task', async () => {
+  /** CT-02：解析完成后写入 indexing 数据、indexes 为空且任务携带对应 dataId。 */
+  it('persists indexing data sharing dataId with the downstream training task', async () => {
     const { collection } = await createTask();
     await datasetParseQueue();
 
@@ -137,15 +142,31 @@ describe('datasetParseQueue pre-creates parsed data', () => {
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({
       q: 'Original source text.',
-      indexStatus: DatasetDataIndexStatusEnum.parsed,
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
       indexes: [],
       chunkIndex: 0
     });
 
     const tasks = await MongoDatasetTraining.find({ collectionId: collection._id }).lean();
     expect(tasks).toHaveLength(1);
-    expect(tasks[0].mode).toBe(TrainingModeEnum.chunk);
+    expect(tasks[0].mode).toBe(TrainingModeEnum.index);
     expect(String(tasks[0].dataId)).toBe(String(list[0]._id));
+  });
+
+  it('does not create dataset data before QA completes', async () => {
+    const { collection } = await createTask({
+      trainingType: DatasetCollectionDataProcessModeEnum.qa
+    });
+
+    await datasetParseQueue();
+
+    expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
+    expect(
+      await MongoDatasetTraining.countDocuments({
+        collectionId: collection._id,
+        mode: TrainingModeEnum.qa
+      })
+    ).toBe(1);
   });
 
   /** CT-07 / DS-02：落库内容是段落增强合并后的最终切块，并保留现有业务字段。 */
@@ -249,7 +270,7 @@ describe('datasetParseQueue pre-creates parsed data', () => {
       q: 'chunk with metadata',
       a: 'answer',
       metadata,
-      indexStatus: DatasetDataIndexStatusEnum.parsed,
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
       indexes: []
     });
 
@@ -262,7 +283,7 @@ describe('datasetParseQueue pre-creates parsed data', () => {
     );
     expect(tasks.find((task) => String(task.dataId) === String(withMetadata._id))).toMatchObject({
       dataMetadata: metadata,
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.index,
       billId
     });
   });
