@@ -390,7 +390,7 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.TITLE]: (
         <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
-          {item.customTitle || item.title}
+          {item.title || '-'}
         </Td>
       ),
       [AppLogKeysEnum.SESSION_ID]: (
