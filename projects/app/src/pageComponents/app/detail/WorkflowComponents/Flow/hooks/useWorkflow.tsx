@@ -13,14 +13,13 @@ import {
   type NodeRemoveChange,
   type NodeSelectionChange,
   type EdgeRemoveChange
-} from 'reactflow';
+} from '@xyflow/react';
 import {
   EDGE_TYPE,
   FlowNodeTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
-import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useKeyboard } from './useKeyboard';
@@ -151,15 +150,18 @@ export const createHelperLineScanner = ({
     };
   }
 
+  const nodeAWidth = nodeA.measured?.width ?? 0;
+  const nodeAHeight = nodeA.measured?.height ?? 0;
+
   const nodeABounds = {
     left: change.position.x,
-    right: change.position.x + (nodeA.width ?? 0),
+    right: change.position.x + nodeAWidth,
     top: change.position.y,
-    bottom: change.position.y + (nodeA.height ?? 0),
-    width: nodeA.width ?? 0,
-    height: nodeA.height ?? 0,
-    centerX: change.position.x + (nodeA.width ?? 0) / 2,
-    centerY: change.position.y + (nodeA.height ?? 0) / 2
+    bottom: change.position.y + nodeAHeight,
+    width: nodeAWidth,
+    height: nodeAHeight,
+    centerX: change.position.x + nodeAWidth / 2,
+    centerY: change.position.y + nodeAHeight / 2
   };
 
   let horizontalDistance = distance;
@@ -182,15 +184,18 @@ export const createHelperLineScanner = ({
       };
     }
 
+    const nodeBWidth = nodeB.measured?.width ?? 0;
+    const nodeBHeight = nodeB.measured?.height ?? 0;
+
     const nodeBBounds = {
       left: nodeB.position.x,
-      right: nodeB.position.x + (nodeB.width ?? 0),
+      right: nodeB.position.x + nodeBWidth,
       top: nodeB.position.y,
-      bottom: nodeB.position.y + (nodeB.height ?? 0),
-      width: nodeB.width ?? 0,
-      height: nodeB.height ?? 0,
-      centerX: nodeB.position.x + (nodeB.width ?? 0) / 2,
-      centerY: nodeB.position.y + (nodeB.height ?? 0) / 2
+      bottom: nodeB.position.y + nodeBHeight,
+      width: nodeBWidth,
+      height: nodeBHeight,
+      centerX: nodeB.position.x + nodeBWidth / 2,
+      centerY: nodeB.position.y + nodeBHeight / 2
     };
 
     const distanceLeftLeft = Math.abs(nodeABounds.left - nodeBBounds.left);
@@ -479,11 +484,11 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   );
 
   // Check if a node is placed on top of a nested parent node (loop / parallelRun / loopRun)
-  const checkNodeOverLoopNode = useMemoizedFn((node: Node) => {
+  const checkNodeOverLoopNode = useMemoizedFn((node: Node<FlowNodeItemType>) => {
     if (!node || node.data.parentNodeId) return;
 
     // 获取所有与当前节点相交的节点中，类型为嵌套父容器且未折叠的节点
-    const intersections = getIntersectingNodes(node);
+    const intersections = getIntersectingNodes(node) as Node<FlowNodeItemType>[];
     const parentNode = intersections.find(
       (item) => !item.data.isFolded && isNestedParentNodeType(item.type ?? '')
     );
@@ -542,7 +547,9 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
     const zoom = getZoom();
 
-    let x = position.x + (node.width || 0) * zoom;
+    const nodeWidth = node.measured?.width ?? 0;
+
+    let x = position.x + nodeWidth * zoom;
     let y = position.y;
 
     const viewportWidth = window.innerWidth;
@@ -552,7 +559,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
     // Check right boundary
     if (x + popoverWidth + margin > viewportWidth) {
-      x = Math.max(margin, position.x + (node.width || 0) * zoom - popoverWidth - 30);
+      x = Math.max(margin, position.x + nodeWidth * zoom - popoverWidth - 30);
     }
 
     // Check bottom boundary
@@ -572,15 +579,18 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       const node = getRawNodeById(nodeId);
       if (!node) return { x: 0, y: 0 };
 
+      const nodeWidth = node.measured?.width ?? 0;
+      const nodeHeight = node.measured?.height ?? 0;
+
       if (handleId === 'selectedTools') {
         return {
           x: node.position.x,
-          y: node.position.y + (node.height || 0) + 80
+          y: node.position.y + nodeHeight + 80
         };
       }
 
       return {
-        x: node.position.x + (node.width || 0) + 120,
+        x: node.position.x + nodeWidth + 120,
         y: node.position.y
       };
     }
@@ -746,8 +756,8 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       return [];
     }
   );
-  const handleNodesChange = useMemoizedFn((changes: NodeChange[]) => {
-    const childChanges: NodeChange[] = [];
+  const handleNodesChange = useMemoizedFn((changes: NodeChange<Node<FlowNodeItemType>>[]) => {
+    const childChanges: NodeChange<Node<FlowNodeItemType>>[] = [];
     const removedIds = new Set(
       changes.filter((c): c is NodeRemoveChange => c.type === 'remove').map((c) => c.id)
     );
@@ -828,7 +838,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   const onNodeDragStop = useCallback(
     (_: any, node: Node) => {
       helperLinesRef.current?.clear();
-      checkNodeOverLoopNode(node);
+      checkNodeOverLoopNode(node as Node<FlowNodeItemType>);
     },
     [checkNodeOverLoopNode, helperLinesRef]
   );

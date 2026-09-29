@@ -5,7 +5,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { MySourceHandle } from '../Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { Position } from 'reactflow';
+import { Position } from '@xyflow/react';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ValueTypeLabel from '../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';

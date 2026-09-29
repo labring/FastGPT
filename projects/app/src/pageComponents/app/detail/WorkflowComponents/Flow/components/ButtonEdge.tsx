@@ -3,20 +3,22 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   type EdgeProps,
-  type ConnectionLineComponentProps
-} from 'reactflow';
+  type Edge,
+  type Node,
+  type ConnectionLineComponentProps,
+  useReactFlow,
+  useEdges
+} from '@xyflow/react';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { useThrottleEffect } from 'ahooks';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../context/workflowInitContext';
+import { WorkflowNodeDataContext } from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { getCustomStepPath } from '../utils/edge';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const CustomConnectionLine = ({
   fromX,
@@ -45,10 +47,8 @@ export const CustomConnectionLine = ({
 
 const ButtonEdge = (props: EdgeProps) => {
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
-  const { onEdgesChange, getNodeById, foldedNodesMap, edges, getNodes } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { getNodes, getNode, deleteElements } = useReactFlow<Node<FlowNodeItemType>, Edge>();
+  const edges = useEdges();
   const workflowDebugData = useContextSelector(WorkflowDebugContext, (v) => v.workflowDebugData);
   const hoverEdgeId = useContextSelector(WorkflowUIContext, (v) => v.hoverEdgeId);
 
@@ -70,21 +70,21 @@ const ButtonEdge = (props: EdgeProps) => {
 
   // If parentNode is folded, the edge will not be displayed
   const isFolded = useMemo(() => {
-    const sourceNode = getNodeById(source);
-    const targetNode = getNodeById(target);
-    if (sourceNode?.parentNodeId) {
-      return foldedNodesMap[sourceNode.parentNodeId];
+    const sourceNode = getNode(source);
+    const targetNode = getNode(target);
+    if (sourceNode?.data.parentNodeId) {
+      return !!getNode(sourceNode.data.parentNodeId)?.data.isFolded;
     }
-    if (targetNode?.parentNodeId) {
-      return foldedNodesMap[targetNode.parentNodeId];
+    if (targetNode?.data.parentNodeId) {
+      return !!getNode(targetNode.data.parentNodeId)?.data.isFolded;
     }
     return false;
-  }, [foldedNodesMap, getNodeById, source, target]);
+  }, [getNode, source, target]);
 
   const defaultZIndex = useMemo(() => {
-    const node = getNodeById(source, (node) => !!node.parentNodeId);
-    return node ? 2002 : 0;
-  }, [getNodeById, source]);
+    const node = getNode(source);
+    return node?.data.parentNodeId ? 2002 : 0;
+  }, [getNode, source]);
 
   // Offset edges from same source horizontally to avoid visual overlap
   const edgeStepOffset = useMemo(() => {
@@ -114,15 +114,10 @@ const ButtonEdge = (props: EdgeProps) => {
   }, [edges, source, id, getNodes, sourceX, targetX]);
 
   const onDelConnect = useCallback(
-    (id: string) => {
-      onEdgesChange([
-        {
-          type: 'remove',
-          id
-        }
-      ]);
+    (edgeId: string) => {
+      deleteElements({ edges: [{ id: edgeId }] });
     },
-    [onEdgesChange]
+    [deleteElements]
   );
 
   // Selected edge or source/target node selected

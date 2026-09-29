@@ -30,7 +30,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import { type TFunction } from 'i18next';
-import { type Edge, type Node } from 'reactflow';
+import { type Edge, type Node } from '@xyflow/react';
 
 const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
   const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });

@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import NodeCard from './render/NodeCard';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { Box, Textarea } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
@@ -9,7 +9,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
-const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
+const NodeComment = ({ data }: NodeProps<Node<FlowNodeItemType>>) => {
   const { nodeId, inputs } = data;
   const { commentText, commentSize } = useMemo(
     () => ({

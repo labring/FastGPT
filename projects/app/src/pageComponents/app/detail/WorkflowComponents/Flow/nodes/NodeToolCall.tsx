@@ -1,5 +1,5 @@
 import React from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Divider from '../components/Divider';
@@ -23,7 +23,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
-const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeToolCall = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
   const { toast } = useToast();

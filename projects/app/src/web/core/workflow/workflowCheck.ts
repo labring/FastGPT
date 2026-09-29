@@ -4,7 +4,7 @@ import type {
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum

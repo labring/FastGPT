@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
 import { useContextSelector } from 'use-context-selector';
-import { type Node, useReactFlow } from 'reactflow';
+import { type Node, useReactFlow } from '@xyflow/react';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -16,20 +16,50 @@ import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 import { getHandleIndex } from '../utils/edge';
 
+const ContextMenuItem = ({
+  icon,
+  label,
+  onClick,
+  onClose,
+  ...props
+}: {
+  icon: string;
+  label: string;
+  onClick: () => any;
+  onClose: () => void;
+} & StackProps) => {
+  return (
+    <HStack
+      px={2}
+      py={1}
+      cursor={'pointer'}
+      borderRadius={'sm'}
+      _hover={{ bg: 'myGray.50', color: 'primary.500' }}
+      onClick={() => {
+        onClick();
+        onClose();
+      }}
+      {...props}
+    >
+      <MyIcon name={icon as any} w={'1rem'} ml={1} />
+      <Box fontSize={'sm'} fontWeight={'500'}>
+        {label}
+      </Box>
+    </HStack>
+  );
+};
+
 const ContextMenu = () => {
   const { t } = useTranslation();
   const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
   const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
-  const { setNodes, setEdges, allNodeFolded } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const { setNodes, allNodeFolded } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const getParentNodeSizeAndPosition = useContextSelector(
     WorkflowLayoutContext,
     (v) => v.getParentNodeSizeAndPosition
   );
 
-  const { fitView, screenToFlowPosition, getNodes } = useReactFlow();
+  const { fitView, screenToFlowPosition, getNodes, getEdges } = useReactFlow();
 
   const onLayout = useCallback(() => {
     const updateChildNodesPosition = ({
@@ -51,7 +81,10 @@ const ContextMenu = () => {
       });
 
       nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
+        dagreGraph.setNode(node.id, {
+          width: node.measured?.width ?? 0,
+          height: node.measured?.height ?? 0
+        });
       });
 
       // Find connected nodes
@@ -65,8 +98,10 @@ const ContextMenu = () => {
 
       dagre.layout(dagreGraph);
       const layoutedStartNode = dagreGraph.node(startNode.data.nodeId);
-      const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
-      const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
+      const startWidth = startNode.measured?.width ?? 0;
+      const startHeight = startNode.measured?.height ?? 0;
+      const offsetX = startPosition.x - (layoutedStartNode.x - startWidth / 2);
+      const offsetY = startPosition.y - (layoutedStartNode.y - startHeight / 2);
 
       // Group nodes by rank (horizontal position in LR layout)
       const nodesByRank: Map<
@@ -94,7 +129,7 @@ const ContextMenu = () => {
         // Find the minimum left position (for left alignment)
         let minLeft = Infinity;
         nodesInRank.forEach(({ node, dagreNode }) => {
-          const left = dagreNode.x - node.width! / 2;
+          const left = dagreNode.x - (node.measured?.width ?? 0) / 2;
           minLeft = Math.min(minLeft, left);
         });
 
@@ -128,11 +163,14 @@ const ContextMenu = () => {
 
         // Assign Y positions in sorted order
         let currentY =
-          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
-          offsetY;
+          Math.min(
+            ...nodesInRank.map(
+              ({ dagreNode, node }) => dagreNode.y - (node.measured?.height ?? 0) / 2
+            )
+          ) + offsetY;
         nodesInRank.forEach(({ node }) => {
           node.position = { x: minLeft + offsetX, y: currentY };
-          currentY += node.height! + 80;
+          currentY += (node.measured?.height ?? 0) + 80;
         });
       });
     };
@@ -160,7 +198,10 @@ const ContextMenu = () => {
 
       nodes.forEach((node) => {
         if (childNodeIdsSet.has(node.data.nodeId)) return;
-        dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
+        dagreGraph.setNode(node.id, {
+          width: node.measured?.width ?? 0,
+          height: node.measured?.height ?? 0
+        });
       });
 
       // Find connected nodes
@@ -176,8 +217,10 @@ const ContextMenu = () => {
 
       dagre.layout(dagreGraph);
       const layoutedStartNode = dagreGraph.node(startNode.data.nodeId);
-      const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
-      const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
+      const startWidth = startNode.measured?.width ?? 0;
+      const startHeight = startNode.measured?.height ?? 0;
+      const offsetX = startPosition.x - (layoutedStartNode.x - startWidth / 2);
+      const offsetY = startPosition.y - (layoutedStartNode.y - startHeight / 2);
 
       // Group nodes by rank (horizontal position in LR layout)
       const nodesByRank: Map<
@@ -205,7 +248,7 @@ const ContextMenu = () => {
         // Find the minimum left position (for left alignment)
         let minLeft = Infinity;
         nodesInRank.forEach(({ node, dagreNode }) => {
-          const left = dagreNode.x - node.width! / 2;
+          const left = dagreNode.x - (node.measured?.width ?? 0) / 2;
           minLeft = Math.min(minLeft, left);
         });
 
@@ -239,15 +282,18 @@ const ContextMenu = () => {
 
         // Assign Y positions in sorted order
         let currentY =
-          Math.min(...nodesInRank.map(({ dagreNode, node }) => dagreNode.y - node.height! / 2)) +
-          offsetY;
+          Math.min(
+            ...nodesInRank.map(
+              ({ dagreNode, node }) => dagreNode.y - (node.measured?.height ?? 0) / 2
+            )
+          ) + offsetY;
         nodesInRank.forEach(({ node }) => {
           const targetX = minLeft + offsetX;
           const diffX = targetX - node.position.x;
           const diffY = currentY - node.position.y;
 
           node.position = { x: targetX, y: currentY };
-          currentY += node.height! + 80;
+          currentY += (node.measured?.height ?? 0) + 80;
 
           // Sync child nodes position
           nodes.forEach((childNode) => {
@@ -262,92 +308,87 @@ const ContextMenu = () => {
       });
     };
 
-    setNodes((nodes) => {
-      let newNodes = cloneDeep(nodes);
+    const currentNodes = getNodes() as Node<FlowNodeItemType>[];
+    const currentEdges = getEdges();
+    const newNodes = cloneDeep(currentNodes);
+    const childNodesIdSet = new Set<string>();
 
-      setEdges((edges) => {
-        const childNodesIdSet = new Set();
+    // 1. Layout child nodes
+    const childNodesMap: Record<string, Node<FlowNodeItemType>[]> = {};
+    newNodes.forEach((node) => {
+      const parentId = node.data.parentNodeId;
+      if (parentId) {
+        // Skip children without valid dimensions (not yet rendered)
+        if (!node.measured?.width || !node.measured?.height) return;
 
-        // 1. Layout child nodes
-        const childNodesMap: Record<string, Node<FlowNodeItemType>[]> = {};
-        newNodes.forEach((node) => {
-          const parentId = node.data.parentNodeId;
-          if (parentId) {
-            // Skip children without valid dimensions (not yet rendered)
-            if (!node.width || !node.height) return;
-
-            childNodesIdSet.add(parentId);
-            if (!childNodesMap[parentId]) {
-              childNodesMap[parentId] = [];
-            }
-            childNodesMap[parentId].push(node);
-          }
-        });
-        const childNodesArr = Object.values(childNodesMap);
-        if (childNodesArr.length > 0) {
-          childNodesArr.forEach((childNodes) => {
-            updateChildNodesPosition({
-              startNode: childNodes[0],
-              nodes: childNodes,
-              edges
-            });
-          });
+        childNodesIdSet.add(parentId);
+        if (!childNodesMap[parentId]) {
+          childNodesMap[parentId] = [];
         }
+        childNodesMap[parentId].push(node);
+      }
+    });
 
-        // 2. Reset parent node size and position
-        const parentNodes = newNodes.filter((node) => childNodesIdSet.has(node.data.nodeId));
-        parentNodes.forEach((node) => {
-          const res = getParentNodeSizeAndPosition({
-            nodes: newNodes,
-            parentId: node.data.nodeId
-          });
-          if (!res) return;
-          const { parentX, parentY, nodeWidth, nodeHeight, childHeight, childWidth } = res;
-
-          node.position = {
-            x: parentX,
-            y: parentY
-          };
-          node.width = nodeWidth;
-          node.height = nodeHeight;
-          node.data.inputs.forEach((input) => {
-            if (input.key === NodeInputKeyEnum.nodeHeight) {
-              input.value = childHeight;
-            } else if (input.key === NodeInputKeyEnum.nodeWidth) {
-              input.value = childWidth;
-            }
-          });
+    const childNodesArr = Object.values(childNodesMap);
+    if (childNodesArr.length > 0) {
+      childNodesArr.forEach((childNodes) => {
+        updateChildNodesPosition({
+          startNode: childNodes[0],
+          nodes: childNodes,
+          edges: currentEdges
         });
-
-        // 3. Layout parent node
-        updateParentNodesPosition({
-          startNode:
-            newNodes.find((node) =>
-              [
-                FlowNodeTypeEnum.workflowStart,
-                FlowNodeTypeEnum.pluginInput
-              ].includes(node.data.flowNodeType)
-            ) || newNodes[0],
-          nodes: newNodes,
-          edges
-        });
-        return edges;
       });
+    }
 
-      return newNodes;
+    // 2. Reset parent node size and position
+    const parentNodes = newNodes.filter((node) => childNodesIdSet.has(node.data.nodeId));
+    parentNodes.forEach((node) => {
+      const res = getParentNodeSizeAndPosition({
+        nodes: newNodes,
+        parentId: node.data.nodeId
+      });
+      if (!res) return;
+      const { parentX, parentY, nodeWidth, nodeHeight, childHeight, childWidth } = res;
+
+      node.position = {
+        x: parentX,
+        y: parentY
+      };
+      node.width = nodeWidth;
+      node.height = nodeHeight;
+      node.data.inputs.forEach((input) => {
+        if (input.key === NodeInputKeyEnum.nodeHeight) {
+          input.value = childHeight;
+        } else if (input.key === NodeInputKeyEnum.nodeWidth) {
+          input.value = childWidth;
+        }
+      });
     });
 
-    setTimeout(() => {
-      const validNodes = getNodes().filter((node) => node.width && node.height);
-      fitView({ nodes: validNodes, padding: 0.3 });
+    // 3. Layout parent node
+    updateParentNodesPosition({
+      startNode:
+        newNodes.find((node) =>
+          [FlowNodeTypeEnum.workflowStart, FlowNodeTypeEnum.pluginInput].includes(
+            node.data.flowNodeType
+          )
+        ) || newNodes[0],
+      nodes: newNodes,
+      edges: currentEdges
     });
-  }, [fitView, getNodes, getParentNodeSizeAndPosition, setEdges, setNodes]);
+
+    setNodes(newNodes);
+
+    window.requestAnimationFrame(() => {
+      fitView({ padding: 0.3 });
+    });
+  }, [fitView, getEdges, getNodes, getParentNodeSizeAndPosition, setNodes]);
 
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)
     // menu.left = e.clientX - 12, menu.top = e.clientY + 6
-    const mouseX = (menu?.left ?? 0) + 12;
-    const mouseY = (menu?.top ?? 0) - 6;
+    const mouseX = menu.left + 12;
+    const mouseY = menu.top - 6;
 
     const newNode = nodeTemplate2FlowNode({
       template: CommentNode,
@@ -355,17 +396,14 @@ const ContextMenu = () => {
       t
     });
 
-    setNodes((state) => {
-      const newState = state
-        .map((node) => ({
-          ...node,
-          selected: false
-        }))
-        // @ts-ignore
-        .concat(newNode);
-      return newState;
-    });
-  }, [menu?.left, menu?.top, screenToFlowPosition, setNodes, t]);
+    setNodes((state) => [
+      ...state.map((node) => ({
+        ...node,
+        selected: false
+      })),
+      newNode
+    ]);
+  }, [menu.left, menu.top, screenToFlowPosition, setNodes, t]);
 
   const onFold = useCallback(() => {
     setNodes((state) => {
@@ -385,39 +423,9 @@ const ContextMenu = () => {
     });
   }, [allNodeFolded, setNodes]);
 
-  const ContextMenuItem = useCallback(
-    ({
-      icon,
-      label,
-      onClick,
-      ...props
-    }: {
-      icon: string;
-      label: string;
-      onClick: () => any;
-    } & StackProps) => {
-      return (
-        <HStack
-          px={2}
-          py={1}
-          cursor={'pointer'}
-          borderRadius={'sm'}
-          _hover={{ bg: 'myGray.50', color: 'primary.500' }}
-          onClick={() => {
-            onClick();
-            setMenu(null);
-          }}
-          {...props}
-        >
-          <MyIcon name={icon as any} w={'1rem'} ml={1} />
-          <Box fontSize={'sm'} fontWeight={'500'}>
-            {label}
-          </Box>
-        </HStack>
-      );
-    },
-    [setMenu]
-  );
+  const handleCloseMenu = useCallback(() => {
+    setMenu(null);
+  }, [setMenu]);
 
   return (
     <Box>
@@ -450,17 +458,20 @@ const ContextMenu = () => {
           icon="alignLeft"
           label={t('workflow:auto_align')}
           onClick={onLayout}
+          onClose={handleCloseMenu}
         />
         <ContextMenuItem
           mb={1}
           icon="comment"
           label={t('workflow:context_menu.add_comment')}
           onClick={onAddComment}
+          onClose={handleCloseMenu}
         />
         <ContextMenuItem
           icon="common/select"
           label={allNodeFolded ? t('workflow:unFoldAll') : t('workflow:foldAll')}
           onClick={onFold}
+          onClose={handleCloseMenu}
         />
       </Box>
     </Box>

@@ -1,6 +1,6 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { type DefaultEdgeOptions } from 'reactflow';
+import { type DefaultEdgeOptions } from '@xyflow/react';
 
 export const minZoom = 0.1;
 export const maxZoom = 3;

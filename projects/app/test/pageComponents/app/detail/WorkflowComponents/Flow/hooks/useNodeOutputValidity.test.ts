@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';

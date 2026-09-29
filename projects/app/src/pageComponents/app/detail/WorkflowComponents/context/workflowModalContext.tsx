@@ -1,6 +1,6 @@
 // 工作流功能性弹窗管理层
 import React, { useCallback, useState } from 'react';
-import type { OnConnectStartParams } from 'reactflow';
+import type { OnConnectStartParams } from '@xyflow/react';
 import { createContext } from 'use-context-selector';
 import ChatTest from '../Flow/ChatTest';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';

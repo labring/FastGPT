@@ -12,7 +12,8 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { Edge, Node } from 'reactflow';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { Edge, Node } from '@xyflow/react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import type { WorkflowStateType } from './type';
 import { WorkflowBufferDataContext } from './workflowInitContext';
@@ -47,7 +48,7 @@ type WorkflowSnapshotContextValue = {
 
   /** 推入历史快照 */
   pushPastSnapshot: (params: {
-    pastNodes: Node[];
+    pastNodes: Node<FlowNodeItemType>[];
     pastEdges: Edge[];
     chatConfig: AppChatConfigType;
     customTitle?: string;
@@ -118,7 +119,7 @@ export const WorkflowSnapshotProvider = ({ children }: { children: React.ReactNo
   // 待保存快照队列机制 - 解决竞态条件，确保数据不丢失
   const pendingSnapshotRef = useRef<{
     data: {
-      pastNodes: Node[];
+      pastNodes: Node<FlowNodeItemType>[];
       pastEdges: Edge[];
       chatConfig: AppChatConfigType;
       customTitle?: string;

@@ -1,7 +1,7 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useMemo, useState } from 'react';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, Flex } from '@chakra-ui/react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../render/NodeCard';
@@ -29,7 +29,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
-const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeExtract = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { inputs, outputs, nodeId, catchError } = data;
 
   const { t } = useTranslation();

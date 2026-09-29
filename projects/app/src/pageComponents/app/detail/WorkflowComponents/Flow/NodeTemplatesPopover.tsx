@@ -11,11 +11,10 @@ import { buildNodeTemplateContext } from '@fastgpt/global/core/workflow/template
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
-import React from 'react';
-import { type Node } from 'reactflow';
+import React, { useCallback, useMemo } from 'react';
+import { useReactFlow, useEdges, useNodes, type Node, type Edge } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../context/workflowActionsContext';
-import { WorkflowBufferDataContext, WorkflowInitContext } from '../context/workflowInitContext';
 import { WorkflowModalContext } from '../context/workflowModalContext';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
@@ -25,9 +24,31 @@ import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
 const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const { edges, setNodes, setEdges, workflowStartNode, getNodeById, hasToolNode, hasLoopRunNode } =
-    useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { setNodes, setEdges, getNode } = useReactFlow<Node<FlowNodeItemType>, Edge>();
+  const nodes = useNodes<Node<FlowNodeItemType>>();
+  const edges = useEdges();
+
+  const getNodeById = useCallback(
+    (nodeId: string | null | undefined) => (nodeId ? getNode(nodeId)?.data : undefined),
+    [getNode]
+  );
+  const workflowStartNode = useMemo(
+    () => nodes.find((n) => n.data.flowNodeType === FlowNodeTypeEnum.workflowStart)?.data,
+    [nodes]
+  );
+  const hasToolNode = useMemo(
+    () =>
+      nodes.some(
+        (n) =>
+          n.data.flowNodeType === FlowNodeTypeEnum.tool ||
+          n.data.flowNodeType === FlowNodeTypeEnum.toolSet
+      ),
+    [nodes]
+  );
+  const hasLoopRunNode = useMemo(
+    () => nodes.some((n) => n.data.flowNodeType === FlowNodeTypeEnum.loopRun),
+    [nodes]
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
     WorkflowActionsContext,
@@ -79,16 +100,13 @@ const NodeTemplatesPopover = () => {
       return;
     }
 
-    setNodes((state) => {
-      const newState = state
-        .map((node) => ({
-          ...node,
-          selected: false
-        }))
-        // @ts-ignore
-        .concat(validNewNodes);
-      return newState;
-    });
+    setNodes((state) => [
+      ...state.map((node) => ({
+        ...node,
+        selected: false
+      })),
+      ...validNewNodes
+    ]);
 
     if (!handleParams) return;
 

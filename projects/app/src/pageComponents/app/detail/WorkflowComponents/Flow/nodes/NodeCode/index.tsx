@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../../components/Container';
@@ -33,7 +33,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSandboxPackages } from './api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeCode = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);

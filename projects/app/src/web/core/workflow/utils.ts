@@ -42,7 +42,7 @@ import {
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { cloneDeep, isEqual } from 'lodash-es';
 import { type TFunction } from 'next-i18next';
-import type { Edge, Node, XYPosition } from 'reactflow';
+import type { Edge, Node, XYPosition } from '@xyflow/react';
 import { workflowSystemVariables } from '../app/utils';
 import { getGlobalVariableNode } from './adapt';
 import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
@@ -756,13 +756,13 @@ export const getWorkflowGlobalVariables = ({
 /* ====== Snapshot ======= */
 export const compareSnapshot = (
   snapshot1: {
-    nodes?: Node[];
-    edges?: Edge<any>[] | undefined;
+    nodes?: Node<FlowNodeItemType>[];
+    edges?: Edge[] | undefined;
     chatConfig?: AppChatConfigType;
   },
   snapshot2: {
-    nodes?: Node[];
-    edges?: Edge<any>[];
+    nodes?: Node<FlowNodeItemType>[];
+    edges?: Edge[];
     chatConfig?: AppChatConfigType;
   }
 ) => {
@@ -824,7 +824,7 @@ export const compareSnapshot = (
     return false;
   }
 
-  const formatNodes = (nodes: Node[]) => {
+  const formatNodes = (nodes: Node<FlowNodeItemType>[]) => {
     return nodes
       .filter((node) => {
         if (!node) return;

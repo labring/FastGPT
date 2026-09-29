@@ -4,8 +4,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
 import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { useReactFlow } from 'reactflow';
-import type { Node, Edge } from 'reactflow';
+import { useReactFlow, type Node, type Edge } from '@xyflow/react';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
@@ -28,7 +27,7 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { AppContext } from '../../context';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import { WorkflowActionsContext } from './workflowActionsContext';
@@ -363,7 +362,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
       // 进入编辑器后延迟校验并定位到第一个错误节点；ReactFlow 渲染后再 fitView 才有效。
-      const scheduleEntryCheck = (checkNodes: Node[], checkEdges: Edge[]) => {
+      const scheduleEntryCheck = (checkNodes: Node<FlowNodeItemType>[], checkEdges: Edge[]) => {
         if (!isInit) return;
         window.setTimeout(() => {
           const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({

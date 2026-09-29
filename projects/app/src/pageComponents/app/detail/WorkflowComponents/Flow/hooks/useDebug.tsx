@@ -8,10 +8,13 @@ import {
   type RuntimeEdgeItemType,
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
-import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  type FlowNodeItemType,
+  type StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCallback, useMemo, useState } from 'react';
-import { useReactFlow } from 'reactflow';
+import { useReactFlow, type Node, type Edge } from '@xyflow/react';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 
 import LabelAndFormRender from '@/components/core/app/formRender/LabelAndForm';
@@ -60,15 +63,13 @@ export const useDebug = () => {
   const { t: workflowT } = useTranslation();
   const { toast } = useToast();
 
-  const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
-  const getNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodes);
+  const { fitView, setNodes, getNodes } = useReactFlow<Node<FlowNodeItemType>, Edge>();
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const childrenNodeIdListMap = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v.childrenNodeIdListMap
   );
-  const { fitView } = useReactFlow();
   const { onUpdateNodeError, onRemoveError, onSyncWorkflowCheckIssues } = useContextSelector(
     WorkflowActionsContext,
     (v) => v

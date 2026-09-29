@@ -23,12 +23,11 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { useContextSelector } from 'use-context-selector';
 import React, { useCallback, useMemo } from 'react';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { MySourceHandle } from '../render/Handle';
-import { Position, useReactFlow } from 'reactflow';
+import { Position, useReactFlow, type Node } from '@xyflow/react';
 import { getRefData, getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -37,6 +36,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 const ListItem = ({
   provided,
@@ -353,7 +353,11 @@ const ConditionSelect = ({
   onSelect: (e: VariableConditionEnum) => void;
 }) => {
   const { t } = useTranslation();
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
+  );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   // get condition type
@@ -434,7 +438,11 @@ const ConditionValueInput = ({
   nodeId: string;
 }) => {
   const { t } = useTranslation();
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
+  );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const isReference = useMemo(() => type === 'reference', [type]);

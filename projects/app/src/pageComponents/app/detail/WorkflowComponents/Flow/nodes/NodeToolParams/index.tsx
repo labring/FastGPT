@@ -1,6 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import React, { useMemo, useState } from 'react';
 import Container from '../../components/Container';
@@ -14,7 +14,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { defaultToolParamFormData } from '../components/ToolParamsEditModal/constants';
 
-const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeToolParams = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
   const { nodeId, inputs } = data;

@@ -1,6 +1,6 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from './render/NodeCard';
 import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';
@@ -12,7 +12,7 @@ import RenderToolInput, { hasDynamicToolInput } from './render/RenderToolInput';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 
-const NodeTool = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeTool = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
 
   const { nodeId, inputs, outputs } = data;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { Node, NodePositionChange, XYPosition } from 'reactflow';
+import type { Node, NodePositionChange, XYPosition } from '@xyflow/react';
 
 // Mock Markdown component: its CSS imports (katex) cannot be resolved under vitest.
 // useWorkflow.tsx transitively imports AppContext -> Markdown.
@@ -28,6 +28,7 @@ const buildNode = (
   data: {},
   width,
   height,
+  measured: { width, height },
   ...extra
 });
 

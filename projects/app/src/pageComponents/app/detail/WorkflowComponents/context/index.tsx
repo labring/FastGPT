@@ -1,6 +1,6 @@
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { ReactFlowProvider } from 'reactflow';
+import { ReactFlowProvider } from '@xyflow/react';
 import WorkflowInitContextProvider from './workflowInitContext';
 import { WorkflowSnapshotProvider } from './workflowSnapshotContext';
 import { WorkflowUtilsProvider } from './workflowUtilsContext';

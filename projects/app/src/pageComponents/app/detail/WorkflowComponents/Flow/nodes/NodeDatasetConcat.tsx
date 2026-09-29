@@ -14,7 +14,7 @@ import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import Container from '../components/Container';
@@ -26,7 +26,7 @@ import { ReferSelector, useReference } from './render/RenderInput/templates/Refe
 import RenderOutput from './render/RenderOutput';
 import ValueTypeLabel from './render/ValueTypeLabel';
 
-const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeDatasetConcat = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const llmMaxQuoteContext = useWorkflowQuoteLimit();
