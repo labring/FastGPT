@@ -64,6 +64,7 @@ The commercial edition no longer requires the Pro service to be started separate
 9. Tables now enable horizontal scrolling by default and remove redundant side padding, improving browsing on narrow screens.
 10. Fixed Workflow array variables receiving a single object JSON string being parsed as a plain object rather than an array, automatically wrapping it into a single-element array to prevent errors in loop and parallel nodes.
 11. Sorted template model list by model provider order when adding models from templates, keeping model lists organized and consistent.
+12. Optimized chat title generation rules: initial chat rounds that only upload files or trigger auto-execution now assign localized fixed titles (such as "Upload File" or "Auto Execute"), which are automatically overwritten once subsequent text queries are sent; custom titles (`customTitle`) retain the highest priority and will not be overwritten; unified title fallback and display consistency across chat history, logs, and exports; and prevented empty values or placeholders from being persisted as chat titles.
 
 ## 🐛 Fixes
 
