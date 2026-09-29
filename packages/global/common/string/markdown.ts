@@ -173,7 +173,7 @@ const unescapeMarkdownUrl = (url: string) => url.replace(/\\([\\()])/g, '$1');
  * 拼接时保持 prefix→value→suffix 顺序即可维持各自既有捕获组编号。
  */
 export const htmlImgTokenPrefixPattern = String.raw`(<img\b(?:(?:[^"'<>]|"[^"]*"|'[^']*'))*?\s+src\s*=\s*)`;
-export const htmlImgTokenValuePattern = '(?:"([^"]*)"|\'([^\']*)\'|([^\\s"=<>`]+))';
+export const htmlImgTokenValuePattern = '(?:"([^"]*)"|\'([^\']*)\'|([^\\s"\'=<>`]+))';
 export const htmlImgTokenSuffixPattern = String.raw`((?:(?:[^"'<>]|"[^"]*"|'[^']*'))*>)`;
 
 const htmlImgTokenRegex = new RegExp(

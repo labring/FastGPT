@@ -493,6 +493,19 @@ describe('markdown 字符串处理函数测试', () => {
       expect(result.match(/dataset\/abc\/img\.png/g)).toHaveLength(1);
       expect(result).not.toContain('data:image/png;base64,OUTER=');
     });
+
+    it('应该支持处理无引号 src 属性的 HTML img', async () => {
+      const rawText = '<img alt=badge src=data:image/png;base64,UNQUOTED />';
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'dataset/abc/unquoted.png' });
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => mockUpload(image.url)
+      });
+
+      expect(result).toBe('<img alt=badge src="dataset/abc/unquoted.png" />');
+      expect(mockUpload).toHaveBeenCalledWith('data:image/png;base64,UNQUOTED');
+      expect(result).not.toContain('data:image');
+    });
   });
 
   describe('parseMarkdownBase64Images markdown 清理', () => {
