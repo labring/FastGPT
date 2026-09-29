@@ -1,6 +1,8 @@
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { DispatchSubAppResponse, GetSubAppInfoFnType, SubAppRuntimeType } from '../type';
+import type { WorkflowVariableStateLike } from '../../../../types/runtime';
 import { getAgentRuntimeTools } from './tool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
@@ -25,12 +27,16 @@ export const getSubapps = async ({
   tmbId,
   tools,
   lang,
-  dynamic = false
+  dynamic = false,
+  variableState,
+  runtimeNodesMap
 }: {
   tmbId: string;
   tools: AgentToolType[];
   lang?: localeType;
   dynamic?: boolean;
+  variableState?: WorkflowVariableStateLike;
+  runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
@@ -45,7 +51,9 @@ export const getSubapps = async ({
     tools,
     tmbId,
     lang,
-    dynamic
+    dynamic,
+    variableState,
+    runtimeNodesMap
   });
   formatTools.forEach((tool) => {
     if (tool.promptReference) {

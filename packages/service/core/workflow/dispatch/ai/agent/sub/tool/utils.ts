@@ -19,7 +19,10 @@ import {
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../../../../../workflow/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
 import {
   jsonSchema2NodeInput,
   jsonSchema2NodeOutput,
@@ -58,6 +61,13 @@ import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 import { HttpToolSetRuntimeConfigSchema } from '@fastgpt/global/core/workflow/type/node';
+import {
+  getReferenceVariableValue,
+  valueTypeFormat
+} from '@fastgpt/global/core/workflow/runtime/utils';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { replaceEditorVariable } from '../../../../utils/replaceEditorVariable';
+import type { WorkflowVariableStateLike } from '../../../../../types/runtime';
 import { getMCPChildren } from '../../../../../../app/mcp';
 import {
   filterWorkflowToolList,
@@ -96,16 +106,64 @@ const getAgentRuntimeToolId = ({ pluginId, source }: { pluginId: string; source?
  * 节点、toolConfig 和 JSON Schema。App 类工具按 Agent 配置读取固定版本或最新版本；MCP 工具会
  * 在运行态补齐旧版子 App 数据或前端预览数据中被裁剪的 schema。
  */
+/**
+ * 解析 Agent 工具固定绑定中的工作流引用与 {{变量}} 文本。
+ * 常规工作流节点在 getWorkflowNodeRunParams 中完成同样的解析；Agent 工具的固定绑定
+ * 在构建工具目录时统一补齐，否则全局变量和节点引用会以原始值进入工具或子工作流。
+ */
+export const resolveAgentToolRuntimeBinding = ({
+  input,
+  value,
+  variableState,
+  runtimeNodesMap
+}: {
+  input: FlowNodeInputItemType;
+  value: unknown;
+  /** 缺省时跳过解析，保持既有固定绑定行为不变。 */
+  variableState: WorkflowVariableStateLike | undefined;
+  runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
+}) => {
+  if (!variableState) return value;
+  if (value === undefined || value === null) return value;
+
+  const variables = variableState.toRuntimeRecord();
+  const isReferenceInput = nodeInputIsReference(input);
+  const needsTextReplace = typeof value === 'string' && value.includes('{{');
+  if (!isReferenceInput && !needsTextReplace) return value;
+
+  let resolved = value;
+  if (needsTextReplace) {
+    resolved = replaceEditorVariable({
+      text: resolved,
+      nodesMap: runtimeNodesMap ?? {},
+      variables
+    });
+  }
+  if (isReferenceInput) {
+    resolved = getReferenceVariableValue({
+      value: resolved as ReferenceValueType,
+      nodesMap: runtimeNodesMap ?? {},
+      variables,
+      isReferenceVal: true
+    });
+  }
+  return valueTypeFormat(resolved, input.valueType);
+};
+
 export const getAgentRuntimeTools = async ({
   tools,
   tmbId,
   lang,
-  dynamic = false
+  dynamic = false,
+  variableState,
+  runtimeNodesMap
 }: {
   tools: AgentToolType[];
   tmbId: string;
   lang?: localeType;
   dynamic?: boolean;
+  variableState?: WorkflowVariableStateLike;
+  runtimeNodesMap?: Map<string, RuntimeNodeItemType>;
 }): Promise<SubAppInitType[]> => {
   const resourceContext = dynamic ? undefined : getWorkflowResourceContext();
   let teamIdPromise: Promise<string> | undefined;
@@ -629,8 +687,14 @@ export const getAgentRuntimeTools = async ({
               delete configuredParams[input.key];
               return;
             }
-            configuredParams[input.key] = value;
-            input.value = value;
+            const resolvedValue = resolveAgentToolRuntimeBinding({
+              input,
+              value,
+              variableState,
+              runtimeNodesMap
+            });
+            configuredParams[input.key] = resolvedValue;
+            input.value = resolvedValue;
           }
         });
 

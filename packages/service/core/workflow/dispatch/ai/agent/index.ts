@@ -126,6 +126,8 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     uid,
     responseChatItemId,
     timezone,
+    variableState,
+    runtimeNodesMap,
     params: {
       systemPrompt = '',
       userChatInput,
@@ -263,7 +265,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       tools: selectedTools,
       tmbId: runningUserInfo.tmbId,
       lang,
-      dynamic: dynamicTools
+      dynamic: dynamicTools,
+      variableState,
+      runtimeNodesMap
     });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,

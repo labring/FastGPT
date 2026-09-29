@@ -7,12 +7,17 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
   VariableInputEnum,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
-import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
+import {
+  getAgentRuntimeTools,
+  resolveAgentToolRuntimeBinding
+} from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
 const {
   authAppByTmbIdMock,
@@ -1713,5 +1718,126 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.name).toBe('gpjj5s');
     expect(tools[0].requestSchema.function).not.toHaveProperty('parameters');
     expect(tools[0].agentGeneratedInputKeys).toEqual([]);
+  });
+});
+
+describe('resolveAgentToolRuntimeBinding', () => {
+  const variableState = {
+    get: vi.fn(),
+    set: vi.fn(),
+    getStoreValue: vi.fn(),
+    getFileStoreValueByRuntimeUrl: vi.fn(),
+    toRuntimeRecord: vi.fn().mockReturnValue({
+      token: 'secret-token',
+      count: '42'
+    }),
+    toStoreRecord: vi.fn(),
+    clone: vi.fn()
+  };
+  const runtimeNodesMap = new Map<string, RuntimeNodeItemType>([
+    [
+      'node_1',
+      {
+        nodeId: 'node_1',
+        name: 'upstream',
+        outputs: [{ id: 'result', value: 'node-output' }]
+      } as unknown as RuntimeNodeItemType
+    ]
+  ]);
+  const referenceInput = (valueType: WorkflowIOValueTypeEnum = WorkflowIOValueTypeEnum.string) => ({
+    key: 'var_ref',
+    label: 'var_ref',
+    valueType,
+    renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.reference],
+    selectedType: FlowNodeInputTypeEnum.reference
+  });
+
+  it('resolves a reference bound to a global variable', () => {
+    const input = referenceInput();
+    const value = resolveAgentToolRuntimeBinding({
+      input,
+      value: [VARIABLE_NODE_ID, 'token'],
+      variableState,
+      runtimeNodesMap
+    });
+
+    expect(value).toBe('secret-token');
+  });
+
+  it('resolves a reference bound to an upstream node output', () => {
+    const input = referenceInput();
+    const value = resolveAgentToolRuntimeBinding({
+      input,
+      value: ['node_1', 'result'],
+      variableState,
+      runtimeNodesMap
+    });
+
+    expect(value).toBe('node-output');
+  });
+
+  it('replaces {{variable}} placeholders in text bindings', () => {
+    const value = resolveAgentToolRuntimeBinding({
+      input: {
+        key: 'header',
+        label: 'header',
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input
+      },
+      value: 'Bearer {{token}}',
+      variableState,
+      runtimeNodesMap
+    });
+
+    expect(value).toBe('Bearer secret-token');
+  });
+
+  it('formats the resolved value to the declared value type', () => {
+    const value = resolveAgentToolRuntimeBinding({
+      input: referenceInput(WorkflowIOValueTypeEnum.number),
+      value: [VARIABLE_NODE_ID, 'count'],
+      variableState,
+      runtimeNodesMap
+    });
+
+    expect(value).toBe(42);
+  });
+
+  it('keeps plain values untouched', () => {
+    const value = resolveAgentToolRuntimeBinding({
+      input: {
+        key: 'plain',
+        label: 'plain',
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.input
+      },
+      value: 'static value',
+      variableState,
+      runtimeNodesMap
+    });
+
+    expect(value).toBe('static value');
+  });
+
+  it('passes through null and undefined bindings', () => {
+    const input = referenceInput();
+    expect(
+      resolveAgentToolRuntimeBinding({
+        input,
+        value: undefined,
+        variableState,
+        runtimeNodesMap
+      })
+    ).toBeUndefined();
+    expect(
+      resolveAgentToolRuntimeBinding({
+        input,
+        value: null,
+        variableState,
+        runtimeNodesMap
+      })
+    ).toBeNull();
   });
 });
