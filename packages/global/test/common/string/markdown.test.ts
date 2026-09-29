@@ -460,6 +460,39 @@ describe('markdown 字符串处理函数测试', () => {
 
       expect(result).toContain('data:image/png;base64,SKIP=');
     });
+
+    it('应该在前面属性值包含 src= 字样时不被串味误导', async () => {
+      const rawText =
+        '<img alt="icon with src=1" title="use src=2 here" src="data:image/png;base64,REALIMG=" />';
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'dataset/abc/img.png' });
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => mockUpload(image.url)
+      });
+
+      // 真正的 src 被替换，alt/title 属性完整保留
+      expect(result).toBe(
+        '<img alt="icon with src=1" title="use src=2 here" src="dataset/abc/img.png" />'
+      );
+      expect(mockUpload).toHaveBeenCalledTimes(1);
+      expect(result).not.toContain('data:image');
+    });
+
+    it('应该防御嵌套语法：HTML 属性值内的 markdown 图片不参与扫描', async () => {
+      const rawText =
+        '<img title="![inner](data:image/png;base64,INNER=)" src="data:image/png;base64,OUTER=" />';
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'dataset/abc/img.png' });
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => mockUpload(image.url)
+      });
+
+      // 仅外层 HTML img 被处理一次，内层嵌套语法被重叠防御过滤，文本不发生重复/损坏
+      expect(mockUpload).toHaveBeenCalledTimes(1);
+      expect(result).toContain('<img title="![inner](data:image/png;base64,INNER=)"');
+      expect(result.match(/dataset\/abc\/img\.png/g)).toHaveLength(1);
+      expect(result).not.toContain('data:image/png;base64,OUTER=');
+    });
   });
 
   describe('parseMarkdownBase64Images markdown 清理', () => {
