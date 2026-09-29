@@ -96,12 +96,15 @@ review 指出「预览短链签发」的核心通道仍有漏检，本轮按「�
 
 1. 底层强收口：`S3DatasetSource.createGetDatasetFileURL` 增加可选的 `datasetId`（`string | string[]`）入参，传入时在签发前统一执行 `isAuthorizedDatasetFileS3Key`，未通过直接抛错；未传时保持兼容（调用方仅持有可信 key 的场景）。
 2. 读接口加固（均补 `datasetId` 绑定）：
-   - `packages/service/support/permission/dataset/auth.ts` 的 `authDatasetData`：`datasetData.imageId` 签发前校验归属 `datasetData.datasetId`。
+   - `packages/service/support/permission/dataset/auth.ts` 的 `authDatasetData`：校验数据记录中的 `datasetId` 与已鉴权 `collection.datasetId` 一致，且 `datasetData.imageId` 必须归属于该已鉴权 dataset。
    - `projects/app/src/pages/api/core/dataset/collection/read.ts`：`collection.fileId` 签发前校验归属 `collection.datasetId`。
    - `projects/app/src/pages/api/core/dataset/collection/detail.ts`：读取 `fileId` 元数据前校验归属，避免越权泄露外库文件名/体积/类型。
+   - `projects/app/src/pages/api/core/chat/record/getCollectionQuote.ts`：引用全文与翻页加载时显式绑定集合的 `datasetId`。
+   - `packages/service/core/dataset/search/utils.ts` 的 `normalizeDatasetIndexImageToModelInput` 与 `dataIndex.ts`：图片向量索引构建时传入并校验 `datasetId`，拒绝读取外库图片 base64。
+   - `projects/app/src/pages/api/core/dataset/data/pushData.ts`：在入库队列前检查客户端传入的 `imageId` 归属，拒绝外库 key。
 3. 删除防护（避免外库 key 触发跨库物理删除）：
    - `projects/app/src/service/core/dataset/data/data.ts` 的删除数据块：仅当 `imageId` 归属该 data 的 `datasetId` 才删除。
-   - `packages/service/core/dataset/collection/controller.ts` 的 `delCollection`：`fileId` 与图片 `imageId` 均按各自 `datasetId` 过滤后再删除。
+   - `packages/service/core/dataset/collection/controller.ts` 的 `delCollection`：查询图片数据时包含 `datasetId: 1` 投影，`fileId` 与图片 `imageId` 均按各自 `datasetId` 过滤后再物理删除。
    - 同一文件的 `createOneCollection`：对 `fileId` 的 `removeS3TTL` 增加归属校验，避免外库 key 被意外提升为永久对象。
    - `projects/app/src/service/core/dataset/data/data.ts` 的 `createDatasetData`：对 `imageId` 的 `removeS3TTL` 增加归属校验，保持对称性。
 

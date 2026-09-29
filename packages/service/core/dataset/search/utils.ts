@@ -6,6 +6,7 @@ import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { serviceEnv } from '../../../env';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type {
@@ -188,12 +189,18 @@ export const normalizeImageToBase64 = async (imageUrl: string) => {
 export const isImageEmbeddingIndex = (index: { type?: string | number }) =>
   index.type === DatasetDataIndexTypeEnum.imageEmbedding;
 
-export const normalizeDatasetIndexImageToModelInput = async (imageUrl: string) => {
-  if (
-    isS3ObjectKey(imageUrl, 'dataset') ||
-    isS3ObjectKey(imageUrl, 'temp') ||
-    isS3ObjectKey(imageUrl, 'chat')
-  ) {
+export const normalizeDatasetIndexImageToModelInput = async (
+  imageUrl: string,
+  datasetId?: string
+) => {
+  if (isS3ObjectKey(imageUrl, 'dataset')) {
+    if (datasetId && !isAuthorizedDatasetFileS3Key({ key: imageUrl, datasetId })) {
+      throw new Error('Invalid dataset file key');
+    }
+    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+  }
+
+  if (isS3ObjectKey(imageUrl, 'temp') || isS3ObjectKey(imageUrl, 'chat')) {
     return getS3DatasetSource().getDatasetBase64Image(imageUrl);
   }
 

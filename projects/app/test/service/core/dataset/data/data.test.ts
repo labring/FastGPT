@@ -698,10 +698,15 @@ describe('Dataset data service', () => {
     });
 
     it('should rebuild image embedding indexes from data content when image index is enabled', async () => {
-      const mainImage = 'dataset/team/main.png';
-      const oldMarkdownImage = 'dataset/team/old.png';
-      const newMarkdownImage = 'dataset/team/new.png';
-      const { data } = await createMongoData({
+      const { root, dataset, collection } = await createDatasetContext();
+      const mainImage = `dataset/${dataset._id}/main.png`;
+      const oldMarkdownImage = `dataset/${dataset._id}/old.png`;
+      const newMarkdownImage = `dataset/${dataset._id}/new.png`;
+      const data = await MongoDatasetData.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
         q: `old question ![old](${oldMarkdownImage})`,
         a: '',
         imageId: mainImage,
@@ -727,6 +732,13 @@ describe('Dataset data service', () => {
             dataId: 'old_markdown_image'
           }
         ]
+      });
+      await MongoDatasetDataText.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        dataId: data._id,
+        fullTextToken: 'old token'
       });
 
       await updateDatasetDataByIndexes({

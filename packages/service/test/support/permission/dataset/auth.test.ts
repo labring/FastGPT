@@ -592,4 +592,30 @@ describe('authDatasetData imageId signing binding', () => {
     );
     expect(result.datasetData.imagePreivewUrl).toBe('https://files.test/signed');
   });
+
+  it('rejects when datasetData.datasetId does not match collection.datasetId', async () => {
+    mockFindDatasetDataById.mockResolvedValue({
+      _id: dataId,
+      teamId: 'team-a',
+      collectionId,
+      datasetId: '507f1f77bcf86cd799439099', // foreign datasetId
+      q: 'q',
+      a: 'a',
+      imageId: 'dataset/507f1f77bcf86cd799439099/img.png',
+      chunkIndex: 0,
+      indexes: [],
+      tmbId: 'tmb-a'
+    });
+
+    await expect(
+      authDatasetData({
+        mockReq,
+        authToken: true,
+        dataId,
+        per: ReadPermissionVal
+      })
+    ).rejects.toBe(DatasetErrEnum.unAuthDatasetData);
+
+    expect(mockCreateGetDatasetFileURL).not.toHaveBeenCalled();
+  });
 });

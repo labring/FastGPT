@@ -19,6 +19,8 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 
 async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
   const body = parseApiInput({ req, bodySchema: PushDataBodySchema }).body;
@@ -60,6 +62,17 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     teamId,
     insertLen: predictDataLimitLength(mode, data)
   });
+
+  // imageId 必须归属于当前已鉴权 collection 的 dataset，防止外库 key 进入训练队列
+  const hasInvalidImageKey = data.some(
+    (item) =>
+      item.imageId &&
+      isS3ObjectKey(item.imageId, 'dataset') &&
+      !isAuthorizedDatasetFileS3Key({ key: item.imageId, datasetId: collection.datasetId })
+  );
+  if (hasInvalidImageKey) {
+    return Promise.reject('Invalid dataset file key');
+  }
 
   return mongoSessionRun(async (session) => {
     const traingUsageId = await (async () => {

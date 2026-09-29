@@ -439,7 +439,7 @@ export async function delCollection({
       datasetId: { $in: datasetIds },
       collectionId: { $in: imageCollectionIds }
     },
-    { imageId: 1 }
+    { imageId: 1, datasetId: 1 }
   ).lean();
   // 只删除归属于该图片集合 dataset 的 key，避免脏数据里的外库 key 被跨库物理删除。
   const imageIds = imageDatas

@@ -8,6 +8,7 @@ import {
 
 const mockQueryExtension = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
+const mockGetDatasetBase64Image = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/ai/functions/queryExtension', () => ({
   queryExtension: mockQueryExtension
@@ -17,12 +18,19 @@ vi.mock('@fastgpt/service/common/file/image/utils', () => ({
   getImageBase64: mockGetImageBase64
 }));
 
+vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
+  getS3DatasetSource: () => ({
+    getDatasetBase64Image: mockGetDatasetBase64Image
+  })
+}));
+
 import {
   computeFilterIntersection,
   datasetSearchQueryExtension,
   isValidImageEmbeddingSource,
   mergeDatasetSynonymQueryMatches,
   normalizeImageToBase64,
+  normalizeDatasetIndexImageToModelInput,
   standardizeDatasetSearchQueries
 } from '../../../../core/dataset/search/utils';
 
@@ -193,6 +201,37 @@ describe('normalizeImageToBase64', () => {
 
     expect(result).toBe('data:image/png;base64,input');
     expect(mockGetImageBase64).not.toHaveBeenCalled();
+  });
+});
+
+describe('normalizeDatasetIndexImageToModelInput', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetDatasetBase64Image.mockResolvedValue('data:image/png;base64,dataset_img');
+  });
+
+  it('should read S3 base64 image when datasetId matches key', async () => {
+    const key = 'dataset/507f1f77bcf86cd799439011/image.png';
+    const result = await normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011');
+
+    expect(result).toBe('data:image/png;base64,dataset_img');
+    expect(mockGetDatasetBase64Image).toHaveBeenCalledWith(key);
+  });
+
+  it('should throw error when datasetId does not match key', async () => {
+    const key = 'dataset/507f1f77bcf86cd799439099/foreign.png';
+    await expect(
+      normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011')
+    ).rejects.toThrow('Invalid dataset file key');
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
+  });
+
+  it('should read S3 image without check when datasetId is omitted for compatibility', async () => {
+    const key = 'dataset/507f1f77bcf86cd799439011/image.png';
+    const result = await normalizeDatasetIndexImageToModelInput(key);
+
+    expect(result).toBe('data:image/png;base64,dataset_img');
+    expect(mockGetDatasetBase64Image).toHaveBeenCalledWith(key);
   });
 });
 
