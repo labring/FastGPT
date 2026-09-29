@@ -15,11 +15,12 @@ FastGPT 支持 MinIO、AWS S3、Alibaba Cloud OSS、Tencent Cloud COS 和 Cloudf
 ## 访问模式说明
 
 - 上传固定走 FastGPT 后端代理。
-- 对外下载地址固定为 FastGPT 短链，不再直接返回对象存储预签名长链接。
+- 文件下载短链由 FastGPT 提供，不再直接返回对象存储预签名长链接。
 - `STORAGE_DOWNLOAD_URL_MODE` 支持两种模式，默认值为 `short-proxy`：
-  - `short-proxy`：FastGPT 校验短链并代理文件流，无需配置公网对象存储地址。
+  - `short-proxy`：FastGPT 校验短链并代理文件流，短链下载无需配置公网对象存储地址。
   - `short-redirect`：FastGPT 校验短链后 302 到短时效对象存储/CDN 地址，文件流量不经过 FastGPT。
-- 自部署 MinIO 使用 `short-redirect` 时必须配置 `STORAGE_EXTERNAL_ENDPOINT`。
+- 插件 Logo 接口始终重定向到公开桶地址；`/api/system/img/` 下的对象存储图片在 `short-proxy` 时由 FastGPT 代理，在 `short-redirect` 时才重定向到公开桶地址。
+- 自部署 MinIO 使用 `short-redirect` 时必须配置 `STORAGE_EXTERNAL_ENDPOINT`；使用插件 Logo 时，若 `STORAGE_S3_ENDPOINT` 不能被浏览器访问，也需要配置该变量。
 
 ## 提供商配置
 
@@ -32,6 +33,8 @@ FastGPT 支持 MinIO、AWS S3、Alibaba Cloud OSS、Tencent Cloud COS 和 Cloudf
 - `STORAGE_S3_CDN_ENDPOINT`【可选】`short-redirect` 临时下载地址使用的 CDN 地址。该变量不会改变默认下载模式，且配置时必须同时配置 `STORAGE_EXTERNAL_ENDPOINT`。上传仍走 FastGPT 后端代理，不会使用 CDN。
 - `STORAGE_S3_FORCE_PATH_STYLE`【可选】虚拟主机风格路由或路径路由风格，其中如果厂商填写了 `minio` 的话，该值被固定为 `true`
 - `STORAGE_S3_MAX_RETRIES`【可选】请求最大尝试次数，默认为 3 次
+
+若在 Kubernetes 中通过 NodePort 暴露 MinIO，需同时暴露其 S3 API（9000 端口），并将 `STORAGE_EXTERNAL_ENDPOINT` 配置为浏览器和 FastGPT 均可访问的地址。集群内地址或服务器本机的 `localhost:9000` 不能用于浏览器访问插件 Logo 等公开桶资源。Docker 部署同样以浏览器能否访问该地址为准。
 
 **完整示例**
 
