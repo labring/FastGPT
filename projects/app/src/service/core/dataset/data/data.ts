@@ -218,7 +218,11 @@ export class DatasetDataOperation {
     await assertSynonymContextCurrent();
 
     // 图片在创建成功后从临时对象转为正式引用，不再允许 TTL 自动删除。
-    if (isS3ObjectKey(imageId, 'dataset')) {
+    // 同样校验归属，防止外库 key 借数据创建入口被意外移除 TTL 提升为永久对象。
+    if (
+      isS3ObjectKey(imageId, 'dataset') &&
+      isAuthorizedDatasetFileS3Key({ key: imageId, datasetId })
+    ) {
       await removeS3TTL({ key: imageId, bucketName: 'private', session });
     }
 

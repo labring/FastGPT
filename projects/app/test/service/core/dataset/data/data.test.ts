@@ -380,6 +380,32 @@ describe('Dataset data service', () => {
       expect(ttl).toBeNull();
     });
 
+    it('should not remove TTL when imageId belongs to another dataset', async () => {
+      const { root, dataset, collection } = await createDatasetContext();
+      const foreignImageId = 'dataset/507f1f77bcf86cd799439099/foreign.png';
+      await MongoS3TTL.create({
+        minioKey: foreignImageId,
+        bucketName: S3Buckets.private,
+        expiredTime: new Date(Date.now() + 60_000)
+      });
+
+      await mongoSessionRun((session) =>
+        createDatasetData({
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: 'question',
+          imageId: foreignImageId,
+          embeddingModel,
+          session
+        })
+      );
+
+      const ttl = await MongoS3TTL.findOne({ minioKey: foreignImageId }).lean();
+      expect(ttl).not.toBeNull();
+    });
+
     it('should reject when required fields are missing', async () => {
       const { root, dataset, collection } = await createDatasetContext();
 

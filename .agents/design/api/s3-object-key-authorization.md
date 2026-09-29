@@ -103,8 +103,11 @@ review 指出「预览短链签发」的核心通道仍有漏检，本轮按「�
    - `projects/app/src/service/core/dataset/data/data.ts` 的删除数据块：仅当 `imageId` 归属该 data 的 `datasetId` 才删除。
    - `packages/service/core/dataset/collection/controller.ts` 的 `delCollection`：`fileId` 与图片 `imageId` 均按各自 `datasetId` 过滤后再删除。
    - 同一文件的 `createOneCollection`：对 `fileId` 的 `removeS3TTL` 增加归属校验，避免外库 key 被意外提升为永久对象。
+   - `projects/app/src/service/core/dataset/data/data.ts` 的 `createDatasetData`：对 `imageId` 的 `removeS3TTL` 增加归属校验，保持对称性。
 
-> 待办（pro 子模块）：`pro/admin/src/service/core/dataset/training/imageUrl.ts` 的 `getImageUrlForVlm` 目前仅做 `dataset` 前缀检查，调用方（`imageIndex.ts` / `imageParse.ts`）已持有 `data.datasetId`。需为其增加 `datasetId` 入参并透传到底层 `createGetDatasetFileURL`。该文件属于私有子模块 `labring/fastgpt-pro`，不随本仓库改动流程发布，故作为独立后续处理。
+4. 私有子模块同步（pro）：
+   - `pro/admin/src/service/core/dataset/training/imageUrl.ts` 的 `getImageUrlForVlm` 增加 `datasetId?: string` 入参；为 `dataset` 类型 key 时，若传入 `datasetId` 则必须通过 `isAuthorizedDatasetFileS3Key`，否则抛错；并将 `datasetId` 透传到底层 `createGetDatasetFileURL`。
+   - 训练任务调用方（`imageIndex.ts` 与 `imageParse.ts`）透传当前任务的 `data.datasetId`；外库 key 抛错后优雅降级或标记任务失败，杜绝跨库图片送往 VLM。
 
 ## 测试要求
 
