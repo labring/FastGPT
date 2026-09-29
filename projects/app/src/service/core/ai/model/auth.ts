@@ -24,6 +24,7 @@ export const authModelViewer = async ({
   const { teamId, tmbId, isRoot, tmb } = await authUserPer({
     req,
     authToken: true,
+    authApiKey: true,
     per: ReadPermissionVal
   });
   return { teamId, tmbId, isTeamOwner: tmb.role === TeamMemberRoleEnum.owner || isRoot };
