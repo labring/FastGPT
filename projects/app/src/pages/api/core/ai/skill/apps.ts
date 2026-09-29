@@ -6,13 +6,9 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import type { ListAppsBySkillIdQuery } from '@fastgpt/global/core/ai/skill/api';
 import { ListAppsBySkillIdQuerySchema } from '@fastgpt/global/core/ai/skill/api';
-import {
-  ReferencedAppsResponseSchema,
-  type ReferencedAppsResponse
-} from '@fastgpt/global/openapi/core/app/common/api';
+import type { ReferencedAppsResponse } from '@fastgpt/global/core/app/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
-import { formatReadableReferencedApps } from '@/service/core/app/referencedApps';
+import { listReadableReferencedApps } from '@/service/core/app/referencedApps';
 
 async function handler(
   req: ApiRequestProps<unknown, ListAppsBySkillIdQuery>
@@ -38,21 +34,13 @@ async function handler(
     return Promise.reject(SkillErrEnum.unAuthSkill);
   }
 
-  const { apps } = await findTeamAppsByPublishedResource({
+  return listReadableReferencedApps({
     teamId,
-    type: 'skill',
-    ids: skillId
+    tmbId,
+    isTeamOwner: teamPer.isOwner,
+    resourceType: 'skill',
+    resourceIds: skillId
   });
-  apps.sort((a, b) => +new Date(b.updateTime) - +new Date(a.updateTime));
-
-  return ReferencedAppsResponseSchema.parse(
-    await formatReadableReferencedApps({
-      apps,
-      teamId,
-      tmbId,
-      isTeamOwner: teamPer.isOwner
-    })
-  );
 }
 
 export default NextAPI(handler);

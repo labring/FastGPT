@@ -1,5 +1,9 @@
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
-import type { ReferencedAppsResponse } from '@fastgpt/global/openapi/core/app/common/api';
+import type {
+  AppResourceType,
+  AppSchemaType,
+  ReferencedAppsResponse
+} from '@fastgpt/global/core/app/type';
+import { ReferencedAppsResponseSchema } from '@fastgpt/global/core/app/type';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
@@ -8,6 +12,7 @@ import { findResourceKeysByCollaboratorsPermission } from '@fastgpt/service/supp
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
 
 type PublishedApp = Pick<
   AppSchemaType,
@@ -15,7 +20,7 @@ type PublishedApp = Pick<
 >;
 
 /**
- * 按照 Skill 引用接口使用的 App 读取权限过滤引用结果。
+ * 按当前用户的 App 读取权限过滤引用结果。
  * hiddenCount 统计无权读取的 App，list 仅包含请求者可读取的 App。
  */
 export const formatReadableReferencedApps = async ({
@@ -70,4 +75,32 @@ export const formatReadableReferencedApps = async ({
     list: await addSourceMember({ list: visibleApps }),
     hiddenCount: apps.length - visibleApps.length
   };
+};
+
+/**
+ * 查询指定资源当前正式版本的引用应用，按更新时间排序并应用请求者的 App 读取权限。
+ */
+export const listReadableReferencedApps = async ({
+  teamId,
+  tmbId,
+  isTeamOwner,
+  resourceType,
+  resourceIds
+}: {
+  teamId: string;
+  tmbId: string;
+  isTeamOwner: boolean;
+  resourceType: AppResourceType;
+  resourceIds: string | string[];
+}): Promise<ReferencedAppsResponse> => {
+  const { apps } = await findTeamAppsByPublishedResource({
+    teamId,
+    type: resourceType,
+    ids: resourceIds
+  });
+  apps.sort((a, b) => +new Date(b.updateTime) - +new Date(a.updateTime));
+
+  return ReferencedAppsResponseSchema.parse(
+    await formatReadableReferencedApps({ apps, teamId, tmbId, isTeamOwner })
+  );
 };

@@ -349,6 +349,7 @@ export const ListAppV2BodySchema = ListAppBodySchema.extend({
     description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
   }),
   withRelatedAppCount: BoolSchema.optional().meta({
+    example: true,
     description: '是否返回 App、工具及其文件夹被正式应用引用的数量'
   })
 }).extend(PaginationSchema.shape);
@@ -393,26 +394,11 @@ export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchem
 });
 export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
 
-export const ReferencedAppSchema = z.object({
-  _id: ObjectIdSchema,
-  name: z.string(),
-  avatar: z.string(),
-  intro: z.string(),
-  tmbId: ObjectIdSchema,
-  type: z.enum(AppTypeEnum),
-  updateTime: z.coerce.date(),
-  sourceMember: SourceMemberSchema.optional()
-});
-export type ReferencedApp = z.infer<typeof ReferencedAppSchema>;
-
-export const ReferencedAppsResponseSchema = z.object({
-  list: z.array(ReferencedAppSchema),
-  hiddenCount: IntSchema.describe('当前用户无权限查看的引用应用数量')
-});
-export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
-
 export const GetAppsByToolIdQuerySchema = z.object({
-  toolId: AppIdSchema
+  toolId: AppIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '工具或工具文件夹 ID'
+  })
 });
 export type GetAppsByToolIdQuery = z.infer<typeof GetAppsByToolIdQuerySchema>;
 

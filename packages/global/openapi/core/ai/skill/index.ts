@@ -40,7 +40,7 @@ import {
   UpdateSkillCollaboratorResponseSchema
 } from './api';
 import { SandboxRuntimeStatusResponseSchema } from '../../../../core/ai/sandbox/type';
-import { ReferencedAppsResponseSchema } from '../../app/common/api';
+import { ReferencedAppsResponseSchema } from '../../../../core/app/type';
 import { SkillBatchPath } from './batch';
 
 export const SkillPath: OpenAPIPath = {

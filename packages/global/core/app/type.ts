@@ -9,12 +9,12 @@ import type { ReasoningEffort } from '../ai/llm/type';
 import type { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdSchema, type ParentIdType } from '../../common/parentFolder/type';
 import type { WorkflowTemplateBasicType } from '../workflow/type';
-import { UserTagsSchema, type SourceMemberType } from '../../support/user/type';
+import { SourceMemberSchema, UserTagsSchema, type SourceMemberType } from '../../support/user/type';
 import z from 'zod';
 import { LOGO_ICON } from '../../common/system/constants';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { AppFileSelectConfigTypeSchema } from './type/config.schema';
-import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../common/zod';
 import { VariableItemTypeSchema } from './variable/type';
 import type { AppVersionSchemaType } from './version/type';
 
@@ -307,6 +307,59 @@ export type AppListItemType = {
   /** 仅在列表请求显式要求置顶排序时返回 */
   isPinned?: boolean;
 };
+
+const referencedAppExample = {
+  _id: '68ad85a7463006c963799a05',
+  name: '客服应用',
+  avatar: 'https://example.com/avatar.png',
+  intro: '为用户提供客服支持',
+  tmbId: '68ad85a7463006c963799a06',
+  type: AppTypeEnum.workflow,
+  updateTime: '2026-09-29T00:00:00.000Z',
+  sourceMember: {
+    name: '张三',
+    avatar: 'https://example.com/avatar.png',
+    status: 'active'
+  }
+};
+
+/** 引用某个资源的正式应用概要。 */
+export const ReferencedAppSchema = z
+  .object({
+    _id: ObjectIdSchema.meta({ example: referencedAppExample._id, description: '应用 ID' }),
+    name: z.string().meta({ example: referencedAppExample.name, description: '应用名称' }),
+    avatar: z.string().meta({ example: referencedAppExample.avatar, description: '应用头像' }),
+    intro: z.string().meta({ example: referencedAppExample.intro, description: '应用简介' }),
+    tmbId: ObjectIdSchema.meta({
+      example: referencedAppExample.tmbId,
+      description: '应用所属团队成员 ID'
+    }),
+    type: z.enum(AppTypeEnum).meta({ description: '应用类型', example: AppTypeEnum.workflow }),
+    updateTime: z.coerce.date().meta({
+      example: referencedAppExample.updateTime,
+      description: '应用更新时间'
+    }),
+    sourceMember: SourceMemberSchema.optional().meta({
+      example: referencedAppExample.sourceMember,
+      description: '创建者信息'
+    })
+  })
+  .meta({ description: '引用某个资源的正式应用概要', example: referencedAppExample });
+export type ReferencedApp = z.infer<typeof ReferencedAppSchema>;
+
+export const ReferencedAppsResponseSchema = z
+  .object({
+    list: z.array(ReferencedAppSchema).meta({ description: '当前用户有权限读取的引用应用' }),
+    hiddenCount: IntSchema.meta({
+      description: '当前用户无权限查看的引用应用数量',
+      example: 0
+    })
+  })
+  .meta({
+    description: '正式应用引用列表及当前用户无权限查看的数量',
+    example: { list: [referencedAppExample], hiddenCount: 0 }
+  });
+export type ReferencedAppsResponse = z.infer<typeof ReferencedAppsResponseSchema>;
 
 /** 鉴权得到的 App 行：Mongo 元数据 + 权限。工作流图在 Version 上。 */
 export type AppWithPermissionType = AppSchemaType & {

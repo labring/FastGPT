@@ -30,7 +30,7 @@ import type {
   ImportSkillQuery
 } from '@fastgpt/global/core/ai/skill/api';
 import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
-import type { ReferencedAppsResponse } from '@fastgpt/global/openapi/core/app/common/api';
+import type { ReferencedAppsResponse } from '@fastgpt/global/core/app/type';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';

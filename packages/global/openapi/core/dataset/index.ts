@@ -9,7 +9,7 @@ import { DatasetFilePath } from './file';
 import { DatasetTrainingPath } from './training';
 import { DatasetSynonymPath } from './synonym';
 import { DatasetBatchPath } from './batch';
-import { ReferencedAppsResponseSchema } from '../app/common/api';
+import { ReferencedAppsResponseSchema } from '../../../core/app/type';
 import {
   CreateDatasetBodySchema,
   CreateDatasetWithFilesBodySchema,

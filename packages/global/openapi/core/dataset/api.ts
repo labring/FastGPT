@@ -243,7 +243,10 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
  * Tags: ['Dataset', 'Read']
  * ============================================================================ */
 export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
-  withAppCount: BoolSchema.optional().meta({ description: '是否返回被正式应用引用的数量' })
+  withAppCount: BoolSchema.optional().meta({
+    example: true,
+    description: '是否返回被正式应用引用的数量'
+  })
 }).extend(PaginationSchema.shape);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;
 
@@ -255,7 +258,10 @@ export const GetDatasetListV2ResponseSchema = PaginationResponseSchema(DatasetLi
 export type GetDatasetListV2Response = z.infer<typeof GetDatasetListV2ResponseSchema>;
 
 export const GetAppsByDatasetIdQuerySchema = z.object({
-  datasetId: ObjectIdSchema
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  })
 });
 export type GetAppsByDatasetIdQuery = z.infer<typeof GetAppsByDatasetIdQuerySchema>;
 

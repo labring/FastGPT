@@ -6,12 +6,8 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import {
-  AppFolderTypeList,
-  AppTypeEnum,
-  AppTypeList,
-  ToolTypeList
-} from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getAppPublishedResourceType } from '@fastgpt/global/core/app/utils';
 import { findAppsPage } from '@fastgpt/service/core/app/entity';
 import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -193,18 +189,11 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
     ? await (async () => {
         const isAppFolderType = (type: string) =>
           AppFolderTypeList.some((folderType) => folderType === type);
-        const getReferenceType = (type: string): 'agent' | 'tool' | undefined => {
-          if (type === AppTypeEnum.tool || ToolTypeList.some((toolType) => toolType === type)) {
-            return 'tool';
-          }
-          if (AppTypeList.some((appType) => appType === type)) return 'agent';
-          return undefined;
-        };
         return countTeamAppsByPublishedResourceGroups({
           teamId,
           resourceGroups: formatApps.map((app) => {
             const id = String(app._id);
-            const referenceType = getReferenceType(app.type);
+            const referenceType = getAppPublishedResourceType(app.type);
             const resources: { type: 'agent' | 'tool'; id: string }[] = referenceType
               ? [{ type: referenceType, id }]
               : [];
@@ -222,7 +211,7 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
             ).lean(),
           shouldTraverse: (app) => isAppFolderType(app.type),
           getResource: (app) => {
-            const type = getReferenceType(app.type);
+            const type = getAppPublishedResourceType(app.type);
             return type ? { type, id: String(app._id) } : undefined;
           }
         });

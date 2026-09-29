@@ -3,7 +3,7 @@ import { DatasetSearchModeEnum, DatasetTagFilterVersionEnum } from '../dataset/c
 import { NodeInputKeyEnum } from '../workflow/constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
-import { AppTypeEnum } from './constants';
+import { AppTypeEnum, AppTypeList, ToolTypeList } from './constants';
 
 const deletedPluginErrorList = new Set([
   'plugin.team_not_installed',
@@ -64,4 +64,13 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppFormEditFormT
     return AppTypeEnum.workflowTool;
   }
   return '';
+};
+
+/** Map an App type to the resource kind persisted in published App resources. */
+export const getAppPublishedResourceType = (type: string): 'agent' | 'tool' | undefined => {
+  if (type === AppTypeEnum.tool || ToolTypeList.some((toolType) => toolType === type)) {
+    return 'tool';
+  }
+  if (AppTypeList.some((appType) => appType === type)) return 'agent';
+  return undefined;
 };

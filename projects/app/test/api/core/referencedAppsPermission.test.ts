@@ -10,8 +10,7 @@ const mocks = vi.hoisted(() => ({
   authSkill: vi.fn(),
   findDatasetAndAllChildren: vi.fn(),
   findAppAndAllChildren: vi.fn(),
-  findTeamAppsByPublishedResource: vi.fn(),
-  formatReadableReferencedApps: vi.fn()
+  listReadableReferencedApps: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
@@ -29,11 +28,8 @@ vi.mock('@fastgpt/service/core/dataset/controller', () => ({
 vi.mock('@fastgpt/service/core/app/controller', () => ({
   findAppAndAllChildren: mocks.findAppAndAllChildren
 }));
-vi.mock('@fastgpt/service/core/app/resourceLookup', () => ({
-  findTeamAppsByPublishedResource: mocks.findTeamAppsByPublishedResource
-}));
 vi.mock('@/service/core/app/referencedApps', () => ({
-  formatReadableReferencedApps: mocks.formatReadableReferencedApps
+  listReadableReferencedApps: mocks.listReadableReferencedApps
 }));
 vi.mock('@fastgpt/service/common/zod/requestParseError', () => ({
   parseApiInput: () => ({ query: { datasetId: 'dataset-1', toolId: 'tool-1', skillId: 'skill-1' } })
@@ -57,35 +53,35 @@ describe('referenced app visibility', () => {
     mocks.authSkill.mockResolvedValue({ permission: { isOwner: true } });
     mocks.findDatasetAndAllChildren.mockResolvedValue([]);
     mocks.findAppAndAllChildren.mockResolvedValue([]);
-    mocks.findTeamAppsByPublishedResource.mockResolvedValue({ apps: [] });
-    mocks.formatReadableReferencedApps.mockResolvedValue({ list: [], hiddenCount: 0 });
+    mocks.listReadableReferencedApps.mockResolvedValue({ list: [], hiddenCount: 0 });
   });
 
   it('uses the request team permission, not resource ownership, for dataset referenced apps', async () => {
     await datasetHandler({} as never);
 
-    expect(mocks.formatReadableReferencedApps).toHaveBeenCalledWith(
-      expect.objectContaining({ tmbId: 'requester', isTeamOwner: false })
+    expect(mocks.listReadableReferencedApps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team-1',
+        tmbId: 'requester',
+        isTeamOwner: false,
+        resourceType: 'dataset',
+        resourceIds: []
+      })
     );
   });
 
   it('uses the request team permission, not resource ownership, for tool referenced apps', async () => {
     await toolHandler({} as never);
 
-    expect(mocks.formatReadableReferencedApps).toHaveBeenCalledWith(
-      expect.objectContaining({ tmbId: 'requester', isTeamOwner: false })
+    expect(mocks.listReadableReferencedApps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team-1',
+        tmbId: 'requester',
+        isTeamOwner: false,
+        resourceType: 'tool',
+        resourceIds: []
+      })
     );
-  });
-  it('returns the shared reference payload for owner skill lookups', async () => {
-    mocks.formatReadableReferencedApps.mockResolvedValueOnce({
-      list: [],
-      hiddenCount: 0,
-      hiddenOwnerGroups: []
-    });
-
-    const response = await skillHandler({} as never);
-
-    expect(response).toEqual({ list: [], hiddenCount: 0 });
   });
 
   it.each([
@@ -115,7 +111,6 @@ describe('referenced app visibility', () => {
 
     expect(mocks.findDatasetAndAllChildren).not.toHaveBeenCalled();
     expect(mocks.findAppAndAllChildren).not.toHaveBeenCalled();
-    expect(mocks.findTeamAppsByPublishedResource).not.toHaveBeenCalled();
-    expect(mocks.formatReadableReferencedApps).not.toHaveBeenCalled();
+    expect(mocks.listReadableReferencedApps).not.toHaveBeenCalled();
   });
 });

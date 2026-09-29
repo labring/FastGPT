@@ -44,7 +44,10 @@ const createListSkillsQuerySchema = () =>
     offset: IntSchema.optional().describe('偏移量'),
     page: z.coerce.number().int().positive().optional().describe('页码'),
     pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
-    withAppCount: BoolSchema.optional().describe('是否返回引用应用数量'),
+    withAppCount: BoolSchema.optional().meta({
+      example: true,
+      description: '是否返回引用应用数量'
+    }),
     sort: z.enum(AppListSortEnum).optional().describe('列表排序，缺省按最近修改倒序'),
     tmbIds: z.array(ObjectIdSchema).optional().describe('按创建者筛选；空数组返回空列表')
   });

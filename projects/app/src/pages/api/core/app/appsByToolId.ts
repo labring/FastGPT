@@ -2,18 +2,16 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
   GetAppsByToolIdQuerySchema,
-  ReferencedAppsResponseSchema,
   type GetAppsByToolIdQuery
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
+import { getAppPublishedResourceType } from '@fastgpt/global/core/app/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
-import { findTeamAppsByPublishedResource } from '@fastgpt/service/core/app/resourceLookup';
-import { formatReadableReferencedApps } from '@/service/core/app/referencedApps';
+import { listReadableReferencedApps } from '@/service/core/app/referencedApps';
 
 async function handler(req: ApiRequestProps<unknown, GetAppsByToolIdQuery>) {
   const { toolId } = parseApiInput({ req, querySchema: GetAppsByToolIdQuerySchema }).query;
@@ -36,25 +34,15 @@ async function handler(req: ApiRequestProps<unknown, GetAppsByToolIdQuery>) {
     fields: '_id type deleteTime'
   });
   const toolIds = appsInToolTree
-    .filter(
-      (app) => !app.deleteTime && (ToolTypeList.includes(app.type) || app.type === AppTypeEnum.tool)
-    )
+    .filter((app) => !app.deleteTime && getAppPublishedResourceType(app.type) === 'tool')
     .map((app) => String(app._id));
-  const { apps } = await findTeamAppsByPublishedResource({
+  return listReadableReferencedApps({
     teamId,
-    type: 'tool',
-    ids: toolIds
+    tmbId,
+    isTeamOwner: teamPer.isOwner,
+    resourceType: 'tool',
+    resourceIds: toolIds
   });
-  apps.sort((a, b) => +new Date(b.updateTime) - +new Date(a.updateTime));
-
-  return ReferencedAppsResponseSchema.parse(
-    await formatReadableReferencedApps({
-      apps,
-      teamId,
-      tmbId,
-      isTeamOwner: teamPer.isOwner
-    })
-  );
 }
 
 export default NextAPI(handler);

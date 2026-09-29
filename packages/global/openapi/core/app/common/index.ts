@@ -16,7 +16,6 @@ import {
   ListAppResponseSchema,
   ListAppV2BodySchema,
   ListAppV2ResponseSchema,
-  ReferencedAppsResponseSchema,
   PinAppBodySchema,
   PinAppQuerySchema,
   PinAppResponseSchema,
@@ -25,6 +24,7 @@ import {
   UpdateAppBodySchema,
   UpdateAppQuerySchema
 } from './api';
+import { ReferencedAppsResponseSchema } from '../../../../core/app/type';
 
 export const AppCommonPath: OpenAPIPath = {
   '/core/app/list': {
