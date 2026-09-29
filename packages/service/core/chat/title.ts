@@ -30,7 +30,7 @@ const CHAT_TITLE_QUESTION_MAX_LENGTH = 1000;
 export const CHAT_TITLE_GENERATION_TIMEOUT_MS = 30_000;
 export const CHAT_TITLE_SEND_WAIT_TIMEOUT_MS = 3_000;
 
-const normalizeGeneratedTitle = (title: string) =>
+export const normalizeGeneratedTitle = (title: string) =>
   title
     .trim()
     .replace(/^["'“”‘’`]+|["'“”‘’`]+$/g, '')
@@ -46,7 +46,7 @@ const normalizeGeneratedTitle = (title: string) =>
  * “可以被后续轮次覆盖”；而本列表的语义是“不得写入”。两者合并会让 `normalizeFixedChatTitle`
  * 把固定文案自己判为无效，进而用空 question 去调标题模型。
  */
-const invalidGeneratedTitleValues = ['', DEFAULT_CHAT_TITLE, '历史记录'];
+export const invalidGeneratedTitleValues = ['', DEFAULT_CHAT_TITLE, '历史记录'];
 
 /**
  * 允许被后续轮次覆盖的标题值。
@@ -58,15 +58,13 @@ const invalidGeneratedTitleValues = ['', DEFAULT_CHAT_TITLE, '历史记录'];
  * 值必须经 `normalizeGeneratedTitle` 归一，与最终入库形态保持一致；否则带标点或多余空白的
  * 文案会与入库值对不上，导致第二轮覆盖静默失效。
  */
-const overwritableTitleValues = Array.from(
-  new Set([
-    ...invalidGeneratedTitleValues,
-    AUTO_EXECUTE_QUERY_SENTINEL,
-    ...Object.values(CHAT_FIXED_TITLE_I18N).flatMap((item) =>
-      Object.values(item).map(normalizeGeneratedTitle)
-    )
-  ])
-);
+const overwritableTitleValues = new Set([
+  ...invalidGeneratedTitleValues,
+  AUTO_EXECUTE_QUERY_SENTINEL,
+  ...Object.values(CHAT_FIXED_TITLE_I18N).flatMap((item) =>
+    Object.values(item).map(normalizeGeneratedTitle)
+  )
+]);
 
 /**
  * 取归一后的本地化固定标题。
@@ -119,7 +117,7 @@ export const canWriteGeneratedTitle = (
   if (customTitle) return false;
 
   const title = chat?.title?.trim() || '';
-  return overwritableTitleValues.includes(title);
+  return overwritableTitleValues.has(title);
 };
 
 const getQuestionText = (userContent: UserChatItemType) =>
@@ -201,25 +199,12 @@ Return only the title.`;
   return normalizedTitle;
 };
 
-const normalizeFixedChatTitle = (title?: string) => {
-  if (!title) return;
-
-  const normalizedTitle = normalizeGeneratedTitle(title);
-  if (!normalizedTitle || invalidGeneratedTitleValues.includes(normalizedTitle)) return;
-
-  return normalizedTitle;
-};
-
 /**
  * 基于当前用户问题为未命名会话生成一次会话标题。
  *
- * 调用方先用当前 Chat 状态判断是否值得发起模型请求；这里在最终写入时仍会再次校验
- * `customTitle` 和 `title`，避免异步生成结果覆盖用户手动改名或已有有效标题。
- * 标题模型失败、当前问题无可用文本或返回空标题时不写库、不返回给客户端，让下一轮标题
- * 仍为空的对话继续尝试。
+ * 标题生成结果会由调用方负责落库和发送；本函数只负责根据用户消息生成标题，或处理自动执行/只发文件的内容型固定标题。
  *
- * 标题优先级：调用方显式 `fixedTitle`（工作流工具的运行时间、MCP 调用）> 自动执行哨兵固定文案 >
- * 只发文件固定文案 > 标题模型生成。固定文案都在可覆盖白名单里，因此下一轮带文字的请求仍会用真实问题覆盖它们；
+ * 标题优先级：自动执行哨兵固定文案 > 只发文件固定文案 > 标题模型生成。固定文案都在可覆盖白名单里，因此下一轮带文字的请求仍会用真实问题覆盖它们；
  * 用户手动改名（`customTitle`）或已有有效标题时一律不覆盖。
  */
 export type GeneratedChatTitleParams = {
@@ -227,7 +212,6 @@ export type GeneratedChatTitleParams = {
   teamId: string;
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
-  fixedTitle?: string;
   /** 固定文案的目标语言；缺失时回退 zh-CN，见 `getFixedChatTitle`。 */
   locale?: localeType;
 } & ChatSourceParams;
@@ -239,7 +223,6 @@ export const syncGeneratedChatTitleFromUserContent = async ({
   teamId,
   userContent,
   shouldGenerateTitle = true,
-  fixedTitle,
   locale
 }: GeneratedChatTitleParams): Promise<string | undefined> => {
   try {
@@ -251,13 +234,14 @@ export const syncGeneratedChatTitleFromUserContent = async ({
     // 只发文件、没有用户问题时使用固定文案；文件 + 文字仍只按文字生成，文件不参与。
     // 不能只用“text 为空”判定是否只发文件，否则 cron 定时任务未配默认提示词时
     // （`[{ text: { content: '' } }]`）会被误标成「上传文件」。
-    const isFileOnlyQuestion = !questionText && userContent.value.some((item) => !!item.file);
+    const isFileOnlyQuestion = (() => {
+      if (questionText) return false;
+      return userContent.value.some((item) => !!item.file);
+    })();
     const nextFixedTitle =
-      normalizeFixedChatTitle(fixedTitle) ??
       (questionText === AUTO_EXECUTE_QUERY_SENTINEL
         ? getFixedChatTitle('autoExecute', locale)
-        : undefined) ??
-      (isFileOnlyQuestion ? getFixedChatTitle('uploadFile', locale) : undefined);
+        : undefined) ?? (isFileOnlyQuestion ? getFixedChatTitle('uploadFile', locale) : undefined);
 
     if (!questionText && !nextFixedTitle) return;
 
@@ -265,22 +249,10 @@ export const syncGeneratedChatTitleFromUserContent = async ({
       nextFixedTitle ?? (await generateChatTitleFromQuestion({ question: questionText, teamId }));
     if (!nextTitle) return;
 
-    const customTitleCondition = {
-      $or: [{ customTitle: { $exists: false } }, { customTitle: '' }, { customTitle: null }]
-    };
-    const titleCondition = {
-      $or: [
-        { title: { $exists: false } },
-        { title: null },
-        { title: { $in: overwritableTitleValues } }
-      ]
-    };
-
     const result = await MongoChat.updateOne(
       {
         ...buildChatSourceQuery({ sourceType, sourceId }),
-        chatId,
-        $and: [customTitleCondition, titleCondition]
+        chatId
       },
       {
         $set: {

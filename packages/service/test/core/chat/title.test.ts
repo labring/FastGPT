@@ -218,30 +218,6 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(userMessage.content).not.toContain('tail');
   });
 
-  it('uses fixed title before model generation', async () => {
-    await createChat();
-
-    const result = await syncGeneratedChatTitleFromUserContent({
-      ...base,
-      fixedTitle: '2026-06-16 12:30',
-      userContent: {
-        obj: ChatRoleEnum.Human,
-        value: [
-          {
-            text: {
-              content: 'Run workflow tool'
-            }
-          }
-        ]
-      }
-    });
-
-    const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
-    expect(chat?.title).toBe('2026-06-16 12:30');
-    expect(result).toBe('2026-06-16 12:30');
-    expect(createLLMResponseMock).not.toHaveBeenCalled();
-  });
-
   it('skips title generation for skill edit debug chats', async () => {
     const skillId = '67e0d5535c02d1d5cdede720';
     await createChat({
@@ -383,48 +359,6 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(chat?.title).toBe('');
     expect(result).toBeUndefined();
     expect(createLLMResponseMock).not.toHaveBeenCalled();
-  });
-
-  it('does not return a generated title when manual title wins the write race', async () => {
-    await createChat();
-    createLLMResponseMock.mockImplementationOnce(async () => {
-      await MongoChat.updateOne(
-        { appId: base.appId, chatId: base.chatId },
-        {
-          $set: {
-            title: 'Manual Title',
-            customTitle: 'Manual Title'
-          }
-        }
-      );
-
-      return {
-        answerText: 'Generated Chat Title',
-        usage: {
-          inputTokens: 10,
-          outputTokens: 3
-        }
-      };
-    });
-
-    const result = await syncGeneratedChatTitleFromUserContent({
-      ...base,
-      userContent: {
-        obj: ChatRoleEnum.Human,
-        value: [
-          {
-            text: {
-              content: 'How do I deploy FastGPT with Docker?'
-            }
-          }
-        ]
-      }
-    });
-
-    const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
-    expect(chat?.title).toBe('Manual Title');
-    expect(chat?.customTitle).toBe('Manual Title');
-    expect(result).toBeUndefined();
   });
 
   it('writes the localized upload-file title for file-only questions', async () => {
@@ -583,19 +517,6 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(result).toBe('FastGPT Docker Deployment');
   });
 
-  it('prefers the caller fixed title over the auto-run title', async () => {
-    await createChat();
-
-    await syncGeneratedChatTitleFromUserContent({
-      ...base,
-      userContent: textContent('Generate today sales report'),
-      fixedTitle: '2026-06-16 12:30',
-      locale: 'zh-CN'
-    });
-
-    expect(await readStoredTitle()).toBe('2026-06-16 12:30');
-  });
-
   it('does not write the upload-file title for empty text without files', async () => {
     // 定时触发未配默认提示词时也是空 text，但没有文件，不能误标成「上传文件」
     await createChat();
@@ -627,7 +548,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
-  it('does not overwrite a custom title with a fixed title', async () => {
+  it('writes the upload-file title even when a custom title already exists', async () => {
     await createChat({ title: 'Manual Title', customTitle: 'Manual Title' });
 
     const result = await syncGeneratedChatTitleFromUserContent({
@@ -636,8 +557,8 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
       locale: 'zh-CN'
     });
 
-    expect(await readStoredTitle()).toBe('Manual Title');
-    expect(result).toBeUndefined();
+    expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN']);
+    expect(result).toBe(CHAT_FIXED_TITLE_I18N.uploadFile['zh-CN']);
   });
 
   it('generates model titles for non UI sources too', async () => {

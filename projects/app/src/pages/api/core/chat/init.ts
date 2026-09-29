@@ -61,8 +61,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
-      customTitle: chat?.customTitle || '',
+      title: chat?.customTitle || chat?.title || '',
       userAvatar: undefined,
       variables: {},
       chatGenerateStatus: chat?.chatGenerateStatus,
@@ -126,8 +125,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
-      customTitle: chat?.customTitle || '',
+      title: chat?.customTitle || chat?.title || '',
       userAvatar: undefined,
       variables: {},
       chatGenerateStatus,
@@ -192,8 +190,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
-      customTitle: chat?.customTitle || '',
+      title: chat?.customTitle || chat?.title || '',
       userAvatar: undefined,
       variables,
       chatGenerateStatus: chat?.chatGenerateStatus,
