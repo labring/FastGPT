@@ -19,7 +19,10 @@ import {
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
-import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
+import {
+  createDatasetFileS3KeyFilter,
+  isAuthorizedDatasetFileS3Key
+} from '@fastgpt/service/common/s3/sources/dataset/key';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse> {
   const { searchText = '', collectionId } = parseApiInput({
@@ -64,7 +67,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
     previewTexts,
     addHours(new Date(), 1),
     {
-      filter: (key) => isAuthorizedDatasetFileS3Key({ key, datasetId: collection.datasetId })
+      filter: createDatasetFileS3KeyFilter(collection.datasetId)
     }
   );
   let previewTextIndex = 0;

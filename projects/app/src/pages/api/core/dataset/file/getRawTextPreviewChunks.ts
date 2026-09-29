@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
-import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { addDays } from 'date-fns';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -67,7 +67,7 @@ async function handler(
     previewTexts,
     addDays(new Date(), 1),
     {
-      filter: (key) => isAuthorizedDatasetFileS3Key({ key, datasetId })
+      filter: createDatasetFileS3KeyFilter(datasetId)
     }
   );
   const chunksWithPreviewUrls = previewChunks.map((chunk, index) => ({

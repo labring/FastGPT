@@ -16,7 +16,7 @@ import { type ApiRequestProps } from '@fastgpt/next/type';
 import { type NextApiResponse } from 'next';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
-import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { serviceEnv } from '@fastgpt/service/env';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
@@ -130,7 +130,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         [sanitizeCsvField(doc.q || ''), sanitizeCsvField(doc.a || '')],
         addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS),
         {
-          filter: (key) => isAuthorizedDatasetFileS3Key({ key, datasetId: collection.datasetId })
+          filter: createDatasetFileS3KeyFilter(collection.datasetId)
         }
       );
 

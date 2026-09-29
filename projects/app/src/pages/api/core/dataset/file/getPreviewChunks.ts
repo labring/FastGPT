@@ -8,7 +8,10 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetFileKey } from '@fastgpt/service/support/permission/auth/file';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
+import {
+  createDatasetFileS3KeyFilter,
+  isAuthorizedDatasetFileS3Key
+} from '@fastgpt/service/common/s3/sources/dataset/key';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize,
@@ -117,7 +120,7 @@ async function handler(
     previewTexts,
     addDays(new Date(), 1),
     {
-      filter: (key) => isAuthorizedDatasetFileS3Key({ key, datasetId })
+      filter: createDatasetFileS3KeyFilter(datasetId)
     }
   );
   const chunksWithJWT = previewChunks.map((chunk, index) => ({

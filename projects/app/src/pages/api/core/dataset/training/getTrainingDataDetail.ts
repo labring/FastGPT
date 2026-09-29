@@ -3,7 +3,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { addMinutes } from 'date-fns';
 import {
   GetTrainingDataDetailBodySchema,
@@ -40,7 +40,9 @@ async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailRespo
   }
 
   const imagePreviewUrl =
-    data.imageId && isS3ObjectKey(data.imageId, 'dataset')
+    // imageId 可能来自历史脏数据，签发前需确认 key 归属于当前已鉴权 collection 的 dataset。
+    data.imageId &&
+    isAuthorizedDatasetFileS3Key({ key: data.imageId, datasetId: collection.datasetId })
       ? await createS3DownloadAccessUrl({
           objectKey: data.imageId,
           bucketName: S3Buckets.private,

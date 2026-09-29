@@ -57,11 +57,16 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
 
       return {
         collection,
-        ...(await formatDatasetDataValue({
-          q: datasetData.q,
-          a: datasetData.a,
-          imageId: datasetData.imageId
-        }))
+        ...(await formatDatasetDataValue(
+          {
+            q: datasetData.q,
+            a: datasetData.a,
+            imageId: datasetData.imageId
+          },
+          // 引用文本里的图片 key 必须绑定到已鉴权 collection 所属 dataset，
+          // 否则可借该接口为外库 key 签发短链。
+          { datasetId: collection.datasetId }
+        ))
       };
     } else {
       const { datasetData, collection } = await authDatasetData({
@@ -73,11 +78,14 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
       });
       return {
         collection,
-        ...(await formatDatasetDataValue({
-          q: datasetData.q,
-          a: datasetData.a,
-          imageId: datasetData.imageId
-        }))
+        ...(await formatDatasetDataValue(
+          {
+            q: datasetData.q,
+            a: datasetData.a,
+            imageId: datasetData.imageId
+          },
+          { datasetId: collection.datasetId }
+        ))
       };
     }
   })();
