@@ -14,15 +14,16 @@ import type { WorkflowInteractiveResponseType } from '../workflow/template/syste
 import { extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
 
-// Concat 2 -> 1, and sort by role
+/**
+ * 合并两段历史，并把 system 消息排到最前。
+ *
+ * 比较函数必须同时看 a、b：只看 a 时两条 system 消息互相都「更小」，排序结果依赖引擎实现，
+ * 多条 system 会被倒序。按「是否 system」比较后依赖 sort 的稳定性，各组内部保持原顺序。
+ */
 export const concatHistories = (histories1: ChatItemMiniType[], histories2: ChatItemMiniType[]) => {
   const newHistories = [...histories1, ...histories2];
-  return newHistories.sort((a) => {
-    if (a.obj === ChatRoleEnum.System) {
-      return -1;
-    }
-    return 1;
-  });
+  const rolePriority = (item: ChatItemMiniType) => (item.obj === ChatRoleEnum.System ? 0 : 1);
+  return newHistories.sort((a, b) => rolePriority(a) - rolePriority(b));
 };
 
 export const hasContextCheckpoint = (history: ChatItemMiniType) =>

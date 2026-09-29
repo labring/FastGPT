@@ -51,6 +51,31 @@ describe('concatHistories', () => {
 
     expect(result[0].obj).toBe(ChatRoleEnum.System);
   });
+
+  it('should keep the original order of multiple system messages and of the rest', () => {
+    const text = (content: string) => [{ text: { content } }];
+    const histories1: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.Human, value: text('Q1') },
+      { obj: ChatRoleEnum.AI, value: text('A1') }
+    ];
+    const histories2: ChatItemMiniType[] = [
+      { obj: ChatRoleEnum.System, value: text('S1') },
+      { obj: ChatRoleEnum.System, value: text('S2') },
+      { obj: ChatRoleEnum.Human, value: text('Q2') },
+      { obj: ChatRoleEnum.System, value: text('S3') }
+    ];
+
+    const result = concatHistories(histories1, histories2);
+
+    expect(result.map((item) => item.value[0].text?.content)).toEqual([
+      'S1',
+      'S2',
+      'S3',
+      'Q1',
+      'A1',
+      'Q2'
+    ]);
+  });
 });
 
 describe('hasContextCheckpoint', () => {
