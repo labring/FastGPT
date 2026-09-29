@@ -22,6 +22,9 @@ import {
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
+/**
+ * 系统默认未命名会话标题占位符。
+ */
 export const DEFAULT_CHAT_TITLE = '新对话';
 
 /**
@@ -38,12 +41,23 @@ export const getDisplayChatTitle = ({
   fallbackTitle?: string;
 }) => customTitle?.trim() || title?.trim() || fallbackTitle;
 
+/** 生成标题的最大截断长度（字符数）。 */
 const GENERATED_CHAT_TITLE_MAX_LENGTH = 80;
+/** 未启用或未配置标题模型时，直接截取用户问题作为兜底标题的最大长度。 */
 const FALLBACK_CHAT_TITLE_MAX_LENGTH = 20;
+/** 传入标题生成模型的用户问题截断长度，防止超长输入消耗过多 Token 和延迟。 */
 const CHAT_TITLE_QUESTION_MAX_LENGTH = 1000;
+/** 标题生成 LLM 请求的最大超时时间（30 秒）。 */
 export const CHAT_TITLE_GENERATION_TIMEOUT_MS = 30_000;
+/** 工作流流式响应结束前，等待后台标题生成完成的最大补偿超时时间（3 秒）。 */
 export const CHAT_TITLE_SEND_WAIT_TIMEOUT_MS = 3_000;
 
+/**
+ * 规范化清洗生成的会话标题。
+ *
+ * 过滤首尾引号、Markdown 标题标识/列表符以及多余的空白字符，
+ * 并截断至 GENERATED_CHAT_TITLE_MAX_LENGTH (80 字符)，确保标题整洁且符合 UI 展示要求。
+ */
 export const normalizeGeneratedTitle = (title: string) =>
   title
     .trim()
@@ -124,6 +138,14 @@ Input:
 </user_message>
 Title: 知识库配置介绍`;
 
+/**
+ * 判断指定会话是否允许被新生成的标题写入或覆盖。
+ *
+ * 判定规则：
+ * 1. 若已存在用户手动设置的自定义标题（customTitle），具有最高优先级，严禁自动覆盖；
+ * 2. 否则检查当前 title 是否属于可覆盖的集合（如默认「新对话」、首轮「上传文件」/「自动执行」等），
+ *    只有可覆盖集合内的标题才允许被后续轮次的新提问标题替换。
+ */
 export const canWriteGeneratedTitle = (
   chat?: { title?: string | null; customTitle?: string | null } | null
 ) => {
@@ -134,19 +156,16 @@ export const canWriteGeneratedTitle = (
   return overwritableTitleValues.has(title);
 };
 
-const getQuestionText = (userContent: UserChatItemType) =>
-  chatValue2RuntimePrompt(userContent.value).text.trim();
-
-export const getFallbackChatTitleFromUserContent = (
-  userContent?: UserChatItemType,
-  defaultValue = DEFAULT_CHAT_TITLE
-) => {
-  const questionText = userContent ? getQuestionText(userContent) : '';
-  if (!questionText) return defaultValue;
-
-  return questionText.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
-};
-
+/**
+ * 调用默认标题生成模型（chatTitleLLM）根据用户问题提炼会话标题。
+ *
+ * 设计考量：
+ * - 截取问题前 1000 字符，避免长文本耗尽上下文或大幅增加延迟；
+ * - 标题生成作为辅助链路，设置 throwError: false 且不保存模型调用记录，失败时不阻塞对话流程；
+ * - 若标题模型支持深度思考（reasoning），显式关闭（reasoning_effort: 'none'）以最大化响应速度；
+ * - 对生成结果统一规范化清洗，若模型输出了空字符串或占位符文案（如「新对话」），则视为生成失败；
+ * - 若当前系统未配置标题模型，则直接降级截取问题前 20 字符。
+ */
 const generateChatTitleFromQuestion = async ({
   question,
   teamId
@@ -244,25 +263,24 @@ export const syncGeneratedChatTitleFromUserContent = async ({
     if (sourceType === ChatSourceTypeEnum.skillEdit) return;
     if (!shouldGenerateTitle) return;
 
-    const questionText = getQuestionText(userContent);
-    // 只发文件、没有用户问题时使用固定文案；文件 + 文字仍只按文字生成，文件不参与。
-    // 不能只用“text 为空”判定是否只发文件，否则 cron 定时任务未配默认提示词时
-    // （`[{ text: { content: '' } }]`）会被误标成「上传文件」。
-    const isFileOnlyQuestion = (() => {
-      if (questionText) return false;
-      return userContent.value.some((item) => !!item.file);
+    const questionText = chatValue2RuntimePrompt(userContent.value).text.trim();
+    const nextTitle = await (async () => {
+      // 自动执行
+      if (questionText === AUTO_EXECUTE_QUERY_SENTINEL) {
+        return getFixedChatTitle('autoExecute', locale);
+      }
+      // 只有文件
+      if (!questionText && userContent.value.some((item) => !!item.file)) {
+        return getFixedChatTitle('uploadFile', locale);
+      }
+      // 有问题，ai 生成
+      if (questionText) {
+        return generateChatTitleFromQuestion({ question: questionText, teamId });
+      }
     })();
-    const nextFixedTitle =
-      (questionText === AUTO_EXECUTE_QUERY_SENTINEL
-        ? getFixedChatTitle('autoExecute', locale)
-        : undefined) ?? (isFileOnlyQuestion ? getFixedChatTitle('uploadFile', locale) : undefined);
-
-    if (!questionText && !nextFixedTitle) return;
-
-    const nextTitle =
-      nextFixedTitle ?? (await generateChatTitleFromQuestion({ question: questionText, teamId }));
     if (!nextTitle) return;
 
+    // 更新
     const result = await MongoChat.updateOne(
       {
         ...buildChatSourceQuery({ sourceType, sourceId }),

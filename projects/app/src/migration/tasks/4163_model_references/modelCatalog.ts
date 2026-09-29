@@ -31,12 +31,42 @@ export const loadModelCatalog = async () => {
   };
   const hasReference = (value: unknown) => value !== undefined && value !== null && value !== '';
 
-  const modelByName = new Map(models.map((model) => [model.model, model]));
+  const modelByModel = new Map(models.map((model) => [model.model, model]));
+  const modelsByName = new Map<string, StoredModel[]>();
+  for (const model of models) {
+    if (typeof model.name === 'string' && model.name) {
+      const list = modelsByName.get(model.name) ?? [];
+      list.push(model);
+      modelsByName.set(model.name, list);
+    }
+  }
   const modelById = new Map(models.map((model) => [String(model._id), model]));
 
   const matchesRequirement = (model: StoredModel, requirement: ModelRequirement) =>
     model.type === requirement.type &&
     (!requirement.vision || ('vision' in model.config && model.config.vision === true));
+
+  /**
+   * 按名称或 model 标识查找模型：优先匹配唯一 model，其次匹配展示名称 modelName（model.name）。
+   * 若同一展示名存在多个同名模型，按 _id 顺序优先选择满足 requirement 的首个模型。
+   */
+  const findNamedModel = (
+    name: string,
+    requirement?: ModelRequirement
+  ): StoredModel | undefined => {
+    const byModel = modelByModel.get(name);
+    if (byModel && (!requirement || matchesRequirement(byModel, requirement))) {
+      return byModel;
+    }
+    const byNameList = modelsByName.get(name);
+    if (byNameList) {
+      const matched = requirement
+        ? byNameList.find((m) => matchesRequirement(m, requirement))
+        : byNameList[0];
+      if (matched) return matched;
+    }
+    return undefined;
+  };
 
   return {
     /**
@@ -59,8 +89,9 @@ export const loadModelCatalog = async () => {
       if (current && matchesRequirement(current, requirement)) return String(current._id);
       // 图片模型未配置时不新增图片理解配置；文本模型即使未配置也需要默认回填。
       if (vision && isEmptyModelValue(legacyModel)) return;
-      const named = typeof legacyModel === 'string' ? modelByName.get(legacyModel) : undefined;
-      if (named && matchesRequirement(named, requirement)) return String(named._id);
+      const named =
+        typeof legacyModel === 'string' ? findNamedModel(legacyModel, requirement) : undefined;
+      if (named) return String(named._id);
       const defaultId = defaultModelIds[vision ? 'datasetImageLLM' : 'datasetTextLLM'];
       if (!isEmptyModelValue(defaultId)) {
         const defaultModel = modelById.get(String(defaultId));
@@ -78,7 +109,7 @@ export const loadModelCatalog = async () => {
     resolveModelIdByName: (modelName: string | undefined): string | undefined => {
       if (!modelName) return;
       assertAvailable();
-      const model = modelByName.get(modelName);
+      const model = findNamedModel(modelName);
       return model ? String(model._id) : undefined;
     },
     hasMatchingModelId: (modelId: unknown, requirement: ModelRequirement) => {
@@ -103,8 +134,8 @@ export const loadModelCatalog = async () => {
         return String(currentModel._id);
       }
 
-      const namedModel = legacyModel ? modelByName.get(legacyModel) : undefined;
-      if (namedModel && matchesRequirement(namedModel, requirement)) {
+      const namedModel = legacyModel ? findNamedModel(legacyModel, requirement) : undefined;
+      if (namedModel) {
         return String(namedModel._id);
       }
     },

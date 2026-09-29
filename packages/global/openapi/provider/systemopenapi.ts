@@ -17,10 +17,16 @@ const ApiKeyTagNameMap: Record<string, string> = {
   [SystemOpenApiTagMap.datasetCollectionCreate]: '集合创建',
   [SystemOpenApiTagMap.datasetData]: '数据管理',
   [SystemOpenApiTagMap.datasetDataIndex]: '索引管理',
-  [SystemOpenApiTagMap.datasetOther]: '其他'
+  [SystemOpenApiTagMap.datasetOther]: '其他',
+
+  [SystemOpenApiTagMap.model]: '模型管理'
 };
 
 export const tagGroups = [
+  {
+    name: '基础功能',
+    tags: [ApiKeyTagNameMap[SystemOpenApiTagMap.model]]
+  },
   {
     name: '应用管理',
     tags: [ApiKeyTagNameMap[SystemOpenApiTagMap.appLog]]
