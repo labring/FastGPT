@@ -13,6 +13,7 @@ import {
   renewMigrationLease,
   saveMigrationCheckpoint,
   saveMigrationFailedRecords,
+  saveMigrationFailedRecordsIncremental,
   saveMigrationProgress
 } from '@/migration/entity';
 import {
@@ -377,6 +378,84 @@ describe('system migration entity lease', () => {
     await expect(getMigrationFailedRecordCounts([migrationId])).resolves.toEqual([
       { migrationId, stageKey: 'migrating', count: 1 }
     ]);
+  });
+
+  it('updates incremental failed records by stable key and removes them', async () => {
+    const migrationId = '20260903_entity_incremental_failed_records';
+    const runId = randomUUID();
+    await ensureMigrationStates([migrationId]);
+    await claimMigrationLease({ migrationId, runId, leaseDurationMs: 10_000 });
+
+    await expect(
+      saveMigrationFailedRecordsIncremental({
+        migrationId,
+        runId,
+        upserts: [
+          {
+            key: 'member-1',
+            record: {
+              stageKey: 'members',
+              data: { tmbId: 'member-1' },
+              reason: { message: 'unresolved member' }
+            }
+          }
+        ],
+        removals: []
+      })
+    ).resolves.toBe(true);
+
+    await expect(
+      saveMigrationFailedRecordsIncremental({
+        migrationId,
+        runId,
+        upserts: [],
+        removals: [{ stageKey: 'members', key: 'member-1' }]
+      })
+    ).resolves.toBe(true);
+    await expect(getMigrationFailedRecords(migrationId)).resolves.toEqual([]);
+  });
+  it('migrates legacy failed records before incrementally upserting by stable key', async () => {
+    const migrationId = '20260903_entity_legacy_incremental_failed_records';
+    const runId = randomUUID();
+    await ensureMigrationStates([migrationId]);
+    await claimMigrationLease({ migrationId, runId, leaseDurationMs: 10_000 });
+
+    await saveMigrationFailedRecords({
+      migrationId,
+      runId,
+      failedRecords: [
+        {
+          stageKey: 'members',
+          data: { tmbId: 'member-1', userId: 'user-1' },
+          reason: { message: 'legacy unresolved member' }
+        }
+      ]
+    });
+
+    await expect(
+      saveMigrationFailedRecordsIncremental({
+        migrationId,
+        runId,
+        upserts: [
+          {
+            key: 'member-1',
+            record: {
+              stageKey: 'members',
+              data: { tmbId: 'member-1', userId: 'user-1' },
+              reason: { message: 'still unresolved member' }
+            }
+          }
+        ],
+        removals: []
+      })
+    ).resolves.toBe(true);
+
+    await expect(getMigrationFailedRecordCounts([migrationId])).resolves.toEqual([
+      { migrationId, stageKey: 'members', count: 1 }
+    ]);
+    await expect(
+      MongoSystemMigrationFailedRecord.findOne({ migrationId }).lean()
+    ).resolves.toMatchObject({ recordKey: 'member-1' });
   });
 
   it('preserves an immediately reported failed-record snapshot after an unexpected error', async () => {

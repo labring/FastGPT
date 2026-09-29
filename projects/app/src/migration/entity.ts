@@ -46,6 +46,78 @@ const runWithMigrationSession = <T>(
   action: (session: ClientSession) => Promise<T>
 ) => (session ? action(session) : mongoSessionRun(action));
 
+export const saveMigrationFailedRecordsIncremental = async (
+  {
+    migrationId,
+    runId,
+    upserts,
+    removals
+  }: ActiveRunProps & {
+    upserts: Array<{ key: string; record: SystemMigrationFailedRecord }>;
+    removals: Array<{ stageKey: string; key: string }>;
+  },
+  session?: ClientSession
+): Promise<boolean> => {
+  return runWithMigrationSession(session, async (activeSession) => {
+    const now = new Date();
+    const updateResult = await MongoSystemMigrationState.updateOne(
+      getActiveRunFilter({ migrationId, runId }),
+      { $set: { updatedAt: now } },
+      { session: activeSession }
+    );
+    if (updateResult.matchedCount !== 1) return false;
+
+    if (removals.length > 0) {
+      await MongoSystemMigrationFailedRecord.deleteMany(
+        {
+          migrationId,
+          $or: removals.flatMap(({ stageKey, key }) => [
+            { stageKey, recordKey: key },
+            { stageKey, recordKey: { $exists: false }, 'data.tmbId': key }
+          ])
+        },
+        { session: activeSession }
+      );
+    }
+    if (upserts.length > 0) {
+      // 旧版完整快照没有 recordKey；先清理同一业务 key 的旧记录，再写入规范化记录，
+      // 避免升级后的首次重试把一条失败明细拆成新旧两条。
+      await MongoSystemMigrationFailedRecord.deleteMany(
+        {
+          migrationId,
+          $or: upserts.map(({ key, record }) => ({
+            stageKey: record.stageKey,
+            recordKey: { $exists: false },
+            'data.tmbId': key
+          }))
+        },
+        { session: activeSession }
+      );
+      await MongoSystemMigrationFailedRecord.bulkWrite(
+        upserts.map(({ key, record }) => ({
+          updateOne: {
+            filter: { migrationId, stageKey: record.stageKey, recordKey: key },
+            update: {
+              $set: {
+                migrationId,
+                runId,
+                recordKey: key,
+                stageKey: record.stageKey,
+                data: record.data,
+                reason: record.reason,
+                createdAt: now
+              }
+            },
+            upsert: true
+          }
+        })),
+        { session: activeSession, ordered: false }
+      );
+    }
+    return true;
+  });
+};
+
 /**
  * 在调用方事务内替换某次迁移当前持久化的完整错误快照。
  * 使用替换语义而不是 append，保证批次重放时不会重复累积同一条坏数据。

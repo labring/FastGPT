@@ -23,6 +23,7 @@ import {
   renewMigrationLease,
   saveMigrationCheckpoint,
   saveMigrationFailedRecords,
+  saveMigrationFailedRecordsIncremental,
   saveMigrationProgress
 } from './entity';
 import {
@@ -50,6 +51,7 @@ export type SystemMigrationRunnerStore = {
   isLeaseActive: typeof isMigrationLeaseActive;
   saveCheckpoint: typeof saveMigrationCheckpoint;
   saveFailedRecords: typeof saveMigrationFailedRecords;
+  saveFailedRecordsIncremental: typeof saveMigrationFailedRecordsIncremental;
   saveProgress: typeof saveMigrationProgress;
   complete: typeof completeMigration;
   fail: typeof failMigration;
@@ -65,6 +67,7 @@ const defaultStore: SystemMigrationRunnerStore = {
   isLeaseActive: isMigrationLeaseActive,
   saveCheckpoint: saveMigrationCheckpoint,
   saveFailedRecords: saveMigrationFailedRecords,
+  saveFailedRecordsIncremental: saveMigrationFailedRecordsIncremental,
   saveProgress: saveMigrationProgress,
   complete: completeMigration,
   fail: failMigration
@@ -300,6 +303,38 @@ export const createSystemMigrationRunner = ({
         const failedRecords = parseFailedRecordSnapshot(input);
         await runFencedMutation(() =>
           store.saveFailedRecords({ migrationId: migration.id, runId, failedRecords })
+        );
+      },
+      upsertFailedRecords: async (input) => {
+        const upserts = input.map(({ key, record }) => ({
+          key,
+          record: SystemMigrationFailedRecordsSchema.element.parse(record)
+        }));
+        const undeclaredFailedRecord = upserts.find(
+          ({ record }) => !progressStepKeys.has(record.stageKey)
+        );
+        if (undeclaredFailedRecord) {
+          throw new Error(
+            `System migration ${migration.id} reported a failed record for undeclared progress step: ${undeclaredFailedRecord.record.stageKey}`
+          );
+        }
+        await runFencedMutation(() =>
+          store.saveFailedRecordsIncremental({
+            migrationId: migration.id,
+            runId,
+            upserts,
+            removals: []
+          })
+        );
+      },
+      removeFailedRecords: async (input) => {
+        await runFencedMutation(() =>
+          store.saveFailedRecordsIncremental({
+            migrationId: migration.id,
+            runId,
+            upserts: [],
+            removals: input
+          })
         );
       },
       saveCheckpoint: async (checkpoint) => {

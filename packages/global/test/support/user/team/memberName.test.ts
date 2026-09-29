@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  getTeamMemberDisplayName,
   getValidTeamMemberName,
   normalizeTeamMemberName,
+  resolveIsSetMemberName,
+  shouldForceSetMemberName,
   TeamMemberNameSchema
 } from '@fastgpt/global/support/user/team/memberName';
 import { UNSET_TEAM_MEMBER_NAME } from '@fastgpt/global/support/user/team/constant';
@@ -32,24 +33,33 @@ describe('TeamMemberNameSchema', () => {
   });
 });
 
-describe('getTeamMemberDisplayName', () => {
-  it('returns the member name when it is already set', () => {
-    expect(getTeamMemberDisplayName({ memberName: '张三', username: 'zhangsan' })).toBe('张三');
-  });
-
-  it('never leaks the reserved pending placeholder', () => {
+describe('resolveIsSetMemberName', () => {
+  it('trusts the persisted flag when present', () => {
+    expect(resolveIsSetMemberName({ memberName: 'Alice', isSetMemberName: false })).toBe(false);
     expect(
-      getTeamMemberDisplayName({ memberName: UNSET_TEAM_MEMBER_NAME, username: 'zhangsan' })
-    ).toBe('zhangsan');
-    expect(getTeamMemberDisplayName({ memberName: UNSET_TEAM_MEMBER_NAME })).toBe('');
+      resolveIsSetMemberName({ memberName: UNSET_TEAM_MEMBER_NAME, isSetMemberName: true })
+    ).toBe(true);
   });
 
-  it('falls back to the username while the member name is still loading', () => {
-    expect(getTeamMemberDisplayName({ username: 'zhangsan' })).toBe('zhangsan');
-    expect(getTeamMemberDisplayName({ memberName: '', username: '' })).toBe('');
+  it('infers legacy documents without the flag from the placeholder name', () => {
+    expect(resolveIsSetMemberName({ memberName: UNSET_TEAM_MEMBER_NAME })).toBe(false);
+    expect(resolveIsSetMemberName({ memberName: 'Alice' })).toBe(true);
+    expect(resolveIsSetMemberName({})).toBe(true);
+  });
+});
+
+describe('shouldForceSetMemberName', () => {
+  it('forces non-owner members whose member name is unset', () => {
+    expect(shouldForceSetMemberName({ memberName: 'u1', isSetMemberName: false })).toBe(true);
+    // 迁移前存量占位符文档同样触发
+    expect(shouldForceSetMemberName({ memberName: UNSET_TEAM_MEMBER_NAME })).toBe(true);
   });
 
-  it('uses the caller supplied fallback when nothing else is available', () => {
-    expect(getTeamMemberDisplayName({ fallback: 'Anonymous' })).toBe('Anonymous');
+  it('never forces owners or members with a set name', () => {
+    expect(
+      shouldForceSetMemberName({ memberName: 'u1', isSetMemberName: false, isOwner: true })
+    ).toBe(false);
+    expect(shouldForceSetMemberName({ memberName: 'Alice', isSetMemberName: true })).toBe(false);
+    expect(shouldForceSetMemberName({ memberName: 'Alice' })).toBe(false);
   });
 });

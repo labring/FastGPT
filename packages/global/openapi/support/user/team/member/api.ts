@@ -126,13 +126,11 @@ export const TeamMemberListItemSchema = z
     memberName: z
       .string()
       .default('Member')
-      .meta({ description: '团队成员展示名；成员名待补齐时回落到登录用户名' }),
-    memberNamePending: z.boolean().meta({
-      description: '成员名是否仍待补齐；为 true 时 memberName 是回落展示名，不是用户提交值'
+      .meta({ description: '团队成员名；即数据库成员名，未显式设置过时为加入时的回落值' }),
+    isSetMemberName: z.boolean().meta({
+      description:
+        '成员名是否已由显式来源设置；为 false 时 memberName 是待确认的回落展示名，不是用户提交值'
     }),
-    username: z
-      .string()
-      .meta({ description: '成员登录用户名；用户记录缺失且成员名待补齐时为空字符串' }),
     avatar: z.string().nullish().meta({ description: '团队成员头像' }),
     role: z.string().optional().meta({ description: '团队成员角色，owner 表示所有者' }),
     status: TeamMemberListStatusSchema,

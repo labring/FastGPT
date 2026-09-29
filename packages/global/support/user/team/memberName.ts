@@ -18,6 +18,34 @@ export type TeamMemberName = z.infer<typeof TeamMemberNameSchema>;
 export const isTeamMemberNamePending = (memberName: unknown): boolean =>
   memberName === UNSET_TEAM_MEMBER_NAME;
 
+/**
+ * 归一化成员文档的 isSetMemberName 字段。
+ * 新数据由写入路径显式落库；迁移/滚动升级窗口内的存量文档可能缺失该字段，
+ * 此时按 name 推断：占位符视为未设置（false），其余视为已设置（true），
+ * 保证强制补齐判定在迁移前后一致，不会因字段缺失误弹窗。
+ */
+export const resolveIsSetMemberName = ({
+  memberName,
+  isSetMemberName
+}: {
+  memberName?: string;
+  isSetMemberName?: boolean;
+}): boolean => isSetMemberName ?? !isTeamMemberNamePending(memberName);
+
+/**
+ * 是否强制成员首次登录补齐成员名。
+ * isSetMemberName 为 false 表示当前成员名是待确认的回落值；owner 永远豁免（产品规则：owner 不强制补齐）。
+ */
+export const shouldForceSetMemberName = ({
+  memberName,
+  isSetMemberName,
+  isOwner
+}: {
+  memberName?: string;
+  isSetMemberName?: boolean;
+  isOwner?: boolean;
+}): boolean => !isOwner && !resolveIsSetMemberName({ memberName, isSetMemberName });
+
 /** 将交互式成员名规范化并在非法输入时抛出参数错误。 */
 export const normalizeTeamMemberName = (memberName: unknown): TeamMemberName =>
   TeamMemberNameSchema.parse(memberName);
@@ -26,22 +54,4 @@ export const normalizeTeamMemberName = (memberName: unknown): TeamMemberName =>
 export const getValidTeamMemberName = (memberName: unknown): TeamMemberName | undefined => {
   const result = TeamMemberNameSchema.safeParse(memberName);
   return result.success ? result.data : undefined;
-};
-
-/**
- * 计算团队成员的对外展示名。
- * 待补齐保留值属于内部状态，不能直接展示给用户；此时优先回落到登录用户名，
- * 用户名同样缺失时返回 fallback（默认空串），由调用方决定占位文案，避免在多处硬编码英文字面量。
- */
-export const getTeamMemberDisplayName = ({
-  memberName,
-  username,
-  fallback = ''
-}: {
-  memberName?: string;
-  username?: string;
-  fallback?: string;
-}) => {
-  if (memberName && !isTeamMemberNamePending(memberName)) return memberName;
-  return username ? username : fallback;
 };

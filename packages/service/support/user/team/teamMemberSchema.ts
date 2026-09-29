@@ -30,6 +30,15 @@ const TeamMemberSchema = new Schema({
     trim: true,
     default: 'Member'
   },
+  /**
+   * 成员名是否由显式来源设置（本人/管理员/邀请/第三方有效下发）。
+   * false 表示 name 是待确认的 username 回落值，非 owner 成员首次登录需强制补齐。
+   * 存量文档由迁移任务回填，读取侧经 resolveIsSetMemberName 兼容缺失值。
+   */
+  isSetMemberName: {
+    type: Boolean,
+    default: false
+  },
   status: {
     type: String,
     enum: Object.keys(TeamMemberStatusMap)

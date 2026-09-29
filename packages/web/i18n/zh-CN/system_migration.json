@@ -98,5 +98,10 @@
   "migrations.20260923_enable_channel_reasoning_mapping.name": "为 OpenAI 协议渠道启用 reasoning 映射",
   "migrations.20260923_enable_channel_reasoning_mapping.description": "为现有 AIProxy OpenAI 协议渠道开启 reasoning 到 reasoning_content 的响应字段转换，并保留渠道的其他配置。",
   "migrations.20260923_enable_channel_reasoning_mapping.channels": "更新渠道配置",
-  "migrations.20260923_enable_channel_reasoning_mapping.result": "已检查 {{channelCount}} 个渠道，更新 {{updatedCount}} 个渠道。"
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "已检查 {{channelCount}} 个渠道，更新 {{updatedCount}} 个渠道。",
+  "migrations.20260928_backfill_member_name_set.name": "回填团队成员名设置标记",
+  "migrations.20260928_backfill_member_name_set.description": "为历史团队成员回填 isSetMemberName 标记，并将占位符成员名回退为登录用户名；无法解析用户的占位符成员将作为失败明细保留。",
+  "migrations.20260928_backfill_member_name_set.members": "回填成员名标记",
+  "migrations.20260928_backfill_member_name_set.validation": "校验成员名回填结果",
+  "migrations.20260928_backfill_member_name_set.result": "已扫描 {{scannedCount}} 个成员，清理占位符 {{placeholderCount}} 个，标记回落名 {{prefixMatchCount}} 个，标记已设置 {{setTrueCount}} 个，待修复 {{orphanCount}} 个。"
 }

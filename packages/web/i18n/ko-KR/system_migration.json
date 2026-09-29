@@ -98,5 +98,10 @@
   "migrations.20260923_enable_channel_reasoning_mapping.name": "OpenAI 채널 reasoning 매핑 사용",
   "migrations.20260923_enable_channel_reasoning_mapping.description": "기존 AIProxy OpenAI 채널에서 reasoning을 reasoning_content 응답 필드로 변환하도록 설정하고 나머지 구성은 유지합니다.",
   "migrations.20260923_enable_channel_reasoning_mapping.channels": "채널 구성 업데이트",
-  "migrations.20260923_enable_channel_reasoning_mapping.result": "채널 {{channelCount}}개를 확인하고 {{updatedCount}}개를 업데이트했습니다."
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "채널 {{channelCount}}개를 확인하고 {{updatedCount}}개를 업데이트했습니다.",
+  "migrations.20260928_backfill_member_name_set.name": "팀 멤버 이름 설정 플래그 백필",
+  "migrations.20260928_backfill_member_name_set.description": "기존 팀 멤버에 isSetMemberName 플래그를 백필하고 플레이스홀더 멤버 이름을 로그인 사용자 이름으로 대체합니다. 사용자를 확인할 수 없는 플레이스홀더 멤버는 실패 기록으로 남습니다.",
+  "migrations.20260928_backfill_member_name_set.members": "멤버 이름 플래그 백필",
+  "migrations.20260928_backfill_member_name_set.validation": "멤버 이름 백필 검증",
+  "migrations.20260928_backfill_member_name_set.result": "멤버 {{scannedCount}}명 검사, 플레이스홀더 {{placeholderCount}}개 정리, 폴백 이름 {{prefixMatchCount}}개 표시, 설정됨 {{setTrueCount}}개 표시, 수정 대기 {{orphanCount}}개."
 }

@@ -33,7 +33,6 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getTeamMemberDisplayIdentityMap } from '@fastgpt/service/support/user/team/memberDisplay';
 import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
@@ -110,11 +109,33 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   }
 
   // Get members
-  const teamMemberIds = await MongoTeamMember.find({ teamId }, '_id').lean();
-  const memberDisplayMap = await getTeamMemberDisplayIdentityMap({
-    teamId,
-    tmbIds: teamMemberIds.map((member) => member._id)
-  });
+  const teamMemberWithContact = await MongoTeamMember.aggregate([
+    { $match: { teamId: new Types.ObjectId(teamId) } },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'userId',
+        foreignField: '_id',
+        as: 'user'
+      }
+    },
+    {
+      $project: {
+        memberId: '$_id',
+        teamId: 1,
+        userId: 1,
+        name: 1,
+        role: 1,
+        status: 1,
+        contact: { $ifNull: [{ $arrayElemAt: ['$user.contact', 0] }, '-'] }
+      }
+    }
+  ]);
+
+  // 导出最多 5 万条会话，先构建成员 Map，避免在流式处理每条记录时重复线性查找。
+  const memberDisplayMap = new Map(
+    teamMemberWithContact.map((member) => [String(member.memberId), member])
+  );
 
   const where = {
     appId: new Types.ObjectId(appId),

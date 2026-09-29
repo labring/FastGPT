@@ -20,6 +20,7 @@ import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legac
 import { migrateDatasetTagsV2 } from './tasks/20260907_migrate_dataset_tags_v2';
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
 import { enableChannelReasoningMapping } from './tasks/20260923_enable_channel_reasoning_mapping';
+import { backfillMemberNameSet } from './tasks/20260928_backfill_member_name_set';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -50,7 +51,15 @@ export type SystemMigrationContext = {
   getCheckpoint: <T>(schema: ZodType<T>) => Promise<T | undefined>;
   /** 非阻塞任务读取上次失败留下的坏数据；阻塞任务调用会被拒绝。 */
   getFailedRecords: () => Promise<SystemMigrationFailedRecord[]>;
-  /** 非阻塞任务按批替换完整错误快照；必须在推进对应 checkpoint 前调用。 */
+  /** 非阻塞任务按稳定业务 key 增量写入失败明细，避免维护完整内存快照。 */
+  upsertFailedRecords: (
+    records: Array<{ key: string; record: SystemMigrationFailedRecord }>
+  ) => Promise<void>;
+  /** 非阻塞任务按稳定业务 key 删除已修复的失败明细。 */
+  removeFailedRecords: (records: Array<{ stageKey: string; key: string }>) => Promise<void>;
+  /**
+   * 非阻塞任务按批替换完整错误快照；兼容需要全量快照的旧任务。
+   */
   reportFailedRecords: (failedRecords: SystemMigrationFailedRecord[]) => Promise<void>;
   /** 仅在一个幂等批次完整提交后保存恢复位置。 */
   saveCheckpoint: (checkpoint: Record<string, unknown>) => Promise<void>;
@@ -430,6 +439,28 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: enableChannelReasoningMapping
+  },
+  {
+    id: '20260928_backfill_member_name_set',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260928_backfill_member_name_set.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.result'),
+    progressSteps: [
+      {
+        key: 'members',
+        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.members')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.validation')
+      }
+    ],
+    blockStartup: true,
+    onFailure: SystemMigrationFailurePolicyEnum.stop,
+    run: backfillMemberNameSet
   }
 ] as const satisfies readonly SystemMigration[];
 
