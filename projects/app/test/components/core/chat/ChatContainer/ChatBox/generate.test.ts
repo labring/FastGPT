@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import {
   isChatGeneratingError,
+  safeAbortController,
   shouldRestoreSubmittedChatInput
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/generate';
 
@@ -34,5 +35,39 @@ describe('shouldRestoreSubmittedChatInput', () => {
     expect(
       shouldRestoreSubmittedChatInput({ clearInput: true, responseText: 'partial response' })
     ).toBe(false);
+  });
+});
+
+describe('safeAbortController', () => {
+  it('safely aborts an active controller with reason', () => {
+    const controller = new AbortController();
+    const reason = new Error('stop');
+    safeAbortController(controller, reason);
+    expect(controller.signal.aborted).toBe(true);
+    expect(controller.signal.reason).toBe(reason);
+  });
+
+  it('safely ignores undefined or null controller', () => {
+    expect(() => safeAbortController(undefined)).not.toThrow();
+    expect(() => safeAbortController(null)).not.toThrow();
+  });
+
+  it('safely ignores already aborted controller without duplicate abort', () => {
+    const controller = new AbortController();
+    controller.abort('first');
+    safeAbortController(controller, 'second');
+    expect(controller.signal.aborted).toBe(true);
+    expect(controller.signal.reason).toBe('first');
+  });
+
+  it('suppresses errors thrown during controller.abort()', () => {
+    const controller = {
+      signal: { aborted: false },
+      abort: () => {
+        throw new DOMException('signal is aborted without reason', 'AbortError');
+      }
+    } as unknown as AbortController;
+
+    expect(() => safeAbortController(controller, 'leave')).not.toThrow();
   });
 });
