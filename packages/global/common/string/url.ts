@@ -55,8 +55,15 @@ export const isSafeHref = (href?: string): boolean => {
         return false;
       }
     } catch {
-      // 畸形编码，拒绝通过
-      return false;
+      // 非 UTF-8 的百分号编码（如 GBK 编码的中文查询参数 %D6%D0%CE%C4）是合法链接，
+      // 只是 decodeURIComponent 解不出来。协议名、冒号和空白都是 ASCII，
+      // 这里只解码 %00-%7F 后再校验一次，编码混淆的伪协议仍会被拦下。
+      const asciiDecoded = trimmed.replace(/%([0-7][0-9a-f])/gi, (_, hex: string) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+      if (!checkProtocol(asciiDecoded)) {
+        return false;
+      }
     }
   }
 
