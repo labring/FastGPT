@@ -34,25 +34,33 @@ export const cheerioToHtml = ({
     })
     .remove();
 
-  // if link,img startWith /, add origin url
+  /**
+   * 把页面里的相对地址补全为绝对地址。
+   * `//`、`/` 开头的沿用原来的拼接方式；`a.png`、`./a.png`、`../a.png` 这类路径相对地址
+   * 要相对当前页面解析，否则写进知识库后会被当成相对 FastGPT 自己的地址，图片和链接都会失效。
+   * 已带协议（https:、mailto:、data: 等）的地址和页内锚点 `#xxx` 保持不变。
+   */
+  const toAbsoluteUrl = (value: string) => {
+    if (value.startsWith('//')) return protocol + value;
+    if (value.startsWith('/')) return originUrl + value;
+    if (value.startsWith('#') || /^[a-z][a-z\d+.-]*:/i.test(value)) return value;
+    try {
+      return new URL(value, fetchUrl).href;
+    } catch {
+      return value;
+    }
+  };
+
   selectDom.find('a').each((i, el) => {
     const href = $(el).attr('href');
     if (href) {
-      if (href.startsWith('//')) {
-        $(el).attr('href', protocol + href);
-      } else if (href.startsWith('/')) {
-        $(el).attr('href', originUrl + href);
-      }
+      $(el).attr('href', toAbsoluteUrl(href));
     }
   });
   selectDom.find('img, video, source, audio, iframe').each((i, el) => {
     const src = $(el).attr('src');
     if (src) {
-      if (src.startsWith('//')) {
-        $(el).attr('src', protocol + src);
-      } else if (src.startsWith('/')) {
-        $(el).attr('src', originUrl + src);
-      }
+      $(el).attr('src', toAbsoluteUrl(src));
     }
   });
 
