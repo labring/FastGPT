@@ -197,8 +197,7 @@ const OutLink = (props: Props) => {
       controller,
       generatingMessage,
       variables,
-      responseChatItemId,
-      autoExecute
+      responseChatItemId
     }: StartChatFnProps) => {
       const completionChatId = chatId || getNanoid();
       const histories = messages.slice(-1);
@@ -225,8 +224,7 @@ const OutLink = (props: Props) => {
           chatId: completionChatId,
           outLinkAuthData,
           retainDatasetCite: isShowCite,
-          showSkillReferences: props.showSkillReferences,
-          autoExecute
+          showSkillReferences: props.showSkillReferences
         },
         onMessage: generatingMessage,
         abortCtrl: controller

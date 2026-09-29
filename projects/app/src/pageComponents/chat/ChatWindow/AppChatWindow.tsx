@@ -145,8 +145,7 @@ const AppChatWindow = () => {
       variables,
       controller,
       responseChatItemId,
-      generatingMessage,
-      autoExecute
+      generatingMessage
     }: StartChatFnProps) => {
       if (!appId) {
         return Promise.reject(new UserError('appId is empty'));
@@ -161,8 +160,7 @@ const AppChatWindow = () => {
           appId,
           chatId,
           retainDatasetCite: isShowCite,
-          showSkillReferences,
-          autoExecute
+          showSkillReferences
         },
         abortCtrl: controller,
         onMessage: generatingMessage

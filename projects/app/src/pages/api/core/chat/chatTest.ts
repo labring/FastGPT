@@ -73,8 +73,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     appName,
     appId,
     chatConfig,
-    chatId,
-    autoExecute
+    chatId
   } = chatTestProps;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
@@ -219,7 +218,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle,
-      autoExecute,
       locale: getLocale(req)
     });
 

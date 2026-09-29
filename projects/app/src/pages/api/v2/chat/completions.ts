@@ -102,8 +102,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     messages,
     responseChatItemId,
     metadata,
-    authProxy,
-    autoExecute
+    authProxy
   } = completionBody;
   const { retainDatasetCite } = completionBody;
   let { detail, variables } = completionBody;
@@ -325,7 +324,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseChatItemId: roundState.responseChatItemId,
       interactive,
       fixedTitle: pluginFixedTitle,
-      autoExecute,
       locale: getLocale(req)
     });
 

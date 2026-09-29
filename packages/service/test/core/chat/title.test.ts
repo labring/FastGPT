@@ -510,13 +510,12 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(await readStoredTitle()).toBe('FastGPT Docker Deployment');
   });
 
-  it('writes the auto-run title without calling the model when autoExecute is set', async () => {
+  it('writes the auto-run title for the sentinel question', async () => {
     await createChat();
 
     const result = await syncGeneratedChatTitleFromUserContent({
       ...base,
-      userContent: textContent('Generate today sales report'),
-      autoExecute: true,
+      userContent: textContent(AUTO_EXECUTE_QUERY_SENTINEL),
       locale: 'zh-CN'
     });
 
@@ -531,7 +530,6 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     await syncGeneratedChatTitleFromUserContent({
       ...base,
       userContent: textContent(AUTO_EXECUTE_QUERY_SENTINEL),
-      autoExecute: true,
       locale: 'en'
     });
 
@@ -548,7 +546,6 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     await syncGeneratedChatTitleFromUserContent({
       ...base,
       userContent: textContent(AUTO_EXECUTE_QUERY_SENTINEL),
-      autoExecute: true,
       locale: 'en'
     });
     expect(await readStoredTitle()).toBe(CHAT_FIXED_TITLE_I18N.autoExecute.en);
@@ -592,7 +589,6 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     await syncGeneratedChatTitleFromUserContent({
       ...base,
       userContent: textContent('Generate today sales report'),
-      autoExecute: true,
       fixedTitle: '2026-06-16 12:30',
       locale: 'zh-CN'
     });
@@ -637,7 +633,6 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     const result = await syncGeneratedChatTitleFromUserContent({
       ...base,
       userContent: fileOnlyContent,
-      autoExecute: true,
       locale: 'zh-CN'
     });
 

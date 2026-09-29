@@ -66,9 +66,7 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
   fixedTitle?: string;
-  /** 本轮是否由前端「自动执行」触发，标题改用本地化固定文案。 */
-  autoExecute?: boolean;
-  /** 固定文案的目标语言；cron / MCP / IM 渠道无请求上下文时缺省，由标题模块回退 zh-CN。 */
+  /** 固定标题语言；无请求上下文的入口缺省并由标题模块回退 zh-CN。 */
   locale?: localeType;
 };
 
@@ -312,7 +310,6 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       userContent: params.userContent,
       shouldGenerateTitle: preparedChatRound.shouldGenerateTitle,
       fixedTitle: params.fixedTitle,
-      autoExecute: params.autoExecute,
       locale: params.locale
     });
 

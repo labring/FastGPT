@@ -218,9 +218,9 @@ const normalizeFixedChatTitle = (title?: string) => {
  * 标题模型失败、当前问题无可用文本或返回空标题时不写库、不返回给客户端，让下一轮标题
  * 仍为空的对话继续尝试。
  *
- * 标题优先级：调用方显式 `fixedTitle`（工作流工具的运行时间、MCP 调用）> 自动执行固定文案 >
- * 只发文件固定文案 > 标题模型生成。三类固定文案都在可覆盖白名单里，因此下一轮带文字的请求
- * 仍会用真实问题覆盖它们；用户手动改名（`customTitle`）或已有有效标题时一律不覆盖。
+ * 标题优先级：调用方显式 `fixedTitle`（工作流工具的运行时间、MCP 调用）> 自动执行哨兵固定文案 >
+ * 只发文件固定文案 > 标题模型生成。固定文案都在可覆盖白名单里，因此下一轮带文字的请求仍会用真实问题覆盖它们；
+ * 用户手动改名（`customTitle`）或已有有效标题时一律不覆盖。
  */
 export type GeneratedChatTitleParams = {
   chatId: string;
@@ -228,8 +228,6 @@ export type GeneratedChatTitleParams = {
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
   fixedTitle?: string;
-  /** 本轮是否由前端「自动执行」触发；不论是否配置 defaultPrompt 都使用固定文案。 */
-  autoExecute?: boolean;
   /** 固定文案的目标语言；缺失时回退 zh-CN，见 `getFixedChatTitle`。 */
   locale?: localeType;
 } & ChatSourceParams;
@@ -242,7 +240,6 @@ export const syncGeneratedChatTitleFromUserContent = async ({
   userContent,
   shouldGenerateTitle = true,
   fixedTitle,
-  autoExecute,
   locale
 }: GeneratedChatTitleParams): Promise<string | undefined> => {
   try {
@@ -257,7 +254,9 @@ export const syncGeneratedChatTitleFromUserContent = async ({
     const isFileOnlyQuestion = !questionText && userContent.value.some((item) => !!item.file);
     const nextFixedTitle =
       normalizeFixedChatTitle(fixedTitle) ??
-      (autoExecute ? getFixedChatTitle('autoExecute', locale) : undefined) ??
+      (questionText === AUTO_EXECUTE_QUERY_SENTINEL
+        ? getFixedChatTitle('autoExecute', locale)
+        : undefined) ??
       (isFileOnlyQuestion ? getFixedChatTitle('uploadFile', locale) : undefined);
 
     if (!questionText && !nextFixedTitle) return;

@@ -268,8 +268,7 @@ const HomeChatWindow = () => {
       variables,
       controller,
       responseChatItemId,
-      generatingMessage,
-      autoExecute
+      generatingMessage
     }: StartChatFnProps) => {
       if (!appId) {
         return Promise.reject(new UserError('appId is empty'));
@@ -321,7 +320,6 @@ const HomeChatWindow = () => {
           chatId,
           retainDatasetCite: isShowCite,
           showSkillReferences,
-          autoExecute,
           ...form2AppWorkflow(formData, t)
         },
         onMessage: generatingMessage,

@@ -115,7 +115,7 @@ export enum ChatGenerateStatusEnum {
  * 自动执行首轮的 query 哨兵值。
  *
  * 应用开启「自动执行」但未配置默认提示词时，前端用该占位文本触发首轮运行，保证工作流拿到的
- * query 结构稳定。服务端不再基于该文本生成会话标题，改用 `CHAT_FIXED_TITLE_I18N.autoExecute`
+ * query 结构稳定。服务端通过该哨兵识别自动执行首轮，并改用 `CHAT_FIXED_TITLE_I18N.autoExecute`
  * 的本地化固定文案。字面值本身也是历史存量标题，仍保留在可覆盖白名单中以便后续轮次自愈。
  */
 export const AUTO_EXECUTE_QUERY_SENTINEL = 'AUTO_EXECUTE';

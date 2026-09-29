@@ -19,7 +19,7 @@ export const getDisplayHistoryTitle = ({
 
 export const normalizeHistoryTitle = (history: ChatHistoryItemType) => ({
   ...history,
-  title: getDisplayHistoryTitle({ title: history.title })
+  title: getDisplayHistoryTitle({ title: history.title, customTitle: history.customTitle })
 });
 
 export const upsertHistoryTitle = ({

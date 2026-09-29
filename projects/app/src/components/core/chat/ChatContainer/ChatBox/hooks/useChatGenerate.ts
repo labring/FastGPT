@@ -655,8 +655,7 @@ export const useChatGenerate = ({
       interactive,
       autoTTSResponse = false,
       hideInUI = false,
-      clearInput = false,
-      autoExecute = false
+      clearInput = false
     }) => {
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
@@ -808,8 +807,7 @@ export const useChatGenerate = ({
               interactive,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
-              variables: requestVariables,
-              autoExecute
+              variables: requestVariables
             });
 
             flushGeneratingMessageQueue();

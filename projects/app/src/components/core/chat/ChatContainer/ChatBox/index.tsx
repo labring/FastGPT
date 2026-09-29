@@ -22,7 +22,7 @@ import type { StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import AgentAskComposer from './Input/AgentAskComposer';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { AUTO_EXECUTE_QUERY_SENTINEL, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getInteractiveByHistories, isPendingAgentAsk } from './utils/interactive';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -545,13 +545,9 @@ const ChatBox = ({
         isChatRecordsLoaded
       ) {
         sendPrompt({
-          // 未配置默认提示词时用哨兵文本占位，保证工作流拿到的 query 结构稳定；
-          // 服务端不拿它生成标题，而是根据 autoExecute 标记写本地化固定文案。
-          text:
-            chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || AUTO_EXECUTE_QUERY_SENTINEL,
+          text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',
           hideInUI: true,
-          interactive: lastInteractive,
-          autoExecute: true
+          interactive: lastInteractive
         });
       }
     },
