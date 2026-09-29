@@ -303,4 +303,89 @@ describe('loadModelCatalog', () => {
       })
     ).toBeUndefined();
   });
+
+  it('resolves models by display name (model.name) as well as model identifier (model.model)', async () => {
+    const ids = [new Types.ObjectId(), new Types.ObjectId(), new Types.ObjectId()];
+    await MongoAIModel.collection.insertMany([
+      {
+        _id: ids[0],
+        scope: 'system',
+        model: 'gpt-4o-2024-08-06',
+        name: 'GPT-4o',
+        type: 'llm',
+        isActive: true,
+        config: { vision: true }
+      },
+      {
+        _id: ids[1],
+        scope: 'system',
+        model: 'text-embedding-3-small',
+        name: 'Embedding-2',
+        type: 'embedding',
+        isActive: true,
+        config: {}
+      },
+      {
+        _id: ids[2],
+        scope: 'system',
+        model: 'text-embedding-3-large',
+        name: 'text-embedding-3-small',
+        type: 'embedding',
+        isActive: true,
+        config: {}
+      }
+    ]);
+
+    const catalog = await loadModelCatalog();
+
+    // 1. resolveModelIdByName: works with model.model and model.name
+    expect(catalog.resolveModelIdByName('GPT-4o')).toBe(String(ids[0]));
+    expect(catalog.resolveModelIdByName('gpt-4o-2024-08-06')).toBe(String(ids[0]));
+    expect(catalog.resolveModelIdByName('Embedding-2')).toBe(String(ids[1]));
+    expect(catalog.resolveModelIdByName('text-embedding-3-large')).toBe(String(ids[2]));
+    // model.model takes precedence over another model's model.name
+    expect(catalog.resolveModelIdByName('text-embedding-3-small')).toBe(String(ids[1]));
+
+    // 2. resolveModelId: works with model.model and model.name
+    expect(
+      catalog.resolveModelId({
+        legacyModel: 'GPT-4o',
+        requirement: llmRequirement
+      })
+    ).toBe(String(ids[0]));
+    expect(
+      catalog.resolveModelId({
+        legacyModel: 'gpt-4o-2024-08-06',
+        requirement: llmRequirement
+      })
+    ).toBe(String(ids[0]));
+    expect(
+      catalog.resolveModelId({
+        legacyModel: 'Embedding-2',
+        requirement: { type: ModelTypeEnum.embedding }
+      })
+    ).toBe(String(ids[1]));
+    expect(
+      catalog.resolveModelId({
+        legacyModel: 'Embedding-2',
+        requirement: llmRequirement
+      })
+    ).toBeUndefined();
+
+    // 3. resolveDatasetUnderstandingModelId: works with model.model and model.name
+    expect(
+      catalog.resolveDatasetUnderstandingModelId({
+        legacyModel: 'GPT-4o',
+        modelId: undefined,
+        vision: true
+      })
+    ).toBe(String(ids[0]));
+    expect(
+      catalog.resolveDatasetUnderstandingModelId({
+        legacyModel: 'gpt-4o-2024-08-06',
+        modelId: undefined,
+        vision: true
+      })
+    ).toBe(String(ids[0]));
+  });
 });
