@@ -18,6 +18,7 @@ import {
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -100,6 +101,20 @@ export const moveDataset = async ({
   });
 
   await mongoSessionRun(async (session) => {
+    // 独立态：自身有效 clbs 不随移动改变（读路径也不并入父级），只换位置。
+    // 快照未变 ⇒ 继承态子资源无差异，整段权限同步跳过。
+    if (!shouldInheritResourcePermission(dataset.inheritPermission)) {
+      await MongoDataset.findByIdAndUpdate(
+        id,
+        {
+          ...parseParentIdInMongo(parentId),
+          inheritPermission: false
+        },
+        { session }
+      );
+      return;
+    }
+
     const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
       getResourceOwnedClbs({
         teamId: dataset.teamId,
