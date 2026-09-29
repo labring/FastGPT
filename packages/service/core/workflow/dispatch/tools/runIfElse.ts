@@ -56,6 +56,12 @@ function isInclude(value: any, target: any) {
 }
 
 function checkCondition(condition: VariableConditionEnum, inputValue: any, value: any) {
+  // any 类型的变量也提供「开始为/结束为」，运行时可能拿到数字、布尔等非字符串值；
+  // 与 equalTo 一样先转成字符串，直接调用 trim 会抛 TypeError 导致整个判断器报错。
+  // null/undefined 仍视为不匹配。
+  const getInputText = () =>
+    inputValue === undefined || inputValue === null ? undefined : String(inputValue).trim();
+
   const operations: Record<VariableConditionEnum, () => boolean> = {
     [VariableConditionEnum.isEmpty]: () => isEmpty(inputValue),
     [VariableConditionEnum.isNotEmpty]: () => !isEmpty(inputValue),
@@ -74,8 +80,8 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
     [VariableConditionEnum.notInclude]: () => !isInclude(inputValue, value),
 
     // string
-    [VariableConditionEnum.startWith]: () => inputValue?.trim()?.startsWith(value),
-    [VariableConditionEnum.endWith]: () => inputValue?.trim()?.endsWith(value),
+    [VariableConditionEnum.startWith]: () => getInputText()?.startsWith(value) ?? false,
+    [VariableConditionEnum.endWith]: () => getInputText()?.endsWith(value) ?? false,
     [VariableConditionEnum.reg]: () => {
       if (typeof inputValue !== 'string' || !value) return false;
       if (value.startsWith('/')) {
