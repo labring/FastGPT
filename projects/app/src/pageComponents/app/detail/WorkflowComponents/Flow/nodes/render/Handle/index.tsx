@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
@@ -9,6 +9,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { WorkflowUIContext } from '../../../context/workflowUIContext';
 import { WorkflowSelectionContext } from '../../../context/workflowSelectionContext';
 import { useWorkflowValue } from '@/web/core/workflow/editor';
+import { WorkflowHandleRenderContext } from './handleRenderContext';
 
 const handleSizeConnected = 24;
 const handleSizeConnecting = 32;
@@ -54,6 +55,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   position
 }: Props) {
   const { t } = useTranslation();
+  const renderHandle = useContext(WorkflowHandleRenderContext);
 
   // 连通判定走 Runtime 图查询（bySource 索引，O(出度)），selector 只返回 boolean，
   // 别处连线/断线不会让这个 handle 重渲染。
@@ -112,7 +114,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
     };
   }, [active, connected, translateStr]);
 
-  if (isConnectingTool) return null;
+  if (!renderHandle || isConnectingTool) return null;
 
   return (
     <MyTooltip
@@ -160,6 +162,7 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 }: Props & {
   showHandle: boolean;
 }) {
+  const renderHandle = useContext(WorkflowHandleRenderContext);
   // 同 MySourceHandle：图查询按 byTarget 索引算连通，只返回 boolean。
   const connected = useWorkflowValue((_structure, graph) =>
     graph.isHandleConnected({ nodeId, handleId, direction: 'target' })
@@ -201,6 +204,8 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
       zIndex: 15
     };
   }, [connected, isConnecting, showHandle, translateStr]);
+
+  if (!renderHandle) return null;
 
   return (
     <Handle

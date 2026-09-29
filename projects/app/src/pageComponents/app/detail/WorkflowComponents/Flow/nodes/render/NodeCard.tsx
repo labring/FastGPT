@@ -546,14 +546,7 @@ const NodeCard = (props: Props) => {
         )}
       </Flex>
       {!isFolded && errorIssues.length > 0 && (
-        <Box
-          data-workflow-node-issues="true"
-          position={'absolute'}
-          top={'100%'}
-          left={0}
-          w={'100%'}
-          pointerEvents={'none'}
-        >
+        <Box position={'absolute'} top={'100%'} left={0} w={'100%'} pointerEvents={'none'}>
           <NodeWorkflowCheckIssues issues={errorIssues} />
         </Box>
       )}

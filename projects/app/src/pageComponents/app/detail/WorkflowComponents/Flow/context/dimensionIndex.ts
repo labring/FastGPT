@@ -3,6 +3,14 @@ export type NodeCardDimension = {
   height: number;
 };
 
+/** 读取未受 ReactFlow viewport transform 影响的布局尺寸，单位是画布 CSS 像素。 */
+export const getLayoutDimension = (
+  element: Pick<HTMLElement, 'offsetWidth' | 'offsetHeight'>
+): NodeCardDimension => ({
+  width: element.offsetWidth,
+  height: element.offsetHeight
+});
+
 export type NodeDimensions = {
   card: NodeCardDimension;
   occupied: NodeCardDimension;
@@ -47,7 +55,7 @@ export type ViewportNodeClassification = {
   priorities: ReadonlyMap<string, 0 | 1 | 2>;
 };
 
-export const WORKFLOW_VIEWPORT_OVERSCAN = 300;
+export const WORKFLOW_VIEWPORT_OVERSCAN = 240;
 export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeDimensions = {
   card: { width: 300, height: 120 },
   occupied: { width: 300, height: 120 }
@@ -84,7 +92,8 @@ export const getViewportRange = ({
 };
 
 /**
- * 计算 viewport/overscan 集合。容器只因可见子节点被加入 full 集合；折叠子节点不进入测量队列。
+ * 计算 viewport/overscan 集合。安全区内节点直接进入 full，容器因安全区内子节点被加入 full 集合。
+ * 折叠子节点不进入测量队列。
  */
 export const classifyViewportNodes = ({
   nodes,
@@ -169,6 +178,7 @@ export const classifyViewportNodes = ({
       priorities.set(node.id, 0);
     } else if (isVisible) {
       overscanNodeIds.add(node.id);
+      fullNodeIds.add(node.id);
       priorities.set(node.id, 1);
     } else {
       priorities.set(node.id, 2);
@@ -177,7 +187,7 @@ export const classifyViewportNodes = ({
     if (node.selected || node.dragging || node.focusPinned) fullNodeIds.add(node.id);
   });
 
-  visibleNodeIds.forEach((nodeId) => {
+  new Set([...visibleNodeIds, ...overscanNodeIds]).forEach((nodeId) => {
     let parentId = nodeById.get(nodeId)?.parentNodeId;
     while (parentId) {
       fullNodeIds.add(parentId);

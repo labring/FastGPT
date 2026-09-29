@@ -5,6 +5,7 @@ import {
   createDimensionBatcher,
   createMeasurementQueue,
   getDimensionedNodes,
+  getLayoutDimension,
   getNodeRect,
   type DimensionMeasurement
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/context/dimensionIndex';
@@ -99,6 +100,13 @@ describe('workflow dimension batcher', () => {
 });
 
 describe('workflow dimension geometry', () => {
+  it('keeps layout dimensions in canvas pixels when the viewport is zoomed', () => {
+    expect(getLayoutDimension({ offsetWidth: 666, offsetHeight: 1296 })).toEqual({
+      width: 666,
+      height: 1296
+    });
+  });
+
   it('derives rectangles and filters nodes without an index entry', () => {
     const first = { id: 'first', position: { x: 10, y: 20 } };
     const second = { id: 'second', position: { x: 50, y: 30 } };
@@ -116,7 +124,7 @@ describe('workflow dimension geometry', () => {
 });
 
 describe('workflow viewport measurement scheduling', () => {
-  it('classifies viewport and overscan nodes and keeps visible parents', () => {
+  it('classifies viewport and safety-zone nodes and keeps their parents full', () => {
     const result = classifyViewportNodes({
       viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
       dimensions: new Map(),
@@ -124,14 +132,14 @@ describe('workflow viewport measurement scheduling', () => {
         { id: 'visible', position: { x: 10, y: 10 } },
         { id: 'parent', position: { x: 500, y: 0 } },
         { id: 'child', parentNodeId: 'parent', position: { x: -490, y: 10 } },
-        { id: 'overscan', position: { x: 350, y: 10 } },
+        { id: 'overscan', position: { x: 290, y: 10 } },
         { id: 'far', position: { x: 1000, y: 10 } }
       ]
     });
 
     expect(result.visibleNodeIds).toEqual(new Set(['visible', 'child']));
     expect(result.overscanNodeIds).toEqual(new Set(['overscan']));
-    expect(result.fullNodeIds).toEqual(new Set(['visible', 'child', 'parent']));
+    expect(result.fullNodeIds).toEqual(new Set(['visible', 'child', 'parent', 'overscan']));
     expect(result.priorities.get('far')).toBe(2);
   });
 
@@ -141,7 +149,7 @@ describe('workflow viewport measurement scheduling', () => {
       dimensions: new Map([
         ['issue-node', measuredDimension({ width: 80, height: 40 }, { width: 80, height: 140 })]
       ]),
-      nodes: [{ id: 'issue-node', position: { x: 10, y: 90 } }]
+      nodes: [{ id: 'issue-node', position: { x: 10, y: -130 } }]
     });
 
     expect(result.visibleNodeIds).toEqual(new Set(['issue-node']));

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { Position } from 'reactflow';
 import { MySourceHandle, MyTargetHandle } from '.';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
@@ -11,6 +11,7 @@ import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template
 import { isConnectionTargetAllowed, useNode, useWorkflowValue } from '@/web/core/workflow/editor';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
 import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import { WorkflowHandleRenderContext } from './handleRenderContext';
 
 /** 目标柄与折叠分支源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 React.memo。 */
 const sourceTranslate = [4, 0] as [number, number];
@@ -23,6 +24,7 @@ export const ConnectionSourceHandle = ({
   nodeId: string;
   sourceType?: 'source' | 'source_catch';
 }) => {
+  const renderHandle = useContext(WorkflowHandleRenderContext);
   const nodeHandle = useNode(nodeId);
   // 只关心「是不是别的节点在拖拽连线」这一个事实，不取回整个 connectingEdge 对象。
   const isConnectingOther = useContextSelector(
@@ -115,7 +117,7 @@ export const ConnectionSourceHandle = ({
     };
   }, [nodeHandle, nodeId, isConnectingOther, sourceType, rightTargetConnected]);
 
-  return showSourceHandle ? <>{RightHandle}</> : null;
+  return renderHandle && showSourceHandle ? <>{RightHandle}</> : null;
 };
 
 export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle({
@@ -123,6 +125,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 }: {
   nodeId: string;
 }) {
+  const renderHandle = useContext(WorkflowHandleRenderContext);
   const connectingEdge = useContextSelector(WorkflowUIContext, (v) => v.connectingEdge);
   // 目标柄要按拖拽源节点的父容器判定上下文，直接读 port 的节点快照，不再挂整份文档图 reader。
   const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
@@ -209,7 +212,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
     };
   }, [connectingEdge, nodeId, runtime, forbidConnectByGraph]);
 
-  return <>{LeftHandle}</>;
+  return renderHandle ? <>{LeftHandle}</> : null;
 });
 
 export default function Dom() {

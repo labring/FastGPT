@@ -3,7 +3,7 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { type Connection, Handle, Position } from 'reactflow';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useContext, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowUIContext } from '../../../context/workflowUIContext';
 import {
@@ -12,6 +12,7 @@ import {
   useWorkflowValue
 } from '@/web/core/workflow/editor';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { WorkflowHandleRenderContext } from './handleRenderContext';
 
 const handleSize = '20px';
 const activeHandleSize = '24px';
@@ -22,6 +23,7 @@ type ToolHandleProps = BoxProps & {
   show: boolean;
 };
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
+  const renderHandle = useContext(WorkflowHandleRenderContext);
   // 工具柄的可连接判定要读任意源节点与父节点：走 port 的非订阅节点读取，不挂整份文档图 reader。
   const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
   const connectingEdge = useContextSelector(WorkflowUIContext, (ctx) => ctx.connectingEdge);
@@ -88,10 +90,11 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
     );
   }, [active, showHandle, size]);
 
-  return Render;
+  return renderHandle ? Render : null;
 };
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
+  const renderHandle = useContext(WorkflowHandleRenderContext);
   const { t } = useTranslation();
   // 边集合只在 onConnect 回调里读：走非订阅 getter，本组件对结构变更的订阅数为零。
   const { disconnectEdge, getEdges } = useWorkflowActions();
@@ -162,7 +165,7 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
     );
   }, [active, onConnect, size, t]);
 
-  return Render;
+  return renderHandle ? Render : null;
 };
 
 export default function Dom() {
