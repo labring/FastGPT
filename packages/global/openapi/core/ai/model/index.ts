@@ -40,7 +40,7 @@ export const AIModelPath: OpenAPIPath = {
   },
   '/core/ai/model/catalog': {
     get: {
-      summary: '获取当前成员模型目录',
+      summary: '获取当前成员可用模型清单',
       description:
         '通过登录态或外链身份一次返回对应成员完整可用模型、Provider 和有效默认模型 ID；支持内容版本协商',
       tags: [DevApiTagsMap.model, SystemOpenApiTagMap.model],
