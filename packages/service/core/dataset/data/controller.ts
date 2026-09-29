@@ -74,7 +74,7 @@ export const formatDatasetDataTextValue = ({
 
 export type FormatDatasetDataValuesOptions = {
   /** 已鉴权的数据集 ID，所有预览签发都必须绑定此范围。 */
-  datasetId: string | string[];
+  datasetIds: string[];
   filter?: (objectKey: string) => boolean;
 };
 
@@ -88,7 +88,7 @@ export const formatDatasetDataValues = async (
   items: FormatDatasetDataValueProps[],
   options: FormatDatasetDataValuesOptions
 ): Promise<FormattedDatasetDataValue[]> => {
-  const keyFilter = options.filter ?? createDatasetFileS3KeyFilter(options.datasetId);
+  const keyFilter = options.filter ?? createDatasetFileS3KeyFilter(options.datasetIds);
 
   const normalizedItems = items.map(({ q, a, imageId, imageDescMap }) => ({
     ...formatDatasetDataTextValue({ q, a, imageDescMap }),
@@ -144,9 +144,6 @@ export const getFormatDatasetCiteList = async (
   list: DatasetDataSchemaType[],
   options: FormatDatasetDataValuesOptions
 ) => {
-  const authorizedDatasetIds = Array.isArray(options.datasetId)
-    ? options.datasetId
-    : [options.datasetId];
   const formattedValues = await formatDatasetDataValues(
     list.map((item) => ({
       q: item.q,
@@ -154,7 +151,7 @@ export const getFormatDatasetCiteList = async (
       imageId: item.imageId
     })),
     {
-      datasetId: authorizedDatasetIds,
+      datasetIds: options.datasetIds,
       filter: options.filter
     }
   );

@@ -29,7 +29,7 @@ describe('formatDatasetDataValue', () => {
           'https://example.com/dog.png': 'dog desc'
         }
       },
-      { datasetId: 'test', filter: () => true }
+      { datasetIds: ['test'], filter: () => true }
     );
 
     expect(result).toEqual({
@@ -46,7 +46,7 @@ describe('formatDatasetDataValue', () => {
           'https://cdn.example.com/img(1).png': 'cable photo'
         }
       },
-      { datasetId: 'test', filter: () => true }
+      { datasetIds: ['test'], filter: () => true }
     );
 
     expect(result).toEqual({
@@ -67,7 +67,7 @@ describe('formatDatasetDataValue', () => {
           imageId: 'dataset/team/shared.png'
         }
       ],
-      { datasetId: 'test', filter: () => true }
+      { datasetIds: ['test'], filter: () => true }
     );
 
     expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
@@ -96,7 +96,7 @@ describe('formatDatasetDataValue', () => {
           a: "<img src='chat/app/b.png' loading='lazy'>"
         }
       ],
-      { datasetId: 'test', filter: () => true }
+      { datasetIds: ['test'], filter: () => true }
     );
 
     expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
@@ -124,7 +124,7 @@ describe('formatDatasetDataValue', () => {
           imageId: 'dataset/dataset-2/foreign-main.png'
         }
       ],
-      { datasetId: 'dataset-1' }
+      { datasetIds: ['dataset-1'] }
     );
 
     expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);

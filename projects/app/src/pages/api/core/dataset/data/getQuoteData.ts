@@ -65,7 +65,7 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
           },
           // 引用文本里的图片 key 必须绑定到已鉴权 collection 所属 dataset，
           // 否则可借该接口为外库 key 签发短链。
-          { datasetId: collection.datasetId }
+          { datasetIds: [String(collection.datasetId)] }
         ))
       };
     } else {
@@ -84,7 +84,7 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
             a: datasetData.a,
             imageId: datasetData.imageId
           },
-          { datasetId: collection.datasetId }
+          { datasetIds: [String(collection.datasetId)] }
         ))
       };
     }

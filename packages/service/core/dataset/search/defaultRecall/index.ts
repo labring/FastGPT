@@ -184,7 +184,7 @@ export async function searchDatasetData(
   // 避免检索输出成为跨库预览签名的旁路。
   const formattedValues = await formatDatasetDataValues(
     filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId })),
-    { datasetId: datasetIds }
+    { datasetIds }
   );
   const finalResult = filterMaxTokensResult.map((item, index) => {
     const result = { ...item };

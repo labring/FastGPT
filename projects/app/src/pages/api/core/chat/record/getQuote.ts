@@ -64,7 +64,7 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
   ).lean();
 
   const formatPreviewUrlList = await getFormatDatasetCiteList(list, {
-    datasetId: Array.from(new Set(list.map((item) => String(item.datasetId)).filter(Boolean)))
+    datasetIds: Array.from(new Set(list.map((item) => String(item.datasetId)).filter(Boolean)))
   });
   const quoteList = processChatTimeFilter(formatPreviewUrlList, chatItem.time);
 

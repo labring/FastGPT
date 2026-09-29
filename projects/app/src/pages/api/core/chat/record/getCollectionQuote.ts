@@ -135,7 +135,9 @@ async function handleInitialLoad({
       .lean();
 
     const hasMoreNext = list.length === pageSize;
-    const citeList = await getFormatDatasetCiteList(list, { datasetId: baseMatch.datasetId });
+    const citeList = await getFormatDatasetCiteList(list, {
+      datasetIds: [String(baseMatch.datasetId)]
+    });
 
     return {
       list: processChatTimeFilter(citeList, chatTime).map((item) => ({
@@ -162,7 +164,9 @@ async function handleInitialLoad({
   );
 
   const resultList = [...prevList, centerNode, ...nextList];
-  const citeList = await getFormatDatasetCiteList(resultList, { datasetId: baseMatch.datasetId });
+  const citeList = await getFormatDatasetCiteList(resultList, {
+    datasetIds: [String(baseMatch.datasetId)]
+  });
 
   return {
     list: processChatTimeFilter(citeList, chatTime).map((item) => ({
@@ -194,7 +198,9 @@ async function handlePaginatedLoad({
     ? await getPrevNodes(prevId, nextAnchor, pageSize, baseMatch)
     : await getNextNodes(nextId!, nextAnchor, pageSize, baseMatch);
 
-  const citeList = await getFormatDatasetCiteList(list, { datasetId: baseMatch.datasetId });
+  const citeList = await getFormatDatasetCiteList(list, {
+    datasetIds: [String(baseMatch.datasetId)]
+  });
   const processedList = processChatTimeFilter(citeList, chatTime);
 
   return {
