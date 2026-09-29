@@ -81,6 +81,7 @@ FastGPT 的私有对象存储 key 是 bucket 内的全局路径字符串，例�
 - `data/getQuoteData`：引用详情此前调用 `formatDatasetDataValue` 未传 `datasetId`，options 为空时白名单关闭，可借该接口为 chunk 文本里的外库 key 签发短链。现两处调用均补上 `{ datasetId: collection.datasetId }`。
 - `training/getTrainingDataDetail`：`imageId` 此前只做 `isS3ObjectKey(imageId, 'dataset')` 前缀检查，现改为 `isAuthorizedDatasetFileS3Key({ key: data.imageId, datasetId: collection.datasetId })`，与 `data/v2/list` 的写法对齐。
 - `search/defaultRecall` 的 `searchDatasetData`：召回输出调用 `formatDatasetDataValues` 时补上 `{ datasetId: datasetIds }`，使检索返回的 chunk 文本里内嵌的外库 key 不签发短链（防御性收敛，候选本身来自已授权的 datasetIds）。
+- 未授权 `imageId` 的返回语义：`formatDatasetDataValues` 此前对未通过白名单的 dataset `imageId` 返回 `imagePreivewUrl: ''` 并生成 `![标题]()`，与文本路径“保留原文”不一致，空链接还可能触发相对 URL 请求。现统一为保留原始 key（`imagePreivewUrl` 回填该 key，markdown 为 `![标题](dataset/...)`），既不签发下载 token，也不触发相对请求。该字段由前端 `src` 直接渲染，因此必须保持为原始 key 这类不可解析内容。
 
 同批排查中确认无需修改的点：
 

@@ -117,8 +117,10 @@ export const formatDatasetDataValues = async (
       };
     }
 
+    // 未通过 datasetId 白名单的 dataset key 与文本路径保持一致：保留原始 key，而不是退化成空链接。
+    // 这样既不产生下载 token，也避免 `![title]()` 触发相对 URL 请求。
     const imagePreivewUrl = isS3ObjectKey(imageId, 'dataset')
-      ? previewUrlMap.get(imageId) || ''
+      ? (previewUrlMap.get(imageId) ?? imageId)
       : imageId;
 
     return {
