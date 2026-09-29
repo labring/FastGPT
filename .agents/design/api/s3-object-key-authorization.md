@@ -74,6 +74,7 @@ FastGPT 的私有对象存储 key 是 bucket 内的全局路径字符串，例�
 
 - `POST /core/dataset/collection/create/fileId`：此前只做 `isS3ObjectKey(fileId, 'dataset')` 前缀检查，未把 key 内的 datasetId 绑定到已鉴权 dataset。现改为 `isAuthorizedDatasetFileS3Key({ key: fileId, datasetId: body.datasetId })`，拒绝跨数据集/跨团队 key。
 - `POST /core/dataset/createWithFiles`：此前只检查 `fileId.startsWith('temp/')`，未绑定团队。现改为 `isAuthorizedTempFileS3Key({ key, teamId })`，并在创建事务前完成校验。
+- 数据块渲染与导出短链签发：`data/v2/list`、`data/update`、`collection/export`、`getPreviewChunks` 及 `formatDatasetDataValues` 在通过 `replaceS3KeysToPreviewUrls` 转换 Markdown/HTML 中的 S3 对象键时，增加 `filter` 白名单校验，仅放行属于当前已鉴权 `datasetId` 的 key，未通过校验的外库 key 不签发短链并保持原文本不替换。写入与更新阶段不阻断自由文本输入。
 
 同批排查中确认无需修改的点：
 

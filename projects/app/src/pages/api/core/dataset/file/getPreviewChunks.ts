@@ -115,7 +115,10 @@ async function handler(
   const previewTexts = previewChunks.flatMap(({ q, a }) => [q, a]);
   const previewTextsWithUrls = await replaceS3KeysToPreviewUrls(
     previewTexts,
-    addDays(new Date(), 1)
+    addDays(new Date(), 1),
+    {
+      filter: (key) => isAuthorizedDatasetFileS3Key({ key, datasetId })
+    }
   );
   const chunksWithJWT = previewChunks.map((chunk, index) => ({
     q: previewTextsWithUrls[index * 2] ?? chunk.q,

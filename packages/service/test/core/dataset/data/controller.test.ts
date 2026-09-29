@@ -99,4 +99,36 @@ describe('formatDatasetDataValue', () => {
       }
     ]);
   });
+
+  it('should only sign dataset keys matching options.datasetId and ignore foreign keys', async () => {
+    const result = await formatDatasetDataValues(
+      [
+        {
+          q: 'Own ![own](dataset/dataset-1/own.png) Foreign ![foreign](dataset/dataset-2/foreign.png)',
+          a: 'Chat [chat](chat/app/chat.pdf)'
+        },
+        {
+          q: 'Foreign image title',
+          imageId: 'dataset/dataset-2/foreign-main.png'
+        }
+      ],
+      { datasetId: 'dataset-1' }
+    );
+
+    expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
+    expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
+      'dataset/dataset-1/own.png'
+    ]);
+    expect(result).toEqual([
+      {
+        q: 'Own ![own](https://files.test/dataset/dataset-1/own.png) Foreign ![foreign](dataset/dataset-2/foreign.png)',
+        a: 'Chat [chat](chat/app/chat.pdf)'
+      },
+      {
+        q: '![Foreign image title]()',
+        a: undefined,
+        imagePreivewUrl: ''
+      }
+    ]);
+  });
 });

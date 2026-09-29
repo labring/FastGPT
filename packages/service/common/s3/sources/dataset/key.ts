@@ -31,9 +31,23 @@ export function isAuthorizedDatasetFileS3Key({
   datasetId
 }: {
   key: string;
-  datasetId: string;
+  datasetId: string | string[];
 }) {
   const parsedKey = parseDatasetFileS3Key(key);
+  if (!parsedKey) return false;
 
-  return !!parsedKey && String(parsedKey.datasetId) === String(datasetId);
+  if (Array.isArray(datasetId)) {
+    return datasetId.some((id) => id && String(parsedKey.datasetId) === String(id));
+  }
+
+  return !!datasetId && String(parsedKey.datasetId) === String(datasetId);
+}
+
+/**
+ * 创建用于过滤数据集 S3 键的谓词函数，仅放行属于指定 datasetId 的对象键。
+ */
+export function createDatasetFileS3KeyFilter(
+  datasetId: string | string[]
+): (key: string) => boolean {
+  return (key: string) => isAuthorizedDatasetFileS3Key({ key, datasetId });
 }

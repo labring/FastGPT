@@ -9,6 +9,7 @@ import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addDays } from 'date-fns';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 import { matchDatasetDataMarkdownImages } from './utils';
+import { createDatasetFileS3KeyFilter } from '../../../common/s3/sources/dataset/key';
 
 type FormatDatasetDataValueProps = {
   q: string;
@@ -71,22 +72,38 @@ export const formatDatasetDataTextValue = ({
   return { q, a };
 };
 
+export type FormatDatasetDataValuesOptions = {
+  datasetId?: string | string[];
+  filter?: (objectKey: string) => boolean;
+};
+
 /**
  * 批量格式化数据块，并让 q、a 与 imageId 中的重复对象键共用一次短链签发。
  */
 export const formatDatasetDataValues = async (
-  items: FormatDatasetDataValueProps[]
+  items: FormatDatasetDataValueProps[],
+  options?: FormatDatasetDataValuesOptions
 ): Promise<FormattedDatasetDataValue[]> => {
+  const keyFilter =
+    options?.filter ??
+    (options?.datasetId !== undefined
+      ? createDatasetFileS3KeyFilter(options.datasetId)
+      : undefined);
+
   const normalizedItems = items.map(({ q, a, imageId, imageDescMap }) => ({
     ...formatDatasetDataTextValue({ q, a, imageDescMap }),
     imageId
   }));
-  const textObjectKeys = getS3ObjectKeysFromTexts(
+  const rawTextObjectKeys = getS3ObjectKeysFromTexts(
     normalizedItems.flatMap((item) => (item.imageId ? [] : [item.q, item.a]))
   );
-  const imageObjectKeys = normalizedItems.flatMap(({ imageId }) =>
+  const rawImageObjectKeys = normalizedItems.flatMap(({ imageId }) =>
     imageId && isS3ObjectKey(imageId, 'dataset') ? [imageId] : []
   );
+
+  const textObjectKeys = keyFilter ? rawTextObjectKeys.filter(keyFilter) : rawTextObjectKeys;
+  const imageObjectKeys = keyFilter ? rawImageObjectKeys.filter(keyFilter) : rawImageObjectKeys;
+
   const previewUrlMap = await createS3KeysPreviewUrlMap({
     objectKeys: [...textObjectKeys, ...imageObjectKeys],
     expiredTime: addDays(new Date(), serviceEnv.FILE_URL_EXPIRED_DAYS)
@@ -101,7 +118,7 @@ export const formatDatasetDataValues = async (
     }
 
     const imagePreivewUrl = isS3ObjectKey(imageId, 'dataset')
-      ? previewUrlMap.get(imageId)!
+      ? previewUrlMap.get(imageId) || ''
       : imageId;
 
     return {
@@ -114,19 +131,30 @@ export const formatDatasetDataValues = async (
 
 /** 单条数据格式化兼容入口，复用批量实现以保持签发语义一致。 */
 export const formatDatasetDataValue = async (
-  item: FormatDatasetDataValueProps
+  item: FormatDatasetDataValueProps,
+  options?: FormatDatasetDataValuesOptions
 ): Promise<FormattedDatasetDataValue> => {
-  const [result] = await formatDatasetDataValues([item]);
+  const [result] = await formatDatasetDataValues([item], options);
   return result!;
 };
 
-export const getFormatDatasetCiteList = async (list: DatasetDataSchemaType[]) => {
+export const getFormatDatasetCiteList = async (
+  list: DatasetDataSchemaType[],
+  options?: FormatDatasetDataValuesOptions
+) => {
+  const datasetIds =
+    options?.datasetId ??
+    Array.from(new Set(list.map((item) => String(item.datasetId)).filter(Boolean)));
   const formattedValues = await formatDatasetDataValues(
     list.map((item) => ({
       q: item.q,
       a: item.a,
       imageId: item.imageId
-    }))
+    })),
+    {
+      datasetId: datasetIds,
+      filter: options?.filter
+    }
   );
 
   return list.map((item, index) => ({

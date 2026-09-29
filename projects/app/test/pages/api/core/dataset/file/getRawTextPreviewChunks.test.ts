@@ -106,7 +106,11 @@ describe('getRawTextPreviewChunks', () => {
         maxChunks: 50_000
       })
     );
-    expect(mocks.replaceS3KeysToPreviewUrls).toHaveBeenCalledWith(['hello', ''], expect.any(Date));
+    expect(mocks.replaceS3KeysToPreviewUrls).toHaveBeenCalledWith(
+      ['hello', ''],
+      expect.any(Date),
+      expect.objectContaining({ filter: expect.any(Function) })
+    );
   });
 
   // 预览必须和导入走同一条分块路径，否则智能分块的预览结果与实际入库结果不一致。
