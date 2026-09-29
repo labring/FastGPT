@@ -100,13 +100,12 @@ export async function authOutLinkChatStart({
     ? await authOutLinkLimit({ outLink: outLinkConfig, outLinkUid, question })
     : { uid: outLinkUid };
 
-  // `tmbId` 是分享链接发布者，决定应用和团队上下文。
-  // `uid` 是当前访问者，最终会作为 `outLinkUid` 持久化。
-  // 两者的鉴权和审计语义不同，不可互换。
+  // 需登录链接下 appAccess.tmbId 是校验过的访客，运行身份（runningUserInfo）与存档
+  // 归属都取访客；免登录链接 appAccess 为 undefined，回退发布者。
   return {
     sourceName: outLinkConfig.name,
     teamId: outLinkConfig.teamId,
-    tmbId: outLinkConfig.tmbId,
+    tmbId: appAccess?.tmbId ?? outLinkConfig.tmbId,
     authType: AuthUserTypeEnum.token,
     showCite: outLinkConfig.showCite,
     showRunningStatus: outLinkConfig.showRunningStatus,
