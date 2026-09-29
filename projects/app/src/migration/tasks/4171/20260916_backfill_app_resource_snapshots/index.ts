@@ -39,17 +39,7 @@ const StageCheckpointSchema = z.object({
   total: z.number().int().nonnegative()
 });
 
-const AppResourceCheckpointSchema = z.object({
-  version: z.literal(1),
-  stages: z.object({
-    clean_v1_apps: StageCheckpointSchema.optional(),
-    versions: StageCheckpointSchema,
-    apps: StageCheckpointSchema
-  })
-});
-
 type StageCheckpoint = z.infer<typeof StageCheckpointSchema>;
-type AppResourceCheckpoint = z.infer<typeof AppResourceCheckpointSchema>;
 
 const emptyStageCheckpoint = (): StageCheckpoint => ({
   initialized: false,
@@ -59,6 +49,17 @@ const emptyStageCheckpoint = (): StageCheckpoint => ({
   processedCount: 0,
   total: 0
 });
+
+const AppResourceCheckpointSchema = z.object({
+  version: z.literal(1),
+  stages: z.object({
+    clean_v1_apps: StageCheckpointSchema.default(emptyStageCheckpoint),
+    versions: StageCheckpointSchema,
+    apps: StageCheckpointSchema
+  })
+});
+
+type AppResourceCheckpoint = z.infer<typeof AppResourceCheckpointSchema>;
 
 const getFailedRecordKey = (record: SystemMigrationFailedRecord) =>
   `${record.stageKey}:${String(record.data.recordId)}`;
