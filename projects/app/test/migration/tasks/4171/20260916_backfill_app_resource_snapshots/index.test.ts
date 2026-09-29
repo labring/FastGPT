@@ -188,7 +188,7 @@ describe('4170 App resource snapshot migration', () => {
     ]);
     const state = createContext({
       beforeSaveCheckpoint: async (callCount) => {
-        if (callCount === 5) throw new Error('checkpoint unavailable');
+        if (callCount === 8) throw new Error('checkpoint unavailable');
       }
     });
 
@@ -427,5 +427,56 @@ describe('4170 App resource snapshot migration', () => {
     expect(await MongoApp.collection.findOne({ _id: v1AppId })).toBeNull();
     expect(await MongoApp.collection.findOne({ _id: childAppId })).toBeNull();
     expect(await MongoAppVersion.collection.findOne({ _id: v1VersionId })).toBeNull();
+  });
+
+  it('cleans legacy V1 app versions and backfills remaining V2 versions', async () => {
+    const appId = new Types.ObjectId();
+    const v1VersionId = new Types.ObjectId();
+    const v2VersionId = new Types.ObjectId();
+
+    await Promise.all([
+      MongoApp.collection.insertOne({
+        _id: appId,
+        teamId,
+        tmbId,
+        name: 'V2 App with V1 History',
+        type: 'advanced',
+        modules: []
+      }),
+      MongoAppVersion.collection.insertOne({
+        _id: v1VersionId,
+        appId,
+        tmbId,
+        time: new Date('2023-01-01'),
+        isPublish: false,
+        nodes: [
+          {
+            moduleId: 'userGuide',
+            flowType: 'userGuide'
+          }
+        ]
+      }),
+      MongoAppVersion.collection.insertOne({
+        _id: v2VersionId,
+        appId,
+        tmbId,
+        time: new Date('2024-01-01'),
+        isPublish: true,
+        nodes: []
+      })
+    ]);
+
+    const state = createContext();
+    await backfillAppResourceSnapshots(state.context);
+
+    // V1 Version 应当被清理
+    expect(await MongoAppVersion.collection.findOne({ _id: v1VersionId })).toBeNull();
+    // V2 Version 应当保留并完成资源回填
+    const remainingVersion = await MongoAppVersion.collection.findOne({ _id: v2VersionId });
+    expect(remainingVersion).not.toBeNull();
+    expect(Array.isArray(remainingVersion?.resources)).toBe(true);
+    // App 依然存在且正式版本指针指向 V2 Version
+    const updatedApp = await MongoApp.collection.findOne({ _id: appId });
+    expect(updatedApp?.publishedVersionId).toEqual(v2VersionId);
   });
 });

@@ -14,6 +14,7 @@ import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
+  isValidReferenceValueFormat,
   isWorkflowSystemModelInput,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
@@ -250,12 +251,13 @@ export const extractAppResources = ({
   };
 
   const addDataset = (value: unknown) => {
+    if (isValidReferenceValueFormat(value)) return;
     getValueList(value).forEach((item) => {
-      if (Array.isArray(item) && item[0] === 'VARIABLE_NODE_ID') return;
+      if (isValidReferenceValueFormat(item)) return;
       const id = getEntityId(item, 'datasetId');
-      if (id) addResource({ type: 'dataset', id });
+      if (id && Types.ObjectId.isValid(id)) addResource({ type: 'dataset', id });
       const nested = getObjectValue(item, 'datasets');
-      if (nested) addDataset(nested);
+      if (nested && !isValidReferenceValueFormat(nested)) addDataset(nested);
     });
   };
 

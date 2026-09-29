@@ -381,6 +381,12 @@ export const systemMigrations = [
     resultKey: i18nT('system_migration:migrations.20260916_backfill_app_resource_snapshots.result'),
     progressSteps: [
       {
+        key: 'clean_v1_apps',
+        labelKey: i18nT(
+          'system_migration:migrations.20260916_backfill_app_resource_snapshots.clean_v1_apps'
+        )
+      },
+      {
         key: 'versions',
         labelKey: i18nT(
           'system_migration:migrations.20260916_backfill_app_resource_snapshots.versions'

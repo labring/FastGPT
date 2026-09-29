@@ -90,6 +90,7 @@
   "migrations.20260907_migrate_dataset_tags_v2.validation": "태그 마이그레이션 검증",
   "migrations.20260916_backfill_app_resource_snapshots.name": "앱 리소스 스냅샷 백필",
   "migrations.20260916_backfill_app_resource_snapshots.description": "기존 앱 버전에 리소스 스냅샷과 게시 버전 포인터를 백필하고, 버전이 없는 앱에는 게시 버전을 생성합니다.",
+  "migrations.20260916_backfill_app_resource_snapshots.clean_v1_apps": "레거시 V1 앱 정리",
   "migrations.20260916_backfill_app_resource_snapshots.versions": "앱 버전 리소스 스냅샷 백필",
   "migrations.20260916_backfill_app_resource_snapshots.apps": "앱 게시 버전 포인터 백필",
   "migrations.20260916_backfill_app_resource_snapshots.validation": "앱 리소스 마이그레이션 검증",

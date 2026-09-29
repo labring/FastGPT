@@ -114,8 +114,8 @@ describe('extractAppResources', () => {
           flowNodeType: FlowNodeTypeEnum.agent,
           inputs: [
             createInput(NodeInputKeyEnum.datasetSelectList, [
-              { datasetId: 'dataset-1' },
-              { datasetId: 'dataset-1' }
+              { datasetId: '65f000000000000000000001' },
+              { datasetId: '65f000000000000000000001' }
             ]),
             createInput(NodeInputKeyEnum.skills, [{ skillId: 'skill-1' }]),
             createInput(NodeInputKeyEnum.aiModelId, 'llm-model-id'),
@@ -124,7 +124,7 @@ describe('extractAppResources', () => {
             createInput(NodeInputKeyEnum.datasetSearchRerankModelId, 'rerank-model-id'),
             createInput(NodeInputKeyEnum.datasetSearchExtensionModelId, 'extension-model-id'),
             createInput(NodeInputKeyEnum.datasetParams, {
-              datasets: [{ datasetId: 'dataset-2' }],
+              datasets: [{ datasetId: '65f000000000000000000002' }],
               [NodeInputKeyEnum.datasetSearchUsingReRank]: true,
               [NodeInputKeyEnum.datasetSearchRerankModelId]: 'nested-rerank-model-id',
               [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
@@ -148,8 +148,8 @@ describe('extractAppResources', () => {
 
     expect(resources).toEqual([
       { type: 'agent', id: 'agent-app' },
-      { type: 'dataset', id: 'dataset-1' },
-      { type: 'dataset', id: 'dataset-2' },
+      { type: 'dataset', id: '65f000000000000000000001' },
+      { type: 'dataset', id: '65f000000000000000000002' },
       { type: 'model', id: 'extension-model-id' },
       { type: 'model', id: 'guide-model-id' },
       { type: 'model', id: 'llm-model-id' },
@@ -218,6 +218,31 @@ describe('extractAppResources', () => {
       { type: 'tool', id: 'plugin-tool' },
       { type: 'tool', id: 'workflow-tool' }
     ]);
+  });
+
+  it('ignores reference mode datasets and filters out non-ObjectId dataset IDs', () => {
+    const validDatasetId = '65f000000000000000000003';
+    const resources = extractAppResources({
+      nodes: [
+        createNode({
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
+          inputs: [
+            // 引用模式的输入（renderTypeList 包含 reference）
+            createInput(NodeInputKeyEnum.datasetSelectList, ['VARIABLE_NODE_ID', 'dataSets'], true),
+            // 包含非 ObjectId 脏数据与合法 ObjectId 的 datasetParams
+            createInput(NodeInputKeyEnum.datasetParams, {
+              datasets: [
+                { datasetId: 'non-object-id' },
+                { datasetId: validDatasetId },
+                ['VARIABLE_NODE_ID', 'dataSets']
+              ]
+            })
+          ]
+        })
+      ]
+    });
+
+    expect(resources).toEqual([{ type: 'dataset', id: validDatasetId }]);
   });
 });
 

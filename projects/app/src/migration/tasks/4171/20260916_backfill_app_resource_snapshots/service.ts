@@ -292,8 +292,22 @@ export const backfillAppVersionResourceRecords = async (
   const result = emptyBatchResult();
   if (records.length === 0) return result;
 
+  const v1Records = records.filter((record) => isLegacyV1Workflow(record.nodes));
+  if (v1Records.length > 0) {
+    const v1VersionIds = v1Records.map((record) => record._id).filter(Boolean);
+    if (v1VersionIds.length > 0) {
+      await MongoAppVersion.collection.deleteMany({
+        _id: { $in: v1VersionIds as never }
+      });
+      result.updatedCount += v1VersionIds.length;
+    }
+  }
+
+  const v1IdSet = new Set(v1Records.map((record) => String(record._id)));
+  const nonV1Records = records.filter((record) => !v1IdSet.has(String(record._id)));
+
   const recordsToProcess: AppResourceMigrationRecord[] = [];
-  for (const record of records) {
+  for (const record of nonV1Records) {
     if (Array.isArray(record.resources) && AppResourcesSchema.safeParse(record.resources).success) {
       continue;
     }
@@ -688,6 +702,9 @@ export const backfillAppResourceRecords = async (
 /** 扫描 Version 快照的真实完成条件，并返回需要管理员处理的记录。 */
 export const validateAppVersionResourceRecords = (records: AppResourceMigrationRecord[]) =>
   records.flatMap<AppResourceMigrationFailure>((record) => {
+    if (isLegacyV1Workflow(record.nodes)) {
+      return [{ record, message: 'Legacy V1 App Version was not cleaned up' }];
+    }
     const parsed = AppResourcesSchema.safeParse(record.resources);
     return parsed.success ? [] : [{ record, message: parsed.error.message }];
   });

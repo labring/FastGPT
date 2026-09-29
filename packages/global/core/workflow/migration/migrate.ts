@@ -15,14 +15,13 @@ import { isToolInputValueConfigured } from '../../app/formEdit/utils';
  */
 export const isLegacyV1Workflow = (nodes: unknown): boolean => {
   if (!Array.isArray(nodes)) return false;
-  return nodes.some(
-    (node) =>
-      !!node &&
-      typeof node === 'object' &&
-      typeof (node as Record<string, unknown>).flowType === 'string' &&
-      (typeof (node as Record<string, unknown>).moduleId === 'string' ||
-        typeof (node as Record<string, unknown>).nodeId !== 'string')
-  );
+  return nodes.some((node) => {
+    if (!node || typeof node !== 'object' || Array.isArray(node)) return false;
+    const record = node as Record<string, unknown>;
+    const hasModuleId = typeof record.moduleId === 'string' && record.moduleId.length > 0;
+    const hasValidNodeId = typeof record.nodeId === 'string' && record.nodeId.length > 0;
+    return hasModuleId && !hasValidNodeId;
+  });
 };
 
 export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): CanonicalWorkflowData => {
