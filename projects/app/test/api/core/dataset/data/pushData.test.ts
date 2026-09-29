@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 const mocks = vi.hoisted(() => ({
   parseApiInput: vi.fn(),
@@ -105,7 +106,7 @@ describe('pushData imageId authorization', () => {
       }
     });
 
-    await expect((handler as any)({} as any)).rejects.toBe('Invalid dataset file key');
+    await expect((handler as any)({} as any)).rejects.toBe(CommonErrEnum.unAuthFileKey);
     expect(mocks.pushDataListToTrainingQueue).not.toHaveBeenCalled();
   });
 });

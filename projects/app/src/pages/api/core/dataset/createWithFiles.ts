@@ -87,7 +87,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
   // fileId 由客户端传入，必须先绑定到当前团队，避免把其他团队的临时对象移入本团队。
   for (const file of files) {
     if (!isAuthorizedTempFileS3Key({ key: file.fileId, teamId })) {
-      return Promise.reject(CommonErrEnum.unAuthFile);
+      return Promise.reject(CommonErrEnum.unAuthFileKey);
     }
   }
 

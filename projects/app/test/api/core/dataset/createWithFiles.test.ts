@@ -88,7 +88,7 @@ describe('create dataset with files temp key ownership', () => {
     });
 
     expect(result.code).toBe(500);
-    expect(result.error).toBe(CommonErrEnum.unAuthFile);
+    expect(result.error).toBe(CommonErrEnum.unAuthFileKey);
     await expect(MongoDataset.countDocuments({ teamId: owner.teamId })).resolves.toBe(0);
   });
 

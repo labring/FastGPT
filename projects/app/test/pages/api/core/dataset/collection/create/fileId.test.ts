@@ -60,7 +60,7 @@ describe('collection create from fileId key binding', () => {
   it('rejects a dataset file key that belongs to another dataset before any S3 read', async () => {
     await expect(
       callHandler({ datasetId, fileId: `dataset/${otherDatasetId}/secret.pdf` })
-    ).rejects.toBe(CommonErrEnum.unAuthFile);
+    ).rejects.toBe(CommonErrEnum.unAuthFileKey);
 
     expect(mocks.getFileMetadata).not.toHaveBeenCalled();
     expect(mocks.createCollectionAndInsertData).not.toHaveBeenCalled();
@@ -71,7 +71,7 @@ describe('collection create from fileId key binding', () => {
     ['a bare dataset prefix without filename', `dataset/${datasetId}`],
     ['a dataset id that only shares a prefix with the target', `dataset/${datasetId}extra/x.pdf`]
   ])('rejects %s', async (_, fileId) => {
-    await expect(callHandler({ datasetId, fileId })).rejects.toBe(CommonErrEnum.unAuthFile);
+    await expect(callHandler({ datasetId, fileId })).rejects.toBe(CommonErrEnum.unAuthFileKey);
 
     expect(mocks.getFileMetadata).not.toHaveBeenCalled();
     expect(mocks.createCollectionAndInsertData).not.toHaveBeenCalled();

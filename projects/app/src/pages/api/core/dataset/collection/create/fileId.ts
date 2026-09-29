@@ -29,7 +29,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
 
   // fileId 由客户端传入，必须绑定到已鉴权的 datasetId，避免跨团队对象被导入。
   if (!isAuthorizedDatasetFileS3Key({ key: fileId, datasetId: body.datasetId })) {
-    return Promise.reject(CommonErrEnum.unAuthFile);
+    return Promise.reject(CommonErrEnum.unAuthFileKey);
   }
 
   const metadata = await getS3DatasetSource().getFileMetadata(fileId);

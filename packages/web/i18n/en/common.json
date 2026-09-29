@@ -840,6 +840,7 @@
   "error.too_many_request": "Too many request",
   "error.tool_not_exist": "Uninstalled",
   "error.unAuthFile": "Unauthorized to read this file",
+  "error.unAuthFileKey": "Unauthorized to access this file key",
   "error.unKnow": "Something went wrong",
   "error.upload_file_error_filename": "{{name}} Upload Failed",
   "error.upload_file_interval_limit": "Too many uploads in a short time or the current round limit was reached. Please try again later.",

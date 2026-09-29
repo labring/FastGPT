@@ -1,6 +1,7 @@
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -99,12 +100,16 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
         isS3ObjectKey(id, 'dataset') &&
         isAuthorizedDatasetFileS3Key({ key: id, datasetId: collection.datasetId })
     );
-    for (const id of s3ImageIds) {
-      const metadata = await getS3DatasetSource().getFileMetadata(id);
-      if (metadata?.contentLength) {
-        imageSizeMap.set(id, metadata.contentLength);
-      }
-    }
+    await batchRun(
+      s3ImageIds,
+      async (id) => {
+        const metadata = await getS3DatasetSource().getFileMetadata(id);
+        if (metadata?.contentLength) {
+          imageSizeMap.set(id, metadata.contentLength);
+        }
+      },
+      5
+    );
   }
 
   const formatList = await Promise.all(

@@ -19,6 +19,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 
@@ -71,7 +72,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
       !isAuthorizedDatasetFileS3Key({ key: item.imageId, datasetId: collection.datasetId })
   );
   if (hasInvalidImageKey) {
-    return Promise.reject('Invalid dataset file key');
+    return Promise.reject(CommonErrEnum.unAuthFileKey);
   }
 
   return mongoSessionRun(async (session) => {
