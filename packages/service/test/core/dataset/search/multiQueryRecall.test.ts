@@ -3,23 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   getForbidCollectionIdListMock,
   filterCollectionByMetadataMock,
-  filterLegacyCollectionByMetadataMock,
   embeddingRecallMock,
   fullTextRecallMock
 } = vi.hoisted(() => ({
   getForbidCollectionIdListMock: vi.fn(),
   filterCollectionByMetadataMock: vi.fn(),
-  filterLegacyCollectionByMetadataMock: vi.fn(),
   embeddingRecallMock: vi.fn(),
   fullTextRecallMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/dataset/search/defaultRecall/collectionFilter', () => ({
+vi.mock('@fastgpt/service/core/dataset/search/filter/collectionFilter', () => ({
   getForbidCollectionIdList: getForbidCollectionIdListMock,
   filterCollectionByMetadata: filterCollectionByMetadataMock
-}));
-vi.mock('@fastgpt/service/core/dataset/search/defaultRecall/legacy/collectionFilter', () => ({
-  filterLegacyCollectionByMetadata: filterLegacyCollectionByMetadataMock
 }));
 vi.mock('@fastgpt/service/core/dataset/search/defaultRecall/embeddingRecall', () => ({
   embeddingRecall: embeddingRecallMock
@@ -47,7 +42,6 @@ describe('multiQueryRecall collection filter routing', () => {
     vi.clearAllMocks();
     getForbidCollectionIdListMock.mockResolvedValue([]);
     filterCollectionByMetadataMock.mockResolvedValue([]);
-    filterLegacyCollectionByMetadataMock.mockResolvedValue([]);
     embeddingRecallMock.mockResolvedValue({
       tokens: 0,
       textEmbeddingRecallResults: [],
@@ -60,13 +54,9 @@ describe('multiQueryRecall collection filter routing', () => {
     });
   });
 
-  it.each([
-    ['legacy', filterLegacyCollectionByMetadataMock, filterCollectionByMetadataMock],
-    ['structured', filterCollectionByMetadataMock, filterLegacyCollectionByMetadataMock]
-  ] as const)('calls only the %s filter', async (mode, expected, unexpected) => {
-    await multiQueryRecall({ ...baseParams, collectionFilterMode: mode });
-    expect(expected).toHaveBeenCalledOnce();
-    expect(unexpected).not.toHaveBeenCalled();
+  it('calls filterCollectionByMetadata with provided collectionFilterMatch', async () => {
+    await multiQueryRecall({ ...baseParams });
+    expect(filterCollectionByMetadataMock).toHaveBeenCalledOnce();
   });
 
   // NFR-8（越权召回 = 0）：权限可读集合必须在召回阶段生效，空集合不得回退为「全部可读」。

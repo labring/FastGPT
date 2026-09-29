@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetSearchModeEnum, SearchScoreTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
 
 const {
   countPromptTokensMock,
@@ -212,8 +211,7 @@ describe('dispatchAgentDatasetSearch', () => {
         textQueries: ['origin'],
         collectionFilterMatch: JSON.stringify({
           tags: { $and: [{ price: { $gte: 10 } }] }
-        }),
-        collectionFilterMode: DatasetTagFilterVersionEnum.structured
+        })
       })
     );
     expect(result.nodeResponse?.childrenResponses).toEqual([

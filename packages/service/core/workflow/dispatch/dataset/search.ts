@@ -23,11 +23,6 @@ import {
   createQueryExtensionChildNodeResponse
 } from './nodeResponse';
 import { normalizeDatasetSearchInput } from './utils';
-import type { CollectionFilterMode } from '../../../dataset/search/type';
-import {
-  resolveDatasetTagFilterVersion,
-  type DatasetTagFilterVersion
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
 import { loadWorkflowDatasetResource } from '../../utils/resource';
 import { nodeHasDynamicInput } from '../../../app/resources';
 
@@ -48,7 +43,6 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   [NodeInputKeyEnum.collectionFilterMatch]: string;
-  [NodeInputKeyEnum.collectionFilterVersion]?: DatasetTagFilterVersion;
   [NodeInputKeyEnum.authTmbId]?: boolean;
 
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
@@ -66,7 +60,7 @@ export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 }>;
 
-/** 根据节点保存的显式版本选择标签过滤语义；缺少版本的存量节点固定走 legacy。 */
+/** 知识库检索工作流节点执行入口 */
 export const dispatchDatasetSearch = async (
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> => {
@@ -84,7 +78,6 @@ export const dispatchDatasetSearch = async (
       datasetSearchInput = [],
       authTmbId = false,
       collectionFilterMatch,
-      collectionFilterVersion,
       searchMode,
       embeddingWeight,
       usingReRank,
@@ -108,11 +101,6 @@ export const dispatchDatasetSearch = async (
   if (!Array.isArray(datasets)) {
     return Promise.reject(i18nT('chat:dataset_quote_type error'));
   }
-
-  const collectionFilterMode: CollectionFilterMode = resolveDatasetTagFilterVersion({
-    version: collectionFilterVersion,
-    filterValue: collectionFilterMatch
-  });
 
   if (datasets.length === 0) {
     return getNodeErrResponse({ error: i18nT('common:core.chat.error.Select dataset empty') });
@@ -215,7 +203,6 @@ export const dispatchDatasetSearch = async (
       rerankModel: rerankModelData,
       rerankWeight,
       collectionFilterMatch,
-      collectionFilterMode,
       readableCollectionIdList
     };
     const useDeepSearch = datasetDeepSearch && textQueries.length > 0;

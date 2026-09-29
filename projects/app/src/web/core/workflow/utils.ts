@@ -45,10 +45,8 @@ import { type TFunction } from 'next-i18next';
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { workflowSystemVariables } from '../app/utils';
 import { getGlobalVariableNode } from './adapt';
-import {
-  DatasetTagFilterVersionEnum,
-  resolveDatasetTagFilterVersion
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
+import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
 
 /**
  * 将节点模板转换为画布节点，并按创建时语言初始化可编辑文本。

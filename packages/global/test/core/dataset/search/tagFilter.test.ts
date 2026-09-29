@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DatasetCollectionTagTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
-  createEmptyTagFilterValue,
+  DatasetCollectionTagTypeEnum,
   DatasetTagFilterFieldEnum,
   DatasetTagFilterLogicEnum,
   DatasetTagFilterValueModeEnum,
-  DatasetTagFilterVersionEnum,
+  DatasetTagFilterVersionEnum
+} from '@fastgpt/global/core/dataset/constants';
+import {
+  createEmptyTagFilterValue,
   formatCollectionFilterMatchParam,
   getTagFilterOpsByCondition,
   intersectWorkflowTagOptions,
@@ -14,7 +16,7 @@ import {
   pruneTagFilterConditions,
   resolveDatasetTagFilterVersion,
   serializeDatasetTagFilterValue
-} from '@fastgpt/global/core/dataset/workflowTagFilter';
+} from '@fastgpt/global/core/dataset/search/tagFilter';
 
 describe('dataset tag filter version', () => {
   it('uses structured only when explicitly marked and does not infer from the filter value', () => {
@@ -154,7 +156,7 @@ describe('serializeDatasetTagFilterValue', () => {
 });
 
 describe('formatCollectionFilterMatchParam', () => {
-  it('resolves structured row references and preserves legacy strings without converting them', () => {
+  it('resolves structured row references and normalizes legacy strings to $fromMigration conditions', () => {
     expect(
       formatCollectionFilterMatchParam({
         value: {
@@ -173,9 +175,69 @@ describe('formatCollectionFilterMatchParam', () => {
       })
     ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: 10 } }] } }));
 
+    // 引用未解析时生成 null 条件以在匹配时拒绝，防止静默丢弃扩大检索范围
+    expect(
+      formatCollectionFilterMatchParam({
+        value: {
+          logic: DatasetTagFilterLogicEnum.AND,
+          conditions: [
+            {
+              tag: 'price',
+              tagType: DatasetCollectionTagTypeEnum.number,
+              op: '$gte',
+              valueMode: DatasetTagFilterValueModeEnum.reference,
+              value: ['node', 'unresolved']
+            }
+          ]
+        },
+        resolveReference: () => undefined
+      })
+    ).toBe(JSON.stringify({ tags: { $and: [{ price: { $gte: null } }] } }));
+
     const legacy = '{"tags":{"$and":["legacy"]}}';
-    expect(formatCollectionFilterMatchParam({ value: legacy })).toBe(legacy);
+    expect(formatCollectionFilterMatchParam({ value: legacy })).toBe(
+      JSON.stringify({ tags: { $and: [{ $fromMigration: { $contains: 'legacy' } }] } })
+    );
     expect(formatCollectionFilterMatchParam({ value: undefined })).toBeUndefined();
+  });
+
+  it('resolves embedded $ref inside search payloads', () => {
+    const resolveReference = (ref: unknown) =>
+      Array.isArray(ref) && ref[1] === 'price' ? 42 : undefined;
+
+    // JSON 字符串中的 tags $ref 解析，同时保留非 tags 引用
+    const payload = JSON.stringify({
+      tags: { $and: [{ price: { $gte: ['$ref', 'node', 'price'] } }] },
+      collectionIds: [['$ref', 'node', 'price']]
+    });
+    expect(
+      formatCollectionFilterMatchParam({
+        value: payload,
+        resolveReference: resolveReference as any
+      })
+    ).toBe(
+      JSON.stringify({
+        tags: { $and: [{ price: { $gte: 42 } }] },
+        collectionIds: [['$ref', 'node', 'price']]
+      })
+    );
+
+    // 对象形式中的 tags $ref 解析
+    expect(
+      formatCollectionFilterMatchParam({
+        value: { tags: { $or: [{ price: { $lt: ['$ref', 'node', 'price'] } }] } },
+        resolveReference: resolveReference as any
+      })
+    ).toBe(JSON.stringify({ tags: { $or: [{ price: { $lt: 42 } }] } }));
+
+    // 未能解出引用时原样保留原始文本
+    const unresolved = '{"tags":{"$and":[{"price":{"$gte":["$ref","node","missing"]}}]}}';
+    expect(
+      formatCollectionFilterMatchParam({
+        value: unresolved,
+        resolveReference: () => undefined
+      })
+    ).toBe(unresolved);
   });
 });
 
@@ -196,5 +258,27 @@ describe('pruneTagFilterConditions', () => {
       { field: DatasetTagFilterFieldEnum.createTime, op: '$gte', value: 1 }
     ]);
     expect(isDatasetTagFilterValue(result)).toBe(true);
+  });
+
+  it('keeps interface-only string rows the page cannot render', () => {
+    const stringCondition = {
+      tag: 'title',
+      tagType: DatasetCollectionTagTypeEnum.string,
+      op: '$eq',
+      value: 'guide'
+    };
+
+    const result = pruneTagFilterConditions(
+      {
+        logic: DatasetTagFilterLogicEnum.AND,
+        conditions: [
+          stringCondition,
+          { tag: 'gone', tagType: DatasetCollectionTagTypeEnum.number, op: '$eq', value: 1 }
+        ]
+      },
+      []
+    );
+
+    expect(result.conditions).toEqual([stringCondition]);
   });
 });

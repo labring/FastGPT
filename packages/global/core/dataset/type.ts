@@ -40,9 +40,6 @@ export const DatasetCollectionTagOptionsSchema = z
   .array(z.string().trim().min(1))
   .meta({ description: '选项类标签的预设选项' });
 
-/** 旧字符串标签承载记录首次创建时使用的默认名称；身份只由 fromMigration 标识。 */
-export const DEFAULT_TAG = 'default_tag';
-
 /** Collection 标签值字段：string/number 存对应值，datetime 存 UTC 毫秒时间戳，array 存 string 数组 */
 export const CollectionTagValueFieldSchema = z.union([z.string(), z.number(), z.array(z.string())]);
 

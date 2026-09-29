@@ -37,7 +37,9 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.selectDataset,
   FlowNodeInputTypeEnum.selectDatasetParamsModal,
   FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
-  FlowNodeInputTypeEnum.datasetTagFilter
+  FlowNodeInputTypeEnum.datasetTagFilter,
+  // off 面向第三方接口调用方，不参与 Agent 生成。
+  FlowNodeInputTypeEnum.off
 ]);
 
 // 工具配置不能处理依赖文件、知识库、模型或外部动态上下文的输入。

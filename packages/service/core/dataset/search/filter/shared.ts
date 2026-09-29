@@ -61,7 +61,7 @@ export const expandCollectionIds = async ({
   return [...resultIds];
 };
 
-/** 将标签结果与时间、Collection ID 条件求交，新旧标签链路共用。 */
+/** 将标签结果与时间、Collection ID 条件求交。 */
 export const applySharedCollectionMetadataFilters = async ({
   teamId,
   datasetIds,

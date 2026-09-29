@@ -51,7 +51,6 @@ export async function searchDatasetData(
     rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch,
-    collectionFilterMode,
     readableCollectionIdList
   } = props;
 
@@ -101,7 +100,6 @@ export async function searchDatasetData(
     model,
     imageQueries,
     collectionFilterMatch,
-    collectionFilterMode,
     readableCollectionIdList,
     embeddingLimit,
     fullTextLimit,
