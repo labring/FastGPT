@@ -35,6 +35,8 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResponse> {
@@ -82,6 +84,13 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
   // check limit
   await checkTeamDatasetLimit(teamId);
 
+  // fileId 由客户端传入，必须先绑定到当前团队，避免把其他团队的临时对象移入本团队。
+  for (const file of files) {
+    if (!isAuthorizedTempFileS3Key({ key: file.fileId, teamId })) {
+      return Promise.reject(CommonErrEnum.unAuthFile);
+    }
+  }
+
   try {
     const result = await mongoSessionRun(async (session) => {
       // 1. Create dataset
@@ -119,10 +128,6 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
       const bucket = new S3PrivateBucket();
 
       for (const file of files) {
-        if (!file.fileId.startsWith('temp/')) {
-          return Promise.reject('Only temp files are supported');
-        }
-
         const { fileKey: newKey } = getFileS3Key.dataset({
           datasetId: String(dataset._id),
           filename: file.name

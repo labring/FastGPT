@@ -68,6 +68,19 @@ FastGPT 的私有对象存储 key 是 bucket 内的全局路径字符串，例�
 - 其他 dataset data、training detail、collection read 等签名点使用的是数据库记录中的 key，并且前置查询已经绑定 `teamId/datasetId/collectionId` 权限边界。
 - 通用 `/api/system/file/*` 代理只校验 token，它不是业务鉴权入口；安全性依赖 token 签发前的业务授权绑定。
 
+### GHSA-877g-f2rv-7rmw 补充排查（2026-09-29）
+
+`GHSA-6rxv-p43w-mmx5` 的不完整修复遗漏了两个携带客户端 key 的写入入口，已一并补齐：
+
+- `POST /core/dataset/collection/create/fileId`：此前只做 `isS3ObjectKey(fileId, 'dataset')` 前缀检查，未把 key 内的 datasetId 绑定到已鉴权 dataset。现改为 `isAuthorizedDatasetFileS3Key({ key: fileId, datasetId: body.datasetId })`，拒绝跨数据集/跨团队 key。
+- `POST /core/dataset/createWithFiles`：此前只检查 `fileId.startsWith('temp/')`，未绑定团队。现改为 `isAuthorizedTempFileS3Key({ key, teamId })`，并在创建事务前完成校验。
+
+同批排查中确认无需修改的点：
+
+- `collection/create/localFile|text|backup|template|images`：key 全部由服务端基于已鉴权 dataset 生成，不接收客户端 key。
+- `collection/update`、`collection/detail`、`collection/read`：使用数据库记录中的 key，前置查询已绑定权限边界。
+- `app/create` 的模板头像：key 来自数据库模板记录，非客户端输入。
+
 ## 测试要求
 
 新增类似入口时至少补充以下测试：

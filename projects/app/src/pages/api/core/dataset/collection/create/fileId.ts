@@ -9,7 +9,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
@@ -27,8 +27,9 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
     parentId: body.parentId
   });
 
-  if (!isS3ObjectKey(fileId, 'dataset')) {
-    return Promise.reject('Invalid dataset file key');
+  // fileId 由客户端传入，必须绑定到已鉴权的 datasetId，避免跨团队对象被导入。
+  if (!isAuthorizedDatasetFileS3Key({ key: fileId, datasetId: body.datasetId })) {
+    return Promise.reject(CommonErrEnum.unAuthFile);
   }
 
   const metadata = await getS3DatasetSource().getFileMetadata(fileId);

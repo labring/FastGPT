@@ -114,6 +114,7 @@ The commercial edition no longer requires the Pro service to be started separate
 44. Fixed safe link validation in Markdown rendering incorrectly rejecting valid URLs with non-UTF-8 percent-encoding in query parameters, causing them to render as unclickable plain text and images to not display.
 45. Fixed base64 images embedded inside HTML `<img>` tags in parsed documents (such as docx/xlsx HTML tables) not being uploaded to storage and leaking into text chunks as massive base64 strings.
 46. Fixed Workflow condition node (`If/Else`) throwing a TypeError (`trim is not a function`) when using "starts with" or "ends with" conditions on non-string inputs.
+47. Fixed some Dataset file ingestion endpoints not binding client-supplied S3 object keys to the already-authorized resource.
 
 ## 🛠️ Code Improvements
 
