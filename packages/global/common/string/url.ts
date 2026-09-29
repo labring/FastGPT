@@ -1,7 +1,7 @@
 /**
  * 判断字符串是否为以 http:// 或 https:// 开头的网络链接
  */
-export const isHttpUrl = (url?: string): url is string => {
+export const isHttpUrl = (url?: string): boolean => {
   if (!url || typeof url !== 'string') return false;
   return /^https?:\/\//i.test(url.trim());
 };
