@@ -73,26 +73,22 @@ export const formatDatasetDataTextValue = ({
 };
 
 export type FormatDatasetDataValuesOptions = {
-  datasetId?: string | string[];
+  /** 已鉴权的数据集 ID，所有预览签发都必须绑定此范围。 */
+  datasetId: string | string[];
   filter?: (objectKey: string) => boolean;
 };
 
 /**
  * 批量格式化数据块，并让 q、a 与 imageId 中的重复对象键共用一次短链签发。
  *
- * 传入 `datasetId` 或 `filter` 时，知识库 data 预览只会为通过筛选的
- * `dataset/*` key 签发短链；`chat/*`、`temp/*` 以及其他未通过筛选的 key
- * 保留原文，不在该数据链路中生成访问凭证。
+ * 只为 `datasetId` 白名单内的 `dataset/*` key 签发短链；`chat/*`、`temp/*`
+ * 以及其他未通过筛选的 key 保留原文，不在该数据链路中生成访问凭证。
  */
 export const formatDatasetDataValues = async (
   items: FormatDatasetDataValueProps[],
-  options?: FormatDatasetDataValuesOptions
+  options: FormatDatasetDataValuesOptions
 ): Promise<FormattedDatasetDataValue[]> => {
-  const keyFilter =
-    options?.filter ??
-    (options?.datasetId !== undefined
-      ? createDatasetFileS3KeyFilter(options.datasetId)
-      : undefined);
+  const keyFilter = options.filter ?? createDatasetFileS3KeyFilter(options.datasetId);
 
   const normalizedItems = items.map(({ q, a, imageId, imageDescMap }) => ({
     ...formatDatasetDataTextValue({ q, a, imageDescMap }),
@@ -138,7 +134,7 @@ export const formatDatasetDataValues = async (
 /** 单条数据格式化兼容入口，复用批量实现以保持签发语义一致。 */
 export const formatDatasetDataValue = async (
   item: FormatDatasetDataValueProps,
-  options?: FormatDatasetDataValuesOptions
+  options: FormatDatasetDataValuesOptions
 ): Promise<FormattedDatasetDataValue> => {
   const [result] = await formatDatasetDataValues([item], options);
   return result!;
@@ -146,13 +142,11 @@ export const formatDatasetDataValue = async (
 
 export const getFormatDatasetCiteList = async (
   list: DatasetDataSchemaType[],
-  options?: FormatDatasetDataValuesOptions
+  options: FormatDatasetDataValuesOptions
 ) => {
-  const authorizedDatasetIds = options?.datasetId
-    ? Array.isArray(options.datasetId)
-      ? options.datasetId
-      : [options.datasetId]
-    : Array.from(new Set(list.map((item) => String(item.datasetId)).filter(Boolean)));
+  const authorizedDatasetIds = Array.isArray(options.datasetId)
+    ? options.datasetId
+    : [options.datasetId];
   const formattedValues = await formatDatasetDataValues(
     list.map((item) => ({
       q: item.q,
@@ -161,7 +155,7 @@ export const getFormatDatasetCiteList = async (
     })),
     {
       datasetId: authorizedDatasetIds,
-      filter: options?.filter
+      filter: options.filter
     }
   );
 
