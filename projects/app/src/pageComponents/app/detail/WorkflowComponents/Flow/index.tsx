@@ -102,37 +102,58 @@ const MeasuredNode = React.memo(
       const registration = registerNodeMeasurement(nodeId);
       if (!wrapper) return registration.dispose;
 
-      let target: HTMLElement | null = null;
+      let targets: HTMLElement[] = [];
       let resizeObserver: ResizeObserver | undefined;
       let mutationObserver: MutationObserver | undefined;
 
-      const findTarget = () => wrapper.querySelector<HTMLElement>('[data-workflow-node-card]');
+      const findTargets = () =>
+        [
+          wrapper.querySelector<HTMLElement>('[data-workflow-node-card]'),
+          wrapper.querySelector<HTMLElement>('[data-workflow-node-issues]')
+        ].filter((target): target is HTMLElement => !!target);
 
       const reportSize = () => {
-        if (!target) return;
-        const rect = target.getBoundingClientRect();
-        registration.report({ width: rect.width, height: rect.height });
+        const card = wrapper.querySelector<HTMLElement>('[data-workflow-node-card]');
+        if (!card) return;
+
+        const cardRect = card.getBoundingClientRect();
+        const issueRect = wrapper
+          .querySelector<HTMLElement>('[data-workflow-node-issues]')
+          ?.getBoundingClientRect();
+        const left = Math.min(cardRect.left, issueRect?.left ?? cardRect.left);
+        const top = Math.min(cardRect.top, issueRect?.top ?? cardRect.top);
+        const right = Math.max(cardRect.right, issueRect?.right ?? cardRect.right);
+        const bottom = Math.max(cardRect.bottom, issueRect?.bottom ?? cardRect.bottom);
+
+        registration.report({
+          card: { width: cardRect.width, height: cardRect.height },
+          occupied: { width: right - left, height: bottom - top }
+        });
       };
 
-      const observeTarget = () => {
-        const nextTarget = findTarget();
-        if (!nextTarget || nextTarget === target) return !!nextTarget;
+      const observeTargets = () => {
+        const nextTargets = findTargets();
+        if (
+          nextTargets.length === targets.length &&
+          nextTargets.every((target, index) => target === targets[index])
+        ) {
+          reportSize();
+          return;
+        }
 
         resizeObserver?.disconnect();
-        target = nextTarget;
+        targets = nextTargets;
         reportSize();
 
-        if (typeof ResizeObserver === 'function') {
+        if (targets.length > 0 && typeof ResizeObserver === 'function') {
           resizeObserver = new ResizeObserver(reportSize);
-          resizeObserver.observe(nextTarget);
+          targets.forEach((target) => resizeObserver?.observe(target));
         }
-        return true;
       };
 
-      if (!observeTarget() && typeof MutationObserver === 'function') {
-        mutationObserver = new MutationObserver(() => {
-          if (observeTarget()) mutationObserver?.disconnect();
-        });
+      observeTargets();
+      if (typeof MutationObserver === 'function') {
+        mutationObserver = new MutationObserver(observeTargets);
         mutationObserver.observe(wrapper, { childList: true, subtree: true });
       }
 
@@ -153,22 +174,24 @@ const MeasuredNode = React.memo(
 MeasuredNode.displayName = 'MeasuredNode';
 
 const NodeShell = React.memo((props: NodeProps<FlowNodeItemType>) => {
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
-  const dimension = getNodeDimension(props.id) ?? WORKFLOW_NODE_MEASUREMENT_ESTIMATE;
+  const getNodeDimensions = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimensions);
+  const dimensions = getNodeDimensions(props.id) ?? WORKFLOW_NODE_MEASUREMENT_ESTIMATE;
   const isToolNode = useIsToolNode(props.id);
   const showToolSource = props.data.flowNodeType === FlowNodeTypeEnum.toolCall;
 
   return (
     <Box
       position={'relative'}
-      w={`${dimension.width}px`}
-      h={`${dimension.height}px`}
+      w={`${dimensions.occupied.width}px`}
+      h={`${dimensions.occupied.height}px`}
       overflow={'visible'}
     >
-      <ToolTargetHandle show={isToolNode} nodeId={props.id} />
-      <ConnectionSourceHandle nodeId={props.id} />
-      <ConnectionTargetHandle nodeId={props.id} />
-      {showToolSource && <ToolSourceHandle nodeId={props.id} />}
+      <Box position={'relative'} w={`${dimensions.card.width}px`} h={`${dimensions.card.height}px`}>
+        <ToolTargetHandle show={isToolNode} nodeId={props.id} />
+        <ConnectionSourceHandle nodeId={props.id} />
+        <ConnectionTargetHandle nodeId={props.id} />
+        {showToolSource && <ToolSourceHandle nodeId={props.id} />}
+      </Box>
     </Box>
   );
 });
@@ -185,11 +208,32 @@ const VirtualizedNode = React.memo(
       WorkflowCanvasContext,
       (v) => v.renderModes.get(props.id) ?? 'shell'
     );
+    const pinNodeFocus = useContextSelector(WorkflowCanvasContext, (v) => v.pinNodeFocus);
+    const unpinNodeFocus = useContextSelector(WorkflowCanvasContext, (v) => v.unpinNodeFocus);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const handleFocus = useCallback(() => pinNodeFocus(props.id), [pinNodeFocus, props.id]);
+    const handleBlur = useCallback(
+      (event: React.FocusEvent<HTMLDivElement>) => {
+        if (event.relatedTarget && wrapperRef.current?.contains(event.relatedTarget as Node))
+          return;
+        unpinNodeFocus(props.id);
+      },
+      [props.id, unpinNodeFocus]
+    );
 
-    return mode === 'shell' ? (
-      <NodeShell {...props} />
-    ) : (
-      <MeasuredNode nodeComponent={nodeComponent} {...props} />
+    return (
+      <div
+        ref={wrapperRef}
+        style={{ display: 'contents' }}
+        onFocusCapture={handleFocus}
+        onBlurCapture={handleBlur}
+      >
+        {mode === 'shell' ? (
+          <NodeShell {...props} />
+        ) : (
+          <MeasuredNode nodeComponent={nodeComponent} {...props} />
+        )}
+      </div>
     );
   }
 );

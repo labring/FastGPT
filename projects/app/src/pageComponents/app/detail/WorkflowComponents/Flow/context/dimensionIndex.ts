@@ -3,6 +3,11 @@ export type NodeCardDimension = {
   height: number;
 };
 
+export type NodeDimensions = {
+  card: NodeCardDimension;
+  occupied: NodeCardDimension;
+};
+
 export type DimensionReader = (nodeId: string) => NodeCardDimension | undefined;
 
 export type NodeRect = {
@@ -31,6 +36,7 @@ export type ViewportNode = {
   isFolded?: boolean;
   selected?: boolean;
   dragging?: boolean;
+  focusPinned?: boolean;
 };
 
 export type ViewportNodeClassification = {
@@ -42,9 +48,9 @@ export type ViewportNodeClassification = {
 };
 
 export const WORKFLOW_VIEWPORT_OVERSCAN = 300;
-export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeCardDimension = {
-  width: 300,
-  height: 120
+export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeDimensions = {
+  card: { width: 300, height: 120 },
+  occupied: { width: 300, height: 120 }
 };
 
 /**
@@ -88,10 +94,10 @@ export const classifyViewportNodes = ({
   estimate = WORKFLOW_NODE_MEASUREMENT_ESTIMATE
 }: {
   nodes: readonly ViewportNode[];
-  dimensions: ReadonlyMap<string, NodeCardDimension>;
+  dimensions: ReadonlyMap<string, NodeDimensions>;
   viewport: CanvasViewport;
   overscan?: number;
-  estimate?: NodeCardDimension;
+  estimate?: NodeDimensions;
 }): ViewportNodeClassification => {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const positionById = new Map<string, { x: number; y: number }>();
@@ -151,7 +157,7 @@ export const classifyViewportNodes = ({
 
     const position = getAbsolutePosition(node.id);
     const dimension = dimensions.get(node.id) ?? estimate;
-    const rect = getNodeRect({ id: node.id, position }, dimension);
+    const rect = getNodeRect({ id: node.id, position }, dimension.occupied);
     if (!rect) return;
 
     const isVisible = areNodeRectsIntersecting(rect, range);
@@ -168,7 +174,7 @@ export const classifyViewportNodes = ({
       priorities.set(node.id, 2);
     }
 
-    if (node.selected || node.dragging) fullNodeIds.add(node.id);
+    if (node.selected || node.dragging || node.focusPinned) fullNodeIds.add(node.id);
   });
 
   visibleNodeIds.forEach((nodeId) => {
@@ -252,7 +258,7 @@ type PositionedNode = {
 export type DimensionMeasurement = {
   nodeId: string;
   generation: number;
-  dimension: NodeCardDimension;
+  dimension: NodeDimensions;
 };
 
 export type DimensionFrameScheduler = {
@@ -261,7 +267,7 @@ export type DimensionFrameScheduler = {
 };
 
 export type DimensionRegistration = {
-  report: (dimension: NodeCardDimension) => void;
+  report: (dimension: NodeDimensions) => void;
   dispose: () => void;
 };
 
@@ -337,12 +343,16 @@ const defaultScheduler: DimensionFrameScheduler = {
   }
 };
 
-const normalizeDimension = (dimension: NodeCardDimension) => {
-  const { width, height } = dimension;
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+const normalizeDimension = (dimension: NodeDimensions) => {
+  const isValid = ({ width, height }: NodeCardDimension) =>
+    Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0;
+  if (!isValid(dimension.card) || !isValid(dimension.occupied)) {
     return;
   }
-  return { width, height };
+  return {
+    card: { ...dimension.card },
+    occupied: { ...dimension.occupied }
+  };
 };
 
 /**

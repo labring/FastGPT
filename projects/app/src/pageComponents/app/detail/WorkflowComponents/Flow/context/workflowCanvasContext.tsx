@@ -33,6 +33,7 @@ import {
   type CanvasViewport,
   type DimensionMeasurement,
   type DimensionRegistration,
+  type NodeDimensions,
   type NodeCardDimension
 } from './dimensionIndex';
 
@@ -66,9 +67,12 @@ type WorkflowCanvasContextType = {
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
-  dimensionIndex: ReadonlyMap<string, NodeCardDimension>;
+  dimensionIndex: ReadonlyMap<string, NodeDimensions>;
   getNodeDimension: (nodeId: string) => NodeCardDimension | undefined;
+  getNodeDimensions: (nodeId: string) => NodeDimensions | undefined;
   registerNodeMeasurement: (nodeId: string) => DimensionRegistration;
+  pinNodeFocus: (nodeId: string) => void;
+  unpinNodeFocus: (nodeId: string) => void;
   renderModes: ReadonlyMap<string, WorkflowRenderMode>;
   measurementNodeIds: readonly string[];
   onViewportChange: (viewport: CanvasViewport) => void;
@@ -91,7 +95,16 @@ export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
   getNodeDimension: function () {
     throw new Error('Function not implemented.');
   },
+  getNodeDimensions: function () {
+    throw new Error('Function not implemented.');
+  },
   registerNodeMeasurement: function () {
+    throw new Error('Function not implemented.');
+  },
+  pinNodeFocus: function () {
+    throw new Error('Function not implemented.');
+  },
+  unpinNodeFocus: function () {
     throw new Error('Function not implemented.');
   },
   renderModes: new Map(),
@@ -122,10 +135,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const nodesRef = useRef<CanvasNode[]>(nodes);
   const edgesRef = useRef<Edge<any>[]>(edges);
   const projectionCache = useRef(createProjectionCache());
-  const [dimensionIndex, setDimensionIndex] = useState<ReadonlyMap<string, NodeCardDimension>>(
+  const [dimensionIndex, setDimensionIndex] = useState<ReadonlyMap<string, NodeDimensions>>(
     () => new Map()
   );
-  const dimensionIndexRef = useRef(new Map<string, NodeCardDimension>());
+  const dimensionIndexRef = useRef(new Map<string, NodeDimensions>());
   const activeNodeIdsRef = useRef(new Set(nodes.map((node) => node.id)));
   const [renderModes, setRenderModes] = useState<ReadonlyMap<string, WorkflowRenderMode>>(
     () => new Map()
@@ -142,6 +155,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const nodeDataGenerationsRef = useRef(new Map<string, number>());
   const measurementGenerationsRef = useRef(new Map<string, number>());
   const nextMeasurementGenerationRef = useRef(0);
+  const focusPinnedNodeIdsRef = useRef(new Set<string>());
+  const staleDimensionNodeIdsRef = useRef(new Set<string>());
 
   const publishMeasurementNodeIds = (next: Set<string>) => {
     const previous = measurementNodeIdsRef.current;
@@ -176,11 +191,14 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       }
 
       completed.add(update.nodeId);
+      staleDimensionNodeIdsRef.current.delete(update.nodeId);
       measurementQueueRef.current.remove(update.nodeId);
       const previous = next.get(update.nodeId);
       if (
-        previous?.width === update.dimension.width &&
-        previous?.height === update.dimension.height
+        previous?.card.width === update.dimension.card.width &&
+        previous?.card.height === update.dimension.card.height &&
+        previous?.occupied.width === update.dimension.occupied.width &&
+        previous?.occupied.height === update.dimension.occupied.height
       ) {
         return;
       }
@@ -239,7 +257,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         parentNodeId: node.data.parentNodeId,
         isFolded: node.data.isFolded,
         selected: node.selected,
-        dragging: node.dragging
+        dragging: node.dragging,
+        focusPinned: focusPinnedNodeIdsRef.current.has(node.id)
       })),
       dimensions: dimensionIndexRef.current,
       viewport: viewportRef.current
@@ -251,7 +270,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
       if (
         classification.hiddenNodeIds.has(node.id) ||
-        dimensionIndexRef.current.has(node.id) ||
+        (dimensionIndexRef.current.has(node.id) &&
+          !staleDimensionNodeIdsRef.current.has(node.id)) ||
         measurementNodeIdsRef.current.has(node.id)
       ) {
         measurementQueueRef.current.remove(node.id);
@@ -272,7 +292,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
           (nodeId) =>
             activeNodeIdsRef.current.has(nodeId) &&
             nextModes.get(nodeId) === 'shell' &&
-            !dimensionIndexRef.current.has(nodeId)
+            (!dimensionIndexRef.current.has(nodeId) || staleDimensionNodeIdsRef.current.has(nodeId))
         )
       )
     );
@@ -294,9 +314,13 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const pruneDimensions = (activeNodeIds: Set<string>) => {
+    focusPinnedNodeIdsRef.current.forEach((nodeId) => {
+      if (!activeNodeIds.has(nodeId)) focusPinnedNodeIdsRef.current.delete(nodeId);
+    });
     measurementGenerationsRef.current.forEach((_generation, nodeId) => {
       if (!activeNodeIds.has(nodeId)) {
         measurementGenerationsRef.current.delete(nodeId);
+        staleDimensionNodeIdsRef.current.delete(nodeId);
         dimensionBatcher.remove(nodeId);
         measurementQueueRef.current.remove(nodeId);
       }
@@ -366,10 +390,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (invalidated.size > 0) {
-      const next = new Map(dimensionIndexRef.current);
-      invalidated.forEach((nodeId) => next.delete(nodeId));
-      dimensionIndexRef.current = next;
-      setDimensionIndex(next);
+      invalidated.forEach((nodeId) => staleDimensionNodeIdsRef.current.add(nodeId));
       publishMeasurementNodeIds(
         new Set([...measurementNodeIdsRef.current].filter((nodeId) => !invalidated.has(nodeId)))
       );
@@ -487,14 +508,19 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const getNodes = useMemoizedFn(() => nodesRef.current);
-  const getNodeDimension = useMemoizedFn((nodeId: string) => dimensionIndexRef.current.get(nodeId));
+  const getNodeDimension = useMemoizedFn(
+    (nodeId: string) => dimensionIndexRef.current.get(nodeId)?.card
+  );
+  const getNodeDimensions = useMemoizedFn((nodeId: string) =>
+    dimensionIndexRef.current.get(nodeId)
+  );
 
   const registerNodeMeasurement = useMemoizedFn((nodeId: string): DimensionRegistration => {
     const generation = ++nextMeasurementGenerationRef.current;
     const nodeGeneration = nodeDataGenerationsRef.current.get(nodeId);
     measurementGenerationsRef.current.set(nodeId, generation);
 
-    const report = (dimension: NodeCardDimension) => {
+    const report = (dimension: NodeDimensions) => {
       if (
         !activeNodeIdsRef.current.has(nodeId) ||
         measurementGenerationsRef.current.get(nodeId) !== generation ||
@@ -512,6 +538,17 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     };
 
     return { report, dispose };
+  });
+
+  const pinNodeFocus = useMemoizedFn((nodeId: string) => {
+    if (focusPinnedNodeIdsRef.current.has(nodeId)) return;
+    focusPinnedNodeIdsRef.current.add(nodeId);
+    reconcileRenderState(nodesRef.current);
+  });
+
+  const unpinNodeFocus = useMemoizedFn((nodeId: string) => {
+    if (!focusPinnedNodeIdsRef.current.delete(nodeId)) return;
+    reconcileRenderState(nodesRef.current);
   });
 
   useEffect(
@@ -532,7 +569,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       getNodes,
       dimensionIndex,
       getNodeDimension,
+      getNodeDimensions,
       registerNodeMeasurement,
+      pinNodeFocus,
+      unpinNodeFocus,
       renderModes,
       measurementNodeIds,
       onViewportChange,
@@ -547,7 +587,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       getNodes,
       dimensionIndex,
       getNodeDimension,
+      getNodeDimensions,
       registerNodeMeasurement,
+      pinNodeFocus,
+      unpinNodeFocus,
       renderModes,
       measurementNodeIds,
       onViewportChange,

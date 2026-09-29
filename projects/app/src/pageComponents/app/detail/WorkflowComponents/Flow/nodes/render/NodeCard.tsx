@@ -396,6 +396,7 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
+      data-workflow-node-occupied="true"
       position={'relative'}
       outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
       outlineColor={'rgba(17, 24, 36, 0.05)'}
@@ -545,7 +546,14 @@ const NodeCard = (props: Props) => {
         )}
       </Flex>
       {!isFolded && errorIssues.length > 0 && (
-        <Box position={'absolute'} top={'100%'} left={0} w={'100%'}>
+        <Box
+          data-workflow-node-issues="true"
+          position={'absolute'}
+          top={'100%'}
+          left={0}
+          w={'100%'}
+          pointerEvents={'none'}
+        >
           <NodeWorkflowCheckIssues issues={errorIssues} />
         </Box>
       )}

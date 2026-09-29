@@ -20,7 +20,7 @@ const SearchButton = (props: ButtonProps) => {
   const patchViewData = useContextSelector(WorkflowHostContext, (state) => state.patchViewData);
   const { fitView } = useReactFlow();
   const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
-  const dimensionIndex = useContextSelector(WorkflowCanvasContext, (v) => v.dimensionIndex);
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
   const onNodesChange = useContextSelector(WorkflowCanvasContext, (v) => v.onNodesChange);
   const { isMac } = useSystem();
 
@@ -79,9 +79,7 @@ const SearchButton = (props: ButtonProps) => {
     setSearchedNodeCount(matchedNodeIds.length);
     const activeNodeId = matchedNodeIds[searchIndex] ?? matchedNodeIds[0];
     const activeNode = getNodes().find((node) => node.id === activeNodeId);
-    const [dimensionedNode] = activeNode
-      ? getDimensionedNodes([activeNode], (nodeId) => dimensionIndex.get(nodeId))
-      : [];
+    const [dimensionedNode] = activeNode ? getDimensionedNodes([activeNode], getNodeDimension) : [];
     const fitTargetKey = `${keyword}:${searchIndex}:${activeNodeId}`;
     if (dimensionedNode && fittedSearchTargetRef.current !== fitTargetKey) {
       fittedSearchTargetRef.current = fitTargetKey;
@@ -102,8 +100,8 @@ const SearchButton = (props: ButtonProps) => {
     if (changes.length > 0) onNodesChange(changes);
   }, [
     fitView,
-    dimensionIndex,
     getNodes,
+    getNodeDimension,
     getWorkflow,
     keyword,
     onNodesChange,

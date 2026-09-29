@@ -34,6 +34,8 @@ const FlowController = React.memo(function FlowController() {
   const { fitView, zoomIn, zoomOut, getNode } = useReactFlow();
   const getCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
   const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
+  const getNodeDimensions = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimensions);
+  const dimensionIndex = useContextSelector(WorkflowCanvasContext, (v) => v.dimensionIndex);
   const undo = useContextSelector(WorkflowHostContext, (v) => v.undo);
   const redo = useContextSelector(WorkflowHostContext, (v) => v.redo);
   const canUndo = useContextSelector(WorkflowHostContext, (v) => v.canUndo);
@@ -109,9 +111,18 @@ const FlowController = React.memo(function FlowController() {
         return null;
       }
 
-      return <rect x={x} y={y} width={width} height={height} fill={color} />;
+      const occupied = getNodeDimensions(id)?.occupied;
+      return (
+        <rect
+          x={x}
+          y={y}
+          width={occupied?.width ?? width}
+          height={occupied?.height ?? height}
+          fill={color}
+        />
+      );
     },
-    [getNode]
+    [dimensionIndex, getNode, getNodeDimensions]
   );
 
   const Render = useMemo(() => {
@@ -251,6 +262,7 @@ const FlowController = React.memo(function FlowController() {
     setPresentationMode,
     getCanvasNodes,
     getNodeDimension,
+    getNodeDimensions,
     fitView
   ]);
 
