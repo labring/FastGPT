@@ -148,9 +148,11 @@ export const getFormatDatasetCiteList = async (
   list: DatasetDataSchemaType[],
   options?: FormatDatasetDataValuesOptions
 ) => {
-  const datasetIds =
-    options?.datasetId ??
-    Array.from(new Set(list.map((item) => String(item.datasetId)).filter(Boolean)));
+  const authorizedDatasetIds = options?.datasetId
+    ? Array.isArray(options.datasetId)
+      ? options.datasetId
+      : [options.datasetId]
+    : Array.from(new Set(list.map((item) => String(item.datasetId)).filter(Boolean)));
   const formattedValues = await formatDatasetDataValues(
     list.map((item) => ({
       q: item.q,
@@ -158,7 +160,7 @@ export const getFormatDatasetCiteList = async (
       imageId: item.imageId
     })),
     {
-      datasetId: datasetIds,
+      datasetId: authorizedDatasetIds,
       filter: options?.filter
     }
   );
