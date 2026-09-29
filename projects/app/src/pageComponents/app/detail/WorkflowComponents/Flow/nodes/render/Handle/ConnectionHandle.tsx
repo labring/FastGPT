@@ -1,16 +1,14 @@
-import React, { useMemo } from 'react';
-import { Position } from 'reactflow';
+import React, { useCallback, useMemo } from 'react';
+import { Position, useConnection, useEdges, useReactFlow, type Node } from '@xyflow/react';
 import { MySourceHandle, MyTargetHandle } from '.';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const ConnectionSourceHandle = ({
   nodeId,
@@ -19,16 +17,18 @@ export const ConnectionSourceHandle = ({
   nodeId: string;
   sourceType?: 'source' | 'source_catch';
 }) => {
-  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (v) => v.connectingEdge);
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const edges = useEdges();
+  const connection = useConnection();
+  const connectingNodeId = connection.inProgress ? connection.fromNode?.id : undefined;
 
   const { showSourceHandle, RightHandle } = useMemo(() => {
-    const node = getNodeById(nodeId);
+    const node = getNode(nodeId)?.data;
 
     /* not node/not connecting node, hidden */
     const showSourceHandle = (() => {
       if (!node) return false;
-      if (connectingEdge && connectingEdge.nodeId !== nodeId) return false;
+      if (connectingNodeId && connectingNodeId !== nodeId) return false;
       return true;
     })();
 
@@ -96,7 +96,7 @@ export const ConnectionSourceHandle = ({
       showSourceHandle,
       RightHandle
     };
-  }, [getNodeById, nodeId, connectingEdge, sourceType, edges]);
+  }, [getNode, nodeId, connectingNodeId, sourceType, edges]);
 
   return showSourceHandle ? <>{RightHandle}</> : null;
 };
@@ -106,13 +106,20 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 }: {
   nodeId: string;
 }) {
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (v) => v.connectingEdge);
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const edges = useEdges();
+  const connection = useConnection();
+  const connectingNodeId = connection.inProgress ? connection.fromNode?.id : undefined;
+  const connectingHandleId = connection.inProgress ? connection.fromHandle?.id : undefined;
+
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
+  );
 
   const { LeftHandle } = useMemo(() => {
-    const node = getNodeById(nodeId);
-    const connectingNode = getNodeById(connectingEdge?.nodeId);
+    const node = getNode(nodeId)?.data;
+    const connectingNode = connectingNodeId ? getNode(connectingNodeId)?.data : undefined;
 
     let forbidConnect = false;
     for (const edge of edges) {
@@ -125,8 +132,8 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
         }
         // The same source handle cannot connect to the same target node
         if (
-          connectingEdge &&
-          connectingEdge.handleId === edge.sourceHandle &&
+          connectingHandleId &&
+          connectingHandleId === edge.sourceHandle &&
           edge.target === nodeId
         ) {
           forbidConnect = true;
@@ -135,18 +142,18 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
     }
 
     // 目标节点容器或模板上下文不允许时禁止连接（与 Tool 柄及最终提交共用规则）
-    const sourceNode = connectingEdge ? getNodeById(connectingEdge.nodeId) : undefined;
+    const sourceNode = connectingNodeId ? getNodeById(connectingNodeId) : undefined;
     const targetTemplate = node
       ? moduleTemplatesFlat.find((item) => item.id === node.flowNodeType)
       : undefined;
-    if (node && sourceNode && connectingEdge) {
+    if (node && sourceNode && connectingHandleId) {
       if (
         !isNodeConnectionAllowed({
           targetTemplate,
           targetNode: node,
           sourceNode,
           edges,
-          handleId: connectingEdge.handleId,
+          handleId: connectingHandleId,
           getNodeById
         })
       ) {
@@ -159,11 +166,10 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
       if (!node) return false;
 
       // Tool connecting
-      if (connectingEdge && connectingEdge.handleId === NodeOutputKeyEnum.selectedTools)
-        return false;
+      if (connectingHandleId === NodeOutputKeyEnum.selectedTools) return false;
 
       // Unable to connect oneself
-      if (connectingEdge && connectingEdge.nodeId === nodeId) return false;
+      if (connectingNodeId === nodeId) return false;
       // Not the same parent node
       if (connectingNode && connectingNode?.parentNodeId !== node?.parentNodeId) return false;
 
@@ -190,7 +196,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
       showHandle,
       LeftHandle
     };
-  }, [connectingEdge, edges, nodeId, getNodeById]);
+  }, [connectingHandleId, connectingNodeId, edges, nodeId, getNodeById, getNode]);
 
   return <>{LeftHandle}</>;
 });

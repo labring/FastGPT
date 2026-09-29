@@ -27,13 +27,14 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { nanoid } from 'nanoid';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
+import { useReactFlow, useEdges, type Node } from '@xyflow/react';
 import { AppContext } from '../../../../context';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { getEditorVariables } from '../../../utils';
 import { extractCodeFromMarkdown } from './parser';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
@@ -56,7 +57,12 @@ const NodeCopilot = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const edges = useEdges();
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 

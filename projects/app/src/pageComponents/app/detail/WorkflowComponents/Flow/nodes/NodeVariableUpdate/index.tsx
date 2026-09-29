@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import NodeCard from '../render/NodeCard';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps, useEdges, useReactFlow } from '@xyflow/react';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -23,7 +23,6 @@ import type {
 import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getEditorVariables } from '../../../utils';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   valueTypeToInputType,
@@ -55,14 +54,16 @@ const getDefaultsForValueType = (valueType?: WorkflowIOValueTypeEnum): Partial<T
   };
 };
 
-const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeVariableUpdate = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { inputs = [], nodeId } = data;
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { edges, getNodeById } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
+  const edges = useEdges();
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
   );
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 

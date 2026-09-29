@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 
-const NodeAnswer = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeAnswer = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { nodeId, inputs } = data;
 
   const Render = useMemo(() => {

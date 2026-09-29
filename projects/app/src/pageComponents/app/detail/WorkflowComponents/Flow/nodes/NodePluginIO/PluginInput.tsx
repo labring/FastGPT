@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { Box, Button, HStack } from '@chakra-ui/react';
@@ -32,7 +32,7 @@ const FieldEditModal = dynamic(() => import('./InputEditModal'));
     3. When the plug-in is run, the external will calculate the value of the custom input and throw it to the output of the custom input node to start running the plug-in.
 */
 
-const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodePluginInput = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useSafeTranslation();
   const { nodeId, inputs = [], outputs } = data;
 

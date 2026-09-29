@@ -1,5 +1,5 @@
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { Edge, Node } from 'reactflow';
+import type { Edge, Node } from '@xyflow/react';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';

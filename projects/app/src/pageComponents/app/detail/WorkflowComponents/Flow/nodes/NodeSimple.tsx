@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../components/Container';
@@ -18,7 +18,7 @@ const NodeSimple = ({
   selected,
   minW = '524px',
   maxW
-}: NodeProps<FlowNodeItemType> & { minW?: string | number; maxW?: string | number }) => {
+}: NodeProps<Node<FlowNodeItemType>> & { minW?: string | number; maxW?: string | number }) => {
   const { t } = useTranslation();
   const { nodeId, catchError, inputs, outputs } = data;
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);

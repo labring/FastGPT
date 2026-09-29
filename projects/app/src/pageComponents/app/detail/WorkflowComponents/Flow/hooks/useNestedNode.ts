@@ -51,13 +51,15 @@ export const useNestedNode = ({
       };
     }
   );
-  // 订阅子节点尺寸变化：ReactFlow 完成测量后会更新 node.width / node.height,
+  // 订阅子节点尺寸变化：ReactFlow 完成测量后会更新 node.measured，
   // 把它们压成字符串当 signal,有变化就重算 bounds,避免 50ms 定时器抢跑在测量前。
   const childDimensionsSignal = useContextSelector(WorkflowInitContext, (v) => {
     let signal = '';
     for (const node of v.nodes) {
       if (node.data.parentNodeId === nodeId) {
-        signal += `${node.id}:${node.width ?? 0}x${node.height ?? 0}|`;
+        const w = node.measured?.width ?? 0;
+        const h = node.measured?.height ?? 0;
+        signal += `${node.id}:${w}x${h}|`;
       }
     }
     return signal;

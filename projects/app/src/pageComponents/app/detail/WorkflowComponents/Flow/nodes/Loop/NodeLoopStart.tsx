@@ -1,10 +1,9 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps, useNodesData } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -27,26 +26,24 @@ const typeMap = {
   [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
 };
 
-const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoopStart = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
-  const { nodeId, outputs } = data;
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { nodeId, outputs, parentNodeId } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const loopStartNode = getNodeById(nodeId);
+  const parentNode = useNodesData<Node<FlowNodeItemType>>(parentNodeId ?? '');
 
   // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
   const loopItemInputType = useMemo(() => {
-    const parentNode = getNodeById(loopStartNode?.parentNodeId);
-    const parentArrayInput = parentNode?.inputs.find(
+    const parentArrayInput = parentNode?.data?.inputs.find(
       (input) => input.key === NodeInputKeyEnum.nestedInputArray
     );
     return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
-  }, [getNodeById, loopStartNode?.parentNodeId]);
+  }, [parentNode?.data?.inputs]);
 
   // Auth update loopStartInput output
   useEffect(() => {
-    const loopArrayOutput = loopStartNode?.outputs.find(
+    const loopArrayOutput = outputs?.find(
       (output) => output.key === NodeOutputKeyEnum.nestedStartInput
     );
 
@@ -84,7 +81,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         }
       });
     }
-  }, [loopStartNode?.outputs, nodeId, onChangeNode, loopItemInputType, t]);
+  }, [outputs, nodeId, onChangeNode, loopItemInputType, t]);
 
   const Render = useMemo(() => {
     return (

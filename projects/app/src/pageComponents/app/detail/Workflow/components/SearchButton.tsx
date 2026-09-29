@@ -1,18 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../WorkflowComponents/context/workflowInitContext';
-import { useReactFlow } from 'reactflow';
+import { useReactFlow, type Node } from '@xyflow/react';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 const SearchButton = (props: ButtonProps) => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowBufferDataContext, (state) => state.setNodes);
-  const { fitView } = useReactFlow();
+  const { fitView, getNodes, setNodes } = useReactFlow<Node<FlowNodeItemType>>();
   const { isMac } = useSystem();
 
   const [keyword, setKeyword] = useState<string>();
@@ -31,51 +29,59 @@ const SearchButton = (props: ButtonProps) => {
   });
 
   const onSearch = useCallback(() => {
-    setNodes((nodes) => {
-      if (!keyword) {
-        setSearchIndex(0);
-        setSearchedNodeCount(0);
-        return nodes.map((node) => ({
+    const nodes = getNodes();
+
+    if (!keyword) {
+      setSearchIndex(0);
+      setSearchedNodeCount(0);
+      setNodes((nds) =>
+        nds.map((node) => ({
           ...node,
           data: {
             ...node.data,
             searchedText: undefined
           }
-        }));
-      }
+        }))
+      );
+      return;
+    }
 
-      const searchResult = nodes.filter((node) => {
-        return node.data.name.toLowerCase().includes(keyword.toLowerCase());
-      });
+    const searchResult = nodes.filter((node) => {
+      return node.data.name.toLowerCase().includes(keyword.toLowerCase());
+    });
 
-      if (searchResult.length === 0) {
-        return nodes.map((node) => ({
+    if (searchResult.length === 0) {
+      setSearchedNodeCount(0);
+      setNodes((nds) =>
+        nds.map((node) => ({
           ...node,
           data: {
             ...node.data,
             searchedText: undefined
           }
-        }));
-      }
+        }))
+      );
+      return;
+    }
 
-      setSearchedNodeCount(searchResult.length);
+    setSearchedNodeCount(searchResult.length);
+    const searchedNode = searchResult[searchIndex] ?? searchResult[0];
 
-      const searchedNode = searchResult[searchIndex] ?? searchResult[0];
-
-      if (searchedNode) {
-        fitView({ nodes: [searchedNode], padding: 0.6 });
-      }
-
-      return nodes.map((node) => ({
+    setNodes((nds) =>
+      nds.map((node) => ({
         ...node,
         selected: node.id === searchedNode.id,
         data: {
           ...node.data,
           searchedText: searchResult.find((item) => item.id === node.id) ? keyword : undefined
         }
-      }));
-    });
-  }, [keyword, searchIndex]);
+      }))
+    );
+
+    if (searchedNode) {
+      fitView({ nodes: [searchedNode], padding: 0.6 });
+    }
+  }, [fitView, getNodes, keyword, searchIndex, setNodes]);
 
   useThrottleEffect(
     () => {

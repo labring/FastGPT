@@ -2,14 +2,23 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { type Connection, Handle, Position } from 'reactflow';
+import {
+  type Connection,
+  Handle,
+  Position,
+  useConnection,
+  useEdges,
+  useHandleConnections,
+  useReactFlow,
+  type Node,
+  type Edge
+} from '@xyflow/react';
 import { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
-import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../../../context/workflowUIContext';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 const handleSize = '20px';
 const activeHandleSize = '24px';
@@ -20,18 +29,20 @@ type ToolHandleProps = BoxProps & {
   show: boolean;
 };
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
-  const connectingEdge = useContextSelector(WorkflowActionsContext, (ctx) => ctx.connectingEdge);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
-  const connected = useContextSelector(WorkflowBufferDataContext, (v) =>
-    v.edges.some((edge) => edge.target === nodeId && edge.targetHandle === handleId)
-  );
+  const connection = useConnection();
+  const connectingHandleId = connection.inProgress ? connection.fromHandle?.id : undefined;
+  const connectingNodeId = connection.inProgress ? connection.fromNode?.id : undefined;
+
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const edges = useEdges();
+  const toolConnections = useHandleConnections({ type: 'target', id: handleId });
+  const connected = toolConnections.length > 0;
 
   const active = useMemo(() => {
-    if (!show || connectingEdge?.handleId !== handleId) return false;
+    if (!show || connectingHandleId !== handleId || !connectingNodeId) return false;
 
-    const sourceNode = getNodeById(connectingEdge.nodeId);
-    const targetNode = getNodeById(nodeId);
+    const sourceNode = getNode(connectingNodeId)?.data;
+    const targetNode = getNode(nodeId)?.data;
     const targetTemplate = targetNode
       ? moduleTemplatesFlat.find((item) => item.id === targetNode.flowNodeType)
       : undefined;
@@ -44,11 +55,11 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         targetNode,
         sourceNode,
         edges,
-        handleId: connectingEdge.handleId,
-        getNodeById
+        handleId: connectingHandleId,
+        getNodeById: (id) => (id ? getNode(id)?.data : undefined)
       })
     );
-  }, [connectingEdge, edges, getNodeById, nodeId, show]);
+  }, [connectingHandleId, connectingNodeId, edges, getNode, nodeId, show]);
   // if top handle is connected, return null
   const showHandle = active || connected;
 
@@ -95,14 +106,15 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
-  const setEdges = useContextSelector(WorkflowBufferDataContext, (v) => v.setEdges);
-  const connectingEdge = useContextSelector(
-    WorkflowActionsContext,
-    (ctx) => ctx.connectingEdge?.nodeId === nodeId
-  );
+  const { setEdges } = useReactFlow<Node<FlowNodeItemType>, Edge>();
+  const connection = useConnection();
+  const isConnectingFromThisNode = connection.inProgress && connection.fromNode?.id === nodeId;
   const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
 
-  const active = useMemo(() => nodeIsHover || connectingEdge, [nodeIsHover, connectingEdge]);
+  const active = useMemo(
+    () => nodeIsHover || isConnectingFromThisNode,
+    [nodeIsHover, isConnectingFromThisNode]
+  );
 
   /* onConnect edge, delete tool input and switch */
   const onConnect = useCallback(

@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { Box, Button } from '@chakra-ui/react';
 import { useBoolean } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
+import { useNodesData, type Node } from '@xyflow/react';
 import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import SecretInputModal, {
   type ToolParamsFormType
@@ -15,7 +16,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
+  const node = useNodesData<Node<FlowNodeItemType>>(nodeId ?? '')?.data;
 
   const inputConfig = inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig);
   const inputList = inputConfig?.inputList;

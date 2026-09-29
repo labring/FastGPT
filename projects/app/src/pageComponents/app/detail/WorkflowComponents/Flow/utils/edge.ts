@@ -4,7 +4,7 @@
  * @license MIT - Copyright (c) 2019-2025 webkid GmbH
  */
 
-import { type Node, Position, type XYPosition } from 'reactflow';
+import { type Node, Position, type XYPosition } from '@xyflow/react';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { type NodeProps, Position, useViewport } from 'reactflow';
+import { type Node, type NodeProps, Position, useViewport } from '@xyflow/react';
 import { Box } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -18,7 +18,7 @@ import RenderOutput from './render/RenderOutput';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import DraggableInputList from '@/components/core/app/DraggableInputList';
 
-const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeUserSelect = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

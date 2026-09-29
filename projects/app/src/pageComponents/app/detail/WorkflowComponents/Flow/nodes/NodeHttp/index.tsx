@@ -1,6 +1,6 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps, useEdges, useReactFlow } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import Container from '../../components/Container';
@@ -48,7 +48,6 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import CatchError from '../render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -93,7 +92,12 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { edges, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const edges = useEdges();
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -258,8 +262,12 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
 
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const edges = useEdges();
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
+  );
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -908,7 +916,7 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
   );
 };
 
-const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeHttp = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (v) => v);

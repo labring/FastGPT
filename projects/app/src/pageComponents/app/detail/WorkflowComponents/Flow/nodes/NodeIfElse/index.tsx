@@ -3,7 +3,7 @@ import NodeCard from '../render/NodeCard';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { type NodeProps, Position } from 'reactflow';
+import { type Node, type NodeProps, Position } from '@xyflow/react';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import {
@@ -20,7 +20,7 @@ import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
-const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeIfElse = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [] } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

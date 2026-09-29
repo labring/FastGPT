@@ -15,7 +15,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { OnConnectStartParams } from 'reactflow';
+import type { OnConnectStartParams } from '@xyflow/react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { AppContext } from '../../context';

@@ -4,11 +4,11 @@ import {
   ControlButton,
   MiniMap,
   type MiniMapNodeProps,
+  type Node,
   Panel,
   useReactFlow
-} from 'reactflow';
+} from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
@@ -17,6 +17,7 @@ import styles from './index.module.scss';
 import { useKeyPress } from 'ahooks';
 import { WorkflowSnapshotContext } from '../../context/workflowSnapshotContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 const buttonStyle = {
   border: 'none',
@@ -25,9 +26,8 @@ const buttonStyle = {
 };
 
 const FlowController = React.memo(function FlowController() {
-  const { fitView, zoomIn, zoomOut, getNodes } = useReactFlow();
+  const { fitView, zoomIn, zoomOut, getNode } = useReactFlow<Node<FlowNodeItemType>>();
   const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowSnapshotContext, (v) => v);
-  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const {
     workflowControlMode,
     setWorkflowControlMode,
@@ -77,15 +77,15 @@ const FlowController = React.memo(function FlowController() {
   const MiniMapNode = useCallback(
     ({ x, y, width, height, color, id }: MiniMapNodeProps) => {
       // If the node parentNode is folded, the child node will not be displayed
-      const node = getNodeById(id);
-      const parentNode = node?.parentNodeId ? getNodeById(node?.parentNodeId) : undefined;
-      if (parentNode?.isFolded) {
+      const node = getNode(id);
+      const parentNode = node?.data.parentNodeId ? getNode(node.data.parentNodeId) : undefined;
+      if (parentNode?.data.isFolded) {
         return null;
       }
 
       return <rect x={x} y={y} width={width} height={height} fill={color} />;
     },
-    [getNodeById]
+    [getNode]
   );
 
   const Render = useMemo(() => {
@@ -198,8 +198,7 @@ const FlowController = React.memo(function FlowController() {
           <MyTooltip label={t('common:page_center')}>
             <ControlButton
               onClick={() => {
-                const validNodes = getNodes().filter((node) => node.width && node.height);
-                fitView({ nodes: validNodes, padding: 0.3 });
+                fitView({ padding: 0.3 });
               }}
               style={buttonStyle}
               className={`custom-workflow-fix_view ${styles.customControlButton}`}
@@ -223,7 +222,6 @@ const FlowController = React.memo(function FlowController() {
     presentationMode,
     setWorkflowControlMode,
     setPresentationMode,
-    getNodes,
     fitView
   ]);
 

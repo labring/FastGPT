@@ -2,7 +2,7 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 /* eslint-disable react-hooks/refs -- react-beautiful-dnd requires render-time drag props. */
 import React, { useMemo, useState } from 'react';
-import { type NodeProps, useViewport } from 'reactflow';
+import { type Node, type NodeProps, useViewport } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
@@ -34,7 +34,7 @@ import DndDrag, {
 } from '@fastgpt/web/components/common/DndDrag';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
-const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeFormInput = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { nodeId, inputs, outputs } = data;
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

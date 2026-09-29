@@ -23,7 +23,7 @@ import {
   type NodeChange,
   useEdgesState,
   useNodesState
-} from 'reactflow';
+} from '@xyflow/react';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -66,11 +66,11 @@ export type WorkflowDataContextType = {
     condition?: (node: FlowNodeItemType) => boolean
   ) => FlowNodeItemType | undefined;
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
-  onNodesChange: OnChange<NodeChange>;
+  onNodesChange: OnChange<NodeChange<Node<FlowNodeItemType>>>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
   getNodeList: () => FlowNodeItemType[];
-  edges: Edge<any>[];
-  setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
+  edges: Edge[];
+  setEdges: Dispatch<SetStateAction<Edge[]>>;
   onEdgesChange: OnChange<EdgeChange>;
   forbiddenSaveSnapshot: React.MutableRefObject<boolean>;
 
@@ -123,7 +123,7 @@ const WorkflowInitContextProvider = ({
   basicNodeTemplates: FlowNodeTemplateType[];
 }) => {
   // Nodes
-  const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
+  const [nodes = [], setNodes, onNodesChange] = useNodesState<Node<FlowNodeItemType>>([]);
   const getNodes = useMemoizedFn(() => nodes);
 
   const nodeFormat = useMemo(() => {
@@ -282,7 +282,7 @@ const WorkflowInitContextProvider = ({
   });
 
   // Edges
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
   const toolNodesMap = useMemoEnhance(() => {
     const selectedToolEdgeMap: Record<string, boolean> = {};

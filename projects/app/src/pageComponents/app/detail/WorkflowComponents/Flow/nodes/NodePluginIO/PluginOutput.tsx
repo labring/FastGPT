@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -30,7 +30,7 @@ const customOutputConfig = {
   showDefaultValue: true
 };
 
-const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodePluginOutput = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

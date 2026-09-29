@@ -8,7 +8,7 @@ import {
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
-import type { Node } from 'reactflow';
+import type { Node } from '@xyflow/react';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useMemoizedFn } from 'ahooks';
 
@@ -79,9 +79,10 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
 
       if (!loopNode) return;
       if (childNodes.length === 0) return;
-      // 任一子节点尚未被 ReactFlow 测量(width/height 未定义),直接放弃本次计算,
+
+      // 任一子节点尚未被 ReactFlow 测量(measured 未就绪),直接放弃本次计算,
       // 由上游的 dimensionsSignal 监听在尺寸到齐后再触发一次。
-      if (childNodes.some((n) => !n.width || !n.height)) return;
+      if (childNodes.some((n) => !n.measured?.width || !n.measured?.height)) return;
       const loopChilWidth =
         loopNode.data.inputs.find((node) => node.key === NodeInputKeyEnum.nodeWidth)?.value ?? 0;
       const loopChilHeight =
@@ -90,18 +91,17 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
       // 初始化为第一个节点的边界
       let minX = childNodes[0].position.x;
       let minY = childNodes[0].position.y;
-      let maxX = childNodes[0].position.x + (childNodes[0].width || 0);
-      let maxY = childNodes[0].position.y + (childNodes[0].height || 0);
+      let maxX = childNodes[0].position.x + (childNodes[0].measured?.width ?? 0);
+      let maxY = childNodes[0].position.y + (childNodes[0].measured?.height ?? 0);
 
       // 遍历所有节点找出最小/最大边界
       childNodes.forEach((node) => {
-        const nodeWidth = node.width || 0;
-        const nodeHeight = node.height || 0;
+        const { width = 0, height = 0 } = node.measured ?? {};
 
         minX = Math.min(minX, node.position.x);
         minY = Math.min(minY, node.position.y);
-        maxX = Math.max(maxX, node.position.x + nodeWidth);
-        maxY = Math.max(maxY, node.position.y + nodeHeight);
+        maxX = Math.max(maxX, node.position.x + width);
+        maxY = Math.max(maxY, node.position.y + height);
       });
 
       const childWidth = Math.max(maxX - minX + 80, 0);
@@ -109,8 +109,8 @@ export const WorkflowComputeProvider = ({ children }: { children: React.ReactNod
 
       const diffWidth = childWidth - loopChilWidth;
       const diffHeight = childHeight - loopChilHeight;
-      const targetNodeWidth = (loopNode.width ?? 0) + diffWidth;
-      const targetNodeHeight = (loopNode.height ?? 0) + diffHeight;
+      const targetNodeWidth = (loopNode.measured?.width ?? 0) + diffWidth;
+      const targetNodeHeight = (loopNode.measured?.height ?? 0) + diffHeight;
 
       const offsetHeight =
         loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.nestedNodeInputHeight)

@@ -1,6 +1,7 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import React, { useEffect, useMemo, useRef } from 'react';
-import { type NodeProps } from 'reactflow';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { type Node, type NodeProps, useReactFlow } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -26,25 +27,28 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { WorkflowInitContext } from '../../../context/workflowInitContext';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
-const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeLoopRun = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded, catchError } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const splitOutput = useContextSelector(WorkflowUtilsContext, (v) => v.splitOutput);
-  const { getNodeById, setNodes, childrenNodeIdListMap } = useContextSelector(
+  const { setNodes, getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
+  );
+  const childrenNodeIdListMap = useContextSelector(
     WorkflowBufferDataContext,
-    (v) => v
+    (v) => v.childrenNodeIdListMap
   );
   const childNodeIds = useMemo(
     () => childrenNodeIdListMap[nodeId] ?? [],
     [childrenNodeIdListMap, nodeId]
   );
-  const getRawNodeById = useContextSelector(WorkflowInitContext, (v) => v.getRawNodeById);
 
   const mode =
     (inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
@@ -93,10 +97,14 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     const startNode = startChildId ? getNodeById(startChildId) : undefined;
 
     if (startNode) {
-      const hasIndex = startNode.outputs.some((o) => o.key === NodeOutputKeyEnum.currentIndex);
-      const hasItem = startNode.outputs.some((o) => o.key === NodeOutputKeyEnum.currentItem);
+      const hasIndex = startNode.outputs.some(
+        (o: FlowNodeOutputItemType) => o.key === NodeOutputKeyEnum.currentIndex
+      );
+      const hasItem = startNode.outputs.some(
+        (o: FlowNodeOutputItemType) => o.key === NodeOutputKeyEnum.currentItem
+      );
       const hasIteration = startNode.outputs.some(
-        (o) => o.key === NodeOutputKeyEnum.currentIteration
+        (o: FlowNodeOutputItemType) => o.key === NodeOutputKeyEnum.currentIteration
       );
 
       // Store i18n keys so downstream `t(label)` stays reactive.
@@ -174,7 +182,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         (id) => getNodeById(id)?.flowNodeType === FlowNodeTypeEnum.loopRunBreak
       );
       if (!hasBreak) {
-        const startRaw = startChildId ? getRawNodeById(startChildId) : undefined;
+        const startRaw = startChildId ? getNode(startChildId) : undefined;
         const position = startRaw?.position
           ? { x: startRaw.position.x + 500, y: startRaw.position.y + 150 }
           : { x: 500, y: 400 };
@@ -184,10 +192,10 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           parentNodeId: nodeId,
           t
         });
-        setNodes((state) => state.concat(breakNode));
+        setNodes((state) => [...state, breakNode]);
       }
     }
-  }, [mode, childNodeIds, nodeId, getNodeById, getRawNodeById, onChangeNode, setNodes, t]);
+  }, [mode, childNodeIds, nodeId, getNodeById, getNode, onChangeNode, setNodes, t]);
 
   useEffect(() => {
     const declared = inputs.filter((i) => i.canEdit === true);

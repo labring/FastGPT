@@ -7,7 +7,7 @@
 */
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -20,7 +20,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useNestedNode } from '../../hooks/useNestedNode';
 
-const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeParallelRun = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded } = data;
   const { feConfigs } = useSystemStore();

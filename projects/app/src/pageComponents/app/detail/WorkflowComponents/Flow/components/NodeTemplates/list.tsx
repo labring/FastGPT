@@ -53,10 +53,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useLocalStorageState, useMemoizedFn } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
-import type { Node } from 'reactflow';
-import { useReactFlow } from 'reactflow';
+import { type Node, type Edge, useReactFlow } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { sliderWidth } from '../../NodeTemplatesModal';
@@ -251,10 +249,12 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const { edges, getNodeById, getNodes } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getIntersectingNodes, getEdges, getNodes, getNode } = useReactFlow<
+    Node<FlowNodeItemType>,
+    Edge
+  >();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  const { getIntersectingNodes } = useReactFlow();
   const [lastSelectedModelId] = useLocalStorageState<string>('workflow_default_llm_model', {
     defaultValue: ''
   });
@@ -306,6 +306,9 @@ const NodeTemplateList = ({
             return Promise.reject(e);
           }
         })();
+
+        const edges = getEdges();
+        const getNodeById = (id?: string | null) => (id ? getNode(id)?.data : undefined);
 
         const currentNode = getNodeById(handleParams?.nodeId);
         // 工具选择器保留历史可选项；未声明 isTool 的节点按普通节点初始化输入类型。
@@ -481,9 +484,9 @@ const NodeTemplateList = ({
     },
     [
       computedNewNodeName,
-      getNodeById,
+      getNode,
       getNodes,
-      edges,
+      getEdges,
       handleParams,
       isToolSelector,
       getIntersectingNodes,

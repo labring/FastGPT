@@ -12,7 +12,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import React, { useCallback, useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps, useEdges, useReactFlow } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
 
 import Container from '../../components/Container';
@@ -26,7 +26,6 @@ import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput'
 
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -95,14 +94,19 @@ const ManualInputLabel = React.memo(function ManualInputLabel({
 });
 
 // TODO: 待优化，不一定需要重写，用模板渲染也可以
-const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeAgent = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { nodeId, catchError, inputs, outputs } = data;
   const { t } = useTranslation();
   const { toast } = useToast();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
-  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const edges = useEdges();
+  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodeById = useCallback(
+    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
+    [getNode]
+  );
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
   const llmMaxQuoteContext = useWorkflowQuoteLimit();

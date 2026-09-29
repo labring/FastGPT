@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { type NodeProps, Position } from 'reactflow';
+import { type Node, type NodeProps, Position } from '@xyflow/react';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -19,7 +19,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
-const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeCQNode = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

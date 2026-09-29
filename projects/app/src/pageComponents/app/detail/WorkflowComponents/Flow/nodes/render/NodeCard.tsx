@@ -58,7 +58,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useBoolean, useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useState } from 'react';
-import { useReactFlow } from 'reactflow';
+import { useReactFlow, useNodesData, type Node } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
@@ -141,10 +141,7 @@ const NodeCard = (props: Props) => {
 
   useNodeOutputValidity(nodeId);
 
-  const { hasToolNode, getNodeById, foldedNodesMap } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
+  const hasToolNode = useContextSelector(WorkflowBufferDataContext, (v) => v.hasToolNode);
   const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
@@ -251,12 +248,9 @@ const NodeCard = (props: Props) => {
   }, [presentationMode, isFolded, colorSchema, selected, isError, pluginId]);
 
   // Current node and parent node
-  const { node, hidden } = useMemo(() => {
-    const node = getNodeById(nodeId);
-    const hidden = node?.parentNodeId ? foldedNodesMap[node.parentNodeId] : false;
-
-    return { node, hidden };
-  }, [foldedNodesMap, getNodeById, nodeId]);
+  const parentNode = useNodesData<Node<FlowNodeItemType>>(props.parentNodeId ?? '');
+  const hidden = !!parentNode?.data?.isFolded;
+  const node = props;
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
@@ -917,14 +911,13 @@ const MenuRender = React.memo(function MenuRender({
 }) {
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
-  const { setNodes, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { deleteElements } = useReactFlow();
+  const { deleteElements, setNodes } = useReactFlow<Node<FlowNodeItemType>>();
 
   const { computedNewNodeName } = useWorkflowUtils();
 
   // Get current node to check if folded
-  const currentNode = getNodeById(nodeId);
+  const currentNode = useNodesData<Node<FlowNodeItemType>>(nodeId)?.data;
   const isFolded = currentNode?.isFolded;
 
   const onCopyNode = useCallback(

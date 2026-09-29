@@ -1,6 +1,6 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useCallback } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from './render/NodeCard';
 import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
-const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeToolSet = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const toolList = getNodeToolSetList(data);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

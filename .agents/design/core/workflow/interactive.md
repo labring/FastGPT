@@ -305,7 +305,7 @@ export const YourNodeComponent = React.memo(function YourNodeComponent({
 
 ```typescript
 import React, { useMemo } from 'react';
-import { type NodeProps } from 'reactflow';
+import { type Node, type NodeProps } from '@xyflow/react';
 import { Box, Button } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -319,7 +319,7 @@ import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 
-const NodeYourNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
+const NodeYourNode = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);

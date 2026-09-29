@@ -1,13 +1,13 @@
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type Node } from 'reactflow';
+import { useReactFlow, useEdges, useNodes, type Node } from '@xyflow/react';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 import { buildNodeTemplateContext } from '@fastgpt/global/core/workflow/template/context';
 import { useMemoizedFn } from 'ahooks';
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../context/workflowInitContext';
 import { WorkflowActionsContext } from '../context/workflowActionsContext';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 
@@ -19,9 +19,26 @@ type ModuleTemplateListProps = {
 export const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
-  const { setNodes, edges, getNodeById, hasToolNode, hasLoopRunNode } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
+  const { setNodes, getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const edges = useEdges();
+  const nodes = useNodes<Node<FlowNodeItemType>>();
+
+  const getNodeById = useCallback(
+    (nodeId: string | null | undefined) => (nodeId ? getNode(nodeId)?.data : undefined),
+    [getNode]
+  );
+  const hasToolNode = useMemo(
+    () =>
+      nodes.some(
+        (n) =>
+          n.data.flowNodeType === FlowNodeTypeEnum.tool ||
+          n.data.flowNodeType === FlowNodeTypeEnum.toolSet
+      ),
+    [nodes]
+  );
+  const hasLoopRunNode = useMemo(
+    () => nodes.some((n) => n.data.flowNodeType === FlowNodeTypeEnum.loopRun),
+    [nodes]
   );
   const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
     WorkflowActionsContext,
@@ -58,16 +75,13 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   } = useNodeTemplates(templateContext);
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
-    setNodes((state) => {
-      const newState = state
-        .map((node) => ({
-          ...node,
-          selected: false
-        }))
-        // @ts-ignore
-        .concat(newNodes);
-      return newState;
-    });
+    setNodes((state) => [
+      ...state.map((node) => ({
+        ...node,
+        selected: false
+      })),
+      ...newNodes
+    ]);
 
     // 新增节点后立即同步下方待完善提示，不依赖 10s 定时扫描或用户首次编辑。
     setTimeout(() => {

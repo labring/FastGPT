@@ -1,5 +1,5 @@
 import React, { type Dispatch, useCallback } from 'react';
-import { useViewport } from 'reactflow';
+import { useViewport, useNodes, useEdges, type Node } from '@xyflow/react';
 import { Box } from '@chakra-ui/react';
 
 import QGConfig from '@/components/core/app/QGConfig';
@@ -9,9 +9,10 @@ import InputGuideConfig from '@/components/core/app/InputGuideConfig';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import type { VariableItemType } from '@fastgpt/global/core/app/variable/type';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
@@ -342,12 +343,11 @@ function QuestionInputGuide({ chatConfig: { chatInputGuide }, setAppDetail }: Co
 
 function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: ComponentProps) {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const workflowStartNode = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v.workflowStartNode
-  );
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const nodes = useNodes<Node<FlowNodeItemType>>();
+  const edges = useEdges();
+  const workflowStartNode = nodes.find(
+    (n) => n.data.flowNodeType === FlowNodeTypeEnum.workflowStart
+  )?.data;
 
   if (!workflowStartNode) return null;
 
