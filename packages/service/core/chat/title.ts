@@ -24,6 +24,20 @@ const logger = getLogger(LogCategories.MODULE.CHAT);
 
 export const DEFAULT_CHAT_TITLE = '新对话';
 
+/**
+ * 按用户自定义标题优先、生成标题次之的规则返回会话展示标题。
+ * 空白标题按未设置处理，调用方可通过 fallbackTitle 保留不同接口的兜底语义。
+ */
+export const getDisplayChatTitle = ({
+  customTitle,
+  title,
+  fallbackTitle = ''
+}: {
+  customTitle?: string | null;
+  title?: string | null;
+  fallbackTitle?: string;
+}) => customTitle?.trim() || title?.trim() || fallbackTitle;
+
 const GENERATED_CHAT_TITLE_MAX_LENGTH = 80;
 const FALLBACK_CHAT_TITLE_MAX_LENGTH = 20;
 const CHAT_TITLE_QUESTION_MAX_LENGTH = 1000;

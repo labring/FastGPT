@@ -25,6 +25,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
+import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 
 const appChatSourceMatch = {
   $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
@@ -367,10 +368,17 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
 
   const finalList = listWithRegion.map((item) => {
     const result = sourceMemberMap.get(String(item._id)) || { ...item, sourceMember: undefined };
-    if (item.source !== ChatSourceEnum.share || !item.outLinkUid) return result;
+    const resultWithTitle = {
+      ...result,
+      title: getDisplayChatTitle({ customTitle: item.customTitle, title: item.title })
+    };
+    if (item.source !== ChatSourceEnum.share || !item.outLinkUid) return resultWithTitle;
 
     const member = outLinkMemberMap.get(String(item.outLinkUid));
-    return { ...result, sourceMember: member ? formatSourceMember(member) : undefined };
+    return {
+      ...resultWithTitle,
+      sourceMember: member ? formatSourceMember(member) : undefined
+    };
   });
 
   return GetAppChatLogsResponseSchema.parse({

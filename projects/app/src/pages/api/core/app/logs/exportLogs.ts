@@ -28,6 +28,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { getTimezoneCodeFromStr } from '@fastgpt/global/common/time/timezone';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
+import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
@@ -449,7 +450,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       ? dayjs(doc.updateTime).utcOffset(timezoneCode).format('YYYY-MM-DD HH:mm:ss')
       : '';
     const source = sourcesMap[doc.source as ChatSourceEnum]?.label || doc.source;
-    const titleStr = doc.customTitle || doc.title || '';
+    const titleStr = getDisplayChatTitle({ customTitle: doc.customTitle, title: doc.title });
     const tmbName = doc.outLinkUid ? doc.outLinkUid : memberDisplayMap.get(String(doc.tmbId))?.name;
     const region = getLocationFromIp(doc.originIp, locale);
 

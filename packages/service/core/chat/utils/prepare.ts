@@ -308,7 +308,9 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     });
 
     const titleGeneration = (() => {
-      if (params.fixedTitle && preparedChatRound.shouldGenerateTitle) {
+      if (!preparedChatRound.shouldGenerateTitle) return;
+
+      if (params.fixedTitle) {
         const fixedTitle = params.fixedTitle;
         return (async () => {
           const title = normalizeGeneratedTitle(fixedTitle);
