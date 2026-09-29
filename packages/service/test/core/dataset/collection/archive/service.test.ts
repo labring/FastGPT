@@ -4,7 +4,8 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 const mocks = vi.hoisted(() => ({
   findArchiveCollectionsByIds: vi.fn(),
-  iterateArchiveCollectionsByParentIds: vi.fn()
+  iterateArchiveCollectionsByParentIds: vi.fn(),
+  iterateArchiveImageFilesByCollectionIds: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/archive/entity', () => mocks);
@@ -124,6 +125,7 @@ describe('buildDatasetArchivePlan', () => {
           collections.filter((item) => item.parentId && parentIds.includes(item.parentId))
         )
     );
+    mocks.iterateArchiveImageFilesByCollectionIds.mockReturnValue(iterateCollections([]));
   });
 
   it('deduplicates selected descendants and recursively includes files with their ancestors', async () => {
@@ -137,7 +139,8 @@ describe('buildDatasetArchivePlan', () => {
     expect(plan.directories.map((item) => item.collectionId)).toEqual([
       ids.parent,
       ids.folder,
-      ids.childFolder
+      ids.childFolder,
+      ids.image
     ]);
     expect(plan.files.map((item) => item.collectionId)).toEqual([
       ids.childFile,
@@ -145,6 +148,89 @@ describe('buildDatasetArchivePlan', () => {
       ids.standaloneFile
     ]);
     expect(plan.files.map((item) => item.collectionId)).not.toContain(ids.image);
+  });
+
+  it('expands an image collection into a directory with one archive file per image', async () => {
+    mocks.iterateArchiveImageFilesByCollectionIds.mockReturnValue(
+      iterateCollections([
+        {
+          dataId: '68ad85a7463006c963799ad1',
+          collectionId: ids.image,
+          imageId: `dataset/${datasetId}/image-1`
+        },
+        {
+          dataId: '68ad85a7463006c963799ad2',
+          collectionId: ids.image,
+          imageId: `dataset/${datasetId}/image-2`
+        },
+        {
+          dataId: '68ad85a7463006c963799ad3',
+          collectionId: ids.image,
+          imageId: `dataset/${datasetId}/image-1`
+        }
+      ])
+    );
+
+    const plan = await buildDatasetArchivePlan({
+      teamId,
+      datasetId,
+      datasetName: 'Knowledge Base',
+      collectionIds: [ids.image]
+    });
+
+    expect(plan.directories.map((item) => item.collectionId)).toEqual([
+      ids.parent,
+      ids.folder,
+      ids.image
+    ]);
+    expect(plan.files).toEqual([
+      {
+        collectionId: '68ad85a7463006c963799ad1',
+        parentId: ids.image,
+        fileId: `dataset/${datasetId}/image-1`
+      },
+      {
+        collectionId: '68ad85a7463006c963799ad2',
+        parentId: ids.image,
+        fileId: `dataset/${datasetId}/image-2`
+      }
+    ]);
+    expect(plan.permissionCollectionIds).toContain(ids.image);
+  });
+
+  it('stops reading image data when the archive file limit is exceeded', async () => {
+    const imageFiles = Array.from({ length: 3 }, (_, index) => ({
+      dataId: `68ad85a7463006c963799ae${index + 1}`,
+      collectionId: ids.image,
+      imageId: `dataset/${datasetId}/image-${index + 1}`
+    }));
+    let yieldedCount = 0;
+    let iteratorClosed = false;
+    mocks.iterateArchiveImageFilesByCollectionIds.mockReturnValue(
+      (async function* () {
+        try {
+          for (const file of imageFiles) {
+            yieldedCount += 1;
+            yield file;
+          }
+        } finally {
+          iteratorClosed = true;
+        }
+      })()
+    );
+
+    await expect(
+      buildDatasetArchivePlan({
+        teamId,
+        datasetId,
+        datasetName: 'Knowledge Base',
+        collectionIds: [ids.image],
+        maxFiles: 2
+      })
+    ).rejects.toBe(DatasetErrEnum.archiveLimitExceeded);
+
+    expect(yieldedCount).toBe(3);
+    expect(iteratorClosed).toBe(true);
   });
 
   it('keeps an explicitly selected empty folder', async () => {
@@ -386,6 +472,38 @@ describe('prepareDatasetArchiveManifest', () => {
       {
         key: `dataset/${datasetId}/deep-file`,
         path: 'Knowledge Base/Docs/Reports/Report (2).pdf'
+      }
+    ]);
+  });
+
+  it('places image files below their image collection directory', async () => {
+    const manifest = await prepareDatasetArchiveManifest({
+      plan: {
+        ...basePlan,
+        directories: [
+          { collectionId: ids.folder, parentId: null, name: 'Assets' },
+          { collectionId: ids.image, parentId: ids.folder, name: 'Product images' }
+        ],
+        files: [
+          {
+            collectionId: '68ad85a7463006c963799ad1',
+            parentId: ids.image,
+            fileId: `dataset/${datasetId}/image-1`
+          }
+        ]
+      },
+      getFileMetadata: vi.fn(async () => ({ filename: 'front.png', contentLength: 10 })),
+      limits: {
+        maxFiles: 10,
+        maxSourceSizeBytes: 100,
+        prepareDeadlineAt: Date.now() + 10_000
+      }
+    });
+
+    expect(manifest.files).toEqual([
+      {
+        key: `dataset/${datasetId}/image-1`,
+        path: 'Knowledge Base/Assets/Product images/front.png'
       }
     ]);
   });

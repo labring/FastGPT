@@ -1,5 +1,7 @@
 import { MongoDatasetCollection } from '../schema';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { MongoDatasetData } from '../../data/schema';
+import { MongoDatasetTraining } from '../../training/schema';
 
 export type DatasetArchiveCollection = {
   collectionId: string;
@@ -7,6 +9,12 @@ export type DatasetArchiveCollection = {
   name: string;
   type: string;
   fileId?: string;
+};
+
+export type DatasetArchiveImageFile = {
+  dataId: string;
+  collectionId: string;
+  imageId: string;
 };
 
 const archiveCollectionFields = '_id parentId name type fileId';
@@ -75,6 +83,65 @@ export async function* iterateArchiveCollectionsByParentIds({
     }
   } finally {
     await cursor.close().catch(() => undefined);
+  }
+}
+
+/** 按可信团队和知识库边界分批读取图片集合中的原始图片 key。 */
+export async function* iterateArchiveImageFilesByCollectionIds({
+  teamId,
+  datasetId,
+  collectionIds
+}: {
+  teamId: string;
+  datasetId: string;
+  collectionIds: string[];
+}): AsyncGenerator<DatasetArchiveImageFile> {
+  if (collectionIds.length === 0) return;
+
+  const filter = {
+    teamId,
+    datasetId,
+    collectionId: { $in: collectionIds },
+    imageId: { $type: 'string', $ne: '' }
+  };
+  const fields = '_id collectionId imageId chunkIndex';
+  const sort = { collectionId: 1, chunkIndex: 1, _id: 1 } as const;
+
+  const dataCursor = MongoDatasetData.find(filter, fields)
+    .sort(sort)
+    .lean()
+    .cursor({ batchSize: 500 });
+
+  try {
+    for await (const item of dataCursor) {
+      if (typeof item.imageId !== 'string' || !item.imageId) continue;
+      yield {
+        dataId: String(item._id),
+        collectionId: String(item.collectionId),
+        imageId: item.imageId
+      };
+    }
+  } finally {
+    await dataCursor.close().catch(() => undefined);
+  }
+
+  // 图片训练成功前只存在于训练队列；补读这些记录，避免源文件已在 S3 但归档为空。
+  const trainingCursor = MongoDatasetTraining.find(filter, fields)
+    .sort(sort)
+    .lean()
+    .cursor({ batchSize: 500 });
+
+  try {
+    for await (const item of trainingCursor) {
+      if (typeof item.imageId !== 'string' || !item.imageId) continue;
+      yield {
+        dataId: String(item._id),
+        collectionId: String(item.collectionId),
+        imageId: item.imageId
+      };
+    }
+  } finally {
+    await trainingCursor.close().catch(() => undefined);
   }
 }
 

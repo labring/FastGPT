@@ -12,6 +12,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 const preparationMocks = vi.hoisted(() => ({
   findArchiveCollectionsByIds: vi.fn(),
   iterateArchiveCollectionsByParentIds: vi.fn(),
+  iterateArchiveImageFilesByCollectionIds: vi.fn(),
   findArchiveCollectionPermissionItems: vi.fn(),
   getFileMetadata: vi.fn()
 }));
@@ -132,6 +133,9 @@ describe('prepareDatasetArchive', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     preparationMocks.iterateArchiveCollectionsByParentIds.mockImplementation(() =>
+      (async function* () {})()
+    );
+    preparationMocks.iterateArchiveImageFilesByCollectionIds.mockImplementation(() =>
       (async function* () {})()
     );
     preparationMocks.getFileMetadata.mockResolvedValue({ filename: 'file.txt', contentLength: 1 });

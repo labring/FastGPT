@@ -4,6 +4,7 @@ import { isAuthorizedDatasetFileS3Key } from '../../../../common/s3/sources/data
 import {
   findArchiveCollectionsByIds,
   iterateArchiveCollectionsByParentIds,
+  iterateArchiveImageFilesByCollectionIds,
   type DatasetArchiveCollection
 } from './entity';
 import { reserveUniqueArchiveName, sanitizeArchivePathSegment } from './utils';
@@ -97,7 +98,8 @@ export const buildDatasetArchivePlan = async ({
     .filter(
       (collection) =>
         collection.type === DatasetCollectionTypeEnum.folder ||
-        collection.type === DatasetCollectionTypeEnum.file
+        collection.type === DatasetCollectionTypeEnum.file ||
+        collection.type === DatasetCollectionTypeEnum.images
     )
     .filter((collection) => {
       const visited = new Set<string>([collection.collectionId]);
@@ -132,7 +134,12 @@ export const buildDatasetArchivePlan = async ({
     while (parentId && !visited.has(parentId)) {
       visited.add(parentId);
       const parent = knownCollections.get(parentId);
-      if (!parent || parent.type !== DatasetCollectionTypeEnum.folder) {
+      if (
+        !parent ||
+        ![DatasetCollectionTypeEnum.folder, DatasetCollectionTypeEnum.images].includes(
+          parent.type as DatasetCollectionTypeEnum
+        )
+      ) {
         throw DatasetErrEnum.archiveInvalidFile;
       }
       includedDirectories.set(parent.collectionId, parent);
@@ -141,12 +148,16 @@ export const buildDatasetArchivePlan = async ({
   };
 
   let folderFrontier: string[] = [];
+  const imageCollectionIds = new Set<string>();
   for (const root of selectedRoots) {
     addAncestors(root);
     permissionCollectionIds.add(root.collectionId);
     if (root.type === DatasetCollectionTypeEnum.folder) {
       includedDirectories.set(root.collectionId, root);
       folderFrontier.push(root.collectionId);
+    } else if (root.type === DatasetCollectionTypeEnum.images) {
+      includedDirectories.set(root.collectionId, root);
+      imageCollectionIds.add(root.collectionId);
     } else {
       includedFiles.set(root.collectionId, root);
     }
@@ -181,6 +192,10 @@ export const buildDatasetArchivePlan = async ({
         permissionCollectionIds.add(child.collectionId);
         includedDirectories.set(child.collectionId, child);
         if (!expandedFolders.has(child.collectionId)) folderFrontier.push(child.collectionId);
+      } else if (child.type === DatasetCollectionTypeEnum.images) {
+        permissionCollectionIds.add(child.collectionId);
+        includedDirectories.set(child.collectionId, child);
+        imageCollectionIds.add(child.collectionId);
       } else if (child.type === DatasetCollectionTypeEnum.file) {
         permissionCollectionIds.add(child.collectionId);
         includedFiles.set(child.collectionId, child);
@@ -188,6 +203,29 @@ export const buildDatasetArchivePlan = async ({
           throw DatasetErrEnum.archiveLimitExceeded;
         }
       }
+    }
+  }
+
+  const includedImageKeys = new Set<string>();
+  for await (const imageFile of iterateArchiveImageFilesByCollectionIds({
+    teamId,
+    datasetId,
+    collectionIds: [...imageCollectionIds]
+  })) {
+    assertActive?.();
+    // 图片完成训练后会同时短暂存在于两个来源，按集合和对象 key 去重并优先保留已完成数据。
+    const imageKey = `${imageFile.collectionId}:${imageFile.imageId}`;
+    if (includedImageKeys.has(imageKey)) continue;
+    includedImageKeys.add(imageKey);
+    includedFiles.set(imageFile.dataId, {
+      collectionId: imageFile.dataId,
+      parentId: imageFile.collectionId,
+      name: imageFile.dataId,
+      type: DatasetCollectionTypeEnum.file,
+      fileId: imageFile.imageId
+    });
+    if (maxFiles !== undefined && includedFiles.size > maxFiles) {
+      throw DatasetErrEnum.archiveLimitExceeded;
     }
   }
 
