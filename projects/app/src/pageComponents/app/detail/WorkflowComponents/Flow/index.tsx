@@ -17,15 +17,21 @@ import HelperLines, { type HelperLinesController } from './components/HelperLine
 import { useWorkflow } from './hooks/useWorkflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { NodeProps } from 'reactflow';
-import ReactFlow, { SelectionMode, useReactFlow } from 'reactflow';
+import ReactFlow, { SelectionMode, useReactFlow, useStore, useViewport } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WorkflowUIContext } from './context/workflowUIContext';
 import { WorkflowSelectionProvider } from './context/workflowSelectionContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import { getDimensionedNodes } from './context/dimensionIndex';
+import { getDimensionedNodes, WORKFLOW_NODE_MEASUREMENT_ESTIMATE } from './context/dimensionIndex';
+import {
+  ConnectionSourceHandle,
+  ConnectionTargetHandle
+} from './nodes/render/Handle/ConnectionHandle';
+import { ToolSourceHandle, ToolTargetHandle } from './nodes/render/Handle/ToolHandle';
+import { useIsToolNode } from './nodes/render/useWorkflowDocument';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
@@ -146,18 +152,137 @@ const MeasuredNode = React.memo(
 );
 MeasuredNode.displayName = 'MeasuredNode';
 
+const NodeShell = React.memo((props: NodeProps<FlowNodeItemType>) => {
+  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
+  const dimension = getNodeDimension(props.id) ?? WORKFLOW_NODE_MEASUREMENT_ESTIMATE;
+  const isToolNode = useIsToolNode(props.id);
+  const showToolSource = props.data.flowNodeType === FlowNodeTypeEnum.toolCall;
+
+  return (
+    <Box
+      position={'relative'}
+      w={`${dimension.width}px`}
+      h={`${dimension.height}px`}
+      overflow={'visible'}
+    >
+      <ToolTargetHandle show={isToolNode} nodeId={props.id} />
+      <ConnectionSourceHandle nodeId={props.id} />
+      <ConnectionTargetHandle nodeId={props.id} />
+      {showToolSource && <ToolSourceHandle nodeId={props.id} />}
+    </Box>
+  );
+});
+NodeShell.displayName = 'NodeShell';
+
+const VirtualizedNode = React.memo(
+  ({
+    nodeComponent,
+    ...props
+  }: NodeProps<FlowNodeItemType> & {
+    nodeComponent: CanvasNodeComponent;
+  }) => {
+    const mode = useContextSelector(
+      WorkflowCanvasContext,
+      (v) => v.renderModes.get(props.id) ?? 'shell'
+    );
+
+    return mode === 'shell' ? (
+      <NodeShell {...props} />
+    ) : (
+      <MeasuredNode nodeComponent={nodeComponent} {...props} />
+    );
+  }
+);
+VirtualizedNode.displayName = 'VirtualizedNode';
+
 const nodeTypes = Object.fromEntries(
   Object.entries(baseNodeTypes).map(([type, nodeComponent]) => {
-    const MeasuredNodeType = React.memo((props: NodeProps<FlowNodeItemType>) => (
-      <MeasuredNode nodeComponent={nodeComponent} {...props} />
+    const VirtualizedNodeType = React.memo((props: NodeProps<FlowNodeItemType>) => (
+      <VirtualizedNode nodeComponent={nodeComponent} {...props} />
     ));
-    MeasuredNodeType.displayName = `MeasuredNodeType(${type})`;
-    return [type, MeasuredNodeType];
+    VirtualizedNodeType.displayName = `VirtualizedNodeType(${type})`;
+    return [type, VirtualizedNodeType];
   })
 );
 
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
+};
+
+const toMeasurementNodeProps = ({
+  id,
+  type,
+  data,
+  position,
+  selected,
+  dragging,
+  zIndex
+}: {
+  id: string;
+  type?: string;
+  data: FlowNodeItemType;
+  position: { x: number; y: number };
+  selected?: boolean;
+  dragging?: boolean;
+  zIndex?: number;
+}) => ({
+  id,
+  type: type ?? '',
+  data,
+  xPos: position.x,
+  yPos: position.y,
+  selected: selected ?? false,
+  dragging: dragging ?? false,
+  zIndex: zIndex ?? 0,
+  isConnectable: true
+});
+
+const MeasurementHost = React.memo(() => {
+  const measurementNodeIds = useContextSelector(WorkflowCanvasContext, (v) => v.measurementNodeIds);
+  const nodes = useContextSelector(WorkflowCanvasContext, (v) => v.nodes);
+  const nodesById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
+
+  return (
+    <Box
+      position={'absolute'}
+      left={'-100000px'}
+      top={'-100000px'}
+      visibility={'hidden'}
+      pointerEvents={'none'}
+      w={'max-content'}
+      h={'max-content'}
+      overflow={'hidden'}
+    >
+      {measurementNodeIds.map((nodeId) => {
+        const node = nodesById.get(nodeId);
+        if (!node) return null;
+        const nodeComponent = baseNodeTypes[node.type as FlowNodeTypeEnum];
+        if (!nodeComponent) return null;
+
+        return (
+          <MeasuredNode
+            key={nodeId}
+            nodeComponent={nodeComponent}
+            {...toMeasurementNodeProps(node)}
+          />
+        );
+      })}
+    </Box>
+  );
+});
+MeasurementHost.displayName = 'MeasurementHost';
+
+const ViewportObserver = () => {
+  const onViewportChange = useContextSelector(WorkflowCanvasContext, (v) => v.onViewportChange);
+  const { x, y, zoom } = useViewport();
+  const width = useStore((state) => state.width);
+  const height = useStore((state) => state.height);
+
+  useEffect(() => {
+    onViewportChange({ x, y, zoom, width, height });
+  }, [height, onViewportChange, width, x, y, zoom]);
+
+  return null;
 };
 
 /** 画布背景：写成模块常量，内联字面量会让 ReactFlow 每次渲染都收到新的 style 对象。 */
@@ -266,7 +391,7 @@ const WorkflowCanvas = () => {
     const [node] = getDimensionedNodes([focusedNode], getNodeDimension);
     if (!node) return;
     fittedIssueNodeRef.current = focusedNodeId;
-    fitView({ nodes: [node], padding: 0.3 });
+    fitView({ nodes: [node], padding: 0.3, minZoom: 0.6 });
   }, [dimensionIndex, fitView, getNodeDimension, issueFocusTick, issueFocusRef, nodes]);
 
   return (
@@ -329,6 +454,8 @@ const WorkflowCanvas = () => {
           onMoveStart={onMoveStart}
           onMoveEnd={onMoveEnd}
         >
+          <ViewportObserver />
+          <MeasurementHost />
           {!!menu && <ContextMenu />}
           <FlowController />
           <HelperLines ref={helperLinesRef} />

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   areNodeRectsIntersecting,
+  classifyViewportNodes,
   createDimensionBatcher,
+  createMeasurementQueue,
   getDimensionedNodes,
   getNodeRect,
   type DimensionMeasurement
@@ -105,5 +107,42 @@ describe('workflow dimension geometry', () => {
         nodeId === 'first' ? { width: 100, height: 60 } : undefined
       )
     ).toEqual([{ ...first, width: 100, height: 60 }]);
+  });
+});
+
+describe('workflow viewport measurement scheduling', () => {
+  it('classifies viewport and overscan nodes and keeps visible parents', () => {
+    const result = classifyViewportNodes({
+      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
+      dimensions: new Map(),
+      nodes: [
+        { id: 'visible', position: { x: 10, y: 10 } },
+        { id: 'parent', position: { x: 500, y: 0 } },
+        { id: 'child', parentNodeId: 'parent', position: { x: -490, y: 10 } },
+        { id: 'overscan', position: { x: 350, y: 10 } },
+        { id: 'far', position: { x: 1000, y: 10 } }
+      ]
+    });
+
+    expect(result.visibleNodeIds).toEqual(new Set(['visible', 'child']));
+    expect(result.overscanNodeIds).toEqual(new Set(['overscan']));
+    expect(result.fullNodeIds).toEqual(new Set(['visible', 'child', 'parent']));
+    expect(result.priorities.get('far')).toBe(2);
+  });
+
+  it('deduplicates queue entries, preserves generation, and limits batches', () => {
+    const queue = createMeasurementQueue();
+    queue.upsert({ nodeId: 'far', generation: 1, priority: 2 });
+    queue.upsert({ nodeId: 'near', generation: 1, priority: 1 });
+    queue.upsert({ nodeId: 'visible', generation: 1, priority: 0 });
+    queue.upsert({ nodeId: 'visible', generation: 2, priority: 0 });
+    queue.upsert({ nodeId: 'visible', generation: 1, priority: 2 });
+
+    expect(queue.take(2)).toEqual([
+      { nodeId: 'visible', generation: 2, priority: 0 },
+      { nodeId: 'near', generation: 1, priority: 1 }
+    ]);
+    expect(queue.take(8)).toEqual([{ nodeId: 'far', generation: 1, priority: 2 }]);
+    expect(queue.getSize()).toBe(0);
   });
 });

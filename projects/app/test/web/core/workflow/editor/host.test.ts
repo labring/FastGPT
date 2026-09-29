@@ -13,6 +13,7 @@ import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type
 import {
   WorkflowHostContext,
   WorkflowHostProvider,
+  mergeViewOverlayPatches,
   type WorkflowHostValue
 } from '@/web/core/workflow/editor/host';
 
@@ -47,6 +48,19 @@ vi.mock('@/web/core/workflow/editor/react', () => ({
 const t = ((key: string) => key) as never;
 
 type TestAppDetail = { chatConfig: Record<string, unknown> };
+
+describe('workflow renderer overlays', () => {
+  it('keeps equal patches as a no-op', () => {
+    const current = { node: { searchedText: 'answer', debugResult: { ok: true } } };
+    const result = mergeViewOverlayPatches({
+      current,
+      patches: [{ nodeId: 'node', values: { searchedText: 'answer', debugResult: { ok: true } } }]
+    });
+
+    expect(result.changed).toBe(false);
+    expect(result.overlays).toBe(current);
+  });
+});
 
 /**
  * 挂真实 Provider 树（AppContext -> ReactFlowProvider -> host）+ 计数型观察者。
@@ -305,7 +319,7 @@ describe('WorkflowHostProvider version history', () => {
     expect(host?.runtime?.getNode('answer')?.issues.map((issue) => issue.code)).toContain(
       'required_input_empty'
     );
-    expect(host?.runtime?.getWorkflow().issues.map((issue) => issue.code)).toContain(
+    expect(host?.runtime?.getWorkflowIssues().issues.map((issue) => issue.code)).toContain(
       'required_input_empty'
     );
     // gate 只读 Issue View：有 error 时不序列化。

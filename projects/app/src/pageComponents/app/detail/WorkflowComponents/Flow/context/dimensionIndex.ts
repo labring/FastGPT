@@ -16,6 +16,234 @@ export type NodeRect = {
   centerY: number;
 };
 
+export type CanvasViewport = {
+  x: number;
+  y: number;
+  zoom: number;
+  width: number;
+  height: number;
+};
+
+export type ViewportNode = {
+  id: string;
+  position: { x: number; y: number };
+  parentNodeId?: string;
+  isFolded?: boolean;
+  selected?: boolean;
+  dragging?: boolean;
+};
+
+export type ViewportNodeClassification = {
+  visibleNodeIds: ReadonlySet<string>;
+  overscanNodeIds: ReadonlySet<string>;
+  fullNodeIds: ReadonlySet<string>;
+  hiddenNodeIds: ReadonlySet<string>;
+  priorities: ReadonlyMap<string, 0 | 1 | 2>;
+};
+
+export const WORKFLOW_VIEWPORT_OVERSCAN = 300;
+export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeCardDimension = {
+  width: 300,
+  height: 120
+};
+
+/**
+ * 把屏幕像素 overscan 转成画布坐标范围；尺寸估算只服务裁剪，不写入 Dimension Index。
+ */
+export const getViewportRange = ({
+  viewport,
+  overscan = WORKFLOW_VIEWPORT_OVERSCAN
+}: {
+  viewport: CanvasViewport;
+  overscan?: number;
+}): NodeRect => {
+  const zoom = Number.isFinite(viewport.zoom) && viewport.zoom > 0 ? viewport.zoom : 1;
+  const left = (-viewport.x - overscan) / zoom;
+  const top = (-viewport.y - overscan) / zoom;
+  const right = (viewport.width - viewport.x + overscan) / zoom;
+  const bottom = (viewport.height - viewport.y + overscan) / zoom;
+  const width = Math.max(right - left, 0);
+  const height = Math.max(bottom - top, 0);
+
+  return {
+    left,
+    right,
+    top,
+    bottom,
+    width,
+    height,
+    centerX: left + width / 2,
+    centerY: top + height / 2
+  };
+};
+
+/**
+ * 计算 viewport/overscan 集合。容器只因可见子节点被加入 full 集合；折叠子节点不进入测量队列。
+ */
+export const classifyViewportNodes = ({
+  nodes,
+  dimensions,
+  viewport,
+  overscan = WORKFLOW_VIEWPORT_OVERSCAN,
+  estimate = WORKFLOW_NODE_MEASUREMENT_ESTIMATE
+}: {
+  nodes: readonly ViewportNode[];
+  dimensions: ReadonlyMap<string, NodeCardDimension>;
+  viewport: CanvasViewport;
+  overscan?: number;
+  estimate?: NodeCardDimension;
+}): ViewportNodeClassification => {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const positionById = new Map<string, { x: number; y: number }>();
+  const hiddenNodeIds = new Set<string>();
+  const visibleNodeIds = new Set<string>();
+  const overscanNodeIds = new Set<string>();
+  const fullNodeIds = new Set<string>();
+  const priorities = new Map<string, 0 | 1 | 2>();
+  const range = getViewportRange({ viewport, overscan });
+  const viewportRange = getViewportRange({ viewport, overscan: 0 });
+
+  function getAbsolutePosition(
+    nodeId: string,
+    visiting = new Set<string>()
+  ): { x: number; y: number } {
+    const cached = positionById.get(nodeId);
+    if (cached) return cached;
+
+    const node = nodeById.get(nodeId);
+    if (!node) return { x: 0, y: 0 };
+    if (visiting.has(nodeId)) return node.position;
+
+    const nextVisiting = new Set(visiting).add(nodeId);
+    const parent = node.parentNodeId ? nodeById.get(node.parentNodeId) : undefined;
+    const parentPosition: { x: number; y: number } = parent
+      ? getAbsolutePosition(parent.id, nextVisiting)
+      : {
+          x: 0,
+          y: 0
+        };
+    const position: { x: number; y: number } = {
+      x: node.position.x + parentPosition.x,
+      y: node.position.y + parentPosition.y
+    };
+    positionById.set(nodeId, position);
+    return position;
+  }
+
+  const isHiddenByFold = (node: ViewportNode) => {
+    const visited = new Set<string>();
+    let parentId = node.parentNodeId;
+    while (parentId && !visited.has(parentId)) {
+      visited.add(parentId);
+      const parent = nodeById.get(parentId);
+      if (!parent) return false;
+      if (parent.isFolded) return true;
+      parentId = parent.parentNodeId;
+    }
+    return false;
+  };
+
+  nodes.forEach((node) => {
+    if (isHiddenByFold(node)) {
+      hiddenNodeIds.add(node.id);
+      return;
+    }
+
+    const position = getAbsolutePosition(node.id);
+    const dimension = dimensions.get(node.id) ?? estimate;
+    const rect = getNodeRect({ id: node.id, position }, dimension);
+    if (!rect) return;
+
+    const isVisible = areNodeRectsIntersecting(rect, range);
+    const isInViewport = areNodeRectsIntersecting(rect, viewportRange);
+
+    if (isInViewport) {
+      visibleNodeIds.add(node.id);
+      fullNodeIds.add(node.id);
+      priorities.set(node.id, 0);
+    } else if (isVisible) {
+      overscanNodeIds.add(node.id);
+      priorities.set(node.id, 1);
+    } else {
+      priorities.set(node.id, 2);
+    }
+
+    if (node.selected || node.dragging) fullNodeIds.add(node.id);
+  });
+
+  visibleNodeIds.forEach((nodeId) => {
+    let parentId = nodeById.get(nodeId)?.parentNodeId;
+    while (parentId) {
+      fullNodeIds.add(parentId);
+      parentId = nodeById.get(parentId)?.parentNodeId;
+    }
+  });
+
+  return {
+    visibleNodeIds,
+    overscanNodeIds,
+    fullNodeIds,
+    hiddenNodeIds,
+    priorities
+  };
+};
+
+export type MeasurementQueueEntry = {
+  nodeId: string;
+  generation: number;
+  priority: 0 | 1 | 2;
+};
+
+export type MeasurementQueue = {
+  upsert: (entry: MeasurementQueueEntry) => void;
+  take: (
+    limit: number,
+    shouldTake?: (entry: MeasurementQueueEntry) => boolean
+  ) => MeasurementQueueEntry[];
+  remove: (nodeId: string) => void;
+  clear: () => void;
+  getSize: () => number;
+};
+
+/** 小型优先队列：同一节点只保留最新 generation，取出后由 host 负责挂载生命周期。 */
+export const createMeasurementQueue = (): MeasurementQueue => {
+  const pending = new Map<string, MeasurementQueueEntry>();
+
+  const upsert = (entry: MeasurementQueueEntry) => {
+    const previous = pending.get(entry.nodeId);
+    if (previous && previous.generation > entry.generation) return;
+    pending.set(entry.nodeId, entry);
+  };
+
+  const take = (
+    limit: number,
+    shouldTake: (entry: MeasurementQueueEntry) => boolean = () => true
+  ) => {
+    if (limit <= 0 || pending.size === 0) return [];
+
+    const entries = [...pending.values()].sort((left, right) => left.priority - right.priority);
+    const result: MeasurementQueueEntry[] = [];
+    entries.forEach((entry) => {
+      if (!shouldTake(entry)) {
+        pending.delete(entry.nodeId);
+        return;
+      }
+      if (result.length >= limit) return;
+      pending.delete(entry.nodeId);
+      result.push(entry);
+    });
+    return result;
+  };
+
+  return {
+    upsert,
+    take,
+    remove: (nodeId) => pending.delete(nodeId),
+    clear: () => pending.clear(),
+    getSize: () => pending.size
+  };
+};
+
 type PositionedNode = {
   id: string;
   position: { x: number; y: number };

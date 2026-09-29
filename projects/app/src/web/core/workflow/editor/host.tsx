@@ -119,6 +119,28 @@ export type WorkflowHostValue = {
   loadDocument: (content: CanonicalWorkflowData) => void;
 };
 
+/** 合并 renderer overlay；完全相同的 patch 保持原引用，避免无意义的画布重投影。 */
+export const mergeViewOverlayPatches = ({
+  current,
+  patches
+}: {
+  current: ViewDataOverlayMap;
+  patches: ViewOverlayPatch[];
+}): { overlays: ViewDataOverlayMap; changed: boolean } => {
+  let overlays = current;
+  let changed = false;
+
+  patches.forEach(({ nodeId, values }) => {
+    const merged = { ...overlays[nodeId], ...values };
+    if (isEqual(overlays[nodeId], merged)) return;
+    if (overlays === current) overlays = { ...current };
+    overlays[nodeId] = merged;
+    changed = true;
+  });
+
+  return { overlays, changed };
+};
+
 const notImplemented = (): never => {
   throw new Error('WorkflowHost missing');
 };
@@ -497,11 +519,9 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
 
   const patchViewData = useMemoizedFn((patches: ViewOverlayPatch[]) => {
     if (patches.length === 0) return;
-    const next = { ...overlaysRef.current };
-    patches.forEach(({ nodeId, values }) => {
-      next[nodeId] = { ...next[nodeId], ...values };
-    });
-    overlaysRef.current = next;
+    const result = mergeViewOverlayPatches({ current: overlaysRef.current, patches });
+    if (!result.changed) return;
+    overlaysRef.current = result.overlays;
     bumpView();
   });
 

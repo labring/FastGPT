@@ -214,7 +214,8 @@ const NodeCard = (props: Props) => {
       if (!dimension) return;
       fitView({
         nodes: [{ id: nodeId, ...dimension }],
-        padding: 0.3
+        padding: 0.3,
+        minZoom: 0.6
       });
     }, 100);
   }, [getNodeDimension, nodeActions, setPresentationMode, fitView, nodeId]);

@@ -20,7 +20,7 @@ const SearchButton = (props: ButtonProps) => {
   const patchViewData = useContextSelector(WorkflowHostContext, (state) => state.patchViewData);
   const { fitView } = useReactFlow();
   const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
+  const dimensionIndex = useContextSelector(WorkflowCanvasContext, (v) => v.dimensionIndex);
   const onNodesChange = useContextSelector(WorkflowCanvasContext, (v) => v.onNodesChange);
   const { isMac } = useSystem();
 
@@ -29,6 +29,7 @@ const SearchButton = (props: ButtonProps) => {
   const [searchedNodeCount, setSearchedNodeCount] = useState(0);
   // 上一轮写过标记的节点：只提交增量，避免每次按键都让全画布 overlay 变更并重投影。
   const markedNodeIdsRef = useRef<string[]>([]);
+  const fittedSearchTargetRef = useRef<string>();
 
   useKeyPress(['ctrl.f', 'meta.f'], (e) => {
     e.preventDefault();
@@ -68,6 +69,7 @@ const SearchButton = (props: ButtonProps) => {
     patchViewData(patches);
 
     if (!keyword) {
+      fittedSearchTargetRef.current = undefined;
       setSearchIndex(0);
       setSearchedNodeCount(0);
       return;
@@ -77,8 +79,14 @@ const SearchButton = (props: ButtonProps) => {
     setSearchedNodeCount(matchedNodeIds.length);
     const activeNodeId = matchedNodeIds[searchIndex] ?? matchedNodeIds[0];
     const activeNode = getNodes().find((node) => node.id === activeNodeId);
-    const [dimensionedNode] = activeNode ? getDimensionedNodes([activeNode], getNodeDimension) : [];
-    if (dimensionedNode) fitView({ nodes: [dimensionedNode], padding: 0.6 });
+    const [dimensionedNode] = activeNode
+      ? getDimensionedNodes([activeNode], (nodeId) => dimensionIndex.get(nodeId))
+      : [];
+    const fitTargetKey = `${keyword}:${searchIndex}:${activeNodeId}`;
+    if (dimensionedNode && fittedSearchTargetRef.current !== fitTargetKey) {
+      fittedSearchTargetRef.current = fitTargetKey;
+      fitView({ nodes: [dimensionedNode], padding: 0.6, minZoom: 0.6 });
+    }
     /**
      * 只对选中态真的要变的节点发 select 变更。受控模式下 `useReactFlow().setNodes` 会把整份数组
      * 转成 N 个 reset 变更，而 `applyNodeChanges` 一见 reset 就整份重建（06 总纲决策 13）；
@@ -94,7 +102,7 @@ const SearchButton = (props: ButtonProps) => {
     if (changes.length > 0) onNodesChange(changes);
   }, [
     fitView,
-    getNodeDimension,
+    dimensionIndex,
     getNodes,
     getWorkflow,
     keyword,
