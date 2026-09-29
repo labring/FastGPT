@@ -220,8 +220,7 @@ describe('extractAppResources', () => {
     ]);
   });
 
-  it('ignores reference mode datasets and filters out non-ObjectId dataset IDs', () => {
-    const validDatasetId = '65f000000000000000000003';
+  it('ignores reference mode datasets in resource extraction', () => {
     const resources = extractAppResources({
       nodes: [
         createNode({
@@ -229,20 +228,15 @@ describe('extractAppResources', () => {
           inputs: [
             // 引用模式的输入（renderTypeList 包含 reference）
             createInput(NodeInputKeyEnum.datasetSelectList, ['VARIABLE_NODE_ID', 'dataSets'], true),
-            // 包含非 ObjectId 脏数据与合法 ObjectId 的 datasetParams
             createInput(NodeInputKeyEnum.datasetParams, {
-              datasets: [
-                { datasetId: 'non-object-id' },
-                { datasetId: validDatasetId },
-                ['VARIABLE_NODE_ID', 'dataSets']
-              ]
+              datasets: [{ datasetId: 'dataset-1' }, ['VARIABLE_NODE_ID', 'dataSets']]
             })
           ]
         })
       ]
     });
 
-    expect(resources).toEqual([{ type: 'dataset', id: validDatasetId }]);
+    expect(resources).toEqual([{ type: 'dataset', id: 'dataset-1' }]);
   });
 });
 

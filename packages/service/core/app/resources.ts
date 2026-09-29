@@ -255,7 +255,7 @@ export const extractAppResources = ({
     getValueList(value).forEach((item) => {
       if (isValidReferenceValueFormat(item)) return;
       const id = getEntityId(item, 'datasetId');
-      if (id && Types.ObjectId.isValid(id)) addResource({ type: 'dataset', id });
+      if (id) addResource({ type: 'dataset', id });
       const nested = getObjectValue(item, 'datasets');
       if (nested && !isValidReferenceValueFormat(nested)) addDataset(nested);
     });
