@@ -111,15 +111,16 @@ export async function addSourceMember<T extends { tmbId: string }>({
     {
       _id: { $in: tmbIdList }
     },
-    'tmbId name avatar status',
+    '_id name avatar status',
     {
       session
     }
   ).lean();
+  const tmbMap = new Map(tmbList.map((tmb) => [String(tmb._id), tmb]));
 
   return list
     .map((item) => {
-      const tmb = tmbList.find((tmb) => String(tmb._id) === String(item.tmbId));
+      const tmb = tmbMap.get(String(item.tmbId));
       if (!tmb) return;
 
       // @ts-ignore
