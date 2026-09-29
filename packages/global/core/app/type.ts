@@ -90,7 +90,7 @@ export const AppScheduledTriggerConfigTypeSchema = z.object({
   timezone: z.string().meta({
     description: '定时触发使用的时区'
   }),
-  defaultPrompt: z.string().meta({
+  defaultPrompt: z.string().default('').meta({
     description: '定时触发时注入的默认用户问题'
   })
 });

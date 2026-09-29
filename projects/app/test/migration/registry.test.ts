@@ -59,7 +59,12 @@ describe('validateSystemMigrationRegistry', () => {
       blockStartup: false,
       onFailure: SystemMigrationFailurePolicyEnum.continue,
       delay: true,
-      progressSteps: [{ key: 'versions' }, { key: 'apps' }, { key: 'validation' }]
+      progressSteps: [
+        { key: 'clean_v1_apps' },
+        { key: 'versions' },
+        { key: 'apps' },
+        { key: 'validation' }
+      ]
     });
     expect(systemMigrations.at(-1)).toMatchObject({
       id: '20260923_enable_channel_reasoning_mapping',

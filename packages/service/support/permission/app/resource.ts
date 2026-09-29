@@ -122,6 +122,9 @@ export const getUnauthorizedAppResources = async ({
     normalizedResources.map(async (resource): Promise<UnauthorizedAppResource | undefined> => {
       try {
         if (resource.type === 'agent' || resource.type === 'tool') {
+          if (!Types.ObjectId.isValid(resource.id)) {
+            return { resource, error: AppErrEnum.unExist };
+          }
           await authAppByTmbId({
             appId: resource.id,
             tmbId,
@@ -131,6 +134,9 @@ export const getUnauthorizedAppResources = async ({
           return;
         }
         if (resource.type === 'dataset') {
+          if (!Types.ObjectId.isValid(resource.id)) {
+            return { resource, error: DatasetErrEnum.unExist };
+          }
           await authDatasetByTmbId({
             datasetId: resource.id,
             tmbId,
@@ -140,6 +146,9 @@ export const getUnauthorizedAppResources = async ({
           return;
         }
         if (resource.type === 'skill') {
+          if (!Types.ObjectId.isValid(resource.id)) {
+            return { resource, error: SkillErrEnum.unExist };
+          }
           await authSkillByTmbId({
             skillId: resource.id,
             tmbId,
