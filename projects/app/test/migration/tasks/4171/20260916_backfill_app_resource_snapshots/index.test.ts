@@ -216,15 +216,12 @@ describe('4170 App resource snapshot migration', () => {
     ]);
     const state = createContext();
     const originalUpdateOne = MongoAppVersion.collection.updateOne.bind(MongoAppVersion.collection);
-    let changed = false;
+    let failedOnce = false;
     vi.spyOn(MongoAppVersion.collection, 'updateOne').mockImplementation(
       async (filter, update, options) => {
-        if (!changed) {
-          changed = true;
-          await originalUpdateOne(
-            { _id: records.version._id },
-            { $set: { nodes: [{ nodeId: 'changed-after-read' }] } }
-          );
+        if (!failedOnce) {
+          failedOnce = true;
+          throw new Error('Temporary database write failure');
         }
         return originalUpdateOne(filter, update, options);
       }

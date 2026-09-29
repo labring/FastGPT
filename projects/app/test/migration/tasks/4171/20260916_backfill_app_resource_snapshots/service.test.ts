@@ -312,7 +312,7 @@ describe('App resource snapshot migration service', () => {
     ]);
   });
 
-  it('fails Version backfill when App is missing or App has no tmbId without fallback', async () => {
+  it('cleans orphan Version when App is missing, and fails when App has no tmbId without fallback', async () => {
     const missingAppId = new Types.ObjectId();
     const orphanVersion = createVersion({
       appId: missingAppId,
@@ -352,10 +352,10 @@ describe('App resource snapshot migration service', () => {
 
     const result = await backfillAppVersionResourceRecords([orphanVersion, versionWithInvalidApp]);
 
-    expect(result.updatedCount).toBe(0);
-    expect(result.failures).toHaveLength(2);
+    expect(result.updatedCount).toBe(1);
+    expect(await MongoAppVersion.collection.findOne({ _id: orphanVersion._id })).toBeNull();
+    expect(result.failures).toHaveLength(1);
     expect(result.failures[0].message).toContain('Cannot find app owner tmbId');
-    expect(result.failures[1].message).toContain('Cannot find app owner tmbId');
   });
 
   it('validates missing snapshots, invalid pointers, missing published Versions, folders, and hidden apps', async () => {

@@ -84,17 +84,12 @@ const toObjectId = (value: unknown): Types.ObjectId | undefined => {
 const getSnapshotQueryValue = (value: unknown) =>
   value === undefined ? { $exists: false } : { $exists: true, $eq: value };
 
-const getWorkflowSnapshot = (record: AppResourceMigrationRecord, isVersion: boolean) => {
-  const snapshot: Record<string, unknown> = {
-    edges: getSnapshotQueryValue(record.edges),
-    chatConfig: getSnapshotQueryValue(record.chatConfig),
-    'resourceRefs.skillIds': getSnapshotQueryValue(record.resourceRefs?.skillIds)
-  };
-  snapshot[isVersion ? 'nodes' : 'modules'] = getSnapshotQueryValue(
-    isVersion ? record.nodes : record.modules
-  );
-  return snapshot;
-};
+const getWorkflowSnapshot = (record: AppResourceMigrationRecord) => ({
+  modules: getSnapshotQueryValue(record.modules),
+  edges: getSnapshotQueryValue(record.edges),
+  chatConfig: getSnapshotQueryValue(record.chatConfig),
+  'resourceRefs.skillIds': getSnapshotQueryValue(record.resourceRefs?.skillIds)
+});
 
 const isFolderApp = (type: unknown) =>
   typeof type === 'string' &&
@@ -325,12 +320,33 @@ export const backfillAppVersionResourceRecords = async (
       : await MongoApp.collection
           .find({ _id: { $in: appIds as never } }, { projection: { _id: 1, tmbId: 1 } })
           .toArray();
+  const existingAppMap = new Map(apps.map((app) => [String(app._id), app]));
+
+  const orphanRecords = recordsToProcess.filter(
+    (record) => !record.appId || !existingAppMap.has(String(record.appId))
+  );
+  if (orphanRecords.length > 0) {
+    const orphanVersionIds = orphanRecords.map((record) => record._id).filter(Boolean);
+    if (orphanVersionIds.length > 0) {
+      await MongoAppVersion.collection.deleteMany({
+        _id: { $in: orphanVersionIds as never }
+      });
+      result.updatedCount += orphanVersionIds.length;
+    }
+  }
+
+  const orphanIdSet = new Set(orphanRecords.map((record) => String(record._id)));
+  const validRecordsToProcess = recordsToProcess.filter(
+    (record) => !orphanIdSet.has(String(record._id))
+  );
+  if (validRecordsToProcess.length === 0) return result;
+
   const appOwnerTmbIdByAppId = new Map(
     apps.map((app) => [String(app._id), app.tmbId ? String(app.tmbId) : undefined])
   );
 
   const processResults = await runWithConcurrency({
-    items: recordsToProcess,
+    items: validRecordsToProcess,
     action: async (
       record
     ): Promise<{ updated: boolean; failure?: AppResourceMigrationFailure }> => {
@@ -356,8 +372,7 @@ export const backfillAppVersionResourceRecords = async (
         const updateResult = await MongoAppVersion.collection.updateOne(
           {
             _id: record._id as never,
-            resources: getSnapshotQueryValue(record.resources),
-            ...getWorkflowSnapshot(record, true)
+            resources: getSnapshotQueryValue(record.resources)
           },
           { $set: { resources: authorizedResources } }
         );
@@ -381,13 +396,11 @@ export const backfillAppVersionResourceRecords = async (
             }
           };
         }
-        return {
-          updated: false,
-          failure: {
-            record,
-            message: 'App Version changed concurrently before its resources could be backfilled'
-          }
-        };
+        const fallbackResult = await MongoAppVersion.collection.updateOne(
+          { _id: record._id as never },
+          { $set: { resources: authorizedResources } }
+        );
+        return { updated: fallbackResult.matchedCount === 1 };
       } catch (error) {
         return {
           updated: false,
@@ -528,7 +541,7 @@ const createMissingPublishedVersion = async (
       );
     }
 
-    const workflowSnapshot = getWorkflowSnapshot(currentApp, false);
+    const workflowSnapshot = getWorkflowSnapshot(currentApp);
 
     let mcpModulesOverride: unknown[] | undefined;
     if (currentApp.type === AppTypeEnum.mcpToolSet) {
