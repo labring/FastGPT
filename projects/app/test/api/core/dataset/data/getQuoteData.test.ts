@@ -200,7 +200,7 @@ describe('getQuoteData handler', () => {
 
     // 引用格式化必须把签发范围绑定到已鉴权 collection 的 datasetId
     expect(formatDatasetDataValueMock).toHaveBeenCalledWith(expect.any(Object), {
-      datasetId: makeCollection().datasetId
+      datasetIds: [makeCollection().datasetId]
     });
   });
 
@@ -286,7 +286,7 @@ describe('getQuoteData handler', () => {
 
     // API 模式同样要绑定已鉴权 datasetId，防止外库 key 借接口签发短链
     expect(formatDatasetDataValueMock).toHaveBeenCalledWith(expect.any(Object), {
-      datasetId: makeCollection().datasetId
+      datasetIds: [makeCollection().datasetId]
     });
   });
 
