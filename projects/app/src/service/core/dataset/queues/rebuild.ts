@@ -9,6 +9,7 @@ import {
   getDatasetImageTrainingMode
 } from '@fastgpt/service/core/dataset/utils';
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
+import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import type {
   EmbeddingSystemModelDataType,
   LLMSystemModelDataType
@@ -43,7 +44,10 @@ export const enqueueNextDatasetRebuildTask = async (
               teamId: context.teamId,
               datasetId: context.datasetId,
               synonymVersion: { $ne: context.synonymVersion },
-              synonymRebuildingVersion: { $ne: context.synonymVersion }
+              synonymRebuildingVersion: { $ne: context.synonymVersion },
+              // 待索引数据不参与同义词重建：其向量必然按处理时刻的词表生成，
+              // 选中会与在途任务争抢同一 dataId。
+              ...indexedDatasetDataMatch
             }
           : {
               rebuilding: true,
@@ -119,7 +123,7 @@ export const enqueueNextDatasetRebuildTask = async (
               q: data.q,
               indexes: data.indexes
             }),
-            retryCount: 50
+            retryCount: 3
           }
         ],
         { session, ordered: true }

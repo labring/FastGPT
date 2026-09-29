@@ -17,11 +17,13 @@ import {
   finalErrorTrainingMatch
 } from '@fastgpt/service/core/dataset/training/query';
 import { subMinutes } from 'date-fns';
+import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
   parse: 0,
   qa: 0,
   chunk: 0,
+  index: 0,
   image: 0,
   auto: 0,
   imageParse: 0
@@ -31,6 +33,7 @@ const MODE_LOCK_TIMEOUT_MINUTES: Record<TrainingModeEnum, number> = {
   parse: 10,
   qa: 10,
   chunk: 3,
+  index: 3,
   image: 10,
   auto: 10,
   imageParse: 10
@@ -54,6 +57,13 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     teamId: new Types.ObjectId(collection.teamId),
     datasetId: new Types.ObjectId(collection.datasetId),
     collectionId: new Types.ObjectId(collection._id)
+  };
+
+  // 已训练数只统计完成索引的数据：提前落库后集合内会立即出现待索引数据，
+  // 不区分状态会让"就绪"步骤直接跳到满值，而实际尚未索引。
+  const trainedMatch = {
+    ...match,
+    ...indexedDatasetDataMatch
   };
 
   const now = new Date();
@@ -111,7 +121,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
         }
       }
     ]),
-    MongoDatasetData.countDocuments(match)
+    MongoDatasetData.countDocuments(trainedMatch)
   ])) as [
     { _id: TrainingModeEnum; count: number }[],
     { _id: TrainingModeEnum; count: number }[],

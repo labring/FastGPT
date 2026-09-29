@@ -108,7 +108,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     });
   })();
 
-  return InsertDataResponseSchema.parse(insertId);
+  return InsertDataResponseSchema.parse({ dataIds: [insertId] });
 }
 
 export default NextAPI(handler);

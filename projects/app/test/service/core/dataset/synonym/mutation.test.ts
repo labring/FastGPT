@@ -137,7 +137,7 @@ describe('createDatasetSynonymMutation', () => {
       q: '',
       a: '',
       indexes: [],
-      retryCount: 50
+      retryCount: 3
     });
     expect(mockCreateTrainingUsage).toHaveBeenCalledWith(
       expect.objectContaining({

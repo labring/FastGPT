@@ -60,6 +60,9 @@
   "custom_split_char": "分隔符",
   "custom_split_sign_tip": "允许你根据自定义的分隔符进行分块。通常用于已处理好的数据，使用特定的分隔符来精确分块。可以使用 | 符号表示多个分割符，例如：“。|.” 表示中英文句号。\n尽量避免使用正则相关特殊符号，例如: * () [] {} 等。",
   "data_amount": "{{dataAmount}} 组数据, {{indexAmount}} 组索引",
+  "data_index_status_indexing": "索引中",
+  "data_index_status_indexed": "已索引",
+  "data_index_status_error": "索引失败",
   "data_index_image": "图片索引",
   "data_index_image_embedding": "多模态图片索引",
   "image_embedding_index_default_desc": "已通过多模态模型生成图片向量，支持以图搜图",
@@ -270,5 +273,6 @@
   "delete_datasets_confirm_title": "确认删除 {{count}} 个知识库",
   "delete_folders_confirm_title": "确认删除 {{count}} 个文件夹",
   "delete_following_datasets_tip": "删除以下知识库会将其关联的索引和数据一并删除。",
-  "delete_following_folders_tip": "删除后，这些文件夹及其包含的全部知识库、关联索引和数据将被一并删除。"
+  "delete_following_folders_tip": "删除后，这些文件夹及其包含的全部知识库、关联索引和数据将被一并删除。",
+  "data_indexing_cannot_modify": "数据索引中，暂不可更改"
 }
