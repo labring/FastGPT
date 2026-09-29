@@ -1,6 +1,9 @@
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import {
+  migrateWorkflowToCurrent,
+  isLegacyV1Workflow
+} from '@fastgpt/global/core/workflow/migration';
 import pLimit from 'p-limit';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
@@ -14,6 +17,11 @@ import {
 import { resolveStoredAppResources } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
+import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -699,6 +707,38 @@ export const validateAppResourceRecords = async (records: AppResourceMigrationRe
     }
     return [];
   });
+};
+
+/**
+ * 扫描并级联清理 V1 应用及其关联的全部衍生数据：
+ * 包含：apps(含子应用), app_versions, chats, chat_items, out_links, chat_input_guides, chat_logs
+ */
+export const cleanV1AppRecords = async (
+  records: AppResourceMigrationRecord[]
+): Promise<AppResourceMigrationBatchResult> => {
+  const result = emptyBatchResult();
+  if (records.length === 0) return result;
+
+  const v1Records = records.filter((record) => isLegacyV1Workflow(record.modules));
+  if (v1Records.length === 0) return result;
+
+  const v1AppIds = v1Records.map((record) => record._id).filter(Boolean);
+  if (v1AppIds.length === 0) return result;
+
+  await Promise.all([
+    MongoApp.collection.deleteMany({
+      $or: [{ _id: { $in: v1AppIds as never } }, { parentId: { $in: v1AppIds as never } }]
+    }),
+    MongoAppVersion.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoChat.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoChatItem.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoOutLink.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoChatInputGuide.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoAppChatLog.collection.deleteMany({ appId: { $in: v1AppIds as never } })
+  ]);
+
+  result.updatedCount = v1AppIds.length;
+  return result;
 };
 
 /** 非 ObjectId 记录无法进入稳定游标，最终校验时单独报告。 */

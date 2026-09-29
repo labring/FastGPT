@@ -13,9 +13,9 @@ import { isToolInputValueConfigured } from '../../app/formEdit/utils';
  *
  * 工具输入只信任 JSON 中保存的 key/mode；工具 definition、权限和 schema 水合由边界层处理。
  */
-export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): CanonicalWorkflowData => {
-  // V1 工作流已不再支持，普通入口只接受 V2/current 数据。
-  const hasLegacyV1Node = input.nodes.some(
+export const isLegacyV1Workflow = (nodes: unknown): boolean => {
+  if (!Array.isArray(nodes)) return false;
+  return nodes.some(
     (node) =>
       !!node &&
       typeof node === 'object' &&
@@ -23,7 +23,11 @@ export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): Canoni
       (typeof (node as Record<string, unknown>).moduleId === 'string' ||
         typeof (node as Record<string, unknown>).nodeId !== 'string')
   );
-  if (hasLegacyV1Node) {
+};
+
+export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): CanonicalWorkflowData => {
+  // V1 工作流已不再支持，普通入口只接受 V2/current 数据。
+  if (isLegacyV1Workflow(input.nodes)) {
     throw new Error('V1 workflows are no longer supported');
   }
 

@@ -17,6 +17,7 @@ import {
   isWorkflowSystemModelInput,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
+import { Types } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 
 const resourceLogger = getLogger(LogCategories.MODULE.APP);
@@ -250,6 +251,7 @@ export const extractAppResources = ({
 
   const addDataset = (value: unknown) => {
     getValueList(value).forEach((item) => {
+      if (Array.isArray(item) && item[0] === 'VARIABLE_NODE_ID') return;
       const id = getEntityId(item, 'datasetId');
       if (id) addResource({ type: 'dataset', id });
       const nested = getObjectValue(item, 'datasets');

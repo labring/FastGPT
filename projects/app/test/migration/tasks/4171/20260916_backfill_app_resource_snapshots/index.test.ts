@@ -143,6 +143,14 @@ describe('4170 App resource snapshot migration', () => {
     });
     expect(state.getProgress()).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          key: 'clean_v1_apps',
+          status: SystemMigrationStatusEnum.running
+        }),
+        expect.objectContaining({
+          key: 'clean_v1_apps',
+          status: SystemMigrationStatusEnum.succeeded
+        }),
         expect.objectContaining({ key: 'versions', status: SystemMigrationStatusEnum.running }),
         expect.objectContaining({ key: 'versions', status: SystemMigrationStatusEnum.succeeded }),
         expect.objectContaining({ key: 'apps', status: SystemMigrationStatusEnum.running }),
@@ -180,7 +188,7 @@ describe('4170 App resource snapshot migration', () => {
     ]);
     const state = createContext({
       beforeSaveCheckpoint: async (callCount) => {
-        if (callCount === 2) throw new Error('checkpoint unavailable');
+        if (callCount === 5) throw new Error('checkpoint unavailable');
       }
     });
 
@@ -375,5 +383,49 @@ describe('4170 App resource snapshot migration', () => {
         reason: { message: 'Auth service error' }
       })
     ]);
+  });
+
+  it('cleans legacy V1 apps and cascade deletes child apps and versions', async () => {
+    const v1AppId = new Types.ObjectId();
+    const childAppId = new Types.ObjectId();
+    const v1VersionId = new Types.ObjectId();
+
+    await Promise.all([
+      MongoApp.collection.insertOne({
+        _id: v1AppId,
+        teamId,
+        tmbId,
+        name: 'V1 App',
+        type: 'simple',
+        modules: [
+          {
+            moduleId: 'userGuide',
+            flowType: 'userGuide'
+          }
+        ]
+      }),
+      MongoApp.collection.insertOne({
+        _id: childAppId,
+        parentId: v1AppId,
+        teamId,
+        tmbId,
+        name: 'Child Tool'
+      }),
+      MongoAppVersion.collection.insertOne({
+        _id: v1VersionId,
+        appId: v1AppId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        nodes: []
+      })
+    ]);
+
+    const state = createContext();
+    await backfillAppResourceSnapshots(state.context);
+
+    expect(await MongoApp.collection.findOne({ _id: v1AppId })).toBeNull();
+    expect(await MongoApp.collection.findOne({ _id: childAppId })).toBeNull();
+    expect(await MongoAppVersion.collection.findOne({ _id: v1VersionId })).toBeNull();
   });
 });
