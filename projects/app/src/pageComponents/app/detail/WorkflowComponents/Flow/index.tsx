@@ -108,22 +108,33 @@ const MeasuredNode = React.memo(
 
       const findTargets = () =>
         [
+          wrapper.querySelector<HTMLElement>('[data-workflow-node-occupied]'),
           wrapper.querySelector<HTMLElement>('[data-workflow-node-card]'),
           wrapper.querySelector<HTMLElement>('[data-workflow-node-issues]')
         ].filter((target): target is HTMLElement => !!target);
 
       const reportSize = () => {
+        const occupied = wrapper.querySelector<HTMLElement>('[data-workflow-node-occupied]');
         const card = wrapper.querySelector<HTMLElement>('[data-workflow-node-card]');
-        if (!card) return;
+        if (!occupied || !card) return;
 
+        const occupiedRect = occupied.getBoundingClientRect();
         const cardRect = card.getBoundingClientRect();
         const issueRect = wrapper
           .querySelector<HTMLElement>('[data-workflow-node-issues]')
           ?.getBoundingClientRect();
-        const left = Math.min(cardRect.left, issueRect?.left ?? cardRect.left);
-        const top = Math.min(cardRect.top, issueRect?.top ?? cardRect.top);
-        const right = Math.max(cardRect.right, issueRect?.right ?? cardRect.right);
-        const bottom = Math.max(cardRect.bottom, issueRect?.bottom ?? cardRect.bottom);
+        const left = Math.min(occupiedRect.left, cardRect.left, issueRect?.left ?? cardRect.left);
+        const top = Math.min(occupiedRect.top, cardRect.top, issueRect?.top ?? cardRect.top);
+        const right = Math.max(
+          occupiedRect.right,
+          cardRect.right,
+          issueRect?.right ?? cardRect.right
+        );
+        const bottom = Math.max(
+          occupiedRect.bottom,
+          cardRect.bottom,
+          issueRect?.bottom ?? cardRect.bottom
+        );
 
         registration.report({
           card: { width: cardRect.width, height: cardRect.height },
