@@ -1,4 +1,5 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { parseUrlToFileType } from '../../utils/context';
 
 export type NormalizeDatasetSearchInputResult = {
@@ -6,7 +7,6 @@ export type NormalizeDatasetSearchInputResult = {
   imageQueries: string[];
 };
 
-const httpUrlReg = /^https?:\/\//i;
 const dataUrlReg = /^data:/i;
 
 const pushUnique = <T>(list: T[], seen: Set<T>, value: T) => {
@@ -16,7 +16,6 @@ const pushUnique = <T>(list: T[], seen: Set<T>, value: T) => {
   }
 };
 
-const isHttpUrl = (input: string) => httpUrlReg.test(input);
 const isDataUrl = (input: string) => dataUrlReg.test(input);
 
 /**

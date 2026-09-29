@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
@@ -33,6 +33,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
+const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
 const { mockDeleteDatasetFileByKey, mockGetDatasetBase64Image, mockCountPromptTokens } = vi.hoisted(
   () => ({
@@ -464,6 +465,13 @@ describe('Dataset data service', () => {
   });
 
   describe('updateDatasetDataByIndexes', () => {
+    beforeEach(() => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    });
+    afterEach(() => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    });
+
     it('updates data only after vector generation when the feature is disabled', async () => {
       serviceEnv.DATASET_SYNONYM_ENABLED = false;
       const { data } = await createMongoData();

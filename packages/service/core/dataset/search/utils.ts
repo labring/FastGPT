@@ -1,11 +1,15 @@
 import { queryExtension } from '../../ai/functions/queryExtension';
+import { addHours } from 'date-fns';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getImageBase64 } from '../../../common/file/image/utils';
 import { serviceEnv } from '../../../env';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { S3Buckets } from '../../../common/s3/config/constants';
+import { createS3DownloadAccessUrl } from '../../../common/s3/accessLink/downloadAlias/service';
 import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
@@ -158,9 +162,7 @@ export const isValidImageEmbeddingSource = (imageUrl?: string) => {
 
   if (url.startsWith('data:image/')) return true;
   if (isS3ObjectKey(url, 'dataset')) return true;
-  if (isS3ObjectKey(url, 'temp')) return true;
-  if (isS3ObjectKey(url, 'chat')) return true;
-  if (/^https?:\/\//i.test(url)) return true;
+  if (isHttpUrl(url)) return true;
 
   return false;
 };
@@ -189,22 +191,36 @@ export const normalizeImageToBase64 = async (imageUrl: string) => {
 export const isImageEmbeddingIndex = (index: { type?: string | number }) =>
   index.type === DatasetDataIndexTypeEnum.imageEmbedding;
 
+/**
+ * 将知识库图片索引转换为模型可读输入。
+ *
+ * 私有 S3 对象只允许读取绑定当前 datasetId 的 `dataset/*` key；只放行合法的
+ * data URL 或外部 HTTP(S) 链接，其余格式（包括 temp/*、chat/*、本地路径等）一律拒绝。
+ */
 export const normalizeDatasetIndexImageToModelInput = async (
   imageUrl: string,
-  datasetId?: string
+  datasetId: string
 ) => {
   if (isS3ObjectKey(imageUrl, 'dataset')) {
-    if (datasetId && !isAuthorizedDatasetFileS3Key({ key: imageUrl, datasetId })) {
+    // 知识库图片必须绑定当前 dataset；缺少 datasetId 时也拒绝读取，避免兼容分支绕过鉴权。
+    if (!isAuthorizedDatasetFileS3Key({ key: imageUrl, datasetId })) {
       throw new Error('Invalid dataset file key');
     }
-    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+    if (serviceEnv.MULTIPLE_DATA_TO_BASE64) {
+      return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+    }
+    return createS3DownloadAccessUrl({
+      objectKey: imageUrl,
+      bucketName: S3Buckets.private,
+      expiredTime: addHours(new Date(), 2)
+    });
   }
 
-  if (isS3ObjectKey(imageUrl, 'temp') || isS3ObjectKey(imageUrl, 'chat')) {
-    return getS3DatasetSource().getDatasetBase64Image(imageUrl);
+  if (imageUrl.startsWith('data:image/') || isHttpUrl(imageUrl)) {
+    return normalizeImageToBase64(imageUrl);
   }
 
-  return normalizeImageToBase64(imageUrl);
+  throw new Error('Invalid dataset file key');
 };
 
 /**

@@ -74,14 +74,15 @@ FastGPT 的私有对象存储 key 是 bucket 内的全局路径字符串，例�
 
 - `POST /core/dataset/collection/create/fileId`：此前只做 `isS3ObjectKey(fileId, 'dataset')` 前缀检查，未把 key 内的 datasetId 绑定到已鉴权 dataset。现改为 `isAuthorizedDatasetFileS3Key({ key: fileId, datasetId: body.datasetId })`，拒绝跨数据集/跨团队 key。
 - `POST /core/dataset/createWithFiles`：此前只检查 `fileId.startsWith('temp/')`，未绑定团队。现改为 `isAuthorizedTempFileS3Key({ key, teamId })`，并在创建事务前完成校验。
-- 数据块渲染与导出短链签发：`data/v2/list`、`data/update`、`collection/export`、`getPreviewChunks` 及 `formatDatasetDataValues` 在通过 `replaceS3KeysToPreviewUrls` 转换 Markdown/HTML 中的 S3 对象键时，增加 `filter` 白名单校验，仅放行属于当前已鉴权 `datasetId` 的 key，未通过校验的外库 key 不签发短链并保持原文本不替换。写入与更新阶段不阻断自由文本输入。
+- 数据块渲染与导出短链签发：`data/v2/list`、`data/update`、`collection/export`、`getPreviewChunks` 及 `formatDatasetDataValues` 在通过 `replaceS3KeysToPreviewUrls` 转换 Markdown/HTML 中的 S3 对象键时，增加 `filter` 白名单校验。知识库 data 只放行当前已鉴权 `datasetId` 对应的 `dataset/*` key；`chat/*`、`temp/*` 及其他未通过筛选的 key 不签发短链并保持原文本不替换。通用预览工具仍可服务其他业务场景，写入与更新阶段不阻断自由文本输入。
 
 补漏（review 追加）：
 
 - `data/getQuoteData`：引用详情此前调用 `formatDatasetDataValue` 未传 `datasetId`，options 为空时白名单关闭，可借该接口为 chunk 文本里的外库 key 签发短链。现两处调用均补上 `{ datasetId: collection.datasetId }`。
 - `training/getTrainingDataDetail`：`imageId` 此前只做 `isS3ObjectKey(imageId, 'dataset')` 前缀检查，现改为 `isAuthorizedDatasetFileS3Key({ key: data.imageId, datasetId: collection.datasetId })`，与 `data/v2/list` 的写法对齐。
 - `search/defaultRecall` 的 `searchDatasetData`：召回输出调用 `formatDatasetDataValues` 时补上 `{ datasetId: datasetIds }`，使检索返回的 chunk 文本里内嵌的外库 key 不签发短链（防御性收敛，候选本身来自已授权的 datasetIds）。
-- 未授权 `imageId` 的返回语义：`formatDatasetDataValues` 此前对未通过白名单的 dataset `imageId` 返回 `imagePreivewUrl: ''` 并生成 `![标题]()`，与文本路径“保留原文”不一致，空链接还可能触发相对 URL 请求。现统一为保留原始 key（`imagePreivewUrl` 回填该 key，markdown 为 `![标题](dataset/...)`），既不签发下载 token，也不触发相对请求。该字段由前端 `src` 直接渲染，因此必须保持为原始 key 这类不可解析内容。
+- 未授权 `imageId` 的返回语义：`formatDatasetDataValues` 此前对未通过白名单的 dataset `imageId` 返回 `imagePreivewUrl: ''` 并生成 `![标题]()`，与文本路径“保留原文”不一致。现统一为保留原始 key（`imagePreivewUrl` 回填该 key，markdown 为 `![标题](dataset/...)`），既不签发下载 token，也保留未获得知识库预览授权的状态；展示层不得将该原始 key 当作可访问 URL。
+- 知识库图片向量化读取与候选提取：`isValidImageEmbeddingSource` 去除 `temp/*` 与 `chat/*`，仅允许 `data:image/`、`dataset/*` 与外部 HTTP(S) URL 作为合法图片向量源，避免正文提取阶段为临时/会话文件生成无意义的图片索引；下游 `normalizeDatasetIndexImageToModelInput` 强制绑定当前 `datasetId`，仅放行归属合法的 `dataset/*`。通过校验的 key 在 `MULTIPLE_DATA_TO_BASE64=true` 时转为 Base64，否则签发临时下载访问链接（TTL 2小时），兼顾模型输入体积与内网部署兼容性。
 
 同批排查中确认无需修改的点：
 

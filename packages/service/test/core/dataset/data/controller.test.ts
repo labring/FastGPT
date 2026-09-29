@@ -119,7 +119,7 @@ describe('formatDatasetDataValue', () => {
     expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
       'dataset/dataset-1/own.png'
     ]);
-    // 文本中的外库 key 与 imageId 的外库 key 统一保持原文，不签发短链也不退化成空链接。
+    // 知识库 data 只签发当前 dataset 的 key；外库 dataset key 和 chat key 保持原文，不签发短链。
     expect(result).toEqual([
       {
         q: 'Own ![own](https://files.test/dataset/dataset-1/own.png) Foreign ![foreign](dataset/dataset-2/foreign.png)',

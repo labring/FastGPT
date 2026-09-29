@@ -41,6 +41,8 @@ const normalizeUploadHint = (hint: UploadFileHint): UploadFileHint => {
   };
 };
 
+const isImageMimeType = (mimeType: string) => mimeType.toLowerCase().startsWith('image/');
+
 const resolveDeclaredExtension = (hint: UploadFileHint) => {
   const declaredFilenameExtension = getFilenameExtension(hint.declaredFilename);
   return declaredFilenameExtension || normalizeFileExtension(hint.declaredExtension);
@@ -365,15 +367,21 @@ export const resolveUploadFile = ({
     const detectedMatchesExpected =
       expectedMime !== DEFAULT_CONTENT_TYPE &&
       mimesMatchForUpload(expectedMime, evidence.detectedMime);
+    // 图片后缀只是文件名提示；实际 MIME 已被识别且在允许范围内时，以内容为准修正后缀。
+    // 其他文件仍要求声明后缀与内容一致，因为后缀可能决定后续解析器和兼容策略。
+    const imageExtensionMismatch =
+      isImageMimeType(expectedMime) && isImageMimeType(evidence.detectedMime);
 
-    // 显式的可验证后缀必须与内容一致，不能因为检测出的另一种类型也在白名单中就静默改名。
-    if (explicitExtension && !detectedMatchesExpected) {
+    // 非图片的显式可验证后缀必须与内容一致，避免错误后缀影响后续解析器选择。
+    if (explicitExtension && !detectedMatchesExpected && !imageExtensionMismatch) {
       throw new Error(S3ErrEnum.uploadFileTypeMismatch);
     }
 
     const detectedMatchesPolicy = (() => {
       if (!allowedExtensions.length) {
-        return expectedMime === DEFAULT_CONTENT_TYPE || detectedMatchesExpected;
+        return (
+          expectedMime === DEFAULT_CONTENT_TYPE || detectedMatchesExpected || imageExtensionMismatch
+        );
       }
 
       return Boolean(matchedAllowedExtension) || detectedMatchesExpected;
@@ -383,9 +391,9 @@ export const resolveUploadFile = ({
       throw new Error(S3ErrEnum.uploadFileTypeMismatch);
     }
 
-    const resolvedExtension = explicitExtension
-      ? explicitExtension
-      : matchedAllowedExtension || evidence.officeExtension || evidence.detectedExtension || '';
+    const resolvedExtension = imageExtensionMismatch
+      ? matchedAllowedExtension || evidence.detectedExtension || ''
+      : explicitExtension || evidence.officeExtension || evidence.detectedExtension || '';
     return {
       filename: resolveAcceptedFilename({ filename, extension: resolvedExtension }),
       contentType: evidence.detectedMime,

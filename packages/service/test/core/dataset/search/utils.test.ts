@@ -210,12 +210,22 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
     mockGetDatasetBase64Image.mockResolvedValue('data:image/png;base64,dataset_img');
   });
 
-  it('should read S3 base64 image when datasetId matches key', async () => {
+  it('should read S3 base64 image when datasetId matches key and MULTIPLE_DATA_TO_BASE64 is true', async () => {
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
     const key = 'dataset/507f1f77bcf86cd799439011/image.png';
     const result = await normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011');
 
     expect(result).toBe('data:image/png;base64,dataset_img');
     expect(mockGetDatasetBase64Image).toHaveBeenCalledWith(key);
+  });
+
+  it('should create signed S3 download URL when datasetId matches key and MULTIPLE_DATA_TO_BASE64 is false', async () => {
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    const key = 'dataset/507f1f77bcf86cd799439011/image.png';
+    const result = await normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011');
+
+    expect(result).toMatch(/\/api\/system\/file\/d\//);
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 
   it('should throw error when datasetId does not match key', async () => {
@@ -226,12 +236,42 @@ describe('normalizeDatasetIndexImageToModelInput', () => {
     expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
   });
 
-  it('should read S3 image without check when datasetId is omitted for compatibility', async () => {
+  it('should reject dataset S3 image when datasetId is omitted', async () => {
     const key = 'dataset/507f1f77bcf86cd799439011/image.png';
-    const result = await normalizeDatasetIndexImageToModelInput(key);
 
-    expect(result).toBe('data:image/png;base64,dataset_img');
-    expect(mockGetDatasetBase64Image).toHaveBeenCalledWith(key);
+    await expect(normalizeDatasetIndexImageToModelInput(key)).rejects.toThrow(
+      'Invalid dataset file key'
+    );
+    expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
+  });
+
+  it.each(['temp/team/file.png', 'chat/app/user/chat/file.png'])(
+    'should reject %s without reading private S3 data',
+    async (key) => {
+      await expect(
+        normalizeDatasetIndexImageToModelInput(key, '507f1f77bcf86cd799439011')
+      ).rejects.toThrow('Invalid dataset file key');
+      expect(mockGetDatasetBase64Image).not.toHaveBeenCalled();
+    }
+  );
+
+  it('should accept data URL and external http image sources', async () => {
+    const dataUrl = 'data:image/png;base64,inline';
+    await expect(
+      normalizeDatasetIndexImageToModelInput(dataUrl, '507f1f77bcf86cd799439011')
+    ).resolves.toBe(dataUrl);
+
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    const httpUrl = 'https://example.com/pic.png';
+    await expect(
+      normalizeDatasetIndexImageToModelInput(httpUrl, '507f1f77bcf86cd799439011')
+    ).resolves.toBe(httpUrl);
+  });
+
+  it('should reject local or arbitrary non-url image paths', async () => {
+    await expect(
+      normalizeDatasetIndexImageToModelInput('/local/file.png', '507f1f77bcf86cd799439011')
+    ).rejects.toThrow('Invalid dataset file key');
   });
 });
 
@@ -239,12 +279,12 @@ describe('isValidImageEmbeddingSource', () => {
   it('should accept model-readable image sources', () => {
     expect(isValidImageEmbeddingSource('data:image/png;base64,input')).toBe(true);
     expect(isValidImageEmbeddingSource('dataset/team/file.png')).toBe(true);
-    expect(isValidImageEmbeddingSource('temp/team/file.png')).toBe(true);
-    expect(isValidImageEmbeddingSource('chat/app/user/file.png')).toBe(true);
     expect(isValidImageEmbeddingSource('https://example.com/file.png')).toBe(true);
   });
 
-  it('should reject empty or local non-url image sources', () => {
+  it('should reject non-dataset internal keys and non-url image sources', () => {
+    expect(isValidImageEmbeddingSource('temp/team/file.png')).toBe(false);
+    expect(isValidImageEmbeddingSource('chat/app/user/file.png')).toBe(false);
     expect(isValidImageEmbeddingSource('')).toBe(false);
     expect(isValidImageEmbeddingSource('/local/file.png')).toBe(false);
   });

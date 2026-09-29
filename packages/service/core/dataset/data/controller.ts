@@ -79,6 +79,10 @@ export type FormatDatasetDataValuesOptions = {
 
 /**
  * 批量格式化数据块，并让 q、a 与 imageId 中的重复对象键共用一次短链签发。
+ *
+ * 传入 `datasetId` 或 `filter` 时，知识库 data 预览只会为通过筛选的
+ * `dataset/*` key 签发短链；`chat/*`、`temp/*` 以及其他未通过筛选的 key
+ * 保留原文，不在该数据链路中生成访问凭证。
  */
 export const formatDatasetDataValues = async (
   items: FormatDatasetDataValueProps[],
@@ -118,7 +122,7 @@ export const formatDatasetDataValues = async (
     }
 
     // 未通过 datasetId 白名单的 dataset key 与文本路径保持一致：保留原始 key，而不是退化成空链接。
-    // 这样既不产生下载 token，也避免 `![title]()` 触发相对 URL 请求。
+    // 这样既不产生下载 token，也能让调用方识别该图片未获得知识库预览授权。
     const imagePreivewUrl = isS3ObjectKey(imageId, 'dataset')
       ? (previewUrlMap.get(imageId) ?? imageId)
       : imageId;

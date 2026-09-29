@@ -37,10 +37,10 @@ export function isAuthorizedDatasetFileS3Key({
   if (!parsedKey) return false;
 
   if (Array.isArray(datasetId)) {
-    return datasetId.some((id) => id && String(parsedKey.datasetId) === String(id));
+    return datasetId.some((id) => id && parsedKey.datasetId === String(id));
   }
 
-  return !!datasetId && String(parsedKey.datasetId) === String(datasetId);
+  return !!datasetId && parsedKey.datasetId === String(datasetId);
 }
 
 /**

@@ -129,13 +129,17 @@ export const replaceS3KeysWithPreviewUrlMap = (
 };
 
 export type ReplaceS3KeysOptions = {
-  /** 仅放行符合条件的 S3 对象键，未通过过滤的键不会被签发为短链，保持原文本不替换。 */
+  /**
+   * 仅放行符合条件的 S3 对象键，未通过过滤的键不会被签发为短链，保持原文本不替换。
+   * 知识库 data 调用方应传入 dataset key 过滤器；本通用工具本身仍兼容 chat/temp 场景。
+   */
   filter?: (objectKey: string) => boolean;
 };
 
 /**
  * 批量替换多段文本中的 S3 对象键，所有唯一 key 共用批量签发请求。
- * 没有可预览 key 时返回输入副本，避免再次扫描文本和创建短链映射。
+ * 默认支持通用预览场景；知识库 data 必须通过 `options.filter` 收敛为当前 dataset 的
+ * `dataset/*` key。没有可预览 key 时返回输入副本，避免再次扫描文本和创建短链映射。
  */
 export const replaceS3KeysToPreviewUrls = async (
   documentQuoteTexts: string[],
