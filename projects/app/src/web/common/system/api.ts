@@ -2,9 +2,9 @@ import { GET, POST } from '@/web/common/api/request';
 import type { GetSystemInitDataResponse } from '@fastgpt/global/openapi/common/system/api';
 import type {
   GetModelCatalogResponse,
-  GetSystemModelsResponse,
-  ModelCollaboratorBatchListResponse
+  GetSystemModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ModelCollaboratorBatchListResponse } from '@fastgpt/global/support/permission/model/controller.schema';
 import type {
   GetModelSummariesBody,
   GetModelSummariesResponse

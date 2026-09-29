@@ -1,30 +1,177 @@
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import type { OpenAPIPath } from '../../../type';
 import {
+  CreateModelBodySchema,
+  CreateModelResponseSchema,
+  CreateModelsFromTemplatesBodySchema,
+  CreateModelsFromTemplatesResponseSchema,
+  DeleteModelsBodySchema,
+  GetModelDetailResponseSchema,
+  GetModelConfigQuerySchema,
+  GetModelConfigResponseSchema,
   GetModelCatalogQuerySchema,
   GetModelCatalogResponseSchema,
+  GetModelTemplatesResponseSchema,
+  GetSystemModelConfigJsonResponseSchema,
   GetSystemModelsResponseSchema,
-  GetTeamModelsResponseSchema,
+  ModelReferenceSchema,
+  TestDraftModelBodySchema,
+  TestModelQuerySchema,
+  UpdateDefaultModelsBodySchema,
+  UpdateModelBodySchema,
+  UpdateModelStatusBodySchema,
+  UpdateSystemModelsWithJsonBodySchema
+} from './api';
+import { CollaboratorListSchema } from '../../../../support/permission/collaborator.schema';
+import {
   ModelCollaboratorBatchListBodySchema,
   ModelCollaboratorBatchListResponseSchema,
   ModelCollaboratorListQuerySchema,
-  ModelCollaboratorListResponseSchema,
   ModelCollaboratorUpdateBodySchema
-} from './api';
+} from '../../../../support/permission/model/controller.schema';
 import { GetModelSummariesBodySchema, GetModelSummariesResponseSchema } from './summary';
 
 export const AIModelPath: OpenAPIPath = {
-  '/core/ai/model/teamModels': {
+  '/core/ai/model/create': {
+    post: {
+      summary: '创建自定义模型',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: CreateModelBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '创建成功',
+          content: { 'application/json': { schema: CreateModelResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/model/detail': {
     get: {
-      summary: '获取团队私有模型列表',
-      description: '获取当前登录成员名下的团队私有模型列表及关联的团队渠道摘要',
+      summary: '获取模型详情',
+      tags: [DevApiTagsMap.model],
+      requestParams: { query: ModelReferenceSchema },
+      responses: {
+        200: {
+          description: '完整模型参数、全部渠道展示信息及当前关联状态',
+          content: { 'application/json': { schema: GetModelDetailResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/model/templates': {
+    get: {
+      summary: '实时获取 Plugin 模型模板',
       tags: [DevApiTagsMap.model],
       responses: {
         200: {
-          description: '成功返回团队私有模型列表',
-          content: { 'application/json': { schema: GetTeamModelsResponseSchema } }
+          description: '模型模板列表',
+          content: { 'application/json': { schema: GetModelTemplatesResponseSchema } }
         }
       }
+    }
+  },
+  '/core/ai/model/createFromTemplates': {
+    post: {
+      summary: '从模板批量创建模型',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: CreateModelsFromTemplatesBodySchema } }
+      },
+      responses: {
+        200: {
+          description: '实际创建的模型列表',
+          content: {
+            'application/json': { schema: CreateModelsFromTemplatesResponseSchema }
+          }
+        }
+      }
+    }
+  },
+  '/core/ai/model/delete': {
+    delete: {
+      summary: '批量删除模型',
+      description: '按 modelIds 批量删除模型；支持系统模型和团队模型',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: DeleteModelsBodySchema } }
+      },
+      responses: { 200: { description: '删除成功' } }
+    }
+  },
+  '/core/ai/model/test': {
+    get: {
+      summary: '测试模型配置',
+      tags: [DevApiTagsMap.model],
+      requestParams: { query: TestModelQuerySchema },
+      responses: {
+        200: { description: '测试成功' }
+      }
+    },
+    post: {
+      summary: '测试新增或编辑中的模型草稿',
+      description: '使用当前表单草稿和指定渠道发起测试，不持久化模型',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: TestDraftModelBodySchema } }
+      },
+      responses: {
+        200: { description: '测试成功' }
+      }
+    }
+  },
+  '/core/ai/model/update': {
+    put: {
+      summary: '更新模型配置',
+      description: '按 modelId 更新已有模型的可编辑参数，支持修改模型标识（model）',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateModelBodySchema } }
+      },
+      responses: { 200: { description: '更新成功' } }
+    }
+  },
+  '/core/ai/model/updateStatus': {
+    put: {
+      summary: '批量更新模型启停状态',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateModelStatusBodySchema } }
+      },
+      responses: { 200: { description: '更新成功' } }
+    }
+  },
+  '/core/ai/model/getConfigJson': {
+    get: {
+      summary: '导出模型配置',
+      tags: [DevApiTagsMap.model],
+      responses: {
+        200: {
+          description: '最新模型配置 JSON',
+          content: { 'application/json': { schema: GetSystemModelConfigJsonResponseSchema } }
+        }
+      }
+    }
+  },
+  '/core/ai/model/updateWithJson': {
+    put: {
+      summary: '导入模型配置',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateSystemModelsWithJsonBodySchema } }
+      },
+      responses: { 200: { description: '导入成功' } }
+    }
+  },
+  '/core/ai/model/updateDefault': {
+    put: {
+      summary: '更新默认模型',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateDefaultModelsBodySchema } }
+      },
+      responses: { 200: { description: '更新成功' } }
     }
   },
   '/core/ai/model/summary': {
@@ -54,6 +201,20 @@ export const AIModelPath: OpenAPIPath = {
       }
     }
   },
+  '/core/ai/model/config': {
+    get: {
+      summary: '获取模型管理配置',
+      description: '按显式作用域返回系统或当前成员的模型、渠道和 Provider 配置',
+      tags: [DevApiTagsMap.model],
+      requestParams: { query: GetModelConfigQuerySchema },
+      responses: {
+        200: {
+          description: '模型管理配置',
+          content: { 'application/json': { schema: GetModelConfigResponseSchema } }
+        }
+      }
+    }
+  },
   '/core/ai/model/catalog': {
     get: {
       summary: '获取当前成员可用模型清单',
@@ -78,7 +239,7 @@ export const AIModelPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功返回模型协作者',
-          content: { 'application/json': { schema: ModelCollaboratorListResponseSchema } }
+          content: { 'application/json': { schema: CollaboratorListSchema } }
         }
       }
     }

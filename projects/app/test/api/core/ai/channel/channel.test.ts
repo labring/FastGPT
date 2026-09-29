@@ -1,32 +1,70 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+
+const aiproxyMocks = vi.hoisted(() => {
+  const groupBatchDelete = vi.fn();
+  const groupBatchUpdateStatus = vi.fn();
+  const groupCreate = vi.fn();
+  const groupUpdate = vi.fn();
+  const groupDelete = vi.fn();
+  const groupUpdateStatus = vi.fn();
+  const groupGet = vi.fn();
+
+  const systemCreate = vi.fn();
+  const systemUpdate = vi.fn();
+  const systemDelete = vi.fn();
+  const systemUpdateStatus = vi.fn();
+  const systemBatchDelete = vi.fn();
+  const systemBatchUpdateStatus = vi.fn();
+  const systemGet = vi.fn();
+
+  const globalGroupGet = vi.fn();
+
+  const group = vi.fn((_groupId: string) => ({
+    channels: {
+      get: groupGet,
+      create: groupCreate,
+      update: groupUpdate,
+      delete: groupDelete,
+      updateStatus: groupUpdateStatus,
+      batchDelete: groupBatchDelete,
+      batchUpdateStatus: groupBatchUpdateStatus
+    }
+  }));
+
+  return {
+    systemGet,
+    systemCreate,
+    systemUpdate,
+    systemDelete,
+    systemUpdateStatus,
+    systemBatchDelete,
+    systemBatchUpdateStatus,
+    groupGet,
+    groupCreate,
+    groupUpdate,
+    groupDelete,
+    groupUpdateStatus,
+    groupBatchDelete,
+    groupBatchUpdateStatus,
+    globalGroupGet,
+    group
+  };
+});
 import {
-  batchDeleteGroupChannels,
-  batchDeleteSystemChannels,
-  batchUpdateGroupChannelStatus,
-  batchUpdateSystemChannelStatus,
-  createGroupChannel,
-  createSystemChannel,
-  deleteGroupChannel,
   getBatchChannelsAffectedModels,
   getChannelModels,
-  getChannelAffectedModels,
-  getChannelTypeMetas,
-  getGlobalGroupChannelById,
-  getGroupChannelById,
-  getSystemChannelById,
+  getChannelAffectedModels
+} from '@fastgpt/service/core/ai/channel/association';
+import {
   getGlobalGroupChannelList,
   getMemberChannelList,
-  getSystemChannelList,
-  updateGroupChannel,
-  updateGroupChannelStatus,
-  updateSystemChannel,
-  testGroupChannel,
-  type AiproxyGroupChannel
-} from '@fastgpt/service/core/ai/channel';
+  getSystemChannelList
+} from '@fastgpt/service/core/ai/channel/list';
+import { getChannelTypeMetas } from '@fastgpt/service/core/ai/channel/provider';
+import type { AiproxyGroupChannel } from '@fastgpt/service/thirdProvider/aiproxy/type';
 import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
-import { getCachedTypeMetas, resetChannelCache } from '@fastgpt/service/core/ai/channel/cache';
 import { Call } from '@test/utils/request';
 import listHandler from '@/pages/api/core/ai/channel/list';
 import createHandler from '@/pages/api/core/ai/channel/create';
@@ -34,43 +72,61 @@ import updateHandler from '@/pages/api/core/ai/channel/update';
 import deleteHandler from '@/pages/api/core/ai/channel/delete';
 import batchHandler from '@/pages/api/core/ai/channel/batch';
 import statusHandler from '@/pages/api/core/ai/channel/status';
-import testHandler from '@/pages/api/core/ai/channel/test';
 import affectedModelsHandler from '@/pages/api/core/ai/channel/affectedModels';
 import modelsHandler from '@/pages/api/core/ai/channel/models';
 import providerMetasHandler from '@/pages/api/core/ai/channel/providerMetas';
 
-// Mock the aiproxy-facing service layer so no real aiproxy call happens.
-// The real controller helpers (assertMemberChannelPermission etc.) stay intact.
-vi.mock('@fastgpt/service/core/ai/channel', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/channel')>();
+// Mock the aiproxy client so no real aiproxy call happens.
+vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/thirdProvider/aiproxy/client')>();
   return {
     ...actual,
-    listGroupChannels: vi.fn(),
-    listSystemChannels: vi.fn(),
-    listGlobalGroupChannels: vi.fn(),
-    getGroupChannelById: vi.fn(),
-    getSystemChannelById: vi.fn(),
-    getGlobalGroupChannelById: vi.fn(),
-    createGroupChannel: vi.fn(),
-    createSystemChannel: vi.fn(),
-    updateGroupChannel: vi.fn(),
-    updateSystemChannel: vi.fn(),
-    deleteGroupChannel: vi.fn(),
-    deleteSystemChannel: vi.fn(),
-    batchDeleteGroupChannels: vi.fn(),
-    batchDeleteSystemChannels: vi.fn(),
-    updateGroupChannelStatus: vi.fn(),
-    updateSystemChannelStatus: vi.fn(),
-    batchUpdateGroupChannelStatus: vi.fn(),
-    batchUpdateSystemChannelStatus: vi.fn(),
-    testGroupChannel: vi.fn(),
-    testSystemChannel: vi.fn(),
+    aiProxyClient: {
+      system: {
+        channels: {
+          get: aiproxyMocks.systemGet,
+          create: aiproxyMocks.systemCreate,
+          update: aiproxyMocks.systemUpdate,
+          delete: aiproxyMocks.systemDelete,
+          updateStatus: aiproxyMocks.systemUpdateStatus,
+          batchDelete: aiproxyMocks.systemBatchDelete,
+          batchUpdateStatus: aiproxyMocks.systemBatchUpdateStatus
+        }
+      },
+      globalGroupChannels: {
+        get: aiproxyMocks.globalGroupGet
+      },
+      group: aiproxyMocks.group
+    }
+  };
+});
+
+// Mock the aiproxy-facing service layer so no real aiproxy call happens.
+// The real controller helpers (assertMemberChannelPermission etc.) stay intact.
+vi.mock('@fastgpt/service/core/ai/channel/association', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/channel/association')>();
+  return {
+    ...actual,
     getChannelAffectedModels: vi.fn(),
     getBatchChannelsAffectedModels: vi.fn(),
-    getChannelModels: vi.fn(),
+    getChannelModels: vi.fn()
+  };
+});
+vi.mock('@fastgpt/service/core/ai/channel/list', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/channel/list')>();
+  return {
+    ...actual,
     getSystemChannelList: vi.fn(),
     getMemberChannelList: vi.fn(),
-    getGlobalGroupChannelList: vi.fn(),
+    getGlobalGroupChannelList: vi.fn()
+  };
+});
+vi.mock('@fastgpt/service/core/ai/channel/provider', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/channel/provider')>();
+  return {
+    ...actual,
     getChannelTypeMetas: vi.fn()
   };
 });
@@ -199,6 +255,17 @@ describe('GET /api/core/ai/channel/list', () => {
     });
     expect(vi.mocked(getGlobalGroupChannelList)).not.toHaveBeenCalled();
   });
+
+  it('member declaring channelType=system is rejected with rootOnlyPermit', async () => {
+    memberWithCreatePer();
+
+    const res = await Call(listHandler, { query: { channelType: 'system' } });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toBe('rootOnlyPermit');
+    expect(vi.mocked(getSystemChannelList)).not.toHaveBeenCalled();
+    expect(vi.mocked(getMemberChannelList)).not.toHaveBeenCalled();
+  });
 });
 
 describe('POST /api/core/ai/channel/create (channelType declared by caller)', () => {
@@ -214,11 +281,11 @@ describe('POST /api/core/ai/channel/create (channelType declared by caller)', ()
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(createGroupChannel)).toHaveBeenCalledWith(
-      GROUP_ID,
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupCreate).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'my channel' })
     );
-    expect(vi.mocked(createSystemChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.systemCreate).not.toHaveBeenCalled();
   });
 
   it('member without create permission is rejected with unAuthChannel', async () => {
@@ -230,8 +297,8 @@ describe('POST /api/core/ai/channel/create (channelType declared by caller)', ()
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('unAuthChannel');
-    expect(vi.mocked(createGroupChannel)).not.toHaveBeenCalled();
-    expect(vi.mocked(createSystemChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.groupCreate).not.toHaveBeenCalled();
+    expect(aiproxyMocks.systemCreate).not.toHaveBeenCalled();
   });
 
   it('member declaring channelType=system is rejected (system channels are root-only)', async () => {
@@ -243,8 +310,8 @@ describe('POST /api/core/ai/channel/create (channelType declared by caller)', ()
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('rootOnlyPermit');
-    expect(vi.mocked(createSystemChannel)).not.toHaveBeenCalled();
-    expect(vi.mocked(createGroupChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.systemCreate).not.toHaveBeenCalled();
+    expect(aiproxyMocks.groupCreate).not.toHaveBeenCalled();
   });
 
   it('root declaring channelType=system creates a system channel', async () => {
@@ -261,10 +328,10 @@ describe('POST /api/core/ai/channel/create (channelType declared by caller)', ()
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(createSystemChannel)).toHaveBeenCalledWith(
+    expect(aiproxyMocks.systemCreate).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'system channel' })
     );
-    expect(vi.mocked(createGroupChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.groupCreate).not.toHaveBeenCalled();
   });
 
   it('root declaring channelType=team creates in root own team group (root is also a team admin)', async () => {
@@ -281,57 +348,11 @@ describe('POST /api/core/ai/channel/create (channelType declared by caller)', ()
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(createGroupChannel)).toHaveBeenCalledWith(
-      GROUP_ID,
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupCreate).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'root team channel' })
     );
-    expect(vi.mocked(createSystemChannel)).not.toHaveBeenCalled();
-  });
-});
-
-describe('getCachedTypeMetas (TTL cache for provider metas)', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-08-12T00:00:00Z'));
-    resetChannelCache();
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  const fetchFn = () =>
-    vi.fn().mockResolvedValue({
-      1: { defaultBaseUrl: 'https://a', keyHelp: 'sk-', name: 'a' }
-    });
-
-  it('reuses the cached metas within the 10-min TTL window', async () => {
-    const fetch = fetchFn();
-
-    const first = await getCachedTypeMetas(fetch);
-    vi.setSystemTime(new Date('2026-08-12T00:05:00Z'));
-    const second = await getCachedTypeMetas(fetch);
-
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(second).toEqual(first);
-  });
-
-  it('refetches after the TTL expires', async () => {
-    const fetch = fetchFn();
-
-    await getCachedTypeMetas(fetch);
-    vi.setSystemTime(new Date('2026-08-12T00:11:00Z'));
-    await getCachedTypeMetas(fetch);
-
-    expect(fetch).toHaveBeenCalledTimes(2);
-  });
-
-  it('dedupes concurrent cold misses into a single fetch', async () => {
-    const fetch = fetchFn();
-
-    const [a, b] = await Promise.all([getCachedTypeMetas(fetch), getCachedTypeMetas(fetch)]);
-
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(a).toEqual(b);
+    expect(aiproxyMocks.systemCreate).not.toHaveBeenCalled();
   });
 });
 
@@ -377,13 +398,13 @@ describe('PUT /api/core/ai/channel/update (ownership routing)', () => {
 
   it('member without create permission can update an existing own channel', async () => {
     memberWithoutCreatePer();
-    vi.mocked(getGroupChannelById).mockResolvedValue(groupChannel(12, GROUP_ID));
+    aiproxyMocks.groupGet.mockResolvedValue(groupChannel(12, GROUP_ID));
 
     const res = await Call(updateHandler, { body: updateBody });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(updateGroupChannel)).toHaveBeenCalledWith(
-      GROUP_ID,
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupUpdate).toHaveBeenCalledWith(
       12,
       expect.objectContaining({ name: 'new name' })
     );
@@ -391,34 +412,34 @@ describe('PUT /api/core/ai/channel/update (ownership routing)', () => {
 
   it('member routes to the own group channel variant when the id is in own group', async () => {
     memberWithCreatePer();
-    vi.mocked(getGroupChannelById).mockResolvedValue(groupChannel(12, GROUP_ID));
+    aiproxyMocks.groupGet.mockResolvedValue(groupChannel(12, GROUP_ID));
 
     const res = await Call(updateHandler, { body: updateBody });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(updateGroupChannel)).toHaveBeenCalledWith(
-      GROUP_ID,
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupUpdate).toHaveBeenCalledWith(
       12,
       expect.objectContaining({ name: 'new name' })
     );
-    expect(vi.mocked(updateSystemChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.systemUpdate).not.toHaveBeenCalled();
   });
 
   it('member operating an id outside own group rejects channelNotExist', async () => {
     memberWithCreatePer();
-    vi.mocked(getGroupChannelById).mockRejectedValue({ response: { status: 404 } });
+    aiproxyMocks.groupGet.mockRejectedValue({ response: { status: 404 } });
 
     const res = await Call(updateHandler, { body: { ...updateBody, id: 99 } });
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('channelNotExist');
-    expect(vi.mocked(updateGroupChannel)).not.toHaveBeenCalled();
-    expect(vi.mocked(updateSystemChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.groupUpdate).not.toHaveBeenCalled();
+    expect(aiproxyMocks.systemUpdate).not.toHaveBeenCalled();
   });
 
   it('update rejects a partial payload (PUT is a full replacement)', async () => {
     memberWithCreatePer();
-    vi.mocked(getGroupChannelById).mockResolvedValue(groupChannel(12, GROUP_ID));
+    aiproxyMocks.groupGet.mockResolvedValue(groupChannel(12, GROUP_ID));
 
     const res = await Call(updateHandler, {
       body: { id: 12, channelType: 'team', name: 'only name' }
@@ -426,18 +447,18 @@ describe('PUT /api/core/ai/channel/update (ownership routing)', () => {
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('invalidModelConfig');
-    expect(vi.mocked(updateGroupChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.groupUpdate).not.toHaveBeenCalled();
   });
 
   it('root routes to the system channel variant when the declared kind is system', async () => {
     rootAuth();
-    vi.mocked(getSystemChannelById).mockResolvedValue(systemChannel(12));
+    aiproxyMocks.systemGet.mockResolvedValue(systemChannel(12));
 
     const res = await Call(updateHandler, { body: systemUpdateBody });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(updateSystemChannel)).toHaveBeenCalledWith(12, expect.anything());
-    expect(vi.mocked(updateGroupChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.systemUpdate).toHaveBeenCalledWith(12, expect.anything());
+    expect(aiproxyMocks.groupUpdate).not.toHaveBeenCalled();
   });
 
   it('member declaring channelType=system is rejected (system channels are root-only)', async () => {
@@ -447,24 +468,19 @@ describe('PUT /api/core/ai/channel/update (ownership routing)', () => {
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('rootOnlyPermit');
-    expect(vi.mocked(updateSystemChannel)).not.toHaveBeenCalled();
-    expect(vi.mocked(updateGroupChannel)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.systemUpdate).not.toHaveBeenCalled();
+    expect(aiproxyMocks.groupUpdate).not.toHaveBeenCalled();
   });
 
   it('root team-kind resolves the member channel via the global single-fetch', async () => {
     rootAuth();
-    vi.mocked(getGlobalGroupChannelById).mockResolvedValue(
-      groupChannel(12, 'fastgpt:tmb:otherMember')
-    );
+    aiproxyMocks.globalGroupGet.mockResolvedValue(groupChannel(12, 'fastgpt:tmb:otherMember'));
 
     const res = await Call(updateHandler, { body: updateBody });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(updateGroupChannel)).toHaveBeenCalledWith(
-      'fastgpt:tmb:otherMember',
-      12,
-      expect.anything()
-    );
+    expect(aiproxyMocks.group).toHaveBeenCalledWith('fastgpt:tmb:otherMember');
+    expect(aiproxyMocks.groupUpdate).toHaveBeenCalledWith(12, expect.anything());
   });
 });
 
@@ -472,7 +488,7 @@ describe('existing channel operations after create permission is revoked', () =>
   beforeEach(() => {
     vi.clearAllMocks();
     memberWithoutCreatePer();
-    vi.mocked(getGroupChannelById).mockResolvedValue(groupChannel(12, GROUP_ID));
+    aiproxyMocks.groupGet.mockResolvedValue(groupChannel(12, GROUP_ID));
     vi.mocked(getChannelAffectedModels).mockResolvedValue([]);
   });
 
@@ -480,7 +496,8 @@ describe('existing channel operations after create permission is revoked', () =>
     const res = await Call(deleteHandler, { query: { id: 12, channelType: 'team' } });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(deleteGroupChannel)).toHaveBeenCalledWith(GROUP_ID, 12);
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupDelete).toHaveBeenCalledWith(12);
   });
 
   it('allows changing status of an existing own channel', async () => {
@@ -489,16 +506,8 @@ describe('existing channel operations after create permission is revoked', () =>
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(updateGroupChannelStatus)).toHaveBeenCalledWith(GROUP_ID, 12, 2);
-  });
-
-  it('allows testing an existing own channel', async () => {
-    const res = await Call(testHandler, {
-      query: { id: 12, channelType: 'team', model: 'gpt-4o' }
-    });
-
-    expect(res.code).toBe(200);
-    expect(vi.mocked(testGroupChannel)).toHaveBeenCalledWith(GROUP_ID, 12, 'gpt-4o');
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupUpdateStatus).toHaveBeenCalledWith(12, 2);
   });
 
   it('allows reading affected models of an existing own channel', async () => {
@@ -511,6 +520,20 @@ describe('existing channel operations after create permission is revoked', () =>
       expect.objectContaining({ id: 12, group_id: GROUP_ID })
     );
   });
+
+  it('allows reading affected models of multiple existing own channels', async () => {
+    vi.mocked(getBatchChannelsAffectedModels).mockResolvedValue([
+      { modelId: 'm1', name: 'M1', model: 'gpt-4o' }
+    ]);
+
+    const res = await Call(affectedModelsHandler, {
+      query: { ids: [12, 13], channelType: 'team' }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data?.affectedModels).toHaveLength(1);
+    expect(vi.mocked(getBatchChannelsAffectedModels)).toHaveBeenCalled();
+  });
 });
 
 describe('GET /api/core/ai/channel/models (related models for hover)', () => {
@@ -520,7 +543,7 @@ describe('GET /api/core/ai/channel/models (related models for hover)', () => {
 
   it('member fetches models of an own-group channel', async () => {
     memberWithCreatePer();
-    vi.mocked(getGroupChannelById).mockResolvedValue(groupChannel(12, GROUP_ID));
+    aiproxyMocks.groupGet.mockResolvedValue(groupChannel(12, GROUP_ID));
     vi.mocked(getChannelModels).mockReturnValue([
       { modelId: 'm1', name: 'Model 1', model: 'gpt-4o' }
     ]);
@@ -536,7 +559,7 @@ describe('GET /api/core/ai/channel/models (related models for hover)', () => {
 
   it('member operating a channel outside own group rejects channelNotExist', async () => {
     memberWithCreatePer();
-    vi.mocked(getGroupChannelById).mockRejectedValue({ response: { status: 404 } });
+    aiproxyMocks.groupGet.mockRejectedValue({ response: { status: 404 } });
 
     const res = await Call(modelsHandler, { query: { id: 99, channelType: 'team' } });
 
@@ -547,7 +570,7 @@ describe('GET /api/core/ai/channel/models (related models for hover)', () => {
 
   it('root fetches models of a system channel', async () => {
     rootAuth();
-    vi.mocked(getSystemChannelById).mockResolvedValue(systemChannel(12));
+    aiproxyMocks.systemGet.mockResolvedValue(systemChannel(12));
     vi.mocked(getChannelModels).mockReturnValue([
       { modelId: 'm2', name: 'Model 2', model: 'claude-3-5-sonnet' }
     ]);
@@ -569,9 +592,7 @@ describe('POST /api/core/ai/channel/batch (batch operations)', () => {
 
   it('member batch-deletes own channels and gets affected models', async () => {
     memberWithCreatePer();
-    vi.mocked(getGroupChannelById).mockImplementation(async (groupId, id) =>
-      groupChannel(id, groupId)
-    );
+    aiproxyMocks.groupGet.mockImplementation(async (id) => groupChannel(id, GROUP_ID));
     vi.mocked(getBatchChannelsAffectedModels).mockResolvedValue([
       { modelId: 'm1', name: 'Model 1', model: 'gpt-4o' }
     ]);
@@ -582,21 +603,21 @@ describe('POST /api/core/ai/channel/batch (batch operations)', () => {
 
     expect(res.code).toBe(200);
     expect(res.data.affectedModels).toEqual([{ modelId: 'm1', name: 'Model 1', model: 'gpt-4o' }]);
-    expect(vi.mocked(batchDeleteGroupChannels)).toHaveBeenCalledWith(GROUP_ID, [1, 2]);
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupBatchDelete).toHaveBeenCalledWith([1, 2]);
   });
 
   it('member batch-updates status of own channels', async () => {
     memberWithCreatePer();
-    vi.mocked(getGroupChannelById).mockImplementation(async (groupId, id) =>
-      groupChannel(id, groupId)
-    );
+    aiproxyMocks.groupGet.mockImplementation(async (id) => groupChannel(id, GROUP_ID));
 
     const res = await Call(batchHandler, {
       body: { action: 'status', ids: [1, 2], status: 2, channelType: 'team' }
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(batchUpdateGroupChannelStatus)).toHaveBeenCalledWith(GROUP_ID, [1, 2], 2);
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupBatchUpdateStatus).toHaveBeenCalledWith([1, 2], 2);
   });
 
   it('non-root batch operation on system channels is rejected', async () => {
@@ -608,12 +629,12 @@ describe('POST /api/core/ai/channel/batch (batch operations)', () => {
 
     expect(res.code).toBe(500);
     expect(res.error).toBe('rootOnlyPermit');
-    expect(vi.mocked(batchDeleteSystemChannels)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.systemBatchDelete).not.toHaveBeenCalled();
   });
 
   it('root batch-deletes system channels', async () => {
     rootAuth();
-    vi.mocked(getSystemChannelById).mockImplementation(async (id) => systemChannel(id));
+    aiproxyMocks.systemGet.mockImplementation(async (id) => systemChannel(id));
     vi.mocked(getBatchChannelsAffectedModels).mockResolvedValue([]);
 
     const res = await Call(batchHandler, {
@@ -621,6 +642,6 @@ describe('POST /api/core/ai/channel/batch (batch operations)', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(batchDeleteSystemChannels)).toHaveBeenCalledWith([10, 20]);
+    expect(aiproxyMocks.systemBatchDelete).toHaveBeenCalledWith([10, 20]);
   });
 });

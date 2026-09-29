@@ -4,24 +4,51 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import {
   getChannelDashboard,
   getChannelLogDetail,
-  getGlobalGroupChannelById,
-  getGroupChannelById,
-  getSystemChannelById,
-  searchChannelLogs,
-  type AiproxyGroupChannel
-} from '@fastgpt/service/core/ai/channel';
+  searchChannelLogs
+} from '@fastgpt/service/core/ai/channel/observability';
+import type { AiproxyGroupChannel } from '@fastgpt/service/thirdProvider/aiproxy/type';
 import { Call } from '@test/utils/request';
 import logsHandler from '@/pages/api/core/ai/channel/logs';
 import logDetailHandler from '@/pages/api/core/ai/channel/logDetail';
 import dashboardHandler from '@/pages/api/core/ai/channel/dashboard';
 
-vi.mock('@fastgpt/service/core/ai/channel', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/channel')>();
+const aiproxyMocks = vi.hoisted(() => {
+  const groupGet = vi.fn();
+  const systemGet = vi.fn();
+  const group = vi.fn((_groupId: string) => ({
+    channels: {
+      get: groupGet
+    }
+  }));
+
+  return {
+    groupGet,
+    systemGet,
+    group
+  };
+});
+
+vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/thirdProvider/aiproxy/client')>();
   return {
     ...actual,
-    getGroupChannelById: vi.fn(),
-    getSystemChannelById: vi.fn(),
-    getGlobalGroupChannelById: vi.fn(),
+    aiProxyClient: {
+      system: {
+        channels: {
+          get: aiproxyMocks.systemGet
+        }
+      },
+      group: aiproxyMocks.group
+    }
+  };
+});
+
+vi.mock('@fastgpt/service/core/ai/channel/observability', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/channel/observability')>();
+  return {
+    ...actual,
     searchChannelLogs: vi.fn(),
     getChannelLogDetail: vi.fn(),
     getChannelDashboard: vi.fn()
@@ -77,7 +104,7 @@ describe('channel observability APIs', () => {
 
   it('derives a member group and validates channelId before searching logs', async () => {
     mockAuth(false);
-    vi.mocked(getGroupChannelById).mockResolvedValue(groupChannel(12));
+    aiproxyMocks.groupGet.mockResolvedValue(groupChannel(12));
     vi.mocked(searchChannelLogs).mockResolvedValue({ list: [logItem], total: 1 });
 
     const res = await Call(logsHandler, {
@@ -92,11 +119,11 @@ describe('channel observability APIs', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(getGroupChannelById)).toHaveBeenCalledWith(GROUP_ID, 12);
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupGet).toHaveBeenCalledWith(12);
     expect(vi.mocked(searchChannelLogs)).toHaveBeenCalledWith(
       expect.objectContaining({ groupId: GROUP_ID, channelId: 12 })
     );
-    expect(vi.mocked(getGlobalGroupChannelById)).not.toHaveBeenCalled();
   });
 
   it('treats an empty channelId from the all-channels selector as no filter', async () => {
@@ -114,7 +141,7 @@ describe('channel observability APIs', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(getGroupChannelById)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.groupGet).not.toHaveBeenCalled();
     expect(vi.mocked(searchChannelLogs)).toHaveBeenCalledWith(
       expect.objectContaining({ groupId: GROUP_ID, channelId: undefined })
     );
@@ -139,7 +166,7 @@ describe('channel observability APIs', () => {
 
   it('keeps root team logs inside the root member group', async () => {
     mockAuth(true);
-    vi.mocked(getGroupChannelById).mockResolvedValue(groupChannel(12));
+    aiproxyMocks.groupGet.mockResolvedValue(groupChannel(12));
     vi.mocked(searchChannelLogs).mockResolvedValue({ list: [], total: 0 });
 
     const res = await Call(logsHandler, {
@@ -153,8 +180,8 @@ describe('channel observability APIs', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(getGroupChannelById)).toHaveBeenCalledWith(GROUP_ID, 12);
-    expect(vi.mocked(getGlobalGroupChannelById)).not.toHaveBeenCalled();
+    expect(aiproxyMocks.group).toHaveBeenCalledWith(GROUP_ID);
+    expect(aiproxyMocks.groupGet).toHaveBeenCalledWith(12);
     expect(vi.mocked(searchChannelLogs)).toHaveBeenCalledWith(
       expect.objectContaining({ groupId: GROUP_ID })
     );
@@ -162,7 +189,7 @@ describe('channel observability APIs', () => {
 
   it('rejects channelId that is absent from the current member group', async () => {
     mockAuth(false);
-    vi.mocked(getGroupChannelById).mockRejectedValue({ response: { status: 404 } });
+    aiproxyMocks.groupGet.mockRejectedValue({ response: { status: 404 } });
 
     const res = await Call(logsHandler, {
       query: {
@@ -199,7 +226,7 @@ describe('channel observability APIs', () => {
 
   it('validates a root system channel before querying the global dashboard', async () => {
     mockAuth(true);
-    vi.mocked(getSystemChannelById).mockResolvedValue({
+    aiproxyMocks.systemGet.mockResolvedValue({
       ...groupChannel(12),
       group_id: undefined
     });
@@ -215,7 +242,7 @@ describe('channel observability APIs', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(vi.mocked(getSystemChannelById)).toHaveBeenCalledWith(12);
+    expect(aiproxyMocks.systemGet).toHaveBeenCalledWith(12);
     expect(vi.mocked(getChannelDashboard)).toHaveBeenCalledWith({
       channelId: 12,
       timezone: 'Asia/Shanghai',

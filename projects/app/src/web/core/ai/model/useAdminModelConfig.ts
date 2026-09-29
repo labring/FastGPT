@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getAdminModelConfig } from '@/web/core/ai/config';
+import { getAdminModelConfig } from '@/web/core/ai/model/api';
 import {
   formatModelProviders,
   getModelProviderFromCache,
@@ -9,8 +9,8 @@ import {
 } from '@fastgpt/global/core/ai/model/provider';
 
 /** 管理员模型页面的独立数据源，不读取普通成员 useUserModelStore。 */
-export const useAdminModelConfig = () => {
-  const request = useRequest(getAdminModelConfig, { manual: false });
+export const useAdminModelConfig = (options?: { manual?: boolean }) => {
+  const request = useRequest(getAdminModelConfig, { manual: options?.manual ?? false });
   // 加载中和失败时保持空集合引用稳定，避免消费方 effect -> setState 形成渲染循环。
   const systemModelList = useMemo(() => request.data?.models ?? [], [request.data?.models]);
   const defaultModelIds = useMemo(

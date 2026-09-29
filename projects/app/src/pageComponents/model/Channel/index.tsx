@@ -29,14 +29,18 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { type ChannelInfoType } from '@/global/aiproxy/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { ChannelStatusEnum, defaultChannel } from '@/global/aiproxy/constants';
+import {
+  type ChannelInfoType,
+  ChannelStatusEnum,
+  defaultChannel
+} from '@fastgpt/global/core/ai/channel';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ModelTabHeader from '../ModelTabHeader';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -183,7 +187,7 @@ const ChannelTable = ({
   const handleDeleteChannel = async (item: ChannelListItem) => {
     let affectedWarning = '';
     try {
-      const res = await getAffectedModels(item.id, channelType);
+      const res = await getAffectedModels({ ids: [item.id], channelType });
       if (res?.affectedModels && res.affectedModels.length > 0) {
         const names = res.affectedModels.map((m) => m.name || m.model).join(', ');
         affectedWarning = t('config_model:channel.delete_affected_models_warning', {
@@ -226,24 +230,38 @@ const ChannelTable = ({
       });
       setSelectedItems([]);
       refreshChannelList();
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         status: 'error',
-        title: err?.message || 'Batch update status failed'
+        title: getErrText(err, 'Batch update status failed')
       });
     } finally {
       setBatchOperating(false);
     }
   };
 
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
     if (selectedItems.length === 0) return;
+    const selectedIds = selectedItems.map((c) => c.id);
+    let affectedWarning = '';
+    try {
+      const res = await getAffectedModels({ ids: selectedIds, channelType });
+      if (res?.affectedModels && res.affectedModels.length > 0) {
+        const names = res.affectedModels.map((m) => m.name || m.model).join(', ');
+        affectedWarning = t('config_model:channel.delete_affected_models_warning', {
+          models: names
+        });
+      }
+    } catch (_error) {
+      // 预检失败不阻断删除弹窗
+    }
+
     openConfirm({
       onConfirm: async () => {
         setBatchOperating(true);
         try {
           await postBatchDeleteChannels({
-            ids: selectedItems.map((c) => c.id),
+            ids: selectedIds,
             channelType
           });
           toast({
@@ -252,18 +270,20 @@ const ChannelTable = ({
           });
           setSelectedItems([]);
           refreshChannelList();
-        } catch (err: any) {
+        } catch (err: unknown) {
           toast({
             status: 'error',
-            title: err?.message || 'Batch delete failed'
+            title: getErrText(err, 'Batch delete failed')
           });
         } finally {
           setBatchOperating(false);
         }
       },
-      customContent: t('config_model:channel.batch_delete_confirm', {
-        count: selectedItems.length
-      })
+      customContent:
+        affectedWarning ||
+        t('config_model:channel.batch_delete_confirm', {
+          count: selectedItems.length
+        })
     })();
   };
 
@@ -276,7 +296,7 @@ const ChannelTable = ({
     channelMutationLoading ||
     batchOperating;
 
-  const canCreateChannel = isRoot || Boolean(userInfo?.team?.permission?.hasModelCreateRole);
+  const canCreateChannel = isRoot || Boolean(userInfo?.team?.permission?.hasModelCreatePer);
 
   return (
     <>
@@ -443,6 +463,7 @@ const ChannelTable = ({
                             })();
                             updateChannel({
                               ...item,
+                              channelType,
                               key: '',
                               priority: val
                             });

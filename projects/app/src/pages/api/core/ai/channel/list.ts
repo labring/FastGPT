@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getMemberChannelList, getSystemChannelList } from '@fastgpt/service/core/ai/channel';
+import { authModelScopeOperation } from '@fastgpt/service/support/permission/model/controller';
+import { getMemberChannelList, getSystemChannelList } from '@fastgpt/service/core/ai/channel/list';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ListChannelsQuerySchema,
@@ -19,9 +19,9 @@ async function handler(
     querySchema: ListChannelsQuerySchema
   }).query;
 
-  const { tmbId, isRoot } = await authUserPer({ req, authToken: true });
+  const { tmbId } = await authModelScopeOperation({ req, channelType });
 
-  if (isRoot && channelType === 'system') {
+  if (channelType === 'system') {
     return ListChannelsResponseSchema.parse(
       await getSystemChannelList({ pageNum, pageSize, search })
     );

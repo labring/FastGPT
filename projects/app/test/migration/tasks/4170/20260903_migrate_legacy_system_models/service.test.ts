@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config/constants';
+import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/constants';
 import {
   bootstrapAIModelsFromLegacy,
   inspectLegacySystemModelMigration
 } from '@/migration/tasks/4170/20260903_migrate_legacy_system_models/service';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 
 // 本文件验证首次模型体系初始化的事务原子性，不能使用全局的无事务测试替身。

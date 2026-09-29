@@ -1,7 +1,7 @@
 import { useModelChannelTest } from './useModelChannelTest';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
-import { getAdminModelTemplates, postSystemModelsFromTemplates } from '@/web/core/ai/config';
-import { defaultChannel } from '@/global/aiproxy/constants';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import { getModelTemplates, postModelsFromTemplates } from '@/web/core/ai/model/api';
+import { defaultChannel } from '@fastgpt/global/core/ai/channel';
 import {
   Box,
   Button,
@@ -255,7 +255,7 @@ export const BlankModelCreateModal = ({
   createModelData: (type: ModelTypeEnum) => SystemModelDocumentDataType;
   defaultModelData?: SystemModelDocumentDataType;
   providers: ModelProviderItemType[];
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
   channelType?: 'system' | 'team';
   onSuccess: () => unknown | Promise<unknown>;
   onClose: () => void;
@@ -463,7 +463,7 @@ const TemplateCreateModal = ({
   onSelectSingleTemplate
 }: {
   installedModels: SystemModelDataType[];
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
   channelType?: 'system' | 'team';
   onClose: () => void;
   onSuccess: () => Promise<void>;
@@ -483,7 +483,7 @@ const TemplateCreateModal = ({
     error,
     loading,
     runAsync: refreshTemplates
-  } = useRequest(getAdminModelTemplates, { manual: false, errorToast: '' });
+  } = useRequest(getModelTemplates, { manual: false, errorToast: '' });
 
   const installedModelNames = useMemo(
     () => new Set(installedModels.map((model) => model.model)),
@@ -557,7 +557,7 @@ const TemplateCreateModal = ({
 
   const { runAsync: createModelsRequest, loading: creatingModels } = useRequest(
     () =>
-      postSystemModelsFromTemplates({
+      postModelsFromTemplates({
         templates: selectedTemplates.map(({ type, model }) => ({ type, model })),
         channelType
       }),
@@ -858,7 +858,7 @@ const AddModel = ({
   ...buttonProps
 }: {
   installedModels: SystemModelDataType[];
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
   providers: ModelProviderItemType[];
   channelType?: 'system' | 'team';
   onSuccess: () => Promise<void>;

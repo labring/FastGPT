@@ -1,10 +1,10 @@
-import { getCachedModelHandle, publishModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedModelHandle, publishModelHandle } from '@fastgpt/service/core/ai/model/handle';
 
 import { createServer, type Server } from 'node:http';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { type CreateSystemModelBody } from '@fastgpt/global/openapi/admin/system/model/api';
+import { type CreateModelBody } from '@fastgpt/global/openapi/core/ai/model/api';
 
 // 全局测试配置提供 MongoMemoryReplSet；这里恢复真实 session，覆盖提交与回滚。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
@@ -20,34 +20,34 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/config', () => ({
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: { listModels: external.listModels }
 }));
-vi.mock('@fastgpt/service/core/app/provider/controller', () => ({
+vi.mock('@fastgpt/service/core/ai/provider/controller', () => ({
   getModelProviderMetadata: () => ({ providers: [], aiproxyChannels: [] }),
   preloadModelProviders: vi.fn().mockResolvedValue(undefined),
   getModelProvider: (provider: string) => ({ id: provider, name: provider, avatar: '', order: 0 })
 }));
 
 import {
-  createSystemModel,
-  createSystemModelsFromTemplates,
-  deleteSystemModels,
-  importSystemModels,
+  createModel as createSystemModel,
+  createModelsFromTemplates as createSystemModelsFromTemplates,
+  deleteModels as deleteSystemModels,
   updateSystemDefaultModels,
-  updateSystemModel
-} from '@/service/core/ai/model/service';
-import { updateSystemModelStatus } from '@fastgpt/service/core/ai/config/service';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+  updateModel as updateSystemModel,
+  updateSystemModelStatus
+} from '@fastgpt/service/core/ai/model/mutation';
+import { importSystemModels } from '@fastgpt/service/core/ai/model/import';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
-import * as catalogEntity from '@fastgpt/service/core/ai/config/entity';
-import { refreshModelHandle, loadInstalledModels } from '@fastgpt/service/core/ai/config/utils';
+import * as catalogEntity from '@fastgpt/service/core/ai/model/entity';
+import { refreshModelHandle, loadInstalledModels } from '@fastgpt/service/core/ai/model/catalog';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 type LocalChannel = { id: number; type: number; name: string; models: string[] };
 
 /** 确定性控制 HTTP 写入的暂停点，避免通过 sleep 猜测并发时序。 */
-const createGate = () => {
+const _createGate = () => {
   let resolve!: () => void;
   const promise = new Promise<void>((done) => {
     resolve = done;
@@ -56,7 +56,7 @@ const createGate = () => {
 };
 
 /** 通过接口真实 schema 的推导类型构造完整草稿。 */
-const createDraft = (model: string): CreateSystemModelBody['modelData'] => ({
+const createDraft = (model: string): CreateModelBody['modelData'] => ({
   model,
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',
@@ -71,8 +71,8 @@ describe('system model management integration: HTTP + MongoDB transactions + run
   let channels: LocalChannel[];
   let requests: Array<{ method: string; url: string; authorization: string | undefined }>;
   let failedChannelId: number | undefined;
-  let writeGate: ReturnType<typeof createGate> | undefined;
-  let writeStarted: ReturnType<typeof createGate> | undefined;
+  let writeGate: ReturnType<typeof _createGate> | undefined;
+  let writeStarted: ReturnType<typeof _createGate> | undefined;
 
   beforeAll(async () => {
     server = createServer(async (req, res) => {

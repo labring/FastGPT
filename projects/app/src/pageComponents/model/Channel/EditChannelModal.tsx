@@ -1,4 +1,4 @@
-import { type ChannelInfoType } from '@/global/aiproxy/type';
+import { type ChannelInfoType } from '@fastgpt/global/core/ai/channel';
 import { Box, type BoxProps, Button, Flex, Input, HStack } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -16,6 +16,7 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useLockFn } from 'ahooks';
 
@@ -36,7 +37,7 @@ const EditChannelModal = ({
   fixedModel,
   fixedModels,
   allowEmptyModels = false,
-  channelType,
+  channelType = 'system',
   onClose,
   onSuccess
 }: {
@@ -50,25 +51,30 @@ const EditChannelModal = ({
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const isTeam = channelType === 'team';
+  const { aiproxyChannels: systemStoreAIProxyChannels } = useSystemStore();
   const {
     aiproxyChannels: adminAIProxyChannels,
     getModelProvider: getAdminModelProvider,
     systemModelList,
     loading: loadingModels
-  } = useAdminModelConfig();
+  } = useAdminModelConfig({ manual: isTeam });
   const {
     modelList: memberModelList,
     modelProviders: memberModelProviders,
     getModelProvider: getMemberModelProvider
   } = useUserModelStore();
-  const aiproxyChannels = adminAIProxyChannels;
+  const aiproxyChannels = isTeam
+    ? systemStoreAIProxyChannels
+    : adminAIProxyChannels.length > 0
+      ? adminAIProxyChannels
+      : systemStoreAIProxyChannels;
   const getModelProvider = isTeam ? getMemberModelProvider : getAdminModelProvider;
   const availableModels = isTeam ? memberModelList : systemModelList;
   const isEdit = defaultConfig.id !== 0;
   const currentModels = fixedModels ?? (fixedModel ? [fixedModel] : []);
   const isCompactCreate = !isEdit && currentModels.length > 0;
 
-  const { register, handleSubmit, control, setValue } = useForm({
+  const { register, handleSubmit, control, setValue } = useForm<ChannelInfoType>({
     defaultValues: defaultConfig
   });
 

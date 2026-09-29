@@ -1,4 +1,4 @@
-import { getModelConfigJson, putUpdateWithJson } from '@/web/core/ai/config';
+import { getModelConfigJson, putUpdateWithJson } from '@/web/core/ai/model/api';
 import { Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';

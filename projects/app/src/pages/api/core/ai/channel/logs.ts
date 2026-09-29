@@ -1,8 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { resolveChannelObservabilityScope } from '@/service/core/ai/channel/resolve';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { normalizeAiproxyError, searchChannelLogs } from '@fastgpt/service/core/ai/channel';
+import { authModelScopeOperation } from '@fastgpt/service/support/permission/model/controller';
+import { normalizeAiproxyError } from '@fastgpt/service/core/ai/channel/error';
+import { searchChannelLogs } from '@fastgpt/service/core/ai/channel/observability';
+import { resolveChannelObservabilityScope } from '@fastgpt/service/core/ai/channel/resolve';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetChannelLogsQuerySchema,
@@ -20,7 +21,7 @@ async function handler(
 ): Promise<GetChannelLogsResponse> {
   const query = parseApiInput({ req, querySchema: GetChannelLogsQuerySchema }).query;
   const { channelType, channelId, ...filters } = query;
-  const { tmbId, isRoot } = await authUserPer({ req, authToken: true });
+  const { tmbId, isRoot } = await authModelScopeOperation({ req, channelType });
   const { groupId } = await resolveChannelObservabilityScope({
     channelType,
     channelId,

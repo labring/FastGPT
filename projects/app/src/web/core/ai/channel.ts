@@ -1,21 +1,16 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import {
-  type DashboardDataItemType,
   type ChannelInfoType,
   type CreateChannelProps,
-  DashboardDataItemSchema
-} from '@/global/aiproxy/type';
-import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
+  type ChannelStatusEnum,
+  REASONING_FIELD_MAPPING_CHANNEL_TYPES
+} from '@fastgpt/global/core/ai/channel';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { REASONING_FIELD_MAPPING_CHANNEL_TYPES } from '@fastgpt/global/core/ai/channel';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import type {
   AffectedModelsResponse,
   BatchDeleteChannelsResponse,
-  BatchUpdateChannelsStatusResponse,
   ChannelListItem,
   ChannelModelsResponse,
-  CreateChannelResponse,
   DeleteChannelResponse,
   GetChannelDashboardResponse,
   GetChannelLogDetailResponse,
@@ -23,38 +18,26 @@ import type {
   ListChannelsQuery,
   ListChannelsResponse,
   ModelChannelsResponse,
-  ProviderMetasResponse,
-  TestChannelResponse,
-  UpdateChannelResponse,
-  UpdateChannelStatusResponse
+  ProviderMetasResponse
 } from '@fastgpt/global/openapi/core/ai/channel/api';
 
 const reasoningFieldMappingChannelTypes = new Set<number>(REASONING_FIELD_MAPPING_CHANNEL_TYPES);
 
 /**
- * 默认渠道范围解析：root 默认系统渠道视图，成员默认本人团队渠道视图
+ * 获取渠道分页列表。强制显式传递 channelType 作用域。
  */
-const getDefaultChannelScope = (): 'system' | 'team' =>
-  useUserStore.getState().userInfo?.username === 'root' ? 'system' : 'team';
-
-/**
- * 获取渠道分页列表。
- * 根据当前用户角色默认拉取对应视图（root 默认 system 系统渠道，成员默认 team 专属渠道）。
- */
-export const getChannelPageList = (params?: ListChannelsQuery): Promise<ListChannelsResponse> => {
-  const query: ListChannelsQuery = {
-    channelType: getDefaultChannelScope(),
-    ...params
-  };
-
-  return GET<ListChannelsResponse>('/core/ai/channel/list', query);
+export const getChannelPageList = (
+  params: ListChannelsQuery & { channelType: 'system' | 'team' }
+): Promise<ListChannelsResponse> => {
+  return GET<ListChannelsResponse>('/core/ai/channel/list', params);
 };
 
 /**
- * 获取渠道列表。
- * 根据当前用户角色默认拉取对应视图（root 默认 system 系统渠道，成员默认 team 专属渠道）。
+ * 获取渠道列表。强制显式传递 channelType 作用域。
  */
-export const getChannelList = (params?: ListChannelsQuery): Promise<ChannelListItem[]> => {
+export const getChannelList = (
+  params: ListChannelsQuery & { channelType: 'system' | 'team' }
+): Promise<ChannelListItem[]> => {
   return getChannelPageList(params).then((res) => {
     const list = [...(res?.list ?? [])];
     list.sort((a, b) => (b.created_at ?? 0) - (a.created_at ?? 0) || b.id - a.id);
@@ -68,12 +51,12 @@ export const postBatchDeleteChannels = ({
   channelType
 }: {
   ids: number[];
-  channelType?: 'system' | 'team';
+  channelType: 'system' | 'team';
 }): Promise<BatchDeleteChannelsResponse> =>
   POST<BatchDeleteChannelsResponse>('/core/ai/channel/batch', {
     action: 'delete',
     ids,
-    channelType: channelType ?? getDefaultChannelScope()
+    channelType
   });
 
 /** 批量更新渠道启用/禁用状态 */
@@ -84,13 +67,13 @@ export const postBatchUpdateChannelStatus = ({
 }: {
   ids: number[];
   status: 1 | 2;
-  channelType?: 'system' | 'team';
-}): Promise<BatchUpdateChannelsStatusResponse> =>
-  POST<BatchUpdateChannelsStatusResponse>('/core/ai/channel/batch', {
+  channelType: 'system' | 'team';
+}): Promise<void> =>
+  POST<void>('/core/ai/channel/batch', {
     action: 'status',
     ids,
     status,
-    channelType: channelType ?? getDefaultChannelScope()
+    channelType
   });
 
 /** 获取渠道提供商协议默认配置与提示 */
@@ -99,16 +82,16 @@ export const getChannelProviders = () =>
 
 /** FastGPT 渠道创建入口，创建前在目标 scope 内按展示名称检查重复 */
 export const postCreateChannel = async (
-  data: CreateChannelProps & { channelType?: 'system' | 'team'; priority?: number }
-): Promise<CreateChannelResponse> => {
-  const channelType = data.channelType ?? getDefaultChannelScope();
+  data: CreateChannelProps & { channelType: 'system' | 'team'; priority?: number }
+): Promise<void> => {
+  const channelType = data.channelType;
   const name = data.name.trim();
   const channels = await getChannelList({ channelType });
   if (channels.some((channel) => channel.name.trim() === name)) {
     return Promise.reject(i18nT('config_model:channel_name_duplicate'));
   }
 
-  return await POST<CreateChannelResponse>('/core/ai/channel/create', {
+  return await POST<void>('/core/ai/channel/create', {
     channelType,
     type: data.type,
     name,
@@ -127,12 +110,12 @@ export const postCreateChannel = async (
 export const putChannelStatus = (
   id: number,
   status: ChannelStatusEnum,
-  channelType?: 'system' | 'team'
+  channelType: 'system' | 'team'
 ) =>
-  POST<UpdateChannelStatusResponse>('/core/ai/channel/status', {
+  POST<void>('/core/ai/channel/status', {
     id,
     status: status as 1 | 2,
-    channelType: channelType ?? getDefaultChannelScope()
+    channelType
   });
 
 /** 完整更新渠道配置 */
@@ -146,9 +129,9 @@ export const putChannel = (
         key?: string;
         models: string[];
       })
-  ) & { channelType?: 'system' | 'team' }
+  ) & { channelType: 'system' | 'team' }
 ) => {
-  const channelType = data.channelType ?? getDefaultChannelScope();
+  const channelType = data.channelType;
 
   if (data.balance_threshold !== undefined && data.balance_threshold !== 0) {
     return Promise.reject(
@@ -156,7 +139,7 @@ export const putChannel = (
     );
   }
 
-  return PUT<UpdateChannelResponse>('/core/ai/channel/update', {
+  return PUT<void>('/core/ai/channel/update', {
     id: data.id,
     channelType,
     type: data.type,
@@ -173,16 +156,70 @@ export const putChannel = (
   });
 };
 
+/** 计算模型与渠道关联的变更集合（纯函数，供关联同步编排复用） */
+export const diffModelChannels = <T extends Pick<ChannelListItem, 'id' | 'models'>>({
+  channels,
+  modelName,
+  currentChannelIds,
+  nextChannelIds
+}: {
+  channels: T[];
+  modelName: string;
+  currentChannelIds: number[];
+  nextChannelIds: number[];
+}): T[] => {
+  const currentSet = new Set(currentChannelIds);
+  const nextSet = new Set(nextChannelIds);
+
+  const toAdd = channels.filter((c) => nextSet.has(c.id) && !currentSet.has(c.id));
+  const toRemove = channels.filter((c) => !nextSet.has(c.id) && currentSet.has(c.id));
+
+  const updatesToAdd = toAdd.map((c) => ({
+    ...c,
+    models: Array.from(new Set([...(c.models || []), modelName]))
+  }));
+
+  const updatesToRemove = toRemove.map((c) => ({
+    ...c,
+    models: (c.models || []).filter((m) => m !== modelName)
+  }));
+
+  return [...updatesToAdd, ...updatesToRemove];
+};
+
+/** 同步模型与渠道的关联关系（批量增删关联渠道） */
+export const syncModelChannelAssociation = async ({
+  modelName,
+  currentChannelIds,
+  nextChannelIds,
+  channelType
+}: {
+  modelName: string;
+  currentChannelIds: number[];
+  nextChannelIds: number[];
+  channelType: 'system' | 'team';
+}) => {
+  const channels = await getChannelList({ channelType });
+  const updates = diffModelChannels({
+    channels,
+    modelName,
+    currentChannelIds,
+    nextChannelIds
+  });
+
+  return Promise.all(updates.map((update) => putChannel({ ...update, channelType })));
+};
+
 /** 删除指定渠道 */
-export const deleteChannel = (id: number, channelType?: 'system' | 'team') =>
+export const deleteChannel = (id: number, channelType: 'system' | 'team') =>
   DELETE<DeleteChannelResponse>('/core/ai/channel/delete', {
     id,
-    channelType: channelType ?? getDefaultChannelScope()
+    channelType
   });
 
 /** 分页查询渠道调用日志 */
 export const getChannelLog = (params: {
-  channelType?: 'system' | 'team';
+  channelType: 'system' | 'team';
   requestId?: string;
   request_id?: string;
   channelId?: string | number;
@@ -200,7 +237,7 @@ export const getChannelLog = (params: {
   pageSize?: number;
 }) => {
   const query = {
-    channelType: params.channelType ?? getDefaultChannelScope(),
+    channelType: params.channelType,
     requestId: params.requestId ?? params.request_id,
     channelId:
       params.channelId !== undefined
@@ -224,15 +261,15 @@ export const getChannelLog = (params: {
 };
 
 /** 获取调用日志详情 */
-export const getLogDetail = (id: number, channelType?: 'system' | 'team') =>
+export const getLogDetail = (id: number, channelType: 'system' | 'team') =>
   GET<GetChannelLogDetailResponse>('/core/ai/channel/logDetail', {
     id,
-    channelType: channelType ?? getDefaultChannelScope()
+    channelType
   });
 
 /** 获取监控时序指标 */
 export const getDashboardV2 = (params: {
-  channelType?: 'system' | 'team';
+  channelType: 'system' | 'team';
   channelId?: number;
   channel?: number;
   model?: string;
@@ -242,9 +279,9 @@ export const getDashboardV2 = (params: {
   end_timestamp?: number;
   timezone: string;
   timespan: 'day' | 'hour' | 'minute';
-}): Promise<{ timestamp: number; summary: DashboardDataItemType[] }[]> => {
+}): Promise<GetChannelDashboardResponse> => {
   const query = {
-    channelType: params.channelType ?? getDefaultChannelScope(),
+    channelType: params.channelType,
     channelId: params.channelId ?? params.channel,
     model: params.model,
     startTimestamp: params.startTimestamp ?? params.start_timestamp,
@@ -253,38 +290,27 @@ export const getDashboardV2 = (params: {
     timespan: params.timespan
   };
 
-  return GET<GetChannelDashboardResponse>('/core/ai/channel/dashboard', query).then((res) =>
-    res.map((item) => ({
-      ...item,
-      summary: item.summary.map((summaryItem) => DashboardDataItemSchema.parse(summaryItem))
-    }))
-  );
+  return GET<GetChannelDashboardResponse>('/core/ai/channel/dashboard', query);
 };
 
-/** 单渠道模型探活测试 */
-export const getTestChannel = (data: {
-  id: number;
-  model: string;
-  channelType?: 'system' | 'team';
+/** 查询删除渠道时受影响的独占模型（传入待检查的渠道 ID 列表） */
+export const getAffectedModels = ({
+  ids,
+  channelType
+}: {
+  ids: number[];
+  channelType: 'system' | 'team';
 }) =>
-  GET<TestChannelResponse>('/core/ai/channel/test', {
-    id: data.id,
-    model: data.model,
-    channelType: data.channelType ?? getDefaultChannelScope()
-  });
-
-/** 查询删除渠道时受影响的独占模型 */
-export const getAffectedModels = (id: number, channelType?: 'system' | 'team') =>
   GET<AffectedModelsResponse>('/core/ai/channel/affectedModels', {
-    id,
-    channelType: channelType ?? getDefaultChannelScope()
+    ids,
+    channelType
   });
 
 /** 获取指定渠道服务的全部模型（悬浮详情） */
-export const getChannelModels = (id: number, channelType?: 'system' | 'team') =>
+export const getChannelModels = (id: number, channelType: 'system' | 'team') =>
   GET<ChannelModelsResponse>('/core/ai/channel/models', {
     id,
-    channelType: channelType ?? getDefaultChannelScope()
+    channelType
   });
 
 /** 获取指定模型关联的全部渠道（悬浮详情） */

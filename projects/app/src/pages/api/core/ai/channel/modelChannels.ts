@@ -2,7 +2,11 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getModelChannelsMapByModels, type ChannelBrief } from '@fastgpt/service/core/ai/channel';
+import {
+  getModelChannelsMapByModels,
+  type ChannelBrief,
+  type ChannelAssociableModel
+} from '@fastgpt/service/core/ai/channel/association';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetModelChannelsQuerySchema,
@@ -43,18 +47,23 @@ async function handler(
     return Promise.reject(ModelErrEnum.unAuthModel);
   }
 
-  const scope = (model as { scope?: string }).scope;
-  const associableModel = {
+  const modelScope = (model as { scope?: string; isSystem?: boolean }).scope;
+  const isModelSystem = (model as { isSystem?: boolean }).isSystem;
+  const isSystem =
+    isModelSystem !== undefined ? Boolean(isModelSystem) : modelScope !== ModelScopeEnum.team;
+  const modelOwnerTmbId = (model as { tmbId?: string }).tmbId;
+  const associableModel: ChannelAssociableModel = {
     id: model.modelId,
     model: model.model,
     name: model.name,
-    isSystem: scope === ModelScopeEnum.system || !scope
+    isSystem,
+    tmbId: modelOwnerTmbId ? String(modelOwnerTmbId) : undefined
   };
 
   let channels: ChannelBrief[] = [];
   try {
     channels = (await getModelChannelsMapByModels([associableModel])).get(modelId) || [];
-  } catch (error) {
+  } catch (_error) {
     channels = [];
   }
 

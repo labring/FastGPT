@@ -1,41 +1,27 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import {
   assertMemberChannelPermission,
-  createGroupChannel,
-  createSystemChannel,
-  getSystemGroupId
-} from '@fastgpt/service/core/ai/channel';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+  authModelScopeOperation
+} from '@fastgpt/service/support/permission/model/controller';
+import { createChannel } from '@fastgpt/service/core/ai/channel/service';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   CreateChannelBodySchema,
-  CreateChannelResponseSchema,
-  type CreateChannelBody,
-  type CreateChannelResponse
+  type CreateChannelBody
 } from '@fastgpt/global/openapi/core/ai/channel/api';
 
 /** 创建渠道：root 创建系统渠道，成员创建私有团队分组渠道 */
-async function handler(req: ApiRequestProps<CreateChannelBody>): Promise<CreateChannelResponse> {
+async function handler(req: ApiRequestProps<CreateChannelBody>): Promise<void> {
   const body = parseApiInput({ req, bodySchema: CreateChannelBodySchema }).body;
   const { channelType, ...channelData } = body;
 
-  const { tmbId, tmb, isRoot } = await authUserPer({ req, authToken: true });
-
-  if (channelType === 'system') {
-    if (!isRoot) {
-      return Promise.reject(ModelErrEnum.rootOnlyPermit);
-    }
-    await createSystemChannel(channelData);
-  } else {
-    if (!isRoot) {
-      await assertMemberChannelPermission(tmb.permission);
-    }
-    await createGroupChannel(getSystemGroupId(tmbId), channelData);
+  const { tmbId, tmb, isRoot } = await authModelScopeOperation({ req, channelType });
+  if (!isRoot) {
+    await assertMemberChannelPermission(tmb.permission);
   }
 
-  return CreateChannelResponseSchema.parse(undefined);
+  await createChannel({ channelType, tmbId, channelData });
 }
 
 export default NextAPI(handler);

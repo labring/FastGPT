@@ -1,7 +1,7 @@
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
@@ -520,6 +520,11 @@ const ModelConfigForm = ({
         const val = modelData[key];
         if (val === null || val === undefined) delete modelData[key];
       }
+      if (isTeamModel) {
+        delete modelData.requestUrl;
+        delete modelData.requestAuth;
+        delete modelData.testMode;
+      }
 
       return onSubmit(normalizeModelPricingForSave(data));
     },
@@ -824,56 +829,62 @@ const ModelConfigForm = ({
         </Section>
       )}
 
-      <Section title={t('common:Other')} showBorder={false}>
-        <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-          {isLLMModel && (
-            <Field
-              label={t('config_model:model.default_system_chat_prompt')}
-              tip={t('config_model:model.default_system_chat_prompt_tip')}
-              colSpan={[1, 2]}
-            >
-              <MyTextarea
-                {...register('config.defaultSystemChatPrompt')}
-                {...MultilineInputStyles}
-                minH={'110px'}
+      {(isLLMModel || isEmbeddingModel || isRerankModel || isTTSModel || !isTeamModel) && (
+        <Section title={t('common:Other')} showBorder={false}>
+          <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
+            {isLLMModel && (
+              <Field
+                label={t('config_model:model.default_system_chat_prompt')}
+                tip={t('config_model:model.default_system_chat_prompt_tip')}
+                colSpan={[1, 2]}
+              >
+                <MyTextarea
+                  {...register('config.defaultSystemChatPrompt')}
+                  {...MultilineInputStyles}
+                  minH={'110px'}
+                />
+              </Field>
+            )}
+            {(isLLMModel || isEmbeddingModel || isRerankModel) && (
+              <DefaultConfigField
+                control={control}
+                setValue={setValue}
+                label={
+                  isEmbeddingModel
+                    ? t('config_model:model.defaultConfig')
+                    : t('config_model:model.default_config')
+                }
+                tip={
+                  isEmbeddingModel
+                    ? t('config_model:model.defaultConfig_tip')
+                    : isRerankModel
+                      ? t('config_model:model.rerank_default_config_tip')
+                      : t('config_model:model.default_config_tip')
+                }
+                onDraftChange={() => setHasJsonDraftChanges(true)}
               />
-            </Field>
-          )}
-          {(isLLMModel || isEmbeddingModel || isRerankModel) && (
-            <DefaultConfigField
-              control={control}
-              setValue={setValue}
-              label={
-                isEmbeddingModel
-                  ? t('config_model:model.defaultConfig')
-                  : t('config_model:model.default_config')
-              }
-              tip={
-                isEmbeddingModel
-                  ? t('config_model:model.defaultConfig_tip')
-                  : isRerankModel
-                    ? t('config_model:model.rerank_default_config_tip')
-                    : t('config_model:model.default_config_tip')
-              }
-              onDraftChange={() => setHasJsonDraftChanges(true)}
-            />
-          )}
-          {isTTSModel && (
-            <VoicesField
-              control={control}
-              t={t}
-              onDraftChange={() => setHasJsonDraftChanges(true)}
-            />
-          )}
-          {CustomApi}
-          <SwitchField
-            label={t('config_model:model.test_mode')}
-            tip={t('config_model:model.test_mode_tip')}
-            field={'testMode'}
-            register={register}
-          />
-        </Grid>
-      </Section>
+            )}
+            {isTTSModel && (
+              <VoicesField
+                control={control}
+                t={t}
+                onDraftChange={() => setHasJsonDraftChanges(true)}
+              />
+            )}
+            {!isTeamModel && (
+              <>
+                {CustomApi}
+                <SwitchField
+                  label={t('config_model:model.test_mode')}
+                  tip={t('config_model:model.test_mode_tip')}
+                  field={'testMode'}
+                  register={register}
+                />
+              </>
+            )}
+          </Grid>
+        </Section>
+      )}
     </Box>
   );
 };

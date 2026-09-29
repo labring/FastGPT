@@ -2,6 +2,7 @@ import z from 'zod';
 import { PaginationResponseSchema } from '../../../api';
 import { SourceMemberSchema } from '../../../../support/user/type';
 import { IntSchema } from '../../../../common/zod';
+import { AIScopeSchema, type AIScope } from '../scope';
 
 const OptionalIntSchema = z.preprocess(
   (value) => (value === '' || value === undefined ? undefined : value),
@@ -10,8 +11,8 @@ const OptionalIntSchema = z.preprocess(
 
 // AI Proxy 渠道管理 Schema
 // 渠道归属类型：system 为系统渠道，team 为团队成员渠道
-export const ChannelTypeEnumSchema = z.enum(['system', 'team']);
-export type ChannelType = z.infer<typeof ChannelTypeEnumSchema>;
+export const ChannelTypeEnumSchema = AIScopeSchema;
+export type ChannelType = AIScope;
 
 // ═══ Shared channel payload (create/update) ═══
 // Mirrors aiproxy AddChannelRequest (core/controller/channel.go).
@@ -52,11 +53,6 @@ export const CreateChannelBodySchema = ChannelBodySchema.extend({
   })
 });
 export type CreateChannelBody = z.infer<typeof CreateChannelBodySchema>;
-// aiproxy AddChannel returns no payload (data=null), so no id can be echoed back.
-export const CreateChannelResponseSchema = z
-  .undefined()
-  .meta({ description: '操作成功（前端刷新列表获取新渠道）' });
-export type CreateChannelResponse = z.infer<typeof CreateChannelResponseSchema>;
 
 // ═══ PUT /api/core/ai/channel/update ═══
 // aiproxy PUT is a full replacement; id selects the channel, the rest is the new payload.
@@ -68,9 +64,6 @@ export const UpdateChannelBodySchema = ChannelBodySchema.extend({
 }).partial();
 export type UpdateChannelBody = z.infer<typeof UpdateChannelBodySchema>;
 
-export const UpdateChannelResponseSchema = z.undefined().meta({ description: '操作成功' });
-export type UpdateChannelResponse = z.infer<typeof UpdateChannelResponseSchema>;
-
 // ═══ DELETE /api/core/ai/channel/delete ═══
 // Resource id via query — same convention as model delete (DeleteModelQuerySchema).
 export const DeleteChannelQuerySchema = z.object({
@@ -81,16 +74,16 @@ export const DeleteChannelQuerySchema = z.object({
 });
 export type DeleteChannelQuery = z.infer<typeof DeleteChannelQuerySchema>;
 
-export const AffectedModelItemSchema = z.object({
+export const ChannelModelItemSchema = z.object({
   modelId: z.string().meta({ description: '平台模型 ID' }),
   name: z.string().meta({ description: '模型展示名' }),
   model: z.string().meta({ description: '上游 provider model 名' })
 });
-export type AffectedModelItem = z.infer<typeof AffectedModelItemSchema>;
+export type ChannelModelItem = z.infer<typeof ChannelModelItemSchema>;
 
 export const DeleteChannelResponseSchema = z.object({
   affectedModels: z
-    .array(AffectedModelItemSchema)
+    .array(ChannelModelItemSchema)
     .meta({ description: '仅关联该渠道的模型（删除后不可调用）' })
 });
 export type DeleteChannelResponse = z.infer<typeof DeleteChannelResponseSchema>;
@@ -106,9 +99,6 @@ export const UpdateChannelStatusBodySchema = z.object({
 });
 export type UpdateChannelStatusBody = z.infer<typeof UpdateChannelStatusBodySchema>;
 
-export const UpdateChannelStatusResponseSchema = z.undefined().meta({ description: '操作成功' });
-export type UpdateChannelStatusResponse = z.infer<typeof UpdateChannelStatusResponseSchema>;
-
 // ═══ POST /api/core/ai/channel/batch ═══
 export const BatchDeleteChannelsBodySchema = z.object({
   action: z.literal('delete'),
@@ -120,7 +110,7 @@ export const BatchDeleteChannelsBodySchema = z.object({
 export type BatchDeleteChannelsBody = z.infer<typeof BatchDeleteChannelsBodySchema>;
 
 export const BatchDeleteChannelsResponseSchema = z.object({
-  affectedModels: z.array(AffectedModelItemSchema).meta({ description: '受影响的模型清单' })
+  affectedModels: z.array(ChannelModelItemSchema).meta({ description: '受影响的模型清单' })
 });
 export type BatchDeleteChannelsResponse = z.infer<typeof BatchDeleteChannelsResponseSchema>;
 
@@ -134,49 +124,15 @@ export const BatchUpdateChannelsStatusBodySchema = z.object({
 });
 export type BatchUpdateChannelsStatusBody = z.infer<typeof BatchUpdateChannelsStatusBodySchema>;
 
-export const BatchUpdateChannelsStatusResponseSchema = z
-  .undefined()
-  .meta({ description: '操作成功' });
-export type BatchUpdateChannelsStatusResponse = z.infer<
-  typeof BatchUpdateChannelsStatusResponseSchema
->;
-
 export const BatchChannelBodySchema = z.discriminatedUnion('action', [
   BatchDeleteChannelsBodySchema,
   BatchUpdateChannelsStatusBodySchema
 ]);
 export type BatchChannelBody = z.infer<typeof BatchChannelBodySchema>;
 
-export const BatchChannelResponseSchema = z.union([
-  BatchDeleteChannelsResponseSchema,
-  BatchUpdateChannelsStatusResponseSchema
-]);
-export type BatchChannelResponse = z.infer<typeof BatchChannelResponseSchema>;
-
-// ═══ GET /api/core/ai/channel/test ═══
-// Resource id via query — same convention as model test (TestModelQuerySchema).
-export const TestChannelQuerySchema = z.object({
-  id: z.coerce.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
-  model: z.string().meta({ description: '待测试的上游模型名' }),
-  channelType: ChannelTypeEnumSchema.meta({
-    description: 'system=系统渠道（root 专用）；team=成员渠道'
-  })
-});
-export type TestChannelQuery = z.infer<typeof TestChannelQuerySchema>;
-
-export const TestChannelResponseSchema = z
-  .undefined()
-  .meta({ description: '测试成功（结果持久化到 aiproxy）' });
-export type TestChannelResponse = z.infer<typeof TestChannelResponseSchema>;
+export type BatchChannelResponse = BatchDeleteChannelsResponse | void;
 
 // ═══ GET /api/core/ai/channel/models ═══
-export const ChannelModelItemSchema = z.object({
-  modelId: z.string().meta({ description: '平台模型 ID' }),
-  name: z.string().meta({ description: '模型展示名' }),
-  model: z.string().meta({ description: '上游 provider model 名' })
-});
-export type ChannelModelItem = z.infer<typeof ChannelModelItemSchema>;
-
 export const GetChannelModelsQuerySchema = z.object({
   id: z.coerce.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
   channelType: ChannelTypeEnumSchema.meta({
@@ -209,16 +165,27 @@ export const ModelChannelsResponseSchema = z.object({
 export type ModelChannelsResponse = z.infer<typeof ModelChannelsResponseSchema>;
 
 // ═══ GET /api/core/ai/channel/affectedModels ═══
-export const GetAffectedModelsQuerySchema = z.object({
-  id: z.coerce.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
-  channelType: ChannelTypeEnumSchema.meta({
-    description: 'system=系统渠道（root 专用）；team=成员渠道'
+export const GetAffectedModelsQuerySchema = z
+  .object({
+    id: z.coerce.number().int().optional().meta({ description: '单渠道 ID（兼容老字段）' }),
+    ids: z
+      .preprocess(
+        (val) => (Array.isArray(val) ? val : val !== undefined ? [val] : undefined),
+        z.array(z.coerce.number().int()).optional()
+      )
+      .meta({ example: [12], description: '待检查的渠道 ID 列表' }),
+    channelType: ChannelTypeEnumSchema.meta({
+      description: 'system=系统渠道（root 专用）；team=成员渠道'
+    })
   })
-});
+  .transform((data) => ({
+    ids: data.ids ?? (data.id !== undefined ? [data.id] : []),
+    channelType: data.channelType
+  }));
 export type GetAffectedModelsQuery = z.infer<typeof GetAffectedModelsQuerySchema>;
 
 export const AffectedModelsResponseSchema = z.object({
-  affectedModels: z.array(AffectedModelItemSchema)
+  affectedModels: z.array(ChannelModelItemSchema)
 });
 export type AffectedModelsResponse = z.infer<typeof AffectedModelsResponseSchema>;
 

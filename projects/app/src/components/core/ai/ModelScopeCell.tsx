@@ -30,6 +30,12 @@ export const updateModelCollaboratorsCache = (
   cacheListeners.forEach((listener) => listener(modelId));
 };
 
+/** 清理全部模型的协作者缓存并触发监听更新 */
+export const clearModelCollaboratorsCache = () => {
+  modelCollaboratorsCache.clear();
+  cacheListeners.forEach((listener) => listener(''));
+};
+
 // 批量请求调度器：聚合同一宏任务/渲染周期内的多个单元格请求，合并为单次批量接口调用
 let pendingBatchModelIds = new Set<string>();
 let batchTimer: ReturnType<typeof setTimeout> | null = null;

@@ -71,7 +71,9 @@ const ModelDashboard = ({
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
   const isTeam = channelType === 'team';
-  const { getModelProvider: getAdminModelProvider, systemModelList } = useAdminModelConfig();
+  const { getModelProvider: getAdminModelProvider, systemModelList } = useAdminModelConfig({
+    manual: isTeam
+  });
   const { modelList: memberModelList, getModelProvider: getMemberModelProvider } =
     useUserModelStore();
   const availableModels = isTeam ? memberModelList : systemModelList;

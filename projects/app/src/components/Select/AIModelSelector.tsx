@@ -98,8 +98,8 @@ const ModelLabel = ({
       {showTags && (
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
           {isSystem && (
-            <MyTag type={'borderFill'} colorSchema={'gray'} size={'sm'}>
-              {t('config_model:system_model_tag')}
+            <MyTag type={'borderFill'} colorSchema={'gray'} fontSize={'xs'} px={1.5} py={0.5}>
+              {t('system_model_tag')}
             </MyTag>
           )}
           {model.testMode && <TestModeBetaTag />}

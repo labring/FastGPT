@@ -1,9 +1,8 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getChannelModels } from '@fastgpt/service/core/ai/channel';
-import { resolveChannelForOperation } from '@/service/core/ai/channel/resolve';
+import { authModelScopeOperation } from '@fastgpt/service/support/permission/model/controller';
+import { getChannelModels } from '@fastgpt/service/core/ai/channel/association';
+import { resolveChannelForOperation } from '@fastgpt/service/core/ai/channel/resolve';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetChannelModelsQuerySchema,
@@ -21,13 +20,9 @@ async function handler(
     querySchema: GetChannelModelsQuerySchema
   }).query;
 
-  const { tmbId, isRoot } = await authUserPer({ req, authToken: true });
-
-  if (channelType === 'system' && !isRoot) {
-    return Promise.reject(ModelErrEnum.rootOnlyPermit);
-  }
+  const { tmbId, isRoot } = await authModelScopeOperation({ req, channelType });
   const resolved = await resolveChannelForOperation({ id, channelType, tmbId, isRoot });
-  const models = getChannelModels(resolved.channel);
+  const models = await getChannelModels(resolved.channel);
 
   return ChannelModelsResponseSchema.parse({ models });
 }

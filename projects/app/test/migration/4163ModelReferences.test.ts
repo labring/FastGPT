@@ -3,7 +3,7 @@ import type {
   SystemMigrationFailedRecord,
   SystemMigrationProgressInput
 } from '@fastgpt/global/migration/schema';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -31,10 +31,8 @@ import { getMigrationStates } from '@/migration/entity';
 
 const cacheMocks = vi.hoisted(() => ({ clearAllMyModelsCache: vi.fn() }));
 
-vi.mock('@fastgpt/service/support/permission/model/controller', async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import('@fastgpt/service/support/permission/model/controller')
-  >()),
+vi.mock('@fastgpt/service/support/permission/model/cache', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/support/permission/model/cache')>()),
   clearAllMyModelsCache: cacheMocks.clearAllMyModelsCache
 }));
 

@@ -1,8 +1,8 @@
 import { useModelChannelTest } from './useModelChannelTest';
-import { ChannelStautsMap } from '@/global/aiproxy/constants';
+import { ChannelStatusMap } from '@fastgpt/global/core/ai/channel';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
 import {
   Box,
   Button,
@@ -65,7 +65,7 @@ export const ModelChannelSelector = ({
   showTest = true
 }: {
   models: ModelChannelModalModel[];
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
   selectedChannelIds: number[];
   onChange: (channelIds: number[]) => void;
   onCreate?: () => void;
@@ -212,7 +212,7 @@ export const ModelChannelSelector = ({
             </colgroup>
             <Tbody color="myGray.600">
               {channels.map((channel) => {
-                const status = ChannelStautsMap[channel.status as keyof typeof ChannelStautsMap];
+                const status = ChannelStatusMap[channel.status as keyof typeof ChannelStatusMap];
                 return (
                   <Tr
                     key={channel.id}
@@ -299,7 +299,7 @@ const ModelChannelModal = ({
   showTest = true
 }: {
   models: ModelChannelModalModel[];
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
   selectedChannelIds: number[];
   onConfirm: (channelIds: number[]) => unknown | Promise<unknown>;
   onClose: () => void;

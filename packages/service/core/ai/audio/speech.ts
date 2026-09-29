@@ -1,6 +1,6 @@
 import type { NodeHttpResponse } from '../../../types/http';
-import { getAIApi, getAiproxyScopeHeaders } from '../config';
-import { normalizeRelayNoChannelError } from '../channel';
+import { getAIApi, getModelOpenAIOptions } from '../config';
+import { normalizeRelayNoChannelError } from '../channel/error';
 import { Readable } from 'stream';
 import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
@@ -33,17 +33,10 @@ export async function text2Speech({
         response_format: 'mp3',
         speed
       },
-      model.requestUrl
-        ? {
-            path: model.requestUrl,
-            headers: {
-              ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
-              ...getAiproxyScopeHeaders(model as any, requestMeta.baseUrl)
-            }
-          }
-        : {
-            headers: getAiproxyScopeHeaders(model as any, requestMeta.baseUrl)
-          }
+      getModelOpenAIOptions({
+        model,
+        baseUrl: requestMeta.baseUrl
+      })
     );
   } catch (e) {
     throw normalizeRelayNoChannelError(e);

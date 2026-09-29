@@ -105,7 +105,7 @@ flowchart TD
 #### 【新建与完善核心渠道模块（`packages/service/core/ai/channel/`）】
 - `const.ts`：定义轻量常量与 Group ID 推导函数：
   ```ts
-  export const getSystemGroupId = (tmbId: string): string => `fastgpt:tmb:${tmbId}`;
+  export const getMemberGroupId = (tmbId: string): string => `fastgpt:tmb:${tmbId}`;
   ```
 - `api.ts`（AI Proxy Client）：
   - 包装强类型的 Axios 请求，统一走 `axiosWithoutSSRF` 并注入 `Bearer ${AIPROXY_API_TOKEN}`；
@@ -135,7 +135,7 @@ flowchart TD
     // 团队私有模型：强制锁定模型拥有者自己的专属渠道
     if (modelData?.tmbId) {
       return {
-        'X-Aiproxy-Group': getSystemGroupId(String(modelData.tmbId)),
+        'X-Aiproxy-Group': getMemberGroupId(String(modelData.tmbId)),
         'X-Aiproxy-Group-Channel-Mode': 'own'
       };
     }

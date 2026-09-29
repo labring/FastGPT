@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getMemberModelIds } from '@fastgpt/service/support/permission/model/controller';
-import { getModelChannelsMapByModels } from '@fastgpt/service/core/ai/channel';
+import { getModelChannelsMapByModels } from '@fastgpt/service/core/ai/channel/association';
 import { Call } from '@test/utils/request';
 import modelChannelsHandler from '@/pages/api/core/ai/channel/modelChannels';
 
@@ -24,8 +24,9 @@ vi.mock('@fastgpt/service/support/permission/model/controller', async (importOri
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/channel', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/channel')>();
+vi.mock('@fastgpt/service/core/ai/channel/association', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/channel/association')>();
   return {
     ...actual,
     getModelChannelsMapByModels: vi.fn()
@@ -131,6 +132,22 @@ describe('GET /api/core/ai/channel/modelChannels (channels of one model)', () =>
     expect(res.code).toBe(500);
     expect(res.error).toBe('unAuthModel');
     expect(vi.mocked(getModelChannelsMapByModels)).not.toHaveBeenCalled();
+  });
+
+  it('returns the own-bucket channels of a visible team model with tmbId', async () => {
+    mockAuth(false);
+    vi.mocked(getMemberModelIds).mockResolvedValue(['m2']);
+    vi.mocked(getModelChannelsMapByModels).mockResolvedValue(
+      new Map([['m2', [{ id: 10, name: 'member-ch', status: 1 }]]])
+    );
+
+    const res = await Call(modelChannelsHandler, { query: { modelId: 'm2' } });
+
+    expect(res.code).toBe(200);
+    expect(res.data.channels).toEqual([{ id: 10, name: 'member-ch', status: 1 }]);
+    expect(vi.mocked(getModelChannelsMapByModels)).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'm2', isSystem: false, tmbId: TMB_ID })
+    ]);
   });
 
   it('falls back to an empty channel list when aiproxy fails (not on the critical path)', async () => {

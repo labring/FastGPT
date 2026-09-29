@@ -1,7 +1,7 @@
-import { getSystemModelDetail } from '@/web/core/ai/config';
-import { getChannelList, putChannel } from '@/web/core/ai/channel';
+import { getModelDetail } from '@/web/core/ai/model/api';
+import { diffModelChannels, getChannelList, putChannel } from '@/web/core/ai/channel';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
@@ -13,7 +13,7 @@ import { submitUpdatedSystemModel } from './submit';
 import { useModelChannelTest } from './useModelChannelTest';
 
 export type ModelEditWorkflowProps = {
-  model: AdminSystemModelListItem;
+  model: SystemModelListItem;
   channelType?: 'system' | 'team';
   onSuccess: () => void | Promise<void>;
   onClose: () => void;
@@ -42,7 +42,7 @@ export const useModelEditWorkflow = ({
     data: detail,
     runAsync: refreshDetail,
     loading: loadingModelData
-  } = useRequest(() => getSystemModelDetail(model.modelId, channelType), { manual: false });
+  } = useRequest(() => getModelDetail(model.modelId, channelType), { manual: false });
 
   const { testingChannelIds, testModelChannel } = useModelChannelTest({
     target: { source: 'draft', getModelData: () => modelFormGetValuesRef.current?.() },
@@ -83,36 +83,16 @@ export const useModelEditWorkflow = ({
   const associateChannels = async (nextSelectedIds: number[]) => {
     if (!detail) return;
     const channels = await getChannelList({ channelType });
-    const currentAssociatedSet = new Set(
-      detail.channels.filter((c) => c.isAssociated).map((c) => c.id)
-    );
-    const nextSelectedSet = new Set(nextSelectedIds);
+    const currentAssociatedIds = detail.channels.filter((c) => c.isAssociated).map((c) => c.id);
 
-    // 需新增绑定的渠道
-    const toAdd = channels.filter(
-      (c) => nextSelectedSet.has(c.id) && !currentAssociatedSet.has(c.id)
-    );
-    // 需解绑的渠道
-    const toRemove = channels.filter(
-      (c) => !nextSelectedSet.has(c.id) && currentAssociatedSet.has(c.id)
-    );
+    const updates = diffModelChannels({
+      channels,
+      modelName: detail.model.model,
+      currentChannelIds: currentAssociatedIds,
+      nextChannelIds: nextSelectedIds
+    });
 
-    await Promise.all([
-      ...toAdd.map((c) =>
-        putChannel({
-          ...c,
-          models: [...new Set([...(c.models || []), detail.model.model])],
-          channelType
-        })
-      ),
-      ...toRemove.map((c) =>
-        putChannel({
-          ...c,
-          models: (c.models || []).filter((m) => m !== detail.model.model),
-          channelType
-        })
-      )
-    ]);
+    await Promise.all(updates.map((update) => putChannel({ ...update, channelType })));
 
     await refreshDetail();
     setShowAssociateChannel(false);

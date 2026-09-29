@@ -1,16 +1,22 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
 import { setModelTestSnapshot } from '@test/modelCache';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import { getTmpData, setTmpData } from '@fastgpt/service/support/tmpData/controller';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
-  clearAllMyModelsCache,
-  clearMyModelsCache,
+  assertMemberChannelPermission,
+  authModelScopeOperation,
   getMemberModelCatalogPermission,
   getMemberModelIds
 } from '@fastgpt/service/support/permission/model/controller';
+import {
+  clearAllMyModelsCache,
+  clearMyModelsCache
+} from '@fastgpt/service/support/permission/model/cache';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import type { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/memberGroup/groupMemberSchema';
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
@@ -278,5 +284,68 @@ describe('model permission cache', () => {
       isTeamOwner: false
     });
     expect(collaboratorModels).toContain(teamModelId);
+  });
+
+  it('assertMemberChannelPermission requires TeamModelCreatePermissionVal', async () => {
+    await expect(
+      assertMemberChannelPermission({ hasModelCreatePer: false } as TeamPermission)
+    ).rejects.toBe(ModelErrEnum.unAuthChannel);
+    await expect(
+      assertMemberChannelPermission({ hasModelCreatePer: true } as TeamPermission)
+    ).resolves.toBeUndefined();
+  });
+
+  describe('authModelScopeOperation', () => {
+    it('rejects non-root for system channelType with rootOnlyPermit', async () => {
+      const authUserPerSpy = vi
+        .spyOn(await import('@fastgpt/service/support/permission/user/auth'), 'authUserPer')
+        .mockResolvedValue({
+          tmbId: 'tmb-1',
+          teamId: 'team-1',
+          isRoot: false,
+          tmb: { permission: { hasModelCreatePer: true } }
+        } as any);
+
+      await expect(authModelScopeOperation({ req: {}, channelType: 'system' })).rejects.toBe(
+        ModelErrEnum.rootOnlyPermit
+      );
+
+      authUserPerSpy.mockRestore();
+    });
+
+    it('allows root for system channelType', async () => {
+      const authUserPerSpy = vi
+        .spyOn(await import('@fastgpt/service/support/permission/user/auth'), 'authUserPer')
+        .mockResolvedValue({
+          tmbId: 'tmb-root',
+          teamId: 'team-1',
+          isRoot: true,
+          tmb: { permission: {} }
+        } as any);
+
+      const res = await authModelScopeOperation({ req: {}, channelType: 'system' });
+      expect(res.isRoot).toBe(true);
+
+      authUserPerSpy.mockRestore();
+    });
+
+    it('resolves authenticated member session for team scope', async () => {
+      const authUserPerSpy = vi
+        .spyOn(await import('@fastgpt/service/support/permission/user/auth'), 'authUserPer')
+        .mockResolvedValue({
+          tmbId: 'tmb-1',
+          teamId: 'team-1',
+          isRoot: false,
+          tmb: { permission: { hasModelCreatePer: false } }
+        } as any);
+
+      const res = await authModelScopeOperation({
+        req: {},
+        channelType: 'team'
+      });
+      expect(res.tmbId).toBe('tmb-1');
+
+      authUserPerSpy.mockRestore();
+    });
   });
 });

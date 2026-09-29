@@ -1,24 +1,16 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import {
-  normalizeAiproxyError,
-  updateGroupChannel,
-  updateSystemChannel,
-  type AddChannelData
-} from '@fastgpt/service/core/ai/channel';
+import { authModelScopeOperation } from '@fastgpt/service/support/permission/model/controller';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { resolveChannelForOperation } from '@/service/core/ai/channel/resolve';
+import { updateChannel } from '@fastgpt/service/core/ai/channel/service';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateChannelBodySchema,
-  UpdateChannelResponseSchema,
-  type UpdateChannelBody,
-  type UpdateChannelResponse
+  type UpdateChannelBody
 } from '@fastgpt/global/openapi/core/ai/channel/api';
 
 /** 更新渠道配置 */
-async function handler(req: ApiRequestProps<UpdateChannelBody>): Promise<UpdateChannelResponse> {
+async function handler(req: ApiRequestProps<UpdateChannelBody>): Promise<void> {
   const body = parseApiInput({ req, bodySchema: UpdateChannelBodySchema }).body;
   const { id, channelType, ...patch } = body;
 
@@ -26,12 +18,7 @@ async function handler(req: ApiRequestProps<UpdateChannelBody>): Promise<UpdateC
     return Promise.reject(ModelErrEnum.channelNotExist);
   }
 
-  const { tmbId, isRoot } = await authUserPer({ req, authToken: true });
-  if (channelType === 'system' && !isRoot) {
-    return Promise.reject(ModelErrEnum.rootOnlyPermit);
-  }
-
-  const resolved = await resolveChannelForOperation({ id, channelType, tmbId, isRoot });
+  const { tmbId, isRoot } = await authModelScopeOperation({ req, channelType });
 
   // Full-replacement PUT: the required channel fields must be present in the body
   if (
@@ -43,7 +30,7 @@ async function handler(req: ApiRequestProps<UpdateChannelBody>): Promise<UpdateC
     return Promise.reject(ModelErrEnum.invalidModelConfig);
   }
 
-  const updateData: AddChannelData = {
+  const channelData = {
     name: patch.name,
     type: patch.type,
     key: patch.key,
@@ -56,17 +43,7 @@ async function handler(req: ApiRequestProps<UpdateChannelBody>): Promise<UpdateC
     ...(patch.configs !== undefined && { configs: patch.configs })
   };
 
-  try {
-    if (resolved.kind === 'system') {
-      await updateSystemChannel(id, updateData);
-    } else {
-      await updateGroupChannel(resolved.groupId, id, updateData);
-    }
-  } catch (error) {
-    return Promise.reject(normalizeAiproxyError(error));
-  }
-
-  return UpdateChannelResponseSchema.parse(undefined);
+  await updateChannel({ id, channelType, tmbId, isRoot, channelData });
 }
 
 export default NextAPI(handler);

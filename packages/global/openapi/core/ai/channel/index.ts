@@ -3,10 +3,9 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   AffectedModelsResponseSchema,
   BatchChannelBodySchema,
-  BatchChannelResponseSchema,
+  BatchDeleteChannelsResponseSchema,
   ChannelModelsResponseSchema,
   CreateChannelBodySchema,
-  CreateChannelResponseSchema,
   DeleteChannelQuerySchema,
   DeleteChannelResponseSchema,
   GetAffectedModelsQuerySchema,
@@ -22,12 +21,8 @@ import {
   ListChannelsResponseSchema,
   ModelChannelsResponseSchema,
   ProviderMetasResponseSchema,
-  TestChannelQuerySchema,
-  TestChannelResponseSchema,
   UpdateChannelBodySchema,
-  UpdateChannelResponseSchema,
-  UpdateChannelStatusBodySchema,
-  UpdateChannelStatusResponseSchema
+  UpdateChannelStatusBodySchema
 } from './api';
 
 /**
@@ -61,8 +56,7 @@ export const ChannelPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '操作成功（前端刷新列表获取新渠道）',
-          content: { 'application/json': { schema: CreateChannelResponseSchema } }
+          description: '操作成功（前端刷新列表获取新渠道）'
         }
       }
     }
@@ -78,8 +72,7 @@ export const ChannelPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '操作成功',
-          content: { 'application/json': { schema: UpdateChannelResponseSchema } }
+          description: '操作成功'
         }
       }
     }
@@ -110,8 +103,7 @@ export const ChannelPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '操作成功',
-          content: { 'application/json': { schema: UpdateChannelStatusResponseSchema } }
+          description: '操作成功'
         }
       }
     }
@@ -128,21 +120,7 @@ export const ChannelPath: OpenAPIPath = {
       responses: {
         200: {
           description: '操作成功',
-          content: { 'application/json': { schema: BatchChannelResponseSchema } }
-        }
-      }
-    }
-  },
-  '/core/ai/channel/test': {
-    get: {
-      summary: '渠道测试',
-      description: '对指定渠道的单个上游模型名发起测试，结果持久化到 aiproxy。成员仅本人渠道。',
-      tags: [DevApiTagsMap.model],
-      requestParams: { query: TestChannelQuerySchema },
-      responses: {
-        200: {
-          description: '测试成功',
-          content: { 'application/json': { schema: TestChannelResponseSchema } }
+          content: { 'application/json': { schema: BatchDeleteChannelsResponseSchema.optional() } }
         }
       }
     }

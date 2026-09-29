@@ -1,6 +1,6 @@
-import { ChannelStautsMap } from '@/global/aiproxy/constants';
+import { ChannelStatusMap } from '@fastgpt/global/core/ai/channel';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
-import type { AdminModelChannel } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
 import { Box, Button, Flex, HStack, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -32,7 +32,7 @@ const ModelLinkedChannels = ({
   testingChannelIds,
   onRemove
 }: {
-  channels: AdminModelChannel[];
+  channels: ModelChannelSummary[];
   selectedIds: Set<number>;
   onCreate?: () => void;
   onAssociate: () => void;
@@ -117,7 +117,7 @@ const ModelLinkedChannels = ({
             <ChannelTableColumns />
             <Tbody color="myGray.600">
               {displayedChannels.map((channel) => {
-                const status = ChannelStautsMap[channel.status as keyof typeof ChannelStautsMap];
+                const status = ChannelStatusMap[channel.status as keyof typeof ChannelStatusMap];
 
                 return (
                   <Tr key={channel.id} h="56px">

@@ -1,5 +1,5 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getModelProviderMetadata } from '@fastgpt/service/core/app/provider/controller';
+import { getModelProviderMetadata } from '@fastgpt/service/core/ai/provider/controller';
 import { authModelViewer } from '@/service/core/ai/model/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -11,7 +11,7 @@ import {
   type GetModelCatalogResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { desensitizeSystemModel } from '@fastgpt/service/core/ai/config/utils';
+import { desensitizeSystemModel } from '@fastgpt/service/core/ai/model/transform';
 import { resolveEffectiveDefaultModelIds } from '@fastgpt/service/core/ai/catalog';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 

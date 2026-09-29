@@ -1,6 +1,6 @@
 import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { getAIApi, getAiproxyScopeHeaders } from '../config';
-import { normalizeRelayNoChannelError } from '../channel';
+import { getAIApi, getModelOpenAIOptions } from '../config';
+import { normalizeRelayNoChannelError } from '../channel/error';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -134,27 +134,14 @@ export async function getVectors({
                 ...(type === EmbeddingTypeEnm.db && model.config.dbConfig),
                 ...(type === EmbeddingTypeEnm.query && model.config.queryConfig)
               } as any,
-              model.requestUrl
-                ? {
-                    path: model.requestUrl,
-                    headers: {
-                      ...(model.requestAuth
-                        ? { Authorization: `Bearer ${model.requestAuth}` }
-                        : {}),
-                      ...headers,
-                      ...getAiproxyScopeHeaders(model as any, requestMeta.baseUrl)
-                    },
-                    signal,
-                    maxRetries: timeoutMs === undefined ? undefined : 0
-                  }
-                : {
-                    headers: {
-                      ...headers,
-                      ...getAiproxyScopeHeaders(model as any, requestMeta.baseUrl)
-                    },
-                    signal,
-                    maxRetries: timeoutMs === undefined ? undefined : 0
-                  }
+              getModelOpenAIOptions({
+                model,
+                baseUrl: requestMeta?.baseUrl,
+                headers,
+                signal,
+                maxRetries: timeoutMs === undefined ? undefined : 0,
+                omitEmptyHeaders: true
+              })
             )
             .then(async (res) => {
               if (!res.data) {

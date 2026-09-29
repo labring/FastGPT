@@ -12,9 +12,10 @@ import type {
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // Mock dependencies
-vi.mock('@fastgpt/service/core/ai/config', () => ({
+vi.mock('@fastgpt/service/core/ai/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/config')>()),
   getAIApi: vi.fn(),
-  defaultUserOpenAIBaseUrl: 'https://api.openai.com/v1'
+  getAiproxyScopeHeaders: vi.fn(() => ({}))
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({

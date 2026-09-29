@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getChannelTypeMetas } from '@fastgpt/service/core/ai/channel';
+import { getChannelTypeMetas } from '@fastgpt/service/core/ai/channel/provider';
 import {
   ProviderMetasResponseSchema,
   type ProviderMetasResponse

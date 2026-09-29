@@ -57,7 +57,9 @@ const ChannelLog = ({
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const isTeam = channelType === 'team';
-  const { getModelProvider: getAdminModelProvider, systemModelList } = useAdminModelConfig();
+  const { getModelProvider: getAdminModelProvider, systemModelList } = useAdminModelConfig({
+    manual: isTeam
+  });
   const { modelList: memberModelList, getModelProvider: getMemberModelProvider } =
     useUserModelStore();
   const availableModels = isTeam ? memberModelList : systemModelList;
@@ -353,7 +355,7 @@ const LogDetailContainer = ({ children, ...props }: { children: React.ReactNode 
 
 const LogDetail = ({
   data,
-  channelType,
+  channelType = 'system',
   onClose
 }: {
   data: LogDetailType;

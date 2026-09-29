@@ -16,20 +16,16 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import React, { useCallback, useEffect, useState } from 'react';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  deleteSystemModel,
-  deleteSystemModels,
-  getAdminModelConfig,
-  getTeamModelsConfig,
-  getTestModel,
-  putSystemModelsStatus
-} from '@/web/core/ai/config';
-import { getChannelList, putChannel } from '@/web/core/ai/channel';
+import { deleteModel, deleteModels, testModel, putModelsStatus } from '@/web/core/ai/model/api';
+import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { syncModelChannelAssociation } from '@/web/core/ai/channel';
 import ModelScopeCell from '@/components/core/ai/ModelScopeCell';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -40,19 +36,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AddModel from './AddModel';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from './ModelTabHeader';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
-import {
-  formatModelProviders,
-  getModelProviderFromCache,
-  getModelProviderListFromCache,
-  type ModelProviderItemType
-} from '@fastgpt/global/core/ai/model/provider';
-import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/system/model/api';
+import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import { useLockFn, useSet } from 'ahooks';
 import ModelChannelCount from './ModelChannelCount';
 import ModelChannelModal from './ModelChannelModal';
@@ -65,6 +53,8 @@ import JsonModelConfigModal from './JsonModelConfigModal';
 import DefaultModelModal from './DefaultModelModal';
 import ModelListFilters from '@/components/core/ai/ModelListFilters';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useModelTableFormat } from '@/components/core/ai/hooks/useModelTableFormat';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 
 const modelRowHeight = 80;
 const modelTableColumnWidth = {
@@ -85,7 +75,7 @@ const ModelEditButton = React.memo(
     onSuccess,
     isDisabled
   }: {
-    model: AdminSystemModelListItem;
+    model: SystemModelListItem;
     providers: ModelProviderItemType[];
     channelType?: 'system' | 'team';
     onSuccess: () => Promise<void>;
@@ -135,35 +125,13 @@ const ModelTable = ({
 
   const {
     data: modelConfigData,
-    runAsync: refreshModelList,
+    models: modelItems,
+    channels: channelList,
+    providers: modelProviders,
+    getModelProvider,
+    refresh: refreshModels,
     loading: loadingModels
-  } = useRequest(() => (isTeam ? getTeamModelsConfig() : getAdminModelConfig()) as Promise<any>, {
-    manual: false,
-    refreshDeps: [isTeam]
-  });
-  const modelItems = useMemo(
-    () => (modelConfigData?.models ?? []) as AdminSystemModelListItem[],
-    [modelConfigData?.models]
-  );
-  const channelList = useMemo(() => modelConfigData?.channels ?? [], [modelConfigData?.channels]);
-  const providerCache = useMemo(
-    () => formatModelProviders(modelConfigData?.providers ?? []),
-    [modelConfigData?.providers]
-  );
-  const getModelProviders = useCallback(
-    (language?: string) =>
-      getModelProviderListFromCache(providerCache.ModelProviderListCache, language),
-    [providerCache.ModelProviderListCache]
-  );
-  const getModelProvider = useCallback(
-    (provider?: string, language?: string) =>
-      getModelProviderFromCache({ cache: providerCache.ModelProviderMapCache, provider, language }),
-    [providerCache.ModelProviderMapCache]
-  );
-  const modelProviders = useMemo(
-    () => getModelProviders(i18n.language),
-    [getModelProviders, i18n.language]
-  );
+  } = useModelConfig({ channelType, language: i18n.language });
 
   const isRoot = userInfo?.username === 'root';
 
@@ -172,155 +140,16 @@ const ModelTable = ({
   const [search, setSearch] = useState('');
   const [showActive, setShowActive] = useState(false);
 
-  const refreshModels = useCallback(async () => {
-    useUserModelStore.getState().clearMemory();
-    await refreshModelList();
-  }, [refreshModelList]);
-
-  const modelList = useMemo(() => {
-    const formatLLMModelList = modelItems
-      .filter((item) => item.type === ModelTypeEnum.llm)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.chat'),
-        priceLabel: (
-          <PriceTiersLabel
-            config={item}
-            unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-          />
-        ),
-        tagColor: 'blue'
-      }));
-    const formatVectorModelList = modelItems
-      .filter((item) => item.type === ModelTypeEnum.embedding)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.embedding'),
-        priceLabel: item.charsPointsPrice ? (
-          <Flex color={'myGray.700'}>
-            {`${t('common:Input')}: `}
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
-            </Box>
-            {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-          </Flex>
-        ) : (
-          '-'
-        ),
-        tagColor: 'yellow'
-      }));
-    const formatAudioSpeechModelList = modelItems
-      .filter((item) => item.type === ModelTypeEnum.tts)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.tts'),
-        priceLabel: item.charsPointsPrice ? (
-          <Flex color={'myGray.700'}>
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
-            </Box>
-            {` ${t('common:support.wallet.subscription.point')} / 1K ${t('common:unit.character')}`}
-          </Flex>
-        ) : (
-          '-'
-        ),
-        tagColor: 'green'
-      }));
-    const formatWhisperModel = modelItems
-      .filter((item) => item.type === ModelTypeEnum.stt)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.stt'),
-        priceLabel: item.charsPointsPrice ? (
-          <Flex color={'myGray.700'}>
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
-            </Box>
-            {` ${t('common:support.wallet.subscription.point')} / 60${t('common:unit.seconds')}`}
-          </Flex>
-        ) : (
-          '-'
-        ),
-        tagColor: 'purple'
-      }));
-    const formatRerankModelList = modelItems
-      .filter((item) => item.type === ModelTypeEnum.rerank)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.reRank'),
-        priceLabel: item.charsPointsPrice ? (
-          <Flex color={'myGray.700'}>
-            {`${t('common:Input')}: `}
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
-            </Box>
-            {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-          </Flex>
-        ) : (
-          '-'
-        ),
-        tagColor: 'red'
-      }));
-
-    const formattedModelMap = new Map(
-      [
-        ...formatLLMModelList,
-        ...formatVectorModelList,
-        ...formatAudioSpeechModelList,
-        ...formatWhisperModel,
-        ...formatRerankModelList
-      ].map((item) => [item.modelId, item] as const)
-    );
-    // 接口已在服务端做好 team/system 隔离，此处只需按模型类型筛选
-    const list = modelItems.flatMap((item) => {
-      if (modelType && item.type !== modelType) return [];
-      const formattedModel = formattedModelMap.get(item.modelId);
-      return formattedModel ? [formattedModel] : [];
-    });
-
-    const formatList = list.map((item) => {
-      const provider = getModelProvider(item.provider, i18n.language);
-      return {
-        ...item,
-        avatar: provider.avatar,
-        providerId: provider.id,
-        providerName: provider.name,
-        contextToken:
-          item.type === ModelTypeEnum.llm
-            ? (item.config as any)?.maxContext
-            : item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank
-              ? (item.config as any)?.maxToken
-              : undefined,
-        vision:
-          item.type === ModelTypeEnum.llm || item.type === ModelTypeEnum.embedding
-            ? (item.config as any)?.vision
-            : undefined,
-        audio: item.type === ModelTypeEnum.llm ? (item.config as any)?.audio : undefined,
-        video: item.type === ModelTypeEnum.llm ? (item.config as any)?.video : undefined,
-        reasoning: item.type === ModelTypeEnum.llm ? (item.config as any)?.reasoning : undefined
-      };
-    });
-
-    const filterList = formatList.filter((item) => {
-      const providerFilter = provider ? item.providerId === provider : true;
-
-      const normalizedSearch = search.trim().toLowerCase();
-      const nameFilter = normalizedSearch
-        ? item.name.toLowerCase().includes(normalizedSearch) ||
-          item.model.toLowerCase().includes(normalizedSearch)
-        : true;
-
-      const activeFilter = showActive ? item.isActive : true;
-
-      return providerFilter && nameFilter && activeFilter;
-    });
-
-    return filterList;
-  }, [modelItems, t, modelType, getModelProvider, i18n.language, provider, search, showActive]);
-  const activeModelLength = useMemo(() => {
-    return modelList.filter((item) => item.isActive).length;
-  }, [modelList]);
-  const getModelId = useCallback((model: AdminSystemModelListItem) => model.modelId, []);
+  const { formattedList: modelList, activeCount: activeModelLength } = useModelTableFormat({
+    models: modelItems,
+    modelType,
+    provider,
+    search,
+    showActive,
+    getModelProvider,
+    language: i18n.language
+  });
+  const getModelId = useCallback((model: SystemModelListItem) => model.modelId, []);
   const {
     selectedItems,
     setSelectedItems,
@@ -351,10 +180,10 @@ const ModelTable = ({
 
   const [testingModelIds, testingModelIdsDispatch] = useSet<string>();
   const { runAsync: onTestModel } = useRequest(
-    async (data: Parameters<typeof getTestModel>[0]) => {
+    async (data: Parameters<typeof testModel>[0]) => {
       testingModelIdsDispatch.add(data.modelId);
       try {
-        return await getTestModel({ ...data, channelType });
+        return await testModel({ ...data, channelType });
       } finally {
         testingModelIdsDispatch.remove(data.modelId);
       }
@@ -378,7 +207,7 @@ const ModelTable = ({
     async ({ modelId, model, isActive }: { modelId: string; model: string; isActive: boolean }) => {
       updatingModelIdsDispatch.add(modelId);
       try {
-        await putSystemModelsStatus({ modelIds: [modelId], isActive, channelType });
+        await putModelsStatus({ modelIds: [modelId], isActive, channelType });
         toast({
           status: 'success',
           title: t(isActive ? 'config_model:status_enabled' : 'config_model:status_disabled', {
@@ -403,18 +232,18 @@ const ModelTable = ({
     }
   });
 
-  const { runAsync: deleteModelRequest } = useRequest(deleteSystemModel, {
+  const { runAsync: deleteModelRequest } = useRequest(deleteModel, {
     onSuccess: () => void refreshModels().catch(() => {}),
     successToast: t('common:delete_success')
   });
-  const deleteModel = (data: Parameters<typeof deleteSystemModel>[0]) =>
+  const handleDeleteModel = (data: Parameters<typeof deleteModel>[0]) =>
     runChannelMutation(() => deleteModelRequest(data));
   const clearSelection = useCallback(() => {
     setSelectedItems([]);
   }, [setSelectedItems]);
   const { runAsync: updateModelsStatus, loading: updatingModelsStatus } = useRequest(
-    async (data: Parameters<typeof putSystemModelsStatus>[0]) => {
-      await putSystemModelsStatus(data);
+    async (data: Parameters<typeof putModelsStatus>[0]) => {
+      await putModelsStatus(data);
       clearSelection();
       toast({
         status: 'success',
@@ -428,18 +257,15 @@ const ModelTable = ({
       await refreshModels().catch(() => {});
     }
   );
-  const { runAsync: deleteModelsRequest, loading: deletingModels } = useRequest(
-    deleteSystemModels,
-    {
-      manual: true,
-      onSuccess: () => {
-        clearSelection();
-        void refreshModels().catch(() => {});
-      },
-      successToast: t('common:delete_success')
-    }
-  );
-  const deleteModels = (data: Parameters<typeof deleteSystemModels>[0]) =>
+  const { runAsync: deleteModelsRequest, loading: deletingModels } = useRequest(deleteModels, {
+    manual: true,
+    onSuccess: () => {
+      clearSelection();
+      void refreshModels().catch(() => {});
+    },
+    successToast: t('common:delete_success')
+  });
+  const handleDeleteModels = (data: Parameters<typeof deleteModels>[0]) =>
     runChannelMutation(() => deleteModelsRequest(data));
   const { openConfirm: openBatchDeleteConfirm, ConfirmModal: BatchDeleteConfirmModal } = useConfirm(
     {
@@ -447,7 +273,7 @@ const ModelTable = ({
     }
   );
 
-  const [channelModel, setChannelModel] = useState<AdminSystemModelListItem>();
+  const [channelModel, setChannelModel] = useState<SystemModelListItem>();
 
   const {
     isOpen: isOpenJsonConfig,
@@ -670,7 +496,7 @@ const ModelTable = ({
                             </Flex>
                           </HStack>
                           <HStack mt={2} spacing={2} flexWrap={'nowrap'}>
-                            <MyTag type={'borderFill'} colorSchema={item.tagColor as any} py={0.5}>
+                            <MyTag type={'borderFill'} colorSchema={item.tagColor} py={0.5}>
                               {item.typeLabel}
                             </MyTag>
                             <ModelCapabilityTags
@@ -729,7 +555,7 @@ const ModelTable = ({
                               icon={'core/chat/sendLight'}
                               tip={t('config_model:model.test_model')}
                               isLoading={testingModelIds.has(item.modelId)}
-                              onClick={() => onTestModel({ modelId: item.modelId })}
+                              onClick={() => onTestModel({ modelId: item.modelId, channelType })}
                             />
                             <ModelEditButton
                               model={item}
@@ -750,7 +576,9 @@ const ModelTable = ({
                               }
                               type="delete"
                               content={t('config_model:model.delete_model_confirm')}
-                              onConfirm={() => deleteModel({ modelId: item.modelId, channelType })}
+                              onConfirm={() =>
+                                handleDeleteModel({ modelId: item.modelId, channelType })
+                              }
                             />
                           </HStack>
                         </Td>
@@ -812,7 +640,7 @@ const ModelTable = ({
                               count: selectedItems.length
                             }),
                             onConfirm: () =>
-                              deleteModels({
+                              handleDeleteModels({
                                 modelIds: selectedItems.map((model) => model.modelId),
                                 channelType
                               })
@@ -837,33 +665,14 @@ const ModelTable = ({
           selectedChannelIds={channelModel.channels.map((channel) => channel.id)}
           onClose={() => setChannelModel(undefined)}
           onConfirm={async (channelIds) => {
-            await runChannelMutation(async () => {
-              const channels = await getChannelList({ channelType });
-              const currentAssociatedSet = new Set(channelModel.channels.map((c) => c.id));
-              const nextSelectedSet = new Set(channelIds);
-              const toAdd = channels.filter(
-                (c) => nextSelectedSet.has(c.id) && !currentAssociatedSet.has(c.id)
-              );
-              const toRemove = channels.filter(
-                (c) => !nextSelectedSet.has(c.id) && currentAssociatedSet.has(c.id)
-              );
-              await Promise.all([
-                ...toAdd.map((c) =>
-                  putChannel({
-                    ...c,
-                    models: Array.from(new Set([...(c.models || []), channelModel.model])),
-                    channelType
-                  })
-                ),
-                ...toRemove.map((c) =>
-                  putChannel({
-                    ...c,
-                    models: (c.models || []).filter((m) => m !== channelModel.model),
-                    channelType
-                  })
-                )
-              ]);
-            });
+            await runChannelMutation(() =>
+              syncModelChannelAssociation({
+                modelName: channelModel.model,
+                currentChannelIds: channelModel.channels.map((c) => c.id),
+                nextChannelIds: channelIds,
+                channelType
+              })
+            );
             toast({ status: 'success', title: t('config_model:associate_success') });
             setChannelModel(undefined);
             await refreshModels().catch(() => {});
@@ -875,8 +684,12 @@ const ModelTable = ({
       )}
       {isOpenDefaultModel && (
         <DefaultModelModal
-          models={modelItems as any}
-          defaultModelIds={(modelConfigData as any)?.defaultModelIds ?? {}}
+          models={modelItems as unknown as SystemModelDataType[]}
+          defaultModelIds={
+            modelConfigData && 'defaultModelIds' in modelConfigData
+              ? modelConfigData.defaultModelIds
+              : {}
+          }
           onClose={onCloseDefaultModel}
           onSuccess={refreshModels}
         />

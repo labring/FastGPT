@@ -1,14 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import {
-  deleteGroupChannel,
-  deleteSystemChannel,
-  getChannelAffectedModels,
-  normalizeAiproxyError
-} from '@fastgpt/service/core/ai/channel';
-import { resolveChannelForOperation } from '@/service/core/ai/channel/resolve';
+import { authModelScopeOperation } from '@fastgpt/service/support/permission/model/controller';
+import { deleteChannel } from '@fastgpt/service/core/ai/channel/service';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteChannelQuerySchema,
@@ -26,27 +19,9 @@ async function handler(
     querySchema: DeleteChannelQuerySchema
   }).query;
 
-  const { tmbId, isRoot } = await authUserPer({ req, authToken: true });
-  if (channelType === 'system' && !isRoot) {
-    return Promise.reject(ModelErrEnum.rootOnlyPermit);
-  }
+  const { tmbId, isRoot } = await authModelScopeOperation({ req, channelType });
 
-  const resolved = await resolveChannelForOperation({ id, channelType, tmbId, isRoot });
-
-  // Affected models are computed before deletion
-  const affectedModels = await getChannelAffectedModels(resolved.channel);
-
-  try {
-    if (resolved.kind === 'system') {
-      await deleteSystemChannel(id);
-    } else {
-      await deleteGroupChannel(resolved.groupId, id);
-    }
-  } catch (error) {
-    return Promise.reject(normalizeAiproxyError(error));
-  }
-
-  return DeleteChannelResponseSchema.parse({ affectedModels });
+  return DeleteChannelResponseSchema.parse(await deleteChannel({ id, channelType, tmbId, isRoot }));
 }
 
 export default NextAPI(handler);
