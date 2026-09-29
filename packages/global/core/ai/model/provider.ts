@@ -96,3 +96,28 @@ export const formatModelProviders = (
     ModelProviderMapCache
   };
 };
+
+/**
+ * 按 provider 列表顺序稳定排序模型列表；未匹配到的 provider 排在最后，同 provider 保持原有相对顺序。
+ */
+export const sortModelsByProvider = <T extends { provider: string }>(
+  models: T[],
+  providers: Array<{ provider?: string; id?: string } | string>
+): T[] => {
+  const providerOrderMap = new Map<string, number>();
+  providers.forEach((item, index) => {
+    const key = typeof item === 'string' ? item : item.provider || item.id;
+    if (key && !providerOrderMap.has(key)) {
+      providerOrderMap.set(key, index);
+    }
+  });
+
+  return [...models].sort((a, b) => {
+    const orderA = providerOrderMap.get(a.provider) ?? Infinity;
+    const orderB = providerOrderMap.get(b.provider) ?? Infinity;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    return 0;
+  });
+};

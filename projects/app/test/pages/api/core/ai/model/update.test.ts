@@ -530,6 +530,48 @@ describe('admin settings model create/update api', () => {
     expect(providerMocks.preloadModelProviders).toHaveBeenCalledTimes(2);
   });
 
+  it('returns model templates sorted by provider order', async () => {
+    const providers = [
+      {
+        provider: 'OpenAI',
+        value: { en: 'OpenAI', 'zh-CN': 'OpenAI', 'zh-Hant': 'OpenAI' },
+        avatar: 'model/openai'
+      },
+      {
+        provider: 'Claude',
+        value: { en: 'Claude', 'zh-CN': 'Claude', 'zh-Hant': 'Claude' },
+        avatar: 'model/claude'
+      },
+      {
+        provider: 'Gemini',
+        value: { en: 'Gemini', 'zh-CN': 'Gemini', 'zh-Hant': 'Gemini' },
+        avatar: 'model/gemini'
+      }
+    ];
+    providerMocks.preloadModelProviders.mockImplementation(async () => {
+      global.ModelProviderRawCache = providers;
+    });
+
+    configMocks.refreshModelTemplates.mockResolvedValue([
+      { ...buildLlmDocument(), model: 'claude-3-5-sonnet', provider: 'Claude' },
+      { ...buildLlmDocument(), model: 'gpt-4o', provider: 'OpenAI' },
+      { ...buildLlmDocument(), model: 'gemini-1.5', provider: 'Gemini' },
+      { ...buildLlmDocument(), model: 'gpt-4o-mini', provider: 'OpenAI' },
+      { ...buildLlmDocument(), model: 'custom-model', provider: 'Unknown' }
+    ]);
+
+    const res = await callApi({ handler: getModelTemplatesApi, body: undefined });
+
+    expect(res.error).toBeUndefined();
+    expect(res.data.models.map((item: any) => item.model)).toEqual([
+      'gpt-4o',
+      'gpt-4o-mini',
+      'claude-3-5-sonnet',
+      'gemini-1.5',
+      'custom-model'
+    ]);
+  });
+
   it('uses the latest template values, filters installed models, and creates inactive models', async () => {
     await MongoAIModel.create(buildLlmDocument());
     configMocks.refreshModelTemplates.mockResolvedValue([

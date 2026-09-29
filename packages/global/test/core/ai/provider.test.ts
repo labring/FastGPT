@@ -3,7 +3,8 @@ import {
   defaultProvider,
   formatModelProviders,
   getModelProviderFromCache,
-  getModelProviderListFromCache
+  getModelProviderListFromCache,
+  sortModelsByProvider
 } from '@fastgpt/global/core/ai/model/provider';
 
 // Mock I18nStringStrictType for testing
@@ -289,5 +290,77 @@ describe('formatModelProviders', () => {
       expect(result.ModelProviderMapCache.en['provider-with-dash']).toBeDefined();
       expect(result.ModelProviderMapCache.en['provider_with_underscore']).toBeDefined();
     });
+  });
+});
+
+describe('sortModelsByProvider', () => {
+  it('sorts models according to provider order and preserves relative order within the same provider', () => {
+    const models = [
+      { model: 'claude-3-5-sonnet', provider: 'Claude' },
+      { model: 'gpt-4o', provider: 'OpenAI' },
+      { model: 'gemini-1.5-pro', provider: 'Gemini' },
+      { model: 'gpt-4o-mini', provider: 'OpenAI' },
+      { model: 'claude-3-haiku', provider: 'Claude' }
+    ];
+
+    const providers = [{ provider: 'OpenAI' }, { provider: 'Claude' }, { provider: 'Gemini' }];
+
+    const sorted = sortModelsByProvider(models, providers);
+
+    expect(sorted.map((m) => m.model)).toEqual([
+      'gpt-4o',
+      'gpt-4o-mini',
+      'claude-3-5-sonnet',
+      'claude-3-haiku',
+      'gemini-1.5-pro'
+    ]);
+  });
+
+  it('places models with unknown providers at the end while preserving relative order', () => {
+    const models = [
+      { model: 'unknown-1', provider: 'Unknown' },
+      { model: 'claude-3-5-sonnet', provider: 'Claude' },
+      { model: 'unknown-2', provider: 'Other' },
+      { model: 'gpt-4o', provider: 'OpenAI' }
+    ];
+
+    const providers = [{ provider: 'OpenAI' }, { provider: 'Claude' }];
+
+    const sorted = sortModelsByProvider(models, providers);
+
+    expect(sorted.map((m) => m.model)).toEqual([
+      'gpt-4o',
+      'claude-3-5-sonnet',
+      'unknown-1',
+      'unknown-2'
+    ]);
+  });
+
+  it('handles providers represented as { id: string } or strings', () => {
+    const models = [
+      { model: 'claude-3', provider: 'Claude' },
+      { model: 'gpt-4', provider: 'OpenAI' }
+    ];
+
+    expect(
+      sortModelsByProvider(models, [{ id: 'OpenAI' }, { id: 'Claude' }]).map((m) => m.model)
+    ).toEqual(['gpt-4', 'claude-3']);
+
+    expect(sortModelsByProvider(models, ['OpenAI', 'Claude']).map((m) => m.model)).toEqual([
+      'gpt-4',
+      'claude-3'
+    ]);
+  });
+
+  it('returns empty array when models array is empty', () => {
+    expect(sortModelsByProvider([], [{ provider: 'OpenAI' }])).toEqual([]);
+  });
+
+  it('preserves model order when providers array is empty', () => {
+    const models = [
+      { model: 'claude-3', provider: 'Claude' },
+      { model: 'gpt-4', provider: 'OpenAI' }
+    ];
+    expect(sortModelsByProvider(models, []).map((m) => m.model)).toEqual(['claude-3', 'gpt-4']);
   });
 });
