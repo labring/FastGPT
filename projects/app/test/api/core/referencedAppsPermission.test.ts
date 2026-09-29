@@ -1,3 +1,4 @@
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
@@ -32,13 +33,16 @@ vi.mock('@/service/core/app/referencedApps', () => ({
   listReadableReferencedApps: mocks.listReadableReferencedApps
 }));
 vi.mock('@fastgpt/service/common/zod/requestParseError', () => ({
-  parseApiInput: () => ({ query: { datasetId: 'dataset-1', toolId: 'tool-1', skillId: 'skill-1' } })
+  parseApiInput: () => ({
+    query: { appId: 'app-1', datasetId: 'dataset-1', toolId: 'tool-1', skillId: 'skill-1' }
+  })
 }));
 
 // Import handlers after vi.mock so their dependencies use the test doubles.
 const { default: skillHandler } = await import('@/pages/api/core/ai/skill/apps');
 const { default: datasetHandler } = await import('@/pages/api/core/dataset/apps');
 const { default: toolHandler } = await import('@/pages/api/core/app/appsByToolId');
+const { default: appHandler } = await import('@/pages/api/core/app/appsByAppId');
 
 describe('referenced app visibility', () => {
   beforeEach(() => {
@@ -84,7 +88,33 @@ describe('referenced app visibility', () => {
     );
   });
 
+  it('filters active agent apps and uses request team permission for app referenced apps', async () => {
+    mocks.findAppAndAllChildren.mockResolvedValueOnce([
+      { _id: 'agent-active', type: AppTypeEnum.workflow, deleteTime: null },
+      { _id: 'agent-deleted', type: AppTypeEnum.workflow, deleteTime: new Date() },
+      { _id: 'tool-active', type: AppTypeEnum.tool, deleteTime: null }
+    ]);
+
+    await appHandler({} as never);
+
+    expect(mocks.listReadableReferencedApps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team-1',
+        tmbId: 'requester',
+        isTeamOwner: false,
+        resourceType: 'agent',
+        resourceIds: ['agent-active']
+      })
+    );
+  });
+
   it.each([
+    {
+      resource: 'app',
+      setNonOwner: () => mocks.authApp.mockResolvedValueOnce({ permission: { isOwner: false } }),
+      invoke: () => appHandler({} as never),
+      error: AppErrEnum.unAuthApp
+    },
     {
       resource: 'dataset',
       setNonOwner: () =>

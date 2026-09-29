@@ -1306,5 +1306,7 @@
   "read_only_no_batch_permission": "현재 리소스에 대한 작업 권한이 없어 일괄 작업을 수행할 수 없습니다",
   "will_delete": "삭제될 항목",
   "confirm_delete": "삭제 확인",
-  "batch_partial_failed": "선택한 항목 중 일부를 처리하지 못했습니다"
+  "batch_partial_failed": "선택한 항목 중 일부를 처리하지 못했습니다",
+  "related_count": "연관 앱",
+  "related_apps_hidden": "권한으로 인해 {{count}}개 앱이 더 숨겨져 있습니다"
 }

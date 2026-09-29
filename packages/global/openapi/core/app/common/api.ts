@@ -394,6 +394,14 @@ export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchem
 });
 export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
 
+export const GetAppsByAppIdQuerySchema = z.object({
+  appId: AppIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '应用或应用文件夹 ID'
+  })
+});
+export type GetAppsByAppIdQuery = z.infer<typeof GetAppsByAppIdQuerySchema>;
+
 export const GetAppsByToolIdQuerySchema = z.object({
   toolId: AppIdSchema.meta({
     example: '68ad85a7463006c963799a05',

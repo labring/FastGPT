@@ -1,3 +1,4 @@
+import type { ReferencedAppsResponse } from '@fastgpt/global/core/app/type';
 import { GET, POST } from '@/web/common/api/request';
 import type {
   CopyAppBodyType,
@@ -28,3 +29,16 @@ export const postTransition2Workflow = (data: TransitionWorkflowBodyType) =>
 
 export const postCopyApp = (data: CopyAppBodyType) =>
   POST<CopyAppResponseType>('/core/app/copy', data);
+
+/* referenced apps */
+/**
+ * Fetch published apps that reference the specified app or apps inside the app folder.
+ */
+export const getAppsByAppId = (appId: string) =>
+  GET<ReferencedAppsResponse>('/core/app/appsByAppId', { appId });
+
+/**
+ * Fetch published apps that reference the specified tool or tools inside the tool folder.
+ */
+export const getAppsByToolId = (toolId: string) =>
+  GET<ReferencedAppsResponse>('/core/app/appsByToolId', { toolId });
