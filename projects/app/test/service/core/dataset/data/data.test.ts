@@ -1103,5 +1103,17 @@ describe('Dataset data service', () => {
       expect(mockDeleteDatasetFileByKey).not.toHaveBeenCalled();
       expect(mockVectorDelete).not.toHaveBeenCalled();
     });
+
+    it('should skip image deletion when the imageId belongs to another dataset', async () => {
+      const { data } = await createMongoData({ indexes: [] });
+      // 脏数据：图片来源 key 属于另一个 dataset
+      data.imageId = 'dataset/507f1f77bcf86cd799439099/foreign.png';
+      await data.save();
+
+      await deleteDatasetData(toDataItem(data));
+
+      // 外库 key 不得触发物理删除
+      expect(mockDeleteDatasetFileByKey).not.toHaveBeenCalled();
+    });
   });
 });

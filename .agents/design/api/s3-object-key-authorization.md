@@ -86,8 +86,25 @@ FastGPT 的私有对象存储 key 是 bucket 内的全局路径字符串，例�
 同批排查中确认无需修改的点：
 
 - `collection/create/localFile|text|backup|template|images`：key 全部由服务端基于已鉴权 dataset 生成，不接收客户端 key。
-- `collection/update`、`collection/detail`、`collection/read`：使用数据库记录中的 key，前置查询已绑定权限边界。
+- `collection/update`：使用数据库记录中的 key，前置查询已绑定权限边界。
+- `collection/detail`、`collection/read`：原判定为「使用数据库记录中的 key、前置查询已绑定权限边界」，第二轮 review 复核后确认仍需显式校验 key 归属（见下节），已补 `datasetId` 绑定。
 - `app/create` 的模板头像：key 来自数据库模板记录，非客户端输入。
+
+### 第二轮 review 补漏（2026-09-29，底层收口）
+
+review 指出「预览短链签发」的核心通道仍有漏检，本轮按「底层强收口 + 读接口加固 + 删除防护」三层处理：
+
+1. 底层强收口：`S3DatasetSource.createGetDatasetFileURL` 增加可选的 `datasetId`（`string | string[]`）入参，传入时在签发前统一执行 `isAuthorizedDatasetFileS3Key`，未通过直接抛错；未传时保持兼容（调用方仅持有可信 key 的场景）。
+2. 读接口加固（均补 `datasetId` 绑定）：
+   - `packages/service/support/permission/dataset/auth.ts` 的 `authDatasetData`：`datasetData.imageId` 签发前校验归属 `datasetData.datasetId`。
+   - `projects/app/src/pages/api/core/dataset/collection/read.ts`：`collection.fileId` 签发前校验归属 `collection.datasetId`。
+   - `projects/app/src/pages/api/core/dataset/collection/detail.ts`：读取 `fileId` 元数据前校验归属，避免越权泄露外库文件名/体积/类型。
+3. 删除防护（避免外库 key 触发跨库物理删除）：
+   - `projects/app/src/service/core/dataset/data/data.ts` 的删除数据块：仅当 `imageId` 归属该 data 的 `datasetId` 才删除。
+   - `packages/service/core/dataset/collection/controller.ts` 的 `delCollection`：`fileId` 与图片 `imageId` 均按各自 `datasetId` 过滤后再删除。
+   - 同一文件的 `createOneCollection`：对 `fileId` 的 `removeS3TTL` 增加归属校验，避免外库 key 被意外提升为永久对象。
+
+> 待办（pro 子模块）：`pro/admin/src/service/core/dataset/training/imageUrl.ts` 的 `getImageUrlForVlm` 目前仅做 `dataset` 前缀检查，调用方（`imageIndex.ts` / `imageParse.ts`）已持有 `data.datasetId`。需为其增加 `datasetId` 入参并透传到底层 `createGetDatasetFileURL`。该文件属于私有子模块 `labring/fastgpt-pro`，不随本仓库改动流程发布，故作为独立后续处理。
 
 ## 测试要求
 

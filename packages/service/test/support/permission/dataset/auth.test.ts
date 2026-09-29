@@ -17,7 +17,9 @@ const {
   mockGetTmbInfoByTmbId,
   mockGetTmbPermission,
   mockIsObjectExists,
-  mockResolveCollectionPermission
+  mockResolveCollectionPermission,
+  mockFindDatasetDataById,
+  mockCreateGetDatasetFileURL
 } = vi.hoisted(() => ({
   mockParseHeaderCert: vi.fn(),
   mockGetCollectionWithDataset: vi.fn(),
@@ -25,7 +27,9 @@ const {
   mockGetTmbInfoByTmbId: vi.fn(),
   mockGetTmbPermission: vi.fn(),
   mockIsObjectExists: vi.fn(),
-  mockResolveCollectionPermission: vi.fn()
+  mockResolveCollectionPermission: vi.fn(),
+  mockFindDatasetDataById: vi.fn(),
+  mockCreateGetDatasetFileURL: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
@@ -56,20 +60,22 @@ vi.mock('@fastgpt/service/support/permission/collection/auth', () => ({
 
 vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
   MongoDatasetData: {
-    findById: vi.fn()
+    findById: mockFindDatasetDataById
   }
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
   getS3DatasetSource: () => ({
-    isObjectExists: mockIsObjectExists
+    isObjectExists: mockIsObjectExists,
+    createGetDatasetFileURL: mockCreateGetDatasetFileURL
   })
 }));
 
 import {
   authDatasetByTmbId,
   authDatasetCollection,
-  authDatasetCollectionCreate
+  authDatasetCollectionCreate,
+  authDatasetData
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
 import type { NodeHttpRequest } from '@fastgpt/service/types/http';
@@ -501,5 +507,89 @@ describe('authCollectionFile', () => {
     ).rejects.toBe(DatasetErrEnum.unAuthDataset);
 
     expect(mockIsObjectExists).not.toHaveBeenCalled();
+  });
+});
+
+describe('authDatasetData imageId signing binding', () => {
+  const dataId = '507f1f77bcf86cd799439013';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockParseHeaderCert.mockResolvedValue({
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      userId: 'user-a',
+      isRoot: false
+    });
+    mockGetTmbInfoByTmbId.mockResolvedValue({
+      teamId: 'team-a',
+      permission: { isOwner: true }
+    });
+    mockDatasetQuery({
+      _id: datasetId,
+      teamId: 'team-a',
+      tmbId: 'tmb-a',
+      inheritPermission: false,
+      collectionPermissionEnabled: false
+    });
+    mockGetCollectionWithDataset.mockResolvedValue({
+      _id: collectionId,
+      teamId: 'team-a',
+      datasetId,
+      tmbId: 'tmb-a'
+    });
+    mockCreateGetDatasetFileURL.mockResolvedValue({ url: 'https://files.test/signed' });
+  });
+
+  it('skips the preview url when imageId belongs to another dataset', async () => {
+    mockFindDatasetDataById.mockResolvedValue({
+      _id: dataId,
+      teamId: 'team-a',
+      collectionId,
+      datasetId,
+      q: 'q',
+      a: 'a',
+      imageId: 'dataset/507f1f77bcf86cd799439099/foreign.png',
+      chunkIndex: 0,
+      indexes: [],
+      tmbId: 'tmb-a'
+    });
+
+    const result = await authDatasetData({
+      mockReq,
+      authToken: true,
+      dataId,
+      per: ReadPermissionVal
+    });
+
+    expect(result.datasetData.imagePreivewUrl).toBeUndefined();
+    expect(mockCreateGetDatasetFileURL).not.toHaveBeenCalled();
+  });
+
+  it('signs the preview url when imageId belongs to the data dataset', async () => {
+    mockFindDatasetDataById.mockResolvedValue({
+      _id: dataId,
+      teamId: 'team-a',
+      collectionId,
+      datasetId,
+      q: 'q',
+      a: 'a',
+      imageId: `dataset/${datasetId}/own.png`,
+      chunkIndex: 0,
+      indexes: [],
+      tmbId: 'tmb-a'
+    });
+
+    const result = await authDatasetData({
+      mockReq,
+      authToken: true,
+      dataId,
+      per: ReadPermissionVal
+    });
+
+    expect(mockCreateGetDatasetFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({ key: `dataset/${datasetId}/own.png`, datasetId })
+    );
+    expect(result.datasetData.imagePreivewUrl).toBe('https://files.test/signed');
   });
 });

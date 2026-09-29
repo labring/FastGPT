@@ -11,6 +11,7 @@ import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { isS3ObjectKey, removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import {
   datasetDataSystemIndexTypes,
   isDatasetDataSystemIndexType
@@ -570,7 +571,12 @@ export class DatasetDataOperation {
       await getFullTextStore().deleteByDataId(data.id, session);
 
       // 主数据删除后清理图片对象，避免孤儿文件继续占用存储。
-      if (data.imageId && isS3ObjectKey(data.imageId, 'dataset')) {
+      // 仅删除归属于该数据块 dataset 的 key，避免脏数据里的外库 key 触发跨库物理删除。
+      if (
+        data.imageId &&
+        isS3ObjectKey(data.imageId, 'dataset') &&
+        isAuthorizedDatasetFileS3Key({ key: data.imageId, datasetId: data.datasetId })
+      ) {
         await getS3DatasetSource().deleteDatasetFileByKey(data.imageId);
       }
 

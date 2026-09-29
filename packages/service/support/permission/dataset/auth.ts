@@ -27,6 +27,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 import { resolveCollectionPermission } from '../collection/auth';
@@ -316,10 +317,17 @@ export async function authDatasetData({
     a: datasetData.a,
     imageId: datasetData.imageId,
     imagePreivewUrl:
-      datasetData.imageId && isS3ObjectKey(datasetData.imageId, 'dataset')
+      // imageId 必须绑定到该数据块已鉴权的 datasetId，避免外库 key 借详情接口取到预签名直链。
+      datasetData.imageId &&
+      isS3ObjectKey(datasetData.imageId, 'dataset') &&
+      isAuthorizedDatasetFileS3Key({
+        key: datasetData.imageId,
+        datasetId: String(datasetData.datasetId)
+      })
         ? (
             await getS3DatasetSource().createGetDatasetFileURL({
               key: datasetData.imageId,
+              datasetId: String(datasetData.datasetId),
               expiredHours: 1,
               external: true
             })

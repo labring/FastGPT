@@ -34,6 +34,7 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
+import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { removeS3TTL, isS3ObjectKey } from '../../../common/s3/utils';
 import {
   createCollectionPermission,
@@ -337,7 +338,11 @@ export async function createOneCollection({ session, ...props }: CreateOneCollec
     );
 
     if (isS3ObjectKey(fileId, 'dataset')) {
-      await removeS3TTL({ key: fileId, bucketName: 'private', session: s });
+      // fileId 由入口层绑定到已鉴权 dataset 后才允许创建集合；这里再次校验归属，防止外库 key
+      // 借创建入口移除 TTL 而被意外提升为永久对象。
+      if (isAuthorizedDatasetFileS3Key({ key: fileId, datasetId })) {
+        await removeS3TTL({ key: fileId, bucketName: 'private', session: s });
+      }
     }
 
     // 创建 Collection 权限初始化（与文档创建同一事务）：
@@ -436,9 +441,17 @@ export async function delCollection({
     },
     { imageId: 1 }
   ).lean();
+  // 只删除归属于该图片集合 dataset 的 key，避免脏数据里的外库 key 被跨库物理删除。
   const imageIds = imageDatas
-    .map((item) => item.imageId)
-    .filter((key) => isS3ObjectKey(key, 'dataset'));
+    .filter(
+      (item) =>
+        !!item.imageId &&
+        isAuthorizedDatasetFileS3Key({
+          key: item.imageId,
+          datasetId: String(item.datasetId)
+        })
+    )
+    .map((item) => item.imageId!);
 
   await retryFn(async () => {
     await Promise.all([
@@ -471,7 +484,17 @@ export async function delCollection({
       ...(delFile
         ? [
             getS3DatasetSource().deleteDatasetFilesByKeys(
-              collections.map((item) => item?.fileId || '').filter(Boolean)
+              // 同样只删除归属于各自 dataset 的 fileId，避免误删外库文件。
+              collections
+                .filter(
+                  (item) =>
+                    !!item.fileId &&
+                    isAuthorizedDatasetFileS3Key({
+                      key: item.fileId,
+                      datasetId: String(item.datasetId)
+                    })
+                )
+                .map((item) => item.fileId!)
             )
           ]
         : []),
