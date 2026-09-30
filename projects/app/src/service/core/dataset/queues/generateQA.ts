@@ -182,6 +182,7 @@ export async function generateQA(): Promise<any> {
             chunkIndex: data.chunkIndex
           })),
           billId: data.billId,
+          auditTaskId: data.auditTaskId,
           vectorModel: embeddingModelData,
           agentModel: modelData,
           vlmModel: vlmModelData
@@ -189,6 +190,7 @@ export async function generateQA(): Promise<any> {
 
         // delete data from training
         await MongoDatasetTraining.findByIdAndDelete(data._id);
+        await refreshTrainingAuditTask(data.auditTaskId);
 
         // Push usage
         pushLLMTrainingUsage({
