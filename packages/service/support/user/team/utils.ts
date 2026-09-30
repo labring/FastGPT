@@ -1,5 +1,5 @@
-import { Types } from '../../../common/mongo';
-import { MongoTeamMember } from '../../user/team/teamMemberSchema';
+import { Types, type ClientSession } from '../../../common/mongo';
+import { MongoTeamMember } from './teamMemberSchema';
 import { type UserModelSchema } from '@fastgpt/global/support/user/type';
 import { type TeamSchema } from '@fastgpt/global/support/user/team/type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -11,11 +11,13 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 export async function getTeamMemberMap({
   teamId,
   memberIds,
-  fields
+  fields,
+  session
 }: {
   teamId?: string | Types.ObjectId;
   memberIds?: Array<string | Types.ObjectId>;
   fields?: string;
+  session?: ClientSession;
 }) {
   const objectIds = memberIds
     ?.filter((id) => Types.ObjectId.isValid(id))
@@ -27,7 +29,8 @@ export async function getTeamMemberMap({
       ...(teamId ? { teamId } : {}),
       ...(objectIds ? { _id: { $in: objectIds } } : {})
     },
-    fields
+    fields,
+    { session }
   ).lean();
   return new Map(members.map((member) => [String(member._id), member]));
 }

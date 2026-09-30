@@ -1,6 +1,6 @@
 import { type SourceMemberType } from '@fastgpt/global/support/user/type';
 import { MongoTeam } from './team/teamSchema';
-import { MongoTeamMember } from './team/teamMemberSchema';
+import { getTeamMemberMap } from './team/utils';
 import { type ClientSession } from '../../common/mongo';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 
@@ -106,17 +106,12 @@ export async function addSourceMember<T extends { tmbId: string }>({
 
   const tmbIdList = list
     .map((item) => (item.tmbId ? String(item.tmbId) : undefined))
-    .filter(Boolean);
-  const tmbList = await MongoTeamMember.find(
-    {
-      _id: { $in: tmbIdList }
-    },
-    '_id name avatar status',
-    {
-      session
-    }
-  ).lean();
-  const tmbMap = new Map(tmbList.map((tmb) => [String(tmb._id), tmb]));
+    .filter((tmbId): tmbId is string => tmbId !== undefined);
+  const tmbMap = await getTeamMemberMap({
+    memberIds: tmbIdList,
+    fields: '_id name avatar status',
+    session
+  });
 
   return list
     .map((item) => {
