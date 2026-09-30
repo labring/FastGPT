@@ -5,11 +5,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ mergeAIProxyChannelConfigs: vi.fn() }));
 
-vi.mock('@/migration/tasks/20260923_enable_channel_reasoning_mapping/service', () => ({
+vi.mock('@/migration/tasks/4171/20260923_enable_channel_reasoning_mapping/service', () => ({
   mergeAIProxyChannelConfigs: mocks.mergeAIProxyChannelConfigs
 }));
 
-import { enableChannelReasoningMapping } from '@/migration/tasks/20260923_enable_channel_reasoning_mapping';
+import { enableChannelReasoningMapping } from '@/migration/tasks/4171/20260923_enable_channel_reasoning_mapping';
 
 const createContext = () => {
   const progress: Array<{

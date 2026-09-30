@@ -6,7 +6,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '@fastgpt/service/core/dataset/tag/schemaV2';
-import { migrateDatasetTagsV2 } from '@/migration/tasks/20260907_migrate_dataset_tags_v2';
+import { migrateDatasetTagsV2 } from '@/migration/tasks/4171/20260907_migrate_dataset_tags_v2';
 
 vi.mock('@/migration/constants', () => ({ systemMigrationBatchSize: 1 }));
 

@@ -3,9 +3,9 @@ import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSc
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { migrateSystemConfigToChatConfig } from '@fastgpt/global/core/workflow/migration/legacy/systemConfig';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { runIncrementalModelReferenceMigration } from '../4163_model_references/incremental';
-import { loadModelCatalog } from '../4163_model_references/modelCatalog';
-import { backfillChatConfig, migrateWorkflowNodes } from '../4163_model_references/transforms';
+import { runIncrementalModelReferenceMigration } from '../20260903_model_references/incremental';
+import { loadModelCatalog } from '../20260903_model_references/modelCatalog';
+import { backfillChatConfig, migrateWorkflowNodes } from '../20260903_model_references/transforms';
 
 /**
  * 按固定 endId 和 _id checkpoint 依次迁移 App、AppVersion 和 AppTemplate；

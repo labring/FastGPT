@@ -3,7 +3,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   getLegacyDefaultModelFlags,
   repairSystemModelDocument
-} from '@/migration/tasks/20260903_migrate_legacy_system_models/utils';
+} from '@/migration/tasks/4170/20260903_migrate_legacy_system_models/utils';
 
 const canonicalLlm = {
   type: ModelTypeEnum.llm,

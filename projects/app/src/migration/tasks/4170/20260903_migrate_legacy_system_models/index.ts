@@ -1,5 +1,5 @@
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
-import type { SystemMigrationContext } from '../../registry';
+import type { SystemMigrationContext } from '@/migration/registry';
 
 /**
  * 将旧 system_models 及默认模型标记迁移到新的模型集合。

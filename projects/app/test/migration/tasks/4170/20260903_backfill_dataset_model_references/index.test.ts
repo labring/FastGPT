@@ -5,7 +5,7 @@ import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schem
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
 import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
-import { backfillDatasetModelReferences } from '@/migration/tasks/20260903_backfill_dataset_model_references';
+import { backfillDatasetModelReferences } from '@/migration/tasks/4170/20260903_backfill_dataset_model_references';
 
 /** 用真实测试数据库验证业务写入；Context 仅模拟框架持久化的断点和失败快照。 */
 const createContext = () => {

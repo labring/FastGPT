@@ -5,7 +5,7 @@ import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/config
 import {
   bootstrapAIModelsFromLegacy,
   inspectLegacySystemModelMigration
-} from '@/migration/tasks/20260903_migrate_legacy_system_models/service';
+} from '@/migration/tasks/4170/20260903_migrate_legacy_system_models/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 
