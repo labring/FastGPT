@@ -98,11 +98,41 @@ describe('pushData imageId authorization', () => {
     expect(mocks.pushDataListToTrainingQueue).toHaveBeenCalled();
   });
 
+  it('accepts data without imageId', async () => {
+    mocks.parseApiInput.mockReturnValue({
+      body: {
+        collectionId,
+        data: [{ q: 'q', a: 'a' }]
+      }
+    });
+
+    const res = await (handler as any)({} as any);
+    expect(res).toEqual({ insertLen: 1 });
+    expect(mocks.pushDataListToTrainingQueue).toHaveBeenCalled();
+  });
+
   it('rejects data with imageId belonging to another dataset', async () => {
     mocks.parseApiInput.mockReturnValue({
       body: {
         collectionId,
         data: [{ q: 'q', a: 'a', imageId: 'dataset/507f1f77bcf86cd799439099/foreign.png' }]
+      }
+    });
+
+    await expect((handler as any)({} as any)).rejects.toBe(CommonErrEnum.unAuthFileKey);
+    expect(mocks.pushDataListToTrainingQueue).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['temp key', 'temp/team-a/file.png'],
+    ['chat key', 'chat/team-a/chat-a/file.png'],
+    ['external URL', 'https://example.com/file.png'],
+    ['empty key', '']
+  ])('rejects data with %s as imageId', async (_label, imageId) => {
+    mocks.parseApiInput.mockReturnValue({
+      body: {
+        collectionId,
+        data: [{ q: 'q', a: 'a', imageId }]
       }
     });
 
