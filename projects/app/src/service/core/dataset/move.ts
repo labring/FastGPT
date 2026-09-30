@@ -101,20 +101,20 @@ export const moveDataset = async ({
   });
 
   await mongoSessionRun(async (session) => {
-    // 独立态：自身有效 clbs 不随移动改变（读路径也不并入父级），只换位置。
-    // 快照未变 ⇒ 继承态子资源无差异，整段权限同步跳过。
+    // 非继承态，仅改parentId 即可。
     if (!shouldInheritResourcePermission(dataset.inheritPermission)) {
-      await MongoDataset.findByIdAndUpdate(
-        id,
+      await MongoDataset.updateOne(
+        { _id: id },
         {
           ...parseParentIdInMongo(parentId),
-          inheritPermission: false
+          updateTime: new Date()
         },
         { session }
       );
       return;
     }
 
+    // 继承态，需要改内容，同时更新协作者
     const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
       getResourceOwnedClbs({
         teamId: dataset.teamId,
@@ -164,12 +164,13 @@ export const moveDataset = async ({
       newParentCollaborators: newResourceClbs,
       session
     });
-    await MongoDataset.findByIdAndUpdate(
-      id,
+    await MongoDataset.updateOne(
+      { _id: id },
       {
         ...parseParentIdInMongo(parentId),
         // 移入是授权行为：移入后始终按继承态处理（与上游 dataset 权限逻辑一致）
-        inheritPermission: true
+        inheritPermission: true,
+        updateTime: new Date()
       },
       { session }
     );
