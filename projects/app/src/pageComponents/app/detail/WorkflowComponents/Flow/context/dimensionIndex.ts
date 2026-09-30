@@ -55,6 +55,17 @@ export type ViewportNodeClassification = {
   priorities: ReadonlyMap<string, 0 | 1 | 2>;
 };
 
+export type ViewportEdge = {
+  id: string;
+  source: string;
+  target: string;
+};
+
+export type RenderableGraphClassification = ViewportNodeClassification & {
+  renderedNodeIds: ReadonlySet<string>;
+  renderedEdgeIds: ReadonlySet<string>;
+};
+
 export const WORKFLOW_VIEWPORT_OVERSCAN = 240;
 export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeDimensions = {
   card: { width: 300, height: 120 },
@@ -91,32 +102,9 @@ export const getViewportRange = ({
   };
 };
 
-/**
- * 计算 viewport/overscan 集合。安全区内节点直接进入 full，容器因安全区内子节点被加入 full 集合。
- * 折叠子节点不进入测量队列。
- */
-export const classifyViewportNodes = ({
-  nodes,
-  dimensions,
-  viewport,
-  overscan = WORKFLOW_VIEWPORT_OVERSCAN,
-  estimate = WORKFLOW_NODE_MEASUREMENT_ESTIMATE
-}: {
-  nodes: readonly ViewportNode[];
-  dimensions: ReadonlyMap<string, NodeDimensions>;
-  viewport: CanvasViewport;
-  overscan?: number;
-  estimate?: NodeDimensions;
-}): ViewportNodeClassification => {
+const getAbsoluteNodePositions = (nodes: readonly ViewportNode[]) => {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const positionById = new Map<string, { x: number; y: number }>();
-  const hiddenNodeIds = new Set<string>();
-  const visibleNodeIds = new Set<string>();
-  const overscanNodeIds = new Set<string>();
-  const fullNodeIds = new Set<string>();
-  const priorities = new Map<string, 0 | 1 | 2>();
-  const range = getViewportRange({ viewport, overscan });
-  const viewportRange = getViewportRange({ viewport, overscan: 0 });
 
   function getAbsolutePosition(
     nodeId: string,
@@ -131,19 +119,51 @@ export const classifyViewportNodes = ({
 
     const nextVisiting = new Set(visiting).add(nodeId);
     const parent = node.parentNodeId ? nodeById.get(node.parentNodeId) : undefined;
-    const parentPosition: { x: number; y: number } = parent
+    const parentPosition = parent
       ? getAbsolutePosition(parent.id, nextVisiting)
       : {
           x: 0,
           y: 0
         };
-    const position: { x: number; y: number } = {
+    const position = {
       x: node.position.x + parentPosition.x,
       y: node.position.y + parentPosition.y
     };
     positionById.set(nodeId, position);
     return position;
   }
+
+  nodes.forEach((node) => getAbsolutePosition(node.id));
+  return { nodeById, positionById };
+};
+
+/**
+ * 计算 viewport/overscan 集合。安全区内节点直接进入 full，容器因安全区内子节点被加入 full 集合。
+ * 折叠子节点不进入测量队列。
+ */
+type ClassifyViewportNodesParams = {
+  nodes: readonly ViewportNode[];
+  dimensions: ReadonlyMap<string, NodeDimensions>;
+  viewport: CanvasViewport;
+  overscan?: number;
+  estimate?: NodeDimensions;
+};
+
+const classifyViewportNodesWithPositions = ({
+  nodes,
+  dimensions,
+  viewport,
+  overscan = WORKFLOW_VIEWPORT_OVERSCAN,
+  estimate = WORKFLOW_NODE_MEASUREMENT_ESTIMATE
+}: ClassifyViewportNodesParams) => {
+  const { nodeById, positionById } = getAbsoluteNodePositions(nodes);
+  const hiddenNodeIds = new Set<string>();
+  const visibleNodeIds = new Set<string>();
+  const overscanNodeIds = new Set<string>();
+  const fullNodeIds = new Set<string>();
+  const priorities = new Map<string, 0 | 1 | 2>();
+  const range = getViewportRange({ viewport, overscan });
+  const viewportRange = getViewportRange({ viewport, overscan: 0 });
 
   const isHiddenByFold = (node: ViewportNode) => {
     const visited = new Set<string>();
@@ -164,7 +184,7 @@ export const classifyViewportNodes = ({
       return;
     }
 
-    const position = getAbsolutePosition(node.id);
+    const position = positionById.get(node.id) ?? node.position;
     const dimension = dimensions.get(node.id) ?? estimate;
     const rect = getNodeRect({ id: node.id, position }, dimension.occupied);
     if (!rect) return;
@@ -196,11 +216,157 @@ export const classifyViewportNodes = ({
   });
 
   return {
-    visibleNodeIds,
-    overscanNodeIds,
+    classification: {
+      visibleNodeIds,
+      overscanNodeIds,
+      fullNodeIds,
+      hiddenNodeIds,
+      priorities
+    },
+    nodeById,
+    positionById
+  };
+};
+
+export const classifyViewportNodes = (
+  params: ClassifyViewportNodesParams
+): ViewportNodeClassification => classifyViewportNodesWithPositions(params).classification;
+
+const getRectBounds = (rects: readonly NodeRect[]): NodeRect | undefined => {
+  if (rects.length === 0) return;
+
+  const left = Math.min(...rects.map((rect) => rect.left));
+  const right = Math.max(...rects.map((rect) => rect.right));
+  const top = Math.min(...rects.map((rect) => rect.top));
+  const bottom = Math.max(...rects.map((rect) => rect.bottom));
+  const width = right - left;
+  const height = bottom - top;
+
+  return {
+    left,
+    right,
+    top,
+    bottom,
+    width,
+    height,
+    centerX: left + width / 2,
+    centerY: top + height / 2
+  };
+};
+
+/** 计算交给 React Flow 的节点与边集合；完整图仍由 Canvas Context 保留。 */
+export const classifyRenderableGraph = ({
+  nodes,
+  edges,
+  dimensions,
+  viewport,
+  overscan = WORKFLOW_VIEWPORT_OVERSCAN,
+  estimate = WORKFLOW_NODE_MEASUREMENT_ESTIMATE
+}: {
+  nodes: readonly ViewportNode[];
+  edges: readonly ViewportEdge[];
+  dimensions: ReadonlyMap<string, NodeDimensions>;
+  viewport: CanvasViewport;
+  overscan?: number;
+  estimate?: NodeDimensions;
+}): RenderableGraphClassification => {
+  const { classification, nodeById, positionById } = classifyViewportNodesWithPositions({
+    nodes,
+    dimensions,
+    viewport,
+    overscan,
+    estimate
+  });
+  const safeRange = getViewportRange({ viewport, overscan });
+  const renderedNodeIds = new Set<string>(classification.visibleNodeIds);
+  const fullNodeIds = new Set<string>(classification.fullNodeIds);
+  const renderedEdgeIds = new Set<string>();
+  const childrenByParent = new Map<string, string[]>();
+  const visibleContainerIds = new Set<string>();
+
+  nodes.forEach((node) => {
+    if (node.parentNodeId) {
+      const children = childrenByParent.get(node.parentNodeId) ?? [];
+      children.push(node.id);
+      childrenByParent.set(node.parentNodeId, children);
+    }
+
+    if (
+      !classification.hiddenNodeIds.has(node.id) &&
+      (node.selected || node.dragging || node.focusPinned)
+    ) {
+      renderedNodeIds.add(node.id);
+    }
+  });
+
+  nodes.forEach((node) => {
+    if (
+      classification.visibleNodeIds.has(node.id) &&
+      !node.isFolded &&
+      childrenByParent.has(node.id)
+    ) {
+      visibleContainerIds.add(node.id);
+    }
+  });
+
+  const addDescendants = (nodeId: string) => {
+    childrenByParent.get(nodeId)?.forEach((childId) => {
+      if (classification.hiddenNodeIds.has(childId)) return;
+      renderedNodeIds.add(childId);
+      fullNodeIds.add(childId);
+      addDescendants(childId);
+    });
+  };
+  visibleContainerIds.forEach((nodeId) => {
+    renderedNodeIds.add(nodeId);
+    addDescendants(nodeId);
+  });
+
+  const addAncestors = (nodeId: string) => {
+    let parentId = nodeById.get(nodeId)?.parentNodeId;
+    while (parentId) {
+      if (classification.hiddenNodeIds.has(parentId)) break;
+      renderedNodeIds.add(parentId);
+      parentId = nodeById.get(parentId)?.parentNodeId;
+    }
+  };
+  [...renderedNodeIds].forEach(addAncestors);
+
+  const rectById = new Map<string, NodeRect>();
+  nodes.forEach((node) => {
+    if (classification.hiddenNodeIds.has(node.id)) return;
+    const position = positionById.get(node.id) ?? node.position;
+    const dimension = dimensions.get(node.id) ?? estimate;
+    const rect = getNodeRect({ id: node.id, position }, dimension.occupied);
+    if (rect) rectById.set(node.id, rect);
+  });
+
+  edges.forEach((edge) => {
+    const sourceRect = rectById.get(edge.source);
+    const targetRect = rectById.get(edge.target);
+    if (!sourceRect || !targetRect) return;
+
+    const edgeBounds = getRectBounds([sourceRect, targetRect]);
+    const touchesViewport =
+      classification.visibleNodeIds.has(edge.source) ||
+      classification.visibleNodeIds.has(edge.target);
+    const crossesSafeRange = edgeBounds ? areNodeRectsIntersecting(edgeBounds, safeRange) : false;
+    const insideVisibleContainer =
+      visibleContainerIds.has(edge.source) && visibleContainerIds.has(edge.target);
+
+    if (!touchesViewport && !crossesSafeRange && !insideVisibleContainer) return;
+    renderedEdgeIds.add(edge.id);
+    renderedNodeIds.add(edge.source);
+    renderedNodeIds.add(edge.target);
+  });
+
+  [...renderedNodeIds].forEach(addAncestors);
+
+  return {
+    ...classification,
     fullNodeIds,
-    hiddenNodeIds,
-    priorities
+    renderedNodeIds,
+    renderedEdgeIds
   };
 };
 

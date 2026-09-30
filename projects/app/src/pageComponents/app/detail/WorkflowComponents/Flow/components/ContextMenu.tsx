@@ -67,8 +67,9 @@ const ContextMenu = () => {
 
   // 自动对齐只读 renderer 交互状态（位置、测量尺寸）；写入走画布本地数组，
   // 受控模式下 useReactFlow().setNodes 会被转成整份 reset 变更。
-  const { fitView, screenToFlowPosition, getEdges } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
   const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
+  const edges = useContextSelector(WorkflowCanvasContext, (v) => v.edges);
   const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
   const setCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.setNodes);
   const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
@@ -355,7 +356,6 @@ const ContextMenu = () => {
 
     const getLayoutDimension: DimensionReader = (nodeId) => layoutDimensions.get(nodeId);
     const newNodes = cloneDeep(sourceNodes) as Node<FlowNodeItemType>[];
-    const edges = getEdges();
     const previousPositions = new Map(
       newNodes.map((node) => [node.id, { x: node.position.x, y: node.position.y }])
     );
@@ -426,7 +426,7 @@ const ContextMenu = () => {
       const validNodes = getDimensionedNodes(newNodes, getLayoutDimension);
       fitView({ nodes: validNodes, padding: 0.3 });
     });
-  }, [canvas, fitView, getEdges, getNodeDimension, getNodes, setCanvasNodes]);
+  }, [canvas, edges, fitView, getNodeDimension, getNodes, setCanvasNodes]);
 
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)

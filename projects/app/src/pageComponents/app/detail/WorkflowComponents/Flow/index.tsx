@@ -425,9 +425,10 @@ CanvasOverlays.displayName = 'CanvasOverlays';
 
 const WorkflowCanvas = () => {
   const nodes = useContextSelector(WorkflowCanvasContext, (v) => v.nodes);
+  const renderedNodes = useContextSelector(WorkflowCanvasContext, (v) => v.renderedNodes);
   const dimensionIndex = useContextSelector(WorkflowCanvasContext, (v) => v.dimensionIndex);
   const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
-  const edges = useContextSelector(WorkflowCanvasContext, (v) => v.edges);
+  const renderedEdges = useContextSelector(WorkflowCanvasContext, (v) => v.renderedEdges);
   const helperLinesRef = useRef<HelperLinesController>(null);
   // 按字段订阅：整体订阅会让 hover / 鼠标进出画布带动整个画布组件重渲染，
   // 而这里只需要一个稳定 callback ref、一个原始值和一个菜单坐标。
@@ -504,8 +505,8 @@ const WorkflowCanvas = () => {
 
         <ReactFlow
           ref={reactFlowWrapperCallback}
-          nodes={nodes}
-          edges={edges}
+          nodes={renderedNodes}
+          edges={renderedEdges}
           minZoom={minZoom}
           maxZoom={maxZoom}
           defaultEdgeOptions={defaultEdgeOptions}

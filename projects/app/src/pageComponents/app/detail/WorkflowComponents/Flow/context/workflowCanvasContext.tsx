@@ -27,7 +27,7 @@ import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
 import { createProjectionCache, projectRuntimeCanvas } from '@/web/core/workflow/editor/projection';
 import type { CanvasNode } from '@/web/core/workflow/editor/canvas';
 import {
-  classifyViewportNodes,
+  classifyRenderableGraph,
   createMeasurementQueue,
   createDimensionBatcher,
   type CanvasViewport,
@@ -64,6 +64,7 @@ const cancelFrame = (handle: number) => {
 
 type WorkflowCanvasContextType = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
+  renderedNodes: Node<FlowNodeItemType, string | undefined>[];
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
@@ -77,11 +78,13 @@ type WorkflowCanvasContextType = {
   measurementNodeIds: readonly string[];
   onViewportChange: (viewport: CanvasViewport) => void;
   edges: Edge<any>[];
+  renderedEdges: Edge<any>[];
   setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
   onEdgesChange: OnChange<EdgeChange>;
 };
 export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
   nodes: [],
+  renderedNodes: [],
   setNodes: function () {
     throw new Error('Function not implemented.');
   },
@@ -113,6 +116,7 @@ export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
     throw new Error('Function not implemented.');
   },
   edges: [],
+  renderedEdges: [],
   setEdges: function () {
     throw new Error('Function not implemented.');
   },
@@ -130,10 +134,14 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
   // 交互状态层：reactflow 本地数组，语义值以 Runtime 投影为准。
   const [nodes, setNodesRaw] = useState<CanvasNode[]>([]);
+  const [renderedNodes, setRenderedNodesRaw] = useState<CanvasNode[]>([]);
   const [edges, setEdgesRaw] = useState<Edge<any>[]>([]);
+  const [renderedEdges, setRenderedEdgesRaw] = useState<Edge<any>[]>([]);
   // ref 与本地数组同步更新，保证同一 tick 内连续写入（先删节点再删边等）读到最新值。
   const nodesRef = useRef<CanvasNode[]>(nodes);
   const edgesRef = useRef<Edge<any>[]>(edges);
+  const renderedNodesRef = useRef<CanvasNode[]>([]);
+  const renderedEdgesRef = useRef<Edge<any>[]>([]);
   const projectionCache = useRef(createProjectionCache());
   const [dimensionIndex, setDimensionIndex] = useState<ReadonlyMap<string, NodeDimensions>>(
     () => new Map()
@@ -175,6 +183,23 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
     renderModesRef.current = next;
     setRenderModes(next);
+  };
+
+  const publishRenderedGraph = (nextNodes: CanvasNode[], nextEdges: Edge<any>[]) => {
+    const previousNodes = renderedNodesRef.current;
+    const previousEdges = renderedEdgesRef.current;
+    const nodesUnchanged =
+      previousNodes.length === nextNodes.length &&
+      previousNodes.every((node, index) => node === nextNodes[index]);
+    const edgesUnchanged =
+      previousEdges.length === nextEdges.length &&
+      previousEdges.every((edge, index) => edge === nextEdges[index]);
+
+    if (nodesUnchanged && edgesUnchanged) return;
+    renderedNodesRef.current = nextNodes;
+    renderedEdgesRef.current = nextEdges;
+    setRenderedNodesRaw(nextNodes);
+    setRenderedEdgesRaw(nextEdges);
   };
 
   const flushDimensionMeasurements = useMemoizedFn((updates: DimensionMeasurement[]) => {
@@ -250,19 +275,22 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
   /** 根据当前 viewport 重算 full/shell，并把未测量节点按优先级放入队列。 */
   function reconcileRenderState(nextNodes: CanvasNode[]) {
-    const classification = classifyViewportNodes({
-      nodes: nextNodes.map((node) => ({
-        id: node.id,
-        position: node.position,
-        parentNodeId: node.data.parentNodeId,
-        isFolded: node.data.isFolded,
-        selected: node.selected,
-        dragging: node.dragging,
-        focusPinned: focusPinnedNodeIdsRef.current.has(node.id)
-      })),
+    const viewportNodes = nextNodes.map((node) => ({
+      id: node.id,
+      position: node.position,
+      parentNodeId: node.data.parentNodeId,
+      isFolded: node.data.isFolded,
+      selected: node.selected,
+      dragging: node.dragging,
+      focusPinned: focusPinnedNodeIdsRef.current.has(node.id)
+    }));
+    const renderedGraph = classifyRenderableGraph({
+      nodes: viewportNodes,
+      edges: edgesRef.current,
       dimensions: dimensionIndexRef.current,
       viewport: viewportRef.current
     });
+    const classification = renderedGraph;
     const nextModes = new Map<string, WorkflowRenderMode>();
 
     nextNodes.forEach((node) => {
@@ -297,6 +325,17 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       )
     );
     scheduleMeasurementFrame();
+
+    const renderedNodeIds = renderedGraph.renderedNodeIds;
+    publishRenderedGraph(
+      nextNodes.filter((node) => renderedNodeIds.has(node.id)),
+      edgesRef.current.filter(
+        (edge) =>
+          renderedGraph.renderedEdgeIds.has(edge.id) &&
+          renderedNodeIds.has(edge.source) &&
+          renderedNodeIds.has(edge.target)
+      )
+    );
   }
 
   /** 合并 viewport 与拖拽位置变更，避免每个 ReactFlow 手势帧都发布 Context。 */
@@ -399,7 +438,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     nodeMeasurementKeysRef.current = nextKeys;
   };
 
-  const setRenderedNodes = (next: CanvasNode[]) => {
+  const setCanvasNodes = (next: CanvasNode[]) => {
     const activeNodeIds = new Set(next.map((node) => node.id));
     syncNodeIdentities(next);
     activeNodeIdsRef.current = activeNodeIds;
@@ -431,9 +470,9 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       localEdges: edgesRef.current,
       cache: projectionCache.current
     });
-    setRenderedNodes(projected.nodes);
     edgesRef.current = projected.edges;
     setEdgesRaw(projected.edges);
+    setCanvasNodes(projected.nodes);
   });
 
   /**
@@ -452,7 +491,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     const current = nodesRef.current;
     const next = typeof action === 'function' ? action(current) : action;
     if (next === current) return;
-    setRenderedNodes(next);
+    setCanvasNodes(next);
   });
 
   const setEdges = useMemoizedFn((action: SetStateAction<Edge<any>[]>) => {
@@ -461,6 +500,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     if (next === current) return;
     edgesRef.current = next;
     setEdgesRaw(next);
+    reconcileRenderState(nodesRef.current);
   });
 
   const onNodesChange = useMemoizedFn((changes: NodeChange[]) => {
@@ -494,7 +534,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
     const next = applyNodeChanges(effectiveChanges, prev);
     if (next !== prev) {
-      setRenderedNodes(next);
+      setCanvasNodes(next);
     }
   });
 
@@ -504,6 +544,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     if (next !== prev) {
       edgesRef.current = next;
       setEdgesRaw(next);
+      reconcileRenderState(nodesRef.current);
     }
   });
 
@@ -564,6 +605,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const contextValue = useMemo(
     () => ({
       nodes,
+      renderedNodes,
       setNodes,
       onNodesChange,
       getNodes,
@@ -577,11 +619,13 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       measurementNodeIds,
       onViewportChange,
       edges,
+      renderedEdges,
       setEdges,
       onEdgesChange
     }),
     [
       nodes,
+      renderedNodes,
       setNodes,
       onNodesChange,
       getNodes,
@@ -595,6 +639,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       measurementNodeIds,
       onViewportChange,
       edges,
+      renderedEdges,
       setEdges,
       onEdgesChange
     ]

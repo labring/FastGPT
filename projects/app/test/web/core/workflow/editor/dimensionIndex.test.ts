@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   areNodeRectsIntersecting,
+  classifyRenderableGraph,
   classifyViewportNodes,
   createDimensionBatcher,
   createMeasurementQueue,
@@ -179,5 +180,76 @@ describe('workflow viewport measurement scheduling', () => {
     ]);
     expect(queue.take(8)).toEqual([{ nodeId: 'far', generation: 1, priority: 2 }]);
     expect(queue.getSize()).toBe(0);
+  });
+});
+
+describe('workflow render graph classification', () => {
+  const dimension = measuredDimension({ width: 20, height: 20 });
+
+  it('keeps visible nodes, connected endpoints, and drops disconnected far nodes and edges', () => {
+    const result = classifyRenderableGraph({
+      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
+      overscan: 20,
+      dimensions: new Map([
+        ['visible', dimension],
+        ['connected', dimension],
+        ['far-a', dimension],
+        ['far-b', dimension]
+      ]),
+      nodes: [
+        { id: 'visible', position: { x: 10, y: 10 } },
+        { id: 'connected', position: { x: 150, y: 10 } },
+        { id: 'far-a', position: { x: 1000, y: 10 } },
+        { id: 'far-b', position: { x: 1100, y: 10 } }
+      ],
+      edges: [
+        { id: 'connected-edge', source: 'visible', target: 'connected' },
+        { id: 'far-edge', source: 'far-a', target: 'far-b' }
+      ]
+    });
+
+    expect(result.renderedNodeIds).toEqual(new Set(['visible', 'connected']));
+    expect(result.renderedEdgeIds).toEqual(new Set(['connected-edge']));
+  });
+
+  it('keeps an edge and both endpoints when its endpoint bounds reach the safety range', () => {
+    const result = classifyRenderableGraph({
+      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
+      overscan: 50,
+      dimensions: new Map([
+        ['near-end', dimension],
+        ['far-end', dimension]
+      ]),
+      nodes: [
+        { id: 'near-end', position: { x: 130, y: 20 } },
+        { id: 'far-end', position: { x: 300, y: 20 } }
+      ],
+      edges: [{ id: 'safety-edge', source: 'near-end', target: 'far-end' }]
+    });
+
+    expect(result.renderedNodeIds).toEqual(new Set(['near-end', 'far-end']));
+    expect(result.renderedEdgeIds).toEqual(new Set(['safety-edge']));
+  });
+
+  it('renders all descendants and internal edges when a container is visible', () => {
+    const result = classifyRenderableGraph({
+      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
+      overscan: 20,
+      dimensions: new Map([
+        ['parent', measuredDimension({ width: 80, height: 80 })],
+        ['child-a', dimension],
+        ['child-b', dimension]
+      ]),
+      nodes: [
+        { id: 'parent', position: { x: 10, y: 10 }, isFolded: false },
+        { id: 'child-a', parentNodeId: 'parent', position: { x: 10, y: 10 } },
+        { id: 'child-b', parentNodeId: 'parent', position: { x: 500, y: 500 } }
+      ],
+      edges: [{ id: 'internal-edge', source: 'child-a', target: 'child-b' }]
+    });
+
+    expect(result.renderedNodeIds).toEqual(new Set(['parent', 'child-a', 'child-b']));
+    expect(result.fullNodeIds).toEqual(new Set(['parent', 'child-a', 'child-b']));
+    expect(result.renderedEdgeIds).toEqual(new Set(['internal-edge']));
   });
 });
