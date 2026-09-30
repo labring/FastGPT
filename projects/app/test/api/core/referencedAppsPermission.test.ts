@@ -11,7 +11,15 @@ const mocks = vi.hoisted(() => ({
   authSkill: vi.fn(),
   findDatasetAndAllChildren: vi.fn(),
   findAppAndAllChildren: vi.fn(),
-  listReadableReferencedApps: vi.fn()
+  findResourceKeysByCollaboratorsPermission: vi.fn(),
+  getGroupsByTmbId: vi.fn(),
+  getOrgIdSetWithParentByTmbId: vi.fn(),
+  addSourceMember: vi.fn(),
+  findTeamAppsByPublishedResource: vi.fn(),
+  query: {
+    resourceType: 'agent' as 'agent' | 'tool' | 'dataset' | 'skill',
+    resourceId: 'agent-target'
+  }
 }));
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
@@ -29,20 +37,34 @@ vi.mock('@fastgpt/service/core/dataset/controller', () => ({
 vi.mock('@fastgpt/service/core/app/controller', () => ({
   findAppAndAllChildren: mocks.findAppAndAllChildren
 }));
-vi.mock('@/service/core/app/referencedApps', () => ({
-  listReadableReferencedApps: mocks.listReadableReferencedApps
+vi.mock('@fastgpt/service/support/permission/resourcePermissionService', () => ({
+  findResourceKeysByCollaboratorsPermission: mocks.findResourceKeysByCollaboratorsPermission
 }));
+vi.mock('@fastgpt/service/support/permission/memberGroup/controllers', () => ({
+  getGroupsByTmbId: mocks.getGroupsByTmbId
+}));
+vi.mock('@fastgpt/service/support/permission/org/controllers', () => ({
+  getOrgIdSetWithParentByTmbId: mocks.getOrgIdSetWithParentByTmbId
+}));
+vi.mock('@fastgpt/service/support/user/utils', () => ({ addSourceMember: mocks.addSourceMember }));
+vi.mock('@fastgpt/service/core/app/resourceLookup', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    findTeamAppsByPublishedResource: mocks.findTeamAppsByPublishedResource
+  };
+});
 vi.mock('@fastgpt/service/common/zod/requestParseError', () => ({
-  parseApiInput: () => ({
-    query: { appId: 'app-1', datasetId: 'dataset-1', toolId: 'tool-1', skillId: 'skill-1' }
-  })
+  parseApiInput: () => ({ query: mocks.query })
 }));
 
-// Import handlers after vi.mock so their dependencies use the test doubles.
-const { default: skillHandler } = await import('@/pages/api/core/ai/skill/apps');
-const { default: datasetHandler } = await import('@/pages/api/core/dataset/apps');
-const { default: toolHandler } = await import('@/pages/api/core/app/appsByToolId');
-const { default: appHandler } = await import('@/pages/api/core/app/referencedAppsByAppId');
+// Import the unified handler after vi.mock so its dependencies use the test doubles.
+const { default: handler } = await import('@/pages/api/core/app/referencedApps');
+
+const invoke = (resourceType: 'agent' | 'tool' | 'dataset' | 'skill') => {
+  mocks.query = { resourceType, resourceId: `${resourceType}-target` };
+  return handler({} as never);
+};
 
 describe('referenced app visibility', () => {
   beforeEach(() => {
@@ -57,90 +79,118 @@ describe('referenced app visibility', () => {
     mocks.authSkill.mockResolvedValue({ permission: { isOwner: true } });
     mocks.findDatasetAndAllChildren.mockResolvedValue([]);
     mocks.findAppAndAllChildren.mockResolvedValue([]);
-    mocks.listReadableReferencedApps.mockResolvedValue({ list: [], hiddenCount: 0 });
+    mocks.findResourceKeysByCollaboratorsPermission.mockResolvedValue([]);
+    mocks.getGroupsByTmbId.mockResolvedValue([]);
+    mocks.getOrgIdSetWithParentByTmbId.mockResolvedValue(new Set());
+    mocks.addSourceMember.mockImplementation(async ({ list }) => list);
+    mocks.findTeamAppsByPublishedResource.mockResolvedValue({ apps: [] });
   });
 
-  it('uses the request team permission, not resource ownership, for dataset referenced apps', async () => {
-    await datasetHandler({} as never);
-
-    expect(mocks.listReadableReferencedApps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: 'team-1',
-        tmbId: 'requester',
-        isTeamOwner: false,
-        resourceType: 'dataset',
-        resourceIds: []
-      })
-    );
-  });
-
-  it('uses the request team permission, not resource ownership, for tool referenced apps', async () => {
-    await toolHandler({} as never);
-
-    expect(mocks.listReadableReferencedApps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: 'team-1',
-        tmbId: 'requester',
-        isTeamOwner: false,
-        resourceType: 'tool',
-        resourceIds: []
-      })
-    );
-  });
-
-  it('filters active agent apps and uses request team permission for app referenced apps', async () => {
+  it.each([
+    { resourceType: 'agent' as const, resourceIds: ['active-agent'] },
+    { resourceType: 'tool' as const, resourceIds: ['active-tool'] }
+  ])('expands active $resourceType folder descendants', async ({ resourceType, resourceIds }) => {
     mocks.findAppAndAllChildren.mockResolvedValueOnce([
-      { _id: 'agent-active', type: AppTypeEnum.workflow, deleteTime: null },
-      { _id: 'agent-deleted', type: AppTypeEnum.workflow, deleteTime: new Date() },
-      { _id: 'tool-active', type: AppTypeEnum.tool, deleteTime: null }
+      { _id: 'active-agent', type: AppTypeEnum.workflow, deleteTime: null },
+      { _id: 'deleted-agent', type: AppTypeEnum.workflow, deleteTime: new Date() },
+      { _id: 'active-tool', type: AppTypeEnum.tool, deleteTime: null }
     ]);
 
-    await appHandler({} as never);
+    await invoke(resourceType);
 
-    expect(mocks.listReadableReferencedApps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: 'team-1',
-        tmbId: 'requester',
-        isTeamOwner: false,
-        resourceType: 'agent',
-        resourceIds: ['agent-active']
-      })
-    );
+    expect(mocks.findAppAndAllChildren).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      appId: `${resourceType}-target`,
+      fields: '_id type deleteTime'
+    });
+    expect(mocks.findTeamAppsByPublishedResource).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      type: resourceType,
+      ids: resourceIds
+    });
+  });
+
+  it('expands active dataset folder descendants', async () => {
+    mocks.findDatasetAndAllChildren.mockResolvedValueOnce([
+      { _id: 'active-dataset', deleteTime: null },
+      { _id: 'deleted-dataset', deleteTime: new Date() }
+    ]);
+
+    await invoke('dataset');
+
+    expect(mocks.findDatasetAndAllChildren).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      datasetId: 'dataset-target',
+      fields: '_id deleteTime'
+    });
+    expect(mocks.findTeamAppsByPublishedResource).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      type: 'dataset',
+      ids: ['active-dataset']
+    });
+  });
+
+  it('looks up a skill as a flat resource', async () => {
+    await invoke('skill');
+
+    expect(mocks.findAppAndAllChildren).not.toHaveBeenCalled();
+    expect(mocks.findDatasetAndAllChildren).not.toHaveBeenCalled();
+    expect(mocks.findTeamAppsByPublishedResource).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      type: 'skill',
+      ids: ['skill-target']
+    });
+  });
+  it('counts unreadable published references as hidden', async () => {
+    mocks.findTeamAppsByPublishedResource.mockResolvedValueOnce({
+      apps: [
+        {
+          _id: 'private-app',
+          avatar: '',
+          intro: 'private',
+          name: 'Private app',
+          tmbId: 'another-member',
+          type: AppTypeEnum.workflow,
+          updateTime: new Date()
+        }
+      ]
+    });
+
+    await expect(invoke('skill')).resolves.toEqual({ list: [], hiddenCount: 1 });
   });
 
   it.each([
     {
-      resource: 'app',
+      resourceType: 'agent' as const,
       setNonOwner: () => mocks.authApp.mockResolvedValueOnce({ permission: { isOwner: false } }),
-      invoke: () => appHandler({} as never),
       error: AppErrEnum.unAuthApp
     },
     {
-      resource: 'dataset',
+      resourceType: 'tool' as const,
+      setNonOwner: () => mocks.authApp.mockResolvedValueOnce({ permission: { isOwner: false } }),
+      error: AppErrEnum.unAuthApp
+    },
+    {
+      resourceType: 'dataset' as const,
       setNonOwner: () =>
         mocks.authDataset.mockResolvedValueOnce({ permission: { isOwner: false } }),
-      invoke: () => datasetHandler({} as never),
       error: DatasetErrEnum.unAuthDataset
     },
     {
-      resource: 'tool',
-      setNonOwner: () => mocks.authApp.mockResolvedValueOnce({ permission: { isOwner: false } }),
-      invoke: () => toolHandler({} as never),
-      error: AppErrEnum.unAuthApp
-    },
-    {
-      resource: 'skill',
+      resourceType: 'skill' as const,
       setNonOwner: () => mocks.authSkill.mockResolvedValueOnce({ permission: { isOwner: false } }),
-      invoke: () => skillHandler({} as never),
       error: SkillErrEnum.unAuthSkill
     }
-  ])('rejects non-owner $resource reference lookup', async ({ setNonOwner, invoke, error }) => {
-    setNonOwner();
+  ])(
+    'rejects non-owner $resourceType reference lookup',
+    async ({ resourceType, setNonOwner, error }) => {
+      setNonOwner();
 
-    await expect(invoke()).rejects.toBe(error);
+      await expect(invoke(resourceType)).rejects.toBe(error);
 
-    expect(mocks.findDatasetAndAllChildren).not.toHaveBeenCalled();
-    expect(mocks.findAppAndAllChildren).not.toHaveBeenCalled();
-    expect(mocks.listReadableReferencedApps).not.toHaveBeenCalled();
-  });
+      expect(mocks.findDatasetAndAllChildren).not.toHaveBeenCalled();
+      expect(mocks.findAppAndAllChildren).not.toHaveBeenCalled();
+      expect(mocks.findTeamAppsByPublishedResource).not.toHaveBeenCalled();
+    }
+  );
 });

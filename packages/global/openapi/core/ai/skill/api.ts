@@ -384,11 +384,6 @@ export const SkillDebugChatBodySchema = z.object({
 });
 export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;
 
-export const ListAppsBySkillIdQuerySchema = z.object({
-  skillId: IdSchema
-});
-export type ListAppsBySkillIdQuery = z.infer<typeof ListAppsBySkillIdQuerySchema>;
-
 export const CreateSkillFolderBodySchema = z.object({
   parentId: NullableParentIdSchema,
   name: z.string(),

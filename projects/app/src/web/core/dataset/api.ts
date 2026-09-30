@@ -1,4 +1,3 @@
-import type { ReferencedAppsResponse } from '@fastgpt/global/core/app/type';
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   GetPathProps,
@@ -109,10 +108,3 @@ export const postDisableCollectionPermission = (data: DisableCollectionPermissio
 /* =========== search test ============ */
 export const postSearchText = (data: SearchDatasetTestBody) =>
   POST<SearchDatasetTestResponse>(`/core/dataset/searchTest`, data);
-
-/* =========== referenced apps ============ */
-/**
- * Fetch published apps that reference the specified dataset or datasets inside the folder.
- */
-export const getAppsByDatasetId = (datasetId: string) =>
-  GET<ReferencedAppsResponse>('/core/dataset/apps', { datasetId });

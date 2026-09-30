@@ -3,6 +3,7 @@ import { GET, POST } from '@/web/common/api/request';
 import type {
   CopyAppBodyType,
   CopyAppResponseType,
+  GetReferencedAppsQuery,
   TransitionWorkflowBodyType,
   TransitionWorkflowResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
@@ -31,14 +32,5 @@ export const postCopyApp = (data: CopyAppBodyType) =>
   POST<CopyAppResponseType>('/core/app/copy', data);
 
 /* referenced apps */
-/**
- * Fetch published apps that reference the specified app or apps inside the app folder.
- */
-export const getReferencedAppsByAppId = (appId: string) =>
-  GET<ReferencedAppsResponse>('/core/app/referencedAppsByAppId', { appId });
-
-/**
- * Fetch published apps that reference the specified tool or tools inside the tool folder.
- */
-export const getAppsByToolId = (toolId: string) =>
-  GET<ReferencedAppsResponse>('/core/app/appsByToolId', { toolId });
+export const getReferencedApps = (params: GetReferencedAppsQuery) =>
+  GET<ReferencedAppsResponse>('/core/app/referencedApps', params);

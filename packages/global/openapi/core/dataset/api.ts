@@ -257,14 +257,6 @@ export type GetDatasetListResponse = z.infer<typeof GetDatasetListResponseSchema
 export const GetDatasetListV2ResponseSchema = PaginationResponseSchema(DatasetListItemSchema);
 export type GetDatasetListV2Response = z.infer<typeof GetDatasetListV2ResponseSchema>;
 
-export const GetAppsByDatasetIdQuerySchema = z.object({
-  datasetId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '知识库 ID'
-  })
-});
-export type GetAppsByDatasetIdQuery = z.infer<typeof GetAppsByDatasetIdQuerySchema>;
-
 /* ============================================================================
  * API: 获取知识库路径
  * Route: GET /api/core/dataset/paths

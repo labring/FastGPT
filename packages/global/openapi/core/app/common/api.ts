@@ -394,21 +394,16 @@ export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchem
 });
 export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
 
-export const GetReferencedAppsByAppIdQuerySchema = z.object({
-  appId: AppIdSchema.meta({
+export const GetReferencedAppsQuerySchema = z.object({
+  resourceType: z.enum(['agent', 'tool', 'dataset', 'skill']).meta({
+    description: '目标资源类型: agent (应用), tool (工具), dataset (知识库), skill (技能)'
+  }),
+  resourceId: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
-    description: '应用或应用文件夹 ID'
+    description: '目标资源 ID 或包含该类资源的文件夹 ID'
   })
 });
-export type GetReferencedAppsByAppIdQuery = z.infer<typeof GetReferencedAppsByAppIdQuerySchema>;
-
-export const GetAppsByToolIdQuerySchema = z.object({
-  toolId: AppIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '工具或工具文件夹 ID'
-  })
-});
-export type GetAppsByToolIdQuery = z.infer<typeof GetAppsByToolIdQuerySchema>;
+export type GetReferencedAppsQuery = z.infer<typeof GetReferencedAppsQuerySchema>;
 
 /* ============================================================================
  * API: 获取应用详情

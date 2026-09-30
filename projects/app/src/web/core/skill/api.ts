@@ -30,7 +30,6 @@ import type {
   ImportSkillQuery
 } from '@fastgpt/global/core/ai/skill/api';
 import type { SandboxRuntimeStatusResponse } from '@fastgpt/global/core/ai/sandbox/type';
-import type { ReferencedAppsResponse } from '@fastgpt/global/core/app/type';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -220,10 +219,6 @@ export const exportSkill = (skillId: string, skillName: string) => {
     setLoading(false);
   });
 };
-
-/** 获取引用了某个 Skill 的应用列表 */
-export const getAppsBySkillId = (skillId: string) =>
-  GET<ReferencedAppsResponse>('/core/ai/skill/apps', { skillId });
 
 /** 获取 Skill 历史版本列表（支持分页滚动加载） */
 export const getSkillVersionList = (data: ListSkillVersionsBody) =>

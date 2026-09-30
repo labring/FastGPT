@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { postChangeOwner, resumeInheritPer, getAppsByDatasetId } from '@/web/core/dataset/api';
+import { postChangeOwner, resumeInheritPer } from '@/web/core/dataset/api';
 import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import { Box, Flex, Grid, HStack, Checkbox } from '@chakra-ui/react';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -344,8 +344,8 @@ function List() {
             {typeof dataset.appCount === 'number' && (
               <ReferencedAppsPopover
                 resourceId={dataset._id}
+                resourceType="dataset"
                 count={dataset.appCount}
-                loadApps={getAppsByDatasetId}
                 trigger={'hover'}
               />
             )}

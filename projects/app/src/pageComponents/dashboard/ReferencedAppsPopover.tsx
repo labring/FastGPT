@@ -8,15 +8,18 @@ import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import type { ReferencedAppsResponse } from '@fastgpt/global/core/app/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getReferencedApps } from '@/web/core/app/api/app';
 
 const RELATED_APPS_MAX_H = '240px';
 
 const ReferencedAppsContent = ({
   resourceId,
+  resourceType,
   loadApps
 }: {
   resourceId: string;
-  loadApps: (resourceId: string) => Promise<ReferencedAppsResponse>;
+  resourceType: 'agent' | 'tool' | 'dataset' | 'skill';
+  loadApps?: (resourceId: string) => Promise<ReferencedAppsResponse>;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -24,13 +27,16 @@ const ReferencedAppsContent = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadApps(resourceId)
+    const request = loadApps
+      ? loadApps(resourceId)
+      : getReferencedApps({ resourceType, resourceId });
+    request
       .then(setData)
       .catch((error) => {
         toast({ status: 'error', title: getErrText(error, t('common:request_error')) });
       })
       .finally(() => setIsLoading(false));
-  }, [loadApps, resourceId, t, toast]);
+  }, [loadApps, resourceId, resourceType, t, toast]);
 
   const { list, hiddenCount } = data;
 
@@ -126,8 +132,9 @@ const ReferencedAppsContent = ({
 export type ReferencedAppsPopoverProps = {
   count: number;
   resourceId: string;
-  loadApps: (resourceId: string) => Promise<ReferencedAppsResponse>;
-  trigger: 'click' | 'hover';
+  resourceType: 'agent' | 'tool' | 'dataset' | 'skill';
+  loadApps?: (resourceId: string) => Promise<ReferencedAppsResponse>;
+  trigger?: 'click' | 'hover';
 };
 
 /**
@@ -137,8 +144,9 @@ export type ReferencedAppsPopoverProps = {
 const ReferencedAppsPopover = ({
   count,
   resourceId,
+  resourceType,
   loadApps,
-  trigger
+  trigger = 'click'
 }: ReferencedAppsPopoverProps) => {
   const { t } = useTranslation();
 
@@ -179,7 +187,13 @@ const ReferencedAppsPopover = ({
         </HStack>
       }
     >
-      {() => <ReferencedAppsContent resourceId={resourceId} loadApps={loadApps} />}
+      {() => (
+        <ReferencedAppsContent
+          resourceId={resourceId}
+          resourceType={resourceType}
+          loadApps={loadApps}
+        />
+      )}
     </MyPopover>
   );
 };

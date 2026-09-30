@@ -31,7 +31,7 @@ import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
 import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/api/collaborator';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
-import { postCopyApp, getReferencedAppsByAppId, getAppsByToolId } from '@/web/core/app/api/app';
+import { postCopyApp } from '@/web/core/app/api/app';
 import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -98,11 +98,6 @@ const List = () => {
     selectedAppIds,
     onToggleSelectApp
   } = useContextSelector(AppListContext, (v) => v);
-
-  const loadReferencedApps =
-    getDashboardAppListScene(router.pathname) === 'tool'
-      ? getAppsByToolId
-      : getReferencedAppsByAppId;
 
   const hasCreatePer = folderDetail
     ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
@@ -353,8 +348,10 @@ const List = () => {
             {typeof app.relatedAppCount === 'number' && (
               <ReferencedAppsPopover
                 resourceId={app._id}
+                resourceType={
+                  getDashboardAppListScene(router.pathname) === 'tool' ? 'tool' : 'agent'
+                }
                 count={app.relatedAppCount}
-                loadApps={loadReferencedApps}
                 trigger={'hover'}
               />
             )}

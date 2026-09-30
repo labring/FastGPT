@@ -24,7 +24,6 @@ import {
   deleteSkill,
   postUpdateSkill,
   postCopySkill,
-  getAppsBySkillId,
   resumeInheritPer,
   postChangeSkillOwner
 } from '@/web/core/skill/api';
@@ -439,8 +438,8 @@ const List = ({
                 {typeof skill.appCount === 'number' && (
                   <ReferencedAppsPopover
                     resourceId={skill._id}
+                    resourceType="skill"
                     count={skill.appCount}
-                    loadApps={getAppsBySkillId}
                     trigger={'hover'}
                   />
                 )}
