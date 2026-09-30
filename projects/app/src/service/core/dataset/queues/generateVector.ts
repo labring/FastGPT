@@ -22,7 +22,10 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { enqueueNextDatasetRebuildTask } from './rebuild';
-import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import {
+  cleanupUnusedDatasetSynonymMappings,
+  isDatasetSynonymEnabled
+} from '@fastgpt/service/core/dataset/synonym/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -283,11 +286,11 @@ const enqueueFollowingDatasetRebuild = async ({
 
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   // 同义词重建需要可靠续接；普通模型重建保持原有的尽力续接语义。
-  if (trainingData.synonymVersion) {
-    await enqueueFollowingDatasetRebuild({ trainingData });
-  } else {
-    await enqueueFollowingDatasetRebuild({ trainingData }).catch(() => {});
-  }
+  const hasFollowingRebuild = trainingData.synonymVersion
+    ? await enqueueFollowingDatasetRebuild({ trainingData })
+    : await enqueueFollowingDatasetRebuild({ trainingData })
+        .then(() => true)
+        .catch(() => false);
 
   if (!trainingData.data) {
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
@@ -310,12 +313,21 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
     indexPrefix: trainingData.collection.indexPrefixTitle
       ? `# ${trainingData.collection.name}`
       : undefined,
-    forceRebuild: true
+    forceRebuild: !trainingData.synonymVersion,
+    optimizeSynonymRebuild: !!trainingData.synonymVersion
   });
 
   await mongoSessionRun(async (session) => {
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
   });
+
+  if (trainingData.synonymVersion && !hasFollowingRebuild) {
+    await cleanupUnusedDatasetSynonymMappings({
+      teamId: String(trainingData.teamId),
+      datasetId: String(trainingData.datasetId),
+      activeVersion: trainingData.synonymVersion
+    });
+  }
 
   return { tokens };
 };

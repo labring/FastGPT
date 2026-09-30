@@ -20,6 +20,7 @@ import {
   type DatasetDataIndexDraft
 } from '@/service/core/dataset/data/dataIndex';
 import {
+  getDatasetSynonymMatcher,
   getDatasetSynonymTransformContext,
   isDatasetSynonymEnabled
 } from '@fastgpt/service/core/dataset/synonym/entity';
@@ -34,6 +35,8 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   imageIndex?: boolean;
   /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
   forceRebuild?: boolean;
+  /** Compare historical and active synonym transformations before rebuilding an index. */
+  optimizeSynonymRebuild?: boolean;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
@@ -251,6 +254,7 @@ export class DatasetDataOperation {
     imageIndex,
     metadata,
     forceRebuild = false,
+    optimizeSynonymRebuild = false,
     imageDescMap
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
@@ -283,6 +287,17 @@ export class DatasetDataOperation {
           datasetId: String(mongoData.datasetId)
         })
       : undefined;
+    const historicalSynonymMatcher =
+      optimizeSynonymRebuild && mongoData.synonymVersion
+        ? await getDatasetSynonymMatcher({
+            teamId: String(mongoData.teamId),
+            datasetId: String(mongoData.datasetId),
+            fileVersion: mongoData.synonymVersion
+          })
+        : undefined;
+    const transformHistoricalText = (text: string) =>
+      historicalSynonymMatcher?.transform(text).transformedText ?? text;
+    const transformActiveText = (text: string) => synonymContext?.transformText(text) ?? text;
 
     // 把旧的 dataId 加到新的索引里
     const indexesWithExistingSystemIds = this.indexOperation.mergeExistingSystemIndexIds({
@@ -294,7 +309,13 @@ export class DatasetDataOperation {
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
       nextIndexes: indexesWithExistingSystemIds,
-      isSameIndex: forceRebuild ? () => false : undefined
+      isSameIndex: forceRebuild
+        ? () => false
+        : optimizeSynonymRebuild
+          ? (current, next) =>
+              current.type === next.type &&
+              transformHistoricalText(current.text) === transformActiveText(next.text)
+          : undefined
     });
     // 先保存旧向量 id；insertVectorForPatch 会原地把 update 项替换成新 dataId。
     const deleteVectorIdList = this.indexOperation.getDeleteVectorIdList(patchResult);
@@ -350,20 +371,24 @@ export class DatasetDataOperation {
         }
 
         // Q/A 变化会影响全文检索结果,需要和主数据一并更新(milvus 下为 no-op,全文随向量 upsert 覆盖)。
-        await getFullTextStore().write(
-          [
-            {
-              teamId: String(mongoData.teamId),
-              datasetId: String(mongoData.datasetId),
-              collectionId: String(mongoData.collectionId),
-              dataId: String(mongoData._id),
-              fullText:
-                synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
-                `${nextQ}\n${nextA}`.trim()
-            }
-          ],
-          session
-        );
+        const rawFullText = `${nextQ}\n${nextA}`.trim();
+        const activeFullText = transformActiveText(rawFullText);
+        const shouldWriteFullText =
+          !optimizeSynonymRebuild || transformHistoricalText(rawFullText) !== activeFullText;
+        if (shouldWriteFullText) {
+          await getFullTextStore().write(
+            [
+              {
+                teamId: String(mongoData.teamId),
+                datasetId: String(mongoData.datasetId),
+                collectionId: String(mongoData.collectionId),
+                dataId: String(mongoData._id),
+                fullText: activeFullText
+              }
+            ],
+            session
+          );
+        }
 
         await this.indexOperation.deleteVectors({
           teamId: mongoData.teamId,
