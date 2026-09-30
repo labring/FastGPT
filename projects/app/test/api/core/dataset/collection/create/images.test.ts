@@ -100,6 +100,10 @@ vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {
 
 import handler from '@/pages/api/core/dataset/collection/create/images';
 
+const pngBuffer = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64'
+);
 const datasetId = '68ad85a7463006c963799a07';
 const parentId = '68ad85a7463006c963799a08';
 
@@ -143,7 +147,7 @@ describe('POST /api/core/dataset/collection/create/images', () => {
     });
     mockGetDatasetVlmModel.mockReturnValue(undefined);
     mockGetTeamPlanStatus.mockResolvedValue({ standard: { maxUploadFileCount: 10 } });
-    mockReadFile.mockResolvedValue(Buffer.from('image-bytes'));
+    mockReadFile.mockResolvedValue(pngBuffer);
     mockGetFileS3Key.dataset.mockReturnValue({ fileKey: 'dataset/team/cat.png' });
     mockUploadImage2S3Bucket.mockResolvedValue('dataset/team/cat.png');
     mockCreateCollectionAndInsertData.mockResolvedValue({
@@ -182,7 +186,7 @@ describe('POST /api/core/dataset/collection/create/images', () => {
       }
     });
     expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith('private', {
-      buffer: Buffer.from('image-bytes'),
+      buffer: pngBuffer,
       uploadKey: 'dataset/team/cat.png',
       mimetype: 'image/png',
       filename: 'cat.png',
@@ -195,5 +199,13 @@ describe('POST /api/core/dataset/collection/create/images', () => {
       increment: 1
     });
     expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/cat.png']);
+  });
+
+  it('rejects empty image files', async () => {
+    mockReadFile.mockResolvedValueOnce(Buffer.alloc(0));
+
+    await expect(handler({} as any)).rejects.toThrow('EmptyUploadFile');
+    expect(mockUploadImage2S3Bucket).not.toHaveBeenCalled();
+    expect(mockCreateCollectionAndInsertData).not.toHaveBeenCalled();
   });
 });

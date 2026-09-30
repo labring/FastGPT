@@ -40,7 +40,8 @@ describe('parseDatasetImportFile', () => {
       teamId: defaultParams.teamId,
       tmbId: defaultParams.tmbId,
       source: defaultParams.source,
-      getFormatText: false
+      getFormatText: false,
+      forceSystemParse: true
     });
     expect(Papa.parse(rawText).data).toEqual([
       ['q', 'a', 'index', 'metadata'],

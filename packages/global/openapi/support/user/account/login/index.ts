@@ -44,7 +44,8 @@ export const LoginPath: OpenAPIPath = {
   '/support/user/account/preLogin': {
     get: {
       summary: '预登录获取验证码',
-      description: '通过用户名获取预登录验证码，用于密码登录时的验证',
+      description:
+        '通过用户名获取密码登录所需的验证码。验证码 30 秒内有效；同一用户名重新获取会覆盖之前的验证码。',
       tags: [DevApiTagsMap.userLogin],
       requestParams: {
         query: PreLoginQuerySchema
@@ -64,7 +65,20 @@ export const LoginPath: OpenAPIPath = {
   '/support/user/account/loginByPassword': {
     post: {
       summary: '用户密码登录',
-      description: '通过用户名和密码进行登录，需要先获取预登录验证码',
+      description: [
+        '先调用 preLogin 获取验证码，并在 30 秒内提交。password 须为原始密码按 UTF-8 编码后计算一次 SHA-256 所得的 64 位小写十六进制字符串；直接传原始密码或重复哈希会导致 account_psw_error。该错误也可能表示用户名或密码不正确。',
+        '',
+        '调试示例（以 Apifox 为例，其他客户端按相同的 SHA-256 规则处理）：在当前环境中创建 rawPwd 变量，把网页登录时使用的原始密码填在「本地值」；请求 Body 的 password 填 `{{sha256Pwd}}`。不要把密码写进脚本或打印到控制台。',
+        '',
+        '```javascript',
+        "const rawPwd = pm.environment.get('rawPwd');",
+        "if (typeof rawPwd !== 'string' || rawPwd.length === 0) {",
+        "  throw new Error('请先设置当前环境的 rawPwd 本地值');",
+        '}',
+        'const sha256Pwd = CryptoJS.SHA256(rawPwd).toString(CryptoJS.enc.Hex);',
+        "pm.environment.set('sha256Pwd', sha256Pwd);",
+        '```'
+      ].join('\n'),
       tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: {

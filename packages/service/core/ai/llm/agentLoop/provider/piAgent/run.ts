@@ -314,6 +314,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       rawResponse: result.response,
       response: normalizedResponse,
       assistantMessages: result.assistantMessages,
+      assistantResponses: result.assistantResponses,
       usages: result.usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,

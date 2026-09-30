@@ -13,6 +13,7 @@ export const MemberRateLimitPolicy = {
   CheckPayResult: 'check-pay-result',
   ExportUsage: 'export-usage',
   ExportDataset: 'export-dataset',
+  DownloadDatasetArchive: 'download-dataset-archive',
   ExportChatLogs: 'export-chat-logs'
 } as const;
 
@@ -45,6 +46,8 @@ const memberRateLimitConfig = {
   [MemberRateLimitPolicy.ExportUsage]: { limit: 1, seconds: 60 },
   // 导出知识库集合数据。
   [MemberRateLimitPolicy.ExportDataset]: { limit: 1, seconds: 60 },
+  // 下载知识库原始文件 ZIP；与数据块 CSV 导出使用独立额度。
+  [MemberRateLimitPolicy.DownloadDatasetArchive]: { limit: 1, seconds: 60 },
   // 导出应用对话日志。
   [MemberRateLimitPolicy.ExportChatLogs]: { limit: 1, seconds: 60 }
 } satisfies Record<MemberRateLimitPolicy, { limit: number; seconds: number }>;

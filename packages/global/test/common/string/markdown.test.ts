@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   simpleMarkdownText,
   htmlTable2Md,
+  matchMarkdownImages,
   parseMarkdownBase64Images
 } from '@fastgpt/global/common/string/markdown';
 
@@ -364,6 +365,149 @@ describe('markdown 字符串处理函数测试', () => {
     });
   });
 
+  describe('parseMarkdownBase64Images HTML img 标签', () => {
+    it('应该上传 HTML img 中的 base64 并仅替换 src 为 key', async () => {
+      const rawText =
+        '<img alt="印章" style="max-width:200px" src="data:image/png;base64,HTMLIMG=" />';
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'dataset/abc/img.png' });
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => mockUpload(image.url)
+      });
+
+      // 保留 img 标签结构与其他属性，仅替换 src（表格 HTML 块内的 markdown 语法不会被渲染）
+      expect(result).toBe('<img alt="印章" style="max-width:200px" src="dataset/abc/img.png" />');
+      expect(result).not.toContain('data:image');
+    });
+
+    it('应该在没有 controller 时删除 HTML img 的 base64 标签', async () => {
+      const rawText = '<td>前文<img src="data:image/png;base64,XXX=" />后文</td>';
+
+      const result = await parseMarkdownBase64Images(rawText);
+
+      expect(result).not.toContain('<img');
+      expect(result).not.toContain('data:image');
+      expect(result).toContain('前文');
+      expect(result).toContain('后文');
+    });
+
+    it('应该在 HTML img 上传失败时删除整个标签', async () => {
+      const rawText = '<p>前文</p><img src="data:image/png;base64,FAIL=" /><p>后文</p>';
+
+      const mockUpload = vi.fn().mockRejectedValue(new Error('Upload failed'));
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: () => mockUpload()
+      });
+
+      expect(result).not.toContain('<img');
+      expect(result).toContain('前文');
+      expect(result).toContain('后文');
+    });
+
+    it('应该不动 src 为普通 URL 的 HTML img', async () => {
+      const rawText = '<img src="https://cdn.example.com/a.png" />';
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: vi.fn().mockResolvedValue({ key: 'dataset/abc/img.png' })
+      });
+
+      expect(result).toBe('<img src="https://cdn.example.com/a.png" />');
+    });
+
+    it('应该处理保留 HTML 表格中的行内 img（docx 外部解析场景）', async () => {
+      const rawText =
+        '<table><tr><td><p>国科办资〔2018<img src="data:image/png;base64,TABLEIMG=" />〕122号</p></td></tr></table>';
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'dataset/xyz/seal.png' });
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => mockUpload(image.url)
+      });
+
+      expect(result).toContain('<img src="dataset/xyz/seal.png" />');
+      expect(result).toContain('国科办资〔2018');
+      expect(result).toContain('〕122号');
+      expect(result).toContain('<table>');
+      expect(result).not.toContain('data:image');
+    });
+
+    it('应该按文本顺序同时处理 markdown 图片与 HTML img', async () => {
+      const rawText =
+        '![md](data:image/png;base64,MD1=)中间<img src="data:image/jpeg;base64,HTML1=" />结尾';
+      const keys = ['dataset/a/md.png', 'dataset/b/html.jpg'];
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: vi
+          .fn()
+          .mockResolvedValueOnce({ key: keys[0] })
+          .mockResolvedValueOnce({ key: keys[1] })
+      });
+
+      expect(result.indexOf(keys[0])).toBeLessThan(result.indexOf(keys[1]));
+      expect(result).toContain('中间');
+      expect(result).toContain('结尾');
+      expect(result).toContain(`![md](${keys[0]})`);
+      expect(result).not.toContain('data:image');
+    });
+
+    it('应该在 parseBase64 为 false 时跳过 HTML img 的 base64', async () => {
+      const rawText = '<img src="data:image/png;base64,SKIP=" />';
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        parseBase64: false,
+        controller: vi.fn().mockResolvedValue({ key: 'dataset/abc/img.png' })
+      });
+
+      expect(result).toContain('data:image/png;base64,SKIP=');
+    });
+
+    it('应该在前面属性值包含 src= 字样时不被串味误导', async () => {
+      const rawText =
+        '<img alt="icon with src=1" title="use src=2 here" src="data:image/png;base64,REALIMG=" />';
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'dataset/abc/img.png' });
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => mockUpload(image.url)
+      });
+
+      // 真正的 src 被替换，alt/title 属性完整保留
+      expect(result).toBe(
+        '<img alt="icon with src=1" title="use src=2 here" src="dataset/abc/img.png" />'
+      );
+      expect(mockUpload).toHaveBeenCalledTimes(1);
+      expect(result).not.toContain('data:image');
+    });
+
+    it('应该防御嵌套语法：HTML 属性值内的 markdown 图片不参与扫描', async () => {
+      const rawText =
+        '<img title="![inner](data:image/png;base64,INNER=)" src="data:image/png;base64,OUTER=" />';
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'dataset/abc/img.png' });
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => mockUpload(image.url)
+      });
+
+      // 仅外层 HTML img 被处理一次，内层嵌套语法被重叠防御过滤，文本不发生重复/损坏
+      expect(mockUpload).toHaveBeenCalledTimes(1);
+      expect(result).toContain('<img title="![inner](data:image/png;base64,INNER=)"');
+      expect(result.match(/dataset\/abc\/img\.png/g)).toHaveLength(1);
+      expect(result).not.toContain('data:image/png;base64,OUTER=');
+    });
+
+    it('应该支持处理无引号 src 属性的 HTML img', async () => {
+      const rawText = '<img alt=badge src=data:image/png;base64,UNQUOTED />';
+      const mockUpload = vi.fn().mockResolvedValue({ key: 'dataset/abc/unquoted.png' });
+
+      const result = await parseMarkdownBase64Images(rawText, {
+        controller: (image) => mockUpload(image.url)
+      });
+
+      expect(result).toBe('<img alt=badge src="dataset/abc/unquoted.png" />');
+      expect(mockUpload).toHaveBeenCalledWith('data:image/png;base64,UNQUOTED');
+      expect(result).not.toContain('data:image');
+    });
+  });
+
   describe('parseMarkdownBase64Images markdown 清理', () => {
     it('应该在文件内容清理后保留 Windows 路径和公式命令', async () => {
       const rawText = String.raw`C:\Users\Alice contains $\Delta + \Omega$`;
@@ -654,6 +798,79 @@ describe('markdown 字符串处理函数测试', () => {
 
       expect(result).not.toContain('data:image/png;base64');
       expect(duration).toBeLessThan(1000); // 应该在 1 秒内完成
+    });
+  });
+
+  describe('matchMarkdownImages', () => {
+    it('应该正确提取普通 markdown 图片', () => {
+      const text = '前置文字 ![avatar](https://example.com/avatar.png) 后置文字';
+      const result = matchMarkdownImages(text);
+
+      expect(result).toEqual([
+        {
+          altText: 'avatar',
+          url: 'https://example.com/avatar.png',
+          fullMatch: '![avatar](https://example.com/avatar.png)',
+          index: 5
+        }
+      ]);
+    });
+
+    it('应该正确处理 URL 中带括号的图片地址，避免在第一个右括号截断', () => {
+      const text = '![figure](https://cdn.example.com/figure(1).png)';
+      const result = matchMarkdownImages(text);
+
+      expect(result).toEqual([
+        {
+          altText: 'figure',
+          url: 'https://cdn.example.com/figure(1).png',
+          fullMatch: '![figure](https://cdn.example.com/figure(1).png)',
+          index: 0
+        }
+      ]);
+    });
+
+    it('应该正确处理 URL 中带转义括号的图片地址', () => {
+      const text = String.raw`![figure](https://cdn.example.com/figure\(1\).png)`;
+      const result = matchMarkdownImages(text);
+
+      expect(result).toEqual([
+        {
+          altText: 'figure',
+          url: String.raw`https://cdn.example.com/figure\(1\).png`,
+          fullMatch: String.raw`![figure](https://cdn.example.com/figure\(1\).png)`,
+          index: 0
+        }
+      ]);
+    });
+
+    it('应该对 url 进行 trim 处理并保留完整 fullMatch', () => {
+      const text = '![img](  https://example.com/space.png  )';
+      const result = matchMarkdownImages(text);
+
+      expect(result).toEqual([
+        {
+          altText: 'img',
+          url: 'https://example.com/space.png',
+          fullMatch: '![img](  https://example.com/space.png  )',
+          index: 0
+        }
+      ]);
+    });
+
+    it('应该提取多个图片节点并忽略普通 markdown 超链接', () => {
+      const text = '![a](https://a.com/1.png) [link](https://b.com) ![b](https://c.com/2.png)';
+      const result = matchMarkdownImages(text);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].url).toBe('https://a.com/1.png');
+      expect(result[1].url).toBe('https://c.com/2.png');
+    });
+
+    it('传入空字符串或非法输入时不报错且返回空数组', () => {
+      expect(matchMarkdownImages('')).toEqual([]);
+      expect(matchMarkdownImages(null as any)).toEqual([]);
+      expect(matchMarkdownImages(undefined as any)).toEqual([]);
     });
   });
 });

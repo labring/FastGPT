@@ -838,10 +838,13 @@
   "error.s3_upload_network_error": "上傳文件時網絡異常",
   "error.s3_upload_timeout": "上傳超時",
   "error.send_auth_code_too_frequently": "請勿頻繁取得驗證碼",
+  "error.sso_password_unavailable": "密碼不可用，請使用身分驗證方式登入",
   "error.verify_code_too_frequently": "驗證過於頻繁，請稍後再試",
+  "error.verification_channel_unavailable": "該身分驗證方式目前不可用",
   "error.too_many_request": "請求太頻繁了，請稍後重試",
   "error.tool_not_exist": "已卸載",
   "error.unAuthFile": "無權讀取該文件",
+  "error.unAuthFileKey": "無權訪問該文件標識",
   "error.unKnow": "發生未預期的錯誤",
   "error.upload_file_error_filename": "{{name}} 上傳失敗",
   "error.upload_file_interval_limit": "短時間內上傳次數過多或已達本輪上限，請稍後再試",
@@ -1132,6 +1135,7 @@
   "support.user.login.Provider error": "登入錯誤，請重試",
   "support.user.login.Username": "使用者名稱",
   "support.user.login.Wechat": "微信登入",
+  "support.user.login.Wecom": "企業微信登入",
   "support.user.login.can_not_login": "無法登入？",
   "support.user.login.error": "登入錯誤",
   "support.user.login.security_failed": "安全驗證失敗",
@@ -1315,5 +1319,7 @@
   "read_only_no_batch_permission": "無當前資源操作權限，無法批量操作",
   "will_delete": "將刪除",
   "confirm_delete": "確認刪除",
-  "batch_partial_failed": "部分選取項目操作失敗"
+  "batch_partial_failed": "部分選取項目操作失敗",
+  "related_count": "關聯應用",
+  "related_apps_hidden": "其餘 {{count}} 個應用無權限查看"
 }

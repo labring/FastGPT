@@ -8,6 +8,7 @@ import { getUserFallbackTeam } from './team/fallback';
 import { getActiveAccountCancellationByUserId } from './account/cancellation/read';
 import { formatTeamAccountCancellationSummary } from './account/cancellation/formatter';
 import { hasStoredPassword } from '@fastgpt/global/support/user/utils';
+import { getUserPasswordAvailability } from './account/password/service';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -90,6 +91,7 @@ export async function getUserDetail({
     ...(accountCancellation
       ? { accountCancellation: formatTeamAccountCancellationSummary(accountCancellation) }
       : {}),
-    hasPassword: hasStoredPassword(user.password)
+    hasPassword: hasStoredPassword(user.password),
+    passwordAvailable: getUserPasswordAvailability(user.username)
   };
 }

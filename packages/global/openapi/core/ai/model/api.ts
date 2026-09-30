@@ -84,7 +84,7 @@ export const ModelProviderSchema = z.object({
 });
 
 /* ============================================================================
- * API: 获取当前成员模型目录
+ * API: 获取当前成员可用模型清单
  * Route: GET /api/core/ai/model/catalog
  * Method: GET
  * Description: 通过登录态或外链身份返回对应成员完整可用模型、Provider 与有效默认模型 ID；版本一致时省略数据

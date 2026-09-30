@@ -147,7 +147,6 @@ const UsageTableList = ({
         />
       </Flex>
       <FixedTableContainer
-        horizontalScroll
         maxH="none"
         ref={scrollContainerRef}
         {...accountContentScrollStyles}

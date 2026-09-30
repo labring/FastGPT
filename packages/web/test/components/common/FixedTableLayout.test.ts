@@ -58,7 +58,7 @@ const renderLayout = async (
 };
 
 describe('FixedTableLayout', () => {
-  it('defaults to horizontal spacing 4, no vertical padding and a 24px minimum container width', async () => {
+  it('defaults to horizontal spacing 0, no vertical padding and a 24px minimum container width', async () => {
     const { host, root } = createTestRoot();
     await act(async () =>
       root.render(React.createElement(FixedTableContainer, null, React.createElement('table')))
@@ -66,19 +66,19 @@ describe('FixedTableLayout', () => {
     const layout = host.querySelector('[data-fixed-table-scroll-mode]');
     expect(layout?.getAttribute('py')).toBe('0');
     expect(layout?.getAttribute('minW')).toBe('24px');
-    expect(host.querySelector('[data-fixed-table-body-content]')?.getAttribute('px')).toBe('4');
+    expect(host.querySelector('[data-fixed-table-body-content]')?.getAttribute('px')).toBe('0');
     await act(async () => root.unmount());
   });
 
-  it.each([false, true])(
-    'only enables content-sized horizontal layout when opted in: %s',
+  it.each([true, false])(
+    'defaults to content-sized horizontal layout and supports disabling it: %s',
     async (horizontalScroll) => {
       const { host, root } = createTestRoot();
       await act(async () =>
         root.render(
           React.createElement(
             FixedTableContainer,
-            horizontalScroll ? { horizontalScroll: true } : {},
+            horizontalScroll ? {} : { horizontalScroll: false },
             React.createElement('table')
           )
         )
@@ -416,9 +416,7 @@ describe('FixedTableLayout', () => {
       expect(widths).toHaveLength(2);
       expect(widths[0]).toBeCloseTo(80, 3);
       expect(widths[1]).toBeCloseTo(220 + (flush ? gutter : 0), 3);
-      expect(host.querySelector('[data-fixed-table-body-content]')?.getAttribute('px')).toBe(
-        flush ? '0' : '4'
-      );
+      expect(host.querySelector('[data-fixed-table-body-content]')?.getAttribute('px')).toBe('0');
       await act(async () => {
         headerTable!.querySelector('th')!.textContent = 'Changed';
         await Promise.resolve();

@@ -83,7 +83,7 @@ async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType
       sourceType: ChatSourceTypeEnum.app,
       sourceId: app._id
     }),
-    title: chat?.title || '',
+    title: chat?.customTitle || chat?.title || '',
     userAvatar: getRandomUserAvatar(),
     variables,
     chatGenerateStatus: chat?.chatGenerateStatus,

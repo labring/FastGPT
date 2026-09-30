@@ -294,7 +294,7 @@ export async function runSkillDebugChat(
     computedFlowResponses.forEach((nodeResponse) => {
       streamResponseContext?.responseWrite(workflowSseEvent.flowNodeResponse(nodeResponse));
     });
-    streamResponseContext.responseWrite(workflowSseEvent.workflowDuration(durationSeconds));
+    // 本轮耗时由 dispatch 在 root runtime 统一下发（本流的 writer 已交给它），此处重复下发会让客户端累加翻倍。
 
     streamResponseContext.responseWrite(workflowSseEvent.answerStop());
 

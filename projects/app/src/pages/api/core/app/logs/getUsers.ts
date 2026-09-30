@@ -4,6 +4,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -17,7 +18,6 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getTeamMemberDisplayIdentityMap } from '@fastgpt/service/support/user/team/memberDisplay';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 type LogUserGroup = {
@@ -146,14 +146,16 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
   const userGroups = aggregateResult?.list ?? [];
   const total = aggregateResult?.total?.[0]?.count ?? 0;
   const userIds = userGroups.map((item) => String(item._id.userId));
-  const memberDisplayMap = await getTeamMemberDisplayIdentityMap({
-    teamId,
-    tmbIds: userIds.filter((id) => Types.ObjectId.isValid(id))
+  const teamMembers = await getTeamMemberMap({
+    teamId: teamObjectId,
+    memberIds: userIds,
+    fields: '_id name avatar'
   });
+  const tmbMap = teamMembers;
 
   const list = userGroups.map((item): LogUserType => {
     const userId = String(item._id.userId);
-    const member = memberDisplayMap.get(userId);
+    const member = tmbMap.get(userId);
     const isShareUser = item._id.source === ChatSourceEnum.share;
     return {
       outLinkUid: isShareUser || !member ? userId : null,

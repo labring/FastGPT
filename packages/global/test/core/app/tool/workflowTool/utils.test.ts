@@ -28,18 +28,38 @@ describe('workflowTool utils', () => {
       ]);
     });
 
-    it('returns an empty list for supported input types', () => {
+    it('should return an empty list for supported input types', () => {
       expect(
         getWorkflowToolUnsupportedInputTypes([
           { renderTypeList: [FlowNodeInputTypeEnum.input] },
           { renderTypeList: [FlowNodeInputTypeEnum.agentGenerated] },
-          { renderTypeList: [FlowNodeInputTypeEnum.hidden] }
+          { renderTypeList: [FlowNodeInputTypeEnum.hidden] },
+          { renderTypeList: [FlowNodeInputTypeEnum.off] }
         ])
       ).toEqual([]);
     });
   });
 
   describe('getWorkflowToolInputsFromStoreNodes', () => {
+    it('keeps off inputs for external callers but drops internal variables', () => {
+      const nodes: StoreNodeItemType[] = [
+        {
+          nodeId: 'node-1',
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          name: 'Plugin Input',
+          inputs: [
+            { key: 'external', label: 'External', renderTypeList: [FlowNodeInputTypeEnum.off] },
+            { key: 'internal', label: 'Internal', renderTypeList: [FlowNodeInputTypeEnum.hidden] }
+          ] as any,
+          outputs: [],
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      expect(getWorkflowToolInputsFromStoreNodes(nodes).map((input) => input.key)).toEqual([
+        'external'
+      ]);
+    });
     it('should return inputs from pluginInput node', () => {
       const expectedInputs = [
         { key: 'input1', label: 'Input 1', valueType: 'string' },

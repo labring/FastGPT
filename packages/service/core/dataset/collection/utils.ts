@@ -4,7 +4,6 @@ import { MongoDatasetCollectionTags } from '../tag/schema';
 import { MongoDatasetCollectionTagsV2 } from '../tag/schemaV2';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
-  DEFAULT_TAG,
   type CollectionTagLabelType,
   type CollectionTagValueType,
   type CollectionWithDatasetType,
@@ -12,6 +11,7 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
+  DEFAULT_TAG,
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionSyncResultEnum,
   DatasetCollectionTypeEnum,

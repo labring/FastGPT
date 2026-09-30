@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CanonicalFlowNodeInputItemSchema,
   LegacyFlowNodeInputItemSchema,
-  migrateWorkflowToCurrent
+  migrateWorkflowToCurrent,
+  isLegacyV1Workflow
 } from '@fastgpt/global/core/workflow/migration';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
@@ -1294,5 +1295,32 @@ describe('workflow migration boundary', () => {
     const selectedToolsValue = (result.nodes[0].inputs[0] as any).value;
     expect(selectedToolsValue[0].name).toBe('My Tool Name');
     expect(selectedToolsValue[0].avatar).toBe('core/workflow/template/tool');
+  });
+
+  describe('isLegacyV1Workflow', () => {
+    it('identifies V1 workflow when node has moduleId and no valid nodeId', () => {
+      expect(isLegacyV1Workflow([{ moduleId: 'userGuide', flowType: 'userGuide' }])).toBe(true);
+    });
+
+    it('does not identify V2 workflow as V1 when node has valid nodeId even if moduleId exists', () => {
+      expect(
+        isLegacyV1Workflow([{ nodeId: 'node-1', moduleId: 'userGuide', flowNodeType: 'userGuide' }])
+      ).toBe(false);
+    });
+
+    it('does not identify damaged V2 node without moduleId as V1 to avoid false deletions', () => {
+      expect(isLegacyV1Workflow([{ flowNodeType: 'chatNode', name: 'Damaged V2 Node' }])).toBe(
+        false
+      );
+    });
+
+    it('does not identify standard V2 workflow as V1', () => {
+      expect(
+        isLegacyV1Workflow([
+          { nodeId: 'node-1', flowNodeType: 'chatNode' },
+          { nodeId: 'node-2', flowNodeType: 'datasetSearchNode' }
+        ])
+      ).toBe(false);
+    });
   });
 });

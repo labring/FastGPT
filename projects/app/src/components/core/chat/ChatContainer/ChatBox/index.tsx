@@ -502,6 +502,8 @@ const ChatBox = ({
   const canRenderChatInput =
     onStartChat && chatStarted && active && (canSendQuery || isBlockingInteractivePending);
   const canSendPrompt = canRenderChatInput && !isRoundPending;
+  // 日志详情是历史回看场景，底部“内容由 AI 生成”合规提示只在真实对话入口展示
+  const isLogMode = chatType === ChatTypeEnum.log;
   const canRenderScrollToBottomButton =
     (chatType === ChatTypeEnum.chat ||
       chatType === ChatTypeEnum.home ||
@@ -602,7 +604,7 @@ const ChatBox = ({
   // output data
   useImperativeHandle(ChatBoxRef, () => ({
     restartChat() {
-      abortRequest();
+      abortRequest('leave');
 
       setChatRecords([]);
       setValue('chatStarted', false);
@@ -740,7 +742,7 @@ const ChatBox = ({
             ) : (
               <MobileHomeLayout inputSlot={HomeChatInput} />
             )}
-            <ComplianceTip type={'chat'} pt={0} pb={4} />
+            {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
           </MyBox>
         ) : (
           <>
@@ -755,7 +757,6 @@ const ChatBox = ({
               recordsListProps={recordsListProps}
               maxW={props.maxW}
               boxBodyProps={boxBodyProps}
-              workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
               EmptyState={
                 chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
                   ? EmptyState

@@ -14,7 +14,9 @@ import {
   nodeInputs2JsonSchema,
   nodeOutputs2JsonSchema,
   parseToolParamJsonSchema,
-  str2OpenApiSchema
+  str2OpenApiSchema,
+  JsonSchemaPropertiesItemSchema,
+  JSONSchemaInputTypeSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { bundleOpenAPISchema } from '@fastgpt/global/common/string/swagger';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -219,6 +221,51 @@ describe('jsonSchema2NodeInput', () => {
       valueType: WorkflowIOValueTypeEnum.arrayNumber,
       renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
     });
+  });
+
+  it('should initialize strict enum inputs from the schema default', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['fast', 'full'], default: 'full' },
+          level: { type: 'number', enum: [1, 2, 3], default: 3 },
+          enabled: { type: 'boolean', enum: [true, false], default: false },
+          sources: {
+            type: 'array',
+            items: { type: 'string', enum: ['zhihu', 'weibo', 'juejin'] },
+            default: ['weibo', 'juejin']
+          },
+          objectSources: {
+            type: 'array',
+            items: { type: 'object', enum: [{ id: 'zhihu' }, { id: 'weibo' }] },
+            default: [{ id: 'weibo' }]
+          },
+          unknown: { type: 'string', enum: ['a', 'b'], default: 'c' }
+        }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      value: 'full',
+      defaultValue: 'full',
+      renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference]
+    });
+    expect(result[1]).toMatchObject({ value: 3, defaultValue: 3 });
+    expect(result[2]).toMatchObject({ value: false, defaultValue: false });
+    expect(result[3]).toMatchObject({
+      value: ['weibo', 'juejin'],
+      defaultValue: ['weibo', 'juejin'],
+      renderTypeList: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference]
+    });
+    expect(result[4]).toMatchObject({
+      value: [{ id: 'weibo' }],
+      defaultValue: [{ id: 'weibo' }],
+      renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+    });
+    // default 不在枚举内时回退到第一个枚举值，避免选择器出现不存在的选项
+    expect(result[5]).toMatchObject({ value: 'a', defaultValue: 'c' });
   });
 
   it('should map isToolParam from input schema properties to NodeIO defaults', () => {
@@ -1444,6 +1491,47 @@ describe('nodeInputs2JsonSchema', () => {
       renderTypeList: [FlowNodeInputTypeEnum.hidden]
     });
   });
+
+  it('should keep off inputs exposed to third-party callers with metadata preserved', () => {
+    const inputs = [
+      {
+        key: 'offInput',
+        label: 'Off',
+        valueType: WorkflowIOValueTypeEnum.number,
+        defaultValue: 3,
+        required: true,
+        renderTypeList: [FlowNodeInputTypeEnum.off]
+      }
+    ] as FlowNodeInputItemType[];
+
+    const jsonSchema = nodeInputs2JsonSchema({
+      inputs,
+      includeNodeMetadata: true,
+      filterInternalInputs: true
+    });
+    const restored = jsonSchema2NodeInput({
+      jsonSchema,
+      schemaType: 'systemTool'
+    });
+
+    // 与 hidden 不同：off 只是不渲染，第三方入参 schema 仍需暴露
+    expect(jsonSchema.properties?.offInput).toMatchObject({
+      type: 'number',
+      default: 3,
+      'x-fastgpt-node-input': {
+        valueType: WorkflowIOValueTypeEnum.number,
+        defaultValue: 3,
+        renderTypeList: [FlowNodeInputTypeEnum.off]
+      }
+    });
+    expect(jsonSchema.required).toEqual(['offInput']);
+    expect(restored[0]).toMatchObject({
+      key: 'offInput',
+      valueType: WorkflowIOValueTypeEnum.number,
+      defaultValue: 3,
+      renderTypeList: [FlowNodeInputTypeEnum.off]
+    });
+  });
 });
 
 describe('nodeOutputs2JsonSchema', () => {
@@ -2095,5 +2183,43 @@ describe('bundleOpenAPISchema', () => {
         }
       })
     ).rejects.toThrow('Unable to resolve $ref pointer');
+  });
+});
+
+describe('JSONSchema property required support', () => {
+  it('should accept boolean required on property schema (OpenAPI 2.0 / legacy MCP compatibility)', () => {
+    const parsed = JsonSchemaPropertiesItemSchema.parse({
+      type: 'string',
+      description: 'task identifier',
+      required: true
+    });
+    expect(parsed.required).toBe(true);
+  });
+
+  it('should parse MCP tool inputSchema with property-level boolean required', () => {
+    const schema = JSONSchemaInputTypeSchema.parse({
+      type: 'object',
+      properties: {
+        task_id: {
+          type: 'string',
+          description: 'task id',
+          required: true
+        },
+        optional_flag: {
+          type: 'boolean',
+          required: false
+        }
+      }
+    });
+    expect(schema.properties?.task_id.required).toBe(true);
+
+    const inputs = jsonSchema2NodeInput({
+      jsonSchema: schema,
+      schemaType: 'mcp'
+    });
+    const taskIdInput = inputs.find((i) => i.key === 'task_id');
+    const optionalInput = inputs.find((i) => i.key === 'optional_flag');
+    expect(taskIdInput?.required).toBe(true);
+    expect(optionalInput?.required).toBeFalsy();
   });
 });

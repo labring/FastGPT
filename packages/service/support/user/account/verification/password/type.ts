@@ -29,7 +29,14 @@ export type VerifyPasswordCredentialsParams = {
   password: string;
   code: string;
   purpose: PasswordVerificationPurpose;
+  /** 在验证码材料确认后、密码查询前执行业务守卫。 */
+  beforeFindUserByCredentials?: PasswordVerificationPreLookupHandler;
 };
+
+export type PasswordVerificationPreLookupHandler = (params: {
+  username: string;
+  session: ClientSession;
+}) => unknown | Promise<unknown>;
 
 export type PasswordVerificationHandler<T> = (params: {
   user: PasswordVerificationUser;

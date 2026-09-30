@@ -519,7 +519,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             isLoading={isInitialLoading}
           >
             <FixedTableLayout
-              horizontalScroll
               scrollMode="virtual"
               bodyRef={modelListContainerRef}
               rootProps={{ flex: '1 0 0', h: 0 }}

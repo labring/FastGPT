@@ -10,13 +10,16 @@ import {
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { multer } from '@fastgpt/service/common/file/multer';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { CreateTemplateCollectionFormSchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import {
+  CreateTemplateCollectionFormSchema,
+  type CreateCollectionWithResultResponseType
+} from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseDatasetImportFile } from '@fastgpt/service/core/dataset/importFile';
 import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
-async function handler(req: ApiRequestProps) {
+async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResultResponseType> {
   const filepaths: string[] = [];
   let fileId: string | undefined;
   let promoted = false;
@@ -69,7 +72,7 @@ async function handler(req: ApiRequestProps) {
       return Promise.reject(i18nT('dataset:template_file_invalid'));
     });
 
-    await createCollectionAndInsertData({
+    const collectionResult = await createCollectionAndInsertData({
       dataset,
       rawText,
       backupParse: true,
@@ -87,7 +90,7 @@ async function handler(req: ApiRequestProps) {
     });
     promoted = true;
 
-    return {};
+    return collectionResult;
   } catch (error) {
     if (fileId && !promoted) {
       await getS3DatasetSource()

@@ -5,6 +5,7 @@ import {
   buildStreamResumeUrl,
   createResumeReadyNotifier,
   createStreamFetchError,
+  getStreamReasoningQueueConsumeCount,
   getStreamTypingQueueConsumeCount,
   handleEventSourceData,
   shouldSendStreamResumeHeader
@@ -16,19 +17,26 @@ import {
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 describe('handleEventSourceData', () => {
-  it('should enqueue answer text for the typing effect', () => {
+  it('should enqueue reasoning before answer text for the typing effect', () => {
     const enqueue = vi.fn();
     const onmessage = vi.fn();
 
     handleEventSourceData({
       event: SseResponseEventEnum.answer,
-      data: JSON.stringify({ choices: [{ delta: { content: 'ab' } }] }),
+      data: JSON.stringify({
+        choices: [{ delta: { reasoning_content: 'thinking', content: 'ab' } }]
+      }),
       enqueue,
       onmessage,
       onerror: vi.fn()
     });
 
     expect(enqueue).toHaveBeenCalledTimes(3);
+    expect(enqueue).toHaveBeenNthCalledWith(1, {
+      event: SseResponseEventEnum.answer,
+      responseValueId: undefined,
+      reasoningText: 'thinking'
+    });
     expect(enqueue).toHaveBeenNthCalledWith(2, {
       event: SseResponseEventEnum.answer,
       responseValueId: undefined,
@@ -40,6 +48,25 @@ describe('handleEventSourceData', () => {
       text: 'b'
     });
     expect(onmessage).not.toHaveBeenCalled();
+  });
+
+  it('should skip empty reasoning queue items', () => {
+    const enqueue = vi.fn();
+
+    handleEventSourceData({
+      event: SseResponseEventEnum.answer,
+      data: JSON.stringify({ choices: [{ delta: { content: 'a' } }] }),
+      enqueue,
+      onmessage: vi.fn(),
+      onerror: vi.fn()
+    });
+
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledWith({
+      event: SseResponseEventEnum.answer,
+      responseValueId: undefined,
+      text: 'a'
+    });
   });
 
   it('should dispatch tool params immediately without entering the typing queue', () => {
@@ -94,6 +121,27 @@ describe('getStreamTypingQueueConsumeCount', () => {
 
   it('should not consume an empty queue', () => {
     expect(getStreamTypingQueueConsumeCount({ queueLength: 0, finished: true })).toBe(0);
+  });
+});
+
+describe('getStreamReasoningQueueConsumeCount', () => {
+  it('should consume the reasoning prefix when answer text arrives', () => {
+    expect(
+      getStreamReasoningQueueConsumeCount([
+        { event: SseResponseEventEnum.answer, reasoningText: 'one' },
+        { event: SseResponseEventEnum.answer, reasoningText: 'two' },
+        { event: SseResponseEventEnum.answer, text: 'answer' }
+      ])
+    ).toBe(2);
+  });
+
+  it('should preserve answer text already at the queue head', () => {
+    expect(
+      getStreamReasoningQueueConsumeCount([
+        { event: SseResponseEventEnum.answer, text: 'answer' },
+        { event: SseResponseEventEnum.answer, reasoningText: 'late reasoning' }
+      ])
+    ).toBe(0);
   });
 });
 

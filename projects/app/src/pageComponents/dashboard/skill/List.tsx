@@ -24,7 +24,6 @@ import {
   deleteSkill,
   postUpdateSkill,
   postCopySkill,
-  getAppsBySkillId,
   resumeInheritPer,
   postChangeSkillOwner
 } from '@/web/core/skill/api';
@@ -34,8 +33,7 @@ import {
 } from '@/web/core/skill/collaborator';
 import { SkillRoleList } from '@fastgpt/global/support/permission/skill/constant';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import type { ListAppsBySkillIdResponse } from '@fastgpt/global/core/ai/skill/api';
+import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -56,133 +54,6 @@ import ResourceCardSkeleton from '@/pageComponents/dashboard/ResourceCardSkeleto
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
-
-// 5 行 × 48px = 240px
-const RELATED_APPS_MAX_H = '240px';
-
-const RelatedAppsContent = ({ skillId }: { skillId: string }) => {
-  const { t } = useTranslation();
-  const [data, setData] = useState<ListAppsBySkillIdResponse>({ list: [], hiddenCount: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    getAppsBySkillId(skillId)
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, [skillId]);
-
-  const { list, hiddenCount } = data;
-
-  return (
-    <MyBox isLoading={isLoading} minH={isLoading ? '80px' : 'auto'} px={'12px'} py={'8px'}>
-      <Box maxH={RELATED_APPS_MAX_H} overflowY={'auto'}>
-        <Flex>
-          <Flex flex={'1 0 0'} minW={0} direction={'column'}>
-            {list.map((app) => (
-              <Flex
-                key={app._id}
-                h={'48px'}
-                align={'center'}
-                gap={'8px'}
-                px={'12px'}
-                borderBottom={'sm'}
-                _last={{ borderBottom: 'none' }}
-                overflow={'hidden'}
-              >
-                <Avatar src={app.avatar} w={'20px'} h={'20px'} borderRadius={'sm'} flexShrink={0} />
-                <Box
-                  flex={'1 1 0'}
-                  minW={0}
-                  fontSize={'14px'}
-                  lineHeight={'20px'}
-                  color={'myGray.900'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                >
-                  {app.name}
-                </Box>
-              </Flex>
-            ))}
-          </Flex>
-          <Flex w={'120px'} flexShrink={0} direction={'column'}>
-            {list.map((app) => (
-              <Flex
-                key={app._id}
-                h={'48px'}
-                align={'center'}
-                gap={'4px'}
-                px={'12px'}
-                borderBottom={'sm'}
-                _last={{ borderBottom: 'none' }}
-                overflow={'hidden'}
-              >
-                <MyIcon
-                  name={'common/lineUser'}
-                  w={'13px'}
-                  h={'14px'}
-                  color={'myGray.400'}
-                  flexShrink={0}
-                />
-                <Box
-                  flex={'1 1 0'}
-                  minW={0}
-                  fontSize={'14px'}
-                  lineHeight={'20px'}
-                  color={'myGray.500'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  whiteSpace={'nowrap'}
-                >
-                  {app.sourceMember?.name || '-'}
-                </Box>
-              </Flex>
-            ))}
-          </Flex>
-        </Flex>
-      </Box>
-      {hiddenCount > 0 && (
-        <Box
-          mt={'8px'}
-          fontSize={'12px'}
-          lineHeight={'16px'}
-          color={'myGray.500'}
-          letterSpacing={'0.4px'}
-        >
-          {t('skill:related_apps_hidden', { count: hiddenCount })}
-        </Box>
-      )}
-    </MyBox>
-  );
-};
-
-const RelatedAppsPopover = ({ skillId, count }: { skillId: string; count: number }) => {
-  const { t } = useTranslation();
-
-  return (
-    <MyPopover
-      trigger={'hover'}
-      placement={'bottom'}
-      hasArrow
-      w={'320px'}
-      p={0}
-      borderRadius={'6px'}
-      boxShadow={'3.5'}
-      border={'none'}
-      Trigger={
-        <HStack spacing={1} cursor={'pointer'}>
-          <Box color={'myGray.500'}>{t('skill:related_count')}</Box>
-          <Box color={'myGray.500'} fontWeight={'medium'}>
-            {count}
-          </Box>
-        </HStack>
-      }
-    >
-      {() => <RelatedAppsContent skillId={skillId} />}
-    </MyPopover>
-  );
-};
 
 const List = ({
   onClickCreate,
@@ -336,7 +207,6 @@ const List = ({
     });
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
     const isPersonal = skill.source === AgentSkillSourceEnum.personal;
-    const relatedAppsCount = skill.appCount ?? 0;
     const isSkillReady =
       isFolder ||
       (skill.creationStatus === AgentSkillCreationStatusEnum.ready && !!skill.currentVersionId);
@@ -414,10 +284,10 @@ const List = ({
                   onClick: () =>
                     openConfirmDelete({
                       customContent:
-                        !isFolder && relatedAppsCount > 0 ? (
+                        !isFolder && skill.appCount !== undefined && skill.appCount > 0 ? (
                           <Trans
                             i18nKey={i18nT('skill:confirm_delete_with_refs')}
-                            values={{ count: relatedAppsCount }}
+                            values={{ count: skill.appCount }}
                             components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
                           />
                         ) : null,
@@ -565,15 +435,13 @@ const List = ({
             />
             {!isFolder && isSkillReady && (
               <>
-                {relatedAppsCount > 0 ? (
-                  <RelatedAppsPopover skillId={skill._id} count={relatedAppsCount} />
-                ) : (
-                  <HStack spacing={1}>
-                    <Box color={'myGray.500'}>{t('skill:related_count')}</Box>
-                    <Box color={'myGray.500'} fontWeight={'medium'}>
-                      0
-                    </Box>
-                  </HStack>
+                {typeof skill.appCount === 'number' && (
+                  <ReferencedAppsPopover
+                    resourceId={skill._id}
+                    resourceType="skill"
+                    count={skill.appCount}
+                    trigger={'hover'}
+                  />
                 )}
               </>
             )}

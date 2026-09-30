@@ -78,7 +78,6 @@ const TierBreakdownTable = ({ tiers }: { tiers: ModelPriceTierType[] }) => {
     >
       <Box borderRadius={'md'} overflow={'hidden'} border={'base'}>
         <FixedTableLayout
-          horizontalScroll
           scrollMode="normal"
           rootProps={{ h: 'auto', maxH: '280px' }}
           bodyProps={{ flex: '1 1 auto', overflow: 'auto' }}

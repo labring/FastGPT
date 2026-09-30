@@ -19,6 +19,8 @@ export type {
 } from './multiSelectFilterUtils';
 export { default as MultiTagFilter } from './MultiTagFilter';
 export type { MultiTagFilterGroup } from './MultiTagFilter';
+export { default as FilterInput } from './FilterInput';
+export type { FilterInputProps } from './FilterInput';
 export { FILTER_SEARCH_THRESHOLD } from './FilterSearchInput';
 export { default as FilterSearchInput } from './FilterSearchInput';
 export {

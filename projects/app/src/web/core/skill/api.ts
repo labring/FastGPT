@@ -22,7 +22,6 @@ import type {
   GetSkillFolderPathResponse,
   CreateSkillFolderBody,
   SkillDebugChatBody,
-  ListAppsBySkillIdResponse,
   ListSkillVersionsBody,
   ListSkillVersionsResponse,
   SkillRuntimeBody,
@@ -220,10 +219,6 @@ export const exportSkill = (skillId: string, skillName: string) => {
     setLoading(false);
   });
 };
-
-/** 获取引用了某个 Skill 的应用列表 */
-export const getAppsBySkillId = (skillId: string) =>
-  GET<ListAppsBySkillIdResponse>('/core/ai/skill/apps', { skillId });
 
 /** 获取 Skill 历史版本列表（支持分页滚动加载） */
 export const getSkillVersionList = (data: ListSkillVersionsBody) =>

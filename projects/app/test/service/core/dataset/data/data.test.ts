@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
@@ -33,6 +33,7 @@ import { serviceEnv } from '@fastgpt/service/env';
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
+const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
 const { mockDeleteDatasetFileByKey, mockGetDatasetBase64Image, mockCountPromptTokens } = vi.hoisted(
   () => ({
@@ -380,6 +381,32 @@ describe('Dataset data service', () => {
       expect(ttl).toBeNull();
     });
 
+    it('should not remove TTL when imageId belongs to another dataset', async () => {
+      const { root, dataset, collection } = await createDatasetContext();
+      const foreignImageId = 'dataset/507f1f77bcf86cd799439099/foreign.png';
+      await MongoS3TTL.create({
+        minioKey: foreignImageId,
+        bucketName: S3Buckets.private,
+        expiredTime: new Date(Date.now() + 60_000)
+      });
+
+      await mongoSessionRun((session) =>
+        createDatasetData({
+          teamId: String(root.teamId),
+          tmbId: String(root.tmbId),
+          datasetId: String(dataset._id),
+          collectionId: String(collection._id),
+          q: 'question',
+          imageId: foreignImageId,
+          embeddingModel,
+          session
+        })
+      );
+
+      const ttl = await MongoS3TTL.findOne({ minioKey: foreignImageId }).lean();
+      expect(ttl).not.toBeNull();
+    });
+
     it('should reject when required fields are missing', async () => {
       const { root, dataset, collection } = await createDatasetContext();
 
@@ -438,6 +465,13 @@ describe('Dataset data service', () => {
   });
 
   describe('updateDatasetDataByIndexes', () => {
+    beforeEach(() => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+    });
+    afterEach(() => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = originalMultipleDataToBase64;
+    });
+
     it('updates data only after vector generation when the feature is disabled', async () => {
       serviceEnv.DATASET_SYNONYM_ENABLED = false;
       const { data } = await createMongoData();
@@ -672,10 +706,15 @@ describe('Dataset data service', () => {
     });
 
     it('should rebuild image embedding indexes from data content when image index is enabled', async () => {
-      const mainImage = 'dataset/team/main.png';
-      const oldMarkdownImage = 'dataset/team/old.png';
-      const newMarkdownImage = 'dataset/team/new.png';
-      const { data } = await createMongoData({
+      const { root, dataset, collection } = await createDatasetContext();
+      const mainImage = `dataset/${dataset._id}/main.png`;
+      const oldMarkdownImage = `dataset/${dataset._id}/old.png`;
+      const newMarkdownImage = `dataset/${dataset._id}/new.png`;
+      const data = await MongoDatasetData.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
         q: `old question ![old](${oldMarkdownImage})`,
         a: '',
         imageId: mainImage,
@@ -701,6 +740,13 @@ describe('Dataset data service', () => {
             dataId: 'old_markdown_image'
           }
         ]
+      });
+      await MongoDatasetDataText.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        dataId: data._id,
+        fullTextToken: 'old token'
       });
 
       await updateDatasetDataByIndexes({
@@ -1102,6 +1148,18 @@ describe('Dataset data service', () => {
 
       expect(mockDeleteDatasetFileByKey).not.toHaveBeenCalled();
       expect(mockVectorDelete).not.toHaveBeenCalled();
+    });
+
+    it('should skip image deletion when the imageId belongs to another dataset', async () => {
+      const { data } = await createMongoData({ indexes: [] });
+      // 脏数据：图片来源 key 属于另一个 dataset
+      data.imageId = 'dataset/507f1f77bcf86cd799439099/foreign.png';
+      await data.save();
+
+      await deleteDatasetData(toDataItem(data));
+
+      // 外库 key 不得触发物理删除
+      expect(mockDeleteDatasetFileByKey).not.toHaveBeenCalled();
     });
   });
 });

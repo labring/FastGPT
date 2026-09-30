@@ -10,7 +10,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { deleteUser, updateUser } from '@/web/admin/user/api';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -19,6 +19,10 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import { isAccountCancellationAnonymizedUsername } from '@fastgpt/global/support/user/account/cancellation/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import {
+  SsoPasswordUnavailableTip,
+  useAdminPasswordAvailability
+} from './useAdminPasswordAvailability';
 
 type TFormData = {
   username: string;
@@ -31,9 +35,14 @@ export default function UserEditModal(props: { data: any; getData: any }) {
   const { data, getData } = props;
   const { toast } = useToast();
 
-  const { register, handleSubmit, reset } = useForm({
+  const { register, handleSubmit, reset, control } = useForm({
     defaultValues: data
   });
+  // 服务端在「改名 + 同时设密码」时会校验新旧两个用户名，前端必须同口径，
+  // 否则会出现密码框可填但提交必被 ssoPasswordUnavailable 拒绝的错位。
+  // 用 useWatch 而非 watch()，避开 react-hooks/incompatible-library 的缓存告警。
+  const watchedUsername = useWatch({ control, name: 'username' });
+  const passwordAvailable = useAdminPasswordAvailability([data.username, watchedUsername]);
 
   const { runAsync: onSubmit, loading } = useRequest(
     async (formData: TFormData) => {
@@ -136,19 +145,23 @@ export default function UserEditModal(props: { data: any; getData: any }) {
           <FormLabel htmlFor="password" fontWeight="bold">
             密码
           </FormLabel>
-          <Input
-            {...register('password', {
-              validate: (val) => {
-                if (!val) return true;
-                if (!checkPasswordRule(val)) {
-                  return '密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符';
+          {passwordAvailable ? (
+            <Input
+              {...register('password', {
+                validate: (val) => {
+                  if (!val) return true;
+                  if (!checkPasswordRule(val)) {
+                    return '密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符';
+                  }
+                  return true;
                 }
-                return true;
-              }
-            })}
-            variant="outline"
-            placeholder="密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符"
-          />
+              })}
+              variant="outline"
+              placeholder="密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符"
+            />
+          ) : (
+            <SsoPasswordUnavailableTip />
+          )}
         </FormControl>
         <FormControl mt={4}>
           <FormLabel htmlFor="password" mb={0} fontWeight="bold">

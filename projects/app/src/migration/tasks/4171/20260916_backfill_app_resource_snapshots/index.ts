@@ -11,6 +11,7 @@ import { z } from 'zod';
 import {
   backfillAppResourceRecords,
   backfillAppVersionResourceRecords,
+  cleanV1AppRecords,
   initializeAppResourceSnapshot,
   readAppResourceBatch,
   readAppResourceRecord,
@@ -24,6 +25,7 @@ import {
   type AppResourceMigrationRecord
 } from './service';
 
+const CLEAN_V1_APPS_STAGE_KEY = 'clean_v1_apps';
 const VERSION_STAGE_KEY = 'versions';
 const APP_STAGE_KEY = 'apps';
 const VALIDATION_STAGE_KEY = 'validation';
@@ -37,16 +39,7 @@ const StageCheckpointSchema = z.object({
   total: z.number().int().nonnegative()
 });
 
-const AppResourceCheckpointSchema = z.object({
-  version: z.literal(1),
-  stages: z.object({
-    versions: StageCheckpointSchema,
-    apps: StageCheckpointSchema
-  })
-});
-
 type StageCheckpoint = z.infer<typeof StageCheckpointSchema>;
-type AppResourceCheckpoint = z.infer<typeof AppResourceCheckpointSchema>;
 
 const emptyStageCheckpoint = (): StageCheckpoint => ({
   initialized: false,
@@ -57,6 +50,17 @@ const emptyStageCheckpoint = (): StageCheckpoint => ({
   total: 0
 });
 
+const AppResourceCheckpointSchema = z.object({
+  version: z.literal(1),
+  stages: z.object({
+    clean_v1_apps: StageCheckpointSchema.default(emptyStageCheckpoint),
+    versions: StageCheckpointSchema,
+    apps: StageCheckpointSchema
+  })
+});
+
+type AppResourceCheckpoint = z.infer<typeof AppResourceCheckpointSchema>;
+
 const getFailedRecordKey = (record: SystemMigrationFailedRecord) =>
   `${record.stageKey}:${String(record.data.recordId)}`;
 
@@ -64,7 +68,7 @@ const createFailedRecord = ({
   stageKey,
   failure
 }: {
-  stageKey: typeof VERSION_STAGE_KEY | typeof APP_STAGE_KEY;
+  stageKey: typeof CLEAN_V1_APPS_STAGE_KEY | typeof VERSION_STAGE_KEY | typeof APP_STAGE_KEY;
   failure: AppResourceMigrationFailure;
 }): SystemMigrationFailedRecord => ({
   stageKey,
@@ -88,10 +92,14 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
   )) ?? {
     version: 1,
     stages: {
+      clean_v1_apps: emptyStageCheckpoint(),
       versions: emptyStageCheckpoint(),
       apps: emptyStageCheckpoint()
     }
   };
+  if (!checkpoint.stages.clean_v1_apps) {
+    checkpoint.stages.clean_v1_apps = emptyStageCheckpoint();
+  }
   const failedRecordMap = new Map(
     (await context.getFailedRecords()).map((record) => [getFailedRecordKey(record), record])
   );
@@ -129,7 +137,7 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
     failures,
     isValidation = false
   }: {
-    stageKey: typeof VERSION_STAGE_KEY | typeof APP_STAGE_KEY;
+    stageKey: typeof CLEAN_V1_APPS_STAGE_KEY | typeof VERSION_STAGE_KEY | typeof APP_STAGE_KEY;
     records: AppResourceMigrationRecord[];
     failures: AppResourceMigrationFailure[];
     isValidation?: boolean;
@@ -154,7 +162,7 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
     readRecord,
     processRecords
   }: {
-    stageKey: typeof VERSION_STAGE_KEY | typeof APP_STAGE_KEY;
+    stageKey: typeof CLEAN_V1_APPS_STAGE_KEY | typeof VERSION_STAGE_KEY | typeof APP_STAGE_KEY;
     collection: typeof MongoApp.collection | typeof MongoAppVersion.collection;
     readBatch: (params: {
       endId?: string | null;
@@ -254,6 +262,13 @@ export const backfillAppResourceSnapshots = async (context: SystemMigrationConte
     });
   };
 
+  await runStage({
+    stageKey: CLEAN_V1_APPS_STAGE_KEY,
+    collection: MongoApp.collection,
+    readBatch: readAppResourceBatch,
+    readRecord: readAppResourceRecord,
+    processRecords: cleanV1AppRecords
+  });
   await runStage({
     stageKey: VERSION_STAGE_KEY,
     collection: MongoAppVersion.collection,

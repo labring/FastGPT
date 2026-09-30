@@ -12,6 +12,7 @@ import {
 } from '@fastgpt/global/core/dataset/training/utils';
 
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
+import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { addDays } from 'date-fns';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
@@ -64,7 +65,10 @@ async function handler(
   const previewTexts = previewChunks.flatMap(({ q, a }) => [q, a]);
   const previewTextsWithUrls = await replaceS3KeysToPreviewUrls(
     previewTexts,
-    addDays(new Date(), 1)
+    addDays(new Date(), 1),
+    {
+      filter: createDatasetFileS3KeyFilter(datasetId)
+    }
   );
   const chunksWithPreviewUrls = previewChunks.map((chunk, index) => ({
     q: previewTextsWithUrls[index * 2] ?? chunk.q,

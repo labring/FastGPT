@@ -27,7 +27,7 @@ import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
-import { NumSchema } from '../../common/zod';
+import { IntSchema, NumSchema } from '../../common/zod';
 import { LOGO_ICON } from '../../common/system/constants';
 
 /* ===== Tag Type ===== */
@@ -39,9 +39,6 @@ export type DatasetCollectionTagType = `${DatasetCollectionTagTypeEnum}`;
 export const DatasetCollectionTagOptionsSchema = z
   .array(z.string().trim().min(1))
   .meta({ description: '选项类标签的预设选项' });
-
-/** 旧字符串标签承载记录首次创建时使用的默认名称；身份只由 fromMigration 标识。 */
-export const DEFAULT_TAG = 'default_tag';
 
 /** Collection 标签值字段：string/number 存对应值，datetime 存 UTC 毫秒时间戳，array 存 string 数组 */
 export const CollectionTagValueFieldSchema = z.union([z.string(), z.number(), z.array(z.string())]);
@@ -423,6 +420,10 @@ export const DatasetListItemSchema = z.object({
   intro: z.string().meta({ description: '简介' }),
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
+  appCount: IntSchema.optional().meta({
+    description: '被正式应用引用的数量，仅资源 Owner 且显式请求时返回',
+    example: 0
+  }),
   vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
     description: '向量模型；目录或模型已删除时为空，已停用模型仍返回展示数据'
   }),

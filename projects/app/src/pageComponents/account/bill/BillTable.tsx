@@ -115,7 +115,6 @@ const BillTable = ({ billType }: { billType?: GetBillListQueryType['type'] }) =>
   return (
     <MyBox {...accountPageRootStyles} isLoading={isLoading} display={'flex'} flexDir={'column'}>
       <FixedTableLayout
-        horizontalScroll
         scrollMode="normal"
         bodyRef={scrollContainerRef}
         rootProps={{ flex: ['0 0 auto', '1 0 0'], h: ['60dvh', 0], minH: 0 }}

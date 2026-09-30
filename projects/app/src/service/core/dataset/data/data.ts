@@ -11,6 +11,7 @@ import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { getFullTextStore } from '@fastgpt/service/core/dataset/data/textStore';
 import { isS3ObjectKey, removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import {
   datasetDataSystemIndexTypes,
   isDatasetDataSystemIndexType
@@ -217,7 +218,11 @@ export class DatasetDataOperation {
     await assertSynonymContextCurrent();
 
     // 图片在创建成功后从临时对象转为正式引用，不再允许 TTL 自动删除。
-    if (isS3ObjectKey(imageId, 'dataset')) {
+    // 同样校验归属，防止外库 key 借数据创建入口被意外移除 TTL 提升为永久对象。
+    if (
+      isS3ObjectKey(imageId, 'dataset') &&
+      isAuthorizedDatasetFileS3Key({ key: imageId, datasetId })
+    ) {
       await removeS3TTL({ key: imageId, bucketName: 'private', session });
     }
 
@@ -570,7 +575,12 @@ export class DatasetDataOperation {
       await getFullTextStore().deleteByDataId(data.id, session);
 
       // 主数据删除后清理图片对象，避免孤儿文件继续占用存储。
-      if (data.imageId && isS3ObjectKey(data.imageId, 'dataset')) {
+      // 仅删除归属于该数据块 dataset 的 key，避免脏数据里的外库 key 触发跨库物理删除。
+      if (
+        data.imageId &&
+        isS3ObjectKey(data.imageId, 'dataset') &&
+        isAuthorizedDatasetFileS3Key({ key: data.imageId, datasetId: data.datasetId })
+      ) {
         await getS3DatasetSource().deleteDatasetFileByKey(data.imageId);
       }
 

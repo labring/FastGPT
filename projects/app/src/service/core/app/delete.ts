@@ -32,7 +32,7 @@ export const deleteApp = async ({
 
   await mongoSessionRun(async (session) => {
     await MongoApp.updateMany({ _id: deleteIds, teamId }, { deleteTime: new Date() }, { session });
-    await deleteAppsImmediate({ teamId, appIds: deleteIds });
+    await deleteAppsImmediate({ teamId, appIds: deleteIds, session });
     await addAppDeleteJob({ teamId, appId });
   });
 

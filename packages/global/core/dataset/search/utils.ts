@@ -28,7 +28,7 @@ export const datasetSearchResultConcat = (
           if (sameScore) {
             sameScore.value = Math.max(sameScore.value, dataItem.value);
           } else {
-            concatScore.push(dataItem);
+            concatScore.push({ ...dataItem });
           }
         }
 
@@ -40,6 +40,9 @@ export const datasetSearchResultConcat = (
       } else {
         map.set(data.id, {
           ...data,
+          // score 逐项复制：下面合并取最大值、回写 rrf 分数和名次都只改结果自己的对象，
+          // 不能改到调用方传入的列表（重排前的召回快照会和它共用同一批 score 对象）
+          score: data.score.map((item) => ({ ...item })),
           rrfScore: score
         });
       }

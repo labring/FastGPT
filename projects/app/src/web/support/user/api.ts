@@ -7,6 +7,8 @@ import type {
   PreLoginResponseType,
   LoginByPasswordBodyType,
   OauthLoginBodyType,
+  SsoGetAuthorizationURLBodyType,
+  WecomGetRedirectURLBodyType,
   FastLoginBodyType,
   WxLoginBodyType,
   GetWXLoginQRResponseType,
@@ -45,6 +47,10 @@ export const getTokenLogin = () =>
   GET<UserType>('/support/user/account/tokenLogin', {}, { maxQuantity: 1 });
 export const oauthLogin = (params: OauthLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/oauth', params);
+export const getSsoAuthURL = (params: SsoGetAuthorizationURLBodyType) =>
+  POST<string>('/proApi/support/user/account/login/getAuthURL', params);
+export const getWecomRedirectURL = (params: WecomGetRedirectURLBodyType) =>
+  POST<string>('/proApi/support/user/account/login/wecom/getRedirectUrl', params);
 export const postFastLogin = (params: FastLoginBodyType) =>
   POST<LoginSuccessResponseType>('/proApi/support/user/account/login/fastLogin', params);
 export const postLogin = ({ password, ...props }: LoginByPasswordBodyType) =>

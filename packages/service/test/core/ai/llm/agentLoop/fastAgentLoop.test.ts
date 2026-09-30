@@ -380,6 +380,46 @@ describe('runFastAgentMainLoop', () => {
     expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('high');
   });
 
+  it.each([false, true])('passes child responses through tool end (resume: %s)', async (resume) => {
+    const emitEvent = vi.fn();
+    const childResponses = [{ text: { content: 'child output' }, hideReason: true }];
+    const executeTool = vi.fn(async () => ({
+      response: 'tool result',
+      assistantMessages: [],
+      assistantResponses: childResponses,
+      usages: []
+    }));
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      ...(!resume ? [toolCall({ id: 'call_child', name: 'search', args: {} })] : []),
+      text({ requestId: 'req_after_child', content: 'parent answer' })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ executeTool, executeInteractiveTool: executeTool, emitEvent }),
+      input: {
+        messages: [{ role: 'user', content: 'continue' }],
+        ...(resume
+          ? {
+              childrenInteractiveParams: {
+                childrenResponse: { type: 'userSelect' },
+                toolParams: { toolCallId: 'call_child' }
+              }
+            }
+          : {})
+      }
+    });
+
+    expect(result.status).toBe('done');
+    expect(executeTool).toHaveBeenCalledTimes(1);
+    expect(emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tool_run_end',
+        call: expect.objectContaining({ id: 'call_child' }),
+        assistantResponses: childResponses
+      })
+    );
+  });
+
   it('runs sandbox internal tools and emits regular runtime tool events', async () => {
     const events: unknown[] = [];
     runSandboxToolsMock.mockResolvedValue({

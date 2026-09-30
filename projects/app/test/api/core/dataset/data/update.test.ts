@@ -67,6 +67,7 @@ const buildAuthResult = () => ({
   teamId: 'team-id',
   tmbId: 'tmb-id',
   collection: {
+    datasetId: 'dataset-id',
     name: 'Collection',
     indexPrefixTitle: true,
     indexSize: 256,
@@ -201,5 +202,29 @@ describe('PUT /api/core/dataset/data/update', () => {
       indexPrefix: '# Collection'
     });
     expect(mockUpdateDatasetDataByIndexes).not.toHaveBeenCalled();
+  });
+
+  it('should pass datasetId filter to replaceS3KeysToPreviewUrls to prevent signing foreign keys', async () => {
+    await handler({
+      body: {
+        dataId,
+        q: 'question',
+        a: 'answer',
+        indexes: []
+      }
+    } as any);
+
+    expect(mockReplaceS3KeysToPreviewUrls).toHaveBeenCalledWith(
+      ['question', 'answer'],
+      expect.any(Date),
+      expect.objectContaining({
+        filter: expect.any(Function)
+      })
+    );
+
+    const filter = mockReplaceS3KeysToPreviewUrls.mock.calls[0]?.[2]?.filter;
+    expect(filter('dataset/dataset-id/image.png')).toBe(true);
+    expect(filter('dataset/foreign-dataset/image.png')).toBe(false);
+    expect(filter('chat/app/user/chat/image.png')).toBe(false);
   });
 });

@@ -221,7 +221,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       userContent: workflowUserQuestion,
       responseChatItemId: roundState.responseChatItemId,
       interactive,
-      fixedTitle: pluginFixedTitle
+      fixedTitle: pluginFixedTitle,
+      locale: getLocale(req)
     });
 
     const runningChatId = preparedRound.chatId;

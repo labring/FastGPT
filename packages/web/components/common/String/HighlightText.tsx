@@ -1,5 +1,6 @@
 import { Box } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 const HighlightText = ({
   rawText,
@@ -13,7 +14,9 @@ const HighlightText = ({
   mode?: 'text' | 'bg';
 }) => {
   const { parts } = useMemo(() => {
-    const regx = new RegExp(`(${matchText})`, 'gi');
+    // matchText 是用户输入的搜索词，按字面匹配；不转义时输入 `(`、`[`、`+` 等会抛出
+    // Invalid regular expression，整个渲染树报错。
+    const regx = new RegExp(`(${replaceRegChars(matchText)})`, 'gi');
     const parts = rawText.split(regx);
 
     return {

@@ -108,6 +108,10 @@ vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {
 
 import handler from '@/pages/api/core/dataset/data/insertImages';
 
+const pngBuffer = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64'
+);
 const collectionId = '68ad85a7463006c963799a06';
 const datasetId = '68ad85a7463006c963799a07';
 const vectorModelData = {
@@ -158,7 +162,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     mockGetDatasetAgentModel.mockReturnValue(agentModelData);
     mockGetDatasetVlmModel.mockReturnValue(undefined);
     mockGetTeamPlanStatus.mockResolvedValue({ standard: { maxUploadFileCount: 10 } });
-    mockReadFile.mockResolvedValue(Buffer.from('image-bytes'));
+    mockReadFile.mockResolvedValue(pngBuffer);
     mockGetFileS3Key.dataset.mockReturnValue({ fileKey: 'dataset/team/cat.png' });
     mockUploadImage2S3Bucket.mockResolvedValue('dataset/team/cat.png');
     mockMongoSessionRun.mockImplementation((fn: any) => fn('session'));
@@ -192,7 +196,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
       session: 'session'
     });
     expect(mockUploadImage2S3Bucket).toHaveBeenCalledWith('private', {
-      buffer: Buffer.from('image-bytes'),
+      buffer: pngBuffer,
       uploadKey: 'dataset/team/cat.png',
       mimetype: 'image/png',
       filename: 'cat.png',
@@ -220,5 +224,20 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     expect(mockUploadImage2S3Bucket).not.toHaveBeenCalled();
     expect(mockPushDataListToTrainingQueue).not.toHaveBeenCalled();
     expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/cat.png']);
+  });
+
+  it('rejects empty image files', async () => {
+    mockReadFile.mockResolvedValueOnce(Buffer.alloc(0));
+
+    await expect(handler({} as any)).rejects.toThrow('EmptyUploadFile');
+    expect(mockUploadImage2S3Bucket).not.toHaveBeenCalled();
+    expect(mockClearDiskTempFiles).toHaveBeenCalledWith(['/tmp/cat.png']);
+  });
+
+  it('rejects non-image content even when the filename is png', async () => {
+    mockReadFile.mockResolvedValueOnce(Buffer.from('not an image'));
+
+    await expect(handler({} as any)).rejects.toThrow('UploadFileTypeMismatch');
+    expect(mockUploadImage2S3Bucket).not.toHaveBeenCalled();
   });
 });

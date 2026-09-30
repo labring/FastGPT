@@ -29,7 +29,7 @@ import {
   AiChatQuoteTemplate
 } from '@fastgpt/global/core/workflow/template/system/aiChat/index';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   Input_Template_File_Link,

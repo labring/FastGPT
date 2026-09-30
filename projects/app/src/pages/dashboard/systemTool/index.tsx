@@ -274,10 +274,14 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                       menuList={[
                         {
                           children: [
-                            {
-                              label: t('app:install_from_marketplace'),
-                              onClick: () => router.push('/dashboard/tool/marketplace')
-                            },
+                            ...(!feConfigs?.disableMarketplace
+                              ? [
+                                  {
+                                    label: t('app:install_from_marketplace'),
+                                    onClick: () => router.push('/dashboard/tool/marketplace')
+                                  }
+                                ]
+                              : []),
                             {
                               label: t('app:install_from_file'),
                               onClick: onOpenImportModal

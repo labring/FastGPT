@@ -25,6 +25,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 import { createChatAgentHelperAppConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
 import { WORKFLOW_BUILDER_CHAT_CONFIG } from '@fastgpt/global/core/workflow/builder/constants';
+import { getDisplayChatTitle } from '@fastgpt/service/core/chat/title';
 
 async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   const { sourceType, sourceId, chatId } = parseApiInput({
@@ -62,7 +63,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
+      title: getDisplayChatTitle({ customTitle: chat?.customTitle, title: chat?.title }),
       userAvatar: undefined,
       variables: {},
       chatGenerateStatus: chat?.chatGenerateStatus,
@@ -126,7 +127,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
+      title: getDisplayChatTitle({ customTitle: chat?.customTitle, title: chat?.title }),
       userAvatar: undefined,
       variables: {},
       chatGenerateStatus,
@@ -243,7 +244,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     return InitChatResponseSchema.parse({
       chatId,
       ...buildChatTargetResponse({ sourceType, sourceId }),
-      title: chat?.title || '',
+      title: getDisplayChatTitle({ customTitle: chat?.customTitle, title: chat?.title }),
       userAvatar: undefined,
       variables,
       chatGenerateStatus: chat?.chatGenerateStatus,

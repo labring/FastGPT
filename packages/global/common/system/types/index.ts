@@ -1,6 +1,6 @@
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import { z } from 'zod';
-import { NumSchema } from '../../zod';
+import { BoolSchema, NumSchema } from '../../zod';
 import type {
   LicensePayload,
   LicenseSchemaVersionType,
@@ -210,6 +210,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   openAPIDocUrl: z.string().optional().meta({ description: 'OpenAPI 接口文档地址' }),
   appTemplateCourse: z.string().optional().meta({ description: '应用模板使用教程链接' }),
   marketplaceUrl: z.string().optional().meta({ description: '插件市场与模板市场服务地址' }),
+  disableMarketplace: BoolSchema.optional().meta({ description: '是否隐藏插件市场安装入口' }),
   customApiDomain: z.string().optional().meta({ description: '对外开放的自定义 API 域名' }),
   customSharePageDomain: z
     .string()
@@ -231,7 +232,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       autoLogin: z
         .boolean()
         .optional()
-        .meta({ description: '是否在首次进入页面时自动跳转 SSO 登录' })
+        .meta({ description: '是否在首次进入页面时自动跳转 SSO 登录' }),
+      disablePasswordForSsoUsers: z.boolean().optional().meta({
+        description: '是否禁止 SSO 账号使用平台密码登录与改密；仅在配置了 sso.url 时生效'
+      })
     })
     .optional()
     .meta({ description: '企业单点登录（SSO）配置' }),

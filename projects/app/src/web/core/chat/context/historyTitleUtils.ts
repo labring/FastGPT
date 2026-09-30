@@ -7,8 +7,9 @@ export const getDisplayHistoryTitle = ({
   title,
   fallbackTitle = i18next.t('common:core.chat.New Chat')
 }: {
-  customTitle?: string;
-  title?: string;
+  // 数据库和日志聚合结果可能返回 null，统一在这里收敛成展示用兜底文案
+  customTitle?: string | null;
+  title?: string | null;
   fallbackTitle?: string;
 }) => {
   const normalizedCustomTitle = customTitle?.trim();
@@ -18,7 +19,7 @@ export const getDisplayHistoryTitle = ({
 
 export const normalizeHistoryTitle = (history: ChatHistoryItemType) => ({
   ...history,
-  title: getDisplayHistoryTitle({ title: history.title })
+  title: getDisplayHistoryTitle({ title: history.title, customTitle: history.customTitle })
 });
 
 export const upsertHistoryTitle = ({

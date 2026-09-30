@@ -1,10 +1,7 @@
-import { getForbidCollectionIdList, filterCollectionByMetadata } from './collectionFilter';
-import { filterLegacyCollectionByMetadata } from './legacy/collectionFilter';
+import { getForbidCollectionIdList, filterCollectionByMetadata } from '../filter/collectionFilter';
 import { embeddingRecall } from './embeddingRecall';
 import { fullTextRecall } from './fullTextRecall';
 import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { CollectionFilterMode } from '../type';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
 
 /**
  * 默认召回的并行调度层。
@@ -17,7 +14,6 @@ export const multiQueryRecall = async ({
   model,
   imageQueries,
   collectionFilterMatch,
-  collectionFilterMode = DatasetTagFilterVersionEnum.structured,
   readableCollectionIdList,
   embeddingLimit,
   fullTextLimit,
@@ -29,7 +25,6 @@ export const multiQueryRecall = async ({
   model: EmbeddingSystemModelDataType;
   imageQueries: string[];
   collectionFilterMatch?: string;
-  collectionFilterMode?: CollectionFilterMode;
   readableCollectionIdList?: string[];
   embeddingLimit: number;
   fullTextLimit: number;
@@ -41,9 +36,7 @@ export const multiQueryRecall = async ({
       teamId,
       datasetIds
     }),
-    collectionFilterMode === DatasetTagFilterVersionEnum.legacy
-      ? filterLegacyCollectionByMetadata({ teamId, datasetIds, collectionFilterMatch })
-      : filterCollectionByMetadata({ teamId, datasetIds, collectionFilterMatch })
+    filterCollectionByMetadata({ teamId, datasetIds, collectionFilterMatch })
   ]);
 
   // 权限可读集合 ∩ 用户 metadata 过滤集合 → 有效过滤集合（AND 语义）。

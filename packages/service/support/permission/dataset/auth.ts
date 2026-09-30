@@ -27,6 +27,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { parseHeaderCert } from '../auth/common';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
 import { isS3ObjectKey } from '../../../common/s3/utils';
+import { isAuthorizedDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
 import { resolveCollectionPermission } from '../collection/auth';
@@ -308,6 +309,13 @@ export async function authDatasetData({
     collectionId: datasetData.collectionId
   });
 
+  const authorizedDatasetId = String(result.collection.datasetId);
+
+  // 数据块记录中的 datasetId 若与已鉴权的 collection.datasetId 不一致，说明数据存在脏数据或越权关联，拒绝访问
+  if (datasetData.datasetId && String(datasetData.datasetId) !== authorizedDatasetId) {
+    return Promise.reject(DatasetErrEnum.unAuthDatasetData);
+  }
+
   const data: DatasetDataItemType = {
     id: String(datasetData._id),
     teamId: datasetData.teamId,
@@ -316,10 +324,17 @@ export async function authDatasetData({
     a: datasetData.a,
     imageId: datasetData.imageId,
     imagePreivewUrl:
-      datasetData.imageId && isS3ObjectKey(datasetData.imageId, 'dataset')
+      // imageId 必须绑定到已通过权限校验的集合所属 dataset，避免脏数据导致跨库签发。
+      datasetData.imageId &&
+      isS3ObjectKey(datasetData.imageId, 'dataset') &&
+      isAuthorizedDatasetFileS3Key({
+        key: datasetData.imageId,
+        datasetId: authorizedDatasetId
+      })
         ? (
             await getS3DatasetSource().createGetDatasetFileURL({
               key: datasetData.imageId,
+              datasetId: authorizedDatasetId,
               expiredHours: 1,
               external: true
             })
@@ -327,7 +342,7 @@ export async function authDatasetData({
         : undefined,
     chunkIndex: datasetData.chunkIndex,
     indexes: datasetData.indexes,
-    datasetId: String(datasetData.datasetId),
+    datasetId: authorizedDatasetId,
     collectionId: String(datasetData.collectionId),
     metadata: datasetData.metadata,
     sourceName: result.collection.name || '',

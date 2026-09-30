@@ -89,7 +89,6 @@ const UserTable = () => {
         position={'relative'}
         h={'100%'}
         maxH={'none'}
-        horizontalScroll
         px={[4, 6]}
         py={6}
         footer={
@@ -179,6 +178,11 @@ function UserDetailModal({ user, onClose }: { user: UserItemType; onClose: () =>
       <Flex alignItems={'center'} pb={4}>
         <Box flex={'0 0 120px'}>状态:</Box>
         <Box>{user.status}</Box>
+      </Flex>
+      <Flex alignItems={'center'} pb={4}>
+        <Box flex={'0 0 120px'}>账号来源:</Box>
+        {/* isSsoUser 由服务端按当前 SSO 配置权威判定，用于让管理员区分同步账号与本地账号 */}
+        <Box>{user.isSsoUser ? 'SSO 同步' : '本地账号'}</Box>
       </Flex>
     </MyModal>
   );

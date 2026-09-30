@@ -279,6 +279,18 @@ describe('valueTypeFormat', () => {
     expect(valueTypeFormat('invalid{', WorkflowIOValueTypeEnum.arrayString)).toEqual(['invalid{']);
   });
 
+  it('should wrap a single JSON object string into a one-item array for array types', () => {
+    // 与 'single' → ['single'] 一致：数组类型收到的非数组值包成单元素数组，
+    // 不能把对象原样交给期望数组的节点（如循环、并行执行）
+    expect(valueTypeFormat('{"name":"a"}', WorkflowIOValueTypeEnum.arrayObject)).toEqual([
+      { name: 'a' }
+    ]);
+    expect(valueTypeFormat(' {"id": 1} ', WorkflowIOValueTypeEnum.arrayAny)).toEqual([{ id: 1 }]);
+    expect(valueTypeFormat('[{"name":"a"}]', WorkflowIOValueTypeEnum.arrayObject)).toEqual([
+      { name: 'a' }
+    ]);
+  });
+
   it('should handle special types (datasetQuote, selectDataset, selectApp)', () => {
     expect(valueTypeFormat('[{"id":"1"}]', WorkflowIOValueTypeEnum.datasetQuote)).toEqual([
       { id: '1' }

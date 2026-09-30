@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Link } from '@chakra-ui/react';
+import { Box, Link } from '@chakra-ui/react';
 import ReactMarkdown from 'react-markdown';
 import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
@@ -7,6 +7,7 @@ import RehypeKatex from 'rehype-katex';
 import RemarkBreaks from 'remark-breaks';
 import QuickQuestionButton from '@/components/core/chat/QuickQuestionButton';
 import { useChatInstanceActions } from '../../core/chat/ChatContainer/context/chatInstanceActionsContext';
+import { isSafeHref } from '@fastgpt/global/common/string/url';
 
 import 'katex/dist/katex.min.css';
 import styles from '../index.module.scss';
@@ -17,14 +18,25 @@ function MyLink(e: any) {
   const text = String(e.children);
   const { sendMessage } = useChatInstanceActions();
 
-  return !!href ? (
+  if (!href) {
+    return (
+      <QuickQuestionButton
+        mb={2}
+        onClick={() => sendMessage({ text })}
+      >
+        {text}
+      </QuickQuestionButton>
+    );
+  }
+
+  if (!isSafeHref(href)) {
+    return <Box as={'span'}>{text}</Box>;
+  }
+
+  return (
     <Link href={href} target={'_blank'}>
       {text}
     </Link>
-  ) : (
-    <QuickQuestionButton mb={2} onClick={() => sendMessage({ text })}>
-      {text}
-    </QuickQuestionButton>
   );
 }
 

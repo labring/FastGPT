@@ -99,6 +99,7 @@ export type ToolDispatchContext = Pick<
   | 'workflowDispatchDeep'
   | 'dynamicDataset'
   | 'params'
+  | 'query'
   | 'stream'
   | 'nodeResponseSink'
 > & {
@@ -169,6 +170,7 @@ export const getExecuteTool = ({
   retainDatasetCite,
   maxRunTimes,
   workflowDispatchDeep,
+  query,
   nodeResponseSink
 }: ToolDispatchContext) => {
   /**
@@ -298,6 +300,7 @@ export const getExecuteTool = ({
             nodeResponseParentId: callId,
             variableState,
             lastInteractive,
+            query,
             useResourceSnapshot: true
           });
 
@@ -374,6 +377,7 @@ export const getExecuteTool = ({
             nodeResponseParentId: callId,
             variableState,
             lastInteractive,
+            query,
             useResourceSnapshot: tool.type !== 'commercialTool'
           });
 

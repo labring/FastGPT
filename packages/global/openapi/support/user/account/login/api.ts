@@ -224,7 +224,13 @@ export const WxLoginResultResponseSchema = z.union([
 ]);
 export type WxLoginResultResponseType = z.infer<typeof WxLoginResultResponseSchema>;
 
-// ===== Pre login - get login verification code =====
+/* ============================================================================
+ * API: 获取预登录验证码
+ * Route: GET /api/support/user/account/preLogin
+ * Method: GET
+ * Description: 获取密码登录所需的验证码，30 秒内有效；同一用户名重新获取会覆盖旧验证码
+ * Tags: ['User Login']
+ * ============================================================================ */
 export const PreLoginQuerySchema = z.object({
   username: AccountLoginUsernameSchema.meta({
     example: 'admin',
@@ -237,7 +243,7 @@ export const PreLoginResponseSchema = z
   .object({
     code: z.string().meta({
       example: 'a1b2c3',
-      description: '预登录验证码'
+      description: '预登录验证码，30 秒内有效；同一用户名重新获取会覆盖旧验证码'
     })
   })
   .meta({
@@ -247,19 +253,26 @@ export const PreLoginResponseSchema = z
   });
 export type PreLoginResponseType = z.infer<typeof PreLoginResponseSchema>;
 
-// ===== Login by password =====
+/* ============================================================================
+ * API: 用户密码登录
+ * Route: POST /api/support/user/account/loginByPassword
+ * Method: POST
+ * Description: 使用预登录验证码和经一次 SHA-256 哈希的原始密码登录
+ * Tags: ['User Login']
+ * ============================================================================ */
 export const LoginByPasswordBodySchema = PublicAuthTrackRegisterParamsSchema.extend({
   username: AccountLoginUsernameSchema.meta({
     example: 'admin',
     description: '用户名'
   }),
   password: AccountPasswordSchema.meta({
-    example: 'hashed_password',
-    description: '密码'
+    example: 'a4b7fbda9179055ba005b83fe1d9d558c85e5f6afc2ce4071439ecdab864b98e',
+    description:
+      '将原始密码按 UTF-8 编码后计算一次 SHA-256，传入 64 位小写十六进制结果；不要直接传原始密码或重复哈希。示例为 example-password 的 SHA-256；Apifox 前置脚本见接口说明。'
   }),
   code: ShortAuthStringSchema.meta({
     example: '123456',
-    description: '预登录验证码'
+    description: 'preLogin 返回的验证码，30 秒内有效'
   }),
   language: LanguageSchema.optional().default('zh-CN').meta({
     example: 'zh-CN',
@@ -268,7 +281,7 @@ export const LoginByPasswordBodySchema = PublicAuthTrackRegisterParamsSchema.ext
 }).meta({
   example: {
     username: 'admin',
-    password: 'hashed_password',
+    password: 'a4b7fbda9179055ba005b83fe1d9d558c85e5f6afc2ce4071439ecdab864b98e',
     code: '123456',
     language: 'zh-CN'
   }

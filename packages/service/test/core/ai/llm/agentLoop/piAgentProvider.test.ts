@@ -1068,7 +1068,7 @@ describe('runPiAgentLoop', () => {
     });
   });
 
-  it('forwards runtime tool metadata, assistant messages and usage through tool_run_end', async () => {
+  it('forwards runtime tool metadata, assistant messages, responses and usage through tool_run_end', async () => {
     const events: any[] = [];
     const usagePush = vi.fn();
     const toolUsage = {
@@ -1091,6 +1091,7 @@ describe('runPiAgentLoop', () => {
     const executeTool = vi.fn().mockResolvedValue({
       response: 'search result',
       assistantMessages: [{ role: 'assistant', content: 'child answer' }],
+      assistantResponses: [{ text: { content: 'child answer' }, hideReason: true }],
       usages: [toolUsage],
       errorMessage: 'partial tool error',
       metadata
@@ -1124,6 +1125,7 @@ describe('runPiAgentLoop', () => {
       call: { id: 'call_search' },
       response: 'search result',
       assistantMessages: [{ role: 'assistant', content: 'child answer' }],
+      assistantResponses: [{ text: { content: 'child answer' }, hideReason: true }],
       usages: [toolUsage],
       errorMessage: 'partial tool error',
       metadata
@@ -1292,9 +1294,11 @@ describe('runPiAgentLoop', () => {
   });
 
   it('resumes child interactive through executeInteractiveTool and continues pi context', async () => {
+    const emitEvent = vi.fn();
     const executeInteractiveTool = vi.fn().mockResolvedValue({
       response: 'selected project A',
       assistantMessages: [],
+      assistantResponses: [{ text: { content: 'selected project A' } }],
       usages: [],
       stop: false
     });
@@ -1345,6 +1349,7 @@ describe('runPiAgentLoop', () => {
         toolCatalog: { runtimeTools: [] },
         executeTool: vi.fn(),
         executeInteractiveTool,
+        emitEvent,
         checkIsStopping: vi.fn(() => false)
       }
     });
@@ -1367,6 +1372,12 @@ describe('runPiAgentLoop', () => {
     expect(agentContinueMock).toHaveBeenCalledTimes(1);
     expect(agentPromptMock).not.toHaveBeenCalled();
     expect(result.status).toBe('done');
+    expect(emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tool_run_end',
+        assistantResponses: [{ text: { content: 'selected project A' } }]
+      })
+    );
   });
 
   it('normalizes an empty child interactive response before continuing pi context', async () => {

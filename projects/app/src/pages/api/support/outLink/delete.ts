@@ -1,6 +1,6 @@
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -28,7 +28,7 @@ async function handler(
     req,
     outLinkId: id,
     authToken: true,
-    per: OwnerPermissionVal
+    per: ManagePermissionVal
   });
 
   const outlink = await MongoOutLink.findById(id);

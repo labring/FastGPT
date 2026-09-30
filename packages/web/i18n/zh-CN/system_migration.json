@@ -90,6 +90,7 @@
   "migrations.20260907_migrate_dataset_tags_v2.validation": "校验标签迁移结果",
   "migrations.20260916_backfill_app_resource_snapshots.name": "回填应用资源快照",
   "migrations.20260916_backfill_app_resource_snapshots.description": "为历史应用版本回填资源快照和正式版本指针，并为没有版本的应用补建正式版本。",
+  "migrations.20260916_backfill_app_resource_snapshots.clean_v1_apps": "清理废弃 V1 应用",
   "migrations.20260916_backfill_app_resource_snapshots.versions": "回填应用版本资源快照",
   "migrations.20260916_backfill_app_resource_snapshots.apps": "回填应用正式版本指针",
   "migrations.20260916_backfill_app_resource_snapshots.validation": "校验应用资源迁移结果",
@@ -97,5 +98,10 @@
   "migrations.20260923_enable_channel_reasoning_mapping.name": "为 OpenAI 协议渠道启用 reasoning 映射",
   "migrations.20260923_enable_channel_reasoning_mapping.description": "为现有 AIProxy OpenAI 协议渠道开启 reasoning 到 reasoning_content 的响应字段转换，并保留渠道的其他配置。",
   "migrations.20260923_enable_channel_reasoning_mapping.channels": "更新渠道配置",
-  "migrations.20260923_enable_channel_reasoning_mapping.result": "已检查 {{channelCount}} 个渠道，更新 {{updatedCount}} 个渠道。"
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "已检查 {{channelCount}} 个渠道，更新 {{updatedCount}} 个渠道。",
+  "migrations.20260928_backfill_member_name_set.name": "回填团队成员名设置标记",
+  "migrations.20260928_backfill_member_name_set.description": "为历史团队成员回填 isSetMemberName 标记；owner 始终标记为已设置，非 owner 中与登录用户名相同的成员名标记为需要补充。",
+  "migrations.20260928_backfill_member_name_set.members": "回填成员名标记",
+  "migrations.20260928_backfill_member_name_set.validation": "校验成员名回填结果",
+  "migrations.20260928_backfill_member_name_set.result": "已扫描 {{scannedCount}} 个成员，标记 owner {{ownerCount}} 个、用户名回落名 {{usernameMatchCount}} 个、已设置成员名 {{setTrueCount}} 个。"
 }

@@ -141,6 +141,42 @@ describe('PasswordVerificationService.withVerifiedCredentials', () => {
     });
   });
 
+  it('runs the pre-lookup guard after material verification and before password lookup', async () => {
+    const calls: string[] = [];
+    const dependencies = createDependencies({
+      assertConsumeFrequency: vi.fn(async () => {
+        calls.push('limit');
+      }),
+      consumeInTransaction: vi.fn(async (_params, handler) => {
+        calls.push('consume');
+        return handler({
+          material: { preLoginCode: 'ABC123' },
+          session: undefined as unknown as ClientSession
+        });
+      }),
+      findUserByCredentials: vi.fn(async () => {
+        calls.push('password');
+        return { _id: 'user-id' } as unknown as PasswordVerificationUser;
+      })
+    });
+    const service = new PasswordVerificationService(dependencies);
+
+    await service.withVerifiedCredentials(
+      {
+        username: 'test@example.com',
+        password: 'hashed-password',
+        code: 'ABC123',
+        purpose: 'login',
+        beforeFindUserByCredentials: async () => {
+          calls.push('guard');
+        }
+      },
+      async () => 'completed'
+    );
+
+    expect(calls).toEqual(['limit', 'consume', 'guard', 'password']);
+  });
+
   it('does not read or consume login material after the account limit rejects', async () => {
     const dependencies = createDependencies({
       assertConsumeFrequency: vi.fn(async () => Promise.reject(new Error('rate limited')))

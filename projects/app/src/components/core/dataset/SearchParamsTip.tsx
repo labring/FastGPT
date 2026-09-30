@@ -42,7 +42,6 @@ const SearchParamsTip = ({
       borderRadius={'lg'}
       borderWidth={'1px'}
       borderColor={'primary.1'}
-      horizontalScroll
       sx={{
         '&::-webkit-scrollbar': {
           height: '6px',

@@ -11,7 +11,6 @@ import type {
   AuditEventParamsType
 } from '@fastgpt/global/support/user/audit/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { UNSET_TEAM_MEMBER_NAME } from '@fastgpt/global/support/user/team/constant';
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
 
@@ -20,18 +19,6 @@ export type AuditLogInput = {
   teamId: string;
   event: AuditEventEnum | AdminAuditEventEnum;
   params?: Record<string, unknown>;
-};
-
-/** 审计快照不得持久化团队成员名内部保留值，递归处理事件中的数组和普通对象。 */
-const sanitizeAuditMetadata = (value: unknown): unknown => {
-  if (value === UNSET_TEAM_MEMBER_NAME) return '';
-  if (Array.isArray(value)) return value.map(sanitizeAuditMetadata);
-  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, sanitizeAuditMetadata(item)])
-    );
-  }
-  return value;
 };
 
 export function getI18nAppType(type: AppTypeEnum): string {
@@ -123,7 +110,7 @@ export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
       tmbId: tmbId,
       teamId: teamId,
       event,
-      metadata: sanitizeAuditMetadata(params)
+      metadata: params
     });
   }).catch((error) => {
     logger.error('Audit log write failed', { error, teamId, tmbId, event });
@@ -141,7 +128,7 @@ export const addAuditLogs = async (logs: AuditLogInput[]): Promise<void> => {
           tmbId,
           teamId,
           event,
-          metadata: sanitizeAuditMetadata(params)
+          metadata: params
         })),
         { ordered: true }
       );

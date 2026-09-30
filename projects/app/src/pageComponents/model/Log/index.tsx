@@ -211,7 +211,6 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
           isLoading={isLoading}
         >
           <FixedTableLayout
-            horizontalScroll
             scrollMode="normal"
             bodyRef={scrollContainerRef}
             rootProps={{ flex: '1 0 0', h: 0 }}
