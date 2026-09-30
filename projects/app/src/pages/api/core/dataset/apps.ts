@@ -12,6 +12,10 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
 import { listReadableReferencedApps } from '@/service/core/app/referencedApps';
 
+/**
+ * List readable published apps referencing the specified dataset or datasets within the folder.
+ * Enforces owner-only access on the target dataset resource.
+ */
 async function handler(req: ApiRequestProps<unknown, GetAppsByDatasetIdQuery>) {
   const { datasetId } = parseApiInput({ req, querySchema: GetAppsByDatasetIdQuerySchema }).query;
   const [{ teamId, tmbId, permission: teamPer }, { permission: datasetPer }] = await Promise.all([

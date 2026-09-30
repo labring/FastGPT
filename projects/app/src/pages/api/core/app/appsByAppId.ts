@@ -5,7 +5,7 @@ import {
   type GetAppsByAppIdQuery
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { getAppPublishedResourceType } from '@fastgpt/global/core/app/utils';
+import { getAppPublishedResourceType } from '@fastgpt/service/core/app/resourceLookup';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';

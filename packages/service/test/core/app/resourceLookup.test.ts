@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import {
   countTeamAppsByPublishedResourceGroups,
-  findTeamAppsByPublishedResource
+  findTeamAppsByPublishedResource,
+  getAppPublishedResourceType
 } from '@fastgpt/service/core/app/resourceLookup';
 
 const teamId = new Types.ObjectId('65f000000000000000000071');
@@ -15,6 +17,18 @@ const otherAppId = new Types.ObjectId('65f000000000000000000075');
 const publishedVersionId = new Types.ObjectId('65f000000000000000000076');
 const oldVersionId = new Types.ObjectId('65f000000000000000000077');
 const otherTeamVersionId = new Types.ObjectId('65f000000000000000000078');
+
+describe('getAppPublishedResourceType', () => {
+  it('maps tool and agent app types to published resource types', () => {
+    expect(getAppPublishedResourceType(AppTypeEnum.tool)).toBe('tool');
+    expect(getAppPublishedResourceType(AppTypeEnum.workflowTool)).toBe('tool');
+    expect(getAppPublishedResourceType(AppTypeEnum.workflow)).toBe('agent');
+  });
+
+  it('returns undefined for unsupported app types', () => {
+    expect(getAppPublishedResourceType('unknown')).toBeUndefined();
+  });
+});
 
 describe('findTeamAppsByPublishedResource', () => {
   beforeEach(async () => {

@@ -96,7 +96,7 @@ const ReferencedAppsContent = ({
                   textOverflow={'ellipsis'}
                   whiteSpace={'nowrap'}
                 >
-                  {app.sourceMember?.name || '-'}
+                  {app.sourceMember?.name ?? '-'}
                 </Box>
               </Flex>
             ))}

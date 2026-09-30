@@ -5,6 +5,7 @@ import { AppVersionCollectionName } from './version/schema';
 import { buildAppResourceMongoQuery } from './resources';
 import { getFolderDescendantResources } from '../../common/parentFolder/resource';
 import type { FolderTreeNode } from '../../common/parentFolder/resource';
+import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
 type PublishedAppResource = { type: AppResourceType; id: string };
 type MatchedPublishedApp = Pick<
@@ -32,6 +33,14 @@ type PublishedResourceGroup = {
   folderId?: string;
 };
 
+/** Map an App type to the resource kind persisted in published App resources. */
+export const getAppPublishedResourceType = (type: string): 'agent' | 'tool' | undefined => {
+  if (type === AppTypeEnum.tool || ToolTypeList.some((toolType) => toolType === type)) {
+    return 'tool';
+  }
+  if (AppTypeList.some((appType) => appType === type)) return 'agent';
+  return undefined;
+};
 /**
  * 查找当前团队发布版本中引用指定资源的 App。
  * 查询条件按资源类型分组；没有有效资源 ID 时不访问 MongoDB。

@@ -5,7 +5,7 @@ import {
   type GetAppsByToolIdQuery
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { getAppPublishedResourceType } from '@fastgpt/global/core/app/utils';
+import { getAppPublishedResourceType } from '@fastgpt/service/core/app/resourceLookup';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -13,6 +13,10 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
 import { listReadableReferencedApps } from '@/service/core/app/referencedApps';
 
+/**
+ * List readable published apps referencing the specified tool or tools within the folder.
+ * Enforces owner-only access on the target tool resource.
+ */
 async function handler(req: ApiRequestProps<unknown, GetAppsByToolIdQuery>) {
   const { toolId } = parseApiInput({ req, querySchema: GetAppsByToolIdQuerySchema }).query;
   const [{ teamId, tmbId, permission: teamPer }, { permission: appPer }] = await Promise.all([

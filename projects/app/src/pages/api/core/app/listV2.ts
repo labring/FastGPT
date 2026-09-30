@@ -7,9 +7,11 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getAppPublishedResourceType } from '@fastgpt/global/core/app/utils';
+import {
+  countTeamAppsByPublishedResourceGroups,
+  getAppPublishedResourceType
+} from '@fastgpt/service/core/app/resourceLookup';
 import { findAppsPage } from '@fastgpt/service/core/app/entity';
-import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getInteractiveAppIdSet } from '@fastgpt/service/core/app/version/controller';
 import { AppRolePerMap } from '@fastgpt/global/support/permission/app/constant';

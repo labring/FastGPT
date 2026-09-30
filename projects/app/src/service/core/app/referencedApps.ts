@@ -19,6 +19,14 @@ type PublishedApp = Pick<
   '_id' | 'avatar' | 'type' | 'name' | 'intro' | 'tmbId' | 'updateTime'
 >;
 
+export type ListReadableReferencedAppsParams = {
+  teamId: string;
+  tmbId: string;
+  isTeamOwner: boolean;
+  resourceType: AppResourceType;
+  resourceIds: string | string[];
+};
+
 /**
  * 按当前用户的 App 读取权限过滤引用结果。
  * hiddenCount 统计无权读取的 App，list 仅包含请求者可读取的 App。
@@ -86,13 +94,7 @@ export const listReadableReferencedApps = async ({
   isTeamOwner,
   resourceType,
   resourceIds
-}: {
-  teamId: string;
-  tmbId: string;
-  isTeamOwner: boolean;
-  resourceType: AppResourceType;
-  resourceIds: string | string[];
-}): Promise<ReferencedAppsResponse> => {
+}: ListReadableReferencedAppsParams): Promise<ReferencedAppsResponse> => {
   const { apps } = await findTeamAppsByPublishedResource({
     teamId,
     type: resourceType,
