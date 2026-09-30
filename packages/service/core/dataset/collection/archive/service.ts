@@ -213,7 +213,7 @@ export const buildDatasetArchivePlan = async ({
     collectionIds: [...imageCollectionIds]
   })) {
     assertActive?.();
-    // 图片完成训练后会同时短暂存在于两个来源，按集合和对象 key 去重并优先保留已完成数据。
+    // 同一图片可能对应多条 data 记录，按集合和对象 key 去重，避免重复归档。
     const imageKey = `${imageFile.collectionId}:${imageFile.imageId}`;
     if (includedImageKeys.has(imageKey)) continue;
     includedImageKeys.add(imageKey);

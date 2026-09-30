@@ -1,7 +1,6 @@
 import { MongoDatasetCollection } from '../schema';
 import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '../../data/schema';
-import { MongoDatasetTraining } from '../../training/schema';
 
 export type DatasetArchiveCollection = {
   collectionId: string;
@@ -86,7 +85,10 @@ export async function* iterateArchiveCollectionsByParentIds({
   }
 }
 
-/** 按可信团队和知识库边界分批读取图片集合中的原始图片 key。 */
+/**
+ * 按可信团队和知识库边界分批读取 data 中的原始图片 key。
+ * 不补读 training，避免训练迁移期间两次查询之间发生漏读；仅在训练队列中的图片暂不归档。
+ */
 export async function* iterateArchiveImageFilesByCollectionIds({
   teamId,
   datasetId,
@@ -123,25 +125,6 @@ export async function* iterateArchiveImageFilesByCollectionIds({
     }
   } finally {
     await dataCursor.close().catch(() => undefined);
-  }
-
-  // 图片训练成功前只存在于训练队列；补读这些记录，避免源文件已在 S3 但归档为空。
-  const trainingCursor = MongoDatasetTraining.find(filter, fields)
-    .sort(sort)
-    .lean()
-    .cursor({ batchSize: 500 });
-
-  try {
-    for await (const item of trainingCursor) {
-      if (typeof item.imageId !== 'string' || !item.imageId) continue;
-      yield {
-        dataId: String(item._id),
-        collectionId: String(item.collectionId),
-        imageId: item.imageId
-      };
-    }
-  } finally {
-    await trainingCursor.close().catch(() => undefined);
   }
 }
 

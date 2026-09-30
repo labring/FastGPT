@@ -87,7 +87,6 @@ describe('iterateArchiveCollectionsByParentIds', () => {
 describe('iterateArchiveImageFilesByCollectionIds', () => {
   it('reads image keys within the dataset boundary and closes its cursor', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
-    const trainingClose = vi.fn().mockResolvedValue(undefined);
     const cursor = {
       close,
       async *[Symbol.asyncIterator]() {
@@ -99,18 +98,10 @@ describe('iterateArchiveImageFilesByCollectionIds', () => {
         };
       }
     };
-    const trainingCursor = {
-      close: trainingClose,
-      async *[Symbol.asyncIterator]() {}
-    };
     const createCursor = vi.fn(() => cursor);
-    const createTrainingCursor = vi.fn(() => trainingCursor);
     const lean = vi.fn(() => ({ cursor: createCursor }));
-    const trainingLean = vi.fn(() => ({ cursor: createTrainingCursor }));
     const sort = vi.fn(() => ({ lean }));
-    const trainingSort = vi.fn(() => ({ lean: trainingLean }));
     mocks.findData.mockReturnValue({ sort });
-    mocks.findTraining.mockReturnValue({ sort: trainingSort });
 
     const files = [];
     for await (const file of iterateArchiveImageFilesByCollectionIds({
@@ -140,10 +131,10 @@ describe('iterateArchiveImageFilesByCollectionIds', () => {
     expect(sort).toHaveBeenCalledWith({ collectionId: 1, chunkIndex: 1, _id: 1 });
     expect(createCursor).toHaveBeenCalledWith({ batchSize: 500 });
     expect(close).toHaveBeenCalledOnce();
-    expect(trainingClose).toHaveBeenCalledOnce();
+    expect(mocks.findTraining).not.toHaveBeenCalled();
   });
 
-  it('also reads image keys that are still waiting in the training queue', async () => {
+  it('ignores image keys that exist only in the training queue', async () => {
     const close = vi.fn().mockResolvedValue(undefined);
     const dataCursor = {
       close,
@@ -178,20 +169,8 @@ describe('iterateArchiveImageFilesByCollectionIds', () => {
       files.push(file);
     }
 
-    expect(files).toContainEqual({
-      dataId: 'training-1',
-      collectionId: 'collection-1',
-      imageId: 'dataset/dataset-1/pending-image'
-    });
-    expect(mocks.findTraining).toHaveBeenCalledWith(
-      {
-        teamId: 'team-1',
-        datasetId: 'dataset-1',
-        collectionId: { $in: ['collection-1'] },
-        imageId: { $type: 'string', $ne: '' }
-      },
-      '_id collectionId imageId chunkIndex'
-    );
-    expect(trainingCreateCursor).toHaveBeenCalledWith({ batchSize: 500 });
+    expect(files).toEqual([]);
+    expect(mocks.findTraining).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledOnce();
   });
 });
