@@ -123,11 +123,7 @@ export async function addSourceMember<T extends { tmbId: string }>({
 
       return {
         ...formatItem,
-        sourceMember: {
-          name: tmb.name?.trim() ? tmb.name : 'unknown',
-          avatar: tmb.avatar,
-          status: tmb.status ?? TeamMemberStatusEnum.active
-        }
+        sourceMember: formatSourceMember(tmb)
       };
     })
     .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;
