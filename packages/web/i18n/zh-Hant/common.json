@@ -1315,5 +1315,7 @@
   "read_only_no_batch_permission": "無當前資源操作權限，無法批量操作",
   "will_delete": "將刪除",
   "confirm_delete": "確認刪除",
-  "batch_partial_failed": "部分選取項目操作失敗"
+  "batch_partial_failed": "部分選取項目操作失敗",
+  "related_count": "關聯應用",
+  "related_apps_hidden": "其餘 {{count}} 個應用無權限查看"
 }

@@ -30,6 +30,8 @@ import {
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 
 describe('POST /api/core/ai/skill/list', () => {
   it('文件夹和 Skill 统一按修改时间混排', async () => {
@@ -76,6 +78,7 @@ describe('POST /api/core/ai/skill/list', () => {
       'Newer skill',
       'Older folder'
     ]);
+    expect(result.data.list.every((item) => item.appCount === undefined)).toBe(true);
   });
 
   it('按创建者筛选并支持创建时间排序和空选择', async () => {
@@ -194,6 +197,71 @@ describe('POST /api/core/ai/skill/list', () => {
       'Recently Updated Folder',
       'Older Skill'
     ]);
+  });
+  it('omits skill folder counts and counts direct references for child skills', async () => {
+    const user = await getUser(`agent-skill-folder-count-${getNanoid(6)}`);
+    const folderId = new Types.ObjectId();
+    const skillId = new Types.ObjectId();
+    const appId = new Types.ObjectId();
+    const publishedVersionId = new Types.ObjectId();
+
+    await MongoAgentSkills.create([
+      {
+        _id: folderId,
+        name: 'Skill folder',
+        type: AgentSkillTypeEnum.folder,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: null
+      },
+      {
+        _id: skillId,
+        name: 'Referenced skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: folderId
+      }
+    ]);
+    await MongoApp.create({
+      _id: appId,
+      name: 'App referencing skill',
+      type: AppTypeEnum.workflow,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      parentId: null,
+      publishedVersionId,
+      deleteTime: null
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: publishedVersionId,
+      appId,
+      tmbId: new Types.ObjectId(user.tmbId),
+      time: new Date(),
+      isPublish: true,
+      resources: [{ type: 'skill', id: String(skillId) }]
+    });
+
+    const folderResponse = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      { auth: user, body: { source: 'mine', parentId: null, withAppCount: true } }
+    );
+    const folder = folderResponse.data.list.find((item) => String(item._id) === String(folderId));
+    expect(folder).toBeDefined();
+    expect(folder).not.toHaveProperty('appCount');
+
+    const childResponse = await Call<ListSkillsV2Query, Record<string, never>, ListSkillsResponse>(
+      handlerV2,
+      {
+        auth: user,
+        body: { source: 'mine', parentId: String(folderId), withAppCount: true }
+      }
+    );
+    expect(
+      childResponse.data.list.find((item) => String(item._id) === String(skillId))
+    ).toMatchObject({ appCount: 1 });
   });
 
   it('V2 applies creator and sort filters', async () => {
@@ -417,12 +485,13 @@ describe('POST /api/core/ai/skill/list', () => {
         source: 'mine',
         skillIds: [String(inheritedSkill._id)],
         parentId: null,
-        withAppCount: false
+        withAppCount: true
       }
     });
 
     expect(res.code).toBe(200);
     expect(res.data.list.map((item) => String(item._id))).toEqual([String(inheritedSkill._id)]);
+    expect(res.data.list[0]?.appCount).toBeUndefined();
   });
 
   it('appCount 基于已发布版本的 resources，草稿保存不影响统计', async () => {

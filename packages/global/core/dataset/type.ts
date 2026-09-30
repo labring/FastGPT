@@ -27,7 +27,7 @@ import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
-import { NumSchema } from '../../common/zod';
+import { IntSchema, NumSchema } from '../../common/zod';
 import { LOGO_ICON } from '../../common/system/constants';
 
 /* ===== Tag Type ===== */
@@ -420,6 +420,10 @@ export const DatasetListItemSchema = z.object({
   intro: z.string().meta({ description: '简介' }),
   type: z.enum(DatasetTypeEnum).meta({ description: '数据集类型' }),
   permission: PermissionSchema,
+  appCount: IntSchema.optional().meta({
+    description: '被正式应用引用的数量，仅资源 Owner 且显式请求时返回',
+    example: 0
+  }),
   vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
     description: '向量模型；目录或模型已删除时为空，已停用模型仍返回展示数据'
   }),

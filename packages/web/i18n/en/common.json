@@ -1315,5 +1315,7 @@
   "read_only_no_batch_permission": "No operation permission for this resource, batch operation is not allowed",
   "will_delete": "Will delete",
   "confirm_delete": "Confirm Delete",
-  "batch_partial_failed": "Some selected items could not be processed"
+  "batch_partial_failed": "Some selected items could not be processed",
+  "related_count": "Related Apps",
+  "related_apps_hidden": "{{count}} more app(s) hidden due to permissions"
 }

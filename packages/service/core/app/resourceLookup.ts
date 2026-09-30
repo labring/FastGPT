@@ -3,6 +3,7 @@ import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
 import { AppVersionCollectionName } from './version/schema';
 import { buildAppResourceMongoQuery } from './resources';
+import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
 type PublishedAppResource = { type: AppResourceType; id: string };
 type MatchedPublishedApp = Pick<
@@ -21,26 +22,44 @@ type MatchedPublishedApp = Pick<
   publishedResources?: PublishedAppResource[];
 };
 
+type PublishedResourceGroups = Map<string, PublishedAppResource[]>;
+type PublishedResourceIdsByType = Map<AppResourceType, Set<string>>;
+type PublishedResourceGroup = {
+  id: string;
+  isOwner: boolean;
+  resources: PublishedAppResource[];
+};
+
+/** Map an App type to the resource kind persisted in published App resources. */
+export const getAppPublishedResourceType = (type: string): 'agent' | 'tool' | undefined => {
+  if (type === AppTypeEnum.tool || ToolTypeList.some((toolType) => toolType === type)) {
+    return 'tool';
+  }
+  if (AppTypeList.some((appType) => appType === type)) return 'agent';
+  return undefined;
+};
 /**
- * 按当前正式 Version 反查引用了指定资源的团队 App。
- * 只查已有 publishedVersionId 的 App；4163 会给非文件夹 App 补齐该指针。
- * 通过 $lookup 把资源匹配下推到 Mongo，并一次返回固定的最小 App 字段与资源计数。
+ * 查找当前团队发布版本中引用指定资源的 App。
+ * 查询条件按资源类型分组；没有有效资源 ID 时不访问 MongoDB。
  */
-export const findTeamAppsByPublishedResource = async ({
+const findMatchedTeamAppsByPublishedResources = async ({
   teamId,
-  type,
-  ids
+  resourceIdsByType
 }: {
   teamId: string;
-  type: AppResourceType;
-  ids: string | string[];
+  resourceIdsByType: PublishedResourceIdsByType;
 }) => {
-  const idList = Array.isArray(ids) ? ids : [ids];
-  const resourceQuery = buildAppResourceMongoQuery({ type, ids: idList }).resources;
-  // 聚合 $match 不做 mongoose 的 find 式自动转型，团队 id 需显式转 ObjectId。
-  const teamObjectId = Types.ObjectId.isValid(teamId) ? new Types.ObjectId(teamId) : teamId;
+  const resourceQueries = Array.from(resourceIdsByType).flatMap(([type, resourceIds]) => {
+    const ids = Array.from(resourceIds);
+    return ids.length > 0
+      ? [{ 'published.resources': buildAppResourceMongoQuery({ type, ids }).resources }]
+      : [];
+  });
+  if (resourceQueries.length === 0) return [];
 
-  const matched = await MongoApp.aggregate<MatchedPublishedApp>([
+  // Mongo 聚合的 $match 不会执行 Mongoose 查询的自动转型，因此需要显式转换团队 ID。
+  const teamObjectId = Types.ObjectId.isValid(teamId) ? new Types.ObjectId(teamId) : teamId;
+  return MongoApp.aggregate<MatchedPublishedApp>([
     {
       $match: {
         teamId: teamObjectId,
@@ -57,7 +76,7 @@ export const findTeamAppsByPublishedResource = async ({
       }
     },
     { $unwind: { path: '$published' } },
-    { $match: { 'published.resources': resourceQuery } },
+    { $match: { $or: resourceQueries } },
     {
       $project: {
         parentId: 1,
@@ -73,6 +92,26 @@ export const findTeamAppsByPublishedResource = async ({
       }
     }
   ]);
+};
+
+/**
+ * 反查团队内当前正式发布版本引用指定资源的 App，并按资源 ID 统计唯一 App 数量。
+ * 只读取 publishedVersionId 指向的版本，草稿和历史版本不参与统计。
+ */
+export const findTeamAppsByPublishedResource = async ({
+  teamId,
+  type,
+  ids
+}: {
+  teamId: string;
+  type: AppResourceType;
+  ids: string | string[];
+}) => {
+  const idList = Array.isArray(ids) ? ids : [ids];
+  const matched = await findMatchedTeamAppsByPublishedResources({
+    teamId,
+    resourceIdsByType: new Map([[type, new Set(idList)]])
+  });
 
   const counts = new Map<string, number>();
   matched.forEach((app) => {
@@ -89,4 +128,61 @@ export const findTeamAppsByPublishedResource = async ({
   const apps = matched.map(({ publishedResources: _publishedResources, ...app }) => app);
 
   return { apps, counts };
+};
+
+/** 按 Owner 资源组的直接资源统计唯一发布 App 数量；空资源组不生成计数，文件夹因此无计数字段。 */
+export const countTeamAppsByPublishedResourceGroups = async ({
+  teamId,
+  resourceGroups
+}: {
+  teamId: string;
+  resourceGroups: PublishedResourceGroup[];
+}) => {
+  const ownerResourceGroups = resourceGroups.filter(
+    ({ isOwner, resources }) => isOwner && resources.length > 0
+  );
+  const resourceIdsByGroup = new Map<string, PublishedAppResource[]>();
+
+  ownerResourceGroups.forEach(({ id, resources }) => {
+    resourceIdsByGroup.set(id, resources);
+  });
+  const getResourceKey = ({ type, id }: PublishedAppResource) => JSON.stringify([type, id]);
+  const resourceGroupsByKey = new Map<string, Set<string>>();
+  const resourceIdsByType = new Map<AppResourceType, Set<string>>();
+
+  resourceIdsByGroup.forEach((resources, groupId) => {
+    resources.forEach((resource) => {
+      const resourceKey = getResourceKey(resource);
+      const groupIds = resourceGroupsByKey.get(resourceKey) ?? new Set<string>();
+      groupIds.add(groupId);
+      resourceGroupsByKey.set(resourceKey, groupIds);
+
+      const resourceIds = resourceIdsByType.get(resource.type) ?? new Set<string>();
+      resourceIds.add(resource.id);
+      resourceIdsByType.set(resource.type, resourceIds);
+    });
+  });
+
+  const matched = await findMatchedTeamAppsByPublishedResources({ teamId, resourceIdsByType });
+  const appIdsByGroup = new Map<string, Set<string>>();
+  matched.forEach((app) => {
+    const groupsForApp = new Set<string>();
+    (app.publishedResources ?? []).forEach((resource) => {
+      resourceGroupsByKey
+        .get(getResourceKey(resource))
+        ?.forEach((groupId) => groupsForApp.add(groupId));
+    });
+    groupsForApp.forEach((groupId) => {
+      const appIds = appIdsByGroup.get(groupId) ?? new Set<string>();
+      appIds.add(String(app._id));
+      appIdsByGroup.set(groupId, appIds);
+    });
+  });
+
+  return new Map(
+    [...resourceIdsByGroup.keys()].map((groupId) => [
+      groupId,
+      appIdsByGroup.get(groupId)?.size ?? 0
+    ])
+  );
 };

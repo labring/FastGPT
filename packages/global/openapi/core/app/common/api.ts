@@ -19,7 +19,7 @@ import {
   OpenAPIStoreNodeItemTypeSchema
 } from '../../workflow/node';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
-import { BoolSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
+import { BoolSchema, IntSchema, NumSchema, optionalNullToUndefined } from '../../../../common/zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import { migrateWorkflowToCurrent } from '../../../../core/workflow/migration';
 import z from 'zod';
@@ -347,6 +347,10 @@ export type ListAppBodyType = z.infer<typeof ListAppBodySchema>;
 export const ListAppV2BodySchema = ListAppBodySchema.extend({
   excludeAppId: ObjectIdSchema.optional().meta({
     description: '排除指定应用，适用于不允许选择当前编辑应用的场景'
+  }),
+  withRelatedAppCount: BoolSchema.optional().meta({
+    example: true,
+    description: '是否返回非文件夹 App 和工具被正式应用引用的数量'
   })
 }).extend(PaginationSchema.shape);
 export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
@@ -368,6 +372,10 @@ export const AppListItemSchema = z
     private: BoolSchema.optional().meta({ description: '是否仅自己可见' }),
     sourceMember: SourceMemberSchema.meta({ description: '创建者信息' }),
     hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
+    relatedAppCount: IntSchema.optional().meta({
+      example: 0,
+      description: '被正式应用引用的 App 或工具数量，仅非文件夹资源 Owner 且显式请求时返回'
+    }),
     isPinned: BoolSchema.optional().meta({
       description: '是否置顶。仅在请求启用置顶排序时返回'
     })
@@ -385,6 +393,17 @@ export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchem
   description: '应用列表(分页)'
 });
 export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
+
+export const GetReferencedAppsQuerySchema = z.object({
+  resourceType: z.enum(['agent', 'tool', 'dataset', 'skill']).meta({
+    description: '目标资源类型: agent (应用), tool (工具), dataset (知识库), skill (技能)'
+  }),
+  resourceId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '目标资源 ID 或包含该类资源的文件夹 ID'
+  })
+});
+export type GetReferencedAppsQuery = z.infer<typeof GetReferencedAppsQuerySchema>;
 
 /* ============================================================================
  * API: 获取应用详情
