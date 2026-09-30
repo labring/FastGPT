@@ -762,64 +762,66 @@ const ChatBox = ({
                   : undefined
               }
             />
-            {canRenderChatInput && (
-              <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
-                {resolvedFeatures.workorder && <WorkorderEntrance />}
-                <Box position="relative">
-                  <ScrollToBottomButton
-                    isVisible={canRenderScrollToBottomButton}
-                    onClick={() => scrollToBottom('smooth')}
-                  />
-
-                  <Box display={isBlockingInteractivePending ? 'none' : undefined}>
-                    <ChatInput
-                      onSendMessage={sendPromptWithDisabledGuard}
-                      lastInteractive={lastInteractive}
-                      onStopChat={requestStopChat}
-                      enableInputGuide={resolvedFeatures.inputGuide}
-                      enableVoiceInput={resolvedFeatures.voice}
-                      disableSend={isRoundPending}
-                      TextareaDom={TextareaDom}
-                      resetInputVal={resetInputVal}
-                      chatForm={chatForm}
-                      workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
+            <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
+              {canRenderChatInput && (
+                <>
+                  {resolvedFeatures.workorder && <WorkorderEntrance />}
+                  <Box position="relative">
+                    <ScrollToBottomButton
+                      isVisible={canRenderScrollToBottomButton}
+                      onClick={() => scrollToBottom('smooth')}
                     />
-                  </Box>
-                  {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
-                    <Box
-                      w={'100%'}
-                      maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
-                      mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
-                      pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
-                    >
-                      <AgentAskComposer
-                        questions={activeInteractive.params.questions}
-                        showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
-                        onSubmit={(answers) =>
-                          sendPromptWithDisabledGuard({
-                            text: JSON.stringify({ answers }),
-                            interactive: lastInteractive,
-                            hideInUI: true
-                          })
-                        }
+
+                    <Box display={isBlockingInteractivePending ? 'none' : undefined}>
+                      <ChatInput
+                        onSendMessage={sendPromptWithDisabledGuard}
+                        lastInteractive={lastInteractive}
+                        onStopChat={requestStopChat}
+                        enableInputGuide={resolvedFeatures.inputGuide}
+                        enableVoiceInput={resolvedFeatures.voice}
+                        disableSend={isRoundPending}
+                        TextareaDom={TextareaDom}
+                        resetInputVal={resetInputVal}
+                        chatForm={chatForm}
+                        workflowBuilderStyle={resolvedFeatures.workflowBuilderInput}
                       />
                     </Box>
-                  )}
-                  {isWorkflowBuilderPreviewPending &&
-                    activeInteractive?.type === 'workflowBuilderPreview' && (
+                    {isAgentAskPending && activeInteractive?.type === 'agentAsk' && (
                       <Box
                         w={'100%'}
                         maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
                         mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
                         pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
                       >
-                        <WorkflowBuilderPreviewComposer interactive={activeInteractive} />
+                        <AgentAskComposer
+                          questions={activeInteractive.params.questions}
+                          showOptionValue={!resolvedFeatures.hideAgentAskOptionDescription}
+                          onSubmit={(answers) =>
+                            sendPromptWithDisabledGuard({
+                              text: JSON.stringify({ answers }),
+                              interactive: lastInteractive,
+                              hideInUI: true
+                            })
+                          }
+                        />
                       </Box>
                     )}
-                </Box>
-                <ComplianceTip type={'chat'} pt={0} pb={4} />
-              </Box>
-            )}
+                    {isWorkflowBuilderPreviewPending &&
+                      activeInteractive?.type === 'workflowBuilderPreview' && (
+                        <Box
+                          w={'100%'}
+                          maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
+                          mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
+                          pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
+                        >
+                          <WorkflowBuilderPreviewComposer interactive={activeInteractive} />
+                        </Box>
+                      )}
+                  </Box>
+                </>
+              )}
+              {!isLogMode && <ComplianceTip type={'chat'} pt={0} pb={4} />}
+            </Box>
           </>
         )}
 
