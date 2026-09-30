@@ -69,7 +69,6 @@ const ChatRecordContextProvider = ({
   params: ChatRecordProviderParams;
   feedbackRecordId?: string;
   showInitialLoading?: boolean;
-  showPrevLoading?: boolean;
   fetchFn?: (
     data: LinkedPaginationProps<ChatRecordProviderParams>
   ) => Promise<GetRecordsV2ResponseType>;
