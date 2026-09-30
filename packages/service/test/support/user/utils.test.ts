@@ -88,4 +88,19 @@ describe('support user utils', () => {
 
     expect(result.sourceMember.name).toBe('Member name');
   });
+
+  it('falls back to default leave member when member is not found', async () => {
+    vi.mocked(getTeamMemberMap).mockResolvedValue(new Map());
+
+    const result = await addSourceMember({
+      list: [{ tmbId: 'missing-member-id' }]
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].sourceMember).toEqual({
+      name: 'undefined',
+      avatar: '',
+      status: 'leave'
+    });
+  });
 });

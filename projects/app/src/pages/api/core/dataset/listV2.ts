@@ -1,5 +1,4 @@
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
@@ -67,31 +66,26 @@ async function handler(
     return GetDatasetListV2ResponseSchema.parse({ list: [], total: 0 });
   }
 
-  const [{ readableResourceIds, groupIds, orgIds }, activeTmbIds] = await Promise.all([
-    (async () => {
-      if (teamPer.isOwner) return { readableResourceIds: [], groupIds: [], orgIds: [] };
-      const [groups, orgSet] = await Promise.all([
-        getGroupsByTmbId({ tmbId, teamId }),
-        getOrgIdSetWithParentByTmbId({ teamId, tmbId })
-      ]);
-      const groupIds = groups.map((item) => String(item._id));
-      const orgIds = Array.from(orgSet).map(String);
-      const readableResourceIds = await findResourceKeysByCollaboratorsPermission({
-        resourceType: PerResourceTypeEnum.dataset,
-        teamId,
-        tmbId,
-        groupIds,
-        orgIds,
-        permission: ReadPermissionVal,
-        matchLogic: 'or',
-        personalPermissionPriority: true
-      });
-      return { readableResourceIds, groupIds, orgIds };
-    })(),
-    MongoTeamMember.find({ teamId }, '_id')
-      .lean()
-      .then((members) => members.map((item) => item._id))
-  ]);
+  const { readableResourceIds, groupIds, orgIds } = await (async () => {
+    if (teamPer.isOwner) return { readableResourceIds: [], groupIds: [], orgIds: [] };
+    const [groups, orgSet] = await Promise.all([
+      getGroupsByTmbId({ tmbId, teamId }),
+      getOrgIdSetWithParentByTmbId({ teamId, tmbId })
+    ]);
+    const groupIds = groups.map((item) => String(item._id));
+    const orgIds = Array.from(orgSet).map(String);
+    const readableResourceIds = await findResourceKeysByCollaboratorsPermission({
+      resourceType: PerResourceTypeEnum.dataset,
+      teamId,
+      tmbId,
+      groupIds,
+      orgIds,
+      permission: ReadPermissionVal,
+      matchLogic: 'or',
+      personalPermissionPriority: true
+    });
+    return { readableResourceIds, groupIds, orgIds };
+  })();
 
   const findDatasetQuery = (() => {
     const searchMatch = searchKey
@@ -103,14 +97,12 @@ async function handler(
         }
       : {};
     const permissionQuery = teamPer.isOwner ? {} : { _id: { $in: readableResourceIds } };
-    // 约束 tmbId 为当前有效成员，避免已删除成员的孤儿数据在内存层被过滤导致分页 offset 漂移
-    const effectiveTmbIds = tmbIds ?? activeTmbIds;
     const baseQuery = {
       teamId,
       deleteTime: null,
-      tmbId: { $in: effectiveTmbIds },
       ...permissionQuery,
-      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {})
+      ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
+      ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
     };
     if (searchKey) return { $and: [baseQuery, searchMatch] };
     return { ...baseQuery, ...parseParentIdInMongo(parentId) };
