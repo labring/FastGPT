@@ -260,6 +260,18 @@ export const serviceEnv = createEnv({
     STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
       description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
     }),
+    DATASET_ARCHIVE_MAX_FILES: IntSchema.min(1).default(2000).meta({
+      description: '知识库批量下载单个 ZIP 最多包含的原始文件数'
+    }),
+    DATASET_ARCHIVE_MAX_SOURCE_SIZE_MB: IntSchema.min(1).default(2048).meta({
+      description: '知识库批量下载归档前原始文件逻辑总大小上限（MiB）'
+    }),
+    DATASET_ARCHIVE_MAX_CONCURRENCY: IntSchema.min(1).default(4).meta({
+      description: '知识库批量下载在 Redis 集群中的同时归档数'
+    }),
+    DATASET_ARCHIVE_PREPARE_TIMEOUT_SECONDS: IntSchema.min(1).default(300).meta({
+      description: '知识库批量下载发送响应头前的最长准备时间（秒）'
+    }),
     // 聊天记录中持久化文件访问短链的有效期。
     FILE_URL_EXPIRED_DAYS: NumSchema.positive().default(90).meta({
       description: '聊天记录中文件访问短链有效期（天），支持小数'
