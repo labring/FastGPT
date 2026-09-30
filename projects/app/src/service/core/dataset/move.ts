@@ -18,6 +18,7 @@ import {
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { syncDatasetToCollections } from '@fastgpt/service/support/permission/collection/controller';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
@@ -100,6 +101,20 @@ export const moveDataset = async ({
   });
 
   await mongoSessionRun(async (session) => {
+    // 非继承态，仅改parentId 即可。
+    if (!shouldInheritResourcePermission(dataset.inheritPermission)) {
+      await MongoDataset.updateOne(
+        { _id: id },
+        {
+          ...parseParentIdInMongo(parentId),
+          updateTime: new Date()
+        },
+        { session }
+      );
+      return;
+    }
+
+    // 继承态，需要改内容，同时更新协作者
     const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
       getResourceOwnedClbs({
         teamId: dataset.teamId,
@@ -149,12 +164,13 @@ export const moveDataset = async ({
       newParentCollaborators: newResourceClbs,
       session
     });
-    await MongoDataset.findByIdAndUpdate(
-      id,
+    await MongoDataset.updateOne(
+      { _id: id },
       {
         ...parseParentIdInMongo(parentId),
         // 移入是授权行为：移入后始终按继承态处理（与上游 dataset 权限逻辑一致）
-        inheritPermission: true
+        inheritPermission: true,
+        updateTime: new Date()
       },
       { session }
     );
