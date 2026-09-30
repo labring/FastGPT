@@ -343,7 +343,7 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
     };
   });
 
-  // Resolve the normal online/API member first. For an out-link, tmbId belongs to the publisher.
+  // Resolve the normal online/API member first. Share rows get their member from outLinkUid below.
   const listWithSourceMember = await addSourceMember({ list: listWithRegion });
   const sourceMemberMap = new Map(listWithSourceMember.map((item) => [String(item._id), item]));
 
