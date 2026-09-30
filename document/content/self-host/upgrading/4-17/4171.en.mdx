@@ -1,21 +1,23 @@
 ---
 title: 'V4.17.1'
 description: 'FastGPT V4.17.1 release notes'
-upgradeTags:
-  - IN PROGRESS
+releaseTime: '2026-09-30'
 ---
 
 ## 📦 Upgrade Guide
 
 ### Image updates
 
+- Update the fastgpt-app (FastGPT main service) image tag to `v4.17.1`
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to `v4.17.1`
+- Update the fastgpt-plugin image tag to `v1.1.4`
 - Update the AI Proxy image tag to `v0.7.3`
 
 ### Upgrade scripts
 
 This upgrade includes the following automated scripts:
 
-1. Backfill App resource permission snapshots, clean legacy V1 apps and version data, and validate published App versions. The migration task does not block startup; its progress and failed records are available in system upgrade tasks.
+1. Backfill App resource permission snapshots, clean legacy V1 Apps and version data, and validate published App versions. The migration task does not block startup; its progress and failed records are available in system upgrade tasks.
 2. Enable reasoning mapping for compatible channels: enable `map_reasoning_to_reasoning_content: true` response-field conversion for existing AIProxy OpenAI channels while preserving their other configuration. This resolves reasoning-field differences for reasoning models such as DeepSeek-R1. Channels that already have this setting enabled are not updated again, and the migration task does not block startup.
 3. Upgrade Dataset tag data: migrate legacy Collection tags to typed tags and clean duplicate tag definitions. The migration task does not block startup.
 4. Backfill team member name set flags: backfill the `isSetMemberName` flag for legacy team members; owners are always marked as set, while non-owner names matching the login username are marked as requiring a name. The migration task does not block startup.
@@ -44,8 +46,8 @@ The FastGPT Pro service is still required. If you use custom health checks for P
 14. Added integration guide and examples for TokenDance AI API gateway.
 15. Added an SSO password policy. Administrators can prevent SSO namespace accounts from using or changing platform passwords, and the login page now shows only the available authentication methods.
 16. Personal workflow tools now support tracking the latest published version, eliminating the need to manually reselect tool versions after updating an App.
-17. Added `off` input type for workflow node inputs: intended for third-party interface parameter passing, not rendered in the UI while preserving parameter schema, default values, and validation, and excluded from Agent auto-generated parameters.
-18. Supported string tag type in workflow dataset search tag filters: supports structured text conditions and reference variables, executing corresponding match operations at the retrieval layer.
+17. Added `off` input type for Workflow Node inputs: intended for third-party interface parameter passing, not rendered in the UI while preserving parameter schema, default values, and validation, and excluded from Agent auto-generated parameters.
+18. Supported string tag type in Workflow Dataset search tag filters: supports structured text conditions and reference variables, executing corresponding match operations at the retrieval layer.
 19. Added the "Basic Features - Model Management" category and endpoints to the OpenAPI documentation (public model list, member available model catalog, and batch model summaries), supporting model queries via API Key.
 20. Added the `DISABLE_MARKETPLACE` environment variable (default `false`), allowing administrators to hide the plugin marketplace installation entry in system tools and retain only local file imports.
 21. Supported explicitly specifying and saving member display names (`memberName`) in the admin user creation API.
@@ -92,7 +94,7 @@ The FastGPT Pro service is still required. If you use custom health checks for P
 20. Fixed streaming Node responses being unexpectedly interrupted when child Workflow details were not published.
 21. Fixed popup blockers on iOS Safari preventing source files from opening after asynchronous fetching.
 22. Fixed collaborator role assignment failing to honor group and organization administrator rights.
-23. Fixed runtime edge statuses being incorrectly reset to waiting during single-node workflow debugging, which caused the debug endpoint to return immediately while the frontend remained in a running state.
+23. Fixed runtime edge statuses being incorrectly reset to waiting during single-Node Workflow debugging, which caused the debug endpoint to return immediately while the frontend remained in a running state.
 24. Fixed Dataset chunking truncating Markdown image URLs that contain parentheses, which could attach embeddings or descriptions to the wrong image source.
 25. Fixed upload validation for empty files and Office lock files, and unified content validation for Dataset image uploads.
 26. Fixed DNS-rebinding SSRF risks in MCP and narrowed resolved address-family checks.
@@ -104,20 +106,20 @@ The FastGPT Pro service is still required. If you use custom health checks for P
 32. Fixed long whole numbers from spreadsheets being converted to scientific notation or losing precision.
 33. Fixed strict enum inputs ignoring JSON Schema `default` and always selecting the first enum value.
 34. Fixed Workflow and Agent execution dropping intermediate ToolCall assistant messages and corrupting response order during streaming and persistence, ensuring complete tool transcripts and node response logs.
-35. Fixed interactive state loss when resuming paused child workflows and interactive tools, correctly passing current query and user input context upon resumption.
+35. Fixed interactive state loss when resuming paused child Workflows and interactive tools, correctly passing current query and user input context upon resumption.
 36. Sanitized link `href` targets in Markdown rendering to prevent stored click-XSS vulnerabilities from dangerous URL protocols such as `javascript:`.
 37. Fixed Dataset retrieval result fusion (RRF) mutating the input search result score objects in place, ensuring candidate scores recorded prior to reranking retain their original values.
 38. Fixed the concurrent task runner `batchRun` continuing to pull remaining tasks across other concurrency slots after a task failure, immediately stopping new task pickup on error.
 39. Fixed deployer-configured internal endpoints (such as chat log push, DingTalk token fetching, third-party API dataset sync, and custom PDF parsing) being incorrectly blocked when `CHECK_INTERNAL_IP=true` is enabled.
-40. Fixed app resource backfill migration errors caused by legacy V1 apps and invalid non-ObjectId resource references, and cascade-cleaned legacy V1 apps along with their versions, chats, and outlinks during migration.
+40. Fixed App resource backfill migration errors caused by legacy V1 Apps and invalid non-ObjectId resource references, and cascade-cleaned legacy V1 Apps along with their versions, chats, and outlinks during migration.
 41. Fixed an issue where the search highlight component (`HighlightText`) crashed the page when searching terms containing special regex characters such as parentheses, brackets, or `c++`.
-42. Fixed an issue where web page link import for datasets did not resolve relative image and hyperlink paths (e.g. `./`, `../`) against the page URL, causing images and links to fail.
+42. Fixed an issue where web link imports for Datasets did not resolve relative image and hyperlink paths (such as `./`, `../`) against the page URL, causing images to fail to display and links to break.
 43. Fixed an issue where merging multiple system messages in chat history reversed their order when using the OpenAI-compatible API, ensuring original relative order is preserved.
 44. Fixed safe link validation in Markdown rendering incorrectly rejecting valid URLs with non-UTF-8 percent-encoding in query parameters, causing them to render as unclickable plain text and images to not display.
 45. Fixed base64 images embedded inside HTML `<img>` tags in parsed documents (such as docx/xlsx HTML tables) not being uploaded to storage and leaking into text chunks as massive base64 strings.
-46. Fixed Workflow condition node (`If/Else`) throwing a TypeError (`trim is not a function`) when using "starts with" or "ends with" conditions on non-string inputs.
+46. Fixed Workflow condition Node (`If/Else`) throwing a TypeError (`trim is not a function`) when using "starts with" or "ends with" conditions on non-string inputs.
 47. Fixed some Dataset file ingestion endpoints not binding client-supplied S3 object keys to the already-authorized resource.
-48. Fixed an issue where knowledge-base template and backup imports failed with "invalid file format" when external document parsing is enabled for xlsx, because external parsers return Markdown instead of structured table info; forced system parsing for template and backup imports.
+48. Fixed an issue where Dataset template and backup imports failed with "invalid file format" when external document parsing is enabled for xlsx, because external parsers return Markdown instead of structured table info; forced system parsing for template and backup imports.
 
 ## 🛠️ Code Improvements
 
@@ -125,5 +127,5 @@ The FastGPT Pro service is still required. If you use custom health checks for P
 2. Added APIs for pinning Apps and folders, with opt-in pinned-first sorting in list endpoints.
 3. Dataset APIs now support external document parsing options for retaining headers and footers, appendices, image recognition results, and chart analysis results. These options apply only when an external parsing service is enabled.
 4. Refactored scheduled timer tasks and distributed locking with `checkTimerLock`, consolidating model status probing in the service layer to prevent concurrent probes across nodes.
-5. Optimized sensitive data encryption/decryption performance by caching derived scrypt keys and eliminating blocking CPU queries; switched main application Dockerfile base image to debian-slim.
+5. Optimized sensitive data encryption/decryption performance by caching derived scrypt keys and eliminating blocking CPU queries; switched main App Dockerfile base image to debian-slim.
 6. Upgraded core dependencies including hono, multer, and nodemailer.
