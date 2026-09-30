@@ -16,6 +16,8 @@ export type DatasetArchiveTicketPayload = {
   tmbId: string;
   teamId: string;
   datasetId: string;
+  /** 兼容发布切换期间由旧版本生成的 Ticket；新建 Ticket 必须保存知识库名称。 */
+  datasetName?: string;
   manifest: DatasetArchiveManifest;
 };
 
@@ -68,37 +70,42 @@ const parseTicketPayload = (value: string): DatasetArchiveTicketPayload | undefi
     const tmbId = Reflect.get(payload, 'tmbId');
     const teamId = Reflect.get(payload, 'teamId');
     const datasetId = Reflect.get(payload, 'datasetId');
+    const datasetName = Reflect.get(payload, 'datasetName');
     const manifest = Reflect.get(payload, 'manifest');
     if (
       typeof tmbId !== 'string' ||
       typeof teamId !== 'string' ||
       typeof datasetId !== 'string' ||
+      (datasetName !== undefined && typeof datasetName !== 'string') ||
       !isManifest(manifest)
     ) {
       return undefined;
     }
-    return { tmbId, teamId, datasetId, manifest };
+    return { tmbId, teamId, datasetId, datasetName, manifest };
   } catch {
     return undefined;
   }
 };
 
 /**
- * 保存阶段一完成后的归档授权快照。Ticket 不包含可逆的权限信息，只能在短期内被绑定成员消费一次。
+ * 保存阶段一完成后的归档授权快照和知识库名称，供下载命名使用，避免阶段二重复查询。
+ * Ticket 不包含可逆的权限信息，只能在短期内被绑定成员消费一次。
  */
 export const createDatasetArchiveTicket = async ({
   tmbId,
   teamId,
   datasetId,
+  datasetName,
   manifest,
   redis = redisCacheAdapter,
   now = Date.now
 }: DatasetArchiveTicketPayload & {
+  datasetName: string;
   redis?: ArchiveTicketRedis;
   now?: () => number;
 }) => {
   const ticket = randomBytes(32).toString('base64url');
-  const serialized = JSON.stringify({ tmbId, teamId, datasetId, manifest });
+  const serialized = JSON.stringify({ tmbId, teamId, datasetId, datasetName, manifest });
   const payloadBytes = Buffer.byteLength(serialized, 'utf8');
   if (payloadBytes > MAX_TICKET_PAYLOAD_BYTES) {
     throw DatasetErrEnum.archiveLimitExceeded;

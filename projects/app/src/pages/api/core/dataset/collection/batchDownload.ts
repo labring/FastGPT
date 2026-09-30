@@ -1,4 +1,5 @@
 import type { NextApiResponse } from 'next';
+import dayjs from 'dayjs';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -12,6 +13,7 @@ import {
 } from '@/service/core/dataset/collection/archive';
 import { consumeDatasetArchiveTicket } from '@/service/core/dataset/collection/archiveTicket';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
+import { sanitizeArchivePathSegment } from '@fastgpt/service/core/dataset/collection/archive/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { createS3ProxyAbortContext } from '@/service/common/s3/proxy';
 
@@ -56,11 +58,14 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
         assertValid();
         signal.throwIfAborted();
 
+        // 名称来自阶段一快照；旧 Ticket 使用通用名称，时间采用服务端时区并精确到分钟。
+        const datasetName = sanitizeArchivePathSegment(ticketPayload.datasetName ?? 'collections');
+        const filename = `${datasetName}_${dayjs().format('YYYYMMDD_HHmm')}.zip`;
         res.setHeader('Content-Type', 'application/zip');
         res.setHeader(
           'Content-Disposition',
           getContentDisposition({
-            filename: `collections-${Date.now()}.zip`,
+            filename,
             type: 'attachment'
           })
         );

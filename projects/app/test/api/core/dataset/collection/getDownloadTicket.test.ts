@@ -95,6 +95,7 @@ describe('POST /core/dataset/collection/getDownloadTicket', () => {
       tmbId: 'member-1',
       teamId: 'team-1',
       datasetId,
+      datasetName: 'Knowledge Base',
       manifest
     });
     expect(response).toEqual({ ticket: 'ticket-1', expiresAt: '2026-09-22T10:00:00.000Z' });

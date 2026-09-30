@@ -79,6 +79,7 @@ async function handler(
           tmbId: String(tmbId),
           teamId: String(teamId),
           datasetId: String(dataset._id),
+          datasetName: dataset.name,
           manifest
         });
       } finally {

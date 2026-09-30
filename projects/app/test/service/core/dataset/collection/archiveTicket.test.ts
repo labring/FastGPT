@@ -1,3 +1,4 @@
+import { gzipSync } from 'node:zlib';
 import { describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
@@ -26,6 +27,7 @@ describe('dataset archive ticket', () => {
       tmbId: 'member-1',
       teamId: 'team-1',
       datasetId: 'dataset-1',
+      datasetName: 'Knowledge Base',
       manifest,
       redis,
       now
@@ -46,6 +48,7 @@ describe('dataset archive ticket', () => {
       tmbId: 'member-1',
       teamId: 'team-1',
       datasetId: 'dataset-1',
+      datasetName: 'Knowledge Base',
       manifest
     });
   });
@@ -67,6 +70,45 @@ describe('dataset archive ticket', () => {
     ).resolves.toBeUndefined();
     expect(redis.getAndDelete).toHaveBeenCalledTimes(2);
   });
+
+  it('consumes a compressed ticket created before dataset names were stored', async () => {
+    const payload = JSON.stringify({
+      tmbId: 'member-1',
+      teamId: 'team-1',
+      datasetId: 'dataset-1',
+      manifest
+    });
+    const redis = {
+      set: vi.fn(),
+      getAndDelete: vi.fn().mockResolvedValue(`gzip:v1:${gzipSync(payload).toString('base64')}`)
+    };
+
+    await expect(
+      consumeDatasetArchiveTicket({ tmbId: 'member-1', ticket: 'ticket-1', redis })
+    ).resolves.toMatchObject({ tmbId: 'member-1', datasetId: 'dataset-1', manifest });
+  });
+
+  it.each([null, 123, {}])(
+    'rejects a ticket with an invalid dataset name: %j',
+    async (datasetName) => {
+      const redis = {
+        set: vi.fn(),
+        getAndDelete: vi.fn().mockResolvedValue(
+          JSON.stringify({
+            tmbId: 'member-1',
+            teamId: 'team-1',
+            datasetId: 'dataset-1',
+            datasetName,
+            manifest
+          })
+        )
+      };
+
+      await expect(
+        consumeDatasetArchiveTicket({ tmbId: 'member-1', ticket: 'ticket-1', redis })
+      ).resolves.toBeUndefined();
+    }
+  );
 
   it('returns undefined for expired, malformed, or corrupt compressed ticket values', async () => {
     const redis = {
@@ -122,6 +164,7 @@ describe('dataset archive ticket', () => {
         tmbId: 'member-1',
         teamId: 'team-1',
         datasetId: 'dataset-1',
+        datasetName: 'Knowledge Base',
         manifest: {
           directories: [],
           files: [

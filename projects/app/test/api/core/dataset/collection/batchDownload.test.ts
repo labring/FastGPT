@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 
 const mocks = vi.hoisted(() => ({
   consumeDatasetArchiveTicket: vi.fn(),
@@ -57,17 +58,24 @@ class FakeResponse extends EventEmitter {
 describe('GET /core/dataset/collection/batchDownload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 29, 14, 5, 59));
     mocks.parseHeaderCert.mockResolvedValue({ teamId: 'team-1', tmbId: 'member-1' });
     mocks.consumeDatasetArchiveTicket.mockResolvedValue({
       tmbId: 'member-1',
       teamId: 'team-1',
       datasetId: 'dataset-1',
+      datasetName: 'Knowledge Base',
       manifest
     });
     mocks.withDatasetArchiveResources.mockImplementation(async ({ fn }) =>
       fn({ signals: [new AbortController().signal], assertValid: vi.fn() })
     );
     mocks.streamDatasetArchiveResponse.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('uses the one-time ticket instead of the web request header for CSRF protection', () => {
@@ -112,6 +120,65 @@ describe('GET /core/dataset/collection/batchDownload', () => {
     expect(res.headers.get('X-Accel-Buffering')).toBe('no');
     expect(res.headers.get('Referrer-Policy')).toBe('no-referrer');
     expect(res.headers.get('Content-Disposition')).toContain('attachment;');
+    expect(parseContentDispositionFilename(res.headers.get('Content-Disposition'))).toBe(
+      'Knowledge Base_20260929_1405.zip'
+    );
+  });
+
+  it.each([
+    ['产品知识库', '产品知识库_20260929_1405.zip'],
+    ['知识库/研发:\r\n测试', '知识库_研发___测试_20260929_1405.zip'],
+    ['CON', '_CON_20260929_1405.zip']
+  ])('uses a safe download filename for dataset %s', async (datasetName, expectedFilename) => {
+    mocks.consumeDatasetArchiveTicket.mockResolvedValueOnce({
+      tmbId: 'member-1',
+      teamId: 'team-1',
+      datasetId: 'dataset-1',
+      datasetName,
+      manifest
+    });
+    const res = new FakeResponse();
+
+    await handler(createRequest() as any, res as any);
+
+    const disposition = res.headers.get('Content-Disposition');
+    expect(parseContentDispositionFilename(disposition)).toBe(expectedFilename);
+    expect(disposition).not.toMatch(/[\r\n]/);
+  });
+
+  it('bounds a long dataset name while retaining the date and zip extension', async () => {
+    mocks.consumeDatasetArchiveTicket.mockResolvedValueOnce({
+      tmbId: 'member-1',
+      teamId: 'team-1',
+      datasetId: 'dataset-1',
+      datasetName: '知识库'.repeat(100),
+      manifest
+    });
+    const res = new FakeResponse();
+
+    await handler(createRequest() as any, res as any);
+
+    const filename = parseContentDispositionFilename(res.headers.get('Content-Disposition'));
+    expect(filename).toMatch(/^知识库/);
+    expect(filename).toMatch(/_20260929_1405\.zip$/);
+    expect(filename).not.toContain('\ufffd');
+    expect(Buffer.byteLength(filename, 'utf8')).toBeLessThanOrEqual(255);
+  });
+
+  it('uses a dated fallback filename for a legacy ticket without a dataset name', async () => {
+    mocks.consumeDatasetArchiveTicket.mockResolvedValueOnce({
+      tmbId: 'member-1',
+      teamId: 'team-1',
+      datasetId: 'dataset-1',
+      manifest
+    });
+    const res = new FakeResponse();
+
+    await handler(createRequest() as any, res as any);
+
+    expect(parseContentDispositionFilename(res.headers.get('Content-Disposition'))).toBe(
+      'collections_20260929_1405.zip'
+    );
   });
 
   it('acquires the lease before consuming the ticket', async () => {
