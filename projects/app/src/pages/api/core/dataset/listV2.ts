@@ -184,39 +184,24 @@ async function handler(
   });
 
   const appCountMap = withAppCount
-    ? await (async () => {
-        return countTeamAppsByPublishedResourceGroups({
-          teamId,
-          resourceGroups: formatDatasets.map((dataset) => {
+    ? await countTeamAppsByPublishedResourceGroups({
+        teamId,
+        resourceGroups: formatDatasets
+          .filter((dataset) => dataset.type !== DatasetTypeEnum.folder)
+          .map((dataset) => {
             const id = String(dataset._id);
-            const isFolder = dataset.type === DatasetTypeEnum.folder;
-            const resources: { type: 'dataset'; id: string }[] = isFolder
-              ? []
-              : [{ type: 'dataset', id }];
             return {
               id,
               isOwner: dataset.permission.isOwner,
-              resources,
-              ...(isFolder ? { folderId: id } : {})
+              resources: [{ type: 'dataset', id }]
             };
-          }),
-          fetchChildren: (parentIds) =>
-            MongoDataset.find(
-              { teamId, deleteTime: null, parentId: { $in: parentIds } },
-              '_id parentId type'
-            ).lean(),
-          shouldTraverse: (dataset) => dataset.type === DatasetTypeEnum.folder,
-          getResource: (dataset) =>
-            dataset.type === DatasetTypeEnum.folder
-              ? undefined
-              : { type: 'dataset', id: String(dataset._id) }
-        });
-      })()
+          })
+      })
     : undefined;
   const list = await addSourceMember({
     list: formatDatasets.map((dataset) => ({
       ...dataset,
-      ...(appCountMap && dataset.permission.isOwner
+      ...(dataset.permission.isOwner && appCountMap?.has(String(dataset._id))
         ? { appCount: appCountMap.get(String(dataset._id)) ?? 0 }
         : {})
     }))

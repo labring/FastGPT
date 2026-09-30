@@ -1,4 +1,4 @@
-import { GetAppsByAppIdQuerySchema } from '../../../openapi/core/app/common/api';
+import { GetReferencedAppsByAppIdQuerySchema } from '../../../openapi/core/app/common/api';
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { openAPITagGroups } from '../../../openapi/path';
@@ -32,7 +32,8 @@ describe('App OpenAPI contracts', () => {
   it('registers app ownership transfer and template type APIs', () => {
     expect(openAPIDocument.paths?.['/core/app/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/core/app/listV2']?.post).toBeDefined();
-    expect(openAPIDocument.paths?.['/core/app/appsByAppId']?.get).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/referencedAppsByAppId']?.get).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/appsByAppId']).toBeUndefined();
     expect(openAPIDocument.paths?.['/core/app/appsByToolId']?.get).toBeDefined();
     expect(openAPIDocument.paths?.['/core/app/toolSet/listV2']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/core/app/changeOwner']?.post).toBeDefined();
@@ -145,7 +146,7 @@ describe('App OpenAPI contracts', () => {
         }
       ])
     ).toHaveLength(1);
-    expect(GetAppsByAppIdQuerySchema.parse({ appId: objectId })).toEqual({
+    expect(GetReferencedAppsByAppIdQuerySchema.parse({ appId: objectId })).toEqual({
       appId: objectId
     });
   });

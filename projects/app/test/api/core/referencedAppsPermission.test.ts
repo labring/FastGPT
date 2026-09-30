@@ -42,7 +42,7 @@ vi.mock('@fastgpt/service/common/zod/requestParseError', () => ({
 const { default: skillHandler } = await import('@/pages/api/core/ai/skill/apps');
 const { default: datasetHandler } = await import('@/pages/api/core/dataset/apps');
 const { default: toolHandler } = await import('@/pages/api/core/app/appsByToolId');
-const { default: appHandler } = await import('@/pages/api/core/app/appsByAppId');
+const { default: appHandler } = await import('@/pages/api/core/app/referencedAppsByAppId');
 
 describe('referenced app visibility', () => {
   beforeEach(() => {

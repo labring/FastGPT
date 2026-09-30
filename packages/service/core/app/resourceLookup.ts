@@ -3,8 +3,6 @@ import { Types } from '../../common/mongo';
 import { MongoApp } from './schema';
 import { AppVersionCollectionName } from './version/schema';
 import { buildAppResourceMongoQuery } from './resources';
-import { getFolderDescendantResources } from '../../common/parentFolder/resource';
-import type { FolderTreeNode } from '../../common/parentFolder/resource';
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
 
 type PublishedAppResource = { type: AppResourceType; id: string };
@@ -30,7 +28,6 @@ type PublishedResourceGroup = {
   id: string;
   isOwner: boolean;
   resources: PublishedAppResource[];
-  folderId?: string;
 };
 
 /** Map an App type to the resource kind persisted in published App resources. */
@@ -133,43 +130,22 @@ export const findTeamAppsByPublishedResource = async ({
   return { apps, counts };
 };
 
-/**
- * 统一展开 Owner 可见资源的文件夹后代，并统计当前发布 App 对每个资源组的引用数。
- * 一个发布 App 在同一资源组内即使引用多个成员，也只计数一次。
- */
+/** 按 Owner 资源组的直接资源统计唯一发布 App 数量；空资源组不生成计数，文件夹因此无计数字段。 */
 export const countTeamAppsByPublishedResourceGroups = async ({
   teamId,
-  resourceGroups,
-  fetchChildren,
-  shouldTraverse,
-  getResource
+  resourceGroups
 }: {
   teamId: string;
   resourceGroups: PublishedResourceGroup[];
-  fetchChildren: (parentIds: string[]) => Promise<FolderTreeNode[]>;
-  shouldTraverse: (node: FolderTreeNode) => boolean;
-  getResource: (node: FolderTreeNode) => PublishedAppResource | undefined;
 }) => {
-  const ownerResourceGroups = resourceGroups.filter(({ isOwner }) => isOwner);
-  const folderIds = ownerResourceGroups.flatMap(({ folderId }) => (folderId ? [folderId] : []));
-  const descendantResourcesByFolder = await getFolderDescendantResources({
-    folderIds,
-    fetchChildren,
-    shouldTraverse,
-    isResource: (node) => getResource(node) !== undefined
-  });
+  const ownerResourceGroups = resourceGroups.filter(
+    ({ isOwner, resources }) => isOwner && resources.length > 0
+  );
   const resourceIdsByGroup = new Map<string, PublishedAppResource[]>();
 
-  ownerResourceGroups.forEach(({ id, resources, folderId }) => {
-    const descendantResources = folderId
-      ? (descendantResourcesByFolder.get(folderId) ?? []).flatMap((node) => {
-          const resource = getResource(node);
-          return resource ? [resource] : [];
-        })
-      : [];
-    resourceIdsByGroup.set(id, [...resources, ...descendantResources]);
+  ownerResourceGroups.forEach(({ id, resources }) => {
+    resourceIdsByGroup.set(id, resources);
   });
-
   const getResourceKey = ({ type, id }: PublishedAppResource) => JSON.stringify([type, id]);
   const resourceGroupsByKey = new Map<string, Set<string>>();
   const resourceIdsByType = new Map<AppResourceType, Set<string>>();

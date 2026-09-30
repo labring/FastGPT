@@ -302,7 +302,7 @@ export type AppListItemType = {
   private?: boolean;
   sourceMember: SourceMemberType;
   hasInteractiveNode?: boolean;
-  /** 被正式应用引用的 App、工具或文件夹数量 */
+  /** 被正式应用引用的 App 或工具数量（仅非文件夹资源返回） */
   relatedAppCount?: number;
   /** 仅在列表请求显式要求置顶排序时返回 */
   isPinned?: boolean;

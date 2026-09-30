@@ -64,24 +64,24 @@ export const formatReadableReferencedApps = async ({
     );
   })();
 
-  const visibleApps = apps
-    .filter(
-      (app) =>
-        isTeamOwner || String(app.tmbId) === String(tmbId) || readableAppIds?.has(String(app._id))
-    )
-    .map((app) => ({
-      _id: String(app._id),
-      name: app.name,
-      avatar: app.avatar ?? '',
-      intro: app.intro ?? '',
-      tmbId: String(app.tmbId),
-      type: app.type,
-      updateTime: app.updateTime
-    }));
+  const readableApps = apps.filter(
+    (app) =>
+      isTeamOwner || String(app.tmbId) === String(tmbId) || readableAppIds?.has(String(app._id))
+  );
+  // 按更新时间倒序保留最新 100 条，避免 Popover 一次加载过多数据。
+  const formattedApps = readableApps.slice(0, 100).map((app) => ({
+    _id: String(app._id),
+    name: app.name,
+    avatar: app.avatar ?? '',
+    intro: app.intro ?? '',
+    tmbId: String(app.tmbId),
+    type: app.type,
+    updateTime: app.updateTime
+  }));
 
   return {
-    list: await addSourceMember({ list: visibleApps }),
-    hiddenCount: apps.length - visibleApps.length
+    list: await addSourceMember({ list: formattedApps }),
+    hiddenCount: apps.length - readableApps.length
   };
 };
 

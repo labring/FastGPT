@@ -11,7 +11,7 @@ import {
   GetAppBasicInfoResponseSchema,
   GetAppDetailQuerySchema,
   GetAppDetailResponseSchema,
-  GetAppsByAppIdQuerySchema,
+  GetReferencedAppsByAppIdQuerySchema,
   GetAppsByToolIdQuerySchema,
   ListAppBodySchema,
   ListAppResponseSchema,
@@ -76,12 +76,12 @@ export const AppCommonPath: OpenAPIPath = {
       }
     }
   },
-  '/core/app/appsByAppId': {
+  '/core/app/referencedAppsByAppId': {
     get: {
-      summary: '获取引用应用的应用',
-      description: '列出引用指定 App 或 App 文件夹的、当前请求者可读的已发布应用',
+      summary: '获取引用指定 App 的应用',
+      description: '列出当前请求者可读的、已发布版本引用指定 App 或 App 文件夹的应用',
       tags: [DevApiTagsMap.appCommon],
-      requestParams: { query: GetAppsByAppIdQuerySchema },
+      requestParams: { query: GetReferencedAppsByAppIdQuerySchema },
       responses: {
         200: {
           description: '成功获取引用应用',

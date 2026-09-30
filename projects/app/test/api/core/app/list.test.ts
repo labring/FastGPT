@@ -770,7 +770,7 @@ describe('POST /api/core/app/list', () => {
       expect(res.data.map((app) => app.name)).toEqual(['客服 置顶', '客服 普通']);
     });
   });
-  it('counts published agent references for apps and their folders', async () => {
+  it('counts published agent references for apps but not their folders', async () => {
     const user = await getUser(`app-list-agent-ref-${getNanoid(6)}`);
     const targetAppId = new Types.ObjectId();
     const folderAppId = new Types.ObjectId();
@@ -830,9 +830,11 @@ describe('POST /api/core/app/list', () => {
       auth: user,
       body: { parentId: null, withRelatedAppCount: true }
     });
-    expect(
-      rootResponse.data.list.find((app) => String(app._id) === String(folderAppId))?.relatedAppCount
-    ).toBe(1);
+    const rootFolder = rootResponse.data.list.find(
+      (app) => String(app._id) === String(folderAppId)
+    );
+    expect(rootFolder).toBeDefined();
+    expect(rootFolder).not.toHaveProperty('relatedAppCount');
 
     const childResponse = await Call<
       ListAppV2BodyType,

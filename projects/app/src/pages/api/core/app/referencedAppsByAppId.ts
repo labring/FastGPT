@@ -1,8 +1,8 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
-  GetAppsByAppIdQuerySchema,
-  type GetAppsByAppIdQuery
+  GetReferencedAppsByAppIdQuerySchema,
+  type GetReferencedAppsByAppIdQuery
 } from '@fastgpt/global/openapi/core/app/common/api';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { getAppPublishedResourceType } from '@fastgpt/service/core/app/resourceLookup';
@@ -17,8 +17,8 @@ import { listReadableReferencedApps } from '@/service/core/app/referencedApps';
  * List readable published apps referencing the specified app or apps within the folder.
  * Enforces owner-only access on the target app resource.
  */
-async function handler(req: ApiRequestProps<unknown, GetAppsByAppIdQuery>) {
-  const { appId } = parseApiInput({ req, querySchema: GetAppsByAppIdQuerySchema }).query;
+async function handler(req: ApiRequestProps<unknown, GetReferencedAppsByAppIdQuery>) {
+  const { appId } = parseApiInput({ req, querySchema: GetReferencedAppsByAppIdQuerySchema }).query;
   const [{ teamId, tmbId, permission: teamPer }, { permission: appPer }] = await Promise.all([
     authUserPer({ req, authToken: true, authApiKey: true, per: ReadPermissionVal }),
     authApp({

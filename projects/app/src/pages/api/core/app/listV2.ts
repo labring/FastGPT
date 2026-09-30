@@ -6,7 +6,7 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   countTeamAppsByPublishedResourceGroups,
   getAppPublishedResourceType
@@ -188,41 +188,21 @@ async function handler(req: ApiRequestProps<ListAppV2BodyType>): Promise<ListApp
   });
 
   const relatedAppCountMap = withRelatedAppCount
-    ? await (async () => {
-        const isAppFolderType = (type: string) =>
-          AppFolderTypeList.some((folderType) => folderType === type);
-        return countTeamAppsByPublishedResourceGroups({
-          teamId,
-          resourceGroups: formatApps.map((app) => {
-            const id = String(app._id);
-            const referenceType = getAppPublishedResourceType(app.type);
-            const resources: { type: 'agent' | 'tool'; id: string }[] = referenceType
-              ? [{ type: referenceType, id }]
-              : [];
-            return {
-              id,
-              isOwner: app.permission.isOwner,
-              resources,
-              ...(isAppFolderType(app.type) ? { folderId: id } : {})
-            };
-          }),
-          fetchChildren: (parentIds) =>
-            MongoApp.find(
-              { teamId, deleteTime: null, parentId: { $in: parentIds } },
-              '_id parentId type'
-            ).lean(),
-          shouldTraverse: (app) => isAppFolderType(app.type),
-          getResource: (app) => {
-            const type = getAppPublishedResourceType(app.type);
-            return type ? { type, id: String(app._id) } : undefined;
-          }
-        });
-      })()
+    ? await countTeamAppsByPublishedResourceGroups({
+        teamId,
+        resourceGroups: formatApps.flatMap((app) => {
+          const type = getAppPublishedResourceType(app.type);
+          if (!type) return [];
+
+          const id = String(app._id);
+          return [{ id, isOwner: app.permission.isOwner, resources: [{ type, id }] }];
+        })
+      })
     : undefined;
   const list = await addSourceMember({
     list: formatApps.map((app) => ({
       ...app,
-      ...(relatedAppCountMap && app.permission.isOwner
+      ...(app.permission.isOwner && relatedAppCountMap?.has(String(app._id))
         ? { relatedAppCount: relatedAppCountMap.get(String(app._id)) ?? 0 }
         : {})
     }))

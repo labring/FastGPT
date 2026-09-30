@@ -103,7 +103,7 @@ describe('findTeamAppsByPublishedResource', () => {
     expect(removed.apps).toHaveLength(0);
   });
 
-  it('counts each app once when a folder group contains multiple referenced resources', async () => {
+  it('counts each app once per resource group and omits empty or non-owner groups', async () => {
     const secondAppId = new Types.ObjectId('65f000000000000000000079');
     const secondVersionId = new Types.ObjectId('65f000000000000000000080');
     await MongoApp.collection.insertMany([
@@ -111,7 +111,7 @@ describe('findTeamAppsByPublishedResource', () => {
         _id: appId,
         teamId,
         tmbId,
-        name: 'App using two children',
+        name: 'App using two datasets',
         type: 'workflow',
         publishedVersionId,
         deleteTime: null
@@ -120,7 +120,7 @@ describe('findTeamAppsByPublishedResource', () => {
         _id: secondAppId,
         teamId,
         tmbId,
-        name: 'App using one child',
+        name: 'App using one dataset',
         type: 'workflow',
         publishedVersionId: secondVersionId,
         deleteTime: null
@@ -134,8 +134,8 @@ describe('findTeamAppsByPublishedResource', () => {
         time: new Date(),
         isPublish: true,
         resources: [
-          { type: 'dataset', id: 'child-1' },
-          { type: 'dataset', id: 'child-2' }
+          { type: 'dataset', id: 'dataset-1' },
+          { type: 'dataset', id: 'dataset-2' }
         ]
       },
       {
@@ -144,29 +144,29 @@ describe('findTeamAppsByPublishedResource', () => {
         tmbId,
         time: new Date(),
         isPublish: true,
-        resources: [{ type: 'dataset', id: 'child-2' }]
+        resources: [{ type: 'dataset', id: 'dataset-2' }]
       }
     ]);
 
-    const folderNodes = [
-      { _id: 'child-1', parentId: 'folder-1', type: 'dataset' },
-      { _id: 'child-2', parentId: 'folder-1', type: 'dataset' }
-    ];
     const counts = await countTeamAppsByPublishedResourceGroups({
       teamId: String(teamId),
       resourceGroups: [
-        { id: 'folder-1', isOwner: true, resources: [], folderId: 'folder-1' },
-        { id: 'child-2', isOwner: true, resources: [{ type: 'dataset', id: 'child-2' }] },
-        { id: 'non-owner', isOwner: false, resources: [{ type: 'dataset', id: 'child-2' }] }
-      ],
-      fetchChildren: async (parentIds) =>
-        folderNodes.filter((node) => node.parentId && parentIds.includes(String(node.parentId))),
-      shouldTraverse: () => false,
-      getResource: (node) => ({ type: 'dataset', id: String(node._id) })
+        { id: 'empty-group', isOwner: true, resources: [] },
+        {
+          id: 'dataset-group',
+          isOwner: true,
+          resources: [
+            { type: 'dataset', id: 'dataset-1' },
+            { type: 'dataset', id: 'dataset-2' }
+          ]
+        },
+        { id: 'non-owner', isOwner: false, resources: [{ type: 'dataset', id: 'dataset-2' }] }
+      ]
     });
 
+    expect(counts.get('empty-group')).toBeUndefined();
     expect(counts.get('non-owner')).toBeUndefined();
-    expect(counts.get('child-2')).toBe(2);
+    expect(counts.get('dataset-group')).toBe(2);
   });
 
   it('counts an app once when its published version references multiple resource types in a group', async () => {
@@ -214,26 +214,62 @@ describe('findTeamAppsByPublishedResource', () => {
       }
     ]);
 
-    const folderNodes = [
-      { _id: 'app-child', parentId: 'folder-1', type: 'workflow' },
-      { _id: 'tool-child', parentId: 'folder-1', type: 'tool' }
-    ];
     const counts = await countTeamAppsByPublishedResourceGroups({
       teamId: String(teamId),
       resourceGroups: [
-        { id: 'folder-1', isOwner: true, resources: [], folderId: 'folder-1' },
+        {
+          id: 'mixed-resources',
+          isOwner: true,
+          resources: [
+            { type: 'agent', id: 'app-child' },
+            { type: 'tool', id: 'tool-child' }
+          ]
+        },
         { id: 'app-child', isOwner: true, resources: [{ type: 'agent', id: 'app-child' }] }
-      ],
-      fetchChildren: async (parentIds) =>
-        folderNodes.filter((node) => node.parentId && parentIds.includes(String(node.parentId))),
-      shouldTraverse: () => false,
-      getResource: (node) => {
-        const id = String(node._id);
-        return node.type === 'tool' ? { type: 'tool', id } : { type: 'agent', id };
-      }
+      ]
     });
 
-    expect(counts.get('folder-1')).toBe(2);
+    expect(counts.get('mixed-resources')).toBe(2);
     expect(counts.get('app-child')).toBe(2);
+  });
+  it('counts all 101 published references independently of the detail cap', async () => {
+    const appRecords = Array.from({ length: 101 }, () => ({
+      appId: new Types.ObjectId(),
+      versionId: new Types.ObjectId()
+    }));
+    await MongoApp.collection.insertMany(
+      appRecords.map(({ appId, versionId }, index) => ({
+        _id: appId,
+        teamId,
+        tmbId,
+        name: `Referencing app ${index}`,
+        type: 'workflow',
+        publishedVersionId: versionId,
+        deleteTime: null
+      }))
+    );
+    await MongoAppVersion.collection.insertMany(
+      appRecords.map(({ appId, versionId }) => ({
+        _id: versionId,
+        appId,
+        tmbId,
+        time: new Date(),
+        isPublish: true,
+        resources: [{ type: 'dataset', id: 'dataset-1' }]
+      }))
+    );
+
+    const counts = await countTeamAppsByPublishedResourceGroups({
+      teamId: String(teamId),
+      resourceGroups: [
+        {
+          id: 'dataset-1',
+          isOwner: true,
+          resources: [{ type: 'dataset', id: 'dataset-1' }]
+        }
+      ]
+    });
+
+    expect(counts.get('dataset-1')).toBe(101);
   });
 });

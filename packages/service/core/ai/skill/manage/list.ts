@@ -243,38 +243,23 @@ export const listReadableAgentSkills = async ({
   const appCountMap =
     withAppCount === false
       ? undefined
-      : await (async () => {
-          return countTeamAppsByPublishedResourceGroups({
-            teamId,
-            resourceGroups: pagedSkills.map((skill) => {
+      : await countTeamAppsByPublishedResourceGroups({
+          teamId,
+          resourceGroups: pagedSkills
+            .filter((skill) => skill.type !== AgentSkillTypeEnum.folder)
+            .map((skill) => {
               const id = String(skill._id);
-              const isFolder = skill.type === AgentSkillTypeEnum.folder;
-              const resources: { type: 'skill'; id: string }[] = isFolder
-                ? []
-                : [{ type: 'skill', id }];
               return {
                 id,
                 isOwner: skill.permission.isOwner,
-                resources,
-                ...(isFolder ? { folderId: id } : {})
+                resources: [{ type: 'skill', id }]
               };
-            }),
-            fetchChildren: (parentIds) =>
-              MongoAgentSkills.find(
-                { teamId, deleteTime: null, parentId: { $in: parentIds } },
-                '_id parentId type'
-              ).lean(),
-            shouldTraverse: (skill) => skill.type === AgentSkillTypeEnum.folder,
-            getResource: (skill) =>
-              skill.type === AgentSkillTypeEnum.folder
-                ? undefined
-                : { type: 'skill', id: String(skill._id) }
-          });
-        })();
+            })
+        });
 
   const listWithAppCount = pagedSkills.map((skill) => ({
     ...skill,
-    ...(appCountMap !== undefined && skill.permission.isOwner
+    ...(skill.permission.isOwner && appCountMap?.has(skill._id.toString())
       ? { appCount: appCountMap.get(skill._id.toString()) ?? 0 }
       : {})
   }));

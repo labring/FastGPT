@@ -34,8 +34,8 @@ export const postCopyApp = (data: CopyAppBodyType) =>
 /**
  * Fetch published apps that reference the specified app or apps inside the app folder.
  */
-export const getAppsByAppId = (appId: string) =>
-  GET<ReferencedAppsResponse>('/core/app/appsByAppId', { appId });
+export const getReferencedAppsByAppId = (appId: string) =>
+  GET<ReferencedAppsResponse>('/core/app/referencedAppsByAppId', { appId });
 
 /**
  * Fetch published apps that reference the specified tool or tools inside the tool folder.

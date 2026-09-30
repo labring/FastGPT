@@ -4,7 +4,9 @@ import handlerV2 from '@/pages/api/core/dataset/listV2';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
+import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import type {
   GetDatasetListBody,
   GetDatasetListResponse,
@@ -207,6 +209,74 @@ describe('POST /api/core/dataset/list', () => {
     expect(
       withoutCount.data.list.find((item) => String(item._id) === String(dataset._id))
     ).not.toHaveProperty('appCount');
+  });
+  it('omits folder counts and counts direct references for child datasets', async () => {
+    const user = await getUser(`dataset-list-folder-count-${getNanoid(6)}`);
+    const folderId = new Types.ObjectId();
+    const datasetId = new Types.ObjectId();
+    const appId = new Types.ObjectId();
+    const publishedVersionId = new Types.ObjectId();
+
+    await MongoDataset.create([
+      {
+        _id: folderId,
+        name: 'Dataset folder',
+        type: DatasetTypeEnum.folder,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: null
+      },
+      {
+        _id: datasetId,
+        name: 'Referenced dataset',
+        type: DatasetTypeEnum.dataset,
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        parentId: folderId
+      }
+    ]);
+    await MongoApp.create({
+      _id: appId,
+      name: 'App referencing dataset',
+      type: AppTypeEnum.workflow,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      parentId: null,
+      publishedVersionId,
+      deleteTime: null
+    });
+    await MongoAppVersion.collection.insertOne({
+      _id: publishedVersionId,
+      appId,
+      tmbId: new Types.ObjectId(user.tmbId),
+      time: new Date(),
+      isPublish: true,
+      resources: [{ type: 'dataset', id: String(datasetId) }]
+    });
+
+    const folderResponse = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: user,
+      body: { parentId: null, withAppCount: true }
+    });
+    const folder = folderResponse.data.list.find((item) => String(item._id) === String(folderId));
+    expect(folder).toBeDefined();
+    expect(folder).not.toHaveProperty('appCount');
+
+    const childResponse = await Call<
+      GetDatasetListV2Body,
+      Record<string, never>,
+      GetDatasetListV2Response
+    >(handlerV2, {
+      auth: user,
+      body: { parentId: String(folderId), withAppCount: true }
+    });
+    expect(
+      childResponse.data.list.find((item) => String(item._id) === String(datasetId))
+    ).toMatchObject({ appCount: 1 });
   });
   it('omits dataset app counts for non-owners when requested', async () => {
     const { owner, members } = await getFakeUsers(1);

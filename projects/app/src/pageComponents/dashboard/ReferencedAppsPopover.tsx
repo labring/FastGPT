@@ -6,6 +6,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import type { ReferencedAppsResponse } from '@fastgpt/global/core/app/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const RELATED_APPS_MAX_H = '240px';
 
@@ -17,15 +19,18 @@ const ReferencedAppsContent = ({
   loadApps: (resourceId: string) => Promise<ReferencedAppsResponse>;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [data, setData] = useState<ReferencedAppsResponse>({ list: [], hiddenCount: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadApps(resourceId)
       .then(setData)
-      .catch(() => {})
+      .catch((error) => {
+        toast({ status: 'error', title: getErrText(error, t('common:request_error')) });
+      })
       .finally(() => setIsLoading(false));
-  }, [loadApps, resourceId]);
+  }, [loadApps, resourceId, t, toast]);
 
   const { list, hiddenCount } = data;
 

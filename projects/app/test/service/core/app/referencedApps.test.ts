@@ -118,4 +118,47 @@ describe('listReadableReferencedApps', () => {
     expect(result.list.map(({ name }) => name)).toEqual(['Newer app', 'Older app']);
     expect(result.hiddenCount).toBe(0);
   });
+  it('returns the newest 100 readable apps without counting truncated apps as hidden', async () => {
+    mocks.getGroupsByTmbId.mockResolvedValue([]);
+    mocks.getOrgIdSetWithParentByTmbId.mockResolvedValue(new Set());
+    mocks.findResourceKeysByCollaboratorsPermission.mockResolvedValue([]);
+    mocks.addSourceMember.mockImplementation(async ({ list }) => list);
+
+    const visibleApps = Array.from({ length: 101 }, (_, index) => ({
+      _id: (index + 1).toString(16).padStart(24, '0'),
+      avatar: '',
+      intro: '',
+      name: `Visible app ${index}`,
+      tmbId: '64a000000000000000000003',
+      type: AppTypeEnum.workflow,
+      updateTime: new Date(Date.UTC(2025, 0, index + 1))
+    }));
+    mocks.findTeamAppsByPublishedResource.mockResolvedValue({
+      apps: [
+        ...visibleApps,
+        {
+          _id: '64a0000000000000000000ff',
+          avatar: '',
+          intro: '',
+          name: 'Unreadable app',
+          tmbId: '64a000000000000000000004',
+          type: AppTypeEnum.workflow,
+          updateTime: new Date('2026-01-01T00:00:00.000Z')
+        }
+      ]
+    });
+
+    const result = await listReadableReferencedApps({
+      teamId: 'team-1',
+      tmbId: '64a000000000000000000003',
+      isTeamOwner: false,
+      resourceType: 'skill',
+      resourceIds: 'skill-1'
+    });
+
+    expect(result.list.map(({ name }) => name)).toEqual(
+      Array.from({ length: 100 }, (_, index) => `Visible app ${100 - index}`)
+    );
+    expect(result.hiddenCount).toBe(1);
+  });
 });

@@ -350,7 +350,7 @@ export const ListAppV2BodySchema = ListAppBodySchema.extend({
   }),
   withRelatedAppCount: BoolSchema.optional().meta({
     example: true,
-    description: '是否返回 App、工具及其文件夹被正式应用引用的数量'
+    description: '是否返回非文件夹 App 和工具被正式应用引用的数量'
   })
 }).extend(PaginationSchema.shape);
 export type ListAppV2BodyType = z.infer<typeof ListAppV2BodySchema>;
@@ -374,7 +374,7 @@ export const AppListItemSchema = z
     hasInteractiveNode: BoolSchema.optional().meta({ description: '是否包含交互节点' }),
     relatedAppCount: IntSchema.optional().meta({
       example: 0,
-      description: '被正式应用引用的 App、工具或文件夹数量，仅资源 Owner 且显式请求时返回'
+      description: '被正式应用引用的 App 或工具数量，仅非文件夹资源 Owner 且显式请求时返回'
     }),
     isPinned: BoolSchema.optional().meta({
       description: '是否置顶。仅在请求启用置顶排序时返回'
@@ -394,13 +394,13 @@ export const ListAppV2ResponseSchema = PaginationResponseSchema(AppListItemSchem
 });
 export type ListAppV2ResponseType = z.infer<typeof ListAppV2ResponseSchema>;
 
-export const GetAppsByAppIdQuerySchema = z.object({
+export const GetReferencedAppsByAppIdQuerySchema = z.object({
   appId: AppIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '应用或应用文件夹 ID'
   })
 });
-export type GetAppsByAppIdQuery = z.infer<typeof GetAppsByAppIdQuerySchema>;
+export type GetReferencedAppsByAppIdQuery = z.infer<typeof GetReferencedAppsByAppIdQuerySchema>;
 
 export const GetAppsByToolIdQuerySchema = z.object({
   toolId: AppIdSchema.meta({
