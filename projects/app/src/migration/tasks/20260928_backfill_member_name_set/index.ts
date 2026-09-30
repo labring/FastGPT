@@ -57,7 +57,7 @@ export const backfillMemberNameSet = async (
   await context.assertActive();
 
   const previousFailedRecords = restoreOrphanRecords(await context.getFailedRecords());
-  const totals = { placeholderCount: 0, prefixMatchCount: 0, setTrueCount: 0 };
+  const totals = { placeholderCount: 0, usernameMatchCount: 0, setTrueCount: 0 };
 
   /** 重试上一轮失败的成员，修复成功后只删除对应失败明细。 */
   const retryOrphans = async (records: typeof previousFailedRecords) => {
@@ -82,7 +82,7 @@ export const backfillMemberNameSet = async (
       if (removals.length > 0) await context.removeFailedRecords(removals);
       if (upserts.length > 0) await context.upsertFailedRecords(upserts);
       totals.placeholderCount += counts.placeholderCount;
-      totals.prefixMatchCount += counts.prefixMatchCount;
+      totals.usernameMatchCount += counts.usernameMatchCount;
       totals.setTrueCount += counts.setTrueCount;
     }
   };
@@ -124,7 +124,7 @@ export const backfillMemberNameSet = async (
     }));
     if (orphanRecords.length > 0) await context.upsertFailedRecords(orphanRecords);
     totals.placeholderCount += counts.placeholderCount;
-    totals.prefixMatchCount += counts.prefixMatchCount;
+    totals.usernameMatchCount += counts.usernameMatchCount;
     totals.setTrueCount += counts.setTrueCount;
     await context.assertActive();
     checkpoint = {

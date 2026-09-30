@@ -103,5 +103,5 @@
   "migrations.20260928_backfill_member_name_set.description": "기존 팀 멤버에 isSetMemberName 플래그를 백필하고 플레이스홀더 멤버 이름을 로그인 사용자 이름으로 대체합니다. 사용자를 확인할 수 없는 플레이스홀더 멤버는 실패 기록으로 남습니다.",
   "migrations.20260928_backfill_member_name_set.members": "멤버 이름 플래그 백필",
   "migrations.20260928_backfill_member_name_set.validation": "멤버 이름 백필 검증",
-  "migrations.20260928_backfill_member_name_set.result": "멤버 {{scannedCount}}명 검사, 플레이스홀더 {{placeholderCount}}개 정리, 폴백 이름 {{prefixMatchCount}}개 표시, 설정됨 {{setTrueCount}}개 표시, 수정 대기 {{orphanCount}}개."
+  "migrations.20260928_backfill_member_name_set.result": "멤버 {{scannedCount}}명 검사, 플레이스홀더 {{placeholderCount}}개 정리, 폴백 이름 {{usernameMatchCount}}개 표시, 설정됨 {{setTrueCount}}개 표시, 수정 대기 {{orphanCount}}개."
 }

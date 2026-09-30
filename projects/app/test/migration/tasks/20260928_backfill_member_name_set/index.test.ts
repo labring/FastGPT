@@ -91,10 +91,11 @@ describe('backfillMemberNameSet', () => {
     await MongoUser.collection.deleteMany({});
   });
 
-  it('backfills placeholder, prefix-matched and set documents per rule', async () => {
+  it('backfills placeholder, username-fallback and set documents per rule', async () => {
     const userId = await seedUser('wecom-zhangsan');
     const placeholderId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId });
-    const prefixMatchId = await seedMember({ name: 'zhangsan', userId });
+    const usernameMatchId = await seedMember({ name: 'wecom-zhangsan', userId });
+    const strippedUsernameId = await seedMember({ name: 'zhangsan', userId });
     const setNameId = await seedMember({ name: '张三', userId });
     const orphanId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId: null });
 
@@ -105,7 +106,15 @@ describe('backfillMemberNameSet', () => {
       name: 'wecom-zhangsan',
       isSetMemberName: false
     });
-    expect(await readMember(prefixMatchId)).toEqual({ name: 'zhangsan', isSetMemberName: false });
+    expect(await readMember(usernameMatchId)).toEqual({
+      name: 'wecom-zhangsan',
+      isSetMemberName: false
+    });
+    // 去掉 username 前缀并非历史同步回落规则，应按显式成员名处理。
+    expect(await readMember(strippedUsernameId)).toEqual({
+      name: 'zhangsan',
+      isSetMemberName: true
+    });
     expect(await readMember(setNameId)).toEqual({ name: '张三', isSetMemberName: true });
     // 孤儿文档保持原样并进入失败快照
     expect(await readMember(orphanId)).toEqual({ name: UNSET_TEAM_MEMBER_NAME });

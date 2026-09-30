@@ -103,5 +103,5 @@
   "migrations.20260928_backfill_member_name_set.description": "Backfills the isSetMemberName flag for legacy team members and replaces placeholder member names with the login username; placeholder members whose user cannot be resolved are kept as failed records.",
   "migrations.20260928_backfill_member_name_set.members": "Backfill member name flags",
   "migrations.20260928_backfill_member_name_set.validation": "Validate member name backfill",
-  "migrations.20260928_backfill_member_name_set.result": "Scanned {{scannedCount}} members, cleaned {{placeholderCount}} placeholders, marked {{prefixMatchCount}} fallback names, marked {{setTrueCount}} set names, {{orphanCount}} awaiting repair."
+  "migrations.20260928_backfill_member_name_set.result": "Scanned {{scannedCount}} members, cleaned {{placeholderCount}} placeholders, marked {{usernameMatchCount}} fallback names, marked {{setTrueCount}} set names, {{orphanCount}} awaiting repair."
 }

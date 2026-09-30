@@ -18,23 +18,13 @@ export type MemberNameSetDoc = {
 
 export type MemberNameSetCounts = {
   placeholderCount: number;
-  prefixMatchCount: number;
+  usernameMatchCount: number;
   setTrueCount: number;
 };
 
 export type MemberNameSetOrphan = {
   tmbId: string;
   userId: string;
-};
-
-/**
- * 剥离登录用户名的来源前缀，用于存量"回落名"识别。
- * 与同步前缀语义（username.split('-')[0]）一致：去掉第一个 '-' 及其之前部分；
- * 无 '-' 时原样返回。
- */
-export const stripUsernamePrefix = (username: string): string => {
-  const index = username.indexOf('-');
-  return index >= 0 ? username.slice(index + 1) : username;
 };
 
 /** 固定本次迁移的扫描上界，避免滚动升级期间新增成员让扫描范围不断增长。 */
@@ -70,7 +60,7 @@ export const readMemberNameSetBatch = ({
     .limit(limit)
     .toArray() as Promise<MemberNameSetDoc[]>;
 
-/** 批量读取用户登录名，供占位符回落与去前缀匹配使用。 */
+/** 批量读取用户登录名，供占位符回落与历史 username 回落名匹配使用。 */
 export const readUsernameMap = async (
   userIds: Array<Types.ObjectId | string>
 ): Promise<Map<string, string>> => {
@@ -100,7 +90,7 @@ export type MemberNameSetOp = {
 export type MemberNameSetPlan =
   | { kind: 'placeholder'; name: string }
   | { kind: 'orphan' }
-  | { kind: 'prefixMatch' }
+  | { kind: 'usernameMatch' }
   | { kind: 'setTrue' }
   | { kind: 'skip' };
 
@@ -108,7 +98,7 @@ export type MemberNameSetPlan =
  * 单文档迁移规划：
  * - 占位符名：回落到 username 并记 false；用户/用户名缺失时为孤儿坏数据；
  * - 已有 isSetMemberName（新代码写入或已迁移）：跳过，保证重放不覆盖显式 false；
- * - name 与去前缀 username 精确一致：记 false（存量回落名）；
+ * - name 与完整 username 精确一致：记 false（历史自动回落名）；
  * - 其余（含用户缺失的非占位符文档）：记 true，不触发强制补齐。
  */
 export const planMemberNameSetDoc = ({
@@ -122,8 +112,8 @@ export const planMemberNameSetDoc = ({
     return username ? { kind: 'placeholder', name: username } : { kind: 'orphan' };
   }
   if (doc.isSetMemberName !== undefined) return { kind: 'skip' };
-  if (username && stripUsernamePrefix(username).trim() === doc.name.trim()) {
-    return { kind: 'prefixMatch' };
+  if (username && username.trim() === doc.name.trim()) {
+    return { kind: 'usernameMatch' };
   }
   return { kind: 'setTrue' };
 };
@@ -148,7 +138,7 @@ export const buildMemberNameSetOps = ({
   const orphans: MemberNameSetOrphan[] = [];
   const counts: MemberNameSetCounts = {
     placeholderCount: 0,
-    prefixMatchCount: 0,
+    usernameMatchCount: 0,
     setTrueCount: 0
   };
 
@@ -166,14 +156,14 @@ export const buildMemberNameSetOps = ({
       counts.placeholderCount += 1;
     } else if (plan.kind === 'orphan') {
       orphans.push({ tmbId: String(doc._id), userId: doc.userId ? String(doc.userId) : '' });
-    } else if (plan.kind === 'prefixMatch') {
+    } else if (plan.kind === 'usernameMatch') {
       ops.push({
         updateOne: {
           filter: { _id: doc._id, isSetMemberName: { $exists: false } },
           update: { $set: { isSetMemberName: false } }
         }
       });
-      counts.prefixMatchCount += 1;
+      counts.usernameMatchCount += 1;
     } else if (plan.kind === 'setTrue') {
       ops.push({
         updateOne: {
