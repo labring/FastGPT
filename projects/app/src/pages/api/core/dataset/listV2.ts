@@ -30,6 +30,60 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 import { Types } from '@fastgpt/service/common/mongo';
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getDescendantFolderIds } from '@fastgpt/global/common/parentFolder/subtree';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+
+/** 层序遍历的安全上限：脏树（环 / 超深）不得拖垮请求。 */
+const maxSubtreeDepth = 20;
+/** 单次遍历累计访问的文件夹数上限，防止超大子树把内存打满。 */
+const maxSubtreeNodes = 20000;
+const subtreeLogger = getLogger(LogCategories.MODULE.DATASET);
+
+/**
+ * 收集 datasetId 子树内全部**文件夹** ID（不含自身）。
+ *
+ * 与 findDatasetAndAllChildren 的区别：后者是逐节点串行递归（每节点一次查询、不区分文件夹与知识库），
+ * 服务删除这类低 QPS 场景没问题；本函数按层批量（每层一次 `parentId: { $in }` 查询，且只取 folder），
+ * 服务搜索范围这类交互热路径。通用遍历见 global/common/parentFolder/subtree.ts。
+ *
+ * 触达上限时返回已收集的部分（调用方须接受搜索范围可能不完整）。
+ */
+const findSubtreeDatasetFolderIds = async ({
+  teamId,
+  datasetId
+}: {
+  teamId: string;
+  datasetId: string;
+}): Promise<string[]> => {
+  const { ids, truncated } = await getDescendantFolderIds({
+    rootIds: [datasetId],
+    maxDepth: maxSubtreeDepth,
+    maxNodes: maxSubtreeNodes,
+    findChildFolders: async (folderIds) => {
+      const children = await MongoDataset.find(
+        {
+          teamId,
+          parentId: { $in: folderIds.map((id) => new Types.ObjectId(id)) },
+          type: DatasetTypeEnum.folder,
+          deleteTime: null
+        },
+        '_id',
+        { ...readFromSecondary }
+      ).lean();
+      return children.map((child) => String(child._id));
+    }
+  });
+
+  if (truncated) {
+    subtreeLogger.warn(
+      `[findSubtreeDatasetFolderIds] traversal truncated, search scope may miss deeper folders: datasetId=${datasetId} collected=${ids.length}`
+    );
+  }
+
+  return ids;
+};
 
 async function handler(
   req: ApiRequestProps<GetDatasetListV2Body>
@@ -87,6 +141,10 @@ async function handler(
     return { readableResourceIds, groupIds, orgIds };
   })();
 
+  // 搜索范围限定在当前路径及其子树，先枚举子树内的文件夹 ID（根目录搜索无需枚举）。
+  const subtreeFolderIds =
+    searchKey && parentId ? await findSubtreeDatasetFolderIds({ teamId, datasetId: parentId }) : [];
+
   const findDatasetQuery = (() => {
     const searchMatch = searchKey
       ? {
@@ -104,7 +162,16 @@ async function handler(
       ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
       ...(tmbIds ? { tmbId: { $in: tmbIds } } : {})
     };
-    if (searchKey) return { $and: [baseQuery, searchMatch] };
+    if (searchKey) {
+      // 搜索：当前路径自身 + 其下整个子树；不含祖先、不含路径外内容（根目录即全库）
+      return {
+        $and: [
+          baseQuery,
+          searchMatch,
+          ...(parentId ? [{ parentId: { $in: [parentId, ...subtreeFolderIds] } }] : [])
+        ]
+      };
+    }
     return { ...baseQuery, ...parseParentIdInMongo(parentId) };
   })();
 
