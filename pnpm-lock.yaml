@@ -1170,8 +1170,8 @@ importers:
         specifier: 'catalog:'
         version: 15.4.2(i18next@23.16.8)(next@16.3.0(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nodemailer:
-        specifier: ^7.0.11
-        version: 7.0.13
+        specifier: 'catalog:'
+        version: 10.0.12
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
@@ -11726,10 +11726,6 @@ packages:
   nodemailer@10.0.12:
     resolution: {integrity: sha512-PQ46oNbNMuH/Sno7B5IWIU9etytwrO0xdTFvWXpIQFRXhBAXtzD48243AS+BCbQQTPD8y3fqUrgLn0tSo77gvg==}
     engines: {node: '>=20.0.0'}
-
-  nodemailer@7.0.13:
-    resolution: {integrity: sha512-PNDFSJdP+KFgdsG3ZzMXCgquO7I6McjY2vlqILjtJd0hy8wEvtugS9xKRF2NWlPNGxvLCXlTNIae4serI7dinw==}
-    engines: {node: '>=6.0.0'}
 
   non-layered-tidy-tree-layout@2.0.2:
     resolution: {integrity: sha512-gkXMxRzUH+PB0ax9dUN0yYF0S25BqeAYqhgMaLUFmpXLEk7Fcu8f4emJuOAY0V8kjDICxROIKsTAKsV/v355xw==}
@@ -27268,8 +27264,6 @@ snapshots:
   node-releases@2.0.37: {}
 
   nodemailer@10.0.12: {}
-
-  nodemailer@7.0.13: {}
 
   non-layered-tidy-tree-layout@2.0.2: {}
 
