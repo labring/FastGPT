@@ -53,6 +53,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode, useNodeWorkflowDocument } from '../render/useWorkflowDocument';
 import { useField, useNode } from '@/web/core/workflow/editor';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
@@ -204,20 +205,22 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
           bg={'white'}
           ml={2}
         >
-          <PromptEditor
-            placeholder={
-              t('common:core.module.input.label.Http Request Url') +
-              ', ' +
-              t('common:textarea_variable_picker_tip')
-            }
-            value={requestUrl?.value || ''}
-            variableLabels={variables}
-            variables={externalProviderWorkflowVariables}
-            onBlur={onBlurUrl}
-            onChange={onChangeUrl}
-            minH={40}
-            showOpenModal={false}
-          />
+          <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.httpReqUrl}>
+            <PromptEditor
+              placeholder={
+                t('common:core.module.input.label.Http Request Url') +
+                ', ' +
+                t('common:textarea_variable_picker_tip')
+              }
+              value={requestUrl?.value || ''}
+              variableLabels={variables}
+              variables={externalProviderWorkflowVariables}
+              onBlur={onBlurUrl}
+              onChange={onChangeUrl}
+              minH={40}
+              showOpenModal={false}
+            />
+          </WorkflowFieldScope>
         </Box>
       </Flex>
 
@@ -643,7 +646,7 @@ const RenderForm = ({
                     <HttpInput
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.value}
-                      variables={externalProviderWorkflowVariables}
+                      variables={variables}
                       variableLabels={variables}
                       tabIndex={0}
                       resetOnValueChange={false}
@@ -695,7 +698,11 @@ const RenderForm = ({
     variables
   ]);
 
-  return Render;
+  return (
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={input.key}>
+      {Render}
+    </WorkflowFieldScope>
+  );
 };
 const RenderBody = ({
   nodeId,
@@ -817,7 +824,11 @@ const RenderBody = ({
     contentTypeField,
     jsonBodyField
   ]);
-  return Render;
+  return (
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={jsonBody.key}>
+      {Render}
+    </WorkflowFieldScope>
+  );
 };
 
 const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {

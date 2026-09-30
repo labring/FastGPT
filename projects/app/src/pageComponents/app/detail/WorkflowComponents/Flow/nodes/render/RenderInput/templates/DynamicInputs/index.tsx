@@ -20,6 +20,7 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useField, useNodeActions } from '@/web/core/workflow/editor';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
@@ -224,26 +225,27 @@ const Reference = ({
           h={10}
           borderRightRadius={'none'}
         />
-        <ReferSelector
-          placeholder={t('common:select_reference_variable')}
-          list={referenceList}
-          value={currentInput.value}
-          onSelect={onSelectReference}
-          onOpenList={loadReferenceList}
-          reference={field?.reference}
-          ButtonProps={{
-            bg: 'none',
-            borderRadius: 'none',
-            borderColor: 'myGray.200',
-            borderLeftColor: 'transparent',
-            borderRightColor: 'transparent',
-            isDisabled: isEmptyItem,
-            w: '240px',
-            _hover: {
-              borderColor: 'blue.300'
-            }
-          }}
-        />
+        <WorkflowFieldScope nodeId={nodeId} fieldKey={currentInput.key}>
+          <ReferSelector
+            placeholder={t('common:select_reference_variable')}
+            list={referenceList}
+            value={currentInput.value}
+            onSelect={onSelectReference}
+            onOpenList={loadReferenceList}
+            ButtonProps={{
+              bg: 'none',
+              borderRadius: 'none',
+              borderColor: 'myGray.200',
+              borderLeftColor: 'transparent',
+              borderRightColor: 'transparent',
+              isDisabled: isEmptyItem,
+              w: '240px',
+              _hover: {
+                borderColor: 'blue.300'
+              }
+            }}
+          />
+        </WorkflowFieldScope>
         <Flex
           h={10}
           border={'1px solid'}

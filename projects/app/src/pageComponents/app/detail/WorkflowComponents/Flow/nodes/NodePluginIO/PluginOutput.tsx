@@ -22,6 +22,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useField, useNode } from '@/web/core/workflow/editor';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const customOutputConfig = {
   selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
@@ -188,15 +189,15 @@ function Reference({
           />
         </MyTooltip>
       </Flex>
-      <ReferSelector
-        placeholder={t((input.referencePlaceholder as any) || 'select_reference_variable')}
-        list={referenceList}
-        value={input.value}
-        onSelect={onSelect}
-        isArray={input.valueType?.includes('array')}
-        // 字段引用状态带上 Reference Snapshot 的历史名字与图标，来源被删后仍可读。
-        reference={field?.reference}
-      />
+      <WorkflowFieldScope nodeId={nodeId} fieldKey={input.key}>
+        <ReferSelector
+          placeholder={t((input.referencePlaceholder as any) || 'select_reference_variable')}
+          list={referenceList}
+          value={input.value}
+          onSelect={onSelect}
+          isArray={input.valueType?.includes('array')}
+        />
+      </WorkflowFieldScope>
 
       {!!editField && (
         <PluginOutputEditModal

@@ -11,12 +11,16 @@ import {
   type TextFormatType
 } from 'lexical';
 import VariableLabel from './components/VariableLabel';
+import type { WorkflowReferenceStatus } from '@fastgpt/global/core/workflow/editor/types';
+
+type VariableLabelInvalidReason = Exclude<WorkflowReferenceStatus['code'], 'empty' | 'valid'>;
 
 export type SerializedVariableLabelNode = Spread<
   {
     variableKey: string;
     variableLabel: string;
     nodeAvatar: string;
+    invalidReason?: VariableLabelInvalidReason;
     format: number | TextFormatType;
   },
   SerializedLexicalNode
@@ -27,6 +31,7 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   __variableKey: string;
   __variableLabel: string;
   __nodeAvatar: string;
+  __invalidReason?: VariableLabelInvalidReason;
   static getType(): string {
     return 'variableLabel';
   }
@@ -36,7 +41,8 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
       node.__variableLabel,
       node.__nodeAvatar,
       node.__format,
-      node.__key
+      node.__key,
+      node.__invalidReason
     );
   }
   constructor(
@@ -44,20 +50,23 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
     variableLabel: string,
     nodeAvatar: string,
     format?: number | TextFormatType,
-    key?: NodeKey
+    key?: NodeKey,
+    invalidReason?: VariableLabelInvalidReason
   ) {
     super(key);
     this.__variableKey = variableKey;
     this.__format = format || 0;
     this.__variableLabel = variableLabel;
     this.__nodeAvatar = nodeAvatar;
+    this.__invalidReason = invalidReason;
   }
 
   static importJSON(serializedNode: SerializedVariableLabelNode): VariableLabelNode {
     const node = $createVariableLabelNode(
       serializedNode.variableKey,
       serializedNode.variableLabel,
-      serializedNode.nodeAvatar
+      serializedNode.nodeAvatar,
+      serializedNode.invalidReason
     );
     node.setFormat(serializedNode.format);
     return node;
@@ -78,7 +87,8 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
       version: 1,
       variableKey: this.getVariableKey(),
       variableLabel: this.__variableLabel,
-      nodeAvatar: this.__nodeAvatar
+      nodeAvatar: this.__nodeAvatar,
+      ...(this.__invalidReason ? { invalidReason: this.__invalidReason } : {})
     };
   }
   createDOM(): HTMLElement {
@@ -102,23 +112,49 @@ export class VariableLabelNode extends DecoratorNode<JSX.Element> {
   getVariableKey(): string {
     return this.__variableKey;
   }
+  setVariableLabel(variableLabel: string): void {
+    if (this.__variableLabel === variableLabel) return;
+    this.getWritable().__variableLabel = variableLabel;
+  }
+  setNodeAvatar(nodeAvatar: string): void {
+    if (this.__nodeAvatar === nodeAvatar) return;
+    this.getWritable().__nodeAvatar = nodeAvatar;
+  }
+  setInvalidReason(invalidReason?: VariableLabelInvalidReason): void {
+    if (this.__invalidReason === invalidReason) return;
+    this.getWritable().__invalidReason = invalidReason;
+  }
   getTextContent(
     _includeInert?: boolean | undefined,
     _includeDirectionless?: false | undefined
   ): string {
     return `${this.__variableKey}`;
   }
-  decorate(_editor: LexicalEditor, config: EditorConfig): JSX.Element {
-    return <VariableLabel variableLabel={this.__variableLabel} nodeAvatar={this.__nodeAvatar} />;
+  decorate(_editor: LexicalEditor, _config: EditorConfig): JSX.Element {
+    return (
+      <VariableLabel
+        variableLabel={this.__variableLabel}
+        nodeAvatar={this.__nodeAvatar}
+        invalidReason={this.__invalidReason}
+      />
+    );
   }
 }
 
 export function $createVariableLabelNode(
   variableKey: string,
   variableLabel: string,
-  nodeAvatar: string
+  nodeAvatar: string,
+  invalidReason?: VariableLabelInvalidReason
 ): VariableLabelNode {
-  return new VariableLabelNode(variableKey, variableLabel, nodeAvatar);
+  return new VariableLabelNode(
+    variableKey,
+    variableLabel,
+    nodeAvatar,
+    undefined,
+    undefined,
+    invalidReason
+  );
 }
 
 export function $isVariableLabelNode(

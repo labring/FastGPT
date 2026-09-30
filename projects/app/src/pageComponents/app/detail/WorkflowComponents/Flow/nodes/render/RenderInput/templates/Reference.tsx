@@ -25,7 +25,9 @@ import { getWorkflowReferenceItems } from '@fastgpt/global/core/workflow/editor/
 import type { TFunction } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { useWorkflowReferenceScope } from '@fastgpt/web/components/common/Textarea/PromptEditor/context';
 import { useField } from '@/web/core/workflow/editor';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 import {
   useDocumentGetNodeById,
   useGraphQueries,
@@ -62,10 +64,8 @@ type CommonSelectProps = {
   list: ReferenceListItem[];
   popDirection?: 'top' | 'bottom';
   ButtonProps?: ButtonProps;
-  /** 懒加载列表：打开选择器时计算一次。此时已选内容必须同时给 reference，否则打开前无法解析。 */
+  /** 懒加载列表：打开选择器时计算一次；已选内容的展示来自当前字段 scope。 */
   onOpenList?: () => void;
-  /** 当前字段的引用状态；给出后已选内容按状态里的来源/输出名展示，不再依赖 list。 */
-  reference?: WorkflowFieldSnapshot['references'];
 };
 type SelectProps<T extends boolean> = CommonSelectProps & {
   isArray?: T;
@@ -246,22 +246,35 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   );
 
   return (
-    <ReferSelector
-      placeholder={
-        t(currentInput.referencePlaceholder as any) || t('common:select_reference_variable')
-      }
-      list={referenceList}
-      value={currentInput.value}
-      onSelect={onSelect}
-      popDirection={popDirection}
-      isArray={isArray}
-      onOpenList={loadReferenceList}
-      reference={field?.reference}
-    />
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={currentInput.key}>
+      <ReferSelector
+        placeholder={
+          t(currentInput.referencePlaceholder as any) || t('common:select_reference_variable')
+        }
+        list={referenceList}
+        value={currentInput.value}
+        onSelect={onSelect}
+        popDirection={popDirection}
+        isArray={isArray}
+        onOpenList={loadReferenceList}
+      />
+    </WorkflowFieldScope>
   );
 };
 
 export default React.memo(Reference);
+
+const getReferenceStatus = (
+  references: WorkflowFieldSnapshot['references'] | undefined,
+  value: unknown
+) => {
+  const reference = getWorkflowReferenceItems(value)[0];
+  if (!reference) return undefined;
+  return references?.find((status) => {
+    const statusReference = getWorkflowReferenceItems(status.reference)[0];
+    return statusReference?.[0] === reference[0] && statusReference?.[1] === reference[1];
+  });
+};
 
 const SingleReferenceSelector = ({
   placeholder,
@@ -270,19 +283,19 @@ const SingleReferenceSelector = ({
   onSelect,
   popDirection,
   ButtonProps,
-  onOpenList,
-  reference
+  onOpenList
 }: SelectProps<false>) => {
   // runtime 只发 i18n key 或字面量，展示名统一在渲染层过一遍 t。
   const { t } = useSafeTranslation();
+  const references = useWorkflowReferenceScope();
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
       if (!value) return undefined;
 
       // 给出字段引用状态时按状态展示：来源被删除时状态里带的是 Reference Snapshot 的
       // 历史名字与图标，因此失效引用同样可读，只有连历史元数据都没有的才回落占位符。
-      if (reference) {
-        const status = reference[0];
+      const status = getReferenceStatus(references, value);
+      if (status) {
         const nodeText = status?.sourceLabel ? t(status.sourceLabel) : '';
         const outputText = status?.outputLabel ? t(status.outputLabel) : '';
         if (!nodeText && !outputText) return undefined;
@@ -307,7 +320,7 @@ const SingleReferenceSelector = ({
         text: nodeText && outputText ? `${nodeText} > ${outputText}` : nodeText || outputText
       };
     },
-    [list, reference, t]
+    [list, references, t]
   );
 
   // 存量数据可能是多选形态 [[nodeId, outputId]]：展示时取第一项即可，不回写文档。
@@ -381,10 +394,10 @@ const MultipleReferenceSelector = ({
   list = [],
   onSelect,
   popDirection,
-  onOpenList,
-  reference
+  onOpenList
 }: SelectProps<true>) => {
   const { t } = useSafeTranslation();
+  const references = useWorkflowReferenceScope();
   const getSelectValue = useCallback(
     (value: ReferenceValueType) => {
       if (!value) return [];
@@ -409,18 +422,16 @@ const MultipleReferenceSelector = ({
   const formatList = useMemo(() => {
     // 给出字段引用状态时按状态解析展示名，此时 list 可以是懒加载的空数组。
     // 失效引用不再被抹成空名：来源被删除时状态里带的是 Reference Snapshot 的历史名字与图标。
-    if (reference) {
-      return reference.map((status) => {
+    return arrayVal.map((item) => {
+      const status = getReferenceStatus(references, item);
+      if (status) {
         return {
-          rawValue: status.reference,
+          rawValue: item,
           nodeName: status.sourceLabel ? t(status.sourceLabel) : '',
           outputName: status.outputLabel ? t(status.outputLabel) : '',
           icon: status.icon
         };
-      });
-    }
-
-    return arrayVal.map((item) => {
+      }
       const [nodeName, outputName] = getSelectValue(item);
       return {
         rawValue: item,
@@ -429,7 +440,7 @@ const MultipleReferenceSelector = ({
         icon: undefined
       };
     });
-  }, [arrayVal, getSelectValue, reference, t]);
+  }, [arrayVal, getSelectValue, references, t]);
 
   const invalidList = useMemo(() => {
     return formatList.filter((item) => item.nodeName && item.outputName);

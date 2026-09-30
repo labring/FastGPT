@@ -52,6 +52,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import WorkflowSandboxConfig, {
   createSandboxEntrypointInput
 } from '../components/WorkflowSandboxConfig';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -442,23 +443,25 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             <InputLabel nodeId={nodeId} input={promptInput} RightComponent={PromptSkillTip} />
             <Box mt={2} className={'nodrag'}>
               {promptRenderType === FlowNodeInputTypeEnum.textarea ? (
-                <PromptEditor
-                  minH={160}
-                  bg={'myGray.50'}
-                  title={t('common:core.ai.Prompt')}
-                  isRichText={true}
-                  showOpenModal={true}
-                  value={promptInput.value || ''}
-                  onChange={onPromptChange}
-                  variables={allVariables}
-                  variableLabels={editorVariables}
-                  skillOption={skillOption}
-                  selectedSkills={selectedSkills}
-                  onClickSkill={onClickSkill}
-                  onRemoveSkill={onRemoveSkill}
-                  ExtensionPopover={[OptimizerPopoverComponent]}
-                  placeholder={promptInput.placeholder ? t(promptInput.placeholder as any) : ''}
-                />
+                <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.aiSystemPrompt}>
+                  <PromptEditor
+                    minH={160}
+                    bg={'myGray.50'}
+                    title={t('common:core.ai.Prompt')}
+                    isRichText={true}
+                    showOpenModal={true}
+                    value={promptInput.value || ''}
+                    onChange={onPromptChange}
+                    variables={allVariables}
+                    variableLabels={editorVariables}
+                    skillOption={skillOption}
+                    selectedSkills={selectedSkills}
+                    onClickSkill={onClickSkill}
+                    onRemoveSkill={onRemoveSkill}
+                    ExtensionPopover={[OptimizerPopoverComponent]}
+                    placeholder={promptInput.placeholder ? t(promptInput.placeholder as any) : ''}
+                  />
+                </WorkflowFieldScope>
               ) : (
                 <ReferenceRender inputs={inputs} item={promptInput} nodeId={nodeId} />
               )}

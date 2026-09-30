@@ -20,6 +20,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 import { useField, useNodeActions, useWorkflowActions } from '@/web/core/workflow/editor';
 import { useWorkflowSnapshotGetter } from '../render/useWorkflowDocument';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 /** ELSE 分支源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
 const elseHandleTranslate = [18, 0] as [number, number];
@@ -124,16 +125,18 @@ const IfElseEditor = ({ nodeId }: { nodeId: string }) => {
         onDragEndCb={(list: IfElseListItemType[]) => onUpdateIfElseList(list)}
         dataList={ifElseList}
         renderClone={(provided, snapshot, rubric) => (
-          <ListItem
-            provided={provided}
-            snapshot={snapshot}
-            conditionItem={ifElseList[rubric.source.index]}
-            conditionIndex={rubric.source.index}
-            branchCount={ifElseList.length}
-            onUpdateBranch={onUpdateBranch}
-            onDeleteBranch={onDeleteBranch}
-            nodeId={nodeId}
-          />
+          <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.ifElseList}>
+            <ListItem
+              provided={provided}
+              snapshot={snapshot}
+              conditionItem={ifElseList[rubric.source.index]}
+              conditionIndex={rubric.source.index}
+              branchCount={ifElseList.length}
+              onUpdateBranch={onUpdateBranch}
+              onDeleteBranch={onDeleteBranch}
+              nodeId={nodeId}
+            />
+          </WorkflowFieldScope>
         )}
       >
         {({ provided }) => (
@@ -146,16 +149,18 @@ const IfElseEditor = ({ nodeId }: { nodeId: string }) => {
                 isDragDisabled={!canDrag}
               >
                 {(provided, snapshot) => (
-                  <ListItem
-                    provided={provided}
-                    snapshot={snapshot}
-                    conditionItem={conditionItem}
-                    conditionIndex={conditionIndex}
-                    branchCount={ifElseList.length}
-                    onUpdateBranch={onUpdateBranch}
-                    onDeleteBranch={onDeleteBranch}
-                    nodeId={nodeId}
-                  />
+                  <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.ifElseList}>
+                    <ListItem
+                      provided={provided}
+                      snapshot={snapshot}
+                      conditionItem={conditionItem}
+                      conditionIndex={conditionIndex}
+                      branchCount={ifElseList.length}
+                      onUpdateBranch={onUpdateBranch}
+                      onDeleteBranch={onDeleteBranch}
+                      nodeId={nodeId}
+                    />
+                  </WorkflowFieldScope>
                 )}
               </Draggable>
             ))}

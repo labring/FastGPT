@@ -38,6 +38,7 @@ import VariableSelector from './VariableSelector';
 import ValueRenderer from './ValueRenderer';
 import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
 import { useField } from '@/web/core/workflow/editor';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 // 切换目标变量时按新类型生成默认操作字段与初值，
 // 保证 UI 初始显示与 runtime 默认行为一致（否则 boolean 会出现 UI 显示"是" / runtime 写 false 的错配）
@@ -251,7 +252,13 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         <Box px={4} pb={4}>
           <Flex flexDirection={'column'} gap={4}>
             {updateList.map((updateItem, index) => (
-              <ValueRow key={index} updateItem={updateItem} index={index} />
+              <WorkflowFieldScope
+                key={index}
+                nodeId={nodeId}
+                fieldKey={NodeInputKeyEnum.updateList}
+              >
+                <ValueRow updateItem={updateItem} index={index} />
+              </WorkflowFieldScope>
             ))}
           </Flex>
           <Flex className="nodrag" alignItems={'center'} mt={4}>
@@ -278,7 +285,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         </Box>
       </NodeCard>
     );
-  }, [ValueRow, data, onUpdateList, selected, t, updateList]);
+  }, [ValueRow, data, nodeId, onUpdateList, selected, t, updateList]);
 
   return Render;
 };

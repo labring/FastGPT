@@ -22,6 +22,7 @@ import { useTranslation } from 'next-i18next';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { useField, useNodeActions } from '@/web/core/workflow/editor';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 import {
@@ -93,22 +94,26 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
 
   if (isLegacyNode) {
     return (
-      <DatasetTagFilterDeprecated
-        value={normalizeLegacyDatasetTagFilterValue(currentInput.value)}
-        onChange={onChange}
-        variables={allVariables}
-        variableLabels={editorVariables}
-      />
+      <WorkflowFieldScope nodeId={nodeId} fieldKey={item.key}>
+        <DatasetTagFilterDeprecated
+          value={normalizeLegacyDatasetTagFilterValue(currentInput.value)}
+          onChange={onChange}
+          variables={allVariables}
+          variableLabels={editorVariables}
+        />
+      </WorkflowFieldScope>
     );
   }
 
   return (
-    <DatasetTagFilterRows
-      value={currentInput.value}
-      onChange={onChange}
-      datasetIds={datasetIds}
-      referenceList={referenceList}
-    />
+    <WorkflowFieldScope nodeId={nodeId} fieldKey={item.key}>
+      <DatasetTagFilterRows
+        value={currentInput.value}
+        onChange={onChange}
+        datasetIds={datasetIds}
+        referenceList={referenceList}
+      />
+    </WorkflowFieldScope>
   );
 };
 

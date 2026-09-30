@@ -24,6 +24,7 @@ import { ReferSelector, useReference } from './render/RenderInput/templates/Refe
 import RenderOutput from './render/RenderOutput';
 import ValueTypeLabel from './render/ValueTypeLabel';
 import { useField, useNode } from '@/web/core/workflow/editor';
+import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -177,18 +178,18 @@ const VariableSelector = ({
           onClick={onDel}
         />
       </Flex>
-      <ReferSelector
-        placeholder={t(
-          (inputChildren.referencePlaceholder as any) ||
-            t('common:core.module.Dataset quote.select')
-        )}
-        list={referenceList}
-        value={inputChildren.value}
-        onSelect={onSelect}
-        isArray={false}
-        // 字段引用状态带上 Reference Snapshot 的历史名字与图标，来源被删后仍可读。
-        reference={quoteField?.reference}
-      />
+      <WorkflowFieldScope nodeId={nodeId} fieldKey={inputChildren.key}>
+        <ReferSelector
+          placeholder={t(
+            (inputChildren.referencePlaceholder as any) ||
+              t('common:core.module.Dataset quote.select')
+          )}
+          list={referenceList}
+          value={inputChildren.value}
+          onSelect={onSelect}
+          isArray={false}
+        />
+      </WorkflowFieldScope>
     </>
   );
 };
