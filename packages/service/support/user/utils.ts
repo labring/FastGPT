@@ -113,13 +113,18 @@ export async function addSourceMember<T extends { tmbId: string }>({
     session
   });
 
+  const hasToObject = <R>(doc: unknown): doc is { toObject: () => R } =>
+    typeof doc === 'object' &&
+    doc !== null &&
+    'toObject' in doc &&
+    typeof (doc as Record<string, unknown>).toObject === 'function';
+
   return list
     .map((item) => {
       const tmb = tmbMap.get(String(item.tmbId));
       if (!tmb) return;
 
-      // @ts-ignore
-      const formatItem = typeof item.toObject === 'function' ? item.toObject() : item;
+      const formatItem = hasToObject<T>(item) ? item.toObject() : item;
 
       return {
         ...formatItem,

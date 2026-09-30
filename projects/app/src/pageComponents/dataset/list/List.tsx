@@ -475,7 +475,7 @@ function List() {
       showLoadingOverlay={false}
     >
       <>
-        {isFetchingDatasets ? (
+        {isInitialLoading ? (
           <Grid
             ref={gridRef}
             py={4}

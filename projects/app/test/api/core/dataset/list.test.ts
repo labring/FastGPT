@@ -197,4 +197,39 @@ describe('POST /api/core/dataset/list', () => {
       expect.objectContaining({ name: 'Legacy Dataset', avatar: '/icon/logo.svg', intro: '' })
     );
   });
+
+  it('excludes datasets of deleted team members and maintains accurate total in V2', async () => {
+    const user = await getUser(`dataset-list-orphan-${getNanoid(6)}`);
+    const validDataset = await MongoDataset.create({
+      name: 'Valid Dataset',
+      type: DatasetTypeEnum.dataset,
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      updateTime: new Date('2024-01-02T00:00:00.000Z')
+    });
+    const orphanTmbId = new Types.ObjectId();
+    const orphanDataset = await MongoDataset.create({
+      name: 'Orphan Dataset',
+      type: DatasetTypeEnum.dataset,
+      teamId: user.teamId,
+      tmbId: orphanTmbId,
+      updateTime: new Date('2024-01-01T00:00:00.000Z')
+    });
+
+    const res = await Call<GetDatasetListV2Body, Record<string, never>, GetDatasetListV2Response>(
+      handlerV2,
+      {
+        auth: user,
+        body: { type: DatasetTypeEnum.dataset }
+      }
+    );
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(1);
+    expect(res.data.list).toHaveLength(1);
+    expect(res.data.list[0].name).toBe('Valid Dataset');
+    expect(res.data.list.some((item) => String(item._id) === String(orphanDataset._id))).toBe(
+      false
+    );
+  });
 });
