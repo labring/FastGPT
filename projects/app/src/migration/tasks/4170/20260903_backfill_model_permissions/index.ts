@@ -2,8 +2,8 @@ import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant
 import { clearAllMyModelsCache } from '@fastgpt/service/support/permission/model/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
-import { runIncrementalModelReferenceMigration } from '../4163_model_references/incremental';
-import { loadModelCatalog } from '../4163_model_references/modelCatalog';
+import { runIncrementalModelReferenceMigration } from '../20260903_model_references/incremental';
+import { loadModelCatalog } from '../20260903_model_references/modelCatalog';
 
 /**
  * 按 checkpoint 增量回填模型权限的 resourceId；无法匹配旧名称的悬空权限会被安全删除。

@@ -9,7 +9,6 @@ import {
   Th,
   Td,
   Tbody,
-  MenuButton,
   Switch,
   Checkbox,
   HStack,
@@ -549,10 +548,10 @@ const CollectionCard = () => {
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
                     {collection.permission.hasWritePer && (
                       <MyMenu
-                        width={100}
-                        offset={[-70, 5]}
+                        strategy="fixed"
+                        placement="bottom-end"
                         Button={
-                          <MenuButton
+                          <Box
                             w={'1.5rem'}
                             h={'1.5rem'}
                             borderRadius={'md'}
@@ -573,7 +572,7 @@ const CollectionCard = () => {
                               borderRadius={'md'}
                               cursor={'pointer'}
                             />
-                          </MenuButton>
+                          </Box>
                         }
                         menuList={[
                           {

@@ -6,7 +6,7 @@ import { MongoDatasetCollectionTagsV2 } from '@fastgpt/service/core/dataset/tag/
 import {
   migrateCollectionTagValues,
   migrateDatasetTagDefinitions
-} from '@/migration/tasks/20260907_migrate_dataset_tags_v2/service';
+} from '@/migration/tasks/4171/20260907_migrate_dataset_tags_v2/service';
 
 const tagUniqueIndexName = 'teamId_1_datasetId_1_tag_1';
 const teamId = new Types.ObjectId();

@@ -17,12 +17,12 @@ vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
   getPluginSystemModelDocuments: mocks.getPluginSystemModelDocuments,
   loadInstalledModels: mocks.loadInstalledModels
 }));
-vi.mock('@/migration/tasks/20260903_migrate_legacy_system_models/service', () => ({
+vi.mock('@/migration/tasks/4170/20260903_migrate_legacy_system_models/service', () => ({
   inspectLegacySystemModelMigration: mocks.inspectLegacySystemModelMigration,
   bootstrapAIModelsFromLegacy: mocks.bootstrapAIModelsFromLegacy
 }));
 
-import { migrateLegacySystemModels } from '@/migration/tasks/20260903_migrate_legacy_system_models';
+import { migrateLegacySystemModels } from '@/migration/tasks/4170/20260903_migrate_legacy_system_models';
 
 const createContext = () =>
   ({

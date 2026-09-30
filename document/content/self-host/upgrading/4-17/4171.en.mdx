@@ -24,6 +24,7 @@ This upgrade includes the following automated scripts:
 1. Backfill App resource permission snapshots, clean legacy V1 apps and version data, and validate published App versions. The migration task does not block startup; its progress and failed records are available in system upgrade tasks.
 2. Enable reasoning mapping for compatible channels: enable `map_reasoning_to_reasoning_content: true` response-field conversion for existing AIProxy OpenAI channels while preserving their other configuration. This resolves reasoning-field differences for reasoning models such as DeepSeek-R1. Channels that already have this setting enabled are not updated again, and the migration task does not block startup.
 3. Upgrade Dataset tag data: migrate legacy Collection tags to typed tags and clean duplicate tag definitions. The migration task does not block startup.
+4. Backfill team member name set flags: backfill the `isSetMemberName` flag for legacy team members; owners are always marked as set, while non-owner names matching the login username are marked as requiring a name. The migration task does not block startup.
 
 ## Compatibility notes
 
@@ -50,6 +51,8 @@ The commercial edition no longer requires the Pro service to be started separate
 17. Added `off` input type for workflow node inputs: intended for third-party interface parameter passing, not rendered in the UI while preserving parameter schema, default values, and validation, and excluded from Agent auto-generated parameters.
 18. Supported string tag type in workflow dataset search tag filters: supports structured text conditions and reference variables, executing corresponding match operations at the retrieval layer.
 19. Added the "Basic Features - Model Management" category and endpoints to the OpenAPI documentation (public model list, member available model catalog, and batch model summaries), supporting model queries via API Key.
+20. Added the `DISABLE_MARKETPLACE` environment variable (default `false`), allowing administrators to hide the plugin marketplace installation entry in system tools and retain only local file imports.
+21. Supported explicitly specifying and saving member display names (`memberName`) in the admin user creation API.
 
 ## ⚙️ Improvements
 
@@ -65,6 +68,8 @@ The commercial edition no longer requires the Pro service to be started separate
 10. Fixed Workflow array variables receiving a single object JSON string being parsed as a plain object rather than an array, automatically wrapping it into a single-element array to prevent errors in loop and parallel nodes.
 11. Sorted template model list by model provider order when adding models from templates, keeping model lists organized and consistent.
 12. Optimized chat title generation rules: initial chat rounds that only upload files or trigger auto-execution now assign localized fixed titles (such as "Upload File" or "Auto Execute"), which are automatically overwritten once subsequent text queries are sent; custom titles (`customTitle`) retain the highest priority and will not be overwritten; unified title fallback and display consistency across chat history, logs, and exports; and prevented empty values or placeholders from being persisted as chat titles.
+13. Optimized token estimation for multimodal messages: multimodal parts (images, audio, video, files) are converted to compact placeholders before entering the tokenizer worker instead of passing raw base64, URLs, or binary data, preventing worker timeouts and inaccurate token estimation.
+14. Optimized password recovery flow: validate account format (email/phone number) before requesting verification codes, preventing parameter validation errors after opening captcha modals.
 
 ## 🐛 Fixes
 
@@ -115,6 +120,7 @@ The commercial edition no longer requires the Pro service to be started separate
 45. Fixed base64 images embedded inside HTML `<img>` tags in parsed documents (such as docx/xlsx HTML tables) not being uploaded to storage and leaking into text chunks as massive base64 strings.
 46. Fixed Workflow condition node (`If/Else`) throwing a TypeError (`trim is not a function`) when using "starts with" or "ends with" conditions on non-string inputs.
 47. Fixed some Dataset file ingestion endpoints not binding client-supplied S3 object keys to the already-authorized resource.
+48. Fixed an issue where knowledge-base template and backup imports failed with "invalid file format" when external document parsing is enabled for xlsx, because external parsers return Markdown instead of structured table info; forced system parsing for template and backup imports.
 
 ## 🛠️ Code Improvements
 
@@ -123,3 +129,4 @@ The commercial edition no longer requires the Pro service to be started separate
 3. Dataset APIs now support external document parsing options for retaining headers and footers, appendices, image recognition results, and chart analysis results. These options apply only when an external parsing service is enabled.
 4. Refactored scheduled timer tasks and distributed locking with `checkTimerLock`, consolidating model status probing in the service layer to prevent concurrent probes across nodes.
 5. Optimized sensitive data encryption/decryption performance by caching derived scrypt keys and eliminating blocking CPU queries; switched main application Dockerfile base image to debian-slim.
+6. Upgraded core dependencies including hono, multer, and nodemailer.

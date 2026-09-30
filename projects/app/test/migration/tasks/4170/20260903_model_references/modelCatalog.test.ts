@@ -3,7 +3,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
-import { loadModelCatalog } from '@/migration/tasks/4163_model_references/modelCatalog';
+import { loadModelCatalog } from '@/migration/tasks/4170/20260903_model_references/modelCatalog';
 
 describe('loadModelCatalog', () => {
   const llmRequirement = { type: ModelTypeEnum.llm };

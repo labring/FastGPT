@@ -23,8 +23,7 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import {
   DatasetCollectionDataProcessModeMap,
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeMap,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -190,45 +189,55 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
     ];
   }, [collection, t]);
 
+  const hasCollectionPermission = collection?.dataset.collectionPermissionEnabled === true;
+
+  const metadataContent = metadataList.map(
+    (item, i) =>
+      item.label &&
+      item.value && (
+        <Box key={i} mb={3} wordBreak={'break-all'}>
+          <Box color={'myGray.500'} fontSize={'xs'}>
+            {item.label}
+          </Box>
+          <Box color={'myGray.900'} fontSize={'sm'}>
+            {item.value}
+          </Box>
+        </Box>
+      )
+  );
+
   return (
     <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6} overflow={'auto'}>
-      {/* 元数据整体折叠，默认收起 */}
-      <Accordion allowToggle defaultIndex={-1}>
-        <AccordionItem borderTop={'none'} borderBottom={'none'}>
-          <AccordionButton
-            p={0}
-            mb={4}
-            justifyContent={'space-between'}
-            bg={'transparent'}
-            border={'none'}
-            boxShadow={'none'}
-            _hover={{ bg: 'transparent' }}
-            _expanded={{ bg: 'transparent' }}
-          >
-            <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'}>
-              {t('common:core.dataset.collection.metadata.metadata')}
-            </Box>
-            <AccordionIcon w={'1.25rem'} h={'1.25rem'} color={'myGray.500'} />
-          </AccordionButton>
+      {hasCollectionPermission ? (
+        <Accordion allowToggle defaultIndex={-1}>
+          <AccordionItem borderTop={'none'} borderBottom={'none'}>
+            <AccordionButton
+              p={0}
+              mb={4}
+              justifyContent={'space-between'}
+              bg={'transparent'}
+              border={'none'}
+              boxShadow={'none'}
+              _hover={{ bg: 'transparent' }}
+              _expanded={{ bg: 'transparent' }}
+            >
+              <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'}>
+                {t('common:core.dataset.collection.metadata.metadata')}
+              </Box>
+              <AccordionIcon w={'1.25rem'} h={'1.25rem'} color={'myGray.500'} />
+            </AccordionButton>
 
-          <AccordionPanel p={0}>
-            {metadataList.map(
-              (item, i) =>
-                item.label &&
-                item.value && (
-                  <Box key={i} mb={3} wordBreak={'break-all'}>
-                    <Box color={'myGray.500'} fontSize={'xs'}>
-                      {item.label}
-                    </Box>
-                    <Box color={'myGray.900'} fontSize={'sm'}>
-                      {item.value}
-                    </Box>
-                  </Box>
-                )
-            )}
-          </AccordionPanel>
-        </AccordionItem>
-      </Accordion>
+            <AccordionPanel p={0}>{metadataContent}</AccordionPanel>
+          </AccordionItem>
+        </Accordion>
+      ) : (
+        <Box>
+          <Box fontSize={'md'} fontWeight={'bold'} color={'myGray.900'} pb={4}>
+            {t('common:core.dataset.collection.metadata.metadata')}
+          </Box>
+          {metadataContent}
+        </Box>
+      )}
 
       {/* 数据集权限关闭态不存在 collection 快照，避免对无 ACL 的集合发起协作者查询 */}
       {!!collection?._id && collection.dataset.collectionPermissionEnabled === true && (

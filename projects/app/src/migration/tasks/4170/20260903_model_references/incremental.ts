@@ -207,7 +207,7 @@ const assertCheckpointMatchesStages = (
     checkpoint.stages.length !== stages.length ||
     checkpoint.stages.some((item, index) => item.key !== stages[index]?.key)
   ) {
-    throw new Error('4163 migration checkpoint does not match the registered stages');
+    throw new Error('Model reference migration checkpoint does not match the registered stages');
   }
 };
 
@@ -222,7 +222,7 @@ const runInChunks = async <T, R>(values: T[], handler: (value: T) => Promise<R>)
 };
 
 /**
- * 4163 非阻塞任务的统一恢复协议：先重试错误快照，再按稳定 endId/lastId 游标续跑。
+ * 模型引用非阻塞任务的统一恢复协议：先重试错误快照，再按稳定 endId/lastId 游标续跑。
  * 每批严格按“业务写入 → 完整错误快照 → checkpoint”提交，节点失权后重复执行仍然安全。
  */
 export const runIncrementalModelReferenceMigration = async ({

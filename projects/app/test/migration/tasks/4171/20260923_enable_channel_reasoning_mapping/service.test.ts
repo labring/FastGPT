@@ -13,7 +13,7 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/config', () => ({
   getAIProxyAdminConfig: mocks.getAIProxyAdminConfig
 }));
 
-import { mergeAIProxyChannelConfigs } from '@/migration/tasks/20260923_enable_channel_reasoning_mapping/service';
+import { mergeAIProxyChannelConfigs } from '@/migration/tasks/4171/20260923_enable_channel_reasoning_mapping/service';
 
 const channels = [
   {

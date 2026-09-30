@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SystemMigrationContext } from '@/migration/registry';
 import type { SystemMigrationProgressInput } from '@fastgpt/global/migration/schema';
-import { backfillMemberNameSet } from '@/migration/tasks/20260928_backfill_member_name_set';
+import { backfillMemberNameSet } from '@/migration/tasks/4171/20260928_backfill_member_name_set';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
