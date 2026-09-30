@@ -37,16 +37,22 @@ type CountableContentPart = ChatCompletionContentPart | { type: 'refusal'; refus
 /**
  * 将多模态 content part 转成可计数文本。
  *
- * 这里不尝试复刻各家模型对图片、音频、文件的精确计费规则，只把会进入上下文或
- * 明显影响输入规模的字段纳入估算；真实计费仍以模型供应商返回的 usage 为准。
+ * 媒体字段只保留固定占位符，不把 base64、媒体 URL 或文件二进制交给 tokenizer：
+ * 这些内容不是普通 prompt 文本，直接做 BPE 编码会造成 worker 超时，也会让估算结果
+ * 受签名 URL 和二进制长度影响。真实媒体 token 和计费仍以供应商返回的 usage 为准。
  */
 const contentPartToText = (part: CountableContentPart) => {
   if (part.type === 'text') return part.text;
-  if (part.type === 'image_url') return part.image_url.url;
-  if (part.type === 'input_audio') return part.input_audio.data;
+  if (part.type === 'image_url') {
+    return `[image${part.image_url.detail ? `:${part.image_url.detail}` : ''}]`;
+  }
+  if (part.type === 'input_audio') return `[audio:${part.input_audio.format}]`;
+  if (part.type === 'video_url') return '[video]';
   if (part.type === 'file')
-    return [part.file.filename, part.file.file_id, part.file.file_data].filter(Boolean).join(' ');
-  if (part.type === 'file_url') return [part.name, part.url].filter(Boolean).join(' ');
+    return [part.file.filename, part.file.file_id, part.file.file_data ? '[file]' : '']
+      .filter(Boolean)
+      .join(' ');
+  if (part.type === 'file_url') return [part.name, '[file_url]'].filter(Boolean).join(' ');
   if (part.type === 'refusal') return part.refusal;
   return '';
 };
