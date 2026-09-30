@@ -22,6 +22,7 @@ export const appEnv = createEnv({
     OPENAPI_KEY_MAX_COUNT: IntSchema.min(1).default(100),
 
     MARKETPLACE_URL: UrlSchema.default('https://v2.marketplace.fastgpt.cn'),
+    DISABLE_MARKETPLACE: BoolSchema.default(false),
     PASSWORD_EXPIRED_MONTH: IntSchema.optional()
   },
   emptyStringAsUndefined: true,
