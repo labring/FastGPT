@@ -25,6 +25,7 @@ import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/pl
 import AdminContainer from '@/pageComponents/admin/AdminContainer';
 import { accountPageRootStyles, accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const allPluginStatuses: PluginStatusType[] = [
   PluginStatusEnum.Normal,
@@ -48,6 +49,7 @@ const WorkflowToolConfig = dynamic(
 const ImportPluginModal = dynamic(() => import('@/pageComponents/admin/config/ImportPluginModal'));
 
 const ToolProvider = () => {
+  const { feConfigs } = useSystemStore();
   const { t } = useClientTranslation(['app', 'file', 'admin', 'config']);
   const router = useRouter();
 
@@ -182,10 +184,14 @@ const ToolProvider = () => {
               menuList={[
                 {
                   children: [
-                    {
-                      label: t('app:install_from_marketplace'),
-                      onClick: () => router.push('/dashboard/tool/marketplace')
-                    },
+                    ...(!feConfigs?.disableMarketplace
+                      ? [
+                          {
+                            label: t('app:install_from_marketplace'),
+                            onClick: () => router.push('/dashboard/tool/marketplace')
+                          }
+                        ]
+                      : []),
                     {
                       label: t('app:install_from_file'),
                       onClick: onOpenImportModal

@@ -1,6 +1,6 @@
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import { z } from 'zod';
-import { NumSchema } from '../../zod';
+import { BoolSchema, NumSchema } from '../../zod';
 import type {
   LicensePayload,
   LicenseSchemaVersionType,
@@ -213,6 +213,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   openAPIDocUrl: z.string().optional().meta({ description: 'OpenAPI 接口文档地址' }),
   appTemplateCourse: z.string().optional().meta({ description: '应用模板使用教程链接' }),
   marketplaceUrl: z.string().optional().meta({ description: '插件市场与模板市场服务地址' }),
+  disableMarketplace: BoolSchema.optional().meta({ description: '是否隐藏插件市场安装入口' }),
   customApiDomain: z.string().optional().meta({ description: '对外开放的自定义 API 域名' }),
   customSharePageDomain: z
     .string()
