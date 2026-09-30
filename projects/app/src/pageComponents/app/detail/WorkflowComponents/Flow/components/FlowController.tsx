@@ -22,7 +22,6 @@ import {
   isWorkflowShortcutInputtingTarget
 } from '../hooks/keyboard';
 import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
-import { getDimensionedNodes } from '../context/dimensionIndex';
 
 const buttonStyle = {
   border: 'none',
@@ -31,11 +30,9 @@ const buttonStyle = {
 };
 
 const FlowController = React.memo(function FlowController() {
-  const { fitView, zoomIn, zoomOut, getNode } = useReactFlow();
-  const getCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
+  const { zoomIn, zoomOut, getNode } = useReactFlow();
+  const fitNodes = useContextSelector(WorkflowCanvasContext, (v) => v.fitNodes);
   const getNodeDimensions = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimensions);
-  const dimensionIndex = useContextSelector(WorkflowCanvasContext, (v) => v.dimensionIndex);
   const undo = useContextSelector(WorkflowHostContext, (v) => v.undo);
   const redo = useContextSelector(WorkflowHostContext, (v) => v.redo);
   const canUndo = useContextSelector(WorkflowHostContext, (v) => v.canUndo);
@@ -122,7 +119,7 @@ const FlowController = React.memo(function FlowController() {
         />
       );
     },
-    [dimensionIndex, getNode, getNodeDimensions]
+    [getNode, getNodeDimensions]
   );
 
   const Render = useMemo(() => {
@@ -235,8 +232,7 @@ const FlowController = React.memo(function FlowController() {
           <MyTooltip label={t('common:page_center')}>
             <ControlButton
               onClick={() => {
-                const validNodes = getDimensionedNodes(getCanvasNodes(), getNodeDimension);
-                fitView({ nodes: validNodes, padding: 0.3 });
+                fitNodes(undefined, { padding: 0.3 });
               }}
               style={buttonStyle}
               className={`custom-workflow-fix_view ${styles.customControlButton}`}
@@ -260,10 +256,7 @@ const FlowController = React.memo(function FlowController() {
     presentationMode,
     setWorkflowControlMode,
     setPresentationMode,
-    getCanvasNodes,
-    getNodeDimension,
-    getNodeDimensions,
-    fitView
+    fitNodes
   ]);
 
   return Render;

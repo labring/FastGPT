@@ -37,6 +37,14 @@ export type CanvasViewport = {
   height: number;
 };
 
+export type ViewportFitOptions = {
+  padding?: number;
+  minZoom?: number;
+  maxZoom?: number;
+};
+
+export type ViewportTransform = Pick<CanvasViewport, 'x' | 'y' | 'zoom'>;
+
 export type ViewportNode = {
   id: string;
   position: { x: number; y: number };
@@ -137,6 +145,22 @@ const getAbsoluteNodePositions = (nodes: readonly ViewportNode[]) => {
   return { nodeById, positionById };
 };
 
+const isHiddenByFold = (
+  node: ViewportNode,
+  nodeById: ReadonlyMap<string, ViewportNode>
+): boolean => {
+  const visited = new Set<string>();
+  let parentId = node.parentNodeId;
+  while (parentId && !visited.has(parentId)) {
+    visited.add(parentId);
+    const parent = nodeById.get(parentId);
+    if (!parent) return false;
+    if (parent.isFolded) return true;
+    parentId = parent.parentNodeId;
+  }
+  return false;
+};
+
 /**
  * 计算 viewport/overscan 集合。安全区内节点直接进入 full，容器因安全区内子节点被加入 full 集合。
  * 折叠子节点不进入测量队列。
@@ -165,21 +189,8 @@ const classifyViewportNodesWithPositions = ({
   const range = getViewportRange({ viewport, overscan });
   const viewportRange = getViewportRange({ viewport, overscan: 0 });
 
-  const isHiddenByFold = (node: ViewportNode) => {
-    const visited = new Set<string>();
-    let parentId = node.parentNodeId;
-    while (parentId && !visited.has(parentId)) {
-      visited.add(parentId);
-      const parent = nodeById.get(parentId);
-      if (!parent) return false;
-      if (parent.isFolded) return true;
-      parentId = parent.parentNodeId;
-    }
-    return false;
-  };
-
   nodes.forEach((node) => {
-    if (isHiddenByFold(node)) {
+    if (isHiddenByFold(node, nodeById)) {
       hiddenNodeIds.add(node.id);
       return;
     }
@@ -251,6 +262,58 @@ const getRectBounds = (rects: readonly NodeRect[]): NodeRect | undefined => {
     height,
     centerX: left + width / 2,
     centerY: top + height / 2
+  };
+};
+
+/**
+ * 基于完整节点图与 Dimension Index 计算 viewport，不依赖 React Flow 当前挂载的节点集合。
+ * nodeIds 未提供时适配整张可见画布；提供时只定位指定节点，父节点链仍用于还原绝对坐标。
+ */
+export const getViewportForNodeIds = ({
+  nodes,
+  nodeIds,
+  dimensions,
+  width,
+  height,
+  padding = 0.3,
+  minZoom = 0.1,
+  maxZoom = 3
+}: {
+  nodes: readonly ViewportNode[];
+  nodeIds?: readonly string[];
+  dimensions: ReadonlyMap<string, NodeDimensions>;
+  width: number;
+  height: number;
+} & ViewportFitOptions): ViewportTransform | undefined => {
+  if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return;
+
+  const { nodeById, positionById } = getAbsoluteNodePositions(nodes);
+  const targetIds = nodeIds ? new Set(nodeIds) : undefined;
+  const rects = nodes.flatMap((node) => {
+    if (targetIds && !targetIds.has(node.id)) return [];
+    if (isHiddenByFold(node, nodeById)) return [];
+
+    const dimension = dimensions.get(node.id)?.card;
+    const position = positionById.get(node.id) ?? node.position;
+    const rect = getNodeRect({ id: node.id, position }, dimension);
+    return rect ? [rect] : [];
+  });
+  const bounds = getRectBounds(rects);
+  if (!bounds) return;
+
+  const safePadding = Math.max(padding, 0);
+  const zoom = Math.min(
+    width / (Math.max(bounds.width, 1) * (1 + safePadding)),
+    height / (Math.max(bounds.height, 1) * (1 + safePadding))
+  );
+  const clampedZoom = Math.min(Math.max(zoom, minZoom), maxZoom);
+  const centerX = bounds.left + bounds.width / 2;
+  const centerY = bounds.top + bounds.height / 2;
+
+  return {
+    x: width / 2 - centerX * clampedZoom,
+    y: height / 2 - centerY * clampedZoom,
+    zoom: clampedZoom
   };
 };
 

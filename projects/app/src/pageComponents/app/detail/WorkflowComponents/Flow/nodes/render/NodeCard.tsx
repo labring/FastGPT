@@ -196,10 +196,9 @@ const NodeCard = (props: Props) => {
   const isMeasuring = useContextSelector(WorkflowCanvasContext, (v) =>
     v.measurementNodeIds.includes(nodeId)
   );
+  const fitNodes = useContextSelector(WorkflowCanvasContext, (v) => v.fitNodes);
   const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
   const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
-  const { fitView } = useReactFlow();
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
 
   const nodeActions = useNodeActions(nodeId);
   const inputConfigField = useField(nodeId, NodeInputKeyEnum.systemInputConfig, 'input');
@@ -213,15 +212,9 @@ const NodeCard = (props: Props) => {
 
     // Fit view to show this node in center
     setTimeout(() => {
-      const dimension = getNodeDimension(nodeId);
-      if (!dimension) return;
-      fitView({
-        nodes: [{ id: nodeId, ...dimension }],
-        padding: 0.3,
-        minZoom: 0.6
-      });
+      fitNodes([nodeId], { padding: 0.3, minZoom: 0.6 });
     }, 100);
-  }, [getNodeDimension, nodeActions, setPresentationMode, fitView, nodeId]);
+  }, [fitNodes, nodeActions, setPresentationMode, nodeId]);
 
   const showToolHandle = isTool;
 

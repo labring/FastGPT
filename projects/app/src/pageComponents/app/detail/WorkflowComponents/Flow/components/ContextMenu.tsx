@@ -18,11 +18,7 @@ import { useCanvas, useWorkflowActions } from '@/web/core/workflow/editor';
 import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
 import { WorkflowHostContext, useWorkflowSnapshot } from '@/web/core/workflow/editor/host';
 import { useClearCanvasSelection } from '../hooks/useWorkflow';
-import {
-  getDimensionedNodes,
-  type DimensionReader,
-  type NodeCardDimension
-} from '../context/dimensionIndex';
+import { type DimensionReader, type NodeCardDimension } from '../context/dimensionIndex';
 
 /** 右键菜单单项：执行动作后关闭菜单。不依赖父组件状态，放模块级避免每次渲染重建组件。 */
 const ContextMenuItem = ({
@@ -67,8 +63,9 @@ const ContextMenu = () => {
 
   // 自动对齐只读 renderer 交互状态（位置、测量尺寸）；写入走画布本地数组，
   // 受控模式下 useReactFlow().setNodes 会被转成整份 reset 变更。
-  const { fitView, screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition } = useReactFlow();
   const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
+  const fitNodes = useContextSelector(WorkflowCanvasContext, (v) => v.fitNodes);
   const edges = useContextSelector(WorkflowCanvasContext, (v) => v.edges);
   const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
   const setCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.setNodes);
@@ -423,10 +420,9 @@ const ContextMenu = () => {
     );
 
     setTimeout(() => {
-      const validNodes = getDimensionedNodes(newNodes, getLayoutDimension);
-      fitView({ nodes: validNodes, padding: 0.3 });
+      fitNodes(undefined, { padding: 0.3 });
     });
-  }, [canvas, edges, fitView, getNodeDimension, getNodes, setCanvasNodes]);
+  }, [canvas, edges, fitNodes, getNodeDimension, getNodes, setCanvasNodes]);
 
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)

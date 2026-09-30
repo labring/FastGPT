@@ -8,6 +8,7 @@ import {
   getDimensionedNodes,
   getLayoutDimension,
   getNodeRect,
+  getViewportForNodeIds,
   type DimensionMeasurement
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/context/dimensionIndex';
 
@@ -180,6 +181,56 @@ describe('workflow viewport measurement scheduling', () => {
     ]);
     expect(queue.take(8)).toEqual([{ nodeId: 'far', generation: 1, priority: 2 }]);
     expect(queue.getSize()).toBe(0);
+  });
+});
+
+describe('workflow viewport fitting', () => {
+  it('fits selected nodes from absolute positions instead of the rendered subset', () => {
+    const viewport = getViewportForNodeIds({
+      width: 1000,
+      height: 500,
+      padding: 0,
+      nodes: [
+        { id: 'parent', position: { x: 100, y: 50 } },
+        { id: 'child', parentNodeId: 'parent', position: { x: 200, y: 100 } }
+      ],
+      nodeIds: ['child'],
+      dimensions: new Map([['child', measuredDimension({ width: 600, height: 300 })]])
+    });
+
+    expect(viewport?.zoom).toBeCloseTo(5 / 3);
+    expect(viewport?.x).toBeCloseTo(-500);
+    expect(viewport?.y).toBeCloseTo(-250);
+  });
+
+  it('excludes folded descendants and returns no viewport without measured targets', () => {
+    const dimensions = new Map([
+      ['parent', measuredDimension({ width: 100, height: 100 })],
+      ['child', measuredDimension({ width: 500, height: 500 })]
+    ]);
+    const nodes = [
+      { id: 'parent', position: { x: 10, y: 20 }, isFolded: true },
+      { id: 'child', parentNodeId: 'parent', position: { x: 300, y: 300 } }
+    ];
+
+    expect(
+      getViewportForNodeIds({
+        width: 1000,
+        height: 500,
+        padding: 0,
+        nodes,
+        dimensions
+      })
+    ).toEqual({ x: 320, y: 40, zoom: 3 });
+    expect(
+      getViewportForNodeIds({
+        width: 1000,
+        height: 500,
+        nodes,
+        nodeIds: ['missing'],
+        dimensions
+      })
+    ).toBeUndefined();
   });
 });
 

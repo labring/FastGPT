@@ -20,7 +20,6 @@ import type { NodeProps } from 'reactflow';
 import ReactFlow, {
   Position,
   SelectionMode,
-  useReactFlow,
   useStore,
   useUpdateNodeInternals,
   useViewport
@@ -32,11 +31,7 @@ import { WorkflowSelectionProvider } from './context/workflowSelectionContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import {
-  getDimensionedNodes,
-  getLayoutDimension,
-  WORKFLOW_NODE_MEASUREMENT_ESTIMATE
-} from './context/dimensionIndex';
+import { getLayoutDimension, WORKFLOW_NODE_MEASUREMENT_ESTIMATE } from './context/dimensionIndex';
 import {
   ConnectionSourceHandle,
   ConnectionTargetHandle
@@ -435,8 +430,9 @@ const WorkflowCanvas = () => {
   const nodes = useContextSelector(WorkflowCanvasContext, (v) => v.nodes);
   const renderedNodes = useContextSelector(WorkflowCanvasContext, (v) => v.renderedNodes);
   const dimensionIndex = useContextSelector(WorkflowCanvasContext, (v) => v.dimensionIndex);
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
+  const fitNodes = useContextSelector(WorkflowCanvasContext, (v) => v.fitNodes);
   const renderedEdges = useContextSelector(WorkflowCanvasContext, (v) => v.renderedEdges);
+  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
   const helperLinesRef = useRef<HelperLinesController>(null);
   // 按字段订阅：整体订阅会让 hover / 鼠标进出画布带动整个画布组件重渲染，
   // 而这里只需要一个稳定 callback ref、一个原始值和一个菜单坐标。
@@ -473,8 +469,20 @@ const WorkflowCanvas = () => {
   const onMoveStart = useCallback(() => setMovingCanvas(true), []);
   const onMoveEnd = useCallback(() => setMovingCanvas(false), []);
 
-  const { fitView } = useReactFlow();
+  const canvasWidth = useStore((state) => state.width);
+  const canvasHeight = useStore((state) => state.height);
+  const startNodeId = nodes.find(
+    (node) => node.data.flowNodeType === FlowNodeTypeEnum.workflowStart
+  )?.id;
+  const fittedStartRuntimeRef = useRef<unknown>();
   const fittedIssueNodeRef = useRef<string>();
+
+  useEffect(() => {
+    if (!runtime || !startNodeId) return;
+    if (fittedStartRuntimeRef.current === runtime) return;
+    if (!fitNodes([startNodeId], { padding: 0.3 })) return;
+    fittedStartRuntimeRef.current = runtime;
+  }, [canvasHeight, canvasWidth, dimensionIndex, fitNodes, nodes, runtime, startNodeId]);
 
   useEffect(() => {
     const focusedNodeId = issueFocusRef.current;
@@ -486,11 +494,9 @@ const WorkflowCanvas = () => {
 
     const focusedNode = nodes.find((node) => node.id === focusedNodeId);
     if (!focusedNode) return;
-    const [node] = getDimensionedNodes([focusedNode], getNodeDimension);
-    if (!node) return;
+    if (!fitNodes([focusedNode.id], { padding: 0.3, minZoom: 0.6 })) return;
     fittedIssueNodeRef.current = focusedNodeId;
-    fitView({ nodes: [node], padding: 0.3, minZoom: 0.6 });
-  }, [dimensionIndex, fitView, getNodeDimension, issueFocusTick, issueFocusRef, nodes]);
+  }, [canvasHeight, canvasWidth, dimensionIndex, fitNodes, issueFocusTick, issueFocusRef, nodes]);
 
   return (
     <>

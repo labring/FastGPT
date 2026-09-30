@@ -21,7 +21,9 @@ import {
   type Node,
   type NodeChange,
   applyEdgeChanges,
-  applyNodeChanges
+  applyNodeChanges,
+  useReactFlow,
+  useStore
 } from 'reactflow';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
 import { createProjectionCache, projectRuntimeCanvas } from '@/web/core/workflow/editor/projection';
@@ -34,7 +36,9 @@ import {
   type DimensionMeasurement,
   type DimensionRegistration,
   type NodeDimensions,
-  type NodeCardDimension
+  type NodeCardDimension,
+  getViewportForNodeIds,
+  type ViewportFitOptions
 } from './dimensionIndex';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
@@ -68,6 +72,7 @@ type WorkflowCanvasContextType = {
   setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
   onNodesChange: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
+  fitNodes: (nodeIds?: readonly string[], options?: ViewportFitOptions) => boolean;
   dimensionIndex: ReadonlyMap<string, NodeDimensions>;
   getNodeDimension: (nodeId: string) => NodeCardDimension | undefined;
   getNodeDimensions: (nodeId: string) => NodeDimensions | undefined;
@@ -92,6 +97,9 @@ export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
     throw new Error('Function not implemented.');
   },
   getNodes: function () {
+    throw new Error('Function not implemented.');
+  },
+  fitNodes: function () {
     throw new Error('Function not implemented.');
   },
   dimensionIndex: new Map(),
@@ -126,6 +134,9 @@ export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
 });
 
 const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
+  const { setViewport } = useReactFlow();
+  const canvasWidth = useStore((state) => state.width);
+  const canvasHeight = useStore((state) => state.height);
   const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
   const viewTick = useContextSelector(WorkflowHostContext, (v) => v.viewTick);
   const overlaysRef = useContextSelector(WorkflowHostContext, (v) => v.overlaysRef);
@@ -549,6 +560,27 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const getNodes = useMemoizedFn(() => nodesRef.current);
+  /** 直接按完整节点图和测量尺寸设置 viewport，不依赖 React Flow 当前渲染集合。 */
+  const fitNodes = useMemoizedFn(
+    (nodeIds?: readonly string[], options?: ViewportFitOptions): boolean => {
+      const viewport = getViewportForNodeIds({
+        nodes: nodesRef.current.map((node) => ({
+          id: node.id,
+          position: node.position,
+          parentNodeId: node.data.parentNodeId,
+          isFolded: node.data.isFolded
+        })),
+        nodeIds,
+        dimensions: dimensionIndexRef.current,
+        width: canvasWidth,
+        height: canvasHeight,
+        ...options
+      });
+      if (!viewport) return false;
+      setViewport(viewport);
+      return true;
+    }
+  );
   const getNodeDimension = useMemoizedFn(
     (nodeId: string) => dimensionIndexRef.current.get(nodeId)?.card
   );
@@ -609,6 +641,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       setNodes,
       onNodesChange,
       getNodes,
+      fitNodes,
       dimensionIndex,
       getNodeDimension,
       getNodeDimensions,
@@ -629,6 +662,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       setNodes,
       onNodesChange,
       getNodes,
+      fitNodes,
       dimensionIndex,
       getNodeDimension,
       getNodeDimensions,
