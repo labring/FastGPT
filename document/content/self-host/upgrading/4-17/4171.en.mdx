@@ -11,12 +11,6 @@ upgradeTags:
 
 - Update the AI Proxy image tag to `v0.7.3`
 
-### Admin entry changes
-
-The commercial edition's admin interface is now part of the main FastGPT app. After signing in as root, use the Admin entry to access system settings, operations management, and License activation and renewal. System settings are under `/admin/settings/*`; system tools and models are at `/admin/resources/tool` and `/admin/resources/model`. Legacy routes have been removed.
-
-The FastGPT Pro service is still required. If you use custom health checks for Pro, update the probe path to `/api/health`.
-
 ### Upgrade scripts
 
 This upgrade includes the following automated scripts:
@@ -26,9 +20,11 @@ This upgrade includes the following automated scripts:
 3. Upgrade Dataset tag data: migrate legacy Collection tags to typed tags and clean duplicate tag definitions. The migration task does not block startup.
 4. Backfill team member name set flags: backfill the `isSetMemberName` flag for legacy team members; owners are always marked as set, while non-owner names matching the login username are marked as requiring a name. The migration task does not block startup.
 
-## Compatibility notes
+## Admin entry changes
 
-The commercial edition no longer requires the Pro service to be started separately. Its configuration has moved to the FastGPT client.
+The commercial edition's admin interface is now part of the main FastGPT app. After signing in as root, use the Admin entry to access system settings, operations management, and License activation and renewal. System settings are under `/admin/settings/*`; system tools and models are at `/admin/resources/tool` and `/admin/resources/model`. Legacy routes have been removed.
+
+The FastGPT Pro service is still required. If you use custom health checks for Pro, update the probe path to `/api/health`.
 
 ## 🚀 New Features
 
@@ -53,6 +49,7 @@ The commercial edition no longer requires the Pro service to be started separate
 19. Added the "Basic Features - Model Management" category and endpoints to the OpenAPI documentation (public model list, member available model catalog, and batch model summaries), supporting model queries via API Key.
 20. Added the `DISABLE_MARKETPLACE` environment variable (default `false`), allowing administrators to hide the plugin marketplace installation entry in system tools and retain only local file imports.
 21. Supported explicitly specifying and saving member display names (`memberName`) in the admin user creation API.
+22. Added usage citations to Datasets, Skills, and Apps, making it easy to see which Apps cite each resource.
 
 ## ⚙️ Improvements
 
