@@ -402,6 +402,7 @@ const SingleReferenceSelector = ({
                     ml={1}
                     color={'red.500'}
                     cursor={'help'}
+                    pointerEvents={'auto'}
                     aria-label={invalidReason}
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -533,6 +534,7 @@ const MultipleReferenceSelector = ({
                     key={index}
                     w={'100%'}
                     alignItems={'center'}
+                    pointerEvents={'auto'}
                     bg={isInvalidReference ? 'red.50' : 'primary.50'}
                     color={'myGray.900'}
                     py={1}
@@ -547,7 +549,25 @@ const MultipleReferenceSelector = ({
                       title={isInvalidReference ? referenceTitle : undefined}
                     >
                       {isInvalidReference ? (
-                        nodeName || outputName || t('common:invalid_variable')
+                        <>
+                          {!!icon && <Avatar src={icon} w={'1rem'} mr={1} borderRadius={'xs'} />}
+                          {nodeName || outputName ? (
+                            <>
+                              {nodeName}
+                              {!!nodeName && !!outputName && (
+                                <MyIcon
+                                  name={'common/rightArrowLight'}
+                                  mx={1}
+                                  w={'12px'}
+                                  color={'myGray.500'}
+                                />
+                              )}
+                              {outputName}
+                            </>
+                          ) : (
+                            t('common:invalid_variable')
+                          )}
+                        </>
                       ) : (
                         <>
                           {!!icon && <Avatar src={icon} w={'1rem'} mr={1} borderRadius={'xs'} />}

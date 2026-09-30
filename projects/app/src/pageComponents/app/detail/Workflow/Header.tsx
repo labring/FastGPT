@@ -229,6 +229,7 @@ const Header = () => {
         isOpen={isOpenBackConfirm}
         onClose={onCloseBackConfirm}
         iconSrc="common/warn"
+        iconColor="#F79009"
         title={t('common:Exit')}
         w={'400px'}
       >
