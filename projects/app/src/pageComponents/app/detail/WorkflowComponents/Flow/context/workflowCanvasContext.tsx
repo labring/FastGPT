@@ -495,7 +495,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     });
   }
 
-  /** 根据当前 viewport 重算 full/shell，并把未测量节点按优先级放入队列。 */
+  /** 根据当前 viewport 重算 full/shell；离屏节点保留估算 shell，进入视口后再测量。 */
   function reconcileRenderState(nextNodes: CanvasNode[]) {
     const renderDimensions = new Map(
       [...dimensionIndexRef.current].filter(
@@ -564,10 +564,17 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      const priority = classification.priorities.get(node.id) ?? 2;
+      // 离屏节点不再由隐藏 MeasurementHost 预先测量；显式 fit 仍走上面的 pendingFit 分支。
+      if (priority > 1) {
+        measurementQueueRef.current.remove(node.id);
+        return;
+      }
+
       measurementQueueRef.current.upsert({
         nodeId: node.id,
         generation: nodeDataGenerationsRef.current.get(node.id) ?? 0,
-        priority: classification.priorities.get(node.id) ?? 2
+        priority
       });
     });
 

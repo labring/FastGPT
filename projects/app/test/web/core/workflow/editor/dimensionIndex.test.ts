@@ -223,6 +223,22 @@ describe('workflow viewport measurement scheduling', () => {
     expect(result.renderedNodeIds).toEqual(new Set(['overscan']));
   });
 
+  it('drops an unmeasured offscreen container and its contents from the rendered graph', () => {
+    const result = classifyRenderableGraph({
+      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
+      dimensions: new Map(),
+      nodes: [
+        { id: 'parent', position: { x: 1000, y: 1000 } },
+        { id: 'child', parentNodeId: 'parent', position: { x: 1010, y: 1010 } }
+      ],
+      edges: [{ id: 'internal-edge', source: 'parent', target: 'child' }]
+    });
+
+    expect(result.hiddenNodeIds).toEqual(new Set(['parent', 'child']));
+    expect(result.renderedNodeIds).toEqual(new Set());
+    expect(result.renderedEdgeIds).toEqual(new Set());
+  });
+
   it('lets the outermost container own viewport classification for descendants', () => {
     const result = classifyViewportNodes({
       viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },

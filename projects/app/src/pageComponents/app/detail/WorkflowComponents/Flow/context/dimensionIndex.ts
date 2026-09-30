@@ -265,18 +265,6 @@ const classifyViewportNodesWithPositions = ({
     const ownerDimension = dimensions.get(owner.id);
     const ownerIsContainer = childrenByParent.has(owner.id);
 
-    // 容器未测量时不让估算尺寸把整棵子树裁掉，先保留完整渲染等待 measurement host。
-    if (!ownerDimension && ownerIsContainer) {
-      classifyMembers({
-        members,
-        owner,
-        priority: 0,
-        visible: 'viewport',
-        hidden: false
-      });
-      return;
-    }
-
     const rect = getNodeRect(
       { id: owner.id, position: ownerPosition },
       (ownerDimension ?? estimate).occupied
