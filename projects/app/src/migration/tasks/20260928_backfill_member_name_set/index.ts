@@ -49,67 +49,73 @@ export const backfillMemberNameSet = async (
   }
 
   const totals = { ownerCount: 0, usernameMatchCount: 0, setTrueCount: 0 };
-  while (checkpoint.endId && checkpoint.lastId !== checkpoint.endId) {
-    context.signal.throwIfAborted();
-    await context.assertActive();
-    const docs = await readMemberNameSetBatch({
-      lastId: checkpoint.lastId,
-      endId: checkpoint.endId,
-      limit: systemMigrationBatchSize
-    });
-    if (docs.length === 0) break;
+  for (;;) {
+    while (checkpoint.endId && checkpoint.lastId !== checkpoint.endId) {
+      context.signal.throwIfAborted();
+      await context.assertActive();
+      const docs = await readMemberNameSetBatch({
+        lastId: checkpoint.lastId,
+        endId: checkpoint.endId,
+        limit: systemMigrationBatchSize
+      });
+      if (docs.length === 0) break;
 
-    const userIds = docs.map((doc) => doc.userId).filter(Boolean) as NonNullable<
-      (typeof docs)[number]['userId']
-    >[];
-    const usernameMap = await readUsernameMap(userIds);
-    const { ops, counts } = buildMemberNameSetOps({ docs, usernameMap });
+      const userIds = docs.map((doc) => doc.userId).filter(Boolean) as NonNullable<
+        (typeof docs)[number]['userId']
+      >[];
+      const usernameMap = await readUsernameMap(userIds);
+      const { ops, counts } = buildMemberNameSetOps({ docs, usernameMap });
 
-    await context.assertActive();
-    await writeMemberNameSetBatch({ ops });
-    totals.ownerCount += counts.ownerCount;
-    totals.usernameMatchCount += counts.usernameMatchCount;
-    totals.setTrueCount += counts.setTrueCount;
+      await context.assertActive();
+      await writeMemberNameSetBatch({ ops });
+      // 补偿扫描可能重复读取已统计文档，避免把 totals 重复累加。
+      if (!checkpoint.reconciled) {
+        totals.ownerCount += counts.ownerCount;
+        totals.usernameMatchCount += counts.usernameMatchCount;
+        totals.setTrueCount += counts.setTrueCount;
+      }
 
+      await context.assertActive();
+      checkpoint = {
+        ...checkpoint,
+        lastId: String(docs.at(-1)!._id),
+        scannedCount: checkpoint.scannedCount + docs.length
+      };
+      await context.saveCheckpoint(checkpoint);
+      await context.reportProgress({
+        key: 'members',
+        status: SystemMigrationStatusEnum.running,
+        current: checkpoint.scannedCount
+      });
+    }
+
+    const latestEndId = await getMemberNameSetSnapshotEnd();
+    if (latestEndId && (!checkpoint.endId || latestEndId > checkpoint.endId)) {
+      checkpoint = { ...checkpoint, endId: latestEndId, reconciled: false };
+      await context.saveCheckpoint(checkpoint);
+      continue;
+    }
+
+    await context.reportProgress({ key: 'members', status: SystemMigrationStatusEnum.succeeded });
+    await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.running });
     await context.assertActive();
-    checkpoint = {
-      ...checkpoint,
-      lastId: String(docs.at(-1)!._id),
-      scannedCount: checkpoint.scannedCount + docs.length
-    };
-    await context.saveCheckpoint(checkpoint);
+
+    const missingField = await countMissingMemberNameSet();
+    if (missingField > 0 && !checkpoint.reconciled) {
+      checkpoint = { ...checkpoint, lastId: null, reconciled: true };
+      await context.saveCheckpoint(checkpoint);
+      continue;
+    }
+    if (missingField > 0) {
+      throw new Error(`Member name backfill left ${missingField} members without isSetMemberName`);
+    }
+
     await context.reportProgress({
-      key: 'members',
-      status: SystemMigrationStatusEnum.running,
-      current: checkpoint.scannedCount
+      key: 'validation',
+      status: SystemMigrationStatusEnum.succeeded
     });
+    break;
   }
-
-  const latestEndId = await getMemberNameSetSnapshotEnd();
-  if (latestEndId && (!checkpoint.endId || latestEndId > checkpoint.endId)) {
-    checkpoint = { ...checkpoint, endId: latestEndId, reconciled: false };
-    await context.saveCheckpoint(checkpoint);
-    return backfillMemberNameSet(context);
-  }
-
-  await context.reportProgress({ key: 'members', status: SystemMigrationStatusEnum.succeeded });
-  await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.running });
-  await context.assertActive();
-
-  const missingField = await countMissingMemberNameSet();
-  if (missingField > 0 && !checkpoint.reconciled) {
-    checkpoint = { ...checkpoint, lastId: null, scannedCount: 0, reconciled: true };
-    await context.saveCheckpoint(checkpoint);
-    return backfillMemberNameSet(context);
-  }
-  if (missingField > 0) {
-    throw new Error(`Member name backfill left ${missingField} members without isSetMemberName`);
-  }
-
-  await context.reportProgress({
-    key: 'validation',
-    status: SystemMigrationStatusEnum.succeeded
-  });
 
   return {
     scannedCount: checkpoint.scannedCount,

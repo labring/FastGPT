@@ -4,6 +4,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -145,20 +146,12 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
   const userGroups = aggregateResult?.list ?? [];
   const total = aggregateResult?.total?.[0]?.count ?? 0;
   const userIds = userGroups.map((item) => String(item._id.userId));
-  const teamMembers = userIds.length
-    ? await MongoTeamMember.find(
-        {
-          _id: {
-            $in: userIds
-              .filter((id) => Types.ObjectId.isValid(id))
-              .map((id) => new Types.ObjectId(id))
-          },
-          teamId: teamObjectId
-        },
-        '_id name avatar'
-      ).lean()
-    : [];
-  const tmbMap = new Map(teamMembers.map((member) => [String(member._id), member]));
+  const teamMembers = await getTeamMemberMap({
+    teamId: teamObjectId,
+    memberIds: userIds,
+    fields: '_id name avatar'
+  });
+  const tmbMap = teamMembers;
 
   const list = userGroups.map((item): LogUserType => {
     const userId = String(item._id.userId);

@@ -29,7 +29,6 @@ import {
   getActiveAccountCancellationsByTeamIds
 } from '../account/cancellation';
 import { createTeamDefaultGroup } from '../../permission/memberGroup/teamDefaultGroup';
-import { resolveIsSetMemberName } from '@fastgpt/global/support/user/team/memberName';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
@@ -66,10 +65,7 @@ async function getTeamMember(
     teamAvatar: tmb.team.avatar,
     teamName: tmb.team.name,
     memberName: tmb.name,
-    isSetMemberName: resolveIsSetMemberName({
-      memberName: tmb.name,
-      isSetMemberName: tmb.isSetMemberName
-    }),
+    isSetMemberName: tmb.isSetMemberName ?? false,
     avatar: tmb.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),

@@ -9,7 +9,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addSourceMember, formatSourceMember } from '@fastgpt/service/support/user/utils';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getLocationFromIp } from '@fastgpt/service/common/geo';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
@@ -355,16 +355,11 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
   const candidateTmbIds = shareItemsWithOutLinkUid
     .filter((item) => Types.ObjectId.isValid(item.outLinkUid))
     .map((item) => new Types.ObjectId(item.outLinkUid));
-  const outLinkMembers = candidateTmbIds.length
-    ? await MongoTeamMember.find(
-        {
-          _id: { $in: candidateTmbIds },
-          teamId: new Types.ObjectId(teamId)
-        },
-        '_id name avatar status'
-      ).lean()
-    : [];
-  const outLinkMemberMap = new Map(outLinkMembers.map((member) => [String(member._id), member]));
+  const outLinkMemberMap = await getTeamMemberMap({
+    teamId: new Types.ObjectId(teamId),
+    memberIds: candidateTmbIds,
+    fields: '_id name avatar status'
+  });
 
   const finalList = listWithRegion.map((item) => {
     const result = sourceMemberMap.get(String(item._id)) || { ...item, sourceMember: undefined };

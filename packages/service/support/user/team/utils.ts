@@ -1,9 +1,37 @@
+import { Types } from '../../../common/mongo';
 import { MongoTeamMember } from '../../user/team/teamMemberSchema';
 import { type UserModelSchema } from '@fastgpt/global/support/user/type';
 import { type TeamSchema } from '@fastgpt/global/support/user/team/type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
-/** 根据团队成员 ID 解析所属用户 ID，供不携带 Session 的运行时鉴权使用。 */
+/**
+ * 批量查询团队成员并按成员 ID 建索引。
+ * 统一过滤非法 ID 和空查询，避免调用方在循环中反复 find。
+ */
+export async function getTeamMemberMap({
+  teamId,
+  memberIds,
+  fields
+}: {
+  teamId?: string | Types.ObjectId;
+  memberIds?: Array<string | Types.ObjectId>;
+  fields?: string;
+}) {
+  const objectIds = memberIds
+    ?.filter((id) => Types.ObjectId.isValid(id))
+    .map((id) => new Types.ObjectId(id));
+  if (memberIds && !objectIds?.length) return new Map();
+
+  const members = await MongoTeamMember.find(
+    {
+      ...(teamId ? { teamId } : {}),
+      ...(objectIds ? { _id: { $in: objectIds } } : {})
+    },
+    fields
+  ).lean();
+  return new Map(members.map((member) => [String(member._id), member]));
+}
+
 export async function getUserIdByTmbId(tmbId: string) {
   const tmb = await MongoTeamMember.findById(tmbId, 'userId').lean();
   if (!tmb) return Promise.reject(TeamErrEnum.notUser);

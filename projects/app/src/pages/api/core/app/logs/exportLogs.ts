@@ -13,7 +13,7 @@ import {
   ChatItemCollectionName,
   ChatItemResponseCollectionName
 } from '@fastgpt/service/core/chat/constants';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { ChatSourceTypeEnum, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
@@ -109,8 +109,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   }
 
   // Get members
-  const teamMembers = await MongoTeamMember.find({ teamId }, '_id name').lean();
-  const memberDisplayMap = new Map(teamMembers.map((member) => [String(member._id), member]));
+  const memberDisplayMap = await getTeamMemberMap({ teamId, fields: '_id name' });
 
   const where = {
     appId: new Types.ObjectId(appId),

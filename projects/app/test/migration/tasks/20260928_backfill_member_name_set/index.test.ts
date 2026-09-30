@@ -5,10 +5,7 @@ import { backfillMemberNameSet } from '@/migration/tasks/20260928_backfill_membe
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import {
-  UNSET_TEAM_MEMBER_NAME,
-  TeamMemberRoleEnum
-} from '@fastgpt/global/support/user/team/constant';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 vi.mock('@/migration/constants', () => ({ systemMigrationBatchSize: 2 }));
 vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => importOriginal());
@@ -82,7 +79,7 @@ describe('backfillMemberNameSet', () => {
       isSetMemberName: false
     });
     const usernameMatchId = await seedMember({ name: 'alice', userId });
-    const placeholderId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId });
+    const historicalNameId = await seedMember({ name: 'Legacy member', userId });
     const setNameId = await seedMember({ name: 'Alice', userId });
 
     const { context } = createContext();
@@ -94,8 +91,8 @@ describe('backfillMemberNameSet', () => {
 
     expect(await readMember(ownerId)).toEqual({ name: 'alice', isSetMemberName: true });
     expect(await readMember(usernameMatchId)).toEqual({ name: 'alice', isSetMemberName: false });
-    expect(await readMember(placeholderId)).toEqual({
-      name: UNSET_TEAM_MEMBER_NAME,
+    expect(await readMember(historicalNameId)).toEqual({
+      name: 'Legacy member',
       isSetMemberName: true
     });
     expect(await readMember(setNameId)).toEqual({ name: 'Alice', isSetMemberName: true });

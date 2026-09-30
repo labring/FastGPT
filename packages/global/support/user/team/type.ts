@@ -59,7 +59,7 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   teamAvatar: z.string().nullish(),
   teamName: z.string(),
   memberName: z.string().default('Member'),
-  isSetMemberName: z.boolean().default(true),
+  isSetMemberName: z.boolean().default(false),
   avatar: z.string().nullish(),
   balance: z.number().optional(),
   tmbId: ObjectIdSchema,
