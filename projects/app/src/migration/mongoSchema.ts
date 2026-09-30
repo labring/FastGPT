@@ -78,7 +78,6 @@ const SystemMigrationFailureDetailSubSchema = new Schema<SystemMigrationFailedRe
 export type SystemMigrationFailedRecordSchemaType = SystemMigrationFailedRecord & {
   migrationId: string;
   runId: string;
-  recordKey?: string;
   createdAt: Date;
 };
 
@@ -103,9 +102,6 @@ const SystemMigrationFailedRecordSchema = new Schema<SystemMigrationFailedRecord
     type: SystemMigrationFailureDetailSubSchema,
     required: true
   },
-  recordKey: {
-    type: String
-  },
   createdAt: {
     type: Date,
     required: true,
@@ -113,7 +109,7 @@ const SystemMigrationFailedRecordSchema = new Schema<SystemMigrationFailedRecord
   }
 });
 
-// 列表按任务和阶段聚合；migrationId 前缀同时支持详情查询、增量更新和成功清理。
+// 列表按任务和阶段聚合；migrationId 前缀同时支持详情查询和成功清理。
 defineIndex(SystemMigrationFailedRecordSchema, { key: { migrationId: 1, stageKey: 1 } });
 
 /**

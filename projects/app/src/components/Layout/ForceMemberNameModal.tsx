@@ -1,6 +1,5 @@
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import MemberNameFormModal from '@/pageComponents/account/team/MemberNameForm';
-import { shouldForceSetMemberName } from '@fastgpt/global/support/user/team/memberName';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 /**
@@ -20,14 +19,7 @@ const ForceMemberNameModal = ({ onSuccess }: { onSuccess: () => void }) => {
         // 刷新后仍待补齐说明提交没有生效，保留弹窗让用户重试。
         // 刷新失败时 latestUserInfo 为 null，这里按成功放行：成员名已经写库，
         // 与其把用户关在不可关闭的弹窗里，不如等下次 initUserInfo 纠正本地展示。
-        if (
-          !shouldForceSetMemberName({
-            memberName: latestUserInfo?.team?.memberName,
-            isSetMemberName: latestUserInfo?.team?.isSetMemberName,
-            isOwner: latestUserInfo?.team?.permission.isOwner
-          })
-        )
-          onSuccess();
+        if (latestUserInfo?.team?.isSetMemberName !== false) onSuccess();
       }}
     />
   );

@@ -536,8 +536,7 @@ describe('system migration runner', () => {
       await vi.waitFor(async () => {
         const state = await MongoSystemMigrationState.findById(migration.id).lean();
         expect(state).toMatchObject({
-          status: SystemMigrationStatusEnum.running,
-          checkpoint: { firstBatchCompleted: true }
+          status: SystemMigrationStatusEnum.running
         });
       });
 
@@ -594,7 +593,6 @@ describe('system migration runner', () => {
       isLeaseActive: vi.fn(),
       saveCheckpoint: vi.fn(),
       saveFailedRecords: vi.fn(),
-      saveFailedRecordsIncremental: vi.fn(),
       saveProgress: vi.fn(),
       complete: vi.fn(),
       fail: vi.fn()
@@ -641,7 +639,6 @@ describe('system migration runner', () => {
       isLeaseActive: vi.fn(),
       saveCheckpoint: vi.fn(),
       saveFailedRecords: vi.fn(),
-      saveFailedRecordsIncremental: vi.fn(),
       saveProgress: vi.fn(),
       complete: vi.fn(),
       fail: vi.fn()
@@ -707,7 +704,6 @@ describe('system migration runner', () => {
       isLeaseActive: vi.fn(),
       saveCheckpoint: vi.fn(),
       saveFailedRecords: vi.fn(),
-      saveFailedRecordsIncremental: vi.fn(),
       saveProgress: vi.fn(),
       complete: vi.fn(),
       fail: vi.fn()

@@ -2,29 +2,21 @@ import { Types, type ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { UNSET_TEAM_MEMBER_NAME } from '@fastgpt/global/support/user/team/constant';
-import type { SystemMigrationFailedRecord } from '@fastgpt/global/migration/schema';
-
-/** 本任务唯一的失败明细阶段。 */
-export const MEMBER_NAME_SET_STAGE_KEY = 'members';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 /** 迁移扫描的最小文档形态。 */
 export type MemberNameSetDoc = {
   _id: Types.ObjectId;
   name: string;
   userId?: Types.ObjectId | null;
+  role?: string | null;
   isSetMemberName?: boolean;
 };
 
 export type MemberNameSetCounts = {
-  placeholderCount: number;
+  ownerCount: number;
   usernameMatchCount: number;
   setTrueCount: number;
-};
-
-export type MemberNameSetOrphan = {
-  tmbId: string;
-  userId: string;
 };
 
 /** 固定本次迁移的扫描上界，避免滚动升级期间新增成员让扫描范围不断增长。 */
@@ -36,7 +28,7 @@ export const getMemberNameSetSnapshotEnd = async (): Promise<string | null> => {
   return last ? String(last._id) : null;
 };
 
-/** 按 ObjectId 游标分批读取成员文档；包含已回填记录，保证批次重放幂等。 */
+/** 按 ObjectId 游标分批读取成员文档；owner 需要覆盖已有值，其余记录保持幂等。 */
 export const readMemberNameSetBatch = ({
   lastId,
   endId,
@@ -54,13 +46,13 @@ export const readMemberNameSetBatch = ({
           $lte: new Types.ObjectId(endId)
         }
       },
-      { projection: { _id: 1, name: 1, userId: 1, isSetMemberName: 1 } }
+      { projection: { _id: 1, name: 1, userId: 1, role: 1, isSetMemberName: 1 } }
     )
     .sort({ _id: 1 })
     .limit(limit)
     .toArray() as Promise<MemberNameSetDoc[]>;
 
-/** 批量读取用户登录名，供占位符回落与历史 username 回落名匹配使用。 */
+/** 批量读取用户登录名，用于识别历史 username 回落名。 */
 export const readUsernameMap = async (
   userIds: Array<Types.ObjectId | string>
 ): Promise<Map<string, string>> => {
@@ -79,7 +71,7 @@ export const readUsernameMap = async (
   );
 };
 
-/** 幂等更新操作：过滤条件携带 _id 与当前状态，重复执行不会重复生效。 */
+/** 幂等更新操作：过滤条件携带当前状态，避免重放覆盖非 owner 的新代码写入。 */
 export type MemberNameSetOp = {
   updateOne: {
     filter: Record<string, unknown>;
@@ -88,18 +80,14 @@ export type MemberNameSetOp = {
 };
 
 export type MemberNameSetPlan =
-  | { kind: 'placeholder'; name: string }
-  | { kind: 'orphan' }
+  | { kind: 'owner' }
   | { kind: 'usernameMatch' }
   | { kind: 'setTrue' }
   | { kind: 'skip' };
 
 /**
- * 单文档迁移规划：
- * - 占位符名：回落到 username 并记 false；用户/用户名缺失时为孤儿坏数据；
- * - 已有 isSetMemberName（新代码写入或已迁移）：跳过，保证重放不覆盖显式 false；
- * - name 与完整 username 精确一致：记 false（历史自动回落名）；
- * - 其余（含用户缺失的非占位符文档）：记 true，不触发强制补齐。
+ * 单文档迁移规划：owner 始终标记为 true；非 owner 仅处理缺失字段，
+ * 完整 username 视为历史回落名并标记为 false，其余成员名标记为 true。
  */
 export const planMemberNameSetDoc = ({
   doc,
@@ -108,54 +96,35 @@ export const planMemberNameSetDoc = ({
   doc: MemberNameSetDoc;
   username?: string;
 }): MemberNameSetPlan => {
-  if (doc.name === UNSET_TEAM_MEMBER_NAME) {
-    return username ? { kind: 'placeholder', name: username } : { kind: 'orphan' };
-  }
+  if (doc.role === TeamMemberRoleEnum.owner) return { kind: 'owner' };
   if (doc.isSetMemberName !== undefined) return { kind: 'skip' };
-  if (username && username.trim() === doc.name.trim()) {
-    return { kind: 'usernameMatch' };
-  }
+  if (username && username.trim() === doc.name.trim()) return { kind: 'usernameMatch' };
   return { kind: 'setTrue' };
 };
 
-/**
- * 将一批文档规划为幂等 bulkWrite 操作。
- * 过滤条件携带 _id 与当前状态（占位符名 / 字段缺失），重复执行不会重复生效，
- * 也不会把新代码显式写入的 false 覆盖成 true。
- */
+/** 将一批文档规划为幂等 bulkWrite 操作。 */
 export const buildMemberNameSetOps = ({
   docs,
   usernameMap
 }: {
   docs: MemberNameSetDoc[];
   usernameMap: Map<string, string>;
-}): {
-  ops: MemberNameSetOp[];
-  orphans: MemberNameSetOrphan[];
-  counts: MemberNameSetCounts;
-} => {
+}): { ops: MemberNameSetOp[]; counts: MemberNameSetCounts } => {
   const ops: MemberNameSetOp[] = [];
-  const orphans: MemberNameSetOrphan[] = [];
-  const counts: MemberNameSetCounts = {
-    placeholderCount: 0,
-    usernameMatchCount: 0,
-    setTrueCount: 0
-  };
+  const counts: MemberNameSetCounts = { ownerCount: 0, usernameMatchCount: 0, setTrueCount: 0 };
 
   for (const doc of docs) {
     const username = doc.userId ? usernameMap.get(String(doc.userId)) : undefined;
     const plan = planMemberNameSetDoc({ doc, username });
 
-    if (plan.kind === 'placeholder') {
+    if (plan.kind === 'owner') {
       ops.push({
         updateOne: {
-          filter: { _id: doc._id, name: UNSET_TEAM_MEMBER_NAME },
-          update: { $set: { name: plan.name, isSetMemberName: false } }
+          filter: { _id: doc._id, role: TeamMemberRoleEnum.owner },
+          update: { $set: { isSetMemberName: true } }
         }
       });
-      counts.placeholderCount += 1;
-    } else if (plan.kind === 'orphan') {
-      orphans.push({ tmbId: String(doc._id), userId: doc.userId ? String(doc.userId) : '' });
+      counts.ownerCount += 1;
     } else if (plan.kind === 'usernameMatch') {
       ops.push({
         updateOne: {
@@ -175,7 +144,7 @@ export const buildMemberNameSetOps = ({
     }
   }
 
-  return { ops, orphans, counts };
+  return { ops, counts };
 };
 
 /** 事务内提交一批写入；空操作直接返回。 */
@@ -192,31 +161,6 @@ export const writeMemberNameSetBatch = ({
   };
   return session ? run(session) : mongoSessionRun(run);
 };
-
-/** 按 ID 集合读取仍为占位符的成员文档，供孤儿快照重处理使用。 */
-export const readMemberNameSetDocsByIds = (ids: string[]) =>
-  MongoTeamMember.collection
-    .find(
-      { _id: { $in: ids.map((id) => new Types.ObjectId(id)) }, name: UNSET_TEAM_MEMBER_NAME },
-      { projection: { _id: 1, name: 1, userId: 1, isSetMemberName: 1 } }
-    )
-    .toArray() as Promise<MemberNameSetDoc[]>;
-
-/** 孤儿记录转失败明细：只保存必要 ID 与原因，不复制业务正文。 */
-export const orphanToFailedRecord = (orphan: MemberNameSetOrphan): SystemMigrationFailedRecord => ({
-  stageKey: MEMBER_NAME_SET_STAGE_KEY,
-  data: { tmbId: orphan.tmbId, userId: orphan.userId },
-  reason: {
-    message:
-      'Team member name is the legacy placeholder but its user or username cannot be resolved'
-  }
-});
-
-export const countPlaceholderMemberNames = (endId?: string) =>
-  MongoTeamMember.collection.countDocuments({
-    ...(endId ? { _id: { $lte: new Types.ObjectId(endId) } } : {}),
-    name: UNSET_TEAM_MEMBER_NAME
-  });
 
 /** 完成校验：扫描范围内不允许残留未回填 isSetMemberName 的文档。 */
 export const countMissingMemberNameSet = (endId?: string) =>

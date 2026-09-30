@@ -1,4 +1,4 @@
-import { Box, Button, FormControl, FormLabel, Input, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, FormControl, Input, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { addUser } from '@/web/admin/user/api';
@@ -8,6 +8,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import {
   SsoPasswordUnavailableTip,
   useAdminPasswordAvailability
@@ -16,6 +17,7 @@ import {
 type TFormData = {
   username: string;
   password: string;
+  memberName?: string;
 };
 
 export default function UserAddModal(props: { data: any; updateData: any }) {
@@ -43,7 +45,8 @@ export default function UserAddModal(props: { data: any; updateData: any }) {
         ...formData,
         // 策略命中时密码框未渲染，formData.password 为 undefined；hashStr 会把 undefined
         // 变成字符串，因此必须归一成空串，交由服务端 assertUserPasswordAvailable 报错。
-        password: formData.password ? hashStr(formData.password) : ''
+        password: formData.password ? hashStr(formData.password) : '',
+        memberName: formData.memberName?.trim() || undefined
       });
     },
     {
@@ -103,13 +106,8 @@ export default function UserAddModal(props: { data: any; updateData: any }) {
         }
       >
         <FormControl>
-          <FormLabel htmlFor="username" fontWeight="bold">
+          <FormLabel fontWeight="bold" required>
             用户名
-            {errors && !!errors?.username && (
-              <Box as="span" ml={2} fontSize="12px" color="red.500">
-                *必填
-              </Box>
-            )}
           </FormLabel>
           <Input
             {...register('username', {
@@ -117,21 +115,22 @@ export default function UserAddModal(props: { data: any; updateData: any }) {
             })}
             id="username"
             variant="outline"
-            placeholder="用户名"
+            placeholder="用户唯一标识"
           />
         </FormControl>
         <FormControl mt={4}>
-          <FormLabel htmlFor="password" fontWeight="bold">
+          <FormLabel fontWeight="bold" required={passwordAvailable}>
             密码
             {passwordAvailable && errors && !!errors?.password && (
               <Box as="span" ml={2} fontSize="12px" color="red.500">
-                *必填
+                必填
               </Box>
             )}
           </FormLabel>
           {passwordAvailable ? (
             <Input
               {...register('password', {
+                required: 'This is required',
                 validate: (val) => {
                   if (!val) return true;
                   if (!checkPasswordRule(val)) {
@@ -146,6 +145,15 @@ export default function UserAddModal(props: { data: any; updateData: any }) {
           ) : (
             <SsoPasswordUnavailableTip />
           )}
+        </FormControl>
+        <FormControl mt={4}>
+          <FormLabel fontWeight="bold">成员名</FormLabel>
+          <Input
+            {...register('memberName')}
+            id="memberName"
+            variant="outline"
+            placeholder="团队内仅做展示的名称"
+          />
         </FormControl>
       </MyModal>
     </>

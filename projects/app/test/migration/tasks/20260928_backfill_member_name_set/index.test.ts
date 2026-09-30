@@ -5,16 +5,17 @@ import { backfillMemberNameSet } from '@/migration/tasks/20260928_backfill_membe
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { UNSET_TEAM_MEMBER_NAME } from '@fastgpt/global/support/user/team/constant';
+import {
+  UNSET_TEAM_MEMBER_NAME,
+  TeamMemberRoleEnum
+} from '@fastgpt/global/support/user/team/constant';
 
 vi.mock('@/migration/constants', () => ({ systemMigrationBatchSize: 2 }));
-// 全局默认关闭事务；此处恢复真实实现，验证批次写入确实原子提交。
 vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => importOriginal());
 
-/** 用内存 Context 模拟持久断点、失败快照和失权；业务写入仍运行真实测试 Mongo 事务。 */
+/** 用内存 Context 模拟持久断点；业务写入仍运行真实测试 Mongo 事务。 */
 const createContext = () => {
   let checkpoint: Record<string, unknown> | undefined;
-  let failedRecords: any[] = [];
   const context = {
     migrationId: '20260928_backfill_member_name_set',
     runId: 'test-run',
@@ -26,32 +27,14 @@ const createContext = () => {
     }),
     assertActive: vi.fn(async () => undefined),
     reportProgress: vi.fn(async (_value: SystemMigrationProgressInput) => undefined),
-    getFailedRecords: vi.fn(async () => failedRecords),
-    upsertFailedRecords: vi.fn(async (records: any[]) => {
-      const byKey = new Map(failedRecords.map((record) => [String(record.data.tmbId), record]));
-      for (const { key, record } of records) byKey.set(key, record);
-      failedRecords = [...byKey.values()];
-    }),
-    removeFailedRecords: vi.fn(async (records: any[]) => {
-      const keys = new Set(records.map((record) => record.key));
-      failedRecords = failedRecords.filter((record) => !keys.has(String(record.data.tmbId)));
-    }),
-    reportFailedRecords: vi.fn(async (records: any[]) => {
-      failedRecords = structuredClone(records);
-    }),
+    getFailedRecords: vi.fn(async () => []),
+    reportFailedRecords: vi.fn(async () => undefined),
     fail: vi.fn(async () => {
       throw new Error('migration failed');
     }),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() }
   } satisfies SystemMigrationContext;
-  return {
-    context,
-    getCheckpoint: () => checkpoint,
-    getFailedRecords: () => failedRecords,
-    setFailedRecords: (records: any[]) => {
-      failedRecords = records;
-    }
-  };
+  return { context, getCheckpoint: () => checkpoint };
 };
 
 const seedUser = async (username: string) => {
@@ -62,6 +45,7 @@ const seedUser = async (username: string) => {
 const seedMember = async (doc: {
   name: string;
   userId?: Types.ObjectId | null;
+  role?: string;
   isSetMemberName?: boolean;
 }) => {
   const { insertedId } = await MongoTeamMember.collection.insertOne({
@@ -70,6 +54,7 @@ const seedMember = async (doc: {
     userId: doc.userId ?? null,
     name: doc.name,
     status: 'active',
+    ...(doc.role === undefined ? {} : { role: doc.role }),
     ...(doc.isSetMemberName === undefined ? {} : { isSetMemberName: doc.isSetMemberName })
   });
   return insertedId as Types.ObjectId;
@@ -79,10 +64,7 @@ const readMember = async (id: Types.ObjectId) =>
   MongoTeamMember.collection.findOne(
     { _id: id },
     { projection: { _id: 0, name: 1, isSetMemberName: 1 } }
-  ) as Promise<{
-    name: string;
-    isSetMemberName?: boolean;
-  }>;
+  ) as Promise<{ name: string; isSetMemberName?: boolean }>;
 
 describe('backfillMemberNameSet', () => {
   beforeEach(async () => {
@@ -91,93 +73,58 @@ describe('backfillMemberNameSet', () => {
     await MongoUser.collection.deleteMany({});
   });
 
-  it('backfills placeholder, username-fallback and set documents per rule', async () => {
-    const userId = await seedUser('wecom-zhangsan');
+  it('sets owner true and classifies non-owner names', async () => {
+    const userId = await seedUser('alice');
+    const ownerId = await seedMember({
+      name: 'alice',
+      userId,
+      role: TeamMemberRoleEnum.owner,
+      isSetMemberName: false
+    });
+    const usernameMatchId = await seedMember({ name: 'alice', userId });
     const placeholderId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId });
-    const usernameMatchId = await seedMember({ name: 'wecom-zhangsan', userId });
-    const strippedUsernameId = await seedMember({ name: 'zhangsan', userId });
-    const setNameId = await seedMember({ name: '张三', userId });
-    const orphanId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId: null });
+    const setNameId = await seedMember({ name: 'Alice', userId });
 
-    const { context, getFailedRecords } = createContext();
-    await expect(backfillMemberNameSet(context)).rejects.toThrow('migration failed');
+    const { context } = createContext();
+    await expect(backfillMemberNameSet(context)).resolves.toMatchObject({
+      ownerCount: 1,
+      usernameMatchCount: 1,
+      setTrueCount: 2
+    });
 
+    expect(await readMember(ownerId)).toEqual({ name: 'alice', isSetMemberName: true });
+    expect(await readMember(usernameMatchId)).toEqual({ name: 'alice', isSetMemberName: false });
     expect(await readMember(placeholderId)).toEqual({
-      name: 'wecom-zhangsan',
-      isSetMemberName: false
-    });
-    expect(await readMember(usernameMatchId)).toEqual({
-      name: 'wecom-zhangsan',
-      isSetMemberName: false
-    });
-    // 去掉 username 前缀并非历史同步回落规则，应按显式成员名处理。
-    expect(await readMember(strippedUsernameId)).toEqual({
-      name: 'zhangsan',
+      name: UNSET_TEAM_MEMBER_NAME,
       isSetMemberName: true
     });
-    expect(await readMember(setNameId)).toEqual({ name: '张三', isSetMemberName: true });
-    // 孤儿文档保持原样并进入失败快照
-    expect(await readMember(orphanId)).toEqual({ name: UNSET_TEAM_MEMBER_NAME });
-    expect(getFailedRecords().map((record) => record.data.tmbId)).toEqual([String(orphanId)]);
-    expect(context.fail).toHaveBeenCalled();
+    expect(await readMember(setNameId)).toEqual({ name: 'Alice', isSetMemberName: true });
   });
 
-  it('is idempotent and never overwrites explicit false flags', async () => {
+  it('is idempotent and preserves existing non-owner flags', async () => {
     const userId = await seedUser('alice');
     const explicitFalseId = await seedMember({
-      name: 'alice',
+      name: 'Alice',
       userId,
       isSetMemberName: false
     });
-    const setTrueId = await seedMember({ name: 'Alice', userId });
+    const setTrueId = await seedMember({ name: 'alice', userId, isSetMemberName: true });
 
     const { context } = createContext();
-    await expect(backfillMemberNameSet(context)).resolves.toMatchObject({ orphanCount: 0 });
-    await expect(backfillMemberNameSet(context)).resolves.toMatchObject({ orphanCount: 0 });
+    await backfillMemberNameSet(context);
+    await backfillMemberNameSet(context);
 
-    expect(await readMember(explicitFalseId)).toEqual({ name: 'alice', isSetMemberName: false });
-    expect(await readMember(setTrueId)).toEqual({ name: 'Alice', isSetMemberName: true });
-  });
-
-  it('retries previous orphan records and drops fixed ones from the snapshot', async () => {
-    const orphanId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId: null });
-    const { context, getFailedRecords } = createContext();
-    await expect(backfillMemberNameSet(context)).rejects.toThrow('migration failed');
-    expect(getFailedRecords()).toHaveLength(1);
-
-    // 管理员修复：补建用户并绑定到孤儿成员
-    const userId = await seedUser('fixed-user');
-    await MongoTeamMember.collection.updateOne({ _id: orphanId }, { $set: { userId } });
-
-    const retry = createContext();
-    // 沿用上一轮的失败快照，并让增量删除作用于同一份测试存储。
-    let retryFailedRecords = getFailedRecords();
-    retry.context.getFailedRecords = vi.fn(async () => retryFailedRecords);
-    retry.context.removeFailedRecords = vi.fn(async (records) => {
-      const keys = new Set(records.map((record) => record.key));
-      retryFailedRecords = retryFailedRecords.filter(
-        (record) => !keys.has(String(record.data.tmbId))
-      );
-    });
-    retry.context.upsertFailedRecords = vi.fn(async (records) => {
-      retryFailedRecords = records.map(({ record }) => record);
-    });
-    await expect(backfillMemberNameSet(retry.context)).resolves.toMatchObject({ orphanCount: 0 });
-    expect(await readMember(orphanId)).toEqual({
-      name: 'fixed-user',
-      isSetMemberName: false
-    });
-    expect(retry.context.fail).not.toHaveBeenCalled();
+    expect(await readMember(explicitFalseId)).toEqual({ name: 'Alice', isSetMemberName: false });
+    expect(await readMember(setTrueId)).toEqual({ name: 'alice', isSetMemberName: true });
   });
 
   it('resumes from checkpoint after a mid-run crash', async () => {
     const userId = await seedUser('bob');
-    const firstId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId });
-    const secondId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId });
-    const thirdId = await seedMember({ name: UNSET_TEAM_MEMBER_NAME, userId });
+    const firstId = await seedMember({ name: 'bob', userId });
+    const secondId = await seedMember({ name: 'bob', userId });
+    const thirdId = await seedMember({ name: 'bob', userId });
 
     const { context, getCheckpoint } = createContext();
-    // 批大小为 2：包含第三个成员的批次写入时崩溃，断点应停在第一批之后
     const originalBulkWrite = MongoTeamMember.collection.bulkWrite.bind(MongoTeamMember.collection);
     const bulkWriteSpy = vi
       .spyOn(MongoTeamMember.collection, 'bulkWrite')
@@ -188,21 +135,19 @@ describe('backfillMemberNameSet', () => {
     await expect(backfillMemberNameSet(context)).rejects.toThrow('crash');
     expect(getCheckpoint()).toMatchObject({ scannedCount: 2 });
     expect(await readMember(firstId)).toMatchObject({ isSetMemberName: false });
-    expect(await readMember(thirdId)).toEqual({ name: UNSET_TEAM_MEMBER_NAME });
+    expect(await readMember(thirdId)).toEqual({ name: 'bob' });
     bulkWriteSpy.mockRestore();
 
-    // 同一断点续跑：重放第一批幂等，并补齐剩余批次
     await expect(backfillMemberNameSet(context)).resolves.toMatchObject({ scannedCount: 3 });
     expect(await readMember(secondId)).toMatchObject({ isSetMemberName: false });
     expect(await readMember(thirdId)).toMatchObject({ isSetMemberName: false });
   });
 
-  it('fails validation when unsettled documents remain', async () => {
+  it('fails validation when a write is lost', async () => {
     const userId = await seedUser('carol');
     await seedMember({ name: 'carol', userId });
     const { context } = createContext();
-    // 模拟写入丢失：让所有 update 变成空操作
     vi.spyOn(MongoTeamMember.collection, 'bulkWrite').mockResolvedValue({} as never);
-    await expect(backfillMemberNameSet(context)).rejects.toThrow('migration failed');
+    await expect(backfillMemberNameSet(context)).rejects.toThrow('without isSetMemberName');
   });
 });

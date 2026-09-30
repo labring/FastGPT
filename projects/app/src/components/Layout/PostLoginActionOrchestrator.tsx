@@ -14,7 +14,6 @@ import { getInviteLinkIdFromRoute } from '@/web/support/user/loginRedirect/invit
 import type { GetUnreadInformResponseType } from '@fastgpt/global/openapi/support/user/inform/api';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
 import { shouldPromptContactBinding } from '@/web/support/user/inform/utils';
-import { shouldForceSetMemberName } from '@fastgpt/global/support/user/team/memberName';
 import {
   finishPostLoginAction,
   getNextPostLoginAction,
@@ -231,11 +230,7 @@ const PostLoginActionOrchestrator = ({
     currentAction,
     completed,
     inviteLinkId,
-    hasPendingMemberName: shouldForceSetMemberName({
-      memberName: userInfo?.team?.memberName,
-      isSetMemberName: userInfo?.team?.isSetMemberName,
-      isOwner: userInfo?.team?.permission.isOwner
-    }),
+    hasPendingMemberName: userInfo?.team?.isSetMemberName === false,
     shouldShowContact,
     contactHandled,
     isPlus,

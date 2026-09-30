@@ -3,7 +3,6 @@ import {
   getValidTeamMemberName,
   normalizeTeamMemberName,
   resolveIsSetMemberName,
-  shouldForceSetMemberName,
   TeamMemberNameSchema
 } from '@fastgpt/global/support/user/team/memberName';
 import { UNSET_TEAM_MEMBER_NAME } from '@fastgpt/global/support/user/team/constant';
@@ -45,21 +44,5 @@ describe('resolveIsSetMemberName', () => {
     expect(resolveIsSetMemberName({ memberName: UNSET_TEAM_MEMBER_NAME })).toBe(false);
     expect(resolveIsSetMemberName({ memberName: 'Alice' })).toBe(true);
     expect(resolveIsSetMemberName({})).toBe(true);
-  });
-});
-
-describe('shouldForceSetMemberName', () => {
-  it('forces non-owner members whose member name is unset', () => {
-    expect(shouldForceSetMemberName({ memberName: 'u1', isSetMemberName: false })).toBe(true);
-    // 迁移前存量占位符文档同样触发
-    expect(shouldForceSetMemberName({ memberName: UNSET_TEAM_MEMBER_NAME })).toBe(true);
-  });
-
-  it('never forces owners or members with a set name', () => {
-    expect(
-      shouldForceSetMemberName({ memberName: 'u1', isSetMemberName: false, isOwner: true })
-    ).toBe(false);
-    expect(shouldForceSetMemberName({ memberName: 'Alice', isSetMemberName: true })).toBe(false);
-    expect(shouldForceSetMemberName({ memberName: 'Alice' })).toBe(false);
   });
 });

@@ -109,33 +109,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   }
 
   // Get members
-  const teamMemberWithContact = await MongoTeamMember.aggregate([
-    { $match: { teamId: new Types.ObjectId(teamId) } },
-    {
-      $lookup: {
-        from: 'users',
-        localField: 'userId',
-        foreignField: '_id',
-        as: 'user'
-      }
-    },
-    {
-      $project: {
-        memberId: '$_id',
-        teamId: 1,
-        userId: 1,
-        name: 1,
-        role: 1,
-        status: 1,
-        contact: { $ifNull: [{ $arrayElemAt: ['$user.contact', 0] }, '-'] }
-      }
-    }
-  ]);
-
-  // 导出最多 5 万条会话，先构建成员 Map，避免在流式处理每条记录时重复线性查找。
-  const memberDisplayMap = new Map(
-    teamMemberWithContact.map((member) => [String(member.memberId), member])
-  );
+  const teamMembers = await MongoTeamMember.find({ teamId }, '_id name').lean();
+  const memberDisplayMap = new Map(teamMembers.map((member) => [String(member._id), member]));
 
   const where = {
     appId: new Types.ObjectId(appId),

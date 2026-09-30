@@ -77,8 +77,8 @@ describe('validateSystemMigrationRegistry', () => {
     expect(systemMigrations.at(-1)).toMatchObject({
       id: '20260928_backfill_member_name_set',
       version: '4.17.1',
-      blockStartup: true,
-      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      blockStartup: false,
+      onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'members' }, { key: 'validation' }]
     });
   });

@@ -127,7 +127,7 @@ export const TeamMemberListItemSchema = z
       .string()
       .default('Member')
       .meta({ description: '团队成员名；即数据库成员名，未显式设置过时为加入时的回落值' }),
-    isSetMemberName: z.boolean().meta({
+    isSetMemberName: z.boolean().default(false).meta({
       description:
         '成员名是否已由显式来源设置；为 false 时 memberName 是待确认的回落展示名，不是用户提交值'
     }),

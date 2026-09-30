@@ -32,20 +32,6 @@ export const resolveIsSetMemberName = ({
   isSetMemberName?: boolean;
 }): boolean => isSetMemberName ?? !isTeamMemberNamePending(memberName);
 
-/**
- * 是否强制成员首次登录补齐成员名。
- * isSetMemberName 为 false 表示当前成员名是待确认的回落值；owner 永远豁免（产品规则：owner 不强制补齐）。
- */
-export const shouldForceSetMemberName = ({
-  memberName,
-  isSetMemberName,
-  isOwner
-}: {
-  memberName?: string;
-  isSetMemberName?: boolean;
-  isOwner?: boolean;
-}): boolean => !isOwner && !resolveIsSetMemberName({ memberName, isSetMemberName });
-
 /** 将交互式成员名规范化并在非法输入时抛出参数错误。 */
 export const normalizeTeamMemberName = (memberName: unknown): TeamMemberName =>
   TeamMemberNameSchema.parse(memberName);
