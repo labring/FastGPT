@@ -1,12 +1,5 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import {
-  Background,
-  ControlButton,
-  MiniMap,
-  type MiniMapNodeProps,
-  Panel,
-  useReactFlow
-} from 'reactflow';
+import React, { useEffect, useMemo } from 'react';
+import { Background, ControlButton, Panel, useReactFlow } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -22,6 +15,7 @@ import {
   isWorkflowShortcutInputtingTarget
 } from '../hooks/keyboard';
 import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
+import WorkflowMiniMap from './WorkflowMiniMap';
 
 const buttonStyle = {
   border: 'none',
@@ -30,9 +24,8 @@ const buttonStyle = {
 };
 
 const FlowController = React.memo(function FlowController() {
-  const { zoomIn, zoomOut, getNode } = useReactFlow();
+  const { zoomIn, zoomOut } = useReactFlow();
   const fitNodes = useContextSelector(WorkflowCanvasContext, (v) => v.fitNodes);
-  const getNodeDimensions = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimensions);
   const undo = useContextSelector(WorkflowHostContext, (v) => v.undo);
   const redo = useContextSelector(WorkflowHostContext, (v) => v.redo);
   const canUndo = useContextSelector(WorkflowHostContext, (v) => v.canUndo);
@@ -96,36 +89,11 @@ const FlowController = React.memo(function FlowController() {
     setPresentationMode((v) => !v);
   });
 
-  /*
-    id: Render node id
-   */
-  const MiniMapNode = useCallback(
-    ({ x, y, width, height, color, id }: MiniMapNodeProps) => {
-      // If the node parentNode is folded, the child node will not be displayed
-      // 小地图逐节点渲染，读 reactflow store 即可：折叠会触发重投影，store 随之刷新。
-      const parentNodeId = getNode(id)?.data.parentNodeId;
-      if (parentNodeId && getNode(parentNodeId)?.data.isFolded) {
-        return null;
-      }
-
-      const occupied = getNodeDimensions(id)?.occupied;
-      return (
-        <rect
-          x={x}
-          y={y}
-          width={occupied?.width ?? width}
-          height={occupied?.height ?? height}
-          fill={color}
-        />
-      );
-    },
-    [getNode, getNodeDimensions]
-  );
-
   const Render = useMemo(() => {
     return (
       <>
-        <MiniMap
+        <WorkflowMiniMap
+          ariaLabel={t('common:page_center')}
           style={{
             height: 92,
             width: 150,
@@ -133,8 +101,6 @@ const FlowController = React.memo(function FlowController() {
             borderRadius: '10px',
             boxShadow: '0px 0px 1px rgba(19, 51, 107, 0.10), 0px 4px 10px rgba(19, 51, 107, 0.10)'
           }}
-          pannable
-          nodeComponent={MiniMapNode}
         />
         <Panel
           position={'bottom-right'}
@@ -245,7 +211,6 @@ const FlowController = React.memo(function FlowController() {
       </>
     );
   }, [
-    MiniMapNode,
     workflowControlMode,
     t,
     isMac,

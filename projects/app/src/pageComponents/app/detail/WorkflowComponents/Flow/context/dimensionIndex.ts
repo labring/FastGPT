@@ -110,7 +110,8 @@ export const getViewportRange = ({
   };
 };
 
-const getAbsoluteNodePositions = (nodes: readonly ViewportNode[]) => {
+/** 为画布覆盖层还原包含父节点偏移的绝对坐标。 */
+export const getAbsoluteNodePositions = (nodes: readonly ViewportNode[]) => {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const positionById = new Map<string, { x: number; y: number }>();
 
@@ -145,7 +146,8 @@ const getAbsoluteNodePositions = (nodes: readonly ViewportNode[]) => {
   return { nodeById, positionById };
 };
 
-const isHiddenByFold = (
+/** 判断节点是否被任一折叠祖先隐藏。 */
+export const isHiddenByFold = (
   node: ViewportNode,
   nodeById: ReadonlyMap<string, ViewportNode>
 ): boolean => {
