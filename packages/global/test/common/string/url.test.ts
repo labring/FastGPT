@@ -1,7 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeHref, isSafeImgSrc, stripUrlTrailingSlash } from '@fastgpt/global/common/string/url';
+import {
+  isHttpUrl,
+  isSafeHref,
+  isSafeImgSrc,
+  stripUrlTrailingSlash
+} from '@fastgpt/global/common/string/url';
 
 describe('url utils', () => {
+  describe('isHttpUrl', () => {
+    it('should return true for valid http/https URLs', () => {
+      expect(isHttpUrl('http://example.com')).toBe(true);
+      expect(isHttpUrl('https://example.com')).toBe(true);
+      expect(isHttpUrl('HTTP://EXAMPLE.COM/PATH')).toBe(true);
+      expect(isHttpUrl('HTTPS://EXAMPLE.COM/PATH')).toBe(true);
+      expect(isHttpUrl('https://example.com:8080/test?foo=bar#hash')).toBe(true);
+      expect(isHttpUrl('  https://example.com  ')).toBe(true);
+    });
+
+    it('should return false for non-http URLs and invalid inputs', () => {
+      expect(isHttpUrl('ftp://example.com')).toBe(false);
+      expect(isHttpUrl('file:///path/to/file')).toBe(false);
+      expect(isHttpUrl('data:image/png;base64,abc')).toBe(false);
+      expect(isHttpUrl('ws://example.com')).toBe(false);
+      expect(isHttpUrl('//example.com')).toBe(false);
+      expect(isHttpUrl('/path/to/file')).toBe(false);
+      expect(isHttpUrl('dataset/team/file.png')).toBe(false);
+      expect(isHttpUrl('')).toBe(false);
+      expect(isHttpUrl('   ')).toBe(false);
+      expect(isHttpUrl(undefined)).toBe(false);
+      expect(isHttpUrl(null as any)).toBe(false);
+      expect(isHttpUrl(123 as any)).toBe(false);
+    });
+  });
+
   describe('stripUrlTrailingSlash', () => {
     it('should strip trailing slash', () => {
       expect(stripUrlTrailingSlash('https://example.com/')).toBe('https://example.com');

@@ -178,10 +178,13 @@ export async function searchDatasetData(
   });
 
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
-  // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一对象 key。
+  // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一 dataset 对象 key。
   // 被前面过滤掉的候选不会产生 alias 查询；最终输出也不暴露仅供格式化使用的 imageId。
+  // 白名单绑定本次召回授权的 datasetIds：结果里内嵌的外库图片 key 不签发短链，
+  // 避免检索输出成为跨库预览签名的旁路。
   const formattedValues = await formatDatasetDataValues(
-    filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId }))
+    filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId })),
+    { datasetIds }
   );
   const finalResult = filterMaxTokensResult.map((item, index) => {
     const result = { ...item };

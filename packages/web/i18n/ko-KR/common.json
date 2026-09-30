@@ -831,6 +831,7 @@
   "error.too_many_request": "요청이 너무 많습니다",
   "error.tool_not_exist": "제거됨",
   "error.unAuthFile": "이 파일을 읽을 권한이 없습니다",
+  "error.unAuthFileKey": "해당 파일 키에 대한 권한이 없습니다",
   "error.unKnow": "예상치 못한 오류가 발생했습니다",
   "error.upload_file_error_filename": "{{name}} 업로드 실패",
   "error.upload_file_interval_limit": "짧은 시간 내 업로드가 너무 많거나 현재 라운드 한도에 도달했습니다. 나중에 다시 시도해 주세요.",

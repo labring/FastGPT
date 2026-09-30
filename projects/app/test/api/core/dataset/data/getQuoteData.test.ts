@@ -127,7 +127,7 @@ vi.mock('@fastgpt/service/core/dataset/collection/schema', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/data/controller', () => ({
-  formatDatasetDataValue: (props: any) => formatDatasetDataValueMock(props)
+  formatDatasetDataValue: (...args: any[]) => formatDatasetDataValueMock(...args)
 }));
 
 import handler from '@/pages/api/core/dataset/data/getQuoteData';
@@ -197,6 +197,11 @@ describe('getQuoteData handler', () => {
       collectionIds: ['col_1']
     });
     expect(authDatasetDataMock).not.toHaveBeenCalled();
+
+    // 引用格式化必须把签发范围绑定到已鉴权 collection 的 datasetId
+    expect(formatDatasetDataValueMock).toHaveBeenCalledWith(expect.any(Object), {
+      datasetIds: [makeCollection().datasetId]
+    });
   });
 
   it('chat mode: rejects when showCite is false', async () => {
@@ -278,6 +283,11 @@ describe('getQuoteData handler', () => {
     expect(authDatasetDataMock).toHaveBeenCalledWith(expect.objectContaining({ dataId: VALID_ID }));
     expect(authChatTargetCrudMock).not.toHaveBeenCalled();
     expect(authCollectionInChatMock).not.toHaveBeenCalled();
+
+    // API 模式同样要绑定已鉴权 datasetId，防止外库 key 借接口签发短链
+    expect(formatDatasetDataValueMock).toHaveBeenCalledWith(expect.any(Object), {
+      datasetIds: [makeCollection().datasetId]
+    });
   });
 
   it('returns schema-validated response payload', async () => {

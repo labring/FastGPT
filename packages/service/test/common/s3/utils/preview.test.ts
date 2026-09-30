@@ -196,6 +196,40 @@ describe('replaceS3KeyToPreviewUrl', () => {
     });
   });
 
+  describe('filter 选项测试', () => {
+    it('应仅为满足 filter 条件的对象键签发短链，未通过的保持原样', async () => {
+      const text = `
+![通过](dataset/dataset-1/image1.png)
+![未通过](dataset/dataset-2/image2.png)
+![外部](https://example.com/other.png)
+`;
+      const result = await replaceS3KeyToPreviewUrl(text, expiredTime, {
+        filter: (key) => key.startsWith('dataset/dataset-1/')
+      });
+
+      expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledWith([
+        {
+          objectKey: 'dataset/dataset-1/image1.png',
+          bucketName: 'private',
+          expiredTime
+        }
+      ]);
+      expect(result).toContain('mock-short-link-dataset/dataset-1/image1.png');
+      expect(result).toContain('![未通过](dataset/dataset-2/image2.png)');
+      expect(result).not.toContain('mock-short-link-dataset/dataset-2/image2.png');
+    });
+
+    it('所有对象键都被过滤拦截时应直接返回原始文本副本，不发起签发调用', async () => {
+      const text = '![未通过](dataset/dataset-2/image2.png)';
+      const result = await replaceS3KeyToPreviewUrl(text, expiredTime, {
+        filter: () => false
+      });
+
+      expect(mockCreateS3DownloadAccessUrls).not.toHaveBeenCalled();
+      expect(result).toBe(text);
+    });
+  });
+
   // 测试特殊字符处理
   describe('特殊字符处理', () => {
     // 中文字符

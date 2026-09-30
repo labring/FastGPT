@@ -19,6 +19,7 @@ import {
   type UpdateDatasetDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
+import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { addHours } from 'date-fns';
 
@@ -116,7 +117,10 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
 
   const [responseQ, responseA] = await replaceS3KeysToPreviewUrls(
     [nextQ, nextA],
-    addHours(new Date(), 1)
+    addHours(new Date(), 1),
+    {
+      filter: createDatasetFileS3KeyFilter(collection.datasetId)
+    }
   );
 
   return UpdateDatasetDataResponseSchema.parse({

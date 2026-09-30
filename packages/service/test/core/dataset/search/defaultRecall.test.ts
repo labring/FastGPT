@@ -438,7 +438,7 @@ describe('default recall dataset search', () => {
     expect(result.searchRes).toEqual([]);
   });
 
-  it('should only batch-sign S3 keys from results that survive score filtering', async () => {
+  it('should only batch-sign authorized dataset S3 keys from results that survive score filtering', async () => {
     mockIsImageEmbeddingModel.mockReturnValue(false);
     mockGetVectors.mockResolvedValueOnce({
       tokens: 5,
@@ -456,6 +456,7 @@ describe('default recall dataset search', () => {
         lean: vi.fn().mockResolvedValue([{ _id: 'collection-1', name: 'Source' }])
       };
     });
+    // 命中结果同时内嵌本库 key 与外库 key：只有归属于召回 datasetIds 的 key 才签发短链。
     mockMongoDatasetDataFind.mockReturnValueOnce({
       lean: vi.fn().mockResolvedValue([
         {
@@ -463,7 +464,7 @@ describe('default recall dataset search', () => {
           datasetId: 'dataset-1',
           collectionId: 'collection-1',
           updateTime: new Date('2026-01-01'),
-          q: 'Keep ![image](dataset/team/keep.png)',
+          q: 'Keep ![image](dataset/dataset-1/keep.png) leak ![image](dataset/foreign-dataset/secret.png)',
           a: '',
           chunkIndex: 0,
           indexes: [{ dataId: 'index-keep' }]
@@ -473,7 +474,7 @@ describe('default recall dataset search', () => {
           datasetId: 'dataset-1',
           collectionId: 'collection-1',
           updateTime: new Date('2026-01-01'),
-          q: 'Filtered ![image](dataset/team/filtered.png)',
+          q: 'Filtered ![image](dataset/dataset-1/filtered.png)',
           a: '',
           chunkIndex: 1,
           indexes: [{ dataId: 'index-filtered' }]
@@ -495,10 +496,13 @@ describe('default recall dataset search', () => {
     });
 
     expect(result.searchRes).toHaveLength(1);
-    expect(result.searchRes[0]?.q).toContain('https://files.test/dataset/team/keep.png');
+    // 本库 key 被签发为短链，外库 key 保持原文本不替换
+    expect(result.searchRes[0]?.q).toContain('https://files.test/dataset/dataset-1/keep.png');
+    expect(result.searchRes[0]?.q).toContain('dataset/foreign-dataset/secret.png');
+    // 被相似度过滤的候选不产生任何 alias 查询
     expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
     expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
-      'dataset/team/keep.png'
+      'dataset/dataset-1/keep.png'
     ]);
   });
 
