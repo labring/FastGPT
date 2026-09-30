@@ -13,7 +13,7 @@ import {
   ChatItemCollectionName,
   ChatItemResponseCollectionName
 } from '@fastgpt/service/core/chat/constants';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getTeamMemberMap } from '@fastgpt/service/support/user/team/utils';
 import { ChatSourceTypeEnum, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
@@ -33,7 +33,6 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/schema';
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getTeamMemberDisplayIdentityMap } from '@fastgpt/service/support/user/team/memberDisplay';
 import { isUnselectedLogUserFilter } from '@fastgpt/global/core/app/logs/utils';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
 
@@ -110,11 +109,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
   }
 
   // Get members
-  const teamMemberIds = await MongoTeamMember.find({ teamId }, '_id').lean();
-  const memberDisplayMap = await getTeamMemberDisplayIdentityMap({
-    teamId,
-    tmbIds: teamMemberIds.map((member) => member._id)
-  });
+  const memberDisplayMap = await getTeamMemberMap({ teamId, fields: '_id name' });
 
   const where = {
     appId: new Types.ObjectId(appId),

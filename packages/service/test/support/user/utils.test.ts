@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { addSourceMember, clearWebSyncLimit } from '../../../support/user/utils';
 import { MongoTeam } from '../../../support/user/team/teamSchema';
-import { MongoTeamMember } from '../../../support/user/team/teamMemberSchema';
 import { MongoUser } from '../../../support/user/schema';
-import { UNSET_TEAM_MEMBER_NAME } from '@fastgpt/global/support/user/team/constant';
+import { getTeamMemberMap } from '../../../support/user/team/utils';
 
 vi.mock('../../../support/user/team/teamSchema', () => ({
   MongoTeam: {
@@ -11,10 +10,8 @@ vi.mock('../../../support/user/team/teamSchema', () => ({
   }
 }));
 
-vi.mock('../../../support/user/team/teamMemberSchema', () => ({
-  MongoTeamMember: {
-    find: vi.fn()
-  }
+vi.mock('../../../support/user/team/utils', () => ({
+  getTeamMemberMap: vi.fn()
 }));
 
 vi.mock('../../../support/user/schema', () => ({
@@ -46,17 +43,20 @@ describe('support user utils', () => {
   it.each([null, undefined, '', '   '])(
     'falls back to unknow when source member name is %j',
     async (name) => {
-      vi.mocked(MongoTeamMember.find).mockReturnValue({
-        lean: vi.fn().mockResolvedValue([
-          {
-            _id: 'member-id',
-            userId: 'user-id',
-            name,
-            avatar: '',
-            status: 'active'
-          }
+      vi.mocked(getTeamMemberMap).mockResolvedValue(
+        new Map([
+          [
+            'member-id',
+            {
+              _id: 'member-id',
+              userId: 'user-id',
+              name,
+              avatar: '',
+              status: 'active'
+            } as any
+          ]
         ])
-      } as any);
+      );
 
       const [result] = await addSourceMember({
         list: [{ tmbId: 'member-id' }]
@@ -67,44 +67,25 @@ describe('support user utils', () => {
   );
 
   it('preserves a non-empty source member name', async () => {
-    vi.mocked(MongoTeamMember.find).mockReturnValue({
-      lean: vi.fn().mockResolvedValue([
-        {
-          _id: 'member-id',
-          userId: 'user-id',
-          name: 'Member name',
-          avatar: '',
-          status: 'active'
-        }
+    vi.mocked(getTeamMemberMap).mockResolvedValue(
+      new Map([
+        [
+          'member-id',
+          {
+            _id: 'member-id',
+            userId: 'user-id',
+            name: 'Member name',
+            avatar: '',
+            status: 'active'
+          } as any
+        ]
       ])
-    } as any);
+    );
 
     const [result] = await addSourceMember({
       list: [{ tmbId: 'member-id' }]
     });
 
     expect(result.sourceMember.name).toBe('Member name');
-  });
-
-  it('uses the login username when the source member name is pending', async () => {
-    vi.mocked(MongoTeamMember.find).mockReturnValue({
-      lean: vi.fn().mockResolvedValue([
-        {
-          _id: 'member-id',
-          userId: 'user-id',
-          name: UNSET_TEAM_MEMBER_NAME,
-          avatar: '',
-          status: 'active'
-        }
-      ])
-    } as any);
-    vi.mocked(MongoUser.find).mockReturnValue({
-      lean: vi.fn().mockResolvedValue([{ _id: 'user-id', username: 'login-name' }])
-    } as any);
-
-    const [result] = await addSourceMember({ list: [{ tmbId: 'member-id' }] });
-
-    expect(result.sourceMember.name).toBe('login-name');
-    expect(result.sourceMember.name).not.toBe(UNSET_TEAM_MEMBER_NAME);
   });
 });

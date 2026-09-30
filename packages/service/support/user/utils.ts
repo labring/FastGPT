@@ -1,8 +1,8 @@
 import { type SourceMemberType } from '@fastgpt/global/support/user/type';
 import { MongoTeam } from './team/teamSchema';
+import { getTeamMemberMap } from './team/utils';
 import { type ClientSession } from '../../common/mongo';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
-import { getTeamMemberDisplayIdentityMap } from './team/memberDisplay';
 
 /* export dataset limit */
 export const updateExportDatasetLimit = async (teamId: string) => {
@@ -107,19 +107,23 @@ export async function addSourceMember<T extends { tmbId: string }>({
   const tmbIdList = list
     .map((item) => (item.tmbId ? String(item.tmbId) : undefined))
     .filter((tmbId): tmbId is string => tmbId !== undefined);
-  const memberDisplayMap = await getTeamMemberDisplayIdentityMap({ tmbIds: tmbIdList, session });
+  const tmbMap = await getTeamMemberMap({
+    memberIds: tmbIdList,
+    fields: '_id name avatar status',
+    session
+  });
 
   return list
     .map((item) => {
-      const member = memberDisplayMap.get(String(item.tmbId));
-      if (!member) return;
+      const tmb = tmbMap.get(String(item.tmbId));
+      if (!tmb) return;
 
       // @ts-ignore
       const formatItem = typeof item.toObject === 'function' ? item.toObject() : item;
 
       return {
         ...formatItem,
-        sourceMember: formatSourceMember(member)
+        sourceMember: formatSourceMember(tmb)
       };
     })
     .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;

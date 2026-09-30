@@ -20,6 +20,7 @@ import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legac
 import { migrateDatasetTagsV2 } from './tasks/20260907_migrate_dataset_tags_v2';
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
 import { enableChannelReasoningMapping } from './tasks/20260923_enable_channel_reasoning_mapping';
+import { backfillMemberNameSet } from './tasks/20260928_backfill_member_name_set';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -430,6 +431,28 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: enableChannelReasoningMapping
+  },
+  {
+    id: '20260928_backfill_member_name_set',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260928_backfill_member_name_set.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.result'),
+    progressSteps: [
+      {
+        key: 'members',
+        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.members')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.validation')
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillMemberNameSet
   }
 ] as const satisfies readonly SystemMigration[];
 
