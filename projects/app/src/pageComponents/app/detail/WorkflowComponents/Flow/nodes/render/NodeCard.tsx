@@ -59,9 +59,10 @@ import {
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useQuery } from '@tanstack/react-query';
 import { useBoolean, useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { omit } from 'lodash-es';
@@ -192,7 +193,9 @@ const NodeCard = (props: Props) => {
   // 标红焦点归 host：点击标红节点即清除焦点（旧 onUpdateNodeError(nodeId, false) 行为）。
   const focusIssueNode = useContextSelector(WorkflowHostContext, (v) => v.focusIssueNode);
   const patchViewData = useContextSelector(WorkflowHostContext, (v) => v.patchViewData);
-  const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
+  const isMeasuring = useContextSelector(WorkflowCanvasContext, (v) =>
+    v.measurementNodeIds.includes(nodeId)
+  );
   const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
   const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
   const { fitView } = useReactFlow();
@@ -298,10 +301,21 @@ const NodeCard = (props: Props) => {
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
 
-  const { data: nodeTemplate } = useRequest(
-    async () => {
+  const { data: nodeTemplate } = useQuery({
+    queryKey: [
+      'workflow',
+      'node-template',
+      nodeId,
+      isAppNode,
+      node?.pluginData?.error,
+      node?.pluginData?.status,
+      node?.pluginId,
+      node?.source,
+      node?.version
+    ],
+    queryFn: async () => {
       if (node?.pluginData?.error) {
-        return undefined;
+        return null;
       }
 
       if (isAppNode) {
@@ -324,37 +338,29 @@ const NodeCard = (props: Props) => {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
         );
-        return template;
+        return template ?? null;
       }
     },
-    {
-      onSuccess(res) {
-        if (!res) return;
-        // 教程元信息由工具详情实时回写，兼容已保存的旧节点。
-        // 这三个字段是画布视图数据（不进文档），直接写 host overlay 由投影合并。
-        patchViewData([
-          {
-            nodeId,
-            values: {
-              courseUrl: res.courseUrl,
-              readmeUrl: res.readmeUrl,
-              userGuide: res.userGuide
-            }
-          }
-        ]);
-      },
-      manual: false,
-      errorToast: '',
-      refreshDeps: [
-        isAppNode,
-        node?.pluginData?.error,
-        node?.pluginData?.status,
-        node?.pluginId,
-        node?.source,
-        node?.version
-      ]
-    }
-  );
+    enabled: !isMeasuring,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 5 * 60 * 1000
+  });
+
+  useEffect(() => {
+    if (!nodeTemplate) return;
+    // 教程元信息由工具详情实时回写，兼容已保存的旧节点。
+    // 这三个字段是画布视图数据（不进文档），直接写 host overlay 由投影合并。
+    patchViewData([
+      {
+        nodeId,
+        values: {
+          courseUrl: nodeTemplate.courseUrl,
+          readmeUrl: nodeTemplate.readmeUrl,
+          userGuide: nodeTemplate.userGuide
+        }
+      }
+    ]);
+  }, [nodeId, nodeTemplate, patchViewData]);
 
   const toolStatus = nodeTemplate?.status ?? node?.pluginData?.status;
   const showVersion = useMemo(() => {
@@ -435,8 +441,6 @@ const NodeCard = (props: Props) => {
             visibility: 'visible'
           }
         }}
-        onMouseEnter={() => setHoverNodeId(nodeId)}
-        onMouseLeave={() => setHoverNodeId(undefined)}
         {...(isError ? { onMouseDownCapture: () => focusIssueNode(undefined) } : {})}
       >
         <NodeOutputValidity nodeId={nodeId} />
@@ -479,7 +483,7 @@ const NodeCard = (props: Props) => {
                     {showVersion && <NodeVersion node={node!} />}
 
                     <NodeActionButtons
-                      nodeTemplate={nodeTemplate}
+                      nodeTemplate={nodeTemplate ?? undefined}
                       courseUrl={courseUrl}
                       readmeUrl={readmeUrl}
                       rtDoms={rtDoms}

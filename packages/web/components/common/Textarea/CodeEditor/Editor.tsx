@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import Editor, { type Monaco, loader } from '@monaco-editor/react';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';

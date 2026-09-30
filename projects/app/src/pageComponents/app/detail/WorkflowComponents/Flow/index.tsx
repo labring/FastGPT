@@ -255,6 +255,7 @@ const VirtualizedNode = React.memo(
     );
     const pinNodeFocus = useContextSelector(WorkflowCanvasContext, (v) => v.pinNodeFocus);
     const unpinNodeFocus = useContextSelector(WorkflowCanvasContext, (v) => v.unpinNodeFocus);
+    const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const handleFocus = useCallback(() => pinNodeFocus(props.id), [pinNodeFocus, props.id]);
     const handleBlur = useCallback(
@@ -265,11 +266,18 @@ const VirtualizedNode = React.memo(
       },
       [props.id, unpinNodeFocus]
     );
+    const handleMouseEnter = useCallback(
+      () => setHoverNodeId(props.id),
+      [props.id, setHoverNodeId]
+    );
+    const handleMouseLeave = useCallback(() => setHoverNodeId(undefined), [setHoverNodeId]);
 
     return (
       <div
         ref={wrapperRef}
         style={{ display: 'contents' }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onFocusCapture={handleFocus}
         onBlurCapture={handleBlur}
       >

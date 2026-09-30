@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -27,12 +28,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import NodeCopilot from './Copilot';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { getSandboxPackages } from './api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from '../render/useWorkflowDocument';
 import { useField, useNode } from '@/web/core/workflow/editor';
+import { getSandboxPackages } from '@/web/core/workflow/api';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -55,9 +55,11 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     content: t('workflow:code.Switch language confirm')
   });
 
-  const { data: packages } = useRequest(getSandboxPackages, {
-    manual: false,
-    errorToast: ''
+  const { data: packages } = useQuery({
+    queryKey: ['workflow', 'sandbox-packages'],
+    queryFn: getSandboxPackages,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 5 * 60 * 1000
   });
 
   const packageText = useMemo(() => {
@@ -69,7 +71,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       modules: packagesList,
       globals: packages?.builtinGlobals.join(', ')
     });
-  }, [packages, codeType.value]);
+  }, [packages, codeType.value, t]);
 
   const CustomComponent = useMemo(() => {
     return {
@@ -144,7 +146,16 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [packageText, codeType, nodeId, t, presentationMode, node, codeField]);
+  }, [
+    packageText,
+    packages,
+    codeType,
+    t,
+    presentationMode,
+    node,
+    codeField,
+    openSwitchLangConfirm
+  ]);
 
   const isTool = useIsToolNode(nodeId);
   const { commonInputs } = useMemoEnhance(
