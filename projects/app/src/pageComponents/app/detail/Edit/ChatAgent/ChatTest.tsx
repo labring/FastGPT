@@ -54,9 +54,9 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     enableSandbox
   });
 
-  const showHelper = !!feConfigs?.hasMax;
-  const canUseHelper = showHelper && !!feConfigs?.isPlus;
-  const activeTab = showHelper ? agentChatTestTab : AgentChatTestTabEnum.chatDebug;
+  const canUseHelper = !!feConfigs?.isPlus;
+  const showHelper = canUseHelper;
+  const activeTab = canUseHelper ? agentChatTestTab : AgentChatTestTabEnum.chatDebug;
   const [hasRenderedHelper, setHasRenderedHelper] = useSafeState(false);
   const [proModalOpen, setProModalOpen] = useSafeState(false);
   const [helperSelectedModel = '', setHelperSelectedModel] = useLocalStorageState<string>(

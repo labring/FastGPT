@@ -111,10 +111,10 @@ export const shouldSendStreamResumeHeader = (url: string) =>
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
-    '/api/maxApi/core/chat/chatAgentHelper/completions',
-    '/api/maxApi/core/workflow/builder/chat',
+    '/api/proApi/core/chat/chatAgentHelper/completions',
+    '/api/proApi/core/workflow/builder/chat',
     '/api/core/ai/skill/debugChat',
-    '/api/maxApi/core/ai/skill/debugChat'
+    '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);
 
 type CommonResponseType = {

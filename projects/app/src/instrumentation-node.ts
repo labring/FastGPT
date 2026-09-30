@@ -16,13 +16,7 @@ export async function registerNodeInstrumentation() {
       { connectMongo },
       { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
-      {
-        initGlobalVariables,
-        initMaxServerStatus,
-        getInitConfig,
-        initSystemPluginTags,
-        initAppTemplateTypes
-      },
+      { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
       { initRootUser },
       { startMongoWatch },
@@ -163,13 +157,6 @@ export async function registerNodeInstrumentation() {
         getErrText
       })
     ]);
-
-    await runInitializationStep({
-      step: 'probe-max-server',
-      action: () => initMaxServerStatus(),
-      logger,
-      getErrText
-    });
 
     await runInitializationStep({
       step: 'get-init-config',

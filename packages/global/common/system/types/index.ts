@@ -66,7 +66,6 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     description:
       '是否部署了商业版（pro）服务（配置了 PRO_URL）。与 isPlus 区别：本字段表示服务是否接入（用于区分商业版部署与开源社区版部署），而 isPlus 表示授权是否有效。'
   }),
-  hasMax: z.boolean().optional().meta({ description: '是否配置了 Max 服务' }),
   hideChatCopyrightSetting: z
     .boolean()
     .optional()
@@ -111,13 +110,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   show_discount_coupon: z.boolean().optional().meta({ description: '是否展示优惠券/折扣券入口' }),
   show_enterprise_auth: z.boolean().optional().meta({ description: '是否展示企业实名认证入口' }),
   showWecomConfig: z.boolean().optional().meta({ description: '是否展示企业微信集成配置' }),
-  login2faEnabled: z
-    .boolean()
-    .optional()
-    .meta({
-      description:
-        '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
-    }),
+  login2faEnabled: z.boolean().optional().meta({
+    description:
+      '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
+  }),
   wecomLoginAutoRedirect: z
     .boolean()
     .optional()

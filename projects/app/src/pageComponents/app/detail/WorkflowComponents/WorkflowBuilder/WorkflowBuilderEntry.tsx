@@ -52,7 +52,6 @@ const WorkflowBuilderEntry = () => {
   const entryAccess = getWorkflowBuilderEntryAccess({
     systemInitialized,
     isPlus: !!feConfigs?.isPlus,
-    hasMax: !!feConfigs?.hasMax,
     showAgentSandbox: !!feConfigs?.show_agent_sandbox,
     showWorkflowBuilder: feConfigs?.show_workflow_builder !== false,
     canEdit: !!appDetail.permission?.hasWritePer

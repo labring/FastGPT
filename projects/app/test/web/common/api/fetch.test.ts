@@ -164,20 +164,12 @@ describe('createResumeReadyNotifier', () => {
 });
 
 describe('shouldSendStreamResumeHeader', () => {
-  it('enables resume for the Max Skill Helper endpoint', () => {
-    expect(shouldSendStreamResumeHeader('/api/maxApi/core/ai/skill/debugChat')).toBe(true);
+  it('enables resume for the Pro Skill Helper endpoint', () => {
+    expect(shouldSendStreamResumeHeader('/api/proApi/core/ai/skill/debugChat')).toBe(true);
   });
 
-  it('does not keep the removed Pro Skill Helper endpoint', () => {
-    expect(shouldSendStreamResumeHeader('/api/proApi/core/ai/skill/debugChat')).toBe(false);
-  });
-
-  it('enables resume for the Max Workflow Builder endpoint', () => {
-    expect(shouldSendStreamResumeHeader('/api/maxApi/core/workflow/builder/chat')).toBe(true);
-  });
-
-  it('does not keep the removed Pro Workflow Builder endpoint', () => {
-    expect(shouldSendStreamResumeHeader('/api/proApi/core/workflow/builder/chat')).toBe(false);
+  it('enables resume for the Pro Workflow Builder endpoint', () => {
+    expect(shouldSendStreamResumeHeader('/api/proApi/core/workflow/builder/chat')).toBe(true);
   });
 });
 

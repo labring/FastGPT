@@ -26,7 +26,7 @@ export const streamWorkflowBuilderChat = ({
   abortCtrl: AbortController;
 }) =>
   streamRawFetch({
-    url: '/api/maxApi/core/workflow/builder/chat',
+    url: '/api/proApi/core/workflow/builder/chat',
     data,
     onMessage,
     abortCtrl
@@ -35,7 +35,7 @@ export const streamWorkflowBuilderChat = ({
 /** 打开 Workflow Builder 后后台预热按成员隔离的 Sandbox 运行环境。 */
 export const prewarmWorkflowBuilderRuntime = (data: { appId: string; chatId: string }) =>
   POST(
-    '/maxApi/core/workflow/builder/runtime/prewarm',
+    '/proApi/core/workflow/builder/runtime/prewarm',
     WorkflowBuilderRuntimePrewarmBodySchema.parse(data)
   );
 
@@ -58,7 +58,7 @@ export const loadWorkflowBuilderVersion = async (
 ): Promise<WorkflowBuilderVersionLoadResponse> =>
   WorkflowBuilderVersionLoadResponseSchema.parse(
     await POST(
-      '/maxApi/core/workflow/builder/version/load',
+      '/proApi/core/workflow/builder/version/load',
       WorkflowBuilderVersionLoadBodySchema.parse(data)
     )
   );
@@ -68,7 +68,7 @@ export const commitWorkflowBuilderVersion = async (
 ): Promise<WorkflowBuilderVersionCommitResponse> =>
   WorkflowBuilderVersionCommitResponseSchema.parse(
     await POST(
-      '/maxApi/core/workflow/builder/version/commit',
+      '/proApi/core/workflow/builder/version/commit',
       WorkflowBuilderVersionCommitBodySchema.parse(data)
     )
   );

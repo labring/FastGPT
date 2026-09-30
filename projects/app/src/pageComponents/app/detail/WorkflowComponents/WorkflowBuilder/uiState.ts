@@ -78,24 +78,22 @@ export const shouldPrewarmWorkflowBuilderRuntime = ({
 
 /**
  * 决定 Builder 入口展示方式。
- * 未部署或未配置 Max 时直接隐藏；社区版在配置 Max 时保留升级入口；无编辑权限或商业版管理员关闭依赖能力时直接隐藏。
+ * 社区版保留升级入口；无编辑权限或商业版管理员关闭依赖能力时直接隐藏。
  */
 export const getWorkflowBuilderEntryAccess = ({
   systemInitialized,
   isPlus,
-  hasMax,
   showAgentSandbox,
   showWorkflowBuilder,
   canEdit
 }: {
   systemInitialized: boolean;
   isPlus: boolean;
-  hasMax?: boolean;
   showAgentSandbox: boolean;
   showWorkflowBuilder: boolean;
   canEdit: boolean;
 }): WorkflowBuilderEntryAccess => {
-  if (!systemInitialized || !canEdit || !hasMax) return 'hidden';
+  if (!systemInitialized || !canEdit) return 'hidden';
   if (!isPlus) return 'upgrade';
   if (!showAgentSandbox || !showWorkflowBuilder) return 'hidden';
   return 'enabled';

@@ -4,7 +4,6 @@ import { streamInitSkillRuntime, streamSkillDebugChat } from '@/web/core/skill/a
 
 const mocks = vi.hoisted(() => ({
   isPlus: false,
-  hasMax: false,
   streamFetch: vi.fn()
 }));
 
@@ -23,7 +22,7 @@ vi.mock('@/web/common/api/fetch', () => ({
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: {
-    getState: () => ({ feConfigs: { isPlus: mocks.isPlus, hasMax: mocks.hasMax } })
+    getState: () => ({ feConfigs: { isPlus: mocks.isPlus } })
   }
 }));
 
@@ -61,33 +60,27 @@ describe('streamInitSkillRuntime', () => {
 
 describe('streamSkillDebugChat', () => {
   it.each([
-    [false, false, '/api/core/ai/skill/debugChat'],
-    [false, true, '/api/core/ai/skill/debugChat'],
-    [true, false, '/api/core/ai/skill/debugChat'],
-    [true, true, '/api/maxApi/core/ai/skill/debugChat']
-  ])(
-    'selects the expected endpoint when isPlus=%s, hasMax=%s',
-    async (isPlus, hasMax, expectedUrl) => {
-      mocks.isPlus = isPlus;
-      mocks.hasMax = hasMax;
-      mocks.streamFetch.mockResolvedValueOnce({ responseText: '' });
-      const abortCtrl = new AbortController();
-      const data = {
-        skillId: 'skill-1',
-        chatId: 'chat-1',
-        modelId: 'model-1',
-        messages: [{ role: 'user' as const, content: 'Create a skill' }]
-      };
-      const onMessage = vi.fn();
+    [false, '/api/core/ai/skill/debugChat'],
+    [true, '/api/proApi/core/ai/skill/debugChat']
+  ])('selects the expected endpoint when isPlus=%s', async (isPlus, expectedUrl) => {
+    mocks.isPlus = isPlus;
+    mocks.streamFetch.mockResolvedValueOnce({ responseText: '' });
+    const abortCtrl = new AbortController();
+    const data = {
+      skillId: 'skill-1',
+      chatId: 'chat-1',
+      modelId: 'model-1',
+      messages: [{ role: 'user' as const, content: 'Create a skill' }]
+    };
+    const onMessage = vi.fn();
 
-      await streamSkillDebugChat({ data, onMessage, abortCtrl });
+    await streamSkillDebugChat({ data, onMessage, abortCtrl });
 
-      expect(mocks.streamFetch).toHaveBeenCalledWith({
-        url: expectedUrl,
-        data,
-        onMessage,
-        abortCtrl
-      });
-    }
-  );
+    expect(mocks.streamFetch).toHaveBeenCalledWith({
+      url: expectedUrl,
+      data,
+      onMessage,
+      abortCtrl
+    });
+  });
 });

@@ -15,8 +15,6 @@ packages:
   - document/
   - scripts/icon
   - sdk/*
-  - max/apps/*
-  - max/packages/*
 
 catalog:
   '@alicloud/dysmsapi20170525': ^2.0.24

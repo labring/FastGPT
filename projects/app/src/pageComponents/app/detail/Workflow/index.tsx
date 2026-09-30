@@ -31,7 +31,6 @@ const WorkflowEdit = () => {
   const canEdit = !!appDetail.permission?.hasWritePer;
   const workflowBuilderEnabled =
     !!feConfigs?.isPlus &&
-    !!feConfigs?.hasMax &&
     !!feConfigs?.show_agent_sandbox &&
     feConfigs?.show_workflow_builder !== false &&
     canEdit;
@@ -39,7 +38,6 @@ const WorkflowEdit = () => {
     getWorkflowBuilderEntryAccess({
       systemInitialized,
       isPlus: !!feConfigs?.isPlus,
-      hasMax: !!feConfigs?.hasMax,
       showAgentSandbox: !!feConfigs?.show_agent_sandbox,
       showWorkflowBuilder: feConfigs?.show_workflow_builder !== false,
       canEdit

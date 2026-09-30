@@ -166,12 +166,11 @@ describe('Workflow Builder Web Adapter', () => {
     expect(shouldPrewarmWorkflowBuilderRuntime(state)).toBe(expected);
   });
 
-  it('keeps an upgrade entry for editable community apps when Max is available', () => {
+  it('keeps an upgrade entry for editable community apps', () => {
     expect(
       getWorkflowBuilderEntryAccess({
         systemInitialized: true,
         isPlus: false,
-        hasMax: true,
         showAgentSandbox: false,
         showWorkflowBuilder: false,
         canEdit: true
@@ -184,7 +183,6 @@ describe('Workflow Builder Web Adapter', () => {
       getWorkflowBuilderEntryAccess({
         systemInitialized: true,
         isPlus: false,
-        hasMax: true,
         showAgentSandbox: true,
         showWorkflowBuilder: true,
         canEdit: false
@@ -197,32 +195,8 @@ describe('Workflow Builder Web Adapter', () => {
       getWorkflowBuilderEntryAccess({
         systemInitialized: false,
         isPlus: false,
-        hasMax: true,
         showAgentSandbox: false,
         showWorkflowBuilder: false,
-        canEdit: true
-      })
-    ).toBe('hidden');
-  });
-
-  it('hides the entry when Max server is not configured or unavailable', () => {
-    expect(
-      getWorkflowBuilderEntryAccess({
-        systemInitialized: true,
-        isPlus: true,
-        hasMax: false,
-        showAgentSandbox: true,
-        showWorkflowBuilder: true,
-        canEdit: true
-      })
-    ).toBe('hidden');
-    expect(
-      getWorkflowBuilderEntryAccess({
-        systemInitialized: true,
-        isPlus: false,
-        hasMax: false,
-        showAgentSandbox: true,
-        showWorkflowBuilder: true,
         canEdit: true
       })
     ).toBe('hidden');
@@ -238,7 +212,6 @@ describe('Workflow Builder Web Adapter', () => {
         getWorkflowBuilderEntryAccess({
           systemInitialized: true,
           isPlus: true,
-          hasMax: true,
           showAgentSandbox,
           showWorkflowBuilder,
           canEdit: true
@@ -252,7 +225,6 @@ describe('Workflow Builder Web Adapter', () => {
       getWorkflowBuilderEntryAccess({
         systemInitialized: true,
         isPlus: true,
-        hasMax: true,
         showAgentSandbox: true,
         showWorkflowBuilder: true,
         canEdit: true
@@ -588,7 +560,7 @@ describe('Workflow Builder Web Adapter', () => {
       chatId: 'workflow-builder-chat'
     });
 
-    expect(mocks.POST).toHaveBeenCalledWith('/maxApi/core/workflow/builder/runtime/prewarm', {
+    expect(mocks.POST).toHaveBeenCalledWith('/proApi/core/workflow/builder/runtime/prewarm', {
       appId: '67f4c91c79a4d61b1f116b2a',
       chatId: 'workflow-builder-chat'
     });
