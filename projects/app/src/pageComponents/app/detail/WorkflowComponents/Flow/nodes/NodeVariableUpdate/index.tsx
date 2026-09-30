@@ -159,7 +159,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       };
 
       return (
-        <Container key={index} w={'full'} mx={0} pt={4}>
+        <Container w={'full'} mx={0} pt={4}>
           {/* 目标变量 */}
           <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
             <Flex alignItems={'center'} position={'relative'} fontWeight={'medium'}>
@@ -250,17 +250,13 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     return (
       <NodeCard selected={selected} minW={'522px'} maxW={'1000px'} {...data}>
         <Box px={4} pb={4}>
-          <Flex flexDirection={'column'} gap={4}>
-            {updateList.map((updateItem, index) => (
-              <WorkflowFieldScope
-                key={index}
-                nodeId={nodeId}
-                fieldKey={NodeInputKeyEnum.updateList}
-              >
-                <ValueRow updateItem={updateItem} index={index} />
-              </WorkflowFieldScope>
-            ))}
-          </Flex>
+          <WorkflowFieldScope nodeId={nodeId} fieldKey={NodeInputKeyEnum.updateList}>
+            <Flex flexDirection={'column'} gap={4}>
+              {updateList.map((updateItem, index) => (
+                <ValueRow key={index} updateItem={updateItem} index={index} />
+              ))}
+            </Flex>
+          </WorkflowFieldScope>
           <Flex className="nodrag" alignItems={'center'} mt={4}>
             <Button
               variant={'whiteBase'}

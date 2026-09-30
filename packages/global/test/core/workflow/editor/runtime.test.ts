@@ -456,6 +456,68 @@ describe('workflow editor runtime modules', () => {
     );
   });
 
+  it('exposes variable update target type errors in field reference status', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Source',
+          inputs: [],
+          outputs: [
+            {
+              id: 'output',
+              key: 'output',
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'update',
+          flowNodeType: FlowNodeTypeEnum.variableUpdate,
+          name: 'Update',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.updateList,
+              label: 'Updates',
+              renderTypeList: [FlowNodeInputTypeEnum.input],
+              value: [
+                {
+                  variable: ['source', 'output'],
+                  valueType: WorkflowIOValueTypeEnum.number,
+                  value: ['', ''],
+                  renderType: FlowNodeInputTypeEnum.input
+                }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [
+        {
+          source: 'source',
+          target: 'update',
+          sourceHandle: 'output',
+          targetHandle: 'target'
+        }
+      ],
+      chatConfig: {}
+    });
+
+    expect(
+      editor.getField({ nodeId: 'update', fieldKey: NodeInputKeyEnum.updateList })?.references
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'invalid_reference_type',
+          reference: ['source', 'output']
+        })
+      ])
+    );
+  });
+
   it('marks downstream consumers as affected without changing them', () => {
     const editor = createRuntime();
     editor.dispatch({

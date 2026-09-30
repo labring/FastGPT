@@ -93,9 +93,10 @@ type UpstreamRevisionStore = {
  *   与只改 inputs 的 `updateNode`）与列表无关，不算命中——这一条才是「打字不刷新下游」的关键；
  * - `affectedRecords` 整个不参与判定：它是「引用状态需要重算」的下游集合，节点记录本身没变，
  *   字段引用状态由 `useField` 那条通道自己投递。
+ * - 结构变化只比较来源闭包与祖先容器链；连线变化未改变这两组集合时不命中。
  *
- * 稳态成本：无关提交通知到达时只做 O(变更条数) 的集合查询；来源闭包只在命中后作废重算，
- * 结构变化时同样作废（闭包本身可能已经不同）。保守方向只会多算不会漏算。
+ * 稳态成本：无关提交通知到达时只做 O(变更条数) 的集合查询；命中后更新闭包缓存，
+ * 结构变化只在集合实际变化时触发重算。保守方向只会多算不会漏算。
  */
 const createUpstreamRevisionStore = ({
   runtime,
@@ -153,11 +154,26 @@ const createUpstreamRevisionStore = ({
     return { sources: sourceNodes, own: ownNodes };
   };
 
+  const sameSet = (left: Set<string>, right: Set<string>) =>
+    left.size === right.size && [...left].every((id) => right.has(id));
+
+  // 结构事件到达前先保留当前闭包，后续才能判断连线是否真的改变本节点的来源。
+  ensureNodeSets();
+
   const onChange = (change: WorkflowChange) => {
     // 几何提交不进语义快照，派生列表与它无关。
     if (change.kind === 'geometry') return;
     const structureChanged = change.kind === 'replace' || change.affectedRecords.structure;
-    let hit = structureChanged || change.changedRecords.chatConfigVariablesChanged;
+    let nextSets: { sources: Set<string>; own: Set<string> } | undefined;
+    let hit = change.kind === 'replace' || change.changedRecords.chatConfigVariablesChanged;
+    if (structureChanged) {
+      const previousSets = ensureNodeSets();
+      nextSets = computeNodeSets();
+      hit =
+        hit ||
+        !sameSet(previousSets.sources, nextSets.sources) ||
+        !sameSet(previousSets.own, nextSets.own);
+    }
     if (!hit) {
       const { sources, own } = ensureNodeSets();
       const fieldIds = change.changedRecords.fieldIds;
@@ -175,8 +191,9 @@ const createUpstreamRevisionStore = ({
       });
     }
     if (!hit) return;
-    sourceNodes = undefined;
-    ownNodes = undefined;
+    const updatedSets = nextSets ?? computeNodeSets();
+    sourceNodes = updatedSets.sources;
+    ownNodes = updatedSets.own;
     revision += 1;
     listeners.forEach((listener) => listener());
   };

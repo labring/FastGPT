@@ -1,5 +1,5 @@
 import type { WorkflowIOValueTypeEnum } from '../../constants';
-import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '../../constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum, VARIABLE_NODE_ID } from '../../constants';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { isToolParamInput } from '../../../app/formEdit/utils';
 import { nodeInputIsReference } from '../../utils';
@@ -18,6 +18,7 @@ import type {
   ReferenceItemValueType,
   WorkflowReferenceSnapshot
 } from '../../type/io';
+import type { TUpdateListItem } from '../../template/system/variableUpdate/type';
 import type {
   WorkflowFieldIdentity,
   WorkflowNodeData,
@@ -732,9 +733,41 @@ export const createReferenceModule = (document: DocumentReadApi) => {
       return [];
     }
     const targetType = 'renderTypeList' in field ? field.valueType : undefined;
-    const statuses = references.map((reference) =>
-      getReferenceStatus({ reference, targetType, targetNodeId: nodeId })
-    );
+    const statuses =
+      field.key === NodeInputKeyEnum.updateList && Array.isArray(value)
+        ? (() => {
+            const seen = new Set<string>();
+            const result: WorkflowReferenceStatus[] = [];
+            const addStatus = (
+              reference: ReferenceItemValueType,
+              referenceTargetType?: WorkflowIOValueTypeEnum
+            ) => {
+              const referenceKey = reference.join('\0');
+              if (seen.has(referenceKey)) return;
+              seen.add(referenceKey);
+              result.push(
+                getReferenceStatus({
+                  reference,
+                  targetType: referenceTargetType,
+                  targetNodeId: nodeId
+                })
+              );
+            };
+
+            (value as TUpdateListItem[]).forEach((item) => {
+              getWorkflowReferenceItemsFromValue(item.variable).forEach((reference) => {
+                addStatus(reference, item.valueType);
+              });
+              const variableType = getReferenceValueType(item.variable);
+              getWorkflowReferenceItemsFromValue(item.value).forEach((reference) => {
+                addStatus(reference, variableType);
+              });
+            });
+            return result;
+          })()
+        : references.map((reference) =>
+            getReferenceStatus({ reference, targetType, targetNodeId: nodeId })
+          );
     const result = hasMalformedReferenceArray(value)
       ? [{ code: 'invalid_reference' as const }, ...statuses]
       : statuses.length > 0

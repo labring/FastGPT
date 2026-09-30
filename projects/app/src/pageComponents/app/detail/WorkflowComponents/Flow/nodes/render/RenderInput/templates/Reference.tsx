@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   filterSelectableWorkflowNodeOutputs,
   getNodeAllSource,
@@ -17,11 +18,15 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import type {
   WorkflowFieldSnapshot,
+  WorkflowReferenceStatus,
   WorkflowSnapshot
 } from '@fastgpt/global/core/workflow/editor/types';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { getWorkflowReferenceItems } from '@fastgpt/global/core/workflow/editor/utils';
+import {
+  getWorkflowReferenceItems,
+  isConfiguredReferenceValue
+} from '@fastgpt/global/core/workflow/editor/utils';
 import type { TFunction } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
@@ -276,6 +281,25 @@ const getReferenceStatus = (
   });
 };
 
+const getInvalidReason = (
+  status: { readonly code: WorkflowReferenceStatus['code'] } | undefined,
+  t: TFunction
+) => {
+  switch (status?.code) {
+    case 'invalid_reference':
+      return t('common:core.workflow.check.reference_deleted');
+    case 'unreachable_reference':
+      return t('common:core.workflow.check.reference_unreachable');
+    case 'invalid_reference_type':
+      return t('common:core.workflow.check.reference_type_mismatch');
+    default:
+      return t('common:invalid_variable');
+  }
+};
+
+const getReferenceTitle = (value: ReferenceItemValueType | undefined) =>
+  value?.filter(Boolean).join('.') || undefined;
+
 const SingleReferenceSelector = ({
   placeholder,
   value,
@@ -330,6 +354,14 @@ const SingleReferenceSelector = ({
     () => getWorkflowReferenceItems(value)[0] as ReferenceItemValueType,
     [value]
   );
+  const status = getReferenceStatus(references, selectorVal);
+  const isInvalidReference =
+    isConfiguredReferenceValue(selectorVal) &&
+    (status
+      ? status.code !== 'valid' || !getSelectValue(selectorVal)
+      : !getSelectValue(selectorVal));
+  const invalidReason = getInvalidReason(status, t);
+  const referenceTitle = getReferenceTitle(selectorVal);
 
   const ItemSelector = useMemo(() => {
     const selected = getSelectValue(selectorVal);
@@ -337,7 +369,7 @@ const SingleReferenceSelector = ({
     return (
       <MultipleRowSelect
         label={
-          selected ? (
+          selected || isInvalidReference ? (
             <Flex
               alignItems={'center'}
               minW={0}
@@ -346,20 +378,37 @@ const SingleReferenceSelector = ({
               fontSize={'sm'}
               data-preserve-width
             >
-              {!!selected.avatar && (
+              {!!selected?.avatar && (
                 <Avatar src={selected.avatar} w={'1.05rem'} borderRadius={'xs'} flexShrink={0} />
               )}
               <Box
                 data-preserve-width
-                ml={selected.avatar ? 1 : 0}
+                ml={selected?.avatar ? 1 : 0}
                 minW={0}
                 flex={1}
                 overflow={'hidden'}
                 textOverflow={'ellipsis'}
                 whiteSpace={'nowrap'}
+                color={isInvalidReference ? 'red.600' : undefined}
+                title={isInvalidReference ? referenceTitle : undefined}
               >
-                {selected.text}
+                {selected?.text || t('common:invalid_variable')}
               </Box>
+              {isInvalidReference && (
+                <MyTooltip label={invalidReason} shouldWrapChildren={false}>
+                  <Box
+                    display={'flex'}
+                    alignItems={'center'}
+                    ml={1}
+                    color={'red.500'}
+                    cursor={'help'}
+                    aria-label={invalidReason}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <MyIcon name="common/warn" boxSize={3.5} />
+                  </Box>
+                </MyTooltip>
+              )}
             </Flex>
           ) : (
             <Box fontSize={'sm'} color={'myGray.400'}>
@@ -371,7 +420,15 @@ const SingleReferenceSelector = ({
         list={list}
         onSelect={onSelect as any}
         popDirection={popDirection}
-        ButtonProps={ButtonProps}
+        ButtonProps={
+          isInvalidReference
+            ? {
+                ...ButtonProps,
+                borderColor: 'red.500',
+                _hover: { borderColor: 'red.400' }
+              }
+            : ButtonProps
+        }
         onOpenFunc={onOpenList}
       />
     );
@@ -383,7 +440,11 @@ const SingleReferenceSelector = ({
     onSelect,
     placeholder,
     popDirection,
-    selectorVal
+    selectorVal,
+    isInvalidReference,
+    invalidReason,
+    referenceTitle,
+    t
   ]);
 
   return ItemSelector;
@@ -418,7 +479,7 @@ const MultipleReferenceSelector = ({
   // 存量数据可能是单选形态 [nodeId, outputId]：展示时升级成引用数组，不回写文档。
   const arrayVal = useMemo(() => getWorkflowReferenceItems(value), [value]);
 
-  // Get valid item and remove invalid item
+  // Keep invalid items visible so users can inspect and remove stale references.
   const formatList = useMemo(() => {
     // 给出字段引用状态时按状态解析展示名，此时 list 可以是懒加载的空数组。
     // 失效引用不再被抹成空名：来源被删除时状态里带的是 Reference Snapshot 的历史名字与图标。
@@ -429,7 +490,8 @@ const MultipleReferenceSelector = ({
           rawValue: item,
           nodeName: status.sourceLabel ? t(status.sourceLabel) : '',
           outputName: status.outputLabel ? t(status.outputLabel) : '',
-          icon: status.icon
+          icon: status.icon,
+          status
         };
       }
       const [nodeName, outputName] = getSelectValue(item);
@@ -437,20 +499,17 @@ const MultipleReferenceSelector = ({
         rawValue: item,
         nodeName,
         outputName,
-        icon: undefined
+        icon: undefined,
+        status: undefined
       };
     });
   }, [arrayVal, getSelectValue, references, t]);
-
-  const invalidList = useMemo(() => {
-    return formatList.filter((item) => item.nodeName && item.outputName);
-  }, [formatList]);
 
   const ArraySelector = useMemo(() => {
     return (
       <MultipleRowArraySelect
         label={
-          invalidList.length > 0 ? (
+          formatList.length > 0 ? (
             <Grid
               py={3}
               gridTemplateColumns={'1fr 1fr'}
@@ -462,28 +521,46 @@ const MultipleReferenceSelector = ({
                 }
               }}
             >
-              {invalidList.map(({ nodeName, outputName, icon, rawValue }, index) => {
-                return (
+              {formatList.map(({ nodeName, outputName, icon, rawValue, status }, index) => {
+                const isValidReference = status
+                  ? status.code === 'valid' && Boolean(nodeName && outputName)
+                  : Boolean(nodeName && outputName);
+                const isInvalidReference = !isValidReference;
+                const invalidReason = getInvalidReason(status, t);
+                const referenceTitle = getReferenceTitle(rawValue);
+                const row = (
                   <Flex
                     key={index}
                     w={'100%'}
                     alignItems={'center'}
-                    bg={'primary.50'}
+                    bg={isInvalidReference ? 'red.50' : 'primary.50'}
                     color={'myGray.900'}
                     py={1}
                     px={1.5}
                     rounded={'sm'}
                   >
-                    <Flex alignItems={'center'} flex={'1 0 0'} className="textEllipsis">
-                      {!!icon && <Avatar src={icon} w={'1rem'} mr={1} borderRadius={'xs'} />}
-                      {nodeName}
-                      <MyIcon
-                        name={'common/rightArrowLight'}
-                        mx={1}
-                        w={'12px'}
-                        color={'myGray.500'}
-                      />
-                      {outputName}
+                    <Flex
+                      alignItems={'center'}
+                      flex={'1 0 0'}
+                      className="textEllipsis"
+                      color={isInvalidReference ? 'red.600' : undefined}
+                      title={isInvalidReference ? referenceTitle : undefined}
+                    >
+                      {isInvalidReference ? (
+                        nodeName || outputName || t('common:invalid_variable')
+                      ) : (
+                        <>
+                          {!!icon && <Avatar src={icon} w={'1rem'} mr={1} borderRadius={'xs'} />}
+                          {nodeName}
+                          <MyIcon
+                            name={'common/rightArrowLight'}
+                            mx={1}
+                            w={'12px'}
+                            color={'myGray.500'}
+                          />
+                          {outputName}
+                        </>
+                      )}
                     </Flex>
                     <MyIcon
                       className="delete"
@@ -498,16 +575,18 @@ const MultipleReferenceSelector = ({
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // 按引用身份删，不用列表下标：invalidList 是过滤后的列表，
-                        // 且字段状态里的引用已去重，下标与 value 不是 1:1。
-                        onSelect(
-                          arrayVal.filter(
-                            (item) => item?.[0] !== rawValue?.[0] || item?.[1] !== rawValue?.[1]
-                          )
-                        );
+                        // formatList 与 arrayVal 保持同序，直接按下标删除原始值。
+                        onSelect(arrayVal.filter((_, itemIndex) => itemIndex !== index));
                       }}
                     />
                   </Flex>
+                );
+                return isInvalidReference ? (
+                  <MyTooltip key={index} label={invalidReason} shouldWrapChildren={false}>
+                    {row}
+                  </MyTooltip>
+                ) : (
+                  row
                 );
               })}
             </Grid>
@@ -526,7 +605,7 @@ const MultipleReferenceSelector = ({
         onOpenFunc={onOpenList}
       />
     );
-  }, [arrayVal, invalidList, list, onOpenList, onSelect, placeholder, popDirection]);
+  }, [arrayVal, formatList, list, onOpenList, onSelect, placeholder, popDirection, t]);
 
   return ArraySelector;
 };
