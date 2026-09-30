@@ -116,7 +116,13 @@ JSON 和 multipart 输入统一经过 Zod 业务 schema。API 使用 `parseApiIn
 - 搜索始终保留原词并追加标准词；
 - 多知识库搜索、mapping 分页和静态 i18n key。
 
-## 9. TODO
+## 9. 增量刷新优化
+
+同义词词表更新不会无条件重新生成所有分块的 embedding。重建任务保留分块的历史 `synonymVersion`，使用旧版 matcher 与当前 matcher 分别转换索引文本：转换结果相同则复用原 vector dataId，跳过 embedding 调用；转换结果不同才生成新向量并删除旧向量。
+
+全文索引对 `q + "\\n" + a` 做同样比较，转换结果不变时跳过全文索引写入，仅更新分块版本。图片分块的同义词刷新不重新执行 VLM 图片解析，沿用已有图片相关索引。旧版本 mappings 会保留到不存在旧版本分块后再清理，确保比较和失败重试可用。
+
+## 10. TODO
 
 - [x] mapping、配置与首批 training 创建使用同一 MongoDB 事务。
 - [x] 使用物化版本差异保证待重建 data 可恢复领取。

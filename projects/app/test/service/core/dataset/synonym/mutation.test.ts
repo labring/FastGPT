@@ -132,7 +132,7 @@ describe('createDatasetSynonymMutation', () => {
       fileVersion: 1
     });
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.imageParse,
+      mode: TrainingModeEnum.chunk,
       synonymVersion: 1,
       q: '',
       a: '',

@@ -9,6 +9,7 @@ import {
   type DatasetSynonymMatcherMapping
 } from './utils';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
+import { MongoDatasetData } from '../data/schema';
 import { serviceEnv } from '../../../env';
 
 const matcherCacheMaxWeight = DatasetSynonymLimits.maxTotalTermCodePoints * 2;
@@ -161,6 +162,41 @@ export const getDatasetSynonymMatcher = async ({
   }
 
   return matcher;
+};
+
+/**
+ * Remove historical snapshots only after no chunk still references them.
+ * The snapshots are required while a synonym rebuild compares old and new index text.
+ */
+export const cleanupUnusedDatasetSynonymMappings = async ({
+  teamId,
+  datasetId,
+  activeVersion
+}: {
+  teamId: string;
+  datasetId: string;
+  activeVersion: number;
+}) => {
+  const [config, hasHistoricalData] = await Promise.all([
+    getDatasetSynonymConfig({ teamId, datasetId }),
+    MongoDatasetData.exists({
+      teamId,
+      datasetId,
+      synonymVersion: { $ne: activeVersion }
+    })
+  ]);
+
+  if (config?.version !== activeVersion || hasHistoricalData) return false;
+
+  const result = await MongoDatasetSynonymMapping.deleteMany({
+    teamId,
+    datasetId,
+    fileVersion: { $lt: activeVersion }
+  });
+  if (result.deletedCount > 0) {
+    invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
+  }
+  return true;
 };
 
 /** 清理一个知识库的全部版本 matcher，用于删除知识库和回收旧版本。 */

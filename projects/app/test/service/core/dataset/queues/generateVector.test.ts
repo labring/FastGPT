@@ -1,6 +1,7 @@
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  generateVector,
   getRebuildBaseIndexes,
   getRebuildUpdateInput
 } from '@/service/core/dataset/queues/generateVector';
@@ -17,8 +18,20 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import {
+  MongoDatasetSynonym,
+  MongoDatasetSynonymMapping
+} from '@fastgpt/service/core/dataset/synonym/schema';
 import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
 import { serviceEnv } from '@fastgpt/service/env';
+
+vi.mock('@/service/core/dataset/queues/utils', () => ({
+  checkTeamAiPointsAndLock: vi.fn().mockResolvedValue(true)
+}));
+vi.mock('@/service/support/wallet/usage/push', () => ({
+  pushGenerateVectorUsage: vi.fn()
+}));
 
 let visionEmbeddingModel: EmbeddingSystemModelDataType;
 let vlmModel: LLMSystemModelDataType;
@@ -334,7 +347,7 @@ describe('dataset rebuild queue', () => {
     ).resolves.toBe(orphanCollectionIds.length);
   });
 
-  it('uses image training modes for synonym rebuilds', async () => {
+  it('skips image parsing for synonym rebuilds', async () => {
     const teamId = new Types.ObjectId();
     const tmbId = new Types.ObjectId();
     const datasetId = new Types.ObjectId();
@@ -368,10 +381,67 @@ describe('dataset rebuild queue', () => {
     });
 
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.imageParse,
+      mode: TrainingModeEnum.chunk,
       synonymVersion: 2,
       q: '',
       indexes: []
     });
+  });
+
+  it('cleans historical mappings when the last rebuild task has lost its data', async () => {
+    const teamId = new Types.ObjectId();
+    const tmbId = new Types.ObjectId();
+    const dataset = await MongoDataset.create({
+      teamId,
+      tmbId,
+      name: 'Synonym rebuild',
+      vectorModelId: visionEmbeddingModel.modelId
+    });
+    const collection = await MongoDatasetCollection.create({
+      teamId,
+      tmbId,
+      datasetId: dataset._id,
+      name: 'Collection',
+      type: DatasetCollectionTypeEnum.file
+    });
+    const synonym = await MongoDatasetSynonym.create({
+      teamId,
+      datasetId: dataset._id,
+      version: 2,
+      enabled: true,
+      schemaVersion: 1
+    });
+    await MongoDatasetSynonymMapping.create(
+      [1, 2].map((fileVersion) => ({
+        logicalMappingId: new Types.ObjectId(),
+        teamId,
+        datasetId: dataset._id,
+        synonymFileId: synonym._id,
+        fileVersion,
+        standardizedTerm: `standard-${fileVersion}`,
+        normalizedStandardizedTerm: `standard-${fileVersion}`,
+        synonymTerms: [`alias-${fileVersion}`],
+        normalizedSynonymTerms: [`alias-${fileVersion}`],
+        allTerms: `standard-${fileVersion} alias-${fileVersion}`,
+        fingerprint: `mapping-${fileVersion}`
+      }))
+    );
+    await MongoDatasetTraining.create({
+      teamId,
+      tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      mode: TrainingModeEnum.chunk,
+      billId: 'bill-id',
+      synonymVersion: 2,
+      dataId: new Types.ObjectId()
+    });
+    global.vectorQueueLen = 0;
+
+    await generateVector();
+
+    await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
+    const mappings = await MongoDatasetSynonymMapping.find({ datasetId: dataset._id });
+    expect(mappings.map(({ fileVersion }) => fileVersion)).toEqual([2]);
   });
 });
