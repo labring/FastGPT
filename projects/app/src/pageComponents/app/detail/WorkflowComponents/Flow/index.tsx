@@ -31,13 +31,20 @@ import { WorkflowSelectionProvider } from './context/workflowSelectionContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import { getLayoutDimension, WORKFLOW_NODE_MEASUREMENT_ESTIMATE } from './context/dimensionIndex';
+import {
+  getLayoutDimension,
+  hasValidSourceHandleMeasurement,
+  WORKFLOW_NODE_MEASUREMENT_ESTIMATE
+} from './context/dimensionIndex';
 import {
   ConnectionSourceHandle,
   ConnectionTargetHandle
 } from './nodes/render/Handle/ConnectionHandle';
 import { MySourceHandle } from './nodes/render/Handle';
-import { WorkflowHandleRenderContext } from './nodes/render/Handle/handleRenderContext';
+import {
+  WorkflowHandleRenderContext,
+  WorkflowNodeMeasurementContext
+} from './nodes/render/Handle/handleRenderContext';
 import { ToolSourceHandle, ToolTargetHandle } from './nodes/render/Handle/ToolHandle';
 import { useIsToolNode } from './nodes/render/useWorkflowDocument';
 import { getNodeShellHandleModel } from './utils/nodeHandle';
@@ -107,6 +114,10 @@ const MeasuredNode = React.memo(
     const wrapperRef = useRef<HTMLDivElement>(null);
     const nodeId = props.id;
     const measurementIdentity = props.data;
+    const expectedDynamicHandleIds = useMemo(
+      () => getNodeShellHandleModel(props.data).sourceHandles.map((handle) => handle.handleId),
+      [props.data]
+    );
 
     useEffect(() => {
       const wrapper = wrapperRef.current;
@@ -126,10 +137,37 @@ const MeasuredNode = React.memo(
       const reportSize = () => {
         if (!targets) return;
         const [occupied, card] = targets;
+        const cardRect = card.getBoundingClientRect();
+        const scaleX = card.offsetWidth > 0 ? cardRect.width / card.offsetWidth : 1;
+        const scaleY = card.offsetHeight > 0 ? cardRect.height / card.offsetHeight : 1;
+        const content = card.querySelector<HTMLElement>('[data-workflow-container-content]');
+        const contentRect = content?.getBoundingClientRect();
+        const centers = new Map<string, { x: number; y: number }>();
+        const expectedIds = new Set(expectedDynamicHandleIds);
+
+        card.querySelectorAll<HTMLElement>('[data-workflow-source-handle-id]').forEach((handle) => {
+          const handleId = handle.dataset.workflowSourceHandleId;
+          if (!handleId || !expectedIds.has(handleId)) return;
+
+          const handleRect = handle.getBoundingClientRect();
+          centers.set(handleId, {
+            x: (handleRect.left + handleRect.width / 2 - cardRect.left) / scaleX,
+            y: (handleRect.top + handleRect.height / 2 - cardRect.top) / scaleY
+          });
+        });
 
         registration.report({
           card: getLayoutDimension(card),
-          occupied: getLayoutDimension(occupied)
+          occupied: getLayoutDimension(occupied),
+          sourceHandleCenters: centers,
+          ...(contentRect
+            ? {
+                containerContentOffset: {
+                  x: (contentRect.left - cardRect.left) / scaleX,
+                  y: (contentRect.top - cardRect.top) / scaleY
+                }
+              }
+            : {})
         });
       };
 
@@ -160,13 +198,15 @@ const MeasuredNode = React.memo(
         resizeObserver?.disconnect();
         registration.dispose();
       };
-    }, [measurementIdentity, nodeId, registerNodeMeasurement]);
+    }, [expectedDynamicHandleIds, measurementIdentity, nodeId, registerNodeMeasurement]);
 
     return (
       <div ref={wrapperRef} style={{ display: 'contents' }}>
-        <WorkflowHandleRenderContext.Provider value={renderHandles}>
-          {React.createElement(nodeComponent, props)}
-        </WorkflowHandleRenderContext.Provider>
+        <WorkflowNodeMeasurementContext.Provider value={renderHandles}>
+          <WorkflowHandleRenderContext.Provider value={renderHandles}>
+            {React.createElement(nodeComponent, props)}
+          </WorkflowHandleRenderContext.Provider>
+        </WorkflowNodeMeasurementContext.Provider>
       </div>
     );
   }
@@ -174,7 +214,11 @@ const MeasuredNode = React.memo(
 MeasuredNode.displayName = 'MeasuredNode';
 
 const NodeShell = React.memo(
-  ({ overlay = false, ...props }: NodeProps<FlowNodeItemType> & { overlay?: boolean }) => {
+  ({
+    overlay = false,
+    renderHandles = true,
+    ...props
+  }: NodeProps<FlowNodeItemType> & { overlay?: boolean; renderHandles?: boolean }) => {
     // 按节点订阅尺寸：getter 身份稳定，单独订阅 getter 不会在测量结果更新时重渲染 shell。
     const dimensions =
       useContextSelector(WorkflowCanvasContext, (v) => v.dimensionIndex.get(props.id)) ??
@@ -185,6 +229,7 @@ const NodeShell = React.memo(
     const { sourceHandles, hasCatchSource, replacesDefaultSource } = getNodeShellHandleModel(
       props.data
     );
+    const sourceHandleCenters = dimensions.sourceHandleCenters;
 
     useEffect(() => {
       // 壳节点尺寸或 handle 拓扑变化后，只刷新 React Flow 的几何缓存，不改业务状态。
@@ -197,6 +242,7 @@ const NodeShell = React.memo(
       overlay,
       props.data,
       props.id,
+      sourceHandleCenters,
       updateNodeInternals
     ]);
 
@@ -215,21 +261,31 @@ const NodeShell = React.memo(
           w={`${dimensions.card.width}px`}
           h={`${dimensions.card.height}px`}
         >
-          <ToolTargetHandle show={isToolNode} nodeId={props.id} />
-          {!replacesDefaultSource && <ConnectionSourceHandle nodeId={props.id} />}
-          <ConnectionTargetHandle nodeId={props.id} />
-          {hasCatchSource && <ConnectionSourceHandle nodeId={props.id} sourceType="source_catch" />}
-          {showToolSource && <ToolSourceHandle nodeId={props.id} />}
-          {sourceHandles.map(({ handleId, topPercent, translate }) => (
-            <Box key={handleId} position={'absolute'} top={`${topPercent}%`} right={0} w={0} h={0}>
-              <MySourceHandle
-                nodeId={props.id}
-                handleId={handleId}
-                position={Position.Right}
-                translate={translate}
-              />
-            </Box>
-          ))}
+          {renderHandles && (
+            <>
+              <ToolTargetHandle show={isToolNode} nodeId={props.id} />
+              {!replacesDefaultSource && <ConnectionSourceHandle nodeId={props.id} />}
+              <ConnectionTargetHandle nodeId={props.id} />
+              {hasCatchSource && (
+                <ConnectionSourceHandle nodeId={props.id} sourceType="source_catch" />
+              )}
+              {showToolSource && <ToolSourceHandle nodeId={props.id} />}
+              {sourceHandles.map(({ handleId, topPercent, translate }) => {
+                const center = sourceHandleCenters?.get(handleId);
+                const top = center ? `${center.y}px` : `${topPercent}%`;
+                return (
+                  <Box key={handleId} position={'absolute'} top={top} right={0} w={0} h={0}>
+                    <MySourceHandle
+                      nodeId={props.id}
+                      handleId={handleId}
+                      position={Position.Right}
+                      translate={translate}
+                    />
+                  </Box>
+                );
+              })}
+            </>
+          )}
         </Box>
       </Box>
     );
@@ -248,6 +304,18 @@ const VirtualizedNode = React.memo(
       WorkflowCanvasContext,
       (v) => v.renderModes.get(props.id) ?? 'shell'
     );
+    const dimension = useContextSelector(WorkflowCanvasContext, (v) =>
+      v.dimensionIndex.get(props.id)
+    );
+    const expectedDynamicHandleIds = useMemo(
+      () => getNodeShellHandleModel(props.data).sourceHandles.map((handle) => handle.handleId),
+      [props.data]
+    );
+    const hasMeasuredDynamicHandles = hasValidSourceHandleMeasurement({
+      expectedHandleIds: expectedDynamicHandleIds,
+      dimension
+    });
+    const renderFull = mode === 'full' || !hasMeasuredDynamicHandles;
     const pinNodeFocus = useContextSelector(WorkflowCanvasContext, (v) => v.pinNodeFocus);
     const unpinNodeFocus = useContextSelector(WorkflowCanvasContext, (v) => v.unpinNodeFocus);
     const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
@@ -276,9 +344,17 @@ const VirtualizedNode = React.memo(
         onFocusCapture={handleFocus}
         onBlurCapture={handleBlur}
       >
-        <NodeShell {...props} overlay={mode === 'full'} />
-        {mode === 'full' && (
-          <MeasuredNode nodeComponent={nodeComponent} renderHandles={false} {...props} />
+        <NodeShell
+          {...props}
+          overlay={renderFull}
+          renderHandles={!renderFull || hasMeasuredDynamicHandles}
+        />
+        {renderFull && (
+          <MeasuredNode
+            nodeComponent={nodeComponent}
+            renderHandles={!hasMeasuredDynamicHandles}
+            {...props}
+          />
         )}
       </div>
     );
@@ -354,7 +430,7 @@ const MeasurementHost = React.memo(() => {
           <MeasuredNode
             key={nodeId}
             nodeComponent={nodeComponent}
-            renderHandles={false}
+            renderHandles={true}
             {...toMeasurementNodeProps(node)}
           />
         );

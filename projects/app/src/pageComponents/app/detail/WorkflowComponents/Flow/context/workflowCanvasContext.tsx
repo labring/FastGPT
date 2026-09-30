@@ -3,6 +3,7 @@
 // 节点视图，画布数组只承载 reactflow 交互状态（拖拽帧、测量尺寸、层级）。
 // 结构、几何与边写入由调用点直接使用 editor adapter 提交。
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { createContext, useContextSelector } from 'use-context-selector';
 
 import { useMemoizedFn } from 'ahooks';
@@ -32,6 +33,9 @@ import {
   classifyRenderableGraph,
   createMeasurementQueue,
   createDimensionBatcher,
+  hasValidSourceHandleMeasurement,
+  getUnmeasuredViewportFitNodeIds,
+  getViewportFitNodeIds,
   type CanvasViewport,
   type DimensionMeasurement,
   type DimensionRegistration,
@@ -40,8 +44,20 @@ import {
   getViewportForNodeIds,
   type ViewportFitOptions
 } from './dimensionIndex';
+import {
+  getParentNodeSizeAndPosition,
+  normalizeContainerChildPositions,
+  CONTAINER_CHILD_PADDING,
+  type ParentNodeLayout
+} from '../utils/layout';
+import { getNodeShellHandleModel } from '../utils/nodeHandle';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
+
+type PendingFitRequest = {
+  nodeIds?: readonly string[];
+  options?: ViewportFitOptions;
+};
 
 export type WorkflowRenderMode = 'full' | 'shell';
 
@@ -66,6 +82,18 @@ const cancelFrame = (handle: number) => {
   clearTimeout(handle);
 };
 
+const areSourceHandleCentersEqual = (
+  previous: ReadonlyMap<string, { x: number; y: number }> | undefined,
+  next: ReadonlyMap<string, { x: number; y: number }> | undefined
+) => {
+  if (previous === next) return true;
+  if (!previous || !next || previous.size !== next.size) return false;
+  return [...next].every(([handleId, center]) => {
+    const previousCenter = previous.get(handleId);
+    return previousCenter?.x === center.x && previousCenter?.y === center.y;
+  });
+};
+
 type WorkflowCanvasContextType = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   renderedNodes: Node<FlowNodeItemType, string | undefined>[];
@@ -74,6 +102,7 @@ type WorkflowCanvasContextType = {
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
   fitNodes: (nodeIds?: readonly string[], options?: ViewportFitOptions) => boolean;
   dimensionIndex: ReadonlyMap<string, NodeDimensions>;
+  containerLayouts: ReadonlyMap<string, ParentNodeLayout>;
   getNodeDimension: (nodeId: string) => NodeCardDimension | undefined;
   getNodeDimensions: (nodeId: string) => NodeDimensions | undefined;
   registerNodeMeasurement: (nodeId: string) => DimensionRegistration;
@@ -103,6 +132,7 @@ export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
     throw new Error('Function not implemented.');
   },
   dimensionIndex: new Map(),
+  containerLayouts: new Map(),
   getNodeDimension: function () {
     throw new Error('Function not implemented.');
   },
@@ -158,6 +188,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     () => new Map()
   );
   const dimensionIndexRef = useRef(new Map<string, NodeDimensions>());
+  const [containerLayouts, setContainerLayouts] = useState<ReadonlyMap<string, ParentNodeLayout>>(
+    () => new Map()
+  );
+  const containerLayoutsRef = useRef(new Map<string, ParentNodeLayout>());
   const activeNodeIdsRef = useRef(new Set(nodes.map((node) => node.id)));
   const [renderModes, setRenderModes] = useState<ReadonlyMap<string, WorkflowRenderMode>>(
     () => new Map()
@@ -176,6 +210,9 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const nextMeasurementGenerationRef = useRef(0);
   const focusPinnedNodeIdsRef = useRef(new Set<string>());
   const staleDimensionNodeIdsRef = useRef(new Set<string>());
+  const initializedCanvasRef = useRef(false);
+  const newContainerIdsRef = useRef(new Set<string>());
+  const pendingFitRef = useRef<PendingFitRequest>();
 
   const publishMeasurementNodeIds = (next: Set<string>) => {
     const previous = measurementNodeIdsRef.current;
@@ -213,6 +250,168 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     setRenderedEdgesRaw(nextEdges);
   };
 
+  const publishContainerLayouts = (next: ReadonlyMap<string, ParentNodeLayout>) => {
+    const previous = containerLayoutsRef.current;
+    const same =
+      previous.size === next.size &&
+      [...next].every(([nodeId, layout]) => {
+        const old = previous.get(nodeId);
+        return (
+          old?.parentX === layout.parentX &&
+          old?.parentY === layout.parentY &&
+          old?.childWidth === layout.childWidth &&
+          old?.childHeight === layout.childHeight &&
+          old?.nodeWidth === layout.nodeWidth &&
+          old?.nodeHeight === layout.nodeHeight &&
+          old?.contentOffset?.x === layout.contentOffset?.x &&
+          old?.contentOffset?.y === layout.contentOffset?.y &&
+          old?.folded === layout.folded &&
+          old?.positionDelta.x === layout.positionDelta.x &&
+          old?.positionDelta.y === layout.positionDelta.y &&
+          old?.childBounds?.left === layout.childBounds?.left &&
+          old?.childBounds?.top === layout.childBounds?.top &&
+          old?.childBounds?.right === layout.childBounds?.right &&
+          old?.childBounds?.bottom === layout.childBounds?.bottom
+        );
+      });
+    if (same) return;
+    const published = new Map(next);
+    containerLayoutsRef.current = published;
+    setContainerLayouts(published);
+  };
+
+  /** 依赖直接子节点尺寸的容器按深度自底向上计算，结果只留在 renderer Canvas State。 */
+  const recomputeContainerLayouts = (
+    sourceNodes: CanvasNode[],
+    dimensions: ReadonlyMap<string, NodeDimensions>
+  ) => {
+    const nodeById = new Map(sourceNodes.map((node) => [node.id, node]));
+    const parentIds = new Set(
+      sourceNodes
+        .filter((node) => isNestedParentNodeType(node.data.flowNodeType))
+        .map((node) => node.id)
+    );
+    const childrenByParent = new Map<string, CanvasNode[]>();
+    sourceNodes.forEach((node) => {
+      if (!node.data.parentNodeId || !parentIds.has(node.data.parentNodeId)) return;
+      const children = childrenByParent.get(node.data.parentNodeId) ?? [];
+      children.push(node);
+      childrenByParent.set(node.data.parentNodeId, children);
+    });
+
+    const getDepth = (nodeId: string) => {
+      let depth = 0;
+      let parentId = nodeById.get(nodeId)?.data.parentNodeId;
+      const visited = new Set<string>();
+      while (parentId && !visited.has(parentId)) {
+        visited.add(parentId);
+        depth += 1;
+        parentId = nodeById.get(parentId)?.data.parentNodeId;
+      }
+      return depth;
+    };
+
+    const orderedParentIds = [...parentIds].sort((left, right) => getDepth(right) - getDepth(left));
+    const layouts = new Map<string, ParentNodeLayout>();
+    let nextNodes = sourceNodes;
+
+    const ensureWritableNodes = () => {
+      if (nextNodes !== sourceNodes) return;
+      nextNodes = sourceNodes.map((node) => ({ ...node, position: { ...node.position } }));
+    };
+
+    const getDimension = (nodeId: string) => {
+      if (staleDimensionNodeIdsRef.current.has(nodeId)) return undefined;
+      const layout = layouts.get(nodeId);
+      if (layout) return { width: layout.nodeWidth, height: layout.nodeHeight };
+      return dimensions.get(nodeId)?.card;
+    };
+
+    const getInitialChildBounds = (parentId: string) => {
+      const parent = nextNodes.find((node) => node.id === parentId);
+      const contentOffset = dimensions.get(parentId)?.containerContentOffset;
+      if (!parent || !contentOffset) return;
+
+      return {
+        left: parent.position.x + contentOffset.x + CONTAINER_CHILD_PADDING,
+        top: parent.position.y + contentOffset.y + CONTAINER_CHILD_PADDING
+      };
+    };
+
+    orderedParentIds.forEach((parentId) => {
+      const previousLayout = containerLayoutsRef.current.get(parentId);
+      const initialChildBounds = getInitialChildBounds(parentId);
+      const contentOffset = dimensions.get(parentId)?.containerContentOffset;
+      const hasMatchingContentOffset =
+        previousLayout?.contentOffset?.x === contentOffset?.x &&
+        previousLayout?.contentOffset?.y === contentOffset?.y;
+      let layout = getParentNodeSizeAndPosition({
+        nodes: nextNodes,
+        parentId,
+        getNodeDimension: getDimension,
+        previousChildBounds: hasMatchingContentOffset ? previousLayout?.childBounds : undefined,
+        previousParentPosition:
+          hasMatchingContentOffset && previousLayout
+            ? { x: previousLayout.parentX, y: previousLayout.parentY }
+            : undefined,
+        initialChildBounds
+      });
+
+      if (layout?.childBounds && newContainerIdsRef.current.has(parentId)) {
+        const children = childrenByParent.get(parentId) ?? [];
+        if (children.length > 1) {
+          ensureWritableNodes();
+          normalizeContainerChildPositions({
+            nodes: nextNodes,
+            parentId,
+            bounds: layout.childBounds,
+            targetOrigin: initialChildBounds ?? {
+              left: nextNodes.find((node) => node.id === parentId)?.position.x ?? 0,
+              top: nextNodes.find((node) => node.id === parentId)?.position.y ?? 0
+            }
+          });
+          layout = getParentNodeSizeAndPosition({
+            nodes: nextNodes,
+            parentId,
+            getNodeDimension: getDimension,
+            previousChildBounds: undefined,
+            previousParentPosition: undefined,
+            initialChildBounds
+          });
+          newContainerIdsRef.current.delete(parentId);
+        }
+      }
+
+      if (layout?.positionDelta && (layout.positionDelta.x !== 0 || layout.positionDelta.y !== 0)) {
+        const parent = nextNodes.find((node) => node.id === parentId);
+        if (parent) {
+          ensureWritableNodes();
+          const writableParent = nextNodes.find((node) => node.id === parentId);
+          if (writableParent) {
+            writableParent.position = { x: layout.parentX, y: layout.parentY };
+          }
+        }
+      }
+
+      if (layout) {
+        layouts.set(parentId, { ...layout, contentOffset });
+      } else if (previousLayout) {
+        layouts.set(parentId, previousLayout);
+      }
+    });
+
+    return { nodes: nextNodes, layouts };
+  };
+
+  const updateContainerLayouts = (
+    sourceNodes: CanvasNode[],
+    dimensions: ReadonlyMap<string, NodeDimensions>
+  ) => {
+    const result = recomputeContainerLayouts(sourceNodes, dimensions);
+    publishContainerLayouts(result.layouts);
+    return result.nodes;
+  };
+
   const flushDimensionMeasurements = useMemoizedFn((updates: DimensionMeasurement[]) => {
     const next = new Map(dimensionIndexRef.current);
     const completed = new Set<string>();
@@ -234,7 +433,13 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         previous?.card.width === update.dimension.card.width &&
         previous?.card.height === update.dimension.card.height &&
         previous?.occupied.width === update.dimension.occupied.width &&
-        previous?.occupied.height === update.dimension.occupied.height
+        previous?.occupied.height === update.dimension.occupied.height &&
+        previous?.containerContentOffset?.x === update.dimension.containerContentOffset?.x &&
+        previous?.containerContentOffset?.y === update.dimension.containerContentOffset?.y &&
+        areSourceHandleCentersEqual(
+          previous?.sourceHandleCenters,
+          update.dimension.sourceHandleCenters
+        )
       ) {
         return;
       }
@@ -249,10 +454,16 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
 
     if (completed.size > 0) {
+      const nextNodes = updateContainerLayouts(nodesRef.current, next);
+      if (nextNodes !== nodesRef.current) {
+        nodesRef.current = nextNodes;
+        setNodesRaw(nextNodes);
+      }
       publishMeasurementNodeIds(
         new Set([...measurementNodeIdsRef.current].filter((nodeId) => !completed.has(nodeId)))
       );
-      reconcileRenderState(nodesRef.current);
+      reconcileRenderState(nextNodes);
+      applyPendingViewportFit();
     }
   });
   const [dimensionBatcher] = useState(() =>
@@ -286,6 +497,20 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
   /** 根据当前 viewport 重算 full/shell，并把未测量节点按优先级放入队列。 */
   function reconcileRenderState(nextNodes: CanvasNode[]) {
+    const renderDimensions = new Map(
+      [...dimensionIndexRef.current].filter(
+        ([nodeId]) => !staleDimensionNodeIdsRef.current.has(nodeId)
+      )
+    );
+    const nodeById = new Map(nextNodes.map((node) => [node.id, node]));
+    const isDimensionReady = (node: CanvasNode) =>
+      !staleDimensionNodeIdsRef.current.has(node.id) &&
+      hasValidSourceHandleMeasurement({
+        expectedHandleIds: getNodeShellHandleModel(node.data).sourceHandles.map(
+          (handle) => handle.handleId
+        ),
+        dimension: dimensionIndexRef.current.get(node.id)
+      });
     const viewportNodes = nextNodes.map((node) => ({
       id: node.id,
       position: node.position,
@@ -298,19 +523,41 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     const renderedGraph = classifyRenderableGraph({
       nodes: viewportNodes,
       edges: edgesRef.current,
-      dimensions: dimensionIndexRef.current,
+      dimensions: renderDimensions,
       viewport: viewportRef.current
     });
     const classification = renderedGraph;
     const nextModes = new Map<string, WorkflowRenderMode>();
+    const pendingFitNodeIds = pendingFitRef.current
+      ? new Set(
+          getUnmeasuredViewportFitNodeIds({
+            nodes: viewportNodes,
+            nodeIds: pendingFitRef.current.nodeIds,
+            dimensions: renderDimensions
+          })
+        )
+      : new Set<string>();
 
     nextNodes.forEach((node) => {
       nextModes.set(node.id, classification.fullNodeIds.has(node.id) ? 'full' : 'shell');
 
+      if (pendingFitNodeIds.has(node.id)) {
+        if (nextModes.get(node.id) !== 'full' && !measurementNodeIdsRef.current.has(node.id)) {
+          measurementQueueRef.current.upsert({
+            nodeId: node.id,
+            generation: nodeDataGenerationsRef.current.get(node.id) ?? 0,
+            priority: 0
+          });
+        } else {
+          measurementQueueRef.current.remove(node.id);
+        }
+        return;
+      }
+
       if (
         classification.hiddenNodeIds.has(node.id) ||
-        (dimensionIndexRef.current.has(node.id) &&
-          !staleDimensionNodeIdsRef.current.has(node.id)) ||
+        nextModes.get(node.id) === 'full' ||
+        isDimensionReady(node) ||
         measurementNodeIdsRef.current.has(node.id)
       ) {
         measurementQueueRef.current.remove(node.id);
@@ -331,7 +578,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
           (nodeId) =>
             activeNodeIdsRef.current.has(nodeId) &&
             nextModes.get(nodeId) === 'shell' &&
-            (!dimensionIndexRef.current.has(nodeId) || staleDimensionNodeIdsRef.current.has(nodeId))
+            !!nodeById.get(nodeId) &&
+            !isDimensionReady(nodeById.get(nodeId)!)
         )
       )
     );
@@ -360,6 +608,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         viewportRef.current = nextViewport;
       }
       reconcileRenderState(nodesRef.current);
+      applyPendingViewportFit();
     });
   }
 
@@ -382,6 +631,9 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         nodeDataGenerationsRef.current.delete(nodeId);
         measurementQueueRef.current.remove(nodeId);
       }
+    });
+    newContainerIdsRef.current.forEach((nodeId) => {
+      if (!activeNodeIds.has(nodeId)) newContainerIdsRef.current.delete(nodeId);
     });
     publishMeasurementNodeIds(
       new Set([...measurementNodeIdsRef.current].filter((nodeId) => activeNodeIds.has(nodeId)))
@@ -419,6 +671,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const syncNodeIdentities = (nextNodes: CanvasNode[]) => {
     const nextKeys = new Map<string, { data: FlowNodeItemType; key: string }>();
     const invalidated = new Set<string>();
+    const isInitialCanvas = !initializedCanvasRef.current;
 
     nextNodes.forEach((node) => {
       const previousIdentity = nodeMeasurementKeysRef.current.get(node.id);
@@ -426,6 +679,9 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         previousIdentity?.data === node.data ? previousIdentity.key : getNodeMeasurementKey(node);
       if (!nodeMeasurementKeysRef.current.has(node.id)) {
         nodeDataGenerationsRef.current.set(node.id, 1);
+        if (!isInitialCanvas && isNestedParentNodeType(node.data.flowNodeType)) {
+          newContainerIdsRef.current.add(node.id);
+        }
       } else if (previousIdentity?.key !== nextKey) {
         nodeDataGenerationsRef.current.set(
           node.id,
@@ -447,6 +703,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
 
     nodeMeasurementKeysRef.current = nextKeys;
+    initializedCanvasRef.current = true;
   };
 
   const setCanvasNodes = (next: CanvasNode[]) => {
@@ -454,10 +711,11 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     syncNodeIdentities(next);
     activeNodeIdsRef.current = activeNodeIds;
     pruneDimensions(activeNodeIds);
-    nodesRef.current = next;
-    setNodesRaw(next);
+    const nextNodes = updateContainerLayouts(next, dimensionIndexRef.current);
+    nodesRef.current = nextNodes;
+    setNodesRaw(nextNodes);
     if (renderModesRef.current.size === 0) {
-      reconcileRenderState(next);
+      reconcileRenderState(nextNodes);
     } else {
       scheduleRenderStateFrame();
     }
@@ -560,25 +818,75 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const getNodes = useMemoizedFn(() => nodesRef.current);
+
+  const getFitDimensions = () =>
+    new Map(
+      [...dimensionIndexRef.current].filter(
+        ([nodeId]) => !staleDimensionNodeIdsRef.current.has(nodeId)
+      )
+    );
+
+  const toViewportNodes = () =>
+    nodesRef.current.map((node) => ({
+      id: node.id,
+      position: node.position,
+      parentNodeId: node.data.parentNodeId,
+      isFolded: node.data.isFolded
+    }));
+
+  const applyViewportFit = (request: PendingFitRequest) => {
+    const viewport = getViewportForNodeIds({
+      nodes: toViewportNodes(),
+      nodeIds: request.nodeIds,
+      dimensions: getFitDimensions(),
+      width: canvasWidth,
+      height: canvasHeight,
+      ...request.options
+    });
+    if (!viewport) return false;
+    pendingFitRef.current = undefined;
+    setViewport(viewport);
+    return true;
+  };
+
+  const requestViewportFit = (request: PendingFitRequest) => {
+    const viewportNodes = toViewportNodes();
+    const fitNodeIds = getViewportFitNodeIds({
+      nodes: viewportNodes,
+      nodeIds: request.nodeIds
+    });
+    if (fitNodeIds.length === 0) {
+      pendingFitRef.current = undefined;
+      return false;
+    }
+
+    const missingNodeIds = getUnmeasuredViewportFitNodeIds({
+      nodes: viewportNodes,
+      nodeIds: request.nodeIds,
+      dimensions: getFitDimensions()
+    });
+    if (missingNodeIds.length > 0) {
+      pendingFitRef.current = request;
+      reconcileRenderState(nodesRef.current);
+      scheduleMeasurementFrame();
+      return false;
+    }
+
+    return applyViewportFit(request);
+  };
+
+  const applyPendingViewportFit = () => {
+    const request = pendingFitRef.current;
+    if (request) requestViewportFit(request);
+  };
+
   /** 直接按完整节点图和测量尺寸设置 viewport，不依赖 React Flow 当前渲染集合。 */
   const fitNodes = useMemoizedFn(
     (nodeIds?: readonly string[], options?: ViewportFitOptions): boolean => {
-      const viewport = getViewportForNodeIds({
-        nodes: nodesRef.current.map((node) => ({
-          id: node.id,
-          position: node.position,
-          parentNodeId: node.data.parentNodeId,
-          isFolded: node.data.isFolded
-        })),
-        nodeIds,
-        dimensions: dimensionIndexRef.current,
-        width: canvasWidth,
-        height: canvasHeight,
-        ...options
+      return requestViewportFit({
+        nodeIds: nodeIds ? [...nodeIds] : undefined,
+        options: options ? { ...options } : undefined
       });
-      if (!viewport) return false;
-      setViewport(viewport);
-      return true;
     }
   );
   const getNodeDimension = useMemoizedFn(
@@ -587,7 +895,6 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const getNodeDimensions = useMemoizedFn((nodeId: string) =>
     dimensionIndexRef.current.get(nodeId)
   );
-
   const registerNodeMeasurement = useMemoizedFn((nodeId: string): DimensionRegistration => {
     const generation = ++nextMeasurementGenerationRef.current;
     const nodeGeneration = nodeDataGenerationsRef.current.get(nodeId);
@@ -643,6 +950,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       getNodes,
       fitNodes,
       dimensionIndex,
+      containerLayouts,
       getNodeDimension,
       getNodeDimensions,
       registerNodeMeasurement,
@@ -664,6 +972,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       getNodes,
       fitNodes,
       dimensionIndex,
+      containerLayouts,
       getNodeDimension,
       getNodeDimensions,
       registerNodeMeasurement,

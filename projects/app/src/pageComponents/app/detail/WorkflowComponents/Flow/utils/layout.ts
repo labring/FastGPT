@@ -1,11 +1,15 @@
 import type { Node } from 'reactflow';
-import {
-  Input_Template_NESTED_NODE_OFFSET,
-  Input_Template_Node_Height,
-  Input_Template_Node_Width
-} from '@fastgpt/global/core/workflow/template/input';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getNodeRect, type DimensionReader } from '../context/dimensionIndex';
+
+export type ContainerBounds = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
 
 export type ParentNodeLayout = {
   parentX: number;
@@ -14,31 +18,35 @@ export type ParentNodeLayout = {
   childHeight: number;
   nodeWidth: number;
   nodeHeight: number;
+  childBounds?: ContainerBounds;
+  contentOffset?: { x: number; y: number };
+  positionDelta: { x: number; y: number };
+  folded: boolean;
 };
 
-// ponytail: 三个常量取自模板默认尺寸，与容器尺寸字段被剥离前的画布行为一致；测量重做后按真实尺寸计算。
-const CONTAINER_WIDTH = Number(Input_Template_Node_Width.value ?? 0);
-const CONTAINER_HEIGHT = Number(Input_Template_Node_Height.value ?? 0);
-const CONTAINER_INPUT_HEIGHT = Number(Input_Template_NESTED_NODE_OFFSET.value ?? 83);
+export const CONTAINER_CHILD_PADDING = 32;
 
 /**
  * 按子节点包围盒计算容器（Loop 系列）节点应有的位置与尺寸。
  *
  * 纯函数：只读传入的画布节点数组，不写文档、不依赖 Context，调用方自行决定如何使用结果。
  * 任一节点还没进入 Dimension Index 时返回 undefined，由调用方在尺寸到齐后重试。
- *
- * 注意：容器尺寸字段（nodeWidth/nodeHeight/nestedNodeInputHeight）目前不在 Runtime 文档里，
- * 渲染副作用也不回写（已接受的过渡回归），容器外框按兜底尺寸渲染；
- * 修复属于容器尺寸测量重做，见延后项文档。
+ * 容器自身尺寸来自已测量卡片，子节点区域只取直接子节点包围盒并补 32px padding。
  */
 export const getParentNodeSizeAndPosition = ({
   nodes,
   parentId,
-  getNodeDimension
+  getNodeDimension,
+  previousChildBounds,
+  initialChildBounds,
+  previousParentPosition
 }: {
   nodes: Node<FlowNodeItemType>[];
   parentId: string;
   getNodeDimension: DimensionReader;
+  previousChildBounds?: ContainerBounds;
+  initialChildBounds?: Pick<ContainerBounds, 'left' | 'top'>;
+  previousParentPosition?: { x: number; y: number };
 }): ParentNodeLayout | undefined => {
   const { childNodes, loopNode } = nodes.reduce(
     (acc, node) => {
@@ -57,46 +65,91 @@ export const getParentNodeSizeAndPosition = ({
   );
 
   if (!loopNode) return;
-  if (childNodes.length === 0) return;
   const loopNodeRect = getNodeRect(loopNode, getNodeDimension(loopNode.id));
+  if (!loopNodeRect) return;
+
+  const folded = loopNode.data.isFolded === true;
+  if (folded || childNodes.length === 0) {
+    return {
+      parentX: loopNode.position.x,
+      parentY: loopNode.position.y,
+      childWidth: 0,
+      childHeight: 0,
+      nodeWidth: loopNodeRect.width,
+      nodeHeight: loopNodeRect.height,
+      positionDelta: { x: 0, y: 0 },
+      folded
+    };
+  }
+
   const childRects = childNodes.map((node) => getNodeRect(node, getNodeDimension(node.id)));
-  if (!loopNodeRect || childRects.some((rect) => !rect)) return;
+  if (childRects.some((rect) => !rect)) return;
 
-  const loopChilWidth = CONTAINER_WIDTH;
-  const loopChilHeight = CONTAINER_HEIGHT;
-
-  // 初始化为第一个节点的边界
-  const firstChildRect = childRects[0]!;
-  let minX = firstChildRect.left;
-  let minY = firstChildRect.top;
-  let maxX = firstChildRect.right;
-  let maxY = firstChildRect.bottom;
-
-  // 遍历所有子节点找出最小/最大边界
-  childRects.forEach((rect) => {
-    if (!rect) return;
-    minX = Math.min(minX, rect.left);
-    minY = Math.min(minY, rect.top);
-    maxX = Math.max(maxX, rect.right);
-    maxY = Math.max(maxY, rect.bottom);
-  });
-
-  const childWidth = Math.max(maxX - minX + 80, 0);
-  const childHeight = Math.max(maxY - minY + 80, 0);
-
-  const diffWidth = childWidth - loopChilWidth;
-  const diffHeight = childHeight - loopChilHeight;
-  const targetNodeWidth = loopNodeRect.width + diffWidth;
-  const targetNodeHeight = loopNodeRect.height + diffHeight;
-
-  const offsetHeight = CONTAINER_INPUT_HEIGHT;
+  const left = Math.min(...childRects.map((rect) => rect!.left));
+  const top = Math.min(...childRects.map((rect) => rect!.top));
+  const right = Math.max(...childRects.map((rect) => rect!.right));
+  const bottom = Math.max(...childRects.map((rect) => rect!.bottom));
+  const childBounds: ContainerBounds = {
+    left,
+    top,
+    right,
+    bottom,
+    width: right - left,
+    height: bottom - top
+  };
+  const childWidth = childBounds.width + CONTAINER_CHILD_PADDING * 2;
+  const childHeight = childBounds.height + CONTAINER_CHILD_PADDING * 2;
+  const positionDelta = previousChildBounds
+    ? {
+        x:
+          childBounds.left -
+          previousChildBounds.left -
+          (loopNode.position.x - (previousParentPosition?.x ?? loopNode.position.x)),
+        y:
+          childBounds.top -
+          previousChildBounds.top -
+          (loopNode.position.y - (previousParentPosition?.y ?? loopNode.position.y))
+      }
+    : initialChildBounds
+      ? {
+          x: childBounds.left - initialChildBounds.left,
+          y: childBounds.top - initialChildBounds.top
+        }
+      : { x: 0, y: 0 };
 
   return {
-    parentX: Math.round(minX - 70),
-    parentY: Math.round(minY - offsetHeight - 240),
+    parentX: loopNode.position.x + positionDelta.x,
+    parentY: loopNode.position.y + positionDelta.y,
     childWidth,
     childHeight,
-    nodeWidth: targetNodeWidth,
-    nodeHeight: targetNodeHeight
+    nodeWidth: Math.max(loopNodeRect.width, childWidth),
+    nodeHeight: Math.max(loopNodeRect.height, childHeight),
+    childBounds,
+    positionDelta,
+    folded
   };
+};
+
+/** 新建多子节点容器只调整 renderer 位置，让直接子节点从 padding 原点开始。 */
+export const normalizeContainerChildPositions = ({
+  nodes,
+  parentId,
+  bounds,
+  targetOrigin
+}: {
+  nodes: Node<FlowNodeItemType>[];
+  parentId: string;
+  bounds: ContainerBounds;
+  targetOrigin: Pick<ContainerBounds, 'left' | 'top'>;
+}) => {
+  const offsetX = targetOrigin.left - bounds.left;
+  const offsetY = targetOrigin.top - bounds.top;
+
+  nodes.forEach((node) => {
+    if (node.data.parentNodeId !== parentId) return;
+    node.position = {
+      x: node.position.x + offsetX,
+      y: node.position.y + offsetY
+    };
+  });
 };

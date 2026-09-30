@@ -239,6 +239,58 @@ describe('workflow editor projection', () => {
     expect(second.nodes[2]).toBe(first.nodes[2]);
   });
 
+  it('refreshes node identity when dynamic handle topology changes', () => {
+    const runtime = hydrateRuntime({
+      input: {
+        nodes: [
+          {
+            nodeId: 'ifElse',
+            flowNodeType: FlowNodeTypeEnum.ifElseNode,
+            name: 'If Else',
+            position: { x: 0, y: 0 },
+            inputs: [
+              {
+                key: NodeInputKeyEnum.ifElseList,
+                value: [{ branchId: 'branch-1', condition: 'AND', list: [] }]
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [],
+        chatConfig: {}
+      },
+      t
+    });
+    const cache = createProjectionCache();
+    const first = projectRuntimeCanvas({
+      runtime,
+      overlays: {},
+      localNodes: [],
+      localEdges: [],
+      cache
+    });
+
+    runtime.dispatch({
+      type: 'updateField',
+      nodeId: 'ifElse',
+      fieldKey: NodeInputKeyEnum.ifElseList,
+      value: [
+        { branchId: 'branch-1', condition: 'AND', list: [] },
+        { branchId: 'branch-2', condition: 'AND', list: [] }
+      ]
+    });
+    const second = projectRuntimeCanvas({
+      runtime,
+      overlays: {},
+      localNodes: [],
+      localEdges: [],
+      cache
+    });
+
+    expect(second.nodes[0]).not.toBe(first.nodes[0]);
+  });
+
   it('projects runtime edges by index and prunes stale cache entries', () => {
     const runtime = createRuntime();
     const cache = createProjectionCache();

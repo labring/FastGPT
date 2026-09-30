@@ -55,6 +55,7 @@ const NodeParallelRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <Box
             flex={1}
             position={'relative'}
+            data-workflow-container-content="true"
             border={'base'}
             bg={'myGray.100'}
             rounded={'8px'}

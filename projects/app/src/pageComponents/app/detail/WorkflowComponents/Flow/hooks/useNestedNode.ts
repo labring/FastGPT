@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useContext, useEffect, useMemo, useRef } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import {
   ArrayTypeMap,
@@ -7,10 +7,6 @@ import {
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
-import {
-  Input_Template_Node_Height,
-  Input_Template_Node_Width
-} from '@fastgpt/global/core/workflow/template/input';
 import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -18,6 +14,8 @@ import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useNode, useWorkflowValue } from '@/web/core/workflow/editor';
 import { useDocumentGetNodeById } from '../nodes/render/useWorkflowDocument';
 import { AppContext } from '../../../context';
+import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
+import { WorkflowNodeMeasurementContext } from '../nodes/render/Handle/handleRenderContext';
 
 type UseNestedNodeParams = {
   nodeId: string;
@@ -32,16 +30,7 @@ type UseNestedNodeResult = {
   inputBoxRef: React.RefObject<HTMLDivElement>;
 };
 
-/**
- * 容器外框尺寸：nodeWidth / nodeHeight 已被 migration 从文档剥离，画布投影也不再从模板补默认值，
- * 因此外框直接沿用模板默认尺寸。
- * ponytail: 常量外框，容器尺寸测量重做后改为按真实内容尺寸计算（见 Flow/utils/layout.ts 注释）。
- */
-const CONTAINER_WIDTH = Number(Input_Template_Node_Width.value ?? 500);
-const CONTAINER_HEIGHT = Number(Input_Template_Node_Height.value ?? 500);
-
-// Shared hook for nested-container nodes (Loop / ParallelRun / LoopRun).
-// [TODO] Move node size population to offscreen.
+/** 为 Loop / ParallelRun / LoopRun 读取容器内容区的 renderer 派生尺寸。 */
 export const useNestedNode = ({
   nodeId,
   inputs,
@@ -53,6 +42,10 @@ export const useNestedNode = ({
   const getNodeById = useDocumentGetNodeById();
   const node = useNode(nodeId);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const containerLayout = useContextSelector(WorkflowCanvasContext, (value) =>
+    value.containerLayouts.get(nodeId)
+  );
+  const isMeasurement = useContext(WorkflowNodeMeasurementContext);
 
   // ── 1. Read the container array input（外框尺寸是常量，不再从 inputs 读）─────
   const nestedInputArray = useMemoEnhance(
@@ -96,10 +89,12 @@ export const useNestedNode = ({
     }));
   }, [nestedInputArray, newValueType, node, arrayInputKey]);
 
-  // ── 3. Measure input-box height locally ────────────────────────────────────
-  // childrenNodeIdList 由 Runtime 在结构命令中维护；尺寸字段属于画布状态，
-  // 不在节点挂载时回写文档，避免打开工作流凭空生成历史。
+  // 容器子区域只消费 renderer 派生尺寸；离屏测量跳过该尺寸，才能得到可收缩的自身内容基线。
   const inputBoxRef = useRef<HTMLDivElement>(null);
 
-  return { nodeWidth: CONTAINER_WIDTH, nodeHeight: CONTAINER_HEIGHT, inputBoxRef };
+  return {
+    nodeWidth: isMeasurement ? 0 : (containerLayout?.childWidth ?? 0),
+    nodeHeight: isMeasurement ? 0 : (containerLayout?.childHeight ?? 0),
+    inputBoxRef
+  };
 };

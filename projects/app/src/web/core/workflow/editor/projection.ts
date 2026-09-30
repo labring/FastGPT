@@ -8,9 +8,12 @@
 // 问题文案不进画布数组：节点组件直接读 Runtime snapshot 的 issues。
 import { omit, pick } from 'lodash-es';
 import type { Edge } from 'reactflow';
-import { EDGE_TYPE, type FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import type {
   FlowNodeItemType,
   FlowNodeTemplateType
@@ -83,11 +86,45 @@ const INTERACTION_FIELDS = ['selected', 'dragging', 'width', 'height', 'measured
 
 /** 字段值和 Issue 由 scoped field/issue 订阅承载，不改变节点外壳的缓存身份。 */
 const getNodeStructureKey = (snapshot: WorkflowNodeSnapshot) => {
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+  const isIfElseBranch = (value: unknown): value is IfElseListItemType => {
+    if (!isRecord(value)) return false;
+    return (
+      (value.branchId === undefined || typeof value.branchId === 'string') &&
+      (value.condition === 'AND' || value.condition === 'OR') &&
+      Array.isArray(value.list)
+    );
+  };
   const { inputs, outputs, issues: _issues, ...nodeMetadata } = snapshot;
+  const dynamicHandleStructure = (() => {
+    const inputKey =
+      snapshot.flowNodeType === FlowNodeTypeEnum.ifElseNode
+        ? NodeInputKeyEnum.ifElseList
+        : snapshot.flowNodeType === FlowNodeTypeEnum.userSelect
+          ? NodeInputKeyEnum.userSelectOptions
+          : snapshot.flowNodeType === FlowNodeTypeEnum.classifyQuestion
+            ? NodeInputKeyEnum.agents
+            : undefined;
+    if (!inputKey) return;
+
+    const value: unknown = inputs.find((input) => input.key === inputKey)?.value;
+    if (!Array.isArray(value)) return [];
+    if (inputKey === NodeInputKeyEnum.ifElseList) {
+      return value.flatMap((branch, index) =>
+        isIfElseBranch(branch) ? [getIfElseBranchHandleKey(branch, index)] : []
+      );
+    }
+    return value
+      .map((item) => (isRecord(item) ? item.key : undefined))
+      .filter((key): key is string => typeof key === 'string');
+  })();
+
   return JSON.stringify({
     ...nodeMetadata,
     inputs: inputs.map(({ value: _value, ...metadata }) => metadata),
-    outputs: outputs.map(({ value: _value, ...metadata }) => metadata)
+    outputs: outputs.map(({ value: _value, ...metadata }) => metadata),
+    dynamicHandleStructure
   });
 };
 

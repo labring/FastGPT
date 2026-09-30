@@ -14,6 +14,16 @@ export const getLayoutDimension = (
 export type NodeDimensions = {
   card: NodeCardDimension;
   occupied: NodeCardDimension;
+  sourceHandleCenters?: ReadonlyMap<string, NodeSourceHandleCenter>;
+  containerContentOffset?: {
+    x: number;
+    y: number;
+  };
+};
+
+export type NodeSourceHandleCenter = {
+  x: number;
+  y: number;
 };
 
 export type DimensionReader = (nodeId: string) => NodeCardDimension | undefined;
@@ -110,39 +120,10 @@ export const getViewportRange = ({
   };
 };
 
-/** 为画布覆盖层还原包含父节点偏移的绝对坐标。 */
+/** 画布节点的位置已经是绝对坐标；parentNodeId 只表示业务归属，不参与坐标叠加。 */
 export const getAbsoluteNodePositions = (nodes: readonly ViewportNode[]) => {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
-  const positionById = new Map<string, { x: number; y: number }>();
-
-  function getAbsolutePosition(
-    nodeId: string,
-    visiting = new Set<string>()
-  ): { x: number; y: number } {
-    const cached = positionById.get(nodeId);
-    if (cached) return cached;
-
-    const node = nodeById.get(nodeId);
-    if (!node) return { x: 0, y: 0 };
-    if (visiting.has(nodeId)) return node.position;
-
-    const nextVisiting = new Set(visiting).add(nodeId);
-    const parent = node.parentNodeId ? nodeById.get(node.parentNodeId) : undefined;
-    const parentPosition = parent
-      ? getAbsolutePosition(parent.id, nextVisiting)
-      : {
-          x: 0,
-          y: 0
-        };
-    const position = {
-      x: node.position.x + parentPosition.x,
-      y: node.position.y + parentPosition.y
-    };
-    positionById.set(nodeId, position);
-    return position;
-  }
-
-  nodes.forEach((node) => getAbsolutePosition(node.id));
+  const positionById = new Map(nodes.map((node) => [node.id, node.position]));
   return { nodeById, positionById };
 };
 
@@ -162,6 +143,33 @@ export const isHiddenByFold = (
   }
   return false;
 };
+
+/** 返回 fit 目标节点；折叠祖先下的后代不参与 viewport 计算。 */
+export const getViewportFitNodeIds = ({
+  nodes,
+  nodeIds
+}: {
+  nodes: readonly ViewportNode[];
+  nodeIds?: readonly string[];
+}) => {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const targetIds = nodeIds ? new Set(nodeIds) : undefined;
+
+  return nodes
+    .filter((node) => (!targetIds || targetIds.has(node.id)) && !isHiddenByFold(node, nodeById))
+    .map((node) => node.id);
+};
+
+/** 返回 fit 目标中尚未进入 Dimension Index 的节点，供延后 fit 与强制测量使用。 */
+export const getUnmeasuredViewportFitNodeIds = ({
+  nodes,
+  nodeIds,
+  dimensions
+}: {
+  nodes: readonly ViewportNode[];
+  nodeIds?: readonly string[];
+  dimensions: ReadonlyMap<string, NodeDimensions>;
+}) => getViewportFitNodeIds({ nodes, nodeIds }).filter((nodeId) => !dimensions.has(nodeId));
 
 /**
  * 计算 viewport/overscan 集合。安全区内节点直接进入 full，容器因安全区内子节点被加入 full 集合。
@@ -191,41 +199,133 @@ const classifyViewportNodesWithPositions = ({
   const range = getViewportRange({ viewport, overscan });
   const viewportRange = getViewportRange({ viewport, overscan: 0 });
 
+  const childrenByParent = new Map<string, string[]>();
   nodes.forEach((node) => {
-    if (isHiddenByFold(node, nodeById)) {
-      hiddenNodeIds.add(node.id);
+    if (!node.parentNodeId) return;
+    const children = childrenByParent.get(node.parentNodeId) ?? [];
+    children.push(node.id);
+    childrenByParent.set(node.parentNodeId, children);
+  });
+
+  const getOwnerId = (nodeId: string) => {
+    const visited = new Set<string>();
+    let ownerId = nodeId;
+    let parentId = nodeById.get(nodeId)?.parentNodeId;
+    while (parentId && !visited.has(parentId)) {
+      if (!nodeById.has(parentId)) break;
+      visited.add(parentId);
+      ownerId = parentId;
+      parentId = nodeById.get(parentId)?.parentNodeId;
+    }
+    return ownerId;
+  };
+
+  const membersByOwner = new Map<string, string[]>();
+  nodes.forEach((node) => {
+    const ownerId = getOwnerId(node.id);
+    const members = membersByOwner.get(ownerId) ?? [];
+    members.push(node.id);
+    membersByOwner.set(ownerId, members);
+  });
+
+  const classifyMembers = ({
+    members,
+    owner,
+    priority,
+    visible,
+    hidden
+  }: {
+    members: readonly string[];
+    owner: ViewportNode;
+    priority: 0 | 1 | 2;
+    visible: 'viewport' | 'overscan' | 'none';
+    hidden: boolean;
+  }) => {
+    members.forEach((memberId) => {
+      const node = nodeById.get(memberId);
+      if (!node) return;
+
+      if (hidden || (memberId !== owner.id && isHiddenByFold(node, nodeById))) {
+        hiddenNodeIds.add(memberId);
+        return;
+      }
+
+      hiddenNodeIds.delete(memberId);
+      priorities.set(memberId, priority);
+      if (visible === 'viewport') visibleNodeIds.add(memberId);
+      if (visible === 'overscan') overscanNodeIds.add(memberId);
+      if (visible !== 'none') fullNodeIds.add(memberId);
+    });
+  };
+
+  membersByOwner.forEach((members, ownerId) => {
+    const owner = nodeById.get(ownerId);
+    if (!owner) return;
+    const ownerPosition = positionById.get(owner.id) ?? owner.position;
+    const ownerDimension = dimensions.get(owner.id);
+    const ownerIsContainer = childrenByParent.has(owner.id);
+
+    // 容器未测量时不让估算尺寸把整棵子树裁掉，先保留完整渲染等待 measurement host。
+    if (!ownerDimension && ownerIsContainer) {
+      classifyMembers({
+        members,
+        owner,
+        priority: 0,
+        visible: 'viewport',
+        hidden: false
+      });
       return;
     }
 
-    const position = positionById.get(node.id) ?? node.position;
-    const dimension = dimensions.get(node.id) ?? estimate;
-    const rect = getNodeRect({ id: node.id, position }, dimension.occupied);
+    const rect = getNodeRect(
+      { id: owner.id, position: ownerPosition },
+      (ownerDimension ?? estimate).occupied
+    );
     if (!rect) return;
 
     const isVisible = areNodeRectsIntersecting(rect, range);
     const isInViewport = areNodeRectsIntersecting(rect, viewportRange);
-
     if (isInViewport) {
-      visibleNodeIds.add(node.id);
-      fullNodeIds.add(node.id);
-      priorities.set(node.id, 0);
+      classifyMembers({
+        members,
+        owner,
+        priority: 0,
+        visible: 'viewport',
+        hidden: false
+      });
     } else if (isVisible) {
-      overscanNodeIds.add(node.id);
-      fullNodeIds.add(node.id);
-      priorities.set(node.id, 1);
+      classifyMembers({
+        members,
+        owner,
+        priority: 1,
+        visible: 'overscan',
+        hidden: false
+      });
     } else {
-      priorities.set(node.id, 2);
+      classifyMembers({
+        members,
+        owner,
+        priority: 2,
+        visible: 'none',
+        hidden: ownerIsContainer
+      });
     }
-
-    if (node.selected || node.dragging || node.focusPinned) fullNodeIds.add(node.id);
   });
 
-  new Set([...visibleNodeIds, ...overscanNodeIds]).forEach((nodeId) => {
-    let parentId = nodeById.get(nodeId)?.parentNodeId;
-    while (parentId) {
-      fullNodeIds.add(parentId);
-      parentId = nodeById.get(parentId)?.parentNodeId;
-    }
+  // 交互节点及其外层容器不能因 viewport 短暂离屏而失去编辑态。
+  nodes.forEach((node) => {
+    if (!node.selected && !node.dragging && !node.focusPinned) return;
+    const ownerId = getOwnerId(node.id);
+    const members = membersByOwner.get(ownerId) ?? [node.id];
+    const owner = nodeById.get(ownerId);
+    if (!owner) return;
+    classifyMembers({
+      members,
+      owner,
+      priority: 0,
+      visible: 'viewport',
+      hidden: false
+    });
   });
 
   return {
@@ -289,11 +389,10 @@ export const getViewportForNodeIds = ({
 } & ViewportFitOptions): ViewportTransform | undefined => {
   if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return;
 
-  const { nodeById, positionById } = getAbsoluteNodePositions(nodes);
-  const targetIds = nodeIds ? new Set(nodeIds) : undefined;
+  const { positionById } = getAbsoluteNodePositions(nodes);
+  const fitNodeIds = new Set(getViewportFitNodeIds({ nodes, nodeIds }));
   const rects = nodes.flatMap((node) => {
-    if (targetIds && !targetIds.has(node.id)) return [];
-    if (isHiddenByFold(node, nodeById)) return [];
+    if (!fitNodeIds.has(node.id)) return [];
 
     const dimension = dimensions.get(node.id)?.card;
     const position = positionById.get(node.id) ?? node.position;
@@ -343,7 +442,11 @@ export const classifyRenderableGraph = ({
     estimate
   });
   const safeRange = getViewportRange({ viewport, overscan });
-  const renderedNodeIds = new Set<string>(classification.visibleNodeIds);
+  // Overscan 节点也必须挂载：它们负责完成真实测量，否则初始 fit 或离屏恢复会陷入空渲染。
+  const renderedNodeIds = new Set<string>([
+    ...classification.visibleNodeIds,
+    ...classification.overscanNodeIds
+  ]);
   const fullNodeIds = new Set<string>(classification.fullNodeIds);
   const renderedEdgeIds = new Set<string>();
   const childrenByParent = new Map<string, string[]>();
@@ -592,8 +695,39 @@ const normalizeDimension = (dimension: NodeDimensions) => {
   }
   return {
     card: { ...dimension.card },
-    occupied: { ...dimension.occupied }
+    occupied: { ...dimension.occupied },
+    ...(dimension.sourceHandleCenters
+      ? { sourceHandleCenters: new Map(dimension.sourceHandleCenters) }
+      : {}),
+    ...(dimension.containerContentOffset &&
+    Number.isFinite(dimension.containerContentOffset.x) &&
+    Number.isFinite(dimension.containerContentOffset.y)
+      ? { containerContentOffset: { ...dimension.containerContentOffset } }
+      : {})
   };
+};
+
+/** 只有所有动态 source Handle 都有卡片内中心点时，shell 才能接管完整节点。 */
+export const hasValidSourceHandleMeasurement = ({
+  expectedHandleIds,
+  dimension
+}: {
+  expectedHandleIds: readonly string[];
+  dimension: NodeDimensions | undefined;
+}) => {
+  if (expectedHandleIds.length === 0) return dimension !== undefined;
+  const centers = dimension?.sourceHandleCenters;
+  if (!centers || centers.size !== expectedHandleIds.length) return false;
+  return expectedHandleIds.every((handleId) => {
+    const center = centers.get(handleId);
+    return (
+      center !== undefined &&
+      Number.isFinite(center.x) &&
+      Number.isFinite(center.y) &&
+      center.y >= 0 &&
+      center.y <= dimension.card.height
+    );
+  });
 };
 
 /**

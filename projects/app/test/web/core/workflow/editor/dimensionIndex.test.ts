@@ -8,7 +8,9 @@ import {
   getDimensionedNodes,
   getLayoutDimension,
   getNodeRect,
+  getUnmeasuredViewportFitNodeIds,
   getViewportForNodeIds,
+  hasValidSourceHandleMeasurement,
   type DimensionMeasurement
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/context/dimensionIndex';
 
@@ -99,6 +101,48 @@ describe('workflow dimension batcher', () => {
 
     expect(flushed).toEqual([]);
   });
+
+  it('keeps the latest dynamic source handle centers in the batch', () => {
+    const frames: Array<() => void> = [];
+    const flushed: DimensionMeasurement[][] = [];
+    const batcher = createDimensionBatcher({
+      scheduler: {
+        schedule: (callback) => {
+          frames.push(callback);
+          return frames.length;
+        },
+        cancel: () => {}
+      },
+      onFlush: (updates) => flushed.push(updates)
+    });
+
+    batcher.enqueue({
+      nodeId: 'if-else',
+      generation: 1,
+      dimension: {
+        card: { width: 300, height: 200 },
+        occupied: { width: 300, height: 200 },
+        sourceHandleCenters: new Map([['else', { x: 304, y: 100 }]])
+      }
+    });
+    batcher.enqueue({
+      nodeId: 'if-else',
+      generation: 2,
+      dimension: {
+        card: { width: 300, height: 200 },
+        occupied: { width: 300, height: 200 },
+        sourceHandleCenters: new Map([['else', { x: 304, y: 180 }]]),
+        containerContentOffset: { x: 33, y: 310 }
+      }
+    });
+
+    frames[0]();
+
+    expect(flushed[0]?.[0]?.dimension.sourceHandleCenters).toEqual(
+      new Map([['else', { x: 304, y: 180 }]])
+    );
+    expect(flushed[0]?.[0]?.dimension.containerContentOffset).toEqual({ x: 33, y: 310 });
+  });
 });
 
 describe('workflow dimension geometry', () => {
@@ -132,14 +176,14 @@ describe('workflow viewport measurement scheduling', () => {
       dimensions: new Map(),
       nodes: [
         { id: 'visible', position: { x: 10, y: 10 } },
-        { id: 'parent', position: { x: 500, y: 0 } },
-        { id: 'child', parentNodeId: 'parent', position: { x: -490, y: 10 } },
+        { id: 'parent', position: { x: 10, y: 10 } },
+        { id: 'child', parentNodeId: 'parent', position: { x: 20, y: 20 } },
         { id: 'overscan', position: { x: 290, y: 10 } },
         { id: 'far', position: { x: 1000, y: 10 } }
       ]
     });
 
-    expect(result.visibleNodeIds).toEqual(new Set(['visible', 'child']));
+    expect(result.visibleNodeIds).toEqual(new Set(['visible', 'parent', 'child']));
     expect(result.overscanNodeIds).toEqual(new Set(['overscan']));
     expect(result.fullNodeIds).toEqual(new Set(['visible', 'child', 'parent', 'overscan']));
     expect(result.priorities.get('far')).toBe(2);
@@ -167,6 +211,54 @@ describe('workflow viewport measurement scheduling', () => {
     expect(result.fullNodeIds).toEqual(new Set(['focused']));
   });
 
+  it('renders overscan nodes so their measurements can complete', () => {
+    const result = classifyRenderableGraph({
+      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
+      dimensions: new Map(),
+      nodes: [{ id: 'overscan', position: { x: 290, y: 10 } }],
+      edges: []
+    });
+
+    expect(result.overscanNodeIds).toEqual(new Set(['overscan']));
+    expect(result.renderedNodeIds).toEqual(new Set(['overscan']));
+  });
+
+  it('lets the outermost container own viewport classification for descendants', () => {
+    const result = classifyViewportNodes({
+      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
+      dimensions: new Map([
+        ['parent', measuredDimension({ width: 80, height: 80 })],
+        ['child', measuredDimension({ width: 20, height: 20 })]
+      ]),
+      nodes: [
+        { id: 'parent', position: { x: 500, y: 500 } },
+        { id: 'child', parentNodeId: 'parent', position: { x: -500, y: -500 } }
+      ]
+    });
+
+    expect(result.visibleNodeIds).toEqual(new Set());
+    expect(result.overscanNodeIds).toEqual(new Set());
+    expect(result.hiddenNodeIds).toEqual(new Set(['parent', 'child']));
+  });
+
+  it('keeps folded descendants hidden while retaining the folded container', () => {
+    const result = classifyViewportNodes({
+      viewport: { x: 0, y: 0, zoom: 1, width: 100, height: 100 },
+      dimensions: new Map([
+        ['parent', measuredDimension({ width: 80, height: 80 })],
+        ['child', measuredDimension({ width: 20, height: 20 })]
+      ]),
+      nodes: [
+        { id: 'parent', position: { x: 10, y: 10 }, isFolded: true },
+        { id: 'child', parentNodeId: 'parent', position: { x: 20, y: 20 } }
+      ]
+    });
+
+    expect(result.visibleNodeIds).toEqual(new Set(['parent']));
+    expect(result.fullNodeIds).toEqual(new Set(['parent']));
+    expect(result.hiddenNodeIds).toEqual(new Set(['child']));
+  });
+
   it('deduplicates queue entries, preserves generation, and limits batches', () => {
     const queue = createMeasurementQueue();
     queue.upsert({ nodeId: 'far', generation: 1, priority: 2 });
@@ -185,6 +277,22 @@ describe('workflow viewport measurement scheduling', () => {
 });
 
 describe('workflow viewport fitting', () => {
+  it('reports every unmeasured node that a full fit must wait for', () => {
+    const nodes = [
+      { id: 'measured', position: { x: 0, y: 0 } },
+      { id: 'pending', position: { x: 200, y: 0 } },
+      { id: 'folded-parent', position: { x: 400, y: 0 }, isFolded: true },
+      { id: 'folded-child', parentNodeId: 'folded-parent', position: { x: 450, y: 0 } }
+    ];
+
+    expect(
+      getUnmeasuredViewportFitNodeIds({
+        nodes,
+        dimensions: new Map([['measured', measuredDimension({ width: 100, height: 50 })]])
+      })
+    ).toEqual(['pending', 'folded-parent']);
+  });
+
   it('fits selected nodes from absolute positions instead of the rendered subset', () => {
     const viewport = getViewportForNodeIds({
       width: 1000,
@@ -199,8 +307,8 @@ describe('workflow viewport fitting', () => {
     });
 
     expect(viewport?.zoom).toBeCloseTo(5 / 3);
-    expect(viewport?.x).toBeCloseTo(-500);
-    expect(viewport?.y).toBeCloseTo(-250);
+    expect(viewport?.x).toBeCloseTo(-333.333);
+    expect(viewport?.y).toBeCloseTo(-166.667);
   });
 
   it('excludes folded descendants and returns no viewport without measured targets', () => {
@@ -302,5 +410,34 @@ describe('workflow render graph classification', () => {
     expect(result.renderedNodeIds).toEqual(new Set(['parent', 'child-a', 'child-b']));
     expect(result.fullNodeIds).toEqual(new Set(['parent', 'child-a', 'child-b']));
     expect(result.renderedEdgeIds).toEqual(new Set(['internal-edge']));
+  });
+});
+
+describe('dynamic source handle measurements', () => {
+  const dimension = measuredDimension({ width: 300, height: 200 });
+
+  it('requires every expected handle to have a finite in-card center', () => {
+    expect(
+      hasValidSourceHandleMeasurement({
+        expectedHandleIds: ['branch-a', 'else'],
+        dimension: {
+          ...dimension,
+          sourceHandleCenters: new Map([['branch-a', { x: 304, y: 80 }]])
+        }
+      })
+    ).toBe(false);
+
+    expect(
+      hasValidSourceHandleMeasurement({
+        expectedHandleIds: ['branch-a', 'else'],
+        dimension: {
+          ...dimension,
+          sourceHandleCenters: new Map([
+            ['branch-a', { x: 304, y: 80 }],
+            ['else', { x: 304, y: 180 }]
+          ])
+        }
+      })
+    ).toBe(true);
   });
 });

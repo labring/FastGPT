@@ -136,6 +136,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
         style={styles}
         type="source"
         id={handleId}
+        data-workflow-source-handle-id={handleId}
         position={position}
         isConnectableEnd={false}
       >
