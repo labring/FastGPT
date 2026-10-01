@@ -56,9 +56,15 @@ export const promptToolCallMessageRewrite = (
         delete message.tool_calls;
       }
     } else if (message.role === 'tool') {
+      const toolContent =
+        typeof message.content === 'string'
+          ? message.content
+          : Array.isArray(message.content)
+            ? message.content.map((item) => (item.type === 'text' ? item.text : '')).join('')
+            : '';
       cloneMessages.splice(i, 1, {
         role: 'user',
-        content: `<ToolResponse>\n${message.content}\n</ToolResponse>`
+        content: `<ToolResponse>\n${toolContent}\n</ToolResponse>`
       });
     }
   }

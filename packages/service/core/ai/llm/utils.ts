@@ -747,6 +747,23 @@ export const loadRequestMessages = async ({
             ...formatAssistantItem(item, supportReason),
             content: formatContent
           };
+        } else if (item.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+          // 工具返回的文本里可能包含图片 URL，提取为 image_url 内容块进入下一轮
+          if (typeof item.content === 'string' && item.content !== '') {
+            const parts = parseTextUserContentParts(item.content);
+            // 只有提取到媒体 part（存在非 text part）时才结构化，否则保持 string 兼容
+            const hasMedia = parts.some((part) => part.type !== 'text');
+            if (hasMedia) {
+              const normalizedContent = await normalizeMediaContentParts(parts);
+              if (normalizedContent.length > 0) {
+                return {
+                  ...item,
+                  content: normalizedContent
+                };
+              }
+            }
+          }
+          return item;
         } else {
           return item;
         }

@@ -78,15 +78,13 @@ const parseToolArguments = (value: string) => {
 };
 
 const getContentText = (
-  content:
-    | string
-    | null
-    | Array<{ type: 'text'; text: string } | { type: 'refusal'; refusal: string }>
-    | undefined
+  content: string | null | Array<{ type: string; text?: string; refusal?: string }> | undefined
 ) => {
   if (!content) return '';
   if (typeof content === 'string') return content;
-  return content.map((item) => (item.type === 'text' ? item.text : item.refusal)).join('');
+  return content
+    .map((item) => (item.type === 'text' ? (item.text ?? '') : (item.refusal ?? '')))
+    .join('');
 };
 
 /**

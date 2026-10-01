@@ -1154,6 +1154,65 @@ describe('loadRequestMessages function tests', () => {
     });
   });
 
+  describe('Tool message image extraction', () => {
+    it('should extract image URL from tool message into image_url part when useVision is true', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const imageUrl = 'https://example.com/screenshot.png';
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Generate a chart' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: `Generated chart: ${imageUrl}`
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      const toolMessage = result.find((m) => m.role === ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(toolMessage).toBeDefined();
+      const content = toolMessage!.content as any[];
+      expect(Array.isArray(content)).toBe(true);
+      expect(
+        content.some((item: any) => item.type === 'image_url' && item.image_url.url === imageUrl)
+      ).toBe(true);
+      expect(content.some((item: any) => item.type === 'text')).toBe(true);
+    });
+
+    it('should keep tool message as string when useVision is false', async () => {
+      const imageUrl = 'https://example.com/screenshot.png';
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Generate a chart' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: `Generated chart: ${imageUrl}`
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: false });
+
+      const toolMessage = result.find((m) => m.role === ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(toolMessage!.content).toBe(`Generated chart: ${imageUrl}`);
+    });
+
+    it('should keep tool message as string when it contains no image URL', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: 'plain text result'
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      const toolMessage = result.find((m) => m.role === ChatCompletionRequestMessageRoleEnum.Tool);
+      expect(toolMessage!.content).toBe('plain text result');
+    });
+  });
+
   describe('Complex scenarios', () => {
     it('should handle mixed conversation with all message types', async () => {
       const messages: ChatCompletionMessageParam[] = [
