@@ -92,7 +92,7 @@ export const checkWebSyncLimit = async ({
 /**
  * This function will add a property named sourceMember to the list passed in.
  * @param list The list to add the sourceMember property to. [TmbId] property is required.
- * @error If member is not found, this item will be skipped.
+ * If member is not found, fallback unknown member info with leave status is used to preserve list length for pagination.
  * @returns The list with the sourceMember property added.
  */
 export async function addSourceMember<T extends { tmbId: string }>({
@@ -113,20 +113,27 @@ export async function addSourceMember<T extends { tmbId: string }>({
     session
   });
 
-  return list
-    .map((item) => {
-      const tmb = tmbMap.get(String(item.tmbId));
-      if (!tmb) return;
+  const hasToObject = <R>(doc: unknown): doc is { toObject: () => R } =>
+    typeof doc === 'object' &&
+    doc !== null &&
+    'toObject' in doc &&
+    typeof (doc as Record<string, unknown>).toObject === 'function';
 
-      // @ts-ignore
-      const formatItem = typeof item.toObject === 'function' ? item.toObject() : item;
+  const defaultLeaveMember = {
+    name: 'undefined',
+    avatar: '',
+    status: TeamMemberStatusEnum.leave
+  };
 
-      return {
-        ...formatItem,
-        sourceMember: formatSourceMember(tmb)
-      };
-    })
-    .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;
+  return list.map((item) => {
+    const tmb = tmbMap.get(String(item.tmbId)) ?? defaultLeaveMember;
+    const formatItem = hasToObject<T>(item) ? item.toObject() : item;
+
+    return {
+      ...formatItem,
+      sourceMember: formatSourceMember(tmb)
+    };
+  }) as Array<T & { sourceMember: SourceMemberType }>;
 }
 
 export const formatSourceMember = (member: {
