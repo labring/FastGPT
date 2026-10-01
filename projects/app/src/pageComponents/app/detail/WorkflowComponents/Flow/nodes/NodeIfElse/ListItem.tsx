@@ -545,7 +545,7 @@ const ConditionValueInput = ({
           value={value as string}
           placeholder={
             condition === VariableConditionEnum.reg
-              ? '/^((+|00)86)?1[3-9]d{9}$/'
+              ? '/^((\\+|00)86)?1[3-9]\\d{9}$/'
               : t('workflow:ifelse.Input value')
           }
           w={'full'}

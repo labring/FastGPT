@@ -83,18 +83,22 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
     [VariableConditionEnum.startWith]: () => getInputText()?.startsWith(value) ?? false,
     [VariableConditionEnum.endWith]: () => getInputText()?.endsWith(value) ?? false,
     [VariableConditionEnum.reg]: () => {
-      if (typeof inputValue !== 'string' || !value) return false;
-      if (value.startsWith('/')) {
-        value = value.slice(1);
+      // 与「开始为/结束为」一致：any 类型变量运行时可能是数字、布尔等非字符串值，按文本匹配；
+      // 右侧选择引用变量时，正则本身也可能不是字符串，直接调用 startsWith 会抛 TypeError。
+      const inputText = getInputText();
+      if (inputText === undefined || value === undefined || value === null || value === '') {
+        return false;
       }
-      if (value.endsWith('/')) {
-        value = value.slice(0, -1);
+      let pattern = String(value);
+      if (pattern.startsWith('/')) {
+        pattern = pattern.slice(1);
+      }
+      if (pattern.endsWith('/')) {
+        pattern = pattern.slice(0, -1);
       }
 
-      const reg = new RegExp(value, 'g');
-      const result = reg.test(inputValue.trim());
-
-      return result;
+      const reg = new RegExp(pattern, 'g');
+      return reg.test(inputText);
     },
 
     // array
