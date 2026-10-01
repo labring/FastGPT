@@ -1,8 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Box, Button, Flex } from '@chakra-ui/react';
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -37,7 +36,7 @@ const CreateSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/
 const ImportSkillModal = dynamic(() => import('@/pageComponents/dashboard/skill/ImportSkillModal'));
 
 const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
@@ -270,11 +269,3 @@ function ContextRender() {
 }
 
 export default ContextRender;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'common', 'file', 'skill', 'user']))
-    }
-  };
-}

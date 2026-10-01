@@ -1,8 +1,7 @@
 'use client';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import DashboardContainer from '../../../pageComponents/dashboard/Container';
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, IconButton, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -22,7 +21,7 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 
 const Evaluation = () => {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   const { isPc } = useSystem();
 
@@ -291,11 +290,3 @@ const Evaluation = () => {
 };
 
 export default Evaluation;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['dashboard_evaluation']))
-    }
-  };
-}

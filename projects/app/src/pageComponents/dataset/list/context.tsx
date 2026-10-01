@@ -180,7 +180,9 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
         ...(tmbIds !== undefined ? { tmbIds } : {})
       }),
     {
+      disabled: !router.isReady,
       refreshDeps: [
+        router.isReady,
         parentId,
         searchKey,
         listType?.join(',') ?? 'all',
@@ -201,7 +203,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: router.isReady,
+      refreshDeps: [parentId, router.isReady]
     }
   );
 
@@ -212,7 +215,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: router.isReady,
+      refreshDeps: [parentId, router.isReady]
     }
   );
 

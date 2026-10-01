@@ -2,7 +2,6 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import SkillDetailContextProvider, {
   SkillDetailContext
 } from '@/pageComponents/dashboard/skill/detail/context';
@@ -13,6 +12,9 @@ import {
 } from '@/pageComponents/dashboard/skill/detail/Header';
 import Content from '@/pageComponents/dashboard/skill/detail/Content';
 import SkillPreview from '@/pageComponents/dashboard/skill/detail/preview/SkillPreview';
+
+import Loading from '@fastgpt/web/components/common/MyLoading';
+import { useRequiredQueryParam } from '@fastgpt/web/hooks/useRequiredQueryParam';
 
 const MainLayout = () => {
   const chatId = useContextSelector(SkillDetailContext, (v) => v.chatId);
@@ -54,6 +56,14 @@ const MainLayout = () => {
 };
 
 const SkillDetail = () => {
+  const { isReady } = useRequiredQueryParam('skillId', {
+    fallbackRoute: '/dashboard/skill'
+  });
+
+  if (!isReady) {
+    return <Loading />;
+  }
+
   return (
     <SkillDetailContextProvider>
       <MainLayout />
@@ -62,11 +72,3 @@ const SkillDetail = () => {
 };
 
 export default SkillDetail;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'chat', 'common', 'skill', 'user']))
-    }
-  };
-}

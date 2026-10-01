@@ -210,7 +210,7 @@ const ChatContent = (props: ChatPageProps) => {
 
   // show main chat interface
   return (
-    <ChatContextProvider params={chatHistoryProviderParams}>
+    <ChatContextProvider params={chatHistoryProviderParams} disabled={!currentAppId}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={isStandalone !== '1'}
         showRunningStatus={props.showRunningStatus}

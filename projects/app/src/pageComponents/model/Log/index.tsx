@@ -24,7 +24,7 @@ import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { addDays } from 'date-fns';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -49,7 +49,7 @@ type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   response_body?: string;
 };
 const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const { userInfo } = useUserStore();
   const { getModelProvider, systemModelList } = useAdminModelConfig();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -336,7 +336,7 @@ const LogDetailContainer = ({ children, ...props }: { children: React.ReactNode 
 };
 
 const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const { data: detailData } = useRequest(
     async () => {
       if (data.code === 200) return data;

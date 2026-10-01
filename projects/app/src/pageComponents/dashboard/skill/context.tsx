@@ -184,7 +184,9 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
         total: res.total
       })),
     {
+      disabled: !router.isReady,
       refreshDeps: [
+        router.isReady,
         searchKey,
         parentId,
         applyToolbarFilters ? listFilters.sort : '',
@@ -208,7 +210,8 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: router.isReady,
+      refreshDeps: [parentId, router.isReady]
     }
   );
 
@@ -221,7 +224,8 @@ const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: router.isReady,
+      refreshDeps: [parentId, router.isReady]
     }
   );
 

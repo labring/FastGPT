@@ -3,7 +3,7 @@ import { Permission } from '@fastgpt/global/support/permission/controller';
 import type { RoleListType } from '@fastgpt/global/support/permission/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { HStack } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { CommonRoleList } from '@fastgpt/global/support/permission/constant';
 
 const PermissionTag = ({
@@ -13,7 +13,7 @@ const PermissionTag = ({
   permission: Permission;
   roleList: RoleListType;
 }) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
 
   const { commonLabel, otherLabels } = useMemo(() => {
     const Per = new Permission({ role: permission.role });

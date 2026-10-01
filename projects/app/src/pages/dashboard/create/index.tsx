@@ -21,11 +21,12 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { useRouter } from 'next/router';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 import { getEmptyAppsTemplate } from '@/web/core/app/templates';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
@@ -33,7 +34,6 @@ import {
   getTemplateMarketItemList
 } from '@/web/core/app/api/template';
 import { createAppTypeMap } from '@/pageComponents/app/constants';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import HeaderAuthForm from '@/components/common/secret/HeaderAuthForm';
@@ -70,8 +70,8 @@ export type CreateAppType =
   | AppTypeEnum.mcpToolSet
   | AppTypeEnum.httpToolSet;
 
-const CreateAppsPage = () => {
-  const { t } = useTranslation();
+const CreateAppsContent = () => {
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
   const { query } = router;
@@ -621,12 +621,14 @@ const CreateAppsPage = () => {
   );
 };
 
-export default CreateAppsPage;
+const CreateAppsPage = () => {
+  const router = useRouter();
 
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'user', 'workflow']))
-    }
-  };
-}
+  if (!router.isReady) {
+    return <Loading />;
+  }
+
+  return <CreateAppsContent />;
+};
+
+export default CreateAppsPage;

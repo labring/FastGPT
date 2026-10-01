@@ -6,7 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyTag from '@fastgpt/web/components/common/Tag';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 /** 展示模型关联的渠道数量，并在悬浮时列出具体渠道。 */
 const ModelChannelCount = ({
@@ -16,7 +16,7 @@ const ModelChannelCount = ({
   channels: AdminModelChannel[];
   onClick?: () => void;
 }) => {
-  const { t, i18n } = useClientTranslation('config_model');
+  const { t, i18n } = useSafeTranslation();
   const label =
     channels.length > 0
       ? t('config_model:channel_count', { count: channels.length })

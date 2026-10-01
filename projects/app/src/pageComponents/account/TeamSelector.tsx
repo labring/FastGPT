@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, type ButtonProps } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -21,7 +21,7 @@ const TeamSelector = ({
   showAvatar?: boolean;
   onChange?: () => void;
 }) => {
-  const { t } = useClientTranslation('user');
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { setLoading } = useSystemStore();

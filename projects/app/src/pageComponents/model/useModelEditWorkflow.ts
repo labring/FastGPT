@@ -3,7 +3,7 @@ import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/
 import type { AdminSystemModelListItem } from '@fastgpt/global/openapi/admin/system/model/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRouter } from 'next/router';
 import { useEffect, useRef, useState } from 'react';
 import type { ModelConfigFormGetValues } from './ModelConfigForm';
@@ -18,7 +18,7 @@ export type ModelEditWorkflowProps = {
 
 /** 编辑工作流统一持有详情、渠道草稿、测试和离开确认；UI 仅消费状态与操作。 */
 export const useModelEditWorkflow = ({ model, onSuccess, onClose }: ModelEditWorkflowProps) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [draftModel, setDraftModel] = useState(model.model);

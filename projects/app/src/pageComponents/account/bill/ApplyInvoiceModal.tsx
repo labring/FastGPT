@@ -22,7 +22,7 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tool
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import dayjs from 'dayjs';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useCallback, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Divider from '@/pageComponents/app/detail/WorkflowComponents/Flow/components/Divider';
@@ -44,7 +44,7 @@ const ApplyInvoiceModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { t } = useClientTranslation('account_bill');
+  const { t } = useSafeTranslation();
 
   const [chosenBillDataList, setChosenBillDataList] = useState<chosenBillDataType[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);

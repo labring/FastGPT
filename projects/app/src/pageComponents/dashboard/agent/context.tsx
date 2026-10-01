@@ -228,7 +228,9 @@ const AppListContextProvider = ({
       return fetchApps(persistedTmbIds);
     },
     {
+      disabled: !router.isReady,
       refreshDeps: [
+        router.isReady,
         searchKey,
         parentId,
         appType,
@@ -250,7 +252,8 @@ const AppListContextProvider = ({
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: router.isReady,
+      refreshDeps: [parentId, router.isReady]
     }
   );
 
@@ -261,7 +264,8 @@ const AppListContextProvider = ({
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      ready: router.isReady,
+      refreshDeps: [parentId, router.isReady]
     }
   );
 

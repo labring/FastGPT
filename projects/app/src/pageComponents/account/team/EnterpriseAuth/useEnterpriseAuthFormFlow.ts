@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -37,7 +37,7 @@ export const useEnterpriseAuthFormFlow = ({
   onNoRemainingTimes,
   onSuccess
 }: UseEnterpriseAuthFormFlowProps) => {
-  const { t } = useClientTranslation(['account_team', 'user']);
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
   const canOpenInitialAmountStep = canOpenEnterpriseAuthAmountStep(
     defaultStatus.currentTask?.status

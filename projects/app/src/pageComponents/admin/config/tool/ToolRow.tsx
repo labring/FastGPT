@@ -7,7 +7,7 @@ import type {
 import { getDraggableItemProps } from '@fastgpt/web/components/common/DndDrag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React from 'react';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import type { AdminSystemToolListItemType } from '@fastgpt/global/core/app/tool/systemTool/type';
@@ -24,7 +24,7 @@ const ToolRow = ({
   provided: DraggableProvided;
   snapshot: DraggableStateSnapshot;
 }) => {
-  const { t } = useClientTranslation('app');
+  const { t } = useSafeTranslation();
   const { draggableItemProps, dragHandleProps } = getDraggableItemProps(provided, snapshot);
 
   return (
