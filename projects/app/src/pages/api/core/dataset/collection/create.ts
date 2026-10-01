@@ -6,6 +6,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   CreateCollectionBodySchema,
   CreateCollectionResponseSchema,
@@ -25,6 +26,9 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseTy
 
   const { _id } = await createOneCollection({
     ...body,
+    // inheritPermission（sangfor 专用）只对文件夹生效，非文件夹固定按继承态创建
+    inheritPermission:
+      body.type === DatasetCollectionTypeEnum.folder ? body.inheritPermission : true,
     teamId,
     tmbId
   });

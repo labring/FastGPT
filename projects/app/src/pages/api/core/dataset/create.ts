@@ -41,7 +41,8 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     vlmModelId,
     vlmModel,
     apiDatasetServer,
-    sangforFileParseConfig
+    sangforFileParseConfig,
+    inheritPermission = true
   } = parseApiInput({ req, bodySchema: CreateDatasetBodySchema }).body;
 
   // auth
@@ -97,7 +98,9 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           avatar,
           type,
           apiDatasetServer,
-          ...(sangforFileParseConfig && { sangforFileParseConfig })
+          ...(sangforFileParseConfig && { sangforFileParseConfig }),
+          // 独立态创建（sangfor 专用）只对文件夹生效，其余类型固定按继承态创建
+          inheritPermission: type === DatasetTypeEnum.folder ? inheritPermission : true
         }
       ],
       { session, ordered: true }

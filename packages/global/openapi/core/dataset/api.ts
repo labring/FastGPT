@@ -20,6 +20,13 @@ import {
 } from '../../../support/permission/collaborator.schema';
 import { PaginationResponseSchema, PaginationSchema } from '../../api';
 
+// 独立态创建开关（sangfor 专用，FastGPT UI 未使用），只对文件夹创建生效。
+const InheritPermissionSchema = z.boolean().optional().meta({
+  example: true,
+  description:
+    '是否继承父级权限，默认 true。false = 独立创建：仅写 owner 权限快照、不合并父级权限，父级后续权限变更也不再传播到该节点。仅对文件夹（type=folder）生效，仅供 sangfor 使用，FastGPT UI 未使用'
+});
+
 /* ============================================================================
  * API: 创建知识库
  * Route: POST /api/core/dataset/create
@@ -77,7 +84,8 @@ export const CreateDatasetBodySchema = z.object({
   }),
   sangforFileParseConfig: sangforFileParseConfigSchema.optional().meta({
     description: '外部文档解析开关(页眉页脚/附录/图片识别/图转表),仅对 customPdfParse 解析路径生效'
-  })
+  }),
+  inheritPermission: InheritPermissionSchema
 });
 
 export type CreateDatasetBody = z.infer<typeof CreateDatasetBodySchema>;
@@ -531,7 +539,8 @@ export const CreateDatasetFolderBodySchema = z.object({
   intro: z.string().meta({
     example: '存放产品相关知识库',
     description: '文件夹简介'
-  })
+  }),
+  inheritPermission: InheritPermissionSchema
 });
 export type CreateDatasetFolderBody = z.infer<typeof CreateDatasetFolderBodySchema>;
 

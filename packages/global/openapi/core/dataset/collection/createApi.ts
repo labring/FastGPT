@@ -9,9 +9,10 @@ import { APIFileItemSchema } from '../../../../core/dataset/apiDataset/type';
  * 公共基础 Schema
  * ============================================================================ */
 
+// 独立态创建开关（sangfor 专用，FastGPT UI 未使用），只对文件夹创建生效。
 const InheritPermissionSchema = z.boolean().optional().meta({
   description:
-    '是否继承父级权限（默认 true）。true=继承父级（根 collection 继承 dataset）；false=独立配置，子树停止传播。传 false 时所属知识库必须已启用文件级权限，否则返回 collectionPermissionDisabled'
+    '是否继承父级权限（默认 true），仅对文件夹（type=folder）生效。true=继承父级（根 folder 继承 dataset）；false=独立配置，子树停止传播。传 false 时所属知识库必须已启用文件级权限，否则返回 collectionPermissionDisabled'
 });
 
 // 集合存储数据基础 Schema（扩展自 ChunkSettings）
@@ -33,6 +34,13 @@ export const ApiCreateCollectionBaseSchema = DatasetCollectionStoreDataSchema.ex
   tags: CollectionTagsInputSchema
 });
 export type ApiCreateDatasetCollectionParams = z.infer<typeof ApiCreateCollectionBaseSchema>;
+
+// 请求面基类：集合创建里只有文件夹接受 inheritPermission，其余入口（fileId/link/text/图片/API 数据集等）
+// 一律不声明该字段，调用方传了也会被 Zod 静默 strip 掉。与 ApiCreateCollectionBaseSchema 分开的原因是
+// 后者同时是 service 入参类型（ApiCreateDatasetCollectionParams）的来源，必须保留该字段。
+const ApiCreateCollectionRequestBaseSchema = ApiCreateCollectionBaseSchema.omit({
+  inheritPermission: true
+});
 
 // 集合创建带数据返回的 Response Schema（collectionId + insertResults）
 export const CreateCollectionWithResultResponseSchema = z.object({
@@ -75,7 +83,10 @@ export type CreateCollectionResponseType = z.infer<typeof CreateCollectionRespon
  * API: 重新训练集合
  * Route: POST /core/dataset/collection/create/reTrainingCollection
  * ============================================================================ */
-export const ReTrainingCollectionBodySchema = DatasetCollectionStoreDataSchema.extend({
+// 重训沿用原集合的 inheritPermission（handler 里 `{ ...collection, ...data }`），不由请求覆盖。
+export const ReTrainingCollectionBodySchema = DatasetCollectionStoreDataSchema.omit({
+  inheritPermission: true
+}).extend({
   collectionId: z.string().meta({ description: '需要重新训练的集合 ID' })
 });
 export type ReTrainingCollectionBodyType = z.infer<typeof ReTrainingCollectionBodySchema>;
@@ -89,7 +100,7 @@ export type ReTrainingCollectionResponseType = z.infer<typeof ReTrainingCollecti
  * API: 通过文件 ID 创建集合
  * Route: POST /core/dataset/collection/create/fileId
  * ============================================================================ */
-export const CreateCollectionByFileIdBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateCollectionByFileIdBodySchema = ApiCreateCollectionRequestBaseSchema.extend({
   fileId: z.string().meta({ description: 'S3 文件对象键（必须是 dataset 路径下的文件）' }),
   customPdfParse: z.boolean().optional().meta({ description: '自定义 PDF 解析' })
 });
@@ -100,7 +111,7 @@ export type CreateCollectionByFileIdBodyType = z.infer<typeof CreateCollectionBy
  * Route: POST /core/dataset/collection/create/localFile
  * Content-Type: multipart/form-data
  * ============================================================================ */
-export const CreateCollectionByLocalFileBodySchema = ApiCreateCollectionBaseSchema;
+export const CreateCollectionByLocalFileBodySchema = ApiCreateCollectionRequestBaseSchema;
 export type CreateCollectionByLocalFileBodyType = z.infer<
   typeof CreateCollectionByLocalFileBodySchema
 >;
@@ -118,7 +129,7 @@ export const CreateCollectionByLocalFileFormSchema = z.object({
  * API: 通过链接创建集合
  * Route: POST /core/dataset/collection/create/link
  * ============================================================================ */
-export const CreateLinkCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateLinkCollectionBodySchema = ApiCreateCollectionRequestBaseSchema.extend({
   link: z.string().url().meta({ description: '链接 URL' })
 });
 export type CreateLinkCollectionBodyType = z.infer<typeof CreateLinkCollectionBodySchema>;
@@ -127,7 +138,7 @@ export type CreateLinkCollectionBodyType = z.infer<typeof CreateLinkCollectionBo
  * API: 通过文本创建集合
  * Route: POST /core/dataset/collection/create/text
  * ============================================================================ */
-export const CreateTextCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateTextCollectionBodySchema = ApiCreateCollectionRequestBaseSchema.extend({
   name: z.string().meta({ description: '集合名称' }),
   text: z.string().meta({ description: '文本内容' })
 });
@@ -137,7 +148,7 @@ export type CreateTextCollectionBodyType = z.infer<typeof CreateTextCollectionBo
  * API: 通过 API 数据集创建集合（V1）
  * Route: POST /core/dataset/collection/create/apiCollection
  * ============================================================================ */
-export const CreateApiCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateApiCollectionBodySchema = ApiCreateCollectionRequestBaseSchema.extend({
   name: z.string().meta({ description: '集合名称' }),
   apiFileId: z.string().meta({ description: 'API 文件 ID' })
 });
@@ -147,7 +158,7 @@ export type CreateApiCollectionBodyType = z.infer<typeof CreateApiCollectionBody
  * API: 通过 API 数据集创建集合（V2，支持批量/文件夹）
  * Route: POST /core/dataset/collection/create/apiCollectionV2
  * ============================================================================ */
-export const CreateApiCollectionV2BodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateApiCollectionV2BodySchema = ApiCreateCollectionRequestBaseSchema.extend({
   apiFiles: z.array(APIFileItemSchema).meta({ description: 'API 文件列表（支持文件夹递归导入）' })
 });
 export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2BodySchema>;
@@ -157,7 +168,7 @@ export type CreateApiCollectionV2BodyType = z.infer<typeof CreateApiCollectionV2
  * Route: POST /core/dataset/collection/create/images
  * Content-Type: multipart/form-data
  * ============================================================================ */
-export const CreateImageCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateImageCollectionBodySchema = ApiCreateCollectionRequestBaseSchema.extend({
   collectionName: z.string().meta({ description: '集合名称' })
 });
 export type ImageCreateDatasetCollectionParams = z.infer<typeof CreateImageCollectionBodySchema>;
@@ -167,8 +178,7 @@ export const CreateImageCollectionDataSchema = z.object({
   datasetId: z.string().meta({ description: '数据集 ID' }),
   parentId: ParentIdSchema.optional().meta({ description: '父级目录 ID' }),
   collectionName: z.string().meta({ description: '集合名称' }),
-  tags: CollectionTagsInputSchema,
-  inheritPermission: InheritPermissionSchema
+  tags: CollectionTagsInputSchema
 });
 export type CreateImageCollectionDataType = z.infer<typeof CreateImageCollectionDataSchema>;
 // handler 内 parse 用
@@ -235,7 +245,7 @@ export const CreateTemplateCollectionMultipartSchema = z.object({
  * API: 通过外部文件 URL 创建集合（已废弃）
  * Route: POST /proApi/core/dataset/collection/create/externalFileUrl
  * ============================================================================ */
-export const CreateExternalFileCollectionBodySchema = ApiCreateCollectionBaseSchema.extend({
+export const CreateExternalFileCollectionBodySchema = ApiCreateCollectionRequestBaseSchema.extend({
   externalFileId: z.string().optional().meta({ description: '外部文件 ID' }),
   externalFileUrl: z.string().meta({ description: '外部文件 URL' }),
   filename: z.string().optional().meta({ description: '文件名' })
