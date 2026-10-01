@@ -16,17 +16,13 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
   const { feConfigs } = useSystemStore();
   const [linkWay, setLinkWay] = useState<LinkWay>('http');
 
+  const serverName = mcp.name?.trim() ? mcp.name : `${feConfigs?.systemTitle}-mcp-${mcp._id}`;
+
   const { url, jsonConfig } = (() => {
     if (linkWay === 'http') {
       const baseUrl = feConfigs?.customApiDomain || `${location.origin}/api`;
       const url = `${baseUrl}/mcp/app/${mcp.key}/mcp`;
-      const jsonConfig = `{
-  "mcpServers": {
-    "${feConfigs?.systemTitle}-mcp-${mcp._id}": {
-      "url": "${url}"
-    }
-  }
-}`;
+      const jsonConfig = JSON.stringify({ mcpServers: { [serverName]: { url } } }, null, 2);
       return {
         url,
         jsonConfig
@@ -36,13 +32,7 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
     const url = feConfigs?.mcpServerProxyEndpoint
       ? `${feConfigs?.mcpServerProxyEndpoint}/${mcp.key}/sse`
       : '';
-    const jsonConfig = `{
-  "mcpServers": {
-    "${feConfigs?.systemTitle}-mcp-${mcp._id}": {
-      "url": "${url}"
-    }
-  }
-}`;
+    const jsonConfig = JSON.stringify({ mcpServers: { [serverName]: { url } } }, null, 2);
 
     return {
       url,
