@@ -40,6 +40,10 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
   mongoSessionRun: vi.fn((fn: any) => fn('session'))
 }));
 
+vi.mock('@fastgpt/service/core/dataset/training/audit', () => ({
+  refreshTrainingAuditTask: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   createCollectionAndInsertData: mockCreateCollectionAndInsertData,
   createOneCollection: mockCreateOneCollection
@@ -51,6 +55,8 @@ import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 describe('createApiDatasetCollection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateCollectionAndInsertData.mockResolvedValue({ collectionId: 'collection-id' });
+    mockCreateOneCollection.mockResolvedValue({ _id: 'folder-id' });
   });
 
   it('should use dingtalk rootNodeId when importing root folder recursively', async () => {

@@ -24,6 +24,7 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { refreshTrainingAuditTask } from '@fastgpt/service/core/dataset/training/audit';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -181,6 +182,7 @@ export async function generateQA(): Promise<any> {
             chunkIndex: data.chunkIndex
           })),
           billId: data.billId,
+          auditTaskId: data.auditTaskId,
           vectorModel: embeddingModelData,
           agentModel: modelData,
           vlmModel: vlmModelData
@@ -188,6 +190,7 @@ export async function generateQA(): Promise<any> {
 
         // delete data from training
         await MongoDatasetTraining.findByIdAndDelete(data._id);
+        await refreshTrainingAuditTask(data.auditTaskId);
 
         // Push usage
         pushLLMTrainingUsage({
@@ -222,6 +225,7 @@ export async function generateQA(): Promise<any> {
             errorMsg: getErrText(err, 'unknown error')
           }
         );
+        await refreshTrainingAuditTask(data.auditTaskId);
 
         await delay(100);
       }

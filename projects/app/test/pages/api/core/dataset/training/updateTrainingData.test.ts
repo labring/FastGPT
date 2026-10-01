@@ -6,6 +6,7 @@ import {
   authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { failAuditLogByTaskId } from '@fastgpt/service/support/user/audit/util';
 
 const datasetId = '507f1f77bcf86cd799439011';
 const collectionId = '507f1f77bcf86cd799439012';
@@ -15,6 +16,7 @@ const foreignDatasetId = '507f1f77bcf86cd799439014';
 vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
   MongoDatasetTraining: {
     findById: vi.fn(),
+    countDocuments: vi.fn(),
     updateOne: vi.fn(),
     updateMany: vi.fn()
   }
@@ -25,22 +27,91 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollection: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/dataset/training/audit', () => ({
+  refreshTrainingAuditTask: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/support/user/audit/util', () => ({
+  addAuditLog: vi.fn().mockResolvedValue(undefined),
+  failAuditLogByTaskId: vi.fn().mockResolvedValue(undefined)
+}));
+
 describe('updateTrainingData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(MongoDatasetTraining.countDocuments).mockResolvedValue(1);
     vi.mocked(authDatasetCollection).mockResolvedValue({
+      teamId: 'team1',
+      tmbId: 'member1',
       collection: {
         _id: collectionId,
+        name: 'Collection',
         teamId: 'team1',
-        datasetId
+        datasetId,
+        dataset: { name: 'Dataset' }
       }
     } as any);
     vi.mocked(authDataset).mockResolvedValue({
       teamId: 'team1',
+      tmbId: 'member1',
       dataset: {
-        _id: datasetId
+        _id: datasetId,
+        name: 'Dataset'
       }
     } as any);
+  });
+
+  it('should mark batch retry audit as failed when releasing training tasks fails', async () => {
+    vi.mocked(MongoDatasetTraining.countDocuments).mockResolvedValue(0);
+    vi.mocked(MongoDatasetTraining.updateMany).mockRejectedValueOnce(
+      new Error('Mongo unavailable')
+    );
+
+    await expect(
+      handler({
+        body: {
+          datasetId
+        }
+      } as any)
+    ).rejects.toThrow('Mongo unavailable');
+
+    expect(failAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team1',
+        scope: 'member',
+        event: 'RETRY_TRAINING',
+        failureReason: 'Mongo unavailable',
+        taskId: expect.any(String)
+      })
+    );
+  });
+
+  it('should mark single retry audit as failed when releasing the training task fails', async () => {
+    vi.mocked(MongoDatasetTraining.findById).mockResolvedValue({
+      _id: dataId,
+      teamId: 'team1',
+      datasetId,
+      collectionId
+    });
+    vi.mocked(MongoDatasetTraining.updateOne).mockRejectedValueOnce(new Error('Write timeout'));
+
+    await expect(
+      handler({
+        body: {
+          dataId
+        }
+      } as any)
+    ).rejects.toThrow('Write timeout');
+
+    expect(failAuditLogByTaskId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team1',
+        scope: 'member',
+        event: 'RETRY_TRAINING',
+        failureReason: 'Write timeout',
+        taskId: expect.any(String)
+      })
+    );
   });
 
   it('should retry only final errors in collection scope', async () => {
@@ -62,11 +133,12 @@ describe('updateTrainingData', () => {
         collectionId,
         $expr: expect.any(Object)
       }),
-      {
+      expect.objectContaining({
         $unset: { errorMsg: '' },
+        $set: { auditTaskId: expect.any(String) },
         retryCount: 3,
         lockTime: new Date('2000')
-      }
+      })
     );
   });
 
@@ -88,11 +160,12 @@ describe('updateTrainingData', () => {
         datasetId,
         $expr: expect.any(Object)
       }),
-      {
+      expect.objectContaining({
         $unset: { errorMsg: '' },
+        $set: { auditTaskId: expect.any(String) },
         retryCount: 3,
         lockTime: new Date('2000')
-      }
+      })
     );
   });
 
@@ -134,7 +207,8 @@ describe('updateTrainingData', () => {
       q: 'question',
       a: 'answer',
       chunkIndex: 1,
-      lockTime: new Date('2000')
+      lockTime: new Date('2000'),
+      auditTaskId: expect.any(String)
     });
   });
 

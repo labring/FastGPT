@@ -16,6 +16,8 @@ import {
   type ResumeInheritPermissionQueryType,
   type ResumeInheritPermissionResponseType
 } from '@fastgpt/global/openapi/core/app/permission/api';
+import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
 // resume the app's inherit permission.
 async function handler(
@@ -25,15 +27,16 @@ async function handler(
     req,
     querySchema: ResumeInheritPermissionQuerySchema
   }).query;
-  const { app } = await authApp({
+  const { teamId, tmbId, app } = await authApp({
     appId,
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
+  let affectedResourceCount = 1;
   if (app.parentId) {
-    await resumeInheritPermission({
+    affectedResourceCount = await resumeInheritPermission({
       resource: app,
       folderTypeList: AppFolderTypeList,
       resourceType: PerResourceTypeEnum.app,
@@ -49,6 +52,22 @@ async function handler(
       }
     );
   }
+
+  await addAuditLog({
+    teamId,
+    tmbId,
+    scope: 'member',
+    event: AuditEventEnum.RESUME_INHERIT_PERMISSION,
+    params: {
+      datasetId: appId,
+      datasetName: app.name,
+      targetPath: app.name,
+      parentDatasetName: app.parentId ? String(app.parentId) : '-',
+      oldPermissionSource: 'self',
+      newPermissionSource: app.parentId ? 'parent' : 'team',
+      affectedResourceCount
+    }
+  });
 
   return ResumeInheritPermissionResponseSchema.parse(undefined);
 }

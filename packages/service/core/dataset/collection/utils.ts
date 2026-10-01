@@ -328,7 +328,14 @@ export const collectionTagsToTagLabel = async ({
     .filter((item): item is CollectionTagLabelType => item !== null);
 };
 
-export const syncCollection = async (collection: CollectionWithDatasetType) => {
+/**
+ * 重新读取可同步集合的原始内容，并在内容变化时重建集合及训练任务。
+ * auditTaskId 仅用于把异步训练关联到上层同步审计；单集合手动同步可不传。
+ */
+export const syncCollection = async (
+  collection: CollectionWithDatasetType,
+  auditTaskId?: string
+) => {
   const dataset = collection.dataset;
 
   if (!collectionCanSync(collection.type)) {
@@ -400,7 +407,10 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
             datasetId: collection.datasetId,
             tags: collection.tags
           })
-        }
+        },
+        // 集合同步的审计由 SYNC_DATASET 事件统一记录，导入路径不再单独写 IMPORT_DATASET_CONTENT
+        audit: false,
+        auditTaskId
       });
 
       await carryOverCollectionPermission({
