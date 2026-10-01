@@ -29,7 +29,7 @@
     "generate:i18n-loaders": "node scripts/generate-i18n-resource-loaders.mjs",
     "check:i18n-loaders": "node scripts/check-i18n-resource-loaders.mjs",
     "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter build",
-    "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build"
+    "build:workflow-packages": "pnpm --filter @fastgpt/workflow-core build && pnpm --filter @fastgpt/workflow-cli build"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
