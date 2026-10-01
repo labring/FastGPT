@@ -274,21 +274,23 @@ export const pushDatasetToParseQueue = async ({
   teamId: string;
   tmbId: string;
   datasetId: string;
-  collectionId: string;
+  /** 单文件传 id 字符串；批量导入一次传全部 id（整批一次入队） */
+  collectionId: string | string[];
   billId: string;
   session: ClientSession;
 }) => {
-  await MongoDatasetTraining.create(
-    [
-      {
-        teamId,
-        tmbId,
-        datasetId,
-        collectionId,
-        billId,
-        mode: TrainingModeEnum.parse
-      }
-    ],
+  const ids = Array.isArray(collectionId) ? collectionId : [collectionId];
+  if (ids.length === 0) return;
+
+  await MongoDatasetTraining.insertMany(
+    ids.map((id) => ({
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId: id,
+      billId,
+      mode: TrainingModeEnum.parse
+    })),
     { session, ordered: true }
   );
 };

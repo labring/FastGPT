@@ -492,6 +492,7 @@
   "core.dataset.import.Web link": "网页链接",
   "core.dataset.import.Web link desc": "读取静态网页内容作为数据集",
   "core.dataset.import.import_success": "导入成功，请等待训练",
+  "core.dataset.import.api_dataset_partial_failed": "有 {{failedCount}} 个节点导入失败，请重试",
   "core.dataset.link": "链接",
   "core.dataset.search.Dataset Search Params": "知识库搜索配置",
   "core.dataset.search.Empty result response": "空搜索回复",

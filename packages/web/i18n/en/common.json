@@ -492,6 +492,7 @@
   "core.dataset.import.Web link": "Web Link",
   "core.dataset.import.Web link desc": "Read static web page content as a collection",
   "core.dataset.import.import_success": "Imported successfully. Waiting for indexing.",
+  "core.dataset.import.api_dataset_partial_failed": "{{failedCount}} nodes failed to import, please retry",
   "core.dataset.link": "Link",
   "core.dataset.search.Dataset Search Params": "Dataset Search Configuration",
   "core.dataset.search.Empty result response": "Empty Search Response",

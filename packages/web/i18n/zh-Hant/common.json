@@ -492,6 +492,7 @@
   "core.dataset.import.Web link": "網頁連結",
   "core.dataset.import.Web link desc": "讀取靜態網頁內容作為資料集",
   "core.dataset.import.import_success": "匯入成功，請等待訓練",
+  "core.dataset.import.api_dataset_partial_failed": "有 {{failedCount}} 個節點匯入失敗，請重試",
   "core.dataset.link": "連結",
   "core.dataset.search.Dataset Search Params": "知識庫搜尋設定",
   "core.dataset.search.Empty result response": "空搜尋回應",
