@@ -95,12 +95,14 @@ export const enqueueNextDatasetRebuildTask = async (
       });
       const hasMarkdownImages =
         !!collection.imageIndex && uniqueDatasetDataMarkdownImageUrls([data.q]).length > 0;
-      const mode = getDatasetImageTrainingMode({
-        supportVlm,
-        supportImageIndex,
-        imageId: data.imageId,
-        hasMarkdownImages
-      });
+      const mode = context.synonymVersion
+        ? TrainingModeEnum.chunk
+        : getDatasetImageTrainingMode({
+            supportVlm,
+            supportImageIndex,
+            imageId: data.imageId,
+            hasMarkdownImages
+          });
 
       await MongoDatasetTraining.create(
         [

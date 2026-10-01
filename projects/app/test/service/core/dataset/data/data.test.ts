@@ -649,6 +649,65 @@ describe('Dataset data service', () => {
       );
     });
 
+    it('should reuse vectors and full-text data when synonym transformations are unchanged', async () => {
+      const { root, dataset, data } = await createMongoData({
+        q: 'buy mobile',
+        a: 'mobile guide',
+        indexes: [
+          { type: DatasetDataIndexTypeEnum.default, text: 'buy mobile', dataId: 'question_old' },
+          { type: DatasetDataIndexTypeEnum.default, text: 'mobile guide', dataId: 'answer_old' }
+        ]
+      });
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 2,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      await MongoDatasetSynonymMapping.create(
+        [1, 2].map((fileVersion) => ({
+          logicalMappingId: new Types.ObjectId(),
+          teamId: root.teamId,
+          datasetId: dataset._id,
+          synonymFileId: synonym._id,
+          fileVersion,
+          standardizedTerm: 'phone',
+          normalizedStandardizedTerm: 'phone',
+          synonymTerms: ['mobile'],
+          normalizedSynonymTerms: ['mobile'],
+          allTerms: 'phone mobile',
+          fingerprint: `phone-${fileVersion}`
+        }))
+      );
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        { $set: { synonymVersion: 1, synonymRebuildingVersion: 2 } }
+      );
+
+      const result = await updateDatasetDataByIndexes({
+        dataId: String(data._id),
+        q: 'buy mobile',
+        a: 'mobile guide',
+        indexes: [],
+        model: embeddingModel,
+        indexSize: 50,
+        optimizeSynonymRebuild: true
+      });
+
+      const updatedData = await MongoDatasetData.findById(data._id).lean();
+      const updatedText = await MongoDatasetDataText.findOne({ dataId: data._id }).lean();
+      expect(result.tokens).toBe(0);
+      expect(mockVectorInsert).not.toHaveBeenCalled();
+      expect(updatedData?.indexes.map(({ dataId }) => dataId)).toEqual([
+        'question_old',
+        'answer_old'
+      ]);
+      expect(updatedData).toMatchObject({ synonymVersion: 2 });
+      expect(updatedData).not.toHaveProperty('synonymRebuildingVersion');
+      expect(updatedText?.fullTextToken).toBe('old token');
+    });
+
     it('should preserve concurrent edits and clean replacement vectors when rebuild CAS fails', async () => {
       const { root, dataset, data } = await createMongoData();
       await MongoDatasetSynonym.create({

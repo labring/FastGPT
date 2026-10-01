@@ -22,6 +22,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   assertDatasetSynonymEnabled,
+  cleanupUnusedDatasetSynonymMappings,
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
 import { seedDatasetRebuildTasks } from '../queues/rebuild';
@@ -205,15 +206,6 @@ export const createDatasetSynonymMutation = async ({
       throw new Error('同义词配置已变化，请刷新页面后重试');
     }
 
-    await MongoDatasetSynonymMapping.deleteMany(
-      {
-        teamId,
-        datasetId,
-        fileVersion: { $ne: fileVersion }
-      },
-      { session }
-    );
-
     const affectedDataCount = await MongoDatasetData.countDocuments({
       teamId,
       datasetId,
@@ -236,6 +228,10 @@ export const createDatasetSynonymMutation = async ({
     return affectedDataCount;
   });
   invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
+
+  if (affectedDataCount === 0) {
+    await cleanupUnusedDatasetSynonymMappings({ teamId, datasetId, activeVersion: fileVersion });
+  }
 
   return {
     synonymId: String(synonymId),

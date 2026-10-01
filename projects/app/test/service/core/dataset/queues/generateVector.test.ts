@@ -334,7 +334,7 @@ describe('dataset rebuild queue', () => {
     ).resolves.toBe(orphanCollectionIds.length);
   });
 
-  it('uses image training modes for synonym rebuilds', async () => {
+  it('skips image parsing for synonym rebuilds', async () => {
     const teamId = new Types.ObjectId();
     const tmbId = new Types.ObjectId();
     const datasetId = new Types.ObjectId();
@@ -368,7 +368,7 @@ describe('dataset rebuild queue', () => {
     });
 
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.imageParse,
+      mode: TrainingModeEnum.chunk,
       synonymVersion: 2,
       q: '',
       indexes: []
