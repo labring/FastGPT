@@ -29,7 +29,9 @@ redis.call("expire", KEYS[1], ARGV[4])
 return 1
 `;
 
-const SandboxPreviewSandboxIdSchema = z.string().regex(/^(?:app|skilledit)-[a-f0-9]{16}$/);
+const SandboxPreviewSandboxIdSchema = z
+  .string()
+  .regex(/^(?:app|workflowbuilder|skilledit)-[a-f0-9]{16}$/);
 const SandboxPreviewSessionIdSchema = z
   .string()
   .length(SANDBOX_PREVIEW_SESSION_ID_LENGTH)

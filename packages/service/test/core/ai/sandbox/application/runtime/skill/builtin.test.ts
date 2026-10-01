@@ -103,6 +103,64 @@ describe('builtin skill runtime', () => {
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
     expect(sandbox.readFiles).toHaveBeenCalledWith(['/home/sandbox/.fastgpt/runtime/state.json']);
   });
+
+  it('reinjects builtin skills after Sandbox recreation clears HOME and runtime state', async () => {
+    const sources = [
+      {
+        name: 'skill-creator',
+        files: createBuiltinSkillSourceFiles()
+      }
+    ];
+    const files = new Map<string, Buffer>();
+    const sandbox = {
+      readFiles: vi.fn(async (paths: string[]) =>
+        paths.map((path) => {
+          const content = files.get(path);
+          return content
+            ? { path, content, error: null }
+            : { path, content: Buffer.alloc(0), error: new Error('not found') };
+        })
+      ),
+      createDirectories: vi.fn(async () => undefined),
+      listDirectory: vi.fn(async () => []),
+      deleteDirectories: vi.fn(async () => undefined),
+      deleteFiles: vi.fn(async () => []),
+      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer | string }>) =>
+        entries.map((entry) => {
+          const content = Buffer.isBuffer(entry.data) ? entry.data : Buffer.from(entry.data);
+          files.set(entry.path, content);
+          return { path: entry.path, bytesWritten: content.byteLength, error: null };
+        })
+      )
+    };
+    const skillPath = '/home/sandbox/.fastgpt/skills/skill-creator/SKILL.md';
+    const runtimeStatePath = '/home/sandbox/.fastgpt/runtime/state.json';
+
+    await syncBuiltinSkillsToSandbox({
+      sandbox: sandbox as any,
+      homeDirectory: '/home/sandbox',
+      sources
+    });
+    expect(files.has(skillPath)).toBe(true);
+    expect(files.has(runtimeStatePath)).toBe(true);
+
+    // OpenSandbox 只持久化 workspace；容器重建会同时清空 HOME Skill 和 runtime state。
+    files.clear();
+
+    await syncBuiltinSkillsToSandbox({
+      sandbox: sandbox as any,
+      homeDirectory: '/home/sandbox',
+      sources
+    });
+
+    expect(files.has(skillPath)).toBe(true);
+    expect(files.has(runtimeStatePath)).toBe(true);
+    expect(
+      sandbox.writeFiles.mock.calls.filter(([entries]) =>
+        entries.some((entry) => entry.path === skillPath)
+      )
+    ).toHaveLength(2);
+  });
 });
 
 function createBuiltinSkillSourceFiles() {

@@ -8,13 +8,14 @@ import {
   useInteractiveChoiceCollapse
 } from '../Interactive/InteractiveChoiceCollapse';
 import InteractiveCard from './InteractiveCard';
-import { onSendPrompt } from './utils';
+import { useChatInstanceActions } from '../../ChatContainer/context/chatInstanceActionsContext';
 
 const RenderUserSelectInteractive = React.memo(function RenderUserSelectInteractive({
   interactive
 }: {
   interactive: UserSelectInteractive;
 }) {
+  const { continueInteractive } = useChatInstanceActions();
   const [submittedAnswer, setSubmittedAnswer] = React.useState('');
   const effectiveAnswer = interactive.params.userSelectedVal || submittedAnswer;
   const {
@@ -41,7 +42,7 @@ const RenderUserSelectInteractive = React.memo(function RenderUserSelectInteract
           onSelect={(value) => {
             setSubmittedAnswer(value);
             collapseOptions();
-            onSendPrompt(value);
+            continueInteractive({ text: value });
           }}
         />
       )}

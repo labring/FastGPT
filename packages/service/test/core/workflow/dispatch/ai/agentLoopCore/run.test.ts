@@ -346,6 +346,149 @@ describe('runAgentLoopCore', () => {
     expect(result.assistantResponses).toEqual(eventTarget);
   });
 
+  it('keeps discarded buffered tool calls out of outward events and transcripts', async () => {
+    const forwardedEvents: any[] = [];
+    const privateCall = {
+      id: 'call_private',
+      type: 'function' as const,
+      function: {
+        name: 'sandbox_read_file',
+        arguments: '{"path":"/workspace/.fastgpt/workflow-builder/transaction/workflow.json"}'
+      }
+    };
+    const publicCall = {
+      id: 'call_public',
+      type: 'function' as const,
+      function: {
+        name: 'sandbox_read_file',
+        arguments: '{"path":"/workspace/research.txt"}'
+      }
+    };
+
+    runAgentLoopMock.mockImplementation(async ({ runtime }) => {
+      runtime.emitEvent({
+        type: 'llm_request_end',
+        requestIndex: 1,
+        modelName: 'gpt-4',
+        requestId: 'req_1',
+        finishReason: 'tool_calls',
+        toolCalls: [privateCall, publicCall],
+        seconds: 0.1
+      });
+      for (const call of [privateCall, publicCall]) {
+        runtime.emitEvent({
+          type: 'tool_call',
+          call: {
+            ...call,
+            function: { ...call.function, arguments: '' }
+          }
+        });
+        runtime.emitEvent({
+          type: 'tool_params',
+          callId: call.id,
+          argsDelta: call.function.arguments
+        });
+        runtime.emitEvent({ type: 'tool_run_start', call });
+        runtime.emitEvent({
+          type: 'tool_run_end',
+          call,
+          rawResponse: call === privateCall ? 'internal access denied' : 'public result',
+          response: call === privateCall ? 'internal access denied' : 'public result',
+          errorMessage: call === privateCall ? 'INTERNAL_ACCESS_DENIED' : undefined,
+          seconds: 0.1
+        });
+      }
+
+      return {
+        status: 'done',
+        completeMessages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: null,
+            tool_calls: [privateCall, publicCall]
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: privateCall.id,
+            content: 'internal access denied'
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: publicCall.id,
+            content: 'public result'
+          }
+        ],
+        assistantMessages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: privateCall.id,
+            content: 'internal access denied'
+          }
+        ],
+        requestIds: ['req_1'],
+        finishReason: 'stop',
+        usages: []
+      };
+    });
+
+    const result = await runAgentLoopCore({
+      input: { messages: [] },
+      runtime: {
+        llmParams: { model: 'gpt-4' },
+        toolCatalog: { runtimeTools: [] },
+        executeTool: vi.fn(),
+        emitEvent: (event) => forwardedEvents.push(event)
+      } as any,
+      bufferedToolEventFilter: {
+        shouldBuffer: (call) => call.function.name.startsWith('sandbox_'),
+        shouldDiscard: (call) => call.function.arguments.includes('/transaction/')
+      },
+      assistantResponses: {
+        getEventToolInfo: () => ({ name: 'Sandbox read file' })
+      }
+    });
+
+    expect(forwardedEvents).toHaveLength(5);
+    expect(forwardedEvents[0]).toEqual(
+      expect.objectContaining({
+        type: 'llm_request_end',
+        toolCalls: [publicCall]
+      })
+    );
+    const forwardedToolEvents = forwardedEvents.slice(1);
+    expect(
+      forwardedToolEvents.every((event) =>
+        event.type === 'tool_params'
+          ? event.callId === publicCall.id
+          : event.call?.id === publicCall.id
+      )
+    ).toBe(true);
+    expect(result.assistantResponses).toEqual([
+      expect.objectContaining({
+        id: publicCall.id,
+        tools: [
+          expect.objectContaining({
+            id: publicCall.id,
+            response: 'public result'
+          })
+        ]
+      })
+    ]);
+    expect(result.assistantMessages).toEqual([]);
+    expect(result.completeMessages).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: null,
+        tool_calls: [publicCall]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: publicCall.id,
+        content: 'public result'
+      }
+    ]);
+  });
+
   it('maps low-level paused result to workflow core interactive status', async () => {
     const ask = {
       reason: 'Need confirmation',

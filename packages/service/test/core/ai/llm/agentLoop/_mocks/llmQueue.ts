@@ -36,14 +36,17 @@ export const toolCall = ({
   id,
   name,
   args = {},
+  content,
   reasoning
 }: {
   id?: string;
   name: string;
   args?: string | Record<string, unknown>;
+  content?: string;
   reasoning?: string;
 }): LLMQueueItem => ({
   requestId: `req_${id || name}`,
+  answerText: content,
   finishReason: 'tool_calls',
   reasoningText: reasoning || '',
   toolCalls: [

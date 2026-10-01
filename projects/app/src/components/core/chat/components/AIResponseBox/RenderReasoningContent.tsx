@@ -66,8 +66,8 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
             >
               <MyIcon
                 name={'core/chat/deepThinking'}
-                w={'20px'}
-                h={'20px'}
+                w={'16px'}
+                h={'16px'}
                 fill={'myGray.500'}
                 display={'block'}
                 verticalAlign={'middle'}

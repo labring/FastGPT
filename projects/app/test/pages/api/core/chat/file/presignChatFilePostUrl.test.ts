@@ -325,6 +325,43 @@ describe('presignChatFilePostUrl', () => {
     );
   });
 
+  it('uses the server-owned Workflow Builder upload config', async () => {
+    mocks.authChatTargetCrud.mockResolvedValueOnce({
+      sourceType: ChatSourceTypeEnum.workflowBuilder,
+      sourceId: appId,
+      teamId: 'team-id',
+      uid: 'builder-user-id'
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        appId,
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        chatId
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId: appId,
+        chatId
+      })
+    );
+    expect(mocks.findAppById).not.toHaveBeenCalled();
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        sourceId: appId,
+        uId: 'builder-user-id',
+        allowedExtensions: expect.arrayContaining(['.txt', '.png', '.mp4', '.mp3'])
+      })
+    );
+  });
+
   it('uses resolved app source for shared chat upload', async () => {
     const resolvedAppId = '507f1f77bcf86cd799439099';
     mocks.authChatTargetCrud.mockResolvedValueOnce({

@@ -23,6 +23,8 @@ const expectedPaths = {
   '/proApi/system/model/collaborator/list': 'get',
   '/proApi/system/model/collaborator/update': 'post',
   '/core/ai/skill/copy': 'post',
+  '/core/ai/skill/debugChat': 'post',
+  '/proApi/core/ai/skill/debugChat': 'post',
   '/core/ai/skill/resumeInheritPermission': 'get',
   '/proApi/core/ai/skill/changeOwner': 'post',
   '/proApi/core/ai/skill/collaborator/list': 'get',
@@ -178,6 +180,9 @@ describe('AI OpenAPI contracts', () => {
     ]);
     expect(openAPIDocument.paths?.['/core/ai/skill/version/list']?.post?.tags).toEqual([
       DevApiTagsMap.skillVersion
+    ]);
+    expect(openAPIDocument.paths?.['/proApi/core/ai/skill/debugChat']?.post?.tags).toEqual([
+      DevApiTagsMap.skillDebug
     ]);
   });
 

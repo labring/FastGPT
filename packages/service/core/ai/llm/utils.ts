@@ -155,6 +155,7 @@ export const loadRequestMessages = async ({
   useVision = false,
   useAudio = false,
   useVideo = false,
+  forceMediaToBase64 = false,
   extractFiles,
   supportReason = false
 }: {
@@ -162,6 +163,7 @@ export const loadRequestMessages = async ({
   useVision?: boolean;
   useAudio?: boolean;
   useVideo?: boolean;
+  forceMediaToBase64?: boolean;
   extractFiles?: boolean;
   supportReason?: boolean;
 }) => {
@@ -292,10 +294,10 @@ export const loadRequestMessages = async ({
 
   /**
    * 判断媒体是否需要在服务端转 base64。
-   * 本地路径只有服务端能读取；MULTIPLE_DATA_TO_BASE64 用于兼容不支持远程 URL 的模型。
+   * 本地路径只有服务端能读取；调用方可对已鉴权私有文件按请求强制内联；环境变量则保留全局兼容开关。
    */
   const shouldLoadMediaAsBase64 = (url: string) =>
-    url.startsWith('/') || serviceEnv.MULTIPLE_DATA_TO_BASE64;
+    url.startsWith('/') || forceMediaToBase64 || serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
   /**
    * 仅从短文本中识别媒体 URL。普通文档 URL 仍作为文本保留，不在这里转成 LLM 媒体输入。
