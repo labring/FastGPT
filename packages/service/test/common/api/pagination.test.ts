@@ -1,9 +1,61 @@
 import { describe, it, expect } from 'vitest';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import type { NodeApiRequest } from '@fastgpt/service/types/http';
 
 describe('pagination.ts', () => {
   describe('parsePaginationRequest', () => {
+    it.each([
+      { body: { offset: 10 }, query: {}, offset: 10 },
+      { body: { pageNum: 3 }, query: {}, offset: 20 },
+      { body: { offset: 0 }, query: {}, offset: 0 },
+      { body: { pageNum: 1 }, query: {}, offset: 0 },
+      { body: {}, query: { offset: '10' }, offset: 10 },
+      { body: {}, query: { pageNum: '3' }, offset: 20 },
+      { body: {}, query: { offset: '0' }, offset: 0 },
+      { body: {}, query: { pageNum: '1' }, offset: 0 }
+    ])('省略 pageSize 时保留分页位置：%j', ({ body, query, offset }) => {
+      expect(parsePaginationRequest({ body, query } as NodeApiRequest)).toEqual({
+        pageSize: 10,
+        offset
+      });
+    });
+
+    it.each([
+      {
+        body: { offset: 10 },
+        query: { pageSize: '20', pageNum: '3' },
+        expected: { pageSize: 10, offset: 10 }
+      },
+      {
+        body: { pageNum: 3 },
+        query: { pageSize: '20', offset: '30' },
+        expected: { pageSize: 10, offset: 20 }
+      },
+      {
+        body: { offset: 0 },
+        query: { pageSize: '20', pageNum: '3' },
+        expected: { pageSize: 10, offset: 0 }
+      },
+      {
+        body: { pageSize: 20 },
+        query: { offset: '30' },
+        expected: { pageSize: 20, offset: 0 }
+      },
+      {
+        body: { searchText: 'example' },
+        query: { offset: '30' },
+        expected: { pageSize: 10, offset: 30 }
+      },
+      {
+        body: { searchText: 'example' },
+        query: { searchText: 'other' },
+        expected: { pageSize: 10, offset: 0 }
+      }
+    ])('整组选取分页参数，body 优先且不混用 query：%j', ({ body, query, expected }) => {
+      expect(parsePaginationRequest({ body, query } as NodeApiRequest)).toEqual(expected);
+    });
+
     it('应该从 body 中解析分页参数（使用 pageNum）', () => {
       const req = {
         body: {
