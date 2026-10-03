@@ -1,4 +1,4 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
 import type { getModelTestMap } from '@test/modelCache';
 import { setModelTestSnapshot, setModelTestMap } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

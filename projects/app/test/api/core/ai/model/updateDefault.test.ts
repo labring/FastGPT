@@ -16,10 +16,11 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
-  authSystemAdmin: mocks.authSystemAdmin
+  authSystemAdmin: mocks.authSystemAdmin,
+  authUserPer: vi.fn().mockResolvedValue({ isRoot: true, tmb: { permission: {} } })
 }));
 
-vi.mock('@fastgpt/service/core/ai/config/schema', () => ({
+vi.mock('@fastgpt/service/core/ai/model/schema', () => ({
   MongoAIModel: {
     find: vi.fn(() => ({ session: () => ({ lean: mocks.findLean }) }))
   }
@@ -29,16 +30,16 @@ vi.mock('@fastgpt/service/core/ai/defaultModel/entity', () => ({
   upsertSystemDefaultModelIds: mocks.upsertSystemDefaultModelIds
 }));
 
-vi.mock('@fastgpt/service/core/ai/config/utils', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog', () => ({
   updatedReloadSystemModel: mocks.updatedReloadSystemModel
 }));
 
-import handler from '@/pages/api/admin/system/model/updateDefault';
-vi.mock('@fastgpt/service/core/ai/config/entity', () => ({
+import handler from '@/pages/api/core/ai/model/updateDefault';
+vi.mock('@fastgpt/service/core/ai/model/entity', () => ({
   runSystemModelTransaction: (fn: (session: unknown) => Promise<unknown>) => fn(mocks.session)
 }));
 
-describe('PUT /api/admin/system/model/updateDefault', () => {
+describe('PUT /api/core/ai/model/updateDefault', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authSystemAdmin.mockResolvedValue(undefined);

@@ -15,7 +15,7 @@ import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCheckCoupon } from './hooks/checkCoupon';
 import SupportBot from './SupportBot';
-import { getAdminModelConfig } from '@/web/core/ai/config';
+import { getAdminModelConfig } from '@/web/core/ai/model/api';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { unlicensedAdminRoutes } from '@/components/admin/constants';

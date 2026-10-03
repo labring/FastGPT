@@ -1,5 +1,5 @@
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { putUpdateDefaultModels } from '@/web/core/ai/config';
+import { putUpdateDefaultModels } from '@/web/core/ai/model/api';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
@@ -117,7 +117,7 @@ const DefaultModelModal = ({
   const { runAsync, loading } = useRequest(putUpdateDefaultModels, {
     onSuccess: () => {
       onClose();
-      void Promise.resolve(onSuccess()).catch(() => {});
+      onSuccess();
     },
     successToast: t('common:update_success')
   });

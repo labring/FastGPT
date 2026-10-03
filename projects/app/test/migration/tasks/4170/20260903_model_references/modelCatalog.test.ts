@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoAIModel } from '@fastgpt/service/core/ai/config/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import { loadModelCatalog } from '@/migration/tasks/4170/20260903_model_references/modelCatalog';
 

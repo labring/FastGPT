@@ -1,5 +1,4 @@
 import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/channel';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Table,
   Thead,
@@ -31,13 +30,13 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import type { ChannelLogListItemType } from '@/global/aiproxy/type';
-import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
+import type { ChannelLogListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import ModelTabHeader from '../ModelTabHeader';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 
-type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
+type LogDetailType = Omit<ChannelLogListItem, 'model' | 'request_at'> & {
   channelName: string | number;
   model: React.JSX.Element;
   duration: number;
@@ -48,13 +47,19 @@ type LogDetailType = Omit<ChannelLogListItemType, 'model' | 'request_at'> & {
   request_body?: string;
   response_body?: string;
 };
-const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
+const ChannelLog = ({
+  Tab,
+  channelType = 'system'
+}: {
+  Tab: React.ReactNode;
+  channelType?: 'system' | 'team';
+}) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const { userInfo } = useUserStore();
-  const { getModelProvider, systemModelList } = useAdminModelConfig();
+  const { models: availableModels, getModelProvider } = useModelConfig({
+    channelType,
+    language: i18n.language
+  });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const isRoot = userInfo?.username === 'root';
   const [filterProps, setFilterProps] = useState<{
     request_id?: string;
     channelId?: string;
@@ -80,19 +85,20 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const { data: channelList = [] } = useRequest(
     async () => {
-      const res = (await getChannelList()).map((item) => ({
+      const res = (await getChannelList({ channelType })).map((item) => ({
         label: item.name,
         value: `${item.id}`
       }));
       return [{ label: t('common:All'), value: '' }, ...res];
     },
     {
-      manual: false
+      manual: false,
+      refreshDeps: [channelType]
     }
   );
 
   const modelList = useMemo(() => {
-    const res = systemModelList
+    const res = availableModels
       .map((item) => {
         const provider = getModelProvider(item.provider, i18n.language);
         return {
@@ -104,20 +110,21 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       })
       .sort((a, b) => a.order - b.order);
     return [{ label: t('common:All'), value: '' }, ...res];
-  }, [getModelProvider, i18n.language, systemModelList, t]);
+  }, [availableModels, getModelProvider, i18n.language, t]);
 
   const { data, isLoading, total, pageSize, Pagination } = usePagination(getChannelLog, {
     defaultPageSize: 20,
     pageSizeOptions: [20, 50, 100, 200],
     pageSizeCacheKey: 'config-model-channel-log',
-    refreshDeps: [filterProps],
+    refreshDeps: [filterProps, channelType],
     params: {
-      request_id: filterProps.request_id,
-      channel: filterProps.channelId,
-      model_name: filterProps.model,
-      code_type: filterProps.code_type,
-      start_timestamp: filterProps.dateRange.from?.getTime() || 0,
-      end_timestamp: filterProps.dateRange.to?.getTime() || 0
+      channelType,
+      requestId: filterProps.request_id,
+      channelId: filterProps.channelId ? Number(filterProps.channelId) : undefined,
+      modelName: filterProps.model,
+      codeType: filterProps.code_type,
+      startTimestamp: filterProps.dateRange.from?.getTime() || 0,
+      endTimestamp: filterProps.dateRange.to?.getTime() || 0
     },
     scrollContainerRef
   });
@@ -129,7 +136,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 
       const channelName = channelList.find((channel) => channel.value === `${item.channel}`)?.label;
 
-      const model = systemModelList.find((model) => model.model === item.model);
+      const model = availableModels.find((m) => m.model === item.model);
       const provider = getModelProvider(model?.provider, i18n.language);
 
       return {
@@ -146,14 +153,14 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         ttfb_milliseconds: item.ttfb_milliseconds ? item.ttfb_milliseconds / 1000 : 0
       };
     });
-  }, [channelList, data, getModelProvider, i18n.language, systemModelList]);
+  }, [availableModels, channelList, data, getModelProvider, i18n.language]);
 
   const [logDetail, setLogDetail] = useState<LogDetailType>();
 
   return (
     <>
       <MyBox display={'flex'} flex={'1 0 0'} h={0} minH={0} flexDirection={'column'} gap={4}>
-        {isRoot && <ModelTabHeader Tab={Tab} />}
+        <ModelTabHeader Tab={Tab} />
         <Flex
           px={6}
           flexDirection={['column', 'row']}
@@ -305,7 +312,13 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         </MyBox>
       </MyBox>
 
-      {!!logDetail && <LogDetail data={logDetail} onClose={() => setLogDetail(undefined)} />}
+      {!!logDetail && (
+        <LogDetail
+          data={logDetail}
+          channelType={channelType}
+          onClose={() => setLogDetail(undefined)}
+        />
+      )}
     </>
   );
 };
@@ -335,13 +348,21 @@ const LogDetailContainer = ({ children, ...props }: { children: React.ReactNode 
   );
 };
 
-const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void }) => {
+const LogDetail = ({
+  data,
+  channelType = 'system',
+  onClose
+}: {
+  data: LogDetailType;
+  channelType?: 'system' | 'team';
+  onClose: () => void;
+}) => {
   const { t } = useClientTranslation('config_model');
   const { data: detailData } = useRequest(
     async () => {
       if (data.code === 200) return data;
       try {
-        const res = await getLogDetail(data.id);
+        const res = await getLogDetail(data.id, channelType);
         return {
           ...res,
           ...data

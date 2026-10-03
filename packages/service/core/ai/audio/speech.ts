@@ -1,5 +1,6 @@
 import type { NodeHttpResponse } from '../../../types/http';
-import { getAIApi } from '../config';
+import { getAIApi, getModelOpenAIOptions } from '../config';
+import { normalizeRelayNoChannelError } from '../channel/error';
 import { Readable } from 'stream';
 import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
@@ -20,25 +21,26 @@ export async function text2Speech({
   voice: string;
   speed?: number;
 }) {
-  const { ai } = getAIApi();
-  const response = await ai.audio.speech.create(
-    {
-      model: model.model,
-      // @ts-ignore
-      voice,
-      input,
-      response_format: 'mp3',
-      speed
-    },
-    model.requestUrl
-      ? {
-          path: model.requestUrl,
-          headers: {
-            ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {})
-          }
-        }
-      : {}
-  );
+  const { ai, requestMeta } = getAIApi();
+  let response;
+  try {
+    response = await ai.audio.speech.create(
+      {
+        model: model.model,
+        // @ts-ignore
+        voice,
+        input,
+        response_format: 'mp3',
+        speed
+      },
+      getModelOpenAIOptions({
+        model,
+        baseUrl: requestMeta.baseUrl
+      })
+    );
+  } catch (e) {
+    throw normalizeRelayNoChannelError(e);
+  }
 
   if (!response.body) {
     throw new Error('Response body is empty');

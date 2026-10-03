@@ -1,7 +1,8 @@
 import { getModelHandle } from '../model';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 
-import { getAxiosConfig } from '../config';
+import { getModelAxiosConfig } from '../config';
+import { normalizeRelayNoChannelError } from '../channel/error';
 import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -101,11 +102,13 @@ export async function reRankRecall({
   // documentsTextArray 要跟 expandedDocuments 的顺序一致
   const documentsTextArray = expandedDocuments.map((doc) => doc.text);
 
-  const { baseUrl, authorization } = getAxiosConfig();
+  const axiosConfig = getModelAxiosConfig({
+    model,
+    defaultPath: '/rerank',
+    headers
+  });
   const start = Date.now();
 
-  // 模型的请求 url，允许是内网
-  const requestUrl = model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`;
   const requestBody = {
     model: model.model,
     query,
@@ -115,11 +118,8 @@ export async function reRankRecall({
 
   onRequestStart?.();
   const apiResult = await axiosWithoutSSRF
-    .post<PostReRankResponse>(requestUrl, requestBody, {
-      headers: {
-        Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization,
-        ...headers
-      },
+    .post<PostReRankResponse>(axiosConfig.url, requestBody, {
+      headers: axiosConfig.headers,
       timeout: timeoutMs ?? 30000,
       signal
     })
@@ -167,7 +167,7 @@ export async function reRankRecall({
     })
     .catch((err) => {
       logger.error('Rerank request failed', { error: err });
-      return Promise.reject(err);
+      return Promise.reject(normalizeRelayNoChannelError(err));
     });
 
   return {

@@ -2,9 +2,10 @@ import type {
   SystemModelDataType,
   SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { postSystemModel, putSystemModel } from '@/web/core/ai/config';
-import { UpdateSystemModelBodySchema } from '@fastgpt/global/openapi/admin/system/model/api';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { postCreateModel, putUpdateModel } from '@/web/core/ai/model/api';
+import { getChannelList, putChannel } from '@/web/core/ai/channel';
+import { UpdateModelBodySchema } from '@fastgpt/global/openapi/core/ai/model/api';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 
 /** 保留完整未保存草稿，仅规范测试接口要求的模型标识和回退别名。 */
@@ -25,34 +26,69 @@ export const prepareDraftSystemModelForTest = (
   return draft;
 };
 
-/** 新建模型只调用创建接口，入参类型从结构上排除 modelId。 */
-export const submitCreatedSystemModel = ({
+/** 新建模型只调用创建接口，若指定了关联渠道，则同步渠道关联。 */
+export const submitCreatedSystemModel = async ({
   modelData,
+  channelType,
   channelIds
 }: {
   modelData: SystemModelDocumentDataType;
-  channelIds: number[];
-}) => postSystemModel({ modelData: normalizeModelPricingForSave(modelData), channelIds });
+  channelType?: 'system' | 'team';
+  channelIds?: number[];
+}) => {
+  const resolvedChannelType =
+    channelType ?? (modelData.scope === ModelScopeEnum.team ? 'team' : 'system');
+  const res = await postCreateModel({
+    modelData: normalizeModelPricingForSave(modelData),
+    channelType: resolvedChannelType
+  });
 
-/** 编辑参数与渠道作为同一次请求预检，服务端统一编排外部绑定和模型写入。 */
+  if (channelIds && channelIds.length > 0) {
+    try {
+      const channels = await getChannelList({ channelType: resolvedChannelType, pageSize: 1000 });
+      const targetSet = new Set(channelIds);
+      const modelName = modelData.model.trim();
+      const toUpdate = channels.filter(
+        (c) => targetSet.has(c.id) && !c.models?.includes(modelName)
+      );
+      await Promise.all(
+        toUpdate.map((c) =>
+          putChannel({
+            ...c,
+            models: Array.from(new Set([...(c.models || []), modelName])),
+            channelType: resolvedChannelType
+          })
+        )
+      );
+    } catch (_error) {
+      // 容错：渠道更新失败不阻断模型已成功创建的主流程
+    }
+  }
+
+  return res;
+};
+
+/** 编辑参数只按 modelId 更新已有模型的可编辑配置。 */
 export const submitUpdatedSystemModel = async ({
   modelId,
   modelData,
-  channelIds
+  channelType
 }: {
   modelId: SystemModelDataType['modelId'];
   modelData: SystemModelDocumentDataType;
-  channelIds: number[];
+  channelType?: 'system' | 'team';
 }) => {
   const normalizedModelData = normalizeModelPricingForSave(modelData);
 
-  const input = UpdateSystemModelBodySchema.parse({
+  const resolvedChannelType =
+    channelType ?? (modelData.scope === ModelScopeEnum.team ? 'team' : 'system');
+  const input = UpdateModelBodySchema.parse({
     modelId,
     modelData: {
       ...normalizedModelData,
       model: normalizedModelData.model.trim()
     },
-    channelIds
+    channelType: resolvedChannelType
   });
-  await putSystemModel(input);
+  await putUpdateModel({ ...input, channelType: resolvedChannelType });
 };

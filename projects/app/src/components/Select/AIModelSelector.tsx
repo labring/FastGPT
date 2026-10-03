@@ -7,11 +7,12 @@ import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { Box, Flex } from '@chakra-ui/react';
 import type { ResponsiveValue } from '@chakra-ui/system';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type { MyModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import MyTag from '@fastgpt/web/components/common/Tag';
 import type { SelectProps } from '@fastgpt/web/components/common/MySelect';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import type { ListItemType } from '@fastgpt/web/components/common/MySelect/type';
@@ -62,7 +63,9 @@ const ModelLabel = ({
   noOfLines?: ResponsiveValue<number>;
   showTags?: boolean;
 }) => {
+  const { t } = useTranslation('config_model');
   const multimodalEmbedding = model.type === ModelTypeEnum.embedding && !!model.config.vision;
+  const isSystem = model.scope === ModelScopeEnum.system;
   return (
     <Flex
       data-preserve-width
@@ -92,8 +95,13 @@ const ModelLabel = ({
           </Box>
         </MyTooltip>
       </Flex>
-      {showTags && (model.testMode || multimodalEmbedding) && (
+      {showTags && (
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
+          {isSystem && (
+            <MyTag type={'borderFill'} colorSchema={'gray'} fontSize={'xs'} px={1.5} py={0.5}>
+              {t('system_model_tag')}
+            </MyTag>
+          )}
           {model.testMode && <TestModeBetaTag />}
           {multimodalEmbedding && <MultimodalTag />}
         </Flex>

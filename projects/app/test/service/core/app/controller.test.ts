@@ -30,7 +30,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
+import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 
 const mocks = vi.hoisted(() => ({
