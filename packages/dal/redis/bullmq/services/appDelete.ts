@@ -16,7 +16,7 @@ const appDeleteQueueOptions = {
       delay: 5000
     },
     removeOnComplete: true,
-    removeOnFail: { age: 30 * 24 * 60 * 60 }
+    removeOnFail: { count: 10000 }
   }
 };
 
@@ -34,7 +34,6 @@ export class AppDeleteMQService {
     return this.binding.getWorker<AppDeleteJobData>(QueueNames.appDelete, processor, {
       concurrency: 1,
       removeOnFail: {
-        age: 90 * 24 * 60 * 60,
         count: 10000
       }
     });

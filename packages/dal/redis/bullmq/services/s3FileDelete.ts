@@ -12,8 +12,7 @@ export type S3MQJobData = {
 const s3DeleteJobOptions = {
   attempts: 10,
   removeOnFail: {
-    count: 10000,
-    age: 14 * 24 * 60 * 60
+    count: 10000
   },
   removeOnComplete: true,
   backoff: {

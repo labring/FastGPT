@@ -44,7 +44,7 @@ vi.mock('@fastgpt/dal/redis/bullmq', () => {
                 delay: 5000
               },
               removeOnComplete: true,
-              removeOnFail: { age: 30 * 24 * 60 * 60 }
+              removeOnFail: { count: 10000 }
             }
           })
           .add('delete_app', data, {
@@ -105,7 +105,7 @@ describe('App Delete Queue', () => {
             delay: 5000
           },
           removeOnComplete: true,
-          removeOnFail: { age: 30 * 24 * 60 * 60 }
+          removeOnFail: { count: 10000 }
         }
       });
 
