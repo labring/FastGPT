@@ -1,4 +1,6 @@
 import { axiosWithoutSSRF } from '../../common/api/axios';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getAIProxyAdminConfig } from './config';
 import {
   AIPROXY_LIST_PAGE_SIZE,
@@ -66,19 +68,29 @@ export class AIProxyClient {
   ): Promise<T> {
     const { baseUrl, token } = this.getConfig();
 
-    const res = await axiosWithoutSSRF({
-      method,
-      url: `${baseUrl}${url}`,
-      data: body,
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 10000
-    });
+    try {
+      const res = await axiosWithoutSSRF({
+        method,
+        url: `${baseUrl}${url}`,
+        data: body,
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
+      });
 
-    const envelope = res.data as AiproxyEnvelope<T>;
-    if (envelope.success === false) {
-      throw new Error(envelope.message || 'aiproxy request failed');
+      const envelope = res.data as AiproxyEnvelope<T>;
+      if (envelope.success === false) {
+        throw new Error(envelope.message || 'aiproxy request failed');
+      }
+      return envelope.data as T;
+    } catch (error: any) {
+      if (
+        error?.response?.status === 404 ||
+        /record not found/i.test(error?.response?.data?.message ?? '')
+      ) {
+        return Promise.reject(ModelErrEnum.channelNotExist);
+      }
+      return Promise.reject(getErrText(error));
     }
-    return envelope.data as T;
   }
 
   public get<T>(url: string) {

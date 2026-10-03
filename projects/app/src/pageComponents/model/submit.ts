@@ -4,7 +4,7 @@ import type {
 } from '@fastgpt/global/core/ai/model/schema';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { postCreateModel, putUpdateModel } from '@/web/core/ai/model/api';
-import { syncModelChannelAssociation } from '@/web/core/ai/channel';
+import { getChannelList, putChannel } from '@/web/core/ai/channel';
 import { UpdateModelBodySchema } from '@fastgpt/global/openapi/core/ai/model/api';
 import { normalizeModelPricingForSave } from '@fastgpt/global/core/ai/model/pricing';
 
@@ -26,7 +26,7 @@ export const prepareDraftSystemModelForTest = (
   return draft;
 };
 
-/** 新建模型只调用创建接口，入参类型从结构上排除 modelId。若指定了关联渠道，则同步渠道关联。 */
+/** 新建模型只调用创建接口，若指定了关联渠道，则同步渠道关联。 */
 export const submitCreatedSystemModel = async ({
   modelData,
   channelType,
@@ -44,14 +44,25 @@ export const submitCreatedSystemModel = async ({
   });
 
   if (channelIds && channelIds.length > 0) {
-    await Promise.resolve(
-      syncModelChannelAssociation({
-        modelName: modelData.model.trim(),
-        currentChannelIds: [],
-        nextChannelIds: channelIds,
-        channelType: resolvedChannelType
-      })
-    ).catch(() => {});
+    try {
+      const channels = await getChannelList({ channelType: resolvedChannelType, pageSize: 1000 });
+      const targetSet = new Set(channelIds);
+      const modelName = modelData.model.trim();
+      const toUpdate = channels.filter(
+        (c) => targetSet.has(c.id) && !c.models?.includes(modelName)
+      );
+      await Promise.all(
+        toUpdate.map((c) =>
+          putChannel({
+            ...c,
+            models: Array.from(new Set([...(c.models || []), modelName])),
+            channelType: resolvedChannelType
+          })
+        )
+      );
+    } catch (_error) {
+      // 容错：渠道更新失败不阻断模型已成功创建的主流程
+    }
   }
 
   return res;

@@ -14,8 +14,7 @@ import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import DataTableComponent from './DataTableComponent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -70,14 +69,10 @@ const ModelDashboard = ({
   const { t, i18n } = useClientTranslation('config_model');
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
-  const isTeam = channelType === 'team';
-  const { getModelProvider: getAdminModelProvider, systemModelList } = useAdminModelConfig({
-    manual: isTeam
+  const { models: availableModels, getModelProvider } = useModelConfig({
+    channelType,
+    language: i18n.language
   });
-  const { modelList: memberModelList, getModelProvider: getMemberModelProvider } =
-    useUserModelStore();
-  const availableModels = isTeam ? memberModelList : systemModelList;
-  const getModelProvider = isTeam ? getMemberModelProvider : getAdminModelProvider;
 
   const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
 

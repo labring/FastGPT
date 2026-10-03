@@ -48,7 +48,7 @@ const JsonModelConfigModal = ({
               await putUpdateWithJson({ config: data });
               toast({ title: t('common:update_success'), status: 'success' });
               onClose();
-              void onSuccess().catch(() => {});
+              onSuccess();
             }}
           />
         </>

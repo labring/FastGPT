@@ -15,8 +15,16 @@ import type {
   UpdateModelBody,
   UpdateModelStatusBody,
   UpdateDefaultModelsBody,
-  UpdateSystemModelsWithJsonBody
+  UpdateSystemModelsWithJsonBody,
+  GetSystemModelsResponse,
+  GetModelCatalogResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
+import type {
+  CollaboratorListType,
+  UpdateClbPermissionProps
+} from '@fastgpt/global/support/permission/collaborator';
+import type { ModelCollaboratorBatchListResponse } from '@fastgpt/global/support/permission/model/controller.schema';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type {
   GetModelStatusResponse,
   ModelStatusProbeConfigResponse,
@@ -111,3 +119,43 @@ export const postModelStatusProbe = () =>
 /** 测试模型状态告警 Webhook 连通性 */
 export const postTestModelStatusWebhook = (data: TestModelStatusWebhookBody) =>
   POST<TestModelStatusWebhookResponse>(`${adminModelPath}/status/testWebhook`, data);
+
+/* ═══ 4. 公开目录与协作者权限 (/core/ai/model/*, /proApi/system/model/collaborator/*) ═══ */
+
+export const getPublicModelList = () =>
+  GET<GetSystemModelsResponse>(`${coreModelPath}/list`, undefined, {
+    deduplicate: true
+  }).then((res) => res.models);
+
+export const getPublicModelCatalog = () =>
+  GET<GetSystemModelsResponse>(`${coreModelPath}/list`, undefined, { deduplicate: true });
+
+export const getUserModelCatalog = ({
+  version,
+  outLinkAuthData
+}: {
+  version?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+} = {}) =>
+  GET<GetModelCatalogResponse>(
+    `${coreModelPath}/catalog`,
+    {
+      version,
+      outLinkAuthData: outLinkAuthData ? JSON.stringify(outLinkAuthData) : undefined
+    },
+    { deduplicate: true }
+  );
+
+export const getModelCollaborators = (modelId: string) =>
+  GET<CollaboratorListType>('/proApi/system/model/collaborator/list', {
+    modelId
+  });
+
+export const getBatchModelCollaborators = (modelIds: string[]) =>
+  POST<ModelCollaboratorBatchListResponse>('/proApi/system/model/collaborator/batchList', {
+    modelIds
+  });
+
+export const updateModelCollaborators = (
+  props: UpdateClbPermissionProps & { modelIds: string[] }
+) => POST('/proApi/system/model/collaborator/update', props);

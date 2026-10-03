@@ -14,8 +14,7 @@ import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/a
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useLockFn } from 'ahooks';
@@ -50,26 +49,12 @@ const EditChannelModal = ({
   onSuccess: (createdChannelId?: number) => unknown | Promise<unknown>;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const isTeam = channelType === 'team';
-  const { aiproxyChannels: systemStoreAIProxyChannels } = useSystemStore();
   const {
-    aiproxyChannels: adminAIProxyChannels,
-    getModelProvider: getAdminModelProvider,
-    systemModelList,
+    aiproxyChannels,
+    getModelProvider,
+    models: availableModels,
     loading: loadingModels
-  } = useAdminModelConfig({ manual: isTeam });
-  const {
-    modelList: memberModelList,
-    modelProviders: memberModelProviders,
-    getModelProvider: getMemberModelProvider
-  } = useUserModelStore();
-  const aiproxyChannels = isTeam
-    ? systemStoreAIProxyChannels
-    : adminAIProxyChannels.length > 0
-      ? adminAIProxyChannels
-      : systemStoreAIProxyChannels;
-  const getModelProvider = isTeam ? getMemberModelProvider : getAdminModelProvider;
-  const availableModels = isTeam ? memberModelList : systemModelList;
+  } = useModelConfig({ channelType, language: i18n.language });
   const isEdit = defaultConfig.id !== 0;
   const currentModels = fixedModels ?? (fixedModel ? [fixedModel] : []);
   const isCompactCreate = !isEdit && currentModels.length > 0;

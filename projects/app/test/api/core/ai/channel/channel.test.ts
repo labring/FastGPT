@@ -10,6 +10,7 @@ const aiproxyMocks = vi.hoisted(() => {
   const groupDelete = vi.fn();
   const groupUpdateStatus = vi.fn();
   const groupGet = vi.fn();
+  const groupListAll = vi.fn().mockResolvedValue([]);
 
   const systemCreate = vi.fn();
   const systemUpdate = vi.fn();
@@ -18,6 +19,7 @@ const aiproxyMocks = vi.hoisted(() => {
   const systemBatchDelete = vi.fn();
   const systemBatchUpdateStatus = vi.fn();
   const systemGet = vi.fn();
+  const systemListAll = vi.fn().mockResolvedValue([]);
 
   const globalGroupGet = vi.fn();
 
@@ -29,7 +31,8 @@ const aiproxyMocks = vi.hoisted(() => {
       delete: groupDelete,
       updateStatus: groupUpdateStatus,
       batchDelete: groupBatchDelete,
-      batchUpdateStatus: groupBatchUpdateStatus
+      batchUpdateStatus: groupBatchUpdateStatus,
+      listAll: groupListAll
     }
   }));
 
@@ -41,6 +44,7 @@ const aiproxyMocks = vi.hoisted(() => {
     systemUpdateStatus,
     systemBatchDelete,
     systemBatchUpdateStatus,
+    systemListAll,
     groupGet,
     groupCreate,
     groupUpdate,
@@ -48,6 +52,7 @@ const aiproxyMocks = vi.hoisted(() => {
     groupUpdateStatus,
     groupBatchDelete,
     groupBatchUpdateStatus,
+    groupListAll,
     globalGroupGet,
     group
   };
@@ -62,7 +67,7 @@ import {
   getMemberChannelList,
   getSystemChannelList
 } from '@fastgpt/service/core/ai/channel/list';
-import { getChannelTypeMetas } from '@fastgpt/service/core/ai/channel/provider';
+import { getChannelTypeMetas } from '@fastgpt/service/core/ai/channel/service';
 import type { AiproxyGroupChannel } from '@fastgpt/service/thirdProvider/aiproxy/type';
 import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
 import { Call } from '@test/utils/request';
@@ -91,7 +96,8 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', async (importOriginal) 
           delete: aiproxyMocks.systemDelete,
           updateStatus: aiproxyMocks.systemUpdateStatus,
           batchDelete: aiproxyMocks.systemBatchDelete,
-          batchUpdateStatus: aiproxyMocks.systemBatchUpdateStatus
+          batchUpdateStatus: aiproxyMocks.systemBatchUpdateStatus,
+          listAll: aiproxyMocks.systemListAll
         }
       },
       globalGroupChannels: {
@@ -123,8 +129,8 @@ vi.mock('@fastgpt/service/core/ai/channel/list', async (importOriginal) => {
     getGlobalGroupChannelList: vi.fn()
   };
 });
-vi.mock('@fastgpt/service/core/ai/channel/provider', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/channel/provider')>();
+vi.mock('@fastgpt/service/core/ai/channel/service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/channel/service')>();
   return {
     ...actual,
     getChannelTypeMetas: vi.fn()
@@ -286,6 +292,19 @@ describe('POST /api/core/ai/channel/create (channelType declared by caller)', ()
       expect.objectContaining({ name: 'my channel' })
     );
     expect(aiproxyMocks.systemCreate).not.toHaveBeenCalled();
+  });
+
+  it('member creating a channel with an existing name is rejected with channelNameConflict', async () => {
+    memberWithCreatePer();
+    aiproxyMocks.groupListAll.mockResolvedValueOnce([{ id: 1, name: 'my channel' }]);
+
+    const res = await Call(createHandler, {
+      body: { channelType: 'team', name: 'my channel', type: 1, key: 'key', models: ['gpt-4o'] }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toBe('channelNameConflict');
+    expect(aiproxyMocks.groupCreate).not.toHaveBeenCalled();
   });
 
   it('member without create permission is rejected with unAuthChannel', async () => {

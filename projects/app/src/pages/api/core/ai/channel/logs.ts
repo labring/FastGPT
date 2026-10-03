@@ -1,7 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authModelScopeOperation } from '@fastgpt/service/support/permission/model/controller';
-import { normalizeAiproxyError } from '@fastgpt/service/core/ai/channel/error';
 import { searchChannelLogs } from '@fastgpt/service/core/ai/channel/observability';
 import { resolveChannelObservabilityScope } from '@fastgpt/service/core/ai/channel/resolve';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -29,13 +28,7 @@ async function handler(
     isRoot
   });
 
-  let result: GetChannelLogsResponse;
-  try {
-    result = await searchChannelLogs({ ...filters, channelId, groupId });
-  } catch (error) {
-    return Promise.reject(normalizeAiproxyError(error));
-  }
-
+  const result = await searchChannelLogs({ ...filters, channelId, groupId });
   return GetChannelLogsResponseSchema.parse(result);
 }
 

@@ -1,5 +1,5 @@
 import { getModelDetail } from '@/web/core/ai/model/api';
-import { diffModelChannels, getChannelList, putChannel } from '@/web/core/ai/channel';
+import { getChannelList, putChannel } from '@/web/core/ai/channel';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -82,15 +82,30 @@ export const useModelEditWorkflow = ({
   /** 即时关联已有渠道到当前模型并持久化到 AI Proxy */
   const associateChannels = async (nextSelectedIds: number[]) => {
     if (!detail) return;
-    const channels = await getChannelList({ channelType });
-    const currentAssociatedIds = detail.channels.filter((c) => c.isAssociated).map((c) => c.id);
+    const channels = await getChannelList({ channelType, pageSize: 1000 });
+    const currentAssociatedIds = new Set(
+      detail.channels.filter((c) => c.isAssociated).map((c) => c.id)
+    );
+    const nextSelectedSet = new Set(nextSelectedIds);
+    const modelName = detail.model.model;
 
-    const updates = diffModelChannels({
-      channels,
-      modelName: detail.model.model,
-      currentChannelIds: currentAssociatedIds,
-      nextChannelIds: nextSelectedIds
-    });
+    const toAdd = channels.filter(
+      (c) => nextSelectedSet.has(c.id) && !currentAssociatedIds.has(c.id)
+    );
+    const toRemove = channels.filter(
+      (c) => !nextSelectedSet.has(c.id) && currentAssociatedIds.has(c.id)
+    );
+
+    const updates = [
+      ...toAdd.map((c) => ({
+        ...c,
+        models: Array.from(new Set([...(c.models || []), modelName]))
+      })),
+      ...toRemove.map((c) => ({
+        ...c,
+        models: (c.models || []).filter((m) => m !== modelName)
+      }))
+    ];
 
     await Promise.all(updates.map((update) => putChannel({ ...update, channelType })));
 
@@ -111,11 +126,9 @@ export const useModelEditWorkflow = ({
   };
 
   /** 新建渠道成功后刷新 */
-  const refreshAfterChannelCreated = async () => {
-    await Promise.all([
-      refreshDetail().catch(() => {}),
-      Promise.resolve(onSuccess()).catch(() => {})
-    ]);
+  const refreshAfterChannelCreated = () => {
+    refreshDetail();
+    onSuccess();
   };
 
   const navigateToChannelManagement = () => {

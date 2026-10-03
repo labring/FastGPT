@@ -113,7 +113,7 @@ const ModelEditModal = ({
             onDirtyChange={setIsFormDirty}
             onSuccess={() => {
               onClose();
-              void Promise.resolve(onSuccess()).catch(() => {});
+              onSuccess();
             }}
             onSubmit={submitModel}
           />

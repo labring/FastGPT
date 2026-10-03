@@ -1,4 +1,4 @@
-import { getPublicModelCatalog } from '@/web/common/system/api';
+import { getPublicModelCatalog } from '@/web/core/ai/model/api';
 import { useModelList } from '@/web/core/ai/model/useModelList';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserStore } from '@/web/support/user/useUserStore';

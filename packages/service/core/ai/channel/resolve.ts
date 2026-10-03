@@ -3,7 +3,7 @@ import type { ChannelType } from '@fastgpt/global/openapi/core/ai/channel/api';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
 import type { AiproxyChannel, AiproxyGroupChannel } from '../../../thirdProvider/aiproxy/type';
 import { getMemberGroupId } from './utils';
-import { normalizeAiproxyError } from './error';
+import { isAiproxyNotFoundError } from './error';
 
 /**
  * 按渠道归属路由查找目标渠道（系统渠道或私有分组渠道）
@@ -18,16 +18,14 @@ const fetchOrMissing = async <T>(fetch: () => Promise<T>): Promise<T | undefined
   try {
     return await fetch();
   } catch (error) {
-    if (normalizeAiproxyError(error) === ModelErrEnum.channelNotExist) return undefined;
+    if (isAiproxyNotFoundError(error)) return undefined;
     throw error; // real aiproxy failure — propagate for the caller to normalize
   }
 };
 
 /**
- * Resolve a channel for a member/root operation by its declared kind. aiproxy
- * failures are normalized (404/500-not-found → channelNotExist, 401/403 →
- * unAuthChannel); an id that does not exist in the declared scope rejects with
- * ModelErrEnum.channelNotExist.
+ * Resolve a channel for a member/root operation by its declared kind.
+ * an id that does not exist in the declared scope rejects with ModelErrEnum.channelNotExist.
  */
 export const resolveChannelForOperation = async ({
   id,
@@ -40,27 +38,23 @@ export const resolveChannelForOperation = async ({
   tmbId: string;
   isRoot: boolean;
 }): Promise<ResolvedChannel> => {
-  try {
-    if (channelType === 'system') {
-      // Handlers reject non-root callers with rootOnlyPermit before this point.
-      const channel = await fetchOrMissing(() => aiProxyClient.system.channels.get(id));
-      if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
-      return { kind: 'system', channel };
-    }
-
-    if (!isRoot) {
-      const groupId = getMemberGroupId(tmbId);
-      const channel = await fetchOrMissing(() => aiProxyClient.group(groupId).channels.get(id));
-      if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
-      return { kind: 'group', channel, groupId };
-    }
-
-    const groupChannel = await fetchOrMissing(() => aiProxyClient.globalGroupChannels.get(id));
-    if (!groupChannel) return Promise.reject(ModelErrEnum.channelNotExist);
-    return { kind: 'group', channel: groupChannel, groupId: groupChannel.group_id };
-  } catch (error) {
-    return Promise.reject(normalizeAiproxyError(error));
+  if (channelType === 'system') {
+    // Handlers reject non-root callers with rootOnlyPermit before this point.
+    const channel = await fetchOrMissing(() => aiProxyClient.system.channels.get(id));
+    if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
+    return { kind: 'system', channel };
   }
+
+  if (!isRoot) {
+    const groupId = getMemberGroupId(tmbId);
+    const channel = await fetchOrMissing(() => aiProxyClient.group(groupId).channels.get(id));
+    if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
+    return { kind: 'group', channel, groupId };
+  }
+
+  const groupChannel = await fetchOrMissing(() => aiProxyClient.globalGroupChannels.get(id));
+  if (!groupChannel) return Promise.reject(ModelErrEnum.channelNotExist);
+  return { kind: 'group', channel: groupChannel, groupId: groupChannel.group_id };
 };
 
 /**

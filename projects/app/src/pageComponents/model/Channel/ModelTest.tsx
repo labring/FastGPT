@@ -11,8 +11,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
 type ModelTestItem = {
@@ -37,16 +36,11 @@ const ModelTest = ({
   onClose: () => void;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const isTeam = channelType === 'team';
   const {
-    getModelProvider: getAdminModelProvider,
-    systemModelList,
+    getModelProvider,
+    models: availableModels,
     loading: loadingModels
-  } = useAdminModelConfig({ manual: isTeam });
-  const { modelList: memberModelList, getModelProvider: getMemberModelProvider } =
-    useUserModelStore();
-  const availableModels = isTeam ? memberModelList : systemModelList;
-  const getModelProvider = isTeam ? getMemberModelProvider : getAdminModelProvider;
+  } = useModelConfig({ channelType, language: i18n.language });
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
 

@@ -80,16 +80,12 @@ export const postBatchUpdateChannelStatus = ({
 export const getChannelProviders = () =>
   GET<ProviderMetasResponse>('/core/ai/channel/providerMetas');
 
-/** FastGPT 渠道创建入口，创建前在目标 scope 内按展示名称检查重复 */
+/** FastGPT 渠道创建入口，重名校验由服务端统一执行 */
 export const postCreateChannel = async (
   data: CreateChannelProps & { channelType: 'system' | 'team'; priority?: number }
 ): Promise<void> => {
   const channelType = data.channelType;
   const name = data.name.trim();
-  const channels = await getChannelList({ channelType });
-  if (channels.some((channel) => channel.name.trim() === name)) {
-    return Promise.reject(i18nT('config_model:channel_name_duplicate'));
-  }
 
   return await POST<void>('/core/ai/channel/create', {
     channelType,
@@ -154,60 +150,6 @@ export const putChannel = (
     priority: Math.max(data.priority ?? 1, 1),
     sets: data.sets ?? undefined
   });
-};
-
-/** 计算模型与渠道关联的变更集合（纯函数，供关联同步编排复用） */
-export const diffModelChannels = <T extends Pick<ChannelListItem, 'id' | 'models'>>({
-  channels,
-  modelName,
-  currentChannelIds,
-  nextChannelIds
-}: {
-  channels: T[];
-  modelName: string;
-  currentChannelIds: number[];
-  nextChannelIds: number[];
-}): T[] => {
-  const currentSet = new Set(currentChannelIds);
-  const nextSet = new Set(nextChannelIds);
-
-  const toAdd = channels.filter((c) => nextSet.has(c.id) && !currentSet.has(c.id));
-  const toRemove = channels.filter((c) => !nextSet.has(c.id) && currentSet.has(c.id));
-
-  const updatesToAdd = toAdd.map((c) => ({
-    ...c,
-    models: Array.from(new Set([...(c.models || []), modelName]))
-  }));
-
-  const updatesToRemove = toRemove.map((c) => ({
-    ...c,
-    models: (c.models || []).filter((m) => m !== modelName)
-  }));
-
-  return [...updatesToAdd, ...updatesToRemove];
-};
-
-/** 同步模型与渠道的关联关系（批量增删关联渠道） */
-export const syncModelChannelAssociation = async ({
-  modelName,
-  currentChannelIds,
-  nextChannelIds,
-  channelType
-}: {
-  modelName: string;
-  currentChannelIds: number[];
-  nextChannelIds: number[];
-  channelType: 'system' | 'team';
-}) => {
-  const channels = await getChannelList({ channelType });
-  const updates = diffModelChannels({
-    channels,
-    modelName,
-    currentChannelIds,
-    nextChannelIds
-  });
-
-  return Promise.all(updates.map((update) => putChannel({ ...update, channelType })));
 };
 
 /** 删除指定渠道 */

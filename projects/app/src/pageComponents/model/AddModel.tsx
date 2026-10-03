@@ -392,7 +392,7 @@ export const BlankModelCreateModal = ({
             onDirtyChange={setIsFormDirty}
             onSuccess={() => {
               onClose();
-              void Promise.resolve(onSuccess()).catch(() => {});
+              onSuccess();
             }}
             onSubmit={async (data) => {
               await submitCreatedSystemModel({
@@ -441,8 +441,7 @@ export const BlankModelCreateModal = ({
             if (createdChannelId !== undefined) {
               setSelectedChannelIds((current) => new Set([...current, createdChannelId]));
             }
-            // 渠道已经创建成功，列表刷新失败不能把写入结果误报为创建失败。
-            await Promise.resolve(onSuccess()).catch(() => {});
+            onSuccess();
           }}
           onClose={() => setShowCreateChannel(false)}
         />
@@ -564,7 +563,7 @@ const TemplateCreateModal = ({
     {
       onSuccess: () => {
         onClose();
-        void onSuccess().catch(() => {});
+        onSuccess();
       },
       successToast: t('common:Success')
     }
@@ -838,7 +837,7 @@ const TemplateCreateModal = ({
                 current.includes(createdChannelId) ? current : [...current, createdChannelId]
               );
             }
-            await Promise.resolve(onRefresh?.()).catch(() => {});
+            onRefresh?.();
           }}
           onClose={() => setShowCreateChannel(false)}
         />

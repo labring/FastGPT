@@ -30,7 +30,7 @@ import {
   getMemberChannelList,
   getSystemChannelList
 } from '@fastgpt/service/core/ai/channel/list';
-import { normalizeAiproxyError } from '@fastgpt/service/core/ai/channel/error';
+import { isAiproxyNotFoundError } from '@fastgpt/service/core/ai/channel/error';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { resetChannelCache } from '@fastgpt/service/core/ai/channel/cache';
 import type {
@@ -348,27 +348,20 @@ describe('channel controller — permission helpers', () => {
   });
 });
 
-describe('channel controller — error normalization', () => {
-  it('maps aiproxy HTTP errors to ModelErrEnum', () => {
-    expect(normalizeAiproxyError({ response: { status: 404 } })).toBe(ModelErrEnum.channelNotExist);
-    expect(normalizeAiproxyError({ response: { status: 401 } })).toBe(ModelErrEnum.unAuthChannel);
-    expect(normalizeAiproxyError({ response: { status: 403 } })).toBe(ModelErrEnum.unAuthChannel);
-    // aiproxy single-fetch endpoints return 500 + gorm "record not found" for missing ids
+describe('channel controller — 404 not found detection', () => {
+  it('detects aiproxy 404 / record not found', () => {
+    expect(isAiproxyNotFoundError({ response: { status: 404 } })).toBe(true);
+    expect(isAiproxyNotFoundError(ModelErrEnum.channelNotExist)).toBe(true);
     expect(
-      normalizeAiproxyError({ response: { status: 500, data: { message: 'record not found' } } })
-    ).toBe(ModelErrEnum.channelNotExist);
-    // other 500s stay business errors
-    expect(
-      normalizeAiproxyError({ response: { status: 500, data: { message: 'boom' } } })
-    ).not.toBe(ModelErrEnum.channelNotExist);
+      isAiproxyNotFoundError({ response: { status: 500, data: { message: 'record not found' } } })
+    ).toBe(true);
+    expect(isAiproxyNotFoundError({ response: { status: 500, data: { message: 'boom' } } })).toBe(
+      false
+    );
+    expect(isAiproxyNotFoundError(new Error('invalid key'))).toBe(false);
   });
 
-  it('preserves business messages (e.g. invalid key) and plain errors', () => {
-    expect(normalizeAiproxyError(new Error('invalid key'))).toBe('invalid key');
-    expect(normalizeAiproxyError('plain failure')).toBe('plain failure');
-  });
-
-  it('controller functions reject with the normalized error', async () => {
+  it('controller functions reject with channelNotExist when 404', async () => {
     resetChannelCache(); // drop any buckets warmed by earlier tests
     axiosMock.mockRejectedValue({ response: { status: 404 } });
     await expect(getSystemChannelList()).rejects.toBe(ModelErrEnum.channelNotExist);

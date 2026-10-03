@@ -8,18 +8,12 @@ export enum ModelErrEnum {
   alreadyExists = 'modelAlreadyExists',
   probeTaskRunning = 'modelProbeTaskRunning',
   unAuthModel = 'unAuthModel',
-  canNotEditAdminPermission = 'canNotEditModelAdminPermission',
-  invalidModelId = 'invalidModelId',
   invalidModelConfig = 'invalidModelConfig',
-  modelIdConflict = 'modelIdConflict',
-  modelNameConflict = 'modelNameConflict',
-  systemModelReadonly = 'systemModelReadonly',
-  noFieldsToUpdate = 'noFieldsToUpdate',
   rootOnlyPermit = 'rootOnlyPermit',
   unAuthChannel = 'unAuthChannel',
   channelNotExist = 'channelNotExist',
-  noAvailableChannel = 'modelNoAvailableChannel',
-  modelDisabled = 'modelDisabled'
+  channelNameConflict = 'channelNameConflict',
+  noAvailableChannel = 'modelNoAvailableChannel'
 }
 
 const modelErrList = [
@@ -44,37 +38,8 @@ const modelErrList = [
     message: i18nT('common:code_error.model_error.un_auth_model')
   },
   {
-    statusText: ModelErrEnum.canNotEditAdminPermission,
-    message: i18nT('common:code_error.model_error.can_not_edit_admin_permission')
-  },
-  {
-    statusText: ModelErrEnum.invalidModelId,
-    message: i18nT('common:code_error.model_error.invalid_id'),
-    httpStatus: 400
-  },
-  {
     statusText: ModelErrEnum.invalidModelConfig,
     message: i18nT('common:code_error.model_error.invalid_config'),
-    httpStatus: 400
-  },
-  {
-    statusText: ModelErrEnum.modelIdConflict,
-    message: i18nT('common:code_error.model_error.id_conflict'),
-    httpStatus: 409
-  },
-  {
-    statusText: ModelErrEnum.modelNameConflict,
-    message: i18nT('common:code_error.model_error.name_conflict'),
-    httpStatus: 409
-  },
-  {
-    statusText: ModelErrEnum.systemModelReadonly,
-    message: i18nT('common:code_error.model_error.system_model_readonly'),
-    httpStatus: 403
-  },
-  {
-    statusText: ModelErrEnum.noFieldsToUpdate,
-    message: i18nT('common:code_error.model_error.no_fields_to_update'),
     httpStatus: 400
   },
   {
@@ -93,14 +58,14 @@ const modelErrList = [
     httpStatus: 404
   },
   {
+    statusText: ModelErrEnum.channelNameConflict,
+    message: i18nT('config_model:channel_name_duplicate'),
+    httpStatus: 409
+  },
+  {
     statusText: ModelErrEnum.noAvailableChannel,
     message: i18nT('common:code_error.model_error.no_available_channel'),
     httpStatus: 404
-  },
-  {
-    statusText: ModelErrEnum.modelDisabled,
-    message: i18nT('common:code_error.model_error.model_disabled'),
-    httpStatus: 403
   }
 ];
 

@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   formatModelProviders,
   getModelProviderFromCache,
@@ -12,27 +13,40 @@ import type {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { getAdminModelConfig, getTeamModelsConfig } from './api';
 import { useUserModelStore } from './useUserModelStore';
+import { clearModelCollaboratorsCache } from '@/components/core/ai/hooks/useModelCollaborators';
 
 type ModelConfigResponse = GetSystemModelConfigResponse | GetTeamModelsResponse;
 
 /** 统一加载 system/team 模型管理配置，并封装 Provider 缓存与刷新副作用。 */
 export const useModelConfig = ({
-  channelType,
-  language
+  channelType = 'system',
+  language,
+  manual = false
 }: {
-  channelType: 'system' | 'team';
-  language: string;
-}) => {
+  channelType?: 'system' | 'team';
+  language?: string;
+  manual?: boolean;
+} = {}) => {
   const isTeam = channelType === 'team';
   const request = useRequest<ModelConfigResponse, []>(
     () => (isTeam ? getTeamModelsConfig() : getAdminModelConfig()),
-    { manual: false, refreshDeps: [isTeam] }
+    { manual, refreshDeps: [isTeam] }
   );
   const models = useMemo(
     () => (request.data?.models ?? []) as SystemModelListItem[],
     [request.data?.models]
   );
   const channels = useMemo(() => request.data?.channels ?? [], [request.data?.channels]);
+  const defaultModelIds = useMemo(
+    () => (request.data as GetSystemModelConfigResponse | undefined)?.defaultModelIds ?? {},
+    [request.data]
+  );
+  const aiproxyChannels = useMemo(() => {
+    const rawChannels =
+      (request.data as GetSystemModelConfigResponse | undefined)?.aiproxyChannels ?? [];
+    if (rawChannels.length > 0) return rawChannels;
+    return useSystemStore.getState().aiproxyChannels ?? [];
+  }, [request.data]);
   const providerCache = useMemo(
     () => formatModelProviders(request.data?.providers ?? []),
     [request.data?.providers]
@@ -42,25 +56,39 @@ export const useModelConfig = ({
       getModelProviderFromCache({
         cache: providerCache.ModelProviderMapCache,
         provider,
-        language: targetLanguage
+        language: targetLanguage ?? language
       }),
-    [providerCache.ModelProviderMapCache]
+    [language, providerCache.ModelProviderMapCache]
   );
   const providers = useMemo(
     () => getModelProviderListFromCache(providerCache.ModelProviderListCache, language),
     [language, providerCache.ModelProviderListCache]
   );
+  const getModelProviders = useCallback(
+    (targetLanguage?: string) =>
+      getModelProviderListFromCache(
+        providerCache.ModelProviderListCache,
+        targetLanguage ?? language
+      ),
+    [language, providerCache.ModelProviderListCache]
+  );
   const refresh = useCallback(async () => {
     useUserModelStore.getState().clearMemory();
+    clearModelCollaboratorsCache();
     await request.runAsync();
   }, [request.runAsync]);
 
   return {
+    ...request,
     data: request.data,
     models,
+    systemModelList: models,
     channels,
     providers,
+    aiproxyChannels,
+    defaultModelIds,
     getModelProvider,
+    getModelProviders,
     refresh,
     loading: request.loading
   };

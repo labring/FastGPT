@@ -35,11 +35,11 @@ const ModelLinkedChannels = ({
   channels: ModelChannelSummary[];
   selectedIds: Set<number>;
   onCreate?: () => void;
-  onAssociate: () => void;
+  onAssociate?: () => void;
   onManage: () => void;
   onTest: (channelId: number) => void;
   testingChannelIds: ReadonlySet<number>;
-  onRemove: (channelId: number) => Promise<unknown> | void;
+  onRemove?: (channelId: number) => Promise<unknown> | void;
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
   const [showAllChannels, setShowAllChannels] = useState(false);
@@ -60,14 +60,16 @@ const ModelLinkedChannels = ({
             {t('config_model:create_channel')}
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="primaryOutline"
-          leftIcon={<MyIcon name="common/link" w="16px" />}
-          onClick={onAssociate}
-        >
-          {t('config_model:associate_existing_channels')}
-        </Button>
+        {onAssociate && (
+          <Button
+            size="sm"
+            variant="primaryOutline"
+            leftIcon={<MyIcon name="common/link" w="16px" />}
+            onClick={onAssociate}
+          >
+            {t('config_model:associate_existing_channels')}
+          </Button>
+        )}
         <Button
           size="sm"
           variant="primaryOutline"
@@ -148,18 +150,20 @@ const ModelLinkedChannels = ({
                           isLoading={testingChannelIds.has(channel.id)}
                           onClick={() => onTest(channel.id)}
                         />
-                        <PopoverConfirm
-                          type={'delete'}
-                          content={t('config_model:confirm_remove_channel_association')}
-                          onConfirm={() => onRemove(channel.id)}
-                          Trigger={
-                            <MyIconButton
-                              icon="delete"
-                              tip={t('config_model:remove_channel_association')}
-                              hoverColor="red.500"
-                            />
-                          }
-                        />
+                        {onRemove && (
+                          <PopoverConfirm
+                            type={'delete'}
+                            content={t('config_model:confirm_remove_channel_association')}
+                            onConfirm={() => onRemove(channel.id)}
+                            Trigger={
+                              <MyIconButton
+                                icon="delete"
+                                tip={t('config_model:remove_channel_association')}
+                                hoverColor="red.500"
+                              />
+                            }
+                          />
+                        )}
                       </HStack>
                     </Td>
                   </Tr>

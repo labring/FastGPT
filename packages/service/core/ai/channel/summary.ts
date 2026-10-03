@@ -2,10 +2,11 @@ import { getModelProviderMetadata } from '../provider/controller';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
 import type { AiproxyChannel, AiproxyGroupChannel } from '../../../thirdProvider/aiproxy/type';
 import { getMemberGroupId } from './utils';
+import { isAiproxyNotFoundError } from './error';
 
 /** 将 AI Proxy 渠道转换为模型管理界面使用的稳定摘要结构。 */
 export const formatChannelSummaryItems = (
-  channels: Array<AiproxyChannel | AiproxyGroupChannel>
+  channels: Array<AiproxyChannel | AiproxyGroupChannel> = []
 ) => {
   const metadata = getModelProviderMetadata();
   const protocolMap = new Map(
@@ -39,7 +40,7 @@ export const formatChannelSummaryItems = (
 
 /** 按上游模型名索引渠道摘要，供模型列表和详情复用。 */
 export const groupChannelSummariesByModel = (
-  channelItems: ReturnType<typeof formatChannelSummaryItems>
+  channelItems: ReturnType<typeof formatChannelSummaryItems> = []
 ) => {
   const channelsByModel = new Map<string, (typeof channelItems)[number]['summary'][]>();
   for (const channel of channelItems) {
@@ -53,15 +54,26 @@ export const groupChannelSummariesByModel = (
 
 /** 获取系统模型桶使用的渠道摘要。 */
 export const getSystemChannelSummaryItems = async () => {
-  const { channels } = await aiProxyClient.system.channels.list();
-  return formatChannelSummaryItems(channels);
+  try {
+    const channels = await aiProxyClient.system.channels.listAll();
+    return formatChannelSummaryItems(channels);
+  } catch (error) {
+    if (isAiproxyNotFoundError(error)) {
+      return [];
+    }
+    throw error;
+  }
 };
 
 /** 获取指定成员模型桶使用的渠道摘要。 */
 export const getMemberChannelSummaryItems = async (tmbId: string) => {
-  const channels = await aiProxyClient
-    .group(getMemberGroupId(tmbId))
-    .channels.listAll()
-    .catch(() => []);
-  return formatChannelSummaryItems(channels);
+  try {
+    const channels = await aiProxyClient.group(getMemberGroupId(tmbId)).channels.listAll();
+    return formatChannelSummaryItems(channels);
+  } catch (error) {
+    if (isAiproxyNotFoundError(error)) {
+      return [];
+    }
+    throw error;
+  }
 };

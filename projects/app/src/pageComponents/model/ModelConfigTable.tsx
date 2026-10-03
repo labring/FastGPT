@@ -25,7 +25,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { deleteModel, deleteModels, testModel, putModelsStatus } from '@/web/core/ai/model/api';
 import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { syncModelChannelAssociation } from '@/web/core/ai/channel';
 import ModelScopeCell from '@/components/core/ai/ModelScopeCell';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -43,7 +42,6 @@ import ModelTabHeader from './ModelTabHeader';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import { useLockFn, useSet } from 'ahooks';
 import ModelChannelCount from './ModelChannelCount';
-import ModelChannelModal from './ModelChannelModal';
 import ModelEditModal from './ModelEditModal';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
@@ -214,8 +212,7 @@ const ModelTable = ({
             name: model
           })
         });
-        // 状态写入已经成功；列表刷新失败由其自身提示，不能把成功操作再次报成失败。
-        await refreshModels().catch(() => {});
+        refreshModels();
       } finally {
         updatingModelIdsDispatch.remove(modelId);
       }
@@ -233,7 +230,9 @@ const ModelTable = ({
   });
 
   const { runAsync: deleteModelRequest } = useRequest(deleteModel, {
-    onSuccess: () => void refreshModels().catch(() => {}),
+    onSuccess: () => {
+      refreshModels();
+    },
     successToast: t('common:delete_success')
   });
   const handleDeleteModel = (data: Parameters<typeof deleteModel>[0]) =>
@@ -254,14 +253,14 @@ const ModelTable = ({
           { count: data.modelIds.length }
         )
       });
-      await refreshModels().catch(() => {});
+      refreshModels();
     }
   );
   const { runAsync: deleteModelsRequest, loading: deletingModels } = useRequest(deleteModels, {
     manual: true,
     onSuccess: () => {
       clearSelection();
-      void refreshModels().catch(() => {});
+      refreshModels();
     },
     successToast: t('common:delete_success')
   });
@@ -272,8 +271,6 @@ const ModelTable = ({
       type: 'delete'
     }
   );
-
-  const [channelModel, setChannelModel] = useState<SystemModelListItem>();
 
   const {
     isOpen: isOpenJsonConfig,
@@ -510,10 +507,7 @@ const ModelTable = ({
                         </Td>
                         <Td fontSize={'sm'}>
                           <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
-                            <ModelChannelCount
-                              channels={item.channels}
-                              onClick={() => setChannelModel(item)}
-                            />
+                            <ModelChannelCount channels={item.channels} />
                           </Box>
                         </Td>
                         {showBilling && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
@@ -658,27 +652,6 @@ const ModelTable = ({
         </Flex>
       </Box>
 
-      {!!channelModel && (
-        <ModelChannelModal
-          models={[channelModel]}
-          channels={channelList}
-          selectedChannelIds={channelModel.channels.map((channel) => channel.id)}
-          onClose={() => setChannelModel(undefined)}
-          onConfirm={async (channelIds) => {
-            await runChannelMutation(() =>
-              syncModelChannelAssociation({
-                modelName: channelModel.model,
-                currentChannelIds: channelModel.channels.map((c) => c.id),
-                nextChannelIds: channelIds,
-                channelType
-              })
-            );
-            toast({ status: 'success', title: t('config_model:associate_success') });
-            setChannelModel(undefined);
-            await refreshModels().catch(() => {});
-          }}
-        />
-      )}
       {isOpenJsonConfig && (
         <JsonModelConfigModal onClose={onCloseJsonConfig} onSuccess={refreshModels} />
       )}

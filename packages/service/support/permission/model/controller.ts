@@ -145,7 +145,7 @@ export const getMemberModelCatalogPermission = async ({
         version,
         catalogRevision
       }
-    }).catch(() => {});
+    });
 
   return { modelIds, version };
 };

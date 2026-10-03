@@ -1,5 +1,6 @@
 import type { AddChannelData } from '../../../thirdProvider/aiproxy/type';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import type {
   BatchChannelBody,
   ChannelBody,
@@ -7,13 +8,18 @@ import type {
   UpdateChannelStatusBody
 } from '@fastgpt/global/openapi/core/ai/channel/api';
 import { getBatchChannelsAffectedModels, getChannelAffectedModels } from './association';
-import { normalizeAiproxyError } from './error';
+import { getCachedTypeMetas } from './cache';
 import {
   resolveChannelForOperation,
   resolveChannelsForOperation,
   type ResolvedChannel
 } from './resolve';
 import { getMemberGroupId } from './utils';
+
+/** 获取并缓存渠道提供商的表单元数据。 */
+export const getChannelTypeMetas = (): Promise<
+  Record<number, { defaultBaseUrl: string; keyHelp: string; name: string }>
+> => getCachedTypeMetas(() => aiProxyClient.getTypeMetas());
 
 type ChannelScope = {
   channelType: ChannelType;
@@ -60,7 +66,13 @@ export const createChannel = async ({
   tmbId: string;
   channelData: ChannelBody;
 }): Promise<void> => {
-  await getChannelClient({ channelType, tmbId }).create(toChannelData(channelData));
+  const client = getChannelClient({ channelType, tmbId });
+  const name = channelData.name.trim();
+  const allChannels = await client.listAll();
+  if (allChannels.some((c) => c.name.trim() === name)) {
+    return Promise.reject(ModelErrEnum.channelNameConflict);
+  }
+  await client.create(toChannelData(channelData));
 };
 
 /** 更新渠道并统一处理 system/team 两种 AIProxy scope。 */
@@ -72,15 +84,20 @@ export const updateChannel = async ({
   channelData
 }: ChannelScope & { id: number; channelData: ChannelBody }): Promise<void> => {
   const resolved = await resolveChannelForOperation({ id, channelType, tmbId, isRoot });
-  try {
-    if (resolved.kind === 'system') {
-      await aiProxyClient.system.channels.update(id, toChannelData(channelData));
-    } else {
-      await aiProxyClient.group(resolved.groupId).channels.update(id, toChannelData(channelData));
+  const client =
+    resolved.kind === 'system'
+      ? aiProxyClient.system.channels
+      : aiProxyClient.group(resolved.groupId).channels;
+
+  if (channelData.name) {
+    const name = channelData.name.trim();
+    const allChannels = await client.listAll();
+    if (allChannels.some((c) => c.id !== id && c.name.trim() === name)) {
+      return Promise.reject(ModelErrEnum.channelNameConflict);
     }
-  } catch (error) {
-    return Promise.reject(normalizeAiproxyError(error));
   }
+
+  await client.update(id, toChannelData(channelData));
 };
 
 /** 切换渠道状态。 */
@@ -92,14 +109,10 @@ export const updateChannelStatus = async ({
   isRoot
 }: UpdateChannelStatusBody & Pick<ChannelScope, 'tmbId' | 'isRoot'>): Promise<void> => {
   const resolved = await resolveChannelForOperation({ id, channelType, tmbId, isRoot });
-  try {
-    if (resolved.kind === 'system') {
-      await aiProxyClient.system.channels.updateStatus(id, status);
-    } else {
-      await aiProxyClient.group(resolved.groupId).channels.updateStatus(id, status);
-    }
-  } catch (error) {
-    return Promise.reject(normalizeAiproxyError(error));
+  if (resolved.kind === 'system') {
+    await aiProxyClient.system.channels.updateStatus(id, status);
+  } else {
+    await aiProxyClient.group(resolved.groupId).channels.updateStatus(id, status);
   }
 };
 
@@ -114,14 +127,10 @@ export const deleteChannel = async ({
 }> => {
   const resolved = await resolveChannelForOperation({ id, channelType, tmbId, isRoot });
   const affectedModels = await getChannelAffectedModels(resolved.channel);
-  try {
-    if (resolved.kind === 'system') {
-      await aiProxyClient.system.channels.delete(id);
-    } else {
-      await aiProxyClient.group(resolved.groupId).channels.delete(id);
-    }
-  } catch (error) {
-    return Promise.reject(normalizeAiproxyError(error));
+  if (resolved.kind === 'system') {
+    await aiProxyClient.system.channels.delete(id);
+  } else {
+    await aiProxyClient.group(resolved.groupId).channels.delete(id);
   }
   return { affectedModels };
 };
@@ -142,34 +151,30 @@ export const batchOperateChannels = async ({
     tmbId,
     isRoot
   });
-  try {
-    if (body.action === 'delete') {
-      const affectedModels = await getBatchChannelsAffectedModels(
-        resolved.map((item) => item.channel)
-      );
-      if (body.channelType === 'system') {
-        await aiProxyClient.system.channels.batchDelete(body.ids);
-      } else {
-        await Promise.all(
-          Array.from(groupChannelIdsByGroupId(resolved)).map(([groupId, ids]) =>
-            aiProxyClient.group(groupId).channels.batchDelete(ids)
-          )
-        );
-      }
-      return { affectedModels };
-    }
-
+  if (body.action === 'delete') {
+    const affectedModels = await getBatchChannelsAffectedModels(
+      resolved.map((item) => item.channel)
+    );
     if (body.channelType === 'system') {
-      await aiProxyClient.system.channels.batchUpdateStatus(body.ids, body.status);
+      await aiProxyClient.system.channels.batchDelete(body.ids);
     } else {
       await Promise.all(
         Array.from(groupChannelIdsByGroupId(resolved)).map(([groupId, ids]) =>
-          aiProxyClient.group(groupId).channels.batchUpdateStatus(ids, body.status)
+          aiProxyClient.group(groupId).channels.batchDelete(ids)
         )
       );
     }
-    return {};
-  } catch (error) {
-    return Promise.reject(normalizeAiproxyError(error));
+    return { affectedModels };
   }
+
+  if (body.channelType === 'system') {
+    await aiProxyClient.system.channels.batchUpdateStatus(body.ids, body.status);
+  } else {
+    await Promise.all(
+      Array.from(groupChannelIdsByGroupId(resolved)).map(([groupId, ids]) =>
+        aiProxyClient.group(groupId).channels.batchUpdateStatus(ids, body.status)
+      )
+    );
+  }
+  return {};
 };

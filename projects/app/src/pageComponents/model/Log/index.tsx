@@ -31,8 +31,7 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import type { ChannelLogListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
-import { useAdminModelConfig } from '@/web/core/ai/model/useAdminModelConfig';
-import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
+import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import ModelTabHeader from '../ModelTabHeader';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
@@ -56,14 +55,10 @@ const ChannelLog = ({
   channelType?: 'system' | 'team';
 }) => {
   const { t, i18n } = useClientTranslation('config_model');
-  const isTeam = channelType === 'team';
-  const { getModelProvider: getAdminModelProvider, systemModelList } = useAdminModelConfig({
-    manual: isTeam
+  const { models: availableModels, getModelProvider } = useModelConfig({
+    channelType,
+    language: i18n.language
   });
-  const { modelList: memberModelList, getModelProvider: getMemberModelProvider } =
-    useUserModelStore();
-  const availableModels = isTeam ? memberModelList : systemModelList;
-  const getModelProvider = isTeam ? getMemberModelProvider : getAdminModelProvider;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [filterProps, setFilterProps] = useState<{
     request_id?: string;
@@ -158,7 +153,7 @@ const ChannelLog = ({
         ttfb_milliseconds: item.ttfb_milliseconds ? item.ttfb_milliseconds / 1000 : 0
       };
     });
-  }, [channelList, data, getModelProvider, i18n.language, systemModelList]);
+  }, [availableModels, channelList, data, getModelProvider, i18n.language]);
 
   const [logDetail, setLogDetail] = useState<LogDetailType>();
 

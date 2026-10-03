@@ -117,7 +117,7 @@ const DefaultModelModal = ({
   const { runAsync, loading } = useRequest(putUpdateDefaultModels, {
     onSuccess: () => {
       onClose();
-      void Promise.resolve(onSuccess()).catch(() => {});
+      onSuccess();
     },
     successToast: t('common:update_success')
   });

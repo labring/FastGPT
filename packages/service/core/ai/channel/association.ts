@@ -4,7 +4,6 @@ import { getModelHandle } from '../model';
 import { hasLegacyRequestUrl } from '../legacy/requestUrl';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
 import type { AiproxyChannel, AiproxyGroupChannel } from '../../../thirdProvider/aiproxy/type';
-import { rejectNormalizedAiproxyError } from './error';
 import { getMemberGroupId, parseTmbIdFromGroupId } from './utils';
 
 export type ChannelAssociableModel = {
@@ -86,34 +85,30 @@ export const channelCount = (modelId: string, map: Map<string, ChannelBrief[]>):
 export const getModelChannelsMapByModels = async (
   models: ChannelAssociableModel[]
 ): Promise<Map<string, ChannelBrief[]>> => {
-  try {
-    const result = new Map<string, ChannelBrief[]>();
-    const systemModels = models.filter((model) => model.isSystem);
+  const result = new Map<string, ChannelBrief[]>();
+  const systemModels = models.filter((model) => model.isSystem);
 
-    if (systemModels.length > 0) {
-      const { channels } = await aiProxyClient.system.channels.list();
-      for (const [modelId, modelChannels] of pairChannelsToModels(channels, systemModels)) {
-        result.set(modelId, modelChannels);
-      }
+  if (systemModels.length > 0) {
+    const { channels } = await aiProxyClient.system.channels.list();
+    for (const [modelId, modelChannels] of pairChannelsToModels(channels, systemModels)) {
+      result.set(modelId, modelChannels);
     }
-
-    const ownerModelsByTmb = new Map<string, ChannelAssociableModel[]>();
-    for (const model of models) {
-      if (model.isSystem || !model.tmbId) continue;
-      const tmbId = String(model.tmbId);
-      ownerModelsByTmb.set(tmbId, [...(ownerModelsByTmb.get(tmbId) ?? []), model]);
-    }
-
-    for (const [tmbId, ownerModels] of ownerModelsByTmb) {
-      const { channels } = await aiProxyClient.group(getMemberGroupId(tmbId)).channels.list();
-      for (const [modelId, modelChannels] of pairChannelsToModels(channels, ownerModels)) {
-        result.set(modelId, modelChannels);
-      }
-    }
-    return result;
-  } catch (error) {
-    return rejectNormalizedAiproxyError(error);
   }
+
+  const ownerModelsByTmb = new Map<string, ChannelAssociableModel[]>();
+  for (const model of models) {
+    if (model.isSystem || !model.tmbId) continue;
+    const tmbId = String(model.tmbId);
+    ownerModelsByTmb.set(tmbId, [...(ownerModelsByTmb.get(tmbId) ?? []), model]);
+  }
+
+  for (const [tmbId, ownerModels] of ownerModelsByTmb) {
+    const { channels } = await aiProxyClient.group(getMemberGroupId(tmbId)).channels.list();
+    for (const [modelId, modelChannels] of pairChannelsToModels(channels, ownerModels)) {
+      result.set(modelId, modelChannels);
+    }
+  }
+  return result;
 };
 
 /** 计算删除单个渠道后将失去全部渠道的模型。 */
@@ -126,53 +121,49 @@ export const getChannelAffectedModels = async (
 export const getBatchChannelsAffectedModels = async (
   channels: Array<AiproxyChannel | AiproxyGroupChannel>
 ): Promise<{ modelId: string; name: string; model: string }[]> => {
-  try {
-    if (channels.length === 0) return [];
+  if (channels.length === 0) return [];
 
-    const channelsByBucket = new Map<string, Array<AiproxyChannel | AiproxyGroupChannel>>();
-    for (const channel of channels) {
-      const bucketKey = (channel as AiproxyGroupChannel).group_id ?? 'system';
-      channelsByBucket.set(bucketKey, [...(channelsByBucket.get(bucketKey) ?? []), channel]);
-    }
-
-    const affectedModels = new Map<string, { modelId: string; name: string; model: string }>();
-    for (const [bucketKey, targetChannels] of channelsByBucket) {
-      const isSystem = bucketKey === 'system';
-      const tmbId = isSystem ? undefined : parseTmbIdFromGroupId(bucketKey);
-      const bucketModels = isSystem
-        ? await getSystemAssociableModels()
-        : tmbId
-          ? await getOwnerAssociableModels(tmbId)
-          : [];
-      if (bucketModels.length === 0) continue;
-
-      const allChannels = isSystem
-        ? await aiProxyClient.system.channels.listAll()
-        : await aiProxyClient.group(bucketKey).channels.listAll();
-      const deletedIds = new Set(targetChannels.map((channel) => channel.id));
-      const remainingModelNames = new Set(
-        allChannels
-          .filter((channel) => !deletedIds.has(channel.id))
-          .flatMap((channel) => channel.models ?? [])
-      );
-      const deletedModelNames = new Set(targetChannels.flatMap((channel) => channel.models ?? []));
-
-      for (const model of bucketModels) {
-        // 自包含模型（自带独立 requestUrl）不依赖 AI Proxy 渠道，不计入受影响列表
-        if (model.hasRequestUrl) continue;
-
-        if (!deletedModelNames.has(model.model) || remainingModelNames.has(model.model)) continue;
-        affectedModels.set(model.id, {
-          modelId: model.id,
-          name: model.name ?? model.model,
-          model: model.model
-        });
-      }
-    }
-    return Array.from(affectedModels.values());
-  } catch (error) {
-    return rejectNormalizedAiproxyError(error);
+  const channelsByBucket = new Map<string, Array<AiproxyChannel | AiproxyGroupChannel>>();
+  for (const channel of channels) {
+    const bucketKey = (channel as AiproxyGroupChannel).group_id ?? 'system';
+    channelsByBucket.set(bucketKey, [...(channelsByBucket.get(bucketKey) ?? []), channel]);
   }
+
+  const affectedModels = new Map<string, { modelId: string; name: string; model: string }>();
+  for (const [bucketKey, targetChannels] of channelsByBucket) {
+    const isSystem = bucketKey === 'system';
+    const tmbId = isSystem ? undefined : parseTmbIdFromGroupId(bucketKey);
+    const bucketModels = isSystem
+      ? await getSystemAssociableModels()
+      : tmbId
+        ? await getOwnerAssociableModels(tmbId)
+        : [];
+    if (bucketModels.length === 0) continue;
+
+    const allChannels = isSystem
+      ? await aiProxyClient.system.channels.listAll()
+      : await aiProxyClient.group(bucketKey).channels.listAll();
+    const deletedIds = new Set(targetChannels.map((channel) => channel.id));
+    const remainingModelNames = new Set(
+      allChannels
+        .filter((channel) => !deletedIds.has(channel.id))
+        .flatMap((channel) => channel.models ?? [])
+    );
+    const deletedModelNames = new Set(targetChannels.flatMap((channel) => channel.models ?? []));
+
+    for (const model of bucketModels) {
+      // 自包含模型（自带独立 requestUrl）不依赖 AI Proxy 渠道，不计入受影响列表
+      if (model.hasRequestUrl) continue;
+
+      if (!deletedModelNames.has(model.model) || remainingModelNames.has(model.model)) continue;
+      affectedModels.set(model.id, {
+        modelId: model.id,
+        name: model.name ?? model.model,
+        model: model.model
+      });
+    }
+  }
+  return Array.from(affectedModels.values());
 };
 
 /** 获取指定渠道在自身桶内关联的模型列表。 */
@@ -199,15 +190,10 @@ export const getChannelModels = async (
 
 /** 获取指定模型在自身桶内关联的渠道数量。 */
 export const getModelChannelRefs = async (model: ChannelAssociableModel): Promise<number> => {
-  try {
-    const channels = model.isSystem
-      ? (await aiProxyClient.system.channels.list()).channels
-      : model.tmbId
-        ? (await aiProxyClient.group(getMemberGroupId(String(model.tmbId))).channels.list())
-            .channels
-        : [];
-    return channels.filter((channel) => channel.models?.includes(model.model)).length;
-  } catch (error) {
-    return rejectNormalizedAiproxyError(error);
-  }
+  const channels = model.isSystem
+    ? (await aiProxyClient.system.channels.list()).channels
+    : model.tmbId
+      ? (await aiProxyClient.group(getMemberGroupId(String(model.tmbId))).channels.list()).channels
+      : [];
+  return channels.filter((channel) => channel.models?.includes(model.model)).length;
 };

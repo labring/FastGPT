@@ -1,207 +1,138 @@
-# FastGPT `feat/group-model` 分支对接 AI Proxy 架构设计与迁移方案
+# AI Proxy 租户分组渠道（Group Channel）架构设计与 FastGPT 集成方案
 
 > **文档归档路径**：`.agents/design/model/aiproxy-integration-and-branch-diff.md`  
-> **适用分支**：`feat/group-model`（基于最新 `upstream/main`）  
-> **比对基准**：前置重构分支 `model-refactor`、AI Proxy 最新 PR [labring/aiproxy#621](https://github.com/labring/aiproxy/pull/621) 与当前 main 分支现状  
-> **核心目标**：确立模型管理与 AI Proxy 的解耦架构，规范 Member 级数据安全隔离边界，制定透传分页、批量操作及基于最新统一系统迁移框架的实施路线。
+> **适用分支**：`feat/group-model`  
+> **关联底层**：[labring/aiproxy#621 - feat: group channel](https://github.com/labring/aiproxy/pull/621)  
+> **核心目标**：统一收敛 AI Proxy 租户渠道（PR #621）能力分析与 FastGPT 架构设计，明确 Member 级多租户安全隔离边界，确立模型管理与 AI Proxy 的解耦架构、数据面路由规则及平滑迁移方案。
 
 ---
 
-## 一、核心业务原则与安全隔离边界（强制铁律）
+## 一、架构背景与系统定位
 
-在 FastGPT 平台内，**AI Proxy 已作为平台标配基础设施，全量默认走 AI Proxy**（无需 `show_aiproxy` 等动态特性开关）。  
-**有管理模型权限的成员**所涉及的模型与渠道资产具备严格的私密性与独立性：
-
-1. **全量默认走 AI Proxy（无条件常驻）**：
-   - AI Proxy 是系统标准底层依赖，不再通过 `feConfigs.show_aiproxy` 或 `hasAIProxyApiEndpoint` 做动态条件显隐；
-   - 凡是具备模型管理权限的成员，在模型管理页面均**默认展示**模型配置、模型渠道、调用日志、时序监控三大核心能力。
-2. **Member 级别私有数据隔离（绝对互不可见）**：
-   - **模型配置（Model Config）**：私有模型归属于特定成员（`modelData.tmbId`），普通成员只能管理自己名下的私有模型。
-   - **模型渠道（Model Channel）**：私有渠道归属于该成员专属的分组，AI Proxy 对应的 `groupId` 格式为：
-     $$\text{groupId} = \text{fastgpt:tmb:} + \text{tmbId}$$
-     每个成员只能在界面上查看、配置自己的渠道，不同成员之间**绝对互不可见**。
-   - **调用日志（Channel Logs）**：只允许查看归属于当前成员自身渠道的调用流水，绝不允许跨成员翻阅 Prompt 内容和执行记录。
-   - **时序监控（Dashboard）**：监控折线图（QPS、Token 吞吐、延迟）仅聚合该成员名下的渠道流量，不混淆他人数据。
-3. **服务端强制防御，严禁信任前端透传**：
-   - 所有渠道相关的 API 路由（`/api/core/ai/channel/*`），服务端必须直接从当前登录会话中提取 `session.tmbId` 并生成 `groupId`；
-   - 杜绝前端通过 URL Query 或 Request Body 篡改或伪造其他成员的 `tmbId` / `groupId`。
-4. **系统管理员（Root）全局运维通道**：
-   - 普通成员仅能操作 `channelType: 'team'`（绑定自身 `tmbId`）；
-   - Root 管理员可通过 `channelType: 'system'` 维护平台公共系统渠道、查看系统级公共日志与全局监控仪表盘。
-
----
-
-## 二、架构决策与纠偏清单（基于讨论确认）
-
-结合此前重构分支（`model-refactor`）的经验教训、AI Proxy PR #621 的最新能力，确立以下 6 项核心决策：
-
-| 序号 | 架构决策项 | 决策结论 | 理由与技术细节 |
-| :---: | :--- | :--- | :--- |
-| **1** | **标配化基础设施定位** | **不需要 `show_aiproxy` 开关，全量默认走 AI Proxy** | AI Proxy 为系统标配底座，彻底去除 `feConfigs.show_aiproxy` 字段及分支判断。只要拥有模型管理权限，前端常驻展示渠道、日志与监控三大 Tab。 |
-| **2** | **模型调用路由归属** | **按模型拥有者（Owner）路由** | 无论谁在工作流中调用某私有模型，推理请求统一注入该**模型所属 Owner** 的标识：`X-Aiproxy-Group: fastgpt:tmb:<modelData.tmbId>` + `X-Aiproxy-Group-Channel-Mode: own`。保证私有模型始终走其创建者自己的渠道和配额。系统模型走 `global`。 |
-| **3** | **渠道列表缓存与分页策略** | **透传分页给 AI Proxy，废弃本地全量拉取** | **彻底摒弃**旧分支在 FastGPT Node.js 本地 30s 内存桶全量递归拉取做 `slice` 分页的错误模式。直接透传前端的 `page`、`per_page`、`search` 到 AI Proxy，利用 AI Proxy PR #621 底层原生的高性能缓存和分页，彻底杜绝多 Pod 实例间缓存不一致。 |
-| **4** | **PR #621 新能力接入范围** | **直接对接批量接口；表单暂不引入草稿预检与限流** | 暂不引入 `test-preview` 和渠道级 RPM/TPM 限流配置，避免增加前端复杂度；**直接对接** AI Proxy 原生提供的批量操作接口：`/channels/batch_delete` 和 `/channels/batch_status`，提升批量操作性能。 |
-| **5** | **旧版租约锁与写渠道清理** | **彻底移除 `lease.ts`** | 彻底删除当前 main 分支中的 `packages/service/thirdProvider/aiproxy/lease.ts` 以及在模型增删改时强写渠道 `models` 数组的旧逻辑。AI Proxy 为渠道单一事实源，模型与渠道两端通过模型名在 FastGPT 内存中动态映射。 |
-| **6** | **存量平滑升级迁移方案** | **接入统一迁移框架 `projects/app/src/migration/`** | 放弃旧分支单点的 `initv4170.ts` 脚本，遵循 FastGPT 最新的任务迁移规范（`projects/app/src/migration/tasks/`），以独立的非阻塞/阻塞 Task 实现将旧模型 `metadata.requestUrl`/`requestAuth` 迁移为 AI Proxy 渠道。 |
-
----
-
-## 三、目标架构图与数据流
+以往 AI Proxy 主要作为全局统一反向代理，所有渠道均为系统共享。PR #621 引入了原生 **Group Channel（租户分组渠道）** 体系，建立了“全局系统渠道（Global Channels）”与“租户分组渠道（Group Channels）”双轨并行的架构：
 
 ```mermaid
 flowchart TD
-    subgraph ClientLayer["前端视图层 (Chakra UI - 默认常驻)"]
-        UI_Model["模型管理 (私有模型)"]
-        UI_Channel["渠道管理 (Member 专属)"]
-        UI_Log["调用日志 (Member 专属)"]
-        UI_Monitor["监控仪表盘 (Member 专属)"]
+    subgraph FastGPT["FastGPT (feat/group-model)"]
+        UI["前端视图 (模型管理 / 渠道管理 / 调用日志 / 监控仪表盘)"]
+        Service["服务端 / 渠道业务逻辑 (权限控制 / 关联计算 / 防误删保护)"]
+        Client["AIProxyClient (基础设施防腐层 / 错误统一透传)"]
+        RelayReq["数据面推理请求 (LLM / Embedding / Rerank / STT / TTS)"]
     end
 
-    subgraph FastGPT_API["FastGPT 服务端接口 (/api/core/ai/channel/*)"]
-        SessionAuth["Auth & Session\n(提取 session.tmbId -> 强制构建 groupId)"]
-        ChannelList["list.ts (透传 page/per_page/search)"]
-        ChannelBatch["batch.ts (对接 batch_delete/batch_status)"]
-        ChannelCRUD["create.ts / update.ts / delete.ts"]
-        AffectedModels["affectedModels.ts (删除前唯一依赖安全保护)"]
-        ObsAPIs["logs.ts / logDetail.ts / dashboard.ts"]
+    subgraph AIProxy["AI Proxy 内核 (PR #621)"]
+        Router["路由分发器 (解析 X-Aiproxy-Group & Mode Headers)"]
+        GlobalPool[("系统全局渠道池 (Global Channels)")]
+        GroupPool[("租户私有渠道池 (Group Channels, 事务内自动建组)")]
+        Obs["可观测性中心 (租户日志检索 / 导出 / 时序 Dashboard)"]
     end
 
-    subgraph FastGPT_Relay["推理转发数据面 (LLM / Embedding / Rerank / STT / TTS)"]
-        ModelLookup["根据 modelId 解析 modelData (MongoDB)"]
-        ScopeInjector["getAiproxyScopeHeaders:\n- System 模型 -> global\n- Private 模型 -> own + fastgpt:tmb:<modelData.tmbId>"]
-        RelayForward["带入 model=modelData.model 转发给 AI Proxy"]
-        ErrorNorm["normalizeRelayNoChannelError (404 映射为 noAvailableChannel)"]
-    end
-
-    subgraph AIProxy["AI Proxy 服务端 (单一事实源，PR #621)"]
-        AdminEndpoints["/api/group/:group/channels (原生分页 & 缓存)"]
-        BatchEndpoints["/api/group/:group/channels/batch_delete, batch_status"]
-        RelayEngine["/v1/chat/completions, /v1/embeddings... (根据 Header 组内路由)"]
-        ObsEndpoints["/api/log/:group/group_channel/search, /channel-dashboardv2"]
-        DB[("PostgreSQL / GORM")]
-    end
-
-    UI_Channel --> SessionAuth --> ChannelList --> AdminEndpoints
-    UI_Channel --> SessionAuth --> ChannelBatch --> BatchEndpoints
-    UI_Channel --> SessionAuth --> ChannelCRUD --> AdminEndpoints
-    UI_Channel --> AffectedModels
-    UI_Log --> SessionAuth --> ObsAPIs --> ObsEndpoints
-    UI_Monitor --> SessionAuth --> ObsAPIs --> ObsEndpoints
-
-    UI_Model -. 业务调用 .-> ModelLookup --> ScopeInjector --> RelayForward --> RelayEngine
-    RelayEngine -. 404 捕获 .-> ErrorNorm
+    UI --> Service --> Client --> AIProxy
+    RelayReq -->|带入 Scope Headers| Router
+    Router -->|global 模式| GlobalPool
+    Router -->|own 模式| GroupPool
+    AIProxy --> Obs
 ```
 
----
-
-## 四、模块调整与代码改造规划（不修改代码，仅作为设计蓝图）
-
-### 1. 后端服务层改造（`packages/service`）
-
-#### 【移除（DELETE）旧版反模式模块】
-- `packages/service/thirdProvider/aiproxy/lease.ts`：彻底废弃 Redis 租约锁。
-- `packages/service/thirdProvider/aiproxy/channel.ts`：彻底删除 `replaceModelInAIProxyChannels`、`appendModelsToAIProxyChannels`、`removeModelsFromAIProxyChannels` 等在模型增删改时强写渠道的行为。
-
-#### 【新建与完善核心渠道模块（`packages/service/core/ai/channel/`）】
-- `const.ts`：定义轻量常量与 Group ID 推导函数：
-  ```ts
-  export const getMemberGroupId = (tmbId: string): string => `fastgpt:tmb:${tmbId}`;
-  ```
-- `api.ts`（AI Proxy Client）：
-  - 包装强类型的 Axios 请求，统一走 `axiosWithoutSSRF` 并注入 `Bearer ${AIPROXY_API_TOKEN}`；
-  - **直接支持服务端分页**：`listGroupChannels(groupId, { page, perPage, search })` 直接请求 `/api/group/:groupId/channels`，不再在本地全量拉取；
-  - **批量操作**：封装 `batchDeleteGroupChannels` 和 `batchUpdateGroupChannelStatus`；
-  - 导出 `getSystemChannelById`、`getGroupChannelById` 单条精准检索接口。
-- `controller.ts`：
-  - 业务层关联计算：`pairChannelsToModels`、`channelCount`；
-  - 删除防误删算法：`getChannelAffectedModels`（计算哪些模型仅依赖该渠道，避免误删导致服务中断）；
-  - 错误归一化：`normalizeAiproxyError`、`normalizeRelayNoChannelError`；
-  - 权限断言：`assertOwnGroupChannel(channel, tmbId)` 校验渠道是否归属于当前成员。
-
-#### 【数据面 Scope 注入（`packages/service/core/ai/config.ts`）】
-- 统一维护 `getAiproxyScopeHeaders(modelData, baseUrl)`：
-  ```ts
-  export const getAiproxyScopeHeaders = (
-    modelData: { isSystem?: boolean; tmbId?: string } | undefined,
-    baseUrl: string | undefined
-  ): Record<string, string> => {
-    if (!baseUrl || baseUrl !== aiProxyBaseUrl) return {};
-
-    // 系统公共模型：仅走全局渠道
-    if (modelData?.isSystem) {
-      return { 'X-Aiproxy-Group-Channel-Mode': 'global' };
-    }
-
-    // 团队私有模型：强制锁定模型拥有者自己的专属渠道
-    if (modelData?.tmbId) {
-      return {
-        'X-Aiproxy-Group': getMemberGroupId(String(modelData.tmbId)),
-        'X-Aiproxy-Group-Channel-Mode': 'own'
-      };
-    }
-
-    return {};
-  };
-  ```
-- 五大引擎（LLM、Embedding、Rerank、TTS、STT）统一在构造请求时合并该 Header，并使用 `normalizeRelayNoChannelError` 捕获异常。
+### 核心定位决策：
+1. **AI Proxy 为标配底座（无条件常驻）**：
+   彻底去除 `show_aiproxy` 等动态特性开关。只要具备模型管理权限的成员，在模型管理页面均常驻展示渠道管理、调用日志与监控分析能力。
+2. **彻底解耦，单一事实源**：
+   AI Proxy 作为渠道物理配置与中继转发的单一事实源；FastGPT 维护业务模型实体与显示名。两端通过模型名（`model`）在内存中动态映射，彻底废弃旧版分布式租约锁（`lease.ts`）以及在模型增删改时强写渠道 `models` 数组的反模式。
 
 ---
 
-### 2. API 路由层改造（`projects/app/src/pages/api/`）
+## 二、AI Proxy 核心能力与职责边界
 
-#### 【移除旧接口】
-- 删除 `projects/app/src/pages/api/aiproxy/api/createChannel.ts`。
+明确 AI Proxy 的能力边界是避免架构劣化的关键：
 
-#### 【收敛到规范 REST 路由（`projects/app/src/pages/api/core/ai/channel/`）】
-全部接口强制使用 `parseApiInput` 校验，强制绑定 `session.tmbId`：
-1. `list.ts`：调用 AI Proxy 分页接口拉取渠道列表，返回分页结果及每个渠道关联的 FastGPT 模型数。
-2. `create.ts`：创建渠道，普通成员自动推导 `groupId`，Root 允许创建系统渠道。
-3. `update.ts`：更新渠道配置，执行 `assertOwnGroupChannel` 校验防越权。
-4. `delete.ts`：删除渠道，执行防越权校验。
-5. `status.ts`：单渠道启停。
-6. `test.ts`：单渠道探活测试，注入 `Aiproxy-Channel` 锁定渠道。
-7. `affectedModels.ts`：删除前预检受影响模型。
-8. `models.ts` & `modelChannels.ts`：模型与渠道双向悬浮详情。
-9. `logs.ts` & `logDetail.ts`：严格限制当前成员查自己的组日志。
-10. `dashboard.ts`：聚合当前成员渠道的时序指标。
+| 维度 | AI Proxy 能力范畴（PR #621） | AI Proxy 不负责的范畴（FastGPT 职责） |
+| :--- | :--- | :--- |
+| **渠道管理** | 提供系统/Group 渠道完整 CRUD，支持 `batch_delete` 和 `batch_status`；通过 `ensureGroups` 原子建组，调用方无需预建 Group。 | 控制谁能操作渠道（团队 RBAC 权限）、渠道名称重名校验、前端展示交互。 |
+| **路由转发** | Header 驱动路由：<br>- `X-Aiproxy-Group: <groupId>`<br>- `X-Aiproxy-Group-Channel-Mode: own / global`；<br>支持加权轮询、智能降权与熔断。 | 将内部业务 `modelId` 解析为实际模型名 `model`，注入正确的 Owner 路由 Header。 |
+| **模型实体** | 仅维护渠道支持的模型名字符串列表（`models: []string`），无实体概念。 | 维护模型实体（`modelId`、类型、价格配置、权限、知识库/工作流绑定关系）。 |
+| **依赖计算** | 仅根据模型名做转发匹配。 | 内存计算模型关联渠道数（`channelCount`）、删除渠道前唯一依赖保护算法（`getChannelAffectedModels`）。 |
+| **计费与权限**| 记录 Token 消耗量与基础通道费用；仅基于 Admin Token 与 Group ID 做接口鉴权。 | 用户钱包余额扣减、点数折算、VIP 额度控制、细粒度权限（Owner、协作者、模型操作权限）拦截。 |
 
 ---
 
-### 3. 统一系统迁移框架接入（`projects/app/src/migration/`）
+## 三、核心业务原则与安全隔离铁律
 
-按照 FastGPT 最新迁移设计规范（`projects/app/src/migration/tasks/README.md`）：
-- 在 `projects/app/src/migration/tasks/` 下新增独立的迁移任务目录（如 `YYYYMMDD_migrate_legacy_channel_configs/`）；
-- `index.ts` 导出标准的系统迁移任务结构，在 `registry.ts` 末尾注册；
-- 任务逻辑：
-  1. 扫描带有旧 `requestUrl`/`requestAuth` 的模型；
-  2. 内存按 `(model, requestUrl, requestAuth)` 去重；
-  3. 通过 AI Proxy API 幂等创建 `Migrated: <model>` 系统渠道（已存在则跳过）；
-  4. 采用标准的 `reportProgress` 与错误快照机制，支持断点续跑与失败重试；
-  5. 不在日志中暴露 `requestAuth` 密钥明文。
+1. **Member 级别私有数据绝对隔离**：
+   - **渠道分组标识**：服务端强制推导：
+     $$\text{groupId} = \text{fastgpt:tmb:} + \text{tmbId}$$
+   - **私有模型归属**：归属于创建者（`modelData.tmbId`）。
+   - **私有渠道归属**：归属于成员专属的 `groupId`，不同成员间**绝对互不可见**。
+   - **日志与监控隔离**：仅允许查询当前成员专属 Group 的调用日志与时序仪表盘，严禁跨成员翻阅 Prompt 内容和指标。
+2. **服务端强制防御，严禁信任前端透传**：
+   - 所有 `/api/core/ai/channel/*` 接口服务端强制从当前登录 Session 提取 `tmbId` 并构建 `groupId`，杜绝前端通过 Query/Body 篡改。
+   - 普通成员仅能操作 `channelType: 'team'`；系统管理员（Root）可通过 `channelType: 'system'` 维护平台全局渠道与监控。
+3. **推理数据面路由规则（按模型 Owner 路由）**：
+   - **系统模型**：统一走平台全局渠道，注入 `X-Aiproxy-Group-Channel-Mode: global`；
+   - **团队私有模型**：无论工作流调用者是谁，**统一注入模型拥有者（Owner）的租户凭证**：
+     ```ts
+     export const getAiproxyScopeHeaders = (
+       modelData: { isSystem?: boolean; tmbId?: string } | undefined,
+       baseUrl: string | undefined
+     ): Record<string, string> => {
+       if (!baseUrl || baseUrl !== aiProxyBaseUrl) return {};
+       if (modelData?.isSystem) {
+         return { 'X-Aiproxy-Group-Channel-Mode': 'global' };
+       }
+       if (modelData?.tmbId) {
+         return {
+           'X-Aiproxy-Group': getMemberGroupId(String(modelData.tmbId)),
+           'X-Aiproxy-Group-Channel-Mode': 'own'
+         };
+       }
+       return {};
+     };
+     ```
+     `own` 模式保证只在拥有者的私有渠道内寻找健康渠道；无渠道时 AIProxy 返回 404，绝不跨组泄漏，亦绝不私自回退到系统渠道。
 
 ---
 
-### 4. 前端视图与交互层改造（`projects/app/src/pageComponents/account/model/`）
+## 四、系统架构与模块改造方案
 
-1. **Tab 布局（常驻展示）**：
-   - 彻底废除 `show_aiproxy` 判断逻辑，有权限的成员打开模型管理页面直接展示「活跃模型」、「模型配置」、「模型渠道」、「调用日志」、「监控分析」Tabs。
-2. **Member 数据隔离保障**：
-   - 渠道页面不再提供“查看他人渠道”的切换开关；普通成员打开时，天然只能看到自己拥有权限的私有渠道；
-   - 日志与监控页面默认锁定当前成员自身范围，无需也不允许切换租户 ID。
-3. **对接批量能力**：
-   - 渠道列表表格支持多选勾选，批量操作直接对接 `/batch_delete` 和 `/batch_status` 接口。
+### 1. 基础设施客户端与错误处理规范 (`packages/service`)
+- **`AIProxyClient` 错误统一收敛**：
+  在 `client.ts` 内部统一拦截 Axios 请求错误：
+  - 404 / `record not found` 映射为 `ModelErrEnum.channelNotExist`（供业务层识别资源缺失）；
+  - 其余错误直接提取 AIProxy 返回的真实 message 抛出；
+- **业务层免除 try-catch 胶水代码**：
+  CRUD 接口与 Service（`createChannel`、`updateChannel`、`deleteChannel` 等）不再包裹冗余的 `catch -> reject`，错误自然向上冒泡；
+- **404 精准业务识别**：
+  - `resolve.ts`（单查渠道）：捕获 404 转为 `undefined`；
+  - `summary.ts`（查询渠道摘要）：新用户未初始化渠道时捕获 404 转为空列表 `[]`，其余系统级错误正常抛出，由 API 层统一返回错误码供前端直接 Toast，严禁全量静默吞错；
+- **运行时无可用渠道拦截**：
+  在五大模型运行时调用出口（LLM、Embedding、Rerank、TTS、STT）统一使用 `normalizeRelayNoChannelError`，将 AIProxy 404 无渠道精准转换为 `ModelErrEnum.noAvailableChannel`。
+
+### 2. API 路由层收敛 (`projects/app/src/pages/api/core/ai/channel/`)
+全部接口基于 `parseApiInput` 进行 Zod 校验，强绑定 `session.tmbId`：
+- `list.ts`：透传 `page`、`per_page`、`search` 到 AI Proxy，废弃本地全量拉取做 slice 的反模式；
+- `create.ts` / `update.ts` / `delete.ts` / `status.ts`：标准的渠道 CRUD 控制；
+- `batch.ts`：直接对接 AI Proxy 原生批量接口 `/batch_delete` 和 `/batch_status`；
+- `affectedModels.ts`：在删除渠道前预检哪些模型将失去全部渠道；
+- `models.ts` & `modelChannels.ts`：模型与渠道双向关联悬浮信息展示；
+- `logs.ts` / `logDetail.ts` / `dashboard.ts`：当前成员私有作用域下的日志与时序数据。
+
+### 3. 前端交互层改造 (`projects/app/src/pageComponents/model/`)
+- **常驻 Tabs**：在模型管理中常驻提供「活跃模型」、「模型配置」、「模型渠道」、「调用日志」、「监控分析」标签页；
+- **纯粹数据驱动**：表格多选直接对接 `batch.ts`，弹窗与表格操作回调中清理机械性编写的 `await refresh().catch(() => {})`，依靠 `useRequest` 原生机制进行 Toast 反馈；
+- **安全渲染兜底**：消费层对模型与渠道列表默认采用 `?? []` 兜底，确保网络请求失败时仅弹 Toast，不会触发 React 渲染崩溃。
+
+### 4. 存量模型数据平滑迁移 (`projects/app/src/migration/tasks/`)
+遵循 FastGPT 统一系统迁移框架：
+- 新增独立的迁移任务，扫描包含旧版 `metadata.requestUrl`/`requestAuth` 的模型；
+- 内存按 `(model, requestUrl, requestAuth)` 维度去重；
+- 通过 AI Proxy API 幂等创建 `Migrated: <model>` 系统渠道；
+- 迁移全程支持断点续跑，日志中严禁暴露密钥明文。
 
 ---
 
-## 五、方案验证与验收标准
+## 五、验收标准
 
-1. **多租户安全隔离验证**：
-   - 成员 A 配置私有渠道后，成员 B 登录渠道管理页面，返回列表确认没有任何属于成员 A 的渠道信息；
-   - 成员 B 在工作流中调用成员 A 创建的私有模型，请求成功通过，且扣减与日志完整记录在成员 A 的 `fastgpt:tmb:A` 组内。
-2. **端到端推理转发验证**：
-   - 发起 LLM、Embedding、Rerank、TTS、STT 请求，确认发送给 AI Proxy 的请求头携带正确的 `X-Aiproxy-Group` 与 `Mode`；
-   - 当成员将模型渠道停用后，再次调用模型，确认前端精准提示“当前模型暂无可用渠道”（而非原始 404）。
-3. **多 Pod 分页一致性验证**：
-   - 修改渠道后立即刷新列表，确认分页数据直接由 AI Proxy 最新数据响应，不存在单机内存缓存导致的延迟与脏读。
-4. **迁移任务幂等性验证**：
-   - 运行新版系统迁移任务，确认旧配置平滑转为 AI Proxy 渠道，重跑任务状态正常判定为 skipped，无重复数据写入。
+1. **Member 隔离验证**：成员 A 创建的私有渠道与日志，成员 B 无法通过任何界面或 API 查询到；
+2. **跨成员调用验证**：成员 B 在应用中调用成员 A 的私有模型，请求带入成员 A 的 `X-Aiproxy-Group` 顺利推理，配额与调用日志严格落在成员 A 名下；
+3. **错误提示原真性**：渠道配置错误时（如上游 Key 无效），前端直接 Toast 显示 AIProxy 返回的具体错误原因，无任何伪造或无关枚举提示；
+4. **单元测试矩阵**：`@fastgpt/service` 渠道测试与 `projects/app` 模型/渠道测试全部通过。
