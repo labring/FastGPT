@@ -44,7 +44,7 @@ describe('BullMQ business services', () => {
           delay: 5000
         },
         removeOnComplete: true,
-        removeOnFail: { age: 30 * 24 * 60 * 60 }
+        removeOnFail: { count: 10000 }
       }
     });
     expect(queue.add).toHaveBeenCalledWith('delete_app', data, {
