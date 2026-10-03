@@ -597,6 +597,7 @@
   "workflow.select_description": "說明文字",
   "workflow.select_description_placeholder": "例如：\n冰箱裡是否有番茄？",
   "workflow.select_description_tip": "您可以新增一段說明文字，用來向使用者說明每個選項代表的意義。",
+  "workflow.select_options_mode_label": "選項",
   "workflow.select_result": "選擇結果",
   "workflow.user_file_input": "檔案連結",
   "workflow.user_file_input_desc": "使用者上傳的檔案和圖片連結",
@@ -614,4 +615,3 @@
   "delete_following_apps_tip": "刪除以下應用會將其關聯的對話記錄一併刪除。",
   "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部應用、關聯對話記錄將被一併刪除。"
 }
-
