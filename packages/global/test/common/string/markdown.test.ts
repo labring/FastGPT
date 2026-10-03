@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   simpleMarkdownText,
   htmlTable2Md,
+  matchDocumentImages,
   matchMarkdownImages,
   parseMarkdownBase64Images
 } from '@fastgpt/global/common/string/markdown';
@@ -798,6 +799,108 @@ describe('markdown 字符串处理函数测试', () => {
 
       expect(result).not.toContain('data:image/png;base64');
       expect(duration).toBeLessThan(1000); // 应该在 1 秒内完成
+    });
+  });
+
+  describe('Markdown 图片地址与标题', () => {
+    it.each([
+      'https://example.com/a.png "caption"',
+      "https://example.com/a.png 'caption'",
+      'https://example.com/a.png (caption)',
+      'https://example.com/a.png "caption with ) and ("',
+      String.raw`https://example.com/a.png "escaped \"quote\""`,
+      '<https://example.com/a.png>',
+      '<https://example.com/a.png> "caption"',
+      '<https://example.com/a.png> (caption)',
+      '  https://example.com/a.png\t"caption"  '
+    ])('只提取目的地址并保留完整节点：%s', (destination) => {
+      const node = `![figure](${destination})`;
+      expect(matchMarkdownImages(`before ${node} after`)).toEqual([
+        { altText: 'figure', url: 'https://example.com/a.png', fullMatch: node, index: 7 }
+      ]);
+    });
+
+    it('尖括号地址中的括号无需配对', () => {
+      const node = '![figure](<https://example.com/a).png> "caption")';
+      expect(matchMarkdownImages(node)[0]).toMatchObject({
+        url: 'https://example.com/a).png',
+        fullMatch: node
+      });
+    });
+
+    it.each([
+      '![bad](<https://example.com/a.png)',
+      '![bad](<https://example.com/a\n.png>)',
+      '![bad](<https://example.com/<a.png>)',
+      '![bad](<https://example.com/a.png>"caption")',
+      '![bad](https://example.com/a.png invalid)',
+      '![bad](https://example.com/a(1 .png)',
+      '![bad](https://example.com/a<1.png)',
+      '![bad](https://example.com/a.png "unclosed)',
+      '![bad](https://example.com/a.png "caption" extra)',
+      '![bad](https://example.com/a.png (nested (title)))'
+    ])('忽略不完整节点并继续扫描后续图片：%s', (invalid) => {
+      const valid = '![ok](https://example.com/ok.png "ok")';
+      const matches = matchMarkdownImages(`${invalid} ${valid}`);
+      expect(matches).toEqual([
+        {
+          altText: 'ok',
+          url: 'https://example.com/ok.png',
+          fullMatch: valid,
+          index: invalid.length + 1
+        }
+      ]);
+    });
+
+    it.each(['"caption"', "'caption'", '(caption)'])(
+      '转存仅替换 URL，保留标题 %s',
+      async (title) => {
+        const upload = vi.fn().mockResolvedValue({ key: 'dataset/figure.png' });
+        const result = await parseMarkdownBase64Images(
+          `![figure](https://example.com/a(1).png ${title})`,
+          { parseHttp: true, controller: upload }
+        );
+        expect(upload).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ type: 'http', url: 'https://example.com/a(1).png' })
+        );
+        expect(result).toBe(`![figure](dataset/figure.png ${title})`);
+      }
+    );
+
+    it.each([
+      ['data:image/png;base64,AAAA', 'dataset/figure.png'],
+      ['<data:image/png;base64,AAAA>', '<dataset/figure.png>']
+    ])('带标题的 base64 图片可上传，且保留目的地址格式：%s', async (destination, replaced) => {
+      const upload = vi.fn().mockResolvedValue({ key: 'dataset/figure.png' });
+      const result = await parseMarkdownBase64Images(`![figure](${destination} "caption")`, {
+        controller: upload
+      });
+      expect(upload).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'base64', base64: 'AAAA' })
+      );
+      expect(result).toBe(`![figure](${replaced} "caption")`);
+    });
+
+    it('HTTP 转存失败时完整保留标题中的转义字符与括号', async () => {
+      const node = String.raw`![figure](<https://example.com/a).png> "escaped \"quote\"")`;
+      const result = await parseMarkdownBase64Images(node, {
+        parseHttp: true,
+        controller: vi.fn().mockRejectedValue(new Error('offline'))
+      });
+      expect(result).toBe(node);
+    });
+
+    it('替换不影响相邻图片，空 key 删除整个节点', () => {
+      const nodes = matchDocumentImages(
+        '![a](https://example.com/a.png "A") ![b](<https://example.com/b.png> \'B\')'
+      );
+      expect(nodes.map((node) => node.url)).toEqual([
+        'https://example.com/a.png',
+        'https://example.com/b.png'
+      ]);
+      expect(nodes[0].replace('dataset/a.png')).toBe('![a](dataset/a.png "A")');
+      expect(nodes[1].replace('dataset/b.png')).toBe("![b](<dataset/b.png> 'B')");
+      expect(nodes[0].replace('')).toBe('');
     });
   });
 

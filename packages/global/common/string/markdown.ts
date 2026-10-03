@@ -229,14 +229,14 @@ export const matchDocumentImages = (text = ''): DocumentImageItem[] => {
 
   const rawMatches: DocumentImageItem[] = [];
 
-  for (const item of matchMarkdownImages(text)) {
+  for (const item of scanMarkdownImages(text)) {
     rawMatches.push({
       format: 'markdown',
       altText: item.altText,
       url: item.url,
       fullMatch: item.fullMatch,
       index: item.index,
-      replace: (nextUrl: string) => (nextUrl ? `![${item.altText}](${nextUrl})` : '')
+      replace: item.replace
     });
   }
 
@@ -289,42 +289,74 @@ const findClosingBracket = (text: string, startIndex: number) => {
   return -1;
 };
 
-const findMarkdownImageUrlEnd = (text: string, startIndex: number) => {
-  let depth = 0;
-
-  for (let i = startIndex; i < text.length; i++) {
-    const char = text[i];
-
-    if (char === '\\') {
-      i++;
-      continue;
-    }
-
-    if (char === '(') {
-      depth++;
-      continue;
-    }
-
-    if (char === ')') {
-      if (depth === 0) return i;
-      depth--;
-    }
-  }
-
-  return -1;
-};
-
 /**
- * 扫描 markdown 图片节点，支持 URL 中包含未转义括号或转义右括号的场景。
- *
- * 普通正则 `!\[...\]\(([^)]+)\)` 会在 `https://a.com/img(1).png` 的第一个 `)` 截断，
- * 导致 http 图片转存失败；这里用轻量扫描保留完整节点范围。
+ * 扫描行内图片，区分目的地址与可选标题，并记录仅替换地址的闭包。
+ * 裸地址配对括号，尖括号地址按 > 结束；标题不参与 URL 识别。
+ * 不完整节点跳过后继续扫描，不改变既有 HTML 图片的重叠过滤逻辑。
  */
-export const matchMarkdownImages = (text = ''): MarkdownImageMatchItem[] => {
+const scanMarkdownImages = (text = '') => {
   if (!text || typeof text !== 'string') return [];
 
-  const matches: MarkdownImageMatchItem[] = [];
+  const matches: (MarkdownImageMatchItem & { replace: DocumentImageItem['replace'] })[] = [];
   let start = 0;
+
+  /** 只用于本次扫描，返回原文中的地址区间和图片结束位置。 */
+  const readDestination = (contentStart: number) => {
+    let cursor = contentStart;
+    const skipWhitespace = () => {
+      while (cursor < text.length && /[ \t\r\n]/.test(text[cursor])) cursor++;
+    };
+    skipWhitespace();
+    const angled = text[cursor] === '<';
+    if (angled) cursor++;
+    const urlStart = cursor;
+    let depth = 0;
+
+    while (cursor < text.length) {
+      const char = text[cursor];
+      if (char === '\\') {
+        cursor += 2;
+        continue;
+      }
+      if (angled) {
+        if (char === '>') break;
+        if (char === '<' || char === '\r' || char === '\n') return;
+      } else {
+        if (/[ \t\r\n]/.test(char) || (char === ')' && depth === 0)) break;
+        if (char === '<' || char === '>') return;
+        if (char === '(') depth++;
+        if (char === ')') depth--;
+      }
+      cursor++;
+    }
+    if (depth !== 0 || (angled && text[cursor] !== '>')) return;
+    const urlEnd = cursor;
+    if (angled) cursor++;
+    const afterDestination = cursor;
+    skipWhitespace();
+
+    if (text[cursor] !== ')') {
+      // 标题必须由空白分隔；引号或括号包裹的说明不能送给下载回调。
+      if (cursor === afterDestination) return;
+      const opening = text[cursor];
+      if (opening !== '"' && opening !== "'" && opening !== '(') return;
+      const closing = opening === '(' ? ')' : opening;
+      cursor++;
+      while (cursor < text.length && text[cursor] !== closing) {
+        if (text[cursor] === '\\') {
+          cursor += 2;
+          continue;
+        }
+        if (opening === '(' && text[cursor] === '(') return;
+        cursor++;
+      }
+      if (cursor >= text.length) return;
+      cursor++;
+      skipWhitespace();
+    }
+    if (text[cursor] !== ')') return;
+    return { urlStart, urlEnd, imageEnd: cursor + 1 };
+  };
 
   while (start < text.length) {
     const imageStart = text.indexOf('![', start);
@@ -337,26 +369,37 @@ export const matchMarkdownImages = (text = ''): MarkdownImageMatchItem[] => {
       continue;
     }
 
-    const urlStart = altEnd + 2;
-    const urlEnd = findMarkdownImageUrlEnd(text, urlStart);
-    if (urlEnd === -1) {
+    const destination = readDestination(altEnd + 2);
+    if (!destination) {
       start = imageStart + 2;
       continue;
     }
 
-    const fullMatch = text.slice(imageStart, urlEnd + 1);
+    const { urlStart, urlEnd, imageEnd } = destination;
+    const fullMatch = text.slice(imageStart, imageEnd);
     matches.push({
       altText: text.slice(altStart, altEnd),
-      url: text.slice(urlStart, urlEnd).trim(),
+      url: text.slice(urlStart, urlEnd),
       fullMatch,
-      index: imageStart
+      index: imageStart,
+      // 保留 alt、空白、尖括号和标题，仅替换原地址，空 key 仍删除整个节点。
+      replace: (nextUrl) =>
+        nextUrl
+          ? fullMatch.slice(0, urlStart - imageStart) +
+            nextUrl +
+            fullMatch.slice(urlEnd - imageStart)
+          : ''
     });
 
-    start = urlEnd + 1;
+    start = imageEnd;
   }
 
   return matches;
 };
+
+/** 提取图片 URL 与完整原文节点；保留既有返回结构，不暴露内部替换闭包。 */
+export const matchMarkdownImages = (text = ''): MarkdownImageMatchItem[] =>
+  scanMarkdownImages(text).map(({ replace: _replace, ...item }) => item);
 
 type ParsedDocumentImage = MarkdownImage & { item: DocumentImageItem };
 
