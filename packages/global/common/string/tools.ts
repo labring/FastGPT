@@ -190,6 +190,27 @@ export const parseFileExtensionFromUrl = (url = '') => {
   return '';
 };
 
+/**
+ * Format `absNum` (at least the smallest unit) with the largest unit it reaches,
+ * from units sorted largest first. When rounding to two decimals would show a
+ * whole next unit, that unit is used instead: 99,999,999 reads 1亿, not 10000万,
+ * and 999,999 reads 1M, not 1000K.
+ */
+const formatWithLargestUnit = (
+  absNum: number,
+  units: [size: number, unit: string][]
+): string | undefined => {
+  const round = (value: number) => Number(value.toFixed(2));
+  const index = units.findIndex(([size]) => absNum >= size);
+  if (index === -1) return undefined;
+  const [size, unit] = units[index];
+  const larger = units[index - 1];
+  if (larger && round(absNum / size) >= larger[0] / size) {
+    return `${round(absNum / larger[0])}${larger[1]}`;
+  }
+  return `${round(absNum / size)}${unit}`;
+};
+
 export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): string => {
   if (num === 0) return '0';
   if (!num || isNaN(num)) return '-';
@@ -208,33 +229,19 @@ export const formatNumberWithUnit = (num: number, locale: string = 'zh-CN'): str
     const yiUnit = isHant ? '億' : '亿';
     const wanUnit = isHant ? '萬' : '万';
 
-    if (absNum >= 100000000) {
-      const value = absNum / 100000000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}${yiUnit}`;
-    }
-    if (absNum >= 10000) {
-      const value = absNum / 10000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}${wanUnit}`;
-    }
+    const unitText = formatWithLargestUnit(absNum, [
+      [100000000, yiUnit],
+      [10000, wanUnit]
+    ]);
+    if (unitText) return `${prefix}${unitText}`;
     return num.toLocaleString(locale);
   } else {
-    if (absNum >= 1000000000) {
-      const value = absNum / 1000000000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}B`;
-    }
-    if (absNum >= 1000000) {
-      const value = absNum / 1000000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}M`;
-    }
-    if (absNum >= 1000) {
-      const value = absNum / 1000;
-      const formatted = Number(value.toFixed(2)).toString();
-      return `${prefix}${formatted}K`;
-    }
+    const unitText = formatWithLargestUnit(absNum, [
+      [1000000000, 'B'],
+      [1000000, 'M'],
+      [1000, 'K']
+    ]);
+    if (unitText) return `${prefix}${unitText}`;
     return num.toLocaleString(locale);
   }
 };
