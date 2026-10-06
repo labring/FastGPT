@@ -315,7 +315,7 @@ export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
  * 规则：
  * 1. 首次请求失败后自动重试最多 3 次（单轮最多 4 次调用）；
  * 2. 只要有任意一次调用成功即判定为有效：耗时 > 30s 记为 yellow（高延迟），耗时 <= 30s 记为 green（正常）；
- * 3. 连续 4 次均失败则判定为 red（异常），记录最大重试次数和错误详情（截断至 1000 字符）。
+ * 3. 连续 4 次均失败则判定为 red（异常），错误详情以模型名称开头，整体截断至 1000 字符。
  */
 export const probeModelStatus = async ({
   model,
@@ -384,7 +384,8 @@ export const probeModelStatus = async ({
     type: model.type,
     status: ModelStatusProbeStatusEnum.red,
     attempts: MODEL_STATUS_MAX_RETRIES + 1,
-    error: String(getErrText(lastError, 'Model test failed')).slice(0, 1000),
+    // 告警接收端可能只展示 probe.error，因此错误文本也携带模型名称以便定位。
+    error: `${model.name}: ${getErrText(lastError, 'Model test failed')}`.slice(0, 1000),
     startedAt,
     requestStartedAt,
     requestEndedAt
