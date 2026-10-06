@@ -1,5 +1,6 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { QueueNames } from '../names';
+import { defaultRemoveOnComplete, defaultRemoveOnFail, defaultWorkerOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
 
 export type AgentSkillCreateJobData = {
@@ -17,11 +18,8 @@ export class SkillCreateMQService {
     return this.binding.getQueue<AgentSkillCreateJobData>(QueueNames.agentSkillCreate, {
       defaultJobOptions: {
         attempts: 1,
-        removeOnComplete: true,
-        removeOnFail: {
-          age: 30 * 24 * 60 * 60,
-          count: 1000
-        }
+        removeOnComplete: defaultRemoveOnComplete,
+        removeOnFail: defaultRemoveOnFail
       }
     });
   }
@@ -29,7 +27,8 @@ export class SkillCreateMQService {
   /** 创建 Skill 创建 Worker；workspace、Mongo 和对象存储逻辑由 processor 所属领域维护。 */
   getWorker(processor: Processor<AgentSkillCreateJobData>): Worker<AgentSkillCreateJobData> {
     return this.binding.getWorker<AgentSkillCreateJobData>(QueueNames.agentSkillCreate, processor, {
-      concurrency: 2
+      concurrency: 2,
+      ...defaultWorkerOptions
     });
   }
 

@@ -1,5 +1,6 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { QueueNames } from '../names';
+import { defaultJobOptions, defaultWorkerOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
 
 export type AgentSkillDeleteJobData = {
@@ -8,15 +9,7 @@ export type AgentSkillDeleteJobData = {
 };
 
 const agentSkillDeleteQueueOptions = {
-  defaultJobOptions: {
-    attempts: 10,
-    backoff: {
-      type: 'exponential' as const,
-      delay: 5000
-    },
-    removeOnComplete: true,
-    removeOnFail: { count: 10000 }
-  }
+  defaultJobOptions
 };
 
 /** Skill 删除队列的业务合同和生命周期入口。 */
@@ -35,9 +28,7 @@ export class SkillDeleteMQService {
   getWorker(processor: Processor<AgentSkillDeleteJobData>): Worker<AgentSkillDeleteJobData> {
     return this.binding.getWorker<AgentSkillDeleteJobData>(QueueNames.agentSkillDelete, processor, {
       concurrency: 1,
-      removeOnFail: {
-        count: 10000
-      }
+      ...defaultWorkerOptions
     });
   }
 

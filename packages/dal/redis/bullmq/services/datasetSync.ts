@@ -16,24 +16,15 @@ export class DatasetSyncMQService {
   /** 获取 dataset sync 队列；队列配置在首次使用时才交给 binding。 */
   getQueue(): Queue<DatasetSyncJobData> {
     return this.binding.getQueue<DatasetSyncJobData>(QueueNames.datasetSync, {
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000
-        }
-      }
+      defaultJobOptions: fastRetryJobOptions
     });
   }
 
   /** 创建 dataset sync Worker；实际同步 processor 由 app/pro 注入。 */
   getWorker(processor: Processor<DatasetSyncJobData>): Worker<DatasetSyncJobData> {
     return this.binding.getWorker<DatasetSyncJobData>(QueueNames.datasetSync, processor, {
-      removeOnFail: {
-        age: 15 * 24 * 60 * 60,
-        count: 1000
-      },
-      concurrency: 1
+      concurrency: 1,
+      ...defaultWorkerOptions
     });
   }
 

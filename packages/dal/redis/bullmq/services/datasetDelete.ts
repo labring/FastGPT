@@ -1,6 +1,7 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
+import { defaultJobOptions, defaultWorkerOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
 
 export type DatasetDeleteJobData = {
@@ -9,15 +10,7 @@ export type DatasetDeleteJobData = {
 };
 
 const datasetDeleteQueueOptions = {
-  defaultJobOptions: {
-    attempts: 10,
-    backoff: {
-      type: 'exponential' as const,
-      delay: 5000
-    },
-    removeOnComplete: true,
-    removeOnFail: { count: 10000 }
-  }
+  defaultJobOptions
 };
 
 /** Dataset 删除队列的业务合同和生命周期入口。 */
@@ -36,9 +29,7 @@ export class DatasetDeleteMQService {
   getWorker(processor: Processor<DatasetDeleteJobData>): Worker<DatasetDeleteJobData> {
     return this.binding.getWorker<DatasetDeleteJobData>(QueueNames.datasetDelete, processor, {
       concurrency: 1,
-      removeOnFail: {
-        count: 10000
-      }
+      ...defaultWorkerOptions
     });
   }
 
