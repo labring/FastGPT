@@ -443,6 +443,8 @@ services:
 networks:
   data:
     name: fastgpt_data
+  vector:
+    name: fastgpt_vector
   app:
     name: fastgpt_app
   codesandbox:
