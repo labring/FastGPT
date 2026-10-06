@@ -1,6 +1,6 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { QueueNames } from '../names';
-import { fastRetryJobOptions, defaultWorkerOptions } from '../options';
+import { defaultWorkerOptions, fastRetryJobOptions } from '../options';
 import type { Processor, Queue, Worker, WorkerOptions } from '../types';
 
 export type EvaluationJobData = {
@@ -45,29 +45,52 @@ export class EvaluationMQService {
       const job = await queue.getJob(jobId);
       if (!job) return false;
 
-      const state = await job.getState();
-      return state === 'active' || state === 'waiting' || state === 'delayed';
-    } catch {
+      const jobState = await job.getState();
+      return ['waiting', 'delayed', 'prioritized', 'active'].includes(jobState);
+    } catch (error) {
+      this.binding.getLogger().error('Failed to check evaluation job status', { evalId, error });
       return false;
     }
   }
 
-  /** 取消指定的评测任务。 */
-  async cancelJob(evalId: string): Promise<boolean> {
-    const queue = this.getQueue();
-    const jobId = await queue.getDeduplicationJobId(String(evalId));
-    if (!jobId) return false;
+  /** 删除尚未开始执行的评测任务，active/completed 任务保持原状态。 */
+  async removeJob(evalId: string): Promise<boolean> {
+    const formatEvalId = String(evalId);
+    try {
+      const queue = this.getQueue();
+      const jobId = await queue.getDeduplicationJobId(formatEvalId);
+      if (!jobId) {
+        this.binding.getLogger().warn('No evaluation job found to remove', { evalId });
+        return false;
+      }
 
-    const job = await queue.getJob(jobId);
-    if (!job) return false;
+      const job = await queue.getJob(jobId);
+      if (!job) {
+        this.binding.getLogger().warn('Evaluation job not found in queue', { evalId, jobId });
+        return false;
+      }
 
-    const state = await job.getState();
-    if (state === 'active') {
+      const jobState = await job.getState();
+      if (['waiting', 'delayed', 'prioritized'].includes(jobState)) {
+        await job.remove();
+        this.binding.getLogger().info('Evaluation job removed successfully', {
+          evalId,
+          jobId,
+          jobState
+        });
+        return true;
+      }
+
+      this.binding.getLogger().warn('Cannot remove active or completed evaluation job', {
+        evalId,
+        jobId,
+        jobState
+      });
+      return false;
+    } catch (error) {
+      this.binding.getLogger().error('Failed to remove evaluation job', { evalId, error });
       return false;
     }
-
-    await job.remove();
-    return true;
   }
 }
 
