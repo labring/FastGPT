@@ -1,5 +1,6 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { QueueNames } from '../names';
+import { defaultWorkerOptions, fastRetryJobOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 
