@@ -1,4 +1,5 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import type {
   UpdateDatasetDataPropsType,
@@ -592,6 +593,7 @@ export class DatasetDataOperation {
   async delete(data: DatasetDataItemType) {
     await mongoSessionRun(async (session) => {
       await MongoDatasetData.deleteOne({ _id: data.id }, { session });
+      await MongoDatasetTraining.deleteMany({ dataId: data.id }, { session });
       // getFullTextStore() 按引擎分发:mongo 删除 dataset_data_texts;milvus 为 no-op(全文行随向量删除清理)。
       await getFullTextStore().deleteByDataId(data.id, session);
 

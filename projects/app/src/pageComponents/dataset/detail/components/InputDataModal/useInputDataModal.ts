@@ -318,11 +318,11 @@ export const useInputDataModal = ({
         indexes: formatIndexesForRequest(e.indexes)
       };
 
-      const dataId = await postInsertData2Dataset(postData);
+      const { dataIds } = await postInsertData2Dataset(postData);
 
       return {
         ...data,
-        dataId
+        dataId: dataIds[0]
       };
     },
     {

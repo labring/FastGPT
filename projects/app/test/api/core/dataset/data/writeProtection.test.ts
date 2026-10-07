@@ -96,7 +96,7 @@ describe('pending index data write protection', () => {
     }
   );
 
-  it.each([DatasetDataIndexStatusEnum.indexed, undefined])(
+  it.each([DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.error, undefined])(
     'allows data-level writes for %s data',
     async (indexStatus) => {
       const { root, data } = await createData(indexStatus);

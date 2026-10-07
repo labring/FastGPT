@@ -2,8 +2,7 @@ import {
   matchMarkdownImages,
   unescapeMarkdownImageUrl
 } from '@fastgpt/global/common/string/markdown';
-import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 export type DatasetDataMarkdownImageItem = {
@@ -64,7 +63,7 @@ export const uniqueDatasetDataMarkdownImageUrls = (texts: Array<string | null | 
  * 只由数据级写接口触发；读取、集合删除和 Worker 内部的状态推进不经过该断言。
  */
 export const assertDatasetDataWritable = (indexStatus?: DatasetDataIndexStatusEnum) => {
-  if (isDatasetDataIndexed(indexStatus)) return;
+  if (indexStatus !== DatasetDataIndexStatusEnum.indexing) return;
 
   return Promise.reject(DatasetErrEnum.dataNotIndexed);
 };
