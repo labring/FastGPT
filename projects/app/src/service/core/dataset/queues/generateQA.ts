@@ -42,6 +42,7 @@ type PopulateType = {
   collection: { qaPrompt?: string };
 };
 
+/** 消费 QA 任务并在成功后创建索引数据；任务最外层管理心跳，业务失败保留重试。 */
 export async function generateQA(): Promise<any> {
   const max = global.systemEnv?.qaMaxProcess || 10;
   logger.debug('QA queue size check', { queueSize: global.qaQueueLen, max });
@@ -76,140 +77,142 @@ export async function generateQA(): Promise<any> {
 
       if (!claimed) break;
       const { data, lease } = claimed;
-      const text = data.q;
-      if (!data.dataset || !data.collection) {
-        logger.info('QA queue task skipped: dataset or collection missing', {
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          trainingId: data._id
-        });
-        // Delete data
-        // 关联对象缺失时仍使用同一租约删除，避免误删新任务。
-        await lease.complete();
-        continue;
-      }
-      // auth balance
-      if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
-        await lease.stop();
-        continue;
-      }
-
-      logger.info('QA queue task started', {
-        trainingId: data._id,
-        datasetId: data.datasetId,
-        collectionId: data.collectionId,
-        teamId: data.teamId,
-        tmbId: data.tmbId
-      });
-
       try {
-        const modelHandle = await getModelHandle();
-        const modelData = modelHandle.getLLMModelData(
-          getDatasetModelReference(data.dataset, 'agent')
-        );
-        const embeddingModelData = modelHandle.getEmbeddingModelData(
-          getDatasetModelReference(data.dataset, 'embedding')
-        );
-        const vlmModelData = modelHandle.getVlmModelData(
-          getDatasetModelReference(data.dataset, 'vlm'),
-          { optional: true }
-        );
-        const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
-  ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
-
-        // request LLM to get QA
-        const messages: ChatCompletionMessageParam[] = [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ];
-
-        const {
-          answerText: answer,
-          usage: { inputTokens, outputTokens }
-        } = await createLLMResponse({
-          teamId: data.teamId,
-          saveLLMResponseRecord: false,
-          body: {
-            model: modelData,
-            messages,
-            stream: true
-          }
-        });
-
-        const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
-
-        // QA 成功后才创建最终数据。数据和后续 chunk 任务在同一事务中提交，
-        // 避免 QA 处理中出现用户可见的临时数据。
-        const result = await lease.complete(async (session) => {
-          const result = await preCreateDatasetDataAndPushToTrainingQueue({
-            teamId: data.teamId,
-            tmbId: data.tmbId,
+        lease.start();
+        const text = data.q;
+        if (!data.dataset || !data.collection) {
+          logger.info('QA queue task skipped: dataset or collection missing', {
             datasetId: data.datasetId,
             collectionId: data.collectionId,
-            mode: TrainingModeEnum.chunk,
-            data: qaArr.map((item) => ({
-              ...item,
-              ...(data.dataMetadata && { metadata: data.dataMetadata }),
-              chunkIndex: data.chunkIndex
-            })),
-            billId: data.billId,
-            vectorModel: embeddingModelData,
-            agentModel: modelData,
-            vlmModel: vlmModelData,
-            session
+            trainingId: data._id
           });
-
-          if (result.insertLen === 0) {
-            throw new Error('QA 未生成有效结果');
-          }
-
-          return result;
-        });
-
-        // Push usage
-        pushLLMTrainingUsage({
-          teamId: data.teamId,
-          inputTokens,
-          outputTokens,
-          usageId: data.billId,
-          model: modelData,
-          type: UsageItemTypeEnum.training_qa
-        });
-
-        logger.info('QA queue task finished', {
-          durationMs: Date.now() - startTime,
-          qaCount: qaArr.length,
-          usage: { inputTokens, outputTokens },
-          trainingId: data._id,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId
-        });
-      } catch (err: any) {
-        logger.error('QA queue task failed', {
-          error: err,
-          trainingId: data._id,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId
-        });
-        if (!(err instanceof TrainingLeaseLostError)) {
-          await lease.fail(err);
+          // Delete data
+          // 关联对象缺失时仍使用同一租约删除，避免误删新任务。
+          await lease.complete();
+          continue;
+        }
+        // auth balance
+        if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
+          continue;
         }
 
-        await delay(100);
+        logger.info('QA queue task started', {
+          trainingId: data._id,
+          datasetId: data.datasetId,
+          collectionId: data.collectionId,
+          teamId: data.teamId,
+          tmbId: data.tmbId
+        });
+
+        try {
+          const modelHandle = await getModelHandle();
+          const modelData = modelHandle.getLLMModelData(
+            getDatasetModelReference(data.dataset, 'agent')
+          );
+          const embeddingModelData = modelHandle.getEmbeddingModelData(
+            getDatasetModelReference(data.dataset, 'embedding')
+          );
+          const vlmModelData = modelHandle.getVlmModelData(
+            getDatasetModelReference(data.dataset, 'vlm'),
+            { optional: true }
+          );
+          const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
+  ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
+
+          // request LLM to get QA
+          const messages: ChatCompletionMessageParam[] = [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ];
+
+          const {
+            answerText: answer,
+            usage: { inputTokens, outputTokens }
+          } = await createLLMResponse({
+            teamId: data.teamId,
+            saveLLMResponseRecord: false,
+            body: {
+              model: modelData,
+              messages,
+              stream: true
+            }
+          });
+
+          const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
+
+          // QA 成功后才创建最终数据。数据和后续 chunk 任务在同一事务中提交，
+          // 避免 QA 处理中出现用户可见的临时数据。
+          const result = await lease.complete(async (session) => {
+            const result = await preCreateDatasetDataAndPushToTrainingQueue({
+              teamId: data.teamId,
+              tmbId: data.tmbId,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId,
+              mode: TrainingModeEnum.chunk,
+              data: qaArr.map((item) => ({
+                ...item,
+                ...(data.dataMetadata && { metadata: data.dataMetadata }),
+                chunkIndex: data.chunkIndex
+              })),
+              billId: data.billId,
+              vectorModel: embeddingModelData,
+              agentModel: modelData,
+              vlmModel: vlmModelData,
+              session
+            });
+
+            if (result.insertLen === 0) {
+              throw new Error('QA 未生成有效结果');
+            }
+
+            return result;
+          });
+
+          // Push usage
+          pushLLMTrainingUsage({
+            teamId: data.teamId,
+            inputTokens,
+            outputTokens,
+            usageId: data.billId,
+            model: modelData,
+            type: UsageItemTypeEnum.training_qa
+          });
+
+          logger.info('QA queue task finished', {
+            durationMs: Date.now() - startTime,
+            qaCount: qaArr.length,
+            usage: { inputTokens, outputTokens },
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId
+          });
+        } catch (err: any) {
+          logger.error('QA queue task failed', {
+            error: err,
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId
+          });
+          if (!(err instanceof TrainingLeaseLostError)) {
+            await lease.fail(err);
+          }
+
+          await delay(100);
+        }
       } finally {
         await lease.stop();
       }
     }
   } catch (error) {
     logger.error('QA queue loop failed', { error });
+  } finally {
+    if (reduceQueue()) {
+      logger.info('QA queue drained', { queueSize: global.qaQueueLen });
+    }
+    logger.debug('QA queue loop exit', { queueSize: global.qaQueueLen });
   }
-
-  if (reduceQueue()) {
-    logger.info('QA queue drained', { queueSize: global.qaQueueLen });
-  }
-  logger.debug('QA queue loop exit', { queueSize: global.qaQueueLen });
 }
 
 // Format qa answer

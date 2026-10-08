@@ -1,5 +1,7 @@
+import * as modelService from '@fastgpt/service/core/ai/model';
+import * as synonymService from '@fastgpt/service/core/dataset/synonym/entity';
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
@@ -86,7 +88,7 @@ const createContext = async ({
 
 describe('pre-created data queue routing', () => {
   beforeEach(() => {
-    serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
     global.vectorQueueLen = 0;
     global.preCreatedQueueLen = 0;
     resetVectorMocks();
@@ -102,6 +104,26 @@ describe('pre-created data queue routing', () => {
       createMockVectorsResponse(inputs.map((input) => input.input))
     );
     mockVectorInsert.mockResolvedValue({ insertIds: ['pre_vector_1'] });
+  });
+
+  it('stops the heartbeat when scheduling a missing-collection rebuild throws', async () => {
+    const { task, collection } = await createContext({ mode: TrainingModeEnum.chunk });
+    const synonym = vi.spyOn(synonymService, 'isDatasetSynonymEnabled').mockReturnValue(true);
+    await MongoDatasetTraining.updateOne({ _id: task._id }, { $set: { synonymVersion: 1 } });
+    await MongoDatasetCollection.deleteOne({ _id: collection._id });
+    const model = vi.spyOn(modelService, 'getModelHandle').mockImplementationOnce(async () => {
+      expect(vi.getTimerCount()).toBe(1);
+      throw new Error('model catalog unavailable');
+    });
+    try {
+      await generateVector();
+      expect(model).toHaveBeenCalledTimes(1);
+      expect(global.vectorQueueLen).toBe(0);
+      expect(await MongoDatasetTraining.findById(task._id).lean()).not.toBeNull();
+    } finally {
+      model.mockRestore();
+      synonym.mockRestore();
+    }
   });
 
   /** CP-04 / DS-07 规则 3：待索引数据走提前落库路径，更新同一条数据。 */
@@ -212,4 +234,14 @@ describe('pre-created data queue routing', () => {
     expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
     expect(updated!.indexes.map((index) => index.text)).toContain('legacy custom index');
   });
+});
+
+// 仅接管心跳定时器，Mongo 和业务等待仍使用真实时间。
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+});
+afterEach(() => {
+  const remainingHeartbeats = vi.getTimerCount();
+  vi.useRealTimers();
+  expect(remainingHeartbeats).toBe(0);
 });

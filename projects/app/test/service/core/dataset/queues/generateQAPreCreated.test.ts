@@ -1,5 +1,5 @@
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   TrainingModeEnum,
   DatasetCollectionTypeEnum
@@ -81,7 +81,7 @@ const mockQAResponse = (qaCount: number) => {
 
 describe('generateQA writes data only after QA completes', () => {
   beforeEach(() => {
-    serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
     global.qaQueueLen = 0;
     global.systemEnv = { ...(global.systemEnv ?? {}), qaMaxProcess: 10 } as any;
     mocks.llm.mockReset();
@@ -139,4 +139,14 @@ describe('generateQA writes data only after QA completes', () => {
       errorMsg: expect.any(String)
     });
   });
+});
+
+// 仅接管心跳定时器，Mongo 和业务等待仍使用真实时间。
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+});
+afterEach(() => {
+  const remainingHeartbeats = vi.getTimerCount();
+  vi.useRealTimers();
+  expect(remainingHeartbeats).toBe(0);
 });

@@ -95,80 +95,82 @@ export async function generatePreCreatedData(): Promise<any> {
 
       if (!claimed) break;
       const { data, lease } = claimed;
-      if (!data.dataset || !data.collection || !data.data) {
-        logger.info('Pre-created data task skipped: related data missing', {
+      try {
+        lease.start();
+        if (!data.dataset || !data.collection || !data.data) {
+          logger.info('Pre-created data task skipped: related data missing', {
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            dataId: data.dataId
+          });
+          await lease.complete();
+          continue;
+        }
+
+        // 任务可能在 worker 崩溃后重试，此时数据已 indexed，直接清理残留任务即可。
+        if (isDatasetDataIndexed(data.data.indexStatus)) {
+          await lease.complete();
+          continue;
+        }
+
+        if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
+          continue;
+        }
+
+        logger.info('Pre-created data task started', {
           trainingId: data._id,
           datasetId: data.datasetId,
           collectionId: data.collectionId,
-          dataId: data.dataId
-        });
-        await lease.complete();
-        continue;
-      }
-
-      // 任务可能在 worker 崩溃后重试，此时数据已 indexed，直接清理残留任务即可。
-      if (isDatasetDataIndexed(data.data.indexStatus)) {
-        await lease.complete();
-        continue;
-      }
-
-      if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
-        await lease.stop();
-        continue;
-      }
-
-      logger.info('Pre-created data task started', {
-        trainingId: data._id,
-        datasetId: data.datasetId,
-        collectionId: data.collectionId,
-        teamId: data.teamId,
-        tmbId: data.tmbId,
-        dataId: data.dataId
-      });
-
-      try {
-        const { tokens } = await updatePreCreatedData({ trainingData: data, lease });
-
-        const modelHandle = await getModelHandle();
-        pushGenerateVectorUsage({
           teamId: data.teamId,
           tmbId: data.tmbId,
-          inputTokens: tokens,
-          model: modelHandle.getEmbeddingModelData(
-            getDatasetModelReference(data.dataset, 'embedding')
-          ),
-          usageId: data.billId
+          dataId: data.dataId
         });
 
-        logger.info('Pre-created data task finished', {
-          durationMs: Date.now() - start,
-          trainingId: data._id,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          dataId: data.dataId
-        });
-      } catch (err: any) {
-        logger.error('Pre-created data task failed', {
-          error: err,
-          trainingId: data._id,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          dataId: data.dataId
-        });
-        if (!(err instanceof TrainingLeaseLostError)) await lease.fail(err);
-        await delay(100);
+        try {
+          const { tokens } = await updatePreCreatedData({ trainingData: data, lease });
+
+          const modelHandle = await getModelHandle();
+          pushGenerateVectorUsage({
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            inputTokens: tokens,
+            model: modelHandle.getEmbeddingModelData(
+              getDatasetModelReference(data.dataset, 'embedding')
+            ),
+            usageId: data.billId
+          });
+
+          logger.info('Pre-created data task finished', {
+            durationMs: Date.now() - start,
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            dataId: data.dataId
+          });
+        } catch (err: any) {
+          logger.error('Pre-created data task failed', {
+            error: err,
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            dataId: data.dataId
+          });
+          if (!(err instanceof TrainingLeaseLostError)) await lease.fail(err);
+          await delay(100);
+        }
       } finally {
         await lease.stop();
       }
     }
   } catch (error) {
     logger.error('Pre-created data queue loop failed', { error });
+  } finally {
+    if (reduceQueue()) {
+      logger.info('Pre-created data queue drained', { queueSize: global.preCreatedQueueLen });
+    }
+    logger.debug('Pre-created data queue loop exit', { queueSize: global.preCreatedQueueLen });
   }
-
-  if (reduceQueue()) {
-    logger.info('Pre-created data queue drained', { queueSize: global.preCreatedQueueLen });
-  }
-  logger.debug('Pre-created data queue loop exit', { queueSize: global.preCreatedQueueLen });
 }
 
 const updatePreCreatedData = async ({

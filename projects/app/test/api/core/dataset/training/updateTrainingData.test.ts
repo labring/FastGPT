@@ -392,7 +392,8 @@ describe('update training data test', () => {
         collectionId: collection._id,
         dataId: String(dataSingle._id),
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
+        imageId: 'dataset/team/image.png',
         errorMsg: 'failed',
         retryCount: 0
       },
@@ -403,7 +404,8 @@ describe('update training data test', () => {
         collectionId: collection._id,
         dataId: String(dataBatch._id),
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
+        imageId: 'dataset/team/image.png',
         errorMsg: 'failed',
         retryCount: 0
       }
@@ -421,6 +423,9 @@ describe('update training data test', () => {
     const updatedDataSingle = await MongoDatasetData.findById(dataSingle._id).lean();
     expect(updatedDataSingle?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
     expect(updatedDataSingle?.indexErrorMsg).toBeUndefined();
+    expect((await MongoDatasetTraining.findById(trainingSingle._id).lean())?.mode).toBe(
+      TrainingModeEnum.index
+    );
 
     // Batch retry
     await Call<UpdateTrainingDataBody, EmptyQuery, UpdateTrainingDataResponse>(handler, {

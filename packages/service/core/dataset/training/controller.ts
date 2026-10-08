@@ -126,7 +126,7 @@ export const lockTrainingDataByTeamId = async (
       }
     );
 
-    if (task?.dataId) {
+    if (task?.mode === TrainingModeEnum.index && task.dataId) {
       await MongoDatasetData.updateOne(
         {
           _id: task.dataId,
@@ -162,9 +162,12 @@ export const lockTrainingDataByTeamId = async (
           ...(currentTrainingId ? [{ _id: currentTrainingId }] : [])
         ]
       },
-      { dataId: 1 }
+      { dataId: 1, mode: 1 }
     ).lean();
-    const dataIds = tasks.flatMap((item) => (item.dataId ? [item.dataId] : []));
+    // 余额不足会暂停所有训练阶段，但只有 index 任务能更新 data 的索引错误。
+    const dataIds = tasks.flatMap((item) =>
+      item.mode === TrainingModeEnum.index && item.dataId ? [item.dataId] : []
+    );
 
     await MongoDatasetTraining.updateMany(
       {

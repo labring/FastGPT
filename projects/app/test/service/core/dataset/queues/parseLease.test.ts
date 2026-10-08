@@ -147,3 +147,26 @@ describe('createParseTaskLease', () => {
     expect(stopped).toBe(true);
   });
 });
+
+describe('parse lease commit boundary', () => {
+  it('freezes renewal before committing and leaves timer cleanup to finally', async () => {
+    vi.useFakeTimers();
+    const updateLock = vi.fn().mockResolvedValue(true);
+    const lease = createParseTaskLease({ taskId: 'parse', lockTime: new Date(), updateLock });
+    try {
+      lease.start();
+      await vi.advanceTimersByTimeAsync(PARSE_QUEUE_LEASE_HEARTBEAT_INTERVAL_MS);
+      await lease.prepareCommit();
+      const filter = lease.getFilter();
+      await vi.advanceTimersByTimeAsync(PARSE_QUEUE_LEASE_HEARTBEAT_INTERVAL_MS);
+      expect(updateLock).toHaveBeenCalledTimes(1);
+      expect(lease.getFilter()).toEqual(filter);
+      expect(vi.getTimerCount()).toBe(1);
+    } finally {
+      await lease.stop();
+      const timers = vi.getTimerCount();
+      vi.useRealTimers();
+      expect(timers).toBe(0);
+    }
+  });
+});

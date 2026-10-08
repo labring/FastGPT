@@ -17,6 +17,7 @@ import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
   const body = parseApiInput({ req, bodySchema: UpdateTrainingDataBodySchema }).body;
@@ -119,7 +120,11 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     _id: data._id
   };
 
-  const nextMode = data.imageId && q ? await getDatasetIndexTrainingMode(data) : undefined;
+  // 只有补充图片解析结果才跳过当前阶段；重试 index 必须保留其原阶段。
+  const nextMode =
+    data.mode === TrainingModeEnum.imageParse && data.imageId && q
+      ? await getDatasetIndexTrainingMode(data)
+      : undefined;
 
   await mongoSessionRun(async (session) => {
     if (data.dataId) {

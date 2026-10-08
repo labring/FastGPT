@@ -24,8 +24,8 @@ export class TrainingLeaseLostError extends Error {
 }
 
 /**
- * 统一领取训练任务并启动心跳。调用方必须在 finally 中 stop；complete/transition/fail
- * 统一执行 CAS。模型调用放在提交回调外，回调只包含需要原子提交的 Mongo 写入。
+ * 统一领取训练任务并创建租约，不隐式启动心跳。调用方在任务最外层 try 中 start、finally 中 stop。
+ * complete/transition/fail 统一执行 CAS。模型调用放在提交回调外，回调只包含需要原子提交的 Mongo 写入。
  */
 export const claimTrainingTask = async <T = Record<string, never>>(
   options: FindAndLockTrainingTaskOptions
@@ -108,16 +108,27 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
     }
     return pending;
   };
-  const stop = async () => {
+  /** 提交前冻结续租并等待在途写入，定时器统一由任务最外层 finally 释放。 */
+  const freezeHeartbeat = async () => {
     closed = true;
-    if (timer) clearInterval(timer);
-    timer = undefined;
     await pending;
   };
+  const start = () => {
+    if (closed || lost || timer) return;
+    timer = setInterval(() => {
+      void renew();
+    }, TRAINING_LEASE_HEARTBEAT_MS);
+    timer.unref?.();
+  };
+  const stop = async () => {
+    if (timer) clearInterval(timer);
+    timer = undefined;
+    await freezeHeartbeat();
+  };
 
-  /** 先停止心跳并等待在途续租，再通过事务内 CAS 提交阶段结果。 */
+  /** 冻结 lockTime 后通过事务内 CAS 提交，避免续租与阶段结果写入竞争。 */
   const commit = async <R>(write: (session: ClientSession) => Promise<R>): Promise<R> => {
-    await stop();
+    await freezeHeartbeat();
     assertOwned();
     return mongoSessionRun(async (session) => {
       assertOwned();
@@ -188,7 +199,8 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
           lose();
           throw new TrainingLeaseLostError();
         }
-        if (retryCount === 0 && task.dataId) {
+        // data 的错误状态只表示最终索引写入失败，不能由前置增强阶段写入。
+        if (retryCount === 0 && task.mode === TrainingModeEnum.index && task.dataId) {
           await MongoDatasetData.updateOne(
             {
               _id: task.dataId,
@@ -206,11 +218,8 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
       if (!(failure instanceof TrainingLeaseLostError)) throw failure;
     }
   };
-  timer = setInterval(() => {
-    void renew();
-  }, TRAINING_LEASE_HEARTBEAT_MS);
-  timer.unref?.();
   return {
+    start,
     renew,
     stop,
     complete,
@@ -245,9 +254,10 @@ export const getDatasetIndexTrainingMode = async (
 /**
  * 许可证关闭增强能力时逐条转入各自的最终写入阶段，避免将预创建数据误送入 rebuild。
  * 游标限制内存占用，更新时核对原 mode，避免覆盖并发 worker 已完成的阶段流转。
+ * 新阶段恢复重试和可领取状态；历史终态任务转入 index 时恢复 TTL，重建任务保留其过期策略。
  */
 export const skipDatasetTrainingEnhancement = async (
-  mode: TrainingModeEnum.auto | TrainingModeEnum.image
+  mode: TrainingModeEnum.auto | TrainingModeEnum.image | TrainingModeEnum.imageParse
 ) => {
   const cursor = MongoDatasetTraining.find({ mode })
     .select('_id teamId datasetId collectionId dataId')
@@ -255,9 +265,18 @@ export const skipDatasetTrainingEnhancement = async (
     .cursor();
   try {
     for await (const training of cursor) {
+      const nextMode = await getDatasetIndexTrainingMode(training);
       await MongoDatasetTraining.updateOne(
         { _id: training._id, mode },
-        { $set: { mode: await getDatasetIndexTrainingMode(training) } }
+        {
+          $set: {
+            mode: nextMode,
+            retryCount: 3,
+            lockTime: new Date(0),
+            ...(nextMode === TrainingModeEnum.index ? { expireAt: new Date() } : {})
+          },
+          $unset: { errorMsg: '' }
+        }
       );
     }
   } finally {

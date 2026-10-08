@@ -104,11 +104,12 @@ describe('dataset training controller', () => {
     expect(lockedTraining?.lockTime).toEqual(BLOCKED_LOCK_TIME);
     expect(lockedTraining?.errorMsg).toBe(errorMsg);
     expect(finalErrorLockedTrainingCount).toBe(1);
+    if (!lockedTraining) throw new Error('Expected locked training task');
     expect(
       isFinalErrorTraining({
-        retryCount: lockedTraining?.retryCount,
-        lockTime: lockedTraining?.lockTime,
-        errorMsg: lockedTraining?.errorMsg
+        retryCount: lockedTraining.retryCount,
+        lockTime: lockedTraining.lockTime,
+        errorMsg: lockedTraining.errorMsg
       })
     ).toBe(true);
     expect(exhaustedTraining?.lockTime).not.toEqual(BLOCKED_LOCK_TIME);
@@ -155,7 +156,13 @@ describe('dataset training controller', () => {
     expect(untouchedTraining?.lockTime).not.toEqual(BLOCKED_LOCK_TIME);
     expect(untouchedTraining?.errorMsg).toBeUndefined();
   });
-  it('should mark associated indexing data as error when locking tasks', async () => {
+  it.each([
+    TrainingModeEnum.index,
+    TrainingModeEnum.imageParse,
+    TrainingModeEnum.image,
+    TrainingModeEnum.auto,
+    TrainingModeEnum.chunk
+  ])('only marks index data as error when locking %s tasks', async (mode) => {
     const root = await getRootUser();
     const datasetId = '507f1f77bcf86cd799439021';
     const collectionId = '507f1f77bcf86cd799439022';
@@ -181,7 +188,7 @@ describe('dataset training controller', () => {
         collectionId,
         dataId: String(data._id),
         billId,
-        mode: TrainingModeEnum.chunk,
+        mode,
         retryCount: 3
       }
     ]);
@@ -193,7 +200,11 @@ describe('dataset training controller', () => {
     const errorMsg = i18nT('common:code_error.team_error.ai_points_not_enough');
 
     expect(updatedTraining?.lockTime).toEqual(BLOCKED_LOCK_TIME);
-    expect(updatedData?.indexStatus).toBe(DatasetDataIndexStatusEnum.error);
-    expect(updatedData?.indexErrorMsg).toBe(errorMsg);
+    expect(updatedData?.indexStatus).toBe(
+      mode === TrainingModeEnum.index
+        ? DatasetDataIndexStatusEnum.error
+        : DatasetDataIndexStatusEnum.indexing
+    );
+    expect(updatedData?.indexErrorMsg).toBe(mode === TrainingModeEnum.index ? errorMsg : undefined);
   });
 });

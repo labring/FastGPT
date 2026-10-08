@@ -1,5 +1,5 @@
 import { getModelTestDefaults } from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -116,7 +116,7 @@ describe('datasetParseQueue creates index-ready data', () => {
     mocks.paragraph.mockReset();
     global.datasetParseQueueLen = 0;
     global.feConfigs.isPlus = true;
-    serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
   });
 
   /** CT-01：解析执行前数据列表不含本次分块。 */
@@ -188,6 +188,68 @@ describe('datasetParseQueue creates index-ready data', () => {
     expect(list.map((item) => item.q).join('\n')).toContain('Enhanced paragraph content.');
     // LLM 内部请求片段不会落库。
     expect(list.map((item) => item.q).join('\n')).not.toContain('Q1:');
+    expect(mocks.usage).toHaveBeenCalledTimes(1);
+    expect(mocks.usage).toHaveBeenCalledWith(
+      expect.objectContaining({ inputTokens: 2, outputTokens: 1 })
+    );
+  });
+
+  it.each(['missing-agent', 'configured-agent'])(
+    'continues with original chunks after automatic AI paragraph failure (%s)',
+    async (model) => {
+      const { task, collection } = await createTask({
+        agentModelId: model === 'configured-agent' ? getModelTestDefaults().llm!.modelId : model,
+        paragraphChunkAIMode: ParagraphChunkAIModeEnum.auto
+      });
+      mocks.paragraph.mockRejectedValue(new Error('paragraph request failed'));
+
+      await datasetParseQueue();
+
+      const data = await MongoDatasetData.find({ collectionId: collection._id }).lean();
+      expect(data).toHaveLength(1);
+      expect(data[0]).toMatchObject({
+        q: 'Original source text.',
+        indexStatus: DatasetDataIndexStatusEnum.indexing,
+        indexes: []
+      });
+      expect(data[0].indexErrorMsg).toBeUndefined();
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toBeNull();
+      const next = await MongoDatasetTraining.findOne({ collectionId: collection._id }).lean();
+      expect(next).toMatchObject({ mode: TrainingModeEnum.index, retryCount: 3 });
+      expect(String(next?.dataId)).toBe(String(data[0]._id));
+      expect(next?.errorMsg).toBeUndefined();
+      expect(mocks.paragraph).toHaveBeenCalledTimes(1);
+      expect(mocks.usage).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps successful automatic AI paragraph output and usage', async () => {
+    const { collection } = await createTask({
+      agentModelId: getModelTestDefaults().llm!.modelId,
+      paragraphChunkAIMode: ParagraphChunkAIModeEnum.auto
+    });
+    mocks.paragraph.mockResolvedValue({
+      resultText: '# Generated\n\nEnhanced content.',
+      totalInputTokens: 2,
+      totalOutputTokens: 1
+    });
+    await datasetParseQueue();
+    const data = await MongoDatasetData.find({ collectionId: collection._id }).lean();
+    expect(data.map((item) => item.q).join('\n')).toContain('Enhanced content.');
+    expect(mocks.usage).toHaveBeenCalledTimes(1);
+    expect(mocks.usage).toHaveBeenCalledWith(
+      expect.objectContaining({ inputTokens: 2, outputTokens: 1 })
+    );
+  });
+
+  it('skips automatic AI paragraph requests when original text has headings', async () => {
+    await createTask({ paragraphChunkAIMode: ParagraphChunkAIModeEnum.auto });
+    mocks.read.mockResolvedValue({ rawText: '# First\n\nContent.\n\n# Second\n\nMore content.' });
+    await datasetParseQueue();
+    expect(await MongoDatasetTraining.countDocuments({ mode: TrainingModeEnum.parse })).toBe(0);
+    expect(await MongoDatasetData.countDocuments()).toBeGreaterThan(0);
+    expect(mocks.paragraph).not.toHaveBeenCalled();
+    expect(mocks.usage).not.toHaveBeenCalled();
   });
 
   /** 解析失败时不落库：数据与任务写入在同一个成功事务内，失败保持数据列表不变。 */
@@ -219,7 +281,7 @@ describe('datasetParseQueue creates index-ready data', () => {
 
   /** CP-12 正例：数据集启用同义词时，预落库数据与创建路径同源写入 synonymVersion。 */
   it('writes the dataset synonym version on pre-created data', async () => {
-    serviceEnv.DATASET_SYNONYM_ENABLED = true;
+    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
     const { user, dataset, collection } = await createTask();
     await MongoDatasetSynonym.create({
       teamId: user.teamId,
@@ -310,4 +372,14 @@ describe('datasetParseQueue creates index-ready data', () => {
     expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(1);
     expect(await MongoDatasetTraining.countDocuments({ collectionId: collection._id })).toBe(1);
   });
+});
+
+// 仅接管心跳定时器，Mongo 和业务等待仍使用真实时间。
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+});
+afterEach(() => {
+  const remainingHeartbeats = vi.getTimerCount();
+  vi.useRealTimers();
+  expect(remainingHeartbeats).toBe(0);
 });

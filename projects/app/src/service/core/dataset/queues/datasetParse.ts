@@ -45,7 +45,7 @@ import { createParseTaskLease, PARSE_QUEUE_LEASE_TIMEOUT_MINUTES } from './parse
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 
-/** 只有实际启用 AI 分段时才调用接口；模型 ID 原样交给该接口校验，异常由解析任务重试。 */
+/** 自动 AI 分段失败回退原文；强制模式的错误由解析任务重试，成功用量由调用方记账。 */
 const requestLLMPargraph = async ({
   rawText,
   modelId,
@@ -74,7 +74,7 @@ const requestLLMPargraph = async ({
   if (paragraphChunkAIMode === ParagraphChunkAIModeEnum.auto) {
     // Check if the text contains Markdown header structure
     const hasMarkdownHeaders = /^(#+)\s/m.test(rawText);
-    const hasMultipleHeaders = (rawText.match(/^(#+)\s/g) || []).length > 1;
+    const hasMultipleHeaders = (rawText.match(/^(#+)\s/gm) || []).length > 1;
 
     const isMarkdown = hasMarkdownHeaders && hasMultipleHeaders;
 
@@ -87,9 +87,18 @@ const requestLLMPargraph = async ({
     }
   }
 
-  const data = await postCreateParagraphTitle({ rawText, modelId, teamId, billId });
-
-  return data;
+  try {
+    return await postCreateParagraphTitle({ rawText, modelId, teamId, billId });
+  } catch (error) {
+    if (paragraphChunkAIMode !== ParagraphChunkAIModeEnum.auto) throw error;
+    // 自动分段只是增强能力，失败时保留原文，不伪造成功用量。
+    logger.warn('Automatic AI paragraph skipped after failure', { teamId, modelId, billId, error });
+    return {
+      resultText: rawText,
+      totalInputTokens: 0,
+      totalOutputTokens: 0
+    };
+  }
 };
 
 const reduceQueue = () => {
@@ -170,41 +179,6 @@ export const datasetParseQueue = async (): Promise<any> => {
         await delay(500);
         continue;
       }
-      // Check team points and lock(No mistakes will be thrown here)
-      if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
-        continue;
-      }
-
-      const dataset = data.dataset;
-      const collection = data.collection;
-
-      if (!dataset || !collection) {
-        logger.warn('Parse queue task skipped: dataset or collection missing', {
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          trainingId: data._id
-        });
-        const deleteResult = await MongoDatasetTraining.deleteOne({
-          _id: data._id,
-          lockTime: data.lockTime
-        });
-        if (deleteResult.deletedCount !== 1) {
-          logger.warn('Parse queue task lease lost before deleting incomplete task', {
-            trainingId: data._id
-          });
-        }
-        continue;
-      }
-      logger.info('Parse queue task started', {
-        trainingId: data._id,
-        datasetId: data.datasetId,
-        collectionId: data.collectionId,
-        teamId: data.teamId,
-        tmbId: data.tmbId,
-        collectionType: collection.type,
-        trainingType: collection.trainingType
-      });
-
       const taskLease = createParseTaskLease({
         taskId: data._id,
         lockTime: data.lockTime,
@@ -228,259 +202,294 @@ export const datasetParseQueue = async (): Promise<any> => {
           });
         }
       });
-      taskLease.start();
 
       try {
-        // 解析阶段只严格校验向量模型；辅助模型仅取分块元数据，不校验启用或可调用状态。
-        const modelHandle = await getModelHandle();
-        const embeddingModelData = modelHandle.getEmbeddingModelData(
-          getDatasetModelReference(dataset, 'embedding')
-        );
-        const agentModelData = modelHandle.findModelData(
-          getDatasetModelReference(dataset, 'agent'),
-          { type: 'llm' }
-        );
-        const vlmModelData = modelHandle.findModelData(getDatasetModelReference(dataset, 'vlm'), {
-          type: 'llm',
-          vision: true
-        });
-        const vlmModelConfigured = !isEmptyModelValue(
-          getModelReferenceValue({ modelId: dataset.vlmModelId, model: dataset.vlmModel })
-        );
-        const trainingMode = getTrainingModeByCollection({
-          trainingType: collection.trainingType ?? DatasetCollectionDataProcessModeEnum.chunk,
-          autoIndexes: collection.autoIndexes,
-          imageIndex: collection.imageIndex,
-          supportImageIndex:
-            vlmModelConfigured ||
-            getDatasetImageIndexCapability({ vectorModel: embeddingModelData }).supportImageIndex
-        });
+        taskLease.start();
+        // Check team points and lock(No mistakes will be thrown here)
+        if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
+          continue;
+        }
 
-        // 1. Parse rawtext
-        const sourceReadType = await (async () => {
-          if (collection.type === DatasetCollectionTypeEnum.link) {
-            if (!collection.rawLink) return Promise.reject('rawLink is missing');
-            return {
-              type: DatasetSourceReadTypeEnum.link,
-              sourceId: collection.rawLink,
-              selector: collection.metadata?.webPageSelector
-            };
-          }
-          if (collection.type === DatasetCollectionTypeEnum.file) {
-            if (!collection.fileId) return Promise.reject('fileId is missing');
-            return {
-              type: DatasetSourceReadTypeEnum.fileLocal,
-              sourceId: String(collection.fileId)
-            };
-          }
-          if (collection.type === DatasetCollectionTypeEnum.apiFile) {
-            if (!collection.apiFileId) return Promise.reject('apiFileId is missing');
-            return {
-              type: DatasetSourceReadTypeEnum.apiFile,
-              sourceId: collection.apiFileId,
-              apiDatasetServer: dataset.apiDatasetServer
-            };
-          }
-          if (collection.type === DatasetCollectionTypeEnum.externalFile) {
-            if (!collection.externalFileUrl) return Promise.reject('externalFileId is missing');
-            return {
-              type: DatasetSourceReadTypeEnum.externalFile,
-              sourceId: collection.externalFileUrl,
-              externalFileId: collection.externalFileId
-            };
-          }
+        const dataset = data.dataset;
+        const collection = data.collection;
 
-          return null;
-        })();
-
-        if (!sourceReadType) {
-          logger.warn('Parse queue task skipped: source read type resolved to null', {
-            trainingId: data._id,
+        if (!dataset || !collection) {
+          logger.warn('Parse queue task skipped: dataset or collection missing', {
             datasetId: data.datasetId,
             collectionId: data.collectionId,
-            collectionType: collection.type
+            trainingId: data._id
           });
-          await taskLease.stop();
+          await taskLease.prepareCommit();
           const deleteResult = await MongoDatasetTraining.deleteOne(taskLease.getFilter());
           if (deleteResult.deletedCount !== 1) {
-            logger.warn('Parse queue task lease lost before deleting invalid task', {
+            logger.warn('Parse queue task lease lost before deleting incomplete task', {
               trainingId: data._id
             });
           }
           continue;
         }
-
-        const { title, rawText } = await readDatasetSourceRawText({
-          teamId: data.teamId,
-          tmbId: data.tmbId,
-          customPdfParse: collection.customPdfParse,
-          // 解析开关仅对外部解析路径生效;非 customPdfParse 时传 undefined,rawText 缓存沿用旧 key
-          sangforFileParseConfig: collection.customPdfParse
-            ? getDatasetIultmzhFileParseConfig(dataset)
-            : undefined,
-          usageId: data.billId,
-          datasetId: data.datasetId,
-          ...sourceReadType
-        });
-
-        // 3. LLM Pargraph
-        const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
-          rawText,
-          modelId: agentModelData?.modelId ?? dataset.agentModelId,
-          teamId: String(data.teamId),
-          billId: data.billId,
-          paragraphChunkAIMode: collection.paragraphChunkAIMode
-        });
-        // 跳过 AI 分段时没有用量，不要求文本模型存在；实际消耗不能在缺少计费元数据时静默漏记。
-        if (totalInputTokens > 0 || totalOutputTokens > 0) {
-          if (!agentModelData)
-            throw new Error('AI paragraph model metadata unavailable for billing');
-          pushLLMTrainingUsage({
-            teamId: data.teamId,
-            model: agentModelData,
-            inputTokens: totalInputTokens,
-            outputTokens: totalOutputTokens,
-            usageId: data.billId,
-            type: UsageItemTypeEnum.training_paragraph
-          });
-        }
-
-        // 4. Chunk split
-        const chunks = await rawText2Chunks({
-          rawText: resultText,
-          chunkTriggerType: collection.chunkTriggerType,
-          chunkTriggerMinSize: collection.chunkTriggerMinSize,
-          chunkSize: collection.chunkSize,
-          paragraphChunkDeep: collection.paragraphChunkDeep,
-          paragraphChunkMinSize: collection.paragraphChunkMinSize,
-          maxSize: getLLMMaxChunkSize(agentModelData),
-          overlapRatio:
-            collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
-          customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
-          chunkSettingMode: collection.chunkSettingMode,
-          trainingType: collection.trainingType,
-          backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
-        });
-
-        // Check dataset limit
-        await checkDatasetIndexLimit({
-          teamId: data.teamId,
-          insertLen: Math.round(predictDataLimitLength(trainingMode, chunks) * 0.7)
-        });
-
-        const trainingData = chunks.map((item, index) => ({
-          ...item,
-          indexes: item.indexes?.map((text) => ({
-            type: DatasetDataIndexTypeEnum.custom,
-            text
-          })),
-          chunkIndex: index
-        }));
-
-        // 成功写入前先停止续租，并等待正在进行的 heartbeat 完成，保证下面使用最新 lease。
-        await taskLease.stop();
-        await mongoSessionRun(async (session) => {
-          // 5. Update collection title(Link)
-          await MongoDatasetCollection.updateOne(
-            { _id: collection._id },
-            {
-              ...(title && { name: title }),
-              rawTextLength: resultText.length,
-              hashRawText: hashStr(resultText)
-            },
-            { session }
-          );
-
-          // QA 需要先完成模型生成，成功后才创建最终数据；其它模式可以先写 indexing 数据。
-          if (trainingMode === TrainingModeEnum.qa) {
-            await pushDataListToTrainingQueue({
-              teamId: data.teamId,
-              tmbId: data.tmbId,
-              datasetId: dataset._id,
-              collectionId: collection._id,
-              agentModel: agentModelData,
-              vectorModel: embeddingModelData,
-              vlmModel: vlmModelData,
-              vlmModelConfigured,
-              indexSize: collection.indexSize,
-              mode: TrainingModeEnum.qa,
-              billId: data.billId,
-              data: trainingData,
-              session
-            });
-          } else {
-            await preCreateDatasetDataAndPushToTrainingQueue({
-              teamId: data.teamId,
-              tmbId: data.tmbId,
-              datasetId: dataset._id,
-              collectionId: collection._id,
-              agentModel: agentModelData,
-              vectorModel: embeddingModelData,
-              vlmModel: vlmModelData,
-              vlmModelConfigured,
-              indexSize: collection.indexSize,
-              mode: trainingMode,
-              billId: data.billId,
-              data: trainingData,
-              session
-            });
-          }
-
-          // 7. Delete task
-          const deleteResult = await MongoDatasetTraining.deleteOne(taskLease.getFilter(), {
-            session
-          });
-          if (deleteResult.deletedCount !== 1) {
-            throw new Error('Parse queue task lease lost before completion');
-          }
-        });
-
-        logger.debug('Parse queue task finished', {
-          durationMs: Date.now() - startTime,
+        logger.info('Parse queue task started', {
           trainingId: data._id,
           datasetId: data.datasetId,
-          collectionId: data.collectionId
+          collectionId: data.collectionId,
+          teamId: data.teamId,
+          tmbId: data.tmbId,
+          collectionType: collection.type,
+          trainingType: collection.trainingType
         });
-      } catch (err) {
-        await taskLease.stop();
-        if (err === TeamErrEnum.datasetSizeNotEnough) {
-          logger.info('Parse queue dataset limit exceeded, locking task', {
+
+        try {
+          // 解析阶段只严格校验向量模型；辅助模型仅取分块元数据，不校验启用或可调用状态。
+          const modelHandle = await getModelHandle();
+          const embeddingModelData = modelHandle.getEmbeddingModelData(
+            getDatasetModelReference(dataset, 'embedding')
+          );
+          const agentModelData = modelHandle.findModelData(
+            getDatasetModelReference(dataset, 'agent'),
+            { type: 'llm' }
+          );
+          const vlmModelData = modelHandle.findModelData(getDatasetModelReference(dataset, 'vlm'), {
+            type: 'llm',
+            vision: true
+          });
+          const vlmModelConfigured = !isEmptyModelValue(
+            getModelReferenceValue({ modelId: dataset.vlmModelId, model: dataset.vlmModel })
+          );
+          const trainingMode = getTrainingModeByCollection({
+            trainingType: collection.trainingType ?? DatasetCollectionDataProcessModeEnum.chunk,
+            autoIndexes: collection.autoIndexes,
+            imageIndex: collection.imageIndex,
+            supportImageIndex:
+              vlmModelConfigured ||
+              getDatasetImageIndexCapability({ vectorModel: embeddingModelData }).supportImageIndex
+          });
+
+          // 1. Parse rawtext
+          const sourceReadType = await (async () => {
+            if (collection.type === DatasetCollectionTypeEnum.link) {
+              if (!collection.rawLink) return Promise.reject('rawLink is missing');
+              return {
+                type: DatasetSourceReadTypeEnum.link,
+                sourceId: collection.rawLink,
+                selector: collection.metadata?.webPageSelector
+              };
+            }
+            if (collection.type === DatasetCollectionTypeEnum.file) {
+              if (!collection.fileId) return Promise.reject('fileId is missing');
+              return {
+                type: DatasetSourceReadTypeEnum.fileLocal,
+                sourceId: String(collection.fileId)
+              };
+            }
+            if (collection.type === DatasetCollectionTypeEnum.apiFile) {
+              if (!collection.apiFileId) return Promise.reject('apiFileId is missing');
+              return {
+                type: DatasetSourceReadTypeEnum.apiFile,
+                sourceId: collection.apiFileId,
+                apiDatasetServer: dataset.apiDatasetServer
+              };
+            }
+            if (collection.type === DatasetCollectionTypeEnum.externalFile) {
+              if (!collection.externalFileUrl) return Promise.reject('externalFileId is missing');
+              return {
+                type: DatasetSourceReadTypeEnum.externalFile,
+                sourceId: collection.externalFileUrl,
+                externalFileId: collection.externalFileId
+              };
+            }
+
+            return null;
+          })();
+
+          if (!sourceReadType) {
+            logger.warn('Parse queue task skipped: source read type resolved to null', {
+              trainingId: data._id,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId,
+              collectionType: collection.type
+            });
+            await taskLease.prepareCommit();
+            const deleteResult = await MongoDatasetTraining.deleteOne(taskLease.getFilter());
+            if (deleteResult.deletedCount !== 1) {
+              logger.warn('Parse queue task lease lost before deleting invalid task', {
+                trainingId: data._id
+              });
+            }
+            continue;
+          }
+
+          const { title, rawText } = await readDatasetSourceRawText({
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            customPdfParse: collection.customPdfParse,
+            // 解析开关仅对外部解析路径生效;非 customPdfParse 时传 undefined,rawText 缓存沿用旧 key
+            sangforFileParseConfig: collection.customPdfParse
+              ? getDatasetIultmzhFileParseConfig(dataset)
+              : undefined,
+            usageId: data.billId,
+            datasetId: data.datasetId,
+            ...sourceReadType
+          });
+
+          // 3. LLM Pargraph
+          const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
+            rawText,
+            modelId: agentModelData?.modelId ?? dataset.agentModelId,
+            teamId: String(data.teamId),
+            billId: data.billId,
+            paragraphChunkAIMode: collection.paragraphChunkAIMode
+          });
+          // 跳过 AI 分段时没有用量，不要求文本模型存在；实际消耗不能在缺少计费元数据时静默漏记。
+          if (totalInputTokens > 0 || totalOutputTokens > 0) {
+            if (!agentModelData)
+              throw new Error('AI paragraph model metadata unavailable for billing');
+            pushLLMTrainingUsage({
+              teamId: data.teamId,
+              model: agentModelData,
+              inputTokens: totalInputTokens,
+              outputTokens: totalOutputTokens,
+              usageId: data.billId,
+              type: UsageItemTypeEnum.training_paragraph
+            });
+          }
+
+          // 4. Chunk split
+          const chunks = await rawText2Chunks({
+            rawText: resultText,
+            chunkTriggerType: collection.chunkTriggerType,
+            chunkTriggerMinSize: collection.chunkTriggerMinSize,
+            chunkSize: collection.chunkSize,
+            paragraphChunkDeep: collection.paragraphChunkDeep,
+            paragraphChunkMinSize: collection.paragraphChunkMinSize,
+            maxSize: getLLMMaxChunkSize(agentModelData),
+            overlapRatio:
+              collection.trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
+            customReg: collection.chunkSplitter ? [collection.chunkSplitter] : [],
+            chunkSettingMode: collection.chunkSettingMode,
+            trainingType: collection.trainingType,
+            backupParse: collection.trainingType === DatasetCollectionDataProcessModeEnum.backup
+          });
+
+          // Check dataset limit
+          await checkDatasetIndexLimit({
+            teamId: data.teamId,
+            insertLen: Math.round(predictDataLimitLength(trainingMode, chunks) * 0.7)
+          });
+
+          const trainingData = chunks.map((item, index) => ({
+            ...item,
+            indexes: item.indexes?.map((text) => ({
+              type: DatasetDataIndexTypeEnum.custom,
+              text
+            })),
+            chunkIndex: index
+          }));
+
+          // 成功写入前先停止续租，并等待正在进行的 heartbeat 完成，保证下面使用最新 lease。
+          await taskLease.prepareCommit();
+          await mongoSessionRun(async (session) => {
+            // 5. Update collection title(Link)
+            await MongoDatasetCollection.updateOne(
+              { _id: collection._id },
+              {
+                ...(title && { name: title }),
+                rawTextLength: resultText.length,
+                hashRawText: hashStr(resultText)
+              },
+              { session }
+            );
+
+            // QA 需要先完成模型生成，成功后才创建最终数据；其它模式可以先写 indexing 数据。
+            if (trainingMode === TrainingModeEnum.qa) {
+              await pushDataListToTrainingQueue({
+                teamId: data.teamId,
+                tmbId: data.tmbId,
+                datasetId: dataset._id,
+                collectionId: collection._id,
+                agentModel: agentModelData,
+                vectorModel: embeddingModelData,
+                vlmModel: vlmModelData,
+                vlmModelConfigured,
+                indexSize: collection.indexSize,
+                mode: TrainingModeEnum.qa,
+                billId: data.billId,
+                data: trainingData,
+                session
+              });
+            } else {
+              await preCreateDatasetDataAndPushToTrainingQueue({
+                teamId: data.teamId,
+                tmbId: data.tmbId,
+                datasetId: dataset._id,
+                collectionId: collection._id,
+                agentModel: agentModelData,
+                vectorModel: embeddingModelData,
+                vlmModel: vlmModelData,
+                vlmModelConfigured,
+                indexSize: collection.indexSize,
+                mode: trainingMode,
+                billId: data.billId,
+                data: trainingData,
+                session
+              });
+            }
+
+            // 7. Delete task
+            const deleteResult = await MongoDatasetTraining.deleteOne(taskLease.getFilter(), {
+              session
+            });
+            if (deleteResult.deletedCount !== 1) {
+              throw new Error('Parse queue task lease lost before completion');
+            }
+          });
+
+          logger.debug('Parse queue task finished', {
+            durationMs: Date.now() - startTime,
             trainingId: data._id,
             datasetId: data.datasetId,
             collectionId: data.collectionId
           });
-          await MongoDatasetTraining.updateOne(taskLease.getFilter(), {
-            errorMsg: i18nT('common:code_error.team_error.dataset_size_not_enough'),
-            lockTime: new Date('2999/5/5')
+        } catch (err) {
+          await taskLease.prepareCommit();
+          if (err === TeamErrEnum.datasetSizeNotEnough) {
+            logger.info('Parse queue dataset limit exceeded, locking task', {
+              trainingId: data._id,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId
+            });
+            await MongoDatasetTraining.updateOne(taskLease.getFilter(), {
+              errorMsg: i18nT('common:code_error.team_error.dataset_size_not_enough'),
+              lockTime: new Date('2999/5/5')
+            });
+
+            continue;
+          }
+
+          logger.error('Parse queue task failed', {
+            error: err,
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId
           });
 
-          continue;
+          await MongoDatasetTraining.updateOne(taskLease.getFilter(), {
+            errorMsg: getErrText(err, 'unknown error'),
+            lockTime: addMinutes(new Date(), -PARSE_QUEUE_LEASE_TIMEOUT_MINUTES)
+          });
+
+          await delay(100);
         }
-
-        logger.error('Parse queue task failed', {
-          error: err,
-          trainingId: data._id,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId
-        });
-
-        await MongoDatasetTraining.updateOne(taskLease.getFilter(), {
-          errorMsg: getErrText(err, 'unknown error'),
-          lockTime: addMinutes(new Date(), -PARSE_QUEUE_LEASE_TIMEOUT_MINUTES)
-        });
-
-        await delay(100);
       } finally {
         await taskLease.stop();
       }
     }
   } catch (error) {
     logger.error('Parse queue loop failed', { error });
-  }
+  } finally {
+    if (reduceQueue()) {
+      logger.info('Parse queue drained', { queueSize: global.datasetParseQueueLen });
+    }
 
-  if (reduceQueue()) {
-    logger.info('Parse queue drained', { queueSize: global.datasetParseQueueLen });
+    logger.debug('Parse queue loop exit', { queueSize: global.datasetParseQueueLen });
   }
-
-  logger.debug('Parse queue loop exit', { queueSize: global.datasetParseQueueLen });
 };

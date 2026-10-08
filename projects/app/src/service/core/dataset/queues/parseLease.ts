@@ -25,6 +25,7 @@ export type ParseTaskLease = {
   isLost: () => boolean;
   heartbeat: () => Promise<void>;
   start: () => void;
+  prepareCommit: () => Promise<void>;
   stop: () => Promise<void>;
 };
 
@@ -106,13 +107,18 @@ export const createParseTaskLease = <TTaskId>({
     }, intervalMs);
   };
 
-  const stop = async () => {
+  /** 写入阶段结果前冻结 lockTime，等待在途续租；定时器交给任务最外层 finally 清理。 */
+  const prepareCommit = async () => {
     stopped = true;
+    await pendingHeartbeat;
+  };
+
+  const stop = async () => {
     if (timer) {
       clearInterval(timer);
       timer = undefined;
     }
-    await pendingHeartbeat;
+    await prepareCommit();
   };
 
   return {
@@ -123,6 +129,7 @@ export const createParseTaskLease = <TTaskId>({
     isLost: () => lost,
     heartbeat,
     start,
+    prepareCommit,
     stop
   };
 };

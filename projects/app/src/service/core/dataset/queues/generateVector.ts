@@ -96,7 +96,7 @@ export const getRebuildUpdateInput = async (trainingData: TrainingDataType) => {
   };
 };
 
-/* 索引生成队列。每导入一次，就是一个单独的线程 */
+/** 消费普通创建和重建任务；每条任务独立管理心跳，队列退出时归还并发名额。 */
 export async function generateVector(): Promise<any> {
   const max = global.systemEnv?.vectorMaxProcess || 10;
   logger.debug('Vector queue size check', { queueSize: global.vectorQueueLen, max });
@@ -144,84 +144,86 @@ export async function generateVector(): Promise<any> {
         break;
       }
       const { data, lease } = claimed;
+      try {
+        lease.start();
 
-      if (!data.dataset || !data.collection) {
-        logger.info('Vector queue task skipped: dataset or collection missing', {
+        if (!data.dataset || !data.collection) {
+          logger.info('Vector queue task skipped: dataset or collection missing', {
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            trainingId: data._id
+          });
+          if (data.synonymVersion && data.dataset && data.dataId) {
+            await enqueueFollowingDatasetRebuild({ trainingData: data });
+          }
+          await lease.complete();
+          continue;
+        }
+
+        // auth balance
+        if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
+          continue;
+        }
+
+        logger.info('Vector queue task started', {
+          trainingId: data._id,
           datasetId: data.datasetId,
           collectionId: data.collectionId,
-          trainingId: data._id
-        });
-        if (data.synonymVersion && data.dataset && data.dataId) {
-          await enqueueFollowingDatasetRebuild({ trainingData: data });
-        }
-        await lease.complete();
-        continue;
-      }
-
-      // auth balance
-      if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
-        await lease.stop();
-        continue;
-      }
-
-      logger.info('Vector queue task started', {
-        trainingId: data._id,
-        datasetId: data.datasetId,
-        collectionId: data.collectionId,
-        teamId: data.teamId,
-        tmbId: data.tmbId,
-        dataId: data.dataId
-      });
-
-      try {
-        const { tokens } = await (async () => {
-          if (!data.dataId) return insertData({ trainingData: data, lease });
-          return rebuildData({ trainingData: data, lease });
-        })();
-
-        // push usage
-        const modelHandle = await getModelHandle();
-        pushGenerateVectorUsage({
           teamId: data.teamId,
           tmbId: data.tmbId,
-          inputTokens: tokens,
-          model: modelHandle.getEmbeddingModelData(
-            getDatasetModelReference(data.dataset, 'embedding')
-          ),
-          usageId: data.billId
+          dataId: data.dataId
         });
 
-        logger.info('Vector queue task finished', {
-          durationMs: Date.now() - start,
-          trainingId: data._id,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          dataId: data.dataId
-        });
-      } catch (err: any) {
-        logger.error('Vector queue task failed', {
-          error: err,
-          trainingId: data._id,
-          datasetId: data.datasetId,
-          collectionId: data.collectionId,
-          dataId: data.dataId
-        });
-        if (!(err instanceof TrainingLeaseLostError)) {
-          await lease.fail(err);
+        try {
+          const { tokens } = await (async () => {
+            if (!data.dataId) return insertData({ trainingData: data, lease });
+            return rebuildData({ trainingData: data, lease });
+          })();
+
+          // push usage
+          const modelHandle = await getModelHandle();
+          pushGenerateVectorUsage({
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            inputTokens: tokens,
+            model: modelHandle.getEmbeddingModelData(
+              getDatasetModelReference(data.dataset, 'embedding')
+            ),
+            usageId: data.billId
+          });
+
+          logger.info('Vector queue task finished', {
+            durationMs: Date.now() - start,
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            dataId: data.dataId
+          });
+        } catch (err: any) {
+          logger.error('Vector queue task failed', {
+            error: err,
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            dataId: data.dataId
+          });
+          if (!(err instanceof TrainingLeaseLostError)) {
+            await lease.fail(err);
+          }
+          await delay(100);
         }
-        await delay(100);
       } finally {
         await lease.stop();
       }
     }
   } catch (error) {
     logger.error('Vector queue loop failed', { error });
+  } finally {
+    if (reduceQueue()) {
+      logger.info('Vector queue drained', { queueSize: global.vectorQueueLen });
+    }
+    logger.debug('Vector queue loop exit', { queueSize: global.vectorQueueLen });
   }
-
-  if (reduceQueue()) {
-    logger.info('Vector queue drained', { queueSize: global.vectorQueueLen });
-  }
-  logger.debug('Vector queue loop exit', { queueSize: global.vectorQueueLen });
 }
 
 /**
