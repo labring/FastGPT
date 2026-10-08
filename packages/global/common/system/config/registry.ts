@@ -165,7 +165,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentEngine',
       'disableCache',
       'showEmptyChat',
-      'showGit',
       'enableTeamPluginUpload',
       'showDatasetFeishu',
       'showDatasetYuque',

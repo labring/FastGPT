@@ -23,7 +23,7 @@ export const deprecatedOverridePaths: Partial<
     ['chat', 'logSourceIdPrefix']
   ],
   storage: [['downloadRedirectTtlSeconds'], ['downloadRedirectEndpoint']],
-  feature: [['showWorkorder'], ['showEnterpriseAuth']],
+  feature: [['showWorkorder'], ['showEnterpriseAuth'], ['showGit']],
   vector: [['vqLevel'], ['languageIdentifier']],
   providers: [['chunk'], ['crm']],
   auth: [

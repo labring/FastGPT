@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildLegacyDomainOverrides,
   buildLegacyProOverrides,
-  buildSparseLegacyOverrides
+  buildSparseLegacyOverrides,
+  collectEnvRehomedWarnings
 } from '@/migration/tasks/20260928_migrate_instance_configs/service';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
@@ -106,7 +107,7 @@ describe('migration buildSparseLegacyOverrides', () => {
   it('prunes values identical to schema defaults so defaults can evolve later', () => {
     const sparse = buildSparseLegacyOverrides({
       // 这些值全部等于 Schema 默认值，应被剪枝
-      feConfigs: { systemTitle: 'AI', show_emptyChat: true, show_git: true },
+      feConfigs: { systemTitle: 'AI', show_emptyChat: true },
       systemEnv: {}
     });
 
@@ -123,7 +124,7 @@ describe('migration buildSparseLegacyOverrides', () => {
     expect(sparse.site?.name).toBe('Custom Title');
     // show_emptyChat 默认 true，改为 false 属真实修改，应保留
     expect(sparse.feature?.showEmptyChat).toBe(false);
-    // 未修改的默认值不应出现
+    // show_git 已回退为纯环境变量（SHOW_GIT），不再迁移进实例配置
     expect(sparse.feature?.showGit).toBeUndefined();
   });
 
@@ -208,5 +209,17 @@ describe('migration buildSparseLegacyOverrides', () => {
     expect(pro.auth?.loginProviders?.sms?.login).toEqual({ zh: 'SMS_LOGIN_ZH' });
     // 中文缺失时用英文兜底，避免历史仅配置英文模板的实例丢失模板
     expect(pro.auth?.loginProviders?.sms?.register).toEqual({ zh: 'SMS_REGISTER_EN' });
+  });
+});
+
+describe('migration collectEnvRehomedWarnings', () => {
+  it('warns when legacy show_git was disabled', () => {
+    const warnings = collectEnvRehomedWarnings({ feConfigs: { show_git: false } });
+    expect(warnings).toEqual([expect.stringContaining('SHOW_GIT=false')]);
+  });
+
+  it('does not warn when show_git was enabled or unset', () => {
+    expect(collectEnvRehomedWarnings({ feConfigs: { show_git: true } })).toEqual([]);
+    expect(collectEnvRehomedWarnings({ feConfigs: {} })).toEqual([]);
   });
 });
