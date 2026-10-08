@@ -33,7 +33,7 @@ describe('formatDatasetDataValue', () => {
     );
 
     expect(result).toEqual({
-      q: 'Question ![cat - cat descline](https://example.com/cat.png) and ![bird](https://example.com/bird.png)',
+      q: 'Question ![cat - cat descline]( https://example.com/cat.png ) and ![bird](https://example.com/bird.png)',
       a: 'Answer ![dog desc](https://example.com/dog.png)'
     });
   });
@@ -51,6 +51,23 @@ describe('formatDatasetDataValue', () => {
 
     expect(result).toEqual({
       q: 'See ![img - cable photo](https://cdn.example.com/img(1).png)',
+      a: undefined
+    });
+  });
+
+  it('should preserve image destination delimiters and titles when attaching descriptions', async () => {
+    const result = await formatDatasetDataValue(
+      {
+        q: String.raw`See ![img](<https://cdn.example.com/a\>.png> "caption")`,
+        imageDescMap: {
+          'https://cdn.example.com/a>.png': 'cable photo'
+        }
+      },
+      { datasetIds: ['test'], filter: () => true }
+    );
+
+    expect(result).toEqual({
+      q: String.raw`See ![img - cable photo](<https://cdn.example.com/a\>.png> "caption")`,
       a: undefined
     });
   });

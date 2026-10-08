@@ -112,7 +112,22 @@ describe('matchDatasetDataMarkdownImageUrls', () => {
       {
         raw: String.raw`![img](https://cdn.example.com/a\).png)`,
         alt: 'img',
-        url: String.raw`https://cdn.example.com/a\).png`,
+        url: 'https://cdn.example.com/a).png',
+        index: 0
+      }
+    ]);
+  });
+
+  it('应保留标题和尖括号目的地址，且 URL 使用反转义后的值', () => {
+    const result = matchDatasetDataMarkdownImages(
+      String.raw`![img](<https://cdn.example.com/a\>.png> "caption")`
+    );
+
+    expect(result).toEqual([
+      {
+        raw: String.raw`![img](<https://cdn.example.com/a\>.png> "caption")`,
+        alt: 'img',
+        url: 'https://cdn.example.com/a>.png',
         index: 0
       }
     ]);

@@ -1,4 +1,7 @@
-import { matchMarkdownImages } from '@fastgpt/global/common/string/markdown';
+import {
+  matchMarkdownImages,
+  unescapeMarkdownImageUrl
+} from '@fastgpt/global/common/string/markdown';
 
 export type DatasetDataMarkdownImageItem = {
   raw: string;
@@ -25,7 +28,7 @@ export const matchDatasetDataMarkdownImages = (text = ''): DatasetDataMarkdownIm
     .map((match) => ({
       raw: match.fullMatch,
       alt: match.altText,
-      url: match.url,
+      url: unescapeMarkdownImageUrl(match.url),
       index: match.index
     }));
 };
