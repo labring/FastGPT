@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => ({
   },
   initializeApp: vi.fn(),
   initializeLayout: vi.fn(),
-  languageReady: true
+  languageReady: true,
+  subscribeLanguage: vi.fn(() => ({ i18n: { language: 'en' } }))
 }));
 
 vi.mock('next/router', () => ({ useRouter: () => mocks.router }));
@@ -53,6 +54,7 @@ vi.mock('@fastgpt/web/i18n/ClientI18nBoundary', () => ({
 vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
   useSafeTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } })
 }));
+vi.mock('next-i18next', () => ({ useTranslation: mocks.subscribeLanguage }));
 vi.mock('@/components/common/NextHead', () => ({ default: () => null }));
 vi.mock('@fastgpt/web/common/system/utils', () => ({ getWebReqUrl: (url: string) => url }));
 vi.mock('@/web/common/utils/errorLogger', () => ({ errorLogger: { init: vi.fn() } }));
@@ -117,6 +119,8 @@ describe('AppShell startup boundaries', () => {
     mocks.router.isReady = true;
     await render(true);
     expect(mocks.initializeApp).not.toHaveBeenCalled();
+    // 语言未就绪时，外层仅订阅状态，不能隐式请求默认 common namespace。
+    expect(mocks.subscribeLanguage).toHaveBeenCalledWith([]);
 
     mocks.languageReady = true;
     await render(true);

@@ -17,6 +17,7 @@ import ClientI18nBoundary from '@fastgpt/web/i18n/ClientI18nBoundary';
 import ClientI18nGate from '@fastgpt/web/i18n/ClientI18nGate';
 import { LANG_KEY } from '@fastgpt/web/i18n/utils';
 import ClientRouteReadyGate from './ClientRouteReadyGate';
+import { useTranslation } from 'next-i18next';
 
 type NextPageWithLayout = NextPage & {
   setLayout?: (page: ReactElement) => JSX.Element;
@@ -77,7 +78,8 @@ const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) =>
 
 /** 完整语言包就绪后再挂载 client-only 应用，避免页面内出现 key 或二次骨架切换。 */
 const ClientI18nRoot = ({ children }: { children: ReactNode }) => {
-  const { i18n } = useSafeTranslation();
+  // 外层也只订阅语言，避免在门禁开放前自动加载默认 namespace。
+  const { i18n } = useTranslation([]);
 
   return (
     <ClientI18nGate defaultLanguage="en" storageKey={LANG_KEY} fallback={null}>
