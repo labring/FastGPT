@@ -103,7 +103,6 @@ describe('dataset training controller', () => {
 
     expect(lockedTraining?.lockTime).toEqual(BLOCKED_LOCK_TIME);
     expect(lockedTraining?.errorMsg).toBe(errorMsg);
-    expect(lockedTraining?.expireAt).toBeNull();
     expect(finalErrorLockedTrainingCount).toBe(1);
     expect(
       isFinalErrorTraining({
@@ -194,7 +193,6 @@ describe('dataset training controller', () => {
     const errorMsg = i18nT('common:code_error.team_error.ai_points_not_enough');
 
     expect(updatedTraining?.lockTime).toEqual(BLOCKED_LOCK_TIME);
-    expect(updatedTraining?.expireAt).toBeNull();
     expect(updatedData?.indexStatus).toBe(DatasetDataIndexStatusEnum.error);
     expect(updatedData?.indexErrorMsg).toBe(errorMsg);
   });

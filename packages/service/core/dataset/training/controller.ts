@@ -121,8 +121,7 @@ export const lockTrainingDataByTeamId = async (
       {
         $set: {
           lockTime: BLOCKED_LOCK_TIME,
-          errorMsg,
-          expireAt: null
+          errorMsg
         }
       }
     );
@@ -178,8 +177,7 @@ export const lockTrainingDataByTeamId = async (
       {
         $set: {
           lockTime: BLOCKED_LOCK_TIME,
-          errorMsg,
-          expireAt: null
+          errorMsg
         }
       }
     );
