@@ -13,13 +13,11 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   AdminSettingPage,
   AdminSettingSection,
   AdminFormItem,
   AdminSwitchRow,
-  AdminReadonlyInput,
   ConnectivityTestInput,
   type SettingTOCItem
 } from '@/pageComponents/admin/settings';
@@ -30,7 +28,6 @@ type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 const AgentSandboxSubserviceComponent = () => {
   const { t } = useClientTranslation('admin');
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
-  const { feConfigs } = useSystemStore();
 
   const tocItems: SettingTOCItem[] = [
     { id: 'provider', label: t('admin:sandbox_provider_selection') },
@@ -59,8 +56,6 @@ const AgentSandboxSubserviceComponent = () => {
   const onSave = handleSubmit(async (formData) => {
     await patchConfig({ agentSandbox: formData.agentSandbox });
   });
-
-  const proxyUrl = (feConfigs as any)?.agentSandboxProxyUrl || 'http://localhost:3006';
 
   return (
     <AdminSettingPage
@@ -571,7 +566,7 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label="PyPI Index URL"
+            label={t('admin:pypi_index_url')}
             tooltip={t('admin:python_index_url_for_pip_install_inside_the_sandbox')}
           >
             <Input
