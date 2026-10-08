@@ -37,6 +37,7 @@ describe('migrateInstanceConfigs', () => {
       hasLegacyConfig: true,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
+      schemaSanitizedWarnings: [],
       overrides: { site: { name: 'ignored' } }
     });
 
@@ -63,6 +64,7 @@ describe('migrateInstanceConfigs', () => {
       hasLegacyConfig: true,
       hasLegacyProConfig: false,
       envRehomedWarnings: ['customApiDomain -> 请配置环境变量 CUSTOM_API_DOMAIN'],
+      schemaSanitizedWarnings: [],
       overrides: { site: { name: 'My Site' } }
     });
     mocks.applyInstanceConfigMigration.mockResolvedValue({
@@ -83,6 +85,7 @@ describe('migrateInstanceConfigs', () => {
       hasLegacyConfig: true,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
+      schemaSanitizedWarnings: [],
       overrides: { site: { name: 'My Site' }, auth: { teamMode: 'multi' } }
     });
     mocks.applyInstanceConfigMigration.mockResolvedValue({
@@ -115,6 +118,7 @@ describe('migrateInstanceConfigs', () => {
       hasLegacyConfig: true,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
+      schemaSanitizedWarnings: [],
       overrides: { site: { name: 'My Site' }, auth: { teamMode: 'multi' } }
     });
     mocks.applyInstanceConfigMigration.mockResolvedValue({
@@ -136,6 +140,7 @@ describe('migrateInstanceConfigs', () => {
       hasLegacyConfig: false,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
+      schemaSanitizedWarnings: [],
       overrides: { auth: { teamMode: 'multi' } }
     });
     mocks.applyInstanceConfigMigration.mockResolvedValue({
