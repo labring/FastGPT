@@ -136,8 +136,8 @@ catalogs:
       specifier: 3.4.0
       version: 3.4.0
     hono:
-      specifier: 4.12.27
-      version: 4.12.27
+      specifier: 4.13.5
+      version: 4.13.5
     i18next:
       specifier: 23.16.8
       version: 23.16.8
@@ -190,8 +190,8 @@ catalogs:
       specifier: 15.4.2
       version: 15.4.2
     nodemailer:
-      specifier: ^7.0.13
-      version: 7.0.13
+      specifier: ^10.0.2
+      version: 10.0.12
     postcss:
       specifier: ^8.5.12
       version: 8.5.22
@@ -238,8 +238,8 @@ catalogs:
       specifier: ^6.0.3
       version: 6.0.3
     undici:
-      specifier: ^7.29.0
-      version: 7.29.0
+      specifier: ^7.29.1
+      version: 7.30.0
     vaul:
       specifier: ^1.1.2
       version: 1.1.2
@@ -279,11 +279,11 @@ catalogs:
       version: 8.59.2
 
 overrides:
-  '@tootallnate/once': 2.0.1
-  proxy-agent>pac-proxy-agent: 7.2.0
   '@swc/helpers': ^0.5.23
+  '@tootallnate/once': 2.0.1
   '@types/react': ^18
   '@types/react-dom': ^18
+  proxy-agent>pac-proxy-agent: 7.2.0
   react: ^18
   react-dom: ^18
 
@@ -702,8 +702,8 @@ importers:
         specifier: 'catalog:'
         version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.10)
       multer:
-        specifier: 2.3.0
-        version: 2.3.0
+        specifier: 2.4.0
+        version: 2.4.0
       mysql2:
         specifier: ^3.23.1
         version: 3.24.3(@types/node@24.13.3)
@@ -745,7 +745,7 @@ importers:
         version: 7.2.0
       undici:
         specifier: 'catalog:'
-        version: 7.29.0
+        version: 7.30.0
       winston:
         specifier: ^3.17.0
         version: 3.17.0
@@ -1118,8 +1118,8 @@ importers:
         specifier: 'catalog:'
         version: 15.4.2(i18next@23.16.8)(next@16.3.0(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nodemailer:
-        specifier: ^7.0.11
-        version: 7.0.13
+        specifier: 'catalog:'
+        version: 10.0.12
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
@@ -1292,13 +1292,13 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: 'catalog:'
-        version: 2.0.12(hono@4.12.27)
+        version: 2.0.12(hono@4.13.5)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
       hono:
         specifier: 'catalog:'
-        version: 4.12.27
+        version: 4.13.5
       zod:
         specifier: 'catalog:'
         version: 4.1.12
@@ -1592,7 +1592,7 @@ importers:
         version: 15.4.2(i18next@23.16.8)(next@16.3.0(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nodemailer:
         specifier: 'catalog:'
-        version: 7.0.13
+        version: 10.0.12
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
@@ -1658,7 +1658,7 @@ importers:
         version: 1.85.1
       undici:
         specifier: 'catalog:'
-        version: 7.29.0
+        version: 7.30.0
       unified:
         specifier: ^11.0.5
         version: 11.0.5
@@ -1752,7 +1752,7 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: 'catalog:'
-        version: 2.0.12(hono@4.12.27)
+        version: 2.0.12(hono@4.13.5)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
@@ -1776,7 +1776,7 @@ importers:
         version: 17.4.2
       hono:
         specifier: 'catalog:'
-        version: 4.12.27
+        version: 4.13.5
       moment:
         specifier: ^2.30.1
         version: 2.30.1
@@ -1950,13 +1950,13 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: 'catalog:'
-        version: 2.0.12(hono@4.12.27)
+        version: 2.0.12(hono@4.13.5)
       hono:
         specifier: 'catalog:'
-        version: 4.12.27
+        version: 4.13.5
       undici:
         specifier: 'catalog:'
-        version: 7.29.0
+        version: 7.30.0
       zod:
         specifier: 'catalog:'
         version: 4.1.12
@@ -8129,10 +8129,6 @@ packages:
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
-  concat-stream@2.0.0:
-    resolution: {integrity: sha512-MWufYdFw53ccGjCA+Ol7XJYpAlW6/prSMzuPOTRnJGcGzuhLn4Scrz7qf6o8bROZ514ltazcIFJZevcfbo0x7A==}
-    engines: {'0': node >= 6.0}
-
   config-chain@1.1.13:
     resolution: {integrity: sha512-qj+f8APARXHrM0hraqXYb2/bOVSV4PvJQlNZ/DVj0QrmNM2q2euizkeuVckQ57J+W0mRH6Hvi+k50M4Jul2VRQ==}
 
@@ -9889,8 +9885,8 @@ packages:
     resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
     engines: {node: '>=16.9.0'}
 
-  hono@4.12.27:
-    resolution: {integrity: sha512-1yrb/+w6HWQJrUCLkJ2IF5jNIPvvFkblV5RNOYl6bV+OA6p9GLcMpHFFGTosSvHvcAUibuUukRqhlYI4z32C7Q==}
+  hono@4.13.5:
+    resolution: {integrity: sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw==}
     engines: {node: '>=16.9.0'}
 
   hookable@6.1.1:
@@ -11587,8 +11583,8 @@ packages:
   msgpackr@1.11.2:
     resolution: {integrity: sha512-F9UngXRlPyWCDEASDpTf6c9uNhGPTqnTeLVt7bN+bU1eajoR/8V9ys2BRaV5C/e5ihE6sJ9uPIKaYt6bFuO32g==}
 
-  multer@2.3.0:
-    resolution: {integrity: sha512-cjNbm3sttszgZeGfJR124D+jFEfkXCVAsoPBmFn9X7UxmDSFHWqE2CoEj0vrmSpuAFnqWR1Szcm9QTsiHr60Xw==}
+  multer@2.4.0:
+    resolution: {integrity: sha512-7dqa0ZcFfzbefdTuIkzOSMvZWC0J7FLqBOjJUZvDCXShIURWKxAyTT1wHhnE5q19c7jOJf43IYYKjBmZVZmvhg==}
     engines: {node: '>= 10.16.0'}
 
   mute-stream@0.0.8:
@@ -11775,9 +11771,9 @@ packages:
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
 
-  nodemailer@7.0.13:
-    resolution: {integrity: sha512-PNDFSJdP+KFgdsG3ZzMXCgquO7I6McjY2vlqILjtJd0hy8wEvtugS9xKRF2NWlPNGxvLCXlTNIae4serI7dinw==}
-    engines: {node: '>=6.0.0'}
+  nodemailer@10.0.12:
+    resolution: {integrity: sha512-PQ46oNbNMuH/Sno7B5IWIU9etytwrO0xdTFvWXpIQFRXhBAXtzD48243AS+BCbQQTPD8y3fqUrgLn0tSo77gvg==}
+    engines: {node: '>=20.0.0'}
 
   non-layered-tidy-tree-layout@2.0.2:
     resolution: {integrity: sha512-gkXMxRzUH+PB0ax9dUN0yYF0S25BqeAYqhgMaLUFmpXLEk7Fcu8f4emJuOAY0V8kjDICxROIKsTAKsV/v355xw==}
@@ -14209,9 +14205,6 @@ packages:
     resolution: {integrity: sha512-q7QNVDGTdl702bVFiI5eY4l/HkgCM6at9KhcFbgUAzezHFbOVy4+0O/lCjsABEQwbZPravVfBIiBVGo89yzHFg==}
     engines: {node: '>= 0.4'}
 
-  typedarray@0.0.6:
-    resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
-
   typescript-eslint@8.59.2:
     resolution: {integrity: sha512-pJw051uomb3ZeCzGTpRb8RbEqB5Y4WWet8gl/GcTlU35BSx0PVdZ86/bqkQCyKKuraVQEK7r6kBHQXF+fBhkoQ==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
@@ -14259,12 +14252,12 @@ packages:
   undici-types@8.3.0:
     resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
 
-  undici@7.28.0:
-    resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
-    engines: {node: '>=20.18.1'}
-
   undici@7.29.0:
     resolution: {integrity: sha512-IDxfleLmmbSskfWSUATiN1nfn2rDuvnMOqb5CWR92iIfojA0Ud+ulOAAEQ57LPr9rWmsreUyf5lwyao+7GNNVw==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.30.0:
+    resolution: {integrity: sha512-dkrQXeHSaoamnItlYbmzG0wFYrM0ZwDxCIg0A7aKjTyyhh9svRzCNFEzV+Vm05/yehjCzjDZ31KXfGEjYSztDQ==}
     engines: {node: '>=20.18.1'}
 
   unescape@1.0.1:
@@ -15093,7 +15086,7 @@ snapshots:
   '@alibaba-group/opensandbox@0.1.10':
     dependencies:
       openapi-fetch: 0.14.1
-      undici: 7.28.0
+      undici: 7.29.0
 
   '@alicloud/credentials@2.4.7':
     dependencies:
@@ -17692,9 +17685,9 @@ snapshots:
     dependencies:
       hono: 4.11.7
 
-  '@hono/node-server@2.0.12(hono@4.12.27)':
+  '@hono/node-server@2.0.12(hono@4.13.5)':
     dependencies:
-      hono: 4.12.27
+      hono: 4.13.5
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -18175,7 +18168,7 @@ snapshots:
       openai: 6.26.0(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
       partial-json: 0.1.7
       proxy-agent: 6.5.0
-      undici: 7.29.0
+      undici: 7.30.0
       zod-to-json-schema: 3.25.1(zod@4.1.12)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
@@ -22347,7 +22340,8 @@ snapshots:
 
   buffer-equal-constant-time@1.0.1: {}
 
-  buffer-from@1.1.2: {}
+  buffer-from@1.1.2:
+    optional: true
 
   buffer@5.6.0:
     dependencies:
@@ -22709,13 +22703,6 @@ snapshots:
   compute-scroll-into-view@3.1.1: {}
 
   concat-map@0.0.1: {}
-
-  concat-stream@2.0.0:
-    dependencies:
-      buffer-from: 1.1.2
-      inherits: 2.0.4
-      readable-stream: 3.6.2
-      typedarray: 0.0.6
 
   config-chain@1.1.13:
     dependencies:
@@ -25129,7 +25116,7 @@ snapshots:
 
   hono@4.11.7: {}
 
-  hono@4.12.27: {}
+  hono@4.13.5: {}
 
   hookable@6.1.1: {}
 
@@ -27283,11 +27270,10 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
-  multer@2.3.0:
+  multer@2.4.0:
     dependencies:
       append-field: 1.0.0
       busboy: 1.6.0
-      concat-stream: 2.0.0
       type-is: 1.6.18
 
   mute-stream@0.0.8: {}
@@ -27464,7 +27450,7 @@ snapshots:
 
   node-releases@2.0.37: {}
 
-  nodemailer@7.0.13: {}
+  nodemailer@10.0.12: {}
 
   non-layered-tidy-tree-layout@2.0.2: {}
 
@@ -30441,8 +30427,6 @@ snapshots:
       typed-array-buffer: 1.0.3
       typed-array-byte-offset: 1.0.4
 
-  typedarray@0.0.6: {}
-
   typescript-eslint@8.59.2(eslint@9.39.4(jiti@1.21.7))(typescript@6.0.3):
     dependencies:
       '@typescript-eslint/eslint-plugin': 8.59.2(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@1.21.7))(typescript@6.0.3))(eslint@9.39.4(jiti@1.21.7))(typescript@6.0.3)
@@ -30500,9 +30484,9 @@ snapshots:
 
   undici-types@8.3.0: {}
 
-  undici@7.28.0: {}
-
   undici@7.29.0: {}
+
+  undici@7.30.0: {}
 
   unescape@1.0.1:
     dependencies:

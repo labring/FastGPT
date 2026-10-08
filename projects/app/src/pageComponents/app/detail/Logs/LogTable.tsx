@@ -4,7 +4,6 @@ import {
   Button,
   Flex,
   HStack,
-  Input,
   Table,
   Tbody,
   Td,
@@ -17,6 +16,7 @@ import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import DateRangePicker from '@fastgpt/web/components/common/DateRangePicker';
 import {
+  FilterInput,
   MultiSelectFilter,
   createMultiSelectFilter,
   toMultiSelectFilterQuery,
@@ -390,7 +390,7 @@ const LogTable = ({
       ),
       [AppLogKeysEnum.TITLE]: (
         <Td key={AppLogKeysEnum.TITLE} className="textEllipsis" maxW={'250px'}>
-          {item.customTitle || item.title}
+          {item.title || '-'}
         </Td>
       ),
       [AppLogKeysEnum.SESSION_ID]: (
@@ -448,7 +448,12 @@ const LogTable = ({
 
   return (
     <MyBox isLoading={isLoading} display={'flex'} flexDir={'column'} h={'full'} px={px}>
-      <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
+      <Flex alignItems={'flex-start'} gap={3} flexWrap={'wrap'}>
+        <DateRangePicker
+          defaultDate={dateRange}
+          onSuccess={setDateRange}
+          formLabel={t('app:logs_date')}
+        />
         {showSourceSelector && (
           <MultiSelectFilter
             title={t('app:logs_source')}
@@ -458,11 +463,6 @@ const LogTable = ({
             labels={labels}
           />
         )}
-        <DateRangePicker
-          defaultDate={dateRange}
-          onSuccess={setDateRange}
-          formLabel={t('app:logs_date')}
-        />
         {feConfigs?.isPlus && (
           <UserFilter
             appId={appId}
@@ -472,38 +472,13 @@ const LogTable = ({
             onChange={setUserFilter}
           />
         )}
-        <Flex
+        <FilterInput
           flex={'0 1 230px'}
-          h={10}
-          alignItems={'center'}
-          rounded={'8px'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          _focusWithin={{
-            borderColor: 'primary.600',
-            boxShadow: '0 0 0 2.4px rgba(51, 112, 255, 0.15)'
-          }}
-          pl={3}
-        >
-          <Box rounded={'8px'} bg={'white'} fontSize={'sm'} border={'none'} whiteSpace={'nowrap'}>
-            {t('common:Search')}
-          </Box>
-          <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} />
-          <Input
-            placeholder={t('app:logs_search_placeholder')}
-            value={chatSearch}
-            onChange={(e) => setChatSearch(e.target.value)}
-            fontSize={'sm'}
-            border={'none'}
-            pl={0}
-            _focus={{
-              boxShadow: 'none'
-            }}
-            _placeholder={{
-              fontSize: 'sm'
-            }}
-          />
-        </Flex>
+          label={t('common:Search')}
+          placeholder={t('app:logs_search_placeholder')}
+          value={chatSearch}
+          onChange={(e) => setChatSearch(e.target.value)}
+        />
 
         <Box flex={'1'} />
         {showSyncPopover && (

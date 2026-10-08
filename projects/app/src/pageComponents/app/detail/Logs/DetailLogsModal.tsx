@@ -89,7 +89,8 @@ const DetailLogsModal = ({
     }
   );
 
-  const title = chat?.title;
+  const title = chat?.title || '';
+
   const isPlugin = chat?.app.type === AppTypeEnum.workflowTool;
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染

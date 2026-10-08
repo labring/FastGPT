@@ -19,7 +19,7 @@ const ForceMemberNameModal = ({ onSuccess }: { onSuccess: () => void }) => {
         // 刷新后仍待补齐说明提交没有生效，保留弹窗让用户重试。
         // 刷新失败时 latestUserInfo 为 null，这里按成功放行：成员名已经写库，
         // 与其把用户关在不可关闭的弹窗里，不如等下次 initUserInfo 纠正本地展示。
-        if (latestUserInfo?.team?.memberNamePending !== true) onSuccess();
+        if (latestUserInfo?.team?.isSetMemberName !== false) onSuccess();
       }}
     />
   );

@@ -29,11 +29,6 @@ import {
   getActiveAccountCancellationsByTeamIds
 } from '../account/cancellation';
 import { createTeamDefaultGroup } from '../../permission/memberGroup/teamDefaultGroup';
-import type { UserModelSchema } from '@fastgpt/global/support/user/type';
-import {
-  getTeamMemberDisplayName,
-  isTeamMemberNamePending
-} from '@fastgpt/global/support/user/team/memberName';
 
 const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
@@ -48,10 +43,7 @@ async function getTeamMember(
   match: Record<string, any>,
   session?: ClientSession
 ): Promise<TeamTmbItemType> {
-  const query = MongoTeamMember.findOne(match).populate<{
-    team: TeamSchema;
-    user: UserModelSchema;
-  }>('team user');
+  const query = MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team');
   if (session) query.session(session);
   const tmb = await query.lean();
   if (!tmb || !tmb.team || tmb.team.deleteTime) {
@@ -72,11 +64,8 @@ async function getTeamMember(
     teamId: String(tmb.teamId),
     teamAvatar: tmb.team.avatar,
     teamName: tmb.team.name,
-    memberName: getTeamMemberDisplayName({
-      memberName: tmb.name,
-      username: tmb.user?.username
-    }),
-    memberNamePending: isTeamMemberNamePending(tmb.name),
+    memberName: tmb.name,
+    isSetMemberName: tmb.isSetMemberName ?? false,
     avatar: tmb.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),
@@ -185,6 +174,8 @@ export async function createUserLoginTeam({
         teamId: team._id,
         userId,
         name: memberName ?? username,
+        // 登录兜底建队创建的是 owner，owner 不强制补齐成员名，回落写也记为已设置
+        isSetMemberName: true,
         role: TeamMemberRoleEnum.owner,
         status: TeamMemberStatusEnum.active,
         avatar: memberAvatar ?? LOGO_ICON
@@ -245,6 +236,8 @@ export async function createDefaultTeam({
           teamId: insertedId,
           userId,
           name: 'Owner',
+          // root/默认团队初始化规则不变：系统常量名视为已设置
+          isSetMemberName: true,
           role: TeamMemberRoleEnum.owner,
           status: TeamMemberStatusEnum.active,
           createTime: new Date()

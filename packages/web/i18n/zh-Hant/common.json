@@ -840,6 +840,7 @@
   "error.too_many_request": "請求太頻繁了，請稍後重試",
   "error.tool_not_exist": "已卸載",
   "error.unAuthFile": "無權讀取該文件",
+  "error.unAuthFileKey": "無權訪問該文件標識",
   "error.unKnow": "發生未預期的錯誤",
   "error.upload_file_error_filename": "{{name}} 上傳失敗",
   "error.upload_file_interval_limit": "短時間內上傳次數過多或已達本輪上限，請稍後再試",
@@ -1314,5 +1315,7 @@
   "read_only_no_batch_permission": "無當前資源操作權限，無法批量操作",
   "will_delete": "將刪除",
   "confirm_delete": "確認刪除",
-  "batch_partial_failed": "部分選取項目操作失敗"
+  "batch_partial_failed": "部分選取項目操作失敗",
+  "related_count": "關聯應用",
+  "related_apps_hidden": "其餘 {{count}} 個應用無權限查看"
 }

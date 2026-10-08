@@ -8,6 +8,7 @@ import {
   GetAdminModelTemplatesResponseSchema,
   type GetAdminModelTemplatesResponse
 } from '@fastgpt/global/openapi/admin/system/model/api';
+import { sortModelsByProvider } from '@fastgpt/global/core/ai/model/provider';
 
 /** 实时返回 Plugin 模型模板；响应不会写入任何运行时或持久化模型缓存。 */
 async function handler(req: ApiRequestProps): Promise<GetAdminModelTemplatesResponse> {
@@ -15,10 +16,11 @@ async function handler(req: ApiRequestProps): Promise<GetAdminModelTemplatesResp
 
   await preloadModelProviders();
   const models = await refreshModelTemplates();
+  const providers = getModelProviderMetadata().providers;
 
   return GetAdminModelTemplatesResponseSchema.parse({
-    models,
-    providers: getModelProviderMetadata().providers
+    models: sortModelsByProvider(models, providers),
+    providers
   });
 }
 

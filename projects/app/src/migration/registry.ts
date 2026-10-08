@@ -7,19 +7,20 @@ import type {
 import { SystemMigrationFailurePolicyEnum } from '@fastgpt/global/migration/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ZodType } from 'zod';
-import { migrateLegacySystemModels } from './tasks/20260903_migrate_legacy_system_models';
-import { backfillModelPermissionReferences } from './tasks/20260903_backfill_model_permissions';
-import { backfillDatasetModelReferences } from './tasks/20260903_backfill_dataset_model_references';
-import { backfillEvaluationModelReferences } from './tasks/20260903_backfill_evaluation_model_references';
-import { backfillAppModelReferences } from './tasks/20260903_backfill_app_model_references';
+import { migrateLegacySystemModels } from './tasks/4170/20260903_migrate_legacy_system_models';
+import { backfillModelPermissionReferences } from './tasks/4170/20260903_backfill_model_permissions';
+import { backfillDatasetModelReferences } from './tasks/4170/20260903_backfill_dataset_model_references';
+import { backfillEvaluationModelReferences } from './tasks/4170/20260903_backfill_evaluation_model_references';
+import { backfillAppModelReferences } from './tasks/4170/20260903_backfill_app_model_references';
 import { backfillResourceCreateTime } from './tasks/4170/20260903_backfill_resource_create_time';
 import { backfillBillMetadata } from './tasks/4170/20260905_backfill_bill_metadata';
 import { backfillResourceOwnerAcl } from './tasks/4170/20260905_backfill_resource_owner_acl';
 import { cleanupTeamMemberRoles } from './tasks/4170/20260907_cleanup_team_member_roles';
 import { cleanupLegacyInvitedMembers } from './tasks/4170/20260908_cleanup_legacy_invited_members';
-import { migrateDatasetTagsV2 } from './tasks/20260907_migrate_dataset_tags_v2';
+import { migrateDatasetTagsV2 } from './tasks/4171/20260907_migrate_dataset_tags_v2';
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
-import { enableChannelReasoningMapping } from './tasks/20260923_enable_channel_reasoning_mapping';
+import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_channel_reasoning_mapping';
+import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -430,6 +431,28 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     delay: true,
     run: enableChannelReasoningMapping
+  },
+  {
+    id: '20260928_backfill_member_name_set',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20260928_backfill_member_name_set.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.result'),
+    progressSteps: [
+      {
+        key: 'members',
+        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.members')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20260928_backfill_member_name_set.validation')
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    run: backfillMemberNameSet
   }
 ] as const satisfies readonly SystemMigration[];
 

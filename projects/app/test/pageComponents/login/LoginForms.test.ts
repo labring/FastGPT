@@ -182,3 +182,23 @@ describe('registration method validation', () => {
     expect(validateBeforeSend('invalid-account')).toBe('user:password.email_phone_error');
   });
 });
+
+describe('password recovery send-code guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.handleSubmit.mockReturnValue(mocks.submit);
+  });
+
+  it('blocks non email/phone accounts before requesting the auth code', () => {
+    ForgetPasswordForm({
+      setPageType: vi.fn(),
+      loginSuccess: vi.fn()
+    });
+
+    const validateBeforeSend = mocks.useSendCode.mock.calls[0]?.[0]?.validateBeforeSend;
+
+    expect(validateBeforeSend('user@example.com')).toBe(true);
+    expect(validateBeforeSend('13800138000')).toBe(true);
+    expect(validateBeforeSend('invalid-account')).toBe('user:password.email_phone_error');
+  });
+});

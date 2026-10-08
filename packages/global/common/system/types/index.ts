@@ -1,6 +1,6 @@
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import { z } from 'zod';
-import { NumSchema } from '../../zod';
+import { BoolSchema, NumSchema } from '../../zod';
 import type {
   LicensePayload,
   LicenseSchemaVersionType,
@@ -110,13 +110,10 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   show_discount_coupon: z.boolean().optional().meta({ description: '是否展示优惠券/折扣券入口' }),
   show_enterprise_auth: z.boolean().optional().meta({ description: '是否展示企业实名认证入口' }),
   showWecomConfig: z.boolean().optional().meta({ description: '是否展示企业微信集成配置' }),
-  login2faEnabled: z
-    .boolean()
-    .optional()
-    .meta({
-      description:
-        '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
-    }),
+  login2faEnabled: z.boolean().optional().meta({
+    description:
+      '登录二次验证开关；由 Pro 的 LOGIN_2FA_ENABLED 下发，主服务据此决定是否要求二次验证'
+  }),
   wecomLoginAutoRedirect: z
     .boolean()
     .optional()
@@ -213,6 +210,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
   openAPIDocUrl: z.string().optional().meta({ description: 'OpenAPI 接口文档地址' }),
   appTemplateCourse: z.string().optional().meta({ description: '应用模板使用教程链接' }),
   marketplaceUrl: z.string().optional().meta({ description: '插件市场与模板市场服务地址' }),
+  disableMarketplace: BoolSchema.optional().meta({ description: '是否隐藏插件市场安装入口' }),
   customApiDomain: z.string().optional().meta({ description: '对外开放的自定义 API 域名' }),
   customSharePageDomain: z
     .string()

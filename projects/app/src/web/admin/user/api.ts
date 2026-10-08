@@ -1,13 +1,11 @@
 import { POST } from '@/web/admin/common/request';
 import type {
+  AddUserBodyType,
   GetUsersBodyType,
   GetUsersResponseType
 } from '@fastgpt/global/openapi/admin/user/api';
 
-export type AdminAddUserData = {
-  username: string;
-  password: string;
-};
+export type AdminAddUserData = AddUserBodyType;
 
 export type AdminUpdateUserData = {
   _id: string;

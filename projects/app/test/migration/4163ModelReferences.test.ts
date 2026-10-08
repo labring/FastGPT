@@ -12,7 +12,7 @@ import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoEvaluation } from '@fastgpt/service/core/app/evaluation/evalSchema';
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
-import { backfillEvaluationModelReferences } from '@/migration/tasks/20260903_backfill_evaluation_model_references';
+import { backfillEvaluationModelReferences } from '@/migration/tasks/4170/20260903_backfill_evaluation_model_references';
 import { Types } from '@fastgpt/service/common/mongo';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
@@ -20,9 +20,9 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { backfillAppModelReferences } from '@/migration/tasks/20260903_backfill_app_model_references';
-import { backfillDatasetModelReferences } from '@/migration/tasks/20260903_backfill_dataset_model_references';
-import { backfillModelPermissionReferences } from '@/migration/tasks/20260903_backfill_model_permissions';
+import { backfillAppModelReferences } from '@/migration/tasks/4170/20260903_backfill_app_model_references';
+import { backfillDatasetModelReferences } from '@/migration/tasks/4170/20260903_backfill_dataset_model_references';
+import { backfillModelPermissionReferences } from '@/migration/tasks/4170/20260903_backfill_model_permissions';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSystemMigrationRunner } from '@/migration/runner';

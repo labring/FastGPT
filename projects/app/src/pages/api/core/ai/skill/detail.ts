@@ -32,12 +32,15 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  const { counts } = await findTeamAppsByPublishedResource({
-    teamId,
-    type: 'skill',
-    ids: skill._id.toString()
-  });
-  const appCount = counts.get(skill._id.toString()) ?? 0;
+  const appCount = permission.isOwner
+    ? ((
+        await findTeamAppsByPublishedResource({
+          teamId,
+          type: 'skill',
+          ids: skill._id.toString()
+        })
+      ).counts.get(skill._id.toString()) ?? 0)
+    : undefined;
 
   return GetSkillDetailResponseSchema.parse({
     _id: skill._id,
@@ -57,7 +60,7 @@ async function handler(
     createTime: skill.createTime?.toISOString() || new Date().toISOString(),
     updateTime: skill.updateTime?.toISOString() || new Date().toISOString(),
     permission,
-    appCount
+    ...(appCount !== undefined ? { appCount } : {})
   });
 }
 

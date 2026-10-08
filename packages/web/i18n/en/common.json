@@ -840,6 +840,7 @@
   "error.too_many_request": "Too many request",
   "error.tool_not_exist": "Uninstalled",
   "error.unAuthFile": "Unauthorized to read this file",
+  "error.unAuthFileKey": "Unauthorized to access this file key",
   "error.unKnow": "Something went wrong",
   "error.upload_file_error_filename": "{{name}} Upload Failed",
   "error.upload_file_interval_limit": "Too many uploads in a short time or the current round limit was reached. Please try again later.",
@@ -1314,5 +1315,7 @@
   "read_only_no_batch_permission": "No operation permission for this resource, batch operation is not allowed",
   "will_delete": "Will delete",
   "confirm_delete": "Confirm Delete",
-  "batch_partial_failed": "Some selected items could not be processed"
+  "batch_partial_failed": "Some selected items could not be processed",
+  "related_count": "Related Apps",
+  "related_apps_hidden": "{{count}} more app(s) hidden due to permissions"
 }

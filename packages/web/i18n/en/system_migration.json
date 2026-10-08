@@ -98,5 +98,10 @@
   "migrations.20260923_enable_channel_reasoning_mapping.name": "Enable reasoning mapping for OpenAI channels",
   "migrations.20260923_enable_channel_reasoning_mapping.description": "Enable reasoning-to-reasoning_content response-field mapping for existing AIProxy OpenAI channels while preserving their other configuration.",
   "migrations.20260923_enable_channel_reasoning_mapping.channels": "Update channel configuration",
-  "migrations.20260923_enable_channel_reasoning_mapping.result": "Checked {{channelCount}} channels and updated {{updatedCount}}."
+  "migrations.20260923_enable_channel_reasoning_mapping.result": "Checked {{channelCount}} channels and updated {{updatedCount}}.",
+  "migrations.20260928_backfill_member_name_set.name": "Backfill team member name set flag",
+  "migrations.20260928_backfill_member_name_set.description": "Backfills the isSetMemberName flag for legacy team members; owners are always marked as set, while non-owner names matching the login username are marked as requiring a name.",
+  "migrations.20260928_backfill_member_name_set.members": "Backfill member name flags",
+  "migrations.20260928_backfill_member_name_set.validation": "Validate member name backfill",
+  "migrations.20260928_backfill_member_name_set.result": "Scanned {{scannedCount}} members, marked {{ownerCount}} owners, {{usernameMatchCount}} username fallback names, and {{setTrueCount}} set names."
 }

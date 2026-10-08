@@ -3,6 +3,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { writePrimary } from '../../../common/mongo/utils';
@@ -13,8 +14,9 @@ import { validateChatRoundDataIds } from './dataIdValidation';
 import { getInteractiveResponseStatus } from '../interactiveResponseDataId';
 import {
   canWriteGeneratedTitle,
-  syncGeneratedChatTitleFromUserContent,
-  type GeneratedChatTitleResult
+  invalidGeneratedTitleValues,
+  normalizeGeneratedTitle,
+  syncGeneratedChatTitleFromUserContent
 } from '../title';
 import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
 
@@ -69,6 +71,8 @@ export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'respon
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
   fixedTitle?: string;
+  /** 固定标题语言；无请求上下文的入口缺省并由标题模块回退 zh-CN。 */
+  locale?: localeType;
 };
 
 export type PreChatRoundResult = {
@@ -76,7 +80,7 @@ export type PreChatRoundResult = {
   responseChatItemId: string;
   shouldPersistChatRound: boolean;
   shouldFinalizePreparedRound: boolean;
-  titleGeneration?: Promise<GeneratedChatTitleResult | undefined>;
+  titleGeneration?: Promise<string | undefined>;
 };
 
 /**
@@ -303,15 +307,36 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       responseChatItemId
     });
 
-    const titleGeneration = syncGeneratedChatTitleFromUserContent({
-      sourceType: params.sourceType,
-      sourceId: params.sourceId,
-      chatId,
-      teamId: params.teamId,
-      userContent: params.userContent,
-      shouldGenerateTitle: preparedChatRound.shouldGenerateTitle,
-      fixedTitle: params.fixedTitle
-    });
+    const titleGeneration = (() => {
+      if (!preparedChatRound.shouldGenerateTitle) return;
+
+      if (params.fixedTitle) {
+        const fixedTitle = params.fixedTitle;
+        return (async () => {
+          const title = normalizeGeneratedTitle(fixedTitle);
+          if (!title || invalidGeneratedTitleValues.includes(title)) return;
+
+          await MongoChat.updateOne(
+            {
+              ...buildChatSourceQuery({ sourceType: params.sourceType, sourceId: params.sourceId }),
+              chatId
+            },
+            { $set: { title } }
+          );
+          return title;
+        })();
+      }
+
+      return syncGeneratedChatTitleFromUserContent({
+        sourceType: params.sourceType,
+        sourceId: params.sourceId,
+        chatId,
+        teamId: params.teamId,
+        userContent: params.userContent,
+        shouldGenerateTitle: preparedChatRound.shouldGenerateTitle,
+        locale: params.locale
+      });
+    })();
 
     return {
       chatId,

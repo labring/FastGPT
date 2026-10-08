@@ -12,6 +12,8 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { GetCollectionDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -151,8 +153,13 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionDetailRespons
   });
 
   const fileId = collection?.fileId;
-  if (fileId && !isS3ObjectKey(fileId, 'dataset')) {
-    return Promise.reject('Invalid dataset file key');
+  // fileId 必须属于集合所属 dataset，否则拒绝读取元数据，避免泄露外库文件的文件名/体积/类型。
+  if (
+    fileId &&
+    (!isS3ObjectKey(fileId, 'dataset') ||
+      !isAuthorizedDatasetFileS3Key({ key: fileId, datasetId: collection.datasetId }))
+  ) {
+    return Promise.reject(CommonErrEnum.unAuthFileKey);
   }
 
   const [file, indexAmount, trainingStatus] = await Promise.all([

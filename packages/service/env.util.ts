@@ -1,5 +1,6 @@
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import z from 'zod';
 import type { StorageDownloadUrlMode } from './common/s3/contracts/type';
 import type { StorageVendorSchema } from './env.const';
@@ -82,11 +83,9 @@ export const validateS3Env = (env: S3Env): void => {
 export const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
   message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
 });
-export const AgentSandboxPreviewProxyUrlSchema = z
-  .string()
-  .refine((url) => /^https?:\/\//.test(url), {
-    message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
-  });
+export const AgentSandboxPreviewProxyUrlSchema = z.string().refine(isHttpUrl, {
+  message: 'AGENT_SANDBOX_PREVIEW_PROXY_URL must start with http:// or https://'
+});
 const agentSandboxProviderRequiredEnvKeys = {
   sealosdevbox: [
     'AGENT_SANDBOX_SEALOS_BASEURL',

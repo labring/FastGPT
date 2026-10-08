@@ -10,7 +10,7 @@ import { confirmTeamPkgPluginUpload, uploadTeamPkgPlugin } from '@/web/core/plug
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDocPath } from '@/web/common/system/doc';
-import { getMarketPlaceToolTags } from '@/web/core/plugin/marketplace/api';
+import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { GetAdminSystemToolsResponseType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -102,8 +102,9 @@ const ImportPluginModal = ({
   const [selectFiles, setSelectFiles] = useState<SelectFileItemType[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedPluginFile[]>([]);
 
-  const { data: allTags = [] } = useRequest(getMarketPlaceToolTags, {
-    manual: false
+  const { data: allTags = [] } = useRequest(getPluginToolTags, {
+    manual: false,
+    errorToast: ''
   });
 
   const buildUploadedPluginFile = useCallback(
@@ -129,7 +130,7 @@ const ImportPluginModal = ({
         toolTags:
           parseResult.tags?.map((tag) => {
             const currentTag = allTags.find((item) => item.tagId === tag);
-            return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
+            return parseI18nString(currentTag?.tagName || tag, i18n.language) || tag;
           }) || [],
         version: parseResult.version || '',
         etag: parseResult.etag || '',

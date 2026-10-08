@@ -154,4 +154,16 @@ describe('string tools', () => {
     expect(formatNumberWithUnit(1500000000, 'en')).toBe('1.5B');
     expect(formatNumberWithUnit(999, 'en')).toBe('999');
   });
+
+  it('formatNumberWithUnit moves to the next unit when rounding reaches it', () => {
+    expect(formatNumberWithUnit(99999999, 'zh-CN')).toBe('1亿');
+    expect(formatNumberWithUnit(-99999999, 'zh-CN')).toBe('-1亿');
+    expect(formatNumberWithUnit(99999999, 'zh-Hant')).toBe('1億');
+    expect(formatNumberWithUnit(99994999, 'zh-CN')).toBe('9999.5万');
+    expect(formatNumberWithUnit(999999, 'en')).toBe('1M');
+    expect(formatNumberWithUnit(999999999, 'en')).toBe('1B');
+    expect(formatNumberWithUnit(999994, 'en')).toBe('999.99K');
+    expect(formatNumberWithUnit(9999, 'zh-CN')).toBe('9,999');
+    expect(formatNumberWithUnit(999, 'en')).toBe('999');
+  });
 });

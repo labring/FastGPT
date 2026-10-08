@@ -230,7 +230,7 @@ const PostLoginActionOrchestrator = ({
     currentAction,
     completed,
     inviteLinkId,
-    hasPendingMemberName: userInfo?.team?.memberNamePending === true,
+    hasPendingMemberName: userInfo?.team?.isSetMemberName === false,
     shouldShowContact,
     contactHandled,
     isPlus,

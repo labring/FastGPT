@@ -68,22 +68,35 @@ type HarnessProps = {
   api: (params: ListParams, controller?: AbortController) => Promise<ListResponse>;
   onState: (state: ReturnType<typeof useScrollPagination<ListParams, ListResponse>>) => void;
   showPaginationTip?: boolean;
+  showNoMoreTip?: boolean;
+  scrollDataShowNoMoreTip?: boolean;
 };
 
-const Harness = ({ query, api, onState, showPaginationTip = true }: HarnessProps) => {
+const Harness = ({
+  query,
+  api,
+  onState,
+  showPaginationTip = true,
+  showNoMoreTip = true,
+  scrollDataShowNoMoreTip
+}: HarnessProps) => {
   const state = useScrollPagination(api, {
     pageSize: 10,
     params: { query },
     refreshDeps: [query],
     showErrorToast: false,
-    showPaginationTip
+    showPaginationTip,
+    showNoMoreTip
   });
 
   useEffect(() => onState(state), [onState, state]);
 
   return React.createElement(
     state.ScrollData,
-    { 'data-testid': 'scroll-data' },
+    {
+      'data-testid': 'scroll-data',
+      ...(scrollDataShowNoMoreTip !== undefined ? { showNoMoreTip: scrollDataShowNoMoreTip } : {})
+    },
     React.createElement('span', { 'data-testid': 'scroll-content' })
   );
 };
@@ -205,6 +218,66 @@ describe('useScrollPagination', () => {
     const scrollData = document.querySelector('[data-testid="scroll-data"]');
     expect(scrollData?.textContent).not.toContain('common:request_end');
     expect(scrollData?.textContent).not.toContain('common:request_more');
+    root.unmount();
+    host.remove();
+  });
+
+  it('hides no-more tip when showNoMoreTip is false in hook options', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(
+        React.createElement(Harness, {
+          query: 'no-more-hidden',
+          api,
+          onState,
+          showNoMoreTip: false
+        })
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      requests[0].resolve({ list: ['one'], total: 1 });
+      await Promise.resolve();
+    });
+
+    const scrollData = document.querySelector('[data-testid="scroll-data"]');
+    expect(scrollData?.textContent).not.toContain('common:request_end');
+    root.unmount();
+    host.remove();
+  });
+
+  it('hides no-more tip when showNoMoreTip is overridden to false via ScrollData prop', async () => {
+    const { api, requests } = createDeferredApi();
+    const onState = vi.fn();
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = createRoot(host);
+
+    await act(async () => {
+      root.render(
+        React.createElement(Harness, {
+          query: 'no-more-prop-hidden',
+          api,
+          onState,
+          scrollDataShowNoMoreTip: false
+        })
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      requests[0].resolve({ list: ['one'], total: 1 });
+      await Promise.resolve();
+    });
+
+    const scrollData = document.querySelector('[data-testid="scroll-data"]');
+    expect(scrollData?.textContent).not.toContain('common:request_end');
     root.unmount();
     host.remove();
   });

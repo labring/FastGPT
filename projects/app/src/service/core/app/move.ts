@@ -14,11 +14,11 @@ import {
   syncChildrenPermission,
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
+import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
@@ -101,6 +101,20 @@ export const moveApp = async ({
   });
 
   await mongoSessionRun(async (session) => {
+    // 非继承态，仅改parentId 即可。
+    if (!shouldInheritResourcePermission(app.inheritPermission)) {
+      await MongoApp.updateOne(
+        { _id: appId },
+        {
+          ...parseParentIdInMongo(parentId),
+          updateTime: new Date()
+        },
+        { session }
+      );
+      return;
+    }
+
+    // 继承态，需要改内容，同时更新协作者
     const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
       getResourceOwnedClbs({
         teamId: app.teamId,
@@ -143,9 +157,8 @@ export const moveApp = async ({
       session
     });
 
-    await getS3AvatarSource().refreshAvatar(undefined, app.avatar, session);
-    await MongoApp.findByIdAndUpdate(
-      appId,
+    await MongoApp.updateOne(
+      { _id: appId },
       {
         ...parseParentIdInMongo(parentId),
         inheritPermission: true,

@@ -22,6 +22,7 @@ import {
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
+import { shouldInheritResourcePermission } from '@fastgpt/service/support/permission/resourcePermissionPolicy';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 
@@ -110,6 +111,20 @@ export const moveSkill = async ({
   }
 
   await mongoSessionRun(async (session) => {
+    // 非继承态，仅改parentId 即可。
+    if (!shouldInheritResourcePermission(skill.inheritPermission)) {
+      await MongoAgentSkills.updateOne(
+        { _id: skillId },
+        {
+          ...parseParentIdInMongo(parentId),
+          updateTime: new Date()
+        },
+        { session }
+      );
+      return;
+    }
+
+    // 继承态，需要改内容，同时更新协作者
     const [parentClbs, oldParentClbs, oldResourceClbs] = await Promise.all([
       getResourceOwnedClbs({
         teamId,
@@ -149,8 +164,8 @@ export const moveSkill = async ({
       newParentCollaborators: newResourceClbs,
       session
     });
-    await MongoAgentSkills.findByIdAndUpdate(
-      skillId,
+    await MongoAgentSkills.updateOne(
+      { _id: skillId },
       {
         ...parseParentIdInMongo(parentId),
         inheritPermission: true,

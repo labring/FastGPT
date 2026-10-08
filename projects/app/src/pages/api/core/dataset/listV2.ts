@@ -34,6 +34,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getDescendantFolderIds } from '@fastgpt/global/common/parentFolder/subtree';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { countTeamAppsByPublishedResourceGroups } from '@fastgpt/service/core/app/resourceLookup';
 
 /** 层序遍历的安全上限：脏树（环 / 超深）不得拖垮请求。 */
 const maxSubtreeDepth = 20;
@@ -106,7 +107,8 @@ async function handler(
     tmbIds,
     pageNum = 1,
     pageSize = 50,
-    offset
+    offset,
+    withAppCount
   } = parseApiInput({
     req,
     bodySchema: GetDatasetListV2BodySchema
@@ -257,7 +259,29 @@ async function handler(
     };
   });
 
-  const list = await addSourceMember({ list: formatDatasets });
+  const appCountMap = withAppCount
+    ? await countTeamAppsByPublishedResourceGroups({
+        teamId,
+        resourceGroups: formatDatasets
+          .filter((dataset) => dataset.type !== DatasetTypeEnum.folder)
+          .map((dataset) => {
+            const id = String(dataset._id);
+            return {
+              id,
+              isOwner: dataset.permission.isOwner,
+              resources: [{ type: 'dataset', id }]
+            };
+          })
+      })
+    : undefined;
+  const list = await addSourceMember({
+    list: formatDatasets.map((dataset) => ({
+      ...dataset,
+      ...(dataset.permission.isOwner && appCountMap?.has(String(dataset._id))
+        ? { appCount: appCountMap.get(String(dataset._id)) ?? 0 }
+        : {})
+    }))
+  });
   return GetDatasetListV2ResponseSchema.parse({ list, total });
 }
 

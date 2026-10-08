@@ -230,6 +230,56 @@ describe('authOutLinkChatStart', () => {
     expect(authAppByTmbId).not.toHaveBeenCalled();
     expect(result.uid).toBe('raw-uid');
   });
+
+  it('免登录链接不做登录校验，运行身份保持发布者', async () => {
+    const result = await authOutLinkChatStart({
+      shareId: 'share-id',
+      outLinkUid: 'raw-uid',
+      question: 'hello',
+      req: {} as any
+    });
+
+    expect(parseHeaderCert).not.toHaveBeenCalled();
+    expect(result.tmbId).toBe('member-id');
+    expect(result.teamId).toBe('team-id');
+  });
+
+  it('需登录链接用已登录访客作为运行身份', async () => {
+    vi.mocked(authOutLinkValid).mockResolvedValue({
+      outLinkConfig: { ...outLinkConfig, allowAnonymous: false },
+      appId: 'app-id'
+    } as any);
+
+    const result = await authOutLinkChatStart({
+      shareId: 'share-id',
+      outLinkUid: 'raw-uid',
+      question: 'hello',
+      req: {} as any
+    });
+
+    expect(result.tmbId).toBe('link-team-member-id');
+    expect(result.uid).toBe('link-team-member-id');
+    expect(result.teamId).toBe('team-id');
+  });
+
+  it('需登录链接在访客不是链接团队成员时拒绝', async () => {
+    vi.mocked(authOutLinkValid).mockResolvedValue({
+      outLinkConfig: { ...outLinkConfig, allowAnonymous: false },
+      appId: 'app-id'
+    } as any);
+    vi.mocked(MongoTeamMember.findOne).mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue(null)
+    } as any);
+
+    await expect(
+      authOutLinkChatStart({
+        shareId: 'share-id',
+        outLinkUid: 'raw-uid',
+        question: 'hello',
+        req: {} as any
+      })
+    ).rejects.toBe(AppErrEnum.unAuthApp);
+  });
 });
 
 describe('share outlink input schemas', () => {
