@@ -25,8 +25,9 @@ const SecuritySettingComponent = () => {
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'basic', label: t('admin:security_section_basic') },
-      { id: 'fileSecurity', label: t('admin:security_section_file') },
-      { id: 'censor', label: t('admin:security_section_censor') }
+      // id 必须与下方 AdminSettingSection 一致：TOC 滚动定位与 ScrollSpy 都按 id 匹配
+      { id: 'fileAndRisk', label: t('admin:security_section_file') },
+      { id: 'modelCensor', label: t('admin:security_section_censor') }
     ],
     [t]
   );
