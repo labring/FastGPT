@@ -1,4 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { throttle } from 'lodash-es';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
@@ -36,28 +37,38 @@ const AdminSettingPage = ({
 }: AdminSettingPageProps) => {
   const { t } = useClientTranslation();
   const [activeId, setActiveId] = useState<string>('');
-  const scrollRef = useRef<HTMLDivElement>(null);
   const currentActiveId = activeId || tocItems[0]?.id || '';
 
-  // 滚动监听，实时计算当前视口中最高亮的首个可见大区
-  const handleScroll = useCallback(() => {
-    const container = scrollRef.current;
-    if (!container || tocItems.length === 0) return;
+  // 滚动监听，实时计算当前视口中最高亮的首个可见大区。
+  // 每帧都会触发且内部多次 getBoundingClientRect 强制同步布局，沿用旧版 100ms 节流避免滚动掉帧。
+  // 容器通过滚动事件的 currentTarget 传入，避免在渲染期创建的节流闭包里读取 ref。
+  const computeActiveId = useCallback(
+    (container: HTMLElement | null) => {
+      if (!container || tocItems.length === 0) return;
 
-    const containerTop = container.getBoundingClientRect().top;
-    let currentId = tocItems[0].id;
+      const containerTop = container.getBoundingClientRect().top;
+      let currentId = tocItems[0].id;
 
-    for (const item of tocItems) {
-      const el = document.getElementById(item.id);
-      if (!el) continue;
-      const rect = el.getBoundingClientRect();
-      if (rect.top - containerTop <= 100) {
-        currentId = item.id;
+      for (const item of tocItems) {
+        const el = document.getElementById(item.id);
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.top - containerTop <= 100) {
+          currentId = item.id;
+        }
       }
-    }
 
-    setActiveId(currentId);
-  }, [tocItems]);
+      setActiveId(currentId);
+    },
+    [tocItems]
+  );
+
+  const handleScroll = useMemo(
+    () => throttle((container: HTMLElement | null) => computeActiveId(container), 100),
+    [computeActiveId]
+  );
+  // 卸载时取消挂起的节流调用，避免在已卸载组件上 setState
+  useEffect(() => () => handleScroll.cancel(), [handleScroll]);
 
   const headerActions =
     headerRightContent ||
@@ -84,12 +95,11 @@ const AdminSettingPage = ({
         <Flex flex={'1 0 0'} h={'100%'} w={'100%'} overflow={'hidden'}>
           {/* 中间表单区域 */}
           <Box
-            ref={scrollRef}
             flex={'1 0 0'}
             minW={0}
             h={'100%'}
             overflowY={'auto'}
-            onScroll={handleScroll}
+            onScroll={(e) => handleScroll(e.currentTarget)}
           >
             <Box p={8} bg={'white'}>
               <Box w={'100%'} maxW={maxW} mx={'auto'} pb={20}>
