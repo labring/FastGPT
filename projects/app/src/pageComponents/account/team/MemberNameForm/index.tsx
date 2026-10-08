@@ -31,7 +31,7 @@ const MemberNameFormModal = ({
   onSubmitted,
   onClose
 }: MemberNameFormModalProps) => {
-  const { t } = useSafeTranslation('account_team');
+  const { t } = useSafeTranslation();
   const { initUserInfo } = useUserStore();
   const { memberName, nameError, showNameError, markInteracted, onNameChange, parseMemberName } =
     useMemberNameForm({ defaultName });

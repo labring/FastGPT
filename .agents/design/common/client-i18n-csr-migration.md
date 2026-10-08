@@ -156,25 +156,23 @@ client-only 门禁加载语言包后，通过 `addResourceBundle` 一次性注�
 `projects/app/public/locales`，并以版本化 URL 通过 HTTP backend 加载。试点期间不同时实现两套
 资源加载机制。
 
-### 3.3 CSR 完整语言包与 SSR 组件按需加载
+### 3.3 CSR 完整语言包与 SSR 页面资源声明
 
 CSR 应用在挂载业务子树前注册完整语言包，因此业务组件统一调用 `useSafeTranslation()`，
 不再逐组件复制 namespace 加载声明。翻译调用仍使用可静态识别的 `t('namespace:literal_key')`。
 
 `/chat` 和 `/chat/share` 保留 SSR，`serviceSideProps` 只注入页面声明的 namespace，不能假设它们
-也经过 CSR 完整语言包门禁。跨两种渲染模式复用的组件如果需要额外资源，应通过同一个 hook
-显式声明，由已有的 i18next backend 按需补齐：
+也经过 CSR 完整语言包门禁。SSR 页面必须声明页面和全局 Layout 可达组件所需的资源：
 
-```tsx
-const { t } = useSafeTranslation('account_team');
+```ts
+await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'account_team']);
 ```
 
-强制成员名弹窗、成员名表单及表单校验 hook 显式声明 `account_team`，保证直接访问 `/chat`
-且语言未发生切换时，也能加载标题、按钮和校验文案。重复声明由 i18next 缓存复用，不重复请求。
-`common` 是默认 namespace；调用方也可传 namespace 数组。所有资源加载继续使用现有 backend，
-组件不自行 `fetch` 或 `import` 翻译文件。
+两个 SSR 聊天页面均声明 `account_team`，保证强制成员名弹窗的标题、按钮和校验文案已随
+SSR props 注入。共享组件继续使用无参数 `useSafeTranslation()`，无需增加组件级加载状态。
+`common` 和 `price` 由 `serviceSideProps` 统一补齐；组件不自行 `fetch` 或 `import` 翻译文件。
 
-CSR/SSR 路由判定仅决定渲染模式，翻译依赖由完整包门禁或 SSR 组件声明分别保障。
+CSR/SSR 路由判定仅决定渲染模式，翻译依赖由完整包门禁或 SSR 页面声明分别保障。
 
 ### 3.4 缓存与并发去重
 
@@ -216,9 +214,8 @@ i18n 和静态 chunk，且不渲染不完整翻译。
 
 `localStorage`/Cookie 仅继续存语言偏好，不存翻译正文。
 
-已迁移组件使用 `useSafeTranslation('业务 namespace')`。该共享 hook 内部组合
-`['common', namespace]` 并关闭 Suspense，调用方不重复声明 `common`，同时保留带 namespace 前缀的
-翻译 key 类型检查。
+已迁移组件统一使用 `useSafeTranslation()`，翻译 key 保留 namespace 前缀。
+CSR 完整语言包门禁和 SSR 页面资源声明分别保证组件挂载时所需翻译已就绪。
 
 ### 3.5 页面渲染门禁
 
@@ -327,7 +324,7 @@ SSR 聊天页面直接渲染，不等待 CSR 门禁，因此仍输出服务端�
 
 验证要求：未就绪时 AppContent 和 Layout 的 effect 不执行；就绪后首次请求携带正确 query；
 hydration 不报 mismatch；后续 query 更新保留页面编辑状态；SSR 聊天页仍输出业务内容；
-直接访问 SSR 页面时缺失的组件 namespace 能按需补齐；营销归因无参数回落正常。
+直接访问 SSR 页面时成员名弹窗资源已注入，无需客户端补加载；营销归因无参数回落正常。
 
 ### 3.8 `deviceSize` 处理
 

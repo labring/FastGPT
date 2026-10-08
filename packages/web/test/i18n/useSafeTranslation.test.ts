@@ -1,14 +1,15 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, createElement } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createRequire } from 'node:module';
-import { createInstance, type ReadCallback } from 'i18next';
+import { createInstance } from 'i18next';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import type { I18nNsType } from '@fastgpt/web/i18n/i18next';
-import accountTeamResource from '../../i18n/en/account_team.json';
+import enAccountTeam from '../../i18n/en/account_team.json';
+import zhCNAccountTeam from '../../i18n/zh-CN/account_team.json';
+import zhHantAccountTeam from '../../i18n/zh-Hant/account_team.json';
+import koKRAccountTeam from '../../i18n/ko-KR/account_team.json';
 
 // next-i18next 使用 CJS 版 react-i18next，测试 Provider 也使用同一模块，避免 ESM/CJS 上下文分离。
 const require = createRequire(import.meta.url);
@@ -70,67 +71,52 @@ describe('useSafeTranslation', () => {
   });
 });
 
-describe('useSafeTranslation namespace loading on SSR pages', () => {
-  let container: HTMLDivElement;
-  let root: Root;
-
-  beforeEach(() => {
-    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    root = createRoot(container);
-  });
-
-  afterEach(async () => {
-    await act(async () => root.unmount());
-    container.remove();
-    vi.unstubAllGlobals();
-  });
-
-  it.each<{ namespace: I18nNsType[number] | I18nNsType }>([
-    { namespace: 'account_team' },
-    { namespace: ['common', 'account_team'] }
+describe('useSafeTranslation with SSR member-name resources', () => {
+  it.each([
+    { language: 'en', resource: enAccountTeam },
+    { language: 'zh-CN', resource: zhCNAccountTeam },
+    { language: 'zh-Hant', resource: zhHantAccountTeam },
+    { language: 'ko-KR', resource: koKRAccountTeam }
   ])(
-    'loads the declared namespace $namespace when it was absent from SSR resources',
-    async ({ namespace }) => {
+    'renders member-name text from preloaded $language resources',
+    async ({ language, resource }) => {
       const i18n = createInstance();
-      const read = vi.fn((_language: string, ns: string, callback: ReadCallback) => {
-        callback(null, ns === 'account_team' ? accountTeamResource : {});
-      });
-      i18n.use({ type: 'backend', init() {}, read });
       await i18n.init({
-        lng: 'en',
+        lng: language,
         fallbackLng: false,
         defaultNS: 'common',
-        ns: ['common', 'price', 'file', 'app', 'chat', 'workflow', 'login', 'user'],
-        partialBundledLanguages: true,
-        resources: {
-          en: Object.fromEntries(
-            ['common', 'price', 'file', 'app', 'chat', 'workflow', 'login', 'user'].map((ns) => [
-              ns,
-              {}
-            ])
-          )
-        },
+        ns: ['common', 'account_team'],
+        resources: { [language]: { common: {}, account_team: resource } },
         react: { useSuspense: false }
       });
-      const MemberNameTitle = () => {
-        const { t } = useSafeTranslation(namespace);
-        return createElement('span', null, t('account_team:set_member_name_title'));
+      const MemberNameText = () => {
+        const { t } = useSafeTranslation();
+        return createElement(
+          'span',
+          null,
+          [
+            t('account_team:set_member_name_title'),
+            t('account_team:invite_member_name_placeholder'),
+            t('account_team:confirm_member_name'),
+            t('account_team:member_name_required'),
+            t('account_team:member_name_limit')
+          ].join('|')
+        );
       };
 
-      await act(async () => {
-        root.render(createElement(I18nextProvider, { i18n }, createElement(MemberNameTitle)));
-      });
-
-      expect(read).toHaveBeenCalledExactlyOnceWith('en', 'account_team', expect.any(Function));
-      expect(container.textContent).toBe(accountTeamResource.set_member_name_title);
-      expect(i18n.hasResourceBundle('en', 'account_team')).toBe(true);
-
-      await act(async () => {
-        root.render(createElement(I18nextProvider, { i18n }, createElement(MemberNameTitle)));
-      });
-      expect(read).toHaveBeenCalledOnce();
+      expect(
+        renderToStaticMarkup(
+          createElement(I18nextProvider, { i18n }, createElement(MemberNameText))
+        )
+      ).toBe(
+        `<span>${[
+          resource.set_member_name_title,
+          resource.invite_member_name_placeholder,
+          resource.confirm_member_name,
+          resource.member_name_required,
+          resource.member_name_limit
+        ].join('|')}</span>`
+      );
     }
   );
 });

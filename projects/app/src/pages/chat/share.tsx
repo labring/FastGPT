@@ -635,7 +635,8 @@ export async function getServerSideProps(context: any) {
       shareId: shareId ?? '',
       authToken: authToken ?? '',
       customUid,
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow'], {
+      // 分享页同样挂载全局 Layout，预加载强制成员名弹窗所需的 namespace。
+      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'account_team'], {
         langCookieKey: SHARE_LANG_KEY,
         fallbackLangCookieKey: LANG_KEY
       }))
