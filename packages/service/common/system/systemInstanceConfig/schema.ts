@@ -62,9 +62,13 @@ const systemInstanceConfigSchema = new Schema(
       validate: {
         validator: function (this: any, value: unknown) {
           const domain: SystemInstanceConfigDomainKey | undefined =
-            this?._id ??
-            (typeof this?.get === 'function' ? this.get('_id') : undefined) ??
-            this?.getFilter?.()?._id;
+            (typeof this?._id === 'string' ? this._id : undefined) ??
+            (typeof this?.getFilter === 'function' && typeof this.getFilter()?._id === 'string'
+              ? this.getFilter()?._id
+              : undefined) ??
+            (typeof this?.get === 'function' && typeof this.get('_id') === 'string'
+              ? this.get('_id')
+              : undefined);
 
           if (!domain || !SYSTEM_INSTANCE_CONFIG_DOMAINS.includes(domain)) {
             return false;
@@ -73,7 +77,7 @@ const systemInstanceConfigSchema = new Schema(
           try {
             resolveDomainEffectiveConfig(domain, value);
             return true;
-          } catch {
+          } catch (err: any) {
             return false;
           }
         },

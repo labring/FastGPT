@@ -1,4 +1,5 @@
 'use client';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React from 'react';
 import { Box, Button, HStack, Input, Textarea, Text } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -24,18 +25,19 @@ import {
   type SettingTOCItem
 } from '@/pageComponents/admin/settings';
 
-const tocItems: SettingTOCItem[] = [
-  { id: 'systemModal', label: '系统公告配置' },
-  { id: 'sendInform', label: '发送系统通知' },
-  { id: 'operationalAd', label: '积分区广告配置' },
-  { id: 'activityAd', label: '全屏活动广告配置' }
-];
-
 const InformSetting = () => {
+  const { t } = useClientTranslation('admin');
+  const tocItems: SettingTOCItem[] = [
+    { id: 'systemModal', label: t('admin:system_announcement_config') },
+    { id: 'sendInform', label: t('admin:send_system_notification') },
+    { id: 'operationalAd', label: t('admin:points_area_ad_config') },
+    { id: 'activityAd', label: t('admin:fullscreen_campaign_ad_config') }
+  ];
+
   // 1. 系统公告
   const { ConfirmModal: ConfirmSettingSystemModal, openConfirm: onOpenConfirmSystemModal } =
     useConfirm({
-      content: '确认修改系统公告？'
+      content: t('admin:confirm_update_system_announcement')
     });
   const {
     register: registerSystemMsgModal,
@@ -49,7 +51,7 @@ const InformSetting = () => {
   const { runAsync: onUpdateSystemModal, loading: isUpdatingSystemModal } = useRequest(
     postUpdateSystemMsgModal,
     {
-      successToast: '修改成功'
+      successToast: t('common:update_success')
     }
   );
   useMount(async () => {
@@ -62,7 +64,7 @@ const InformSetting = () => {
   // 2. 系统通知
   const { ConfirmModal: ConfirmSendSystemMsg, openConfirm: onOpenConfirmSendSystemMsg } =
     useConfirm({
-      content: '确认发送系统通知？'
+      content: t('admin:confirm_send_system_notification')
     });
   const {
     control: controlSystemInform,
@@ -80,18 +82,18 @@ const InformSetting = () => {
   const { runAsync: onUpdateSendSystemMsg, loading: isUpdatingSendSystemMsg } = useRequest(
     postSendSystemMsg,
     {
-      successToast: '发送成功，通知会逐步推送'
+      successToast: t('admin:sent_notifications_delivered_gradually')
     }
   );
 
   // 3. 积分区广告
   const { ConfirmModal: ConfirmOperationalAd, openConfirm: onOpenConfirmOperationalAd } =
     useConfirm({
-      content: '确认保存运营广告配置？'
+      content: t('admin:confirm_save_operations_ad_config')
     });
   const { ConfirmModal: ConfirmClearOperationalAd, openConfirm: onOpenConfirmClearOperationalAd } =
     useConfirm({
-      content: '确认清除运营广告配置？'
+      content: t('admin:confirm_clear_operations_ad_config')
     });
   const {
     control: controlOperationalAd,
@@ -107,8 +109,8 @@ const InformSetting = () => {
   const { runAsync: onUpdateOperationalAd, loading: isUpdatingOperationalAd } = useRequest(
     postUpdateOperationalAd,
     {
-      successToast: '保存成功',
-      errorToast: '保存失败'
+      successToast: t('common:save_success'),
+      errorToast: t('admin:save_failed')
     }
   );
   const { runAsync: onClearOperationalAd, loading: isClearingOperationalAd } = useRequest(
@@ -124,8 +126,8 @@ const InformSetting = () => {
       return result;
     },
     {
-      successToast: '清除成功',
-      errorToast: '清除失败'
+      successToast: t('admin:clear_success'),
+      errorToast: t('admin:clear_failed')
     }
   );
   useMount(async () => {
@@ -138,11 +140,11 @@ const InformSetting = () => {
 
   // 4. 底部活动全屏广告
   const { ConfirmModal: ConfirmActivityAd, openConfirm: onOpenConfirmActivityAd } = useConfirm({
-    content: '确认保存活动广告配置？'
+    content: t('admin:confirm_save_campaign_ad_config')
   });
   const { ConfirmModal: ConfirmClearActivityAd, openConfirm: onOpenConfirmClearActivityAd } =
     useConfirm({
-      content: '确认清除活动广告配置？'
+      content: t('admin:confirm_clear_campaign_ad_config')
     });
   const {
     control: controlActivityAd,
@@ -158,8 +160,8 @@ const InformSetting = () => {
   const { runAsync: onUpdateActivityAd, loading: isUpdatingActivityAd } = useRequest(
     postUpdateActivityAd,
     {
-      successToast: '保存成功',
-      errorToast: '保存失败'
+      successToast: t('common:save_success'),
+      errorToast: t('admin:save_failed')
     }
   );
   const { runAsync: onClearActivityAd, loading: isClearingActivityAd } = useRequest(
@@ -172,8 +174,8 @@ const InformSetting = () => {
       return result;
     },
     {
-      successToast: '清除成功',
-      errorToast: '清除失败'
+      successToast: t('admin:clear_success'),
+      errorToast: t('admin:clear_failed')
     }
   );
   useMount(async () => {
@@ -186,22 +188,21 @@ const InformSetting = () => {
 
   return (
     <AdminSettingPage
-      headerTitle={'通知管理'}
-      headerDescription={'系统公告强提示、站内广播通知与运营活动广告管理'}
+      headerTitle={t('admin:page_title_inform')}
+      headerDescription={t('admin:page_description_inform')}
       tocItems={tocItems}
     >
       {/* 1. 系统公告配置 */}
-      <AdminSettingSection id="systemModal" title="系统公告配置">
+      <AdminSettingSection id="systemModal" title={t('admin:system_announcement_config')}>
         <Text fontSize={'xs'} color={'myGray.500'} mb={4}>
-          设置公告内容后，用户登录系统将通过弹窗进行强提示（关闭后该公告不再弹出）。仅允许设置 1
-          条，支持 Markdown 语法。
+          {t('admin:after_an_announcement_is_set_users_see_a_modal_prompt_when_t')}
         </Text>
 
-        <AdminFormItem label="公告内容 (Markdown)" isRequired mb={4}>
+        <AdminFormItem label={t('admin:announcement_content_markdown')} isRequired mb={4}>
           <Textarea
             rows={8}
             {...registerSystemMsgModal('content', { required: true })}
-            placeholder="支持 Markdown 格式，例如：## 系统升级维护通知..."
+            placeholder={t('admin:markdown_supported_e_g_system_maintenance_notice')}
           />
         </AdminFormItem>
 
@@ -215,26 +216,26 @@ const InformSetting = () => {
               onOpenConfirmSystemModal({ onConfirm: () => onUpdateSystemModal(data) })()
             )}
           >
-            保存公告
+            {t('admin:save_announcement')}
           </Button>
         </Box>
       </AdminSettingSection>
 
       {/* 2. 发送系统通知 */}
-      <AdminSettingSection id="sendInform" title="发送系统通知" showDivider>
+      <AdminSettingSection id="sendInform" title={t('admin:send_system_notification')} showDivider>
         <Text fontSize={'xs'} color={'myGray.500'} mb={4}>
-          向全站注册用户广播发送一条通知消息。不同消息等级对应不同的触达强度。
+          {t('admin:broadcast_a_notification_to_all_registered_users_different_l')}
         </Text>
 
-        <AdminFormItem label="消息通知等级" isRequired mb={4}>
+        <AdminFormItem label={t('admin:notification_level')} isRequired mb={4}>
           <MySelect
             width={'100%'}
             maxW={'400px'}
             list={[
-              { label: '一般 (仅发送站内信通知)', value: InformLevelEnum.common },
-              { label: '重要 (站内信 + 用户登录弹窗通知)', value: InformLevelEnum.important },
+              { label: t('admin:normal_in_app_message_only'), value: InformLevelEnum.common },
+              { label: t('admin:important_in_app_login_modal'), value: InformLevelEnum.important },
               {
-                label: '紧急 (站内信 + 登录弹窗 + 邮件/短信强提醒)',
+                label: t('admin:urgent_in_app_login_modal_email_sms'),
                 value: InformLevelEnum.emergency
               }
             ]}
@@ -243,17 +244,17 @@ const InformSetting = () => {
           />
         </AdminFormItem>
 
-        <AdminFormItem label="通知标题" isRequired mb={4}>
+        <AdminFormItem label={t('admin:notification_title')} isRequired mb={4}>
           <Input
-            placeholder="请输入通知标题"
+            placeholder={t('admin:enter_the_notification_title')}
             {...registerSystemInform('title', { required: true })}
           />
         </AdminFormItem>
 
-        <AdminFormItem label="通知正文内容" isRequired mb={4}>
+        <AdminFormItem label={t('admin:notification_body')} isRequired mb={4}>
           <Textarea
             rows={6}
-            placeholder="请输入通知内容正文"
+            placeholder={t('admin:enter_the_notification_body')}
             {...registerSystemInform('content', { required: true })}
           />
         </AdminFormItem>
@@ -268,27 +269,31 @@ const InformSetting = () => {
               onOpenConfirmSendSystemMsg({ onConfirm: () => onUpdateSendSystemMsg(data) })()
             )}
           >
-            确认发送广播
+            {t('admin:confirm_broadcast')}
           </Button>
         </Box>
       </AdminSettingSection>
 
       {/* 3. 积分区广告配置 */}
-      <AdminSettingSection id="operationalAd" title="积分区广告配置" showDivider>
+      <AdminSettingSection id="operationalAd" title={t('admin:points_area_ad_config')} showDivider>
         <Text fontSize={'xs'} color={'myGray.500'} mb={4}>
-          配置运营广告，常驻展示在主界面左下角积分用量卡片区域。
+          {t('admin:configure_the_operations_ad_shown_persistently_in_the_points')}
         </Text>
 
-        <AdminFormItem label="广告横幅图片" mb={4}>
+        <AdminFormItem label={t('admin:ad_banner_image')} mb={4}>
           <Box maxW={'360px'}>
             <ImageInput control={controlOperationalAd} name="operationalAdImage" />
           </Box>
         </AdminFormItem>
 
-        <AdminFormItem label="点击跳转链接" tooltip="用户点击广告后跳转的外部或内部链接 URL" mb={4}>
+        <AdminFormItem
+          label={t('admin:click_to_open_link')}
+          tooltip={t('admin:destination_url_external_or_internal_after_a_user_clicks_the')}
+          mb={4}
+        >
           <Input
             {...registerOperationalAd('operationalAdLink')}
-            placeholder="请输入完整链接，例如：https://example.com/promo"
+            placeholder={t('admin:enter_a_full_url_e_g_https_example_com_promo')}
           />
         </AdminFormItem>
 
@@ -302,7 +307,7 @@ const InformSetting = () => {
               onOpenConfirmOperationalAd({ onConfirm: () => onUpdateOperationalAd(data) })()
             )}
           >
-            保存广告配置
+            {t('admin:save_ad_config')}
           </Button>
           <Button
             variant={'outline'}
@@ -314,18 +319,22 @@ const InformSetting = () => {
               onOpenConfirmClearOperationalAd({ onConfirm: () => onClearOperationalAd() })()
             }
           >
-            清除广告
+            {t('admin:clear_ad')}
           </Button>
         </HStack>
       </AdminSettingSection>
 
       {/* 4. 全屏活动广告配置 */}
-      <AdminSettingSection id="activityAd" title="全屏活动广告配置" showDivider>
+      <AdminSettingSection
+        id="activityAd"
+        title={t('admin:fullscreen_campaign_ad_config')}
+        showDivider
+      >
         <Text fontSize={'xs'} color={'myGray.500'} mb={4}>
-          配置重大活动全屏广告，用户登录进入工作台时以全屏居中弹窗形式展现。
+          {t('admin:configure_the_fullscreen_campaign_ad_shown_as_a_centered_mod')}
         </Text>
 
-        <AdminFormItem label="全屏活动图片" mb={4}>
+        <AdminFormItem label={t('admin:fullscreen_campaign_image')} mb={4}>
           <Box maxW={'420px'}>
             <ImageInput
               control={controlActivityAd}
@@ -337,10 +346,14 @@ const InformSetting = () => {
           </Box>
         </AdminFormItem>
 
-        <AdminFormItem label="点击跳转链接" tooltip="用户点击活动大图后跳转的目标 URL" mb={4}>
+        <AdminFormItem
+          label={t('admin:click_to_open_link')}
+          tooltip={t('admin:destination_url_after_a_user_clicks_the_campaign_image')}
+          mb={4}
+        >
           <Input
             {...registerActivityAd('activityAdLink')}
-            placeholder="请输入完整链接，例如：https://example.com/activity"
+            placeholder={t('admin:enter_a_full_url_e_g_https_example_com_activity')}
           />
         </AdminFormItem>
 
@@ -354,7 +367,7 @@ const InformSetting = () => {
               onOpenConfirmActivityAd({ onConfirm: () => onUpdateActivityAd(data) })()
             )}
           >
-            保存活动配置
+            {t('admin:save_campaign_config')}
           </Button>
           <Button
             variant={'outline'}
@@ -364,7 +377,7 @@ const InformSetting = () => {
             isLoading={isClearingActivityAd}
             onClick={() => onOpenConfirmClearActivityAd({ onConfirm: () => onClearActivityAd() })()}
           >
-            清除活动
+            {t('admin:clear_campaign')}
           </Button>
         </HStack>
       </AdminSettingSection>

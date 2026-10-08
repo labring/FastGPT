@@ -290,19 +290,26 @@ describe('s3 short access link api', () => {
   });
 
   it('redirects a valid short download alias to a short-lived presigned S3 URL in short-redirect mode', async () => {
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
     vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', '120');
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
-    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com/files');
     vi.resetModules();
     setupDynamicResponseMock();
 
     try {
-      const [{ default: redirectDownloadAccessHandler }, { createS3DownloadAccessUrl }] =
-        await Promise.all([
-          import('@/pages/api/system/file/d/[signedAlias]'),
-          import('@fastgpt/service/common/s3/accessLink')
-        ]);
+      const [
+        { default: redirectDownloadAccessHandler },
+        { createS3DownloadAccessUrl },
+        { applyRuntimeStorageConfig }
+      ] = await Promise.all([
+        import('@/pages/api/system/file/d/[signedAlias]'),
+        import('@fastgpt/service/common/s3/accessLink'),
+        import('@fastgpt/service/common/s3/config/constants')
+      ]);
+      // 下载模式与公开地址以实例配置为唯一来源，不再读环境变量
+      applyRuntimeStorageConfig({
+        downloadMode: 'short-redirect',
+        externalEndpoint: 'https://s3.example.com',
+        cdnEndpoint: 'https://cdn.example.com/files'
+      });
       const url = await createS3DownloadAccessUrl({
         bucketName: 'fastgpt-private',
         objectKey: 'dataset/team/page%20one.md',
@@ -339,20 +346,15 @@ describe('s3 short access link api', () => {
         responseContentType: 'text/markdown; charset=utf-8'
       });
     } finally {
-      vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalStorageEnv.STORAGE_DOWNLOAD_URL_MODE);
       vi.stubEnv(
         'STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS',
         originalStorageEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
       );
-      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalStorageEnv.STORAGE_EXTERNAL_ENDPOINT);
-      vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', originalStorageEnv.STORAGE_S3_CDN_ENDPOINT);
       vi.resetModules();
     }
   });
 
   it('does not generate presigned URLs when a short-redirect alias is invalid or revoked', async () => {
-    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
-    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
     vi.resetModules();
     setupDynamicResponseMock();
 
@@ -365,12 +367,18 @@ describe('s3 short access link api', () => {
           revokeS3DownloadAlias,
           signS3DownloadAlias
         },
-        { jsonRes: freshJsonRes }
+        { jsonRes: freshJsonRes },
+        { applyRuntimeStorageConfig }
       ] = await Promise.all([
         import('@/pages/api/system/file/d/[signedAlias]'),
         import('@fastgpt/service/common/s3/accessLink'),
-        import('@fastgpt/service/common/response')
+        import('@fastgpt/service/common/response'),
+        import('@fastgpt/service/common/s3/config/constants')
       ]);
+      applyRuntimeStorageConfig({
+        downloadMode: 'short-redirect',
+        externalEndpoint: 'https://s3.example.com'
+      });
       setupJsonResMock(freshJsonRes);
       const aliasId = 'R7mQG0Yh2kVxP9Za';
       const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
@@ -409,8 +417,6 @@ describe('s3 short access link api', () => {
       }
       expect(generatePresignedGetUrl).not.toHaveBeenCalled();
     } finally {
-      vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalStorageEnv.STORAGE_DOWNLOAD_URL_MODE);
-      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalStorageEnv.STORAGE_EXTERNAL_ENDPOINT);
       vi.resetModules();
     }
   });

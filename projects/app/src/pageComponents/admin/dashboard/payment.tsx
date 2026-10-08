@@ -1,4 +1,5 @@
 'use client';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useState, useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -23,6 +24,7 @@ const ChartsBoxStyles = {
 };
 
 export default function PaymentPage(): JSX.Element {
+  const { t } = useClientTranslation('admin');
   const theme = useTheme();
 
   const [orderAmountType, setOrderAmountType] = useState<'all' | 'success'>('success');
@@ -82,7 +84,7 @@ export default function PaymentPage(): JSX.Element {
               ]}
               tooltipItems={[
                 {
-                  label: '付费金额',
+                  label: t('admin:payment_amount'),
                   dataKey: 'totalCount',
                   color: theme.colors.adora['500']
                 }
@@ -96,8 +98,8 @@ export default function PaymentPage(): JSX.Element {
               HeaderLeftChildren={
                 <FillRowTabs<'all' | 'success'>
                   list={[
-                    { label: '全部', value: 'all' },
-                    { label: '成功', value: 'success' }
+                    { label: t('admin:all'), value: 'all' },
+                    { label: t('admin:success'), value: 'success' }
                   ]}
                   py={0.5}
                   px={2}
@@ -113,7 +115,11 @@ export default function PaymentPage(): JSX.Element {
                 }
               ]}
               tooltipItems={[
-                { label: '订单数', dataKey: orderAmountField, color: theme.colors.blue['500'] }
+                {
+                  label: t('admin:orders'),
+                  dataKey: orderAmountField,
+                  color: theme.colors.blue['500']
+                }
               ]}
             />
           </Box>
@@ -129,7 +135,11 @@ export default function PaymentPage(): JSX.Element {
                 }
               ]}
               tooltipItems={[
-                { label: '付费团队数', dataKey: 'totalCount', color: theme.colors.blue['500'] }
+                {
+                  label: t('admin:paying_teams'),
+                  dataKey: 'totalCount',
+                  color: theme.colors.blue['500']
+                }
               ]}
             />
           </Box>

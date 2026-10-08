@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import React, { useEffect, useMemo } from 'react';
 import {
   Input,
   NumberInput,
@@ -16,25 +17,28 @@ import {
   AdminSettingPage,
   AdminSettingSection,
   AdminFormItem,
-  AdminSwitchRow,
   ConnectivityTestInput,
   type SettingTOCItem
 } from '@/pageComponents/admin/settings';
+import ThirdPartyVariables from '@/pageComponents/admin/config/components/FormField/ThirdPartyVariables';
 import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
 
 type ProvidersConfigForm = SystemInstanceConfigDomainMap['providers'];
 
-const tocItems: SettingTOCItem[] = [
-  { id: 'documentParse', label: '文档增强解析' },
-  { id: 'chunk', label: '智能语义分块' },
-  { id: 'crm', label: 'CRM 客户关系' },
-  { id: 'dataSource', label: '第三方数据源接入' }
-];
-
 const ProvidersSettingComponent = () => {
+  const { t } = useClientTranslation('admin');
+  const tocItems: SettingTOCItem[] = useMemo(
+    () => [
+      { id: 'documentParse', label: t('admin:provider_section_doc_parse') },
+      { id: 'dataSource', label: t('admin:provider_section_data_source') },
+      { id: 'workflowVariables', label: t('admin:provider_section_workflow_vars') }
+    ],
+    [t]
+  );
+
   const { effectiveConfig, isLoading, isUpdating, updateConfig } = useDomainConfig('providers');
 
-  const { control, handleSubmit, reset, register } = useForm<ProvidersConfigForm>({
+  const { control, handleSubmit, reset, register, setValue } = useForm<ProvidersConfigForm>({
     defaultValues: effectiveConfig
   });
 
@@ -45,8 +49,10 @@ const ProvidersSettingComponent = () => {
   }, [effectiveConfig, reset]);
 
   const documentParseProvider = useWatch({ control, name: 'documentParse.provider' });
-  const chunkEnabled = useWatch({ control, name: 'chunk.enabled' });
-  const crmEnabled = useWatch({ control, name: 'crm.enabled' });
+  const externalProviderWorkflowVariables = useWatch({
+    control,
+    name: 'externalProviderWorkflowVariables'
+  });
 
   const onSave = handleSubmit(async (formData) => {
     await updateConfig(formData);
@@ -54,17 +60,17 @@ const ProvidersSettingComponent = () => {
 
   return (
     <AdminSettingPage
-      headerTitle={'外部提供商'}
+      headerTitle={t('admin:page_title_providers')}
       tocItems={tocItems}
       isLoading={isLoading}
       isSaving={isUpdating}
       onSave={onSave}
     >
       {/* 1. 文档增强解析 */}
-      <AdminSettingSection id="documentParse" title="文档增强解析">
+      <AdminSettingSection id="documentParse" title={t('admin:provider_section_doc_parse')}>
         <AdminFormItem
-          label="解析服务提供方"
-          tooltip="选择用于解析高难度复杂格式（如扫描版 PDF、复杂表格等）的服务渠道"
+          label={t('admin:parsing_provider')}
+          tooltip={t('admin:select_the_provider_used_to_parse_hard_formats_such_as_scann')}
           isRequired
           mb={6}
         >
@@ -72,73 +78,99 @@ const ProvidersSettingComponent = () => {
             name="documentParse.provider"
             control={control}
             render={({ field }) => (
-              <MySelect<'none' | 'customPdf' | 'sangfor'>
+              <MySelect
                 width={'400px'}
+                placeholder={t('admin:select_a_parsing_provider')}
                 list={[
-                  { label: '系统原生解析 (内置开源链路)', value: 'none' },
-                  {
-                    label: '自定义/商业 PDF 解析服务 (Somark/Doc2X/TextIn/自建)',
-                    value: 'customPdf'
-                  },
-                  { label: '深信服增强解析服务', value: 'sangfor' }
+                  { label: 'somark', value: 'somark' },
+                  { label: 'doc2x', value: 'doc2x' },
+                  { label: 'textln', value: 'textln' },
+                  { label: t('admin:custom_self_hosted'), value: 'customPdf' },
+                  { label: t('admin:sangfor_short'), value: 'sangfor' }
                 ]}
-                value={field.value}
+                value={
+                  field.value === 'textin'
+                    ? 'textln'
+                    : field.value === 'custom'
+                      ? 'customPdf'
+                      : field.value
+                }
                 onChange={field.onChange}
               />
             )}
           />
         </AdminFormItem>
 
-        {documentParseProvider === 'customPdf' && (
-          <Box p={5} bg={'myGray.50'} borderRadius={'lg'} mb={6}>
+        {documentParseProvider === 'somark' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
             <AdminFormItem
-              label="自建 PDF 解析服务地址"
-              tooltip="自建的 PDF 解析服务完整 URL，输入后可立即执行连通性测试"
+              label="Somark API Key"
+              tooltip={t('admin:use_the_official_somark_intelligent_cloud_parsing_credential')}
+              isRequired
+              mb={0}
             >
-              <Controller
-                name="documentParse.customPdf.url"
-                control={control}
-                render={({ field }) => (
-                  <Box>
-                    <Input {...field} mb={2} placeholder="https://pdf-parser.example.com/api" />
-                    {field.value && <ConnectivityTestInput url={field.value} />}
-                  </Box>
-                )}
+              <Input
+                type="password"
+                {...register('documentParse.customPdf.somarkApiKey')}
+                placeholder="******"
               />
             </AdminFormItem>
+          </Box>
+        )}
 
+        {documentParseProvider === 'doc2x' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
+            <AdminFormItem
+              label="Doc2X Key"
+              tooltip={t('admin:use_the_official_doc2x_layout_recognition_and_table_extracti')}
+              isRequired
+              mb={0}
+            >
+              <Input
+                type="password"
+                {...register('documentParse.customPdf.doc2xKey')}
+                placeholder="******"
+              />
+            </AdminFormItem>
+          </Box>
+        )}
+
+        {(documentParseProvider === 'textln' || documentParseProvider === 'textin') && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
             <SimpleGrid columns={[1, 2]} spacing={5}>
-              <AdminFormItem label="自建服务认证 Key" tooltip="向自建解析服务请求时的 Bearer Token">
-                <Input
-                  type="password"
-                  {...register('documentParse.customPdf.key')}
-                  placeholder="******"
-                />
-              </AdminFormItem>
-
-              <AdminFormItem label="Somark API Key" tooltip="使用 Somark 官方智能云端解析凭证">
-                <Input
-                  type="password"
-                  {...register('documentParse.customPdf.somarkApiKey')}
-                  placeholder="******"
-                />
-              </AdminFormItem>
-
-              <AdminFormItem label="Doc2X Key" tooltip="使用 Doc2X 官方排版识别与表格提取密钥">
-                <Input
-                  type="password"
-                  {...register('documentParse.customPdf.doc2xKey')}
-                  placeholder="******"
-                />
-              </AdminFormItem>
-
-              <AdminFormItem label="TextIn AppId" tooltip="合合信息 TextIn 平台应用 AppId">
+              <AdminFormItem
+                label="TextIn AppId"
+                tooltip={t('admin:intsig_textin_platform_appid')}
+                isRequired
+              >
                 <Input {...register('documentParse.customPdf.textinAppId')} placeholder="******" />
               </AdminFormItem>
 
               <AdminFormItem
                 label="TextIn Secret Code"
-                tooltip="合合信息 TextIn 平台应用 Secret Code"
+                tooltip={t('admin:intsig_textin_platform_secret_code')}
+                isRequired
               >
                 <Input
                   type="password"
@@ -150,27 +182,79 @@ const ProvidersSettingComponent = () => {
           </Box>
         )}
 
-        {documentParseProvider === 'sangfor' && (
-          <Box p={5} bg={'myGray.50'} borderRadius={'lg'} mb={6}>
+        {(documentParseProvider === 'customPdf' || documentParseProvider === 'custom') && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
             <AdminFormItem
-              label="深信服解析接口地址"
-              tooltip="深信服文档解析外部微服务地址，支持连通性测试"
+              label={t('admin:custom_pdf_parser_service_url')}
+              tooltip={t('admin:full_url_of_the_custom_pdf_parsing_service_connectivity_can')}
+              isRequired
+            >
+              <Controller
+                name="documentParse.customPdf.url"
+                control={control}
+                render={({ field }) => (
+                  <ConnectivityTestInput
+                    {...field}
+                    isEditable
+                    placeholder="https://pdf-parser.example.com/api"
+                  />
+                )}
+              />
+            </AdminFormItem>
+
+            <AdminFormItem
+              label={t('admin:custom_parser_auth_key')}
+              tooltip={t('admin:bearer_token_used_when_calling_the_custom_parsing_service')}
+              mb={0}
+            >
+              <Input
+                type="password"
+                {...register('documentParse.customPdf.key')}
+                placeholder="******"
+              />
+            </AdminFormItem>
+          </Box>
+        )}
+
+        {documentParseProvider === 'sangfor' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            mb={6}
+          >
+            <AdminFormItem
+              label={t('admin:sangfor_parsing_api_endpoint')}
+              tooltip={t('admin:sangfor_document_parsing_microservice_url_connectivity_testi')}
               isRequired
             >
               <Controller
                 name="documentParse.sangfor.url"
                 control={control}
                 render={({ field }) => (
-                  <Box>
-                    <Input {...field} mb={2} placeholder="https://sangfor-parse.example.com" />
-                    {field.value && <ConnectivityTestInput url={field.value} />}
-                  </Box>
+                  <ConnectivityTestInput
+                    {...field}
+                    isEditable
+                    placeholder="https://sangfor-parse.example.com"
+                  />
                 )}
               />
             </AdminFormItem>
 
             <SimpleGrid columns={[1, 2]} spacing={5}>
-              <AdminFormItem label="深信服服务密钥" tooltip="深信服服务访问凭证">
+              <AdminFormItem
+                label={t('admin:sangfor_service_key')}
+                tooltip={t('admin:sangfor_service_credential')}
+              >
                 <Input
                   type="password"
                   {...register('documentParse.sangfor.key')}
@@ -178,183 +262,129 @@ const ProvidersSettingComponent = () => {
                 />
               </AdminFormItem>
 
-              <AdminFormItem label="支持的格式扩展名" tooltip="逗号分隔的扩展名，例如：pdf,docx">
+              <AdminFormItem
+                label={t('admin:supported_file_extensions')}
+                tooltip={t('admin:comma_separated_extensions_e_g_pdf_docx')}
+              >
                 <Input {...register('documentParse.sangfor.extensions')} placeholder="pdf" />
               </AdminFormItem>
-
-              <AdminFormItem label="请求超时时间 (秒)" tooltip="最大超时上限，默认 600 秒">
-                <Controller
-                  name="documentParse.sangfor.timeoutSeconds"
-                  control={control}
-                  render={({ field }) => (
-                    <NumberInput
-                      min={10}
-                      max={7200}
-                      value={field.value ?? 600}
-                      onChange={(_, val) => field.onChange(val || 600)}
-                    >
-                      <NumberInputField />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                  )}
-                />
-              </AdminFormItem>
             </SimpleGrid>
-          </Box>
-        )}
-      </AdminSettingSection>
 
-      {/* 2. 智能语义分块 */}
-      <AdminSettingSection id="chunk" title="智能语义分块" showDivider>
-        <Box mb={5}>
-          <Controller
-            name="chunk.enabled"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label="启用智能语义分块"
-                tooltip="开启后，知识库分块环节将利用外部算法模型进行多层级语义边界智能探测"
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </Box>
-
-        {chunkEnabled && (
-          <Box p={5} bg={'myGray.50'} borderRadius={'lg'} mb={6}>
             <AdminFormItem
-              label="智能分块服务地址"
-              tooltip="分块服务端点 URL，配置后支持连通性测试"
-              isRequired
+              label={t('admin:request_timeout_seconds')}
+              tooltip={t('admin:maximum_timeout_limit_default_600_seconds')}
+              mb={0}
             >
               <Controller
-                name="chunk.url"
+                name="documentParse.sangfor.timeoutSeconds"
                 control={control}
                 render={({ field }) => (
-                  <Box>
-                    <Input {...field} mb={2} placeholder="https://chunk.example.com" />
-                    {field.value && <ConnectivityTestInput url={field.value} />}
-                  </Box>
+                  <NumberInput
+                    variant={'whiteOutline'}
+                    maxW={'400px'}
+                    min={10}
+                    max={7200}
+                    value={field.value ?? 600}
+                    onChange={(_, val) => field.onChange(val || 600)}
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
                 )}
               />
-            </AdminFormItem>
-
-            <SimpleGrid columns={[1, 2]} spacing={5}>
-              <AdminFormItem label="服务访问密钥" tooltip="智能分块请求认证密钥" isRequired>
-                <Input type="password" {...register('chunk.key')} placeholder="******" />
-              </AdminFormItem>
-
-              <AdminFormItem label="超时时长 (分钟)" tooltip="超大文档智能切分处理的最长允许时间">
-                <Controller
-                  name="chunk.timeoutMinutes"
-                  control={control}
-                  render={({ field }) => (
-                    <NumberInput
-                      min={1}
-                      max={300}
-                      value={field.value ?? 60}
-                      onChange={(_, val) => field.onChange(val || 60)}
-                    >
-                      <NumberInputField />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                  )}
-                />
-              </AdminFormItem>
-            </SimpleGrid>
-          </Box>
-        )}
-      </AdminSettingSection>
-
-      {/* 3. CRM 客户关系 */}
-      <AdminSettingSection id="crm" title="CRM 客户关系" showDivider>
-        <Box mb={5}>
-          <Controller
-            name="crm.enabled"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label="启用 CRM 归因同步"
-                tooltip="开启后，主站将访客注册与线索轨迹实时回传至企业自建或第三方 CRM 系统"
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </Box>
-
-        {crmEnabled && (
-          <Box p={5} bg={'myGray.50'} borderRadius={'lg'} mb={6}>
-            <AdminFormItem label="CRM API 地址" tooltip="CRM 线索上报端点完整 URL" isRequired>
-              <Controller
-                name="crm.apiUrl"
-                control={control}
-                render={({ field }) => (
-                  <Box>
-                    <Input {...field} mb={2} placeholder="https://crm.example.com/api/leads" />
-                    {field.value && <ConnectivityTestInput url={field.value} />}
-                  </Box>
-                )}
-              />
-            </AdminFormItem>
-
-            <AdminFormItem label="CRM API Key" tooltip="CRM 接口鉴权密钥" isRequired>
-              <Input type="password" {...register('crm.apiKey')} placeholder="******" />
             </AdminFormItem>
           </Box>
         )}
       </AdminSettingSection>
 
-      {/* 4. 第三方数据源接入 */}
-      <AdminSettingSection id="dataSource" title="第三方数据源接入" showDivider>
+      {/* 2. 第三方数据源接入 */}
+      <AdminSettingSection
+        id="dataSource"
+        title={t('admin:provider_section_data_source')}
+        showDivider
+      >
         <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem label="飞书开放平台地址" tooltip="飞书 API 根地址">
+          <AdminFormItem
+            label={t('admin:feishu_platform_url')}
+            tooltip={t('admin:data_source_private_tip')}
+          >
             <Controller
               name="dataSource.feishuBaseUrl"
               control={control}
               render={({ field }) => (
-                <Box>
-                  <Input {...field} mb={2} placeholder="https://open.feishu.cn" />
-                  {field.value && <ConnectivityTestInput url={field.value} />}
-                </Box>
+                <ConnectivityTestInput {...field} isEditable placeholder="https://open.feishu.cn" />
               )}
             />
           </AdminFormItem>
 
-          <AdminFormItem label="钉钉 API 根地址" tooltip="钉钉新版 OpenAPI 根地址">
+          <AdminFormItem
+            label={t('admin:dingtalk_platform_url')}
+            tooltip={t('admin:data_source_private_tip')}
+          >
             <Controller
               name="dataSource.dingtalkBaseUrl"
               control={control}
               render={({ field }) => (
-                <Box>
-                  <Input {...field} mb={2} placeholder="https://api.dingtalk.com" />
-                  {field.value && <ConnectivityTestInput url={field.value} />}
-                </Box>
+                <ConnectivityTestInput
+                  {...field}
+                  isEditable
+                  placeholder="https://api.dingtalk.com"
+                />
               )}
             />
           </AdminFormItem>
 
-          <AdminFormItem label="钉钉 OAPI 基础地址" tooltip="钉钉历史 OAPI 兼容调用地址">
-            <Input
-              {...register('dataSource.dingtalkOapiBaseUrl')}
-              placeholder="https://oapi.dingtalk.com"
+          <AdminFormItem
+            label={t('admin:dingtalk_oapi_platform_url')}
+            tooltip={t('admin:data_source_private_tip')}
+          >
+            <Controller
+              name="dataSource.dingtalkOapiBaseUrl"
+              control={control}
+              render={({ field }) => (
+                <ConnectivityTestInput
+                  {...field}
+                  isEditable
+                  placeholder="https://oapi.dingtalk.com"
+                />
+              )}
             />
           </AdminFormItem>
 
-          <AdminFormItem label="语雀官方域名" tooltip="语雀知识库导入时的基础站点地址">
-            <Input
-              {...register('dataSource.yuqueDatasetBaseUrl')}
-              placeholder="https://www.yuque.com"
+          <AdminFormItem
+            label={t('admin:yuque_platform_url')}
+            tooltip={t('admin:data_source_private_tip')}
+          >
+            <Controller
+              name="dataSource.yuqueDatasetBaseUrl"
+              control={control}
+              render={({ field }) => (
+                <ConnectivityTestInput {...field} isEditable placeholder="https://www.yuque.com" />
+              )}
             />
           </AdminFormItem>
         </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 3. 外部提供商工作流变量 */}
+      <AdminSettingSection
+        id="workflowVariables"
+        title={t('admin:provider_section_workflow_vars')}
+        showDivider
+      >
+        <ThirdPartyVariables
+          value={externalProviderWorkflowVariables}
+          onChange={(val) =>
+            setValue(
+              'externalProviderWorkflowVariables',
+              val.map((item) => ({ ...item, url: item.url ?? '' }))
+            )
+          }
+          title={t('admin:global_variable_list')}
+        />
       </AdminSettingSection>
     </AdminSettingPage>
   );

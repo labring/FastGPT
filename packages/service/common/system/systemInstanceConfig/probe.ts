@@ -1,8 +1,8 @@
-import axios from 'axios';
 import type {
   ProbeConnectionBody,
   ProbeConnectionResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig';
+import { axios } from '../../api/axios';
 
 /**
  * 由后端服务发起 HTTP 请求探测目标 URL 的网络连通性。
@@ -17,21 +17,27 @@ export const probeUrlConnection = async ({
   const startTime = Date.now();
 
   try {
+    // 优先使用 GET 请求探测（限制接收体最大 16KB，避免拉取大响应体）。
+    // 原因：大量微服务（如 Go Gin 框架的 /api/status）只注册了 GET 方法，发 HEAD 会直接返回 404 Not Found。
     let response;
     try {
-      response = await axios.head(url, {
+      response = await axios.get(url, {
         timeout: timeoutMs,
-        validateStatus: () => true
+        validateStatus: () => true,
+        maxContentLength: 1024 * 16,
+        headers: {
+          'User-Agent': 'FastGPT-Probe/1.0'
+        }
       });
-    } catch (headErr: any) {
-      if (headErr?.response?.status === 405) {
-        response = await axios.get(url, {
-          timeout: timeoutMs,
-          validateStatus: () => true,
-          maxContentLength: 1024 * 10
-        });
+    } catch (getErr: any) {
+      if (getErr?.response) {
+        response = getErr.response;
       } else {
-        throw headErr;
+        // 若 GET 底层报错，尝试 HEAD 兜底
+        response = await axios.head(url, {
+          timeout: timeoutMs,
+          validateStatus: () => true
+        });
       }
     }
 

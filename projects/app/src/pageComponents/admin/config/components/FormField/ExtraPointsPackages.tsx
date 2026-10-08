@@ -1,3 +1,4 @@
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import {
   Box,
   Button,
@@ -29,6 +30,7 @@ const AddPackageModal = ({
   onSubmit: (data: PointsPackageItem) => void;
   editingPackage?: PointsPackageItem;
 }) => {
+  const { t } = useClientTranslation('admin');
   const { handleSubmit, watch, setValue } = useForm<PointsPackageItem>({
     defaultValues: editingPackage || {
       points: 1000,
@@ -46,21 +48,21 @@ const AddPackageModal = ({
   return (
     <MyModal
       isOpen
-      title="额外AI积分费用配置"
+      title={t('admin:extra_ai_points_fee_config')}
       isCentered
       minW={'600px'}
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose}>
-            取消
+            {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(handleFormSubmit)}>确认</Button>
+          <Button onClick={handleSubmit(handleFormSubmit)}>{t('admin:confirm')}</Button>
         </>
       }
     >
       <Flex mb={6} gap={8}>
         <Box flex={1}>
-          <FormLabel mb={2}>积分</FormLabel>
+          <FormLabel mb={2}>{t('admin:points')}</FormLabel>
           <MyNumberInput
             value={watch('points')}
             min={0}
@@ -68,11 +70,11 @@ const AddPackageModal = ({
             onChange={(e) => {
               setValue('points', e || 0);
             }}
-            placeholder="在此输入积分"
+            placeholder={t('admin:enter_points')}
           />
         </Box>
         <Box flex={1}>
-          <FormLabel mb={2}>有效期</FormLabel>
+          <FormLabel mb={2}>{t('admin:validity')}</FormLabel>
           <MySelect
             bg={'myGray.50'}
             h={10}
@@ -89,27 +91,27 @@ const AddPackageModal = ({
       </Flex>
       <Flex mb={6} gap={8}>
         <Box flex={1}>
-          <FormLabel mb={2}>价格</FormLabel>
+          <FormLabel mb={2}>{t('admin:price')}</FormLabel>
           <MyNumberInput
             value={watch('price')}
             min={0}
             onChange={(e) => {
               setValue('price', e || 0);
             }}
-            placeholder="在此输入价格"
+            placeholder={t('admin:enter_price')}
           />
         </Box>
       </Flex>
       <Flex mb={6} gap={8}>
         <Box flex={1}>
-          <FormLabel mb={2}>活动赠送积分</FormLabel>
+          <FormLabel mb={2}>{t('admin:campaign_bonus_points')}</FormLabel>
           <MyNumberInput
             value={watch('activityBonusPoints')}
             min={0}
             onChange={(e) => {
               setValue('activityBonusPoints', e || 0);
             }}
-            placeholder="默认为 0"
+            placeholder={t('admin:default_0')}
           />
         </Box>
       </Flex>
@@ -124,6 +126,7 @@ const ExtraPointsPackages = ({
   value: PointsPackageItem[];
   onChange: (value: PointsPackageItem[]) => void;
 }) => {
+  const { t } = useClientTranslation('admin');
   const [isAddingPackage, setIsAddingPackage] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number>();
 
@@ -162,7 +165,7 @@ const ExtraPointsPackages = ({
     <>
       <Box>
         <Flex justifyContent="space-between" alignItems="center" mb={4}>
-          <Box color={'myGray.900'}>额外 AI 积分费用</Box>
+          <Box color={'myGray.900'}>{t('admin:extra_ai_points_fee')}</Box>
           <Box flex={1} />
           <Button
             variant={'primaryOutline'}
@@ -173,7 +176,7 @@ const ExtraPointsPackages = ({
               setIsAddingPackage(true);
             }}
           >
-            新增
+            {t('admin:add')}
           </Button>
         </Flex>
 
@@ -181,11 +184,11 @@ const ExtraPointsPackages = ({
           <Table size="sm">
             <Thead h={10}>
               <Tr>
-                <Th>积分</Th>
-                <Th>有效期</Th>
-                <Th>价格</Th>
-                <Th>活动赠送积分</Th>
-                <Th w={'100px'}>操作</Th>
+                <Th>{t('admin:points')}</Th>
+                <Th>{t('admin:validity')}</Th>
+                <Th>{t('admin:price')}</Th>
+                <Th>{t('admin:campaign_bonus_points')}</Th>
+                <Th w={'100px'}>{t('admin:actions')}</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -208,14 +211,14 @@ const ExtraPointsPackages = ({
                     <Td borderBottom={isLast ? 'none' : '1px solid'} borderColor={'myGray.200'}>
                       <HStack spacing={2}>
                         <IconButton
-                          aria-label="编辑"
+                          aria-label={t('admin:edit')}
                           icon={<MyIcon name="common/settingLight" w={'14px'} />}
                           size="xs"
                           variant={'whitePrimary'}
                           onClick={() => handleEditPackage(index)}
                         />
                         <IconButton
-                          aria-label="删除"
+                          aria-label={t('admin:delete')}
                           icon={<MyIcon name="delete" w={'14px'} />}
                           size="xs"
                           variant={'whiteDanger'}

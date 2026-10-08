@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import AdminHeader from '../AdminHeader';
@@ -33,6 +34,7 @@ const AdminSettingPage = ({
   children,
   maxW = '840px'
 }: AdminSettingPageProps) => {
+  const { t } = useClientTranslation();
   const [activeId, setActiveId] = useState<string>('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentActiveId = activeId || tocItems[0]?.id || '';
@@ -61,7 +63,7 @@ const AdminSettingPage = ({
     headerRightContent ||
     (onSave && (
       <Button colorScheme={'blue'} size={'sm'} px={6} isLoading={isSaving} onClick={onSave}>
-        保存
+        {t('common:Save')}
       </Button>
     ));
 

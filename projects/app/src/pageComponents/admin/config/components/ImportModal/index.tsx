@@ -1,3 +1,4 @@
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import type { ConfigFormType } from '@/pageComponents/admin/config/type';
 import { formatConfigStore2FormSchema } from '@/web/admin/config/adapt';
 import { Button, useDisclosure } from '@chakra-ui/react';
@@ -12,6 +13,7 @@ export default function ImportModal(props: {
   setFormData: any;
   setRawData: any;
 }) {
+  const { t } = useClientTranslation('admin');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { children, value, setFormData, setRawData } = props;
   const [configData, setConfigData] = React.useState<string>('');
@@ -35,13 +37,13 @@ export default function ImportModal(props: {
       <MyModal
         isOpen={isOpen}
         onClose={onClose}
-        title="导入配置"
+        title={t('admin:import_config')}
         size="xl"
         maxW="90vw"
         footer={
           <>
             <Button variant="whiteBase" onClick={onClose} w={40}>
-              取消
+              {t('admin:cancel')}
             </Button>
             <Button
               colorScheme="blue"
@@ -55,19 +57,19 @@ export default function ImportModal(props: {
                   setFormData(aggregatedConfigs);
                   onClose();
                   toast({
-                    title: '导入成功，请点击保存',
+                    title: t('admin:imported_click_save_to_apply'),
                     status: 'success'
                   });
                 } catch (error: any) {
                   toast({
-                    title: '请检查配置文件格式',
+                    title: t('admin:check_config_file_format'),
                     description: error.message,
                     status: 'error'
                   });
                 }
               }}
             >
-              导入
+              {t('admin:import')}
             </Button>
           </>
         }

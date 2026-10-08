@@ -10,10 +10,7 @@ type AdminSwitchRowProps = {
   isDisabled?: boolean;
 };
 
-/**
- * 统一的行内开关项（左侧 Label + 问号提示，右侧 Switch 开关）。
- * 对齐设计稿中的个性化配置等双列/单列排布。
- */
+/** 统一的行内开关项（左侧 Label + 问号提示，右侧 Switch）。文案由调用方传入已翻译字符串。 */
 const AdminSwitchRow = ({
   label,
   tooltip,
