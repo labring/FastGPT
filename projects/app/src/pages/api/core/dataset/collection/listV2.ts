@@ -129,16 +129,18 @@ const parseCollectionScopeMatch = ({
 
 /** 层序遍历的安全上限：脏树（环 / 超深）不得拖垮请求。 */
 const maxSubtreeDepth = 20;
-/** 单次遍历累计访问的文件夹数上限，防止超大子树把内存打满。 */
+/** 层序遍历累计访问的文件夹数上限，用于约束搜索谓词里 `$in` 数组的长度。 */
 const maxSubtreeNodes = 20000;
 const subtreeLogger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 /**
  * 收集 collectionId 子树内全部**文件夹** ID（不含自身）。
  *
+ * 一次性把该知识库的全部文件夹读进内存（只投影 `_id parentId`），按 parentId 分桶后层序下行，
+ * 因此恒定 1 次查询、延迟不随子树规模变化；代价是无论搜在哪都要扫全库文件夹。
  * 与 findCollectionAndChild 的区别：后者是逐节点串行递归（每节点一次查询、不区分文件与文件夹），
- * 服务删除这类低 QPS 场景没问题；本函数按层批量（每层一次 `parentId: { $in }` 查询，且只取 folder），
- * 服务搜索范围这类交互热路径。通用遍历见 global/common/parentFolder/subtree.ts。
+ * 服务删除这类低 QPS 场景没问题；本函数服务搜索范围这类交互热路径。
+ * 通用遍历见 global/common/parentFolder/subtree.ts。
  *
  * 触达上限时返回已收集的部分（调用方须接受搜索范围可能不完整）。
  */
@@ -151,23 +153,31 @@ const findSubtreeFolderIds = async ({
   datasetId: string;
   collectionId: string;
 }): Promise<string[]> => {
+  const folders = await MongoDatasetCollection.find(
+    {
+      teamId: new Types.ObjectId(teamId),
+      datasetId: new Types.ObjectId(datasetId),
+      type: DatasetCollectionTypeEnum.folder
+    },
+    '_id parentId',
+    { ...readFromSecondary }
+  ).lean();
+
+  // 按 parentId 分桶。根级文件夹（parentId 为空）不会成为「谁的子级」的查询键，跳过。
+  const childrenByParent = new Map<string, string[]>();
+  for (const folder of folders) {
+    const parentKey = folder.parentId ? String(folder.parentId) : '';
+    if (!parentKey) continue;
+    const children = childrenByParent.get(parentKey);
+    if (children) children.push(String(folder._id));
+    else childrenByParent.set(parentKey, [String(folder._id)]);
+  }
+
   const { ids, truncated } = await getDescendantFolderIds({
     rootIds: [collectionId],
     maxDepth: maxSubtreeDepth,
     maxNodes: maxSubtreeNodes,
-    findChildFolders: async (folderIds) => {
-      const children = await MongoDatasetCollection.find(
-        {
-          teamId,
-          datasetId,
-          parentId: { $in: folderIds.map((id) => new Types.ObjectId(id)) },
-          type: DatasetCollectionTypeEnum.folder
-        },
-        '_id',
-        { ...readFromSecondary }
-      ).lean();
-      return children.map((child) => String(child._id));
-    }
+    findChildFolders: async (folderIds) => folderIds.flatMap((id) => childrenByParent.get(id) ?? [])
   });
 
   if (truncated) {
