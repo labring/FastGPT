@@ -5,6 +5,7 @@ import MyIcon from '../../Icon';
 import { useToast } from '../../../../hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getWebReqUrl } from '../../../../common/system/utils';
+import { registerWorkflowMonacoModel } from '../monacoModelRegistry';
 
 loader.config({
   paths: { vs: getWebReqUrl('/js/monaco-editor.0.45.0/vs') }
@@ -23,6 +24,7 @@ type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   onChange?: (e: string) => void;
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
+  path?: string;
   placeholder?: string;
   isDisabled?: boolean;
   readOnly?: boolean;
@@ -62,6 +64,7 @@ const JSONEditor = ({
   onChange,
   resize,
   variables = [],
+  path,
   placeholder,
   defaultHeight = 100,
   isDisabled = false,
@@ -290,6 +293,9 @@ const JSONEditor = ({
         options={{ ...options, readOnly } as any}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
+        path={path}
+        keepCurrentModel={Boolean(path)}
+        saveViewState={path ? true : undefined}
         value={formatedValue}
         onChange={(e) => {
           onChange?.(e || '');
@@ -303,6 +309,13 @@ const JSONEditor = ({
           onBlur
         }}
         onMount={(editor) => {
+          if (path) {
+            const model = editor.getModel();
+            if (model) {
+              registerWorkflowMonacoModel(model);
+            }
+          }
+
           if (!value) {
             setPlaceholderDisplay('block');
           } else {

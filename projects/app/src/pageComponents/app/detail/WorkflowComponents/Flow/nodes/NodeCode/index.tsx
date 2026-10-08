@@ -29,6 +29,9 @@ import NodeCopilot from './Copilot';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowNodeOffscreenMeasurementContext } from '../render/Handle/handleRenderContext';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { getWorkflowEditorPath } from '@/web/core/workflow/editor/workflowEditorPath';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from '../render/useWorkflowDocument';
@@ -50,6 +53,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   // CustomComponent 由 RenderInput 以普通函数调用，hooks 只能取在组件顶层。
   const node = useNode(nodeId);
   const codeField = useField(nodeId, NodeInputKeyEnum.code, 'input');
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const editorSessionId = useContextSelector(WorkflowHostContext, (v) => v.editorSessionId);
   const presentationMode = useContextSelector(WorkflowUIContext, (ctx) => ctx.presentationMode);
   const offscreenMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
@@ -138,6 +143,13 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 bg={'white'}
                 borderRadius={'sm'}
                 value={item.value}
+                path={getWorkflowEditorPath({
+                  appId,
+                  sessionId: editorSessionId,
+                  editorKind: 'code',
+                  nodeId,
+                  fieldKey: item.key
+                })}
                 onChange={(e) => {
                   codeField?.setValue(e);
                 }}
@@ -157,7 +169,9 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     node,
     codeField,
     openSwitchLangConfirm,
-    offscreenMeasurement
+    offscreenMeasurement,
+    appId,
+    editorSessionId
   ]);
 
   const isTool = useIsToolNode(nodeId);

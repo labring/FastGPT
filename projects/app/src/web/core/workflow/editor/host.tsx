@@ -23,6 +23,7 @@ import { isEqual } from 'lodash-es';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import {
@@ -51,6 +52,8 @@ import { materializeWorkflow, serializeRuntime } from './codec';
 import type { ViewDataOverlayMap } from './projection';
 import type { ViewOverlayPatch } from './canvas';
 import { WorkflowEditorProvider } from './react';
+import { disposeWorkflowMonacoModels } from '@fastgpt/web/components/common/Textarea/monacoModelRegistry';
+import { getWorkflowEditorPathPrefix } from './workflowEditorPath';
 
 /** Runtime 最多保留 100 笔 history；版本列表包含当前状态，因此最多 101 项。 */
 const MAX_VERSION_ENTRIES = 101;
@@ -71,6 +74,8 @@ export type WorkflowVersionEntry = {
 
 export type WorkflowHostValue = {
   runtime: WorkflowRuntimePort | null;
+  /** 当前工作流编辑页的 Monaco model 生命周期标识。 */
+  editorSessionId: string;
   /**
    * 视图计数器：只承载 renderer view 通道的失效——overlay 写入、标红焦点，以及重载文档/
    * 切换版本时对这两者的清理。
@@ -147,6 +152,7 @@ const notImplemented = (): never => {
 
 export const WorkflowHostContext = createContext<WorkflowHostValue>({
   runtime: null,
+  editorSessionId: '',
   viewTick: 0,
   issueFocusTick: 0,
   overlaysRef: { current: {} },
@@ -205,12 +211,23 @@ export const useWorkflowSnapshot = (): WorkflowSnapshot | undefined => {
 export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const appId = useContextSelector(AppContext, (v) => v.appId);
   const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
   const appDetailChatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const showSandbox = feConfigs?.show_agent_sandbox;
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
+
+  const editorSessionId = useMemo(() => getNanoid(12), [appId]);
+  const editorModelUriPrefix = useMemo(
+    () => getWorkflowEditorPathPrefix({ appId, sessionId: editorSessionId }),
+    [appId, editorSessionId]
+  );
+
+  useEffect(() => {
+    return () => disposeWorkflowMonacoModels(editorModelUriPrefix);
+  }, [editorModelUriPrefix]);
 
   const [runtime, setRuntime] = useState<WorkflowRuntimePort | null>(null);
   const runtimeRef = useRef<WorkflowRuntimePort | null>(null);
@@ -576,6 +593,7 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
   const value = useMemo(
     () => ({
       runtime,
+      editorSessionId,
       viewTick,
       issueFocusTick,
       overlaysRef,
@@ -599,6 +617,7 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
     }),
     [
       runtime,
+      editorSessionId,
       viewTick,
       issueFocusTick,
       patchViewData,

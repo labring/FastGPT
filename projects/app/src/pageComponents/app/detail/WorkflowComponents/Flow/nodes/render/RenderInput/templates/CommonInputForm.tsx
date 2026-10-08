@@ -21,7 +21,11 @@ import type { RenderInputProps } from '../type';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 import { useNodeActions } from '@/web/core/workflow/editor/react';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
+import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { getWorkflowEditorPath } from '@/web/core/workflow/editor/workflowEditorPath';
+import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowNodeOffscreenMeasurementContext } from '../../Handle/handleRenderContext';
+import { useContextSelector } from 'use-context-selector';
 
 /**
  * 通用输入模板：文本/多行文本/数字/开关/单选多选/JSON/模型选择等渲染类型共用。
@@ -35,6 +39,8 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const nodeActions = useNodeActions(nodeId);
   const field = useField(nodeId, item.key, 'input');
   const currentInput = (field?.data.input ?? item) as FlowNodeInputItemType;
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+  const editorSessionId = useContextSelector(WorkflowHostContext, (v) => v.editorSessionId);
   // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
   const { feConfigs } = useSystemStore();
@@ -48,6 +54,17 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
     selectedRenderType ? [selectedRenderType] : currentInput.renderTypeList
   );
   const offscreenMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
+
+  const editorPath =
+    inputType === InputTypeEnum.JSONEditor
+      ? getWorkflowEditorPath({
+          appId,
+          sessionId: editorSessionId,
+          editorKind: 'json',
+          nodeId,
+          fieldKey: currentInput.key
+        })
+      : undefined;
 
   const editorVariables = useMemoEnhance(() => {
     if (!workflow) return [];
@@ -145,6 +162,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
             onChange={handleChange}
             variables={[...(editorVariables || []), ...(externalVariables || [])]}
             variableLabels={editorVariables}
+            path={editorPath}
             ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
             menuPlacement={menuPlacement}
             {...inputProps}
