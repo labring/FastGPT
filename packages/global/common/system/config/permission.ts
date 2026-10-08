@@ -170,13 +170,15 @@ export const maskDomainSecrets = <T>(domain: SystemInstanceConfigDomainKey, data
 
 /**
  * 当客户端提交保存时，若敏感字段提交了掩码 '******'，则自动从上一版本恢复已有密钥，避免误覆写。
+ * 掩码只表示「保持原值」：上一版本没有可恢复的真实值时（首次保存，或该值来自 Schema 默认值），
+ * 必须将该字段视为未提交并丢弃，否则 '******' 会被当作真实密钥写入 DB 覆盖默认值。
  */
 export const restorePreservedSecrets = <T>(
   domain: SystemInstanceConfigDomainKey,
   submitted: T,
   previous?: unknown
 ): T => {
-  if (!isPlainObject(submitted) || !isPlainObject(previous)) {
+  if (!isPlainObject(submitted)) {
     return submitted;
   }
 
@@ -184,6 +186,9 @@ export const restorePreservedSecrets = <T>(
   if (secretKeys.size === 0) {
     return submitted;
   }
+
+  // 首次保存没有上一版本可恢复，按空对象处理，掩码字段将被丢弃
+  const previousObj: Record<string, unknown> = isPlainObject(previous) ? previous : {};
 
   const restoreObject = (
     subObj: Record<string, unknown>,
@@ -199,9 +204,13 @@ export const restorePreservedSecrets = <T>(
       const prevValue = prevObj[key];
 
       if (isPlainObject(value)) {
-        result[key] = isPlainObject(prevValue) ? restoreObject(value, prevValue, path) : value;
-      } else if (secretKeys.has(path) && value === SECRET_MASK && typeof prevValue === 'string') {
-        result[key] = prevValue;
+        // 无对应上一版本时传空对象继续递归，确保嵌套层的掩码同样被清洗
+        result[key] = restoreObject(value, isPlainObject(prevValue) ? prevValue : {}, path);
+      } else if (secretKeys.has(path) && value === SECRET_MASK) {
+        // 仅当上一版本存在非掩码的字符串值时恢复；否则丢弃该字段（按未提交处理）
+        if (typeof prevValue === 'string' && prevValue !== SECRET_MASK) {
+          result[key] = prevValue;
+        }
       } else {
         result[key] = value;
       }
@@ -210,5 +219,5 @@ export const restorePreservedSecrets = <T>(
     return result;
   };
 
-  return restoreObject(submitted, previous) as T;
+  return restoreObject(submitted, previousObj) as T;
 };
