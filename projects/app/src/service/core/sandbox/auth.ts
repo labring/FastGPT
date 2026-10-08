@@ -29,8 +29,8 @@ export type SandboxSessionAuthResult = {
 
 /**
  * 统一沙盒 API 会话访问控制鉴权。
- * API 边界已将 appId/skillId 转成 sourceType/sourceId；这里仅按标准 chat source
- * 分发到 App Chat 或 Skill Edit 权限体系。
+ * API 边界已将 appId/skillId 转成 sourceType/sourceId；这里按标准 chat source
+ * 分发到对应权限体系。Workflow Builder 复用 App 写权限，但保留独立聊天和 Sandbox 身份。
  */
 export async function authSandboxSession({
   req,

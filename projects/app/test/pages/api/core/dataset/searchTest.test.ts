@@ -18,6 +18,7 @@ const mockAddAuditLog = vi.hoisted(() => vi.fn());
 const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
 const mockResolveReadableCollectionIds = vi.hoisted(() => vi.fn());
+const mockCreateNodeApiLimitResponse = vi.hoisted(() => vi.fn(() => vi.fn()));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: mockAuthDataset
@@ -72,6 +73,7 @@ vi.mock('@/service/middleware/entry', () => ({
 
 vi.mock('@fastgpt/service/common/api/frequencyLimit', () => ({
   LimitTypeEnum: { chat: 'chat' },
+  createNodeApiLimitResponse: mockCreateNodeApiLimitResponse,
   teamFrequencyLimit: mockTeamFrequencyLimit
 }));
 
@@ -217,7 +219,7 @@ describe('searchTest query image auth', () => {
     expect(mockTeamFrequencyLimit).toHaveBeenCalledWith({
       teamId: 'team-1',
       type: 'chat',
-      res
+      limitResponse: expect.any(Function)
     });
   });
 

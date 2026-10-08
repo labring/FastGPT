@@ -5,8 +5,8 @@ import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
 import RehypeKatex from 'rehype-katex';
 import RemarkBreaks from 'remark-breaks';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import QuickQuestionButton from '@/components/core/chat/QuickQuestionButton';
+import { useChatInstanceActions } from '../../core/chat/ChatContainer/context/chatInstanceActionsContext';
 import { isSafeHref } from '@fastgpt/global/common/string/url';
 
 import 'katex/dist/katex.min.css';
@@ -16,12 +16,13 @@ import Image from '../img/Image';
 function MyLink(e: any) {
   const href = e.href;
   const text = String(e.children);
+  const { sendMessage } = useChatInstanceActions();
 
   if (!href) {
     return (
       <QuickQuestionButton
         mb={2}
-        onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
+        onClick={() => sendMessage({ text })}
       >
         {text}
       </QuickQuestionButton>

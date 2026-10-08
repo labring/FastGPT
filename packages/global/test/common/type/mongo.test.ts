@@ -182,5 +182,21 @@ describe('mongo type tests', () => {
         expect(result).toBe(validId);
       });
     });
+
+    describe('requiredness and optionality', () => {
+      it('should reject undefined by default', () => {
+        expect(ObjectIdSchema.safeParse(undefined).success).toBe(false);
+      });
+
+      it('should allow undefined when wrapped with .optional()', () => {
+        const optionalSchema = ObjectIdSchema.optional();
+        expect(optionalSchema.safeParse(undefined).success).toBe(true);
+        expect(optionalSchema.safeParse('507f1f77bcf86cd799439011').success).toBe(true);
+      });
+
+      it('should be treated as required in z.object on input', () => {
+        expect((ObjectIdSchema as any)._zod.optin).toBeUndefined();
+      });
+    });
   });
 });

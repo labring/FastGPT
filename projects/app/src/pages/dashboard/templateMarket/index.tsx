@@ -124,7 +124,7 @@ const TemplateMarket = ({
         router.push(
           getAppDetailRoute({
             appId,
-            openSystemConfig: isWorkflowAppType(appType)
+            openWorkflowBuilder: isWorkflowAppType(appType)
           })
         );
       },

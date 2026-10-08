@@ -4,6 +4,7 @@ import type { AProps } from './A';
 export type MarkdownRendererRuntimeContextValue = {
   showAnimation?: boolean;
   autoPreviewHtmlCodeBlock?: boolean;
+  mermaidClickToPreview?: boolean;
   markdownClassName?: string;
   chatAuthData?: AProps['chatAuthData'];
   allowedCitationIds?: AProps['allowedCitationIds'];

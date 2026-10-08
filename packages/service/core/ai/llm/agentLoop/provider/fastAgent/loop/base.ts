@@ -15,6 +15,7 @@ import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schem
 import type { AgentLoopAssistantResponse } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
+  AgentLoopCompletionPolicy,
   AgentLoopInteractiveToolExecuteParams,
   AgentLoopToolExecutionResult,
   AgentLoopUsage
@@ -26,6 +27,7 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
+  completionPolicy?: AgentLoopCompletionPolicy;
   batchToolSize?: number;
   body: CreateLLMResponseProps['body'] & {
     tools: ChatCompletionTool[];
@@ -192,6 +194,7 @@ export const onCompressContext = async ({
  */
 export const runAgentLoop = async <TChildrenResponse = unknown>({
   maxRunAgentTimes,
+  completionPolicy,
   batchToolSize = 1,
   body: { model, messages, max_tokens, ...body },
 
@@ -709,6 +712,32 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         if (toolChildPause || stopAgentLoop || isAborted?.()) {
           break;
         }
+      }
+    }
+
+    if (
+      toolCalls.length === 0 &&
+      !toolChildPause &&
+      !stopAgentLoop &&
+      !isAborted?.() &&
+      completionPolicy
+    ) {
+      try {
+        const decision = await completionPolicy({ requestIndex: runTimes });
+        if (decision.action === 'continue') {
+          if (runTimes >= maxRunAgentTimes) {
+            requestError = new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
+            break;
+          }
+          await appendRequestMessages({
+            role: ChatCompletionRequestMessageRoleEnum.System,
+            content: decision.message
+          });
+          continue;
+        }
+      } catch (error) {
+        requestError = error;
+        break;
       }
     }
 

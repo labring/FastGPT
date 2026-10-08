@@ -3,7 +3,6 @@ import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import ChatController, { type ChatControllerProps } from '../ChatController';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
@@ -18,6 +17,7 @@ import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { toChatApiTarget } from '@/web/core/chat/utils';
+import { useChatInstanceActions } from '../../../context/chatInstanceActionsContext';
 
 type AIChatBubbleActionsProps = {
   chatControllerProps: ChatControllerProps;
@@ -43,6 +43,7 @@ const AIChatBubbleActions = ({
   responseData
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
+  const { sendMessage } = useChatInstanceActions();
   const { onRetry, feedbackUserName, disableFooterHoverTranslate } = chatControllerProps;
   const footerActionHoverStyle = {
     color: 'primary.600',
@@ -233,7 +234,7 @@ const AIChatBubbleActions = ({
               fontWeight={500}
               cursor={'pointer'}
               _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
-              onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
+              onClick={() => sendMessage({ text })}
             >
               <MyIcon name={'common/arrowRight'} w={'14px'} transform={'rotate(-45deg)'} />
               <Box className="textEllipsis">{text}</Box>

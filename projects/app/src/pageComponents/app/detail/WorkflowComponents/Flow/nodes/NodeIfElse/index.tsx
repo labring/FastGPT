@@ -1,9 +1,9 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import NodeCard from '../render/NodeCard';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { type NodeProps, Position } from 'reactflow';
+import { type NodeProps, Position, useUpdateNodeInternals } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import {
@@ -23,6 +23,7 @@ import { WorkflowActionsContext } from '../../../context/workflowActionsContext'
 const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [] } = data;
+  const updateNodeInternals = useUpdateNodeInternals();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const elseHandleId = getHandleId(nodeId, 'source', IfElseResultEnum.ELSE);
 
@@ -32,6 +33,16 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         ?.value as IfElseListItemType[]) || [],
     [inputs]
   );
+  const branchHandleKeys = useMemo(
+    () => JSON.stringify(ifElseList.map((item, index) => getIfElseBranchHandleKey(item, index))),
+    [ifElseList]
+  );
+
+  useEffect(() => {
+    // 条件分支的 Handle 是动态渲染的。导入或调整分支后需要通知 ReactFlow
+    // 重新测量，否则边数据虽然存在，画布仍可能因找不到 Handle 而不显示连线。
+    updateNodeInternals(nodeId);
+  }, [branchHandleKeys, nodeId, updateNodeInternals]);
 
   const onUpdateIfElseList = useCallback(
     (value: IfElseListItemType[]) => {
@@ -76,6 +87,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   key={getIfElseBranchHandleKey(conditionItem)}
                   draggableId={getIfElseBranchHandleKey(conditionItem)}
                   index={conditionIndex}
+                  isDragDisabled={ifElseList.length <= 1}
                 >
                   {(provided, snapshot) => (
                     <ListItem

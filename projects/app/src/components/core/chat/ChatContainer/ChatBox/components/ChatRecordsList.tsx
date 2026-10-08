@@ -45,6 +45,7 @@ export type ChatRecordsListProps = {
   };
   disableFooterHoverTranslate?: boolean;
   footerRunDetailPosition?: 'default' | 'afterCopy';
+  workflowBuilderStyle?: boolean;
   feedbackUserName?: string;
   onCloseCustomFeedback: (
     chat: ChatSiteItemType,
@@ -83,6 +84,7 @@ const ChatRecordsList = ({
   likeFeedbackEffect,
   disableFooterHoverTranslate,
   footerRunDetailPosition,
+  workflowBuilderStyle,
   feedbackUserName,
   onCloseCustomFeedback,
   onToggleFeedbackReadStatus
@@ -170,8 +172,25 @@ const ChatRecordsList = ({
       {renderRecords.map(({ item, sourceIndex, lastSourceIndex }) => {
         const shouldRender = !item.deleteTime || expandedDeletedGroups.has(item.dataId);
         const previousRecord = records[sourceIndex - 1];
+        const nextRecord = records[lastSourceIndex + 1];
         const retryPreviousHuman =
           previousRecord?.obj === ChatRoleEnum.Human ? onRetry(previousRecord.dataId) : undefined;
+        const recordBottomPadding = (() => {
+          if (item.hideInUI) return 0;
+
+          // Workflow Builder 的 AI→用户换轮间距按 Figma 固定为 24px；
+          // 其他 ChatBox 及其余消息排列继续沿用原有间距，避免影响通用聊天场景。
+          if (
+            workflowBuilderStyle &&
+            item.obj === ChatRoleEnum.AI &&
+            nextRecord?.obj === ChatRoleEnum.Human &&
+            !nextRecord.hideInUI
+          ) {
+            return '24px';
+          }
+
+          return item.obj === ChatRoleEnum.Human ? '40px' : '32px';
+        })();
 
         return (
           <Box key={getChatItemRenderKey(item)}>
@@ -192,7 +211,7 @@ const ChatRecordsList = ({
               >
                 <Box
                   pt={0}
-                  pb={item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? '40px' : '32px'}
+                  pb={recordBottomPadding}
                   _hover={
                     item.obj === ChatRoleEnum.Human
                       ? {

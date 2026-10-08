@@ -7,7 +7,7 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/utils';
 
 describe('sandbox runtime paths', () => {
-  it('derives App session and Skill Edit workspace paths', () => {
+  it('derives App, Workflow Builder session and Skill Edit workspace paths', () => {
     expect(
       getSandboxRuntimePaths({
         sourceType: ChatSourceTypeEnum.app,
@@ -18,6 +18,17 @@ describe('sandbox runtime paths', () => {
       workspaceRoot: '/workspace',
       runtimeSkillsRoot: '/workspace/projects',
       sessionWorkDirectory: '/workspace/sessions/chat-1'
+    });
+    expect(
+      getSandboxRuntimePaths({
+        sourceType: ChatSourceTypeEnum.workflowBuilder,
+        workDirectory: '/workspace/',
+        chatId: 'builder-chat-1'
+      })
+    ).toEqual({
+      workspaceRoot: '/workspace',
+      runtimeSkillsRoot: '/workspace/projects',
+      sessionWorkDirectory: '/workspace/sessions/builder-chat-1'
     });
     expect(
       getSandboxRuntimePaths({

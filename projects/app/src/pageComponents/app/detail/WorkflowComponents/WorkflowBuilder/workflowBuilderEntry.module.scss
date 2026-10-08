@@ -1,0 +1,288 @@
+.entry {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  isolation: isolate;
+}
+
+.entry::before {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: 8px;
+  background:
+    url("data:image/svg+xml;utf8,<svg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect width='100%25' height='100%25' fill='url(%23grad)'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(-1.7368 -1.9885 3.1959 -2.73 25.043 30.644)'><stop stop-color='rgba(89,178,255,1)' offset='0'/><stop stop-color='rgba(94,180,255,0)' offset='0.6906'/></radialGradient></defs></svg>"),
+    url("data:image/svg+xml;utf8,<svg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect width='100%25' height='100%25' fill='url(%23grad)'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(-1.0157 -2.0947 3.4153 -2.106 19.13 33.085)'><stop stop-color='rgba(89,178,255,1)' offset='0'/><stop stop-color='rgba(94,180,255,0)' offset='1'/></radialGradient></defs></svg>"),
+    url("data:image/svg+xml;utf8,<svg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect width='100%25' height='100%25' fill='url(%23grad)'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(-1.2794 -2.7628 3.3272 -1.1502 22.957 29.559)'><stop stop-color='rgba(130,88,255,1)' offset='0.49354'/><stop stop-color='rgba(130,88,255,0)' offset='1'/></radialGradient></defs></svg>"),
+    url("data:image/svg+xml;utf8,<svg viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none'><rect width='100%25' height='100%25' fill='url(%23grad)'/><defs><radialGradient id='grad' gradientUnits='userSpaceOnUse' cx='0' cy='0' r='10' gradientTransform='matrix(-1.2566 -2.9232 3.5279 -1.7269 26.296 32.542)'><stop stop-color='rgba(22,41,255,1)' offset='0.63414'/><stop stop-color='rgba(57,60,255,0.75)' offset='0.7256'/><stop stop-color='rgba(92,78,255,0.5)' offset='0.81707'/><stop stop-color='rgba(162,116,255,0)' offset='1'/></radialGradient></defs></svg>"),
+    #ecefff !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  content: '';
+  pointer-events: none;
+}
+
+.button {
+  position: relative;
+  z-index: 3;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  line-height: 0 !important;
+}
+
+.iconBox {
+  display: block;
+  flex: 0 0 18px;
+  width: 18px !important;
+  min-width: 18px;
+  height: 18px !important;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.iconBox > svg {
+  display: block;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.glowBack,
+.glowFront {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+}
+
+.glowBack {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: radial-gradient(
+    ellipse,
+    transparent 34%,
+    rgba(89, 178, 255, 0.26) 47%,
+    rgba(130, 88, 255, 0.2) 61%,
+    rgba(89, 178, 255, 0.08) 69%,
+    transparent 80%
+  );
+  filter: blur(6px);
+}
+
+.glowFront {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: radial-gradient(
+    ellipse,
+    transparent 43%,
+    rgba(162, 116, 255, 0.28) 51%,
+    rgba(89, 178, 255, 0.14) 63%,
+    transparent 78%
+  );
+  filter: blur(4px);
+}
+
+.attentionDot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  z-index: 5;
+  width: 12px;
+  height: 12px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: #d92d20;
+  opacity: 0;
+}
+
+.entry[data-attention='true'] .attentionDot {
+  opacity: 1;
+}
+
+.button [data-motion-part='center'],
+.button [data-motion-part='dot'],
+.button [data-motion-part='arc'] {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.entry[data-generating='true'] .glowBack {
+  opacity: 0.95;
+  animation: workflow-glow-breathe 1.85s ease-in-out infinite;
+}
+
+.entry[data-generating='true'] .glowFront {
+  opacity: 0.8;
+  animation: workflow-glow-ring 2.6s ease-in-out infinite;
+}
+
+.entry[data-generating='true'] .button [data-motion-part='center'] {
+  animation: workflow-center-pulse-cool 1.35s ease-in-out infinite;
+}
+
+.entry[data-generating='true'] .button [data-motion-part='dot'] {
+  animation: workflow-dot-glitter 1.1s ease-in-out infinite alternate;
+}
+
+.entry[data-generating='true'] .button [data-motion-part='dot'][data-motion-order='b'],
+.entry[data-generating='true'] .button [data-motion-part='dot'][data-motion-order='d'] {
+  animation-delay: 0.32s;
+}
+
+.entry[data-generating='true'] .button [data-motion-part='arc'] {
+  animation: workflow-arc-flow 1.25s ease-in-out infinite;
+}
+
+.entry[data-generating='true'] .button [data-motion-part='arc'][data-motion-order='b'] {
+  animation-delay: 0.44s;
+}
+
+/* 与动效稿的 :has(hitbox:hover) 一致：Hover 临时接管生成中的内部路径动画。 */
+.entry:hover .button [data-motion-part='center'] {
+  animation: workflow-hover-star-turn 1200ms cubic-bezier(0.42, 0, 0.18, 1) both;
+}
+
+.entry:hover .button [data-motion-part='dot'] {
+  animation: workflow-hover-dot-flash 520ms ease-out both;
+}
+
+.entry:hover .button [data-motion-part='dot'][data-motion-order='b'] {
+  animation-delay: 120ms;
+}
+
+.entry:hover .button [data-motion-part='dot'][data-motion-order='c'] {
+  animation-delay: 240ms;
+}
+
+.entry:hover .button [data-motion-part='dot'][data-motion-order='d'] {
+  animation-delay: 360ms;
+}
+
+@keyframes workflow-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: translate(-50%, -50%) scale(0.84);
+  }
+  50% {
+    opacity: 0.88;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+@keyframes workflow-glow-ring {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: translate(-50%, -50%) scale(0.88);
+  }
+  46% {
+    opacity: 0.76;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+@keyframes workflow-center-pulse-cool {
+  0%,
+  100% {
+    transform: scale(0.98);
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
+  48% {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.95));
+  }
+}
+
+@keyframes workflow-dot-glitter {
+  from {
+    opacity: 0.38;
+    transform: scale(0.72);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.42);
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95));
+  }
+}
+
+@keyframes workflow-arc-flow {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  35%,
+  62% {
+    opacity: 1;
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.9));
+  }
+}
+
+@keyframes workflow-hover-star-turn {
+  0% {
+    opacity: 0.9;
+    transform: rotate(0deg) scale(1);
+  }
+  28% {
+    opacity: 0.86;
+    transform: rotate(10deg) scale(0.97);
+  }
+  66% {
+    opacity: 1;
+    transform: rotate(224deg) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes workflow-hover-dot-flash {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.72);
+  }
+  38% {
+    opacity: 1;
+    transform: scale(1.55);
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.95));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry[data-generating='true'] .glowBack,
+  .entry[data-generating='true'] .glowFront,
+  .entry[data-generating='true'] .button [data-motion-part='center'],
+  .entry[data-generating='true'] .button [data-motion-part='dot'],
+  .entry[data-generating='true'] .button [data-motion-part='arc'],
+  .entry:hover .button [data-motion-part='center'],
+  .entry:hover .button [data-motion-part='dot'] {
+    animation: none;
+  }
+
+  .entry[data-generating='true'] .glowBack {
+    opacity: 0.45;
+  }
+
+  .entry[data-generating='true'] .glowFront {
+    opacity: 0.3;
+  }
+}

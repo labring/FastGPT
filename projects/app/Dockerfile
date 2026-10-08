@@ -46,6 +46,7 @@ ENV NEXT_PUBLIC_BASE_URL=$base_url
 # Build SDK workspace packages first so subpath exports like
 # @fastgpt-sdk/otel/logger have generated dist type files.
 RUN pnpm build:sdks
+RUN pnpm --filter @fastgpt/workflow-core build
 RUN pnpm --filter=app build
 
 # Remove build-time-only packages from standalone output before copying to runner.
