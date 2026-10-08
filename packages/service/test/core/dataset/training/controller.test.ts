@@ -1,5 +1,6 @@
 import { getModelTestDefaults } from '@test/modelCache';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import * as timerLockUtils from '@fastgpt/service/common/system/timerLock/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -156,55 +157,66 @@ describe('dataset training controller', () => {
     expect(untouchedTraining?.lockTime).not.toEqual(BLOCKED_LOCK_TIME);
     expect(untouchedTraining?.errorMsg).toBeUndefined();
   });
-  it.each([
+  const lockModes = [
     TrainingModeEnum.index,
     TrainingModeEnum.imageParse,
     TrainingModeEnum.image,
     TrainingModeEnum.auto,
     TrainingModeEnum.chunk
-  ])('only marks index data as error when locking %s tasks', async (mode) => {
-    const root = await getRootUser();
-    const datasetId = '507f1f77bcf86cd799439021';
-    const collectionId = '507f1f77bcf86cd799439022';
-    const billId = 'test';
+  ];
+  it.each(lockModes.flatMap((mode) => [false, true].map((lockHeld) => ({ mode, lockHeld }))))(
+    'keeps data indexing and preserves TTL when locking $mode tasks (lockHeld=$lockHeld)',
+    async ({ mode, lockHeld }) => {
+      const root = await getRootUser();
+      const datasetId = '507f1f77bcf86cd799439021';
+      const collectionId = '507f1f77bcf86cd799439022';
+      const billId = 'test';
 
-    const [data] = await MongoDatasetData.create([
-      {
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId,
-        collectionId,
-        q: 'test q',
-        a: 'test a',
-        indexStatus: DatasetDataIndexStatusEnum.indexing
+      const [data] = await MongoDatasetData.create([
+        {
+          teamId: root.teamId,
+          tmbId: root.tmbId,
+          datasetId,
+          collectionId,
+          q: 'test q',
+          a: 'test a',
+          indexStatus: DatasetDataIndexStatusEnum.indexing
+        }
+      ]);
+
+      const [training] = await MongoDatasetTraining.create([
+        {
+          teamId: root.teamId,
+          tmbId: root.tmbId,
+          datasetId,
+          collectionId,
+          dataId: String(data._id),
+          billId,
+          mode,
+          retryCount: 3
+        }
+      ]);
+
+      // 模拟另一 worker 持有团队锁，验证单条兜底同样只修改 training。
+      const lockSpy = lockHeld
+        ? vi.spyOn(timerLockUtils, 'checkTimerLock').mockResolvedValueOnce(false)
+        : undefined;
+      try {
+        await lockTrainingDataByTeamId(String(root.teamId), String(training._id));
+      } finally {
+        lockSpy?.mockRestore();
       }
-    ]);
 
-    const [training] = await MongoDatasetTraining.create([
-      {
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId,
-        collectionId,
-        dataId: String(data._id),
-        billId,
-        mode,
-        retryCount: 3
-      }
-    ]);
+      const updatedData = await MongoDatasetData.findById(data._id).lean();
+      const updatedTraining = await MongoDatasetTraining.findById(training._id).lean();
+      const errorMsg = i18nT('common:code_error.team_error.ai_points_not_enough');
 
-    await lockTrainingDataByTeamId(String(root.teamId));
-
-    const updatedData = await MongoDatasetData.findById(data._id).lean();
-    const updatedTraining = await MongoDatasetTraining.findById(training._id).lean();
-    const errorMsg = i18nT('common:code_error.team_error.ai_points_not_enough');
-
-    expect(updatedTraining?.lockTime).toEqual(BLOCKED_LOCK_TIME);
-    expect(updatedData?.indexStatus).toBe(
-      mode === TrainingModeEnum.index
-        ? DatasetDataIndexStatusEnum.error
-        : DatasetDataIndexStatusEnum.indexing
-    );
-    expect(updatedData?.indexErrorMsg).toBe(mode === TrainingModeEnum.index ? errorMsg : undefined);
-  });
+      expect(updatedTraining?.lockTime).toEqual(BLOCKED_LOCK_TIME);
+      expect(updatedTraining?.errorMsg).toBe(errorMsg);
+      expect(updatedTraining?.retryCount).toBe(training.retryCount);
+      expect(updatedTraining?.expireAt).toEqual(training.expireAt);
+      expect(updatedData?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
+      expect(updatedData?.indexErrorMsg).toBeUndefined();
+    }
+  );
 });

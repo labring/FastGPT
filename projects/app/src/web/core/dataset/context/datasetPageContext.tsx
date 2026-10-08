@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { getDatasetById, getDatasetPaths, putDatasetById } from '../api';
 import { getAllTags } from '../api/collection';
@@ -17,6 +17,8 @@ type DatasetPageContextType = {
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
   updateDataset: (data: UpdateDatasetBody) => Promise<void>;
+  refreshCollectionList: () => void;
+  registerCollectionListRefresh: (refresh: () => void) => () => void;
 
   allDatasetTags: DatasetTagType[];
   isLoadingAllDatasetTags: boolean;
@@ -43,6 +45,8 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   updateDataset: function (_data: UpdateDatasetBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
+  refreshCollectionList: () => {},
+  registerCollectionListRefresh: () => () => {},
   allDatasetTags: [],
   isLoadingAllDatasetTags: false,
   loadAllDatasetTags: function (): Promise<DatasetTagType[]> {
@@ -60,6 +64,18 @@ export const DatasetPageContextProvider = ({
   datasetId: string;
 }) => {
   const { feConfigs } = useSystemStore();
+
+  const collectionListRefreshRef = useRef<() => void>();
+  // 侧栏与集合列表属于不同子树，通过注册回调仅刷新当前挂载列表，不触发初始化请求。
+  const registerCollectionListRefresh = useCallback((refresh: () => void) => {
+    collectionListRefreshRef.current = refresh;
+    return () => {
+      if (collectionListRefreshRef.current === refresh) {
+        collectionListRefreshRef.current = undefined;
+      }
+    };
+  }, []);
+  const refreshCollectionList = useCallback(() => collectionListRefreshRef.current?.(), []);
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
@@ -128,6 +144,8 @@ export const DatasetPageContextProvider = ({
     datasetDetail,
     loadDatasetDetail,
     updateDataset,
+    refreshCollectionList,
+    registerCollectionListRefresh,
     paths,
     refetchPaths,
 

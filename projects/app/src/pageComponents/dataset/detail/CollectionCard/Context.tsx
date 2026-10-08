@@ -7,7 +7,8 @@ import {
   useState,
   useMemo,
   useCallback,
-  useRef
+  useRef,
+  useEffect
 } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
@@ -79,10 +80,13 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
-  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail } = useContextSelector(
-    DatasetPageContext,
-    (v) => v
-  );
+  const {
+    datasetDetail,
+    datasetId,
+    updateDataset,
+    loadDatasetDetail,
+    registerCollectionListRefresh
+  } = useContextSelector(DatasetPageContext, (v) => v);
 
   // collection list
   const [searchText, setSearchText] = useState('');
@@ -109,6 +113,11 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     refreshDeps: [parentId, searchText, tagFilters, datasetDetail.collectionPermissionEnabled],
     scrollContainerRef
   });
+
+  useEffect(
+    () => registerCollectionListRefresh(() => getData(pageNum)),
+    [getData, pageNum, registerCollectionListRefresh]
+  );
 
   const syncDataset = useCallback(async () => {
     // 页面详情尚未加载或 query 缺失时，不发起一个必然失败的同步请求。

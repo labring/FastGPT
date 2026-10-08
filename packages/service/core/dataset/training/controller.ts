@@ -103,6 +103,7 @@ const filterTrainingDataList = <T extends { q?: string; a?: string; imageId?: st
     return true;
   });
 
+/** 欠费仅暂停训练并记录任务错误，保留 data 状态和任务原有的 TTL 策略。 */
 export const lockTrainingDataByTeamId = async (
   teamId: string,
   currentTrainingId?: string
@@ -113,7 +114,7 @@ export const lockTrainingDataByTeamId = async (
   const lockCurrentTraining = async () => {
     if (!currentTrainingId) return;
 
-    const task = await MongoDatasetTraining.findOneAndUpdate(
+    await MongoDatasetTraining.updateOne(
       {
         teamId,
         _id: currentTrainingId
@@ -125,25 +126,9 @@ export const lockTrainingDataByTeamId = async (
         }
       }
     );
-
-    if (task?.mode === TrainingModeEnum.index && task.dataId) {
-      await MongoDatasetData.updateOne(
-        {
-          _id: task.dataId,
-          teamId,
-          indexStatus: DatasetDataIndexStatusEnum.indexing
-        },
-        {
-          $set: {
-            indexStatus: DatasetDataIndexStatusEnum.error,
-            indexErrorMsg: errorMsg
-          }
-        }
-      );
-    }
   };
 
-  // 5 分钟闸门：并发/多节点调用时，只有首个抢到锁的会执行；TTL 作为兜底
+  // 并发/多节点调用时，只有首个抢到锁的会批量更新；30 分钟 TTL 仅用于定时锁兜底。
   const acquired = await checkTimerLock({ timerId, lockMinuted: 30 });
   if (!acquired) {
     // 其它 worker 已在执行团队级锁定时，当前已领取任务仍需要单独标记，避免最后一次重试被扣到 0 后不可见。
@@ -154,21 +139,6 @@ export const lockTrainingDataByTeamId = async (
   }
 
   try {
-    const tasks = await MongoDatasetTraining.find(
-      {
-        teamId,
-        $or: [
-          { retryCount: { $gt: 0 } },
-          ...(currentTrainingId ? [{ _id: currentTrainingId }] : [])
-        ]
-      },
-      { dataId: 1, mode: 1 }
-    ).lean();
-    // 余额不足会暂停所有训练阶段，但只有 index 任务能更新 data 的索引错误。
-    const dataIds = tasks.flatMap((item) =>
-      item.mode === TrainingModeEnum.index && item.dataId ? [item.dataId] : []
-    );
-
     await MongoDatasetTraining.updateMany(
       {
         teamId,
@@ -184,22 +154,6 @@ export const lockTrainingDataByTeamId = async (
         }
       }
     );
-
-    if (dataIds.length > 0) {
-      await MongoDatasetData.updateMany(
-        {
-          _id: { $in: dataIds },
-          teamId,
-          indexStatus: DatasetDataIndexStatusEnum.indexing
-        },
-        {
-          $set: {
-            indexStatus: DatasetDataIndexStatusEnum.error,
-            indexErrorMsg: errorMsg
-          }
-        }
-      );
-    }
   } catch (error) {
     logger.error('lockTrainingDataByTeamId failed', { teamId, error });
   } finally {

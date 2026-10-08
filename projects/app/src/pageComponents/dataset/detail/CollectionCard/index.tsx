@@ -156,6 +156,8 @@ const CollectionCard = () => {
 
   const { runAsync: refreshDatasetTrainingError } = useRequest(
     async () => {
+      // 详情加载前使用空 ID 占位，等待真实 ID 就绪后再查询训练错误。
+      if (!datasetDetail._id) return false;
       const res = await checkDatasetTrainingError(datasetDetail._id);
       return res.hasError;
     },

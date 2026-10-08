@@ -15,9 +15,15 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { getRootUser } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
-import { mockVectorDelete, mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
+import {
+  mockVectorDelete,
+  mockVectorInsert,
+  mockVectorRefreshCreateTime,
+  resetVectorMocks
+} from '@test/mocks/common/vector';
 import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/embedding';
 import { serviceEnv } from '@fastgpt/service/env';
+import * as rebuildService from '@/service/core/dataset/queues/rebuild';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
@@ -92,6 +98,8 @@ describe('pre-created data queue routing', () => {
     global.vectorQueueLen = 0;
     global.preCreatedQueueLen = 0;
     resetVectorMocks();
+    mockVectorDelete.mockResolvedValue(undefined);
+    mockVectorRefreshCreateTime.mockReset().mockResolvedValue(undefined);
     embeddingModel = {
       ...getModelTestDefaults().embedding!,
       modelId: '507f1f77bcf86cd799439031',
@@ -100,31 +108,40 @@ describe('pre-created data queue routing', () => {
       config: { ...getModelTestDefaults().embedding!.config, maxToken: 100, weight: 100 }
     };
     addModelTestModel(embeddingModel);
-    mockGetVectors.mockImplementation(async ({ inputs }) =>
-      createMockVectorsResponse(inputs.map((input) => input.input))
-    );
+    mockGetVectors
+      .mockClear()
+      .mockImplementation(async ({ inputs }) =>
+        createMockVectorsResponse(inputs.map((input) => input.input))
+      );
     mockVectorInsert.mockResolvedValue({ insertIds: ['pre_vector_1'] });
   });
 
-  it('stops the heartbeat when scheduling a missing-collection rebuild throws', async () => {
-    const { task, collection } = await createContext({ mode: TrainingModeEnum.chunk });
-    const synonym = vi.spyOn(synonymService, 'isDatasetSynonymEnabled').mockReturnValue(true);
-    await MongoDatasetTraining.updateOne({ _id: task._id }, { $set: { synonymVersion: 1 } });
-    await MongoDatasetCollection.deleteOne({ _id: collection._id });
-    const model = vi.spyOn(modelService, 'getModelHandle').mockImplementationOnce(async () => {
-      expect(vi.getTimerCount()).toBe(1);
-      throw new Error('model catalog unavailable');
-    });
-    try {
-      await generateVector();
-      expect(model).toHaveBeenCalledTimes(1);
-      expect(global.vectorQueueLen).toBe(0);
-      expect(await MongoDatasetTraining.findById(task._id).lean()).not.toBeNull();
-    } finally {
-      model.mockRestore();
-      synonym.mockRestore();
+  it.each([false, true])(
+    'stops the heartbeat when scheduling a missing-collection rebuild throws (synonym=%s)',
+    async (synonymEnabled) => {
+      const { task, collection } = await createContext({ mode: TrainingModeEnum.chunk });
+      const synonym = vi
+        .spyOn(synonymService, 'isDatasetSynonymEnabled')
+        .mockReturnValue(synonymEnabled);
+      if (synonymEnabled) {
+        await MongoDatasetTraining.updateOne({ _id: task._id }, { $set: { synonymVersion: 1 } });
+      }
+      await MongoDatasetCollection.deleteOne({ _id: collection._id });
+      const model = vi.spyOn(modelService, 'getModelHandle').mockImplementationOnce(async () => {
+        expect(vi.getTimerCount()).toBe(1);
+        throw new Error('model catalog unavailable');
+      });
+      try {
+        await generateVector();
+        expect(model).toHaveBeenCalledTimes(1);
+        expect(global.vectorQueueLen).toBe(0);
+        expect(await MongoDatasetTraining.findById(task._id).lean()).not.toBeNull();
+      } finally {
+        model.mockRestore();
+        synonym.mockRestore();
+      }
     }
-  });
+  );
 
   it('rolls back index data and removes new vectors when task completion fails', async () => {
     const { data, task } = await createContext({
@@ -150,6 +167,116 @@ describe('pre-created data queue routing', () => {
     expect(mockVectorDelete).toHaveBeenCalledWith(
       expect.objectContaining({ idList: ['pre_vector_1'] })
     );
+  });
+
+  it('keeps old rebuild vectors on rollback and only deletes them after a successful retry', async () => {
+    const oldIndexes = [
+      { type: DatasetDataIndexTypeEnum.default, text: 'chunk content', dataId: 'old_vector' }
+    ];
+    const { data, task } = await createContext({
+      mode: TrainingModeEnum.chunk,
+      indexes: oldIndexes
+    });
+    const removeTask = vi
+      .spyOn(MongoDatasetTraining, 'deleteOne')
+      .mockRejectedValueOnce(new Error('completion failed'));
+    mockGetVectors.mockImplementation(async ({ inputs }) => {
+      expect(mockVectorRefreshCreateTime).toHaveBeenCalledWith({
+        teamId: data.teamId,
+        idList: ['old_vector']
+      });
+      expect((await MongoDatasetData.findById(data._id).lean())?.indexes).toMatchObject(oldIndexes);
+      expect(mockVectorDelete).not.toHaveBeenCalledWith(
+        expect.objectContaining({ idList: ['old_vector'] })
+      );
+      return createMockVectorsResponse(inputs.map((input) => input.input));
+    });
+    try {
+      await generateVector();
+    } finally {
+      removeTask.mockRestore();
+    }
+    expect((await MongoDatasetData.findById(data._id).lean())?.indexes).toMatchObject(oldIndexes);
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({ retryCount: 4 });
+    expect(mockVectorDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ idList: ['pre_vector_1'] })
+    );
+    expect(mockVectorDelete).not.toHaveBeenCalledWith(
+      expect.objectContaining({ idList: ['old_vector'] })
+    );
+
+    mockVectorDelete.mockClear();
+    mockVectorInsert.mockResolvedValue({ insertIds: ['retry_vector'] });
+    mockVectorDelete.mockImplementation(async ({ idList }) => {
+      expect(idList).toEqual(['old_vector']);
+      // 不带 session 读取，验证清理发生在整个业务事务真正提交之后。
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toBeNull();
+      expect((await MongoDatasetData.findById(data._id).lean())?.indexes[0].dataId).toBe(
+        'retry_vector'
+      );
+    });
+    await MongoDatasetTraining.updateOne({ _id: task._id }, { $set: { lockTime: new Date(0) } });
+    await generateVector();
+    expect(mockVectorDelete).toHaveBeenCalledTimes(1);
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toBeNull();
+    expect((await MongoDatasetData.findById(data._id).lean())?.indexStatus).toBe(
+      DatasetDataIndexStatusEnum.indexed
+    );
+  });
+
+  it('retains committed rebuild vectors when old vector cleanup fails', async () => {
+    const { data, task } = await createContext({
+      mode: TrainingModeEnum.chunk,
+      indexes: [
+        { type: DatasetDataIndexTypeEnum.default, text: 'chunk content', dataId: 'old_vector' }
+      ]
+    });
+    mockVectorDelete.mockRejectedValue(new Error('vector delete unavailable'));
+    await generateVector();
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toBeNull();
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.indexed,
+      indexes: [{ dataId: 'pre_vector_1' }]
+    });
+    expect(mockVectorDelete).toHaveBeenCalled();
+    expect(
+      mockVectorDelete.mock.calls.every(([props]) => props.idList?.includes('old_vector'))
+    ).toBe(true);
+  });
+
+  it('keeps the task retryable and does not generate vectors when refreshing old timestamps fails', async () => {
+    const indexes = [
+      { type: DatasetDataIndexTypeEnum.default, text: 'chunk content', dataId: 'old_vector' }
+    ];
+    const { data, task } = await createContext({ mode: TrainingModeEnum.chunk, indexes });
+    mockVectorRefreshCreateTime.mockRejectedValue(new Error('refresh failed'));
+    await generateVector();
+    expect(mockGetVectors).not.toHaveBeenCalled();
+    expect(mockVectorInsert).not.toHaveBeenCalled();
+    expect(mockVectorDelete).not.toHaveBeenCalled();
+    expect((await MongoDatasetData.findById(data._id).lean())?.indexes).toMatchObject(indexes);
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      retryCount: 4,
+      errorMsg: 'refresh failed'
+    });
+  });
+
+  it('retains a normal rebuild task when scheduling the next item fails', async () => {
+    const { data, task } = await createContext({ mode: TrainingModeEnum.chunk });
+    const enqueue = vi
+      .spyOn(rebuildService, 'enqueueNextDatasetRebuildTask')
+      .mockRejectedValue(new Error('enqueue failed'));
+    try {
+      await generateVector();
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+        retryCount: 4,
+        errorMsg: 'enqueue failed'
+      });
+      expect((await MongoDatasetData.findById(data._id).lean())?.indexes).toEqual([]);
+      expect(mockVectorInsert).not.toHaveBeenCalled();
+    } finally {
+      enqueue.mockRestore();
+    }
   });
 
   it('does not publish generated vectors after another worker takes ownership', async () => {

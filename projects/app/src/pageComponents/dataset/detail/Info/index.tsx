@@ -37,8 +37,14 @@ const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServic
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
-    useContextSelector(DatasetPageContext, (v) => v);
+  const {
+    datasetDetail,
+    loadDatasetDetail,
+    updateDataset,
+    rebuildingCount,
+    trainingCount,
+    refreshCollectionList
+  } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
@@ -110,6 +116,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     },
     {
       onSuccess() {
+        refreshCollectionList();
         refetchDatasetTraining();
         loadDatasetDetail(datasetId);
       },

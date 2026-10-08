@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   mockVectorInsert,
   mockVectorDelete,
+  mockVectorRefreshCreateTime,
   mockVectorEmbRecall,
   mockVectorInit,
   mockGetVectorDataByTime,
@@ -18,7 +19,8 @@ import {
   getVectorCountByTeamId,
   getVectorCount,
   insertDatasetDataVector,
-  deleteDatasetDataVector
+  deleteDatasetDataVector,
+  refreshDatasetDataVectorCreateTime
 } from '@fastgpt/service/common/vectorDB/controller';
 
 // Mock redis cache functions
@@ -64,6 +66,7 @@ vi.mock('@fastgpt/service/common/logger', async (importOriginal) => {
 describe('VectorDB Controller', () => {
   beforeEach(() => {
     resetVectorMocks();
+    mockVectorRefreshCreateTime.mockReset().mockResolvedValue(undefined);
     mockRedisStringGet.mockReset();
     mockRedisStringSet.mockReset();
     mockRedisStringDelete.mockReset();
@@ -75,6 +78,29 @@ describe('VectorDB Controller', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe('refreshDatasetDataVectorCreateTime', () => {
+    it('skips empty lists and deduplicates IDs before bounded batches', async () => {
+      await refreshDatasetDataVectorCreateTime({ teamId: 'team', idList: [] });
+      expect(mockVectorRefreshCreateTime).not.toHaveBeenCalled();
+      const ids = Array.from({ length: 101 }, (_, i) => String(i));
+      await refreshDatasetDataVectorCreateTime({ teamId: 'team', idList: [...ids, ids[0]] });
+      expect(mockVectorRefreshCreateTime.mock.calls).toEqual([
+        [{ teamId: 'team', idList: ids.slice(0, 100) }],
+        [{ teamId: 'team', idList: ids.slice(100) }]
+      ]);
+    });
+
+    it('retries a failed batch and rejects when retries are exhausted', async () => {
+      mockVectorRefreshCreateTime.mockRejectedValueOnce(new Error('temporary'));
+      await refreshDatasetDataVectorCreateTime({ teamId: 'team', idList: ['1'] });
+      expect(mockVectorRefreshCreateTime).toHaveBeenCalledTimes(2);
+      mockVectorRefreshCreateTime.mockRejectedValue(new Error('offline'));
+      await expect(
+        refreshDatasetDataVectorCreateTime({ teamId: 'team', idList: ['2'] })
+      ).rejects.toThrow('offline');
+    });
   });
 
   describe('initVectorStore', () => {

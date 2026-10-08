@@ -44,6 +44,7 @@ import {
   DatasetDataIndexStatusEnum,
   getDatasetDataIndexStatusMapData
 } from '@fastgpt/global/core/dataset/data/constants';
+import { useIndexingDataRefresh } from '@/web/core/dataset/hooks/useIndexingDataRefresh';
 
 const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
   ssr: false
@@ -81,6 +82,7 @@ const DataCard = () => {
     data: datasetDataList,
     ScrollData,
     total,
+    setTotal,
     refreshList,
     setData: setDatasetDataList
   } = useScrollPagination(getDatasetDataList, {
@@ -88,6 +90,13 @@ const DataCard = () => {
     params: scrollParams,
     refreshDeps: [searchText, collectionId],
     EmptyTip: EmptyTipDom
+  });
+  useIndexingDataRefresh({
+    collectionId,
+    searchText,
+    data: datasetDataList,
+    setData: setDatasetDataList,
+    setTotal
   });
 
   const [editDataId, setEditDataId] = useState<string>();

@@ -26,6 +26,11 @@ import {
   getDatasetSynonymTransformContext,
   isDatasetSynonymEnabled
 } from '@fastgpt/service/core/dataset/synonym/entity';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { refreshDatasetDataVectorCreateTime } from '@fastgpt/service/common/vectorDB/controller';
+
+const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
+
 /** 提交边界由上层注入；数据写入回调无需接收租约对象。 */
 type CommitDatasetData = (write: (session: ClientSession) => Promise<void>) => Promise<void>;
 
@@ -34,22 +39,23 @@ type DatasetDataWriteOptions =
   | { session?: ClientSession; commit?: never }
   | { session?: never; commit: CommitDatasetData };
 
-type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes' | 'q'> &
-  DatasetDataWriteOptions & {
-    q?: string;
-    indexes?: NonNullable<UpdateDatasetDataPropsType['indexes']>;
-    /** VLM rebuild 产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
-    imageDescMap?: Record<string, string>;
-    model: EmbeddingSystemModelDataType;
-    indexSize?: number;
-    imageIndex?: boolean;
-    /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
-    forceRebuild?: boolean;
-  };
+type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes' | 'q'> & {
+  /** 替换索引必须等待整个事务提交，不能传入尚未提交的外部 session。 */
+  commit?: CommitDatasetData;
+  q?: string;
+  indexes?: NonNullable<UpdateDatasetDataPropsType['indexes']>;
+  /** VLM rebuild 产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
+  imageDescMap?: Record<string, string>;
+  model: EmbeddingSystemModelDataType;
+  indexSize?: number;
+  imageIndex?: boolean;
+  /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
+  forceRebuild?: boolean;
+};
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
   UpdateDatasetDataByIndexesProps,
-  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session' | 'commit'
+  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'commit'
 > & {
   q?: string;
   imageIndex?: boolean;
@@ -124,6 +130,13 @@ export class DatasetDataOperation {
     if (commit) return commit(fn);
     if (session) return fn(session);
     return mongoSessionRun(fn);
+  }
+
+  /** 已提交的新索引不能因旧向量清理失败被补偿删除；清理失败记录原始 ID 以便排查。 */
+  private async cleanupReplacedVectors({ teamId, idList }: { teamId: string; idList: string[] }) {
+    await this.indexOperation.deleteVectors({ teamId, idList }).catch((error) => {
+      logger.error('Failed to clean up replaced dataset vectors', { error, teamId, idList });
+    });
   }
 
   /**
@@ -282,6 +295,7 @@ export class DatasetDataOperation {
    *
    * 这个路径用于“手动指定全部索引”的更新：调用方给出的 indexes 会和系统索引
    * 一起格式化后与当前 indexes 做 diff，新增/变更的索引重建向量，删除的索引清理旧向量。
+   * 先刷新旧向量时间，再生成新向量、提交 data，最后删除旧向量；删除失败由 cron 尝试补偿。
    */
   async updateByIndexes({
     dataId,
@@ -296,7 +310,6 @@ export class DatasetDataOperation {
     metadata,
     forceRebuild = false,
     imageDescMap,
-    session,
     commit
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
@@ -349,6 +362,11 @@ export class DatasetDataOperation {
     let tokens = 0;
     let newVectorIdList: string[] = [];
     try {
+      // 先让旧向量重新进入 cron 扫描窗口；刷新失败不能继续生成新向量或完成 training。
+      await refreshDatasetDataVectorCreateTime({
+        teamId: mongoData.teamId,
+        idList: deleteVectorIdList
+      });
       tokens = await this.indexOperation.insertVectorForPatch({
         patchResult,
         teamId: mongoData.teamId,
@@ -363,7 +381,6 @@ export class DatasetDataOperation {
         .map((item) => item.index.dataId)
         .filter(Boolean) as string[];
       await this.commitDataWrite({
-        session,
         commit,
         fn: async (mongoSession) => {
           if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
@@ -419,11 +436,6 @@ export class DatasetDataOperation {
             mongoSession
           );
 
-          await this.indexOperation.deleteVectors({
-            teamId: mongoData.teamId,
-            idList: deleteVectorIdList
-          });
-
           if (!commit && mongoData.indexStatus === DatasetDataIndexStatusEnum.error) {
             await MongoDatasetTraining.deleteMany(
               {
@@ -444,6 +456,9 @@ export class DatasetDataOperation {
       }
       throw error;
     }
+
+    // lease.complete 包含 training 删除和事务提交；此前必须保留旧向量供回滚或重跑使用。
+    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: deleteVectorIdList });
 
     this.pushCollectionUpdate({
       collectionId: mongoData.collectionId,
@@ -516,6 +531,10 @@ export class DatasetDataOperation {
     let tokens = 0;
     let newVectorIdList: string[] = [];
     try {
+      await refreshDatasetDataVectorCreateTime({
+        teamId: mongoData.teamId,
+        idList: deleteVectorIdList
+      });
       tokens = await this.indexOperation.insertVectorForPatch({
         patchResult,
         teamId: mongoData.teamId,
@@ -600,11 +619,6 @@ export class DatasetDataOperation {
           session
         );
 
-        await this.indexOperation.deleteVectors({
-          teamId: mongoData.teamId,
-          idList: deleteVectorIdList
-        });
-
         if (mongoData.indexStatus === DatasetDataIndexStatusEnum.error) {
           await MongoDatasetTraining.deleteMany(
             {
@@ -624,6 +638,8 @@ export class DatasetDataOperation {
       }
       throw error;
     }
+
+    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: deleteVectorIdList });
 
     this.pushCollectionUpdate({
       collectionId: mongoData.collectionId,

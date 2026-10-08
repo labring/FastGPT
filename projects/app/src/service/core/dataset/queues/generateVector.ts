@@ -153,7 +153,8 @@ export async function generateVector(): Promise<any> {
             collectionId: data.collectionId,
             trainingId: data._id
           });
-          if (data.synonymVersion && data.dataset && data.dataId) {
+          // 当前集合被删除也必须续接数据集内其他集合的重建，避免种子任务全部跳过后断链。
+          if (data.dataset && data.dataId) {
             await enqueueFollowingDatasetRebuild({ trainingData: data });
           }
           await lease.complete();
@@ -260,12 +261,8 @@ const rebuildData = async ({
   trainingData: TrainingDataType;
   lease: TrainingTaskLease;
 }) => {
-  // 同义词重建需要可靠续接；普通模型重建保持原有的尽力续接语义。
-  if (trainingData.synonymVersion) {
-    await enqueueFollowingDatasetRebuild({ trainingData });
-  } else {
-    await enqueueFollowingDatasetRebuild({ trainingData }).catch(() => {});
-  }
+  // 续接失败时保留当前 training 重试，否则最后一条任务可能结束而仍有 data 待重建。
+  await enqueueFollowingDatasetRebuild({ trainingData });
 
   if (!trainingData.data) {
     await lease.complete();

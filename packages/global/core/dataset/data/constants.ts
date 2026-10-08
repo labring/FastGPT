@@ -62,7 +62,7 @@ export const DatasetDataIndexStatusMap: Record<
       | 'dataset:data_index_status_indexing'
       | 'dataset:data_index_status_indexed'
       | 'dataset:data_index_status_error';
-    colorSchema: 'gray' | 'blue' | 'green';
+    colorSchema: 'red' | 'blue' | 'green';
   }
 > = {
   [DatasetDataIndexStatusEnum.indexing]: {
@@ -75,7 +75,7 @@ export const DatasetDataIndexStatusMap: Record<
   },
   [DatasetDataIndexStatusEnum.error]: {
     label: i18nT('dataset:data_index_status_error'),
-    colorSchema: 'gray'
+    colorSchema: 'red'
   }
 };
 

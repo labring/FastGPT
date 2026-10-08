@@ -70,6 +70,14 @@ export class ObVectorCtrl implements VectorControllerType {
       insertIds
     };
   };
+  /** OceanBase/SeekDB 共用：只更新当前团队旧向量的时间，不修改向量和归属字段。 */
+  refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {
+    if (idList.length === 0) return;
+    await this.obClient.query(
+      `UPDATE ${DatasetVectorTableName} SET createtime = CURRENT_TIMESTAMP WHERE team_id = ? AND id IN (${idList.map(() => '?').join(',')})`,
+      [String(teamId), ...idList]
+    );
+  };
   delete: VectorControllerType['delete'] = async (props) => {
     const { teamId } = props;
 
