@@ -28,18 +28,20 @@ const edge = (sourceHandle: string) =>
 const buildProps = ({
   ifElseList,
   value,
-  sourceHandles
+  sourceHandles,
+  variables = {}
 }: {
   ifElseList: IfElseListItemType[];
   value: unknown;
   sourceHandles: string[];
+  variables?: Record<string, unknown>;
 }) =>
   ({
     params: { ifElseList },
     node: { nodeId: 'ifElse' },
     runtimeEdges: sourceHandles.map(edge),
     runtimeNodesMap: new Map(),
-    variableState: variableState({ input: value })
+    variableState: variableState({ ...variables, input: value })
   }) as unknown as DispatchProps;
 
 describe('dispatchIfElse branch handles', () => {
@@ -164,6 +166,30 @@ describe('dispatchIfElse regex', () => {
         ]
       })
     );
+  const runReferencePattern = (value: unknown, pattern: unknown) =>
+    dispatchIfElse(
+      buildProps({
+        value,
+        variables: { pattern },
+        ifElseList: [
+          {
+            condition: 'AND',
+            list: [
+              {
+                variable: ref('input'),
+                condition: VariableConditionEnum.reg,
+                value: ref('pattern'),
+                valueType: 'reference'
+              }
+            ]
+          }
+        ],
+        sourceHandles: [
+          getHandleId('ifElse', 'source', IfElseResultEnum.IF),
+          getHandleId('ifElse', 'source', IfElseResultEnum.ELSE)
+        ]
+      })
+    );
 
   it('should match a non-string value of an any-typed variable as text', async () => {
     const digits = await run(200, '/^\\d+$/');
@@ -173,9 +199,19 @@ describe('dispatchIfElse regex', () => {
     expect(flag.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
   });
 
-  it('should accept a pattern that is not a string', async () => {
-    const result = await run('order 200 ok', 200);
+  it('should accept a non-string pattern from a reference variable', async () => {
+    const result = await runReferencePattern('order 200 ok', 200);
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  });
+
+  it('should not match an empty array pattern from a reference variable', async () => {
+    const result = await runReferencePattern('anything', []);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should not match when the reference pattern is missing', async () => {
+    const result = await runReferencePattern('anything', undefined);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
 
   it('should match the phone number example shown in the editor', async () => {

@@ -96,6 +96,11 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
       if (pattern.endsWith('/')) {
         pattern = pattern.slice(0, -1);
       }
+      // 空数组等引用值字符串化后为空模式；空模式会匹配任意输入，
+      // 不能把缺失模式当成成功条件。
+      if (pattern === '') {
+        return false;
+      }
 
       const reg = new RegExp(pattern, 'g');
       return reg.test(inputText);
