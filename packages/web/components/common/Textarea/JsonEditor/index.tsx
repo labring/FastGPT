@@ -59,6 +59,114 @@ const options = {
   }
 };
 
+type MonacoModel = ReturnType<Monaco['editor']['getModels']>[number];
+
+type JsonEditorContext = {
+  model: MonacoModel;
+  variables: EditorVariablePickerType[];
+};
+
+const jsonEditorContexts = new Map<string, JsonEditorContext>();
+const registeredMonacoInstances = new WeakSet<Monaco>();
+const registeredModels = new WeakSet<MonacoModel>();
+
+const registerJsonEditorContext = (model: MonacoModel, variables: EditorVariablePickerType[]) => {
+  const uri = model.uri.toString();
+  jsonEditorContexts.set(uri, { model, variables });
+
+  if (registeredModels.has(model)) return;
+  registeredModels.add(model);
+  model.onWillDispose(() => {
+    if (jsonEditorContexts.get(uri)?.model === model) {
+      jsonEditorContexts.delete(uri);
+    }
+  });
+};
+
+const registerJsonEditorLanguage = (monaco: Monaco) => {
+  if (registeredMonacoInstances.has(monaco)) return;
+  registeredMonacoInstances.add(monaco);
+
+  monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+    validate: false,
+    allowComments: false,
+    schemas: [
+      {
+        uri: 'http://myserver/foo-schema.json',
+        fileMatch: ['*'],
+        schema: {}
+      }
+    ]
+  });
+
+  try {
+    monaco.languages.setMonarchTokensProvider('json', {
+      tokenizer: {
+        root: [
+          [/\{\{[^{}]+\}\}/, 'variable'],
+          [/".*?"/, 'string'],
+          [/[{}\[\]]/, '@brackets'],
+          [/[0-9]+/, 'number'],
+          [/true|false/, 'keyword'],
+          [/:/, 'delimiter'],
+          [/,/, 'delimiter.comma']
+        ]
+      }
+    });
+  } catch (error) {
+    console.warn('Failed to register Monaco Monarch token provider:', error);
+  }
+
+  monaco.languages.registerCompletionItemProvider('json', {
+    triggerCharacters: ['{'],
+    provideCompletionItems(model, position) {
+      const variables = jsonEditorContexts.get(model.uri.toString())?.variables ?? [];
+      const lineContent = model.getLineContent(position.lineNumber);
+      const word = model.getWordUntilPosition(position);
+      const range = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn
+      };
+
+      const startText = lineContent.substring(0, position.column - 1);
+      const endText = lineContent.substring(position.column - 1);
+      const before2Char = startText[startText.length - 2];
+      const beforeChar = startText[startText.length - 1];
+      const afterChar = endText[0];
+      const after2Char = endText[1];
+
+      if (before2Char !== '{' && beforeChar !== '"') {
+        return { suggestions: [] };
+      }
+
+      return {
+        suggestions: variables.map((item) => {
+          let insertText = item.key;
+          if (before2Char !== '{') {
+            insertText = `{${insertText}`;
+          }
+          if (afterChar !== '}') {
+            insertText = `${insertText}}`;
+          }
+          if (after2Char !== '}') {
+            insertText = `${insertText}}`;
+          }
+
+          return {
+            label: item.key,
+            kind: monaco.languages.CompletionItemKind.Variable,
+            detail: item.label,
+            insertText,
+            range
+          };
+        })
+      };
+    }
+  });
+};
+
 const JSONEditor = ({
   value,
   onChange,
@@ -78,74 +186,15 @@ const JSONEditor = ({
   const [height, setHeight] = useState(defaultHeight);
   const [placeholderDisplay, setPlaceholderDisplay] = useState('block');
   const initialY = useRef(0);
-  const completionRegisterRef = useRef<any>();
   const monaco = useMonaco();
-  const triggerChar = useRef<string>();
-  const monarchProviderRegistered = useRef<boolean>(false);
 
   useEffect(() => {
-    if (!monaco) return;
-
-    // 自定义补全提供者
-    completionRegisterRef.current = monaco.languages.registerCompletionItemProvider('json', {
-      triggerCharacters: ['{'],
-      provideCompletionItems: function (model, position, context) {
-        const lineContent = model.getLineContent(position.lineNumber);
-
-        if (context.triggerCharacter) {
-          triggerChar.current = context.triggerCharacter;
-        }
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn
-        };
-
-        const startText = lineContent.substring(0, position.column - 1); // 光标前的文本
-        const endText = lineContent.substring(position.column - 1); // 光标后的文本
-        const before2Char = startText[startText.length - 2];
-        const beforeChar = startText[startText.length - 1];
-        const afterChar = endText[0];
-        const after2Char = endText[1];
-
-        if (before2Char !== '{' && beforeChar !== '"') {
-          return {
-            suggestions: []
-          };
-        }
-
-        return {
-          suggestions:
-            variables?.map((item) => {
-              let insertText = item.key;
-              if (before2Char !== '{') {
-                insertText = `{${insertText}`;
-              }
-              if (afterChar !== '}') {
-                insertText = `${insertText}}`;
-              }
-              if (after2Char !== '}') {
-                insertText = `${insertText}}`;
-              }
-
-              return {
-                label: item.key,
-                kind: monaco.languages.CompletionItemKind.Variable,
-                detail: item.label,
-                insertText: insertText,
-                range
-              };
-            }) || []
-        };
-      }
-    });
-
-    return () => {
-      completionRegisterRef.current?.dispose();
-    };
-  }, [monaco, variables]);
+    if (!monaco || !path) return;
+    const model = monaco.editor.getModel(monaco.Uri.parse(path));
+    if (model) {
+      registerJsonEditorContext(model, variables);
+    }
+  }, [monaco, path, variables]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     initialY.current = e.clientY;
@@ -195,62 +244,25 @@ const JSONEditor = ({
     }
   }, [formatedValue, toast, t, validateOnBlur]);
 
-  const beforeMount = useCallback(
-    (monaco: Monaco) => {
-      // 配置 JSON 语言诊断选项
-      monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-        validate: false,
-        allowComments: false,
-        schemas: [
-          {
-            uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
-            fileMatch: ['*'], // 匹配所有文件
-            schema: {} // 空的 Schema
-          }
-        ]
-      });
+  const beforeMount = useCallback((monaco: Monaco) => {
+    registerJsonEditorLanguage(monaco);
 
-      // 定义自定义主题
-      monaco.editor.defineTheme('JSONEditorTheme', {
-        base: 'vs', // 可以基于已有的主题进行定制
-        inherit: true, // 继承基础主题的设置
-        rules: [{ token: 'variable', foreground: '2B5FD9' }],
-        colors: {
-          'editor.background': '#ffffff00',
-          'editorLineNumber.foreground': '#aaa',
-          'editorOverviewRuler.border': '#ffffff00',
-          'editor.lineHighlightBackground': '#F7F8FA',
-          'scrollbarSlider.background': '#E8EAEC',
-          'editorIndentGuide.activeBackground': '#ddd',
-          'editorIndentGuide.background': '#eee'
-        }
-      });
-
-      // 注册自定义语法高亮（仅注册一次）
-      if (!monarchProviderRegistered.current) {
-        try {
-          monaco.languages.setMonarchTokensProvider('json', {
-            tokenizer: {
-              root: [
-                // 匹配variables里的变量
-                [new RegExp(`{{(${variables.map((item) => item.key).join('|')})}}`), 'variable'],
-                [/".*?"/, 'string'], // 匹配字符串
-                [/[{}\[\]]/, '@brackets'], // 匹配括号
-                [/[0-9]+/, 'number'], // 匹配数字
-                [/true|false/, 'keyword'], // 匹配布尔值
-                [/:/, 'delimiter'], // 匹配冒号
-                [/,/, 'delimiter.comma'] // 匹配逗号
-              ]
-            }
-          });
-          monarchProviderRegistered.current = true;
-        } catch (error) {
-          console.warn('Failed to register Monaco Monarch token provider:', error);
-        }
+    // 定义自定义主题
+    monaco.editor.defineTheme('JSONEditorTheme', {
+      base: 'vs', // 可以基于已有的主题进行定制
+      inherit: true, // 继承基础主题的设置
+      rules: [{ token: 'variable', foreground: '2B5FD9' }],
+      colors: {
+        'editor.background': '#ffffff00',
+        'editorLineNumber.foreground': '#aaa',
+        'editorOverviewRuler.border': '#ffffff00',
+        'editor.lineHighlightBackground': '#F7F8FA',
+        'scrollbarSlider.background': '#E8EAEC',
+        'editorIndentGuide.activeBackground': '#ddd',
+        'editorIndentGuide.background': '#eee'
       }
-    },
-    [variables]
-  );
+    });
+  }, []);
 
   return (
     <Box
@@ -313,6 +325,7 @@ const JSONEditor = ({
             const model = editor.getModel();
             if (model) {
               registerWorkflowMonacoModel(model);
+              registerJsonEditorContext(model, variables);
             }
           }
 

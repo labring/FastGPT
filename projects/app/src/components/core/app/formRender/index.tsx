@@ -203,7 +203,7 @@ const InputRender = (props: InputRenderProps) => {
   }
 
   if (inputType === InputTypeEnum.JSONEditor) {
-    return <JSONEditor {...commonProps} path={props.path} resize />;
+    return <JSONEditor {...commonProps} path={props.path} variables={props.variables} resize />;
   }
 
   if (inputType === InputTypeEnum.selectLLMModel) {
