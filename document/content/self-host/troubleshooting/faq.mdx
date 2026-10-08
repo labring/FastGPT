@@ -105,3 +105,53 @@ description: FastGPT 私有部署常见问题排查方式
 修改环境变量中的 `DEFAULT_ROOT_PSW`，然后重启 FastGPT。
 
 ---
+
+### FastGPT 支持 OpenAI 的 Responses API（/v1/responses）吗？
+
+不支持（截至 4.17.0），请求会返回 404。请改用 `POST /api/v1/chat/completions` 调用应用，它兼容 OpenAI Chat Completions 格式。
+
+---
+
+### 升级后启动报 index not found（collection=modeldata_v2）怎么办？
+
+适用版本：4.16.2 及以后，向量库为 Milvus。日志里有 `IndexNotExist ... index not found[collection=modeldata_v2]`。
+
+原因：从 4.16.2 起，向量检索和全文检索都使用 `modeldata_v2` 这张表。启动时这张表已存在、却缺少全文检索索引，就会报错并退出。为什么会缺索引，目前还没有定论。另外要求 Milvus 不低于 2.5.16。
+
+怎么做：升级前按 [Milvus BM25 全文检索配置与迁移](/self-host/milvus-bm25) 备份并升级 Milvus，再升级 FastGPT 并迁移数据。已经出现这个报错的，需要删除并重建这张表，会删除数据，请先备份并联系技术支持处理。迁移完成之前，知识库检索查不到旧数据。
+
+---
+
+### docker-compose 部署报 AGENT_SANDBOX_OPENSANDBOX_IMAGE 没配置、AGENT_SANDBOX_PREVIEW_PROXY_URL 不对怎么办？
+
+适用版本：4.16.0 及以后。从 4.16.0 起，沙箱镜像只用 `AGENT_SANDBOX_OPENSANDBOX_IMAGE` 这一个变量，并且必须配置 `AGENT_SANDBOX_PREVIEW_PROXY_URL`。用 4.15 或更早的 compose 模板搭配新版镜像，就会报这两个错。
+
+怎么做：按 [Docker Compose 部署](/self-host/deploy/docker) 使用一键脚本，或手动下载和镜像同一版本的模板（当前版本用 `main` 目录，没有 v4.16、v4.17 目录）。
+
+注意：在已经部署过的目录里重新运行一键脚本，会重新生成数据库密码和 `AES256_SECRET_KEY`，并覆盖 `docker-compose.yml`。请先备份原文件；要保留数据，就选择不自动生成密码（或设置 `FASTGPT_AUTO_GENERATE_CREDENTIALS=false`），并把原来的密码和密钥拷过去。
+
+---
+
+### 并行执行报 parallel_task_not_reach_end，或者只跑了一个任务怎么办？
+
+适用版本：已按 4.17.0 核实。并行执行按输入数组的元素个数开任务，一个元素对应一个任务。传入的是一整段多行文本（比如每行一个 URL）时，它会被当成只有一个元素的数组，所以只跑一个任务。`parallel_task_not_reach_end` 表示某个任务的子流程没有走到「结束」节点；子流程有更具体的报错时，会优先显示那条报错。
+
+怎么做：在并行执行前加一个「代码运行」节点，把文本按换行拆成数组，例如返回 `text.split('\n').map(s => s.trim()).filter(Boolean)`，再让并行执行的数组输入引用这个结果。仍然报错，就打开出错任务的运行详情，检查子流程有没有走到「结束」节点。
+
+---
+
+### 用 HTTPS 访问时，上传文件报 s3 upload network error 怎么办？
+
+适用版本：已按 4.17.0 核实。浏览器上传文件用的地址取自 `FILE_DOMAIN`，没设置时取自 `FE_DOMAIN`。页面是 HTTPS、而这个地址是 `http://` 时，浏览器会把请求当作混合内容拦截，请求到不了服务端。
+
+怎么做：把对应配置改成可以访问的 https 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
+
+---
+
+### Windows 本地开发时，FastGPT 启动失败，连不上插件服务（localhost:3004）怎么办？
+
+适用范围：本地开发环境（`deploy/dev`）。`fastgpt-plugin` 用 host 网络监听 3004 端口，FastGPT 启动时访问 `http://localhost:3004` 失败就会退出。Windows 的 Docker Desktop 默认只在它自己的虚拟机里让 host 网络生效，本机访问不到。
+
+怎么做：在 Docker Desktop（4.34 及以上，需登录）的 Settings → Resources → Network 里勾选 Enable host networking，然后重启；或者按开发文档的建议，改在 WSL2、Linux、macOS 下开发。
+
+---

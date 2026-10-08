@@ -33,7 +33,7 @@ import {
   WorkflowVariableState
 } from '../../../../utils/variables';
 import { getWorkflowRuntimeSummary, runtimeSummaryToNodeSummary } from '../../../../utils/summary';
-import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { runWithDerivedWorkflowFileContext } from '../../../../../utils/context';
 import {
   computedAppToolUsage,
@@ -63,6 +63,7 @@ type Props = Pick<
   | 'nodeResponseParentId'
   | 'variableState'
   | 'lastInteractive'
+  | 'query'
 > & {
   app: {
     name: string;
@@ -114,10 +115,14 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     name: appData.name,
     isChildApp: true
   };
+  // 恢复 AgentV2 子工作流时，入口节点、节点输出和记忆边必须沿用暂停快照。
+  // 仅把 lastInteractive 传给 runWorkflow 不足以恢复队列：运行时节点和边在进入
+  // WorkflowQueue 前已经被重新初始化了。
   const runtimeNodes = rewriteNodeOutputByHistories(
-    storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes))
+    storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, data.lastInteractive)),
+    data.lastInteractive
   );
-  const runtimeEdges = storeEdges2RuntimeEdges(edges);
+  const runtimeEdges = storeEdges2RuntimeEdges(edges, data.lastInteractive);
 
   const { assistantResponses, flowUsages, workflowRuntimeSummary, workflowInteractiveResponse } =
     await runWithDerivedWorkflowFileContext({
@@ -158,13 +163,17 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
           histories: [],
           variableState: childrenVariableState,
           isToolCall: true,
-          query: [
-            {
-              text: {
-                content: userChatInput
-              }
-            }
-          ],
+          // 初次调用使用工具参数；交互恢复时必须使用当前外层用户输入，
+          // 其中包含表单/选择节点提交的 JSON，否则子流程会从暂停节点再次生成交互。
+          query: data.lastInteractive
+            ? data.query
+            : [
+                {
+                  text: {
+                    content: userChatInput
+                  }
+                }
+              ],
           stream: false,
           workflowStreamResponse: undefined
         });
@@ -176,21 +185,13 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     workflowRuntimeSummary
   });
 
+  // AgentV2 子应用固定关闭 stream；子流程 transcript 不属于父 Agent 的上下文，
+  // 仅通过 response/nodeResponse/usage/interactive 返回，避免 child answer 被重复拼入最终回答。
   return {
     response: text,
     ...(runtimeSummary.hasError
       ? { errorMessage: runtimeSummary.errorText || 'Run workflow failed' }
       : {}),
-    assistantMessages: chats2GPTMessages({
-      messages: [
-        {
-          obj: ChatRoleEnum.AI,
-          value: assistantResponses
-        }
-      ],
-      reserveId: false,
-      reserveTool: true
-    }),
     usages: flowUsages,
     nodeSummary: runtimeSummaryToNodeSummary(runtimeSummary),
     interactive: workflowInteractiveResponse,
@@ -348,47 +349,49 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         resolveInputFile
       });
       const runtimeVariables = childrenVariableState.toRuntimeRecord();
-      const runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)).map(
-        (node) => {
-          // Update plugin input value
-          if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
-            return {
-              ...node,
-              showStatus: false,
-              inputs: node.inputs.map((input) => {
-                const hasExternalValue = Object.prototype.hasOwnProperty.call(
-                  workflowToolVariables,
-                  input.key
-                );
-                let val = hasExternalValue ? workflowToolVariables[input.key] : input.value;
-                val ??= input.defaultValue;
-                if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
-                  val = anyValueDecrypt(val);
-                } else if (
-                  input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
-                  Array.isArray(val)
-                ) {
-                  val = filterFiles(val);
-                  if (hasExternalValue) {
-                    workflowToolVariables[input.key] = val.map((item: any) =>
-                      typeof item === 'string' ? item : item.url
-                    );
-                  }
-                }
-
-                return {
-                  ...input,
-                  value: val
-                };
-              })
-            };
-          }
+      const restoredRuntimeNodes = rewriteNodeOutputByHistories(
+        storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, data.lastInteractive)),
+        data.lastInteractive
+      );
+      const runtimeNodes = restoredRuntimeNodes.map((node) => {
+        // Update plugin input value
+        if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
           return {
             ...node,
-            showStatus: false
+            showStatus: false,
+            inputs: node.inputs.map((input) => {
+              const hasExternalValue = Object.prototype.hasOwnProperty.call(
+                workflowToolVariables,
+                input.key
+              );
+              let val = hasExternalValue ? workflowToolVariables[input.key] : input.value;
+              val ??= input.defaultValue;
+              if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
+                val = anyValueDecrypt(val);
+              } else if (
+                input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+                Array.isArray(val)
+              ) {
+                val = filterFiles(val);
+                if (hasExternalValue) {
+                  workflowToolVariables[input.key] = val.map((item: any) =>
+                    typeof item === 'string' ? item : item.url
+                  );
+                }
+              }
+
+              return {
+                ...input,
+                value: val
+              };
+            })
           };
         }
-      );
+        return {
+          ...node,
+          showStatus: false
+        };
+      });
 
       return runWorkflow({
         ...data,
@@ -403,18 +406,20 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         },
         runningUserInfo,
         runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges),
+        runtimeEdges: storeEdges2RuntimeEdges(edges, data.lastInteractive),
         chatConfig,
         histories: [],
         variableState: childrenVariableState,
         isToolCall: true,
-        query: serverGetWorkflowToolRunUserQuery({
-          pluginInputs,
-          variables: {
-            ...runtimeVariables,
-            ...workflowToolVariables
-          }
-        }).value,
+        query: data.lastInteractive
+          ? data.query
+          : serverGetWorkflowToolRunUserQuery({
+              pluginInputs,
+              variables: {
+                ...runtimeVariables,
+                ...workflowToolVariables
+              }
+            }).value,
         stream: false,
         workflowStreamResponse: undefined
       });
@@ -488,19 +493,10 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       ]
     : flowUsages;
 
+  // AgentV2 插件子流程同样固定关闭 stream，不把 child transcript 透传给父 Agent。
   return {
     response,
     ...(errorMessage ? { errorMessage } : {}),
-    assistantMessages: chats2GPTMessages({
-      messages: [
-        {
-          obj: ChatRoleEnum.AI,
-          value: assistantResponses
-        }
-      ],
-      reserveId: false,
-      reserveTool: true
-    }),
     usages,
     nodeSummary,
     interactive: workflowInteractiveResponse,

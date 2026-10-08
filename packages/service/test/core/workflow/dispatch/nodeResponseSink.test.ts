@@ -224,6 +224,61 @@ describe('WorkflowNodeResponseSink', () => {
     });
   });
 
+  it('按 child id 和 parentId 共同去重，保留不同父节点下的同 id child', async () => {
+    const writer = createWriter();
+    const sink = new WorkflowNodeResponseSink({ writer: writer as any });
+
+    await sink.publish([
+      {
+        response: {
+          id: 'shared-child',
+          parentId: 'parent-1',
+          nodeId: 'child-node',
+          moduleType: FlowNodeTypeEnum.agent
+        } as ChatHistoryItemResType
+      }
+    ]);
+
+    await sink.publish([
+      {
+        response: {
+          id: 'parent-2',
+          nodeId: 'parent-node',
+          moduleType: FlowNodeTypeEnum.agent,
+          childrenResponses: [
+            {
+              id: 'shared-child',
+              nodeId: 'child-node',
+              moduleType: FlowNodeTypeEnum.agent
+            }
+          ]
+        } as ChatHistoryItemResType
+      }
+    ]);
+
+    await sink.publish([
+      {
+        response: {
+          id: 'parent-1',
+          nodeId: 'parent-node',
+          moduleType: FlowNodeTypeEnum.agent,
+          childrenResponses: [
+            {
+              id: 'shared-child',
+              nodeId: 'child-node',
+              moduleType: FlowNodeTypeEnum.agent
+            }
+          ]
+        } as ChatHistoryItemResType
+      }
+    ]);
+
+    expect(writer.record.mock.calls[1][0][0].childrenResponses).toEqual([
+      expect.objectContaining({ id: 'shared-child', parentId: 'parent-2' })
+    ]);
+    expect(writer.record.mock.calls[2][0][0].childrenResponses).toBeUndefined();
+  });
+
   it('工具失败 response 正常写入并发布，但不提升为 workflow 错误', async () => {
     const writer = createWriter();
     const workflowStreamResponse = vi.fn();

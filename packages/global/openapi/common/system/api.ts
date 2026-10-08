@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { SubPlanSchema } from '../../../support/wallet/sub/type';
 import type { FastGPTFeConfigsType } from '../../../common/system/types';
-import { NumSchema } from '../../../common/zod';
+import { BoolSchema, NumSchema } from '../../../common/zod';
 
 /* ============================================================================
  * API: 获取系统初始化数据
@@ -25,7 +25,8 @@ const FastGPTFeConfigsSchema = z.looseObject({
   marketplaceUrl: z.string().url().optional().meta({
     example: 'https://v2.marketplace.fastgpt.cn',
     description: '插件市场服务地址'
-  })
+  }),
+  disableMarketplace: BoolSchema.optional().meta({ description: '是否隐藏插件市场安装入口' })
 }) as z.ZodType<FastGPTFeConfigsType>;
 
 const I18nStringStrictSchema = z.object({

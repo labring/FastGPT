@@ -547,4 +547,35 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
     expect(runtimeEdges[0].status).toBe('waiting');
     expect(runtimeNodes[0].outputs[0].value).toBe(false);
   });
+
+  it('restores tool startParams from call arguments on resume', async () => {
+    const runtimeNodes = [
+      {
+        nodeId: 'search',
+        inputs: [{ key: 'userChatInput', value: '', renderTypeList: ['agentGenerated'] }],
+        outputs: []
+      }
+    ];
+    const runtimeEdges = [{ target: 'search', status: 'waiting' }];
+    let received: any;
+    const { runInteractiveTool } = createRunner({
+      runtimeNodes,
+      runtimeEdges,
+      getToolInfo: () => ({ type: 'user', rawData: { nodeId: 'search' } }),
+      runWorkflowTool: vi.fn(async (params) => {
+        received = params;
+        return { flowResponses: [], flowUsages: [], assistantResponses: [], toolResponses: 'ok' };
+      })
+    });
+
+    await runInteractiveTool({
+      call: createCall({ args: '{"userChatInput":"restored user prompt"}' }),
+      childrenResponse: { entryNodeIds: ['search'] },
+      toolParams: { toolCallId: 'resume' }
+    } as any);
+
+    expect(received.runtimeNodes[0].inputs).toEqual([
+      { key: 'userChatInput', value: 'restored user prompt', renderTypeList: ['agentGenerated'] }
+    ]);
+  });
 });

@@ -164,6 +164,7 @@ export async function initSystemConfig() {
       pluginRemoteDebug,
       payFormUrl: appEnv.PAY_FORM_URL || '',
       marketplaceUrl: appEnv.MARKETPLACE_URL,
+      disableMarketplace: appEnv.DISABLE_MARKETPLACE,
 
       agentSandboxFree: appEnv.AGENT_SANDBOX_SHOW_FREE_TIP || appEnv.AGENT_SANDBOX_FREE_TIP,
       show_agent_sandbox_free_tip:

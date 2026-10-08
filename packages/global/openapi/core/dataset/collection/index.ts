@@ -24,9 +24,59 @@ import {
   UpdateDatasetCollectionBodySchema
 } from './api';
 import { DatasetCollectionCreatePath } from './createPath';
+import {
+  BatchDownloadDatasetCollectionsQuerySchema,
+  GetDownloadTicketDatasetCollectionsBodySchema,
+  GetDownloadTicketDatasetCollectionsResponseSchema,
+  BatchDownloadDatasetCollectionsResponseSchema
+} from './batchDownloadApi';
 
 export const DatasetCollectionPath: OpenAPIPath = {
   ...DatasetCollectionCreatePath,
+  '/core/dataset/collection/getDownloadTicket': {
+    post: {
+      summary: '申请知识库集合批量下载凭证',
+      description: '校验并准备通用知识库集合批量下载所需的短效一次性凭证',
+      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetDownloadTicketDatasetCollectionsBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回短效一次性下载凭证',
+          content: {
+            'application/json': {
+              schema: GetDownloadTicketDatasetCollectionsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/collection/batchDownload': {
+    get: {
+      summary: '下载知识库集合归档文件',
+      description: '使用短效凭证将预检后的集合原始文件流式归档为 ZIP 文件',
+      tags: [DevApiTagsMap.datasetCollection, SystemOpenApiTagMap.datasetCollection],
+      requestParams: {
+        query: BatchDownloadDatasetCollectionsQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回 ZIP 归档文件流',
+          content: {
+            'application/zip': {
+              schema: BatchDownloadDatasetCollectionsResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/dataset/collection/delete': {
     post: {
       'x-required-parameter-alternatives': [

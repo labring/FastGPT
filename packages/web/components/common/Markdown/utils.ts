@@ -2,20 +2,29 @@
  * 读取 README 并修正相对图片地址，避免远端 markdown 图片在弹窗中失效。
  */
 export const fetchRemoteMarkdown = async (url: string) => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch markdown: ${response.status}`);
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`Failed to fetch markdown: ${response.status}`);
+      return '';
+    }
+
+    const baseUrl = url.substring(0, url.lastIndexOf('/') + 1);
+    const content = await response.text();
+
+    return content
+      .replace(
+        /!\[([^\]]*)\]\(\.\/([^)]+)\)/g,
+        (match, alt, path) => `![${alt}](${baseUrl}${path})`
+      )
+      .replace(
+        /!\[([^\]]*)\]\((?!http|https|\/\/)([^)]+)\)/g,
+        (match, alt, path) => `![${alt}](${baseUrl}${path})`
+      );
+  } catch (error) {
+    console.error('Failed to fetch remote markdown:', error);
+    return '';
   }
-
-  const baseUrl = url.substring(0, url.lastIndexOf('/') + 1);
-  const content = await response.text();
-
-  return content
-    .replace(/!\[([^\]]*)\]\(\.\/([^)]+)\)/g, (match, alt, path) => `![${alt}](${baseUrl}${path})`)
-    .replace(
-      /!\[([^\]]*)\]\((?!http|https|\/\/)([^)]+)\)/g,
-      (match, alt, path) => `![${alt}](${baseUrl}${path})`
-    );
 };
 
 /**

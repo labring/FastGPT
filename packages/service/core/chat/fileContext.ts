@@ -1,5 +1,6 @@
 import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import type {
   ChatItemMiniType,
   UserChatItemFileItemType,
@@ -441,7 +442,7 @@ export const normalizeReadableFileUrl = ({
     if (ref) return ref.type === ChatFileTypeEnum.file ? ref.modelUrl : '';
   }
 
-  if (!/^https?:\/\//i.test(normalizedUrl)) return '';
+  if (!isHttpUrl(normalizedUrl)) return '';
   if (parseUrlToChatFileType({ url: normalizedUrl })?.type !== ChatFileTypeEnum.file) {
     return '';
   }
@@ -473,7 +474,7 @@ const getAuthorizedFileCacheSourceId = async ({
   const fileRef = fileContext?.resolve(url);
   if (fileRef) return fileContext?.getIdentity(url) ?? fileRef.modelUrl;
 
-  if (!/^https?:\/\//i.test(url)) {
+  if (!isHttpUrl(url)) {
     throw new UserError('File URL must be an absolute HTTP(S) URL');
   }
 
@@ -516,7 +517,7 @@ export const getFileInfoFromUrl = async ({
     };
   }
 
-  if (!/^https?:\/\//i.test(url)) {
+  if (!isHttpUrl(url)) {
     throw new UserError('File URL must be an absolute HTTP(S) URL');
   }
   const parsedUrl = new URL(url);

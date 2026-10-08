@@ -831,6 +831,7 @@
   "error.too_many_request": "요청이 너무 많습니다",
   "error.tool_not_exist": "제거됨",
   "error.unAuthFile": "이 파일을 읽을 권한이 없습니다",
+  "error.unAuthFileKey": "해당 파일 키에 대한 권한이 없습니다",
   "error.unKnow": "예상치 못한 오류가 발생했습니다",
   "error.upload_file_error_filename": "{{name}} 업로드 실패",
   "error.upload_file_interval_limit": "짧은 시간 내 업로드가 너무 많거나 현재 라운드 한도에 도달했습니다. 나중에 다시 시도해 주세요.",
@@ -1305,5 +1306,7 @@
   "read_only_no_batch_permission": "현재 리소스에 대한 작업 권한이 없어 일괄 작업을 수행할 수 없습니다",
   "will_delete": "삭제될 항목",
   "confirm_delete": "삭제 확인",
-  "batch_partial_failed": "선택한 항목 중 일부를 처리하지 못했습니다"
+  "batch_partial_failed": "선택한 항목 중 일부를 처리하지 못했습니다",
+  "related_count": "연관 앱",
+  "related_apps_hidden": "권한으로 인해 {{count}}개 앱이 더 숨겨져 있습니다"
 }

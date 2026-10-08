@@ -21,7 +21,12 @@ vi.mock('@/web/core/app/api', () => ({
   getMyAppsV2: mocks.getMyAppsV2
 }));
 
-import { getTeamAppTemplates, getTeamAppTemplatesV2 } from '@/web/core/app/api/tool';
+import {
+  getTeamAppTemplates,
+  getTeamAppTemplatesV2,
+  getNewToolPreviewNode,
+  getClientToolPreviewNode
+} from '@/web/core/app/api/tool';
 
 describe('getTeamAppTemplates', () => {
   beforeEach(() => {
@@ -342,4 +347,61 @@ describe('getTeamAppTemplates', () => {
       undefined
     );
   });
+});
+
+describe('getNewToolPreviewNode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    ['507f1f77bcf86cd799439011', true],
+    ['personal-507f1f77bcf86cd799439011', true],
+    ['systemTool-search', true],
+    ['commercial-507f1f77bcf86cd799439011', true],
+    ['mcp-507f1f77bcf86cd799439011/search', true],
+    ['http-507f1f77bcf86cd799439011/search', true]
+  ])('uses the correct initial version policy for %s', async (appId, getLatestVersion) => {
+    const preview = {
+      pluginId: appId,
+      inputs: [],
+      outputs: [],
+      version: 'latest-version',
+      versionLabel: 'Latest'
+    };
+    mocks.GET.mockResolvedValueOnce(preview);
+
+    const result = await getNewToolPreviewNode({ appId, source: 'system' });
+    if (
+      appId.startsWith('systemTool') ||
+      appId.startsWith('commercial-') ||
+      appId.startsWith('mcp-') ||
+      appId.startsWith('http-')
+    ) {
+      expect(result).toBe(preview);
+    } else {
+      expect(result).toMatchObject({ version: '', versionLabel: undefined, isLatestVersion: true });
+    }
+    const expectedQuery = {
+      appId,
+      source: 'system',
+      getLatestVersion
+    };
+    expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', expectedQuery);
+  });
+});
+
+describe('getClientToolPreviewNode', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it.each(['507f1f77bcf86cd799439099', ''])(
+    'preserves explicitly selected version %s',
+    async (versionId) => {
+      const data = { appId: '507f1f77bcf86cd799439011', versionId };
+      await getClientToolPreviewNode(data);
+      expect(mocks.GET).toHaveBeenCalledWith('/core/app/tool/getPreviewNode', data);
+    }
+  );
 });

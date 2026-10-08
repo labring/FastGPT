@@ -156,7 +156,8 @@ const ChatContextProvider = ({
     pageSize: 20,
     params,
     refreshDeps: [params],
-    showErrorToast: false
+    showErrorToast: false,
+    showNoMoreTip: false
   });
   const displayHistories = useMemo(() => histories.map(normalizeHistoryTitle), [histories]);
   const historiesRef = useRef(displayHistories);

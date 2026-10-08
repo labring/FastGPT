@@ -152,11 +152,15 @@ const RenderInput = () => {
           if (isOutLink) {
             return (
               inputType !== FlowNodeInputTypeEnum.customVariable &&
-              inputType !== FlowNodeInputTypeEnum.hidden
+              inputType !== FlowNodeInputTypeEnum.hidden &&
+              inputType !== FlowNodeInputTypeEnum.off
             );
           }
 
-          if (inputType === FlowNodeInputTypeEnum.hidden) {
+          if (
+            inputType === FlowNodeInputTypeEnum.hidden ||
+            inputType === FlowNodeInputTypeEnum.off
+          ) {
             return false;
           }
 

@@ -24,7 +24,10 @@ import type {
   SystemModelDataType,
   SystemModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
+import {
+  sortModelsByProvider,
+  type ModelProviderItemType
+} from '@fastgpt/global/core/ai/model/provider';
 import { i18nT, parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
@@ -457,12 +460,14 @@ const TemplateCreateModal = ({
   const availableTemplates = useMemo(() => {
     const modelNames = new Set<string>();
 
-    return (data?.models ?? []).filter((model) => {
+    const filtered = (data?.models ?? []).filter((model) => {
       if (installedModelNames.has(model.model) || modelNames.has(model.model)) return false;
       modelNames.add(model.model);
       return true;
     });
-  }, [data?.models, installedModelNames]);
+
+    return sortModelsByProvider(filtered, data?.providers ?? []);
+  }, [data?.models, data?.providers, installedModelNames]);
   const templates = useMemo(() => {
     const search = templateSearch.trim().toLowerCase();
     return availableTemplates.filter(

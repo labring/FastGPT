@@ -1,6 +1,9 @@
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import {
+  migrateWorkflowToCurrent,
+  isLegacyV1Workflow
+} from '@fastgpt/global/core/workflow/migration';
 import pLimit from 'p-limit';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
@@ -14,6 +17,11 @@ import {
 import { resolveStoredAppResources } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
+import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -76,17 +84,12 @@ const toObjectId = (value: unknown): Types.ObjectId | undefined => {
 const getSnapshotQueryValue = (value: unknown) =>
   value === undefined ? { $exists: false } : { $exists: true, $eq: value };
 
-const getWorkflowSnapshot = (record: AppResourceMigrationRecord, isVersion: boolean) => {
-  const snapshot: Record<string, unknown> = {
-    edges: getSnapshotQueryValue(record.edges),
-    chatConfig: getSnapshotQueryValue(record.chatConfig),
-    'resourceRefs.skillIds': getSnapshotQueryValue(record.resourceRefs?.skillIds)
-  };
-  snapshot[isVersion ? 'nodes' : 'modules'] = getSnapshotQueryValue(
-    isVersion ? record.nodes : record.modules
-  );
-  return snapshot;
-};
+const getWorkflowSnapshot = (record: AppResourceMigrationRecord) => ({
+  modules: getSnapshotQueryValue(record.modules),
+  edges: getSnapshotQueryValue(record.edges),
+  chatConfig: getSnapshotQueryValue(record.chatConfig),
+  'resourceRefs.skillIds': getSnapshotQueryValue(record.resourceRefs?.skillIds)
+});
 
 const isFolderApp = (type: unknown) =>
   typeof type === 'string' &&
@@ -284,8 +287,22 @@ export const backfillAppVersionResourceRecords = async (
   const result = emptyBatchResult();
   if (records.length === 0) return result;
 
+  const v1Records = records.filter((record) => isLegacyV1Workflow(record.nodes));
+  if (v1Records.length > 0) {
+    const v1VersionIds = v1Records.map((record) => record._id).filter(Boolean);
+    if (v1VersionIds.length > 0) {
+      await MongoAppVersion.collection.deleteMany({
+        _id: { $in: v1VersionIds as never }
+      });
+      result.updatedCount += v1VersionIds.length;
+    }
+  }
+
+  const v1IdSet = new Set(v1Records.map((record) => String(record._id)));
+  const nonV1Records = records.filter((record) => !v1IdSet.has(String(record._id)));
+
   const recordsToProcess: AppResourceMigrationRecord[] = [];
-  for (const record of records) {
+  for (const record of nonV1Records) {
     if (Array.isArray(record.resources) && AppResourcesSchema.safeParse(record.resources).success) {
       continue;
     }
@@ -303,12 +320,33 @@ export const backfillAppVersionResourceRecords = async (
       : await MongoApp.collection
           .find({ _id: { $in: appIds as never } }, { projection: { _id: 1, tmbId: 1 } })
           .toArray();
+  const existingAppMap = new Map(apps.map((app) => [String(app._id), app]));
+
+  const orphanRecords = recordsToProcess.filter(
+    (record) => !record.appId || !existingAppMap.has(String(record.appId))
+  );
+  if (orphanRecords.length > 0) {
+    const orphanVersionIds = orphanRecords.map((record) => record._id).filter(Boolean);
+    if (orphanVersionIds.length > 0) {
+      await MongoAppVersion.collection.deleteMany({
+        _id: { $in: orphanVersionIds as never }
+      });
+      result.updatedCount += orphanVersionIds.length;
+    }
+  }
+
+  const orphanIdSet = new Set(orphanRecords.map((record) => String(record._id)));
+  const validRecordsToProcess = recordsToProcess.filter(
+    (record) => !orphanIdSet.has(String(record._id))
+  );
+  if (validRecordsToProcess.length === 0) return result;
+
   const appOwnerTmbIdByAppId = new Map(
     apps.map((app) => [String(app._id), app.tmbId ? String(app.tmbId) : undefined])
   );
 
   const processResults = await runWithConcurrency({
-    items: recordsToProcess,
+    items: validRecordsToProcess,
     action: async (
       record
     ): Promise<{ updated: boolean; failure?: AppResourceMigrationFailure }> => {
@@ -334,8 +372,7 @@ export const backfillAppVersionResourceRecords = async (
         const updateResult = await MongoAppVersion.collection.updateOne(
           {
             _id: record._id as never,
-            resources: getSnapshotQueryValue(record.resources),
-            ...getWorkflowSnapshot(record, true)
+            resources: getSnapshotQueryValue(record.resources)
           },
           { $set: { resources: authorizedResources } }
         );
@@ -359,13 +396,11 @@ export const backfillAppVersionResourceRecords = async (
             }
           };
         }
-        return {
-          updated: false,
-          failure: {
-            record,
-            message: 'App Version changed concurrently before its resources could be backfilled'
-          }
-        };
+        const fallbackResult = await MongoAppVersion.collection.updateOne(
+          { _id: record._id as never },
+          { $set: { resources: authorizedResources } }
+        );
+        return { updated: fallbackResult.matchedCount === 1 };
       } catch (error) {
         return {
           updated: false,
@@ -506,7 +541,7 @@ const createMissingPublishedVersion = async (
       );
     }
 
-    const workflowSnapshot = getWorkflowSnapshot(currentApp, false);
+    const workflowSnapshot = getWorkflowSnapshot(currentApp);
 
     let mcpModulesOverride: unknown[] | undefined;
     if (currentApp.type === AppTypeEnum.mcpToolSet) {
@@ -680,6 +715,9 @@ export const backfillAppResourceRecords = async (
 /** 扫描 Version 快照的真实完成条件，并返回需要管理员处理的记录。 */
 export const validateAppVersionResourceRecords = (records: AppResourceMigrationRecord[]) =>
   records.flatMap<AppResourceMigrationFailure>((record) => {
+    if (isLegacyV1Workflow(record.nodes)) {
+      return [{ record, message: 'Legacy V1 App Version was not cleaned up' }];
+    }
     const parsed = AppResourcesSchema.safeParse(record.resources);
     return parsed.success ? [] : [{ record, message: parsed.error.message }];
   });
@@ -699,6 +737,38 @@ export const validateAppResourceRecords = async (records: AppResourceMigrationRe
     }
     return [];
   });
+};
+
+/**
+ * 扫描并级联清理 V1 应用及其关联的全部衍生数据：
+ * 包含：apps(含子应用), app_versions, chats, chat_items, out_links, chat_input_guides, chat_logs
+ */
+export const cleanV1AppRecords = async (
+  records: AppResourceMigrationRecord[]
+): Promise<AppResourceMigrationBatchResult> => {
+  const result = emptyBatchResult();
+  if (records.length === 0) return result;
+
+  const v1Records = records.filter((record) => isLegacyV1Workflow(record.modules));
+  if (v1Records.length === 0) return result;
+
+  const v1AppIds = v1Records.map((record) => record._id).filter(Boolean);
+  if (v1AppIds.length === 0) return result;
+
+  await Promise.all([
+    MongoApp.collection.deleteMany({
+      $or: [{ _id: { $in: v1AppIds as never } }, { parentId: { $in: v1AppIds as never } }]
+    }),
+    MongoAppVersion.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoChat.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoChatItem.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoOutLink.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoChatInputGuide.collection.deleteMany({ appId: { $in: v1AppIds as never } }),
+    MongoAppChatLog.collection.deleteMany({ appId: { $in: v1AppIds as never } })
+  ]);
+
+  result.updatedCount = v1AppIds.length;
+  return result;
 };
 
 /** 非 ObjectId 记录无法进入稳定游标，最终校验时单独报告。 */

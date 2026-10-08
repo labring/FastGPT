@@ -32,6 +32,7 @@ import { getCollaboratorList, postUpdateAppCollaborators } from '@/web/core/app/
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import AppTypeTag from './TypeTag';
 import { postCopyApp } from '@/web/core/app/api/app';
+import ReferencedAppsPopover from '@/pageComponents/dashboard/ReferencedAppsPopover';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -344,6 +345,16 @@ const List = () => {
               iconColor={'myGray.400'}
               w={'0.875rem'}
             />
+            {typeof app.relatedAppCount === 'number' && (
+              <ReferencedAppsPopover
+                resourceId={app._id}
+                resourceType={
+                  getDashboardAppListScene(router.pathname) === 'tool' ? 'tool' : 'agent'
+                }
+                count={app.relatedAppCount}
+                trigger={'hover'}
+              />
+            )}
           </HStack>
           <HStack>
             {isPc && (

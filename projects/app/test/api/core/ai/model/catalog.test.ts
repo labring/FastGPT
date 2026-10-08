@@ -80,6 +80,12 @@ describe('GET /api/core/ai/model/catalog', () => {
   it('returns the full desensitized catalog when the version changed', async () => {
     const result = await handler({ query: {} } as any);
 
+    expect(mocks.authUserPer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authToken: true,
+        authApiKey: true
+      })
+    );
     expect(result.version).toBe('3:catalog-version:permission-version');
     expect(result.data?.models[0]).not.toHaveProperty('requestAuth');
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);

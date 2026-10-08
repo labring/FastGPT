@@ -1,6 +1,7 @@
 import z from 'zod';
 import { PaginationResponseSchema, PaginationSchema } from '../../api';
 import { UserStatusEnum } from '../../../support/user/constant';
+import { TeamMemberNameSchema } from '../../../support/user/team/memberName';
 
 export const UserItemSchema = z.object({
   _id: z.string().meta({ description: '用户ID' }),
@@ -38,7 +39,8 @@ export type GetUsersResponseType = z.infer<typeof GetUsersResponseSchema>;
 // addUser
 export const AddUserBodySchema = z.object({
   username: z.string().trim().min(1).meta({ description: '用户名' }),
-  password: z.string().min(1).meta({ description: '密码' })
+  password: z.string().min(1).meta({ description: '密码' }),
+  memberName: TeamMemberNameSchema.optional().meta({ description: '成员名（可选）' })
 });
 export type AddUserBodyType = z.infer<typeof AddUserBodySchema>;
 export const AddUserResponseSchema = z.object({

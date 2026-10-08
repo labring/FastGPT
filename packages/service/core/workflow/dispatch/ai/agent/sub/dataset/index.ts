@@ -21,7 +21,7 @@ import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import type { DispatchSubAppResponse } from '../../type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchToolSchema } from './utils';
-import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
@@ -35,7 +35,6 @@ import { loadWorkflowDatasetResource } from '../../../../../utils/resource';
 import { resolveReadableCollectionIds } from '../../../../../../../support/permission/collection/auth';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
 import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/workflowTagFilter';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
@@ -279,7 +278,6 @@ export const dispatchAgentDatasetSearch = async ({
       collectionFilterMatch: formatCollectionFilterMatchParam({
         value: datasetParams.collectionFilterMatch
       }),
-      collectionFilterMode: DatasetTagFilterVersionEnum.structured,
       readableCollectionIdList,
       userKey
     };

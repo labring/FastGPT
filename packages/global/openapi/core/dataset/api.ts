@@ -12,6 +12,7 @@ import {
   InheritPermissionSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
+import { BoolSchema } from '../../../common/zod';
 import { AppListSortEnum } from '../../../core/app/constants';
 import {
   CollaboratorListSchema,
@@ -243,7 +244,12 @@ export type GetDatasetListBody = z.infer<typeof GetDatasetListBodySchema>;
  * Description: 分页获取当前用户有权限访问的知识库列表。
  * Tags: ['Dataset', 'Read']
  * ============================================================================ */
-export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend(PaginationSchema.shape);
+export const GetDatasetListV2BodySchema = GetDatasetListBodySchema.extend({
+  withAppCount: BoolSchema.optional().meta({
+    example: true,
+    description: '是否返回被正式应用引用的数量'
+  })
+}).extend(PaginationSchema.shape);
 export type GetDatasetListV2Body = z.infer<typeof GetDatasetListV2BodySchema>;
 
 // 出参复用 DatasetListItemSchema

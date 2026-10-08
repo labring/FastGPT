@@ -22,6 +22,7 @@ import {
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { S3FileUploader } from '@fastgpt/web/common/file/uploader';
 import { getUploadChatFileType } from '../utils/file';
+import { safeAbortController } from '../utils/generate';
 import { type ChatSourceTarget, useChatAuthApiTarget } from '@/web/core/chat/utils';
 import {
   canApplyUploadResult,
@@ -155,7 +156,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     if (!task) return;
 
     task.canceled = true;
-    task.controller.abort();
+    safeAbortController(task.controller);
   }, []);
 
   const cleanupUploadTask = useCallback((uploadId: string, task?: UploadTaskState) => {
@@ -167,7 +168,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
   const cancelAllUploadTasks = useCallback(() => {
     uploadTasksRef.current.forEach((task) => {
       task.canceled = true;
-      task.controller.abort();
+      safeAbortController(task.controller);
     });
     uploadTasksRef.current.clear();
   }, []);

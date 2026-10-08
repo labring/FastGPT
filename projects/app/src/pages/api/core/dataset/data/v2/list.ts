@@ -1,6 +1,7 @@
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -19,6 +20,10 @@ import {
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
+import {
+  createDatasetFileS3KeyFilter,
+  isAuthorizedDatasetFileS3Key
+} from '@fastgpt/service/common/s3/sources/dataset/key';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse> {
   const { searchText = '', collectionId } = parseApiInput({
@@ -61,7 +66,10 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
   const previewTexts = list.flatMap(({ q, a }) => (a ? [q, a] : [q]));
   const previewTextsWithUrls = await replaceS3KeysToPreviewUrls(
     previewTexts,
-    addHours(new Date(), 1)
+    addHours(new Date(), 1),
+    {
+      filter: createDatasetFileS3KeyFilter(collection.datasetId)
+    }
   );
   let previewTextIndex = 0;
   list.forEach((item) => {
@@ -87,20 +95,30 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
       imageSizeMap.set(String(item._id), item.length);
     });
 
-    const s3ImageIds = imageIds.filter((id) => isS3ObjectKey(id, 'dataset'));
-    for (const id of s3ImageIds) {
-      const metadata = await getS3DatasetSource().getFileMetadata(id);
-      if (metadata?.contentLength) {
-        imageSizeMap.set(id, metadata.contentLength);
-      }
-    }
+    const s3ImageIds = imageIds.filter(
+      (id) =>
+        isS3ObjectKey(id, 'dataset') &&
+        isAuthorizedDatasetFileS3Key({ key: id, datasetId: collection.datasetId })
+    );
+    await batchRun(
+      s3ImageIds,
+      async (id) => {
+        const metadata = await getS3DatasetSource().getFileMetadata(id);
+        if (metadata?.contentLength) {
+          imageSizeMap.set(id, metadata.contentLength);
+        }
+      },
+      5
+    );
   }
 
   const formatList = await Promise.all(
     list.map(async (item) => {
       const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
       const imagePreviewUrl =
-        item.imageId && isS3ObjectKey(item.imageId, 'dataset')
+        item.imageId &&
+        isS3ObjectKey(item.imageId, 'dataset') &&
+        isAuthorizedDatasetFileS3Key({ key: item.imageId, datasetId: collection.datasetId })
           ? await createS3DownloadAccessUrl({
               objectKey: item.imageId,
               bucketName: S3Buckets.private,

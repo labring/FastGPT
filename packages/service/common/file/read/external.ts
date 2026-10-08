@@ -1,5 +1,6 @@
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 import { Readable } from 'node:stream';
 import { axios } from '../../api/axios';
 import { getFileMaxSize } from '../utils';
@@ -23,7 +24,7 @@ export const readExternalFileBuffer = async ({
   signal?: AbortSignal;
   onReadBytes?: (readBytes: number) => void;
 }) => {
-  if (!/^https?:\/\//i.test(url)) {
+  if (!isHttpUrl(url)) {
     throw new UserError('External file URL must be an absolute HTTP(S) URL');
   }
 

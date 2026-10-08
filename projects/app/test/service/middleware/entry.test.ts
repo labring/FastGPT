@@ -26,4 +26,16 @@ describe('NextAPI', () => {
     await options.beforeCallback[0](req, res);
     expect(mocks.withNextCors).toHaveBeenCalledWith(expect.objectContaining({ req, res }));
   });
+
+  it('forwards sensitive query parameters to the shared API entry', () => {
+    mocks.createApiEntry.mockClear();
+    NextAPI(async () => undefined, {
+      csrf: false,
+      redactQueryParams: ['ticket']
+    });
+
+    expect(mocks.createApiEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ redactQueryParams: ['ticket'] })
+    );
+  });
 });

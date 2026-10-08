@@ -163,6 +163,119 @@ const mdHttpImageSrcRegex = /^https?:\/\/.+/;
 const markdownImageUploadConcurrency = 5;
 const unescapeMarkdownUrl = (url: string) => url.replace(/\\([\\()])/g, '$1');
 
+/**
+ * HTML <img> 标签正则片段（各含 1 个捕获组，value 含 3 个）：
+ * - prefix：按属性 token 消费 src 之前的所有内容，避免命中引号属性值内的 `src=` 文本
+ * - value：src 值（双引号 / 单引号 / 无引号）
+ * - suffix：src 之后的剩余标签内容
+ *
+ * 供本包 matchDocumentImages 与 service 侧 S3 key 预览正则共享，
+ * 拼接时保持 prefix→value→suffix 顺序即可维持各自既有捕获组编号。
+ */
+export const htmlImgTokenPrefixPattern = String.raw`(<img\b(?:(?:[^"'<>]|"[^"]*"|'[^']*'))*?\s+src\s*=\s*)`;
+export const htmlImgTokenValuePattern = '(?:"([^"]*)"|\'([^\']*)\'|([^\\s"\'=<>`]+))';
+export const htmlImgTokenSuffixPattern = String.raw`((?:(?:[^"'<>]|"[^"]*"|'[^']*'))*>)`;
+
+const htmlImgTokenRegex = new RegExp(
+  `${htmlImgTokenPrefixPattern}${htmlImgTokenValuePattern}${htmlImgTokenSuffixPattern}`,
+  'gi'
+);
+
+const htmlImgAttrTokenRegex =
+  /(?:^|\s)([^\s"'=<>`]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
+
+/**
+ * 在 HTML 标签文本上按属性 token 逐个消费取值，避免值内部出现 `alt=`、`src=`
+ * 等字样时被子串误命中（属性串味）。
+ */
+const getHtmlImgAttrToken = (tag: string, name: string): string | undefined => {
+  htmlImgAttrTokenRegex.lastIndex = 0;
+
+  let match: RegExpExecArray | null;
+  while ((match = htmlImgAttrTokenRegex.exec(tag)) !== null) {
+    if (match[1].toLowerCase() === name) {
+      return (match?.[2] ?? match?.[3] ?? match?.[4])?.trim();
+    }
+  }
+
+  return undefined;
+};
+
+export type DocumentImageItem = {
+  /** markdown: `![alt](url)` 语法；html: `<img src="url" ...>` 标签 */
+  format: 'markdown' | 'html';
+  altText: string;
+  url: string;
+  fullMatch: string;
+  index: number;
+  /**
+   * 闭包封装语法形态的替换逻辑：markdown 重建 `![alt](nextUrl)`；
+   * html 保留标签结构仅替换 src（表格 HTML 块内的 markdown 语法不会被渲染）。
+   * nextUrl 为空时整体移除。
+   */
+  replace: (nextUrl: string) => string;
+};
+
+/**
+ * 统一扫描文档图片占位符：markdown 图片语法与 HTML `<img>` 标签。
+ *
+ * HTML 形态主要来自外部解析服务保留的表格（docx/xlsx 单元格内嵌
+ * `<img src="data:image/...;base64,...">`）。单次扫描输出按偏移排序的
+ * 无重叠区间，防止嵌套语法（如属性值内含另一形态的图片语法）导致
+ * 文本切片回退损坏。
+ */
+export const matchDocumentImages = (text = ''): DocumentImageItem[] => {
+  if (!text || typeof text !== 'string') return [];
+
+  const rawMatches: DocumentImageItem[] = [];
+
+  for (const item of matchMarkdownImages(text)) {
+    rawMatches.push({
+      format: 'markdown',
+      altText: item.altText,
+      url: item.url,
+      fullMatch: item.fullMatch,
+      index: item.index,
+      replace: (nextUrl: string) => (nextUrl ? `![${item.altText}](${nextUrl})` : '')
+    });
+  }
+
+  htmlImgTokenRegex.lastIndex = 0;
+
+  let match: RegExpExecArray | null;
+  while ((match = htmlImgTokenRegex.exec(text)) !== null) {
+    const [, prefix, doubleQuoted, singleQuoted, unquoted, suffix] = match;
+    const url = (doubleQuoted ?? singleQuoted ?? unquoted)?.trim() || '';
+    if (!url) continue;
+
+    const altText = getHtmlImgAttrToken(match[0], 'alt') ?? '';
+    const quote = doubleQuoted !== undefined ? '"' : singleQuoted !== undefined ? "'" : '"';
+
+    rawMatches.push({
+      format: 'html',
+      altText,
+      url,
+      fullMatch: match[0],
+      index: match.index,
+      replace: (nextUrl: string) => (nextUrl ? `${prefix}${quote}${nextUrl}${quote}${suffix}` : '')
+    });
+  }
+
+  rawMatches.sort((left, right) => left.index - right.index);
+
+  const safeMatches: DocumentImageItem[] = [];
+  let lastOccupiedEnd = 0;
+
+  for (const item of rawMatches) {
+    if (item.index >= lastOccupiedEnd) {
+      safeMatches.push(item);
+      lastOccupiedEnd = item.index + item.fullMatch.length;
+    }
+  }
+
+  return safeMatches;
+};
+
 const findClosingBracket = (text: string, startIndex: number) => {
   for (let i = startIndex; i < text.length; i++) {
     if (text[i] === '\\') {
@@ -245,8 +358,10 @@ export const matchMarkdownImages = (text = ''): MarkdownImageMatchItem[] => {
   return matches;
 };
 
+type ParsedDocumentImage = MarkdownImage & { item: DocumentImageItem };
+
 /**
- * 处理 markdown 图片语法中的图片，并统一执行 markdown 文本清理。
+ * 处理文档图片（markdown 语法与 HTML <img> 标签），并统一执行 markdown 文本清理。
  *
  * base64 图片默认会被解析：传入上传回调时替换成对象存储 key，不传回调或上传失败时删除，
  * 避免大体积 base64 继续在解析链路中流转。http 图片默认不处理，开启后可复用同一个
@@ -261,47 +376,46 @@ export const parseMarkdownBase64Images = async (
     parseHttp = false,
     controller = imageOptions.controler
   } = imageOptions;
-  const images = matchMarkdownImages(text).flatMap<MarkdownImage>((match) => {
-    const { fullMatch, altText, url: rawUrl, index } = match;
-    const url = unescapeMarkdownUrl(rawUrl);
-    const base64Match = url.match(mdBase64ImageSrcRegex);
 
-    if (parseBase64 && base64Match) {
+  const images: ParsedDocumentImage[] = [];
+
+  for (const item of matchDocumentImages(text)) {
+    const url = item.format === 'markdown' ? unescapeMarkdownUrl(item.url) : item.url;
+    const base64Match = parseBase64 ? url.match(mdBase64ImageSrcRegex) : null;
+
+    if (base64Match) {
       const [, mime, base64] = base64Match;
 
-      return [
-        {
-          type: 'base64',
-          altText,
-          url,
-          dataUrl: url,
-          mime: `image/${mime}`,
-          base64,
-          fullMatch,
-          index
-        }
-      ];
+      images.push({
+        type: 'base64',
+        altText: item.altText,
+        url,
+        dataUrl: url,
+        mime: `image/${mime}`,
+        base64,
+        fullMatch: item.fullMatch,
+        index: item.index,
+        item
+      });
+      continue;
     }
 
     if (parseHttp && mdHttpImageSrcRegex.test(url)) {
-      return [
-        {
-          type: 'http',
-          altText,
-          url,
-          fullMatch,
-          index
-        }
-      ];
+      images.push({
+        type: 'http',
+        altText: item.altText,
+        url,
+        fullMatch: item.fullMatch,
+        index: item.index,
+        item
+      });
     }
-
-    return [];
-  });
+  }
 
   if (images.length === 0) return simpleMarkdownText(text);
 
   const preservedMarkdownImages = new Map<string, string>();
-  const preserveMarkdownImage = (image: MarkdownImage, index: number) => {
+  const preserveMarkdownImage = (image: ParsedDocumentImage, index: number) => {
     const token = `__FASTGPT_MARKDOWN_IMAGE_${index}_PLACEHOLDER__`;
     preservedMarkdownImages.set(token, image.fullMatch);
     return token;
@@ -314,7 +428,7 @@ export const parseMarkdownBase64Images = async (
           try {
             // 上传回调返回的是对象存储 key，markdown 中先保留 key，后续业务层再决定是否签名成 URL。
             const { key } = await controller(image);
-            return key ? `![${image.altText}](${key})` : '';
+            return key ? image.item.replace(key) : '';
           } catch {
             return image.type === 'http' ? preserveMarkdownImage(image, index) : '';
           }

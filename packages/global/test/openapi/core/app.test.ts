@@ -1,3 +1,4 @@
+import { GetReferencedAppsQuerySchema } from '../../../openapi/core/app/common/api';
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '../../../openapi/provider/devapi';
 import { openAPITagGroups } from '../../../openapi/path';
@@ -31,6 +32,10 @@ describe('App OpenAPI contracts', () => {
   it('registers app ownership transfer and template type APIs', () => {
     expect(openAPIDocument.paths?.['/core/app/list']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/core/app/listV2']?.post).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/referencedApps']?.get).toBeDefined();
+    expect(openAPIDocument.paths?.['/core/app/appsByAppId']).toBeUndefined();
+    expect(openAPIDocument.paths?.['/core/app/referencedAppsByAppId']).toBeUndefined();
+    expect(openAPIDocument.paths?.['/core/app/appsByToolId']).toBeUndefined();
     expect(openAPIDocument.paths?.['/core/app/toolSet/listV2']?.post).toBeDefined();
     expect(openAPIDocument.paths?.['/proApi/core/app/changeOwner']?.post).toBeDefined();
     expect(
@@ -142,6 +147,9 @@ describe('App OpenAPI contracts', () => {
         }
       ])
     ).toHaveLength(1);
+    expect(
+      GetReferencedAppsQuerySchema.parse({ resourceType: 'agent', resourceId: objectId })
+    ).toEqual({ resourceType: 'agent', resourceId: objectId });
   });
 
   it('parses application evaluation request and response contracts', () => {

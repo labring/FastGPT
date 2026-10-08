@@ -567,7 +567,7 @@ const ChatBox = ({
   // output data
   useImperativeHandle(ChatBoxRef, () => ({
     restartChat() {
-      abortRequest();
+      abortRequest('leave');
 
       setChatRecords([]);
       setValue('chatStarted', false);

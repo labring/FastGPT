@@ -13,6 +13,9 @@ export type CreateUploadDatasetFileParams = z.infer<typeof CreateUploadDatasetFi
 
 export const CreateGetDatasetFileURLParamsSchema = z.object({
   key: z.string().nonempty(),
+  // 已鉴权上下文的 datasetId。提供后底层会校验 key 内的 datasetId 是否匹配，未通过则不签发。
+  // 未提供时保持兼容（调用方仅持有 key、且来源可信的场景）。
+  datasetId: z.union([ObjectIdSchema, z.array(ObjectIdSchema)]).optional(),
   expiredHours: z.number().positive().optional(),
   external: z.boolean().optional()
 });

@@ -1,6 +1,7 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
+import { isHttpUrl } from '@fastgpt/global/common/string/url';
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'r2', 'cos', 'oss']);
@@ -62,7 +63,7 @@ export const marketplaceEnv = createEnv({
 
 const normalizeStorageEndpoint = (endpoint: string | undefined) => {
   if (!endpoint) return undefined;
-  return /^https?:\/\//.test(endpoint) ? endpoint : `http://${endpoint}`;
+  return isHttpUrl(endpoint) ? endpoint : `http://${endpoint}`;
 };
 
 export const marketplaceStorageEnv = {

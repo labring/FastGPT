@@ -19,6 +19,7 @@ If you discover a security vulnerability in FastGPT, please follow the steps bel
 
 4. **Important Notes**
    - Please do not publicly disclose vulnerability details before a fix has been released.
+   - **Scope**: We only accept reports regarding code-level security vulnerabilities. Security issues related to deployment, environment configuration, infrastructure, or operations and maintenance (O&M) are strictly out of scope and will not be accepted.
    - We only accept reports about previously unknown issues, including issues covered by similar unpublished advisories or issues already identified and internally marked by the FastGPT team as risks or areas for improvement.
    - Reports must concern non-test functionality; issues affecting test-only features are not eligible for acceptance.
    - We welcome responsible vulnerability disclosure.

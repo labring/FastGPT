@@ -118,8 +118,8 @@ describe('probeModelStatus', () => {
     expect(test).toHaveBeenCalledTimes(1);
   });
 
-  it('marks the model red after all four attempts fail and keeps a safe error message', async () => {
-    const test = vi.fn().mockRejectedValue(new Error('provider unavailable'));
+  it('marks the model red after all four attempts fail and identifies it in the timeout error', async () => {
+    const test = vi.fn().mockRejectedValue(new Error('Model test timed out after 60000ms'));
 
     const result = await probeModelStatus({
       model,
@@ -130,7 +130,7 @@ describe('probeModelStatus', () => {
     expect(result).toMatchObject({
       status: 'red',
       attempts: 4,
-      error: 'provider unavailable'
+      error: 'Test model: Model test timed out after 60000ms'
     });
   });
 

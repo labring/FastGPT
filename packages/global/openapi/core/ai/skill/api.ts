@@ -22,7 +22,7 @@ import {
   ShowUsernameQuerySchema
 } from '../../../../support/permission/collaborator.schema';
 import { AppListSortEnum } from '../../../../core/app/constants';
-import { IntSchema } from '../../../../common/zod';
+import { BoolSchema, IntSchema } from '../../../../common/zod';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
@@ -44,7 +44,10 @@ const createListSkillsQuerySchema = () =>
     offset: IntSchema.optional().describe('偏移量'),
     page: z.coerce.number().int().positive().optional().describe('页码'),
     pageSize: z.coerce.number().int().positive().optional().describe('每页数量'),
-    withAppCount: z.boolean().optional().describe('是否返回引用应用数量'),
+    withAppCount: BoolSchema.optional().meta({
+      example: true,
+      description: '是否返回引用应用数量'
+    }),
     sort: z.enum(AppListSortEnum).optional().describe('列表排序，缺省按最近修改倒序'),
     tmbIds: z.array(ObjectIdSchema).optional().describe('按创建者筛选；空数组返回空列表')
   });
@@ -290,7 +293,10 @@ export const GetSkillDetailResponseSchema = z.object({
   createTime: z.string(),
   updateTime: z.string(),
   permission: SkillPermissionSchema,
-  appCount: z.number().optional()
+  appCount: IntSchema.optional().meta({
+    description: '被正式应用引用的 Skill 数量',
+    example: 0
+  })
 });
 export type GetSkillDetailResponse = z.infer<typeof GetSkillDetailResponseSchema>;
 
@@ -377,33 +383,6 @@ export const SkillDebugChatBodySchema = z.object({
   systemPrompt: z.string().optional()
 });
 export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;
-
-export const ListAppsBySkillIdQuerySchema = z.object({
-  skillId: IdSchema
-});
-export type ListAppsBySkillIdQuery = z.infer<typeof ListAppsBySkillIdQuerySchema>;
-
-export const AppsBySkillIdItemSchema = z.object({
-  _id: z.string(),
-  name: z.string(),
-  avatar: z.string(),
-  intro: z.string(),
-  tmbId: z.string(),
-  type: z.string(),
-  updateTime: z.coerce.date(),
-  sourceMember: z.object({
-    name: z.string(),
-    avatar: z.string().nullable().optional(),
-    status: z.string()
-  })
-});
-export type AppsBySkillIdItem = z.infer<typeof AppsBySkillIdItemSchema>;
-
-export const ListAppsBySkillIdResponseSchema = z.object({
-  list: z.array(AppsBySkillIdItemSchema),
-  hiddenCount: z.number().int().nonnegative().describe('当前用户无权限查看的引用应用数量')
-});
-export type ListAppsBySkillIdResponse = z.infer<typeof ListAppsBySkillIdResponseSchema>;
 
 export const CreateSkillFolderBodySchema = z.object({
   parentId: NullableParentIdSchema,

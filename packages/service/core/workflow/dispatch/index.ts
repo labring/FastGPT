@@ -69,11 +69,7 @@ import {
   createWorkflowEntryNodeResponseSink,
   type WorkflowNodeResponseWriteConfig
 } from './utils/entry';
-import {
-  bindWorkflowNodeResponseActivity,
-  createWorkflowNodeResponseActivity,
-  createWorkflowNodeResponseScope
-} from './nodeResponseSink';
+import { createWorkflowNodeResponseScope } from './nodeResponseSink';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
 import { assertWorkflowNodeModelResources } from '../utils/resource';
@@ -856,8 +852,6 @@ export class WorkflowQueue {
       //   tmbId: this.data.runningUserInfo.tmbId
       // });
       const nodeSummary = createNodeSummary();
-      const nodeResponseActivity = createWorkflowNodeResponseActivity();
-
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...this.data,
         usagePush: this.usagePush.bind(this),
@@ -874,10 +868,7 @@ export class WorkflowQueue {
         params,
         mode,
         nodeResponseParentId: nodeResponseId,
-        nodeResponseSink: bindWorkflowNodeResponseActivity({
-          sink: this.data.nodeResponseSink,
-          activity: nodeResponseActivity
-        })
+        nodeResponseSink: this.data.nodeResponseSink
       };
 
       // run module
@@ -976,7 +967,6 @@ export class WorkflowQueue {
         return {};
       })();
 
-      const hasPublishedChildResponses = nodeResponseActivity.publishedResponseCount > 0;
       const nodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
       const nodeResponsesForWrite: ChatHistoryItemResType[] = [];
       const currentNodeChildResponseCount = getNodeResponseChildResponseCount(
@@ -1016,13 +1006,9 @@ export class WorkflowQueue {
       const persistedNodeResponses = this.data.nodeResponseSink
         ? await this.data.nodeResponseSink.publish(
             nodeResponsesForWrite.map((response) => ({
-              response,
-              // child 已经通过共享 sink 发布时，父 wrapper 只入库，不重复发送 SSE。
-              emit:
-                response.id === formatCurrentNodeResponse?.id
-                  ? !!formatCurrentNodeResponse &&
-                    (!hasPublishedChildResponses || !!currentNodeError)
-                  : true
+              // 每个实际写入的节点响应都要实时发布。父子关系通过 parentId 表达；
+              // dataset 等内部明细如果没有独立 publish，则随父响应的 childrenResponses 一次性发布。
+              response
             }))
           )
         : nodeResponsesForWrite;

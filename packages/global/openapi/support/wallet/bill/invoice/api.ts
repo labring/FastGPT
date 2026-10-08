@@ -45,9 +45,13 @@ export const InvoiceSubmitBodySchema = z
     needSpecialInvoice: z.boolean().meta({ example: false, description: '是否需要增值税专用发票' }),
     contactPhone: z
       .string()
-      .trim()
-      .min(1)
-      .meta({ example: '13800138000', description: '联系人电话' }),
+      .nullish()
+      .transform((val) => (val?.trim() ? val.trim() : undefined))
+      .meta({
+        type: 'string',
+        example: '13800138000',
+        description: '联系人电话'
+      }),
     emailAddress: z
       .string()
       .email()

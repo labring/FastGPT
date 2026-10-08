@@ -302,6 +302,17 @@ export const migrateLegacyWorkflowStructureData = ({
     // 历史 questionGuide 使用布尔值；当前格式要求包含 open 字段的配置对象。
     normalizedChatConfig.questionGuide = { open: normalizedChatConfig.questionGuide };
   }
+  if (typeof normalizedChatConfig.chatInputGuide === 'string') {
+    // 历史版本未开启输入引导时可能保存空字符串；canonical 结构要求配置对象或未定义。
+    delete normalizedChatConfig.chatInputGuide;
+  }
+  if (
+    isRecord(normalizedChatConfig.scheduledTriggerConfig) &&
+    typeof normalizedChatConfig.scheduledTriggerConfig.defaultPrompt !== 'string'
+  ) {
+    // 定时触发新增 defaultPrompt 必填字段；历史配置未设置时补齐空字符串默认值。
+    normalizedChatConfig.scheduledTriggerConfig.defaultPrompt = '';
+  }
   if (Array.isArray(normalizedChatConfig.variables)) {
     // 变量列表只保留对象，并补齐当前 schema 依赖的 key、label、description、valueType 和 type。
     normalizedChatConfig.variables = normalizedChatConfig.variables

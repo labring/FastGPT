@@ -1012,6 +1012,35 @@ describe('readFileContentBySource', () => {
     expect(mockReadRawContentFromSource).not.toHaveBeenCalled();
   });
 
+  it('forceSystemParse 绕过 Sangfor 路由，保留 worker 的结构化产物', async () => {
+    mockEnv.DOCUMENT_PARSE_PROVIDER = 'sangfor';
+    mockEnv.SANGFOR_PARSE_EXTENSIONS = 'xlsx,csv';
+    global.systemEnv.customPdfParse = { url: 'http://sangfor-parser.test/parse' };
+    mockReadRawContentFromSource.mockResolvedValueOnce({
+      rawText: 'q,a\nquestion,answer',
+      tableInfo: { sheetCount: 1, mergedCellCount: 0 }
+    });
+    const source = {
+      kind: 's3' as const,
+      sizeBytes: 10,
+      metadata: { filename: 'file.xlsx' },
+      materialize: vi.fn()
+    };
+
+    await expect(
+      readFileContentBySource({ teamId, tmbId, source, forceSystemParse: true })
+    ).resolves.toMatchObject({
+      rawText: 'q,a\nquestion,answer',
+      tableInfo: { sheetCount: 1, mergedCellCount: 0 }
+    });
+    expect(mockSangforParseDocument).not.toHaveBeenCalled();
+    expect(mockReadRawContentFromSource).toHaveBeenCalledWith({
+      source,
+      imageKeyOptions: undefined
+    });
+    expect(source.materialize).not.toHaveBeenCalled();
+  });
+
   it('系统解析直接把轻量 source 交给 worker，不在入口提前物化', async () => {
     const source = {
       kind: 's3' as const,

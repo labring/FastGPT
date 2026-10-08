@@ -845,7 +845,7 @@ describe('DatasetDataIndexOperation', () => {
           { type: DatasetDataIndexTypeEnum.custom, text: 'text index' },
           {
             type: DatasetDataIndexTypeEnum.imageEmbedding,
-            text: 'dataset/team/collection/image.png'
+            text: 'dataset/dataset_id/collection/image.png'
           }
         ]
       });
@@ -863,7 +863,10 @@ describe('DatasetDataIndexOperation', () => {
         expect.objectContaining({
           inputs: [
             { type: 'text', input: 'text index' },
-            { type: 'image', input: 'data:image/png;base64,dataset/team/collection/image.png' }
+            {
+              type: 'image',
+              input: 'data:image/png;base64,dataset/dataset_id/collection/image.png'
+            }
           ]
         })
       );
@@ -871,10 +874,42 @@ describe('DatasetDataIndexOperation', () => {
         { type: DatasetDataIndexTypeEnum.custom, text: 'text index', dataId: 'text_vector_id' },
         {
           type: DatasetDataIndexTypeEnum.imageEmbedding,
-          text: 'dataset/team/collection/image.png',
+          text: 'dataset/dataset_id/collection/image.png',
           dataId: 'image_vector_id'
         }
       ]);
+    });
+
+    it('should skip image embedding vector insertion when key belongs to another dataset', async () => {
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        config: { ...embeddingModel.config, vision: true }
+      });
+      mockVectorInsert.mockResolvedValueOnce({ insertIds: ['text_vector_id'] });
+      const patchResult = operation.buildPatch({
+        currentIndexes: [],
+        nextIndexes: [
+          { type: DatasetDataIndexTypeEnum.custom, text: 'text index' },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: 'dataset/foreign_dataset_id/image.png'
+          }
+        ]
+      });
+
+      const tokens = await operation.insertVectorForPatch({
+        patchResult,
+        teamId: 'team_id',
+        datasetId: 'dataset_id',
+        collectionId: 'collection_id'
+      });
+
+      expect(tokens).toBeGreaterThan(0);
+      expect(mockGetVectors).toHaveBeenCalledWith(
+        expect.objectContaining({
+          inputs: [{ type: 'text', input: 'text index' }]
+        })
+      );
     });
   });
 

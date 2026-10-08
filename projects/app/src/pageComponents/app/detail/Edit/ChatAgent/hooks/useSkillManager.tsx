@@ -24,7 +24,7 @@ import type {
 } from '@fastgpt/global/core/app/formEdit/type';
 import {
   getAppToolTemplates,
-  getClientToolPreviewNode,
+  getNewToolPreviewNode,
   getTeamAppTemplatesV2
 } from '@/web/core/app/api/tool';
 import { AppTypeEnum, AppTypeList, ToolTypeList } from '@fastgpt/global/core/app/constants';
@@ -398,9 +398,8 @@ export const useSkillManager = ({
         };
       }
 
-      const toolTemplate = await getClientToolPreviewNode({
+      const toolTemplate = await getNewToolPreviewNode({
         appId: toolId,
-        getLatestVersion: true,
         source
       });
 

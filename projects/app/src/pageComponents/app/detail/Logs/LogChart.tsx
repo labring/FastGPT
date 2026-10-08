@@ -854,7 +854,12 @@ const HeaderControl = ({
   );
 
   return (
-    <Flex flexDir={['column', 'row']} alignItems={['flex-start', 'center']} gap={3} pb={2} px={px}>
+    <Flex flexDir={['column', 'row']} alignItems={'flex-start'} gap={3} pb={2} px={px}>
+      <DateRangePicker
+        defaultDate={dateRange}
+        onSuccess={setDateRange}
+        formLabel={t('app:logs_date')}
+      />
       {showSourceSelector && (
         <MultiSelectFilter
           title={t('app:logs_source')}
@@ -864,11 +869,6 @@ const HeaderControl = ({
           labels={labels}
         />
       )}
-      <DateRangePicker
-        defaultDate={dateRange}
-        onSuccess={setDateRange}
-        formLabel={t('app:logs_date')}
-      />
     </Flex>
   );
 };
