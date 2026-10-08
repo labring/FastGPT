@@ -5,7 +5,9 @@ import {
   isProEdition,
   isConfigFieldAllowed,
   getDomainAllowedKeys,
-  filterDomainDataByEdition
+  filterDomainDataByEdition,
+  restorePreservedSecrets,
+  SECRET_MASK
 } from '@fastgpt/global/common/system/config';
 
 describe('Edition detection', () => {
@@ -94,5 +96,85 @@ describe('Field permissions by edition', () => {
       name: 'My Site',
       description: 'Site Description'
     });
+  });
+});
+
+describe('restorePreservedSecrets', () => {
+  it('restores existing secret when submitted value is the mask', () => {
+    const result = restorePreservedSecrets(
+      'auth',
+      { loginProviders: { github: { secret: SECRET_MASK, clientId: 'my-client' } } },
+      { loginProviders: { github: { secret: 'real-secret', clientId: 'old-client' } } }
+    );
+
+    // 掩码字段恢复库中真实值，非敏感字段按提交值覆盖
+    expect(result).toEqual({
+      loginProviders: { github: { secret: 'real-secret', clientId: 'my-client' } }
+    });
+  });
+
+  it('drops mask when no previous value can restore it (first save)', () => {
+    const result = restorePreservedSecrets(
+      'subservice',
+      { plugin: { token: SECRET_MASK, baseUrl: 'https://plugin.example.com' } },
+      undefined
+    );
+
+    // 无上一版本时掩码按未提交丢弃，绝不能把 '******' 写入 DB
+    expect(result).toEqual({
+      plugin: { baseUrl: 'https://plugin.example.com' }
+    });
+    expect((result as any).plugin.token).toBeUndefined();
+  });
+
+  it('drops mask when previous overrides lacks the secret key', () => {
+    // 密钥值来自 Schema 默认值而非 DB overrides：prevObj 中没有该键
+    const result = restorePreservedSecrets(
+      'subservice',
+      { codeSandbox: { token: SECRET_MASK } },
+      { codeSandbox: { baseUrl: 'https://sandbox.example.com' } }
+    );
+
+    expect(result).toEqual({ codeSandbox: {} });
+    expect((result as any).codeSandbox.token).toBeUndefined();
+  });
+
+  it('drops nested mask fields under a new parent object', () => {
+    // 上一版本没有 loginProviders 结构，嵌套层的掩码同样必须被清洗
+    const result = restorePreservedSecrets(
+      'auth',
+      { loginProviders: { google: { secret: SECRET_MASK } } },
+      {}
+    );
+
+    expect((result as any).loginProviders.google.secret).toBeUndefined();
+  });
+
+  it('drops mask when previous value is itself a mask', () => {
+    // 防御上一版本存量为掩码的情况，避免掩码自我固化
+    const result = restorePreservedSecrets(
+      'subservice',
+      { plugin: { token: SECRET_MASK } },
+      { plugin: { token: SECRET_MASK } }
+    );
+
+    expect(result).toEqual({ plugin: {} });
+  });
+
+  it('keeps non-secret fields and real secret submissions untouched', () => {
+    const result = restorePreservedSecrets(
+      'subservice',
+      { plugin: { token: 'new-real-token', baseUrl: 'https://plugin.example.com' } },
+      { plugin: { token: 'old-token' } }
+    );
+
+    expect(result).toEqual({
+      plugin: { token: 'new-real-token', baseUrl: 'https://plugin.example.com' }
+    });
+  });
+
+  it('returns submitted payload unchanged for domains without secret keys', () => {
+    const result = restorePreservedSecrets('site', { name: 'My Site' }, undefined);
+    expect(result).toEqual({ name: 'My Site' });
   });
 });
