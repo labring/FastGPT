@@ -1,5 +1,6 @@
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import * as modelApi from '@fastgpt/service/core/ai/model';
 import {
   getRebuildBaseIndexes,
   getRebuildUpdateInput
@@ -55,6 +56,59 @@ beforeEach(() => {
 });
 
 describe('generateRebuildIndex image embedding helpers', () => {
+  it('propagates unexpected VLM lookup failures', async () => {
+    const modelHandle = await modelApi.getModelHandle();
+    const lookup = vi.spyOn(modelApi, 'getModelHandle').mockResolvedValue({
+      ...modelHandle,
+      getVlmModelData: () => {
+        throw new Error('unexpected catalog failure');
+      }
+    });
+    try {
+      await expect(
+        getRebuildBaseIndexes({
+          indexes: [{ type: DatasetDataIndexTypeEnum.image, text: 'description' }],
+          dataset: { vlmModelId: vlmModel.modelId },
+          collection: { imageIndex: true }
+        } as any)
+      ).rejects.toThrow('unexpected catalog failure');
+    } finally {
+      lookup.mockRestore();
+    }
+  });
+
+  it.each([false, true])(
+    'keeps text indexes with an unavailable VLM and imageIndex=%s',
+    async (imageIndex) => {
+      const result = await getRebuildBaseIndexes({
+        indexes: [
+          { type: DatasetDataIndexTypeEnum.default, text: 'system' },
+          { type: DatasetDataIndexTypeEnum.custom, text: 'manual' }
+        ],
+        dataset: { vlmModelId: 'missing-vlm' },
+        collection: { imageIndex }
+      } as any);
+
+      expect(result).toEqual([{ type: DatasetDataIndexTypeEnum.custom, text: 'manual' }]);
+    }
+  );
+
+  it.each([false, true])(
+    'drops old image descriptions with an unavailable VLM and imageIndex=%s',
+    async (imageIndex) => {
+      const result = await getRebuildBaseIndexes({
+        indexes: [
+          { type: DatasetDataIndexTypeEnum.image, text: 'old description' },
+          { type: DatasetDataIndexTypeEnum.custom, text: 'manual' }
+        ],
+        dataset: { vlmModelId: 'missing-vlm' },
+        collection: { imageIndex }
+      } as any);
+
+      expect(result).toEqual([{ type: DatasetDataIndexTypeEnum.custom, text: 'manual' }]);
+    }
+  );
+
   it('should drop system indexes and keep supported external image description indexes when rebuilding', async () => {
     const result = await getRebuildBaseIndexes({
       indexes: [
