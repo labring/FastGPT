@@ -156,53 +156,25 @@ client-only 门禁加载语言包后，通过 `addResourceBundle` 一次性注�
 `projects/app/public/locales`，并以版本化 URL 通过 HTTP backend 加载。试点期间不同时实现两套
 资源加载机制。
 
-### 3.3 组件继续显式声明 namespace
+### 3.3 CSR 完整语言包与 SSR 组件按需加载
 
-namespace 的正确性来源改为实际使用翻译的组件，而不是中央路由配置。迁移组件时，将无参调用改为
-显式声明：
+CSR 应用在挂载业务子树前注册完整语言包，因此业务组件统一调用 `useSafeTranslation()`，
+不再逐组件复制 namespace 加载声明。翻译调用仍使用可静态识别的 `t('namespace:literal_key')`。
 
-```tsx
-const { t } = useTranslation(['apikey'] as const, {
-  useSuspense: false
-});
-```
-
-这样依赖仍与组件一起维护，类型参数继续受 `I18nNsType` 约束。它不再决定资源何时加载，完整语言包
-已经在 client-only 应用挂载前注册完毕。
-
-规则：
-
-1. 每个已迁移组件必须声明自己直接调用 `t`、`Trans` 所使用的全部 namespace；不能依赖祖先组件
-   “碰巧已经加载”。
-2. 动态弹窗、抽屉和懒加载组件仍声明自己的 namespace，但挂载时资源已经存在，不需要额外骨架。
-3. 完整语言包由 CSR 初始化门禁先加载，保证 `NextHead`、`Layout` 和公共组件不会展示 key；
-   已迁移组件统一使用 `useSafeTranslation(namespace)`，hook 内置 `common` 并关闭 Suspense。仅使用
-   `common` 的组件调用 `useSafeTranslation()`。
-   `Layout` 根部声明 `price`，而 `serviceSideProps` 统一预加载 `price`，因此 SSR 页面无需再逐页声明该 namespace。
-4. 原 `serviceSideProps(context, namespaces)` 数组只能作为迁移扫描起点，必须检查页面实际组件树中的
-   `useTranslation`、`Trans` 和带 namespace 前缀的 key。
-5. 不允许页面自行 `fetch` 或 `import` 翻译文件，所有资源统一由语言门禁加载。
-
-页面根组件的首屏预加载声明为：
+`/chat` 和 `/chat/share` 保留 SSR，`serviceSideProps` 只注入页面声明的 namespace，不能假设它们
+也经过 CSR 完整语言包门禁。跨两种渲染模式复用的组件如果需要额外资源，应通过同一个 hook
+显式声明，由已有的 i18next backend 按需补齐：
 
 ```tsx
-useSafeTranslation('apikey');
+const { t } = useSafeTranslation('account_team');
 ```
 
-API key 专属文案统一收敛到 `apikey`，`AccountContainer`、`ApiKeyTable`、`TagMultiSelect` 和
-`TagManageModal` 等试点可达组件分别显式声明自己的直接依赖。
+强制成员名弹窗、成员名表单及表单校验 hook 显式声明 `account_team`，保证直接访问 `/chat`
+且语言未发生切换时，也能加载标题、按钮和校验文案。重复声明由 i18next 缓存复用，不重复请求。
+`common` 是默认 namespace；调用方也可传 namespace 数组。所有资源加载继续使用现有 backend，
+组件不自行 `fetch` 或 `import` 翻译文件。
 
-CSR 路由集合与翻译依赖解耦，只负责渲染模式。当前 app 的集合为：
-
-```ts
-const clientOnlyRoutes = new Set([
-  '/account/apikey', '/account/inform', '/account/setting', '/account/thirdParty',
-  '/account/customDomain', '/account/bill', '/account/team', '/account/info',
-  '/account/usage', '/account/model', '/price'
-] as const);
-```
-
-页面只有在组件 namespace 改造和验收完成后才加入该集合，但集合本身不再复制 namespace 数据。
+CSR/SSR 路由判定仅决定渲染模式，翻译依赖由完整包门禁或 SSR 组件声明分别保障。
 
 ### 3.4 缓存与并发去重
 
@@ -332,41 +304,30 @@ Cookie/localStorage/内存，并发送独立的 `x-fastgpt-share-language` 请�
 ### 3.7 CSR 边界
 
 删除 `getServerSideProps` 只会使 Pages Router 页面变成自动静态优化，并不等于禁用页面 HTML
-预渲染。为了验证“除分享页外只在客户端渲染”，应用入口需要设置明确的 client-only boundary：
+预渲染。当前 `isClientOnlyRoute` 采用 SSR 例外名单：`/chat`、`/chat/share` 保留服务端
+应用配置及分享信息读取，其余页面默认 client-only。
 
-- `/chat/share` 走原有同步 SSR 渲染路径。
-- 已迁移页面走 `{ ssr: false }` 的客户端应用壳。
-- 未迁移页面在过渡期继续走现有 SSR 路径。
+`_app` 保持全局 Provider 和 `AppShell` 挂载。CSR 页面的业务内容交给以 `ssr: false`
+加载的 `ClientOnlyPage`，应用壳通过设备、语言包和路由初始化门禁后才挂载业务子树。
+SSR 聊天页面直接渲染，不等待 CSR 门禁，因此仍输出服务端页面和 Head 信息。
 
-因此过渡期不能用简单的“pathname 不是 `/chat/share` 就 CSR”开关，否则会一次性改变所有页面。
-已迁移路由由独立的 `clientOnlyRoutes` 判定：
+`ClientRouteReadyGate` 位于 `AppShell` 的稳定位置，同时覆盖 `AppContent` 内的
+`useInitApp`、Layout 和页面。门禁由 effect 在 `router.isReady` 首次为 true 时开放，
+保证 SSR/客户端首次输出一致，且首次业务请求和表单初值来自已恢复的 query。
 
-```ts
-const isClientOnlyRoute = (pathname: string) => clientOnlyRoutes.has(pathname);
-```
+首次开放后不再关闭，不监听 `asPath` 来重置状态，也不在 route change 时重新挂载门禁。
+同一 CSR 区域内的目录、筛选和页面导航不因路由门禁新增白屏；业务请求仅随 ID 或筛选条件刷新。
+已有语言包门禁和 CSR/SSR 分支切换的行为独立保留。
 
-当前 `_app` 的结构是：全局 Provider 和 `AppShell` 始终挂载，已迁移路由只把页面内容交给
-`ssr: false` 的 `ClientOnlyPage`；未迁移页面和 `/chat/share` 继续由同一个 `AppShell` 渲染。
+因此 App/Skill/知识库列表可移除 `disabled: !router.isReady`、`ready: router.isReady`
+以及 refreshDeps 中的 `router.isReady`，创建应用页也无需额外的就绪 wrapper。
+必填参数、权限、业务配置等约束仍在所属业务边界校验；跨 SSR/CSR 共用的初始化 effect
+可以保留路由检查。营销来源初始化即使未传 `sourceDomain` 也必须调用 helper，以保留
+`document.referrer` 回落和首次来源锁定语义。
 
-```tsx
-const ClientOnlyPage = dynamic(() => import('@/web/context/ClientOnlyPage'), {
-  ssr: false
-});
-
-function AppRouter(props: AppPropsWithLayout) {
-  const isClientOnlyRoute = clientOnlyRoutes.has(props.router.pathname);
-  return <AppShell {...props} clientOnly={isClientOnlyRoute}
-    renderPage={isClientOnlyRoute ? () => <ClientOnlyPage {...props} /> : undefined} />;
-}
-
-export default appWithTranslation(AppRouter, clientI18nConfig);
-```
-
-`AppShell` 内部只在 `clientOnly` 路由包裹 `ClientI18nGate`、`ClientI18nBoundary` 和
-`SystemStoreContextProvider.waitForReady`。完整语言包和设备信息 ready 后才挂载页面。因此已迁移路由
-不输出服务端页面业务 HTML，且不会经历页面级 namespace 门禁。
-
-当全部非分享页面迁移完成后，再切换为“除 `/chat/share` 外默认 client-only”，并删除过渡兼容分支。
+验证要求：未就绪时 AppContent 和 Layout 的 effect 不执行；就绪后首次请求携带正确 query；
+hydration 不报 mismatch；后续 query 更新保留页面编辑状态；SSR 聊天页仍输出业务内容；
+直接访问 SSR 页面时缺失的组件 namespace 能按需补齐；营销归因无参数回落正常。
 
 ### 3.8 `deviceSize` 处理
 

@@ -2,6 +2,7 @@ import { useTranslation as useNextTranslation } from 'next-i18next';
 import type { TFunction } from 'i18next';
 import { useMemo } from 'react';
 import { I18N_NAMESPACES_MAP } from '../i18n/constants';
+import type { I18nNsType } from '../i18n/i18next';
 
 export type SafeTranslation<T extends TFunction> = T & ((key: string, ...args: any[]) => string);
 
@@ -27,8 +28,14 @@ export const createSafeTranslation = <T extends TFunction>(originalT: T): SafeTr
   return t as SafeTranslation<T>;
 };
 
-export function useSafeTranslation() {
-  const { t: originalT, ...rest } = useNextTranslation();
+/**
+ * CSR 页面直接使用启动阶段已加载的完整语言包；SSR 页面复用的组件可显式声明业务
+ * namespace，由 i18next 按需补齐资源，避免默认 common 已就绪但业务文案仍裸显 key。
+ */
+export function useSafeTranslation<
+  Ns extends I18nNsType[number] | I18nNsType | undefined = undefined
+>(namespace?: Ns) {
+  const { t: originalT, ...rest } = useNextTranslation<Ns>(namespace);
   const t = useMemo(() => createSafeTranslation<typeof originalT>(originalT), [originalT]);
 
   return {

@@ -157,7 +157,8 @@ export const useInitApp = () => {
     if (bd_vid) setBdVId(bd_vid);
     if (msclkid) setMsclkid(msclkid);
     if (utm_workflow) setUtmWorkflow(utm_workflow);
-    if (sourceDomain) initFastGPTSemSourceDomain(sourceDomain);
+    // 未显式携带来源时仍读取 document.referrer，并锁定本次首次归因。
+    initFastGPTSemSourceDomain(sourceDomain);
 
     const utmParams: ShortUrlParams = {
       ...(utm_source && { shortUrlSource: utm_source }),

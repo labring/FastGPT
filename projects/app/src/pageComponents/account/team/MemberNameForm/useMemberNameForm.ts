@@ -18,7 +18,7 @@ export const getMemberNameError = ({ value, t }: { value: string; t: TFunction }
  * 保证提示时机一致：只有用户交互过之后才展示错误，避免弹窗一打开就标红。
  */
 export const useMemberNameForm = ({ defaultName }: { defaultName: string }) => {
-  const { t } = useSafeTranslation();
+  const { t } = useSafeTranslation('account_team');
   const [memberName, setMemberName] = useState(defaultName);
   const [hasInteracted, setHasInteracted] = useState(false);
 

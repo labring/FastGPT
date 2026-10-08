@@ -6,7 +6,7 @@ import ChakraUIContext from '@/web/context/ChakraUI';
 import { useInitApp } from '@/web/context/useInitApp';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import NextHead from '@/components/common/NextHead';
-import { type ReactElement, type ReactNode, useEffect } from 'react';
+import React, { type ReactElement, type ReactNode, useEffect } from 'react';
 import { type NextPage } from 'next';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
@@ -16,6 +16,7 @@ import { appClientEnv } from '@/web/common/system/env';
 import ClientI18nBoundary from '@fastgpt/web/i18n/ClientI18nBoundary';
 import ClientI18nGate from '@fastgpt/web/i18n/ClientI18nGate';
 import { LANG_KEY } from '@fastgpt/web/i18n/utils';
+import ClientRouteReadyGate from './ClientRouteReadyGate';
 
 type NextPageWithLayout = NextPage & {
   setLayout?: (page: ReactElement) => JSX.Element;
@@ -95,7 +96,9 @@ const AppShell = (props: AppPropsWithLayout) => {
     <QueryClientContext>
       <SystemStoreContextProvider waitForReady={props.clientOnly}>
         <ChakraUIContext>
-          {props.clientOnly ? <ClientI18nRoot>{content}</ClientI18nRoot> : content}
+          <ClientRouteReadyGate enabled={props.clientOnly ?? false}>
+            {props.clientOnly ? <ClientI18nRoot>{content}</ClientI18nRoot> : content}
+          </ClientRouteReadyGate>
         </ChakraUIContext>
       </SystemStoreContextProvider>
     </QueryClientContext>

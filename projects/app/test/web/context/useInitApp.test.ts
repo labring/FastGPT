@@ -87,6 +87,7 @@ describe('useInitApp marketing params readiness gate', () => {
 
     expect(mocks.setBdVId).not.toHaveBeenCalled();
     expect(mocks.setCouponCode).not.toHaveBeenCalled();
+    expect(mocks.initFastGPTSemSourceDomain).not.toHaveBeenCalled();
   });
 
   it('consumes marketing params after router.isReady becomes true', () => {
@@ -108,5 +109,28 @@ describe('useInitApp marketing params readiness gate', () => {
         shortUrlSource: 'google'
       })
     );
+  });
+
+  it('initializes referrer attribution even without an explicit sourceDomain', () => {
+    mocks.router.isReady = true;
+
+    useInitApp();
+    mocks.effects.forEach((effect) => effect());
+
+    expect(mocks.initFastGPTSemSourceDomain).toHaveBeenCalledWith(undefined);
+  });
+
+  it('passes the explicit sourceDomain and initializes it only once', () => {
+    mocks.router.isReady = true;
+    mocks.router.query = { sourceDomain: 'https://campaign.example.com' };
+
+    useInitApp();
+    mocks.effects.forEach((effect) => {
+      effect();
+      effect();
+    });
+
+    expect(mocks.initFastGPTSemSourceDomain).toHaveBeenCalledOnce();
+    expect(mocks.initFastGPTSemSourceDomain).toHaveBeenCalledWith('https://campaign.example.com');
   });
 });

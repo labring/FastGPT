@@ -7,7 +7,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
  * 弹窗不可关闭；提交后刷新用户信息仍处于待补齐状态时保留弹窗，允许用户重试。
  */
 const ForceMemberNameModal = ({ onSuccess }: { onSuccess: () => void }) => {
-  const { t } = useSafeTranslation();
+  const { t } = useSafeTranslation('account_team');
   const { userInfo } = useUserStore();
 
   return (
