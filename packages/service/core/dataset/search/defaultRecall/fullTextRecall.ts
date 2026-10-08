@@ -5,10 +5,12 @@ import type {
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { readFromSecondary } from '../../../../common/mongo/utils';
+import { Types } from '../../../../common/mongo';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetData } from '../../data/schema';
-import { getFullTextStore, type FullTextSearchItem } from '../../data/textStore';
+import { getFullTextStore } from '../../data/textStore';
+import type { FullTextSearchItem } from '../../../../common/vectorDB/type';
 import { datasetCollectionSelectField, datasetDataSelectField } from './constant';
 import { buildSearchResultItem, concatRecallLists } from './result';
 
@@ -18,6 +20,13 @@ type FullTextRecallSource = 'text' | 'imageCaption';
 
 type FullTextTaskItems = { source: FullTextRecallSource; items: FullTextSearchItem[] }[];
 
+type FullTextRecallScope = {
+  teamId: string;
+  datasetIds: string[];
+  filterCollectionIdList?: string[];
+  forbidCollectionIdList: string[];
+};
+
 /** data/collection 反查结果的查找 map(供 buildItemFromFullTextSearch 消费)。 */
 type DataCollectionMaps = {
   dataMaps: Map<string, DatasetDataSchemaType>;
@@ -25,16 +34,24 @@ type DataCollectionMaps = {
 };
 
 /**
- * 反查 data/collection 并构建查找 map(ISSUE-011 共享 helper)。
- * full-text 表只保存 dataId/collectionId/score,展示字段仍回查主 data 与 collection。
+ * 在请求范围内反查主数据和集合；全文索引不是权限或来源归属的权威数据。
+ * collectionIds 已排除不可读和禁用集合，当前 forbid 状态仍需在 Mongo 中复核。
  */
-const buildDataCollectionMaps = async (
-  dataIds: string[],
-  collectionIds: string[]
-): Promise<DataCollectionMaps> => {
+const buildDataCollectionMaps = async ({
+  dataIds,
+  collectionIds,
+  scope
+}: {
+  dataIds: string[];
+  collectionIds: string[];
+  scope: FullTextRecallScope;
+}): Promise<DataCollectionMaps> => {
   const [dataMaps, collectionMaps] = await Promise.all([
     MongoDatasetData.find(
       {
+        teamId: scope.teamId,
+        datasetId: { $in: scope.datasetIds },
+        collectionId: { $in: collectionIds },
         _id: { $in: dataIds }
       },
       datasetDataSelectField,
@@ -52,9 +69,12 @@ const buildDataCollectionMaps = async (
       }),
     MongoDatasetCollection.find(
       {
-        _id: { $in: collectionIds }
+        teamId: scope.teamId,
+        datasetId: { $in: scope.datasetIds },
+        _id: { $in: collectionIds },
+        forbid: { $ne: true }
       },
-      datasetCollectionSelectField,
+      { ...datasetCollectionSelectField, datasetId: 1 },
       { ...readFromSecondary }
     )
       .lean()
@@ -74,13 +94,17 @@ const buildDataCollectionMaps = async (
 
 /**
  * 单个 FullTextSearchItem 组装为搜索结果(ISSUE-011 局部函数)。
- * data/collection 缺失时记 warn 并跳过该条命中。
+ * data/collection 缺失或归属不一致时跳过，避免旧索引把内容归到错误来源。
  */
-const buildItemFromFullTextSearch = (
-  item: FullTextSearchItem,
-  index: number,
-  { dataMaps, collectionMaps }: DataCollectionMaps
-): SearchDataResponseItemType | undefined => {
+const buildItemFromFullTextSearch = ({
+  item,
+  index,
+  maps: { dataMaps, collectionMaps }
+}: {
+  item: FullTextSearchItem;
+  index: number;
+  maps: DataCollectionMaps;
+}): SearchDataResponseItemType | undefined => {
   const collection = collectionMaps.get(String(item.collectionId));
   if (!collection) {
     logger.warn('Dataset collection not found during full-text recall', {
@@ -93,6 +117,17 @@ const buildItemFromFullTextSearch = (
   const data = dataMaps.get(String(item.dataId));
   if (!data) {
     logger.warn('Dataset data not found during full-text recall', {
+      dataId: item.dataId,
+      collectionId: item.collectionId
+    });
+    return;
+  }
+
+  if (
+    String(data.collectionId) !== String(collection._id) ||
+    String(data.datasetId) !== String(collection.datasetId)
+  ) {
+    logger.warn('Dataset data and collection mismatch during full-text recall', {
       dataId: item.dataId,
       collectionId: item.collectionId
     });
@@ -114,39 +149,68 @@ const buildItemFromFullTextSearch = (
 };
 
 /**
- * 统一结果组装:反查 data/collection、建 item、按 source 分组、concat。
- * 与 main 现状逻辑保持一致,仅召回来源替换为统一 store。
+ * 丢弃范围外或无效的索引命中，再回查主数据、按 source 分组和融合。
+ * 过滤后重新编号，保留合法结果原有的相对顺序、分数和结果上限。
  */
 const buildResultsFromRecallItems = async ({
   taskItems,
-  limit
+  limit,
+  scope
 }: {
   taskItems: FullTextTaskItems;
   limit: number;
+  scope: FullTextRecallScope;
 }): Promise<{
   textFullTextRecallResults: SearchDataResponseItemType[];
   imageCaptionFullTextRecallResults: SearchDataResponseItemType[];
 }> => {
+  const readableIds = scope.filterCollectionIdList
+    ? new Set(scope.filterCollectionIdList.map((id) => id.toLowerCase()))
+    : undefined;
+  const forbiddenIds = new Set(scope.forbidCollectionIdList.map((id) => id.toLowerCase()));
+  const scopedTasks = taskItems.map((task) => ({
+    source: task.source,
+    items: task.items
+      .filter(
+        (item) =>
+          typeof item.dataId === 'string' &&
+          typeof item.collectionId === 'string' &&
+          Types.ObjectId.isValid(item.dataId) &&
+          Types.ObjectId.isValid(item.collectionId)
+      )
+      .map((item) => ({
+        ...item,
+        dataId: item.dataId.toLowerCase(),
+        collectionId: item.collectionId.toLowerCase()
+      }))
+      .filter(
+        (item) =>
+          (!readableIds || readableIds.has(item.collectionId)) &&
+          !forbiddenIds.has(item.collectionId)
+      )
+  }));
   const dataIds = Array.from(
-    new Set(taskItems.flatMap((task) => task.items.map((item) => item.dataId)).filter(Boolean))
+    new Set(scopedTasks.flatMap((task) => task.items.map((item) => item.dataId)))
   );
   const collectionIds = Array.from(
-    new Set(
-      taskItems.flatMap((task) => task.items.map((item) => item.collectionId)).filter(Boolean)
-    )
+    new Set(scopedTasks.flatMap((task) => task.items.map((item) => item.collectionId)))
   );
 
-  const maps = await buildDataCollectionMaps(dataIds, collectionIds);
+  if (dataIds.length === 0) {
+    return { textFullTextRecallResults: [], imageCaptionFullTextRecallResults: [] };
+  }
+
+  const maps = await buildDataCollectionMaps({ dataIds, collectionIds, scope });
 
   const groupedRecallLists: Record<FullTextRecallSource, SearchDataResponseItemType[][]> = {
     text: [],
     imageCaption: []
   };
 
-  for (const task of taskItems) {
+  for (const task of scopedTasks) {
     const list = (
       await Promise.all(
-        task.items.map((item, index) => buildItemFromFullTextSearch(item, index, maps))
+        task.items.map((item, index) => buildItemFromFullTextSearch({ item, index, maps }))
       )
     )
       .filter((item): item is SearchDataResponseItemType => Boolean(item))
@@ -199,7 +263,12 @@ export const fullTextRecall = async ({
       .map((query) => ({ source: group.source, query }))
   );
 
-  if (limit === 0 || queryTasks.length === 0) {
+  if (
+    limit === 0 ||
+    queryTasks.length === 0 ||
+    datasetIds.length === 0 ||
+    filterCollectionIdList?.length === 0
+  ) {
     return {
       textFullTextRecallResults: [],
       imageCaptionFullTextRecallResults: []
@@ -221,5 +290,9 @@ export const fullTextRecall = async ({
     })
   );
 
-  return buildResultsFromRecallItems({ taskItems, limit });
+  return buildResultsFromRecallItems({
+    taskItems,
+    limit,
+    scope: { teamId, datasetIds, filterCollectionIdList, forbidCollectionIdList }
+  });
 };

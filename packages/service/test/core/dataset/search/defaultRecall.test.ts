@@ -661,14 +661,14 @@ describe('fullTextRecall engine dispatch', () => {
     // 由 mockMongoDatasetDataTextAggregate 支撑),buildResultsFromRecallItems 反查 data/collection 组装;
     // 结果 id 取自 dataset_data._id。
     mockMongoDatasetDataTextAggregate.mockResolvedValue([
-      { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 2.5 }
+      { dataId: '68ad85a7463006c963799a05', collectionId: '68ad85a7463006c963799a06', score: 2.5 }
     ]);
     mockMongoDatasetDataFind.mockReturnValue({
       lean: vi.fn().mockResolvedValue([
         {
           _id: '68ad85a7463006c963799a05',
           datasetId: '68ad85a7463006c963799a05',
-          collectionId: 'col1',
+          collectionId: '68ad85a7463006c963799a06',
           updateTime: new Date('2026-01-01'),
           q: '苹果',
           a: '一种水果',
@@ -679,9 +679,15 @@ describe('fullTextRecall engine dispatch', () => {
       ])
     });
     mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-      if (query?.forbid) return [];
+      if (query?.forbid === true) return [];
       return {
-        lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
+        lean: vi.fn().mockResolvedValue([
+          {
+            _id: '68ad85a7463006c963799a06',
+            datasetId: '68ad85a7463006c963799a05',
+            name: 'Source'
+          }
+        ])
       };
     });
 
@@ -706,14 +712,14 @@ describe('fullTextRecall engine dispatch', () => {
     // buildResultsFromRecallItems 组装结果且不查 mongo aggregate。
     mockUseMilvusStore.value = true;
     mockFullTextStoreSearch.mockReturnValue([
-      { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 0.9 }
+      { dataId: '68ad85a7463006c963799a05', collectionId: '68ad85a7463006c963799a06', score: 0.9 }
     ]);
     mockMongoDatasetDataFind.mockReturnValue({
       lean: vi.fn().mockResolvedValue([
         {
           _id: '68ad85a7463006c963799a05',
           datasetId: 'd',
-          collectionId: 'col1',
+          collectionId: '68ad85a7463006c963799a06',
           updateTime: new Date('2026-01-01'),
           q: '苹果',
           a: '一种水果',
@@ -724,9 +730,11 @@ describe('fullTextRecall engine dispatch', () => {
       ])
     });
     mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-      if (query?.forbid) return [];
+      if (query?.forbid === true) return [];
       return {
-        lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
+        lean: vi
+          .fn()
+          .mockResolvedValue([{ _id: '68ad85a7463006c963799a06', datasetId: 'd', name: 'Source' }])
       };
     });
 
@@ -755,14 +763,14 @@ describe('fullTextRecall engine dispatch', () => {
     // 归一化: store 返回的 dataId(dataset_data._id)决定结果 id;结果经 imageCaption 分组返回。
     mockUseMilvusStore.value = true;
     mockFullTextStoreSearch.mockReturnValue([
-      { dataId: '68ad85a7463006c963799a05', collectionId: 'col1', score: 0.9 }
+      { dataId: '68ad85a7463006c963799a05', collectionId: '68ad85a7463006c963799a06', score: 0.9 }
     ]);
     mockMongoDatasetDataFind.mockReturnValue({
       lean: vi.fn().mockResolvedValue([
         {
           _id: '68ad85a7463006c963799a05',
           datasetId: 'd',
-          collectionId: 'col1',
+          collectionId: '68ad85a7463006c963799a06',
           updateTime: new Date('2026-01-01'),
           q: '苹果',
           a: '一种水果',
@@ -773,9 +781,11 @@ describe('fullTextRecall engine dispatch', () => {
       ])
     });
     mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
-      if (query?.forbid) return [];
+      if (query?.forbid === true) return [];
       return {
-        lean: vi.fn().mockResolvedValue([{ _id: 'col1', name: 'Source' }])
+        lean: vi
+          .fn()
+          .mockResolvedValue([{ _id: '68ad85a7463006c963799a06', datasetId: 'd', name: 'Source' }])
       };
     });
 
