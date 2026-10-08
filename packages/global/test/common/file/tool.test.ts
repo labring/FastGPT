@@ -433,6 +433,45 @@ describe('文件工具函数测试', () => {
     });
   });
 
+  describe('parseContentDispositionFilename', () => {
+    it.each([
+      `attachment; filename*=UTF-8''broken%ZZ.txt; filename="report.txt"`,
+      `attachment; filename="report.txt"; filename*=UTF-8''broken%ZZ.txt`,
+      `attachment; filename*=UTF-8''%E6%8A.txt; filename="report.txt"`,
+      `attachment; filename="report.txt"; filename*=UTF-8''%E6%8A.txt`,
+      `attachment; filename*=broken.txt; filename="report.txt"`,
+      `attachment; filename*=UTF-8''; filename="report.txt"`
+    ])('falls back to filename when filename* is invalid or empty: %s', (header) => {
+      expect(parseContentDispositionFilename(header)).toBe('report.txt');
+    });
+
+    it.each([
+      `attachment; filename*=UTF-8''broken%ZZ.txt`,
+      `attachment; filename*=broken.txt`,
+      'attachment; xfilename="report.txt"',
+      'attachment',
+      '',
+      undefined
+    ])('returns an empty name when there is no usable filename: %s', (header) => {
+      expect(parseContentDispositionFilename(header)).toBe('');
+    });
+
+    it.each([
+      `attachment; filename*=UTF-8''%E6%8A%A5%E5%91%8A.txt; filename="report.txt"`,
+      `attachment; filename="report.txt"; filename*=UTF-8''%E6%8A%A5%E5%91%8A.txt`
+    ])('prefers valid filename* regardless of parameter order: %s', (header) => {
+      expect(parseContentDispositionFilename(header)).toBe('报告.txt');
+    });
+
+    it.each([
+      'attachment; filename="report.txt"',
+      'attachment; FILENAME = "report.txt"',
+      'attachment; filename=report.txt'
+    ])('preserves plain filename parsing: %s', (header) => {
+      expect(parseContentDispositionFilename(header)).toBe('report.txt');
+    });
+  });
+
   describe('getContentDisposition', () => {
     it('preserves apostrophes in quoted fallback filenames', () => {
       const header = `attachment; filename="O'Reilly report.txt"`;
