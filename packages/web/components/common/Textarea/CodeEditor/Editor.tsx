@@ -6,6 +6,7 @@ import { getWebReqUrl } from '../../../../common/system/utils';
 import usePythonCompletion from './usePythonCompletion';
 import useJSCompletion from './useJSCompletion';
 import useSystemHelperCompletion from './useSystemHelperCompletion';
+import { registerJsonEditorLanguage } from '../monacoLanguageRegistry';
 import { registerWorkflowMonacoModel } from '../monacoModelRegistry';
 
 loader.config({
@@ -135,17 +136,7 @@ const MyEditor = ({
 
   const beforeMount = useCallback(
     (monaco: Monaco) => {
-      monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-        validate: false,
-        allowComments: false,
-        schemas: [
-          {
-            uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
-            fileMatch: ['*'], // 匹配所有文件
-            schema: {} // 空的 Schema
-          }
-        ]
-      });
+      registerJsonEditorLanguage(monaco);
 
       monaco.editor.defineTheme('JSONEditorTheme', {
         base: 'vs', // 可以基于已有的主题进行定制

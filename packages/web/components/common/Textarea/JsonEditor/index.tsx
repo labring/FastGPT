@@ -5,16 +5,16 @@ import MyIcon from '../../Icon';
 import { useToast } from '../../../../hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getWebReqUrl } from '../../../../common/system/utils';
+import {
+  registerJsonEditorContext,
+  registerJsonEditorLanguage,
+  type EditorVariablePickerType
+} from '../monacoLanguageRegistry';
 import { registerWorkflowMonacoModel } from '../monacoModelRegistry';
 
 loader.config({
   paths: { vs: getWebReqUrl('/js/monaco-editor.0.45.0/vs') }
 });
-
-type EditorVariablePickerType = {
-  key: string;
-  label: string;
-};
 
 type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   height?: number;
@@ -57,114 +57,6 @@ const options = {
     top: 8,
     bottom: 8
   }
-};
-
-type MonacoModel = ReturnType<Monaco['editor']['getModels']>[number];
-
-type JsonEditorContext = {
-  model: MonacoModel;
-  variables: EditorVariablePickerType[];
-};
-
-const jsonEditorContexts = new Map<string, JsonEditorContext>();
-const registeredMonacoInstances = new WeakSet<Monaco>();
-const registeredModels = new WeakSet<MonacoModel>();
-
-const registerJsonEditorContext = (model: MonacoModel, variables: EditorVariablePickerType[]) => {
-  const uri = model.uri.toString();
-  jsonEditorContexts.set(uri, { model, variables });
-
-  if (registeredModels.has(model)) return;
-  registeredModels.add(model);
-  model.onWillDispose(() => {
-    if (jsonEditorContexts.get(uri)?.model === model) {
-      jsonEditorContexts.delete(uri);
-    }
-  });
-};
-
-const registerJsonEditorLanguage = (monaco: Monaco) => {
-  if (registeredMonacoInstances.has(monaco)) return;
-  registeredMonacoInstances.add(monaco);
-
-  monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-    validate: false,
-    allowComments: false,
-    schemas: [
-      {
-        uri: 'http://myserver/foo-schema.json',
-        fileMatch: ['*'],
-        schema: {}
-      }
-    ]
-  });
-
-  try {
-    monaco.languages.setMonarchTokensProvider('json', {
-      tokenizer: {
-        root: [
-          [/\{\{[^{}]+\}\}/, 'variable'],
-          [/".*?"/, 'string'],
-          [/[{}\[\]]/, '@brackets'],
-          [/[0-9]+/, 'number'],
-          [/true|false/, 'keyword'],
-          [/:/, 'delimiter'],
-          [/,/, 'delimiter.comma']
-        ]
-      }
-    });
-  } catch (error) {
-    console.warn('Failed to register Monaco Monarch token provider:', error);
-  }
-
-  monaco.languages.registerCompletionItemProvider('json', {
-    triggerCharacters: ['{'],
-    provideCompletionItems(model, position) {
-      const variables = jsonEditorContexts.get(model.uri.toString())?.variables ?? [];
-      const lineContent = model.getLineContent(position.lineNumber);
-      const word = model.getWordUntilPosition(position);
-      const range = {
-        startLineNumber: position.lineNumber,
-        endLineNumber: position.lineNumber,
-        startColumn: word.startColumn,
-        endColumn: word.endColumn
-      };
-
-      const startText = lineContent.substring(0, position.column - 1);
-      const endText = lineContent.substring(position.column - 1);
-      const before2Char = startText[startText.length - 2];
-      const beforeChar = startText[startText.length - 1];
-      const afterChar = endText[0];
-      const after2Char = endText[1];
-
-      if (before2Char !== '{' && beforeChar !== '"') {
-        return { suggestions: [] };
-      }
-
-      return {
-        suggestions: variables.map((item) => {
-          let insertText = item.key;
-          if (before2Char !== '{') {
-            insertText = `{${insertText}`;
-          }
-          if (afterChar !== '}') {
-            insertText = `${insertText}}`;
-          }
-          if (after2Char !== '}') {
-            insertText = `${insertText}}`;
-          }
-
-          return {
-            label: item.key,
-            kind: monaco.languages.CompletionItemKind.Variable,
-            detail: item.label,
-            insertText,
-            range
-          };
-        })
-      };
-    }
-  });
 };
 
 const JSONEditor = ({
