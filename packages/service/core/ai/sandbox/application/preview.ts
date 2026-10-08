@@ -150,7 +150,9 @@ export function resolveSandboxPreviewPath(filePath: string): {
 }
 
 const getSandboxPreviewProxyBaseUrl = () => {
-  const rawUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+  const rawUrl =
+    global.systemInstanceConfig?.subservice?.agentSandbox?.proxy?.httpUrl ||
+    serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
   if (!rawUrl) {
     throw new Error('AGENT_SANDBOX_PREVIEW_PROXY_URL environment variable is missing');
   }

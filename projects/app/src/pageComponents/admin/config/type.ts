@@ -176,7 +176,6 @@ export type ConfigFormType = {
       uploadFileMaxAmount: number;
       uploadFileMaxSize: number;
       botIframeUrl: string;
-      ip_whitelist?: string;
       customDomain?: {
         enable?: boolean;
         domain?: {

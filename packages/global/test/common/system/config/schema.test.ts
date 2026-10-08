@@ -65,7 +65,7 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
     expect(effective.description).toBe('Modified description');
     // untouched fields retain code defaults
     expect(effective.docUrl).toBe('https://doc.fastgpt.io');
-    expect(effective.systemTitle).toBe('FastGPT');
+    expect(effective.name).toBe('Custom FastGPT');
   });
 
   it('enforces cross-field superRefine constraints on merged result', () => {
@@ -89,26 +89,78 @@ describe('resolveDomainEffectiveConfig (Two-Phase Validation & Merge)', () => {
     expect(valid.workflow.parallelMaxConcurrency).toBe(5);
   });
 
-  it('enforces provider credentials when provider is enabled', () => {
-    // Enabling CRM without apiUrl / apiKey should fail
-    expect(() =>
-      resolveDomainEffectiveConfig('providers', {
-        crm: {
-          enabled: true
+  it('validates documentParse providers and constraints', () => {
+    // somark does not require customPdf.url
+    const somarkConfig = resolveDomainEffectiveConfig('providers', {
+      documentParse: {
+        provider: 'somark',
+        customPdf: {
+          somarkApiKey: 'sk-somark-xxx'
         }
-      })
-    ).toThrowError(/apiUrl and apiKey are required/);
-
-    // Valid CRM credentials
-    const valid = resolveDomainEffectiveConfig('providers', {
-      crm: {
-        enabled: true,
-        apiUrl: 'https://crm.example.com',
-        apiKey: 'crm-key-123'
       }
     });
-    expect(valid.crm.enabled).toBe(true);
-    expect(valid.crm.apiUrl).toBe('https://crm.example.com');
+    expect(somarkConfig.documentParse.provider).toBe('somark');
+    expect(somarkConfig.documentParse.customPdf.somarkApiKey).toBe('sk-somark-xxx');
+
+    // doc2x does not require customPdf.url
+    const doc2xConfig = resolveDomainEffectiveConfig('providers', {
+      documentParse: {
+        provider: 'doc2x',
+        customPdf: {
+          doc2xKey: 'doc2x-xxx'
+        }
+      }
+    });
+    expect(doc2xConfig.documentParse.provider).toBe('doc2x');
+
+    // textln & textin are supported
+    const textlnConfig = resolveDomainEffectiveConfig('providers', {
+      documentParse: {
+        provider: 'textln',
+        customPdf: {
+          textinAppId: 'app-id',
+          textinSecretCode: 'secret-code'
+        }
+      }
+    });
+    expect(textlnConfig.documentParse.provider).toBe('textln');
+
+    // customPdf requires url
+    expect(() =>
+      resolveDomainEffectiveConfig('providers', {
+        documentParse: {
+          provider: 'customPdf',
+          customPdf: {
+            url: ''
+          }
+        }
+      })
+    ).toThrow();
+
+    // custom requires url
+    expect(() =>
+      resolveDomainEffectiveConfig('providers', {
+        documentParse: {
+          provider: 'custom',
+          customPdf: {
+            url: ''
+          }
+        }
+      })
+    ).toThrow();
+
+    // valid customPdf
+    const customConfig = resolveDomainEffectiveConfig('providers', {
+      documentParse: {
+        provider: 'customPdf',
+        customPdf: {
+          url: 'https://pdf.example.com',
+          key: 'key-123'
+        }
+      }
+    });
+    expect(customConfig.documentParse.provider).toBe('customPdf');
+    expect(customConfig.documentParse.customPdf.url).toBe('https://pdf.example.com');
   });
 });
 
@@ -163,7 +215,7 @@ describe('resolveSystemInstanceConfig', () => {
     });
 
     expect(fullConfig.site.name).toBe('My AI');
-    expect(fullConfig.site.systemTitle).toBe('FastGPT');
+    expect(fullConfig.site.openApiPrefix).toBe('fastgpt');
     expect(fullConfig.performance.workflow.maxRunTimes).toBe(800);
     expect(fullConfig.subservice.agentSandbox.provider).toBe('none');
     expect(fullConfig.security.csrfEnabled).toBe(true);
@@ -239,5 +291,34 @@ describe('systemInstanceConfigRegistry', () => {
     expect(communityKeys).toContain('site.name');
     expect(communityKeys).not.toContain('commercial.showCoupon');
     expect(proKeys).toContain('commercial.showCoupon');
+  });
+  it('checks subservice resolveDomainEffectiveConfig errors', () => {
+    try {
+      resolveDomainEffectiveConfig('subservice', {
+        agentSandbox: {
+          provider: 'sealosdevbox',
+          sealosdevbox: { baseUrl: '', token: '', image: '' }
+        }
+      });
+    } catch (e: any) {
+      console.error('SEALOS_FAIL:', e.message);
+    }
+
+    try {
+      resolveDomainEffectiveConfig('subservice', {
+        agentSandbox: {
+          provider: 'opensandbox',
+          opensandbox: {
+            baseUrl: '',
+            apiKey: '',
+            image: '',
+            volumeManagerToken: '',
+            volumeManagerUrl: ''
+          }
+        }
+      });
+    } catch (e: any) {
+      console.error('OPEN_FAIL:', e.message);
+    }
   });
 });

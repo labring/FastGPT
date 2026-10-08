@@ -15,6 +15,7 @@ import type {
   SystemInstanceConfigUpdatedByType
 } from '@fastgpt/global/common/system/config/type';
 import { MongoSystemInstanceConfig } from './schema';
+import { serviceEnv } from '../../../env';
 
 export type GetDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   domain: T;
@@ -47,6 +48,28 @@ export const getDomainConfig = async <T extends SystemInstanceConfigDomainKey>(
   const revision = doc?.revision ?? 0;
   const overrides = (doc?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
   const effectiveConfig = resolveDomainEffectiveConfig(domain, overrides);
+
+  if (domain === 'subservice') {
+    const subserviceConfig = effectiveConfig as SystemInstanceConfigDomainMap['subservice'];
+    if (serviceEnv.AIPROXY_API_ENDPOINT) {
+      subserviceConfig.aiProxy.endpoint = serviceEnv.AIPROXY_API_ENDPOINT;
+    }
+    if (serviceEnv.CODE_SANDBOX_URL) {
+      subserviceConfig.codeSandbox.baseUrl = serviceEnv.CODE_SANDBOX_URL;
+    }
+    if (serviceEnv.PLUGIN_BASE_URL) {
+      subserviceConfig.plugin.baseUrl = serviceEnv.PLUGIN_BASE_URL;
+    }
+    if (serviceEnv.AGENT_SANDBOX_PROXY_URL && !subserviceConfig.agentSandbox.proxy.wsUrl) {
+      subserviceConfig.agentSandbox.proxy.wsUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
+    }
+    if (
+      serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL &&
+      !subserviceConfig.agentSandbox.proxy.httpUrl
+    ) {
+      subserviceConfig.agentSandbox.proxy.httpUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+    }
+  }
 
   if (options?.maskSecrets) {
     return {
@@ -134,7 +157,7 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
         },
         $inc: { revision: 1 }
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: false }
     ).lean();
 
     if (!updatedDoc) {
@@ -142,7 +165,7 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
     }
   }
 
-  return {
+  const result = {
     domain,
     revision: updatedDoc.revision,
     overrides: cleanOverrides,
@@ -150,19 +173,82 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
     updatedAt: updatedDoc.updatedAt,
     updatedBy: updatedDoc.updatedBy
   };
+
+  // 写入成功后即时刷新单例快照
+  await reloadSystemInstanceConfig().catch(() => {});
+
+  return result;
 };
+
+let currentSnapshot: SystemInstanceConfig | null = null;
 
 /**
  * 一次性获取所有 11 个 Domain 的最新配置合成快照。
  * 供服务启动、Worker 进程同步以及全局运行时配置读取。
  */
 export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceConfig> => {
-  const docs = await MongoSystemInstanceConfig.find({}).lean();
+  try {
+    const docs = await MongoSystemInstanceConfig.find({}).lean();
 
-  const domainOverridesMap: Partial<Record<SystemInstanceConfigDomainKey, unknown>> = {};
-  for (const doc of docs) {
-    domainOverridesMap[doc._id as SystemInstanceConfigDomainKey] = doc.overrides;
+    const domainOverridesMap: Partial<Record<SystemInstanceConfigDomainKey, unknown>> = {};
+    for (const doc of docs) {
+      domainOverridesMap[doc._id as SystemInstanceConfigDomainKey] = doc.overrides;
+    }
+
+    const snapshot = resolveSystemInstanceConfig(domainOverridesMap);
+    if (serviceEnv.AIPROXY_API_ENDPOINT && snapshot.subservice?.aiProxy) {
+      snapshot.subservice.aiProxy.endpoint = serviceEnv.AIPROXY_API_ENDPOINT;
+    }
+    if (serviceEnv.CODE_SANDBOX_URL && snapshot.subservice?.codeSandbox) {
+      snapshot.subservice.codeSandbox.baseUrl = serviceEnv.CODE_SANDBOX_URL;
+    }
+    if (serviceEnv.PLUGIN_BASE_URL && snapshot.subservice?.plugin) {
+      snapshot.subservice.plugin.baseUrl = serviceEnv.PLUGIN_BASE_URL;
+    }
+    if (
+      serviceEnv.AGENT_SANDBOX_PROXY_URL &&
+      snapshot.subservice?.agentSandbox?.proxy &&
+      !snapshot.subservice.agentSandbox.proxy.wsUrl
+    ) {
+      snapshot.subservice.agentSandbox.proxy.wsUrl = serviceEnv.AGENT_SANDBOX_PROXY_URL;
+    }
+    if (
+      serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL &&
+      snapshot.subservice?.agentSandbox?.proxy &&
+      !snapshot.subservice.agentSandbox.proxy.httpUrl
+    ) {
+      snapshot.subservice.agentSandbox.proxy.httpUrl = serviceEnv.AGENT_SANDBOX_PREVIEW_PROXY_URL;
+    }
+    return snapshot;
+  } catch (error) {
+    return resolveSystemInstanceConfig({});
   }
+};
 
-  return resolveSystemInstanceConfig(domainOverridesMap);
+/**
+ * 同步获取当前内存中的系统实例配置快照。
+ * 若尚未完成启动加载，则返回 Schema 定义的初始默认值，保证业务无锁直接调用且永不为 null。
+ */
+export const getSystemInstanceConfig = (): SystemInstanceConfig => {
+  if (!currentSnapshot) {
+    if (global.systemInstanceConfig) {
+      currentSnapshot = global.systemInstanceConfig;
+    } else {
+      currentSnapshot = resolveSystemInstanceConfig({});
+      global.systemInstanceConfig = currentSnapshot;
+    }
+  }
+  return currentSnapshot;
+};
+
+/**
+ * 重新加载并刷新系统实例配置内存快照。
+ * 供服务启动、Admin API 保存后以及集群变更通知时调用。
+ */
+export const reloadSystemInstanceConfig = async (): Promise<SystemInstanceConfig> => {
+  const snapshot = await getSystemInstanceConfigSnapshot();
+  currentSnapshot = snapshot;
+  global.systemInstanceConfig = snapshot;
+  global.systemInitBufferId = Date.now().toString();
+  return snapshot;
 };

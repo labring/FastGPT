@@ -535,6 +535,46 @@ BUILD    -> 构建、测试、脚本或操作系统继承变量，不属于运�
 | `DATASET_FOLDER_MAX_AMOUNT` | `config.resource.datasetFolderMaxAmount` | `UPLOAD_FILE_MAX_SIZE` | `config.resource.uploadFileMaxSize` |
 | `UPLOAD_FILE_MAX_AMOUNT` | `config.resource.uploadFileMaxAmount` | `SYSTEM_MAX_STRING_LENGTH_M` | `config.resource.systemMaxStringLengthM` |
 
+#### 后续调整：由 DB 改回环境变量
+
+以下变量在 Admin 页面评审后被判定为「改由环境变量提供」，已从 `/admin` 页面移除，
+**并已从 Schema 与 registry 中删除字段定义**：
+
+| 环境变量 | 原 MongoDB 路径 | 改回原因 |
+| --- | --- | --- |
+| `CHINESE_IP_REDIRECT_URL` | `config.site.chineseRedirectUrl` | 与部署域名强绑定，属部署拓扑 |
+| `CHAT_LOG_URL` / `CHAT_LOG_INTERVAL` / `CHAT_LOG_SOURCE_ID_PREFIX` | `config.performance.chat.logUrl` / `logInterval` / `logSourceIdPrefix` | 日志推送目标是部署级观测配置 |
+| `VECTOR_VQ_LEVEL` / `MILVUS_LANGUAGE_IDENTIFIER` | `config.vector.vqLevel` / `languageIdentifier` | 模块加载期求值，改 DB 不会生效 |
+| `SANGFOR_CHUNK_URL` / `KEY` / `TIMEOUT_MINUTES` | `config.providers.chunk` | 智能分块改由环境变量提供，从表单和 Schema 中删除 |
+| `CRM_API_URL` / `CRM_API_KEY` | `config.providers.crm` | CRM 归因改由环境变量提供，从表单和 Schema 中删除 |
+
+#### 后续调整：改为运行时自动推断
+
+以下字段在 Admin 页面评审后被判定为「按运行时条件自动推断，不提供手动开关」，
+已从 Schema 与 registry 中删除：
+
+| 原 MongoDB 路径 | 推断规则 | 原因 |
+| --- | --- | --- |
+| `config.feature.showWorkorder` | 是否存在 `PRO_URL`（接入 Pro / 工单服务即展示） | 由部署形态决定，不应由管理员手动开关 |
+| `config.feature.showEnterpriseAuth` | 是否存在 `PRO_URL` 且 License 有效 | 同上，取决于商业版服务接入与授权状态 |
+
+二者只在 `initSystemConfig` 中计算并下发到 `feConfigs`，不进入实例配置快照。
+
+`STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS` 亦不再配置（由存储层统一决定），
+`config.storage.downloadRedirectTtlSeconds` 字段已删除。
+`config.vector.hnswEfSearch` / `hnswMaxScanTuples` 仍为 DB 字段，Admin 页面由「向量检索策略」移入「限制与并发」。
+
+同步删除的还有 `config.site.systemTitle`（原「页面标题后缀」）以及全部英文短信模板字段
+（`auth.loginProviders.sms.*.en`、`auth.accountCancellation.*.en`、`commercial.billingNotify.*.en`）。
+
+#### 废弃字段的存量清理
+
+字段定义删除后，存量 `system_instance_configs` 文档中的对应 key 会让 Override Schema
+的 `strictObject` 校验失败，导致该 Domain 的读取与保存直接抛错。因此新增阻塞启动任务
+`20260929_cleanup_instance_config_deprecated_fields`，在节点 ready 前按
+`deprecatedOverridePaths` 声明逐条删除残留字段，并校验每个 Domain 都能按新 Schema 解析。
+该任务采用幂等全量重跑（最多 11 条 Domain 文档），仅在确实删除字段时写回并递增 revision。
+
 并发配置写入前必须重新执行跨字段校验：
 
 ```text
@@ -898,9 +938,7 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ```text
 管理员
-├── 概览
-│   ├── 管理员主页（现有 Admin 首页）
-│   └── 系统版本
+├── 系统概览（单级菜单，现有 Admin 首页，页内顶部展示 app 版本信息）
 ├── 数据面板（Tab）
 │   ├── 全局统计
 │   ├── 流量
@@ -935,7 +973,6 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 │   ├── 安全配置（security）
 │   ├── 限制与性能（resource/performance）
 │   ├── 文件与存储策略（storage）
-│   ├── 向量检索策略（vector）
 │   ├── 第三方提供商（providers）
 │   └── 配置状态与生效状态
 └── 审计日志
@@ -945,6 +982,10 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 运行时能力在社区版统一隐藏；页面隐藏、API 字段过滤和运行时能力判断必须使用
 同一套 edition 结果，不能由前端单独维护一份白名单。
 
+访问 `/admin` 时由入口页按部署形态与授权状态分发默认落地页：社区版固定进
+`/admin/license`；商业版 License 可授权时进 `/admin/dashboard`，未激活或已过期
+时进 `/admin/license` 作为激活与续期入口。导航栏“配置”入口统一指向 `/admin`。
+
 “系统配置”只放实例级策略；MongoDB/Redis/对象存储/向量库连接、密钥根、部署
 域名、独立进程端口等环境变量可以在“配置状态”中只读展示来源和是否已配置，不能
 变成可编辑表单。
@@ -953,13 +994,18 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 
 ### 已确认
 
-1. 接受上述 Admin 菜单树作为下一轮设计基线；概览就是现有“管理员主页”，并增加系统版本信息。
+1. 接受上述 Admin 菜单树作为下一轮设计基线；原「概览 → 许可证」折叠分组压平为单级菜单「系统概览」（现有管理员主页），页内顶部展示 app 版本信息（原独立“系统版本”菜单项已取消）。
 2. 数据面板使用 Tab 组织全局统计、流量、活跃、付费和成本。
 3. 通知管理后续更名为运营管理；系统配置拆细，子服务配置作为独立菜单。
 4. 单实例配置采用一个完整 MongoDB document，默认值直接落库，不使用 overrides。
 5. 必须保留在环境变量中的基础设施、安全根、部署拓扑和独立进程参数不因为有默认值而迁移到 Admin。
 6. 开源版对商业菜单和字段采用隐藏策略，且后端 API 和运行时也必须过滤。
 7. 当前阶段敏感配置暂不加密，但仍按 secret 字段脱敏和审计。
+8. 版本信息只展示 app 自身版本（`projects/app/package.json` 的 `version`，经 `getInitData` 下发），不展示构建版本或部署镜像标签；版本号不写入实例配置。原独立“系统版本”页面的其余内容（配置状态、生效状态）暂未落位。
+9. `/admin` 入口页按部署形态与授权状态分发默认落地页：社区版固定 `/admin/license`；商业版 License 可授权时 `/admin/dashboard`，未激活或已过期时 `/admin/license`。导航栏“配置”入口统一指向 `/admin`。
+10. 「资源限制」与「性能与并发」合并为「限制与并发」（新增「核心配置」页同时落地）；「向量检索策略」页删除：量化等级与语言识别引擎改由环境变量提供，HNSW 索引参数并入限制与并发，向量库连接为部署拓扑不再单独成页。
+11. 「登录防护」由安全策略页移入账号与登录页；跨页字段搬迁后，页面保存改用「与库中现值合并的局部提交」，避免整域覆盖把同域其它页面的配置重置为默认值。
+12. 英文短信模板全站去除，页面只保留中文模板：支付配置页去掉 5 组账单通知英文模板，账号与登录页去掉 8 项（登录 / 注册 / 找回密码 / 修改密码 / 绑定通知 + 注销申请 / 注销提醒 / 当日注销）。字段与 registry 条目暂留（仅页面移除），真正删除需随 schema 清理一并处理。
 
 ### 仍待确认
 
@@ -968,4 +1014,4 @@ Server、Agent Sandbox Proxy 和 IDE Agent 的运行时变量。为了避免“�
 3. 社区版和商业版的最终菜单/字段能力矩阵，尤其是“系统模型、系统工具、应用模板、Agent Sandbox”各自的 edition 归属。
 4. 配置 `applyMode` 的实际生效协议：哪些字段支持 live/reload，哪些字段必须 restart，以及集群节点如何确认已应用同一 revision。
 5. PDF/Sangfor 逻辑配置块最终是否长期分开保存；当前迁移必须兼容旧的 `CUSTOM_PDF_PARSE_URL/KEY` 一组变量，不能要求新增一组 `SANGFOR_PARSE_URL/KEY`。
-6. 系统版本展示取包版本、构建版本还是部署镜像版本；本草案只确定它属于概览，不把版本号写入实例配置。
+6. “配置状态与生效状态”（schemaVersion、revision、applyMode、节点确认）需要另找落点，不再由“系统版本”页承载。

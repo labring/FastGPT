@@ -1,12 +1,11 @@
-import React, { useEffect } from 'react';
-import { SimpleGrid } from '@chakra-ui/react';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import React, { useEffect, useMemo } from 'react';
+import { SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import {
   AdminSettingPage,
   AdminSettingSection,
-  AdminFormItem,
   AdminSwitchRow,
   type SettingTOCItem
 } from '@/pageComponents/admin/settings';
@@ -14,13 +13,18 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 
 type FeatureConfigForm = SystemInstanceConfigDomainMap['feature'];
 
-const tocItems: SettingTOCItem[] = [
-  { id: 'chatAndDisplay', label: '对话与展示' },
-  { id: 'teamAndPlugin', label: '团队与插件' },
-  { id: 'runtimeCapability', label: '运行时能力' }
-];
-
 const FeatureSettingComponent = () => {
+  const { t } = useClientTranslation('admin');
+  const tocItems: SettingTOCItem[] = useMemo(
+    () => [
+      { id: 'chatAndDisplay', label: t('admin:chat_display') },
+      { id: 'systemFunction', label: t('admin:system_features') },
+      { id: 'runtimeCapability', label: t('admin:runtime_capabilities') },
+      { id: 'entryVisibility', label: t('admin:feature_section_display') }
+    ],
+    [t]
+  );
+
   const { effectiveConfig, isLoading, isUpdating, updateConfig } = useDomainConfig('feature');
 
   const { control, handleSubmit, reset } = useForm<FeatureConfigForm>({
@@ -39,22 +43,22 @@ const FeatureSettingComponent = () => {
 
   return (
     <AdminSettingPage
-      headerTitle={'功能开关'}
+      headerTitle={t('admin:page_title_feature')}
       tocItems={tocItems}
       isLoading={isLoading}
       isSaving={isUpdating}
       onSave={onSave}
     >
-      {/* 1. 对话与展示 */}
-      <AdminSettingSection id="chatAndDisplay" title="对话与展示">
+      {/* 1. 会话展示 */}
+      <AdminSettingSection id="chatAndDisplay" title={t('admin:chat_display')}>
         <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
           <Controller
             name="hideChatCopyrightSetting"
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
-                label="隐藏聊天版权设置"
-                tooltip="开启后，分享页和嵌入式聊天窗口允许关闭或隐藏 FastGPT 版权声明标识"
+                label={t('admin:hide_chat_copyright_setting')}
+                tooltip={t('admin:when_enabled_share_pages_and_embedded_chat_windows_can_turn')}
                 isChecked={field.value}
                 onChange={field.onChange}
               />
@@ -66,8 +70,8 @@ const FeatureSettingComponent = () => {
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
-                label="展示聊天空白页"
-                tooltip="新对话未发送消息时展示功能介绍、空白页指引及推荐提示语"
+                label={t('admin:show_empty_chat_page')}
+                tooltip={t('admin:show_feature_intro_empty_page_guidance_and_suggestions_when')}
                 isChecked={field.value}
                 onChange={field.onChange}
               />
@@ -75,12 +79,12 @@ const FeatureSettingComponent = () => {
           />
 
           <Controller
-            name="multipleDataToBase64"
+            name="showComplianceCopywriting"
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
-                label="多媒体内容转 Base64"
-                tooltip="开启后，图片等富媒体数据在流式传输与存储中转为 Base64 编码"
+                label={t('admin:show_compliance_copywriting')}
+                tooltip={t('admin:show_filing_and_compliance_copy_at_the_bottom_of_the_page')}
                 isChecked={field.value}
                 onChange={field.onChange}
               />
@@ -89,29 +93,16 @@ const FeatureSettingComponent = () => {
         </SimpleGrid>
       </AdminSettingSection>
 
-      {/* 2. 团队与插件 */}
-      <AdminSettingSection id="teamAndPlugin" title="团队与插件" showDivider>
+      {/* 2. 系统功能 */}
+      <AdminSettingSection id="systemFunction" title={t('admin:system_features')} showDivider>
         <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
           <Controller
             name="enableTeamPluginUpload"
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
-                label="允许团队上传插件"
-                tooltip="允许普通团队成员直接上传自定义插件安装包并在团队内使用"
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-
-          <Controller
-            name="showGit"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label="展示 Git 仓库入口"
-                tooltip="在前端导航或关于弹窗中展示官方 GitHub 开源项目入口及 Star 链接"
+                label={t('admin:allow_team_plugin_uploads')}
+                tooltip={t('admin:allow_regular_team_members_to_upload_custom_plugin_packages')}
                 isChecked={field.value}
                 onChange={field.onChange}
               />
@@ -121,51 +112,134 @@ const FeatureSettingComponent = () => {
       </AdminSettingSection>
 
       {/* 3. 运行时能力 */}
-      <AdminSettingSection id="runtimeCapability" title="运行时能力" showDivider>
-        <AdminFormItem
-          label="Agent 执行引擎"
-          tooltip="fastAgent：单节点轻量级高并发引擎；piAgent：支持多步骤推演及工具规划引擎"
-          isRequired
-          mb={6}
-        >
-          <Controller
-            name="agentEngine"
-            control={control}
-            render={({ field }) => (
-              <MySelect<string>
-                width={'400px'}
-                list={[
-                  { label: 'fastAgent (高性能单节点流式引擎)', value: 'fastAgent' },
-                  { label: 'piAgent (多步推演与工具决策引擎)', value: 'piAgent' }
-                ]}
-                value={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </AdminFormItem>
-
+      <AdminSettingSection
+        id="runtimeCapability"
+        title={t('admin:runtime_capabilities')}
+        showDivider
+      >
         <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
-          <Controller
-            name="datasetSynonymEnabled"
-            control={control}
-            render={({ field }) => (
-              <AdminSwitchRow
-                label="知识库同义词扩展"
-                tooltip="在知识库检索环节自动结合同义词库进行语义扩展匹配"
-                isChecked={field.value}
-                onChange={field.onChange}
-              />
-            )}
-          />
-
           <Controller
             name="disableCache"
             control={control}
             render={({ field }) => (
               <AdminSwitchRow
-                label="关闭运行时缓存"
-                tooltip="关闭流程编排和模型推理调用的内存热缓存（修改后需重启或重建缓存生效）"
+                label={t('admin:disable_runtime_cache')}
+                tooltip={t('admin:disable_runtime_cache_tip')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        </SimpleGrid>
+      </AdminSettingSection>
+
+      {/* 4. 业务入口可见性 */}
+      <AdminSettingSection
+        id="entryVisibility"
+        title={t('admin:feature_section_display')}
+        showDivider
+      >
+        <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.700'} mb={3}>
+          {t('admin:dataset')}
+        </Text>
+        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
+          <Controller
+            name="showDatasetFeishu"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:enable_feishu_data_source')}
+                tooltip={t('admin:show_the_feishu_data_source_entry_on_the_dataset_creation_pa')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="showDatasetYuque"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:enable_yuque_data_source')}
+                tooltip={t('admin:show_the_yuque_data_source_entry_on_the_dataset_creation_pag')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="showDatasetDingtalk"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:enable_dingtalk_data_source')}
+                tooltip={t('admin:show_the_dingtalk_data_source_entry_on_the_dataset_creation')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+        </SimpleGrid>
+
+        <Text fontSize={'sm'} fontWeight={'medium'} color={'myGray.700'} mt={6} mb={3}>
+          {t('admin:third_party_publish_channels')}
+        </Text>
+        <SimpleGrid columns={[1, 2]} spacingX={16} spacingY={4}>
+          <Controller
+            name="showPublishFeishu"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:publish_channel_feishu')}
+                tooltip={t('admin:show_the_feishu_bot_publish_channel_on_the_app_publish_page')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="showPublishDingtalk"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:publish_channel_dingtalk')}
+                tooltip={t('admin:show_the_dingtalk_bot_publish_channel_on_the_app_publish_pag')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="showPublishWecom"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:publish_channel_wecom')}
+                tooltip={t('admin:show_the_wecom_publish_channel_on_the_app_publish_page')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="showPublishOffiaccount"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:publish_channel_official_account')}
+                tooltip={t('admin:show_the_wechat_official_account_publish_channel_on_the_app')}
+                isChecked={field.value}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <Controller
+            name="showPublishWechat"
+            control={control}
+            render={({ field }) => (
+              <AdminSwitchRow
+                label={t('admin:publish_channel_wechat_customer_service')}
+                tooltip={t('admin:show_the_wechat_customer_service_publish_channel_on_the_app')}
                 isChecked={field.value}
                 onChange={field.onChange}
               />

@@ -1,5 +1,5 @@
 import z from 'zod';
-import { nonNegativeInteger, positiveInteger, urlWithDefault } from './primitives';
+import { nonNegativeInteger, positiveInteger } from './primitives';
 
 const WorkflowPerformanceConfigSchema = z.strictObject({
   maxRunTimes: positiveInteger(500),
@@ -25,10 +25,7 @@ const DatasetPerformanceConfigSchema = z.strictObject({
 });
 
 const ChatPerformanceConfigSchema = z.strictObject({
-  maxQpm: positiveInteger(5000),
-  logUrl: urlWithDefault(),
-  logInterval: z.number().int().positive().nullable().default(null),
-  logSourceIdPrefix: z.string().max(100).default('fastgpt-')
+  maxQpm: positiveInteger(5000)
 });
 
 const StreamResumePerformanceConfigSchema = z.strictObject({

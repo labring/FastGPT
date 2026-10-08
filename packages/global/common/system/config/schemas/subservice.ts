@@ -7,10 +7,17 @@ import {
   urlWithDefault
 } from './primitives';
 
+const McpSubserviceConfigSchema = z.strictObject({
+  enabled: z.boolean().default(false),
+  sseProxyUrl: urlWithDefault()
+});
+
 const PluginSubserviceConfigSchema = z.strictObject({
   enabled: z.boolean().default(true),
   baseUrl: urlWithDefault('http://localhost:3004'),
-  token: textWithDefault('token')
+  token: textWithDefault('token'),
+  remoteDebug: z.boolean().default(false),
+  remoteDebugUrl: textWithDefault()
 });
 
 const CodeSandboxSubserviceConfigSchema = z.strictObject({
@@ -23,6 +30,11 @@ const AiProxySubserviceConfigSchema = z.strictObject({
   enabled: z.boolean().default(false),
   endpoint: urlWithDefault('http://localhost:3000'),
   token: textWithDefault()
+});
+
+const AgentSandboxProxyConfigSchema = z.strictObject({
+  wsUrl: textWithDefault(),
+  httpUrl: textWithDefault()
 });
 
 const AgentSandboxSubserviceConfigSchema = z.strictObject({
@@ -76,69 +88,42 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       volumeManagerUrl: '',
       volumeManagerToken: '',
       volumeNamePrefix: 'fastgpt-session'
-    })
+    }),
+  proxy: AgentSandboxProxyConfigSchema.prefault({
+    wsUrl: '',
+    httpUrl: ''
+  })
 });
 
 export const SubserviceConfigBaseSchema = z.strictObject({
   plugin: PluginSubserviceConfigSchema.prefault({}),
   codeSandbox: CodeSandboxSubserviceConfigSchema.prefault({}),
   aiProxy: AiProxySubserviceConfigSchema.prefault({}),
-  agentSandbox: AgentSandboxSubserviceConfigSchema.prefault({})
+  agentSandbox: AgentSandboxSubserviceConfigSchema.prefault({}),
+  mcp: McpSubserviceConfigSchema.prefault({})
 });
 
 export const SubserviceConfigSchema = SubserviceConfigBaseSchema.superRefine((subservice, ctx) => {
-  const { aiProxy, agentSandbox, codeSandbox, plugin } = subservice;
-
-  if (plugin.enabled && !plugin.token.trim()) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['plugin', 'token'],
-      message: 'token is required when the plugin service is enabled'
-    });
-  }
-
-  if (codeSandbox.enabled && !codeSandbox.token.trim()) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['codeSandbox', 'token'],
-      message: 'token is required when the code sandbox is enabled'
-    });
-  }
-
-  if (aiProxy.enabled && !aiProxy.token.trim()) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['aiProxy', 'token'],
-      message: 'token is required when AI Proxy is enabled'
-    });
-  }
+  const { agentSandbox } = subservice;
 
   if (agentSandbox.provider === 'sealosdevbox') {
-    const { baseUrl, image, token } = agentSandbox.sealosdevbox;
-    if (!baseUrl || !token.trim() || !image.trim()) {
+    const { baseUrl } = agentSandbox.sealosdevbox;
+    if (!baseUrl) {
       ctx.addIssue({
         code: 'custom',
-        path: ['agentSandbox', 'sealosdevbox'],
-        message: 'baseUrl, token and image are required for sealosdevbox'
+        path: ['agentSandbox', 'sealosdevbox', 'baseUrl'],
+        message: 'baseUrl is required for sealosdevbox'
       });
     }
   }
 
   if (agentSandbox.provider === 'opensandbox') {
-    const { apiKey, baseUrl, image, volumeManagerToken, volumeManagerUrl } =
-      agentSandbox.opensandbox;
-    if (
-      !baseUrl ||
-      !apiKey.trim() ||
-      !image.trim() ||
-      !volumeManagerUrl ||
-      !volumeManagerToken.trim()
-    ) {
+    const { baseUrl } = agentSandbox.opensandbox;
+    if (!baseUrl) {
       ctx.addIssue({
         code: 'custom',
-        path: ['agentSandbox', 'opensandbox'],
-        message:
-          'baseUrl, apiKey, image, volumeManagerUrl and volumeManagerToken are required for opensandbox'
+        path: ['agentSandbox', 'opensandbox', 'baseUrl'],
+        message: 'baseUrl is required for opensandbox'
       });
     }
   }

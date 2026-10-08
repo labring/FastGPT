@@ -1,5 +1,5 @@
 import z from 'zod';
-import { positiveInteger } from './primitives';
+import { nonNegativeInteger, positiveInteger } from './primitives';
 
 export const ResourceConfigSchema = z.strictObject({
   serviceRequestMaxContentLength: positiveInteger(10),
@@ -8,5 +8,7 @@ export const ResourceConfigSchema = z.strictObject({
   datasetFolderMaxAmount: positiveInteger(1000),
   uploadFileMaxSize: positiveInteger(1000),
   uploadFileMaxAmount: positiveInteger(1000),
-  systemMaxStringLengthM: z.number().int().min(1).max(100).default(100)
+  systemMaxStringLengthM: z.number().int().min(1).max(100).default(100),
+  exportDatasetLimitMinutes: nonNegativeInteger(0),
+  websiteSyncLimitMinuted: nonNegativeInteger(0)
 });

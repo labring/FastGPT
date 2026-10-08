@@ -1,4 +1,5 @@
 'use client';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Center, Flex, Table, Tbody, useDisclosure } from '@chakra-ui/react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
@@ -20,6 +21,7 @@ import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const AppTemplate = () => {
+  const { t } = useClientTranslation('admin');
   const {
     isOpen: isOpenTypeModal,
     onOpen: onOpenTypeModal,
@@ -76,7 +78,7 @@ const AppTemplate = () => {
         wrap={'wrap'}
       >
         <Box as={'h1'} {...accountTitleTextStyles} flex={1}>
-          应用模板
+          {t('admin:app_templates')}
         </Box>
         <SingleSelectFilter<AppTypeEnum | 'all'>
           storageKey={'admin.templates.appType'}
@@ -84,18 +86,18 @@ const AppTemplate = () => {
           value={currentAppType}
           onChange={setCurrentAppType}
           options={[
-            { label: '全部', value: 'all' },
-            { label: '工作流', value: AppTypeEnum.workflow },
-            { label: '对话 Agent', value: AppTypeEnum.simple },
-            { label: '工作流工具', value: AppTypeEnum.workflowTool }
+            { label: t('admin:all'), value: 'all' },
+            { label: t('admin:workflow_short'), value: AppTypeEnum.workflow },
+            { label: t('admin:chat_agent'), value: AppTypeEnum.simple },
+            { label: t('admin:workflow_tool'), value: AppTypeEnum.workflowTool }
           ]}
           maxW={'180px'}
         />
         <Button onClick={() => onOpenTypeModal()} variant={'whiteBase'}>
-          分类管理
+          {t('admin:category_management')}
         </Button>
         <Button onClick={() => onOpenQuickTemplateModal()} variant={'whiteBase'}>
-          快捷模板
+          {t('admin:quick_templates')}
         </Button>
         <Button
           leftIcon={<MyIcon name="common/addLight" w={'18px'} />}
@@ -103,7 +105,7 @@ const AppTemplate = () => {
             setCurrentTemplate(defaultTemplate);
           }}
         >
-          添加模板
+          {t('admin:add_template')}
         </Button>
       </Flex>
 
@@ -133,18 +135,18 @@ const AppTemplate = () => {
               color={'myGray.600'}
             >
               <Box w={2 / 10} pl={8}>
-                名称
+                {t('admin:name')}
               </Box>
-              <Box w={1 / 10}>属性</Box>
-              <Box w={4 / 10}>介绍</Box>
+              <Box w={1 / 10}>{t('admin:attribute')}</Box>
+              <Box w={4 / 10}>{t('admin:description')}</Box>
               <Box w={1 / 10} pl={8}>
-                启用
+                {t('admin:enable')}
               </Box>
               <Box w={1 / 10} pl={3}>
-                应用类型
+                {t('admin:app_type')}
               </Box>
               <Box w={1 / 10} pl={3}>
-                推荐
+                {t('admin:featured')}
               </Box>
             </Flex>
           )}

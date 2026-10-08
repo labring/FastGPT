@@ -37,24 +37,68 @@ type BucketStorageOptions = {
 
 const storageRegion = serviceEnv.STORAGE_REGION;
 const storageVendor = serviceEnv.STORAGE_VENDOR;
-const storageExternalEndpoint = serviceEnv.STORAGE_EXTERNAL_ENDPOINT;
-export const storageS3CdnEndpoint = serviceEnv.STORAGE_S3_CDN_ENDPOINT;
 const storageS3Endpoint = serviceEnv.STORAGE_S3_ENDPOINT;
-export const storageDownloadUrlMode = StorageDownloadUrlModeSchema.parse(
-  serviceEnv.STORAGE_DOWNLOAD_URL_MODE
-);
 export const storageDownloadRedirectTtlSeconds = serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS;
-const needExplicitExternalEndpointForRedirect = storageVendor === 'minio';
-export const canUseStorageDownloadRedirect =
-  !needExplicitExternalEndpointForRedirect || Boolean(storageExternalEndpoint);
 const storagePublicAccessExtraSubPath = serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH;
 
-const bucketStorageOptions = {
+/** 由实例配置注入的存储运行策略。 */
+type RuntimeStorageConfig = {
+  downloadMode?: string;
+  externalEndpoint?: string;
+  cdnEndpoint?: string;
+};
+
+let runtimeStorageConfig: RuntimeStorageConfig | undefined;
+let appliedRuntimeStorageKey: string | undefined;
+
+/**
+ * 注入实例配置里的存储运行策略，并返回与上次注入相比是否发生变化。
+ *
+ * 在 initSystemConfig 读取 system_instance_configs 之后调用。下载模式与公开地址以数据库为唯一来源，
+ * 不再回落环境变量；返回值用于决定是否需要重建 S3 bucket。
+ */
+export const applyRuntimeStorageConfig = (config: RuntimeStorageConfig | undefined): boolean => {
+  const nextKey = JSON.stringify({
+    downloadMode: config?.downloadMode,
+    externalEndpoint: config?.externalEndpoint,
+    cdnEndpoint: config?.cdnEndpoint
+  });
+  const changed = appliedRuntimeStorageKey !== undefined && appliedRuntimeStorageKey !== nextKey;
+  runtimeStorageConfig = config;
+  appliedRuntimeStorageKey = nextKey;
+  return changed;
+};
+
+/** 对外暴露的下载模式：仅取实例配置，未初始化时使用 Schema 默认值 short-proxy。 */
+export const getStorageDownloadUrlMode = () =>
+  StorageDownloadUrlModeSchema.parse(runtimeStorageConfig?.downloadMode ?? 'short-proxy');
+
+/** 对外公开的存储地址：仅取实例配置，未配置时返回空字符串（不再回落环境变量）。 */
+export const getStorageExternalEndpoint = () => runtimeStorageConfig?.externalEndpoint ?? '';
+
+/** short-redirect 临时地址使用的 CDN 地址：仅取实例配置，未配置时返回空字符串。 */
+export const getStorageS3CdnEndpoint = () => runtimeStorageConfig?.cdnEndpoint ?? '';
+
+const needExplicitExternalEndpointForRedirect = storageVendor === 'minio';
+
+/**
+ * 当前是否具备 short-redirect 的直连条件。
+ * MinIO 自建部署必须显式提供客户端可访问的 external endpoint，其它托管厂商自带公网地址。
+ */
+export const canUseStorageDownloadRedirect = () =>
+  !needExplicitExternalEndpointForRedirect || Boolean(getStorageExternalEndpoint());
+
+/**
+ * bucket 级别的存储选项。
+ * externalEndpoint 依赖运行时实例配置，必须在构造 bucket（而非模块加载）时读取，
+ * 因此改由函数返回，避免被模块加载期的常量冻结。
+ */
+const getBucketStorageOptions = (): BucketStorageOptions => ({
   publicBucket: S3Buckets.public,
   privateBucket: S3Buckets.private,
-  externalEndpoint: storageExternalEndpoint,
+  externalEndpoint: getStorageExternalEndpoint(),
   publicEndpoint: serviceEnv.STORAGE_R2_PUBLIC_ENDPOINT
-} satisfies BucketStorageOptions;
+});
 
 const awsCompatibleSharedOptions = {
   forcePathStyle: serviceEnv.STORAGE_S3_FORCE_PATH_STYLE,
@@ -64,6 +108,7 @@ const awsCompatibleSharedOptions = {
 
 export function createDefaultStorageOptions() {
   const vendor = serviceEnv.STORAGE_VENDOR as IStorageOptions['vendor'];
+  const bucketStorageOptions = getBucketStorageOptions();
 
   switch (vendor) {
     case 'minio': {
@@ -150,6 +195,7 @@ export function createDefaultStorageOptions() {
 }
 
 export function replaceS3UrlWithCdnEndpoint(url: string) {
+  const storageS3CdnEndpoint = getStorageS3CdnEndpoint();
   if (!storageS3CdnEndpoint || storageVendor === 'r2') {
     return url;
   }

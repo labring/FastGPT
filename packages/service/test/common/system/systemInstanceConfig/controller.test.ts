@@ -28,22 +28,25 @@ describe('systemInstanceConfig controller', () => {
         _id: 'providers',
         revision: 1,
         overrides: {
-          crm: {
-            enabled: true,
-            apiUrl: 'https://crm.example.com',
-            apiKey: 'real-crm-api-key-12345'
+          documentParse: {
+            customPdf: {
+              url: 'https://pdf.example.com',
+              key: 'real-pdf-api-key-12345'
+            }
           }
         },
         updatedBy: { actor: 'admin' }
       });
 
       const maskedRes = await getDomainConfig('providers', { maskSecrets: true });
-      expect(maskedRes.effectiveConfig.crm.apiKey).toBe(SECRET_MASK);
-      expect(maskedRes.overrides.crm?.apiKey).toBe(SECRET_MASK);
+      expect(maskedRes.effectiveConfig.documentParse.customPdf.key).toBe(SECRET_MASK);
+      expect(maskedRes.overrides.documentParse?.customPdf?.key).toBe(SECRET_MASK);
 
       const unmaskedRes = await getDomainConfig('providers');
-      expect(unmaskedRes.effectiveConfig.crm.apiKey).toBe('real-crm-api-key-12345');
-      expect(unmaskedRes.overrides.crm?.apiKey).toBe('real-crm-api-key-12345');
+      expect(unmaskedRes.effectiveConfig.documentParse.customPdf.key).toBe(
+        'real-pdf-api-key-12345'
+      );
+      expect(unmaskedRes.overrides.documentParse?.customPdf?.key).toBe('real-pdf-api-key-12345');
     });
   });
 
@@ -112,10 +115,11 @@ describe('systemInstanceConfig controller', () => {
         domain: 'providers',
         expectedRevision: 0,
         submittedOverrides: {
-          crm: {
-            enabled: true,
-            apiUrl: 'https://crm.example.com',
-            apiKey: 'original-secret-key'
+          documentParse: {
+            customPdf: {
+              url: 'https://pdf.example.com',
+              key: 'original-secret-key'
+            }
           }
         },
         actor: { actor: 'admin' }
@@ -126,16 +130,20 @@ describe('systemInstanceConfig controller', () => {
         domain: 'providers',
         expectedRevision: 1,
         submittedOverrides: {
-          crm: {
-            apiUrl: 'https://crm.new-domain.com',
-            apiKey: SECRET_MASK
+          documentParse: {
+            customPdf: {
+              url: 'https://pdf.new-domain.com',
+              key: SECRET_MASK
+            }
           }
         },
         actor: { actor: 'admin' }
       });
 
-      expect(updated.effectiveConfig.crm.apiUrl).toBe('https://crm.new-domain.com');
-      expect(updated.effectiveConfig.crm.apiKey).toBe('original-secret-key'); // 保留原有密钥！
+      expect(updated.effectiveConfig.documentParse.customPdf.url).toBe(
+        'https://pdf.new-domain.com'
+      );
+      expect(updated.effectiveConfig.documentParse.customPdf.key).toBe('original-secret-key'); // 保留原有密钥！
     });
   });
 

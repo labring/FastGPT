@@ -79,19 +79,19 @@ export const EditPlanModal = ({
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose}>
-            取消
+            {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>确认</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('admin:confirm')}</Button>
         </>
       }
     >
       <Flex mb={6} pb={6} gap={8} borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
         <FormLabel fontSize={'md'} fontWeight={'medium'} flex={'0 0 160px'}>
-          基础信息与定价
+          {t('admin:plan_basic_and_pricing') || '基础信息与定价'}
         </FormLabel>
         <Grid flex={1} w={'100%'} templateColumns={'repeat(2, 1fr)'} gap={4}>
           <Box>
-            <FormLabel mb={2}>套餐名称</FormLabel>
+            <FormLabel mb={2}>{t('admin:plan_name') || '套餐名称'}</FormLabel>
             <Input
               bg={'myGray.50'}
               value={watch('name')}
@@ -102,7 +102,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>每月价格</FormLabel>
+            <FormLabel mb={2}>{t('admin:plan_monthly_price') || '每月价格'}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('price')}
@@ -114,7 +114,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box gridColumn="span 2">
-            <FormLabel mb={2}>套餐描述</FormLabel>
+            <FormLabel mb={2}>{t('admin:plan_description') || '套餐描述'}</FormLabel>
             <Input
               bg={'myGray.50'}
               value={watch('desc') as any}
@@ -128,11 +128,11 @@ export const EditPlanModal = ({
       </Flex>
       <Flex mb={6} pb={6} gap={8} borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
         <FormLabel fontSize={'md'} fontWeight={'medium'} flex={'0 0 160px'}>
-          核心资源配额
+          {t('admin:core_resource_quotas')}
         </FormLabel>
         <Grid flex={1} w={'100%'} templateColumns={'repeat(2, 1fr)'} gap={4}>
           <Box>
-            <FormLabel mb={2}>AI 积分量</FormLabel>
+            <FormLabel mb={2}>{t('admin:ai_points_amount')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('totalPoints')}
@@ -143,7 +143,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>团队成员数量</FormLabel>
+            <FormLabel mb={2}>{t('admin:team_member_count')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('maxTeamMember')}
@@ -154,7 +154,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>Agent 数量</FormLabel>
+            <FormLabel mb={2}>{t('admin:agent_count')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('maxAppAmount')}
@@ -165,7 +165,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>知识库数量</FormLabel>
+            <FormLabel mb={2}>{t('admin:dataset_count')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('maxDatasetAmount')}
@@ -176,7 +176,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>知识库索引数量</FormLabel>
+            <FormLabel mb={2}>{t('admin:dataset_index_count')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('maxDatasetSize')}
@@ -190,11 +190,11 @@ export const EditPlanModal = ({
       </Flex>
       <Flex mb={6} pb={6} gap={8} borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
         <FormLabel flex={'0 0 160px'} fontSize={'md'} fontWeight={'medium'}>
-          使用限制与数据留存
+          {t('admin:usage_limits_data_retention')}
         </FormLabel>
         <Grid flex={1} w={'100%'} templateColumns={'repeat(2, 1fr)'} gap={4}>
           <Box>
-            <FormLabel mb={2}>每分钟请求数</FormLabel>
+            <FormLabel mb={2}>{t('admin:requests_per_minute')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('requestsPerMinute')}
@@ -206,7 +206,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>单知识库网页同步数量</FormLabel>
+            <FormLabel mb={2}>{t('admin:website_sync_count_per_dataset_2')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('websiteSyncPerDataset')}
@@ -218,7 +218,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>应用备案数量</FormLabel>
+            <FormLabel mb={2}>{t('admin:app_filing_count')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('appRegistrationCount')}
@@ -231,7 +231,7 @@ export const EditPlanModal = ({
           </Box>
 
           <Box>
-            <FormLabel mb={2}>对话记录保存时长（天）</FormLabel>
+            <FormLabel mb={2}>{t('admin:chat_history_retention_days')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('chatHistoryStoreDuration')}
@@ -244,7 +244,7 @@ export const EditPlanModal = ({
           </Box>
 
           <Box>
-            <FormLabel mb={2}>审计日志保存时间（天）</FormLabel>
+            <FormLabel mb={2}>{t('admin:audit_log_retention_days')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('auditLogStoreDuration')}
@@ -256,7 +256,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>工单支持响应时间（小时）</FormLabel>
+            <FormLabel mb={2}>{t('admin:ticket_support_response_time_hours')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('ticketResponseTime')}
@@ -268,7 +268,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>自定义域名数量</FormLabel>
+            <FormLabel mb={2}>{t('admin:custom_domain_count')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('customDomain')}
@@ -280,7 +280,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>最大上传文件大小（MB）</FormLabel>
+            <FormLabel mb={2}>{t('admin:max_upload_file_size_mb')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('maxUploadFileSize')}
@@ -292,7 +292,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>最大上传文件数量</FormLabel>
+            <FormLabel mb={2}>{t('admin:max_upload_file_count')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('maxUploadFileCount')}
@@ -304,7 +304,7 @@ export const EditPlanModal = ({
             />
           </Box>
           <Box>
-            <FormLabel mb={2}>体验虚拟机</FormLabel>
+            <FormLabel mb={2}>{t('admin:trial_vm')}</FormLabel>
             <Switch
               isChecked={watch('enableSandbox')}
               onChange={(e) => {
@@ -316,11 +316,11 @@ export const EditPlanModal = ({
       </Flex>
       <Flex mb={6} pb={6} gap={8}>
         <FormLabel flex={'0 0 160px'} fontSize={'md'} fontWeight={'medium'}>
-          活动套餐
+          {t('admin:campaign_plan')}
         </FormLabel>
         <Grid flex={1} w={'100%'} templateColumns={'repeat(2, 1fr)'} gap={4}>
           <Box>
-            <FormLabel mb={2}>年套餐活动赠送积分</FormLabel>
+            <FormLabel mb={2}>{t('admin:annual_plan_bonus_points')}</FormLabel>
             <MyNumberInput
               bg={'myGray.50'}
               value={watch('annualBonusPoints')}
@@ -336,11 +336,11 @@ export const EditPlanModal = ({
       {!!feConfigs?.showWecomConfig && (
         <Flex mb={6} pb={6} gap={8}>
           <FormLabel flex={'0 0 160px'} fontSize={'md'} fontWeight={'medium'}>
-            企微套餐设置
+            {t('admin:wecom_plan_settings')}
           </FormLabel>
           <Grid flex={1} w={'100%'} templateColumns={'repeat(2, 1fr)'} gap={4}>
             <Box>
-              <FormLabel mb={2}>年套餐价格</FormLabel>
+              <FormLabel mb={2}>{t('admin:annual_plan_price')}</FormLabel>
               <MyNumberInput
                 bg={'myGray.50'}
                 value={watch('wecom.price')}
@@ -352,7 +352,7 @@ export const EditPlanModal = ({
               />
             </Box>
             <Box>
-              <FormLabel mb={2}>年套餐积分</FormLabel>
+              <FormLabel mb={2}>{t('admin:annual_plan_points')}</FormLabel>
               <MyNumberInput
                 bg={'myGray.50'}
                 value={watch('wecom.points')}

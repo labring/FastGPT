@@ -8,10 +8,7 @@ type AdminSettingSectionProps = {
   showDivider?: boolean;
 };
 
-/**
- * 新版配置页面大区块容器组件。
- * 遵循最新 UI 规范：纯文本粗体标题（无灰色底色），区块间带优雅细分割线，支持 TOC 锚点定位。
- */
+/** 新版配置页面大区块容器组件。title 由调用方传入已翻译字符串。 */
 const AdminSettingSection = ({
   id,
   title,

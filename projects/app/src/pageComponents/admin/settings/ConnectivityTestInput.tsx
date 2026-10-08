@@ -1,41 +1,77 @@
 import React, { useState } from 'react';
-import { Box, Button, HStack, Tag, Text } from '@chakra-ui/react';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
 import type { ProbeConnectionResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig';
 import AdminReadonlyInput from './AdminReadonlyInput';
 
-export type ConnectivityTestInputProps = {
-  url: string;
+export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> & {
+  url?: string;
+  value?: string;
+  testUrl?: string;
+  testPath?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   buttonText?: string;
   timeoutMs?: number;
   isDisabled?: boolean;
+  isEditable?: boolean;
 };
 
 /**
  * 连通性测试组件：
- * - 由只读地址展示与测试按钮构成；
- * - 接收 URL 参数，点击按钮后由后端服务发起实际 HTTP 探测并展示连通状态与延迟结果。
+ * - 支持只读展示或直接编辑输入（通过 isEditable 控制），右侧集成测试按钮；
+ * - 接收 url 或 value 参数，点击按钮后由后端服务发起实际 HTTP 探测并展示连通状态与延迟结果。
  */
 const ConnectivityTestInput = ({
   url,
-  placeholder = '未配置服务地址',
-  buttonText = '连通性测试',
+  value,
+  testUrl,
+  testPath,
+  onChange,
+  placeholder,
+  buttonText,
   timeoutMs = 5000,
-  isDisabled = false
+  isDisabled = false,
+  isEditable = false,
+  ...inputProps
 }: ConnectivityTestInputProps) => {
+  const { t } = useClientTranslation('admin');
   const [isTesting, setIsTesting] = useState(false);
+  const resolvedButtonText = buttonText ?? t('admin:probe_button');
+  const resolvedPlaceholder = placeholder ?? t('admin:not_configured_service_address');
   const [result, setResult] = useState<ProbeConnectionResponse | null>(null);
 
+  const effectiveUrl = value !== undefined ? value : url || '';
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (result) {
+      setResult(null);
+    }
+    onChange?.(e);
+  };
+
+  const resolveTargetUrl = () => {
+    if (testUrl) return testUrl;
+    if (!effectiveUrl) return '';
+    if (testPath) {
+      const base = effectiveUrl.replace(/\/+$/, '');
+      const path = testPath.startsWith('/') ? testPath : '/' + testPath;
+      return base + path;
+    }
+    return effectiveUrl;
+  };
+
   const handleTest = async () => {
-    if (!url || isTesting || isDisabled) return;
+    const targetUrl = resolveTargetUrl();
+    if (!targetUrl || isTesting || isDisabled) return;
 
     setIsTesting(true);
     setResult(null);
 
     try {
       const res = await POST<ProbeConnectionResponse>('/admin/system/config/probe', {
-        url,
+        url: targetUrl,
         timeoutMs
       });
       setResult(res);
@@ -43,7 +79,7 @@ const ConnectivityTestInput = ({
       setResult({
         connected: false,
         responseTimeMs: 0,
-        error: typeof err === 'string' ? err : err?.message || '探测请求发送失败'
+        error: typeof err === 'string' ? err : err?.message || t('admin:probe_request_failed')
       });
     } finally {
       setIsTesting(false);
@@ -54,7 +90,18 @@ const ConnectivityTestInput = ({
     <Box w={'100%'}>
       <HStack spacing={3} w={'100%'}>
         <Box flex={'1 0 0'} minW={0}>
-          <AdminReadonlyInput value={url} placeholder={placeholder} isTruncate />
+          {isEditable ? (
+            <Input
+              value={effectiveUrl}
+              onChange={handleInputChange}
+              placeholder={resolvedPlaceholder}
+              isDisabled={isDisabled}
+              bg={'white'}
+              {...inputProps}
+            />
+          ) : (
+            <AdminReadonlyInput value={effectiveUrl} placeholder={resolvedPlaceholder} isTruncate />
+          )}
         </Box>
         <Button
           colorScheme={'blue'}
@@ -62,10 +109,10 @@ const ConnectivityTestInput = ({
           flexShrink={0}
           px={5}
           isLoading={isTesting}
-          isDisabled={!url || isDisabled}
+          isDisabled={!effectiveUrl || isDisabled}
           onClick={handleTest}
         >
-          {buttonText}
+          {resolvedButtonText}
         </Button>
       </HStack>
 
@@ -74,17 +121,26 @@ const ConnectivityTestInput = ({
         <HStack spacing={2} mt={2.5} alignItems={'center'}>
           {result.connected ? (
             <>
-              <Tag size={'sm'} colorScheme={'green'} variant={'subtle'}>
-                连通正常 ({result.status} {result.statusText})
+              <Tag
+                size={'sm'}
+                colorScheme={
+                  result.status && result.status >= 200 && result.status < 400 ? 'green' : 'orange'
+                }
+                variant={'subtle'}
+              >
+                {result.status && result.status >= 200 && result.status < 400
+                  ? t('admin:probe_connected')
+                  : t('admin:probe_warning')}{' '}
+                ({result.status} {result.statusText})
               </Tag>
               <Text fontSize={'xs'} color={'myGray.500'}>
-                延迟: {result.responseTimeMs}ms
+                {t('admin:probe_latency')}: {result.responseTimeMs}ms
               </Text>
             </>
           ) : (
             <>
               <Tag size={'sm'} colorScheme={'red'} variant={'subtle'}>
-                连接失败
+                {t('admin:probe_failed')}
               </Tag>
               <Text fontSize={'xs'} color={'red.500'}>
                 {result.error}

@@ -117,5 +117,16 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "마이그레이션 완료. 이전 상태 {{remainingCount}}개가 남아 있습니다.",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "이전 재색인 필드 변환",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "재색인 작업 상태 복원",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "마이그레이션 검증"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "마이그레이션 검증",
+  "migrations.20260928_migrate_instance_configs.name": "인스턴스 설정을 새 컬렉션으로 마이그레이션",
+  "migrations.20260928_migrate_instance_configs.description": "레거시 systemConfigs 컬렉션과 DB 기반 환경 변수를 system_instance_configs 단일 문서 모델로 마이그레이션합니다. 마이그레이션이 성공할 때까지 노드는 준비 상태가 되지 않습니다.",
+  "migrations.20260928_migrate_instance_configs.inspect": "레거시 설정 소스 확인",
+  "migrations.20260928_migrate_instance_configs.migrate": "인스턴스 설정 기록",
+  "migrations.20260928_migrate_instance_configs.validate": "마이그레이션 결과 검증",
+  "migrations.20260928_migrate_instance_configs.result": "{{migratedDomainCount}}개 설정 도메인을 새 컬렉션으로 마이그레이션했습니다.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.name": "인스턴스 설정 폐기 필드 정리",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.description": "환경 변수로 이전되었거나 더 이상 사용하지 않는 인스턴스 설정 필드를 제거하여 새 스키마가 모든 도메인을 정상적으로 해석하도록 합니다.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.result": "설정 문서 {{scannedDocuments}}개를 검사하여 {{updatedDomains}}개 도메인의 폐기 필드 {{removedFieldCount}}개를 정리했습니다.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.cleanup": "폐기 필드 정리",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.validation": "정리 결과 검증"
 }

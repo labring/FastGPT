@@ -56,11 +56,14 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'name',
       'description',
       'favicon',
-      'chineseRedirectUrl',
       'marketplaceUrl',
       'docUrl',
       'openApiDocUrl',
-      'systemTitle'
+      'openApiPrefix',
+      'concatMd',
+      'navbarItems',
+      'appTemplateCourse',
+      'loginGuideDocUrl'
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
@@ -74,6 +77,63 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
+  ...createEntries('auth', ['teamMode', 'fastLogin'], {
+    edition: 'pro',
+    secret: false,
+    applyMode: 'live'
+  }),
+  ...createEntries(
+    'auth',
+    [
+      'loginProviders.email.smtp',
+      'loginProviders.email.user',
+      'loginProviders.email.port',
+      'loginProviders.email.secure',
+      'loginProviders.email.register',
+      'loginProviders.sms.login.zh',
+      'loginProviders.sms.register.zh',
+      'loginProviders.sms.resetPassword.zh',
+      'loginProviders.sms.changePassword.zh',
+      'loginProviders.sms.bindNotification.zh',
+      'loginProviders.phone.accessKeyId',
+      'loginProviders.phone.signName',
+      'loginProviders.wechat.appId',
+      'loginProviders.wecom.suiteId',
+      'loginProviders.wecom.corpId',
+      'loginProviders.wecom.buyerUserId',
+      'loginProviders.wecom.basicVersionId',
+      'loginProviders.wecom.advancedVersionId',
+      'loginProviders.github.clientId',
+      'loginProviders.google.clientId',
+      'loginProviders.microsoft.clientId',
+      'loginProviders.microsoft.tenantId',
+      'loginProviders.microsoft.customButton',
+      'loginProviders.dingtalk.clientId',
+      'accountCancellation.enabled',
+      'accountCancellation.cancellationSm.zh',
+      'accountCancellation.reminderSm.zh',
+      'accountCancellation.todaySm.zh'
+    ],
+    { edition: 'pro', secret: false, applyMode: 'live' }
+  ),
+  ...createEntries(
+    'auth',
+    [
+      'loginProviders.email.pass',
+      'loginProviders.phone.accessKeySecret',
+      'loginProviders.wechat.appSecret',
+      'loginProviders.wecom.secret',
+      'loginProviders.wecom.token',
+      'loginProviders.wecom.encodingAESKey',
+      'loginProviders.wecom.providerSecret',
+      'loginProviders.wecom.paySecret',
+      'loginProviders.github.secret',
+      'loginProviders.google.secret',
+      'loginProviders.microsoft.secret',
+      'loginProviders.dingtalk.secret'
+    ],
+    { edition: 'pro', secret: true, applyMode: 'live' }
+  ),
   ...createEntries(
     'security',
     [
@@ -83,10 +143,19 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'passwordLoginMinuteLimitCount',
       'maxLoginSession',
       'allowedOrigins',
-      'skipFileTypeCheck'
+      'skipFileTypeCheck',
+      'censor.baiduClientId',
+      'censor.customCensorUrl',
+      'workflowHttpNode.ignoreHttpsCertificate',
+      'fileUrlWhitelist'
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
+  ...createEntries('security', ['censor.baiduClientSecret'], {
+    edition: 'all',
+    secret: true,
+    applyMode: 'live'
+  }),
   ...createEntries(
     'feature',
     [
@@ -97,7 +166,16 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'disableCache',
       'showEmptyChat',
       'showGit',
-      'enableTeamPluginUpload'
+      'enableTeamPluginUpload',
+      'showDatasetFeishu',
+      'showDatasetYuque',
+      'showDatasetDingtalk',
+      'showPublishFeishu',
+      'showPublishDingtalk',
+      'showPublishWecom',
+      'showPublishOffiaccount',
+      'showPublishWechat',
+      'showComplianceCopywriting'
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
@@ -105,6 +183,38 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     'commercial',
     ['showCoupon', 'showDiscountCoupon', 'payFormUrl', 'agentSandboxFreeTip'],
     { edition: 'pro', secret: false, applyMode: 'live' }
+  ),
+  ...createEntries(
+    'commercial',
+    [
+      'payment.wx.appId',
+      'payment.wx.mchId',
+      'payment.wx.serialNo',
+      'payment.wx.notifyUrl',
+      'payment.alipay.appId',
+      'payment.alipay.gateway',
+      'payment.alipay.endpoint',
+      'payment.alipay.notifyUrl',
+      'payment.bank.description',
+      'billingNotify.paymentReceived.zh',
+      'billingNotify.lackOfPoints.zh',
+      'billingNotify.pointsTenPercentRemain.zh',
+      'billingNotify.expireSoon.zh',
+      'billingNotify.expired.zh'
+    ],
+    { edition: 'pro', secret: false, applyMode: 'live' }
+  ),
+  ...createEntries(
+    'commercial',
+    [
+      'payment.wx.apiV3Key',
+      'payment.wx.privateKey',
+      'payment.alipay.appPrivateKey',
+      'payment.alipay.appCertContent',
+      'payment.alipay.rootCertContent',
+      'payment.alipay.publicCertContent'
+    ],
+    { edition: 'pro', secret: true, applyMode: 'live' }
   ),
   ...createEntries(
     'resource',
@@ -115,7 +225,9 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'datasetFolderMaxAmount',
       'uploadFileMaxSize',
       'uploadFileMaxAmount',
-      'systemMaxStringLengthM'
+      'systemMaxStringLengthM',
+      'exportDatasetLimitMinutes',
+      'websiteSyncLimitMinuted'
     ],
     { edition: 'all', secret: false, applyMode: 'reload' }
   ),
@@ -137,9 +249,6 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'dataset.vlmMaxProcess',
       'dataset.retrievalResultsLimit',
       'chat.maxQpm',
-      'chat.logUrl',
-      'chat.logInterval',
-      'chat.logSourceIdPrefix',
       'streamResume.ttlSeconds',
       'streamResume.postCompleteTtlSeconds',
       'streamResume.redisMaxmemoryRatio',
@@ -153,14 +262,18 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
   ),
   ...createEntries(
     'storage',
-    ['downloadMode', 'downloadRedirectTtlSeconds', 'fileUrlExpiredDays'],
-    { edition: 'all', secret: false, applyMode: 'reload' }
+    ['downloadMode', 'externalEndpoint', 'cdnEndpoint', 'fileUrlExpiredDays'],
+    {
+      edition: 'all',
+      secret: false,
+      applyMode: 'reload'
+    }
   ),
-  ...createEntries(
-    'vector',
-    ['vqLevel', 'languageIdentifier', 'hnswEfSearch', 'hnswMaxScanTuples'],
-    { edition: 'all', secret: false, applyMode: 'reload' }
-  ),
+  ...createEntries('vector', ['hnswEfSearch', 'hnswMaxScanTuples'], {
+    edition: 'all',
+    secret: false,
+    applyMode: 'reload'
+  }),
   ...createEntries(
     'providers',
     [
@@ -169,15 +282,11 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'documentParse.sangfor.url',
       'documentParse.sangfor.extensions',
       'documentParse.sangfor.timeoutSeconds',
-      'chunk.enabled',
-      'chunk.url',
-      'chunk.timeoutMinutes',
-      'crm.enabled',
-      'crm.apiUrl',
       'dataSource.feishuBaseUrl',
       'dataSource.dingtalkBaseUrl',
       'dataSource.dingtalkOapiBaseUrl',
-      'dataSource.yuqueDatasetBaseUrl'
+      'dataSource.yuqueDatasetBaseUrl',
+      'externalProviderWorkflowVariables'
     ],
     { edition: 'all', secret: false, applyMode: 'reload' }
   ),
@@ -186,10 +295,14 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
     [
       'plugin.enabled',
       'plugin.baseUrl',
+      'plugin.remoteDebug',
+      'plugin.remoteDebugUrl',
       'codeSandbox.enabled',
       'codeSandbox.baseUrl',
       'aiProxy.enabled',
       'aiProxy.endpoint',
+      'mcp.enabled',
+      'mcp.sseProxyUrl',
       'agentSandbox.provider',
       'agentSandbox.common.cpuCount',
       'agentSandbox.common.memoryMiB',
@@ -211,7 +324,9 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'agentSandbox.opensandbox.image',
       'agentSandbox.opensandbox.useServerProxy',
       'agentSandbox.opensandbox.volumeManagerUrl',
-      'agentSandbox.opensandbox.volumeNamePrefix'
+      'agentSandbox.opensandbox.volumeNamePrefix',
+      'agentSandbox.proxy.wsUrl',
+      'agentSandbox.proxy.httpUrl'
     ],
     { edition: 'pro', secret: false, applyMode: 'restart' }
   ),
@@ -235,9 +350,7 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'documentParse.customPdf.doc2xKey',
       'documentParse.customPdf.textinAppId',
       'documentParse.customPdf.textinSecretCode',
-      'documentParse.sangfor.key',
-      'chunk.key',
-      'crm.apiKey'
+      'documentParse.sangfor.key'
     ],
     { edition: 'all', secret: true, applyMode: 'reload' }
   )

@@ -117,5 +117,16 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "Migration complete. {{remainingCount}} legacy statuses remain.",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "Migrate legacy rebuild flags",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "Restore rebuild task statuses",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "Validate migration"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "Validate migration",
+  "migrations.20260928_migrate_instance_configs.name": "Migrate instance configs to new collection",
+  "migrations.20260928_migrate_instance_configs.description": "Migrate the legacy systemConfigs collection and DB-backed environment variables into the system_instance_configs document model. Nodes stay unready until the migration succeeds.",
+  "migrations.20260928_migrate_instance_configs.inspect": "Inspect legacy config sources",
+  "migrations.20260928_migrate_instance_configs.migrate": "Write instance configs",
+  "migrations.20260928_migrate_instance_configs.validate": "Validate migration result",
+  "migrations.20260928_migrate_instance_configs.result": "Migrated {{migratedDomainCount}} config domains to the new collection.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.name": "Clean up deprecated instance config fields",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.description": "Remove instance config fields that moved to environment variables or are no longer used, so the new schema can resolve every domain.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.result": "Scanned {{scannedDocuments}} config documents and removed {{removedFieldCount}} deprecated fields across {{updatedDomains}} domains.",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.cleanup": "Clean up deprecated fields",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.validation": "Verify cleanup result"
 }

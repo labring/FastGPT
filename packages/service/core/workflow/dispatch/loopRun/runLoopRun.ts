@@ -12,6 +12,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { serviceEnv } from '../../../../env';
+import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
 import type { DispatchFlowResponse } from '../type';
@@ -41,7 +42,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const childrenNodeIdList = params[NodeInputKeyEnum.childrenNodeIdList] ?? [];
   const inputArray = params[NodeInputKeyEnum.loopRunInputArray] ?? [];
 
-  const maxLength = serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
+  const maxLength =
+    global.systemInstanceConfig?.performance?.workflow?.maxLoopTimes ??
+    serviceEnv.WORKFLOW_MAX_LOOP_TIMES;
   const maxIterationsMessage = i18nT('workflow:loop_run_max_iterations_exceeded');
 
   // Surface precheck failures through `errorText` to match the max-iterations

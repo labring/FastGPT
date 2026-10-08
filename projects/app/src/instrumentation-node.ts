@@ -115,13 +115,6 @@ export async function registerNodeInstrumentation() {
 
     await Promise.all([
       runInitializationStep({
-        step: 'init-s3-buckets',
-        stage: InitialErrorEnum.S3_ERROR,
-        action: () => initS3Buckets(),
-        logger,
-        getErrText
-      }),
-      runInitializationStep({
         step: 'connect-main-mongo',
         stage: InitialErrorEnum.MONGO_ERROR,
         action: () =>
@@ -161,6 +154,15 @@ export async function registerNodeInstrumentation() {
     await runInitializationStep({
       step: 'get-init-config',
       action: () => getInitConfig(),
+      logger,
+      getErrText
+    });
+
+    // S3 bucket 的下载模式与公开地址依赖实例配置，必须在 get-init-config 之后构造。
+    await runInitializationStep({
+      step: 'init-s3-buckets',
+      stage: InitialErrorEnum.S3_ERROR,
+      action: () => initS3Buckets(),
       logger,
       getErrText
     });

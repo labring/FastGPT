@@ -1,6 +1,7 @@
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
+import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { debounce } from 'lodash-es';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
@@ -25,6 +26,7 @@ export const startMongoWatch = async () => {
   await cleanupMongoWatch();
   logger.info('Mongo change stream watch started');
   changeStreams.push(reloadConfigWatch());
+  changeStreams.push(reloadInstanceConfigWatch());
   changeStreams.push(createDatasetTrainingMongoWatch());
   changeStreams.push(refetchAppTemplates());
 };
@@ -52,6 +54,14 @@ const reloadConfigWatch = () =>
 
       if (shouldRefresh) return refreshSystemConfig();
     },
+    onResume: refreshSystemConfig
+  });
+
+const reloadInstanceConfigWatch = () =>
+  createResilientChangeStream<ChangeStreamEvent>({
+    name: 'app-system-instance-configs',
+    createStream: () => MongoSystemInstanceConfig.watch([], { fullDocument: 'updateLookup' }),
+    onChange: debounce(refreshSystemConfig, 300),
     onResume: refreshSystemConfig
   });
 

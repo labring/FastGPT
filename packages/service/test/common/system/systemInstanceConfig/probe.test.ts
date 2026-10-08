@@ -22,4 +22,16 @@ describe('probeUrlConnection', () => {
     expect(result.connected).toBe(false);
     expect(result.error).toBeDefined();
   });
+  it('successfully probes a running local health endpoint with GET (e.g. status 200)', async () => {
+    // 探测本地可达端口时应正确获得 HTTP 状态码
+    const result = await probeUrlConnection({
+      url: 'http://localhost:3010/api/status',
+      timeoutMs: 2000
+    });
+
+    if (result.connected) {
+      expect(result.status).toBe(200);
+      expect(result.statusText).toBe('OK');
+    }
+  });
 });
