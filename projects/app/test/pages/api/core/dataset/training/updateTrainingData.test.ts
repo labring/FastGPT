@@ -1,3 +1,4 @@
+import { retryFailedTrainingTasks } from '@fastgpt/service/core/dataset/training/service';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { handler } from '@/pages/api/core/dataset/training/updateTrainingData';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
@@ -26,20 +27,14 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDatasetCollection: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/dataset/training/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/training/service')>()),
+  retryFailedTrainingTasks: vi.fn().mockResolvedValue(undefined)
+}));
+
 describe('updateTrainingData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(MongoDatasetTraining.find).mockReturnValue({
-      session: () => ({
-        lean: vi.fn().mockResolvedValue([])
-      }),
-      select: () => ({
-        session: () => ({
-          lean: vi.fn().mockResolvedValue([])
-        }),
-        lean: vi.fn().mockResolvedValue([])
-      })
-    } as any);
     vi.mocked(authDatasetCollection).mockResolvedValue({
       collection: {
         _id: collectionId,
@@ -67,20 +62,11 @@ describe('updateTrainingData', () => {
         collectionId
       })
     );
-    expect(MongoDatasetTraining.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: 'team1',
-        datasetId,
-        collectionId,
-        $expr: expect.any(Object)
-      }),
-      {
-        $unset: { errorMsg: '' },
-        retryCount: 3,
-        lockTime: new Date('2000')
-      },
-      expect.objectContaining({ session: null })
-    );
+    expect(retryFailedTrainingTasks).toHaveBeenCalledWith({
+      teamId: 'team1',
+      datasetId,
+      collectionId
+    });
   });
 
   it('should retry only final errors in dataset scope', async () => {
@@ -95,25 +81,14 @@ describe('updateTrainingData', () => {
         datasetId
       })
     );
-    expect(MongoDatasetTraining.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        teamId: 'team1',
-        datasetId,
-        $expr: expect.any(Object)
-      }),
-      {
-        $unset: { errorMsg: '' },
-        retryCount: 3,
-        lockTime: new Date('2000')
-      },
-      expect.objectContaining({ session: null })
-    );
+    expect(retryFailedTrainingTasks).toHaveBeenCalledWith({ teamId: 'team1', datasetId });
   });
 
   it('should update single training data with collection boundary', async () => {
     vi.mocked(MongoDatasetTraining.findById).mockResolvedValue({
       _id: dataId,
       imageId: 'image1',
+      mode: TrainingModeEnum.imageParse,
       teamId: 'team1',
       datasetId,
       collectionId
@@ -145,12 +120,14 @@ describe('updateTrainingData', () => {
       match,
       {
         $unset: { errorMsg: '' },
-        retryCount: 3,
-        mode: TrainingModeEnum.chunk,
-        q: 'question',
-        a: 'answer',
-        chunkIndex: 1,
-        lockTime: new Date('2000')
+        $set: {
+          retryCount: 3,
+          mode: TrainingModeEnum.chunk,
+          q: 'question',
+          a: 'answer',
+          chunkIndex: 1,
+          lockTime: new Date(0)
+        }
       },
       expect.objectContaining({ session: null })
     );
@@ -195,7 +172,7 @@ describe('updateTrainingData', () => {
     expect(MongoDatasetTraining.updateOne).toHaveBeenCalledWith(
       match,
       expect.objectContaining({
-        q: 'question'
+        $set: expect.objectContaining({ q: 'question' })
       }),
       expect.objectContaining({ session: null })
     );

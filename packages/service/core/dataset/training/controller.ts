@@ -379,7 +379,7 @@ const preCreateBatchSize = 500;
  * - 过滤（空内容/超长）在建数据行之前完成，避免写出无人处理的数据。
  * - `indexes` 保持为空：自定义/question/summary/image 索引草稿仍留在训练任务里。
  * - `synonymVersion` 与创建路径同源写入，避免预落库数据被同义词重建误选。
- * - 图片 `imageId` 不在本阶段移除临时对象过期设置，过期兜底保留到索引完成。
+ * - 图片 `imageId` 随数据落库移除临时对象过期设置，避免待索引期间被清理。
  */
 export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   teamId,

@@ -19,7 +19,6 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
 import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { getRebuildUpdateInput } from './generateVector';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
@@ -196,7 +195,7 @@ const updatePreCreatedData = async ({
     indexPrefix: trainingData.collection.indexPrefixTitle
       ? `# ${trainingData.collection.name}`
       : undefined,
-    lease
+    commit: lease.complete
   });
   return { tokens };
 };

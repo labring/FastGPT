@@ -1,3 +1,7 @@
+import { TrainingLeaseLostError } from '@fastgpt/service/core/dataset/training/service';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { BLOCKED_LOCK_TIME } from '@fastgpt/service/core/dataset/training/query';
 import { getModelTestDefaults } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -117,6 +121,34 @@ describe('datasetParseQueue creates index-ready data', () => {
     global.datasetParseQueueLen = 0;
     global.feConfigs.isPlus = true;
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
+  });
+
+  it('does not consume a retry when parsing loses its lease', async () => {
+    const { task, collection } = await createTask();
+    mocks.read.mockRejectedValueOnce(new TrainingLeaseLostError());
+    await datasetParseQueue();
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({ retryCount: 5 });
+    expect((await MongoDatasetTraining.findById(task._id).lean())?.errorMsg).toBeUndefined();
+    expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
+  });
+
+  it('retries an actual parse failure immediately and then completes', async () => {
+    const { task } = await createTask();
+    mocks.read.mockRejectedValueOnce(new Error('temporary source failure'));
+    await datasetParseQueue();
+    expect(mocks.read).toHaveBeenCalledTimes(2);
+    expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
+  });
+
+  it('pauses a capacity failure through the shared lease', async () => {
+    const { task, collection } = await createTask();
+    vi.mocked(checkDatasetIndexLimit).mockRejectedValueOnce(TeamErrEnum.datasetSizeNotEnough);
+    await datasetParseQueue();
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      retryCount: 4,
+      lockTime: BLOCKED_LOCK_TIME
+    });
+    expect(await MongoDatasetData.countDocuments({ collectionId: collection._id })).toBe(0);
   });
 
   /** CT-01：解析执行前数据列表不含本次分块。 */

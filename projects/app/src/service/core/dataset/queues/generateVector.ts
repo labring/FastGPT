@@ -289,7 +289,7 @@ const rebuildData = async ({
       ? `# ${trainingData.collection.name}`
       : undefined,
     forceRebuild: true,
-    lease
+    commit: lease.complete
   });
   return { tokens };
 };
@@ -326,7 +326,7 @@ const insertData = async ({
       : undefined,
     embeddingModel: embModel,
     imageIndex: !!trainingData.collection.imageIndex,
-    lease
+    commit: lease.complete
   });
   return {
     tokens

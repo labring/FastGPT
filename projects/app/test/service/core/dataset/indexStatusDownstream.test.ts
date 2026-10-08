@@ -1,3 +1,5 @@
+import { getModelTestDefaults } from '@test/modelCache';
+import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
@@ -103,23 +105,27 @@ describe('indexStatus downstream contracts', () => {
 
   /** 待索引数据在索引完成前不会向全文索引表写入记录。 */
   it('does not have full-text index records before indexing completes', async () => {
-    const { root, dataset, createData } = await createContext();
-    const indexing = await createData({
-      text: 'retrieval isolation keyword',
+    const { root, dataset, collection } = await createContext();
+    const result = await mongoSessionRun((session) =>
+      preCreateDatasetDataAndPushToTrainingQueue({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: String(dataset._id),
+        collectionId: String(collection._id),
+        vectorModel: getModelTestDefaults().embedding!,
+        data: [{ q: 'retrieval isolation keyword' }],
+        billId: 'pre-create-isolation',
+        session
+      })
+    );
+    expect(result.dataIds).toHaveLength(1);
+    expect(await MongoDatasetData.findById(result.dataIds[0]).lean()).toMatchObject({
       indexStatus: DatasetDataIndexStatusEnum.indexing
     });
-    const indexed = await createData({
-      text: 'retrieval isolation keyword',
-      indexStatus: DatasetDataIndexStatusEnum.indexed,
-      withFullText: true
-    });
-
-    const fullTextRows = await MongoDatasetDataText.find({
-      dataId: { $in: [indexing._id, indexed._id] }
-    }).lean();
-
-    expect(fullTextRows).toHaveLength(1);
-    expect(String(fullTextRows[0].dataId)).toBe(String(indexed._id));
+    expect(
+      await MongoDatasetTraining.countDocuments({ dataId: result.dataIds[0], mode: 'index' })
+    ).toBe(1);
+    expect(await MongoDatasetDataText.countDocuments({ dataId: result.dataIds[0] })).toBe(0);
   });
 
   /** DS-18 / CP-10：集合删除按 collectionId 清理，不做状态筛选。 */

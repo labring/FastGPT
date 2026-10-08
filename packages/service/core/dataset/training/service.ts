@@ -14,6 +14,9 @@ import {
   TRAINING_LEASE_HEARTBEAT_MS
 } from '@fastgpt/global/core/dataset/training/constant';
 
+import { getTrainingTaskReadyUpdate } from './utils';
+import { BLOCKED_LOCK_TIME, finalErrorTrainingMatch } from './query';
+
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
 /** 失去租约不是业务失败，不扣重试次数，也不允许旧 worker 再写错误或结果。 */
@@ -39,6 +42,10 @@ export const claimTrainingTask = async <T = Record<string, never>>(
 };
 
 export type TrainingTaskLease = ReturnType<typeof createTrainingTaskLease>;
+/** 阶段结果只允许更新业务内容；身份、租约及重试字段由租约实现维护。 */
+type TrainingStageResult = Pick<DatasetTrainingSchemaType, 'mode'> &
+  Partial<Pick<DatasetTrainingSchemaType, 'q' | 'a' | 'indexes' | 'imageDescMap'>>;
+
 type TrainingLeaseTask = Pick<
   DatasetTrainingSchemaType,
   '_id' | 'mode' | 'lockTime' | 'retryCount' | 'dataId' | 'teamId' | 'datasetId' | 'collectionId'
@@ -156,15 +163,14 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
       }
       return output;
     });
-  const transition = async (
-    next: Partial<DatasetTrainingSchemaType> & { mode: TrainingModeEnum }
-  ) =>
+  const transition = async (next: TrainingStageResult) =>
     commit(async (session) => {
+      const readyUpdate = getTrainingTaskReadyUpdate();
       const result = await MongoDatasetTraining.updateOne(
         getFilter(),
         {
-          $set: { ...next, retryCount: 3, lockTime: new Date(0) },
-          $unset: { errorMsg: '' }
+          $set: { ...next, ...readyUpdate.$set },
+          $unset: readyUpdate.$unset
         },
         { session }
       );
@@ -173,7 +179,14 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
         throw new TrainingLeaseLostError();
       }
     });
-  const fail = async (error: unknown, { terminal = false }: { terminal?: boolean } = {}) => {
+  const fail = async (
+    error: unknown,
+    {
+      terminal = false,
+      blocked = false,
+      retryDelayMs = TRAINING_LEASE_HEARTBEAT_MS
+    }: { terminal?: boolean; blocked?: boolean; retryDelayMs?: number } = {}
+  ) => {
     if (lost || error instanceof TrainingLeaseLostError) return;
     const retryCount = terminal ? 0 : Math.max(0, task.retryCount - 1);
     const errorMsg = getErrText(error, 'unknown error');
@@ -185,10 +198,10 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
             $set: {
               retryCount,
               errorMsg,
-              // 明确失败后间隔一分钟再试；不是将 5 分钟租约改成 1 分钟。
-              lockTime: new Date(
-                Date.now() - TRAINING_LEASE_TIMEOUT_MS + TRAINING_LEASE_HEARTBEAT_MS
-              ),
+              // 暂停使用统一锁时间；默认一分钟后重试，parse 可显式保留即时重试。
+              lockTime: blocked
+                ? BLOCKED_LOCK_TIME
+                : new Date(Date.now() - TRAINING_LEASE_TIMEOUT_MS + retryDelayMs),
               // 最终错误保留供用户重试，不能被 TTL 删除后留下无任务的 indexing 数据。
               ...(retryCount === 0 ? { expireAt: null } : {})
             }
@@ -200,7 +213,7 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
           throw new TrainingLeaseLostError();
         }
         // data 的错误状态只表示最终索引写入失败，不能由前置增强阶段写入。
-        if (retryCount === 0 && task.mode === TrainingModeEnum.index && task.dataId) {
+        if ((retryCount === 0 || blocked) && task.mode === TrainingModeEnum.index && task.dataId) {
           await MongoDatasetData.updateOne(
             {
               _id: task.dataId,
@@ -266,20 +279,66 @@ export const skipDatasetTrainingEnhancement = async (
   try {
     for await (const training of cursor) {
       const nextMode = await getDatasetIndexTrainingMode(training);
+      const readyUpdate = getTrainingTaskReadyUpdate({
+        restoreExpiration: nextMode === TrainingModeEnum.index
+      });
       await MongoDatasetTraining.updateOne(
         { _id: training._id, mode },
-        {
-          $set: {
-            mode: nextMode,
-            retryCount: 3,
-            lockTime: new Date(0),
-            ...(nextMode === TrainingModeEnum.index ? { expireAt: new Date() } : {})
-          },
-          $unset: { errorMsg: '' }
-        }
+        { ...readyUpdate, $set: { ...readyUpdate.$set, mode: nextMode } }
       );
     }
   } finally {
     await cursor.close();
+  }
+};
+
+/**
+ * 分批重试授权范围内的失败任务，每批将任务恢复与 data 状态恢复放入同一事务。
+ * 按 _id 单向前进并固定起始上界，避免 worker 再次失败或新任务加入导致同一请求无限重试。
+ * 已提交批次可安全保留，后续请求只处理仍失败的任务；每批最多 500 条。
+ */
+export const retryFailedTrainingTasks = async (
+  scope: Pick<DatasetTrainingSchemaType, 'teamId' | 'datasetId'> &
+    Partial<Pick<DatasetTrainingSchemaType, 'collectionId'>>
+) => {
+  const lastTask = await MongoDatasetTraining.findOne({ ...scope, ...finalErrorTrainingMatch })
+    .sort({ _id: -1 })
+    .select('_id')
+    .lean();
+  if (!lastTask) return;
+  let afterId: string | undefined;
+  while (true) {
+    const batch = await mongoSessionRun(async (session) => {
+      const tasks = await MongoDatasetTraining.find({
+        ...scope,
+        ...finalErrorTrainingMatch,
+        _id: { $lte: lastTask._id, ...(afterId ? { $gt: afterId } : {}) }
+      })
+        .sort({ _id: 1 })
+        .limit(500)
+        .select('_id dataId')
+        .session(session)
+        .lean();
+      if (!tasks.length) return tasks;
+      await MongoDatasetTraining.updateMany(
+        { ...scope, _id: { $in: tasks.map((task) => task._id) }, ...finalErrorTrainingMatch },
+        getTrainingTaskReadyUpdate(),
+        { session }
+      );
+      const dataIds = tasks.flatMap((task) => (task.dataId ? [task.dataId] : []));
+      if (dataIds.length) {
+        await MongoDatasetData.updateMany(
+          { ...scope, _id: { $in: dataIds }, indexStatus: DatasetDataIndexStatusEnum.error },
+          {
+            $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
+            $unset: { indexErrorMsg: '' }
+          },
+          { session }
+        );
+      }
+      return tasks;
+    });
+    if (!batch.length) break;
+    afterId = String(batch[batch.length - 1]._id);
   }
 };

@@ -1,4 +1,7 @@
-import { TRAINING_LEASE_HEARTBEAT_MS } from '@fastgpt/global/core/dataset/training/constant';
+import {
+  TRAINING_LEASE_TIMEOUT_MS,
+  TRAINING_LEASE_HEARTBEAT_MS
+} from '@fastgpt/global/core/dataset/training/constant';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -11,8 +14,12 @@ import {
   createTrainingTaskLease,
   TrainingLeaseLostError,
   getDatasetIndexTrainingMode,
-  skipDatasetTrainingEnhancement
+  skipDatasetTrainingEnhancement,
+  retryFailedTrainingTasks
 } from '@fastgpt/service/core/dataset/training/service';
+
+// 租约提交必须验证真实事务回滚，不能使用全局的无事务 mock。
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const createContext = async (indexStatus?: DatasetDataIndexStatusEnum) => {
   const context = {
@@ -294,5 +301,163 @@ describe('createTrainingTaskLease heartbeat lifecycle', () => {
       finishHeartbeat(matched);
       await lease.stop();
     }
+  });
+});
+
+describe('training lease transactional ownership', () => {
+  const createTask = async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.indexing);
+    const task = await MongoDatasetTraining.create({
+      ...context,
+      tmbId: new Types.ObjectId(),
+      billId: 'transaction-test',
+      mode: TrainingModeEnum.index,
+      retryCount: 3,
+      lockTime: new Date(Date.now() - 1000)
+    });
+    return { context, task };
+  };
+
+  it('rolls back data and task writes when completion fails after the business write', async () => {
+    const { context, task } = await createTask();
+    const lease = createTrainingTaskLease(task);
+    try {
+      await expect(
+        lease.complete(async (session) => {
+          await MongoDatasetData.updateOne(
+            { _id: context.dataId },
+            {
+              $set: { q: 'uncommitted content', indexStatus: DatasetDataIndexStatusEnum.indexed }
+            },
+            { session }
+          );
+          // 模拟业务回调意外改变阶段：最终删除必须失败，并撤销同一事务的全部写入。
+          await MongoDatasetTraining.updateOne(
+            { _id: task._id },
+            {
+              $set: { mode: TrainingModeEnum.auto }
+            },
+            { session }
+          );
+        })
+      ).rejects.toBeInstanceOf(TrainingLeaseLostError);
+      expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
+        q: 'content',
+        indexStatus: DatasetDataIndexStatusEnum.indexing
+      });
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+        mode: TrainingModeEnum.index,
+        retryCount: 3
+      });
+    } finally {
+      await lease.stop();
+    }
+  });
+
+  it('rejects an old worker after another worker claims the task', async () => {
+    const { context, task } = await createTask();
+    const oldLease = createTrainingTaskLease(task);
+    await MongoDatasetTraining.updateOne(
+      { _id: task._id },
+      {
+        $set: { lockTime: new Date(Date.now() - TRAINING_LEASE_TIMEOUT_MS - 1) }
+      }
+    );
+    const claimed = await findAndLockTrainingTask({
+      mode: TrainingModeEnum.index,
+      filter: { _id: task._id }
+    });
+    if (!claimed) throw new Error('Expected replacement worker to claim task');
+    const newLease = createTrainingTaskLease(claimed);
+    const staleWrite = vi.fn();
+    try {
+      await expect(oldLease.complete(staleWrite)).rejects.toBeInstanceOf(TrainingLeaseLostError);
+      expect(staleWrite).not.toHaveBeenCalled();
+      await oldLease.fail(new Error('stale worker failure'));
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({ retryCount: 3 });
+      await newLease.complete(async (session) => {
+        await MongoDatasetData.updateOne(
+          { _id: context.dataId },
+          {
+            $set: { indexStatus: DatasetDataIndexStatusEnum.indexed }
+          },
+          { session }
+        );
+      });
+      expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
+      expect((await MongoDatasetData.findById(context.dataId).lean())?.indexStatus).toBe(
+        DatasetDataIndexStatusEnum.indexed
+      );
+    } finally {
+      await oldLease.stop();
+      await newLease.stop();
+    }
+  });
+});
+
+describe('retryFailedTrainingTasks', () => {
+  it('commits bounded batches, rolls back a failed batch and can resume safely', async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.indexing);
+    const scope = {
+      teamId: context.teamId,
+      datasetId: context.datasetId,
+      collectionId: context.collectionId
+    };
+    const data = await MongoDatasetData.insertMany(
+      Array.from({ length: 501 }, () => ({
+        ...scope,
+        tmbId: new Types.ObjectId(),
+        q: 'failed data',
+        indexStatus: DatasetDataIndexStatusEnum.error,
+        indexErrorMsg: 'failed'
+      }))
+    );
+    await MongoDatasetTraining.insertMany(
+      data.map((item) => ({
+        ...scope,
+        tmbId: new Types.ObjectId(),
+        dataId: item._id,
+        billId: 'retry-batch',
+        mode: TrainingModeEnum.index,
+        retryCount: 0,
+        errorMsg: 'failed',
+        lockTime: BLOCKED_LOCK_TIME,
+        expireAt: null
+      }))
+    );
+    const updateData = MongoDatasetData.updateMany.bind(MongoDatasetData);
+    const update = vi.spyOn(MongoDatasetData, 'updateMany');
+    update.mockImplementationOnce((...args) => updateData(...args));
+    update.mockRejectedValueOnce(new Error('second batch failed'));
+    try {
+      await expect(retryFailedTrainingTasks(scope)).rejects.toThrow('second batch failed');
+    } finally {
+      update.mockRestore();
+    }
+    expect(await MongoDatasetTraining.countDocuments({ ...scope, retryCount: 3 })).toBe(500);
+    expect(await MongoDatasetTraining.countDocuments({ ...scope, retryCount: 0 })).toBe(1);
+    expect(
+      await MongoDatasetData.countDocuments({
+        ...scope,
+        indexStatus: DatasetDataIndexStatusEnum.error
+      })
+    ).toBe(1);
+    await retryFailedTrainingTasks(scope);
+    await retryFailedTrainingTasks(scope);
+    expect(
+      await MongoDatasetTraining.countDocuments({
+        ...scope,
+        retryCount: 3,
+        lockTime: new Date(0),
+        errorMsg: { $exists: false },
+        expireAt: null
+      })
+    ).toBe(501);
+    expect(
+      await MongoDatasetData.countDocuments({
+        ...scope,
+        indexStatus: DatasetDataIndexStatusEnum.error
+      })
+    ).toBe(0);
   });
 });

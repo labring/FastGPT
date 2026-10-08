@@ -305,6 +305,13 @@ const DataCard = () => {
               const isIndexing = item.indexStatus === DatasetDataIndexStatusEnum.indexing;
               const canModify = !isIndexing;
               const indexStatusInfo = getDatasetDataIndexStatusMapData(item.indexStatus);
+              const indexStatusLabel = (() => {
+                if (item.indexStatus === DatasetDataIndexStatusEnum.indexing)
+                  return t('dataset:data_index_status_indexing');
+                if (item.indexStatus === DatasetDataIndexStatusEnum.error)
+                  return t('dataset:data_index_status_error');
+                return t('dataset:data_index_status_indexed');
+              })();
 
               return (
                 <Card
@@ -374,7 +381,7 @@ const DataCard = () => {
                       borderRadius={'sm'}
                       colorSchema={indexStatusInfo.colorSchema}
                     >
-                      {t(indexStatusInfo.label)}
+                      {indexStatusLabel}
                     </MyTag>
                   </Flex>
 

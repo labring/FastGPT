@@ -15,7 +15,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { getRootUser } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
-import { mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
+import { mockVectorDelete, mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
 import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/embedding';
 import { serviceEnv } from '@fastgpt/service/env';
 
@@ -124,6 +124,58 @@ describe('pre-created data queue routing', () => {
       model.mockRestore();
       synonym.mockRestore();
     }
+  });
+
+  it('rolls back index data and removes new vectors when task completion fails', async () => {
+    const { data, task } = await createContext({
+      indexStatus: DatasetDataIndexStatusEnum.indexing
+    });
+    const removeTask = vi
+      .spyOn(MongoDatasetTraining, 'deleteOne')
+      .mockRejectedValueOnce(new Error('completion failed'));
+    try {
+      await generatePreCreatedData();
+    } finally {
+      removeTask.mockRestore();
+    }
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
+      indexes: []
+    });
+    expect(await MongoDatasetDataText.countDocuments({ dataId: data._id })).toBe(0);
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      retryCount: 4,
+      errorMsg: 'completion failed'
+    });
+    expect(mockVectorDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ idList: ['pre_vector_1'] })
+    );
+  });
+
+  it('does not publish generated vectors after another worker takes ownership', async () => {
+    const { data, task } = await createContext({
+      indexStatus: DatasetDataIndexStatusEnum.indexing
+    });
+    const replacementLock = new Date(Date.now() + 1000);
+    mockGetVectors.mockImplementation(async ({ inputs }) => {
+      await MongoDatasetTraining.updateOne(
+        { _id: task._id },
+        { $set: { lockTime: replacementLock } }
+      );
+      return createMockVectorsResponse(inputs.map((input) => input.input));
+    });
+    await generatePreCreatedData();
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
+      indexes: []
+    });
+    expect(await MongoDatasetDataText.countDocuments({ dataId: data._id })).toBe(0);
+    const retainedTask = await MongoDatasetTraining.findById(task._id).lean();
+    expect(retainedTask).toMatchObject({ retryCount: 5, lockTime: replacementLock });
+    expect(retainedTask?.errorMsg).toBeUndefined();
+    expect(mockVectorDelete).toHaveBeenCalledWith(
+      expect.objectContaining({ idList: ['pre_vector_1'] })
+    );
   });
 
   /** CP-04 / DS-07 规则 3：待索引数据走提前落库路径，更新同一条数据。 */

@@ -26,27 +26,30 @@ import {
   getDatasetSynonymTransformContext,
   isDatasetSynonymEnabled
 } from '@fastgpt/service/core/dataset/synonym/entity';
-import { type TrainingTaskLease } from '@fastgpt/service/core/dataset/training/service';
+/** 提交边界由上层注入；数据写入回调无需接收租约对象。 */
+type CommitDatasetData = (write: (session: ClientSession) => Promise<void>) => Promise<void>;
 
-type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes' | 'q'> & {
-  q?: string;
-  indexes?: NonNullable<UpdateDatasetDataPropsType['indexes']>;
-  /** VLM rebuild 产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
-  imageDescMap?: Record<string, string>;
-  model: EmbeddingSystemModelDataType;
-  indexSize?: number;
-  imageIndex?: boolean;
-  /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
-  forceRebuild?: boolean;
-  /** 传入时复用调用方事务，用于把训练任务删除、状态推进并入同一次写入边界。 */
-  session?: ClientSession;
-  /** 传入训练任务租约：向量生成完毕后在租约 complete 事务内原子提交主数据并删除任务。 */
-  lease?: TrainingTaskLease;
-};
+/** 复用现有 session 与自定义提交边界互斥；均未传入时自行开启事务。 */
+type DatasetDataWriteOptions =
+  | { session?: ClientSession; commit?: never }
+  | { session?: never; commit: CommitDatasetData };
+
+type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes' | 'q'> &
+  DatasetDataWriteOptions & {
+    q?: string;
+    indexes?: NonNullable<UpdateDatasetDataPropsType['indexes']>;
+    /** VLM rebuild 产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
+    imageDescMap?: Record<string, string>;
+    model: EmbeddingSystemModelDataType;
+    indexSize?: number;
+    imageIndex?: boolean;
+    /** 重建索引时忽略文本相同判断，确保切换 embedding model 后重新生成向量。 */
+    forceRebuild?: boolean;
+  };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
   UpdateDatasetDataByIndexesProps,
-  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session' | 'lease'
+  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session' | 'commit'
 > & {
   q?: string;
   imageIndex?: boolean;
@@ -107,20 +110,18 @@ export class DatasetDataOperation {
     });
   }
 
-  /**
-   * 在调用方已开启的事务内执行，没有传入事务时自行开启一个。
-   * 提前落库的向量回写需要把训练任务删除并入同一次写入边界，因此必须复用调用方 session。
-   */
-  private runInSession<T>({
+  /** 向量生成后才进入提交边界；互斥校验也保护未经过 TypeScript 的调用方。 */
+  private commitDataWrite({
     session,
-    fn,
-    lease
+    commit,
+    fn
   }: {
     session?: ClientSession;
-    fn: (session: ClientSession) => Promise<T>;
-    lease?: TrainingTaskLease;
+    commit?: CommitDatasetData;
+    fn: (session: ClientSession) => Promise<void>;
   }) {
-    if (lease) return lease.complete(fn);
+    if (session && commit) throw new Error('session and commit are mutually exclusive');
+    if (commit) return commit(fn);
     if (session) return fn(session);
     return mongoSessionRun(fn);
   }
@@ -134,7 +135,7 @@ export class DatasetDataOperation {
    * 3. 写入主数据和全文检索 token
    * 4. 如果图片来自 dataset S3 临时区，移除 TTL，避免被清理
    *
-   * 调用方必须传入事务 session，确保主数据、Mongo 全文索引和图片 TTL 状态原子提交。
+   * 主数据、Mongo 全文索引和图片 TTL 状态在同一个提交边界中写入。
    * 向量库不参与 Mongo 事务，事务失败产生的孤儿向量由一致性任务清理。
    */
   async create({
@@ -154,15 +155,14 @@ export class DatasetDataOperation {
     imageDescMap,
     metadata,
     session,
-    lease
-  }: CreateDatasetDataPropsType & {
-    embeddingModel: EmbeddingSystemModelDataType;
-    indexSize?: number;
-    imageIndex?: boolean;
-    imageDescMap?: Record<string, string>;
-    session?: ClientSession;
-    lease?: TrainingTaskLease;
-  }) {
+    commit
+  }: CreateDatasetDataPropsType &
+    DatasetDataWriteOptions & {
+      embeddingModel: EmbeddingSystemModelDataType;
+      indexSize?: number;
+      imageIndex?: boolean;
+      imageDescMap?: Record<string, string>;
+    }) {
     // 纯图片数据允许没有正文；indexQ 保持为空，避免生成普通 default 文本向量索引。
     const dataQ = q || '';
     const indexQ = q || '';
@@ -209,9 +209,9 @@ export class DatasetDataOperation {
     // 主数据保存的是带 dataId 的 indexes，因此需要先完成向量写入。
     let insertId = '';
     try {
-      await this.runInSession({
+      await this.commitDataWrite({
         session,
-        lease,
+        commit,
         fn: async (mongoSession) => {
           const [{ _id }] = await MongoDatasetData.create(
             [
@@ -242,12 +242,8 @@ export class DatasetDataOperation {
                 collectionId,
                 dataId: String(_id),
                 fullText:
-                  synonymContext?.transformText(
-                    `${indexQ}
-${a}`.trim()
-                  ) ??
-                  `${indexQ}
-${a}`.trim()
+                  synonymContext?.transformText(`${indexQ}\n${a}`.trim()) ??
+                  `${indexQ}\n${a}`.trim()
               }
             ],
             mongoSession
@@ -301,7 +297,7 @@ ${a}`.trim()
     forceRebuild = false,
     imageDescMap,
     session,
-    lease
+    commit
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
 
@@ -366,9 +362,9 @@ ${a}`.trim()
         .filter((item) => !item.skipped)
         .map((item) => item.index.dataId)
         .filter(Boolean) as string[];
-      await this.runInSession({
+      await this.commitDataWrite({
         session,
-        lease,
+        commit,
         fn: async (mongoSession) => {
           if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
             throw new Error('同义词配置已变化，请重试索引更新');
@@ -428,7 +424,7 @@ ${a}`.trim()
             idList: deleteVectorIdList
           });
 
-          if (!lease && mongoData.indexStatus === DatasetDataIndexStatusEnum.error) {
+          if (!commit && mongoData.indexStatus === DatasetDataIndexStatusEnum.error) {
             await MongoDatasetTraining.deleteMany(
               {
                 teamId: mongoData.teamId,
@@ -441,7 +437,7 @@ ${a}`.trim()
         }
       });
     } catch (error) {
-      if (synonymContext || lease) {
+      if (synonymContext || commit) {
         await this.indexOperation
           .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
           .catch(() => {});
@@ -680,17 +676,16 @@ ${a}`.trim()
 
 /**
  * 创建 dataset data 的服务函数。
- * 调用方必须通过 mongoSessionRun 传入 session；需要联动 training 等记录时复用同一事务。
+ * 可复用调用方 session，或由调用方通过 commit 回调组合其他记录的原子提交。
  */
 export const createDatasetData = async (
-  props: CreateDatasetDataPropsType & {
-    embeddingModel: EmbeddingSystemModelDataType;
-    indexSize?: number;
-    imageIndex?: boolean;
-    imageDescMap?: Record<string, string>;
-    session?: ClientSession;
-    lease?: TrainingTaskLease;
-  }
+  props: CreateDatasetDataPropsType &
+    DatasetDataWriteOptions & {
+      embeddingModel: EmbeddingSystemModelDataType;
+      indexSize?: number;
+      imageIndex?: boolean;
+      imageDescMap?: Record<string, string>;
+    }
 ) => {
   return new DatasetDataOperation(props.embeddingModel).create(props);
 };

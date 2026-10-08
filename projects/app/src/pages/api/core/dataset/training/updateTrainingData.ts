@@ -6,14 +6,17 @@ import {
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { getDatasetIndexTrainingMode } from '@fastgpt/service/core/dataset/training/service';
+import {
+  getDatasetIndexTrainingMode,
+  retryFailedTrainingTasks
+} from '@fastgpt/service/core/dataset/training/service';
 import {
   UpdateTrainingDataBodySchema,
   UpdateTrainingDataResponseSchema,
   type UpdateTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
+import { getTrainingTaskReadyUpdate } from '@fastgpt/service/core/dataset/training/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -55,36 +58,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       };
     })();
 
-    const taskMatch = {
-      ...retryMatch,
-      ...finalErrorTrainingMatch
-    };
-
-    await mongoSessionRun(async (session) => {
-      const failedTasks = await MongoDatasetTraining.find(taskMatch, { dataId: 1 })
-        .session(session)
-        .lean();
-      await MongoDatasetTraining.updateMany(
-        taskMatch,
-        {
-          $unset: { errorMsg: '' },
-          retryCount: 3,
-          lockTime: new Date('2000')
-        },
-        { session }
-      );
-      const dataIds = failedTasks.flatMap((task) => (task.dataId ? [task.dataId] : []));
-      if (dataIds.length) {
-        await MongoDatasetData.updateMany(
-          { _id: { $in: dataIds }, indexStatus: DatasetDataIndexStatusEnum.error },
-          {
-            $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
-            $unset: { indexErrorMsg: '' }
-          },
-          { session }
-        );
-      }
-    });
+    await retryFailedTrainingTasks(retryMatch);
 
     return UpdateTrainingDataResponseSchema.parse(undefined);
   }
@@ -126,6 +100,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       ? await getDatasetIndexTrainingMode(data)
       : undefined;
 
+  const readyUpdate = getTrainingTaskReadyUpdate();
   await mongoSessionRun(async (session) => {
     if (data.dataId) {
       await MongoDatasetData.updateOne(
@@ -141,13 +116,14 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     await MongoDatasetTraining.updateOne(
       trainingMatch,
       {
-        $unset: { errorMsg: '' },
-        retryCount: 3,
-        ...(nextMode && { mode: nextMode }),
-        ...(q !== undefined && { q }),
-        ...(a !== undefined && { a }),
-        ...(chunkIndex !== undefined && { chunkIndex }),
-        lockTime: new Date('2000')
+        ...readyUpdate,
+        $set: {
+          ...readyUpdate.$set,
+          ...(nextMode && { mode: nextMode }),
+          ...(q !== undefined && { q }),
+          ...(a !== undefined && { a }),
+          ...(chunkIndex !== undefined && { chunkIndex })
+        }
       },
       { session }
     );

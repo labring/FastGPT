@@ -282,7 +282,7 @@ describe('update training data test', () => {
     expect(updatedFinalError?.retryCount).toBe(3);
     expect(updatedBlockedError?.errorMsg).toBeUndefined();
     expect(updatedBlockedError?.retryCount).toBe(3);
-    expect(updatedBlockedError?.lockTime?.getTime()).toBe(new Date('2000').getTime());
+    expect(updatedBlockedError?.lockTime?.getTime()).toBe(new Date(0).getTime());
     expect(updatedActiveRetry?.errorMsg).toBe('temporary error');
     expect(updatedForeignFinalError?.errorMsg).toBe('foreign final error');
   });
@@ -384,7 +384,7 @@ describe('update training data test', () => {
       }
     ]);
 
-    const [trainingSingle, trainingBatch] = await MongoDatasetTraining.create([
+    const [trainingSingle] = await MongoDatasetTraining.create([
       {
         teamId: root.teamId,
         tmbId: root.tmbId,

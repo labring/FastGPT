@@ -58,7 +58,10 @@ export const getDatasetIndexMapData = (type: `${DatasetDataIndexTypeEnum}`) => {
 export const DatasetDataIndexStatusMap: Record<
   `${DatasetDataIndexStatusEnum}`,
   {
-    label: any;
+    label:
+      | 'dataset:data_index_status_indexing'
+      | 'dataset:data_index_status_indexed'
+      | 'dataset:data_index_status_error';
     colorSchema: 'gray' | 'blue' | 'green';
   }
 > = {
