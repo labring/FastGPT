@@ -74,7 +74,7 @@ describe('system migration UI state', () => {
     ).toBeUndefined();
   });
 
-  it('shows empty progress and completes historical successful stages without counts', () => {
+  it('shows explicitly empty progress and uses provided counts for nonempty totals', () => {
     const progress = {
       key: 'test_progress',
       labelKey: 'system_migration:migrations.example.progress',
@@ -92,16 +92,30 @@ describe('system migration UI state', () => {
     expect(
       getSystemMigrationProgressPercent({
         ...progress,
-        status: SystemMigrationStatusEnum.succeeded,
-        current: undefined,
-        total: undefined
-      })
-    ).toBe(100);
-    expect(
-      getSystemMigrationProgressPercent({
-        ...progress,
         total: 10
       })
     ).toBe(0);
+    expect(
+      getSystemMigrationProgressPercent({
+        ...progress,
+        status: SystemMigrationStatusEnum.succeeded,
+        current: 3,
+        total: 10
+      })
+    ).toBe(30);
   });
+
+  it.each(Object.values(SystemMigrationStatusEnum))(
+    'hides absent or incomplete progress regardless of stage status %s',
+    (status) => {
+      const progress = {
+        key: 'test_progress',
+        labelKey: 'system_migration:migrations.example.progress',
+        status
+      };
+      expect(getSystemMigrationProgressPercent(progress)).toBeUndefined();
+      expect(getSystemMigrationProgressPercent({ ...progress, current: 0 })).toBeUndefined();
+      expect(getSystemMigrationProgressPercent({ ...progress, total: 0 })).toBeUndefined();
+    }
+  );
 });
