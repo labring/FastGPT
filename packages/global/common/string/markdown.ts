@@ -161,7 +161,27 @@ export type MarkdownImageParseOptions = {
 const mdBase64ImageSrcRegex = /^data:image\/([^;]+);base64,([A-Za-z0-9+/=]+)$/;
 const mdHttpImageSrcRegex = /^https?:\/\/.+/;
 const markdownImageUploadConcurrency = 5;
-const unescapeMarkdownUrl = (url: string) => url.replace(/\\([\\()])/g, '$1');
+
+/**
+ * 判断字符是否属于 CommonMark 定义的 ASCII 标点，供目的地址反转义使用。
+ * 仅反转义 ASCII 标点，避免把 URL 中的普通反斜杠序列（如 `\\n`）误改写。
+ */
+const isAsciiPunctuation = (char: string) => {
+  const code = char.charCodeAt(0);
+  return (
+    (code >= 33 && code <= 47) ||
+    (code >= 58 && code <= 64) ||
+    (code >= 91 && code <= 96) ||
+    (code >= 123 && code <= 126)
+  );
+};
+
+/**
+ * 还原 Markdown 图片目的地址中的反斜杠转义。
+ * CommonMark 允许所有 ASCII 标点被转义，包含尖括号目的地址中的 `\\<` 与 `\\>`。
+ */
+export const unescapeMarkdownImageUrl = (url: string) =>
+  url.replace(/\\([\s\S])/g, (match, char: string) => (isAsciiPunctuation(char) ? char : match));
 
 /**
  * HTML <img> 标签正则片段（各含 1 个捕获组，value 含 3 个）：
@@ -297,7 +317,10 @@ const findClosingBracket = (text: string, startIndex: number) => {
 const scanMarkdownImages = (text = '') => {
   if (!text || typeof text !== 'string') return [];
 
-  const matches: (MarkdownImageMatchItem & { replace: DocumentImageItem['replace'] })[] = [];
+  const matches: (MarkdownImageMatchItem & {
+    replace: DocumentImageItem['replace'];
+    replaceAltText: (nextAltText: string) => string;
+  })[] = [];
   let start = 0;
 
   /** 只用于本次扫描，返回原文中的地址区间和图片结束位置。 */
@@ -388,7 +411,11 @@ const scanMarkdownImages = (text = '') => {
           ? fullMatch.slice(0, urlStart - imageStart) +
             nextUrl +
             fullMatch.slice(urlEnd - imageStart)
-          : ''
+          : '',
+      replaceAltText: (nextAltText) =>
+        fullMatch.slice(0, altStart - imageStart) +
+        nextAltText +
+        fullMatch.slice(altEnd - imageStart)
     });
 
     start = imageEnd;
@@ -399,7 +426,19 @@ const scanMarkdownImages = (text = '') => {
 
 /** 提取图片 URL 与完整原文节点；保留既有返回结构，不暴露内部替换闭包。 */
 export const matchMarkdownImages = (text = ''): MarkdownImageMatchItem[] =>
-  scanMarkdownImages(text).map(({ replace: _replace, ...item }) => item);
+  scanMarkdownImages(text).map(
+    ({ replace: _replace, replaceAltText: _replaceAltText, ...item }) => item
+  );
+
+/**
+ * 替换 Markdown 图片的 alt 文本并保留目的地址、标题和原始分隔符。
+ * 仅接受完整的单个图片节点，避免对格式不完整的片段产生猜测式改写。
+ */
+export const replaceMarkdownImageAltText = (fullMatch: string, nextAltText: string) => {
+  const match = scanMarkdownImages(fullMatch)[0];
+  if (!match || match.index !== 0 || match.fullMatch !== fullMatch) return fullMatch;
+  return match.replaceAltText(nextAltText);
+};
 
 type ParsedDocumentImage = MarkdownImage & { item: DocumentImageItem };
 
@@ -423,7 +462,7 @@ export const parseMarkdownBase64Images = async (
   const images: ParsedDocumentImage[] = [];
 
   for (const item of matchDocumentImages(text)) {
-    const url = item.format === 'markdown' ? unescapeMarkdownUrl(item.url) : item.url;
+    const url = item.format === 'markdown' ? unescapeMarkdownImageUrl(item.url) : item.url;
     const base64Match = parseBase64 ? url.match(mdBase64ImageSrcRegex) : null;
 
     if (base64Match) {

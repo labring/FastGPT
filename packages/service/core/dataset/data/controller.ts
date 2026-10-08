@@ -10,6 +10,7 @@ import { addDays } from 'date-fns';
 import { isS3ObjectKey } from '../../../common/s3/utils';
 import { matchDatasetDataMarkdownImages } from './utils';
 import { createDatasetFileS3KeyFilter } from '../../../common/s3/sources/dataset/key';
+import { replaceMarkdownImageAltText } from '@fastgpt/global/common/string/markdown';
 
 type FormatDatasetDataValueProps = {
   q: string;
@@ -45,7 +46,7 @@ export const formatDatasetDataTextValue = ({
         if (description) {
           // Add description to alt text, keeping original if exists
           const newAltText = item.alt ? `${item.alt} - ${description}` : description;
-          const replacement = `![${newAltText.replace(/\n/g, '')}](${item.url})`;
+          const replacement = replaceMarkdownImageAltText(item.raw, newAltText.replace(/\n/g, ''));
           content =
             content.slice(0, item.index) +
             replacement +

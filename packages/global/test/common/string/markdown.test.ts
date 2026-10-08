@@ -4,7 +4,9 @@ import {
   htmlTable2Md,
   matchDocumentImages,
   matchMarkdownImages,
-  parseMarkdownBase64Images
+  parseMarkdownBase64Images,
+  replaceMarkdownImageAltText,
+  unescapeMarkdownImageUrl
 } from '@fastgpt/global/common/string/markdown';
 
 describe('markdown 字符串处理函数测试', () => {
@@ -729,6 +731,24 @@ describe('markdown 字符串处理函数测试', () => {
       expect(result).toBe('hello ![img](dataset/file-parsed/a.png)');
     });
 
+    it('parseHttp 开启时应该还原尖括号目的地址中的转义标点', async () => {
+      const text = String.raw`hello ![img](<https://img.example.com/a\>.png>)`;
+      const upload = vi.fn().mockResolvedValue({ key: 'dataset/file-parsed/a.png' });
+
+      const result = await parseMarkdownBase64Images(text, {
+        parseHttp: true,
+        controller: upload
+      });
+
+      expect(upload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'http',
+          url: 'https://img.example.com/a>.png'
+        })
+      );
+      expect(result).toBe('hello ![img](<dataset/file-parsed/a.png>)');
+    });
+
     it('http 图片转存失败时应该用原始 markdown 节点回退', async () => {
       const text = String.raw`hello ![img](https://img.example.com/a\).png)`;
 
@@ -803,6 +823,15 @@ describe('markdown 字符串处理函数测试', () => {
   });
 
   describe('Markdown 图片地址与标题', () => {
+    it('按 CommonMark 规则还原目的地址中的 ASCII 标点转义', () => {
+      expect(unescapeMarkdownImageUrl(String.raw`https://example.com/a\>.png`)).toBe(
+        'https://example.com/a>.png'
+      );
+      expect(unescapeMarkdownImageUrl(String.raw`https://example.com/a\n.png`)).toBe(
+        String.raw`https://example.com/a\n.png`
+      );
+    });
+
     it.each([
       'https://example.com/a.png "caption"',
       "https://example.com/a.png 'caption'",
@@ -901,6 +930,13 @@ describe('markdown 字符串处理函数测试', () => {
       expect(nodes[0].replace('dataset/a.png')).toBe('![a](dataset/a.png "A")');
       expect(nodes[1].replace('dataset/b.png')).toBe("![b](<dataset/b.png> 'B')");
       expect(nodes[0].replace('')).toBe('');
+    });
+
+    it('替换 alt 时保留目的地址格式与标题', () => {
+      const node = String.raw`![figure](<https://example.com/a\>.png> "caption")`;
+      expect(replaceMarkdownImageAltText(node, 'figure - description')).toBe(
+        String.raw`![figure - description](<https://example.com/a\>.png> "caption")`
+      );
     });
   });
 
