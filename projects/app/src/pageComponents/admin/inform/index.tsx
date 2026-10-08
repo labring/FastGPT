@@ -198,10 +198,11 @@ const InformSetting = () => {
           {t('admin:after_an_announcement_is_set_users_see_a_modal_prompt_when_t')}
         </Text>
 
-        <AdminFormItem label={t('admin:announcement_content_markdown')} isRequired mb={4}>
+        {/* 清空内容 = 关闭公告（前端弹窗按 content 真值判定），因此不能加必填校验 */}
+        <AdminFormItem label={t('admin:announcement_content_markdown')} mb={4}>
           <Textarea
             rows={8}
-            {...registerSystemMsgModal('content', { required: true })}
+            {...registerSystemMsgModal('content')}
             placeholder={t('admin:markdown_supported_e_g_system_maintenance_notice')}
           />
         </AdminFormItem>
