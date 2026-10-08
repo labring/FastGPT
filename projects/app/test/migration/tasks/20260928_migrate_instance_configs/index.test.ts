@@ -46,6 +46,13 @@ describe('migrateInstanceConfigs', () => {
     // 已初始化时绝不写入，避免覆盖管理员配置
     expect(mocks.applyInstanceConfigMigration).not.toHaveBeenCalled();
     expect(context.logger.info).toHaveBeenCalled();
+
+    // 跳过分支同样要把三个声明阶段全部置为 succeeded，否则 Runner 判定任务未完成
+    const succeededKeys = (context.reportProgress as any).mock.calls
+      .map(([arg]: any[]) => arg)
+      .filter((arg: any) => arg.status === SystemMigrationStatusEnum.succeeded)
+      .map((arg: any) => arg.key);
+    expect(succeededKeys).toEqual(expect.arrayContaining(['inspect', 'migrate', 'validate']));
   });
 
   it('logs warnings for fields re-homed to environment variables', async () => {
