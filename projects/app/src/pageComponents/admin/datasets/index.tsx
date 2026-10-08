@@ -115,7 +115,7 @@ const DatasetTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              {t('admin:no_apps')}
+              {t('admin:no_datasets')}
             </Box>
           </Flex>
         )}

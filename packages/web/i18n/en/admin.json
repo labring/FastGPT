@@ -644,6 +644,7 @@
   "no_teams": "No teams ~",
   "no_plans": "No plans ~",
   "no_apps": "No apps ~",
+  "no_datasets": "No datasets ~",
   "no_invoices": "No invoices ~",
   "auto_suspend_when_idle_minutes": "Auto-suspend When Idle (Minutes)",
   "no_users": "No users ~",
