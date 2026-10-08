@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 
 /**
  * 二级子菜单项定义。
@@ -37,6 +38,11 @@ export type GetAdminMenuListParams = {
    * 是否开启支付与商业化菜单能力（可选，商业版环境下默认生效）。
    */
   hasPayCapability?: boolean;
+  /**
+   * License 是否处于可授权状态（可选，默认生效）。
+   * 商业版部署下 License 未激活/已过期时菜单降级为白名单入口，与 Layout 路由拦截保持一致。
+   */
+  licenseActive?: boolean;
   /** 可选的国际化翻译函数 */
   t?: MenuTranslateFn;
 };
@@ -285,9 +291,16 @@ export const getProAdminMenuList = ({
 export const getAdminMenuList = ({
   isProService,
   hasPayCapability = true,
+  licenseActive = true,
   t
 }: GetAdminMenuListParams): AdminMenuItem[] => {
   if (!isProService) {
+    return getCommunityAdminMenuList({ t });
+  }
+
+  // 未激活/已过期：Layout 会把白名单外的 /admin/* 弹回 /admin/license，
+  // 菜单同步降级为社区版白名单入口，避免「可见但点击即回跳」的不一致。
+  if (!licenseActive) {
     return getCommunityAdminMenuList({ t });
   }
 
@@ -321,16 +334,21 @@ export const useAdminMenu = () => {
   // 商业版判断：根据 PRO_URL 是否存在（即 feConfigs?.isProService）
   const isPro = !!feConfigs?.isProService;
 
-  // 商业版环境下具备支付管理能力（如有 licenseData 则兼顾其配置）
-  const hasPayCapability = isPro && (licenseData?.functions?.pay ?? true);
+  // License 有效性：未激活/已过期的 License 仍在 store 中，functions.pay 可能仍为 true，
+  // 必须按有效期判定，避免展示会被 Layout 路由拦截弹回的商业化菜单。
+  const licenseActive = useMemo(() => isLicenseActive(licenseData), [licenseData]);
+
+  // 商业版且授权有效时，再按 License functions 决定支付能力（授权不可用时 functions 一律视为关闭）
+  const hasPayCapability = isPro && licenseActive && (licenseData?.functions?.pay ?? true);
 
   const menuList = useMemo(() => {
     return getAdminMenuList({
       isProService: isPro,
       hasPayCapability,
+      licenseActive,
       t
     });
-  }, [isPro, hasPayCapability, t]);
+  }, [isPro, hasPayCapability, licenseActive, t]);
 
   return {
     isPro,
