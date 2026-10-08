@@ -43,7 +43,7 @@ import {
 import { MySourceHandle } from './nodes/render/Handle';
 import {
   WorkflowHandleRenderContext,
-  WorkflowNodeMeasurementContext
+  WorkflowNodeOffscreenMeasurementContext
 } from './nodes/render/Handle/handleRenderContext';
 import { ToolSourceHandle, ToolTargetHandle } from './nodes/render/Handle/ToolHandle';
 import { useIsToolNode } from './nodes/render/useWorkflowDocument';
@@ -102,10 +102,12 @@ const MeasuredNode = React.memo(
   ({
     nodeComponent,
     renderHandles = true,
+    offscreenMeasurement = false,
     ...props
   }: NodeProps<FlowNodeItemType> & {
     nodeComponent: CanvasNodeComponent;
     renderHandles?: boolean;
+    offscreenMeasurement?: boolean;
   }) => {
     const registerNodeMeasurement = useContextSelector(
       WorkflowCanvasContext,
@@ -202,11 +204,11 @@ const MeasuredNode = React.memo(
 
     return (
       <div ref={wrapperRef} style={{ display: 'contents' }}>
-        <WorkflowNodeMeasurementContext.Provider value={renderHandles}>
+        <WorkflowNodeOffscreenMeasurementContext.Provider value={offscreenMeasurement}>
           <WorkflowHandleRenderContext.Provider value={renderHandles}>
             {React.createElement(nodeComponent, props)}
           </WorkflowHandleRenderContext.Provider>
-        </WorkflowNodeMeasurementContext.Provider>
+        </WorkflowNodeOffscreenMeasurementContext.Provider>
       </div>
     );
   }
@@ -315,7 +317,8 @@ const VirtualizedNode = React.memo(
       expectedHandleIds: expectedDynamicHandleIds,
       dimension
     });
-    const renderFull = mode === 'full' || !hasMeasuredDynamicHandles;
+    const isMeasurement = mode === 'measurement';
+    const renderFull = mode !== 'shell' || !hasMeasuredDynamicHandles;
     const pinNodeFocus = useContextSelector(WorkflowCanvasContext, (v) => v.pinNodeFocus);
     const unpinNodeFocus = useContextSelector(WorkflowCanvasContext, (v) => v.unpinNodeFocus);
     const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
@@ -338,7 +341,12 @@ const VirtualizedNode = React.memo(
     return (
       <div
         ref={wrapperRef}
-        style={{ display: 'contents' }}
+        aria-hidden={isMeasurement}
+        style={{
+          display: 'contents',
+          visibility: isMeasurement ? 'hidden' : undefined,
+          pointerEvents: isMeasurement ? 'none' : undefined
+        }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onFocusCapture={handleFocus}
@@ -347,12 +355,13 @@ const VirtualizedNode = React.memo(
         <NodeShell
           {...props}
           overlay={renderFull}
-          renderHandles={!renderFull || hasMeasuredDynamicHandles}
+          renderHandles={!renderFull || (hasMeasuredDynamicHandles && !isMeasurement)}
         />
         {renderFull && (
           <MeasuredNode
             nodeComponent={nodeComponent}
-            renderHandles={!hasMeasuredDynamicHandles}
+            renderHandles={isMeasurement || !hasMeasuredDynamicHandles}
+            offscreenMeasurement={isMeasurement}
             {...props}
           />
         )}
@@ -375,70 +384,6 @@ const nodeTypes = Object.fromEntries(
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
 };
-
-const toMeasurementNodeProps = ({
-  id,
-  type,
-  data,
-  position,
-  selected,
-  dragging,
-  zIndex
-}: {
-  id: string;
-  type?: string;
-  data: FlowNodeItemType;
-  position: { x: number; y: number };
-  selected?: boolean;
-  dragging?: boolean;
-  zIndex?: number;
-}) => ({
-  id,
-  type: type ?? '',
-  data,
-  xPos: position.x,
-  yPos: position.y,
-  selected: selected ?? false,
-  dragging: dragging ?? false,
-  zIndex: zIndex ?? 0,
-  isConnectable: true
-});
-
-const MeasurementHost = React.memo(() => {
-  const measurementNodeIds = useContextSelector(WorkflowCanvasContext, (v) => v.measurementNodeIds);
-  const nodes = useContextSelector(WorkflowCanvasContext, (v) => v.nodes);
-  const nodesById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
-
-  return (
-    <Box
-      position={'absolute'}
-      left={'-100000px'}
-      top={'-100000px'}
-      visibility={'hidden'}
-      pointerEvents={'none'}
-      w={'max-content'}
-      h={'max-content'}
-      overflow={'hidden'}
-    >
-      {measurementNodeIds.map((nodeId) => {
-        const node = nodesById.get(nodeId);
-        if (!node) return null;
-        const nodeComponent = baseNodeTypes[node.type as FlowNodeTypeEnum];
-        if (!nodeComponent) return null;
-
-        return (
-          <MeasuredNode
-            key={nodeId}
-            nodeComponent={nodeComponent}
-            renderHandles={true}
-            {...toMeasurementNodeProps(node)}
-          />
-        );
-      })}
-    </Box>
-  );
-});
-MeasurementHost.displayName = 'MeasurementHost';
 
 const ViewportObserver = () => {
   const onViewportChange = useContextSelector(WorkflowCanvasContext, (v) => v.onViewportChange);
@@ -635,7 +580,6 @@ const WorkflowCanvas = () => {
           onMoveEnd={onMoveEnd}
         >
           <ViewportObserver />
-          <MeasurementHost />
           {!!menu && <ContextMenu />}
           <FlowController />
           <HelperLines ref={helperLinesRef} />

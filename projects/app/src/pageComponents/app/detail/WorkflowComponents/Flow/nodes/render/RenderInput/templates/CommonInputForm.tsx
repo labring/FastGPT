@@ -16,11 +16,12 @@ import {
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useLocalStorageState } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useContext, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 import { useNodeActions } from '@/web/core/workflow/editor/react';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
+import { WorkflowNodeOffscreenMeasurementContext } from '../../Handle/handleRenderContext';
 
 /**
  * 通用输入模板：文本/多行文本/数字/开关/单选多选/JSON/模型选择等渲染类型共用。
@@ -46,6 +47,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const inputType = nodeInputTypeToInputType(
     selectedRenderType ? [selectedRenderType] : currentInput.renderTypeList
   );
+  const offscreenMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
   const editorVariables = useMemoEnhance(() => {
     if (!workflow) return [];
@@ -134,16 +136,20 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       {/* 字段撤销由 Runtime 统一托管：打上标记后画布快捷键在捕获阶段接管，
           不再让编辑器本地历史（Lexical 按秒合并连续输入）与逐条记录的工作流历史互相覆盖。 */}
       <Box data-workflow-history="external">
-        <InputRender
-          inputType={inputType}
-          value={currentInput.value}
-          onChange={handleChange}
-          variables={[...(editorVariables || []), ...(externalVariables || [])]}
-          variableLabels={editorVariables}
-          ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
-          menuPlacement={menuPlacement}
-          {...inputProps}
-        />
+        {offscreenMeasurement && inputType === InputTypeEnum.JSONEditor ? (
+          <Box h={'100px'} />
+        ) : (
+          <InputRender
+            inputType={inputType}
+            value={currentInput.value}
+            onChange={handleChange}
+            variables={[...(editorVariables || []), ...(externalVariables || [])]}
+            variableLabels={editorVariables}
+            ExtensionPopover={canOptimizePrompt ? [OptimizerPopverComponent] : undefined}
+            menuPlacement={menuPlacement}
+            {...inputProps}
+          />
+        )}
       </Box>
     </WorkflowFieldScope>
   );

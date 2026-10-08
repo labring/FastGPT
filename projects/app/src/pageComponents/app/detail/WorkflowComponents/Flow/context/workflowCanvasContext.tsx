@@ -59,7 +59,7 @@ type PendingFitRequest = {
   options?: ViewportFitOptions;
 };
 
-export type WorkflowRenderMode = 'full' | 'shell';
+export type WorkflowRenderMode = 'full' | 'shell' | 'measurement';
 
 const defaultViewport: CanvasViewport = {
   x: 0,
@@ -489,6 +489,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         const next = new Set(measurementNodeIdsRef.current);
         entries.forEach((entry) => next.add(entry.nodeId));
         publishMeasurementNodeIds(next);
+        scheduleRenderStateFrame();
       }
 
       if (measurementQueueRef.current.getSize() > 0) scheduleMeasurementFrame();
@@ -539,7 +540,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       : new Set<string>();
 
     nextNodes.forEach((node) => {
-      nextModes.set(node.id, classification.fullNodeIds.has(node.id) ? 'full' : 'shell');
+      const isFull = classification.fullNodeIds.has(node.id);
+      const isHidden = classification.hiddenNodeIds.has(node.id);
+      const isMeasurement = measurementNodeIdsRef.current.has(node.id) && !isFull && !isHidden;
+      nextModes.set(node.id, isMeasurement ? 'measurement' : isFull ? 'full' : 'shell');
 
       if (pendingFitNodeIds.has(node.id)) {
         if (nextModes.get(node.id) !== 'full' && !measurementNodeIdsRef.current.has(node.id)) {
@@ -584,7 +588,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         [...measurementNodeIdsRef.current].filter(
           (nodeId) =>
             activeNodeIdsRef.current.has(nodeId) &&
-            nextModes.get(nodeId) === 'shell' &&
+            nextModes.get(nodeId) === 'measurement' &&
             !!nodeById.get(nodeId) &&
             !isDimensionReady(nodeById.get(nodeId)!)
         )
@@ -592,7 +596,11 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     );
     scheduleMeasurementFrame();
 
-    const renderedNodeIds = renderedGraph.renderedNodeIds;
+    // 测量节点直接复用 React Flow 的节点渲染树，避免同一节点同时存在隐藏副本。
+    const renderedNodeIds = new Set([
+      ...renderedGraph.renderedNodeIds,
+      ...[...nextModes].filter(([, mode]) => mode === 'measurement').map(([nodeId]) => nodeId)
+    ]);
     publishRenderedGraph(
       nextNodes.filter((node) => renderedNodeIds.has(node.id)),
       edgesRef.current.filter(

@@ -15,7 +15,7 @@ import { useNode, useWorkflowValue } from '@/web/core/workflow/editor';
 import { useDocumentGetNodeById } from '../nodes/render/useWorkflowDocument';
 import { AppContext } from '../../../context';
 import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
-import { WorkflowNodeMeasurementContext } from '../nodes/render/Handle/handleRenderContext';
+import { WorkflowNodeOffscreenMeasurementContext } from '../nodes/render/Handle/handleRenderContext';
 
 type UseNestedNodeParams = {
   nodeId: string;
@@ -45,7 +45,7 @@ export const useNestedNode = ({
   const containerLayout = useContextSelector(WorkflowCanvasContext, (value) =>
     value.containerLayouts.get(nodeId)
   );
-  const isMeasurement = useContext(WorkflowNodeMeasurementContext);
+  const isMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
   // ── 1. Read the container array input（外框尺寸是常量，不再从 inputs 读）─────
   const nestedInputArray = useMemoEnhance(

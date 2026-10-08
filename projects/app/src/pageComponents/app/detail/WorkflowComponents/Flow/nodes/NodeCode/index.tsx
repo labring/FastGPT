@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
@@ -28,6 +28,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import NodeCopilot from './Copilot';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { WorkflowNodeOffscreenMeasurementContext } from '../render/Handle/handleRenderContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from '../render/useWorkflowDocument';
@@ -50,6 +51,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const node = useNode(nodeId);
   const codeField = useField(nodeId, NodeInputKeyEnum.code, 'input');
   const presentationMode = useContextSelector(WorkflowUIContext, (ctx) => ctx.presentationMode);
+  const offscreenMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
     content: t('workflow:code.Switch language confirm')
@@ -129,7 +131,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 }
               />
             </Flex>
-            {presentationMode ? (
+            {presentationMode || offscreenMeasurement ? (
               <Box h={'200px'} />
             ) : (
               <CodeEditor
@@ -154,7 +156,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     presentationMode,
     node,
     codeField,
-    openSwitchLangConfirm
+    openSwitchLangConfirm,
+    offscreenMeasurement
   ]);
 
   const isTool = useIsToolNode(nodeId);
