@@ -10,7 +10,7 @@ import { useWorkflowOverlayActions } from '@/web/core/workflow/editor/session/wo
 import type { ViewOverlayPatch } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { useWorkflowSnapshotGetter } from '../../WorkflowComponents/Flow/nodes/render/useWorkflowDocument';
 import { useWorkflowCanvasValue } from '../../WorkflowComponents/Flow/canvas/workflowCanvasContext';
-import { getDimensionedNodes } from '../../WorkflowComponents/Flow/canvas/dimensionIndex';
+import { getDimensionedNodes } from '../../WorkflowComponents/Flow/canvas/nodeDimensions';
 
 const SearchButton = (props: ButtonProps) => {
   const { t } = useTranslation();

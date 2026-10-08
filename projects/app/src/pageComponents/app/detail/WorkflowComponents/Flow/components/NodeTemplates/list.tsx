@@ -55,7 +55,7 @@ import type { WorkflowDispatchResult } from '@fastgpt/global/core/workflow/edito
 import { useDocumentGetNodeById } from '../../nodes/render/useWorkflowDocument';
 import { useWorkflowModalValue } from '../../panels/workflowPanelState';
 import { useWorkflowCanvasValue } from '../../canvas/workflowCanvasContext';
-import { areNodeRectsIntersecting, getNodeRect } from '../../canvas/dimensionIndex';
+import { areNodeRectsIntersecting, getNodeRect } from '../../canvas/nodeDimensions';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { TemplateTypeEnum } from './header';

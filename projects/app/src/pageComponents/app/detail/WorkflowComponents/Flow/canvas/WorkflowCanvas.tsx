@@ -38,7 +38,7 @@ import {
   getLayoutDimension,
   hasValidSourceHandleMeasurement,
   WORKFLOW_NODE_MEASUREMENT_ESTIMATE
-} from './dimensionIndex';
+} from './nodeDimensions';
 import {
   ConnectionSourceHandle,
   ConnectionTargetHandle

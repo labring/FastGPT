@@ -16,7 +16,7 @@ import {
   type NodeDimensions,
   type NodeRect,
   type ViewportNode
-} from '../canvas/dimensionIndex';
+} from '../canvas/nodeDimensions';
 import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
 
 type WorkflowMiniMapProps = {

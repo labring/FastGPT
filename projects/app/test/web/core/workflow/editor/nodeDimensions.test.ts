@@ -12,7 +12,7 @@ import {
   getViewportForNodeIds,
   hasValidSourceHandleMeasurement,
   type DimensionMeasurement
-} from '@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/dimensionIndex';
+} from '@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/nodeDimensions';
 
 const measuredDimension = (card: { width: number; height: number }, occupied = card) => ({
   card,

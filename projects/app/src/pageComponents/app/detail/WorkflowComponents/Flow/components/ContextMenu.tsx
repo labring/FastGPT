@@ -4,7 +4,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { CommentNode } from '@fastgpt/global/core/workflow/template/system/comment';
-import { useContextSelector } from 'use-context-selector';
 import { type Node, useReactFlow } from 'reactflow';
 import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -22,7 +21,7 @@ import {
   useWorkflowSnapshot
 } from '@/web/core/workflow/editor/session/workflowSession';
 import { useClearCanvasSelection } from '../canvas/useCanvasController';
-import { type DimensionReader, type NodeCardDimension } from '../canvas/dimensionIndex';
+import { type DimensionReader, type NodeCardDimension } from '../canvas/nodeDimensions';
 
 /** 右键菜单单项：执行动作后关闭菜单。不依赖父组件状态，放模块级避免每次渲染重建组件。 */
 const ContextMenuItem = ({

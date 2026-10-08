@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, type MutableRefObject } from 'react';
+import { useCallback, useRef, type MutableRefObject } from 'react';
 import {
   type Connection,
   type NodeChange,
@@ -21,7 +21,6 @@ import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useKeyboard } from '../hooks/useKeyboard';
-import { useContextSelector } from 'use-context-selector';
 import { type THelperLine } from '@/web/core/workflow/type';
 import {
   useWorkflowIssueFocusAction,
@@ -38,7 +37,7 @@ import { useWorkflowUIValue } from './canvasState';
 import { useWorkflowModalValue } from '../panels/workflowPanelState';
 import { type HelperLinesController } from '../components/HelperLines';
 import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
-import { areNodeRectsIntersecting, getNodeRect, type DimensionReader } from './dimensionIndex';
+import { areNodeRectsIntersecting, getNodeRect, type DimensionReader } from './nodeDimensions';
 
 /** 只为真实发生位置变化的节点创建 geometry command；节点查找一次完成。 */
 export const collectGeometryUpdates = ({

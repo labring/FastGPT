@@ -43,7 +43,7 @@ import {
   type NodeCardDimension,
   getViewportForNodeIds,
   type ViewportFitOptions
-} from './dimensionIndex';
+} from './nodeDimensions';
 import {
   getParentNodeSizeAndPosition,
   normalizeContainerChildPositions,
