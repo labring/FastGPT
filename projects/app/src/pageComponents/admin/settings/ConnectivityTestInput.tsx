@@ -103,13 +103,14 @@ const ConnectivityTestInput = ({
             <AdminReadonlyInput value={effectiveUrl} placeholder={resolvedPlaceholder} isTruncate />
           )}
         </Box>
+        {/* 禁用条件与 resolveTargetUrl 一致：testUrl 可独立提供探测目标，不能只看 effectiveUrl */}
         <Button
           colorScheme={'blue'}
           variant={'outline'}
           flexShrink={0}
           px={5}
           isLoading={isTesting}
-          isDisabled={!effectiveUrl || isDisabled}
+          isDisabled={(!effectiveUrl && !testUrl) || isDisabled}
           onClick={handleTest}
         >
           {resolvedButtonText}
