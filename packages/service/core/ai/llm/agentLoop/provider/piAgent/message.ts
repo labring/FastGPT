@@ -101,10 +101,14 @@ const getContentText = (
  * 将工具返回的 content（字符串或 text / image_url parts）转换成 pi-agent 的
  * TextContent / ImageContent。图片 URL 取回 base64 后进入 transcript；
  * 取图失败时降级为占位文本，避免中断 agent loop。
+ * useVision 为 false 时图片 part 统一降级为占位文本，与 loadRequestMessages
+ * 的能力过滤语义一致，避免把图片发给不支持视觉的模型。
  */
 export const convertToolResponseContentToPiContent = async (
-  content: string | ChatCompletionToolMessageContentPart[]
+  content: string | ChatCompletionToolMessageContentPart[],
+  options?: { useVision?: boolean }
 ): Promise<Array<TextContent | ImageContent>> => {
+  const useVision = options?.useVision ?? true;
   if (typeof content === 'string') {
     return [{ type: 'text', text: content }];
   }
@@ -116,6 +120,9 @@ export const convertToolResponseContentToPiContent = async (
       }
 
       const url = part.image_url.url;
+      if (!useVision) {
+        return { type: 'text', text: `[Image: ${url}]` };
+      }
       const dataMatch = url.match(/^data:([^;]+);base64,(.+)$/);
       if (dataMatch) {
         return { type: 'image', mimeType: dataMatch[1], data: dataMatch[2] };

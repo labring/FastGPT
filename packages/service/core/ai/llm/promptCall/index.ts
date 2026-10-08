@@ -56,13 +56,22 @@ export const promptToolCallMessageRewrite = (
         delete message.tool_calls;
       }
     } else if (message.role === 'tool') {
+      // 工具消息可能是字符串、text/image_url parts 或空值；纯图片时保留占位文本，避免响应静默丢失。
       const toolContent =
         typeof message.content === 'string'
           ? message.content
-          : (message.content as { type: string; text?: string }[])
-              .filter((part) => part.type === 'text' && part.text)
-              .map((part) => part.text)
-              .join('\n');
+          : Array.isArray(message.content)
+            ? message.content
+                .map((part) => {
+                  if (part.type === 'text' && part.text) return part.text;
+                  if (part.type === 'image_url' && part.image_url?.url) {
+                    return `[Image: ${part.image_url.url}]`;
+                  }
+                  return '';
+                })
+                .filter(Boolean)
+                .join('\n')
+            : String(message.content ?? '');
       cloneMessages.splice(i, 1, {
         role: 'user',
         content: `<ToolResponse>\n${toolContent}\n</ToolResponse>`

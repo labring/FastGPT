@@ -71,6 +71,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 }): Promise<AgentLoopResult<TChildrenResponse>> => {
   const state = readPiAgentProviderState(input.providerState);
   const modelData = runtime.llmParams.model;
+  const useVision = runtime.llmParams.useVision && modelData.config.vision;
   const piModel = buildPiModel(
     modelData,
     runtime.llmParams.useVision,
@@ -79,7 +80,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   );
   const requestMessages = await loadRequestMessages({
     messages: input.messages,
-    useVision: runtime.llmParams.useVision && modelData.config.vision,
+    useVision,
     useAudio: runtime.llmParams.useAudio && modelData.config.audio,
     useVideo: runtime.llmParams.useVideo && modelData.config.video,
     extractFiles: runtime.llmParams.extractFiles,
@@ -323,7 +324,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
     const toolContent = result.content ?? getToolResponseContent(result.response);
-    const piToolContent = await convertToolResponseContentToPiContent(toolContent);
+    const piToolContent = await convertToolResponseContentToPiContent(toolContent, { useVision });
     initialPiMessages = replaceInteractiveToolResult({
       messages: initialPiMessages,
       call,

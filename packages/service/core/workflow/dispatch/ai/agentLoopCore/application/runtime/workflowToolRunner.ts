@@ -124,7 +124,9 @@ export const extractAgentLoopCoreToolContent = (
     if (!part || typeof part !== 'object') return false;
     if (part.type === 'text') return typeof part.text === 'string' && part.text.length > 0;
     if (part.type === 'image_url') {
-      return !!part.image_url && typeof part.image_url.url === 'string';
+      return (
+        !!part.image_url && typeof part.image_url.url === 'string' && part.image_url.url.length > 0
+      );
     }
     return false;
   };

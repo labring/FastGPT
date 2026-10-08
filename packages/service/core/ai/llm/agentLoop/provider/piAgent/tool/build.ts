@@ -101,6 +101,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   }) => void;
 }): Promise<AgentTool[]> => {
   const tools: AgentTool[] = [];
+  // 与 loadRequestMessages 对齐：模型不支持视觉时，工具图片 part 降级为占位文本。
+  const useVision = runtime.llmParams.useVision && runtime.llmParams.model.config.vision;
 
   /** 保证每个普通工具 start 都对应 end，并将异常变成可回填模型的工具结果。 */
   const executeOrdinaryTool = async ({
@@ -148,8 +150,10 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
-    // 工具返回结构化 content 时优先透传；否则按 response 兜底（整串恰为图片链接时转 image_url part）
-    const toolContent = result.content ?? getToolResponseContent(result.response);
+    // 工具返回结构化 content 时优先透传；空数组同样按 response 兜底（整串恰为图片链接时转 image_url part）
+    const toolContent = result.content?.length
+      ? result.content
+      : getToolResponseContent(result.response);
     onToolResult({ call, response: normalizedResponse, assistantMessages, content: toolContent });
     return {
       ...result,
@@ -182,7 +186,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         }
         return {
           content: await convertToolResponseContentToPiContent(
-            result.content ?? getToolResponseContent(result.response)
+            result.content?.length ? result.content : getToolResponseContent(result.response),
+            { useVision }
           ),
           details: {}
         };
@@ -373,7 +378,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         });
         return {
           content: await convertToolResponseContentToPiContent(
-            result.content ?? getToolResponseContent(result.response)
+            result.content?.length ? result.content : getToolResponseContent(result.response),
+            { useVision }
           ),
           details: {}
         };
@@ -423,7 +429,8 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         });
         return {
           content: await convertToolResponseContentToPiContent(
-            result.content ?? getToolResponseContent(result.response)
+            result.content?.length ? result.content : getToolResponseContent(result.response),
+            { useVision }
           ),
           details: {}
         };
