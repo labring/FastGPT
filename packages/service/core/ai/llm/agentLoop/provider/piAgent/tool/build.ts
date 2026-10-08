@@ -1,10 +1,14 @@
 import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { Type } from '@mariozechner/pi-ai';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
-import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  getToolResponseContent,
+  normalizeToolResponseContent
+} from '@fastgpt/global/core/ai/llm/utils';
 import type {
   ChatCompletionMessageParam,
-  ChatCompletionMessageToolCall
+  ChatCompletionMessageToolCall,
+  ChatCompletionToolMessageContentPart
 } from '@fastgpt/global/core/ai/llm/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
@@ -32,7 +36,12 @@ import {
   type AgentLoopUsage
 } from '../../../domain';
 import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
-import { createToolCall, normalizeToolArgs, stringifyJson } from '../message';
+import {
+  convertToolResponseContentToPiContent,
+  createToolCall,
+  normalizeToolArgs,
+  stringifyJson
+} from '../message';
 import { getPiAgentRuntimeTools } from './catalog';
 
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
@@ -88,6 +97,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     call: ChatCompletionMessageToolCall;
     response: string;
     assistantMessages?: ChatCompletionMessageParam[];
+    content?: string | ChatCompletionToolMessageContentPart[];
   }) => void;
 }): Promise<AgentTool[]> => {
   const tools: AgentTool[] = [];
@@ -107,6 +117,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       stop?: boolean;
       errorMessage?: string;
       metadata?: unknown;
+      content?: ChatCompletionToolMessageContentPart[];
     }>;
   }) => {
     const startedAt = Date.now();
@@ -137,8 +148,16 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
-    onToolResult({ call, response: normalizedResponse, assistantMessages });
-    return { ...result, response: normalizedResponse, assistantMessages, usages };
+    // 工具返回结构化 content 时优先透传；否则按 response 兜底（整串恰为图片链接时转 image_url part）
+    const toolContent = result.content ?? getToolResponseContent(result.response);
+    onToolResult({ call, response: normalizedResponse, assistantMessages, content: toolContent });
+    return {
+      ...result,
+      response: normalizedResponse,
+      assistantMessages,
+      usages,
+      content: toolContent
+    };
   };
 
   for (const tool of getPiAgentRuntimeTools(runtime)) {
@@ -161,7 +180,12 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         } else if (result.stop) {
           onToolStop?.();
         }
-        return { content: [{ type: 'text' as const, text: result.response }], details: {} };
+        return {
+          content: await convertToolResponseContentToPiContent(
+            result.content ?? getToolResponseContent(result.response)
+          ),
+          details: {}
+        };
       }
     });
   }
@@ -298,11 +322,17 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
                 response: sandboxResult.response,
                 assistantMessages: [],
                 usages: [],
-                errorMessage: sandboxResult.success ? undefined : sandboxResult.response
+                errorMessage: sandboxResult.success ? undefined : sandboxResult.response,
+                content: sandboxResult.content
               };
             }
           });
-          return { content: [{ type: 'text' as const, text: result.response }], details: {} };
+          return {
+            content: await convertToolResponseContentToPiContent(
+              result.content ?? getToolResponseContent(result.response)
+            ),
+            details: {}
+          };
         }
       });
     }
@@ -341,7 +371,12 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             };
           }
         });
-        return { content: [{ type: 'text' as const, text: result.response }], details: {} };
+        return {
+          content: await convertToolResponseContentToPiContent(
+            result.content ?? getToolResponseContent(result.response)
+          ),
+          details: {}
+        };
       }
     });
   }
@@ -386,7 +421,12 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
             };
           }
         });
-        return { content: [{ type: 'text' as const, text: result.response }], details: {} };
+        return {
+          content: await convertToolResponseContentToPiContent(
+            result.content ?? getToolResponseContent(result.response)
+          ),
+          details: {}
+        };
       }
     });
   }

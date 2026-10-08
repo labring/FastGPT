@@ -117,12 +117,24 @@ export type ChatCompletionUserMessageParam = z.infer<typeof ChatCompletionUserMe
 /* ========= User end ===== */
 
 /**
+ * Tool message content part: 对齐 openai completions 接口，工具消息允许
+ * 返回 text 或 image_url part，图片可作为下一轮模型的视觉输入。
+ */
+export const ChatCompletionToolMessageContentPartSchema = z.union([
+  ChatCompletionContentPartTextSchema,
+  ChatCompletionContentPartImageSchema
+]);
+export type ChatCompletionToolMessageContentPart = z.infer<
+  typeof ChatCompletionToolMessageContentPartSchema
+>;
+
+/**
  * Tool message: 对齐 openai SDK 的 ChatCompletionToolMessageParam，新增可选 `name`
- * SDK content 仅允许纯文本 part
+ * SDK content 允许字符串或 text/image_url part 数组
  */
 export const ChatCompletionToolMessageParamSchema = z.object({
   role: z.literal('tool'),
-  content: z.union([z.string(), z.array(ChatCompletionContentPartTextSchema)]),
+  content: z.union([z.string(), z.array(ChatCompletionToolMessageContentPartSchema)]),
   tool_call_id: z.string(),
   name: z.string().optional()
 });

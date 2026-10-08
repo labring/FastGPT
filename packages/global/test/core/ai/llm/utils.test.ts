@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  getToolResponseContent,
+  isExactImageUrl,
+  removeDatasetCiteText
+} from '@fastgpt/global/core/ai/llm/utils';
 
 describe('removeDatasetCiteText', () => {
   describe('when retainDatasetCite is true', () => {
@@ -91,5 +95,47 @@ describe('removeDatasetCiteText', () => {
       const text = '[507f1f77bcf86cd79943901g] invalid';
       expect(removeDatasetCiteText(text, false)).toBe('[507f1f77bcf86cd79943901g] invalid');
     });
+  });
+});
+
+describe('isExactImageUrl', () => {
+  it('should return true for an exact image url', () => {
+    expect(isExactImageUrl('https://example.com/a.png')).toBe(true);
+    expect(isExactImageUrl('http://example.com/a.JPEG')).toBe(true);
+  });
+
+  it('should ignore query string and hash when checking the extension', () => {
+    expect(isExactImageUrl('https://example.com/a.png?x=1#y')).toBe(true);
+  });
+
+  it('should return false for non-image or non-http urls', () => {
+    expect(isExactImageUrl('https://example.com/page.html')).toBe(false);
+    expect(isExactImageUrl('data:image/png;base64,xxx')).toBe(false);
+    expect(isExactImageUrl('hello world')).toBe(false);
+  });
+});
+
+describe('getToolResponseContent', () => {
+  it('should normalize empty response to none', () => {
+    expect(getToolResponseContent('')).toBe('none');
+    expect(getToolResponseContent(undefined)).toBe('none');
+  });
+
+  it('should keep plain text responses as string', () => {
+    expect(getToolResponseContent('tool result text')).toBe('tool result text');
+    expect(getToolResponseContent('https://example.com/page.html')).toBe(
+      'https://example.com/page.html'
+    );
+  });
+
+  it('should not extract image urls embedded in other text', () => {
+    const text = 'see https://example.com/a.png for details';
+    expect(getToolResponseContent(text)).toBe(text);
+  });
+
+  it('should convert an exact image url into image_url part', () => {
+    expect(getToolResponseContent('https://example.com/a.png')).toEqual([
+      { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+    ]);
   });
 });

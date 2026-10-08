@@ -1131,6 +1131,85 @@ describe('loadRequestMessages function tests', () => {
       expect(result[1].content).toBe('Tool result');
     });
 
+    it('should keep tool content parts when vision is enabled', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            { type: 'text', text: 'Look at this image' },
+            { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result[1].content).toEqual([
+        { type: 'text', text: 'Look at this image' },
+        { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+      ]);
+    });
+
+    it('should convert tool image urls to base64 when configured', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = true;
+      mockGetImageBase64.mockResolvedValue({
+        completeBase64: 'data:image/png;base64,converted',
+        base64: 'converted',
+        mime: 'image/png'
+      });
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [{ type: 'image_url', image_url: { url: 'https://example.com/a.png' } }]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result[1].content).toEqual([
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,converted' } }
+      ]);
+    });
+
+    it('should drop tool images and collapse single text part without vision', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: [
+            { type: 'text', text: 'Only text survives' },
+            { type: 'image_url', image_url: { url: 'https://example.com/a.png' } }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages });
+
+      expect(result[1].content).toBe('Only text survives');
+    });
+
+    it('should normalize empty tool content parts to none', async () => {
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' },
+        {
+          role: ChatCompletionRequestMessageRoleEnum.Tool,
+          tool_call_id: 'call1',
+          content: []
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages });
+
+      expect(result[1].content).toBe('none');
+    });
+
     it('should handle user message with empty content as null', async () => {
       const messages: ChatCompletionMessageParam[] = [
         { role: ChatCompletionRequestMessageRoleEnum.User, content: '' }

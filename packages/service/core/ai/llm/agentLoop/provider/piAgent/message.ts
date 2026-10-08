@@ -13,8 +13,10 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionTool,
+  ChatCompletionToolMessageContentPart,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
+import { getImageBase64 } from '../../../../../../common/file/image/utils';
 
 /** 将工具参数稳定序列化；不可序列化值回退为空对象，避免中断事件链。 */
 export const stringifyJson = (value: unknown) => {
@@ -81,12 +83,52 @@ const getContentText = (
   content:
     | string
     | null
-    | Array<{ type: 'text'; text: string } | { type: 'refusal'; refusal: string }>
+    | Array<
+        | { type: 'text'; text: string }
+        | { type: 'refusal'; refusal: string }
+        | { type: 'image_url'; image_url: { url: string } }
+      >
     | undefined
 ) => {
   if (!content) return '';
   if (typeof content === 'string') return content;
-  return content.map((item) => (item.type === 'text' ? item.text : item.refusal)).join('');
+  return content
+    .map((item) => (item.type === 'text' ? item.text : item.type === 'refusal' ? item.refusal : ''))
+    .join('');
+};
+
+/**
+ * 将工具返回的 content（字符串或 text / image_url parts）转换成 pi-agent 的
+ * TextContent / ImageContent。图片 URL 取回 base64 后进入 transcript；
+ * 取图失败时降级为占位文本，避免中断 agent loop。
+ */
+export const convertToolResponseContentToPiContent = async (
+  content: string | ChatCompletionToolMessageContentPart[]
+): Promise<Array<TextContent | ImageContent>> => {
+  if (typeof content === 'string') {
+    return [{ type: 'text', text: content }];
+  }
+
+  return Promise.all(
+    content.map(async (part): Promise<TextContent | ImageContent> => {
+      if (part.type === 'text') {
+        return { type: 'text', text: part.text };
+      }
+
+      const url = part.image_url.url;
+      const dataMatch = url.match(/^data:([^;]+);base64,(.+)$/);
+      if (dataMatch) {
+        return { type: 'image', mimeType: dataMatch[1], data: dataMatch[2] };
+      }
+
+      try {
+        const { base64, mime } = await getImageBase64(url);
+        return { type: 'image', mimeType: mime, data: base64 };
+      } catch {
+        return { type: 'text', text: `[Image: ${url}]` };
+      }
+    })
+  );
 };
 
 /**
@@ -171,12 +213,32 @@ export const convertChatMessagesToPiAgentMessages = ({
     }
 
     if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+      // 工具消息允许 text / image_url parts：data URI 直接还原为 ImageContent，
+      // 远程图片 URL 与 user 分支一致降级为占位文本，不阻塞转录恢复。
+      const content: Array<TextContent | ImageContent> = [];
+      if (Array.isArray(message.content)) {
+        message.content.forEach((part) => {
+          if (part.type === 'text') {
+            content.push({ type: 'text', text: part.text });
+            return;
+          }
+          const match = part.image_url.url.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            content.push({ type: 'image', mimeType: match[1], data: match[2] });
+            return;
+          }
+          content.push({ type: 'text', text: `[Image: ${part.image_url.url}]` });
+        });
+      } else {
+        content.push({ type: 'text', text: getContentText(message.content) });
+      }
+
       return [
         {
           role: 'toolResult',
           toolCallId: message.tool_call_id,
           toolName: message.name ?? toolNames.get(message.tool_call_id) ?? '',
-          content: [{ type: 'text', text: getContentText(message.content) }],
+          content,
           details: {},
           isError: false,
           timestamp: Date.now()
@@ -295,18 +357,24 @@ export const replaceInteractiveToolResult = ({
   messages,
   call,
   response,
-  isError
+  isError,
+  content
 }: {
   messages: AgentMessage[];
   call: ChatCompletionMessageToolCall;
   response: string;
   isError: boolean;
+  /** 工具返回的图片 content（已转成 pi ImageContent），错误时不生效。 */
+  content?: Array<TextContent | ImageContent>;
 }): AgentMessage[] => {
+  const nextContent =
+    !isError && content?.length ? content : [{ type: 'text' as const, text: response }];
+
   let replaced = false;
   const nextMessages = messages.map((message) => {
     if (message.role !== 'toolResult' || message.toolCallId !== call.id || replaced) return message;
     replaced = true;
-    return { ...message, content: [{ type: 'text' as const, text: response }], isError };
+    return { ...message, content: nextContent, isError };
   });
   if (replaced) return nextMessages;
 
@@ -316,7 +384,7 @@ export const replaceInteractiveToolResult = ({
       role: 'toolResult',
       toolCallId: call.id,
       toolName: call.function.name,
-      content: [{ type: 'text', text: response }],
+      content: nextContent,
       details: {},
       isError,
       timestamp: Date.now()

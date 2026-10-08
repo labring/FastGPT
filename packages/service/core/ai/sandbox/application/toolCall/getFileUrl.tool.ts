@@ -11,10 +11,20 @@ import {
   createSandboxPreviewSession,
   resolveSandboxPreviewPath
 } from '../preview';
+import { imageFileType } from '@fastgpt/global/common/file/constants';
+import type { ChatCompletionToolMessageContentPart } from '@fastgpt/global/core/ai/llm/type';
 
 const SandboxGetFileUrlToolSchema = z.object({
   paths: z.array(z.string())
 });
+
+const isImageFilePath = (filePath: string) => {
+  const extension = `.${path.posix.extname(filePath).slice(1).toLowerCase()}`;
+  return (
+    extension !== '.' &&
+    imageFileType.split(',').some((item) => item.trim().toLowerCase() === extension)
+  );
+};
 
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
@@ -67,6 +77,18 @@ export const sandboxGetFileUrlTool = defineTool({
       filename: path.posix.basename(relativePath)
     }));
 
-    return { response: JSON.stringify(result) };
+    // 图片文件在文本链接之外，额外以 image_url part 返回，
+    // 作为下一轮模型的视觉输入（工具主动返回 content parts）。
+    const content = result
+      .filter(({ filename }) => isImageFilePath(filename))
+      .map<ChatCompletionToolMessageContentPart>(({ fileUrl }) => ({
+        type: 'image_url',
+        image_url: { url: fileUrl }
+      }));
+
+    return {
+      response: JSON.stringify(result),
+      ...(content.length ? { content } : {})
+    };
   }
 });

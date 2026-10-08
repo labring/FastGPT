@@ -21,7 +21,10 @@ import type {
 } from './type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  normalizeToolResponseContent,
+  getToolResponseContent
+} from '@fastgpt/global/core/ai/llm/utils';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
@@ -554,7 +557,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           stop: stopLoop,
           skipResponseCompress,
           errorMessage,
-          metadata
+          metadata,
+          content: toolContent
         } = await (async () => {
           try {
             return await onRunTool({
@@ -623,6 +627,15 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           metadata
         });
 
+        // 工具返回结构化 content（text / image_url parts）时，直接作为下一轮模型的输入；
+        // 否则按 response 兜底：整串恰为一个图片链接时转成 image_url part，其余保持纯文本。
+        const fallbackToolContent = getToolResponseContent(response);
+        const toolMessageContent = toolContent?.length
+          ? toolContent
+          : typeof fallbackToolContent === 'string'
+            ? toolFinalResponse
+            : fallbackToolContent;
+
         return {
           tool,
           interactive,
@@ -630,7 +643,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           toolMessage: {
             tool_call_id: tool.id,
             role: ChatCompletionRequestMessageRoleEnum.Tool,
-            content: toolFinalResponse
+            content: toolMessageContent
           } as ChatCompletionMessageParam,
           toolAssistantMessages: filterEmptyAssistantMessages(toolAssistantMessages)
         };
