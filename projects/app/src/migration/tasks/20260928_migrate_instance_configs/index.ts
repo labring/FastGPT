@@ -20,6 +20,11 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
     context.logger.warn(`Instance config env re-home required: ${warning}`);
   }
 
+  // 旧值不满足当前 Schema 收紧校验的项已被剔除，提示部署者按需重新配置
+  for (const warning of inspection.schemaSanitizedWarnings) {
+    context.logger.warn(`Instance config sanitized during migration: ${warning}`);
+  }
+
   await context.reportProgress({
     key: 'inspect',
     status: SystemMigrationStatusEnum.succeeded,
