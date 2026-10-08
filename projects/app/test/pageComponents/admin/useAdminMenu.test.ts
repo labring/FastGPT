@@ -99,6 +99,35 @@ describe('getAdminMenuList', () => {
     expect(menuLabels).toContain('子服务');
   });
 
+  it('degrades to whitelist menu when pro license is inactive or expired', () => {
+    // License 未激活/已过期：菜单必须与 Layout 路由拦截保持一致，只留白名单入口，
+    // 避免「商业化等菜单可见但点击被弹回 /admin/license」
+    const menus = getAdminMenuList({
+      isProService: true,
+      hasPayCapability: true,
+      licenseActive: false
+    });
+
+    const menuLabels = menus.map((item) => item.label);
+    expect(menuLabels).toEqual(['系统概览', '系统资源', '版本升级']);
+    expect(menuLabels).not.toContain('商业化');
+    expect(menuLabels).not.toContain('子服务');
+    expect(menuLabels).not.toContain('数据面板');
+    expect(menuLabels).not.toContain('系统配置');
+
+    // 降级后的叶子路由与社区版白名单严格一致
+    const renderedRoutes = menus.flatMap((item) =>
+      item.children && item.children.length > 0 ? item.children.map((c) => c.value) : [item.value]
+    );
+    expect(renderedRoutes).toEqual(communityAdminRoutes);
+  });
+
+  it('keeps the full pro menu when licenseActive defaults to true', () => {
+    // 不传 licenseActive 的调用（如默认参数）保持商业版完整菜单
+    const menus = getAdminMenuList({ isProService: true });
+    expect(menus.map((item) => item.label)).toContain('商业化');
+  });
+
   it('only provides icons for top-level menu items and no icons for sub-menu children', () => {
     const communityMenus = getAdminMenuList({ isProService: false });
     const proMenus = getAdminMenuList({ isProService: true });
