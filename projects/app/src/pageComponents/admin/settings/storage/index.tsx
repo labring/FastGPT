@@ -26,8 +26,9 @@ const StorageSettingComponent = () => {
   const { t } = useClientTranslation('admin');
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
-      { id: 'storage', label: t('admin:storage_section_policy') },
-      { id: 'backend', label: t('admin:storage_section_backend') }
+      // id 必须与下方 AdminSettingSection 一致：TOC 滚动定位与 ScrollSpy 都按 id 匹配
+      { id: 'expiry', label: t('admin:storage_section_policy') },
+      { id: 'storageConn', label: t('admin:storage_section_backend') }
     ],
     [t]
   );
