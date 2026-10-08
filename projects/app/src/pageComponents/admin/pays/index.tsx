@@ -1,4 +1,5 @@
 'use client';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useRef, useState } from 'react';
 import {
   Button,
@@ -33,113 +34,55 @@ import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
-const billTypeList: { label: string; value: BillTypeEnum | '' }[] = [
-  { label: '全部', value: '' },
-  { label: '余额充值', value: BillTypeEnum.balance },
-  { label: '套餐订阅', value: BillTypeEnum.standSubPlan },
-  { label: '知识库扩容', value: BillTypeEnum.extraDatasetSub },
-  { label: 'AI积分套餐', value: BillTypeEnum.extraPoints },
-  { label: '活动赠送', value: BillTypeEnum.activityGift }
-];
-
-const billStatusList: { label: string; value: BillStatusEnum | '' }[] = [
-  { label: '全部', value: '' },
-  { label: '成功', value: BillStatusEnum.SUCCESS },
-  { label: '已退款', value: BillStatusEnum.REFUND },
-  { label: '未支付', value: BillStatusEnum.NOTPAY },
-  { label: '已关闭', value: BillStatusEnum.CLOSED }
-];
-
-const billStatusTagMap = {
-  [BillStatusEnum.SUCCESS]: { label: '成功', colorSchema: 'green' },
-  [BillStatusEnum.REFUND]: { label: '已退款', colorSchema: 'red' },
-  [BillStatusEnum.NOTPAY]: { label: '未支付', colorSchema: 'yellow' },
-  [BillStatusEnum.CLOSED]: { label: '已关闭', colorSchema: 'gray' }
-} as const;
-
-const billTypeMap = {
-  [BillTypeEnum.balance]: {
-    label: '余额充值'
-  },
-  [BillTypeEnum.standSubPlan]: {
-    label: '套餐订阅'
-  },
-  [BillTypeEnum.extraDatasetSub]: {
-    label: '知识库扩容'
-  },
-  [BillTypeEnum.extraPoints]: {
-    label: 'AI积分套餐'
-  },
-  [BillTypeEnum.activityGift]: {
-    label: '活动赠送'
-  }
-};
-
-const subModeMap = {
-  [SubModeEnum.month]: {
-    label: '按月'
-  },
-  [SubModeEnum.year]: {
-    label: '按年'
-  }
-};
-
-export const standardSubLevelMap = {
-  [StandardSubLevelEnum.free]: {
-    label: '免费'
-  },
-  [StandardSubLevelEnum.custom]: {
-    label: '定制'
-  },
-  [StandardSubLevelEnum.basic]: {
-    label: '基础'
-  },
-  [StandardSubLevelEnum.advanced]: {
-    label: '高级'
-  },
-
-  // deprecated
-  [StandardSubLevelEnum.experience]: {
-    label: '体验'
-  },
-  [StandardSubLevelEnum.team]: {
-    label: '团队'
-  },
-  [StandardSubLevelEnum.enterprise]: {
-    label: '企业'
-  }
-};
-
-const billPayWayMap = {
-  [BillPayWayEnum.wx]: {
-    label: '微信'
-  },
-  [BillPayWayEnum.balance]: {
-    label: '余额'
-  },
-  [BillPayWayEnum.alipay]: {
-    label: '支付宝'
-  },
-  [BillPayWayEnum.bank]: {
-    label: '对公'
-  },
-  [BillPayWayEnum.coupon]: {
-    label: '兑换码'
-  },
-  [BillPayWayEnum.enterpriseAuth]: {
-    label: '企业认证赠送'
-  },
-  [BillPayWayEnum.wecom]: {
-    label: '企微'
-  }
-};
-
 const BillTable = () => {
+  const { t } = useClientTranslation('admin');
   const [username, setUsername] = useState<string>();
   const [billType, setBillType] = useState<BillTypeEnum | ''>('');
   const [billStatus, setBillStatus] = useState<BillStatusEnum | ''>(BillStatusEnum.SUCCESS);
   const [billDetail, setBillDetail] = useState<BillItemType>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const billTypeList: { label: string; value: BillTypeEnum | '' }[] = [
+    { label: t('admin:all'), value: '' },
+    { label: t('admin:balance_top_up'), value: BillTypeEnum.balance },
+    { label: t('admin:plan_subscription'), value: BillTypeEnum.standSubPlan },
+    { label: t('admin:dataset_storage_expansion'), value: BillTypeEnum.extraDatasetSub },
+    { label: t('admin:ai_points_package'), value: BillTypeEnum.extraPoints },
+    { label: t('admin:campaign_bonus'), value: BillTypeEnum.activityGift }
+  ];
+
+  const billStatusList: { label: string; value: BillStatusEnum | '' }[] = [
+    { label: t('admin:all'), value: '' },
+    { label: t('admin:success'), value: BillStatusEnum.SUCCESS },
+    { label: t('admin:refunded'), value: BillStatusEnum.REFUND },
+    { label: t('admin:unpaid'), value: BillStatusEnum.NOTPAY },
+    { label: t('admin:closed'), value: BillStatusEnum.CLOSED }
+  ];
+
+  const billStatusTagMap = {
+    [BillStatusEnum.SUCCESS]: { label: t('admin:success'), colorSchema: 'green' },
+    [BillStatusEnum.REFUND]: { label: t('admin:refunded'), colorSchema: 'red' },
+    [BillStatusEnum.NOTPAY]: { label: t('admin:unpaid'), colorSchema: 'yellow' },
+    [BillStatusEnum.CLOSED]: { label: t('admin:closed'), colorSchema: 'gray' }
+  } as const;
+
+  const billTypeMap = {
+    [BillTypeEnum.balance]: {
+      label: t('admin:balance_top_up')
+    },
+    [BillTypeEnum.standSubPlan]: {
+      label: t('admin:plan_subscription')
+    },
+    [BillTypeEnum.extraDatasetSub]: {
+      label: t('admin:dataset_storage_expansion')
+    },
+    [BillTypeEnum.extraPoints]: {
+      label: t('admin:ai_points_package')
+    },
+    [BillTypeEnum.activityGift]: {
+      label: t('admin:campaign_bonus')
+    }
+  };
 
   const {
     data: bills,
@@ -171,7 +114,7 @@ const BillTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          支付记录
+          {t('admin:payment_records')}
         </Box>
         <Box flexGrow={1}></Box>
         <InputGroup w={['100%', '250px']} h={'36px'}>
@@ -179,7 +122,7 @@ const BillTable = () => {
             <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
           </InputLeftElement>
           <Input
-            placeholder="请输入用户名搜索"
+            placeholder={t('admin:search_by_username')}
             onChange={(e) => setUsername(e.target.value)}
             h={'36px'}
           ></Input>
@@ -219,11 +162,11 @@ const BillTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>时间</Th>
-              <Th>团队ID</Th>
-              <Th>套餐类型</Th>
-              <Th>金额</Th>
-              <Th>状态</Th>
+              <Th>{t('admin:time')}</Th>
+              <Th>{t('admin:team_id_2')}</Th>
+              <Th>{t('admin:plan_type')}</Th>
+              <Th>{t('admin:amount')}</Th>
+              <Th>{t('admin:status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -247,7 +190,7 @@ const BillTable = () => {
                 </Td>
                 <Td>
                   <Button variant={'whiteBase'} size={'sm'} onClick={() => setBillDetail(item)}>
-                    详情
+                    {t('admin:details')}
                   </Button>
                 </Td>
               </Tr>
@@ -263,7 +206,7 @@ const BillTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              无账单记录～
+              {t('admin:no_bills')}
             </Box>
           </Flex>
         )}
@@ -279,61 +222,137 @@ const BillTable = () => {
 export default BillTable;
 
 function BillDetailModal({ bill, onClose }: { bill: BillItemType; onClose: () => void }) {
+  const { t } = useClientTranslation('admin');
+  const billPayWayMap = {
+    [BillPayWayEnum.wx]: {
+      label: t('admin:wechat_short')
+    },
+    [BillPayWayEnum.balance]: {
+      label: t('admin:balance')
+    },
+    [BillPayWayEnum.alipay]: {
+      label: t('admin:alipay_short')
+    },
+    [BillPayWayEnum.bank]: {
+      label: t('admin:bank_transfer_short')
+    },
+    [BillPayWayEnum.coupon]: {
+      label: t('admin:redemption_code')
+    },
+    [BillPayWayEnum.enterpriseAuth]: {
+      label: t('admin:enterprise_verification_bonus')
+    },
+    [BillPayWayEnum.wecom]: {
+      label: t('admin:wecom_short')
+    }
+  };
+  const subModeMap = {
+    [SubModeEnum.month]: {
+      label: t('admin:monthly')
+    },
+    [SubModeEnum.year]: {
+      label: t('admin:yearly')
+    }
+  };
+
+  const standardSubLevelMap = {
+    [StandardSubLevelEnum.free]: {
+      label: t('admin:free_short')
+    },
+    [StandardSubLevelEnum.custom]: {
+      label: t('admin:custom_short')
+    },
+    [StandardSubLevelEnum.basic]: {
+      label: t('admin:basic_short')
+    },
+    [StandardSubLevelEnum.advanced]: {
+      label: t('admin:advanced_short')
+    },
+
+    // deprecated
+    [StandardSubLevelEnum.experience]: {
+      label: t('admin:experience_short')
+    },
+    [StandardSubLevelEnum.team]: {
+      label: t('admin:team')
+    },
+    [StandardSubLevelEnum.enterprise]: {
+      label: t('admin:enterprise_short')
+    }
+  };
+  const billTypeMap = {
+    [BillTypeEnum.balance]: {
+      label: t('admin:balance_top_up')
+    },
+    [BillTypeEnum.standSubPlan]: {
+      label: t('admin:plan_subscription')
+    },
+    [BillTypeEnum.extraDatasetSub]: {
+      label: t('admin:dataset_storage_expansion')
+    },
+    [BillTypeEnum.extraPoints]: {
+      label: t('admin:ai_points_package')
+    },
+    [BillTypeEnum.activityGift]: {
+      label: t('admin:campaign_bonus')
+    }
+  };
+
   return (
     <MyModal isOpen={true} onClose={onClose} title={'订单详情'} maxW={['90vw', '700px']}>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>订单号:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:order_no')}</Box>
         <Box>{bill.orderId}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>生成时间:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:generated_at')}</Box>
         <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>充值的成员名:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:top_up_member')}</Box>
         <Box>{bill.username || '-'}</Box>
       </Flex>
       {!!bill.metadata?.payWay && (
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>支付方式:</Box>
+          <Box flex={'0 0 120px'}>{t('admin:payment_method')}</Box>
           <Box>{billPayWayMap[bill.metadata.payWay]?.label}</Box>
         </Flex>
       )}
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>金额:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:amount_2')}</Box>
         <Box>{formatStorePrice2Read(bill.price)}元</Box>
       </Flex>
       <Flex alignItems={'center'} pb={4}>
-        <Box flex={'0 0 120px'}>订单类型:</Box>
+        <Box flex={'0 0 120px'}>{t('admin:order_type')}</Box>
         <Box>{billTypeMap[bill.type]?.label}</Box>
       </Flex>
       {!!bill.metadata?.subMode && (
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>订阅周期:</Box>
+          <Box flex={'0 0 120px'}>{t('admin:billing_cycle')}</Box>
           <Box>{subModeMap[bill.metadata.subMode]?.label}</Box>
         </Flex>
       )}
       {!!bill.metadata?.standSubLevel && (
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>订阅套餐:</Box>
+          <Box flex={'0 0 120px'}>{t('admin:subscription_plan')}</Box>
           <Box>{standardSubLevelMap[bill.metadata.standSubLevel]?.label}</Box>
         </Flex>
       )}
       {bill.metadata?.month !== undefined && (
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>月数:</Box>
+          <Box flex={'0 0 120px'}>{t('admin:months')}</Box>
           <Box>{bill.metadata?.month}</Box>
         </Flex>
       )}
       {bill.metadata?.datasetSize !== undefined && (
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>额外知识库容量:</Box>
+          <Box flex={'0 0 120px'}>{t('admin:extra_dataset_storage_2')}</Box>
           <Box>{bill.metadata?.datasetSize}</Box>
         </Flex>
       )}
       {bill.metadata?.extraPoints !== undefined && (
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>额外AI积分:</Box>
+          <Box flex={'0 0 120px'}>{t('admin:extra_ai_points')}</Box>
           <Box>{bill.metadata.extraPoints}</Box>
         </Flex>
       )}

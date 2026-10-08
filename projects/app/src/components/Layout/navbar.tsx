@@ -104,7 +104,8 @@ const Navbar = ({ unread }: { unread: number }) => {
               label: t('common:navbar.Config'),
               icon: 'support/config/configLight',
               activeIcon: 'support/config/configFill',
-              link: '/admin/dashboard',
+              // 交给 /admin 入口页按部署形态与授权状态分发默认落地页
+              link: '/admin',
               activePrefix: ['/admin'],
               activeLink: [] as string[]
             }

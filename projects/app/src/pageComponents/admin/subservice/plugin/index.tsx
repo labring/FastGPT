@@ -1,86 +1,94 @@
-import React from 'react';
-import { Box, SimpleGrid, Badge, HStack, Text } from '@chakra-ui/react';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import React, { useEffect, useMemo } from 'react';
+import { Input } from '@chakra-ui/react';
+import { useForm, Controller, useWatch } from 'react-hook-form';
+import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import {
   AdminSettingPage,
   AdminSettingSection,
   AdminFormItem,
-  AdminReadonlyInput,
+  AdminSwitchRow,
   ConnectivityTestInput,
   type SettingTOCItem
 } from '@/pageComponents/admin/settings';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
 
-const tocItems: SettingTOCItem[] = [
-  { id: 'connection', label: '连接与状态' },
-  { id: 'features', label: '运行时特性' }
-];
+type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
 const PluginSubserviceComponent = () => {
-  const { feConfigs } = useSystemStore();
+  const { t } = useClientTranslation('admin');
+  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
 
-  // 插件服务地址默认通过 Docker/K8s 容器网络互联
-  const pluginUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.protocol}//${window.location.hostname}:3004`
-      : 'http://localhost:3004';
+  const tocItems: SettingTOCItem[] = useMemo(
+    () => [
+      { id: 'connection', label: t('admin:connection_status') },
+      { id: 'features', label: t('admin:runtime_features') }
+    ],
+    [t]
+  );
 
-  const remoteDebugEnabled = Boolean(feConfigs?.pluginRemoteDebug);
+  const { control, handleSubmit, reset, register } = useForm<SubserviceConfigForm>({
+    defaultValues: effectiveConfig
+  });
+
+  useEffect(() => {
+    if (effectiveConfig && Object.keys(effectiveConfig).length > 0) {
+      reset(effectiveConfig);
+    }
+  }, [effectiveConfig, reset]);
+
+  const baseUrl = effectiveConfig?.plugin?.baseUrl || 'http://localhost:3004';
+  const pluginHealthUrl = baseUrl.replace(/\/+$/, '') + '/health';
+  const remoteDebug = useWatch({ control, name: 'plugin.remoteDebug' });
+
+  const onSave = handleSubmit(async (formData) => {
+    await patchConfig({ plugin: formData.plugin });
+  });
 
   return (
-    <AdminSettingPage headerTitle={'插件服务监控'} tocItems={tocItems}>
+    <AdminSettingPage
+      headerTitle={t('admin:page_title_plugin')}
+      tocItems={tocItems}
+      isLoading={isLoading}
+      isSaving={isUpdating}
+      onSave={onSave}
+    >
       {/* 1. 连接与状态 */}
-      <AdminSettingSection id="connection" title="连接与状态">
+      <AdminSettingSection id="connection" title={t('admin:connection_status')}>
         <AdminFormItem
-          label="插件网关内部服务地址"
-          tooltip="插件服务在 Docker / K8s 内部集群的拓扑连接地址（通过环境变量 PLUGIN_BASE_URL 注入）"
-          mb={6}
+          label={t('admin:plugin_gateway_health_check_endpoint')}
+          tooltip={t('admin:plugin_service_liveness_probe_url_inside_docker_k8s_built_fr')}
+          mb={0}
         >
-          <ConnectivityTestInput url={pluginUrl} placeholder="http://plugin:3004" />
+          <ConnectivityTestInput url={pluginHealthUrl} placeholder="http://plugin:3004/health" />
         </AdminFormItem>
-
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem label="网络拓扑模式" tooltip="主站与插件服务之间的内部网络调用方式">
-            <AdminReadonlyInput value="容器网络自动互联 (Docker / K8s)" />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label="启动依赖策略"
-            tooltip="服务启动策略：L1 探测降级（探测失败仅产生系统警告日志，不阻断主站启动）"
-          >
-            <AdminReadonlyInput value="L1 探测降级（高可用容错）" />
-          </AdminFormItem>
-        </SimpleGrid>
       </AdminSettingSection>
 
       {/* 2. 运行时特性 */}
-      <AdminSettingSection id="features" title="运行时特性" showDivider>
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label="插件远程调试通道 (Remote Debug)"
-            tooltip="指示插件服务当前是否开放了开发者远程调试通道"
-          >
-            <Box
-              p={2.5}
-              bg={'myGray.50'}
-              borderRadius={'md'}
-              borderWidth={'1px'}
-              borderColor={'myGray.200'}
-            >
-              <HStack spacing={2}>
-                <Badge colorScheme={remoteDebugEnabled ? 'green' : 'gray'}>
-                  {remoteDebugEnabled ? '已就绪 (Ready)' : '未开启 (Disabled)'}
-                </Badge>
-                <Text fontSize={'xs'} color={'myGray.500'}>
-                  {remoteDebugEnabled ? '允许从开发者工作台直接调试' : '生产环境安全加固'}
-                </Text>
-              </HStack>
-            </Box>
-          </AdminFormItem>
+      <AdminSettingSection id="features" title={t('admin:runtime_features')} showDivider>
+        <Controller
+          name="plugin.remoteDebug"
+          control={control}
+          render={({ field }) => (
+            <AdminSwitchRow
+              label={t('admin:enable_plugin_remote_debug_channel')}
+              tooltip={t('admin:when_enabled_developers_can_connect_to_the_plugin_service_fr')}
+              isChecked={field.value}
+              onChange={field.onChange}
+            />
+          )}
+        />
 
-          <AdminFormItem label="已支持插件类型" tooltip="当前平台支持加载与调用的外部插件生态规范">
-            <AdminReadonlyInput value="系统工具插件 / OpenAPI 协议 / MCP 扩展" />
+        {remoteDebug && (
+          <AdminFormItem
+            label={t('admin:plugin_remote_debug_url')}
+            tooltip={t('admin:plugin_remote_debug_url_tip')}
+            isRequired
+            mb={0}
+          >
+            <Input {...register('plugin.remoteDebugUrl')} placeholder="https://debug.example.com" />
           </AdminFormItem>
-        </SimpleGrid>
+        )}
       </AdminSettingSection>
     </AdminSettingPage>
   );

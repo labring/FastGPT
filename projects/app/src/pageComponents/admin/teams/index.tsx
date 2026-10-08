@@ -1,4 +1,5 @@
 'use client';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useRef, useState } from 'react';
 import {
   Table,
@@ -23,6 +24,7 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const TeamTable = () => {
+  const { t } = useClientTranslation('admin');
   const [search, setSearch] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +57,7 @@ const TeamTable = () => {
         borderColor={'myGray.200'}
       >
         <Box as={'h1'} {...accountTitleTextStyles}>
-          团队管理
+          {t('admin:team_management')}
         </Box>
         <Box flexGrow={1} />
         <InputGroup w={['100%', '250px']} h={'36px'}>
@@ -63,7 +65,7 @@ const TeamTable = () => {
             <MyIcon name="common/searchLight" w={4} color={'myGray.400'} />
           </InputLeftElement>
           <Input
-            placeholder="请输入用户名搜索"
+            placeholder={t('admin:search_by_username')}
             h={'36px'}
             onChange={(e) => setSearch(e.target.value)}
           ></Input>
@@ -88,10 +90,10 @@ const TeamTable = () => {
         <Table>
           <Thead>
             <Tr>
-              <Th>团队id</Th>
-              <Th>团队名</Th>
-              <Th>用户名</Th>
-              <Th>创建时间</Th>
+              <Th>{t('admin:team_id_3')}</Th>
+              <Th>{t('admin:team_name_2')}</Th>
+              <Th>{t('admin:username')}</Th>
+              <Th>{t('admin:created_at')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -120,7 +122,7 @@ const TeamTable = () => {
           >
             <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
             <Box mt={2} color={'myGray.500'}>
-              无团队记录～
+              {t('admin:no_teams')}
             </Box>
           </Flex>
         )}

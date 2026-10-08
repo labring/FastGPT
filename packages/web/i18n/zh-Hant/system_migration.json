@@ -123,5 +123,16 @@
   "migrations.20261009_backfill_agent_sandbox_team_id.description": "為歷史 Agent 沙箱實例回填 teamId：從 App/Skill 來源解析團隊歸屬。來源已刪除的孤兒記錄只跳過並計數；來源存在但缺少 teamId 的記錄進入失敗明細，修復後可重試。",
   "migrations.20261009_backfill_agent_sandbox_team_id.instances": "回填沙箱團隊歸屬",
   "migrations.20261009_backfill_agent_sandbox_team_id.validation": "校驗沙箱團隊歸屬回填結果",
-  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已掃描 {{scannedCount}} 個沙箱實例，回填團隊歸屬 {{backfilledCount}} 個，跳過孤兒記錄 {{orphanCount}} 個。"
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "已掃描 {{scannedCount}} 個沙箱實例，回填團隊歸屬 {{backfilledCount}} 個，跳過孤兒記錄 {{orphanCount}} 個。",
+  "migrations.20260928_migrate_instance_configs.name": "遷移實例配置到新集合",
+  "migrations.20260928_migrate_instance_configs.description": "將舊 systemConfigs 集合與 DB 類環境變數遷移至 system_instance_configs 單文檔模型，遷移成功前節點不進入就緒狀態。",
+  "migrations.20260928_migrate_instance_configs.inspect": "檢查舊配置來源",
+  "migrations.20260928_migrate_instance_configs.migrate": "寫入實例配置",
+  "migrations.20260928_migrate_instance_configs.validate": "校驗遷移結果",
+  "migrations.20260928_migrate_instance_configs.result": "已遷移 {{migratedDomainCount}} 個配置域到新集合。",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.name": "清理實例設定廢棄欄位",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.description": "移除已由環境變數承載或不再使用的實例設定欄位，確保新 Schema 可正常解析全部 Domain。",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.result": "已掃描 {{scannedDocuments}} 個設定文件，清理 {{updatedDomains}} 個 Domain 的 {{removedFieldCount}} 個廢棄欄位。",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.cleanup": "清理廢棄欄位",
+  "migrations.20260929_cleanup_instance_config_deprecated_fields.validation": "校驗清理結果"
 }

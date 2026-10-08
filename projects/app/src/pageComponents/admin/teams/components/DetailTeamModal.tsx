@@ -1,3 +1,4 @@
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { useState } from 'react';
 import { getTeamMembers } from '@/web/admin/team/api';
 import { Box, Button, Center, Spinner, useDisclosure } from '@chakra-ui/react';
@@ -35,6 +36,7 @@ const columns = [
 ];
 
 export default function DetailTeamModal(props: { teamId: string }) {
+  const { t } = useClientTranslation('admin');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { teamId } = props;
   const [data, setData] = useState([]);
@@ -67,7 +69,7 @@ export default function DetailTeamModal(props: { teamId: string }) {
           onOpen();
         }}
       >
-        详情
+        {t('admin:details')}
       </Button>
       <MyModal isOpen={isOpen} onClose={onClose} maxW={['90vw', '700px']} title={'团队详情'}>
         {isLoading ? (

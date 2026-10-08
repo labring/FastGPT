@@ -89,7 +89,7 @@ export const FastGPTFeConfigsSchema = z.looseObject({
     .optional()
     .meta({ description: '绑定通知联系方式列表' }),
   mcpServerProxyEndpoint: z.string().optional().meta({
-    description: 'MCP SSE 代理地址，运行时配置以环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT 为准'
+    description: 'MCP SSE 代理地址，运行时以子服务配置 mcp.sseProxyUrl 为准'
   }),
 
   chineseRedirectUrl: z.string().optional().meta({ description: '中国大陆地区访问重定向跳转地址' }),

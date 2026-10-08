@@ -1,8 +1,10 @@
 import z from 'zod';
-import { positiveInteger, textWithDefault, urlWithDefault } from './primitives';
+import { textWithDefault, urlWithDefault } from './primitives';
 
 const DocumentParseProviderConfigSchema = z.strictObject({
-  provider: z.enum(['none', 'customPdf', 'sangfor']).default('none'),
+  provider: z
+    .enum(['none', 'customPdf', 'custom', 'somark', 'doc2x', 'textin', 'textln', 'sangfor'])
+    .default('none'),
   customPdf: z
     .strictObject({
       url: urlWithDefault(),
@@ -30,19 +32,6 @@ const DocumentParseProviderConfigSchema = z.strictObject({
     .prefault({ url: '', key: '', extensions: 'pdf', timeoutSeconds: 600 })
 });
 
-const ChunkProviderConfigSchema = z.strictObject({
-  enabled: z.boolean().default(false),
-  url: urlWithDefault(),
-  key: textWithDefault(),
-  timeoutMinutes: positiveInteger(60)
-});
-
-const CrmProviderConfigSchema = z.strictObject({
-  enabled: z.boolean().default(false),
-  apiUrl: urlWithDefault(),
-  apiKey: textWithDefault()
-});
-
 const DataSourceProviderConfigSchema = z.strictObject({
   feishuBaseUrl: urlWithDefault('https://open.feishu.cn'),
   dingtalkBaseUrl: urlWithDefault('https://api.dingtalk.com'),
@@ -50,33 +39,31 @@ const DataSourceProviderConfigSchema = z.strictObject({
   yuqueDatasetBaseUrl: urlWithDefault('https://www.yuque.com')
 });
 
+/** 外部提供商注入到工作流的全局变量定义。 */
+const ExternalProviderWorkflowVarConfigSchema = z.strictObject({
+  name: z.string().max(100),
+  key: z.string().max(100),
+  intro: z.string().max(1000).default(''),
+  isOpen: z.boolean().default(true),
+  url: textWithDefault()
+});
+
 export const ProvidersConfigBaseSchema = z.strictObject({
   documentParse: DocumentParseProviderConfigSchema.prefault({}),
-  chunk: ChunkProviderConfigSchema.prefault({}),
-  crm: CrmProviderConfigSchema.prefault({}),
-  dataSource: DataSourceProviderConfigSchema.prefault({})
+  dataSource: DataSourceProviderConfigSchema.prefault({}),
+  externalProviderWorkflowVariables: z
+    .array(ExternalProviderWorkflowVarConfigSchema)
+    .max(50)
+    .default([])
 });
 
 export const ProvidersConfigSchema = ProvidersConfigBaseSchema.superRefine((providers, ctx) => {
-  const { chunk, crm, documentParse } = providers;
+  const { documentParse } = providers;
 
-  if (chunk.enabled && (!chunk.url || !chunk.key.trim())) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['chunk'],
-      message: 'url and key are required when intelligent chunking is enabled'
-    });
-  }
-
-  if (crm.enabled && (!crm.apiUrl || !crm.apiKey.trim())) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['crm'],
-      message: 'apiUrl and apiKey are required when CRM is enabled'
-    });
-  }
-
-  if (documentParse.provider === 'customPdf' && !documentParse.customPdf.url) {
+  if (
+    (documentParse.provider === 'customPdf' || documentParse.provider === 'custom') &&
+    !documentParse.customPdf.url
+  ) {
     ctx.addIssue({
       code: 'custom',
       path: ['documentParse', 'customPdf', 'url'],

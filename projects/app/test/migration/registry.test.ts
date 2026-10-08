@@ -81,6 +81,20 @@ describe('validateSystemMigrationRegistry', () => {
       onFailure: SystemMigrationFailurePolicyEnum.continue,
       progressSteps: [{ key: 'members' }, { key: 'validation' }]
     });
+    expect(systemMigrations.at(-2)).toMatchObject({
+      id: '20260928_migrate_instance_configs',
+      version: '4.18.0',
+      blockStartup: true,
+      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
+    });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20260929_cleanup_instance_config_deprecated_fields',
+      version: '4.18.0',
+      blockStartup: true,
+      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
+    });
   });
 
   it('appends the independent manual chunk migration', () => {

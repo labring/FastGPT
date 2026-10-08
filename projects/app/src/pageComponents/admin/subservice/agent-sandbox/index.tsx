@@ -1,3 +1,4 @@
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useEffect } from 'react';
 import {
   Input,
@@ -26,18 +27,19 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
-const tocItems: SettingTOCItem[] = [
-  { id: 'provider', label: '沙箱 Provider 选择' },
-  { id: 'specs', label: '公共资源规格' },
-  { id: 'lifecycle', label: '生命周期与运行时' },
-  { id: 'mirrors', label: '软件镜像源加速' },
-  { id: 'providerConfig', label: 'Provider 专属配置' },
-  { id: 'proxy', label: '代理网络拓扑（只读）' }
-];
-
 const AgentSandboxSubserviceComponent = () => {
-  const { effectiveConfig, isLoading, isUpdating, updateConfig } = useDomainConfig('subservice');
+  const { t } = useClientTranslation('admin');
+  const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
   const { feConfigs } = useSystemStore();
+
+  const tocItems: SettingTOCItem[] = [
+    { id: 'provider', label: t('admin:sandbox_provider_selection') },
+    { id: 'providerConfig', label: t('admin:provider_settings') },
+    { id: 'specs', label: t('admin:shared_resource_specs') },
+    { id: 'lifecycle', label: t('admin:lifecycle_runtime') },
+    { id: 'mirrors', label: t('admin:package_mirror_acceleration') },
+    { id: 'proxy', label: t('admin:proxy_network_settings') }
+  ];
 
   const { control, handleSubmit, reset, register } = useForm<SubserviceConfigForm>({
     defaultValues: effectiveConfig
@@ -55,24 +57,24 @@ const AgentSandboxSubserviceComponent = () => {
   });
 
   const onSave = handleSubmit(async (formData) => {
-    await updateConfig(formData);
+    await patchConfig({ agentSandbox: formData.agentSandbox });
   });
 
   const proxyUrl = (feConfigs as any)?.agentSandboxProxyUrl || 'http://localhost:3006';
 
   return (
     <AdminSettingPage
-      headerTitle={'Agent Sandbox 管理'}
+      headerTitle={t('admin:page_title_agent_sandbox')}
       tocItems={tocItems}
       isLoading={isLoading}
       isSaving={isUpdating}
       onSave={onSave}
     >
       {/* 1. 沙箱 Provider 选择 */}
-      <AdminSettingSection id="provider" title="沙箱 Provider 选择">
+      <AdminSettingSection id="provider" title={t('admin:sandbox_provider_selection')}>
         <AdminFormItem
-          label="当前沙箱 Provider"
-          tooltip="选择用于创建与调度 Agent 动态运行环境的代码沙箱集群驱动"
+          label={t('admin:current_sandbox_provider')}
+          tooltip={t('admin:select_the_code_sandbox_cluster_driver_used_to_create_and_sc')}
           isRequired
           mb={6}
         >
@@ -83,9 +85,15 @@ const AgentSandboxSubserviceComponent = () => {
               <MySelect<'none' | 'sealosdevbox' | 'opensandbox'>
                 width={'400px'}
                 list={[
-                  { label: '未启用 (none)', value: 'none' },
-                  { label: 'Sealos Devbox (K8s 原生极速沙箱)', value: 'sealosdevbox' },
-                  { label: 'OpenSandbox (通用容器隔离沙箱)', value: 'opensandbox' }
+                  { label: t('admin:disabled_none'), value: 'none' },
+                  {
+                    label: t('admin:sealos_devbox_k8s_native_fast_sandbox'),
+                    value: 'sealosdevbox'
+                  },
+                  {
+                    label: t('admin:opensandbox_general_container_isolated_sandbox'),
+                    value: 'opensandbox'
+                  }
                 ]}
                 value={field.value}
                 onChange={field.onChange}
@@ -95,12 +103,220 @@ const AgentSandboxSubserviceComponent = () => {
         </AdminFormItem>
       </AdminSettingSection>
 
-      {/* 2. 公共资源规格 */}
-      <AdminSettingSection id="specs" title="公共资源规格" showDivider>
+      {/* 2. Provider 专属配置 */}
+      <AdminSettingSection id="providerConfig" title={t('admin:provider_settings')} showDivider>
+        {selectedProvider === 'none' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+            color={'myGray.500'}
+            fontSize={'sm'}
+          >
+            {t('admin:agent_sandbox_is_not_enabled_select_sealos_devbox_or_opensan')}
+          </Box>
+        )}
+
+        {selectedProvider === 'sealosdevbox' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+          >
+            <AdminFormItem
+              label={t('admin:sealos_devbox_service_url')}
+              tooltip={t('admin:sealos_devbox_cluster_api_endpoint')}
+              isRequired
+            >
+              <Controller
+                name="agentSandbox.sealosdevbox.baseUrl"
+                control={control}
+                render={({ field }) => (
+                  <ConnectivityTestInput
+                    {...field}
+                    isEditable
+                    placeholder="https://devbox.cloud.sealos.io"
+                  />
+                )}
+              />
+            </AdminFormItem>
+
+            <SimpleGrid columns={[1, 2]} spacing={5}>
+              <AdminFormItem
+                label={t('admin:sealos_access_token')}
+                tooltip={t('admin:sealos_platform_api_token')}
+                isRequired
+              >
+                <Input
+                  type="password"
+                  {...register('agentSandbox.sealosdevbox.token')}
+                  placeholder="******"
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:default_development_image')}
+                tooltip={t('admin:default_base_container_image_pulled_at_sandbox_startup')}
+                isRequired
+              >
+                <Input
+                  {...register('agentSandbox.sealosdevbox.image')}
+                  placeholder="ghcr.io/labring-actions/devbox:v0.1"
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:workspace_working_directory')}
+                tooltip={t('admin:default_workspace_mount_path_in_the_container')}
+              >
+                <Input
+                  {...register('agentSandbox.sealosdevbox.workDirectory')}
+                  placeholder="/home/devbox/workspace"
+                />
+              </AdminFormItem>
+            </SimpleGrid>
+          </Box>
+        )}
+
+        {selectedProvider === 'opensandbox' && (
+          <Box
+            p={5}
+            bg={'white'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'myGray.200'}
+          >
+            <AdminFormItem
+              label={t('admin:opensandbox_service_url')}
+              tooltip={t('admin:opensandbox_base_url')}
+              isRequired
+            >
+              <Controller
+                name="agentSandbox.opensandbox.baseUrl"
+                control={control}
+                render={({ field }) => (
+                  <ConnectivityTestInput
+                    {...field}
+                    isEditable
+                    placeholder="http://opensandbox:8080"
+                  />
+                )}
+              />
+            </AdminFormItem>
+
+            <SimpleGrid columns={[1, 2]} spacing={5} mb={4}>
+              <AdminFormItem
+                label="OpenSandbox API Key"
+                tooltip={t('admin:service_api_auth_key')}
+                isRequired
+              >
+                <Input
+                  type="password"
+                  {...register('agentSandbox.opensandbox.apiKey')}
+                  placeholder="******"
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:container_runtime')}
+                tooltip={t('admin:opensandbox_runtime_backend')}
+                isRequired
+              >
+                <Controller
+                  name="agentSandbox.opensandbox.runtime"
+                  control={control}
+                  render={({ field }) => (
+                    <MySelect<'docker' | 'kubernetes'>
+                      list={[
+                        { label: 'Docker', value: 'docker' },
+                        { label: 'Kubernetes (K8s)', value: 'kubernetes' }
+                      ]}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:default_container_image')}
+                tooltip={t('admin:default_base_sandbox_image')}
+                isRequired
+              >
+                <Input
+                  {...register('agentSandbox.opensandbox.image')}
+                  placeholder="opensandbox/runtime:latest"
+                />
+              </AdminFormItem>
+
+              <AdminFormItem
+                label={t('admin:storage_volume_name_prefix')}
+                tooltip={t('admin:dynamic_volume_name_prefix')}
+              >
+                <Input
+                  {...register('agentSandbox.opensandbox.volumeNamePrefix')}
+                  placeholder="fastgpt-session"
+                />
+              </AdminFormItem>
+            </SimpleGrid>
+
+            <AdminFormItem
+              label={t('admin:volume_manager_service_url')}
+              tooltip={t('admin:volume_manager_microservice_url')}
+              isRequired
+            >
+              <Controller
+                name="agentSandbox.opensandbox.volumeManagerUrl"
+                control={control}
+                render={({ field }) => (
+                  <ConnectivityTestInput
+                    {...field}
+                    isEditable
+                    testPath="/health"
+                    placeholder="http://volume-manager:8081"
+                  />
+                )}
+              />
+            </AdminFormItem>
+
+            <AdminFormItem
+              label={t('admin:volume_manager_token')}
+              tooltip={t('admin:volume_manager_credential')}
+              isRequired
+            >
+              <Input
+                type="password"
+                {...register('agentSandbox.opensandbox.volumeManagerToken')}
+                placeholder="******"
+              />
+            </AdminFormItem>
+
+            <Controller
+              name="agentSandbox.opensandbox.useServerProxy"
+              control={control}
+              render={({ field }) => (
+                <AdminSwitchRow
+                  label={t('admin:use_reverse_proxy_mode')}
+                  tooltip={t('admin:traffic_is_tunneled_to_the_sandbox_through_the_main_site_pro')}
+                  isChecked={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </Box>
+        )}
+      </AdminSettingSection>
+
+      {/* 3. 公共资源规格 */}
+      <AdminSettingSection id="specs" title={t('admin:shared_resource_specs')} showDivider>
         <SimpleGrid columns={[1, 3]} spacing={5}>
           <AdminFormItem
-            label="CPU 核心数 (Core)"
-            tooltip="单个沙箱实例分配的最大 CPU 配额"
+            label={t('admin:cpu_cores_core')}
+            tooltip={t('admin:max_cpu_quota_per_sandbox_instance')}
             isRequired
           >
             <Controller
@@ -108,6 +324,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={0.5}
                   max={32}
                   step={0.5}
@@ -125,8 +342,8 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label="内存规格 (MiB)"
-            tooltip="单个沙箱实例分配的最大 RAM 内存容量"
+            label={t('admin:memory_mib')}
+            tooltip={t('admin:max_ram_per_sandbox_instance')}
             isRequired
           >
             <Controller
@@ -134,6 +351,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={512}
                   max={65536}
                   step={512}
@@ -151,8 +369,8 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label="存储卷大小 (Gi)"
-            tooltip="单个沙箱持久化数据存储空间大小"
+            label={t('admin:storage_volume_size_gi')}
+            tooltip={t('admin:persistent_storage_size_per_sandbox')}
             isRequired
           >
             <Controller
@@ -160,6 +378,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={1}
                   max={200}
                   value={field.value ?? 1}
@@ -177,12 +396,12 @@ const AgentSandboxSubserviceComponent = () => {
         </SimpleGrid>
       </AdminSettingSection>
 
-      {/* 3. 生命周期与运行时 */}
-      <AdminSettingSection id="lifecycle" title="生命周期与运行时" showDivider>
+      {/* 4. 生命周期与运行时 */}
+      <AdminSettingSection id="lifecycle" title={t('admin:lifecycle_runtime')} showDivider>
         <SimpleGrid columns={[1, 3]} spacing={5}>
           <AdminFormItem
-            label="无操作自动挂起 (分钟)"
-            tooltip="沙箱空闲超时后自动暂停释放计算资源的时间"
+            label={t('admin:auto_suspend_when_idle_minutes')}
+            tooltip={t('admin:time_before_an_idle_sandbox_is_auto_suspended_to_release_com')}
             isRequired
           >
             <Controller
@@ -190,6 +409,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={5}
                   max={1440}
                   value={field.value ?? 60}
@@ -206,8 +426,8 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label="不活跃自动归档 (天)"
-            tooltip="长时间未访问沙箱自动归档并释放存储卷的周期"
+            label={t('admin:auto_archive_after_inactivity_days')}
+            tooltip={t('admin:period_after_which_an_unused_sandbox_is_auto_archived_and_it')}
             isRequired
           >
             <Controller
@@ -215,6 +435,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={1}
                   max={365}
                   value={field.value ?? 7}
@@ -231,8 +452,8 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label="编辑调试实例上限"
-            tooltip="单个团队允许同时保持运行的在线编辑调试沙箱最大数量"
+            label={t('admin:max_debug_editing_instances')}
+            tooltip={t('admin:max_online_debugging_sandboxes_a_team_can_keep_running_at_on')}
             isRequired
           >
             <Controller
@@ -240,6 +461,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={1}
                   max={500}
                   value={field.value ?? 100}
@@ -256,8 +478,8 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label="容器入口执行超时 (秒)"
-            tooltip="启动自定义容器 entrypoint 最长等待时间"
+            label={t('admin:container_entrypoint_timeout_seconds')}
+            tooltip={t('admin:max_wait_time_for_a_custom_container_entrypoint')}
             isRequired
           >
             <Controller
@@ -265,6 +487,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={5}
                   max={600}
                   value={field.value ?? 30}
@@ -281,8 +504,8 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label="WebSocket 消息上限 (Bytes)"
-            tooltip="终端与沙箱通信的单次 WebSocket 最大包体大小"
+            label={t('admin:websocket_message_limit_bytes')}
+            tooltip={t('admin:max_single_websocket_package_size_between_the_terminal_and_t')}
             isRequired
           >
             <Controller
@@ -290,6 +513,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={1024 * 1024}
                   max={512 * 1024 * 1024}
                   value={field.value ?? 64 * 1024 * 1024}
@@ -306,8 +530,8 @@ const AgentSandboxSubserviceComponent = () => {
           </AdminFormItem>
 
           <AdminFormItem
-            label="WebSocket 帧上限 (Bytes)"
-            tooltip="WebSocket 传输帧大小上限"
+            label={t('admin:websocket_frame_limit_bytes')}
+            tooltip={t('admin:websocket_max_frame_size')}
             isRequired
           >
             <Controller
@@ -315,6 +539,7 @@ const AgentSandboxSubserviceComponent = () => {
               control={control}
               render={({ field }) => (
                 <NumberInput
+                  variant={'whiteOutline'}
                   min={1024 * 1024}
                   max={128 * 1024 * 1024}
                   value={field.value ?? 16 * 1024 * 1024}
@@ -332,12 +557,12 @@ const AgentSandboxSubserviceComponent = () => {
         </SimpleGrid>
       </AdminSettingSection>
 
-      {/* 4. 软件镜像源加速 */}
-      <AdminSettingSection id="mirrors" title="软件镜像源加速" showDivider>
+      {/* 5. 软件镜像源加速 */}
+      <AdminSettingSection id="mirrors" title={t('admin:package_mirror_acceleration')} showDivider>
         <SimpleGrid columns={[1, 3]} spacing={5}>
           <AdminFormItem
-            label="npm Registry 源"
-            tooltip="沙箱内部安装 Node.js 扩展包时的 npm 镜像地址"
+            label={t('admin:npm_registry_url_2')}
+            tooltip={t('admin:npm_mirror_url_for_installing_node_js_packages_inside_the_sa')}
           >
             <Input
               {...register('agentSandbox.common.npmRegistry')}
@@ -347,7 +572,7 @@ const AgentSandboxSubserviceComponent = () => {
 
           <AdminFormItem
             label="PyPI Index URL"
-            tooltip="沙箱内部执行 pip install 时使用的 Python 镜像源"
+            tooltip={t('admin:python_index_url_for_pip_install_inside_the_sandbox')}
           >
             <Input
               {...register('agentSandbox.common.pypiIndexUrl')}
@@ -355,7 +580,10 @@ const AgentSandboxSubserviceComponent = () => {
             />
           </AdminFormItem>
 
-          <AdminFormItem label="APT 镜像源地址" tooltip="Linux 系统软件安装 apt 源地址">
+          <AdminFormItem
+            label={t('admin:apt_mirror_url')}
+            tooltip={t('admin:apt_mirror_url_for_linux_package_installation')}
+          >
             <Input
               {...register('agentSandbox.common.aptMirror')}
               placeholder="https://mirrors.aliyun.com"
@@ -364,180 +592,24 @@ const AgentSandboxSubserviceComponent = () => {
         </SimpleGrid>
       </AdminSettingSection>
 
-      {/* 5. Provider 专属配置 */}
-      <AdminSettingSection id="providerConfig" title="Provider 专属配置" showDivider>
-        {selectedProvider === 'none' && (
-          <Box p={5} bg={'myGray.50'} borderRadius={'lg'} color={'myGray.500'} fontSize={'sm'}>
-            当前未启用 Agent 沙箱。请在上方选择 Sealos Devbox 或 OpenSandbox 开启环境配置。
-          </Box>
-        )}
-
-        {selectedProvider === 'sealosdevbox' && (
-          <Box p={5} bg={'myGray.50'} borderRadius={'lg'}>
-            <AdminFormItem
-              label="Sealos Devbox 服务地址"
-              tooltip="Sealos Devbox 集群 API 访问端点"
-              isRequired
-            >
-              <Controller
-                name="agentSandbox.sealosdevbox.baseUrl"
-                control={control}
-                render={({ field }) => (
-                  <Box>
-                    <Input {...field} mb={2} placeholder="https://devbox.cloud.sealos.io" />
-                    {field.value && <ConnectivityTestInput url={field.value} />}
-                  </Box>
-                )}
-              />
-            </AdminFormItem>
-
-            <SimpleGrid columns={[1, 2]} spacing={5}>
-              <AdminFormItem label="Sealos 访问 Token" tooltip="Sealos 平台 API Token" isRequired>
-                <Input
-                  type="password"
-                  {...register('agentSandbox.sealosdevbox.token')}
-                  placeholder="******"
-                />
-              </AdminFormItem>
-
-              <AdminFormItem
-                label="默认开发镜像"
-                tooltip="沙箱启动时默认拉取的容器基础镜像"
-                isRequired
-              >
-                <Input
-                  {...register('agentSandbox.sealosdevbox.image')}
-                  placeholder="ghcr.io/labring-actions/devbox:v0.1"
-                />
-              </AdminFormItem>
-
-              <AdminFormItem label="工作空间工作目录" tooltip="容器挂载默认挂载工作区路径">
-                <Input
-                  {...register('agentSandbox.sealosdevbox.workDirectory')}
-                  placeholder="/home/devbox/workspace"
-                />
-              </AdminFormItem>
-            </SimpleGrid>
-          </Box>
-        )}
-
-        {selectedProvider === 'opensandbox' && (
-          <Box p={5} bg={'myGray.50'} borderRadius={'lg'}>
-            <AdminFormItem
-              label="OpenSandbox 服务地址"
-              tooltip="OpenSandbox 基础服务地址"
-              isRequired
-            >
-              <Controller
-                name="agentSandbox.opensandbox.baseUrl"
-                control={control}
-                render={({ field }) => (
-                  <Box>
-                    <Input {...field} mb={2} placeholder="http://opensandbox:8080" />
-                    {field.value && <ConnectivityTestInput url={field.value} />}
-                  </Box>
-                )}
-              />
-            </AdminFormItem>
-
-            <SimpleGrid columns={[1, 2]} spacing={5} mb={4}>
-              <AdminFormItem label="OpenSandbox API Key" tooltip="服务接口认证密钥" isRequired>
-                <Input
-                  type="password"
-                  {...register('agentSandbox.opensandbox.apiKey')}
-                  placeholder="******"
-                />
-              </AdminFormItem>
-
-              <AdminFormItem label="底层容器运行时" tooltip="OpenSandbox 执行后端类型" isRequired>
-                <Controller
-                  name="agentSandbox.opensandbox.runtime"
-                  control={control}
-                  render={({ field }) => (
-                    <MySelect<'docker' | 'kubernetes'>
-                      list={[
-                        { label: 'Docker', value: 'docker' },
-                        { label: 'Kubernetes (K8s)', value: 'kubernetes' }
-                      ]}
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </AdminFormItem>
-
-              <AdminFormItem label="默认容器镜像" tooltip="默认使用的基础沙箱镜像" isRequired>
-                <Input
-                  {...register('agentSandbox.opensandbox.image')}
-                  placeholder="opensandbox/runtime:latest"
-                />
-              </AdminFormItem>
-
-              <AdminFormItem label="存储卷名前缀" tooltip="动态卷命名规则前缀">
-                <Input
-                  {...register('agentSandbox.opensandbox.volumeNamePrefix')}
-                  placeholder="fastgpt-session"
-                />
-              </AdminFormItem>
-            </SimpleGrid>
-
-            <AdminFormItem
-              label="持久卷管理器地址 (Volume Manager)"
-              tooltip="卷管理微服务 URL"
-              isRequired
-            >
-              <Controller
-                name="agentSandbox.opensandbox.volumeManagerUrl"
-                control={control}
-                render={({ field }) => (
-                  <Box>
-                    <Input {...field} mb={2} placeholder="http://volume-manager:8081" />
-                    {field.value && <ConnectivityTestInput url={field.value} />}
-                  </Box>
-                )}
-              />
-            </AdminFormItem>
-
-            <SimpleGrid columns={[1, 2]} spacing={5}>
-              <AdminFormItem label="卷管理器 Token" tooltip="卷管理器鉴权凭证" isRequired>
-                <Input
-                  type="password"
-                  {...register('agentSandbox.opensandbox.volumeManagerToken')}
-                  placeholder="******"
-                />
-              </AdminFormItem>
-
-              <Box pt={8}>
-                <Controller
-                  name="agentSandbox.opensandbox.useServerProxy"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminSwitchRow
-                      label="使用主站反向代理模式"
-                      tooltip="流量经由主站 Proxy 安全隧道透传至沙箱环境"
-                      isChecked={field.value}
-                      onChange={field.onChange}
-                    />
-                  )}
-                />
-              </Box>
-            </SimpleGrid>
-          </Box>
-        )}
-      </AdminSettingSection>
-
-      {/* 6. 代理网络拓扑（只读） */}
-      <AdminSettingSection id="proxy" title="代理网络拓扑（只读）" showDivider>
+      {/* 6. 代理网络配置 */}
+      <AdminSettingSection id="proxy" title={t('admin:proxy_network_settings')} showDivider>
         <SimpleGrid columns={[1, 2]} spacing={5}>
           <AdminFormItem
-            label="Agent Sandbox 反向代理地址"
-            tooltip="通过环境变量 AGENT_SANDBOX_PROXY_URL 注入的主站代理服务"
+            label={t('admin:websocket_reverse_proxy_url_ws_wss')}
+            tooltip={t('admin:websocket_proxy_endpoint_for_agent_sandbox_terminal_sessions')}
           >
-            <AdminReadonlyInput value={proxyUrl} />
+            <Input {...register('agentSandbox.proxy.wsUrl')} placeholder="ws://localhost:3006" />
           </AdminFormItem>
 
-          <AdminFormItem label="代理通信信任根" tooltip="跨进程通信安全密钥状态">
-            <AdminReadonlyInput value="已通过 AGENT_SANDBOX_PROXY_SECRET 安全配置" />
+          <AdminFormItem
+            label={t('admin:http_preview_reverse_proxy_url_http_https')}
+            tooltip={t('admin:http_proxy_endpoint_for_agent_sandbox_page_preview_and_stati')}
+          >
+            <Input
+              {...register('agentSandbox.proxy.httpUrl')}
+              placeholder="http://localhost:3006"
+            />
           </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>

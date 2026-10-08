@@ -375,7 +375,7 @@ export const handleS3RedirectDownload = async ({
   payload: S3ProxyDownloadPayload;
   expiresAt: Date;
 }) => {
-  if (!canUseStorageDownloadRedirect) {
+  if (!canUseStorageDownloadRedirect()) {
     throw new Error('S3 short redirect requires STORAGE_EXTERNAL_ENDPOINT');
   }
 
