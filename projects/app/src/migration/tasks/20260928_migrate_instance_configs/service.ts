@@ -521,10 +521,6 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
 };
 
 /**
- * 读取旧配置来源并生成迁移计划。
- * 幂等：目标集合已有任意 Domain 文档时视为已迁移，不再写入。
- */
-/**
  * 检测已改由环境变量承载、但旧库仍有值的历史字段。
  * customApiDomain / customSharePageDomain / scripts 需要部署者手动补入 ENV，
  * 迁移阶段无法自动搬运（涉及 DNS、证书与安全边界），因此只输出告警。
@@ -552,9 +548,15 @@ export const collectEnvRehomedWarnings = ({
   return warnings;
 };
 
+/**
+ * 读取旧配置来源并生成迁移计划。
+ * 幂等判定按域进行：对比迁移目标 Domain 与已有文档，统计缺失数量。
+ * 不能只看 count>0，否则部分写入失败后重跑会把残缺状态误判为已完成，
+ * 缺失 Domain 将永久回落到 Schema 默认值（配置被静默重置）。
+ */
 export const inspectInstanceConfigMigration = async () => {
-  const existingDomainCount = await MongoSystemInstanceConfig.countDocuments({});
-  const [legacyFastgpt, legacyPro] = await Promise.all([
+  const [existingDocs, legacyFastgpt, legacyPro] = await Promise.all([
+    MongoSystemInstanceConfig.find({}, { _id: 1 }).lean(),
     MongoSystemConfigs.findOne({ type: SystemConfigsTypeEnum.fastgpt })
       .sort({ createTime: -1 })
       .lean(),
@@ -567,16 +569,26 @@ export const inspectInstanceConfigMigration = async () => {
   const systemEnv = (legacyFastgpt?.value?.systemEnv ?? {}) as LegacySystemEnv;
   const proConfig = (legacyPro?.value ?? {}) as LegacyProConfig;
 
+  const overrides = buildSparseLegacyOverrides({ feConfigs, systemEnv, proConfig });
+  const existingDomains = new Set<string>(existingDocs.map((doc) => String(doc._id)));
+  const missingDomainCount = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter(
+    (domain) => !!overrides[domain] && !existingDomains.has(domain)
+  ).length;
+
   return {
-    existingDomainCount,
+    existingDomainCount: existingDocs.length,
+    missingDomainCount,
     hasLegacyConfig: !!legacyFastgpt || !!legacyPro,
     hasLegacyProConfig: !!legacyPro,
     envRehomedWarnings: collectEnvRehomedWarnings({ feConfigs }),
-    overrides: buildSparseLegacyOverrides({ feConfigs, systemEnv, proConfig })
+    overrides
   };
 };
 
-/** 写入各 Domain 文档；仅在目标集合为空时执行。 */
+/**
+ * 按域幂等写入 Domain 文档：$setOnInsert 只补写缺失的 Domain，
+ * 已存在的文档（可能被管理员修改过）绝不覆盖，失败后重跑可继续补齐。
+ */
 export const applyInstanceConfigMigration = async ({
   overrides,
   logger
@@ -589,17 +601,26 @@ export const applyInstanceConfigMigration = async ({
 
   for (const domain of domains) {
     const rawOverrides = overrides[domain]!;
-    // 先执行两阶段校验，确保写入值与运行时解析结果一致。
+    // 先执行两阶段校验，确保写入值与运行时解析结果一致（与 controller 写入路径一致，
+    // updateOne 不跑 schema validator，由这里显式校验兜底）。
     resolveDomainEffectiveConfig(domain, rawOverrides);
 
-    await MongoSystemInstanceConfig.create({
-      _id: domain,
-      schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
-      revision: 1,
-      overrides: rawOverrides,
-      updatedBy: { actor: 'migration' }
-    });
-    migratedDomains.push(domain);
+    const result = await MongoSystemInstanceConfig.updateOne(
+      { _id: domain },
+      {
+        $setOnInsert: {
+          schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
+          revision: 1,
+          overrides: rawOverrides,
+          updatedBy: { actor: 'migration' }
+        }
+      },
+      { upsert: true, runValidators: false }
+    );
+    // 仅统计真正新建的 Domain，已存在被跳过的不计入迁移结果
+    if (result.upsertedCount > 0) {
+      migratedDomains.push(domain);
+    }
   }
 
   logger.info('Instance config migration applied', { domains: migratedDomains });
