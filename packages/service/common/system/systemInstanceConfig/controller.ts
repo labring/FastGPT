@@ -2,13 +2,18 @@ import {
   type SystemInstanceConfigDomainKey,
   type SystemInstanceConfigDomainMap,
   type SystemInstanceConfig,
+  type SystemInstanceConfigEdition,
   getDomainDefaultConfig,
   parseDomainOverrides,
   resolveDomainEffectiveConfig,
   resolveSystemInstanceConfig,
   maskDomainSecrets,
   restorePreservedSecrets,
-  pruneDefaultOverrides
+  pruneDefaultOverrides,
+  getSystemEdition,
+  getDomainSecretKeys,
+  isConfigFieldAllowed,
+  filterDomainDataByEdition
 } from '@fastgpt/global/common/system/config';
 import type {
   DeepPartial,
@@ -24,6 +29,82 @@ export type GetDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   effectiveConfig: SystemInstanceConfigDomainMap[T];
   updatedAt?: Date;
   updatedBy?: SystemInstanceConfigUpdatedByType;
+};
+
+/** Admin API 读取结果：配置数据按部署版本过滤，并附带可见的敏感字段路径列表。 */
+export type AdminDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
+  domain: T;
+  revision: number;
+  overrides: Partial<DeepPartial<SystemInstanceConfigDomainMap[T]>>;
+  effectiveConfig: Partial<SystemInstanceConfigDomainMap[T]>;
+  secretKeys: string[];
+  updatedAt?: Date;
+  updatedBy?: SystemInstanceConfigUpdatedByType;
+};
+
+/**
+ * 服务端权威部署版本判定。
+ * 与前端 feConfigs.isProService 同源：PRO_URL 存在即商业版，否则为开源社区版。
+ */
+export const getServiceEdition = (): SystemInstanceConfigEdition =>
+  getSystemEdition(!!serviceEnv.PRO_URL);
+
+/**
+ * 更新入参的服务端版本过滤：剔除部署版本不允许写入的字段。
+ * 开源版通过手工请求提交商业字段时按未提交处理，保证版本边界由后端强制（设计文档 §6 规则 2）。
+ * @param edition 缺省取服务端权威部署版本（PRO_URL 判定）
+ */
+export const filterSubmittedOverridesByEdition = <T extends SystemInstanceConfigDomainKey>(
+  domain: T,
+  submittedOverrides: DeepPartial<SystemInstanceConfigDomainMap[T]>,
+  edition: SystemInstanceConfigEdition = getServiceEdition()
+): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
+  if (edition === 'pro') {
+    return submittedOverrides;
+  }
+  return filterDomainDataByEdition(domain, submittedOverrides, edition) as DeepPartial<
+    SystemInstanceConfigDomainMap[T]
+  >;
+};
+
+/**
+ * Admin API 专用的 Domain 配置读取：在 getDomainConfig 基础上按部署版本过滤。
+ * - effectiveConfig / overrides 剔除当前版本不允许的字段（防止社区版通过手工请求读取商业配置）
+ * - secretKeys 同样按版本过滤，避免泄露商业字段路径
+ * 版本边界必须由后端强制，不能只依赖前端隐藏（设计文档 §6 规则 2、§12 第 6 条）。
+ * @param edition 缺省取服务端权威部署版本（PRO_URL 判定）
+ */
+export const getDomainConfigForAdmin = async <T extends SystemInstanceConfigDomainKey>(
+  domain: T,
+  edition: SystemInstanceConfigEdition = getServiceEdition()
+): Promise<AdminDomainConfigResult<T>> => {
+  const result = await getDomainConfig(domain, { maskSecrets: true });
+
+  const allowedSecretKeys = Array.from(getDomainSecretKeys(domain)).filter((relativeKey) =>
+    isConfigFieldAllowed(`${domain}.${relativeKey}`, edition)
+  );
+
+  if (edition === 'pro') {
+    return {
+      domain: result.domain,
+      revision: result.revision,
+      overrides: result.overrides,
+      effectiveConfig: result.effectiveConfig,
+      secretKeys: allowedSecretKeys,
+      updatedAt: result.updatedAt,
+      updatedBy: result.updatedBy
+    };
+  }
+
+  return {
+    domain: result.domain,
+    revision: result.revision,
+    overrides: filterDomainDataByEdition(domain, result.overrides, edition),
+    effectiveConfig: filterDomainDataByEdition(domain, result.effectiveConfig, edition),
+    secretKeys: allowedSecretKeys,
+    updatedAt: result.updatedAt,
+    updatedBy: result.updatedBy
+  };
 };
 
 export type UpdateDomainConfigParams<T extends SystemInstanceConfigDomainKey> = {
