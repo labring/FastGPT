@@ -1,0 +1,156 @@
+import React, { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { JSDOM } from 'jsdom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { GetCollectionTrainingDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { Permission } from '@fastgpt/global/support/permission/controller';
+
+const mocks = vi.hoisted(() => ({
+  trainingDetail: undefined as unknown,
+  onSuccess: undefined as ((data: unknown) => void) | undefined
+}));
+vi.mock('@fastgpt/web/hooks/useRequest', () => ({
+  useRequest: (_request: unknown, options: { onSuccess?: (data: unknown) => void }) => {
+    mocks.onSuccess = options.onSuccess;
+    return { data: mocks.trainingDetail, loading: false, runAsync: vi.fn() };
+  }
+}));
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { count?: number }) => {
+      if (key === 'dataset:process.Index_Rebuild') return '索引重建';
+      if (key === 'dataset:process.Is_Ready') return '已就绪';
+      if (key === 'dataset:dataset.Training_Waiting') return `需等待 ${options?.count} 组数据`;
+      if (key === 'dataset:dataset.Training_Count') return `${options?.count} 组训练中`;
+      if (key === 'dataset:training.Error') return `${options?.count} 组异常`;
+      return key;
+    }
+  })
+}));
+vi.mock('@chakra-ui/react', () => {
+  const Box = ({ children, bg }: { children?: React.ReactNode; bg?: string }) =>
+    React.createElement('div', { 'data-bg': bg }, children);
+  return { Box, Flex: Box, ModalBody: Box };
+});
+vi.mock('@fastgpt/web/components/common/MyModal', () => ({
+  default: ({ children }: { children: React.ReactNode }) =>
+    React.createElement(React.Fragment, null, children)
+}));
+vi.mock('@fastgpt/web/components/common/Tag/index', () => ({
+  default: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('span', null, children)
+}));
+vi.mock('@fastgpt/web/components/common/Tabs/FillRowTabs', () => ({ default: () => null }));
+vi.mock('@fastgpt/web/components/common/Icon', () => ({
+  default: ({ name }: { name: string }) => React.createElement('i', { 'data-icon': name })
+}));
+vi.mock('@/pageComponents/dataset/detail/CollectionCard/TrainingErrorList', () => ({
+  default: () => null
+}));
+
+const TrainingStates = (
+  await import('@/pageComponents/dataset/detail/CollectionCard/TrainingStates')
+).default;
+
+const createDetail = (): GetCollectionTrainingDetailResponseType => {
+  const counts = {
+    parse: 0,
+    qa: 0,
+    chunk: 0,
+    rebuild: 0,
+    index: 0,
+    image: 0,
+    auto: 0,
+    imageParse: 0
+  };
+  return {
+    trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+    advancedTraining: { customPdfParse: false, imageIndex: false, autoIndexes: false },
+    queuedCounts: { ...counts },
+    trainingCounts: { ...counts },
+    errorCounts: { ...counts },
+    trainedCount: 0
+  };
+};
+
+describe('TrainingStates rebuild stage', () => {
+  let root: Root;
+  let container: HTMLDivElement;
+  const render = async (detail: GetCollectionTrainingDetailResponseType) => {
+    mocks.trainingDetail = detail;
+    await act(async () =>
+      root.render(
+        React.createElement(TrainingStates, {
+          collectionId: 'collection',
+          permission: new Permission(),
+          onClose: vi.fn()
+        })
+      )
+    );
+    await act(async () => mocks.onSuccess?.(detail));
+  };
+  const rebuildRow = () =>
+    Array.from(container.querySelectorAll('[data-bg]')).find((element) =>
+      element.textContent?.includes('索引重建')
+    );
+  beforeEach(() => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    container = document.createElement('div');
+    root = createRoot(container);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    window.close();
+    vi.unstubAllGlobals();
+  });
+
+  it('does not add a rebuild stage for ordinary indexing', async () => {
+    const detail = createDetail();
+    detail.trainingCounts.index = 2;
+    await render(detail);
+    expect(rebuildRow()).toBeUndefined();
+  });
+
+  it('shows queued, running and failed rebuild counts before the ready stage', async () => {
+    const detail = createDetail();
+    detail.queuedCounts.rebuild = 6;
+    detail.trainingCounts.rebuild = 2;
+    detail.errorCounts.rebuild = 1;
+    await render(detail);
+    const row = rebuildRow()!;
+    expect(row.textContent).toContain('需等待 6 组数据 / 2 组训练中');
+    expect(row.textContent).toContain('1 组异常');
+    expect(row.getAttribute('data-bg')).toBe('red.50');
+    expect(container.textContent!.indexOf('索引重建')).toBeLessThan(
+      container.textContent!.indexOf('已就绪')
+    );
+  });
+
+  it('keeps the observed rebuild stage checked after completion until the modal is closed', async () => {
+    const queued = createDetail();
+    queued.queuedCounts.rebuild = 7;
+    await render(queued);
+    expect(rebuildRow()?.textContent).toContain('需等待 7 组数据');
+    expect(rebuildRow()?.parentElement?.querySelector('[data-icon="common/check"]')).toBeNull();
+
+    const running = createDetail();
+    running.trainingCounts.rebuild = 2;
+    await render(running);
+    expect(rebuildRow()?.textContent).toContain('2 组训练中');
+
+    const completed = createDetail();
+    completed.trainedCount = 7;
+    await render(completed);
+    expect(rebuildRow()).toBeDefined();
+    expect(rebuildRow()?.parentElement?.querySelector('[data-icon="common/check"]')).not.toBeNull();
+    expect(rebuildRow()?.textContent).not.toContain('组数据');
+    expect(rebuildRow()?.textContent).not.toContain('组训练中');
+    await act(async () => root.render(null));
+    await render(completed);
+    expect(rebuildRow()).toBeUndefined();
+  });
+});

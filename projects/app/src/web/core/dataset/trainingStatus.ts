@@ -20,7 +20,7 @@ export const getTrainingStageText = (mode?: TrainingModeEnum) => {
     [TrainingModeEnum.qa]: i18nT('dataset:process.Get QA'),
     [TrainingModeEnum.image]: i18nT('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: i18nT('dataset:process.Auto_Index'),
-    [TrainingModeEnum.rebuild]: i18nT('dataset:process.Vectorizing'),
+    [TrainingModeEnum.rebuild]: i18nT('dataset:process.Index_Rebuild'),
     [TrainingModeEnum.index]: i18nT('dataset:process.Vectorizing')
   };
 

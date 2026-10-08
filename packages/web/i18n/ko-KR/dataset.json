@@ -171,6 +171,7 @@
   "process.Is_Ready": "준비됨",
   "process.Parse_Image": "이미지 분석",
   "process.Parsing": "분석 중",
+  "process.Index_Rebuild": "인덱스 재구축",
   "process.Vectorizing": "인덱스 벡터화",
   "process.Waiting": "대기열",
   "rebuild_embedding_start_tip": "임베딩 모델 변경 작업이 시작되었습니다",

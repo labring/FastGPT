@@ -171,6 +171,7 @@
   "process.Is_Ready": "Ready",
   "process.Parse_Image": "Image analysis",
   "process.Parsing": "Parsing",
+  "process.Index_Rebuild": "Index rebuilding",
   "process.Vectorizing": "Index vectorization",
   "process.Waiting": "Queue",
   "rebuild_embedding_start_tip": "Embedding model switch started",

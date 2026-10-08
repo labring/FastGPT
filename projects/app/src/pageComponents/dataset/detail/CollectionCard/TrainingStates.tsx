@@ -22,9 +22,11 @@ import {
 } from './trainingStatesUtils';
 
 const ProgressView = ({
-  trainingDetail
+  trainingDetail,
+  hasSeenRebuild
 }: {
   trainingDetail: GetCollectionTrainingDetailResponseType;
+  hasSeenRebuild: boolean;
 }) => {
   const { t } = useTranslation();
   const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;
@@ -32,6 +34,12 @@ const ProgressView = ({
     trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
   const isImageIndex = trainingDetail.advancedTraining.imageIndex;
   const isAutoIndexes = trainingDetail.advancedTraining.autoIndexes;
+  const hasRebuildTasks =
+    trainingDetail.queuedCounts.rebuild +
+      trainingDetail.trainingCounts.rebuild +
+      trainingDetail.errorCounts.rebuild >
+    0;
+  const showRebuild = hasRebuildTasks || hasSeenRebuild;
 
   const statesArray = useMemo(() => {
     const isReady = isTrainingDetailReady(trainingDetail);
@@ -41,7 +49,8 @@ const ProgressView = ({
       ...(isQA ? [TrainingModeEnum.qa] : []),
       ...(isImageIndex ? [TrainingModeEnum.image] : []),
       ...(isAutoIndexes ? [TrainingModeEnum.auto] : []),
-      TrainingModeEnum.index
+      TrainingModeEnum.index,
+      ...(showRebuild ? [TrainingModeEnum.rebuild] : [])
     ];
 
     const getTrainingStatus = (mode: TrainingModeEnum) =>
@@ -126,6 +135,30 @@ const ProgressView = ({
         statusText: getStatusText(TrainingModeEnum.index),
         status: getTrainingStatus(TrainingModeEnum.index)
       },
+      ...(showRebuild
+        ? [
+            {
+              errorCount: trainingDetail.errorCounts.rebuild,
+              label: t('dataset:process.Index_Rebuild'),
+              status: getTrainingStatus(TrainingModeEnum.rebuild),
+              // 等待和执行可能并存，重建阶段同时展示两种数量。
+              statusText: [
+                trainingDetail.queuedCounts.rebuild > 0
+                  ? t('dataset:dataset.Training_Waiting', {
+                      count: trainingDetail.queuedCounts.rebuild
+                    })
+                  : undefined,
+                trainingDetail.trainingCounts.rebuild > 0
+                  ? t('dataset:dataset.Training_Count', {
+                      count: trainingDetail.trainingCounts.rebuild
+                    })
+                  : undefined
+              ]
+                .filter(Boolean)
+                .join(' / ')
+            }
+          ]
+        : []),
       {
         errorCount: 0,
         label: t('dataset:process.Is_Ready'),
@@ -139,7 +172,7 @@ const ProgressView = ({
     ];
 
     return states;
-  }, [trainingDetail, isImageIndex, isAutoIndexes, t, isImageParse, isQA]);
+  }, [trainingDetail, isImageIndex, isAutoIndexes, t, isImageParse, isQA, showRebuild]);
 
   return (
     <Flex flexDirection={'column'} gap={6}>
@@ -250,6 +283,7 @@ const TrainingStates = ({
 }) => {
   const { t } = useTranslation();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
+  const [hasSeenRebuild, setHasSeenRebuild] = useState(false);
 
   const {
     data: trainingDetail,
@@ -258,7 +292,12 @@ const TrainingStates = ({
   } = useRequest(() => getDatasetCollectionTrainingDetail(collectionId), {
     pollingInterval: 5000,
     pollingWhenHidden: false,
-    manual: false
+    manual: false,
+    onSuccess: (data) => {
+      // 同一个弹窗内保留已出现的重建阶段，任务完成或切换页签后仍可看到完成状态。
+      if (data.queuedCounts.rebuild + data.trainingCounts.rebuild + data.errorCounts.rebuild > 0)
+        setHasSeenRebuild(true);
+    }
   });
 
   const errorCounts = Object.values(trainingDetail?.errorCounts || {}).reduce(
@@ -290,7 +329,9 @@ const TrainingStates = ({
             ]}
           />
         </Flex>
-        {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
+        {tab === 'states' && trainingDetail && (
+          <ProgressView trainingDetail={trainingDetail} hasSeenRebuild={hasSeenRebuild} />
+        )}
         {tab === 'errors' && (
           <TrainingErrorList
             scope={{ type: 'collection', collectionId }}

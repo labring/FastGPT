@@ -19,6 +19,7 @@ import {
 import { subMinutes } from 'date-fns';
 import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training/constant';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
   chunk: 0, // 兼容尚未迁移的历史任务统计
@@ -33,6 +34,7 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
 
 const TRAINING_LOCK_TIMEOUT_MINUTES = TRAINING_LEASE_TIMEOUT_MS / 60 / 1000;
 
+/** 汇总当前集合的训练阶段；重建等待数同时包含尚未入队的 data，已入队项只按 training 统计。 */
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
   const { collectionId } = parseApiInput({
     req,
@@ -66,58 +68,59 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     $lt: BLOCKED_LOCK_TIME
   };
 
-  const [ququedCountData, trainingCountData, errorCountData, trainedCount] = (await Promise.all([
-    MongoDatasetTraining.aggregate([
-      {
-        $match: {
-          ...match,
-          retryCount: { $gt: 0 },
-          lockTime: { $lte: subMinutes(now, TRAINING_LOCK_TIMEOUT_MINUTES) }
+  const [ququedCountData, trainingCountData, errorCountData, trainedCount, waitingRebuildCount] =
+    await Promise.all([
+      MongoDatasetTraining.aggregate<{ _id: TrainingModeEnum; count: number }>([
+        {
+          $match: {
+            ...match,
+            retryCount: { $gt: 0 },
+            lockTime: { $lte: subMinutes(now, TRAINING_LOCK_TIMEOUT_MINUTES) }
+          }
+        },
+        {
+          $group: {
+            _id: '$mode',
+            count: { $sum: 1 }
+          }
         }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          count: { $sum: 1 }
+      ]),
+      MongoDatasetTraining.aggregate<{ _id: TrainingModeEnum; count: number }>([
+        {
+          $match: {
+            ...match,
+            retryCount: { $gt: 0 },
+            lockTime: activeLockTimeExpr
+          }
+        },
+        {
+          $group: {
+            _id: '$mode',
+            count: { $sum: 1 }
+          }
         }
-      }
-    ]),
-    MongoDatasetTraining.aggregate([
-      {
-        $match: {
-          ...match,
-          retryCount: { $gt: 0 },
-          lockTime: activeLockTimeExpr
+      ]),
+      MongoDatasetTraining.aggregate<{ _id: TrainingModeEnum; count: number }>([
+        {
+          $match: {
+            ...match,
+            ...finalErrorTrainingMatch
+          }
+        },
+        {
+          $group: {
+            _id: '$mode',
+            count: { $sum: 1 }
+          }
         }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          count: { $sum: 1 }
-        }
-      }
-    ]),
-    MongoDatasetTraining.aggregate([
-      {
-        $match: {
-          ...match,
-          ...finalErrorTrainingMatch
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          count: { $sum: 1 }
-        }
-      }
-    ]),
-    MongoDatasetData.countDocuments(trainedMatch)
-  ])) as [
-    { _id: TrainingModeEnum; count: number }[],
-    { _id: TrainingModeEnum; count: number }[],
-    { _id: TrainingModeEnum; count: number }[],
-    number
-  ];
+      ]),
+      MongoDatasetData.countDocuments(trainedMatch),
+      // waitingRebuild 尚无 training；入队时原子变为 rebuilding，不能把后者再计入等待。
+      MongoDatasetData.countDocuments({
+        ...match,
+        indexStatus: DatasetDataIndexStatusEnum.waitingRebuild
+      })
+    ]);
 
   const queuedCounts = ququedCountData.reduce(
     (acc, item) => {
@@ -126,6 +129,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     },
     { ...defaultCounts }
   );
+  queuedCounts.rebuild += waitingRebuildCount;
   const trainingCounts = trainingCountData.reduce(
     (acc, item) => {
       acc[item._id] = item.count;

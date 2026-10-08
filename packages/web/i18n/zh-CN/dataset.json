@@ -171,6 +171,7 @@
   "process.Is_Ready": "已就绪",
   "process.Parse_Image": "图片解析中",
   "process.Parsing": "内容解析中",
+  "process.Index_Rebuild": "索引重建",
   "process.Vectorizing": "索引向量化",
   "process.Waiting": "排队中",
   "rebuild_embedding_start_tip": "切换索引模型任务已开始",
