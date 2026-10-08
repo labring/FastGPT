@@ -12,7 +12,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { serviceEnv } from '../../../../env';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { runWorkflow } from '..';
 import type { DispatchFlowResponse } from '../type';
