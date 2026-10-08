@@ -13,7 +13,6 @@ import {
 import Content from '@/pageComponents/dashboard/skill/detail/Content';
 import SkillPreview from '@/pageComponents/dashboard/skill/detail/preview/SkillPreview';
 
-import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useRequiredQueryParam } from '@/web/common/hooks/useRequiredQueryParam';
 
 const MainLayout = () => {
@@ -56,12 +55,12 @@ const MainLayout = () => {
 };
 
 const SkillDetail = () => {
-  const { value: skillId } = useRequiredQueryParam('skillId', {
+  const skillId = useRequiredQueryParam('skillId', {
     fallbackRoute: '/dashboard/skill'
   });
 
   if (!skillId) {
-    return <Loading />;
+    return null;
   }
 
   return (

@@ -199,8 +199,7 @@ const PostLoginActionOrchestrator = ({
     contact: userInfo?.contact
   });
 
-  // 此编排器也在 SSR 聊天页挂载，不能依赖仅对 CSR 生效的应用壳门禁。
-  const baseReady = router.isReady && isPlus && !!userId && !!teamId;
+  const baseReady = isPlus && !!userId && !!teamId;
   // 强制补齐不依赖未读通知数据，不能等该查询 settle；
   // 可选通知类动作需要查询结果判断 hasImportantInform，所以必须等 isFetched。
   const canStartMandatory = baseReady && canRunMandatoryActions;

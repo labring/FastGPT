@@ -5,7 +5,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
 import PageContainer from '@/components/PageContainer';
-import Loading from '@fastgpt/web/components/common/MyLoading';
 import { defaultDatasetDetail } from '@/web/core/dataset/constants';
 import { useRequiredQueryParam } from '@/web/common/hooks/useRequiredQueryParam';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -143,13 +142,14 @@ const Detail = ({ datasetId, currentTab }: Props) => {
 };
 
 const Render = () => {
-  const { value: datasetId, query } = useRequiredQueryParam('datasetId', {
+  const datasetId = useRequiredQueryParam('datasetId', {
     fallbackRoute: '/dataset/list'
   });
+  const { query } = useRouter();
   const currentTab = (query.currentTab as TabEnum) || TabEnum.collectionCard;
 
   if (!datasetId) {
-    return <Loading />;
+    return null;
   }
 
   return (

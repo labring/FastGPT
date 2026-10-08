@@ -75,12 +75,12 @@ const AppDetail = () => {
 };
 
 const Provider = () => {
-  const { value: appId } = useRequiredQueryParam('appId', {
+  const appId = useRequiredQueryParam('appId', {
     fallbackRoute: '/dashboard/agent'
   });
 
   if (!appId) {
-    return <Loading fixed={false} />;
+    return null;
   }
 
   return (

@@ -136,8 +136,8 @@ export const useInitApp = () => {
   const hasInitedMarketingRef = useRef(false);
 
   useEffect(() => {
-    // 应用初始化同样用于 SSR 聊天页，归因仍需独立等待 query hydration。
-    if (!router.isReady || hasInitedMarketingRef.current) return;
+    // CSR 挂载前由应用壳恢复 query；SSR 聊天页由 getServerSideProps 提供 query。
+    if (hasInitedMarketingRef.current) return;
     hasInitedMarketingRef.current = true;
 
     const query = router.query as MarketingQueryParams;
@@ -185,7 +185,7 @@ export const useInitApp = () => {
     if (newPath) {
       router.replace(newPath);
     }
-  }, [router.isReady, router, getPathWithoutMarketingParams]);
+  }, [router, getPathWithoutMarketingParams]);
 
   return {
     feConfigs,

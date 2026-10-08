@@ -1,5 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { JSDOM } from 'jsdom';
+import React, { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useInitApp } from '@/web/context/useInitApp';
+import ClientRouteReadyGate from '@/web/context/ClientRouteReadyGate';
 
 const mocks = vi.hoisted(() => ({
   router: {
@@ -8,7 +12,6 @@ const mocks = vi.hoisted(() => ({
     pathname: '/',
     replace: vi.fn()
   },
-  effects: [] as Array<() => void>,
   setBdVId: vi.fn(),
   setMsclkid: vi.fn(),
   setUtmWorkflow: vi.fn(),
@@ -18,22 +21,8 @@ const mocks = vi.hoisted(() => ({
   setCouponCode: vi.fn()
 }));
 
-vi.mock('react', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('react')>()),
-  useState: (initial: any) => [typeof initial === 'function' ? initial() : initial, vi.fn()],
-  useEffect: (effect: () => void) => {
-    mocks.effects.push(effect);
-  },
-  useRef: <T>(value?: T) => ({ current: value })
-}));
-
 vi.mock('next/router', () => ({
   useRouter: () => mocks.router
-}));
-
-vi.mock('ahooks', () => ({
-  useMemoizedFn: (fn: any) => fn,
-  useMount: vi.fn()
 }));
 
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
@@ -66,41 +55,62 @@ vi.mock('@/web/support/marketing/utils', () => ({
   setCouponCode: mocks.setCouponCode
 }));
 
-describe('useInitApp marketing params readiness gate', () => {
+describe('useInitApp marketing params inside AppShell', () => {
+  let root: Root;
+  let container: HTMLDivElement;
+
+  const Harness = () => {
+    useInitApp();
+    return null;
+  };
+  const render = async (clientOnly = true) => {
+    await act(async () =>
+      root.render(
+        React.createElement(
+          ClientRouteReadyGate,
+          { enabled: clientOnly },
+          React.createElement(Harness)
+        )
+      )
+    );
+  };
+
   beforeEach(() => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+      url: 'https://fastgpt.example.com/#chat'
+    });
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.clearAllMocks();
-    mocks.effects.length = 0;
     mocks.router.isReady = false;
     mocks.router.query = {};
-    mocks.router.replace.mockClear();
-    vi.stubGlobal('window', { location: { hash: '' } });
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
   });
 
-  it('does not consume marketing params before router.isReady', () => {
-    mocks.router.isReady = false;
-    mocks.router.query = { bd_vid: 'test-bd-vid', couponCode: 'SAVE20' };
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    window.close();
+    vi.unstubAllGlobals();
+  });
 
-    useInitApp();
-
-    // Trigger registered useEffects
-    mocks.effects.forEach((effect) => effect());
-
+  it('waits for CSR query restoration at the application gate before consuming params', async () => {
+    await render();
     expect(mocks.setBdVId).not.toHaveBeenCalled();
     expect(mocks.setCouponCode).not.toHaveBeenCalled();
     expect(mocks.initFastGPTSemSourceDomain).not.toHaveBeenCalled();
-  });
 
-  it('consumes marketing params after router.isReady becomes true', () => {
     mocks.router.isReady = true;
     mocks.router.query = {
       bd_vid: 'test-bd-vid',
       couponCode: 'SAVE20',
-      utm_source: 'google'
+      utm_source: 'google',
+      appId: 'app-1'
     };
-
-    useInitApp();
-
-    mocks.effects.forEach((effect) => effect());
+    await render();
 
     expect(mocks.setBdVId).toHaveBeenCalledWith('test-bd-vid');
     expect(mocks.setCouponCode).toHaveBeenCalledWith('SAVE20');
@@ -109,28 +119,48 @@ describe('useInitApp marketing params readiness gate', () => {
         shortUrlSource: 'google'
       })
     );
+    expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith('/?appId=app-1#chat');
   });
 
-  it('initializes referrer attribution even without an explicit sourceDomain', () => {
+  it('initializes referrer attribution even without an explicit sourceDomain', async () => {
     mocks.router.isReady = true;
-
-    useInitApp();
-    mocks.effects.forEach((effect) => effect());
+    await render();
 
     expect(mocks.initFastGPTSemSourceDomain).toHaveBeenCalledWith(undefined);
+    expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
-  it('passes the explicit sourceDomain and initializes it only once', () => {
+  it('passes the explicit sourceDomain and preserves first attribution across navigation', async () => {
     mocks.router.isReady = true;
     mocks.router.query = { sourceDomain: 'https://campaign.example.com' };
 
-    useInitApp();
-    mocks.effects.forEach((effect) => {
-      effect();
-      effect();
-    });
+    await render();
+    mocks.router.query = { sourceDomain: 'https://later.example.com' };
+    mocks.router.isReady = false;
+    await render();
 
     expect(mocks.initFastGPTSemSourceDomain).toHaveBeenCalledOnce();
     expect(mocks.initFastGPTSemSourceDomain).toHaveBeenCalledWith('https://campaign.example.com');
+  });
+
+  it('consumes server-provided SSR query without a local router readiness check', async () => {
+    mocks.router.query = {
+      couponCode: 'SSR20',
+      sourceDomain: 'https://ssr.example.com',
+      utm_workflow: 'workflow-1',
+      msclkid: 'ms-1',
+      utm_medium: 'email',
+      utm_content: 'chat'
+    };
+    await render(false);
+
+    expect(mocks.setCouponCode).toHaveBeenCalledWith('SSR20');
+    expect(mocks.initFastGPTSemSourceDomain).toHaveBeenCalledWith('https://ssr.example.com');
+    expect(mocks.setMsclkid).toHaveBeenCalledWith('ms-1');
+    expect(mocks.setUtmWorkflow).toHaveBeenCalledWith('workflow-1');
+    expect(mocks.setUtmParams).toHaveBeenCalledWith({
+      shortUrlMedium: 'email',
+      shortUrlContent: 'chat'
+    });
   });
 });

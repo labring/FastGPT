@@ -20,11 +20,11 @@ describe('useRequiredQueryParam inside the CSR route gate', () => {
   let root: Root;
   let result: ReturnType<typeof useRequiredQueryParam> | undefined;
 
-  const Harness = ({ paramKey, fallbackRoute }: { paramKey: string; fallbackRoute?: string }) => {
+  const Harness = ({ paramKey, fallbackRoute }: { paramKey: string; fallbackRoute: string }) => {
     result = useRequiredQueryParam(paramKey, { fallbackRoute });
-    return React.createElement('span', null, result.value);
+    return result ? React.createElement('span', null, result) : null;
   };
-  const render = async (paramKey = 'appId', fallbackRoute?: string) => {
+  const render = async (paramKey = 'appId', fallbackRoute = '/dashboard/agent') => {
     await act(async () =>
       root.render(
         React.createElement(
@@ -66,8 +66,7 @@ describe('useRequiredQueryParam inside the CSR route gate', () => {
     mocks.router.isReady = true;
     await render('appId', '/dashboard/agent');
 
-    expect(result?.value).toBe('app-1');
-    expect(result?.query).toBe(mocks.router.query);
+    expect(result).toBe('app-1');
     expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
@@ -81,7 +80,8 @@ describe('useRequiredQueryParam inside the CSR route gate', () => {
       mocks.router.isReady = true;
       await render(paramKey, fallbackRoute);
 
-      expect(result?.value).toBe('');
+      expect(result).toBeUndefined();
+      expect(container.textContent).toBe('');
       expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith(fallbackRoute);
     }
   );
@@ -91,7 +91,7 @@ describe('useRequiredQueryParam inside the CSR route gate', () => {
     mocks.router.query = { appId: ['app-1', 'app-2'] };
     await render('appId', '/dashboard/agent');
 
-    expect(result?.value).toBe('app-1');
+    expect(result).toBe('app-1');
     expect(mocks.router.replace).not.toHaveBeenCalled();
   });
 
@@ -102,17 +102,22 @@ describe('useRequiredQueryParam inside the CSR route gate', () => {
       mocks.router.query = query;
       await render('appId', '/dashboard/agent');
 
-      expect(result?.value).toBe('');
+      expect(result).toBeUndefined();
       expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith('/dashboard/agent');
     }
   );
 
-  it('returns an empty value without redirecting when no fallback is configured', async () => {
+  it('falls back when a later query update removes the required parameter', async () => {
     mocks.router.isReady = true;
+    mocks.router.query = { appId: 'app-1' };
     await render();
 
-    expect(result?.value).toBe('');
-    expect(mocks.router.replace).not.toHaveBeenCalled();
+    mocks.router.query = {};
+    await render();
+
+    expect(result).toBeUndefined();
+    expect(container.textContent).toBe('');
+    expect(mocks.router.replace).toHaveBeenCalledExactlyOnceWith('/dashboard/agent');
   });
 
   it('reads later query updates without adding another router readiness condition', async () => {
