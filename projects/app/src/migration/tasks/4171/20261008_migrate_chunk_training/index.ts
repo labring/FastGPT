@@ -20,7 +20,9 @@ const CheckpointSchema = z
   .object({
     version: z.literal(1),
     endId: CursorSchema,
-    lastId: CursorSchema
+    lastId: CursorSchema,
+    // 兼容早期没有进度总数的断点；首次恢复时以剩余窗口重新建立计数。
+    totalCount: z.number().int().nonnegative().optional()
   })
   .refine(({ endId, lastId }) => !lastId || (!!endId && lastId <= endId));
 
@@ -44,13 +46,30 @@ export const migrateChunkTraining = async (context: SystemMigrationContext) => {
   if (!checkpoint || !checkpoint.endId) {
     checkpoint = { version: 1, endId: await getLegacyTrainingEndId(), lastId: null };
   }
+  const remainingInWindow = checkpoint.endId ? await countLegacyTrainings(checkpoint.endId) : 0;
+  const total = Math.max(checkpoint.totalCount ?? remainingInWindow, remainingInWindow);
+  let current = total - remainingInWindow;
+  if (checkpoint.totalCount !== total) {
+    checkpoint.totalCount = total;
+    // 在业务写入前固定总量；提交后、断点前崩溃时从剩余量恢复，避免漏计或重复计数。
+    await context.saveCheckpoint(checkpoint);
+  }
+
+  /** 每批上报已解决量；失败记录仍计入剩余量，空窗口也显式上报 0/0。 */
+  const reportTrainingProgress = (
+    status:
+      | SystemMigrationStatusEnum.running
+      | SystemMigrationStatusEnum.succeeded = SystemMigrationStatusEnum.running
+  ) => context.reportProgress({ key: 'trainings', status, current, total });
+  await reportTrainingProgress();
 
   /** 每条记录前校验执行权；只收集可定位的数据错误，不把数据库异常当成坏数据跳过。 */
   const migrateOne = async (id: string) => {
     context.signal.throwIfAborted();
     await context.assertActive();
     try {
-      await migrateLegacyTraining(new Types.ObjectId(id));
+      const migrated = await migrateLegacyTraining(new Types.ObjectId(id));
+      if (migrated) current += 1;
       failedRecords.delete(id);
     } catch (error) {
       if (!(error instanceof LegacyTrainingValidationError)) throw error;
@@ -67,6 +86,7 @@ export const migrateChunkTraining = async (context: SystemMigrationContext) => {
     for (const id of retryIds.slice(offset, offset + systemMigrationBatchSize))
       await migrateOne(id);
     await context.reportFailedRecords(Array.from(failedRecords.values()));
+    await reportTrainingProgress();
   }
 
   while (checkpoint.endId) {
@@ -82,7 +102,7 @@ export const migrateChunkTraining = async (context: SystemMigrationContext) => {
     await context.reportFailedRecords(Array.from(failedRecords.values()));
     checkpoint.lastId = String(batch[batch.length - 1]._id);
     await context.saveCheckpoint(checkpoint);
-    await context.reportProgress({ key: 'trainings', status: SystemMigrationStatusEnum.running });
+    await reportTrainingProgress();
   }
   if (failedRecords.size > 0) {
     await context.fail({
@@ -90,8 +110,15 @@ export const migrateChunkTraining = async (context: SystemMigrationContext) => {
       failedRecords: Array.from(failedRecords.values())
     });
   }
-  await context.reportProgress({ key: 'trainings', status: SystemMigrationStatusEnum.succeeded });
-  await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.running });
+  // 扫描期间被正常删除的任务同样已解决，不会留下无法完成的进度。
+  current = total;
+  await reportTrainingProgress(SystemMigrationStatusEnum.succeeded);
+  await context.reportProgress({
+    key: 'validation',
+    status: SystemMigrationStatusEnum.running,
+    current: 0,
+    total: 1
+  });
   await context.assertActive();
   const remainingCount = await countLegacyTrainings();
   if (remainingCount > 0) {
@@ -101,6 +128,11 @@ export const migrateChunkTraining = async (context: SystemMigrationContext) => {
       message: `${remainingCount} legacy training tasks remain; stop old producers before retrying`
     });
   }
-  await context.reportProgress({ key: 'validation', status: SystemMigrationStatusEnum.succeeded });
+  await context.reportProgress({
+    key: 'validation',
+    status: SystemMigrationStatusEnum.succeeded,
+    current: 1,
+    total: 1
+  });
   return { remainingCount };
 };

@@ -57,9 +57,14 @@ export const readLegacyTrainingBatch = ({
     .limit(limit)
     .toArray();
 
-/** 成功条件是所有旧任务均已转换或被正常删除，不能仅根据游标到达末尾判断。 */
-export const countLegacyTrainings = () =>
-  getDb().collection('dataset_trainings').countDocuments(legacyTaskFilter);
+/** 可统计冻结窗口内的待迁移量；无窗口参数时执行全局完成校验。 */
+export const countLegacyTrainings = (endId?: string) =>
+  getDb()
+    .collection('dataset_trainings')
+    .countDocuments({
+      ...legacyTaskFilter,
+      ...(endId ? { _id: { $lte: new Types.ObjectId(endId) } } : {})
+    });
 
 /**
  * 每条任务在事务内重读、校验、预落库并原地改阶段；任务与 data/图片 TTL 同时提交。

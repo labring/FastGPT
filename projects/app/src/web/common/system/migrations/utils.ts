@@ -24,10 +24,12 @@ export const getSystemMigrationDisplayStatus = ({
   return migration.status;
 };
 
-/** 只有同时提供 current/total 且 total 大于零时才渲染确定性进度条。 */
+/** 空任务成功也显示完整进度；历史成功阶段缺少计数时按终态展示，运行中缺少总量则隐藏。 */
 export const getSystemMigrationProgressPercent = (progress: SystemMigrationProgressListItem) => {
   const current = progress.current;
   const total = progress.total;
-  if (current === undefined || total === undefined || total <= 0) return undefined;
+  if (progress.status === SystemMigrationStatusEnum.succeeded) return 100;
+  if (current === undefined || total === undefined) return undefined;
+  if (total === 0) return 0;
   return Math.min(100, Math.round((current / total) * 100));
 };

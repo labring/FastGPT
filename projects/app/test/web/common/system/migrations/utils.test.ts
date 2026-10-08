@@ -73,4 +73,35 @@ describe('system migration UI state', () => {
       })
     ).toBeUndefined();
   });
+
+  it('shows empty progress and completes historical successful stages without counts', () => {
+    const progress = {
+      key: 'test_progress',
+      labelKey: 'system_migration:migrations.example.progress',
+      status: SystemMigrationStatusEnum.running,
+      current: 0,
+      total: 0
+    };
+    expect(getSystemMigrationProgressPercent(progress)).toBe(0);
+    expect(
+      getSystemMigrationProgressPercent({
+        ...progress,
+        status: SystemMigrationStatusEnum.succeeded
+      })
+    ).toBe(100);
+    expect(
+      getSystemMigrationProgressPercent({
+        ...progress,
+        status: SystemMigrationStatusEnum.succeeded,
+        current: undefined,
+        total: undefined
+      })
+    ).toBe(100);
+    expect(
+      getSystemMigrationProgressPercent({
+        ...progress,
+        total: 10
+      })
+    ).toBe(0);
+  });
 });

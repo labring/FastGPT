@@ -6,6 +6,7 @@ import type {
   SystemMigrationProgressInput
 } from '@fastgpt/global/migration/schema';
 import { migrateChunkTraining } from '@/migration/tasks/4171/20261008_migrate_chunk_training';
+import { migrateLegacyTraining } from '@/migration/tasks/4171/20261008_migrate_chunk_training/service';
 import { db, initializeMongoModels, seed } from './fixtures';
 
 beforeAll(initializeMongoModels);
@@ -40,6 +41,32 @@ const createContext = () => {
 };
 
 describe('migrateChunkTraining', () => {
+  it('resumes a historical checkpoint without counters using the remaining window', async () => {
+    const done = await seed();
+    const remaining = await seed();
+    await migrateLegacyTraining(done._id);
+    const state = createContext();
+    await state.context.saveCheckpoint({
+      version: 1,
+      endId: String(remaining._id),
+      lastId: String(done._id)
+    });
+    await migrateChunkTraining(state.context);
+    expect(state.context.reportProgress).toHaveBeenCalledWith({
+      key: 'trainings',
+      status: 'running',
+      current: 0,
+      total: 1
+    });
+    expect(state.context.reportProgress).toHaveBeenCalledWith({
+      key: 'trainings',
+      status: 'succeeded',
+      current: 1,
+      total: 1
+    });
+    expect(await db().collection('dataset_datas').countDocuments({})).toBe(2);
+  });
+
   it('migrates multiple batches, preserves unrelated tasks and reports both complete stages', async () => {
     const a = await seed();
     const b = await seed({ mode: 'image' });
@@ -64,6 +91,17 @@ describe('migrateChunkTraining', () => {
       expect(statuses[0]).toBe('running');
       expect(statuses.at(-1)).toBe('succeeded');
     }
+    expect(
+      context.reportProgress.mock.calls
+        .map(([value]) => value)
+        .filter((value) => value.key === 'trainings' && value.total !== undefined)
+        .map(({ current, total }) => [current, total])
+    ).toEqual([
+      [0, 2],
+      [1, 2],
+      [2, 2],
+      [2, 2]
+    ]);
     await migrateChunkTraining(context);
     expect(await db().collection('dataset_datas').countDocuments({})).toBe(2);
   });
@@ -83,14 +121,26 @@ describe('migrateChunkTraining', () => {
       }
     ]);
     expect(state.context.reportFailedRecords.mock.invocationCallOrder[0]).toBeLessThan(
-      state.context.saveCheckpoint.mock.invocationCallOrder[0]
+      state.context.saveCheckpoint.mock.invocationCallOrder[1]
     );
+    expect(state.context.reportProgress).toHaveBeenLastCalledWith({
+      key: 'trainings',
+      status: 'running',
+      current: 1,
+      total: 2
+    });
     await db()
       .collection('dataset_trainings')
       .updateOne({ _id: bad._id }, { $unset: { dataId: '' } });
     await migrateChunkTraining(state.context);
     expect(state.failures()).toEqual([]);
     expect(await db().collection('dataset_datas').countDocuments({})).toBe(2);
+    expect(state.context.reportProgress).toHaveBeenCalledWith({
+      key: 'trainings',
+      status: 'succeeded',
+      current: 2,
+      total: 2
+    });
   });
 
   it.each(['q', 'a', 'imageId'])(
@@ -127,9 +177,11 @@ describe('migrateChunkTraining', () => {
     await db().collection('dataset_datas').deleteOne({ _id: bad.dataId });
     await seed();
     const state = createContext();
-    state.context.saveCheckpoint.mockRejectedValueOnce(new Error('checkpoint unavailable'));
+    state.context.saveCheckpoint
+      .mockImplementationOnce(state.context.saveCheckpoint.getMockImplementation()!)
+      .mockRejectedValueOnce(new Error('checkpoint unavailable'));
     await expect(migrateChunkTraining(state.context)).rejects.toThrow('checkpoint unavailable');
-    expect(state.checkpoint()).toBeUndefined();
+    expect(state.checkpoint()).toMatchObject({ lastId: null, totalCount: 2 });
     expect(state.failures()).toHaveLength(1);
     await db().collection('dataset_trainings').deleteOne({ _id: bad._id });
     state.context.saveCheckpoint.mockRejectedValueOnce(new Error('crash after commit'));
@@ -138,6 +190,12 @@ describe('migrateChunkTraining', () => {
     await migrateChunkTraining(state.context);
     expect(state.failures()).toEqual([]);
     expect(await db().collection('dataset_datas').countDocuments({})).toBe(1);
+    expect(state.context.reportProgress).toHaveBeenCalledWith({
+      key: 'trainings',
+      status: 'succeeded',
+      current: 2,
+      total: 2
+    });
   });
 
   it('stops starting transactions when lease is lost and preserves previous failure details', async () => {
@@ -173,8 +231,27 @@ describe('migrateChunkTraining', () => {
   });
 
   it('handles an empty source and an aborted signal without writing business data', async () => {
-    await expect(migrateChunkTraining(createContext().context)).resolves.toEqual({
+    const empty = createContext();
+    await expect(migrateChunkTraining(empty.context)).resolves.toEqual({
       remainingCount: 0
+    });
+    expect(empty.context.reportProgress).toHaveBeenCalledWith({
+      key: 'trainings',
+      status: 'running',
+      current: 0,
+      total: 0
+    });
+    expect(empty.context.reportProgress).toHaveBeenCalledWith({
+      key: 'trainings',
+      status: 'succeeded',
+      current: 0,
+      total: 0
+    });
+    expect(empty.context.reportProgress).toHaveBeenLastCalledWith({
+      key: 'validation',
+      status: 'succeeded',
+      current: 1,
+      total: 1
     });
     await seed();
     const { context } = createContext();

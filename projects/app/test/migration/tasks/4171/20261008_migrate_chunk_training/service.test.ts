@@ -1,5 +1,8 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { migrateLegacyTraining } from '@/migration/tasks/4171/20261008_migrate_chunk_training/service';
+import {
+  countLegacyTrainings,
+  migrateLegacyTraining
+} from '@/migration/tasks/4171/20261008_migrate_chunk_training/service';
 import { findAndLockTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { serviceEnv } from '@fastgpt/service/env';
@@ -8,6 +11,17 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => im
 import { db, initializeMongoModels, seed } from './fixtures';
 
 beforeAll(initializeMongoModels);
+
+describe('countLegacyTrainings', () => {
+  it('counts only legacy tasks and respects the frozen scan window', async () => {
+    expect(await countLegacyTrainings()).toBe(0);
+    const first = await seed();
+    await seed({ mode: 'image' });
+    await seed({ mode: 'qa' });
+    expect(await countLegacyTrainings(String(first._id))).toBe(1);
+    expect(await countLegacyTrainings()).toBe(2);
+  });
+});
 
 describe('migrateLegacyTraining', () => {
   it('pre-creates once, activates the task and preserves its business payload', async () => {
