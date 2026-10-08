@@ -31,11 +31,9 @@ import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import type {
   GetModelStatusResponse,
   ModelStatusProbeModel,
-  ModelStatusProbeRecord,
   ModelStatusProbeTimelinePoint,
   UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
-import { ModelStatusProbeStatusEnum } from '@fastgpt/global/core/ai/model/status';
 import {
   getModelStatus,
   postModelStatusProbe,
@@ -241,7 +239,7 @@ const ProbeTimeline = ({
         justifyContent={'flex-end'}
         gap={`${TIMELINE_BAR_GAP}px`}
       >
-        {displayPoints.map((point, index) => (
+        {displayPoints.map((point) => (
           <MyTooltip
             key={point.startTime}
             label={renderTooltipContent(point)}

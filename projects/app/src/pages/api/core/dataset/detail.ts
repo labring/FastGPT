@@ -31,7 +31,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     getDatasetSyncDatasetStatus(datasetId),
     hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId })
   ]);
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId: String(dataset.teamId) });
   const vectorModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'embedding'), {
     type: 'embedding'
   });

@@ -4,7 +4,7 @@ import type {
   GetChannelLogDetailResponse,
   GetChannelLogsQuery,
   GetChannelLogsResponse
-} from '@fastgpt/global/openapi/core/ai/channel/api';
+} from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
 
 /** 查询 system 或当前成员 group-channel 的调用日志。groupId 只能由服务端会话推导。 */

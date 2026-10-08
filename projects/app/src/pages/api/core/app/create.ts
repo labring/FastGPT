@@ -176,7 +176,7 @@ export const onCreateApp = async ({
     edges: edges ?? [],
     chatConfig
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
@@ -341,7 +341,7 @@ export const onUpdateAppWorkflow = async ({
     edges: edges ?? [],
     chatConfig
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   formatModels({
     nodes: workflow.nodes,
     chatConfig: workflow.chatConfig,

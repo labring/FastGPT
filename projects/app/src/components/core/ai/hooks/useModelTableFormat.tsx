@@ -7,7 +7,7 @@ import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag/index';
 import type { PriceType } from '@fastgpt/global/core/ai/model/schema';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 
-export type ModelConfigCapabilityFields = {
+type ModelConfigCapabilityFields = {
   maxContext?: number;
   maxToken?: number;
   vision?: boolean;
@@ -48,7 +48,7 @@ export type FormattedModelTableItem<T extends BaseFormatModelItem> = T & {
   toolChoice?: boolean;
 };
 
-export type FormatModelTableListProps<T extends BaseFormatModelItem> = {
+type FormatModelTableListProps<T extends BaseFormatModelItem> = {
   models: T[];
   modelType?: ModelTypeEnum | '';
   provider?: string;
@@ -66,7 +66,7 @@ export type FormatModelTableListProps<T extends BaseFormatModelItem> = {
 /**
  * 纯计算模型列表格式化与过滤函数（脱离 React 渲染生命周期，易于测试和复用）
  */
-export const formatModelTableList = <T extends BaseFormatModelItem>({
+const formatModelTableList = <T extends BaseFormatModelItem>({
   models,
   modelType,
   provider,
@@ -232,7 +232,7 @@ export const formatModelTableList = <T extends BaseFormatModelItem>({
   });
 };
 
-export type UseModelTableFormatProps<T extends BaseFormatModelItem> = Omit<
+type UseModelTableFormatProps<T extends BaseFormatModelItem> = Omit<
   FormatModelTableListProps<T>,
   't'
 >;

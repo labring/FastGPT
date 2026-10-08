@@ -66,7 +66,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let aiChatVideo = rawAiChatVideo;
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId: runningUserInfo?.teamId });
   const modelConstantsData = modelHandle.getLLMModelData({ modelId, model });
 
   try {

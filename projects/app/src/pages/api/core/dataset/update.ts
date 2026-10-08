@@ -1,4 +1,5 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
@@ -103,7 +104,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
 
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,
@@ -122,12 +123,18 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     { modelId: agentModelId, model: agentModel },
     { optional: true }
   );
+  if (agentModelData) {
+    await authModelUse({ modelId: agentModelData.modelId, tmbId, teamId });
+  }
   // 新 ID（包括显式清空）优先，只有未传 ID 才兼容旧名称。
   const vlmReference = vlmModelId !== undefined ? { modelId: vlmModelId } : { model: vlmModel };
   const vlmValue = vlmModelId !== undefined ? vlmModelId : vlmModel;
   // undefined 表示不修改；显式 null/空字符串才是清空请求。
   const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
   const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
+  if (vlmModelData) {
+    await authModelUse({ modelId: vlmModelData.modelId, tmbId, teamId });
+  }
 
   const onUpdate = async (session: ClientSession) => {
     // Website dataset update chunkSettings, need to clean up dataset

@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { createModelHandle, publishModelHandle } from '@fastgpt/service/core/ai/model/handle';
+import { clearTeamModelCache } from '@fastgpt/service/core/ai/model/teamModelCache';
 
-const { axiosMock, getConfigMock } = vi.hoisted(() => ({
+const { axiosMock, getConfigMock, getTeamModelsByTmbIdMock } = vi.hoisted(() => ({
   axiosMock: vi.fn(),
-  getConfigMock: vi.fn(() => ({ baseUrl: 'http://aiproxy.test', token: 'test-token' }))
+  getConfigMock: vi.fn(() => ({ baseUrl: 'http://aiproxy.test', token: 'test-token' })),
+  getTeamModelsByTmbIdMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/api/axios', () => ({
@@ -16,22 +18,20 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/config', () => ({
   getAIProxyAdminConfig: getConfigMock
 }));
 
+vi.mock('@fastgpt/service/core/ai/model/teamModelCache', () => ({
+  clearTeamModelCache: vi.fn(),
+  getTeamModelsByTmbId: getTeamModelsByTmbIdMock
+}));
+
 import {
-  assertOwnGroupChannel,
-  channelCount,
   getBatchChannelsAffectedModels,
   getChannelAffectedModels,
   getChannelModels,
-  getModelChannelRefs,
-  getModelChannelsMapByModels
+  getSystemAssociableModels
 } from '@fastgpt/service/core/ai/channel/association';
-import {
-  getGlobalGroupChannelList,
-  getMemberChannelList,
-  getSystemChannelList
-} from '@fastgpt/service/core/ai/channel/list';
-import { isAiproxyNotFoundError } from '@fastgpt/service/core/ai/channel/error';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { getMemberChannelList, getSystemChannelList } from '@fastgpt/service/core/ai/channel/list';
+import { resolveChannelForOperation } from '@fastgpt/service/core/ai/channel/resolve';
+import { isAiproxyNotFoundError } from '@fastgpt/service/thirdProvider/aiproxy/error';
 import { resetChannelCache } from '@fastgpt/service/core/ai/channel/cache';
 import type {
   AiproxyChannel,
@@ -41,6 +41,7 @@ import type {
 const okEnvelope = (data: unknown) => ({ data: { success: true, data } });
 
 const makeModel = (id: string, overrides: Record<string, any> = {}): any => ({
+  _id: id,
   modelId: id,
   type: ModelTypeEnum.llm,
   provider: 'test',
@@ -48,6 +49,7 @@ const makeModel = (id: string, overrides: Record<string, any> = {}): any => ({
   name: `Model ${id}`,
   isActive: true,
   scope: ModelScopeEnum.system,
+  config: { maxContext: 16000, maxResponse: 4000, quoteMaxToken: 2000 },
   ...overrides
 });
 
@@ -90,10 +92,6 @@ const GROUP_A_CHANNELS: AiproxyGroupChannel[] = [
 const GROUP_B_CHANNELS: AiproxyGroupChannel[] = [
   makeGroupChannel(301, `fastgpt:tmb:${TMB_B}`, { name: 'B Qwen', models: ['qwen-plus'] })
 ];
-const FOREIGN_CHANNELS: AiproxyGroupChannel[] = [
-  makeGroupChannel(401, 'external:group-1', { name: 'Foreign', models: ['qwen-plus'] })
-];
-
 let testModels: Array<{
   id: string;
   model: string;
@@ -121,21 +119,21 @@ const setupModels = () => {
       name: 'A Qwen Plus',
       scope: ModelScopeEnum.team,
       tmbId: TMB_A,
-      teamId: 'team-a'
+      teamId: '6000000000000000000000aa'
     }),
     makeModel('own-a-2', {
       model: 'deepseek-v3',
       name: 'A DeepSeek V3',
       scope: ModelScopeEnum.team,
       tmbId: TMB_A,
-      teamId: 'team-a'
+      teamId: '6000000000000000000000aa'
     }),
     makeModel('own-b-1', {
       model: 'qwen-plus',
       name: 'B Qwen Plus',
       scope: ModelScopeEnum.team,
       tmbId: TMB_B,
-      teamId: 'team-b'
+      teamId: '6000000000000000000000bb'
     })
   ];
   testModels = models.map((m) => ({
@@ -154,6 +152,23 @@ const setupModels = () => {
       version: '1'
     })
   );
+
+  getTeamModelsByTmbIdMock.mockImplementation(async (tmbId: string) =>
+    testModels
+      .filter((m) => !m.isSystem && m.tmbId === tmbId)
+      .map((m) => ({
+        modelId: m.id,
+        model: m.model,
+        name: m.name,
+        type: ModelTypeEnum.llm,
+        provider: 'test',
+        scope: ModelScopeEnum.team,
+        isSystem: false,
+        tmbId: m.tmbId,
+        isActive: true,
+        config: { maxContext: 16000, maxResponse: 4000, quoteMaxToken: 2000 }
+      }))
+  );
 };
 
 const mockChannels = () => {
@@ -169,11 +184,6 @@ const mockChannels = () => {
     if (parsedUrl.pathname.startsWith('/api/channels/')) {
       return Promise.resolve(okEnvelope(paginate(SYSTEM_CHANNELS)));
     }
-    if (parsedUrl.pathname.startsWith('/api/group_channels/')) {
-      return Promise.resolve(
-        okEnvelope(paginate([...GROUP_A_CHANNELS, ...GROUP_B_CHANNELS, ...FOREIGN_CHANNELS]))
-      );
-    }
     if (parsedUrl.pathname.startsWith(`/api/group/${GROUP_A}/channels/`)) {
       return Promise.resolve(okEnvelope(paginate(GROUP_A_CHANNELS)));
     }
@@ -184,55 +194,9 @@ const mockChannels = () => {
   });
 };
 
-describe('channel controller — owner-paired association', () => {
-  beforeEach(() => {
-    setupModels();
-    mockChannels();
-    resetChannelCache();
-  });
-
-  it('getModelChannelsMapByModels pairs each model against its OWN bucket (multi-owner set)', async () => {
-    const map = await getModelChannelsMapByModels([
-      testModels.find((m) => m.id === 'sys-llm-1')!,
-      testModels.find((m) => m.id === 'own-a-1')!,
-      testModels.find((m) => m.id === 'own-b-1')!
-    ]);
-
-    // System bucket
-    expect(map.get('sys-llm-1')).toEqual([
-      { id: 101, name: 'Sys GPT', status: 1 },
-      { id: 102, name: 'Sys Claude', status: 1 }
-    ]);
-
-    // Each owner counts against their own group channels only
-    expect(map.get('own-a-1')).toEqual([{ id: 201, name: 'A Qwen', status: 1 }]);
-    expect(map.get('own-b-1')).toEqual([{ id: 301, name: 'B Qwen', status: 1 }]);
-
-    // Cross-owner isolation: member B's channels never pair with A's models
-    expect(map.size).toBe(3);
-  });
-
-  it('getModelChannelsMapByModels with a system-only set skips group fetches', async () => {
-    const map = await getModelChannelsMapByModels([
-      testModels.find((m) => m.id === 'sys-llm-1')!,
-      testModels.find((m) => m.id === 'sys-emb-1')!
-    ]);
-    expect(map.get('sys-llm-1')?.length).toBe(2);
-    expect(map.get('sys-emb-1')?.length).toBe(1);
-    expect(map.size).toBe(2);
-  });
-
-  it('channelCount returns the matched channel count per bucket', async () => {
-    const map = await getModelChannelsMapByModels(testModels);
-    expect(channelCount('sys-llm-1', map)).toBe(2);
-    expect(channelCount('sys-emb-1', map)).toBe(1);
-    expect(channelCount('own-a-1', map)).toBe(1);
-    expect(channelCount('unknown-id', map)).toBe(0);
-  });
-});
-
 describe('channel controller — delete protection / refs', () => {
   beforeEach(() => {
+    clearTeamModelCache();
     setupModels();
     mockChannels();
     resetChannelCache();
@@ -321,37 +285,59 @@ describe('channel controller — delete protection / refs', () => {
     expect(await getChannelModels(GROUP_A_CHANNELS[0])).toEqual([
       { modelId: 'own-a-1', name: 'A Qwen Plus', model: 'qwen-plus' }
     ]);
-    // Foreign group channels have no FastGPT models to associate
-    expect(await getChannelModels(FOREIGN_CHANNELS[0])).toEqual([]);
   });
 
-  it('channels of foreign groups have no FastGPT models to associate', async () => {
-    expect(await getChannelAffectedModels(FOREIGN_CHANNELS[0])).toEqual([]);
-  });
+  it('strictly isolates system associable models from team models with same model name', async () => {
+    // Add a team model with the exact same upstream model name 'gpt-4o'
+    const teamGpt = makeModel('own-a-gpt4o', {
+      model: 'gpt-4o',
+      name: 'A Private GPT-4o',
+      scope: ModelScopeEnum.team,
+      tmbId: TMB_A,
+      teamId: 'team-a'
+    });
+    publishModelHandle(
+      createModelHandle({
+        models: [
+          ...testModels.map((m) =>
+            makeModel(m.id, {
+              model: m.model,
+              name: m.name,
+              scope: m.isSystem ? ModelScopeEnum.system : ModelScopeEnum.team,
+              tmbId: m.tmbId
+            })
+          ),
+          teamGpt
+        ] as any,
+        defaultModels: {} as any,
+        configuredDefaultModelIds: {} as any,
+        revision: 3,
+        version: '3'
+      })
+    );
 
-  it('getModelChannelRefs counts same-bucket channels serving the same upstream name', async () => {
-    const sysModel = testModels.find((m) => m.id === 'sys-llm-1')!;
-    const ownA = testModels.find((m) => m.id === 'own-a-1')!;
-    const ownB = testModels.find((m) => m.id === 'own-b-1')!;
+    const systemModels = await getSystemAssociableModels();
+    expect(systemModels.some((m) => m.id === 'own-a-gpt4o')).toBe(false);
 
-    expect(await getModelChannelRefs(sysModel)).toBe(2); // ch-sys-1 + ch-sys-2
-    expect(await getModelChannelRefs(ownA)).toBe(1); // only ch-a-1, not ch-b-1
-    expect(await getModelChannelRefs(ownB)).toBe(1); // only ch-b-1
-  });
-});
+    // System channel 101 serves 'gpt-4o'. It should only pair with sys-llm-1, not own-a-gpt4o.
+    const modelsOnSysChannel = await getChannelModels(SYSTEM_CHANNELS[0]);
+    expect(modelsOnSysChannel).toEqual([
+      { modelId: 'sys-llm-1', name: 'Sys GPT-4o', model: 'gpt-4o' }
+    ]);
 
-describe('channel controller — permission helpers', () => {
-  it('assertOwnGroupChannel only allows the member own group channels', async () => {
-    const aChannel = GROUP_A_CHANNELS[0];
-    await expect(assertOwnGroupChannel(aChannel, TMB_A)).resolves.toBeUndefined();
-    await expect(assertOwnGroupChannel(aChannel, TMB_B)).rejects.toBe(ModelErrEnum.unAuthChannel);
+    // Deleting system channels should not mark own-a-gpt4o as affected
+    const batchAffected = await getBatchChannelsAffectedModels([
+      SYSTEM_CHANNELS[0],
+      SYSTEM_CHANNELS[1]
+    ]);
+    expect(batchAffected.some((m) => m.modelId === 'own-a-gpt4o')).toBe(false);
   });
 });
 
 describe('channel controller — 404 not found detection', () => {
   it('detects aiproxy 404 / record not found', () => {
     expect(isAiproxyNotFoundError({ response: { status: 404 } })).toBe(true);
-    expect(isAiproxyNotFoundError(ModelErrEnum.channelNotExist)).toBe(true);
+    expect(isAiproxyNotFoundError(ModelErrEnum.channelNotExist)).toBe(false);
     expect(
       isAiproxyNotFoundError({ response: { status: 500, data: { message: 'record not found' } } })
     ).toBe(true);
@@ -361,10 +347,28 @@ describe('channel controller — 404 not found detection', () => {
     expect(isAiproxyNotFoundError(new Error('invalid key'))).toBe(false);
   });
 
-  it('controller functions reject with channelNotExist when 404', async () => {
+  it('system channel list propagates underlying 404 error without translating to domain error', async () => {
     resetChannelCache(); // drop any buckets warmed by earlier tests
+    const err404 = { response: { status: 404 } };
+    axiosMock.mockRejectedValue(err404);
+    await expect(getSystemChannelList()).rejects.toBe(err404);
+  });
+
+  it('resolveChannelForOperation translates raw 404 into ModelErrEnum.channelNotExist', async () => {
+    resetChannelCache();
     axiosMock.mockRejectedValue({ response: { status: 404 } });
-    await expect(getSystemChannelList()).rejects.toBe(ModelErrEnum.channelNotExist);
+    await expect(
+      resolveChannelForOperation({ id: 999, channelType: 'system', tmbId: 'test-tmb' })
+    ).rejects.toBe(ModelErrEnum.channelNotExist);
+  });
+
+  it('member channel list tolerates 404 for uninitialized group and returns empty list', async () => {
+    resetChannelCache();
+    axiosMock.mockRejectedValue({ response: { status: 404 } });
+    await expect(getMemberChannelList({ tmbId: 'new-tmb' })).resolves.toEqual({
+      list: [],
+      total: 0
+    });
   });
 });
 
@@ -372,11 +376,6 @@ describe('channel controller — list views with relatedModelCount', () => {
   beforeEach(() => {
     setupModels();
     mockChannels();
-    // Creator resolution hits MongoTeamMember; default to an empty member set so
-    // unrelated tests stay deterministic (sourceMember assertions live in their own test).
-    vi.spyOn(MongoTeamMember, 'find').mockReturnValue({
-      lean: vi.fn().mockResolvedValue([])
-    } as any);
   });
 
   it('system channel view counts the system model bucket', async () => {
@@ -394,39 +393,6 @@ describe('channel controller — list views with relatedModelCount', () => {
     expect(list.find((c) => c.id === 201)?.relatedModelCount).toBe(1);
     expect(list.find((c) => c.id === 202)?.relatedModelCount).toBe(1);
     expect(list.find((c) => c.id === 201)?.group_id).toBe(`fastgpt:tmb:${TMB_A}`);
-  });
-
-  it('global view counts per-owner buckets; foreign groups get 0', async () => {
-    const { list, total } = await getGlobalGroupChannelList();
-    expect(total).toBe(4);
-    expect(list.find((c) => c.id === 201)?.relatedModelCount).toBe(1);
-    expect(list.find((c) => c.id === 301)?.relatedModelCount).toBe(1);
-    expect(list.find((c) => c.id === 401)?.relatedModelCount).toBe(0);
-  });
-
-  it('global view resolves creator info (sourceMember) for FastGPT group ids', async () => {
-    vi.spyOn(MongoTeamMember, 'find').mockReturnValue({
-      lean: vi.fn().mockResolvedValue([
-        { _id: TMB_A, name: 'User A', avatar: 'avatar-a', status: 'active' },
-        { _id: TMB_B, name: 'User B' }
-      ])
-    } as any);
-
-    const { list } = await getGlobalGroupChannelList();
-    expect(list.find((c) => c.id === 201)?.sourceMember).toMatchObject({
-      name: 'User A',
-      avatar: 'avatar-a',
-      status: 'active'
-    });
-    expect(list.find((c) => c.id === 301)?.sourceMember?.name).toBe('User B');
-    // Foreign group ids are not FastGPT tmb ids → no creator info
-    expect(list.find((c) => c.id === 401)?.sourceMember).toBeUndefined();
-  });
-
-  it('applies pagination', async () => {
-    const { list, total } = await getSystemChannelList({ pageNum: 2, pageSize: 2 });
-    expect(total).toBe(3);
-    expect(list.map((c) => c.id)).toEqual([103]);
   });
 
   it('tolerates a null aiproxy channels payload instead of a "not iterable" 500', async () => {

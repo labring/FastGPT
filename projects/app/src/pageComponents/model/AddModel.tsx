@@ -1,5 +1,6 @@
 import { useModelChannelTest } from './useModelChannelTest';
 import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { getModelTemplates, postModelsFromTemplates } from '@/web/core/ai/model/api';
 import { defaultChannel } from '@fastgpt/global/core/ai/channel';
 import {
@@ -19,7 +20,9 @@ import {
   type BoxProps,
   type ButtonProps
 } from '@chakra-ui/react';
-import { ModelScopeEnum, modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { channelTypeToScope, resolveChannelType } from '@fastgpt/global/core/ai/model';
 import type {
   SystemModelDataType,
   SystemModelDocumentDataType
@@ -47,7 +50,7 @@ import dynamic from 'next/dynamic';
 import ModelConfigForm, { type ModelConfigFormGetValues } from './ModelConfigForm';
 import ModelChannelModal, { ModelChannelSelector } from './ModelChannelModal';
 import ModelLinkedChannels from './ModelLinkedChannels';
-import { submitCreatedSystemModel } from './submit';
+import { submitCreatedModel } from './submit';
 import ModelListFilters from '@/components/core/ai/ModelListFilters';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
@@ -55,19 +58,17 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 const EditChannelModal = dynamic(() => import('./Channel/EditChannelModal'), { ssr: false });
 
 /** 空白模型只使用固定默认值；数值草稿的 NaN 表示未填写，提交时再补齐引用上限。 */
-export const createBlankSystemModelData = ({
+const createBlankSystemModelData = ({
   type,
-  channelType = 'system',
+  channelType,
   scope
 }: {
   type: ModelTypeEnum;
-  channelType?: 'system' | 'team';
+  channelType?: ChannelType;
   scope?: ModelScopeEnum;
 }): SystemModelDocumentDataType => {
-  const resolvedScope = (
-    channelType === 'team' || scope === ModelScopeEnum.team
-      ? ModelScopeEnum.team
-      : ModelScopeEnum.system
+  const resolvedScope = channelTypeToScope(
+    resolveChannelType({ channelType, scope })
   ) as ModelScopeEnum.system;
 
   const base = {
@@ -113,7 +114,7 @@ export const createBlankSystemModelData = ({
   return { ...base, type: ModelTypeEnum.rerank, config: { maxToken: 8000 } };
 };
 
-export const AddModelButton = ({
+const AddModelButton = ({
   onCreateFromBlank,
   onCreateFromTemplate,
   buttonBoxProps,
@@ -243,12 +244,12 @@ const ModelTypeSelector = ({
  *
  * 类型选择和参数表单共享同一个 Modal，创建状态只包含持久化字段，不持有或发送 modelId。
  */
-export const BlankModelCreateModal = ({
+const BlankModelCreateModal = ({
   createModelData,
   defaultModelData,
   providers,
   channels,
-  channelType = 'system',
+  channelType,
   onSuccess,
   onClose
 }: {
@@ -256,7 +257,7 @@ export const BlankModelCreateModal = ({
   defaultModelData?: SystemModelDocumentDataType;
   providers: ModelProviderItemType[];
   channels: ModelChannelSummary[];
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
   onSuccess: () => unknown | Promise<unknown>;
   onClose: () => void;
 }) => {
@@ -281,7 +282,8 @@ export const BlankModelCreateModal = ({
 
   const { testingChannelIds, testModelChannel: handleTestModelChannel } = useModelChannelTest({
     target: { source: 'draft', getModelData: () => modelFormGetValuesRef.current?.() },
-    channels
+    channels,
+    channelType
   });
 
   const navigateToChannelManagement = () => {
@@ -395,7 +397,7 @@ export const BlankModelCreateModal = ({
               onSuccess();
             }}
             onSubmit={async (data) => {
-              await submitCreatedSystemModel({
+              await submitCreatedModel({
                 modelData: data,
                 channelType,
                 channelIds: [...selectedChannelIds]
@@ -418,6 +420,7 @@ export const BlankModelCreateModal = ({
             }
           ]}
           channels={channels}
+          channelType={channelType}
           selectedChannelIds={[...selectedChannelIds]}
           showCurrentModel={false}
           showTest={false}
@@ -455,7 +458,7 @@ export const BlankModelCreateModal = ({
 const TemplateCreateModal = ({
   installedModels,
   channels,
-  channelType = 'system',
+  channelType,
   onClose,
   onSuccess,
   onRefresh,
@@ -463,7 +466,7 @@ const TemplateCreateModal = ({
 }: {
   installedModels: SystemModelDataType[];
   channels: ModelChannelSummary[];
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
   onClose: () => void;
   onSuccess: () => Promise<void>;
   onRefresh?: () => Promise<void>;
@@ -482,7 +485,10 @@ const TemplateCreateModal = ({
     error,
     loading,
     runAsync: refreshTemplates
-  } = useRequest(getModelTemplates, { manual: false, errorToast: '' });
+  } = useRequest(() => getModelTemplates({ channelType }), {
+    manual: false,
+    errorToast: ''
+  });
 
   const installedModelNames = useMemo(
     () => new Set(installedModels.map((model) => model.model)),
@@ -657,6 +663,7 @@ const TemplateCreateModal = ({
                 direction="column"
                 flex="1 1 0"
                 minH={0}
+                p={2}
                 mt={4}
               >
                 <FixedTableLayout
@@ -668,14 +675,13 @@ const TemplateCreateModal = ({
                     px: 0,
                     sx: {
                       '& [data-fixed-table-header]': {
-                        bg: 'myGray.100'
+                        bg: 'transparent'
                       }
                     }
                   }}
                   renderHeader={({ headerTableWidth }) => (
                     <Table
                       w="100%"
-                      size="sm"
                       sx={{ tableLayout: 'fixed', width: `${headerTableWidth} !important` }}
                     >
                       <TemplateTableColumns />
@@ -702,7 +708,7 @@ const TemplateCreateModal = ({
                   )}
                   bodyProps={{ flex: '1 1 0', minH: 0, overflowY: 'auto' }}
                   renderBody={() => (
-                    <Table w="100%" size="sm" sx={{ tableLayout: 'fixed' }}>
+                    <Table w="100%" sx={{ tableLayout: 'fixed' }}>
                       <TemplateTableColumns />
                       <Tbody>
                         {templateTopPlaceholderHeight > 0 && (
@@ -813,6 +819,7 @@ const TemplateCreateModal = ({
             avatar: providerMap.get(model.provider)?.avatar
           }))}
           channels={channels}
+          channelType={channelType}
           selectedChannelIds={selectedChannelIds}
           onChange={setSelectedChannelIds}
           showCurrentModel={false}
@@ -851,7 +858,7 @@ const AddModel = ({
   installedModels,
   channels,
   providers,
-  channelType = 'system',
+  channelType,
   onSuccess,
   buttonBoxProps,
   ...buttonProps
@@ -859,7 +866,7 @@ const AddModel = ({
   installedModels: SystemModelDataType[];
   channels: ModelChannelSummary[];
   providers: ModelProviderItemType[];
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
   onSuccess: () => Promise<void>;
   buttonBoxProps?: BoxProps;
 } & ButtonProps) => {
@@ -917,7 +924,7 @@ const AddModel = ({
             setShowTemplateCreate(false);
             setTemplateForConfig({
               ...template,
-              scope: channelType === 'team' ? ModelScopeEnum.team : ModelScopeEnum.system
+              scope: channelTypeToScope(channelType)
             });
           }}
         />

@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AIProxyClient } from '../../thirdProvider/aiproxy/client';
+import {
+  isAiproxyNotFoundError,
+  tolerateNotFound,
+  normalizeRelayNoChannelError
+} from '../../thirdProvider/aiproxy/error';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 const mockAxiosWithoutSSRF = vi.fn();
 
@@ -141,6 +147,13 @@ describe('AIProxyClient', () => {
         })
       ).rejects.toThrow('channel name duplicated');
     });
+
+    it('propagates raw 404 http error without wrapping in ModelErrEnum', async () => {
+      const err404 = { response: { status: 404, data: { message: 'not found' } } };
+      mockAxiosWithoutSSRF.mockRejectedValueOnce(err404);
+
+      await expect(client.system.channels.get(404)).rejects.toBe(err404);
+    });
   });
 
   describe('group.channels', () => {
@@ -166,6 +179,24 @@ describe('AIProxyClient', () => {
         })
       );
       expect(res.channels[0].id).toBe(10);
+    });
+
+    it('list returns empty channels and 0 total when group returns 404', async () => {
+      mockAxiosWithoutSSRF.mockRejectedValueOnce({
+        response: { status: 404 }
+      });
+
+      const res = await client.group(groupId).channels.list();
+      expect(res).toEqual({ channels: [], total: 0 });
+    });
+
+    it('listAll returns empty array when group returns 404', async () => {
+      mockAxiosWithoutSSRF.mockRejectedValueOnce({
+        response: { status: 404 }
+      });
+
+      const res = await client.group(groupId).channels.listAll();
+      expect(res).toEqual([]);
     });
 
     it('create posts to group-scoped endpoint', async () => {
@@ -260,6 +291,70 @@ describe('AIProxyClient', () => {
       });
 
       expect(res[0].summary[0].channel_id).toBe(99);
+    });
+  });
+});
+
+describe('AIProxy Error Helpers', () => {
+  describe('isAiproxyNotFoundError', () => {
+    it('matches 404 status codes', () => {
+      expect(isAiproxyNotFoundError({ status: 404 })).toBe(true);
+      expect(isAiproxyNotFoundError({ response: { status: 404 } })).toBe(true);
+    });
+
+    it('matches 500 status code with record not found message', () => {
+      expect(
+        isAiproxyNotFoundError({ response: { status: 500, data: { message: 'record not found' } } })
+      ).toBe(true);
+      expect(isAiproxyNotFoundError({ status: 500, message: 'Record Not Found' })).toBe(true);
+    });
+
+    it('returns false for unrelated errors and domain enums', () => {
+      expect(isAiproxyNotFoundError(new Error('connection timeout'))).toBe(false);
+      expect(isAiproxyNotFoundError({ response: { status: 500, data: { message: 'boom' } } })).toBe(
+        false
+      );
+      expect(isAiproxyNotFoundError(null)).toBe(false);
+      expect(isAiproxyNotFoundError(ModelErrEnum.channelNotExist)).toBe(false);
+    });
+  });
+
+  describe('tolerateNotFound', () => {
+    it('returns result when fetch succeeds', async () => {
+      const res = await tolerateNotFound(async () => 'success', 'fallback');
+      expect(res).toBe('success');
+    });
+
+    it('returns fallback when fetch throws a 404 not found error', async () => {
+      const res = await tolerateNotFound(async () => {
+        throw { response: { status: 404 } };
+      }, 'fallback');
+      expect(res).toBe('fallback');
+    });
+
+    it('rethrows when fetch throws other errors', async () => {
+      await expect(
+        tolerateNotFound(async () => {
+          throw new Error('fatal error');
+        }, 'fallback')
+      ).rejects.toThrow('fatal error');
+    });
+  });
+
+  describe('normalizeRelayNoChannelError', () => {
+    it('converts relay 404 no available channel errors to ModelErrEnum.noAvailableChannel', () => {
+      const err = {
+        response: { status: 404, data: { message: 'no available channel for model' } }
+      };
+      expect(normalizeRelayNoChannelError(err)).toBe(ModelErrEnum.noAvailableChannel);
+    });
+
+    it('leaves other 404 errors or non-404 errors unmodified', () => {
+      const notFoundOther = { response: { status: 404, data: { message: 'other error' } } };
+      expect(normalizeRelayNoChannelError(notFoundOther)).toBe(notFoundOther);
+
+      const serverErr = { response: { status: 500, data: { message: 'no available channel' } } };
+      expect(normalizeRelayNoChannelError(serverErr)).toBe(serverErr);
     });
   });
 });

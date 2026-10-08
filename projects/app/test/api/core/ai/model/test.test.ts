@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   authSystemAdmin: vi.fn(),
+  authUserPer: vi.fn(),
   findModelData: vi.fn(),
   createLLMResponse: vi.fn(),
   getVectors: vi.fn(),
@@ -14,10 +15,14 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
-  authSystemAdmin: mocks.authSystemAdmin
+  authSystemAdmin: mocks.authSystemAdmin,
+  authUserPer: mocks.authUserPer
 }));
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({ findModelData: mocks.findModelData })
+  getModelHandle: async () => ({
+    findModelData: mocks.findModelData,
+    findModelDataAsync: mocks.findModelData
+  })
 }));
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: mocks.createLLMResponse
@@ -58,14 +63,21 @@ const installedModel = {
 describe('admin model test routing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.feConfigs = { isPlus: true } as typeof global.feConfigs;
     mocks.authSystemAdmin.mockResolvedValue({ teamId: 'root-team' });
+    mocks.authUserPer.mockResolvedValue({
+      teamId: 'root-team',
+      tmbId: 'root-tmb',
+      isRoot: true,
+      tmb: { permission: {} }
+    });
     mocks.findModelData.mockReturnValue(installedModel);
     mocks.createLLMResponse.mockResolvedValue({ answerText: 'ok' });
   });
 
   it('uses an explicit channel on a request-local copy without mutating model connection data', async () => {
     const result = await handler(
-      { query: { modelId: installedModel.modelId, channelId: 7 } } as any,
+      { query: { modelId: installedModel.modelId, channelId: 7, channelType: 'system' } } as any,
       {} as any
     );
 
@@ -88,7 +100,10 @@ describe('admin model test routing', () => {
   });
 
   it('preserves model request configuration when no channel override is selected', async () => {
-    await handler({ query: { modelId: installedModel.modelId } } as any, {} as any);
+    await handler(
+      { query: { modelId: installedModel.modelId, channelType: 'system' } } as any,
+      {} as any
+    );
 
     expect(mocks.createLLMResponse).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -96,6 +111,27 @@ describe('admin model test routing', () => {
         body: expect.objectContaining({ model: installedModel })
       })
     );
+  });
+
+  it('rejects root testing another member team model', async () => {
+    mocks.findModelData.mockReturnValue({
+      ...installedModel,
+      scope: ModelScopeEnum.team,
+      tmbId: 'other-tmb'
+    });
+
+    await expect(
+      handler(
+        {
+          query: {
+            modelId: installedModel.modelId,
+            channelType: 'team'
+          }
+        } as any,
+        {} as any
+      )
+    ).rejects.toBe('modelUnExist');
+    expect(mocks.createLLMResponse).not.toHaveBeenCalled();
   });
 
   it('tests a draft model through the selected channel without resolving a persisted model', async () => {
@@ -114,7 +150,8 @@ describe('admin model test routing', () => {
             requestAuth: installedModel.requestAuth,
             config: installedModel.config
           },
-          channelId: 9
+          channelId: 9,
+          channelType: 'system'
         }
       } as any,
       {} as any
@@ -156,7 +193,8 @@ describe('admin model test routing', () => {
               }
             ]
           },
-          channelId: 9
+          channelId: 9,
+          channelType: 'system'
         }
       } as any,
       {} as any
@@ -189,7 +227,8 @@ describe('admin model test routing', () => {
             isActive: false,
             config: { voices: [{ label: 'Alloy', value: 'alloy' }] }
           },
-          channelId: 10
+          channelId: 10,
+          channelType: 'system'
         }
       } as any,
       {} as any
@@ -226,7 +265,8 @@ describe('admin model test routing', () => {
               isActive: false,
               config: { voices: [] }
             },
-            channelId: 10
+            channelId: 10,
+            channelType: 'system'
           }
         } as any,
         {} as any
@@ -247,7 +287,7 @@ describe('admin model test routing', () => {
     mocks.getVectors.mockResolvedValue(embeddingResult);
 
     const result = await handler(
-      { query: { modelId: installedModel.modelId, channelId: 11 } } as any,
+      { query: { modelId: installedModel.modelId, channelId: 11, channelType: 'system' } } as any,
       {} as any
     );
 
@@ -269,7 +309,10 @@ describe('admin model test routing', () => {
     mocks.reRankRecall.mockResolvedValue([{ id: '1', score: 1 }]);
 
     await expect(
-      handler({ query: { modelId: installedModel.modelId, channelId: 12 } } as any, {} as any)
+      handler(
+        { query: { modelId: installedModel.modelId, channelId: 12, channelType: 'system' } } as any,
+        {} as any
+      )
     ).resolves.toBeUndefined();
     expect(mocks.reRankRecall).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -293,7 +336,10 @@ describe('admin model test routing', () => {
     });
 
     await expect(
-      handler({ query: { modelId: installedModel.modelId, channelId: 13 } } as any, {} as any)
+      handler(
+        { query: { modelId: installedModel.modelId, channelId: 13, channelType: 'system' } } as any,
+        {} as any
+      )
     ).resolves.toBeUndefined();
     expect(createSpeech).toHaveBeenCalledWith(
       {
@@ -319,7 +365,10 @@ describe('admin model test routing', () => {
     });
 
     await expect(
-      handler({ query: { modelId: installedModel.modelId, channelId: 13 } } as any, {} as any)
+      handler(
+        { query: { modelId: installedModel.modelId, channelId: 13, channelType: 'system' } } as any,
+        {} as any
+      )
     ).rejects.toMatchObject({
       name: 'UserError',
       message: 'TTS model test requires at least one voice'
@@ -335,7 +384,10 @@ describe('admin model test routing', () => {
     mocks.aiTranscriptions.mockResolvedValue({ text: 'Hi' });
 
     await expect(
-      handler({ query: { modelId: installedModel.modelId, channelId: 14 } } as any, {} as any)
+      handler(
+        { query: { modelId: installedModel.modelId, channelId: 14, channelType: 'system' } } as any,
+        {} as any
+      )
     ).resolves.toBeUndefined();
     expect(mocks.aiTranscriptions).toHaveBeenCalledWith(
       expect.objectContaining({

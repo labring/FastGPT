@@ -161,7 +161,7 @@ export const dispatchDatasetSearch = async (
       dynamic: dynamicDataset,
       tmbId
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getModelHandle({ teamId });
     const vectorModel = modelHandle.getEmbeddingModelData({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel

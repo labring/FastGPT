@@ -31,20 +31,93 @@ const createHandle = (models: SystemModelDataType[] = [vlm]) =>
     version: 'test'
   });
 
-describe('tryGetVlmModelData', () => {
-  it('returns the same snapshot model as the strict getter and narrows the result after destructuring', () => {
+describe('getVlmModelData and model lookup', () => {
+  it('returns the snapshot model and narrows the result', () => {
     const handle = createHandle();
-    const { error, model } = handle.tryGetVlmModelData({ modelId: vlm.modelId });
-    expect(error).toBeUndefined();
-    if (error) throw error;
+    const model = handle.getVlmModelData({ modelId: vlm.modelId });
     expectTypeOf(model).toEqualTypeOf<LLMSystemModelDataType>();
-    expect(model).toBe(handle.getVlmModelData({ modelId: vlm.modelId }));
+    expect(model.modelId).toBe(vlm.modelId);
     expect(Object.isFrozen(model)).toBe(true);
   });
 
   it('supports legacy names only when the stable ID is absent', () => {
-    expect(createHandle().tryGetVlmModelData({ model: vlm.model }).model?.modelId).toBe(
-      vlm.modelId
+    expect(createHandle().getVlmModelData({ model: vlm.model }).modelId).toBe(vlm.modelId);
+  });
+
+  it('does not index team models into modelsByName map to prevent tenant model hijacking', () => {
+    const teamModel: SystemModelDataType = {
+      modelId: 'team-model-id',
+      type: ModelTypeEnum.llm,
+      scope: 'team' as const,
+      provider: 'OpenAI',
+      model: 'team-vlm',
+      name: 'Team Visual model',
+      isActive: true,
+      config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000, vision: true },
+      tmbId: 'user-tmb-1'
+    };
+    const handle = createHandle([vlm, teamModel]);
+    // Can still find by modelId
+    expect(handle.findModelData({ modelId: 'team-model-id' })?.modelId).toBe('team-model-id');
+    // Cannot find team model by legacy model name
+    expect(handle.findModelData({ model: 'team-vlm' })).toBeUndefined();
+    // System model can still be found by legacy model name
+    expect(handle.findModelData({ model: vlm.model })?.modelId).toBe(vlm.modelId);
+  });
+
+  it('resolves legacy model name only to system model when system and multiple members install models with the same name', () => {
+    const sysGpt: SystemModelDataType = {
+      modelId: 'sys-gpt-id',
+      type: ModelTypeEnum.llm,
+      scope: 'system' as const,
+      provider: 'OpenAI',
+      model: 'gpt-4o',
+      name: 'System GPT-4o',
+      isActive: true,
+      config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 100000, vision: true }
+    };
+    const memberAGpt: SystemModelDataType = {
+      modelId: 'member-a-gpt-id',
+      type: ModelTypeEnum.llm,
+      scope: 'team' as const,
+      tmbId: 'member-a',
+      teamId: 'team-1',
+      provider: 'OpenAI',
+      model: 'gpt-4o',
+      name: 'Member A Private GPT-4o',
+      isActive: true,
+      config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 100000, vision: true }
+    };
+    const memberBGpt: SystemModelDataType = {
+      modelId: 'member-b-gpt-id',
+      type: ModelTypeEnum.llm,
+      scope: 'team' as const,
+      tmbId: 'member-b',
+      teamId: 'team-1',
+      provider: 'OpenAI',
+      model: 'gpt-4o',
+      name: 'Member B Private GPT-4o',
+      isActive: true,
+      config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 100000, vision: true }
+    };
+
+    // Regardless of order in database / snapshot (even if team models appear later or earlier)
+    const handle = createHandle([memberBGpt, sysGpt, memberAGpt]);
+
+    // Legacy reference with model name 'gpt-4o' must always resolve to the system model
+    const resolved = handle.getLLMModelData({ model: 'gpt-4o' });
+    expect(resolved.modelId).toBe('sys-gpt-id');
+    expect(resolved.name).toBe('System GPT-4o');
+
+    // Neither member's team model can be resolved by bare model name
+    expect(handle.findModelData({ model: 'gpt-4o' })?.modelId).toBe('sys-gpt-id');
+
+    // Team models are strictly resolved by stable modelId
+    expect(handle.getLLMModelData({ modelId: 'member-a-gpt-id' }).name).toBe(
+      'Member A Private GPT-4o'
+    );
+    expect(handle.getLLMModelData({ modelId: 'member-b-gpt-id' }).name).toBe(
+      'Member B Private GPT-4o'
     );
   });
 
@@ -53,12 +126,8 @@ describe('tryGetVlmModelData', () => {
     { model: 'missing' },
     { modelId: 'missing', model: vlm.model },
     { model: vlm.name }
-  ])('returns a model-unavailable result for an invalid reference: %j', (reference) => {
+  ])('throws ModelErrEnum.unExist for an invalid reference: %j', (reference) => {
     const handle = createHandle();
-    const { error, model } = handle.tryGetVlmModelData(reference);
-    expect(model).toBeUndefined();
-    expect(error).toBeInstanceOf(UserError);
-    expect(error?.message).toBe(ModelErrEnum.unExist);
     expect(() => handle.getVlmModelData(reference)).toThrow(ModelErrEnum.unExist);
   });
 
@@ -70,10 +139,10 @@ describe('tryGetVlmModelData', () => {
       type: ModelTypeEnum.embedding,
       config: { defaultToken: 1, maxToken: 100, weight: 0, vision: true }
     }
-  ])('returns unavailable for disabled, nonvisual or wrong-type models: $type', (model) => {
-    const result = createHandle([model]).tryGetVlmModelData({ modelId: vlm.modelId });
-    expect(result.model).toBeUndefined();
-    expect(result.error?.message).toBe(ModelErrEnum.unExist);
+  ])('throws unExist for disabled, nonvisual or wrong-type models: $type', (model) => {
+    expect(() => createHandle([model]).getVlmModelData({ modelId: vlm.modelId })).toThrow(
+      ModelErrEnum.unExist
+    );
   });
 
   it.each([
@@ -81,13 +150,12 @@ describe('tryGetVlmModelData', () => {
     new Error(ModelErrEnum.unExist),
     new UserError('unrelated user error')
   ])('rethrows unexpected failures unchanged: %s', (error) => {
-    // 使用真实输入访问异常，不 mock 严格 getter，证明结果包装不会吞掉非预期错误。
     const reference: ModelReferenceType = {
       get modelId(): string {
         throw error;
       }
     };
-    expect(() => createHandle().tryGetVlmModelData(reference)).toThrow(error);
+    expect(() => createHandle().getVlmModelData(reference)).toThrow(error);
   });
 });
 
@@ -98,7 +166,6 @@ describe('upstream model selection semantics', () => {
     expect(handle.getLLMModelData({ modelId }, { optional: true })).toBeUndefined();
     expect(handle.getVlmModelData({ modelId }, { optional: true })).toBeUndefined();
     expect(handle.getLLMModelData({ modelId, model: vlm.model }).modelId).toBe(vlm.modelId);
-    expect(handle.tryGetVlmModelData({ modelId }).error?.message).toBe(ModelErrEnum.unConfigured);
   });
 
   it('reports disabled and wrong-type models by actual display name', () => {

@@ -6,8 +6,10 @@ import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 import { getTmpData, setTmpData } from '@fastgpt/service/support/tmpData/controller';
 import { MongoTmpData } from '@fastgpt/service/support/tmpData/schema';
 import {
-  assertMemberChannelPermission,
+  assertMemberModelPermission,
+  authModelManage,
   authModelScopeOperation,
+  authModelUse,
   getMemberModelCatalogPermission,
   getMemberModelIds
 } from '@fastgpt/service/support/permission/model/controller';
@@ -16,6 +18,7 @@ import {
   clearMyModelsCache
 } from '@fastgpt/service/support/permission/model/cache';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 import type { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/memberGroup/groupMemberSchema';
@@ -284,14 +287,184 @@ describe('model permission cache', () => {
       isTeamOwner: false
     });
     expect(collaboratorModels).toContain(teamModelId);
+
+    // 5. 团队模型未授权时，即使是 teamOwner 也无法使用
+    const teamOwnerModels = await getMemberModelIds({
+      teamId,
+      tmbId: otherMemberTmbId,
+      isTeamOwner: true
+    });
+    expect(teamOwnerModels).not.toContain(teamModelId);
   });
 
-  it('assertMemberChannelPermission requires TeamModelCreatePermissionVal', async () => {
+  it('rejects external team models even if registered in MongoResourcePermission', async () => {
+    const teamIdA = new Types.ObjectId().toString();
+    const tmbIdA = new Types.ObjectId().toString();
+    const teamIdB = new Types.ObjectId().toString();
+    const tmbIdB = new Types.ObjectId().toString();
+    const externalTeamModelId = new Types.ObjectId().toString();
+
+    setModelTestSnapshot({
+      models: [
+        {
+          modelId: externalTeamModelId,
+          model: 'external-team-model',
+          scope: 'team',
+          teamId: teamIdB,
+          tmbId: tmbIdB,
+          isActive: true
+        }
+      ] as any
+    });
+
+    // 恶意或错误在团队 A 插入对团队 B 模型的协作者权限
+    await MongoResourcePermission.create({
+      teamId: new Types.ObjectId(teamIdA),
+      resourceType: PerResourceTypeEnum.model,
+      resourceId: new Types.ObjectId(externalTeamModelId),
+      tmbId: new Types.ObjectId(tmbIdA),
+      permission: ReadPermissionVal
+    });
+
+    const memberIds = await getMemberModelIds({
+      teamId: teamIdA,
+      tmbId: tmbIdA,
+      isTeamOwner: false
+    });
+    expect(memberIds).not.toContain(externalTeamModelId);
+  });
+
+  it('updates catalog version when team model content is modified even if model IDs remain the same', async () => {
+    const teamId = new Types.ObjectId().toString();
+    const tmbId = new Types.ObjectId().toString();
+    const teamModelId = new Types.ObjectId().toString();
+
+    const baseModel = {
+      modelId: teamModelId,
+      model: 'my-team-model',
+      name: 'Initial Name',
+      scope: 'team',
+      teamId,
+      tmbId,
+      isActive: true,
+      type: 'llm',
+      config: { maxResponse: 4000 }
+    };
+
+    setModelTestSnapshot({
+      models: [baseModel] as any,
+      revision: 1
+    });
+
+    const first = await getMemberModelCatalogPermission({
+      teamId,
+      tmbId,
+      isTeamOwner: false
+    });
+
+    // 修改模型名称与配置，快照版本递增
+    setModelTestSnapshot({
+      models: [{ ...baseModel, name: 'Updated Name', config: { maxResponse: 8000 } }] as any,
+      revision: 2
+    });
+
+    const second = await getMemberModelCatalogPermission({
+      teamId,
+      tmbId,
+      isTeamOwner: false
+    });
+
+    expect(first.version).not.toBe(second.version);
+    expect(first.modelIds).toEqual(second.modelIds);
+  });
+
+  describe('authModelUse', () => {
+    it('throws unExist for missing or inactive model', async () => {
+      const teamId = new Types.ObjectId().toString();
+      const tmbId = new Types.ObjectId().toString();
+      const activeModelId = new Types.ObjectId().toString();
+      const inactiveModelId = new Types.ObjectId().toString();
+
+      setModelTestSnapshot({
+        models: [
+          { modelId: activeModelId, model: 'active-model', isActive: true, scope: 'system' },
+          { modelId: inactiveModelId, model: 'inactive-model', isActive: false, scope: 'system' }
+        ] as any
+      });
+
+      await expect(authModelUse({ modelId: 'non-existent', tmbId, teamId })).rejects.toMatchObject({
+        message: ModelErrEnum.unExist
+      });
+
+      await expect(authModelUse({ modelId: inactiveModelId, tmbId, teamId })).rejects.toMatchObject(
+        { message: ModelErrEnum.unExist }
+      );
+    });
+
+    it('rejects cross-team model usage even if model exists and is active', async () => {
+      const teamIdA = new Types.ObjectId().toString();
+      const tmbIdA = new Types.ObjectId().toString();
+      const teamIdB = new Types.ObjectId().toString();
+      const tmbIdB = new Types.ObjectId().toString();
+      const otherTeamModelId = new Types.ObjectId().toString();
+
+      setModelTestSnapshot({
+        models: [
+          {
+            modelId: otherTeamModelId,
+            model: 'team-b-model',
+            scope: 'team',
+            teamId: teamIdB,
+            tmbId: tmbIdB,
+            isActive: true
+          }
+        ] as any
+      });
+
+      await expect(
+        authModelUse({ modelId: otherTeamModelId, tmbId: tmbIdA, teamId: teamIdA })
+      ).rejects.toMatchObject({ message: ModelErrEnum.unAuthModel });
+    });
+
+    it('allows permitted system and team models', async () => {
+      const teamId = new Types.ObjectId().toString();
+      const tmbId = new Types.ObjectId().toString();
+      const systemModelId = new Types.ObjectId().toString();
+      const myTeamModelId = new Types.ObjectId().toString();
+
+      setModelTestSnapshot({
+        models: [
+          { modelId: systemModelId, model: 'system-model', scope: 'system', isActive: true },
+          {
+            modelId: myTeamModelId,
+            model: 'my-team-model',
+            scope: 'team',
+            teamId,
+            tmbId,
+            isActive: true
+          }
+        ] as any
+      });
+
+      await expect(authModelUse({ modelId: systemModelId, tmbId, teamId })).resolves.toMatchObject({
+        modelId: systemModelId
+      });
+
+      await expect(authModelUse({ modelId: myTeamModelId, tmbId, teamId })).resolves.toMatchObject({
+        modelId: myTeamModelId
+      });
+    });
+  });
+
+  it('assertMemberModelPermission requires TeamModelCreatePermissionVal and maps the resource error code', async () => {
     await expect(
-      assertMemberChannelPermission({ hasModelCreatePer: false } as TeamPermission)
+      assertMemberModelPermission({ hasModelCreatePer: false } as TeamPermission)
+    ).rejects.toBe(ModelErrEnum.unAuthModel);
+    await expect(
+      assertMemberModelPermission({ hasModelCreatePer: false } as TeamPermission, 'channel')
     ).rejects.toBe(ModelErrEnum.unAuthChannel);
     await expect(
-      assertMemberChannelPermission({ hasModelCreatePer: true } as TeamPermission)
+      assertMemberModelPermission({ hasModelCreatePer: true } as TeamPermission)
     ).resolves.toBeUndefined();
   });
 
@@ -346,6 +519,101 @@ describe('model permission cache', () => {
       expect(res.tmbId).toBe('tmb-1');
 
       authUserPerSpy.mockRestore();
+    });
+  });
+  describe('authModelManage', () => {
+    const mockAuth = async (auth: Record<string, unknown>) =>
+      vi
+        .spyOn(await import('@fastgpt/service/support/permission/user/auth'), 'authUserPer')
+        .mockResolvedValue(auth as any);
+
+    it('rejects team scope on the open-source edition for members and root, keeps system scope', async () => {
+      global.feConfigs = { isPlus: false } as typeof global.feConfigs;
+      const memberSpy = await mockAuth({
+        tmbId: 'tmb-1',
+        teamId: 'team-1',
+        isRoot: false,
+        tmb: { permission: { hasModelCreatePer: true } }
+      });
+      await expect(authModelManage({ req: {}, channelType: 'team' })).rejects.toBe(
+        SystemErrEnum.commercialFeature
+      );
+      memberSpy.mockRestore();
+
+      const rootSpy = await mockAuth({
+        tmbId: 'tmb-root',
+        teamId: 'team-1',
+        isRoot: true,
+        tmb: { permission: {} }
+      });
+      await expect(authModelManage({ req: {}, channelType: 'team' })).rejects.toBe(
+        SystemErrEnum.commercialFeature
+      );
+      await expect(authModelManage({ req: {}, channelType: 'system' })).resolves.toMatchObject({
+        isRoot: true
+      });
+      rootSpy.mockRestore();
+    });
+
+    it('rejects a member without hasModelCreatePer on team scope', async () => {
+      const spy = await mockAuth({
+        tmbId: 'tmb-1',
+        teamId: 'team-1',
+        isRoot: false,
+        tmb: { permission: { hasModelCreatePer: false } }
+      });
+
+      await expect(authModelManage({ req: {}, channelType: 'team' })).rejects.toBe(
+        ModelErrEnum.unAuthModel
+      );
+      await expect(
+        authModelManage({ req: {}, channelType: 'team', resource: 'channel' })
+      ).rejects.toBe(ModelErrEnum.unAuthChannel);
+      spy.mockRestore();
+    });
+
+    it('allows a member with hasModelCreatePer on team scope', async () => {
+      const spy = await mockAuth({
+        tmbId: 'tmb-1',
+        teamId: 'team-1',
+        isRoot: false,
+        tmb: { permission: { hasModelCreatePer: true } }
+      });
+
+      const res = await authModelManage({ req: {}, channelType: 'team' });
+      expect(res.tmbId).toBe('tmb-1');
+      spy.mockRestore();
+    });
+
+    it('rejects a member on system scope before the permission check', async () => {
+      const spy = await mockAuth({
+        tmbId: 'tmb-1',
+        teamId: 'team-1',
+        isRoot: false,
+        tmb: { permission: { hasModelCreatePer: true } }
+      });
+
+      await expect(authModelManage({ req: {}, channelType: 'system' })).rejects.toBe(
+        ModelErrEnum.rootOnlyPermit
+      );
+      spy.mockRestore();
+    });
+
+    it('does not require hasModelCreatePer for root', async () => {
+      const spy = await mockAuth({
+        tmbId: 'tmb-root',
+        teamId: 'team-1',
+        isRoot: true,
+        tmb: { permission: { hasModelCreatePer: false } }
+      });
+
+      await expect(authModelManage({ req: {}, channelType: 'system' })).resolves.toMatchObject({
+        isRoot: true
+      });
+      await expect(authModelManage({ req: {}, channelType: 'team' })).resolves.toMatchObject({
+        isRoot: true
+      });
+      spy.mockRestore();
     });
   });
 });

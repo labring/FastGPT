@@ -43,7 +43,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       sourceId,
       outLinkAuthData
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getModelHandle({ teamId });
     const ttsModel = modelHandle.getTTSModelData({
       modelId: ttsConfig.modelId,
       model: ttsConfig.model

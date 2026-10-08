@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   bootstrapAIModelsFromLegacy: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/provider/controller', () => ({
+vi.mock('@fastgpt/service/core/ai/model/provider/controller', () => ({
   preloadModelProviders: mocks.preloadModelProviders
 }));
 vi.mock('@fastgpt/service/core/ai/model/catalog', () => ({

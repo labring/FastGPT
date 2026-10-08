@@ -299,4 +299,29 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     });
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });
+
+  it('should reject rebuilding with an unauthorized team vector model', async () => {
+    const { root, dataset } = await createDatasetContext();
+    const unauthorizedTeamEmbedding: EmbeddingSystemModelDataType = {
+      ...visionEmbeddingModel,
+      modelId: '507f1f77bcf86cd799439099',
+      model: 'unauthorized-embedding',
+      name: 'unauthorized-embedding',
+      scope: 'team',
+      teamId: '507f1f77bcf86cd799439088',
+      tmbId: '507f1f77bcf86cd799439077'
+    };
+    addModelTestModel(unauthorizedTeamEmbedding);
+
+    const res = await Call(handler, {
+      auth: root,
+      body: {
+        datasetId: String(dataset._id),
+        vectorModelId: unauthorizedTeamEmbedding.modelId
+      }
+    });
+
+    expect(res.error).toBeDefined();
+    expect(res.code).toBe(500);
+  });
 });

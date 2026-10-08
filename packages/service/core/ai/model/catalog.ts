@@ -3,7 +3,7 @@ import {
   getModelProviderMetadata,
   getModelProvider,
   preloadModelProviders
-} from '../provider/controller';
+} from './provider/controller';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   type EmbeddingSystemModelDataType,
@@ -37,6 +37,7 @@ const publishInstalledModels = async ({
 } = {}) => {
   const getPermissionCacheSignature = (models: SystemModelDataType[]) =>
     models
+      .filter((model) => model.scope === ModelScopeEnum.system || !model.scope)
       .map((model) => `${model.modelId}:${model.model}`)
       .sort()
       .join('\n');

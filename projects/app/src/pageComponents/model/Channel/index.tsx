@@ -7,7 +7,7 @@ import {
   postBatchUpdateChannelStatus,
   putChannel,
   putChannelStatus
-} from '@/web/core/ai/channel';
+} from '@/web/core/ai/model/channel';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import React, { useCallback, useState } from 'react';
 import {
@@ -50,17 +50,20 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
+import type {
+  ChannelListItem,
+  ChannelType
+} from '@fastgpt/global/openapi/core/ai/model/channel/api';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({
   Tab,
-  channelType = 'system'
+  channelType
 }: {
   Tab: React.ReactNode;
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
@@ -148,12 +151,10 @@ const ChannelTable = ({
         await putChannelStatus(channelId, status, channelType);
         toast({
           status: 'success',
-          title: t(
+          title:
             status === ChannelStatusEnum.ChannelStatusEnabled
-              ? 'config_model:status_enabled'
-              : 'config_model:status_disabled',
-            { name: channelName }
-          )
+              ? t('config_model:status_enabled', { name: channelName })
+              : t('config_model:status_disabled', { name: channelName })
         });
         refreshChannelList();
       } finally {
@@ -172,10 +173,8 @@ const ChannelTable = ({
     (channelId: number) => deleteChannel(channelId, channelType),
     {
       manual: true,
-      onSuccess: () => {
-        setSelectedItems((prev) =>
-          prev.filter((item) => !selectedItems.some((s) => s.id === item.id))
-        );
+      onSuccess: (_res, [channelId]) => {
+        setSelectedItems((prev) => prev.filter((item) => item.id !== channelId));
         refreshChannelList();
       }
     }
@@ -221,12 +220,10 @@ const ChannelTable = ({
       });
       toast({
         status: 'success',
-        title: t(
+        title:
           status === 1
-            ? 'config_model:channel.batch_status_enabled'
-            : 'config_model:channel.batch_status_disabled',
-          { count: selectedItems.length }
-        )
+            ? t('config_model:channel.batch_status_enabled', { count: selectedItems.length })
+            : t('config_model:channel.batch_status_disabled', { count: selectedItems.length })
       });
       setSelectedItems([]);
       refreshChannelList();
@@ -334,12 +331,12 @@ const ChannelTable = ({
         <FixedTableLayout
           scrollMode="normal"
           rootProps={{ flex: '1 0 0', h: 0 }}
-          headerProps={{ px: 4 }}
+          headerProps={{ px: 6 }}
           bodyProps={{
             h: 0,
             flex: '1 1 0',
             overflowY: 'auto',
-            px: 4,
+            px: 6,
             fontSize: 'sm'
           }}
           renderHeader={({ headerTableWidth }) => (

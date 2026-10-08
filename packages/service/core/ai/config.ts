@@ -1,9 +1,9 @@
 import OpenAI from '@fastgpt/global/core/ai';
 import { type OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { isSystemModel, getModelOwnerTmbId } from '@fastgpt/global/core/ai/model';
+import { isSystemModel } from '@fastgpt/global/core/ai/model';
 import { serviceEnv } from '../../env';
-import { getMemberGroupId } from './channel/utils';
+import { getMemberGroupId } from '../../thirdProvider/aiproxy/group';
 import { getLegacyOpenAIRequestOptions, getLegacyAxiosRequestConfig } from './legacy/requestUrl';
 
 const aiProxyBaseUrl = serviceEnv.AIPROXY_API_ENDPOINT
@@ -76,7 +76,7 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
  */
 export type AiproxyScopeModelInput =
   | SystemModelDataType
-  | { isSystem?: boolean; tmbId?: string | unknown; scope?: string }
+  | { isSystem?: boolean; tmbId?: string | null; scope?: string }
   | undefined;
 
 export const getAiproxyScopeHeaders = (
@@ -92,10 +92,9 @@ export const getAiproxyScopeHeaders = (
 
   // Private models are served by their owner's own channels only (own scope).
   // A model without ownership info must not be scoped to any group.
-  const tmbId = getModelOwnerTmbId(modelData);
-  if (tmbId) {
+  if (modelData.tmbId) {
     return {
-      'X-Aiproxy-Group': getMemberGroupId(tmbId),
+      'X-Aiproxy-Group': getMemberGroupId(modelData.tmbId),
       'X-Aiproxy-Group-Channel-Mode': 'own'
     };
   }

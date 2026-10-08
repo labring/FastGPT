@@ -65,7 +65,7 @@ flowchart TD
    - **私有渠道归属**：归属于成员专属的 `groupId`，不同成员间**绝对互不可见**。
    - **日志与监控隔离**：仅允许查询当前成员专属 Group 的调用日志与时序仪表盘，严禁跨成员翻阅 Prompt 内容和指标。
 2. **服务端强制防御，严禁信任前端透传**：
-   - 所有 `/api/core/ai/channel/*` 接口服务端强制从当前登录 Session 提取 `tmbId` 并构建 `groupId`，杜绝前端通过 Query/Body 篡改。
+   - 所有 `/api/core/ai/model/channel/*` 接口服务端强制从当前登录 Session 提取 `tmbId` 并构建 `groupId`，杜绝前端通过 Query/Body 篡改。
    - 普通成员仅能操作 `channelType: 'team'`；系统管理员（Root）可通过 `channelType: 'system'` 维护平台全局渠道与监控。
 3. **推理数据面路由规则（按模型 Owner 路由）**：
    - **系统模型**：统一走平台全局渠道，注入 `X-Aiproxy-Group-Channel-Mode: global`；
@@ -79,7 +79,7 @@ flowchart TD
        if (isSystemModel(modelData)) {
          return { 'X-Aiproxy-Group-Channel-Mode': 'global' };
        }
-       const tmbId = getModelOwnerTmbId(modelData);
+       const tmbId = modelData.tmbId || undefined;
        if (tmbId) {
          return {
            'X-Aiproxy-Group': getMemberGroupId(tmbId),
@@ -90,6 +90,14 @@ flowchart TD
      };
      ```
      `own` 模式保证只在拥有者的私有渠道内寻找健康渠道；无渠道时 AIProxy 返回 404，绝不跨组泄漏，亦绝不私自回退到系统渠道。
+4. **模型使用权限（Catalog Permission）与租户协作边界**：
+   - **系统模型（System Model）**：若未配置协作者权限（默认状态），全团队所有成员默认具有使用权；若已配置协作者，则仅授权协作者可使用。
+   - **团队模型（Team Model）**：严格归创建者（`tmbId`）所有，且仅在当前团队内生效：
+     - **未配置权限时，仅创建者自己能够使用**；团队拥有者（Team Owner）亦无特权旁路，不能访问未授权的其他成员团队模型；
+     - **已配置权限时，创建者本人与被显式授权的协作者可以使用**。
+5. **移除前端与组件 channelType 默认值设计，统一复用 ChannelType**：
+   - 前端管理页面、模态框、Hook 及关联组件（如 `ModelChannelModal`、`AddModel`、`EditChannelModal`、`ModelEditModal`、`useModelChannelTest`、`useModelEditWorkflow` 等）必须显式声明并强制传入 `channelType: ChannelType`（复用 `@fastgpt/global/openapi/core/ai/model/channel/api` 中的领域类型 `ChannelType`，禁止在多处散落手写 `'system' | 'team'`）；
+   - 彻底废弃 `= 'system'` 隐式默认值，从类型系统与调用点切断团队成员由于遗漏参数而向系统级端点发请求导致的 403 越权拒绝。
 
 ---
 
@@ -110,18 +118,18 @@ flowchart TD
 - **统一多租户作用域类型约定**：
   `AIScope` 统一采用规范的字面量联合 `'system' | 'team'`（与领域枚举 `ModelScopeEnum` 保持语义对齐），避免 OpenAPI 与前端/Service 交叉类型时引发 TypeScript 编译器 `never` 冲突；
 - **通用模型判断 Helper**：
-  在 `@fastgpt/global/core/ai/model/utils.ts` 中封装 `isSystemModel`、`isTeamModel` 与 `getModelOwnerTmbId`，彻底消除全仓多处非类型安全的 `(model as { tmbId?: string })` 强转断言；
+  在 `@fastgpt/global/core/ai/model/utils.ts` 中封装 `isSystemModel` 与 `isTeamModel`，彻底消除全仓多处非类型安全的 `(model as { tmbId?: string })` 强转断言；归属字段统一直接读取受类型保障的 `model.tmbId` 与 `model.teamId`；
 - **新建模型快捷关联收敛至服务端**：
   在 `/api/core/ai/model/create` 接口支持可选的 `channelIds`；由服务端 `appendModelToChannels` 严格在租户权限校验后幂等追加关联，完全废弃前端拉取全量渠道并发写回的脏逻辑。
 
-### 3. API 路由层收敛 (`projects/app/src/pages/api/core/ai/`)
+### 3. API 路由层收敛 (`projects/app/src/pages/api/core/ai/model/channel/`)
 全部接口基于 `parseApiInput` 进行 Zod 校验，强绑定 `session.tmbId`：
-- `channel/list.ts`：透传 `pageNum`、`pageSize`、`search` 到 AI Proxy，全量关联时复用 `listAll()` 防止截断；
-- `channel/create.ts` / `update.ts` / `delete.ts` / `status.ts`：标准的渠道 CRUD 控制；
-- `channel/batch.ts`：对接批量删除与状态更新；
-- `channel/affectedModels.ts`：在删除渠道前预检哪些模型将失去全部渠道；
-- `channel/models.ts` & `channel/modelChannels.ts`：模型与渠道双向关联展示；
-- `channel/logs.ts` / `logDetail.ts` / `dashboard.ts`：当前成员私有作用域下的日志与时序数据。
+- `list.ts`：透传 `pageNum`、`pageSize`、`search` 到 AI Proxy，全量关联时复用 `listAll()` 防止截断；
+- `create.ts` / `update.ts` / `delete.ts` / `status.ts`：标准的渠道 CRUD 控制；
+- `batch.ts`：对接批量删除与状态更新；
+- `affectedModels.ts`：在删除渠道前预检哪些模型将失去全部渠道；
+- `models.ts`：模型与渠道双向关联展示；
+- `logs.ts` / `logDetail.ts` / `dashboard.ts`：当前成员私有作用域下的日志与时序数据。
 
 ### 4. 前端交互层改造 (`projects/app/src/pageComponents/model/`)
 - **常驻 Tabs**：在模型管理中常驻提供「活跃模型」、「模型配置」、「模型渠道」、「调用日志」、「监控分析」标签页；

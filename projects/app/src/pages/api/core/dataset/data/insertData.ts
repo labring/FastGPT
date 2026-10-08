@@ -56,7 +56,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     ...item,
     text: simpleText(item.text)
   }));
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const vectorModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );

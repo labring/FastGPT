@@ -29,7 +29,7 @@ async function handler(
     authToken: true,
     authApiKey: true
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const qgModel = modelHandle.getDefaultModelData('llm');
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({

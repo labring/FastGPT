@@ -2,7 +2,7 @@ import { getModelHandle } from '../model';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 
 import { getModelAxiosConfig } from '../config';
-import { normalizeRelayNoChannelError } from '../channel/error';
+import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { type RerankSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { countPromptTokens } from '../../../common/string/tiktoken';
 import { getLogger, LogCategories } from '../../../common/logger';

@@ -1,4 +1,4 @@
-import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/channel';
+import { getChannelList, getChannelLog, getLogDetail } from '@/web/core/ai/model/channel';
 import {
   Table,
   Thead,
@@ -30,7 +30,10 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import type { ChannelLogListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
+import type {
+  ChannelLogListItem,
+  ChannelType
+} from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import ModelTabHeader from '../ModelTabHeader';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
@@ -49,10 +52,10 @@ type LogDetailType = Omit<ChannelLogListItem, 'model' | 'request_at'> & {
 };
 const ChannelLog = ({
   Tab,
-  channelType = 'system'
+  channelType
 }: {
   Tab: React.ReactNode;
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const { models: availableModels, getModelProvider } = useModelConfig({
@@ -221,12 +224,12 @@ const ChannelLog = ({
             scrollMode="normal"
             bodyRef={scrollContainerRef}
             rootProps={{ flex: '1 0 0', h: 0 }}
-            headerProps={{ px: 4 }}
+            headerProps={{ px: 6 }}
             bodyProps={{
               flex: '1 1 0',
               h: 0,
               overflowY: 'auto',
-              px: 4,
+              px: 6,
               fontSize: 'sm'
             }}
             renderHeader={({ headerTableWidth }) => (
@@ -350,11 +353,11 @@ const LogDetailContainer = ({ children, ...props }: { children: React.ReactNode 
 
 const LogDetail = ({
   data,
-  channelType = 'system',
+  channelType,
   onClose
 }: {
   data: LogDetailType;
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
   onClose: () => void;
 }) => {
   const { t } = useSafeTranslation();

@@ -26,7 +26,7 @@ export async function handler(
     bodySchema: GetModelSummariesBodySchema
   }).body;
   const identity = await authModelViewer({ req, outLinkAuthData });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId: identity.teamId });
   const { modelIds: permittedIds } = await getMemberModelCatalogPermission({
     ...identity,
     includeInactive: true,

@@ -18,6 +18,11 @@ const mockAddAuditLog = vi.hoisted(() => vi.fn());
 const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
 const mockResolveReadableCollectionIds = vi.hoisted(() => vi.fn());
+const mockAuthModelUse = vi.hoisted(() => vi.fn());
+
+vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
+  authModelUse: mockAuthModelUse
+}));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: mockAuthDataset
@@ -114,6 +119,7 @@ describe('searchTest query image auth', () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuthModelUse.mockResolvedValue(undefined);
 
     mockAuthDataset.mockResolvedValue({
       dataset: {
@@ -162,6 +168,15 @@ describe('searchTest query image auth', () => {
       totalPoints: 0
     });
     mockDefaultSearchDatasetData.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingReRank: false,
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.embedding,
+      similarity: 0
+    });
+    mockDeepRagSearch.mockResolvedValue({
       searchRes: [],
       embeddingTokens: 0,
       reRankInputTokens: 0,
@@ -260,6 +275,83 @@ describe('searchTest query image auth', () => {
     ).resolves.toBeUndefined();
 
     expect(mockCheckTeamAIPoints).not.toHaveBeenCalled();
+    expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
+    expect(mockDeepRagSearch).not.toHaveBeenCalled();
+  });
+
+  it('should validate auxiliary models with authModelUse', async () => {
+    mockGetRerankModelData.mockReturnValue({
+      modelId: 'rerank-id',
+      model: 'rerank-model',
+      name: 'Rerank model',
+      type: 'rerank',
+      config: {}
+    });
+    mockGetLLMModelData.mockImplementation(({ modelId }) => ({
+      modelId: modelId || 'llm-id',
+      model: 'llm-model',
+      name: 'LLM model',
+      type: 'llm',
+      config: {}
+    }));
+
+    await handler(
+      {
+        body: {
+          datasetId,
+          text: 'question',
+          usingReRank: true,
+          rerankModelId: 'rerank-id',
+          datasetSearchUsingExtensionQuery: true,
+          datasetSearchExtensionModelId: 'extension-id',
+          datasetDeepSearch: true,
+          datasetDeepSearchModelId: 'deepsearch-id'
+        }
+      } as any,
+      {} as any
+    );
+
+    expect(mockAuthModelUse).toHaveBeenCalledWith({
+      modelId: 'rerank-id',
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+    expect(mockAuthModelUse).toHaveBeenCalledWith({
+      modelId: 'extension-id',
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+    expect(mockAuthModelUse).toHaveBeenCalledWith({
+      modelId: 'deepsearch-id',
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+  });
+
+  it('should reject search when auxiliary model is unauthorized', async () => {
+    mockGetLLMModelData.mockReturnValue({
+      modelId: 'unauthorized-deepsearch-id',
+      model: 'foreign-team-model',
+      name: 'Foreign Model',
+      type: 'llm',
+      config: {}
+    });
+    mockAuthModelUse.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
+
+    await expect(
+      handler(
+        {
+          body: {
+            datasetId,
+            text: 'question',
+            datasetDeepSearch: true,
+            datasetDeepSearchModelId: 'unauthorized-deepsearch-id'
+          }
+        } as any,
+        {} as any
+      )
+    ).rejects.toEqual(new UserError(ModelErrEnum.unAuthModel));
+
     expect(mockDefaultSearchDatasetData).not.toHaveBeenCalled();
     expect(mockDeepRagSearch).not.toHaveBeenCalled();
   });

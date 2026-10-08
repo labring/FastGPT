@@ -3,7 +3,6 @@ import { useModelList } from '@/web/core/ai/model/useModelList';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
-  Box,
   Flex,
   HStack,
   ModalBody,

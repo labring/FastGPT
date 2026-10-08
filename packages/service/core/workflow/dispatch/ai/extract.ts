@@ -48,6 +48,7 @@ type ActionProps = Props & {
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     runningAppInfo,
+    runningUserInfo,
     node: { nodeId, name },
     histories,
     params: { content, history = 6, modelId, model, description, extractKeys }
@@ -56,7 +57,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   if (!content) {
     return getNodeErrResponse({ error: 'Input is empty' });
   }
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId: runningUserInfo?.teamId });
   const extractModel = modelHandle.getLLMModelData({ modelId, model });
   const chatHistories = getHistories(history, histories);
 

@@ -11,6 +11,7 @@ import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
 import {
   OptimizePromptBodySchema,
   OptimizePromptResponseSchema,
@@ -83,8 +84,9 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       authToken: true,
       authApiKey: true
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getModelHandle({ teamId });
     const modelData = modelHandle.getLLMModelData({ modelId });
+    await authModelUse({ modelId: modelData.modelId, tmbId, teamId });
 
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
     res.setHeader('X-Accel-Buffering', 'no');

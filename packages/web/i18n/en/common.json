@@ -923,6 +923,7 @@
   "model.price_tier_range": "Input interval: k/tokens",
   "model.provider": "Provider",
   "model.provider_title": "Model provider",
+  "model.system_model_tag": "System",
   "model.search_name_placeholder": "Search by model name",
   "model.type.chat": "LLM",
   "model.type.embedding": "Embedding model",

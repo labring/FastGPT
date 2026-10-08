@@ -249,7 +249,7 @@ export const ModelIdSchema = ObjectIdSchema.meta({
   description: '模型稳定 ObjectId'
 });
 
-export const ModelChannelTypeSchema = AIScopeSchema.optional().meta({
+export const ModelChannelTypeSchema = AIScopeSchema.meta({
   description: '模型作用域类型'
 });
 export type ModelChannelType = z.infer<typeof ModelChannelTypeSchema>;
@@ -363,11 +363,33 @@ export const ModelTemplateReferenceSchema = z.object({
 });
 export type ModelTemplateReference = z.infer<typeof ModelTemplateReferenceSchema>;
 
+export const GetModelTemplatesQuerySchema = z.object({
+  channelType: ModelChannelTypeSchema
+});
+export type GetModelTemplatesQuery = z.infer<typeof GetModelTemplatesQuerySchema>;
+
 export const GetModelTemplatesResponseSchema = z.object({
   models: z.array(SystemModelDocumentDataSchema).meta({ description: '当前 Plugin 模型模板' }),
   providers: z.array(ModelProviderSchema).meta({ description: '模型提供商元数据' })
 });
 export type GetModelTemplatesResponse = z.infer<typeof GetModelTemplatesResponseSchema>;
+
+/* POST /api/core/ai/model/updateChannels */
+export const UpdateModelChannelsBodySchema = z
+  .object({
+    modelId: ModelIdSchema,
+    channelType: AIScopeSchema.meta({
+      description: '模型作用域；必填，服务端据此先鉴权再查询模型，避免无权限成员探测模型是否存在'
+    }),
+    addChannelIds: z.array(IntSchema.positive()).max(500).optional().meta({
+      description: '需要关联到该模型的渠道 ID，已关联的渠道会被忽略'
+    }),
+    removeChannelIds: z.array(IntSchema.positive()).max(500).optional().meta({
+      description: '需要解除与该模型关联的渠道 ID，同时清理渠道内该模型的映射；渠道本身不删除'
+    })
+  })
+  .strict();
+export type UpdateModelChannelsBody = z.infer<typeof UpdateModelChannelsBodySchema>;
 
 /* POST /api/core/ai/model/create */
 export const CreateModelBodySchema = z
@@ -438,11 +460,21 @@ const UpdateModelField = {
 
 export const UpdateModelDataSchema = z
   .discriminatedUnion('type', [
-    LLMSystemModelDocumentSchema.extend(UpdateModelField).strict(),
-    EmbeddingSystemModelDocumentSchema.extend(UpdateModelField).strict(),
-    TTSSystemModelDocumentSchema.extend(UpdateModelField).strict(),
-    STTSystemModelDocumentSchema.extend(UpdateModelField).strict(),
-    RerankSystemModelDocumentSchema.extend(UpdateModelField).strict()
+    LLMSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
+      .extend(UpdateModelField)
+      .strict(),
+    EmbeddingSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
+      .extend(UpdateModelField)
+      .strict(),
+    TTSSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
+      .extend(UpdateModelField)
+      .strict(),
+    STTSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
+      .extend(UpdateModelField)
+      .strict(),
+    RerankSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
+      .extend(UpdateModelField)
+      .strict()
   ])
   .meta({
     description: '模型可编辑参数；model 为可选更新，type 仅用于分支校验不参与类型变更'

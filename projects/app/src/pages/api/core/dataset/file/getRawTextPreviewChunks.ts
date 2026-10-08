@@ -37,7 +37,7 @@ async function handler(
     datasetId,
     per: WritePermissionVal
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId: dataset.teamId });
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
     llmModel: modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent')),

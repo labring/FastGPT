@@ -1,14 +1,12 @@
-import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/channel/api';
+import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import type { AiproxyChannel, AiproxyGroupChannel } from '../../../thirdProvider/aiproxy/type';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
-import { getTeamMemberMap } from '../../../support/user/team/utils';
-import { formatSourceMember } from '../../../support/user/utils';
 import {
   getOwnerAssociableModels,
   getSystemAssociableModels,
   type ChannelAssociableModel
 } from './association';
-import { getMemberGroupId, parseTmbIdFromGroupId } from './utils';
+import { getMemberGroupId } from '../../../thirdProvider/aiproxy/group';
 
 const buildChannelListItem = (
   channel: AiproxyChannel | AiproxyGroupChannel,
@@ -72,57 +70,6 @@ export const getMemberChannelList = async ({
     .channels.list({ page: pageNum, perPage: pageSize, search });
   return {
     list: channels.map((channel) => buildChannelListItem(channel, ownerModels)),
-    total
-  };
-};
-
-/** 获取跨成员渠道分页列表，并复用用户域的展示身份规则。 */
-export const getGlobalGroupChannelList = async ({
-  groupId,
-  pageNum,
-  pageSize,
-  search
-}: {
-  groupId?: string;
-  pageNum?: number;
-  pageSize?: number;
-  search?: string;
-} = {}): Promise<{ list: ChannelListItem[]; total: number }> => {
-  const { channels = [], total = 0 } = await aiProxyClient.globalGroupChannels.list({
-    groupId,
-    page: pageNum,
-    perPage: pageSize,
-    search
-  });
-  // 当前页可能包含同一成员的多个渠道；按成员缓存模型桶，避免每个渠道重复读取运行时目录。
-  const ownerModelsByTmb = new Map<string, Promise<ChannelAssociableModel[]>>();
-  const getOwnerModelsForChannel = (channel: AiproxyGroupChannel) => {
-    const tmbId = parseTmbIdFromGroupId(channel.group_id);
-    if (!tmbId) return Promise.resolve<ChannelAssociableModel[]>([]);
-    const pending = ownerModelsByTmb.get(tmbId) ?? getOwnerAssociableModels(tmbId);
-    ownerModelsByTmb.set(tmbId, pending);
-    return pending;
-  };
-  const list = await Promise.all(
-    channels.map(async (channel) =>
-      buildChannelListItem(channel, await getOwnerModelsForChannel(channel))
-    )
-  );
-  const tmbIds = list.flatMap((item) => {
-    const tmbId = item.group_id ? parseTmbIdFromGroupId(item.group_id) : undefined;
-    return tmbId ? [tmbId] : [];
-  });
-  const memberMap = await getTeamMemberMap({ memberIds: tmbIds, fields: 'name avatar' });
-
-  return {
-    list: list.map((item) => {
-      const tmbId = item.group_id ? parseTmbIdFromGroupId(item.group_id) : undefined;
-      const member = tmbId ? memberMap.get(tmbId) : undefined;
-      return {
-        ...item,
-        ...(member ? { sourceMember: formatSourceMember(member) } : {})
-      };
-    }),
     total
   };
 };

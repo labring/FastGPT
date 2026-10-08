@@ -2,6 +2,7 @@ import { defaultChannel } from '@fastgpt/global/core/ai/channel';
 import { Button } from '@chakra-ui/react';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import dynamic from 'next/dynamic';
 import ModelConfigForm from './ModelConfigForm';
@@ -17,13 +18,13 @@ const formId = 'system-model-edit-form';
 const ModelEditModal = ({
   model,
   providers,
-  channelType = 'system',
+  channelType,
   onSuccess,
   onClose
 }: {
   model: SystemModelListItem;
   providers: ModelProviderItemType[];
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
   onSuccess: () => void | Promise<void>;
   onClose: () => void;
 }) => {
@@ -130,6 +131,7 @@ const ModelEditModal = ({
             }
           ]}
           channels={detail.channels}
+          channelType={channelType}
           selectedChannelIds={[...selectedChannelIds]}
           onConfirm={(channelIds) => associateChannels(channelIds)}
           onClose={() => setShowAssociateChannel(false)}
@@ -146,6 +148,7 @@ const ModelEditModal = ({
             model: draftModel.trim() || detail.model.model,
             avatar: detail.model.avatar
           }}
+          channelType={channelType}
           onSuccess={refreshAfterChannelCreated}
           onClose={() => setShowCreateChannel(false)}
         />

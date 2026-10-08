@@ -1,6 +1,5 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemDefaultModelType } from '../type';
 import {
   SystemModelDocumentDataSchema,
   type SystemModelDataType,
@@ -85,21 +84,7 @@ export const desensitizeSystemModel = <T extends SystemModelDataType>(model: T):
   requestUrl: undefined,
   requestAuth: undefined
 });
-
-/** 生成可返回客户端的系统默认模型配置。 */
-export const desensitizeSystemDefaultModels = (defaultModels: SystemDefaultModelType) => ({
-  [ModelTypeEnum.llm]: defaultModels.llm && desensitizeSystemModel(defaultModels.llm),
-  datasetTextLLM:
-    defaultModels.datasetTextLLM && desensitizeSystemModel(defaultModels.datasetTextLLM),
-  datasetImageLLM:
-    defaultModels.datasetImageLLM && desensitizeSystemModel(defaultModels.datasetImageLLM),
-  chatTitleLLM: defaultModels.chatTitleLLM && desensitizeSystemModel(defaultModels.chatTitleLLM),
-  [ModelTypeEnum.embedding]:
-    defaultModels.embedding && desensitizeSystemModel(defaultModels.embedding),
-  [ModelTypeEnum.tts]: defaultModels.tts && desensitizeSystemModel(defaultModels.tts),
-  [ModelTypeEnum.stt]: defaultModels.stt && desensitizeSystemModel(defaultModels.stt),
-  [ModelTypeEnum.rerank]: defaultModels.rerank && desensitizeSystemModel(defaultModels.rerank)
-});
+export const desensitizeModel = desensitizeSystemModel;
 
 /** 写入前校验数据库模型与同名插件模板的类型一致。 */
 export const assertSystemModelTypesMatchPluginTemplates = ({

@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import { isSystemModel } from '@fastgpt/global/core/ai/model';
 import {
   getLegacyModelEndpoint,
   hasLegacyRequestUrl,
@@ -9,23 +8,6 @@ import {
 } from '../../../../core/ai/legacy/requestUrl';
 
 describe('Legacy requestUrl compatibility', () => {
-  describe('isSystemModel', () => {
-    it('returns true for system scope', () => {
-      expect(isSystemModel({ scope: ModelScopeEnum.system })).toBe(true);
-      expect(isSystemModel({ isSystem: true })).toBe(true);
-    });
-
-    it('returns true for legacy models without scope or tmbId', () => {
-      expect(isSystemModel({})).toBe(true);
-      expect(isSystemModel(undefined)).toBe(true);
-    });
-
-    it('returns false for team scope or models with tmbId', () => {
-      expect(isSystemModel({ scope: ModelScopeEnum.team })).toBe(false);
-      expect(isSystemModel({ scope: 'team', tmbId: 'tmb-123' })).toBe(false);
-    });
-  });
-
   describe('getLegacyModelEndpoint and hasLegacyRequestUrl', () => {
     it('extracts endpoint and auth for system model with valid requestUrl', () => {
       const model = {

@@ -56,6 +56,7 @@ import handler from '@/pages/api/core/ai/model/config';
 describe('GET /api/core/ai/model/config', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.feConfigs = { isPlus: true } as typeof global.feConfigs;
     global.ModelProviderRawCache = [
       {
         provider: 'OpenAI',
@@ -173,7 +174,8 @@ describe('GET /api/core/ai/model/config', () => {
     beforeEach(() => {
       mocks.authUserPer.mockResolvedValue({
         tmbId: 'tmb_123',
-        isRoot: false
+        isRoot: false,
+        tmb: { permission: { hasModelCreatePer: true } }
       });
       mocks.findMongoAIModel.mockReturnValue({
         sort: vi.fn().mockReturnValue({

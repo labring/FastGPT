@@ -198,4 +198,29 @@ describe('GET /api/core/ai/model/catalog', () => {
     expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
     expect(result.data?.defaultModelIds.llm).toBe(model.modelId);
   });
+
+  it('filters out team models that belong to other teams even if permittedModelIds contains them', async () => {
+    const otherTeamModel = {
+      ...model,
+      modelId: 'other-team-model-id',
+      scope: 'team',
+      teamId: 'other-team-id',
+      tmbId: 'other-tmb-id'
+    };
+    setModelTestSnapshot({
+      models: [model, otherTeamModel] as any
+    });
+    mocks.getMemberModelCatalogPermission.mockResolvedValue({
+      modelIds: [model.modelId, 'other-team-model-id'],
+      version: 'p'
+    });
+    mocks.authUserPer.mockResolvedValue({
+      teamId: 'my-team-id',
+      tmbId: 'my-tmb-id',
+      isRoot: false,
+      tmb: { role: 'member' }
+    });
+    const result = await handler({ query: {} } as any);
+    expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
+  });
 });

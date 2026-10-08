@@ -6,6 +6,7 @@ vi.unmock('@fastgpt/service/common/response');
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
+  authModelUse: vi.fn(),
   getLLMModelData: vi.fn(),
   createLLMResponse: vi.fn(),
   formatModelChars2Points: vi.fn(),
@@ -15,6 +16,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/service/middleware/entry', () => ({
   NextAPI: (handler: unknown) => handler
+}));
+
+vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
+  authModelUse: mocks.authModelUse
 }));
 
 vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
@@ -65,6 +70,7 @@ describe('optimizePrompt SSE error handling', () => {
       modelName: 'gpt-4o',
       modelId: '68ad85a7463006c963799a05'
     });
+    mocks.authModelUse.mockResolvedValue(undefined);
   });
 
   it('treats a missing original prompt as an empty string', async () => {
@@ -169,5 +175,35 @@ describe('optimizePrompt SSE error handling', () => {
     expect(res.setHeader).not.toHaveBeenCalled();
     expect(res.write).not.toHaveBeenCalled();
     expect(res.end).not.toHaveBeenCalled();
+  });
+
+  it('calls authModelUse and handles unauthorized model error gracefully in SSE', async () => {
+    mocks.authModelUse.mockRejectedValueOnce(new UserError('unAuthModel'));
+    const chunks: string[] = [];
+    const res = {
+      setHeader: vi.fn(),
+      write: vi.fn((chunk: string) => chunks.push(chunk)),
+      end: vi.fn()
+    };
+
+    await handler(
+      {
+        body: {
+          originalPrompt: 'Original prompt',
+          optimizerInput: 'Improve it',
+          modelId: '68ad85a7463006c963799a05'
+        }
+      } as any,
+      res as any
+    );
+
+    expect(mocks.authModelUse).toHaveBeenCalledWith({
+      modelId: '68ad85a7463006c963799a05',
+      tmbId: 'member-1',
+      teamId: 'team-1'
+    });
+    expect(res.end).toHaveBeenCalled();
+    const output = chunks.join('');
+    expect(output).toContain('event: error');
   });
 });

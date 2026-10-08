@@ -1,10 +1,10 @@
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { Types } from '../../../common/mongo';
 import { getModelHandle } from '../model';
+import { getTeamModelsByTmbId } from '../model/teamModelCache';
 import { hasLegacyRequestUrl } from '../legacy/requestUrl';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
 import type { AiproxyChannel, AiproxyGroupChannel } from '../../../thirdProvider/aiproxy/type';
-import { getMemberGroupId, parseTmbIdFromGroupId } from './utils';
+import { parseTmbIdFromGroupId } from '../../../thirdProvider/aiproxy/group';
 
 export type ChannelAssociableModel = {
   id: string;
@@ -15,100 +15,33 @@ export type ChannelAssociableModel = {
   hasRequestUrl?: boolean;
 };
 
-export type ChannelBrief = { id: number; name: string; status: number };
-
 /** 从运行时目录读取系统模型桶。 */
 export const getSystemAssociableModels = async (): Promise<ChannelAssociableModel[]> => {
   const handle = await getModelHandle();
-  return handle.getAllModels().map((item) => ({
+  return handle.getSystemModels().map((item) => ({
     id: item.modelId,
     model: item.model,
     name: item.name,
-    isSystem: item.scope === ModelScopeEnum.system || !item.scope,
+    isSystem: true,
     hasRequestUrl: hasLegacyRequestUrl(item)
   }));
 };
 
-/** 从运行时目录读取指定成员拥有的团队模型桶。 */
+/** 从团队模型缓存读取指定成员拥有的团队模型桶（复用 LRU 缓存与版本管理）。 */
 export const getOwnerAssociableModels = async (
   tmbId: string
 ): Promise<ChannelAssociableModel[]> => {
-  const handle = await getModelHandle();
-  return handle
-    .getAllModels()
-    .filter((item) => item.tmbId && String(item.tmbId) === tmbId)
-    .map((item) => ({
-      id: item.modelId,
-      model: item.model,
-      name: item.name,
-      isSystem: false,
-      tmbId: item.tmbId ? String(item.tmbId) : undefined
-    }));
-};
+  if (!tmbId || !Types.ObjectId.isValid(tmbId)) return [];
 
-/** 按上游模型名建立模型 ID 到渠道摘要的映射。 */
-const pairChannelsToModels = (
-  channels: Array<AiproxyChannel | AiproxyGroupChannel> = [],
-  models: ChannelAssociableModel[] = []
-): Map<string, ChannelBrief[]> => {
-  if (!Array.isArray(channels) || !Array.isArray(models)) return new Map();
+  const models = await getTeamModelsByTmbId(tmbId);
 
-  const result = new Map<string, ChannelBrief[]>();
-  for (const channel of channels) {
-    for (const model of models) {
-      if (!channel.models?.includes(model.model)) continue;
-      result.set(model.id, [
-        ...(result.get(model.id) ?? []),
-        { id: channel.id, name: channel.name, status: channel.status }
-      ]);
-    }
-  }
-  return result;
-};
-
-/** 校验成员操作的分组渠道确实属于当前成员。 */
-export const assertOwnGroupChannel = (
-  channel: AiproxyGroupChannel,
-  tmbId: string
-): Promise<void> => {
-  if (channel.group_id !== getMemberGroupId(tmbId)) {
-    return Promise.reject(ModelErrEnum.unAuthChannel);
-  }
-  return Promise.resolve();
-};
-
-/** 返回指定模型 ID 在关联映射中的渠道数量。 */
-export const channelCount = (modelId: string, map: Map<string, ChannelBrief[]>): number =>
-  map.get(modelId)?.length ?? 0;
-
-/** 按每个模型自身的系统或成员桶批量查询关联渠道。 */
-export const getModelChannelsMapByModels = async (
-  models: ChannelAssociableModel[]
-): Promise<Map<string, ChannelBrief[]>> => {
-  const result = new Map<string, ChannelBrief[]>();
-  const systemModels = models.filter((model) => model.isSystem);
-
-  if (systemModels.length > 0) {
-    const channels = await aiProxyClient.system.channels.listAll();
-    for (const [modelId, modelChannels] of pairChannelsToModels(channels, systemModels)) {
-      result.set(modelId, modelChannels);
-    }
-  }
-
-  const ownerModelsByTmb = new Map<string, ChannelAssociableModel[]>();
-  for (const model of models) {
-    if (model.isSystem || !model.tmbId) continue;
-    const tmbId = String(model.tmbId);
-    ownerModelsByTmb.set(tmbId, [...(ownerModelsByTmb.get(tmbId) ?? []), model]);
-  }
-
-  for (const [tmbId, ownerModels] of ownerModelsByTmb) {
-    const channels = await aiProxyClient.group(getMemberGroupId(tmbId)).channels.listAll();
-    for (const [modelId, modelChannels] of pairChannelsToModels(channels, ownerModels)) {
-      result.set(modelId, modelChannels);
-    }
-  }
-  return result;
+  return models.map((item) => ({
+    id: item.modelId,
+    model: item.model,
+    name: item.name,
+    isSystem: false,
+    tmbId
+  }));
 };
 
 /** 计算删除单个渠道后将失去全部渠道的模型。 */
@@ -186,14 +119,4 @@ export const getChannelModels = async (
       name: model.name ?? model.model,
       model: model.model
     }));
-};
-
-/** 获取指定模型在自身桶内关联的渠道数量。 */
-export const getModelChannelRefs = async (model: ChannelAssociableModel): Promise<number> => {
-  const channels = model.isSystem
-    ? (await aiProxyClient.system.channels.list()).channels
-    : model.tmbId
-      ? (await aiProxyClient.group(getMemberGroupId(String(model.tmbId))).channels.list()).channels
-      : [];
-  return channels.filter((channel) => channel.models?.includes(model.model)).length;
 };

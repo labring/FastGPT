@@ -25,7 +25,7 @@ export const migrateLegacySystemModels = async (context: SystemMigrationContext)
 
     const [{ preloadModelProviders }, { getPluginSystemModelDocuments }] = await Promise.all([
       // 动态导入避免 migration 基础设施加载时反向拉入整套 AI 模型初始化依赖。
-      import('@fastgpt/service/core/ai/provider/controller'),
+      import('@fastgpt/service/core/ai/model/provider/controller'),
       import('@fastgpt/service/core/ai/model/template')
     ]);
     await preloadModelProviders();

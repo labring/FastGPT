@@ -29,7 +29,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     per: WritePermissionVal,
     assertWritable: true
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const embeddingModel = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(collection.dataset, 'embedding')
   );

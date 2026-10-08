@@ -1,4 +1,5 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
@@ -99,7 +100,7 @@ export async function handler(
     })
   );
 
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
     {
       usingReRank,
@@ -117,6 +118,19 @@ export async function handler(
         model: datasetDeepSearchModel
       })
     : undefined;
+
+  await Promise.all([
+    rerankModelData
+      ? authModelUse({ modelId: rerankModelData.modelId, tmbId, teamId })
+      : Promise.resolve(),
+    extensionModelData
+      ? authModelUse({ modelId: extensionModelData.modelId, tmbId, teamId })
+      : Promise.resolve(),
+    deepSearchModelData
+      ? authModelUse({ modelId: deepSearchModelData.modelId, tmbId, teamId })
+      : Promise.resolve()
+  ]);
+
   const embeddingModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );

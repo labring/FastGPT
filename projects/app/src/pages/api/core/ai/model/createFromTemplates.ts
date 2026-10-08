@@ -1,9 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  assertMemberModelPermission,
-  authModelScopeOperation
-} from '@fastgpt/service/support/permission/model/controller';
+import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createModelsFromTemplates } from '@fastgpt/service/core/ai/model/mutation';
 import {
@@ -16,19 +13,12 @@ import {
 async function handler(
   req: ApiRequestProps<CreateModelsFromTemplatesBody>
 ): Promise<CreateModelsFromTemplatesResponse> {
-  const { templates, channelType = 'system' } = parseApiInput({
+  const { templates, channelType } = parseApiInput({
     req,
     bodySchema: CreateModelsFromTemplatesBodySchema
   }).body;
 
-  const { tmbId, teamId, tmb, isRoot } = await authModelScopeOperation({
-    req,
-    channelType
-  });
-
-  if (!isRoot) {
-    await assertMemberModelPermission(tmb.permission);
-  }
+  const { tmbId, teamId } = await authModelManage({ req, channelType });
 
   return CreateModelsFromTemplatesResponseSchema.parse(
     await createModelsFromTemplates({

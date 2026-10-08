@@ -3,12 +3,13 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRef, useState } from 'react';
-import { prepareDraftSystemModelForTest } from './submit';
+import { prepareDraftModelForTest } from './submit';
 
-export type ModelChannelTestTarget =
+type ModelChannelTestTarget =
   | { source: 'draft'; getModelData: () => SystemModelDocumentDataType | undefined }
   | { source: 'installed'; modelId: string; model: string };
 
@@ -19,11 +20,11 @@ export type ModelChannelTestTarget =
 export const useModelChannelTest = ({
   target,
   channels,
-  channelType = 'system'
+  channelType
 }: {
   target?: ModelChannelTestTarget;
   channels: Pick<ModelChannelSummary, 'id' | 'name'>[];
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
 }) => {
   const { t } = useSafeTranslation();
   const { toast } = useToast();
@@ -33,7 +34,7 @@ export const useModelChannelTest = ({
   const testModelChannel = async (channelId: number) => {
     if (!target || inFlight.current.has(channelId)) return;
     const draft = target.source === 'draft' ? target.getModelData() : undefined;
-    const modelData = draft ? prepareDraftSystemModelForTest(draft) : undefined;
+    const modelData = draft ? prepareDraftModelForTest(draft) : undefined;
     const model = target.source === 'installed' ? target.model : modelData?.model;
     if (!model) {
       toast({ status: 'warning', title: t('config_model:fill_model_id_before_test') });

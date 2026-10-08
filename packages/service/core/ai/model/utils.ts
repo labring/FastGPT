@@ -26,6 +26,10 @@ export const getSystemModelConfigUpdate = (
   const mutableModelData = { ...modelData } as Record<string, unknown>;
   delete mutableModelData.type;
   delete mutableModelData.scope;
+  delete mutableModelData.tmbId;
+  delete mutableModelData.teamId;
+  delete mutableModelData._id;
+  delete mutableModelData.modelId;
 
   if (typeof mutableModelData.model === 'string') {
     const trimmed = mutableModelData.model.trim();
@@ -69,4 +73,21 @@ export const getSystemModelConfigUpdate = (
         }
       : {})
   } as UpdateQuery<SystemModelSchemaType>;
+};
+
+/**
+ * 团队私有模型不允许配置直连地址、鉴权与测试模式（统一走成员渠道），
+ * 返回剔除这些字段后的新对象，不修改入参。
+ */
+export const sanitizeTeamModelData = <T extends object>(
+  modelData: T
+): Omit<T, 'requestUrl' | 'requestAuth' | 'testMode' | 'tmbId' | 'teamId'> => {
+  const { requestUrl, requestAuth, testMode, tmbId, teamId, ...rest } = modelData as T & {
+    requestUrl?: unknown;
+    requestAuth?: unknown;
+    testMode?: unknown;
+    tmbId?: unknown;
+    teamId?: unknown;
+  };
+  return rest;
 };

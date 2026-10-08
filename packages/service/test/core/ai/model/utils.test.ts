@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   desensitizeSystemModel,
-  desensitizeSystemDefaultModels,
   flatModelToDocumentData
 } from '../../../../core/ai/model/transform';
 
@@ -111,39 +110,5 @@ describe('system model response filtering', () => {
     });
     expect(model.requestAuth).toBe('model-secret');
     expect(JSON.stringify(result)).not.toContain('model-secret');
-  });
-
-  it('sanitizes system defaults without changing their configured model', () => {
-    const model = {
-      modelId: '68ad85a7463006c963799a68',
-      type: ModelTypeEnum.llm,
-      provider: 'OpenAI',
-      model: 'configured-model',
-      name: 'Configured model',
-      scope: 'system' as const,
-      requestUrl: 'https://provider.example/v1',
-      requestAuth: 'configured-secret',
-      config: {
-        maxContext: 4096,
-        maxResponse: 1024,
-        quoteMaxToken: 1024,
-        defaultConfig: { secret: 'internal config' },
-        fieldMap: { messages: 'prompt' }
-      }
-    };
-
-    const result = desensitizeSystemDefaultModels({ llm: model });
-
-    expect(result.llm).toMatchObject({
-      type: ModelTypeEnum.llm,
-      model: 'configured-model',
-      requestUrl: undefined,
-      requestAuth: undefined,
-      config: {
-        defaultConfig: undefined,
-        fieldMap: undefined
-      }
-    });
-    expect(JSON.stringify(result)).not.toContain('configured-secret');
   });
 });

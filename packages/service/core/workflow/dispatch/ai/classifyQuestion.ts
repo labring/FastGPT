@@ -40,6 +40,7 @@ type ActionProps = Props & {
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
     runningAppInfo,
+    runningUserInfo,
     node: { nodeId, name },
     histories,
     params: { modelId, model, history = 6, agents, userChatInput }
@@ -48,7 +49,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId: runningUserInfo?.teamId });
   const cqModel = modelHandle.getLLMModelData({ modelId, model });
 
   const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });

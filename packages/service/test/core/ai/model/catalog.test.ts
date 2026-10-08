@@ -12,9 +12,9 @@ const reloadMocks = vi.hoisted(() => ({
   delay: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/provider/controller', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/model/provider/controller', async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/provider/controller')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/model/provider/controller')>();
   return {
     ...actual,
     preloadModelProviders: vi.fn().mockResolvedValue(undefined),
@@ -43,7 +43,7 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
 import * as modelEntity from '@fastgpt/service/core/ai/model/entity';
-import { preloadModelProviders } from '@fastgpt/service/core/ai/provider/controller';
+import { preloadModelProviders } from '@fastgpt/service/core/ai/model/provider/controller';
 import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/constants';
 import {
   loadInstalledModels,

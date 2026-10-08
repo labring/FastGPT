@@ -1,6 +1,5 @@
 import { axiosWithoutSSRF } from '../../common/api/axios';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { isAiproxyNotFoundError } from './error';
 import { getAIProxyAdminConfig } from './config';
 import {
   AIPROXY_LIST_PAGE_SIZE,
@@ -17,7 +16,8 @@ import {
   type AiproxyTypeMetaItem,
   type ChannelListParams,
   type ChannelListResult,
-  type ChannelStatus
+  type ChannelStatus,
+  type UpdateChannelData
 } from './type';
 
 const buildChannelListUrl = (
@@ -80,29 +80,19 @@ export class AIProxyClient {
   ): Promise<T> {
     const { baseUrl, token } = this.getConfig();
 
-    try {
-      const res = await axiosWithoutSSRF({
-        method,
-        url: `${baseUrl}${url}`,
-        data: body,
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 10000
-      });
+    const res = await axiosWithoutSSRF({
+      method,
+      url: `${baseUrl}${url}`,
+      data: body,
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 10000
+    });
 
-      const envelope = res.data as AiproxyEnvelope<T>;
-      if (envelope.success === false) {
-        throw new Error(envelope.message || 'aiproxy request failed');
-      }
-      return envelope.data as T;
-    } catch (error: any) {
-      if (
-        error?.response?.status === 404 ||
-        /record not found/i.test(error?.response?.data?.message ?? '')
-      ) {
-        return Promise.reject(ModelErrEnum.channelNotExist);
-      }
-      return Promise.reject(getErrText(error));
+    const envelope = res.data as AiproxyEnvelope<T>;
+    if (envelope.success === false) {
+      throw new Error(envelope.message || 'aiproxy request failed');
     }
+    return envelope.data as T;
   }
 
   public get<T>(url: string) {
@@ -121,60 +111,69 @@ export class AIProxyClient {
     return this.request<T>('delete', url);
   }
 
-  /* ═══ System Scope Operations ═══ */
+  /* ═══ Shared Operation Factories ═══ */
 
-  public readonly system = {
-    channels: {
-      list: async (params: ChannelListParams = {}): Promise<ChannelListResult<AiproxyChannel>> => {
+  private createChannelOperations<T extends AiproxyChannel | AiproxyGroupChannel>(
+    basePath: string,
+    options?: { fallbackEmptyOnNotFound?: boolean }
+  ) {
+    const list = async (params: ChannelListParams = {}): Promise<ChannelListResult<T>> => {
+      try {
         return normalizeListResult(
-          await this.get<ChannelListResult<AiproxyChannel>>(
-            buildChannelListUrl('/api/channels', params)
-          )
+          await this.get<ChannelListResult<T>>(buildChannelListUrl(`${basePath}/channels`, params))
         );
-      },
-      listAll: async (): Promise<AiproxyChannel[]> => {
-        const all: AiproxyChannel[] = [];
-        let page = 1;
-        for (;;) {
-          const { channels, total } = await this.system.channels.list({
-            page,
-            perPage: AIPROXY_LIST_PAGE_SIZE
-          });
-          if (!Array.isArray(channels)) break;
-          all.push(...channels);
-          if (channels.length === 0 || all.length >= total) break;
-          page += 1;
+      } catch (error) {
+        if (options?.fallbackEmptyOnNotFound && isAiproxyNotFoundError(error)) {
+          return { channels: [], total: 0 };
         }
-        return all;
-      },
-      get: (id: number): Promise<AiproxyChannel> => {
-        return this.get<AiproxyChannel>(`/api/channel/${id}`);
-      },
-      create: async (data: AddChannelData): Promise<void> => {
-        await this.post<void>('/api/channel/', data);
-      },
-      update: async (id: number, data: AddChannelData): Promise<void> => {
-        await this.put<void>(`/api/channel/${id}`, data);
-      },
-      delete: async (id: number): Promise<void> => {
-        await this.del<void>(`/api/channel/${id}`);
-      },
+        throw error;
+      }
+    };
+
+    const listAll = async (): Promise<T[]> => {
+      const all: T[] = [];
+      let page = 1;
+      for (;;) {
+        const { channels, total } = await list({
+          page,
+          perPage: AIPROXY_LIST_PAGE_SIZE
+        });
+        if (!Array.isArray(channels)) break;
+        all.push(...channels);
+        if (channels.length === 0 || all.length >= total) break;
+        page += 1;
+      }
+      return all;
+    };
+
+    return {
+      list,
+      listAll,
+      get: (id: number): Promise<T> => this.get<T>(`${basePath}/channel/${id}`),
+      create: (data: AddChannelData): Promise<void> =>
+        this.post<void>(`${basePath}/channel/`, data),
+      update: (id: number, data: UpdateChannelData): Promise<void> =>
+        this.put<void>(`${basePath}/channel/${id}`, data),
+      delete: (id: number): Promise<void> => this.del<void>(`${basePath}/channel/${id}`),
       batchDelete: async (ids: number[]): Promise<void> => {
         if (ids.length === 0) return;
-        await this.post<void>('/api/channels/batch_delete', ids);
+        await this.post<void>(`${basePath}/channels/batch_delete`, ids);
       },
-      updateStatus: async (id: number, status: ChannelStatus): Promise<void> => {
-        await this.post<void>(`/api/channel/${id}/status`, { status });
-      },
+      updateStatus: (id: number, status: ChannelStatus): Promise<void> =>
+        this.post<void>(`${basePath}/channel/${id}/status`, { status }),
       batchUpdateStatus: async (ids: number[], status: ChannelStatus): Promise<void> => {
         if (ids.length === 0) return;
-        await Promise.all(ids.map((id) => this.system.channels.updateStatus(id, status)));
+        await Promise.all(
+          ids.map((id) => this.post<void>(`${basePath}/channel/${id}/status`, { status }))
+        );
       },
-      test: async (id: number, model: string): Promise<void> => {
-        await this.get<void>(`/api/channel/${id}/test/${encodeURIComponent(model)}`);
-      }
-    },
-    logs: {
+      test: (id: number, model: string): Promise<void> =>
+        this.get<void>(`${basePath}/channel/${id}/test/${encodeURIComponent(model)}`)
+    };
+  }
+
+  private createLogOperations(basePath: string) {
+    return {
       search: async (params: AiproxyLogSearchParams = {}): Promise<AiproxyLogSearchResult> => {
         const query = toQueryString({
           result_only: true,
@@ -188,7 +187,7 @@ export class AIProxyClient {
           per_page: params.pageSize
         });
         const result = await this.get<{ logs?: AiproxyLogItem[]; total?: number }>(
-          `/api/logs/search${query}`
+          `${basePath}/search${query}`
         );
         return {
           list: (result.logs ?? []).map((item) => ({
@@ -199,20 +198,28 @@ export class AIProxyClient {
         };
       },
       detail: (id: number): Promise<AiproxyLogDetail> => {
-        return this.get<AiproxyLogDetail>(`/api/logs/detail/${id}`);
+        return this.get<AiproxyLogDetail>(`${basePath}/detail/${id}`);
       }
-    },
-    dashboard: {
+    };
+  }
+
+  private createDashboardOperations(
+    urlGetter: (query: string) => string,
+    options?: { isGroup?: boolean }
+  ) {
+    return {
       get: async (params: AiproxyDashboardParams = {}): Promise<AiproxyDashboardPoint[]> => {
         const query = toQueryString({
-          channel: params.channelId,
+          ...(options?.isGroup
+            ? { group_channel: params.channelId }
+            : { channel: params.channelId }),
           model: params.model,
           start_timestamp: params.startTimestamp,
           end_timestamp: params.endTimestamp,
           timezone: params.timezone,
           timespan: params.timespan
         });
-        const result = await this.get<AiproxyDashboardPoint[]>(`/api/dashboardv2/${query}`);
+        const result = await this.get<AiproxyDashboardPoint[]>(urlGetter(query));
         return (result ?? []).map((point) => ({
           ...point,
           summary: (point.summary ?? []).map((item) => ({
@@ -224,7 +231,15 @@ export class AIProxyClient {
           }))
         }));
       }
-    }
+    };
+  }
+
+  /* ═══ System Scope Operations ═══ */
+
+  public readonly system = {
+    channels: this.createChannelOperations<AiproxyChannel>('/api'),
+    logs: this.createLogOperations('/api/logs'),
+    dashboard: this.createDashboardOperations((query) => `/api/dashboardv2/${query}`)
   };
 
   /* ═══ Group Scope Operations ═══ */
@@ -233,143 +248,16 @@ export class AIProxyClient {
     const encodedGroupId = encodeURIComponent(groupId);
 
     return {
-      channels: {
-        list: async (
-          params: ChannelListParams = {}
-        ): Promise<ChannelListResult<AiproxyGroupChannel>> => {
-          return normalizeListResult(
-            await this.get<ChannelListResult<AiproxyGroupChannel>>(
-              buildChannelListUrl(`/api/group/${encodedGroupId}/channels`, params)
-            )
-          );
-        },
-        listAll: async (): Promise<AiproxyGroupChannel[]> => {
-          const all: AiproxyGroupChannel[] = [];
-          let page = 1;
-          for (;;) {
-            const { channels, total } = await this.group(groupId).channels.list({
-              page,
-              perPage: AIPROXY_LIST_PAGE_SIZE
-            });
-            if (!Array.isArray(channels)) break;
-            all.push(...channels);
-            if (channels.length === 0 || all.length >= total) break;
-            page += 1;
-          }
-          return all;
-        },
-        get: (id: number): Promise<AiproxyGroupChannel> => {
-          return this.get<AiproxyGroupChannel>(`/api/group/${encodedGroupId}/channel/${id}`);
-        },
-        create: async (data: AddChannelData): Promise<void> => {
-          await this.post<void>(`/api/group/${encodedGroupId}/channel/`, data);
-        },
-        update: async (id: number, data: AddChannelData): Promise<void> => {
-          await this.put<void>(`/api/group/${encodedGroupId}/channel/${id}`, data);
-        },
-        delete: async (id: number): Promise<void> => {
-          await this.del<void>(`/api/group/${encodedGroupId}/channel/${id}`);
-        },
-        batchDelete: async (ids: number[]): Promise<void> => {
-          if (ids.length === 0) return;
-          await this.post<void>(`/api/group/${encodedGroupId}/channels/batch_delete`, ids);
-        },
-        updateStatus: async (id: number, status: ChannelStatus): Promise<void> => {
-          await this.post<void>(`/api/group/${encodedGroupId}/channel/${id}/status`, { status });
-        },
-        batchUpdateStatus: async (ids: number[], status: ChannelStatus): Promise<void> => {
-          if (ids.length === 0) return;
-          await Promise.all(ids.map((id) => this.group(groupId).channels.updateStatus(id, status)));
-        },
-        test: async (id: number, model: string): Promise<void> => {
-          await this.get<void>(
-            `/api/group/${encodedGroupId}/channel/${id}/test/${encodeURIComponent(model)}`
-          );
-        }
-      },
-      logs: {
-        search: async (params: AiproxyLogSearchParams = {}): Promise<AiproxyLogSearchResult> => {
-          const query = toQueryString({
-            result_only: true,
-            request_id: params.requestId,
-            channel: params.channelId,
-            model_name: params.modelName,
-            code_type: params.codeType,
-            start_timestamp: params.startTimestamp,
-            end_timestamp: params.endTimestamp,
-            p: params.pageNum ?? 1,
-            per_page: params.pageSize
-          });
-          const result = await this.get<{ logs?: AiproxyLogItem[]; total?: number }>(
-            `/api/log/${encodedGroupId}/group_channel/search${query}`
-          );
-          return {
-            list: (result.logs ?? []).map((item) => ({
-              ...item,
-              channel: item.channel ?? item.group_channel_id ?? 0
-            })),
-            total: result.total ?? 0
-          };
-        },
-        detail: (id: number): Promise<AiproxyLogDetail> => {
-          return this.get<AiproxyLogDetail>(
-            `/api/log/${encodedGroupId}/group_channel/detail/${id}`
-          );
-        }
-      },
-      dashboard: {
-        get: async (params: AiproxyDashboardParams = {}): Promise<AiproxyDashboardPoint[]> => {
-          const query = toQueryString({
-            group_channel: params.channelId,
-            model: params.model,
-            start_timestamp: params.startTimestamp,
-            end_timestamp: params.endTimestamp,
-            timezone: params.timezone,
-            timespan: params.timespan
-          });
-          const result = await this.get<AiproxyDashboardPoint[]>(
-            `/api/group/${encodedGroupId}/channel-dashboardv2${query}`
-          );
-          return (result ?? []).map((point) => ({
-            ...point,
-            summary: (point.summary ?? []).map((item) => ({
-              ...item,
-              channel_id: item.channel_id ?? item.group_channel_id ?? 0,
-              max_rpm: item.max_rpm ?? 0,
-              max_tpm: item.max_tpm ?? 0,
-              cache_hit_count: item.cache_hit_count ?? 0
-            }))
-          }));
-        }
-      }
+      channels: this.createChannelOperations<AiproxyGroupChannel>(`/api/group/${encodedGroupId}`, {
+        fallbackEmptyOnNotFound: true
+      }),
+      logs: this.createLogOperations(`/api/log/${encodedGroupId}/group_channel`),
+      dashboard: this.createDashboardOperations(
+        (query) => `/api/group/${encodedGroupId}/channel-dashboardv2${query}`,
+        { isGroup: true }
+      )
     };
   }
-
-  /* ═══ Global Group Channels (Root Aggregation View) ═══ */
-
-  public readonly globalGroupChannels = {
-    list: async ({
-      groupId,
-      page,
-      perPage,
-      search
-    }: ChannelListParams & { groupId?: string } = {}): Promise<
-      ChannelListResult<AiproxyGroupChannel>
-    > => {
-      return normalizeListResult(
-        await this.get<ChannelListResult<AiproxyGroupChannel>>(
-          buildChannelListUrl(
-            '/api/group_channels',
-            { page, perPage, search },
-            groupId ? { group: groupId } : undefined
-          )
-        )
-      );
-    },
-    get: (id: number): Promise<AiproxyGroupChannel> => {
-      return this.get<AiproxyGroupChannel>(`/api/group_channel/${id}`);
-    }
-  };
 
   /* ═══ Provider Type Metas ═══ */
 

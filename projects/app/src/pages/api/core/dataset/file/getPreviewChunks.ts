@@ -76,7 +76,7 @@ async function handler(
   if (fileAuthRes && String(fileAuthRes.tmbId) !== String(tmbId) && !fileAuthRes.isRoot) {
     return Promise.reject(CommonErrEnum.unAuthFile);
   }
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
     llmModel: modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent')),

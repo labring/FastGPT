@@ -105,7 +105,7 @@ export async function generateQA(): Promise<any> {
         });
 
         try {
-          const modelHandle = await getModelHandle();
+          const modelHandle = await getModelHandle({ teamId: String(data.teamId) });
           const modelData = modelHandle.getLLMModelData(
             getDatasetModelReference(data.dataset, 'agent')
           );

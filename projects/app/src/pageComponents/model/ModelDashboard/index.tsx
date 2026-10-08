@@ -10,7 +10,7 @@ import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
 import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
-import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
+import { getChannelList, getDashboardV2 } from '@/web/core/ai/model/channel';
 import AreaChartComponent from '@fastgpt/web/components/common/charts/AreaChartComponent';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -21,8 +21,9 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
 import ModelTabHeader from '../ModelTabHeader';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 
-export type ModelDashboardData = {
+type ModelDashboardData = {
   x: string;
   xLabel?: string;
   totalCalls: number;
@@ -61,10 +62,10 @@ const getDefaultDateRange = (): DateRangeType => {
 
 const ModelDashboard = ({
   Tab,
-  channelType = 'system'
+  channelType
 }: {
   Tab: React.ReactNode;
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const theme = useTheme();

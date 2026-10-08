@@ -5,18 +5,18 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import type { ChannelDashboardSummary } from '@fastgpt/global/openapi/core/ai/channel/api';
+import type { ChannelDashboardSummary } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { calculateModelPrice } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 
-export type DashboardDataEntry = {
+type DashboardDataEntry = {
   timestamp: number;
   summary: ChannelDashboardSummary[];
 };
 
-export type DataTableComponentProps = {
+type DataTableComponentProps = {
   data: DashboardDataEntry[];
   filterProps: {
     channelId?: string;

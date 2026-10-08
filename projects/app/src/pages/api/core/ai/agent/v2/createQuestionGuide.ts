@@ -70,7 +70,7 @@ async function handler(
     field: 'obj value time'
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const qgModelData = (() => {
     if (inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined) {
       return modelHandle.getLLMModelData({

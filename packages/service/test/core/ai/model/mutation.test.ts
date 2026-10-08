@@ -1,4 +1,5 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -7,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   updateOne: vi.fn(),
   updateMany: vi.fn(),
   querySession: vi.fn(),
+  findModelData: vi.fn(),
+  getAllModels: vi.fn(),
   updatedReloadSystemModel: vi.fn(),
   session: { id: 'model-update-session' }
 }));
@@ -27,10 +30,17 @@ vi.mock('../../../../core/ai/model/entity', () => ({
     callback(mocks.session)
   )
 }));
+vi.mock('../../../../core/ai/model/index', () => ({
+  getModelHandle: vi.fn(async () => ({
+    findModelData: mocks.findModelData,
+    getAllModels: mocks.getAllModels
+  }))
+}));
 
 import {
-  updateSystemModelConfig,
-  updateSystemModelStatus
+  updateModel,
+  updateModelConfig,
+  updateModelStatus
 } from '../../../../core/ai/model/mutation';
 import { getSystemModelConfigUpdate } from '../../../../core/ai/model/utils';
 
@@ -53,12 +63,18 @@ describe('system model update service', () => {
       lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.llm, model: 'old-model' })
     });
     mocks.findOne.mockReturnValue({ session: mocks.querySession });
+    mocks.findModelData.mockReturnValue({
+      modelId: 'model-1',
+      model: 'old-model',
+      ...modelData
+    });
+    mocks.getAllModels.mockReturnValue([]);
     mocks.updateOne.mockResolvedValue({ matchedCount: 1 });
     mocks.updateMany.mockResolvedValue({ matchedCount: 1 });
   });
 
   it('updates one existing model configuration and reloads the runtime snapshot', async () => {
-    await updateSystemModelConfig({ modelId: 'model-1', modelData });
+    await updateModelConfig({ modelId: 'model-1', modelData });
 
     expect(mocks.findOne).toHaveBeenCalledWith(
       { _id: 'model-1', scope: ModelScopeEnum.system },
@@ -90,7 +106,7 @@ describe('system model update service', () => {
   });
 
   it('updates model identifier when provided and checks for duplicates', async () => {
-    await updateSystemModelConfig({
+    await updateModelConfig({
       modelId: 'model-1',
       modelData: { ...modelData, model: 'renamed-llm' }
     });
@@ -117,7 +133,7 @@ describe('system model update service', () => {
     });
 
     await expect(
-      updateSystemModelConfig({
+      updateModelConfig({
         modelId: 'model-1',
         modelData: { ...modelData, model: 'conflict-model' }
       })
@@ -130,7 +146,7 @@ describe('system model update service', () => {
   it('rejects a missing configuration target without reloading the runtime snapshot', async () => {
     mocks.querySession.mockReturnValueOnce({ lean: vi.fn().mockResolvedValue(null) });
 
-    await expect(updateSystemModelConfig({ modelId: 'missing-model', modelData })).rejects.toBe(
+    await expect(updateModelConfig({ modelId: 'missing-model', modelData })).rejects.toBe(
       'modelUnExist'
     );
     expect(mocks.updateOne).not.toHaveBeenCalled();
@@ -142,7 +158,7 @@ describe('system model update service', () => {
       lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.embedding })
     });
 
-    await expect(updateSystemModelConfig({ modelId: 'model-1', modelData })).rejects.toThrow(
+    await expect(updateModelConfig({ modelId: 'model-1', modelData })).rejects.toThrow(
       'System model type cannot be changed'
     );
     expect(mocks.updateOne).not.toHaveBeenCalled();
@@ -152,16 +168,111 @@ describe('system model update service', () => {
   it('rejects a configuration update that no longer matches without reloading', async () => {
     mocks.updateOne.mockResolvedValueOnce({ matchedCount: 0 });
 
-    await expect(updateSystemModelConfig({ modelId: 'model-1', modelData })).rejects.toBe(
-      'modelUnExist'
-    );
+    await expect(updateModelConfig({ modelId: 'model-1', modelData })).rejects.toBe('modelUnExist');
     expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+  });
+
+  it('syncs channel model names after committing a model rename in Mongo', async () => {
+    mocks.findOne.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.llm, model: 'old-model' })
+      })
+    });
+    mocks.exists.mockResolvedValueOnce(null);
+    mocks.updateOne.mockResolvedValueOnce({ matchedCount: 1 });
+    const syncModelName = vi.fn().mockResolvedValue(undefined);
+
+    await updateModel({
+      modelId: 'model-1',
+      modelData: { ...modelData, model: 'renamed-model' },
+      channelType: 'system',
+      syncModelName
+    });
+
+    expect(mocks.updateOne).toHaveBeenCalled();
+    expect(syncModelName).toHaveBeenCalledWith({
+      oldModel: 'old-model',
+      newModel: 'renamed-model',
+      channelType: 'system',
+      tmbId: ''
+    });
+  });
+
+  it('rejects rename without syncing channels if target model already exists in Mongo', async () => {
+    mocks.findOne.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.llm, model: 'old-model' })
+      })
+    });
+    mocks.exists.mockResolvedValueOnce(true);
+    const syncModelName = vi.fn();
+
+    await expect(
+      updateModel({
+        modelId: 'model-1',
+        modelData: { ...modelData, model: 'renamed-model' },
+        channelType: 'system',
+        syncModelName
+      })
+    ).rejects.toMatchObject({ message: ModelErrEnum.alreadyExists });
+
+    expect(syncModelName).not.toHaveBeenCalled();
+    expect(mocks.updateOne).not.toHaveBeenCalled();
+  });
+
+  it('does not touch channels when Mongo model update fails', async () => {
+    mocks.findOne.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.llm, model: 'old-model' })
+      })
+    });
+    mocks.exists.mockResolvedValueOnce(null);
+    const syncModelName = vi.fn().mockResolvedValue(undefined);
+    mocks.updateOne.mockResolvedValueOnce({ matchedCount: 0 });
+
+    await expect(
+      updateModel({
+        modelId: 'model-1',
+        modelData: { ...modelData, model: 'renamed-model' },
+        channelType: 'system',
+        syncModelName
+      })
+    ).rejects.toBe('modelUnExist');
+
+    expect(syncModelName).not.toHaveBeenCalled();
+  });
+
+  it('rolls back Mongo model rename if channel sync fails', async () => {
+    mocks.findOne.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        lean: vi.fn().mockResolvedValue({ type: ModelTypeEnum.llm, model: 'old-model' })
+      })
+    });
+    mocks.exists.mockResolvedValueOnce(null);
+    mocks.updateOne.mockResolvedValue({ matchedCount: 1 });
+    const syncModelName = vi.fn().mockRejectedValue(new Error('AIProxy sync failed'));
+
+    await expect(
+      updateModel({
+        modelId: 'model-1',
+        modelData: { ...modelData, model: 'renamed-model' },
+        channelType: 'system',
+        syncModelName
+      })
+    ).rejects.toThrow('AIProxy sync failed');
+
+    expect(mocks.updateOne).toHaveBeenLastCalledWith(
+      { _id: 'model-1' },
+      { $set: { model: 'old-model' } },
+      { session: mocks.session }
+    );
+    expect(mocks.updatedReloadSystemModel).toHaveBeenCalledTimes(2);
   });
 
   it('updates every requested status inside one transaction and reloads once', async () => {
     mocks.updateMany.mockResolvedValueOnce({ matchedCount: 2 });
 
-    await updateSystemModelStatus({ modelIds: ['model-1', 'model-2'], isActive: true });
+    await updateModelStatus({ modelIds: ['model-1', 'model-2'], isActive: true });
 
     expect(mocks.updateMany).toHaveBeenCalledWith(
       { _id: { $in: ['model-1', 'model-2'] }, scope: ModelScopeEnum.system },
@@ -175,7 +286,7 @@ describe('system model update service', () => {
     mocks.updateMany.mockResolvedValueOnce({ matchedCount: 1 });
 
     await expect(
-      updateSystemModelStatus({ modelIds: ['model-1', 'missing-model'], isActive: false })
+      updateModelStatus({ modelIds: ['model-1', 'missing-model'], isActive: false })
     ).rejects.toBe('modelUnExist');
     expect(mocks.updatedReloadSystemModel).not.toHaveBeenCalled();
   });
@@ -206,5 +317,19 @@ describe('getSystemModelConfigUpdate', () => {
     });
     expect(result.$set).toMatchObject({ charsPointsPrice: 4 });
     expect(result.$unset).not.toHaveProperty('charsPointsPrice');
+  });
+
+  it('strips tmbId, teamId, _id and modelId from update payload to prevent hijacking', () => {
+    const result = getSystemModelConfigUpdate({
+      ...modelData,
+      tmbId: 'attacker-tmb',
+      teamId: 'attacker-team',
+      _id: 'fake-id',
+      modelId: 'fake-model-id'
+    } as any);
+    expect(result.$set).not.toHaveProperty('tmbId');
+    expect(result.$set).not.toHaveProperty('teamId');
+    expect(result.$set).not.toHaveProperty('_id');
+    expect(result.$set).not.toHaveProperty('modelId');
   });
 });

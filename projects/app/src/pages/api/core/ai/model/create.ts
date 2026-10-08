@@ -1,13 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  assertMemberModelPermission,
-  authModelScopeOperation
-} from '@fastgpt/service/support/permission/model/controller';
-import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { createModel } from '@fastgpt/service/core/ai/model/mutation';
-import { appendModelToChannels } from '@fastgpt/service/core/ai/channel/service';
+import { createModelWithLifecycle } from '@fastgpt/service/core/ai/model/lifecycle';
+import { resolveChannelType } from '@fastgpt/global/core/ai/model';
 import {
   CreateModelBodySchema,
   type CreateModelBody,
@@ -16,42 +12,21 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 
 async function handler(req: ApiRequestProps<CreateModelBody>): Promise<CreateModelResponse> {
-  const body = parseApiInput({
+  const { modelData, channelIds, channelType } = parseApiInput({
     req,
     bodySchema: CreateModelBodySchema
-  }).body as CreateModelBody & { scope?: 'system' | 'team' };
-  const { modelData, channelIds } = body;
-  const resolvedScope =
-    body.scope ?? body.channelType ?? (modelData.scope === ModelScopeEnum.team ? 'team' : 'system');
+  }).body;
+  const resolvedType = resolveChannelType({ channelType, scope: modelData.scope });
 
-  const { tmbId, teamId, tmb, isRoot } = await authModelScopeOperation({
-    req,
-    scope: resolvedScope
+  const { tmbId, teamId } = await authModelManage({ req, channelType: resolvedType });
+
+  const createResult = await createModelWithLifecycle({
+    modelData,
+    channelType: resolvedType,
+    channelIds,
+    tmbId,
+    teamId
   });
-
-  if (!isRoot) {
-    await assertMemberModelPermission(tmb.permission);
-  }
-
-  if (resolvedScope === 'team') {
-    modelData.tmbId = tmbId;
-    modelData.teamId = teamId;
-    modelData.scope = ModelScopeEnum.team;
-  } else {
-    modelData.scope = ModelScopeEnum.system;
-  }
-
-  const createResult = await createModel({ modelData, channelType: resolvedScope });
-
-  if (channelIds && channelIds.length > 0) {
-    await appendModelToChannels({
-      channelIds,
-      model: modelData.model,
-      channelType: resolvedScope,
-      tmbId,
-      isRoot
-    });
-  }
 
   return CreateModelResponseSchema.parse(createResult);
 }

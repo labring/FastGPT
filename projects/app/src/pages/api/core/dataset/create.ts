@@ -1,4 +1,5 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -62,23 +63,37 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
       });
 
   // check model valid
-  const modelHandle = await getModelHandle();
-  const vectorModelStore =
+  const modelHandle = await getModelHandle({ teamId });
+  const rawVectorModel =
     modelHandle.getEmbeddingModelData(
       { modelId: vectorModelId, model: vectorModel },
       { optional: true }
     ) ?? modelHandle.getDefaultModelData('embedding');
-  const agentModelStore =
+  const rawAgentModel =
     modelHandle.getLLMModelData({ modelId: agentModelId, model: agentModel }, { optional: true }) ??
     modelHandle.getDefaultModelData('llm');
   // 显式空值表示“不设置”，不能再补系统默认或按旧名称恢复；仅未传引用时沿用默认。
-  const vlmModelStore = (() => {
+  const explicitVlm = vlmModelId !== undefined || vlmModel !== undefined;
+  const rawVlmModel = (() => {
     if (vlmModelId !== undefined)
       return modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
     if (vlmModel !== undefined)
       return modelHandle.getVlmModelData({ model: vlmModel }, { optional: true });
     return modelHandle.getDefaultModelData('datasetImageLLM');
   })();
+
+  const [vectorModelStore, agentModelStore, vlmModelStore] = await Promise.all([
+    authModelUse({ modelId: rawVectorModel.modelId, tmbId, teamId }),
+    authModelUse({ modelId: rawAgentModel.modelId, tmbId, teamId }),
+    rawVlmModel
+      ? authModelUse({
+          modelId: rawVlmModel.modelId,
+          tmbId,
+          teamId,
+          optional: !explicitVlm
+        })
+      : Promise.resolve(undefined)
+  ]);
 
   // check limit
   await checkTeamDatasetLimit(teamId);

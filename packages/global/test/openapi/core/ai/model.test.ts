@@ -11,8 +11,7 @@ import {
   ImportedSystemModelSchema
 } from '../../../../openapi/core/ai/model/api';
 import { AIModelPath } from '../../../../openapi/core/ai/model';
-import { AIModelPath } from '../../../../openapi/core/ai/model';
-import { ChannelPath } from '../../../../openapi/core/ai/channel';
+import { ChannelPath } from '../../../../openapi/core/ai/model/channel';
 import { openAPITagGroups, openAPIPaths } from '../../../../openapi/path';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { DevApiTagsMap } from '../../../../openapi/tag';
@@ -21,13 +20,17 @@ describe('admin system model API schemas', () => {
   it('only accepts modelId as a model reference', () => {
     const modelId = '68ad85a7463006c963799a05';
 
-    expect(ModelReferenceSchema.parse({ modelId, model: 'gpt-4o' })).toEqual({
-      modelId
-    });
-    expect(() => ModelReferenceSchema.parse({ model: 'gpt-4o' })).toThrow();
-    expect(TestModelQuerySchema.parse({ modelId, channelId: '1' })).toEqual({
+    expect(ModelReferenceSchema.parse({ modelId, model: 'gpt-4o', channelType: 'system' })).toEqual(
+      {
+        modelId,
+        channelType: 'system'
+      }
+    );
+    expect(() => ModelReferenceSchema.parse({ model: 'gpt-4o', channelType: 'system' })).toThrow();
+    expect(TestModelQuerySchema.parse({ modelId, channelId: '1', channelType: 'system' })).toEqual({
       modelId,
-      channelId: 1
+      channelId: 1,
+      channelType: 'system'
     });
   });
 
@@ -63,14 +66,20 @@ describe('admin system model API schemas', () => {
   it('validates unique model IDs for batch status and delete operations', () => {
     const modelIds = ['68ad85a7463006c963799a05', '68ad85a7463006c963799a06'];
 
-    expect(DeleteModelsBodySchema.parse({ modelIds })).toEqual({ modelIds });
-    expect(UpdateModelStatusBodySchema.parse({ modelIds, isActive: false })).toEqual({
+    expect(DeleteModelsBodySchema.parse({ modelIds, channelType: 'system' })).toEqual({
       modelIds,
-      isActive: false
+      channelType: 'system'
     });
-    expect(() => DeleteModelsBodySchema.parse({ modelIds: [modelIds[0], modelIds[0]] })).toThrow(
-      'modelIds must be unique'
-    );
+    expect(
+      UpdateModelStatusBodySchema.parse({ modelIds, isActive: false, channelType: 'system' })
+    ).toEqual({
+      modelIds,
+      isActive: false,
+      channelType: 'system'
+    });
+    expect(() =>
+      DeleteModelsBodySchema.parse({ modelIds: [modelIds[0], modelIds[0]], channelType: 'system' })
+    ).toThrow('modelIds must be unique');
   });
 
   it('enforces the batch model ID boundaries', () => {
@@ -79,10 +88,13 @@ describe('admin system model API schemas', () => {
     );
 
     expect(
-      DeleteModelsBodySchema.parse({ modelIds: modelIds.slice(0, 500) }).modelIds
+      DeleteModelsBodySchema.parse({ modelIds: modelIds.slice(0, 500), channelType: 'system' })
+        .modelIds
     ).toHaveLength(500);
-    expect(() => DeleteModelsBodySchema.parse({ modelIds })).toThrow();
-    expect(() => UpdateModelStatusBodySchema.parse({ modelIds: [], isActive: true })).toThrow();
+    expect(() => DeleteModelsBodySchema.parse({ modelIds, channelType: 'system' })).toThrow();
+    expect(() =>
+      UpdateModelStatusBodySchema.parse({ modelIds: [], isActive: true, channelType: 'system' })
+    ).toThrow();
   });
 
   it('enforces the template creation batch boundary', () => {
@@ -93,10 +105,13 @@ describe('admin system model API schemas', () => {
 
     expect(
       CreateModelsFromTemplatesBodySchema.parse({
-        templates: templates.slice(0, 500)
+        templates: templates.slice(0, 500),
+        channelType: 'system'
       }).templates
     ).toHaveLength(500);
-    expect(() => CreateModelsFromTemplatesBodySchema.parse({ templates })).toThrow();
+    expect(() =>
+      CreateModelsFromTemplatesBodySchema.parse({ templates, channelType: 'system' })
+    ).toThrow();
   });
 
   it('strips legacy model fields at write boundaries', () => {
@@ -116,9 +131,10 @@ describe('admin system model API schemas', () => {
           ...modelData,
           modelId: '68ad85a7463006c963799a05',
           legacyClientField: true
-        }
+        },
+        channelType: 'system'
       })
-    ).toEqual({ modelData });
+    ).toEqual({ modelData, channelType: 'system' });
   });
 
   it('accepts optional model identifier in update data and rejects empty strings', () => {
@@ -131,23 +147,27 @@ describe('admin system model API schemas', () => {
       config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
     };
 
-    expect(UpdateModelBodySchema.parse({ modelId, modelData })).toEqual({
+    expect(UpdateModelBodySchema.parse({ modelId, modelData, channelType: 'system' })).toEqual({
       modelId,
-      modelData
+      modelData,
+      channelType: 'system'
     });
     expect(
       UpdateModelBodySchema.parse({
         modelId,
-        modelData: { ...modelData, model: 'renamed-model' }
+        modelData: { ...modelData, model: 'renamed-model' },
+        channelType: 'system'
       })
     ).toEqual({
       modelId,
-      modelData: { ...modelData, model: 'renamed-model' }
+      modelData: { ...modelData, model: 'renamed-model' },
+      channelType: 'system'
     });
     expect(() =>
       UpdateModelBodySchema.parse({
         modelId,
-        modelData: { ...modelData, model: '   ' }
+        modelData: { ...modelData, model: '   ' },
+        channelType: 'system'
       })
     ).toThrow();
   });

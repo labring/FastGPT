@@ -1,7 +1,7 @@
-import { getModelDetail } from '@/web/core/ai/model/api';
-import { getChannelList, putChannel } from '@/web/core/ai/channel';
+import { getModelDetail, postUpdateModelChannels } from '@/web/core/ai/model/api';
 import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -9,12 +9,12 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useMemo, useRef, useState } from 'react';
 import type { ModelConfigFormGetValues } from './ModelConfigForm';
-import { submitUpdatedSystemModel } from './submit';
+import { submitUpdatedModel } from './submit';
 import { useModelChannelTest } from './useModelChannelTest';
 
-export type ModelEditWorkflowProps = {
+type ModelEditWorkflowProps = {
   model: SystemModelListItem;
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
   onSuccess: () => void | Promise<void>;
   onClose: () => void;
 };
@@ -22,7 +22,7 @@ export type ModelEditWorkflowProps = {
 /** 编辑工作流统一持有详情、渠道即时联动、测试和离开确认；UI 仅消费状态与操作。 */
 export const useModelEditWorkflow = ({
   model,
-  channelType = 'system',
+  channelType,
   onSuccess,
   onClose
 }: ModelEditWorkflowProps) => {
@@ -46,7 +46,8 @@ export const useModelEditWorkflow = ({
 
   const { testingChannelIds, testModelChannel } = useModelChannelTest({
     target: { source: 'draft', getModelData: () => modelFormGetValuesRef.current?.() },
-    channels: detail?.channels ?? []
+    channels: detail?.channels ?? [],
+    channelType
   });
 
   const selectedChannelIds = useMemo(
@@ -58,18 +59,13 @@ export const useModelEditWorkflow = ({
     [detail?.channels]
   );
 
-  /** 即时解除渠道与当前模型的关联并持久化到 AI Proxy */
+  /** 即时解除渠道与当前模型的关联，由服务端原子清理渠道内的模型映射 */
   const removeChannel = async (channelId: number) => {
     if (!detail) return;
-    const channels = await getChannelList({ channelType });
-    const targetChannel = channels.find((channel) => channel.id === channelId);
-    if (!targetChannel) return;
-
-    const nextModels = (targetChannel.models || []).filter((m) => m !== detail.model.model);
-    await putChannel({
-      ...targetChannel,
-      models: nextModels,
-      channelType
+    await postUpdateModelChannels({
+      modelId: model.modelId,
+      channelType,
+      removeChannelIds: [channelId]
     });
 
     await refreshDetail();
@@ -79,35 +75,20 @@ export const useModelEditWorkflow = ({
     });
   };
 
-  /** 即时关联已有渠道到当前模型并持久化到 AI Proxy */
+  /** 即时调整当前模型关联的渠道，差集计算与渠道写回都由服务端完成 */
   const associateChannels = async (nextSelectedIds: number[]) => {
     if (!detail) return;
-    const channels = await getChannelList({ channelType, pageSize: 1000 });
     const currentAssociatedIds = new Set(
       detail.channels.filter((c) => c.isAssociated).map((c) => c.id)
     );
     const nextSelectedSet = new Set(nextSelectedIds);
-    const modelName = detail.model.model;
 
-    const toAdd = channels.filter(
-      (c) => nextSelectedSet.has(c.id) && !currentAssociatedIds.has(c.id)
-    );
-    const toRemove = channels.filter(
-      (c) => !nextSelectedSet.has(c.id) && currentAssociatedIds.has(c.id)
-    );
-
-    const updates = [
-      ...toAdd.map((c) => ({
-        ...c,
-        models: Array.from(new Set([...(c.models || []), modelName]))
-      })),
-      ...toRemove.map((c) => ({
-        ...c,
-        models: (c.models || []).filter((m) => m !== modelName)
-      }))
-    ];
-
-    await Promise.all(updates.map((update) => putChannel({ ...update, channelType })));
+    await postUpdateModelChannels({
+      modelId: model.modelId,
+      channelType,
+      addChannelIds: nextSelectedIds.filter((id) => !currentAssociatedIds.has(id)),
+      removeChannelIds: [...currentAssociatedIds].filter((id) => !nextSelectedSet.has(id))
+    });
 
     await refreshDetail();
     setShowAssociateChannel(false);
@@ -118,7 +99,7 @@ export const useModelEditWorkflow = ({
   };
 
   const submitModel = async (data: SystemModelDocumentDataType) => {
-    await submitUpdatedSystemModel({
+    await submitUpdatedModel({
       modelId: model.modelId,
       modelData: data,
       channelType

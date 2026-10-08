@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getModelProviderMetadata } from '@fastgpt/service/core/ai/provider/controller';
+import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
 import {
   GetSystemModelsResponseSchema,
   type GetSystemModelsResponse
@@ -10,7 +10,7 @@ import {
 async function handler(): Promise<GetSystemModelsResponse> {
   const modelHandle = await getModelHandle();
   return GetSystemModelsResponseSchema.parse({
-    models: modelHandle.getActiveModels(),
+    models: modelHandle.getSystemModels().filter((model) => model.isActive),
     providers: getModelProviderMetadata().providers
   });
 }

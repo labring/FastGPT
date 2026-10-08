@@ -47,7 +47,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
   });
 
   const dataset = collection.dataset;
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const vectorModel = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );

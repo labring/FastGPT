@@ -1,6 +1,6 @@
 import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getAIApi, getModelOpenAIOptions } from '../config';
-import { normalizeRelayNoChannelError } from '../channel/error';
+import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';

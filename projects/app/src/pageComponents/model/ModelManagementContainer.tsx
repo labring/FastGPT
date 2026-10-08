@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from 'react';
 import type React from 'react';
-import { Flex } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/model/Channel'));
@@ -19,8 +19,8 @@ export type ModelTabType =
   | 'account_model'
   | 'status';
 
-export type ModelManagementContainerProps = {
-  channelType: 'system' | 'team';
+type ModelManagementContainerProps = {
+  channelType: ChannelType;
   scrollPositionKey?: string;
   defaultTab?: ModelTabType;
   customTabs?: { label: string; value: ModelTabType }[];

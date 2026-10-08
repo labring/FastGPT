@@ -43,7 +43,7 @@ export const getIndexTrainingBaseIndexes = async (trainingData: TrainingDataType
 
   let supportVlm = false;
   if (trainingData.collection.imageIndex) {
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getModelHandle({ teamId: String(trainingData.teamId) });
     try {
       supportVlm = !!modelHandle.getVlmModelData(
         getDatasetModelReference(trainingData.dataset, 'vlm'),

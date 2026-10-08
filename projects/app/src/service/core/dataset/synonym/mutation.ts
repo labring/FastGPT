@@ -100,7 +100,7 @@ export const createDatasetSynonymMutation = async ({
   const fileVersion = (current?.version ?? 0) + 1;
   const now = new Date();
   const normalizedFileName = path.basename(fileName) || 'synonyms.csv';
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const vectorModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );

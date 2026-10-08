@@ -111,7 +111,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     return { updateTime: -1, _id: -1 };
   })();
   const myDatasets = await MongoDataset.find(findDatasetQuery).sort(datasetSort).lean();
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const formatDatasets = myDatasets
     .map((dataset) => {
       const vectorModel = modelHandle.findModelData(

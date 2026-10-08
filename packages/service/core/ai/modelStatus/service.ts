@@ -31,7 +31,10 @@ import { MongoUser } from '../../../support/user/schema';
 import { getUserDefaultTeam } from '../../../support/user/team/controller';
 import { MongoModelStatusProbeRecord } from './schema';
 import type { ModelStatusProbeRecordType } from './type';
-import { MODEL_STATUS_REQUEST_TIMEOUT_MS, testSystemModel } from './test';
+import { MODEL_TEST_TIMEOUT_MS, testModelConnection } from '../model/test';
+
+/** 模型探测单次调用的超时时间（复用模型测试统一超时常量） */
+const MODEL_STATUS_REQUEST_TIMEOUT_MS = MODEL_TEST_TIMEOUT_MS;
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -321,12 +324,12 @@ export const probeModelStatus = async ({
   model,
   teamId,
   signal,
-  test = testSystemModel
+  test = testModelConnection
 }: {
   model: SystemModelDataType;
   teamId?: string;
   signal?: AbortSignal;
-  test?: typeof testSystemModel;
+  test?: typeof testModelConnection;
 }): Promise<ModelStatusProbeRecordType> => {
   let lastError: unknown;
   const startedAt = new Date();

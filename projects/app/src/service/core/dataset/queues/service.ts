@@ -97,7 +97,7 @@ export const runDatasetRebuildQueue = async ({
             await lease.complete();
             continue;
           }
-          const modelHandle = await getModelHandle();
+          const modelHandle = await getModelHandle({ teamId: String(data.teamId) });
           const model = modelHandle.getEmbeddingModelData(
             getDatasetModelReference(data.dataset, 'embedding')
           );

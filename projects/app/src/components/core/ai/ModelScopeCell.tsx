@@ -91,14 +91,9 @@ const ModelScopeCell = ({
 
   const content = renderContent();
   const canManage = hasManagePer && (!isAccountConfig || !isSystem);
+  const teamPermission = userInfo?.team?.permission;
 
-  if (
-    !canManage ||
-    !modelId ||
-    !feConfigs.isPlus ||
-    clbs === undefined ||
-    !userInfo?.team?.permission
-  ) {
+  if (!canManage || !modelId || !feConfigs.isPlus || clbs === undefined || !teamPermission) {
     return <Box {...props}>{content}</Box>;
   }
 
@@ -120,7 +115,7 @@ const ModelScopeCell = ({
           const res = await getModelCollaborators(modelId);
           updateModelCollaboratorsCache(modelId, res.clbs ?? []);
         }}
-        permission={userInfo?.team.permission!}
+        permission={teamPermission}
       >
         {({ onOpenManageModal }) => (
           <Flex

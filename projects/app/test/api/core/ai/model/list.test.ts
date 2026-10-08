@@ -51,4 +51,39 @@ describe('GET /api/core/ai/model/list', () => {
     expect(result.models[0]).not.toHaveProperty('modelId');
     expect(result.models[0]).not.toHaveProperty('requestAuth');
   });
+
+  it('excludes team-scoped private models from the public list', async () => {
+    setModelTestSnapshot({
+      models: [
+        {
+          modelId: 'system-id',
+          model: 'system-model',
+          name: 'GPT Public',
+          provider: 'openai',
+          type: ModelTypeEnum.llm,
+          scope: 'system',
+          isActive: true,
+          priceTiers: [{ minInputTokens: 0, inputPrice: 1, outputPrice: 2 }],
+          config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 30000 }
+        },
+        {
+          modelId: 'team-id',
+          model: 'team-private-model',
+          name: 'Team Secret Model',
+          provider: 'openai',
+          type: ModelTypeEnum.llm,
+          scope: 'team',
+          isActive: true,
+          tmbId: 'some-member-id',
+          priceTiers: [{ minInputTokens: 0, inputPrice: 10, outputPrice: 20 }],
+          config: { maxContext: 128000, maxResponse: 16000, quoteMaxToken: 30000 }
+        }
+      ]
+    });
+
+    const result = await handler();
+
+    expect(result.models).toHaveLength(1);
+    expect(result.models[0].name).toBe('GPT Public');
+  });
 });

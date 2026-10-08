@@ -22,8 +22,15 @@ import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { deleteModel, deleteModels, testModel, putModelsStatus } from '@/web/core/ai/model/api';
+import {
+  deleteModel,
+  deleteModels,
+  testModel,
+  putModelsStatus,
+  postUpdateModelChannels
+} from '@/web/core/ai/model/api';
 import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import ModelScopeCell from '@/components/core/ai/ModelScopeCell';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -42,6 +49,7 @@ import ModelTabHeader from './ModelTabHeader';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import { useLockFn, useSet } from 'ahooks';
 import ModelChannelCount from './ModelChannelCount';
+import ModelChannelModal from './ModelChannelModal';
 import ModelEditModal from './ModelEditModal';
 import { useStaticVirtualList } from '@fastgpt/web/hooks/useVirtualList';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
@@ -69,13 +77,13 @@ const ModelEditButton = React.memo(
   ({
     model,
     providers,
-    channelType = 'system',
+    channelType,
     onSuccess,
     isDisabled
   }: {
     model: SystemModelListItem;
     providers: ModelProviderItemType[];
-    channelType?: 'system' | 'team';
+    channelType: ChannelType;
     onSuccess: () => Promise<void>;
     isDisabled?: boolean;
   }) => {
@@ -108,10 +116,10 @@ ModelEditButton.displayName = 'ModelEditButton';
 
 const ModelTable = ({
   Tab,
-  channelType = 'system'
+  channelType
 }: {
   Tab: React.ReactNode;
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
@@ -229,6 +237,25 @@ const ModelTable = ({
     }
   });
 
+  /** 点击渠道数打开关联弹窗；提交时由服务端按差集原子增删渠道关联 */
+  const [channelModel, setChannelModel] = useState<SystemModelListItem>();
+  const updateModelChannels = async (nextChannelIds: number[]) => {
+    if (!channelModel) return;
+    const currentIds = new Set(channelModel.channels.map((channel) => channel.id));
+    const nextIds = new Set(nextChannelIds);
+    await runChannelMutation(() =>
+      postUpdateModelChannels({
+        modelId: channelModel.modelId,
+        channelType,
+        addChannelIds: nextChannelIds.filter((id) => !currentIds.has(id)),
+        removeChannelIds: [...currentIds].filter((id) => !nextIds.has(id))
+      })
+    );
+    toast({ status: 'success', title: t('config_model:associate_success') });
+    setChannelModel(undefined);
+    await refreshModels().catch(() => {});
+  };
+
   const { runAsync: deleteModelRequest } = useRequest(deleteModel, {
     onSuccess: () => {
       refreshModels();
@@ -288,11 +315,8 @@ const ModelTable = ({
 
   const [showModelId, setShowModelId] = useState(true);
 
-  const canManageModel = Boolean(
-    isRoot ||
-    userInfo?.team?.permission?.hasManagePer ||
-    userInfo?.team?.permission?.hasModelCreateRole
-  );
+  // 与服务端 authModelManage 保持一致：root 或拥有“安装模型”权限（Per）才能进入管理操作
+  const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
 
   return (
     <>
@@ -368,8 +392,8 @@ const ModelTable = ({
               scrollMode="virtual"
               bodyRef={modelListContainerRef}
               rootProps={{ flex: '1 0 0', h: 0 }}
-              headerProps={{ px: 4 }}
-              bodyProps={{ flex: '1 0 0', h: 0, px: 4 }}
+              headerProps={{ px: 6 }}
+              bodyProps={{ flex: '1 0 0', h: 0, px: 6 }}
               renderHeader={({ headerTableWidth }) => (
                 <Table
                   minW={isTeam ? '950px' : '980px'}
@@ -507,7 +531,10 @@ const ModelTable = ({
                         </Td>
                         <Td fontSize={'sm'}>
                           <Box pointerEvents={channelMutationLoading ? 'none' : undefined}>
-                            <ModelChannelCount channels={item.channels} />
+                            <ModelChannelCount
+                              channels={item.channels}
+                              onClick={() => setChannelModel(item)}
+                            />
                           </Box>
                         </Td>
                         {showBilling && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
@@ -517,7 +544,10 @@ const ModelTable = ({
                               modelId={item.modelId}
                               scope={item.scope}
                               isAccountConfig
-                              hasManagePer={userInfo?.team.permission.hasManagePer}
+                              hasManagePer={Boolean(
+                                userInfo?.team.permission.hasManagePer ||
+                                item.tmbId === userInfo?.team.tmbId
+                              )}
                               selectedHint={t('config_model:available_range')}
                             />
                           </Td>
@@ -652,6 +682,16 @@ const ModelTable = ({
         </Flex>
       </Box>
 
+      {!!channelModel && (
+        <ModelChannelModal
+          channelType={channelType}
+          models={[channelModel]}
+          channels={channelList}
+          selectedChannelIds={channelModel.channels.map((channel) => channel.id)}
+          onClose={() => setChannelModel(undefined)}
+          onConfirm={updateModelChannels}
+        />
+      )}
       {isOpenJsonConfig && (
         <JsonModelConfigModal onClose={onCloseJsonConfig} onSuccess={refreshModels} />
       )}

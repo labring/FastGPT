@@ -27,9 +27,9 @@ export const defaultProvider: ModelProviderItemType = {
  * 按语言读取模型供应商列表；供应商未提供目标语言缓存时统一回退英文。
  */
 export const getModelProviderListFromCache = (
-  cache: Record<langType, ModelProviderItemType[]>,
+  cache?: Record<langType, ModelProviderItemType[]>,
   language = 'en'
-) => cache[language as langType] ?? cache.en;
+) => cache?.[language as langType] ?? cache?.en ?? [];
 
 /**
  * 按语言和供应商标识读取展示信息；语言缓存缺失时回退英文，供应商不存在时回退 Other。
@@ -39,14 +39,14 @@ export const getModelProviderFromCache = ({
   provider,
   language = 'en'
 }: {
-  cache: Record<langType, Record<string, ModelProviderItemType>>;
+  cache?: Record<langType, Record<string, ModelProviderItemType>>;
   provider?: string;
   language?: string;
 }) => {
-  if (!provider) return defaultProvider;
+  if (!provider || !cache) return defaultProvider;
 
   const providerMap = cache[language as langType] ?? cache.en;
-  return providerMap[provider] ?? defaultProvider;
+  return providerMap?.[provider] ?? defaultProvider;
 };
 
 export const formatModelProviders = (

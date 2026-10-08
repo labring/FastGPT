@@ -14,7 +14,7 @@ import {
 import { MongoModelStatusProbeRecord } from '../../../../core/ai/modelStatus/schema';
 import { MongoSystemConfigs } from '../../../../common/system/config/schema';
 import * as modelStatusService from '../../../../core/ai/modelStatus/service';
-import { MODEL_STATUS_REQUEST_TIMEOUT_MS } from '../../../../core/ai/modelStatus/test';
+import { MODEL_TEST_TIMEOUT_MS } from '../../../../core/ai/model/test';
 
 const model: SystemModelDataType = {
   modelId: 'model-status-test-id',
@@ -91,7 +91,7 @@ describe('probeModelStatus', () => {
     expect(test).toHaveBeenCalledWith({
       model,
       teamId: undefined,
-      timeoutMs: MODEL_STATUS_REQUEST_TIMEOUT_MS,
+      timeoutMs: MODEL_TEST_TIMEOUT_MS,
       signal: undefined,
       onRequestStart: expect.any(Function)
     });

@@ -62,7 +62,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
       increment: result.fileMetadata.length
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getModelHandle({ teamId });
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
       vectorModel: modelHandle.getEmbeddingModelData(
         getDatasetModelReference(dataset, 'embedding')

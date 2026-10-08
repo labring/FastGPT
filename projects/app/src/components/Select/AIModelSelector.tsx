@@ -63,7 +63,7 @@ const ModelLabel = ({
   noOfLines?: ResponsiveValue<number>;
   showTags?: boolean;
 }) => {
-  const { t } = useTranslation('config_model');
+  const { t } = useTranslation();
   const multimodalEmbedding = model.type === ModelTypeEnum.embedding && !!model.config.vision;
   const isSystem = model.scope === ModelScopeEnum.system;
   return (
@@ -99,7 +99,7 @@ const ModelLabel = ({
         <Flex alignItems={'center'} gap={1} ml={2} flexShrink={0}>
           {isSystem && (
             <MyTag type={'borderFill'} colorSchema={'gray'} fontSize={'xs'} px={1.5} py={0.5}>
-              {t('system_model_tag')}
+              {t('common:model.system_model_tag')}
             </MyTag>
           )}
           {model.testMode && <TestModeBetaTag />}

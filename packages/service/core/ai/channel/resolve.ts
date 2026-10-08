@@ -1,9 +1,9 @@
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/channel/api';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { aiProxyClient } from '../../../thirdProvider/aiproxy/client';
 import type { AiproxyChannel, AiproxyGroupChannel } from '../../../thirdProvider/aiproxy/type';
-import { getMemberGroupId } from './utils';
-import { isAiproxyNotFoundError } from './error';
+import { getMemberGroupId } from '../../../thirdProvider/aiproxy/group';
+import { tolerateNotFound } from '../../../thirdProvider/aiproxy/error';
 
 /**
  * 按渠道归属路由查找目标渠道（系统渠道或私有分组渠道）
@@ -13,16 +13,6 @@ export type ResolvedChannel =
   | { kind: 'system'; channel: AiproxyChannel }
   | { kind: 'group'; channel: AiproxyGroupChannel; groupId: string };
 
-/** Single-fetch a channel; undefined when aiproxy reports it as missing */
-const fetchOrMissing = async <T>(fetch: () => Promise<T>): Promise<T | undefined> => {
-  try {
-    return await fetch();
-  } catch (error) {
-    if (isAiproxyNotFoundError(error)) return undefined;
-    throw error; // real aiproxy failure — propagate for the caller to normalize
-  }
-};
-
 /**
  * Resolve a channel for a member/root operation by its declared kind.
  * an id that does not exist in the declared scope rejects with ModelErrEnum.channelNotExist.
@@ -30,31 +20,24 @@ const fetchOrMissing = async <T>(fetch: () => Promise<T>): Promise<T | undefined
 export const resolveChannelForOperation = async ({
   id,
   channelType,
-  tmbId,
-  isRoot
+  tmbId
 }: {
   id: number;
   channelType: ChannelType;
   tmbId: string;
-  isRoot: boolean;
 }): Promise<ResolvedChannel> => {
   if (channelType === 'system') {
     // Handlers reject non-root callers with rootOnlyPermit before this point.
-    const channel = await fetchOrMissing(() => aiProxyClient.system.channels.get(id));
+    const channel = await tolerateNotFound(() => aiProxyClient.system.channels.get(id));
     if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
     return { kind: 'system', channel };
   }
 
-  if (!isRoot) {
-    const groupId = getMemberGroupId(tmbId);
-    const channel = await fetchOrMissing(() => aiProxyClient.group(groupId).channels.get(id));
-    if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
-    return { kind: 'group', channel, groupId };
-  }
-
-  const groupChannel = await fetchOrMissing(() => aiProxyClient.globalGroupChannels.get(id));
-  if (!groupChannel) return Promise.reject(ModelErrEnum.channelNotExist);
-  return { kind: 'group', channel: groupChannel, groupId: groupChannel.group_id };
+  // team scope 始终绑定当前会话成员，root 也不能借渠道 ID 跨成员操作。
+  const groupId = getMemberGroupId(tmbId);
+  const channel = await tolerateNotFound(() => aiProxyClient.group(groupId).channels.get(id));
+  if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
+  return { kind: 'group', channel, groupId };
 };
 
 /**
@@ -63,17 +46,13 @@ export const resolveChannelForOperation = async ({
 export const resolveChannelsForOperation = async ({
   ids,
   channelType,
-  tmbId,
-  isRoot
+  tmbId
 }: {
   ids: number[];
   channelType: ChannelType;
   tmbId: string;
-  isRoot: boolean;
 }): Promise<ResolvedChannel[]> => {
-  return Promise.all(
-    ids.map((id) => resolveChannelForOperation({ id, channelType, tmbId, isRoot }))
-  );
+  return Promise.all(ids.map((id) => resolveChannelForOperation({ id, channelType, tmbId })));
 };
 
 /**
@@ -95,7 +74,7 @@ export const resolveChannelObservabilityScope = async ({
   if (channelType === 'system') {
     if (!isRoot) return Promise.reject(ModelErrEnum.rootOnlyPermit);
     if (channelId !== undefined) {
-      const channel = await fetchOrMissing(() => aiProxyClient.system.channels.get(channelId));
+      const channel = await tolerateNotFound(() => aiProxyClient.system.channels.get(channelId));
       if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
     }
     return {};
@@ -103,7 +82,7 @@ export const resolveChannelObservabilityScope = async ({
 
   const groupId = getMemberGroupId(tmbId);
   if (channelId !== undefined) {
-    const channel = await fetchOrMissing(() =>
+    const channel = await tolerateNotFound(() =>
       aiProxyClient.group(groupId).channels.get(channelId)
     );
     if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);

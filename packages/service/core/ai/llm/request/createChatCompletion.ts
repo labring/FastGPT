@@ -1,7 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { UnStreamResponseType } from '@fastgpt/global/core/ai/llm/type';
 import { getAIApi, getModelOpenAIOptions } from '../../config';
-import { normalizeRelayNoChannelError } from '../../channel/error';
+import { normalizeRelayNoChannelError } from '../../../../thirdProvider/aiproxy/error';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { isStreamCompletionResponse } from './response/normalize';
 import type { CreateChatCompletionProps, CreateChatCompletionResult } from './types';

@@ -1,5 +1,5 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getModelProviderMetadata } from '@fastgpt/service/core/ai/provider/controller';
+import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
 import { authModelViewer } from '@/service/core/ai/model/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -12,8 +12,8 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { desensitizeSystemModel } from '@fastgpt/service/core/ai/model/transform';
-import { resolveEffectiveDefaultModelIds } from '@fastgpt/service/core/ai/catalog';
-import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { resolveEffectiveDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/resolve';
+import { isTeamModel } from '@fastgpt/global/core/ai/model';
 
 /** 返回当前成员完整模型目录；命中内容版本时只返回 version。 */
 export async function handler(
@@ -25,7 +25,7 @@ export async function handler(
   }).query;
 
   const catalogIdentity = await authModelViewer({ req, outLinkAuthData });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId: catalogIdentity.teamId });
   const activeModels = modelHandle.getActiveModels();
   const configuredDefaults = modelHandle.configuredDefaultModelIds;
   const providers = getModelProviderMetadata().providers;
@@ -41,7 +41,11 @@ export async function handler(
 
   const permittedModelIds = new Set(permission.modelIds);
   // 权限结果只决定可见性，目录顺序始终继承 plugin 排好的 active 模型列表。
-  const models = activeModels.filter((model) => permittedModelIds.has(model.modelId));
+  const models = activeModels.filter(
+    (model) =>
+      permittedModelIds.has(model.modelId) &&
+      (!isTeamModel(model) || !model.teamId || String(model.teamId) === catalogIdentity.teamId)
+  );
 
   return GetModelCatalogResponseSchema.parse({
     version,

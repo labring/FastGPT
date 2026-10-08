@@ -11,6 +11,12 @@ const configMocks = vi.hoisted(() => ({
   updatedReloadSystemModel: vi.fn()
 }));
 const providerMocks = vi.hoisted(() => ({ preloadModelProviders: vi.fn() }));
+const channelMocks = vi.hoisted(() => ({ syncModelNameInChannels: vi.fn() }));
+
+vi.mock('@fastgpt/service/core/ai/channel/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/channel/service')>()),
+  syncModelNameInChannels: channelMocks.syncModelNameInChannels
+}));
 
 vi.mock('@fastgpt/service/core/ai/model/catalog', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog')>();
@@ -24,8 +30,8 @@ vi.mock('@fastgpt/service/core/ai/model/template', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/template')>()),
   refreshModelTemplates: configMocks.refreshModelTemplates
 }));
-vi.mock('@fastgpt/service/core/ai/provider/controller', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/provider/controller')>()),
+vi.mock('@fastgpt/service/core/ai/model/provider/controller', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/provider/controller')>()),
   preloadModelProviders: providerMocks.preloadModelProviders
 }));
 
@@ -54,9 +60,23 @@ const buildLlmUpdateData = () => {
   return modelData;
 };
 
-const callApi = async ({ handler, body }: { handler: any; body: unknown }) => {
+const callApi = async ({
+  handler,
+  body,
+  query
+}: {
+  handler: any;
+  body?: unknown;
+  query?: unknown;
+}) => {
   const root = await getRootUser();
-  return Call(handler, { auth: root, body });
+  const normalizedBody =
+    body && typeof body === 'object' && !('channelType' in body)
+      ? { channelType: 'system', ...(body as Record<string, unknown>) }
+      : body;
+  const normalizedQuery =
+    handler === getModelTemplatesApi && !query ? { channelType: 'system' } : query;
+  return Call(handler, { auth: root, body: normalizedBody, query: normalizedQuery });
 };
 
 describe('admin settings model create/update api', () => {
@@ -66,6 +86,7 @@ describe('admin settings model create/update api', () => {
     providerMocks.preloadModelProviders.mockReset().mockImplementation(async () => {
       global.ModelProviderRawCache = [];
     });
+    channelMocks.syncModelNameInChannels.mockReset().mockResolvedValue(undefined);
   });
 
   it('creates a custom model through the dedicated create endpoint', async () => {
@@ -359,6 +380,9 @@ describe('admin settings model create/update api', () => {
       model: 'renamed-llm'
     });
     expect(configMocks.updatedReloadSystemModel).toHaveBeenCalled();
+    expect(channelMocks.syncModelNameInChannels).toHaveBeenCalledWith(
+      expect.objectContaining({ oldModel: 'test-llm', newModel: 'renamed-llm' })
+    );
   });
 
   it('rejects changing model identifier if new identifier conflicts with another model', async () => {
@@ -575,5 +599,20 @@ describe('admin settings model create/update api', () => {
     await expect(MongoAIModel.exists({ model: 'batch-first' })).resolves.toBeNull();
     await expect(MongoAIModel.countDocuments({ model: 'batch-conflict' })).resolves.toBe(1);
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
+  });
+
+  it('rejects attempt to hijack model ownership with tmbId or teamId in modelData', async () => {
+    const model = await MongoAIModel.create(buildLlmDocument());
+    const res = await callApi({
+      handler: updateModelApi,
+      body: {
+        modelId: String(model._id),
+        modelData: {
+          ...buildLlmUpdateData(),
+          tmbId: '68ad85a7463006c963799a05'
+        }
+      }
+    });
+    expect(res.error).toBeDefined();
   });
 });

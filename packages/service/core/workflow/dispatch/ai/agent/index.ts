@@ -141,7 +141,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId: runningUserInfo?.teamId });
   const agentModel = modelHandle.getLLMModelData({ modelId, model });
   const dynamicDataset = nodeHasDynamicInput(props.node, [
     NodeInputKeyEnum.datasetSelectList,

@@ -1,6 +1,6 @@
 import type { NodeHttpResponse } from '../../../types/http';
 import { getAIApi, getModelOpenAIOptions } from '../config';
-import { normalizeRelayNoChannelError } from '../channel/error';
+import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { Readable } from 'stream';
 import type { TTSSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 

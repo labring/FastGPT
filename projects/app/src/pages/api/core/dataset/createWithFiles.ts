@@ -1,4 +1,5 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import {
@@ -53,18 +54,6 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     vlmModelId,
     sangforFileParseConfig
   } = datasetParams;
-  const modelHandle = await getModelHandle();
-  const vectorModelData =
-    modelHandle.getEmbeddingModelData({ modelId: vectorModelId }, { optional: true }) ??
-    modelHandle.getDefaultModelData('embedding');
-  const agentModelData =
-    modelHandle.getLLMModelData({ modelId: agentModelId }, { optional: true }) ??
-    modelHandle.getDefaultModelData('llm');
-  // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认。
-  const vlmModelData =
-    vlmModelId === undefined
-      ? modelHandle.getDefaultModelData('datasetImageLLM')
-      : modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
 
   const { teamId, tmbId, userId } = parentId
     ? await authDataset({
@@ -80,6 +69,33 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
         authApiKey: true,
         per: TeamDatasetCreatePermissionVal
       });
+
+  const modelHandle = await getModelHandle({ teamId });
+  const rawVectorModelData =
+    modelHandle.getEmbeddingModelData({ modelId: vectorModelId }, { optional: true }) ??
+    modelHandle.getDefaultModelData('embedding');
+  const rawAgentModelData =
+    modelHandle.getLLMModelData({ modelId: agentModelId }, { optional: true }) ??
+    modelHandle.getDefaultModelData('llm');
+  // 与普通创建入口一致：显式“不设置”必须保持禁用，只有省略参数才继承系统默认。
+  const explicitVlm = vlmModelId !== undefined;
+  const rawVlmModelData =
+    vlmModelId === undefined
+      ? modelHandle.getDefaultModelData('datasetImageLLM')
+      : modelHandle.getVlmModelData({ modelId: vlmModelId }, { optional: true });
+
+  const [vectorModelData, agentModelData, vlmModelData] = await Promise.all([
+    authModelUse({ modelId: rawVectorModelData.modelId, tmbId, teamId }),
+    authModelUse({ modelId: rawAgentModelData.modelId, tmbId, teamId }),
+    rawVlmModelData
+      ? authModelUse({
+          modelId: rawVlmModelData.modelId,
+          tmbId,
+          teamId,
+          optional: !explicitVlm
+        })
+      : Promise.resolve(undefined)
+  ]);
 
   // check limit
   await checkTeamDatasetLimit(teamId);

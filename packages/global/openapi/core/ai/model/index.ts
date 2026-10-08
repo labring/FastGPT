@@ -11,6 +11,7 @@ import {
   GetModelConfigResponseSchema,
   GetModelCatalogQuerySchema,
   GetModelCatalogResponseSchema,
+  GetModelTemplatesQuerySchema,
   GetModelTemplatesResponseSchema,
   GetSystemModelConfigJsonResponseSchema,
   GetSystemModelsResponseSchema,
@@ -19,6 +20,7 @@ import {
   TestModelQuerySchema,
   UpdateDefaultModelsBodySchema,
   UpdateModelBodySchema,
+  UpdateModelChannelsBodySchema,
   UpdateModelStatusBodySchema,
   UpdateSystemModelsWithJsonBodySchema
 } from './api';
@@ -30,8 +32,10 @@ import {
   ModelCollaboratorUpdateBodySchema
 } from '../../../../support/permission/model/controller.schema';
 import { GetModelSummariesBodySchema, GetModelSummariesResponseSchema } from './summary';
+import { ChannelPath } from './channel';
 
 export const AIModelPath: OpenAPIPath = {
+  ...ChannelPath,
   '/core/ai/model/create': {
     post: {
       summary: '创建自定义模型',
@@ -63,7 +67,9 @@ export const AIModelPath: OpenAPIPath = {
   '/core/ai/model/templates': {
     get: {
       summary: '实时获取 Plugin 模型模板',
+      description: 'channelType=system 仅 root；channelType=team 需要“安装模型”权限（仅商业版）',
       tags: [DevApiTagsMap.model],
+      requestParams: { query: GetModelTemplatesQuerySchema },
       responses: {
         200: {
           description: '模型模板列表',
@@ -128,6 +134,18 @@ export const AIModelPath: OpenAPIPath = {
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: UpdateModelBodySchema } }
+      },
+      responses: { 200: { description: '更新成功' } }
+    }
+  },
+  '/core/ai/model/updateChannels': {
+    post: {
+      summary: '调整模型关联的渠道',
+      description:
+        '按 modelId 追加或解除渠道关联；渠道只在模型所属桶（系统/当前成员）内解析，未命中按不存在处理。解除关联只清理渠道内该模型的映射，不删除渠道。',
+      tags: [DevApiTagsMap.model],
+      requestBody: {
+        content: { 'application/json': { schema: UpdateModelChannelsBodySchema } }
       },
       responses: { 200: { description: '更新成功' } }
     }

@@ -13,6 +13,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 
 type ModelTestItem = {
   label: React.ReactNode;
@@ -27,12 +28,12 @@ type ModelTestItem = {
 const ModelTest = ({
   channelId,
   models,
-  channelType = 'system',
+  channelType,
   onClose
 }: {
   channelId: number;
   models: string[];
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
   onClose: () => void;
 }) => {
   const { t, i18n } = useSafeTranslation();

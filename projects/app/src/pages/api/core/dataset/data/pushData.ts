@@ -41,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
     collectionId,
     per: WritePermissionVal
   });
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const vectorModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(collection.dataset, 'embedding')
   );

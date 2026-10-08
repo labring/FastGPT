@@ -13,13 +13,11 @@ import { AgentPath } from './agent';
 import { z } from 'zod';
 import { getErrorResponse } from '../../type';
 import { AIModelPath } from './model';
-import { ChannelPath } from './channel';
 
 export const AIPath: OpenAPIPath = {
   ...SandboxPath,
   ...AgentPath,
   ...AIModelPath,
-  ...ChannelPath,
 
   '/core/ai/optimizePrompt': {
     post: {

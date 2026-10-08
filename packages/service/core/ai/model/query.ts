@@ -1,11 +1,14 @@
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
+  GetModelDetailResponseSchema,
   GetSystemModelConfigResponseSchema,
   GetTeamModelsResponseSchema,
+  type GetModelDetailResponse,
   type GetSystemModelConfigResponse,
   type GetTeamModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { getModelProviderMetadata } from '../provider/controller';
+import { getModelProviderMetadata } from './provider/controller';
 import {
   getMemberChannelSummaryItems,
   getSystemChannelSummaryItems,
@@ -71,5 +74,29 @@ export const getTeamModelListService = async ({
     }),
     channels: channelItems.map((channel) => channel.summary),
     providers: metadata.providers
+  });
+};
+
+/**
+ * 聚合单个模型的完整参数与所在桶内的渠道关联关系。
+ * ownerTmbId 为空表示系统模型桶；一次返回完整数据，避免编辑弹窗依赖列表快照或再次查询渠道。
+ */
+export const getModelDetailService = async ({
+  model,
+  ownerTmbId
+}: {
+  model: SystemModelDataType;
+  ownerTmbId?: string;
+}): Promise<GetModelDetailResponse> => {
+  const channelItems = ownerTmbId
+    ? await getMemberChannelSummaryItems(ownerTmbId)
+    : await getSystemChannelSummaryItems();
+
+  return GetModelDetailResponseSchema.parse({
+    model,
+    channels: channelItems.map((channel) => ({
+      ...channel.summary,
+      isAssociated: channel.models.includes(model.model)
+    }))
   });
 };

@@ -76,7 +76,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getModelHandle({ teamId: runningAppInfo.teamId });
     const toolModel = modelHandle.getLLMModelData({ modelId, model });
     const useVision = aiChatVision && toolModel.config.vision;
     const useAudio = aiChatAudio && toolModel.config.audio;

@@ -11,7 +11,8 @@ import type {
   GetTeamModelsResponse,
   SystemModelListItem
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { getAdminModelConfig, getTeamModelsConfig } from './api';
+import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import { getModelConfig } from './api';
 import { useUserModelStore } from './useUserModelStore';
 import { clearModelCollaboratorsCache } from '@/components/core/ai/hooks/useModelCollaborators';
 
@@ -19,19 +20,20 @@ type ModelConfigResponse = GetSystemModelConfigResponse | GetTeamModelsResponse;
 
 /** 统一加载 system/team 模型管理配置，并封装 Provider 缓存与刷新副作用。 */
 export const useModelConfig = ({
-  channelType = 'system',
+  channelType,
   language,
   manual = false
 }: {
-  channelType?: 'system' | 'team';
+  channelType: ChannelType;
   language?: string;
   manual?: boolean;
-} = {}) => {
+}) => {
   const isTeam = channelType === 'team';
-  const request = useRequest<ModelConfigResponse, []>(
-    () => (isTeam ? getTeamModelsConfig() : getAdminModelConfig()),
-    { manual, refreshDeps: [isTeam] }
-  );
+  const request = useRequest<ModelConfigResponse, []>(() => getModelConfig({ channelType }), {
+    manual,
+    refreshDeps: [isTeam]
+  });
+
   const models = useMemo(
     () => (request.data?.models ?? []) as SystemModelListItem[],
     [request.data?.models]
@@ -82,7 +84,6 @@ export const useModelConfig = ({
     ...request,
     data: request.data,
     models,
-    systemModelList: models,
     channels,
     providers,
     aiproxyChannels,

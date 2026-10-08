@@ -1,7 +1,6 @@
 import { getCachedModelHandle, publishModelHandle } from '@fastgpt/service/core/ai/model/handle';
 
-import { createServer, type Server } from 'node:http';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { type CreateModelBody } from '@fastgpt/global/openapi/core/ai/model/api';
@@ -10,17 +9,12 @@ import { type CreateModelBody } from '@fastgpt/global/openapi/core/ai/model/api'
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
 const external = vi.hoisted(() => ({
-  baseUrl: '',
   listModels: vi.fn()
-}));
-// 只替换外部服务的配置和 Plugin 边界，AI Proxy adapter/axios/模型目录均执行真实实现。
-vi.mock('@fastgpt/service/thirdProvider/aiproxy/config', () => ({
-  getAIProxyAdminConfig: () => ({ baseUrl: external.baseUrl, token: 'local-integration-token' })
 }));
 vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: { listModels: external.listModels }
 }));
-vi.mock('@fastgpt/service/core/ai/provider/controller', () => ({
+vi.mock('@fastgpt/service/core/ai/model/provider/controller', () => ({
   getModelProviderMetadata: () => ({ providers: [], aiproxyChannels: [] }),
   preloadModelProviders: vi.fn().mockResolvedValue(undefined),
   getModelProvider: (provider: string) => ({ id: provider, name: provider, avatar: '', order: 0 })
@@ -32,7 +26,7 @@ import {
   deleteModels as deleteSystemModels,
   updateSystemDefaultModels,
   updateModel as updateSystemModel,
-  updateSystemModelStatus
+  updateModelStatus
 } from '@fastgpt/service/core/ai/model/mutation';
 import { importSystemModels } from '@fastgpt/service/core/ai/model/import';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
@@ -43,17 +37,6 @@ import * as catalogEntity from '@fastgpt/service/core/ai/model/entity';
 import { refreshModelHandle, loadInstalledModels } from '@fastgpt/service/core/ai/model/catalog';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-
-type LocalChannel = { id: number; type: number; name: string; models: string[] };
-
-/** 确定性控制 HTTP 写入的暂停点，避免通过 sleep 猜测并发时序。 */
-const _createGate = () => {
-  let resolve!: () => void;
-  const promise = new Promise<void>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-};
 
 /** 通过接口真实 schema 的推导类型构造完整草稿。 */
 const createDraft = (model: string): CreateModelBody['modelData'] => ({
@@ -66,76 +49,8 @@ const createDraft = (model: string): CreateModelBody['modelData'] => ({
   config: { maxContext: 32000, maxResponse: 16000, quoteMaxToken: 24000 }
 });
 
-describe('system model management integration: HTTP + MongoDB transactions + runtime catalog', () => {
-  let server: Server;
-  let channels: LocalChannel[];
-  let requests: Array<{ method: string; url: string; authorization: string | undefined }>;
-  let failedChannelId: number | undefined;
-  let writeGate: ReturnType<typeof _createGate> | undefined;
-  let writeStarted: ReturnType<typeof _createGate> | undefined;
-
-  beforeAll(async () => {
-    server = createServer(async (req, res) => {
-      requests.push({
-        method: req.method ?? '',
-        url: req.url ?? '',
-        authorization: req.headers.authorization
-      });
-      res.setHeader('Content-Type', 'application/json');
-      if (req.headers.authorization !== 'Bearer local-integration-token') {
-        res.writeHead(401).end(JSON.stringify({ success: false }));
-        return;
-      }
-      if (req.method === 'GET' && req.url === '/api/channels/all') {
-        res.end(JSON.stringify({ success: true, data: channels }));
-        return;
-      }
-      const channelId = Number(req.url?.match(/^\/api\/channel\/(\d+)$/)?.[1]);
-      const channel = channels.find(({ id }) => id === channelId);
-      if (req.method !== 'PUT' || !channel) {
-        res.writeHead(404).end(JSON.stringify({ success: false }));
-        return;
-      }
-      const chunks: Buffer[] = [];
-      for await (const chunk of req) chunks.push(Buffer.from(chunk));
-      writeStarted?.resolve();
-      await writeGate?.promise;
-      if (channelId === failedChannelId) {
-        res.writeHead(503).end(JSON.stringify({ success: false }));
-        return;
-      }
-      const update: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-      if (
-        !update ||
-        typeof update !== 'object' ||
-        !('models' in update) ||
-        !Array.isArray(update.models) ||
-        !update.models.every((model) => typeof model === 'string')
-      ) {
-        res.writeHead(400).end(JSON.stringify({ success: false }));
-        return;
-      }
-      channel.models = update.models;
-      res.end(JSON.stringify({ success: true }));
-    });
-    await new Promise<void>((resolve, reject) => {
-      server.once('error', reject);
-      server.listen(0, '127.0.0.1', resolve);
-    });
-    const address = server.address();
-    if (!address || typeof address === 'string') throw new Error('Expected TCP test server');
-    external.baseUrl = `http://127.0.0.1:${address.port}`;
-  });
-
+describe('system model management integration: MongoDB transactions and runtime catalog', () => {
   beforeEach(async () => {
-    channels = [
-      { id: 1, type: 1, name: 'one', models: ['unrelated'] },
-      { id: 2, type: 1, name: 'two', models: [] }
-    ];
-    requests = [];
-    failedChannelId = undefined;
-    writeGate = undefined;
-    writeStarted = undefined;
     external.listModels.mockReset().mockResolvedValue([]);
     await Promise.all([
       MongoAIModel.deleteMany({}),
@@ -148,21 +63,12 @@ describe('system model management integration: HTTP + MongoDB transactions + run
   });
 
   afterEach(() => {
-    writeGate?.resolve();
     vi.restoreAllMocks();
-  });
-
-  afterAll(async () => {
-    server.closeAllConnections();
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve()))
-    );
   });
 
   it('creates a model and publishes the committed catalog revision', async () => {
     const { modelId } = await createSystemModel({
-      modelData: createDraft('integration-new'),
-      channelIds: [1]
+      modelData: createDraft('integration-new')
     });
 
     expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({
@@ -177,11 +83,11 @@ describe('system model management integration: HTTP + MongoDB transactions + run
   });
 
   it('rejects duplicate creation', async () => {
-    await createSystemModel({ modelData: createDraft('duplicate'), channelIds: [1] });
+    await createSystemModel({ modelData: createDraft('duplicate') });
 
-    await expect(
-      createSystemModel({ modelData: createDraft('duplicate'), channelIds: [2] })
-    ).rejects.toThrow(ModelErrEnum.alreadyExists);
+    await expect(createSystemModel({ modelData: createDraft('duplicate') })).rejects.toThrow(
+      ModelErrEnum.alreadyExists
+    );
 
     expect(await MongoAIModel.countDocuments({ model: 'duplicate' })).toBe(1);
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
@@ -264,8 +170,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       .mockRejectedValueOnce(new Error('Injected snapshot read failure'));
 
     const { modelId } = await createSystemModel({
-      modelData: createDraft('reload-repair'),
-      channelIds: [1]
+      modelData: createDraft('reload-repair')
     });
 
     expect(await MongoAIModel.findById(modelId).lean()).not.toBeNull();
@@ -279,26 +184,23 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     ]);
   });
 
-  it('rejects the entire template batch before external writes when one template disappears', async () => {
+  it('rejects the entire template batch when one template disappears', async () => {
     external.listModels.mockResolvedValue([createDraft('available')]);
     await expect(
       createSystemModelsFromTemplates({
         templates: [
           { type: ModelTypeEnum.llm, model: 'available' },
           { type: ModelTypeEnum.llm, model: 'removed' }
-        ],
-        channelIds: [1, 2]
+        ]
       })
     ).rejects.toThrow('no longer exists');
-    expect(requests).toEqual([]);
     expect(await MongoAIModel.countDocuments()).toBe(0);
     expect(await catalogEntity.readSystemModelRevision()).toBe(0);
   });
 
   it('uses the latest template parameters, skips installed names and leaves instances unchanged later', async () => {
     const installed = await createSystemModel({
-      modelData: createDraft('installed'),
-      channelIds: []
+      modelData: createDraft('installed')
     });
     external.listModels.mockResolvedValue([
       { ...createDraft('installed'), type: ModelTypeEnum.stt, config: {} },
@@ -312,8 +214,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       templates: [
         { type: ModelTypeEnum.stt, model: 'installed' },
         { type: ModelTypeEnum.llm, model: 'fresh' }
-      ],
-      channelIds: []
+      ]
     });
     expect(result.models).toHaveLength(1);
     expect(await MongoAIModel.findById(installed.modelId).lean()).toMatchObject({
@@ -329,34 +230,31 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     await loadInstalledModels();
     expect(getCachedModelHandle()?.getAllModels()).toHaveLength(2);
     expect(external.listModels).toHaveBeenCalledTimes(1);
-    expect(requests).toEqual([]);
   });
 
   it('rolls back a partially matched status update without advancing revision or snapshot', async () => {
     const { modelId } = await createSystemModel({
-      modelData: createDraft('status'),
-      channelIds: []
+      modelData: createDraft('status')
     });
     const missingId = new connectionMongo.Types.ObjectId().toString();
     await expect(
-      updateSystemModelStatus({ modelIds: [modelId, missingId], isActive: false })
+      updateModelStatus({ modelIds: [modelId, missingId], isActive: false })
     ).rejects.toBeDefined();
     expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({ isActive: true });
     expect(await catalogEntity.readSystemModelRevision()).toBe(1);
     expect(getCachedModelHandle()?.revision).toBe(1);
-    await updateSystemModelStatus({ modelIds: [modelId], isActive: false });
+    await updateModelStatus({ modelIds: [modelId], isActive: false });
     expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({ isActive: false });
     expect(await catalogEntity.readSystemModelRevision()).toBe(2);
   });
 
   it('preserves configured defaults when creating another model and rolls back invalid default changes', async () => {
     const { modelId } = await createSystemModel({
-      modelData: createDraft('default'),
-      channelIds: []
+      modelData: createDraft('default')
     });
     await updateSystemDefaultModels({ llm: modelId, chatTitleLLMModelId: modelId });
     const defaultsBefore = await MongoAIDefaultModel.find({}, { defaultModelIds: 1 }).lean();
-    const second = await createSystemModel({ modelData: createDraft('second'), channelIds: [] });
+    const second = await createSystemModel({ modelData: createDraft('second') });
     expect(second.modelId).not.toBe(modelId);
     expect(await MongoAIDefaultModel.find({}, { defaultModelIds: 1 }).lean()).toEqual(
       defaultsBefore
@@ -373,29 +271,24 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     expect(await catalogEntity.readSystemModelRevision()).toBe(revision + 1);
   });
 
-  it('prechecks immutable type before channel replacement and clears omitted request credentials on update', async () => {
+  it('prechecks immutable type and clears omitted request credentials on update', async () => {
     const { modelId } = await createSystemModel({
       modelData: {
         ...createDraft('editable'),
         requestUrl: 'http://local.test',
         requestAuth: 'test-secret'
-      },
-      channelIds: [1]
+      }
     });
-    requests = [];
     const { model: _model, ...editable } = createDraft('editable');
     await expect(
       updateSystemModel({
         modelId,
-        modelData: { ...editable, type: ModelTypeEnum.stt, config: {} },
-        channelIds: [2]
+        modelData: { ...editable, type: ModelTypeEnum.stt, config: {} }
       })
     ).rejects.toThrow('type cannot be changed');
-    expect(requests).toEqual([]);
     await updateSystemModel({
       modelId,
-      modelData: { ...editable, model: 'renamed-model', name: 'Renamed' },
-      channelIds: [2]
+      modelData: { ...editable, model: 'renamed-model', name: 'Renamed' }
     });
     const updated = await MongoAIModel.findById(modelId).lean();
     expect(updated).toMatchObject({ name: 'Renamed', model: 'renamed-model', type: 'llm' });
@@ -415,8 +308,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
 
   it('keeps JSON import atomic and distinguishes legacy no-ID records from deliberate empty configuration', async () => {
     const { modelId } = await createSystemModel({
-      modelData: createDraft('json-original'),
-      channelIds: [1]
+      modelData: createDraft('json-original')
     });
     const before = await MongoAIModel.find({}).lean();
     await expect(
@@ -467,13 +359,11 @@ describe('system model management integration: HTTP + MongoDB transactions + run
       requestStartedAt: new Date(),
       requestEndedAt: new Date()
     });
-    requests = [];
     await importSystemModels({ config: [] });
     expect(await MongoAIModel.findById(modelId).lean()).toBeNull();
     expect(await MongoAIModel.countDocuments()).toBe(0);
     expect(await MongoModelStatusProbeRecord.countDocuments()).toBe(0);
     expect(await MongoResourcePermission.countDocuments()).toBe(0);
-    expect(requests).toEqual([]);
   });
 
   it('rolls back MongoDB when model insert fails and succeeds on retry', async () => {
@@ -481,7 +371,7 @@ describe('system model management integration: HTTP + MongoDB transactions + run
     vi.spyOn(MongoAIModel, 'create').mockImplementationOnce(() => {
       throw new Error('Injected model insert failure');
     });
-    const input = { modelData: createDraft('retry-after-db-failure'), channelIds: [1, 2] };
+    const input = { modelData: createDraft('retry-after-db-failure') };
 
     await expect(createSystemModel(input)).rejects.toThrow('Injected model insert failure');
 
@@ -498,8 +388,8 @@ describe('system model management integration: HTTP + MongoDB transactions + run
 
   it('rejects concurrent duplicate creation through the real unique index with one committed revision', async () => {
     const results = await Promise.allSettled([
-      createSystemModel({ modelData: createDraft('concurrent'), channelIds: [] }),
-      createSystemModel({ modelData: createDraft('concurrent'), channelIds: [] })
+      createSystemModel({ modelData: createDraft('concurrent') }),
+      createSystemModel({ modelData: createDraft('concurrent') })
     ]);
     expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
     expect(results.filter(({ status }) => status === 'rejected')).toHaveLength(1);

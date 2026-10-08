@@ -42,6 +42,9 @@ export type AddChannelData = {
   configs?: Record<string, unknown>;
 };
 
+/** AI Proxy 渠道更新为 patch 语义，未提供的字段保持原值。 */
+export type UpdateChannelData = Partial<AddChannelData>;
+
 export type ChannelListResult<T = AiproxyChannel> = {
   channels: T[];
   total: number;

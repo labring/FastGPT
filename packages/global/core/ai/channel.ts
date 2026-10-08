@@ -1,8 +1,14 @@
 /**
- * AIProxy 中支持 map_reasoning_to_reasoning_content 响应字段重写的 ChannelType ID：
- * - 1: ChannelTypeOpenAI
+ * AIProxy 中支持 map_reasoning_to_reasoning_content 响应字段重写的上游渠道协议 ID (ChannelProviderType)：
+ * - 1: OpenAI
  */
 export const REASONING_FIELD_MAPPING_CHANNEL_TYPES = [1] as const;
+
+/**
+ * AIProxy 上游渠道协议类型数字（如 1=OpenAI, 3=Azure, 14=Anthropic 等）。
+ * 注意：请勿与模型归属作用域渠道类型 `ChannelType` ('system' | 'team') 混淆。
+ */
+export type ChannelProviderType = number;
 
 export enum ChannelStatusEnum {
   ChannelStatusUnknown = 0,
@@ -35,7 +41,8 @@ export const ChannelStatusMap = {
 export type ChannelInfoType = {
   id: number;
   name: string;
-  type: number;
+  /** 上游协议类型 (如 1=OpenAI, 14=Anthropic)，非 FastGPT 作用域 ChannelType */
+  type: ChannelProviderType;
   key: string;
   base_url?: string;
   models: string[];
@@ -61,7 +68,8 @@ export const defaultChannel: ChannelInfoType = {
 };
 
 export type CreateChannelProps = {
-  type: number;
+  /** 上游协议类型 (如 1=OpenAI, 14=Anthropic)，非 FastGPT 作用域 ChannelType */
+  type: ChannelProviderType;
   model_mapping?: Record<string, string>;
   key?: string;
   name: string;

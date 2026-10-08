@@ -1,6 +1,6 @@
 import type { Readable } from 'node:stream';
 import { getModelAxiosConfig } from '../config';
-import { normalizeRelayNoChannelError } from '../channel/error';
+import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
 import FormData from 'form-data';
 import { type STTSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';

@@ -210,7 +210,7 @@ async function handler(
     roleListMap.set(resourceId, list);
   });
 
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getModelHandle({ teamId });
   const formatDatasets = myDatasets.map((dataset) => {
     const { Per, privateDataset } = (() => {
       const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];
