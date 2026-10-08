@@ -31,6 +31,7 @@ import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 import { applyRuntimeStorageConfig } from '@fastgpt/service/common/s3/config/constants';
 import { initS3Buckets } from '@fastgpt/service/common/s3';
+import { buildAuthoritativeSystemEnv } from './buildAuthoritativeSystemEnv';
 
 const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
@@ -236,27 +237,15 @@ export async function initSystemConfig() {
         serviceEnv.AGENT_SANDBOX_PROXY_URL ||
         ''
     },
-    systemEnv: Object.assign(
-      {
-        agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
-        agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM,
-        datasetParseMaxProcess: instanceConfig.performance.dataset.parseMaxProcess,
-        vectorMaxProcess: instanceConfig.performance.dataset.vectorMaxProcess,
-        qaMaxProcess: instanceConfig.performance.dataset.qaMaxProcess,
-        vlmMaxProcess: instanceConfig.performance.dataset.vlmMaxProcess,
-        hnswEfSearch: instanceConfig.vector.hnswEfSearch,
-        hnswMaxScanTuples: instanceConfig.vector.hnswMaxScanTuples,
-        customPdfParse: {
-          url: instanceConfig.providers.documentParse.customPdf.url,
-          key: instanceConfig.providers.documentParse.customPdf.key,
-          somarkApiKey: instanceConfig.providers.documentParse.customPdf.somarkApiKey,
-          doc2xKey: instanceConfig.providers.documentParse.customPdf.doc2xKey,
-          textinAppId: instanceConfig.providers.documentParse.customPdf.textinAppId,
-          textinSecretCode: instanceConfig.providers.documentParse.customPdf.textinSecretCode
-        }
-      },
-      fastgptConfig.systemEnv || {}
-    ),
+    // 权威数据源：实例配置派生值盖过旧库 systemEnv，旧库仅保留 schema 外扩展键
+    systemEnv: {
+      ...buildAuthoritativeSystemEnv({
+        legacySystemEnv: fastgptConfig.systemEnv,
+        instanceConfig
+      }),
+      agentSandboxMax: serviceEnv.AGENT_SANDBOX_MAX,
+      agentSandboxMaxPerTeam: serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM
+    },
     subPlans: fastgptConfig.subPlans
   };
 
