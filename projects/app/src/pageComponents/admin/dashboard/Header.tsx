@@ -1,4 +1,5 @@
 'use client';
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -24,6 +25,7 @@ type DashboardHeaderProps = {
 };
 
 const DashboardHeader = ({ currentTab, onTabChange }: DashboardHeaderProps) => {
+  const { t } = useClientTranslation('admin');
   const { data: systemConfig } = useRequest(getInitFormData, {
     manual: false
   });
@@ -58,27 +60,27 @@ const DashboardHeader = ({ currentTab, onTabChange }: DashboardHeaderProps) => {
       <FillRowTabs<DashboardTab>
         list={[
           {
-            label: '全局统计',
+            label: t('admin:dashboard_overview'),
             value: 'overview'
           },
           {
-            label: '流量',
+            label: t('admin:dashboard_traffic'),
             value: 'traffic'
           },
           ...(isSubscriptionEnabled
             ? [
                 {
-                  label: '付费',
+                  label: t('admin:dashboard_payment'),
                   value: 'payment' as const
                 }
               ]
             : []),
           {
-            label: '活跃',
+            label: t('admin:dashboard_active'),
             value: 'active'
           },
           {
-            label: '成本',
+            label: t('admin:dashboard_cost'),
             value: 'cost'
           }
         ]}
@@ -91,12 +93,12 @@ const DashboardHeader = ({ currentTab, onTabChange }: DashboardHeaderProps) => {
         <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
           <SingleSelectFilter<DateRange>
             storageKey={'admin.dashboard.dateRange'}
-            title={'时间范围'}
+            title={t('admin:dashboard_date_range')}
             options={[
-              { label: '近7天', value: 7 },
-              { label: '近30天', value: 30 },
-              { label: '近90天', value: 90 },
-              { label: '近360天', value: 360 }
+              { label: t('admin:dashboard_7_days'), value: 7 },
+              { label: t('admin:dashboard_30_days'), value: 30 },
+              { label: t('admin:dashboard_90_days'), value: 90 },
+              { label: t('admin:dashboard_360_days'), value: 360 }
             ]}
             value={dateRange}
             onChange={handleDateRangeChange}
@@ -104,11 +106,11 @@ const DashboardHeader = ({ currentTab, onTabChange }: DashboardHeaderProps) => {
           {dateRange !== 7 && (
             <SingleSelectFilter<Granularity>
               storageKey={'admin.dashboard.granularity'}
-              title={'颗粒度'}
+              title={t('admin:dashboard_granularity')}
               options={[
-                { label: '按天', value: 'day' },
-                { label: '按月', value: 'month' },
-                { label: '按季度', value: 'quarter' }
+                { label: t('admin:dashboard_day'), value: 'day' },
+                { label: t('admin:dashboard_month'), value: 'month' },
+                { label: t('admin:dashboard_quarter'), value: 'quarter' }
               ]}
               value={granularity}
               onChange={handleGranularityChange}

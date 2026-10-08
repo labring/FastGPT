@@ -1,3 +1,4 @@
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Flex, Grid, Input } from '@chakra-ui/react';
 import {
   StandardSubLevelEnum,
@@ -27,7 +28,7 @@ const CustomPlanModal = ({
   onClose: () => void;
   onChange: (e: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('admin');
   const level = StandardSubLevelEnum.custom;
   const { handleSubmit, watch, setValue } = useForm({
     defaultValues: planMap[level]
@@ -45,38 +46,38 @@ const CustomPlanModal = ({
   return (
     <MyModal
       isOpen
-      title={`${label}套餐配置`}
+      title={`${label}${t('admin:plan_config_title') || '套餐配置'}`}
       isCentered
       minW={'800px'}
       maxH={'90vh'}
       footer={
         <>
           <Button variant={'whiteBase'} onClick={onClose}>
-            取消
+            {t('admin:cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>确认</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('admin:confirm')}</Button>
         </>
       }
     >
       {/* 基础信息与定价 */}
       <Flex mb={6} pb={6} gap={8} borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
         <FormLabel fontSize={'md'} fontWeight={'medium'} flex={'0 0 160px'}>
-          基础信息与定价
+          {t('admin:plan_basic_and_pricing') || '基础信息与定价'}
         </FormLabel>
         <Grid flex={1} w={'100%'} templateColumns={'repeat(2, 1fr)'} gap={4}>
           <Box>
-            <FormLabel mb={2}>套餐名称</FormLabel>
+            <FormLabel mb={2}>{t('admin:plan_name') || '套餐名称'}</FormLabel>
             <Input
               bg={'myGray.50'}
               value={watch('name')}
               onChange={(e) => {
                 setValue('name', e.target.value ?? '');
               }}
-              placeholder="定制版"
+              placeholder={t('admin:custom')}
             />
           </Box>
           {/* <Box>
-              <FormLabel mb={2}>价格描述</FormLabel>
+              <FormLabel mb={2}>{t('admin:price_description')}</FormLabel>
               <Input
                 bg={'myGray.50'}
                 value={watch('priceDescription')}
@@ -84,12 +85,12 @@ const CustomPlanModal = ({
                   // @ts-ignore
                   setValue('priceDescription', e.target.value ?? '');
                 }}
-                placeholder="在此输入价格描述"
+                placeholder={t('admin:enter_price_description')}
                 disabled
               />
             </Box>
             <Box gridColumn="span 2">
-              <FormLabel mb={2}>套餐描述</FormLabel>
+              <FormLabel mb={2}>{t('admin:plan_description_2')}</FormLabel>
               <Input
                 bg={'myGray.50'}
                 value={watch('desc') as any}
@@ -106,18 +107,18 @@ const CustomPlanModal = ({
       {/* 购买链接 */}
       <Flex mb={6} pb={6} gap={8}>
         <FormLabel fontSize={'md'} fontWeight={'medium'} flex={'0 0 160px'}>
-          购买链接
+          {t('admin:plan_buy_link_section') || '购买链接'}
         </FormLabel>
         <Grid flex={1} w={'100%'} templateColumns={'repeat(2, 1fr)'} gap={4}>
           <Box gridColumn="span 2">
-            <FormLabel mb={2}>套餐购买链接</FormLabel>
+            <FormLabel mb={2}>{t('admin:plan_buy_link') || '套餐购买链接'}</FormLabel>
             <Input
               bg={'myGray.50'}
               value={watch('customFormUrl')}
               onChange={(e) => {
                 setValue('customFormUrl', e.target.value ?? '');
               }}
-              placeholder="在此输入购买链接"
+              placeholder={t('admin:enter_purchase_link')}
             />
           </Box>
         </Grid>
@@ -125,8 +126,7 @@ const CustomPlanModal = ({
 
       {/* 自定义描述 */}
       {/* <Flex mb={6} gap={8}>
-          <FormLabel fontSize={'md'} fontWeight={'medium'} flex={'0 0 160px'}>
-            自定义描述
+          <FormLabel fontSize={'md'} fontWeight={'medium'} flex={'0 0 160px'}>{t('admin:custom_description')}
           </FormLabel>
           <Grid flex={1} w={'100%'} templateColumns={'repeat(2, 1fr)'} gap={4}>
             {customDescriptions.map((desc, index) => (
@@ -155,7 +155,7 @@ const StandardPlans = ({
   value: StandSubPlanLevelMapType;
   onChange: (value: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('admin');
   const [editedLevel, setEditedLevel] = useState<StandardSubLevelEnum | 'custom'>();
 
   const levels = useMemo(
@@ -253,7 +253,7 @@ const StandardPlans = ({
           {levels.map((level, index) => (
             <Flex key={index} alignItems={'center'} px={4} h={12}>
               <Button variant={'primaryOutline'} size={'xs'} onClick={() => setEditedLevel(level)}>
-                点击配置套餐
+                {t('admin:plan_config_button') || '点击配置套餐'}
               </Button>
             </Flex>
           ))}

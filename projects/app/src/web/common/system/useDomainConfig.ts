@@ -43,27 +43,40 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
     refetchOnWindowFocus: false
   });
 
-  const { runAsync: updateConfig, loading: isUpdating } = useRequest(
-    async (overrides: DeepPartial<SystemInstanceConfigDomainMap[T]>) => {
+  const { runAsync: submitOverrides, loading: isUpdating } = useRequest(
+    async ({
+      overrides: nextOverrides,
+      silent
+    }: {
+      overrides: Record<string, unknown>;
+      silent?: boolean;
+    }) => {
       const currentRevision = data?.revision ?? 0;
-      return updateDomainConfigApi({
+      const res = await updateDomainConfigApi({
         domain,
         expectedRevision: currentRevision,
-        overrides: overrides as Record<string, unknown>
+        overrides: nextOverrides
       });
+      return { res, silent };
     },
     {
-      successToast: '保存配置成功',
-      errorToast: '保存配置失败',
-      onSuccess: () => {
+      onSuccess: ({ silent }) => {
+        if (!silent) {
+          toast({
+            status: 'success',
+            // 传翻译 key，由 useToast 按当前语言解析
+            title: 'admin:settings_saved'
+          });
+        }
         void refetch();
       },
+      errorToast: 'admin:failed_to_save_settings',
       onError: (err: any) => {
         const errorMsg = typeof err === 'string' ? err : err?.message || '';
         if (errorMsg.includes('Revision conflict')) {
           toast({
             status: 'warning',
-            title: '配置已被他人修改，正在刷新至最新版本'
+            title: 'admin:revision_conflict_refreshing'
           });
           void refetch();
         }
@@ -71,17 +84,43 @@ export const useDomainConfig = <T extends SystemInstanceConfigDomainKey>(domain:
     }
   );
 
+  const revision = data?.revision ?? 0;
+  const overrides = (data?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>;
+
+  /**
+   * 整 Domain 提交：提交内容即该 Domain 的完整覆盖值，未提供的字段回落默认值。
+   * 仅当页面覆盖了该 Domain 的全部字段时使用。
+   */
+  const updateConfig = (
+    next: DeepPartial<SystemInstanceConfigDomainMap[T]>,
+    options?: { silent?: boolean }
+  ) => submitOverrides({ overrides: next as Record<string, unknown>, silent: options?.silent });
+
+  /**
+   * 局部提交：先与库中现有 overrides 顶层合并再整体提交。
+   *
+   * 后端按 Domain 整体替换 overrides，所以页面只负责部分字段时必须用它，
+   * 否则同 Domain 其它字段（含本页未展示的字段）会被重置为默认值。
+   * 合并进来的敏感字段是脱敏占位符，后端会用库中原值恢复。
+   */
+  const patchConfig = (partial: Record<string, unknown>, options?: { silent?: boolean }) =>
+    submitOverrides({
+      overrides: { ...(overrides as Record<string, unknown>), ...partial },
+      silent: options?.silent
+    });
+
   return {
     domain,
-    revision: data?.revision ?? 0,
+    revision,
     effectiveConfig: (data?.effectiveConfig ?? {}) as SystemInstanceConfigDomainMap[T],
-    overrides: (data?.overrides ?? {}) as DeepPartial<SystemInstanceConfigDomainMap[T]>,
+    overrides,
     secretKeys: data?.secretKeys ?? [],
     updatedAt: data?.updatedAt,
     updatedBy: data?.updatedBy,
     isLoading,
     isUpdating,
     updateConfig,
+    patchConfig,
     refetch
   };
 };

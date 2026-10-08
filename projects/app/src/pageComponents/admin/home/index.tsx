@@ -66,7 +66,7 @@ const LICENSE_STATUS_DISPLAY: Record<
   }
 };
 
-/** 管理员首页的 License 概览，按设计稿展示租户信息、额度和授权能力。 */
+/** 管理员首页的 License 概览，按设计稿展示版本信息、租户信息、额度和授权能力。 */
 const AdminHome = () => {
   const { licenseData, licenseLoading, feConfigs } = useSystemStore();
   const { t } = useSafeTranslation();
@@ -131,21 +131,38 @@ const AdminHome = () => {
         <Box fontSize="16px" fontWeight="600" lineHeight="1.2" whiteSpace="nowrap">
           {t('admin:license_admin_home')}
         </Box>
-        <Box color="myGray.500" fontSize="12px">
-          {isCommunityEdition
-            ? t('admin:license_admin_home_community_description')
-            : t('admin:license_admin_home_description')}
-        </Box>
       </Flex>
 
       <Box p={6}>
+        {/* 版本信息：只展示 app 自身版本，来源为 app package.json 的 version（getInitData 下发） */}
+        <Box mb={4}>
+          <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
+            {t('admin:license_version_info')}
+          </Box>
+          <Box border="1px solid" borderColor="myGray.200" borderRadius="8px" px={6} py={5}>
+            <Flex alignItems="center" gap={4} flexWrap="wrap">
+              <Box color="myGray.500" fontSize="12px">
+                {t('admin:license_current_version')}
+              </Box>
+              <Box fontSize="24px" fontWeight="600" lineHeight="1.2">
+                V{systemVersion}
+              </Box>
+            </Flex>
+          </Box>
+        </Box>
+
+        {/* 商业版信息：租户、License 状态、资源额度与授权能力 */}
+        <Box fontSize="16px" fontWeight="600" color="myGray.700" mb={2}>
+          {t('admin:license_commercial_info')}
+        </Box>
+
         <Box border="1px solid" h="104px" borderColor="myGray.200" borderRadius="8px" p={6}>
           {isCommunityEdition ? (
-            /* 社区版：没有授权概念，只展示版本标识与商业版引导 */
+            /* 社区版：没有授权概念，只展示版本类型标识与商业版引导 */
             <Flex alignItems="center" justifyContent="space-between" h="100%" gap={4}>
               <Flex minW={0} gap={2} alignItems={'center'}>
                 <Box color="myGray.500" fontWeight={500} fontSize="12px" mb={0.5}>
-                  {t('admin:license_current_version')}
+                  {t('admin:license_edition')}
                 </Box>
                 <Box
                   as="span"

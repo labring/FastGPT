@@ -1,3 +1,4 @@
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import {
   StandardSubLevelEnum,
@@ -22,7 +23,7 @@ const LegacyPlans = ({
   value: StandSubPlanLevelMapType;
   onChange: (value: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('admin');
   const [editedLevel, setEditedLevel] = useState<StandardSubLevelEnum>();
 
   // 解析并检查是否有旧版套餐数据
@@ -112,7 +113,7 @@ const LegacyPlans = ({
           {levels.map((level, index) => (
             <Flex key={index} alignItems={'center'} px={4} h={12}>
               <Button variant={'primaryOutline'} size={'xs'} onClick={() => setEditedLevel(level)}>
-                点击配置套餐
+                {t('admin:plan_config_button') || '点击配置套餐'}
               </Button>
             </Flex>
           ))}

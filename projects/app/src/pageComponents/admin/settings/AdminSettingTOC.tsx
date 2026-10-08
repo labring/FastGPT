@@ -12,10 +12,7 @@ type AdminSettingTOCProps = {
   onItemClick?: (id: string) => void;
 };
 
-/**
- * 新版配置页面右侧 TOC 目录组件。
- * 遵循最新 UI 规范：纯文本高亮模式，当前激活项显示蓝色加粗文字（无底色色块）。
- */
+/** 新版配置页面右侧 TOC 目录组件。label 由调用方传入已翻译字符串。 */
 const AdminSettingTOC = ({ items, activeId, onItemClick }: AdminSettingTOCProps) => {
   const handleClick = (id: string) => {
     onItemClick?.(id);
@@ -29,7 +26,6 @@ const AdminSettingTOC = ({ items, activeId, onItemClick }: AdminSettingTOCProps)
     <Flex flexDirection={'column'} gap={1} py={4} px={4} userSelect={'none'}>
       {items.map((item) => {
         const isActive = activeId === item.id;
-
         return (
           <Box
             key={item.id}
@@ -38,9 +34,7 @@ const AdminSettingTOC = ({ items, activeId, onItemClick }: AdminSettingTOCProps)
             borderRadius={'md'}
             cursor={'pointer'}
             transition={'all 0.2s'}
-            _hover={{
-              color: 'primary.600'
-            }}
+            _hover={{ color: 'primary.600' }}
             onClick={() => handleClick(item.id)}
           >
             <Text

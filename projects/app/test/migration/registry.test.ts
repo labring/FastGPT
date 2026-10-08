@@ -51,11 +51,29 @@ describe('validateSystemMigrationRegistry', () => {
     });
     expect(
       systemMigrations.filter((task: SystemMigration) => task.blockStartup).map(({ id }) => id)
-    ).toEqual(['20260903_migrate_legacy_system_models']);
-    expect(systemMigrations.at(-1)).toMatchObject({
+    ).toEqual([
+      '20260903_migrate_legacy_system_models',
+      '20260928_migrate_instance_configs',
+      '20260929_cleanup_instance_config_deprecated_fields'
+    ]);
+    expect(systemMigrations.at(-3)).toMatchObject({
       id: '20261025_token_prices_per_million',
       version: '4.17.3',
       progressSteps: [{ key: 'models' }]
+    });
+    expect(systemMigrations.at(-2)).toMatchObject({
+      id: '20260928_migrate_instance_configs',
+      version: '4.18.0',
+      blockStartup: true,
+      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      progressSteps: [{ key: 'inspect' }, { key: 'migrate' }, { key: 'validate' }]
+    });
+    expect(systemMigrations.at(-1)).toMatchObject({
+      id: '20260929_cleanup_instance_config_deprecated_fields',
+      version: '4.18.0',
+      blockStartup: true,
+      onFailure: SystemMigrationFailurePolicyEnum.stop,
+      progressSteps: [{ key: 'cleanup' }, { key: 'validation' }]
     });
     expect(() => validateSystemMigrationRegistry(systemMigrations)).not.toThrow();
   });

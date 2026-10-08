@@ -1,3 +1,4 @@
+import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Flex, HStack, Input, Switch, Textarea } from '@chakra-ui/react';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
@@ -77,7 +78,7 @@ const TemplateConfigModal = ({
   onSuccess: () => void;
 }) => {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t } = useClientTranslation('admin');
   const { isPc } = useSystem();
   const [isDragging, setIsDragging] = useState(false);
   const [workflowStr, setWorkflowStr] = useState('');
@@ -137,7 +138,7 @@ const TemplateConfigModal = ({
       reader.onload = (e) => {
         if (!file.name.endsWith('.json')) {
           toast({
-            title: '请选择 JSON 文件',
+            title: t('admin:select_json_file'),
             status: 'error'
           });
           return;
@@ -181,13 +182,13 @@ const TemplateConfigModal = ({
 
   const { ConfirmModal: DeleteConfirmModal, openConfirm: openDeleteConfirm } = useConfirm({
     type: 'delete',
-    content: '确认删除该模板么？'
+    content: t('admin:confirm_delete_template')
   });
 
   const { runAsync: onDelete } = useRequest(delTemplate, {
     onSuccess() {
       toast({
-        title: '删除成功',
+        title: t('admin:deleted'),
         status: 'success'
       });
       onSuccess();
@@ -198,11 +199,11 @@ const TemplateConfigModal = ({
   const { runAsync: onSubmit, loading } = useRequest(
     async (data: AppTemplateSchemaType) => {
       if (!isPluginSystemTemplate && !workflowStr) {
-        return Promise.reject('请先上传配置文件');
+        return Promise.reject(t('admin:please_upload_the_configuration_file_first'));
       }
 
       if (!data.type) {
-        return Promise.reject('未识别到应用类型');
+        return Promise.reject(t('admin:app_type_not_recognized'));
       }
 
       let workflow = data.workflow;
@@ -210,7 +211,7 @@ const TemplateConfigModal = ({
         try {
           workflow = JSON.parse(workflowStr);
         } catch {
-          return Promise.reject('配置文件 JSON 格式错误');
+          return Promise.reject(t('admin:invalid_configuration_file_json'));
         }
       }
 
@@ -282,7 +283,7 @@ const TemplateConfigModal = ({
     <MyModal
       isOpen
       isCentered
-      title="模板配置"
+      title={t('admin:template_config')}
       maxW={isPluginSystemTemplate ? ['90vw', '520px'] : ['90vw', '900px']}
       w={'100%'}
       position={'relative'}
@@ -299,17 +300,17 @@ const TemplateConfigModal = ({
                 })();
               }}
             >
-              删除
+              {t('admin:delete')}
             </Button>
           ) : (
             <Box />
           )}
           <Flex>
             <Button onClick={onClose} variant={'whiteBase'} mr={3}>
-              取消
+              {t('admin:cancel')}
             </Button>
             <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
-              确认
+              {t('admin:confirm')}
             </Button>
           </Flex>
         </>
@@ -320,7 +321,7 @@ const TemplateConfigModal = ({
           {isPluginSystemTemplate ? (
             <Box>
               <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'}>
-                模板信息
+                {t('admin:template_info')}
               </Box>
               <Box mt={2} p={3} border={'1px solid'} borderColor={'myGray.200'} borderRadius={'md'}>
                 <Flex alignItems={'center'}>
@@ -345,7 +346,7 @@ const TemplateConfigModal = ({
                         color={'myGray.600'}
                         fontSize={'xs'}
                       >
-                        系统
+                        {t('admin:system')}
                       </Box>
                     </Flex>
                     <Box color={'myGray.500'} fontSize={'xs'} mt={1} noOfLines={2}>
@@ -380,7 +381,7 @@ const TemplateConfigModal = ({
           ) : (
             <Box>
               <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'}>
-                取个名字
+                {t('admin:enter_a_name')}
               </Box>
               <Flex mt={2} alignItems={'center'}>
                 <MyTooltip label={'点击上传头像'}>
@@ -417,7 +418,7 @@ const TemplateConfigModal = ({
                   flex={1}
                   ml={3}
                   autoFocus
-                  placeholder="请输入模板名称"
+                  placeholder={t('admin:enter_the_template_name')}
                   {...register('name', {
                     required: '应用名不能为空'
                   })}
@@ -427,17 +428,17 @@ const TemplateConfigModal = ({
           )}
           <Box>
             <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-              展示卡片
+              {t('admin:display_card')}
             </Box>
             <LeftRadio
               list={[
                 {
-                  title: '精选应用',
+                  title: t('admin:featured_apps'),
                   value: true,
                   children: <Box as="img" src="/imgs/app/templatePromoted.svg" w="100%" />
                 },
                 {
-                  title: '普通应用',
+                  title: t('admin:simple_app'),
                   value: false,
                   children: <Box as="img" src="/imgs/app/templatePreview.svg" w="100%" />
                 }
@@ -451,7 +452,7 @@ const TemplateConfigModal = ({
           {isPromoted ? (
             <Box>
               <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-                推荐语
+                {t('admin:recommendation_copy')}
               </Box>
               <Input
                 value={recommendText || ''}
@@ -463,7 +464,7 @@ const TemplateConfigModal = ({
           ) : isPluginSystemTemplate ? null : (
             <Box>
               <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-                简介
+                {t('admin:intro')}
               </Box>
               <Textarea
                 value={intro || ''}
@@ -476,7 +477,7 @@ const TemplateConfigModal = ({
           {!isPluginSystemTemplate && (
             <HStack>
               <Box color={'myGray.900'} flex={'0 0 140px'} fontSize={'sm'} fontWeight={'medium'}>
-                属性
+                {t('admin:attribute')}
               </Box>
               <Box flex={1}>
                 <MySelect
@@ -494,13 +495,13 @@ const TemplateConfigModal = ({
           )}
           <HStack>
             <Box color={'myGray.900'} flex={1} fontSize={'sm'} fontWeight={'medium'}>
-              是否启用
+              {t('admin:enabled')}
             </Box>
             <Switch {...register('isActive')} />
           </HStack>
           <Box>
             <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-              推荐标签
+              {t('admin:recommendation_tags')}
             </Box>
             <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
               {'拥有以下标签的用户会看到"推荐"标识'}
@@ -509,22 +510,22 @@ const TemplateConfigModal = ({
               list={userTagsList}
               value={promoteTags}
               onSelect={(val) => setValue('promoteTags', val)}
-              placeholder="选择用户标签"
+              placeholder={t('admin:select_user_tags')}
               w={'100%'}
             />
           </Box>
           <Box>
             <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} mb={2}>
-              隐藏标签
+              {t('admin:hide_tags')}
             </Box>
             <Box color={'myGray.500'} fontSize={'xs'} mb={2}>
-              拥有以下标签的用户将完全看不到此模板
+              {t('admin:users_with_the_following_tags_will_not_see_this_template_at')}
             </Box>
             <MultipleSelect
               list={userTagsList}
               value={hideTags}
               onSelect={(val) => setValue('hideTags', val)}
-              placeholder="选择用户标签"
+              placeholder={t('admin:select_user_tags')}
               w={'100%'}
             />
           </Box>
@@ -549,7 +550,7 @@ const TemplateConfigModal = ({
                   <Flex align={'center'} justify={'center'} flexDir={'column'} gap={'0.62rem'}>
                     <MyIcon name={'configmap'} w={'1.5rem'} color={'myGray.500'} />
                     <Box color={'myGray.600'} fontSize={'mini'}>
-                      文件将覆盖当前内容
+                      {t('admin:the_file_will_overwrite_the_current_content')}
                     </Box>
                   </Flex>
                 </Flex>
@@ -557,7 +558,7 @@ const TemplateConfigModal = ({
                 <Box w={'full'}>
                   <Flex justify={'space-between'} align={'center'} mb={2}>
                     <Box fontSize={'sm'} fontWeight={'500'}>
-                      配置文件
+                      {t('admin:config_file')}
                     </Box>
                     <Button onClick={onOpenSelectConfigFile} variant={'whiteBase'} p={0}>
                       <Flex
@@ -569,7 +570,7 @@ const TemplateConfigModal = ({
                         gap={1.5}
                       >
                         <MyIcon name={'file/uploadFile'} w={'1rem'} />
-                        上传文件
+                        {t('admin:upload_file')}
                       </Flex>
                     </Button>
                   </Flex>
@@ -597,7 +598,7 @@ const TemplateConfigModal = ({
             </HStack>
             <HStack>
               <Flex color={'myGray.900'} flex={1} fontSize={'sm'} fontWeight={'medium'}>
-                <Box>应用类型</Box>
+                <Box>{t('admin:app_type')}</Box>
                 <Box color={'myGray.500'}>{'(自动识别)'}</Box>
               </Flex>
               <Flex fontSize={'sm'} fontWeight={'medium'}>
@@ -607,12 +608,12 @@ const TemplateConfigModal = ({
             <Box>
               <Flex mb={'9px'} alignItems={'center'}>
                 <Box color={'myGray.900'} fontSize={'sm'} fontWeight={'medium'} flex={1}>
-                  使用说明
+                  {t('admin:documentation')}
                 </Box>
                 <FillRowTabs
                   list={[
-                    { label: '文本', value: 'markdown' },
-                    { label: '链接', value: 'link' }
+                    { label: t('admin:text_short'), value: 'markdown' },
+                    { label: t('admin:link'), value: 'link' }
                   ]}
                   value={userGuideType}
                   onChange={(e) => setValue('userGuide.type', e as 'markdown' | 'link')}
