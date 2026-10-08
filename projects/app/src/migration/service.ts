@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/migration/schema';
 import {
   ensureMigrationStates,
+  enqueueManualMigration,
   getMigrationFailedRecordCounts,
   getMigrationFailedRecords,
   getMigrationServerTime,
@@ -45,10 +46,10 @@ export const getSystemMigrationList = async (
   const migrationIds = migrations.map((migration) => migration.id);
   let states = await getMigrationStates(migrationIds);
   const existingIds = new Set(states.map((state) => state._id));
-  const missingIds = migrationIds.filter((migrationId) => !existingIds.has(migrationId));
-  if (missingIds.length > 0) {
-    // 页面可能先于某个 runner 请求列表；此处只补 pending 文档，不会触发任务执行。
-    await ensureMigrationStates(missingIds);
+  const missingMigrations = migrations.filter((migration) => !existingIds.has(migration.id));
+  if (missingMigrations.length > 0) {
+    // 页面可能先于 runner 请求列表；按注册模式原子初始化，手动任务不能短暂暴露为 pending。
+    await ensureMigrationStates(missingMigrations);
     states = await getMigrationStates(migrationIds);
   }
   const stateMap = getStateMap(states);
@@ -80,7 +81,11 @@ export const getSystemMigrationList = async (
         descriptionKey: migration.descriptionKey,
         blockStartup: migration.blockStartup,
         onFailure: migration.onFailure,
-        status: state?.status ?? SystemMigrationStatusEnum.pending,
+        status:
+          state?.status ??
+          (migration.manual
+            ? SystemMigrationStatusEnum.waiting
+            : SystemMigrationStatusEnum.pending),
         heartbeatAt: state?.heartbeatAt,
         leaseExpireAt: state?.leaseExpireAt,
         progress: getProgressList(migration, state, stageFailedRecordCounts),
@@ -160,4 +165,20 @@ export const areBlockingMigrationsComplete = async (
   return blockingIds.every(
     (migrationId) => stateMap.get(migrationId)?.status === SystemMigrationStatusEnum.succeeded
   );
+};
+
+/** 管理员确认环境已满足迁移前提后，将等待中的手动任务交给 runner；请求内不执行脚本。 */
+export const startManualSystemMigration = async (
+  migrationId: string,
+  migrations: readonly SystemMigration[] = systemMigrations
+): Promise<void> => {
+  const migration = migrations.find((item) => item.id === migrationId);
+  if (!migration) throw new UserError('System migration not found');
+  if (!migration.manual || migration.blockStartup) {
+    throw new UserError('Only a manual non-blocking system migration can be started');
+  }
+  await ensureMigrationStates([migration]);
+  if (!(await enqueueManualMigration(migrationId))) {
+    throw new UserError('Only a waiting system migration can be started');
+  }
 };

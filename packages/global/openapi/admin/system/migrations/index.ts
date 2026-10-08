@@ -3,6 +3,7 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   GetSystemMigrationFailedRecordsQuerySchema,
   RetrySystemMigrationBodySchema,
+  StartSystemMigrationBodySchema,
   SystemMigrationFailedRecordsResponseSchema,
   SystemMigrationListResponseSchema
 } from '../../../../migration/schema';
@@ -61,6 +62,26 @@ export const AdminSystemMigrationsPath: OpenAPIPath = {
       responses: {
         200: {
           description: '升级脚本已重新加入执行队列'
+        }
+      }
+    }
+  },
+  '/admin/migrations/start': {
+    post: {
+      summary: '手动执行升级脚本',
+      description: '将等待管理员确认的手动脚本加入队列，由 Runner 获取 lease 执行',
+      tags: [DevApiTagsMap.adminSystemMigration],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: StartSystemMigrationBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '升级脚本已加入执行队列'
         }
       }
     }

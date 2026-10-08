@@ -8,7 +8,8 @@ import {
   areBlockingMigrationsComplete,
   getSystemMigrationFailedRecords,
   getSystemMigrationList,
-  retryNonBlockingSystemMigration
+  retryNonBlockingSystemMigration,
+  startManualSystemMigration
 } from '@/migration/service';
 import {
   MongoSystemMigrationFailedRecord,
@@ -193,5 +194,43 @@ describe('system migration service', () => {
     await expect(retryNonBlockingSystemMigration(migrations[1].id, migrations)).rejects.toThrow(
       'Blocking system migration must be recovered by restarting the App node'
     );
+  });
+});
+
+describe('startManualSystemMigration', () => {
+  const manual = { ...migrations[0], id: '20261008_service_manual', manual: true };
+  it('lists a waiting task without blocking readiness, then accepts exactly one concurrent start', async () => {
+    const list = await getSystemMigrationList([manual]);
+    expect(list.businessReady).toBe(true);
+    expect(list.migrations[0].status).toBe(SystemMigrationStatusEnum.waiting);
+    const outcomes = await Promise.allSettled([
+      startManualSystemMigration(manual.id, [manual]),
+      startManualSystemMigration(manual.id, [manual])
+    ]);
+    expect(outcomes.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect((await getSystemMigrationList([manual])).migrations[0].status).toBe(
+      SystemMigrationStatusEnum.pending
+    );
+  });
+
+  it('can initialize without a list request and rejects automatic or unknown tasks', async () => {
+    await expect(startManualSystemMigration('missing', [manual])).rejects.toThrow('not found');
+    await expect(startManualSystemMigration(migrations[0].id, migrations)).rejects.toThrow(
+      'Only a manual'
+    );
+    await expect(
+      startManualSystemMigration(manual.id, [{ ...manual, blockStartup: true }])
+    ).rejects.toThrow('Only a manual');
+    await startManualSystemMigration(manual.id, [manual]);
+    await MongoSystemMigrationState.updateOne(
+      { _id: manual.id },
+      { $set: { status: SystemMigrationStatusEnum.failed, checkpoint: { cursor: 12 } } }
+    );
+    await expect(startManualSystemMigration(manual.id, [manual])).rejects.toThrow('Only a waiting');
+    await retryNonBlockingSystemMigration(manual.id, [manual]);
+    expect(await MongoSystemMigrationState.findById(manual.id).lean()).toMatchObject({
+      status: 'pending',
+      checkpoint: { cursor: 12 }
+    });
   });
 });

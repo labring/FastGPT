@@ -1,5 +1,6 @@
 /** 系统升级脚本的持久化状态，也是管理端展示与 API 传输使用的公共枚举。 */
 export enum SystemMigrationStatusEnum {
+  waiting = 'waiting',
   pending = 'pending',
   running = 'running',
   failed = 'failed',

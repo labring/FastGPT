@@ -103,5 +103,13 @@
   "migrations.20260928_backfill_member_name_set.description": "Backfills the isSetMemberName flag for legacy team members; owners are always marked as set, while non-owner names matching the login username are marked as requiring a name.",
   "migrations.20260928_backfill_member_name_set.members": "Backfill member name flags",
   "migrations.20260928_backfill_member_name_set.validation": "Validate member name backfill",
-  "migrations.20260928_backfill_member_name_set.result": "Scanned {{scannedCount}} members, marked {{ownerCount}} owners, {{usernameMatchCount}} username fallback names, and {{setTrueCount}} set names."
+  "migrations.20260928_backfill_member_name_set.result": "Scanned {{scannedCount}} members, marked {{ownerCount}} owners, {{usernameMatchCount}} username fallback names, and {{setTrueCount}} set names.",
+  "status_waiting": "Awaiting manual start",
+  "start_migration": "Run migration",
+  "migration_start_requested": "Migration queued",
+  "migrations.20261008_migrate_chunk_training.name": "Migrate legacy dataset training tasks",
+  "migrations.20261008_migrate_chunk_training.description": "Run manually after all App/Pro nodes have been upgraded, old training workers have stopped, and their leases have expired. Converts legacy chunk tasks and pre-creates data for enhancement tasks while preserving index drafts and billing. Successful conversion clears old errors, resets retries, and releases the task lock.",
+  "migrations.20261008_migrate_chunk_training.result": "Legacy training tasks migrated",
+  "migrations.20261008_migrate_chunk_training.trainings": "Migrate training tasks",
+  "migrations.20261008_migrate_chunk_training.validation": "Verify no legacy tasks remain"
 }

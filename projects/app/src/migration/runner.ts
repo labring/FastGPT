@@ -42,7 +42,7 @@ type SystemMigrationTiming = {
 type SystemMigrationExecutionOutcome = 'succeeded' | 'failed' | 'interrupted';
 
 export type SystemMigrationRunnerStore = {
-  ensureStates: (migrationIds: string[]) => Promise<void>;
+  ensureStates: typeof ensureMigrationStates;
   getStates: (migrationIds: string[]) => Promise<SystemMigrationStateSchemaType[]>;
   getFailedRecords: typeof getMigrationFailedRecords;
   claimLease: typeof claimMigrationLease;
@@ -547,6 +547,9 @@ export const createSystemMigrationRunner = ({
       for (const item of migrations) {
         const state = stateMap.get(item.id);
         if (state?.status === SystemMigrationStatusEnum.succeeded) continue;
+        // waiting 只接受管理员显式入队；已触发的手动任务仍使用正常 lease 接管机制。
+        if (state?.status === SystemMigrationStatusEnum.waiting || (!state && item.manual))
+          continue;
 
         if (state?.status === SystemMigrationStatusEnum.failed) {
           logObservedFailure(item, state);
@@ -640,7 +643,7 @@ export const createSystemMigrationRunner = ({
       if (started) return;
       started = true;
       stopped = false;
-      await store.ensureStates(migrationIds);
+      await store.ensureStates(migrations);
       void wake();
     },
     /**

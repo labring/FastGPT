@@ -21,6 +21,7 @@ import { migrateDatasetTagsV2 } from './tasks/4171/20260907_migrate_dataset_tags
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
 import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_channel_reasoning_mapping';
 import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
+import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;
@@ -85,6 +86,8 @@ export type SystemMigration = {
    * 为 true 时，Runner 根据环境变量 SYSTEM_MIGRATION_DELAY_SECONDS 设定的时长延迟执行。
    */
   delay?: boolean;
+  /** 管理员确认执行条件后才入队；等待期间不阻塞启动或后续自动任务。 */
+  manual?: boolean;
   /** 正常返回可选最终结果；Runner 会在提交 succeeded 时原子持久化。 */
   run: (context: SystemMigrationContext) => Promise<SystemMigrationResultData | void>;
 };
@@ -453,6 +456,29 @@ export const systemMigrations = [
     blockStartup: false,
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     run: backfillMemberNameSet
+  },
+  {
+    id: '20261008_migrate_chunk_training',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261008_migrate_chunk_training.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.result'),
+    progressSteps: [
+      {
+        key: 'trainings',
+        labelKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.trainings')
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT('system_migration:migrations.20261008_migrate_chunk_training.validation')
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    manual: true,
+    run: migrateChunkTraining
   }
 ] as const satisfies readonly SystemMigration[];
 
@@ -480,6 +506,10 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
 
     if (migration.blockStartup && migration.delay) {
       throw new Error(`Blocking system migration ${migration.id} cannot be delayed`);
+    }
+
+    if (migration.manual && (migration.blockStartup || migration.delay)) {
+      throw new Error(`Manual system migration ${migration.id} cannot block startup or be delayed`);
     }
 
     const progressStepKeys = new Set<string>();
