@@ -40,6 +40,12 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
       status: SystemMigrationStatusEnum.succeeded,
       params: { migratedDomainCount: 0 }
     });
+    // 跳过写入时也必须把声明的 validate 阶段置为 succeeded，
+    // 否则 Runner 校验进度步骤会抛错，blockStartup 下持续阻塞节点启动。
+    await context.reportProgress({
+      key: 'validate',
+      status: SystemMigrationStatusEnum.succeeded
+    });
     return {
       migratedDomainCount: 0,
       skipped: true
