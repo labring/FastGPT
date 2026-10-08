@@ -21,7 +21,7 @@ export type NodeDimensions = {
   };
 };
 
-export type NodeSourceHandleCenter = {
+type NodeSourceHandleCenter = {
   x: number;
   y: number;
 };
@@ -53,7 +53,7 @@ export type ViewportFitOptions = {
   maxZoom?: number;
 };
 
-export type ViewportTransform = Pick<CanvasViewport, 'x' | 'y' | 'zoom'>;
+type ViewportTransform = Pick<CanvasViewport, 'x' | 'y' | 'zoom'>;
 
 export type ViewportNode = {
   id: string;
@@ -65,7 +65,7 @@ export type ViewportNode = {
   focusPinned?: boolean;
 };
 
-export type ViewportNodeClassification = {
+type ViewportNodeClassification = {
   visibleNodeIds: ReadonlySet<string>;
   overscanNodeIds: ReadonlySet<string>;
   fullNodeIds: ReadonlySet<string>;
@@ -73,18 +73,18 @@ export type ViewportNodeClassification = {
   priorities: ReadonlyMap<string, 0 | 1 | 2>;
 };
 
-export type ViewportEdge = {
+type ViewportEdge = {
   id: string;
   source: string;
   target: string;
 };
 
-export type RenderableGraphClassification = ViewportNodeClassification & {
+type RenderableGraphClassification = ViewportNodeClassification & {
   renderedNodeIds: ReadonlySet<string>;
   renderedEdgeIds: ReadonlySet<string>;
 };
 
-export const WORKFLOW_VIEWPORT_OVERSCAN = 240;
+const WORKFLOW_VIEWPORT_OVERSCAN = 240;
 export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeDimensions = {
   card: { width: 300, height: 120 },
   occupied: { width: 300, height: 120 }
@@ -93,7 +93,7 @@ export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeDimensions = {
 /**
  * 把屏幕像素 overscan 转成画布坐标范围；尺寸估算只服务裁剪，不写入 Dimension Index。
  */
-export const getViewportRange = ({
+const getViewportRange = ({
   viewport,
   overscan = WORKFLOW_VIEWPORT_OVERSCAN
 }: {
@@ -526,13 +526,13 @@ export const classifyRenderableGraph = ({
   };
 };
 
-export type MeasurementQueueEntry = {
+type MeasurementQueueEntry = {
   nodeId: string;
   generation: number;
   priority: 0 | 1 | 2;
 };
 
-export type MeasurementQueue = {
+type MeasurementQueue = {
   upsert: (entry: MeasurementQueueEntry) => void;
   take: (
     limit: number,
@@ -593,7 +593,7 @@ export type DimensionMeasurement = {
   dimension: NodeDimensions;
 };
 
-export type DimensionFrameScheduler = {
+type DimensionFrameScheduler = {
   schedule: (callback: () => void) => number;
   cancel: (handle: number) => void;
 };
@@ -642,7 +642,7 @@ export const areNodeRectsIntersecting = (left: NodeRect, right: NodeRect) =>
   left.bottom > right.top;
 
 /** 给 ReactFlow 兼容接口附上已确认的 renderer 尺寸；尺寸来源仍是 Dimension Index。 */
-export const withNodeDimension = <T extends { id: string }>(
+const withNodeDimension = <T extends { id: string }>(
   node: T,
   dimension: NodeCardDimension
 ): T & NodeCardDimension => ({

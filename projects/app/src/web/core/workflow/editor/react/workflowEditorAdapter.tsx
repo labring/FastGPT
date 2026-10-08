@@ -135,28 +135,6 @@ const freezeStructure = (workflow: WorkflowSnapshot): WorkflowStructureSnapshot 
     edges: workflow.edges
   }) as WorkflowStructureSnapshot;
 
-const structureEqual = (previous: WorkflowStructureSnapshot, next: WorkflowStructureSnapshot) => {
-  if (previous.nodes.length !== next.nodes.length || previous.edges.length !== next.edges.length) {
-    return false;
-  }
-  return (
-    previous.nodes.every(
-      (node, index) =>
-        node.nodeId === next.nodes[index].nodeId &&
-        node.parentNodeId === next.nodes[index].parentNodeId
-    ) &&
-    previous.edges.every((edge, index) => {
-      const nextEdge = next.edges[index];
-      return (
-        edge.source === nextEdge.source &&
-        edge.sourceHandle === nextEdge.sourceHandle &&
-        edge.target === nextEdge.target &&
-        edge.targetHandle === nextEdge.targetHandle
-      );
-    })
-  );
-};
-
 const notify = (listeners: Set<Listener>) => {
   listeners.forEach((listener) => listener());
 };
@@ -189,8 +167,6 @@ export type WorkflowEditorAdapter = {
   getWorkflowActions: () => WorkflowActionsHandle;
   /** 按当前 Document 派生 placement context；模板目录、落点与连线判定共用同一份规则输入。 */
   getPlacementContext: (request: PlacementRequest) => NodeTemplateContext | null;
-  /** 文档内容版本：语义事务递增，几何提交与 issue 刷新不变。 */
-  getDocumentVersion: () => number;
   dispose: () => void;
 };
 
@@ -426,11 +402,9 @@ export const createWorkflowEditorAdapter = (
 
     const structureChanged = change.kind === 'replace' || change.affectedRecords.structure;
     if (structureChanged) {
-      const nextStructure = freezeStructure(runtime.getWorkflow());
-      if (!structureEqual(structure, nextStructure)) {
-        structure = nextStructure;
-        workflowHandle = createWorkflowHandle(structure);
-      }
+      // Runtime 的结构信号还覆盖节点类型与 outputs；即使公开快照字段不变，身份也必须刷新。
+      structure = freezeStructure(runtime.getWorkflow());
+      workflowHandle = createWorkflowHandle(structure);
     }
 
     const nodeDataIds = new Set([
@@ -534,7 +508,6 @@ export const createWorkflowEditorAdapter = (
     getGraphQueries: () => graphQueries,
     getWorkflowActions: () => actionsHandle,
     getPlacementContext: (request) => runtime.getPlacementContext(request),
-    getDocumentVersion: () => (runtime.isDisposed() ? 0 : runtime.getSavepoint().contentRevision),
     dispose: () => {
       if (disposed) return;
       disposed = true;

@@ -1,9 +1,5 @@
 import { useMemo, useSyncExternalStore } from 'react';
-import type {
-  WorkflowFieldQuery,
-  WorkflowReferenceOptionsQuery,
-  WorkflowReferenceOption
-} from '@fastgpt/global/core/workflow/editor/types';
+import type { WorkflowFieldQuery } from '@fastgpt/global/core/workflow/editor/types';
 import type { WorkflowFieldHandle } from './workflowEditorAdapter';
 import { useWorkflowEditorAdapter } from './workflowEditorProvider';
 
@@ -48,30 +44,6 @@ export function useField(
   const getSnapshot = useMemo(() => () => adapter.getFieldSnapshot(query), [adapter, query]);
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
-
-/** 订阅 Runtime 的引用候选项；嵌套结构化值与普通 input 共用 Reference module。 */
-export const useReferenceOptions = (
-  query: WorkflowReferenceOptionsQuery
-): readonly WorkflowReferenceOption[] => {
-  const adapter = useWorkflowEditorAdapter();
-  const stableQuery = useMemo(
-    () => ({
-      nodeId: query.nodeId,
-      ...(query.valueType !== undefined ? { valueType: query.valueType } : {}),
-      ...(query.includeChildren ? { includeChildren: true } : {})
-    }),
-    [query.includeChildren, query.nodeId, query.valueType]
-  );
-  const subscribe = useMemo(
-    () => (listener: Listener) => adapter.subscribeReferenceOptions(listener),
-    [adapter]
-  );
-  const getSnapshot = useMemo(
-    () => () => adapter.getReferenceOptions(stableQuery),
-    [adapter, stableQuery]
-  );
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-};
 
 /**
  * 从单字段的 scoped 快照派生一个值，只在该字段变化且派生结果变化时重渲染。

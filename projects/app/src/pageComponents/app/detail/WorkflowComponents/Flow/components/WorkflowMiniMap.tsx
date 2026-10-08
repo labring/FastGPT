@@ -204,7 +204,7 @@ const WorkflowMiniMap = React.memo(function WorkflowMiniMap({
   const pointerIdRef = useRef<number>();
   const [canvasSize, setCanvasSize] = useState(DEFAULT_SIZE);
   const nodes = useWorkflowCanvasValue((value) => value.nodes);
-  const dimensions = useWorkflowCanvasValue((value) => value.dimensionIndex);
+  const dimensions = useWorkflowCanvasValue((value) => value.nodeDimensions);
   const { setViewport } = useReactFlow();
   const viewport = useViewport();
   const flowWidth = useStore((state) => state.width);

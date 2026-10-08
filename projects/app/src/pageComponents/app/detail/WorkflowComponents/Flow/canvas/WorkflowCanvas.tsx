@@ -223,7 +223,7 @@ const NodeShell = React.memo(
   }: NodeProps<FlowNodeItemType> & { overlay?: boolean; renderHandles?: boolean }) => {
     // 按节点订阅尺寸：getter 身份稳定，单独订阅 getter 不会在测量结果更新时重渲染 shell。
     const dimensions =
-      useWorkflowCanvasValue((v) => v.dimensionIndex.get(props.id)) ??
+      useWorkflowCanvasValue((v) => v.nodeDimensions.get(props.id)) ??
       WORKFLOW_NODE_MEASUREMENT_ESTIMATE;
     const updateNodeInternals = useUpdateNodeInternals();
     const isToolNode = useIsToolNode(props.id);
@@ -303,7 +303,7 @@ const VirtualizedNode = React.memo(
     nodeComponent: CanvasNodeComponent;
   }) => {
     const mode = useWorkflowCanvasValue((v) => v.renderModes.get(props.id) ?? 'shell');
-    const dimension = useWorkflowCanvasValue((v) => v.dimensionIndex.get(props.id));
+    const dimension = useWorkflowCanvasValue((v) => v.nodeDimensions.get(props.id));
     const expectedDynamicHandleIds = useMemo(
       () => getNodeShellHandleModel(props.data).sourceHandles.map((handle) => handle.handleId),
       [props.data]
@@ -445,7 +445,7 @@ CanvasOverlays.displayName = 'CanvasOverlays';
 const WorkflowCanvas = () => {
   const nodes = useWorkflowCanvasValue((v) => v.nodes);
   const renderedNodes = useWorkflowCanvasValue((v) => v.renderedNodes);
-  const dimensionIndex = useWorkflowCanvasValue((v) => v.dimensionIndex);
+  const nodeDimensions = useWorkflowCanvasValue((v) => v.nodeDimensions);
   const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
   const renderedEdges = useWorkflowCanvasValue((v) => v.renderedEdges);
   const runtime = useWorkflowRuntime();
@@ -495,7 +495,7 @@ const WorkflowCanvas = () => {
     if (fittedStartRuntimeRef.current === runtime) return;
     if (!fitNodes([startNodeId], { padding: 0.3 })) return;
     fittedStartRuntimeRef.current = runtime;
-  }, [canvasHeight, canvasWidth, dimensionIndex, fitNodes, nodes, runtime, startNodeId]);
+  }, [canvasHeight, canvasWidth, nodeDimensions, fitNodes, nodes, runtime, startNodeId]);
 
   useEffect(() => {
     const focusedNodeId = issueFocusRef.current;
@@ -509,7 +509,7 @@ const WorkflowCanvas = () => {
     if (!focusedNode) return;
     if (!fitNodes([focusedNode.id], { padding: 0.3, minZoom: 0.6 })) return;
     fittedIssueNodeRef.current = focusedNodeId;
-  }, [canvasHeight, canvasWidth, dimensionIndex, fitNodes, issueFocusTick, issueFocusRef, nodes]);
+  }, [canvasHeight, canvasWidth, nodeDimensions, fitNodes, issueFocusTick, issueFocusRef, nodes]);
 
   return (
     <>

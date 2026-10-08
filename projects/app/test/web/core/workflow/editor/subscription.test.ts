@@ -4,14 +4,21 @@ import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import { WorkflowEditorProvider } from '@/web/core/workflow/editor/react/workflowEditorProvider';
 import { useFieldValue } from '@/web/core/workflow/editor/react/useField';
 import { useNodeValue } from '@/web/core/workflow/editor/react/useNode';
-import { useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import {
+  useWorkflow,
+  useWorkflowActions,
+  useWorkflowValue
+} from '@/web/core/workflow/editor/react/useWorkflow';
 import type { WorkflowActionsHandle } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
 
 const t = ((key: string) => key) as never;
@@ -167,6 +174,33 @@ describe('workflow editor subscription API', () => {
     });
     expect(renders).toBe(2);
     expect(counts.at(-1)).toBe(1);
+  });
+
+  it('refreshes the workflow snapshot for node output structure changes', async () => {
+    const snapshots: ReturnType<typeof useWorkflow>[] = [];
+    let renders = 0;
+    const Leaf = () => {
+      renders += 1;
+      snapshots.push(useWorkflow());
+      return null;
+    };
+    await mount(Leaf);
+    const initialSnapshot = snapshots[0];
+
+    act(() => {
+      expect(
+        runtime.dispatch({
+          type: 'updateNode',
+          nodeId: 'answer',
+          patch: {
+            outputs: [{ id: 'result', key: 'result', type: FlowNodeOutputTypeEnum.static }]
+          }
+        }).ok
+      ).toBe(true);
+    });
+
+    expect(renders).toBe(2);
+    expect(snapshots.at(-1)).not.toBe(initialSnapshot);
   });
 
   it('re-renders when the selector builds a new object, the documented misuse', async () => {

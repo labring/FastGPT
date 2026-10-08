@@ -59,7 +59,7 @@ type PendingFitRequest = {
   options?: ViewportFitOptions;
 };
 
-export type WorkflowRenderMode = 'full' | 'shell' | 'measurement';
+type WorkflowRenderMode = 'full' | 'shell' | 'measurement';
 
 const defaultViewport: CanvasViewport = {
   x: 0,
@@ -101,7 +101,7 @@ type WorkflowCanvasContextType = {
   applyNodeChanges: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
   fitNodes: (nodeIds?: readonly string[], options?: ViewportFitOptions) => boolean;
-  dimensionIndex: ReadonlyMap<string, NodeDimensions>;
+  nodeDimensions: ReadonlyMap<string, NodeDimensions>;
   containerLayouts: ReadonlyMap<string, ParentNodeLayout>;
   getNodeDimension: (nodeId: string) => NodeCardDimension | undefined;
   getNodeDimensions: (nodeId: string) => NodeDimensions | undefined;
@@ -131,7 +131,7 @@ const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
   fitNodes: function () {
     throw new Error('Function not implemented.');
   },
-  dimensionIndex: new Map(),
+  nodeDimensions: new Map(),
   containerLayouts: new Map(),
   getNodeDimension: function () {
     throw new Error('Function not implemented.');
@@ -187,10 +187,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const renderedNodesRef = useRef<CanvasNode[]>([]);
   const renderedEdgesRef = useRef<Edge<any>[]>([]);
   const projectionCache = useRef(createProjectionCache());
-  const [dimensionIndex, setDimensionIndex] = useState<ReadonlyMap<string, NodeDimensions>>(
+  const [nodeDimensions, setNodeDimensions] = useState<ReadonlyMap<string, NodeDimensions>>(
     () => new Map()
   );
-  const dimensionIndexRef = useRef(new Map<string, NodeDimensions>());
+  const nodeDimensionsRef = useRef(new Map<string, NodeDimensions>());
   const [containerLayouts, setContainerLayouts] = useState<ReadonlyMap<string, ParentNodeLayout>>(
     () => new Map()
   );
@@ -416,7 +416,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const flushDimensionMeasurements = useMemoizedFn((updates: DimensionMeasurement[]) => {
-    const next = new Map(dimensionIndexRef.current);
+    const next = new Map(nodeDimensionsRef.current);
     const completed = new Set<string>();
     let changed = false;
 
@@ -452,8 +452,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (changed) {
-      dimensionIndexRef.current = next;
-      setDimensionIndex(next);
+      nodeDimensionsRef.current = next;
+      setNodeDimensions(next);
     }
 
     if (completed.size > 0) {
@@ -502,7 +502,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   /** 根据当前 viewport 重算 full/shell；离屏节点保留估算 shell，进入视口后再测量。 */
   function reconcileRenderState(nextNodes: CanvasNode[]) {
     const renderDimensions = new Map(
-      [...dimensionIndexRef.current].filter(
+      [...nodeDimensionsRef.current].filter(
         ([nodeId]) => !staleDimensionNodeIdsRef.current.has(nodeId)
       )
     );
@@ -513,7 +513,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
         expectedHandleIds: getNodeShellHandleModel(node.data).sourceHandles.map(
           (handle) => handle.handleId
         ),
-        dimension: dimensionIndexRef.current.get(node.id)
+        dimension: nodeDimensionsRef.current.get(node.id)
       });
     const viewportNodes = nextNodes.map((node) => ({
       id: node.id,
@@ -657,7 +657,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       new Set([...measurementNodeIdsRef.current].filter((nodeId) => activeNodeIds.has(nodeId)))
     );
 
-    const next = new Map(dimensionIndexRef.current);
+    const next = new Map(nodeDimensionsRef.current);
     let changed = false;
     next.forEach((_dimension, nodeId) => {
       if (!activeNodeIds.has(nodeId)) {
@@ -667,8 +667,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (changed) {
-      dimensionIndexRef.current = next;
-      setDimensionIndex(next);
+      nodeDimensionsRef.current = next;
+      setNodeDimensions(next);
     }
   };
 
@@ -729,7 +729,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     syncNodeIdentities(next);
     activeNodeIdsRef.current = activeNodeIds;
     pruneDimensions(activeNodeIds);
-    const nextNodes = updateContainerLayouts(next, dimensionIndexRef.current);
+    const nextNodes = updateContainerLayouts(next, nodeDimensionsRef.current);
     nodesRef.current = nextNodes;
     setNodesRaw(nextNodes);
     if (renderModesRef.current.size === 0) {
@@ -837,7 +837,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
   const getFitDimensions = () =>
     new Map(
-      [...dimensionIndexRef.current].filter(
+      [...nodeDimensionsRef.current].filter(
         ([nodeId]) => !staleDimensionNodeIdsRef.current.has(nodeId)
       )
     );
@@ -906,10 +906,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     }
   );
   const getNodeDimension = useMemoizedFn(
-    (nodeId: string) => dimensionIndexRef.current.get(nodeId)?.card
+    (nodeId: string) => nodeDimensionsRef.current.get(nodeId)?.card
   );
   const getNodeDimensions = useMemoizedFn((nodeId: string) =>
-    dimensionIndexRef.current.get(nodeId)
+    nodeDimensionsRef.current.get(nodeId)
   );
   const registerNodeMeasurement = useMemoizedFn((nodeId: string): DimensionRegistration => {
     const generation = ++nextMeasurementGenerationRef.current;
@@ -965,7 +965,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       applyNodeChanges,
       getNodes,
       fitNodes,
-      dimensionIndex,
+      nodeDimensions,
       containerLayouts,
       getNodeDimension,
       getNodeDimensions,
@@ -987,7 +987,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       applyNodeChanges,
       getNodes,
       fitNodes,
-      dimensionIndex,
+      nodeDimensions,
       containerLayouts,
       getNodeDimension,
       getNodeDimensions,
