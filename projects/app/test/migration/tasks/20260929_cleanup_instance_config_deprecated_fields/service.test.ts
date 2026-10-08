@@ -1,9 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import {
   deprecatedOverridePaths,
   hasDeprecatedOverrides,
-  stripDeprecatedOverrides
+  stripDeprecatedOverrides,
+  cleanupInstanceConfigDeprecatedFields,
+  verifyInstanceConfigDeprecatedFields
 } from '@/migration/tasks/20260929_cleanup_instance_config_deprecated_fields/service';
+import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+
+const logger = { info: () => {}, warn: () => {}, error: () => {} };
 
 describe('deprecatedOverridePaths', () => {
   it('covers every field removed from the instance config schemas', () => {
@@ -121,5 +126,99 @@ describe('hasDeprecatedOverrides', () => {
   it('ignores deprecated fields listed for a different domain', () => {
     // vqLevel 属于 vector，不应在 site 下被判定为残留
     expect(hasDeprecatedOverrides('site', { vqLevel: 32 })).toBe(false);
+  });
+});
+
+describe('cleanupInstanceConfigDeprecatedFields (integration)', () => {
+  // 集合 schema validator 会拒绝含废弃字段的写入，测试必须走原生驱动插入脏数据，
+  // 模拟旧版本遗留记录。
+  const seedDirtyDoc = async (doc: {
+    _id: string;
+    revision: number;
+    overrides: Record<string, unknown>;
+  }) => {
+    await MongoSystemInstanceConfig.collection.insertOne({
+      _id: doc._id,
+      schemaVersion: 1,
+      revision: doc.revision,
+      overrides: doc.overrides,
+      updatedBy: { actor: 'system' },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+  };
+
+  beforeEach(async () => {
+    await MongoSystemInstanceConfig.deleteMany({});
+  });
+
+  it('cleans deprecated fields and passes verification', async () => {
+    await seedDirtyDoc({
+      _id: 'vector',
+      revision: 1,
+      overrides: { vqLevel: 32, hnswEfSearch: 200 }
+    });
+
+    const result = await cleanupInstanceConfigDeprecatedFields({ logger });
+    expect(result.updatedDomains).toEqual(['vector']);
+    expect(result.removedFieldCount).toBe(1);
+
+    const doc = await MongoSystemInstanceConfig.findById('vector').lean();
+    expect(doc?.overrides).toEqual({ hnswEfSearch: 200 });
+
+    const verification = await verifyInstanceConfigDeprecatedFields();
+    expect(verification.remainingDocuments).toEqual([]);
+    expect(verification.invalidDomains).toEqual([]);
+  });
+
+  it('wraps schema rejection with the domain name for diagnosability', async () => {
+    // logUrl 属废弃字段会被剔除，但残留的 maxRunTimes=0 违反 positiveInteger；
+    // blockStartup 下终审错误必须能定位到具体域。
+    await seedDirtyDoc({
+      _id: 'performance',
+      revision: 1,
+      overrides: { workflow: { maxRunTimes: 0 }, chat: { logUrl: 'http://legacy' } }
+    });
+
+    await expect(cleanupInstanceConfigDeprecatedFields({ logger })).rejects.toThrow(
+      /domain "performance"/
+    );
+  });
+
+  it('retries cleanup against the latest doc after a concurrent revision bump', async () => {
+    await seedDirtyDoc({
+      _id: 'vector',
+      revision: 1,
+      overrides: { vqLevel: 32, hnswEfSearch: 200 }
+    });
+
+    // 模拟并发：首次条件更新返回 null（revision 被他人推进），重试路径应基于最新文档再次清理。
+    // 代码对 findOneAndUpdate 结果链式调用 .lean()，mock 必须返回同形状的查询对象。
+    const original = MongoSystemInstanceConfig.findOneAndUpdate.bind(MongoSystemInstanceConfig);
+    let firstCall = true;
+    const spy = vi.spyOn(MongoSystemInstanceConfig, 'findOneAndUpdate').mockImplementation(((
+      filter: any,
+      update: any,
+      options: any
+    ) => {
+      if (firstCall) {
+        firstCall = false;
+        return { lean: () => Promise.resolve(null) } as any;
+      }
+      return original(filter, update, options);
+    }) as any);
+
+    const result = await cleanupInstanceConfigDeprecatedFields({ logger });
+    spy.mockRestore();
+
+    // 重试分支成功补齐清理，域仍计入 updatedDomains
+    expect(result.updatedDomains).toEqual(['vector']);
+    expect(result.removedFieldCount).toBe(1);
+
+    const doc = await MongoSystemInstanceConfig.findById('vector').lean();
+    expect(doc?.overrides).toEqual({ hnswEfSearch: 200 });
+
+    const verification = await verifyInstanceConfigDeprecatedFields();
+    expect(verification.remainingDocuments).toEqual([]);
   });
 });

@@ -139,7 +139,16 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
     if (removed === 0) continue;
 
     // 写回前先按新 Schema 终审，确保清理结果可被运行时解析。
-    resolveDomainEffectiveConfig(domain, overrides);
+    // 失败时补充 domain 上下文：blockStartup 下该错误会直接阻塞启动，需能定位到具体域。
+    try {
+      resolveDomainEffectiveConfig(domain, overrides);
+    } catch (error) {
+      throw new Error(
+        `Instance config cleanup rejected by schema for domain "${domain}": ${
+          (error as Error)?.message ?? error
+        }`
+      );
+    }
 
     const updated = await MongoSystemInstanceConfig.findOneAndUpdate(
       { _id: domain, revision: doc.revision },
@@ -147,12 +156,42 @@ export const cleanupInstanceConfigDeprecatedFields = async ({
       { new: true, runValidators: true }
     ).lean();
 
-    // revision 被并发修改时跳过本轮；下次重跑会再次扫描到该文档。
+    // revision 被并发修改：基于最新文档重试一次清理，而不是跳过写回。
+    // 跳过会让 verify 判定残留并抛错，blockStartup + 失败持锁会持续阻塞启动。
     if (!updated) {
-      logger.warn('Instance config cleanup skipped due to concurrent revision change', {
+      logger.warn('Instance config cleanup hit concurrent revision, retrying with latest doc', {
         domain,
         revision: doc.revision
       });
+      const latest = await MongoSystemInstanceConfig.findById(domain).lean();
+      const retry = latest
+        ? stripDeprecatedOverrides(domain, latest.overrides)
+        : { overrides: undefined, removedFieldCount: 0 };
+      if (retry.removedFieldCount > 0 && retry.overrides) {
+        // 与首次路径一致：写回前按新 Schema 终审，避免清理结果运行时不可解析
+        try {
+          resolveDomainEffectiveConfig(domain, retry.overrides);
+        } catch (error) {
+          throw new Error(
+            `Instance config cleanup rejected by schema for domain "${domain}": ${
+              (error as Error)?.message ?? error
+            }`
+          );
+        }
+        const retried = await MongoSystemInstanceConfig.findOneAndUpdate(
+          { _id: domain, revision: latest!.revision },
+          { $set: { overrides: retry.overrides, updatedAt: new Date() }, $inc: { revision: 1 } },
+          { new: true, runValidators: true }
+        ).lean();
+        if (!retried) {
+          // 二次冲突说明存在持续并发写入，抛错上报异常而不是静默留下残留
+          throw new Error(
+            `Instance config cleanup for domain "${domain}" keeps conflicting with concurrent writes`
+          );
+        }
+        updatedDomains.push(domain);
+        removedFieldCount += retry.removedFieldCount;
+      }
       continue;
     }
 
