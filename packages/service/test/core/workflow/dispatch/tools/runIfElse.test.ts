@@ -28,18 +28,20 @@ const edge = (sourceHandle: string) =>
 const buildProps = ({
   ifElseList,
   value,
-  sourceHandles
+  sourceHandles,
+  variables = {}
 }: {
   ifElseList: IfElseListItemType[];
   value: unknown;
   sourceHandles: string[];
+  variables?: Record<string, unknown>;
 }) =>
   ({
     params: { ifElseList },
     node: { nodeId: 'ifElse' },
     runtimeEdges: sourceHandles.map(edge),
     runtimeNodesMap: new Map(),
-    variableState: variableState({ input: value })
+    variableState: variableState({ ...variables, input: value })
   }) as unknown as DispatchProps;
 
 describe('dispatchIfElse branch handles', () => {
@@ -136,6 +138,93 @@ describe('dispatchIfElse startWith / endWith', () => {
 
   it('should not match a missing value', async () => {
     const result = await run(undefined, VariableConditionEnum.startWith, 'a');
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+});
+
+describe('dispatchIfElse regex', () => {
+  const run = (value: unknown, pattern: unknown) =>
+    dispatchIfElse(
+      buildProps({
+        value,
+        ifElseList: [
+          {
+            condition: 'AND',
+            list: [
+              {
+                variable: ref('input'),
+                condition: VariableConditionEnum.reg,
+                // 引用变量时，右侧的值可能不是字符串
+                value: pattern as string
+              }
+            ]
+          }
+        ],
+        sourceHandles: [
+          getHandleId('ifElse', 'source', IfElseResultEnum.IF),
+          getHandleId('ifElse', 'source', IfElseResultEnum.ELSE)
+        ]
+      })
+    );
+  const runReferencePattern = (value: unknown, pattern: unknown) =>
+    dispatchIfElse(
+      buildProps({
+        value,
+        variables: { pattern },
+        ifElseList: [
+          {
+            condition: 'AND',
+            list: [
+              {
+                variable: ref('input'),
+                condition: VariableConditionEnum.reg,
+                value: ref('pattern'),
+                valueType: 'reference'
+              }
+            ]
+          }
+        ],
+        sourceHandles: [
+          getHandleId('ifElse', 'source', IfElseResultEnum.IF),
+          getHandleId('ifElse', 'source', IfElseResultEnum.ELSE)
+        ]
+      })
+    );
+
+  it('should match a non-string value of an any-typed variable as text', async () => {
+    const digits = await run(200, '/^\\d+$/');
+    expect(digits.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const flag = await run(true, '^true$');
+    expect(flag.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  });
+
+  it('should accept a non-string pattern from a reference variable', async () => {
+    const result = await runReferencePattern('order 200 ok', 200);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  });
+
+  it('should not match an empty array pattern from a reference variable', async () => {
+    const result = await runReferencePattern('anything', []);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should not match when the reference pattern is missing', async () => {
+    const result = await runReferencePattern('anything', undefined);
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should match the phone number example shown in the editor', async () => {
+    const pattern = '/^((\\+|00)86)?1[3-9]\\d{9}$/';
+    const phone = await run('+8613812345678', pattern);
+    expect(phone.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const notPhone = await run('12345', pattern);
+    expect(notPhone.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should not match a missing value', async () => {
+    const result = await run(undefined, '.*');
     expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
   });
 });
