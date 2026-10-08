@@ -56,15 +56,17 @@ export const concatWeightedRecallLists = (
 };
 
 /**
- * 按 q+a 内容去重。召回链路里同一文本块可能同时被文本、图片描述、图片向量命中，
- * 这里用归一化后的内容 hash 保留最前面的排序结果。
+ * 按归一化文本和原始图片身份去重，保留最前面的排序结果。
+ * 同一块的多路命中仍合并；不同图片即使描述相同或为空，也不能互相覆盖。
+ * 图片 key/URL 必须完整比较，且此时尚未签发预览链接，避免临时 URL 干扰去重。
  */
 export const removeDuplicateSearchResults = (data: SearchDataResponseItemType[]) => {
   const set = new Set<string>();
 
   return data.filter((item) => {
-    // 删除所有的标点符号与空格等，只对文本进行比较
-    const str = hashStr(`${item.q}${item.a}`.replace(/[^\p{L}\p{N}]/gu, ''));
+    // 文本保留原有标点/空白归一化规则；可选回答为空时不拼入字面量 undefined。
+    const text = `${item.q}${item.a ?? ''}`.replace(/[^\p{L}\p{N}]/gu, '');
+    const str = hashStr(JSON.stringify([text, item.imageId ?? '']));
     if (set.has(str)) return false;
     set.add(str);
     return true;
