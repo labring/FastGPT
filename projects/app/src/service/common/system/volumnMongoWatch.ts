@@ -57,11 +57,22 @@ const reloadConfigWatch = () =>
     onResume: refreshSystemConfig
   });
 
+/**
+ * 实例配置变更刷新：debounce 立即返回 undefined，watch.ts 外层的
+ * Promise.resolve(onChange()).catch() 捕获不到延迟执行的异步异常，
+ * 因此在防抖回调内部显式捕获并记录，避免配置变更静默失效。
+ */
+const debouncedRefreshSystemConfig = debounce(() => {
+  void Promise.resolve(refreshSystemConfig()).catch((error) =>
+    logger.error('System instance config refresh failed', { error })
+  );
+}, 300);
+
 const reloadInstanceConfigWatch = () =>
   createResilientChangeStream<ChangeStreamEvent>({
     name: 'app-system-instance-configs',
     createStream: () => MongoSystemInstanceConfig.watch([], { fullDocument: 'updateLookup' }),
-    onChange: debounce(refreshSystemConfig, 300),
+    onChange: debouncedRefreshSystemConfig,
     onResume: refreshSystemConfig
   });
 
