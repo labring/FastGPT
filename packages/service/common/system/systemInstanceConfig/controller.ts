@@ -22,6 +22,9 @@ import type {
 } from '@fastgpt/global/common/system/config/type';
 import { MongoSystemInstanceConfig } from './schema';
 import { serviceEnv } from '../../../env';
+import { getLogger, LogCategories } from '../../logger';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 export type GetDomainConfigResult<T extends SystemInstanceConfigDomainKey> = {
   domain: T;
@@ -329,6 +332,11 @@ export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceC
     }
     return snapshot;
   } catch (error) {
+    // DB 读取失败时降级为全默认配置：必须记录，否则运行策略（如 downloadMode）
+    // 会被无声重置且无任何可观测信号。这里不向上抛出，避免启动期瞬时抖动导致服务崩溃。
+    logger.error('Failed to load system instance config snapshot, fallback to defaults', {
+      error
+    });
     return resolveSystemInstanceConfig({});
   }
 };
