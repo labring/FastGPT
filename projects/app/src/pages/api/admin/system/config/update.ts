@@ -10,9 +10,11 @@ import {
 } from '@fastgpt/global/openapi/admin/system/instanceConfig';
 import {
   updateDomainConfig,
-  getDomainConfig
+  getDomainConfig,
+  getDomainConfigForAdmin,
+  findOverridesNotAllowedByEdition,
+  getServiceEdition
 } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
-import { getDomainSecretKeys } from '@fastgpt/global/common/system/config';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { initSystemConfig } from '@/service/common/system';
 import { assertStorageDownloadConfig } from '@/service/common/system/assertStorageDownloadConfig';
@@ -55,7 +57,8 @@ const syncSiteAvatarLifecycle = async ({
 
 /**
  * Admin API - 保存并更新单个 Domain 的稀疏覆盖配置
- * 包含版本号乐观锁校验、两阶段类型校验与敏感字段防丢失恢复。
+ * 包含版本号乐观锁校验、两阶段类型校验、服务端版本边界校验与敏感字段防丢失恢复。
+ * 版本边界由后端强制：开源版通过手工请求写入商业字段时直接拒绝（设计文档 §6 规则 2）。
  */
 async function handler(
   req: ApiRequestProps<UpdateDomainConfigBody>
@@ -66,6 +69,17 @@ async function handler(
     req,
     bodySchema: UpdateDomainConfigBodySchema
   }).body;
+
+  // 服务端版本边界：当前部署版本不允许的字段直接拒绝，不做静默丢弃
+  const edition = getServiceEdition();
+  const notAllowedKeys = findOverridesNotAllowedByEdition(domain, overrides, edition);
+  if (notAllowedKeys.length > 0) {
+    throw new Error(
+      `Edition boundary violation: fields not allowed in ${edition} edition: ${notAllowedKeys.join(
+        ', '
+      )}`
+    );
+  }
 
   if (domain === 'storage') {
     assertStorageDownloadConfig(overrides as Record<string, unknown>);
@@ -88,9 +102,8 @@ async function handler(
   // 配置保存后，同步刷新全站运行时配置与前端缓存失效标志
   await initSystemConfig().catch(() => {});
 
-  // 更新完成后获取脱敏后的生效数据作为响应返回
-  const result = await getDomainConfig(domain, { maskSecrets: true });
-  const secretKeys = Array.from(getDomainSecretKeys(domain));
+  // 更新完成后获取按版本过滤、脱敏后的生效数据作为响应返回
+  const result = await getDomainConfigForAdmin(domain, edition);
 
   if (domain === 'site' && previousConfig) {
     await syncSiteAvatarLifecycle({
@@ -104,7 +117,7 @@ async function handler(
     revision: result.revision,
     effectiveConfig: result.effectiveConfig,
     overrides: result.overrides,
-    secretKeys,
+    secretKeys: result.secretKeys,
     updatedAt: result.updatedAt,
     updatedBy: result.updatedBy
   });

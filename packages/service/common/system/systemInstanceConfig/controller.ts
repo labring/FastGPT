@@ -12,6 +12,7 @@ import {
   pruneDefaultOverrides,
   getSystemEdition,
   getDomainSecretKeys,
+  getDomainAllowedKeys,
   isConfigFieldAllowed,
   filterDomainDataByEdition
 } from '@fastgpt/global/common/system/config';
@@ -50,21 +51,47 @@ export const getServiceEdition = (): SystemInstanceConfigEdition =>
   getSystemEdition(!!serviceEnv.PRO_URL);
 
 /**
- * 更新入参的服务端版本过滤：剔除部署版本不允许写入的字段。
- * 开源版通过手工请求提交商业字段时按未提交处理，保证版本边界由后端强制（设计文档 §6 规则 2）。
+ * 列出提交 payload 中不属于当前部署版本的叶子路径，用于 Admin 写入边界的显式拒绝。
+ * 开源版通过手工请求写入商业字段属于越权尝试，应报错而非静默丢弃，保证版本边界可审计
+ * （设计文档 §6 规则 2）。
  * @param edition 缺省取服务端权威部署版本（PRO_URL 判定）
  */
-export const filterSubmittedOverridesByEdition = <T extends SystemInstanceConfigDomainKey>(
-  domain: T,
-  submittedOverrides: DeepPartial<SystemInstanceConfigDomainMap[T]>,
+export const findOverridesNotAllowedByEdition = (
+  domain: SystemInstanceConfigDomainKey,
+  submittedOverrides: Record<string, unknown>,
   edition: SystemInstanceConfigEdition = getServiceEdition()
-): DeepPartial<SystemInstanceConfigDomainMap[T]> => {
+): string[] => {
   if (edition === 'pro') {
-    return submittedOverrides;
+    return [];
   }
-  return filterDomainDataByEdition(domain, submittedOverrides, edition) as DeepPartial<
-    SystemInstanceConfigDomainMap[T]
-  >;
+
+  const allowedKeys = getDomainAllowedKeys(domain, edition);
+  const offenders: string[] = [];
+
+  const walk = (obj: Record<string, unknown>, currentPath = '') => {
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === undefined) continue;
+      const path = currentPath ? `${currentPath}.${key}` : key;
+      // 与 filterDomainDataByEdition 一致：仅对普通对象下钻，数组和标量按叶子处理
+      if (
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        !(value instanceof Date) &&
+        !(value instanceof RegExp)
+      ) {
+        walk(value as Record<string, unknown>, path);
+      } else if (!allowedKeys.has(path)) {
+        offenders.push(path);
+      }
+    }
+  };
+
+  if (submittedOverrides && typeof submittedOverrides === 'object') {
+    walk(submittedOverrides);
+  }
+
+  return offenders;
 };
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   getDomainConfigForAdmin,
-  filterSubmittedOverridesByEdition,
+  findOverridesNotAllowedByEdition,
   getServiceEdition,
   updateDomainConfig
 } from '../../../../common/system/systemInstanceConfig/controller';
@@ -59,24 +59,45 @@ describe('service edition gating for Admin config APIs', () => {
     expect(pro.secretKeys).toContain('loginProviders.github.secret');
   });
 
-  it('drops pro-only keys when filtering community submissions', () => {
-    const filtered = filterSubmittedOverridesByEdition(
+  it('lists pro-only keys as offenders for community submissions', () => {
+    const offenders = findOverridesNotAllowedByEdition(
       'auth',
-      {
-        teamMode: 'multi',
-        openApiKeyMaxCount: 100
-      } as any,
+      { teamMode: 'multi', openApiKeyMaxCount: 100 },
       'community'
     );
 
-    expect(filtered).toEqual({ openApiKeyMaxCount: 100 });
+    expect(offenders).toEqual(['teamMode']);
 
-    const proFiltered = filterSubmittedOverridesByEdition(
+    const proOffenders = findOverridesNotAllowedByEdition(
       'auth',
-      { teamMode: 'multi' } as any,
+      { teamMode: 'multi', loginProviders: { github: { clientId: 'cid' } } },
       'pro'
     );
-    expect(proFiltered).toEqual({ teamMode: 'multi' });
+    expect(proOffenders).toEqual([]);
+
+    // 空提交不应产生越权字段
+    expect(findOverridesNotAllowedByEdition('auth', {}, 'community')).toEqual([]);
+  });
+
+  it('treats arrays and nested objects as leaves or paths consistently', () => {
+    // fastLogin 是 pro-only 数组字段，整体按一个越权路径上报
+    const offenders = findOverridesNotAllowedByEdition(
+      'auth',
+      { fastLogin: [{ key: 'k1', authUrl: 'https://x.example.com' }], openApiKeyMaxCount: 50 },
+      'community'
+    );
+    expect(offenders).toEqual(['fastLogin']);
+
+    // 嵌套 pro-only 对象按叶子路径上报
+    const nested = findOverridesNotAllowedByEdition(
+      'auth',
+      { loginProviders: { github: { clientId: 'cid', secret: 's' } } },
+      'community'
+    );
+    expect(nested.sort()).toEqual([
+      'loginProviders.github.clientId',
+      'loginProviders.github.secret'
+    ]);
   });
 
   it('hides pro-only commercial fields pre-seeded in DB from community reads', async () => {
