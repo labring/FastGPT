@@ -93,3 +93,12 @@ export function getS3AvatarSource() {
   global.avatarBucket = new S3AvatarSource();
   return global.avatarBucket;
 }
+
+/**
+ * 丢弃已缓存的头像 bucket 单例。
+ * S3AvatarSource 继承 S3PublicBucket，构造期冻结 external endpoint 等运行策略；
+ * 存储实例配置变更后必须与 s3BucketMap 一起重建，否则头像公开 URL 仍指向旧地址。
+ */
+export function resetS3AvatarSource() {
+  global.avatarBucket = undefined;
+}
