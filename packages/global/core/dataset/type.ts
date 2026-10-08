@@ -27,7 +27,7 @@ import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
-import { NumSchema } from '../../common/zod';
+import { BoolSchema, NumSchema } from '../../common/zod';
 import { LOGO_ICON } from '../../common/system/constants';
 
 /* ===== Tag Type ===== */
@@ -139,6 +139,14 @@ export const sangforFileParseConfigSchema = z
   })
   .meta({ description: '外部文档解析配置' });
 export type IultmzhFileParseConfigType = z.infer<typeof sangforFileParseConfigSchema>;
+
+/* ===== Inherit permission ===== */
+// 独立态创建开关（sangfor 专用，FastGPT UI 未使用），只对文件夹创建生效；dataset/collection 三处创建入参共用。
+export const InheritPermissionSchema = BoolSchema.optional().meta({
+  example: true,
+  description:
+    '是否继承父级权限（默认 true），仅对文件夹（type=folder）生效，仅供 sangfor 使用（FastGPT UI 未使用）：true = 继承父级（根 folder 继承 dataset）；false = 独立创建，仅写 owner 权限快照、不合并父级权限，父级后续权限变更也不再传播到该节点'
+});
 
 /* ===== Dataset ===== */
 export const DatasetSchema = z

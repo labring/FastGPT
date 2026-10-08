@@ -9,6 +9,7 @@ import {
   DatasetSchema,
   DatasetListItemSchema,
   sangforFileParseConfigSchema,
+  InheritPermissionSchema,
   SearchDataResponseItemSchema
 } from '../../../core/dataset/type';
 import { AppListSortEnum } from '../../../core/app/constants';
@@ -18,13 +19,6 @@ import {
   ShowUsernameQuerySchema
 } from '../../../support/permission/collaborator.schema';
 import { PaginationResponseSchema, PaginationSchema } from '../../api';
-
-// 独立态创建开关（sangfor 专用，FastGPT UI 未使用），只对文件夹创建生效。
-const InheritPermissionSchema = z.boolean().optional().meta({
-  example: true,
-  description:
-    '是否继承父级权限，默认 true。false = 独立创建：仅写 owner 权限快照、不合并父级权限，父级后续权限变更也不再传播到该节点。仅对文件夹（type=folder）生效，仅供 sangfor 使用，FastGPT UI 未使用'
-});
 
 /* ============================================================================
  * API: 创建知识库
