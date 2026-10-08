@@ -130,12 +130,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
   const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
 
-  updateTraining({
-    teamId: dataset.teamId,
-    datasetId: id,
-    shouldReset: !!agentModelData
-  });
-
   const onUpdate = async (session: ClientSession) => {
     // Website dataset update chunkSettings, need to clean up dataset
     if (
@@ -232,6 +226,14 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   await mongoSessionRun(async (session) => {
     logDatasetUpdate({ tmbId, teamId, dataset });
     return onUpdate(session);
+  });
+
+  // Release QA jobs only after the new agent model is committed: the QA worker reads the
+  // dataset's agent model when it picks a job.
+  await updateTraining({
+    teamId: dataset.teamId,
+    datasetId: id,
+    shouldReset: !!agentModelData
   });
 }
 export default NextAPI(handler);

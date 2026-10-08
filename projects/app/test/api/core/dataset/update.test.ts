@@ -10,6 +10,7 @@ import {
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   createResourceDefaultCollaborators,
@@ -19,7 +20,7 @@ import { updateResourceCollaborators } from '@fastgpt/service/support/permission
 import { enableDatasetCollectionPermissions } from '@fastgpt/service/support/permission/collection/enable';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RebuildEmbeddingBodySchema } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { getCachedModelHandle } from '@fastgpt/service/core/ai/config/handle';
@@ -212,6 +213,45 @@ describe('update dataset', () => {
       vlmModelId: 'original-id',
       vlmModel: 'original-name'
     });
+  });
+
+  it('releases QA training jobs only after the new agent model is stored', async () => {
+    const owner = (await getFakeUsers(1)).members[0];
+    const llm = getModelTestDefaults().llm!;
+    const dataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'agent-switch',
+      type: DatasetTypeEnum.dataset,
+      agentModelId: 'original-agent'
+    });
+
+    // The QA worker reads the dataset's agent model when it picks a job, so the jobs must
+    // not be unlocked while the dataset still points at the old model.
+    const agentModelAtReset: unknown[] = [];
+    const updateMany = MongoDatasetTraining.updateMany.bind(MongoDatasetTraining);
+    const spy = vi.spyOn(MongoDatasetTraining, 'updateMany').mockImplementation(((
+      ...args: Parameters<typeof updateMany>
+    ) => {
+      agentModelAtReset.push(
+        MongoDataset.findById(dataset._id)
+          .lean()
+          .then((d) => d?.agentModelId)
+      );
+      return updateMany(...args);
+    }) as typeof MongoDatasetTraining.updateMany);
+
+    try {
+      const res = await Call<UpdateDatasetBody, Record<string, never>, string>(updateHandler, {
+        auth: owner,
+        body: { id: String(dataset._id), agentModelId: llm.modelId }
+      });
+      expect(res.code).toBe(200);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(await Promise.all(agentModelAtReset)).toEqual([llm.modelId]);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it.each([null, '', '   '])('rejects clearing text and embedding models (%s)', async (modelId) => {
