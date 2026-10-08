@@ -18,6 +18,9 @@ import {
 import { initSystemConfig } from '@/service/common/system';
 import { assertStorageDownloadConfig } from '@/service/common/system/assertStorageDownloadConfig';
 import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.SYSTEM);
 
 /**
  * Admin API - 保存并更新单个 Domain 的稀疏覆盖配置
@@ -63,16 +66,28 @@ async function handler(
     }
   });
 
-  // 配置保存后，同步刷新全站运行时配置与前端缓存失效标志
-  await initSystemConfig().catch(() => {});
+  // 配置保存后，同步刷新全站运行时配置与前端缓存失效标志。
+  // 刷新失败不影响本次保存结果（DB 已落库，Mongo change stream / 重启会补偿），
+  // 但必须记录，否则运行时配置与 DB 不一致且无痕可查。
+  await initSystemConfig().catch((error) => {
+    logger.error('Failed to refresh runtime config after instance config update', {
+      domain,
+      error
+    });
+  });
 
   // 更新完成后获取按版本过滤、脱敏后的生效数据作为响应返回
   const result = await getDomainConfigForAdmin(domain, edition);
 
+  // 头像生命周期同步是保存后的清理动作：配置已落库成功，
+  // 清理失败（S3 删除/移除 TTL 抛错）不应让请求整体失败——否则客户端误判保存失败，
+  // 重试还会因 revision 冲突失败。记录错误交由 TTL 回收兜底。
   if (domain === 'site' && previousConfig) {
     await syncSiteAvatarLifecycle({
       previous: previousConfig as any,
       next: result.effectiveConfig as any
+    }).catch((error) => {
+      logger.error('Failed to sync site avatar lifecycle after config update', { error });
     });
   }
 

@@ -285,8 +285,14 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
     updatedBy: updatedDoc.updatedBy
   };
 
-  // 写入成功后即时刷新单例快照
-  await reloadSystemInstanceConfig().catch(() => {});
+  // 写入成功后即时刷新单例快照：失败说明 DB 与内存不一致，必须记录，
+  // 否则运行时会继续读取旧配置且无痕可查（接口仍返回成功，由 Mongo watch/重启兜底）。
+  await reloadSystemInstanceConfig().catch((error) => {
+    logger.error('Failed to reload system instance config snapshot after update', {
+      domain,
+      error
+    });
+  });
 
   return result;
 };
