@@ -200,17 +200,31 @@ const CoreSettingComponent = () => {
         </SimpleGrid>
 
         {showTeamMode && (
-          <AdminFormItem label={t('admin:team_mode')} tooltip={t('admin:team_mode_desc')} mb={0}>
+          <AdminFormItem
+            label={t('admin:team_mode')}
+            tooltip={t('admin:multi_multiple_teams_single_single_team_sync_account_sync_sy')}
+            mb={0}
+          >
             <Controller
               name="teamMode"
               control={control}
               render={({ field }) => (
                 <MySelect<SystemInstanceConfigDomainMap['auth']['teamMode']>
                   width={'400px'}
-                  list={[
-                    { label: t('admin:single_single_team'), value: 'single' },
-                    { label: t('admin:multi_multiple_teams'), value: 'multi' }
-                  ]}
+                  /* sync 需配合外部用户系统（SSO 配置在 pro 侧），不提供主动切换入口；
+                     但库内已是 sync 时必须回显该选项，否则展示空白且保存会误覆盖破坏同步登录 */
+                  list={
+                    field.value === 'sync'
+                      ? [
+                          { label: t('admin:single_single_team'), value: 'single' },
+                          { label: t('admin:multi_multiple_teams'), value: 'multi' },
+                          { label: t('admin:sync_account_sync'), value: 'sync' }
+                        ]
+                      : [
+                          { label: t('admin:single_single_team'), value: 'single' },
+                          { label: t('admin:multi_multiple_teams'), value: 'multi' }
+                        ]
+                  }
                   value={field.value}
                   onChange={field.onChange}
                 />
