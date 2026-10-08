@@ -50,7 +50,9 @@ Dataset (知识库)
 ### 4. DatasetTraining (训练队列)
 - **作用**: 异步训练任务队列,负责向量化和索引生成
 - **训练模式**:
-  - `chunk`: 文本分块
+  - `index`: 为预创建数据生成索引
+  - `rebuild`: 重建已有数据的索引
+  - `chunk`: 已弃用，仅兼容历史记录；迁移至 `index`/`rebuild`，无消费者
   - `qa`: 问答对
   - `image`: 图像处理
   - `imageParse`: 图像解析

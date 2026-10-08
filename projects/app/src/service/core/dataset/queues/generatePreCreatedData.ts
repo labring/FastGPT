@@ -19,7 +19,7 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
 import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
-import { getRebuildUpdateInput } from './generateVector';
+import { getRebuildUpdateInput } from './indexInput';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);

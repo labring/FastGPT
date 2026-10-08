@@ -44,7 +44,7 @@ describe('delete training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.chunk
+      mode: TrainingModeEnum.rebuild
     });
 
     const res = await Call<
@@ -109,7 +109,7 @@ describe('delete training data test', () => {
       datasetId: foreignDataset._id,
       collectionId: foreignCollection._id,
       billId: 'test',
-      mode: TrainingModeEnum.chunk
+      mode: TrainingModeEnum.rebuild
     });
 
     const res = await Call<
@@ -163,7 +163,7 @@ describe('delete training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.rebuild,
       dataId: data._id,
       synonymVersion: 2
     });

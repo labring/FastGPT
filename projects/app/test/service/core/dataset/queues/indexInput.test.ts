@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   getRebuildBaseIndexes,
   getRebuildUpdateInput
-} from '@/service/core/dataset/queues/generateVector';
+} from '@/service/core/dataset/queues/indexInput';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type {
   EmbeddingSystemModelDataType,
@@ -24,7 +24,7 @@ let visionEmbeddingModel: EmbeddingSystemModelDataType;
 let vlmModel: LLMSystemModelDataType;
 
 beforeEach(() => {
-  serviceEnv.DATASET_SYNONYM_ENABLED = true;
+  Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
   const defaultEmbeddingModel = getModelTestDefaults().embedding;
   const defaultLLMModel = getModelTestDefaults().llm;
   visionEmbeddingModel = {
@@ -54,7 +54,7 @@ beforeEach(() => {
   });
 });
 
-describe('generateVector image embedding helpers', () => {
+describe('generateRebuildIndex image embedding helpers', () => {
   it('should drop system indexes and keep supported external image description indexes when rebuilding', async () => {
     const result = await getRebuildBaseIndexes({
       indexes: [
@@ -188,9 +188,40 @@ describe('generateVector image embedding helpers', () => {
   });
 });
 
+describe('getRebuildUpdateInput answer preservation', () => {
+  it.each([
+    { trainingAnswer: undefined, dataAnswer: 'stored answer', expected: 'stored answer' },
+    { trainingAnswer: '', dataAnswer: 'stored answer', expected: 'stored answer' },
+    { trainingAnswer: 'edited answer', dataAnswer: 'stored answer', expected: 'edited answer' },
+    { trainingAnswer: '', dataAnswer: '', expected: '' }
+  ])('preserves the answer for %j', async ({ trainingAnswer, dataAnswer, expected }) => {
+    // 使用真实 schema 默认值，复现未携带 a 的重建任务在读取后得到 a='' 的场景。
+    const task = new MongoDatasetTraining({
+      mode: TrainingModeEnum.rebuild,
+      ...(trainingAnswer !== undefined && { a: trainingAnswer })
+    });
+    const result = await getRebuildUpdateInput({
+      ...task.toObject(),
+      dataset: {
+        vectorModelId: visionEmbeddingModel.modelId,
+        vlmModelId: vlmModel.modelId
+      },
+      collection: { name: 'collection', indexPrefixTitle: false, imageIndex: false },
+      data: {
+        _id: new Types.ObjectId().toString(),
+        q: 'stored question',
+        a: dataAnswer,
+        indexes: []
+      }
+    });
+
+    expect(result).toMatchObject({ q: 'stored question', a: expected });
+  });
+});
+
 describe('dataset rebuild queue', () => {
   it('does not claim synonym rebuild data when the feature is disabled', async () => {
-    serviceEnv.DATASET_SYNONYM_ENABLED = false;
+    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
     const teamId = new Types.ObjectId();
     const tmbId = new Types.ObjectId();
     const datasetId = new Types.ObjectId();
@@ -325,7 +356,7 @@ describe('dataset rebuild queue', () => {
     expect(createdCount).toBe(1);
     const training = await MongoDatasetTraining.findOne({ dataId: validData._id }).lean();
     expect(training).toMatchObject({
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.rebuild,
       retryCount: 3
     });
     expect(training?.expireAt).toBeInstanceOf(Date);

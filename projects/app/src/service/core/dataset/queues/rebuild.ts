@@ -114,7 +114,7 @@ export const enqueueNextDatasetRebuildTask = async (
             datasetId: context.datasetId,
             collectionId: data.collectionId,
             billId: context.billId,
-            mode,
+            mode: mode === TrainingModeEnum.index ? TrainingModeEnum.rebuild : mode,
             ...(context.synonymVersion && { synonymVersion: context.synonymVersion }),
             ...(context.synonymVersion && { expireAt: null }),
             dataId: data._id,

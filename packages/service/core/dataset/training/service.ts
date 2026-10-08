@@ -247,21 +247,22 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
 
 /**
  * 增强阶段结束后选择最终写入阶段，不在训练任务上额外保存预创建标记。
- * 只有已落库且仍在 indexing 的数据进入 index；普通创建和正式数据重建继续进入 chunk。
+ * 待索引和索引失败的数据进入 index，正式数据进入 rebuild。历史无 dataId 任务须先运行迁移补齐关联。
  */
 export const getDatasetIndexTrainingMode = async (
   training: Pick<DatasetTrainingSchemaType, 'teamId' | 'datasetId' | 'collectionId' | 'dataId'>
 ) => {
-  if (!training.dataId) return TrainingModeEnum.chunk;
+  if (!training.dataId)
+    throw new Error('Training dataId is missing; migrate legacy training first');
 
   const data = await MongoDatasetData.exists({
     _id: training.dataId,
     teamId: training.teamId,
     datasetId: training.datasetId,
     collectionId: training.collectionId,
-    indexStatus: DatasetDataIndexStatusEnum.indexing
+    indexStatus: { $in: [DatasetDataIndexStatusEnum.indexing, DatasetDataIndexStatusEnum.error] }
   });
-  return data ? TrainingModeEnum.index : TrainingModeEnum.chunk;
+  return data ? TrainingModeEnum.index : TrainingModeEnum.rebuild;
 };
 
 /**

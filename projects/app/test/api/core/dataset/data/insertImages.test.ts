@@ -170,7 +170,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
     mockPreCreateDatasetDataAndPushToTrainingQueue.mockResolvedValue({ insertLen: 1 });
   });
 
-  it('should upload images with chunk mode when only native image embedding is available', async () => {
+  it('should upload images with index mode when only native image embedding is available', async () => {
     const result = await handler({} as any);
 
     expect(result).toBeUndefined();
@@ -190,7 +190,7 @@ describe('POST /api/core/dataset/data/insertImages', () => {
       agentModel: agentModelData,
       vectorModel: vectorModelData,
       vlmModel: undefined,
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.index,
       billId: 'usage-id',
       data: [{ imageId: 'dataset/team/cat.png' }],
       session: 'session'

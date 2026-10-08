@@ -68,14 +68,14 @@ describe('dataset training query helpers', () => {
       getTrainingModeRank(TrainingModeEnum.qa)
     );
     expect(
-      compareTrainingModeBySlowest(TrainingModeEnum.image, TrainingModeEnum.chunk)
+      compareTrainingModeBySlowest(TrainingModeEnum.image, TrainingModeEnum.rebuild)
     ).toBeLessThan(0);
   });
 
   it('returns running when the slowest stage still has active records', () => {
     const status = getSlowestTrainingStatus({
       [TrainingModeEnum.parse]: { activeCount: 1, finalErrorCount: 0 },
-      [TrainingModeEnum.chunk]: { activeCount: 0, finalErrorCount: 2 }
+      [TrainingModeEnum.rebuild]: { activeCount: 0, finalErrorCount: 2 }
     });
 
     expect(status).toEqual({
@@ -87,7 +87,7 @@ describe('dataset training query helpers', () => {
   it('returns error only when the slowest stage has final errors and no active records', () => {
     const status = getSlowestTrainingStatus({
       [TrainingModeEnum.image]: { activeCount: 0, finalErrorCount: 1 },
-      [TrainingModeEnum.chunk]: { activeCount: 3, finalErrorCount: 0 }
+      [TrainingModeEnum.rebuild]: { activeCount: 3, finalErrorCount: 0 }
     });
 
     expect(status).toEqual({

@@ -42,31 +42,31 @@ const createContext = async (indexStatus?: DatasetDataIndexStatusEnum) => {
 describe('getDatasetIndexTrainingMode', () => {
   it.each([
     [DatasetDataIndexStatusEnum.indexing, TrainingModeEnum.index],
-    [DatasetDataIndexStatusEnum.indexed, TrainingModeEnum.chunk],
-    [DatasetDataIndexStatusEnum.error, TrainingModeEnum.chunk],
-    [undefined, TrainingModeEnum.chunk]
+    [DatasetDataIndexStatusEnum.indexed, TrainingModeEnum.rebuild],
+    [DatasetDataIndexStatusEnum.error, TrainingModeEnum.index],
+    [undefined, TrainingModeEnum.rebuild]
   ])('routes data with status %s to %s', async (status, expected) => {
     expect(await getDatasetIndexTrainingMode(await createContext(status))).toBe(expected);
   });
 
   it('does not route missing, foreign or unassociated data to index', async () => {
     const context = await createContext(DatasetDataIndexStatusEnum.indexing);
-    expect(await getDatasetIndexTrainingMode({ ...context, dataId: undefined })).toBe(
-      TrainingModeEnum.chunk
+    await expect(getDatasetIndexTrainingMode({ ...context, dataId: undefined })).rejects.toThrow(
+      'dataId is missing'
     );
     expect(
       await getDatasetIndexTrainingMode({ ...context, dataId: new Types.ObjectId().toString() })
-    ).toBe(TrainingModeEnum.chunk);
+    ).toBe(TrainingModeEnum.rebuild);
     expect(
       await getDatasetIndexTrainingMode({ ...context, teamId: new Types.ObjectId().toString() })
-    ).toBe(TrainingModeEnum.chunk);
+    ).toBe(TrainingModeEnum.rebuild);
   });
 });
 
 describe('createTrainingTaskLease', () => {
   it.each([
     TrainingModeEnum.index,
-    TrainingModeEnum.chunk,
+    TrainingModeEnum.rebuild,
     TrainingModeEnum.image,
     TrainingModeEnum.imageParse,
     TrainingModeEnum.auto,
@@ -128,7 +128,7 @@ describe('skipDatasetTrainingEnhancement', () => {
       }
       expect(advancedFresh?.mode).toBe(TrainingModeEnum.index);
       expect(advancedFresh?.expireAt).toBeInstanceOf(Date);
-      expect(advancedRebuild?.mode).toBe(TrainingModeEnum.chunk);
+      expect(advancedRebuild?.mode).toBe(TrainingModeEnum.rebuild);
       expect(advancedRebuild?.expireAt).toBeNull();
       expect(await MongoDatasetTraining.findById(unrelated._id).lean()).toMatchObject({
         mode: TrainingModeEnum.qa,
@@ -144,7 +144,7 @@ describe('skipDatasetTrainingEnhancement', () => {
       ).toBeTruthy();
       expect(
         await findAndLockTrainingTask({
-          mode: TrainingModeEnum.chunk,
+          mode: TrainingModeEnum.rebuild,
           filter: { _id: rebuildTask._id }
         })
       ).toBeTruthy();

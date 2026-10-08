@@ -134,7 +134,7 @@ export const GetTrainingDataDetailResponseSchema = z
       description: '集合 ID'
     }),
     mode: z.enum(TrainingModeEnum).meta({
-      example: TrainingModeEnum.chunk,
+      example: TrainingModeEnum.index,
       description: '训练模式'
     }),
     q: z.string().optional().meta({

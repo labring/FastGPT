@@ -44,7 +44,7 @@ const getTrainingModeLimit = async ({
   vlmModel?: LLMSystemModelDataType;
   vlmModelConfigured: boolean;
 }): Promise<{ maxToken: number; weight: number }> => {
-  if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.index) {
+  if (mode === TrainingModeEnum.rebuild || mode === TrainingModeEnum.index) {
     return {
       maxToken: Infinity,
       weight: vectorModel.config.weight
@@ -177,7 +177,7 @@ export const pushDataListToTrainingQueue = async ({
   vlmModelConfigured = !!vlmModel,
   data,
   billId,
-  mode = TrainingModeEnum.chunk,
+  mode = TrainingModeEnum.index,
   indexSize,
   session
 }: {
@@ -346,7 +346,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
   vlmModelConfigured = !!vlmModel,
   data,
   billId,
-  mode = TrainingModeEnum.chunk,
+  mode = TrainingModeEnum.index,
   indexSize,
   session
 }: {
@@ -433,7 +433,7 @@ export const preCreateDatasetDataAndPushToTrainingQueue = async ({
     vlmModel,
     vlmModelConfigured,
     data: dataWithIds,
-    mode: mode === TrainingModeEnum.chunk ? TrainingModeEnum.index : mode,
+    mode,
     indexSize,
     billId,
     session

@@ -41,7 +41,7 @@ describe('update training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.chunk
+      mode: TrainingModeEnum.rebuild
     });
 
     const res = await Call<UpdateTrainingDataBody, EmptyQuery, UpdateTrainingDataResponse>(
@@ -91,7 +91,7 @@ describe('update training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.rebuild,
       errorMsg: 'failed',
       retryCount: 0
     });
@@ -138,7 +138,7 @@ describe('update training data test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         retryCount: 0,
         errorMsg: 'final error'
       },
@@ -148,7 +148,7 @@ describe('update training data test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         retryCount: 3,
         errorMsg: 'temporary error'
       }
@@ -222,7 +222,7 @@ describe('update training data test', () => {
           datasetId: dataset._id,
           collectionId: collection._id,
           billId: 'test',
-          mode: TrainingModeEnum.chunk,
+          mode: TrainingModeEnum.rebuild,
           retryCount: 0,
           errorMsg: 'final error'
         },
@@ -243,7 +243,7 @@ describe('update training data test', () => {
           datasetId: dataset._id,
           collectionId: collection._id,
           billId: 'test',
-          mode: TrainingModeEnum.chunk,
+          mode: TrainingModeEnum.rebuild,
           retryCount: 3,
           errorMsg: 'temporary error'
         },
@@ -253,7 +253,7 @@ describe('update training data test', () => {
           datasetId: foreignDataset._id,
           collectionId: foreignCollection._id,
           billId: 'test',
-          mode: TrainingModeEnum.chunk,
+          mode: TrainingModeEnum.rebuild,
           retryCount: 0,
           errorMsg: 'foreign final error'
         }
@@ -321,7 +321,7 @@ describe('update training data test', () => {
       datasetId: foreignDataset._id,
       collectionId: foreignCollection._id,
       billId: 'test',
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.rebuild,
       q: 'origin',
       a: 'origin'
     });

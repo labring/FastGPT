@@ -13,12 +13,14 @@ import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag';
  */
 export const getTrainingStageText = (mode?: TrainingModeEnum) => {
   const textMap = {
+    // 旧任务在迁移前仍需展示；该映射不代表存在 chunk 消费者。
+    [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing'),
     [TrainingModeEnum.parse]: i18nT('dataset:process.Parsing'),
     [TrainingModeEnum.imageParse]: i18nT('dataset:process.Parse_Image'),
     [TrainingModeEnum.qa]: i18nT('dataset:process.Get QA'),
     [TrainingModeEnum.image]: i18nT('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: i18nT('dataset:process.Auto_Index'),
-    [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing'),
+    [TrainingModeEnum.rebuild]: i18nT('dataset:process.Vectorizing'),
     [TrainingModeEnum.index]: i18nT('dataset:process.Vectorizing')
   };
 
@@ -93,6 +95,7 @@ export const getCollectionTrainingStatusColorSchema = ({
     case TrainingModeEnum.auto:
       return 'cyan';
     case TrainingModeEnum.chunk:
+    case TrainingModeEnum.rebuild:
     case TrainingModeEnum.index:
       return 'adora';
     default:

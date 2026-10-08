@@ -122,7 +122,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
         agentModel: agentModelData,
         vectorModel: vectorModelData,
         vlmModel: vlmModelData,
-        mode: supportVlm ? TrainingModeEnum.imageParse : TrainingModeEnum.chunk,
+        mode: supportVlm ? TrainingModeEnum.imageParse : TrainingModeEnum.index,
         billId: traingBillId,
         data: imageIds.map((item) => ({
           imageId: item

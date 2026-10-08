@@ -142,7 +142,7 @@ export async function generateQA(): Promise<any> {
 
           const qaArr = await formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
-          // QA 成功后才创建最终数据。数据和后续 chunk 任务在同一事务中提交，
+          // QA 成功后才创建最终数据。数据和后续 index 任务在同一事务中提交，
           // 避免 QA 处理中出现用户可见的临时数据。
           const result = await lease.complete(async (session) => {
             const result = await preCreateDatasetDataAndPushToTrainingQueue({
@@ -150,7 +150,7 @@ export async function generateQA(): Promise<any> {
               tmbId: data.tmbId,
               datasetId: data.datasetId,
               collectionId: data.collectionId,
-              mode: TrainingModeEnum.chunk,
+              mode: TrainingModeEnum.index,
               data: qaArr.map((item) => ({
                 ...item,
                 ...(data.dataMetadata && { metadata: data.dataMetadata }),

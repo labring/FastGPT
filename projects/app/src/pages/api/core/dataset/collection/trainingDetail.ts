@@ -21,9 +21,10 @@ import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils
 import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training/constant';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
+  chunk: 0, // 兼容尚未迁移的历史任务统计
   parse: 0,
   qa: 0,
-  chunk: 0,
+  rebuild: 0,
   index: 0,
   image: 0,
   auto: 0,

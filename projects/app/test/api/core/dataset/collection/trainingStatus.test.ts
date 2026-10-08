@@ -126,7 +126,7 @@ describe('collection training status api', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         retryCount: 0,
         errorMsg: 'final error'
       }
@@ -215,7 +215,7 @@ describe('collection training status api', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         retryCount: 0,
         errorMsg: 'final failed'
       }
@@ -234,7 +234,7 @@ describe('collection training status api', () => {
     expect(res.data.queuedCounts.qa).toBe(0);
     expect(res.data.trainingCounts.qa).toBe(1);
     expect(res.data.errorCounts.qa).toBe(0);
-    expect(res.data.errorCounts.chunk).toBe(1);
+    expect(res.data.errorCounts.rebuild).toBe(1);
   });
 
   it('should not include other dataset training records in collection queued counts', async () => {
@@ -279,7 +279,7 @@ describe('collection training status api', () => {
         datasetId: otherDataset._id,
         collectionId: otherCollection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         retryCount: 3,
         lockTime: new Date('2000')
       })),
@@ -304,6 +304,6 @@ describe('collection training status api', () => {
 
     expect(res.code).toBe(200);
     expect(res.data.queuedCounts.parse).toBe(1);
-    expect(res.data.queuedCounts.chunk).toBe(0);
+    expect(res.data.queuedCounts.rebuild).toBe(0);
   });
 });

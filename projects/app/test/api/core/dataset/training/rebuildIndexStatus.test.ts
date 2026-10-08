@@ -125,7 +125,7 @@ describe('rebuild paths skip pending index data', () => {
     expect(tasks.map((task) => String(task.dataId)).sort()).toEqual(
       [String(indexed._id), String(legacy._id)].sort()
     );
-    expect(tasks.every((task) => task.mode === TrainingModeEnum.chunk)).toBe(true);
+    expect(tasks.every((task) => task.mode === TrainingModeEnum.rebuild)).toBe(true);
 
     // 待索引数据不被选中，也没有重建标记残留。
     const rows = await MongoDatasetData.find({ datasetId: dataset._id }).lean();
@@ -174,7 +174,7 @@ describe('rebuild paths skip pending index data', () => {
     const tasks = await MongoDatasetTraining.find({ datasetId: dataset._id }).lean();
     expect(tasks).toHaveLength(1);
     expect(String(tasks[0].dataId)).toBe(String(indexed._id));
-    expect(tasks[0].mode).toBe(TrainingModeEnum.chunk);
+    expect(tasks[0].mode).toBe(TrainingModeEnum.rebuild);
 
     // 待索引数据保持原状，标记未被推进。
     expect(await MongoDatasetData.findById(indexingPending._id).lean()).toMatchObject({

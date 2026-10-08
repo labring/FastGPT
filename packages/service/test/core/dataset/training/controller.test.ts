@@ -68,7 +68,7 @@ describe('dataset training controller', () => {
         datasetId,
         collectionId,
         billId,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
         retryCount: 3
       },
       {
@@ -77,7 +77,7 @@ describe('dataset training controller', () => {
         datasetId,
         collectionId,
         billId,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
         retryCount: 0
       },
       {
@@ -86,7 +86,7 @@ describe('dataset training controller', () => {
         datasetId,
         collectionId,
         billId,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
         retryCount: 3
       }
     ]);
@@ -132,7 +132,7 @@ describe('dataset training controller', () => {
         datasetId,
         collectionId,
         billId,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
         retryCount: 0
       },
       {
@@ -141,7 +141,7 @@ describe('dataset training controller', () => {
         datasetId,
         collectionId,
         billId,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
         retryCount: 0
       }
     ]);
@@ -162,7 +162,7 @@ describe('dataset training controller', () => {
     TrainingModeEnum.imageParse,
     TrainingModeEnum.image,
     TrainingModeEnum.auto,
-    TrainingModeEnum.chunk
+    TrainingModeEnum.index
   ];
   it.each(lockModes.flatMap((mode) => [false, true].map((lockHeld) => ({ mode, lockHeld }))))(
     'keeps data indexing and preserves TTL when locking $mode tasks (lockHeld=$lockHeld)',

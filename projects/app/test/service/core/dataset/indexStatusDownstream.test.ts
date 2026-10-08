@@ -141,7 +141,7 @@ describe('indexStatus downstream contracts', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
-      mode: 'chunk',
+      mode: 'index',
       billId: 'bill-id',
       dataId: indexing._id,
       retryCount: 5

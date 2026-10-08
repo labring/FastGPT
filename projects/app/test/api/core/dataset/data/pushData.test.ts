@@ -82,7 +82,7 @@ describe('pushData imageId authorization', () => {
     mocks.getDatasetImageIndexCapability.mockReturnValue({
       supportImageIndex: false
     });
-    mocks.getTrainingModeByCollection.mockReturnValue('chunk');
+    mocks.getTrainingModeByCollection.mockReturnValue('index');
     mocks.createTrainingUsage.mockResolvedValue({ usageId: 'usage-1' });
     mocks.pushDataListToTrainingQueue.mockResolvedValue({
       insertLen: 1,

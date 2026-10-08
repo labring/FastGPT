@@ -155,7 +155,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     ]);
   });
 
-  it('should disable image index and enqueue chunk mode when the new embedding model has no image capability', async () => {
+  it('should disable image index and enqueue rebuild mode when the new embedding model has no image capability', async () => {
     const { root, dataset, collection } = await createDatasetContext({
       currentVectorModel: visionEmbeddingModel
     });
@@ -185,7 +185,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(updatedCollection?.imageIndex).toBe(false);
     expect(training).toEqual(
       expect.objectContaining({
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         retryCount: 3
       })
     );

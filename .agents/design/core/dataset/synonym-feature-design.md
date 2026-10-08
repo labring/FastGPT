@@ -70,7 +70,7 @@ mapping 使用 `teamId + datasetId + fileVersion` 归属配置版本，保存标
 
 `dataset_datas.synonymVersion` 记录当前派生索引使用的配置版本，`synonymRebuildingVersion` 是领取标记；`dataset_trainings.synonymVersion` 记录任务目标版本。不增加同义词专用 mode。
 
-规则变化后，种子任务和后续链式任务持续领取版本不一致且未被领取的 data。同义词任务复用模型切换的完整 rebuild，根据数据内容和模型能力进入 `imageParse`、`image`、`auto` 或 `chunk`，重新生成图片描述、自动索引和全部向量。成功写入时更新 `synonymVersion` 并释放领取标记；失败任务保留在现有 training 重试和错误处理流程中。同义词 rebuild training 不参与普通 training 的七天 TTL，避免 MongoDB 后台删除绕过应用层 claim 清理；用户手动删除任务时继续在事务中释放 claim。
+规则变化后，种子任务和后续链式任务持续领取版本不一致且未被领取的 data。同义词任务复用模型切换的完整 rebuild，根据数据内容和模型能力进入 `imageParse`、`image`、`auto` 或 `rebuild`，重新生成图片描述、自动索引和全部向量。成功写入时更新 `synonymVersion` 并释放领取标记；失败任务保留在现有 training 重试和错误处理流程中。同义词 rebuild training 不参与普通 training 的七天 TTL，避免 MongoDB 后台删除绕过应用层 claim 清理；用户手动删除任务时继续在事务中释放 claim。
 
 ## 4. 更新流程
 

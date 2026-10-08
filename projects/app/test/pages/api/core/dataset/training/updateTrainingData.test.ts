@@ -22,6 +22,10 @@ vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
   }
 }));
 
+vi.mock('@fastgpt/service/core/dataset/data/schema', () => ({
+  MongoDatasetData: { updateOne: vi.fn() }
+}));
+
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
   authDataset: vi.fn(),
   authDatasetCollection: vi.fn()
@@ -29,6 +33,7 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 
 vi.mock('@fastgpt/service/core/dataset/training/service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/training/service')>()),
+  getDatasetIndexTrainingMode: vi.fn(async () => TrainingModeEnum.index),
   retryFailedTrainingTasks: vi.fn().mockResolvedValue(undefined)
 }));
 
@@ -87,6 +92,7 @@ describe('updateTrainingData', () => {
   it('should update single training data with collection boundary', async () => {
     vi.mocked(MongoDatasetTraining.findById).mockResolvedValue({
       _id: dataId,
+      dataId,
       imageId: 'image1',
       mode: TrainingModeEnum.imageParse,
       teamId: 'team1',
@@ -122,7 +128,7 @@ describe('updateTrainingData', () => {
         $unset: { errorMsg: '' },
         $set: {
           retryCount: 3,
-          mode: TrainingModeEnum.chunk,
+          mode: TrainingModeEnum.index,
           q: 'question',
           a: 'answer',
           chunkIndex: 1,

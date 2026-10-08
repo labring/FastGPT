@@ -347,7 +347,7 @@ describe('datasetParseQueue creates index-ready data', () => {
         datasetId: String(dataset._id),
         collectionId: String(collection._id),
         vectorModel: getModelTestDefaults().embedding!,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
         billId,
         data: [
           { q: 'chunk with metadata', a: 'answer', metadata, chunkIndex: 7 },
@@ -393,7 +393,7 @@ describe('datasetParseQueue creates index-ready data', () => {
         datasetId: String(dataset._id),
         collectionId: String(collection._id),
         vectorModel: getModelTestDefaults().embedding!,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.index,
         billId: new Types.ObjectId().toString(),
         data: [{ q: '' }, { q: 'valid chunk' }],
         session

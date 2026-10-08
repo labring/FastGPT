@@ -12,12 +12,14 @@ type TrainingStatusCount = {
 export const BLOCKED_LOCK_TIME = new Date('2050-01-01');
 
 export const trainingModeRankMap: Record<TrainingModeEnum, number> = {
+  // 仅供迁移前的旧记录查询排序，不恢复 chunk 的生产或消费。
+  [TrainingModeEnum.chunk]: 5,
   [TrainingModeEnum.parse]: 0,
   [TrainingModeEnum.imageParse]: 1,
   [TrainingModeEnum.qa]: 2,
   [TrainingModeEnum.image]: 3,
   [TrainingModeEnum.auto]: 4,
-  [TrainingModeEnum.chunk]: 5,
+  [TrainingModeEnum.rebuild]: 5,
   [TrainingModeEnum.index]: 5
 };
 

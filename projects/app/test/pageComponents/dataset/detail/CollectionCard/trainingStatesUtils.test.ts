@@ -17,6 +17,7 @@ const createTrainingDetail = (
     parse: 0,
     qa: 0,
     chunk: 0,
+    rebuild: 0,
     index: 0,
     image: 0,
     auto: 0,
@@ -45,12 +46,14 @@ describe('trainingStatesUtils', () => {
         parse: 1,
         qa: 0,
         chunk: 0,
+        index: 0,
+        rebuild: 0,
         image: 0,
         auto: 0,
         imageParse: 0
       }
     });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.chunk];
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuild];
 
     expect(
       getTrainingStepStatus({
@@ -62,7 +65,7 @@ describe('trainingStatesUtils', () => {
     expect(
       getTrainingStepStatus({
         trainingDetail,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         modeOrder
       })
     ).toBe(TrainingStatus.NotStart);
@@ -74,12 +77,14 @@ describe('trainingStatesUtils', () => {
         parse: 1,
         qa: 0,
         chunk: 0,
+        index: 0,
+        rebuild: 0,
         image: 0,
         auto: 0,
         imageParse: 0
       }
     });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.chunk];
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuild];
 
     expect(
       getTrainingStepStatus({
@@ -91,7 +96,7 @@ describe('trainingStatesUtils', () => {
     expect(
       getTrainingStepStatus({
         trainingDetail,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         modeOrder
       })
     ).toBe(TrainingStatus.NotStart);
@@ -102,14 +107,16 @@ describe('trainingStatesUtils', () => {
       trainingCounts: {
         parse: 0,
         qa: 0,
-        chunk: 1,
+        chunk: 0,
+        index: 0,
+        rebuild: 1,
         image: 0,
         auto: 0,
         imageParse: 0
       },
       trainedCount: 1
     });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.chunk];
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuild];
 
     expect(
       getTrainingStepStatus({
@@ -121,7 +128,7 @@ describe('trainingStatesUtils', () => {
     expect(
       getTrainingStepStatus({
         trainingDetail,
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuild,
         modeOrder
       })
     ).toBe(TrainingStatus.Running);
@@ -132,29 +139,31 @@ describe('trainingStatesUtils', () => {
       trainingCounts: {
         parse: 1,
         qa: 0,
-        chunk: 2,
+        chunk: 0,
+        index: 0,
+        rebuild: 2,
         image: 0,
         auto: 0,
         imageParse: 0
       }
     });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.chunk];
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuild];
 
     const parseStatus = getTrainingStepStatus({
       trainingDetail,
       mode: TrainingModeEnum.parse,
       modeOrder
     });
-    const chunkStatus = getTrainingStepStatus({
+    const rebuildStatus = getTrainingStepStatus({
       trainingDetail,
-      mode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.rebuild,
       modeOrder
     });
 
     expect(parseStatus).toBe(TrainingStatus.Running);
-    expect(chunkStatus).toBe(TrainingStatus.Running);
+    expect(rebuildStatus).toBe(TrainingStatus.Running);
     expect(isTrainingStepHighlighted(parseStatus)).toBe(true);
-    expect(isTrainingStepHighlighted(chunkStatus)).toBe(true);
+    expect(isTrainingStepHighlighted(rebuildStatus)).toBe(true);
   });
 
   it('should highlight completed steps and gray out only not-started steps', () => {
