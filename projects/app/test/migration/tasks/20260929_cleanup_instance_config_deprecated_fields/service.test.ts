@@ -22,6 +22,7 @@ describe('deprecatedOverridePaths', () => {
         'storage.downloadRedirectEndpoint',
         'feature.showWorkorder',
         'feature.showEnterpriseAuth',
+        'feature.showGit',
         'vector.vqLevel',
         'vector.languageIdentifier',
         'providers.chunk',
