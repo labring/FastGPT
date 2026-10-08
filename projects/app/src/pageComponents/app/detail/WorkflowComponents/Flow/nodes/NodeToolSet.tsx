@@ -6,7 +6,7 @@ import Container from '../components/Container';
 import IOTitle from '../components/IOTitle';
 import ToolSetList, { getNodeToolSetList } from './components/ToolSetList';
 import { useTranslation } from 'next-i18next';
-import { useNode } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();

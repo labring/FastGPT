@@ -21,9 +21,10 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useTranslation } from 'next-i18next';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
-import { useField, useNodeActions } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useWorkflowPersistence } from '@/web/core/workflow/editor/session/workflowSession';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 import {
   datasetSearchUsesLegacyFilter,
@@ -60,14 +61,13 @@ const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps)
   }, [datasetSelectInput?.value]);
 
   const editorVariables = useMemoEnhance(() => {
-    if (!workflow) return [];
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       t,
-      getIncomingEdges: graph?.getIncomingEdges
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
   }, [nodeId, workflow, getNodeById, graph, t]);
 
@@ -127,7 +127,7 @@ export const DatasetTagFilterLogic = React.memo(function DatasetTagFilterLogic({
   const currentInput = field?.data.input ?? item;
   const nodeActions = useNodeActions(nodeId);
   /** 升级要先持久化整份工作流，出站序列化直接读 host。 */
-  const serializeWorkflow = useContextSelector(WorkflowHostContext, (v) => v.serializeWorkflow);
+  const { serializeWorkflow } = useWorkflowPersistence();
   // 只订阅真正读到的两个字段：AppContext 值随 currentTab / appLatestVersion / loadingApp 变化，
   // 整体订阅会让切 tab 也重渲染本节点组件。
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);

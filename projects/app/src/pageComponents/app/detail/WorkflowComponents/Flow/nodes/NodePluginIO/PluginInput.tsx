@@ -22,7 +22,8 @@ import dynamic from 'next/dynamic';
 import { defaultInput } from './InputEditModal';
 import RenderOutput from '../render/RenderOutput';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const FieldEditModal = dynamic(() => import('./InputEditModal'));
 

@@ -19,7 +19,8 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useField, useNodeActions } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const defaultInput: FlowNodeInputItemType = {

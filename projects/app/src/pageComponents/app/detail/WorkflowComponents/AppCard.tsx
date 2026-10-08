@@ -10,7 +10,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useWorkflowPersistence } from '@/web/core/workflow/editor/session/workflowSession';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
@@ -28,7 +28,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
   const isOwner = useContextSelector(AppContext, (v) => v.appDetail.permission.isOwner);
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
   const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
-  const flowData2StoreData = useContextSelector(WorkflowHostContext, (v) => v.serializeWorkflow);
+  const { serializeWorkflow: flowData2StoreData } = useWorkflowPersistence();
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 

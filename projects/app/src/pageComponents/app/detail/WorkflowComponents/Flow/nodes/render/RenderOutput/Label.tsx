@@ -10,7 +10,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ValueTypeLabel from '../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 
 /** 输出源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */

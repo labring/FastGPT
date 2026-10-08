@@ -5,7 +5,7 @@ import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useField } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
@@ -19,9 +19,9 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useContext, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
-import { useNodeActions } from '@/web/core/workflow/editor/react';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useWorkflowEditorSessionId } from '@/web/core/workflow/editor/session/workflowSession';
 import { getWorkflowEditorPath } from '@/web/core/workflow/editor/workflowEditorPath';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowNodeOffscreenMeasurementContext } from '../../Handle/handleRenderContext';
@@ -40,7 +40,7 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const field = useField(nodeId, item.key, 'input');
   const currentInput = (field?.data.input ?? item) as FlowNodeInputItemType;
   const appId = useContextSelector(AppContext, (v) => v.appId);
-  const editorSessionId = useContextSelector(WorkflowHostContext, (v) => v.editorSessionId);
+  const editorSessionId = useWorkflowEditorSessionId();
   // 变量列表只读本节点与其上游来源闭包：窄订阅让无关字段的提交不重算也不重渲染。
   const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId });
   const { feConfigs } = useSystemStore();
@@ -67,14 +67,13 @@ const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
       : undefined;
 
   const editorVariables = useMemoEnhance(() => {
-    if (!workflow) return [];
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       t,
-      getIncomingEdges: graph?.getIncomingEdges
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
   }, [nodeId, workflow, getNodeById, graph, t]);
 

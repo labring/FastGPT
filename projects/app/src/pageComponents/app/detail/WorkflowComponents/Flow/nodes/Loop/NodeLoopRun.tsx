@@ -29,8 +29,9 @@ import {
 } from '@/web/core/workflow/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { useNode, useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor';
-import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { useDocumentGetNodeById } from '../render/useWorkflowDocument';
 import isEqual from 'lodash-es/isEqual';
 

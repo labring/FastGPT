@@ -6,7 +6,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { parseCurl } from '@fastgpt/global/common/string/http';
-import { useNode } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 const CurlImportModal = ({ nodeId, onClose }: { nodeId: string; onClose: () => void }) => {
   const { t } = useTranslation();

@@ -1,14 +1,13 @@
 import React, { useContext, useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
-import { WorkflowUIContext } from '../../../context/workflowUIContext';
-import { WorkflowSelectionContext } from '../../../context/workflowSelectionContext';
-import { useWorkflowValue } from '@/web/core/workflow/editor';
+import { useWorkflowUIValue } from '../../../canvas/canvasState';
+import { useWorkflowSelectionValue } from '../../../context/workflowSelectionContext';
+import { useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
 
 const handleSizeConnected = 24;
@@ -62,18 +61,14 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   const connected = useWorkflowValue((_structure, graph) =>
     graph.isHandleConnected({ nodeId, handleId, direction: 'source' })
   );
-  const selected = useContextSelector(WorkflowSelectionContext, (v) => v.selectedNodesMap[nodeId]);
+  const selected = useWorkflowSelectionValue((v) => v.selectedNodesMap[nodeId]);
   // connectingEdge 有两个互相独立的用途，各取一个 boolean，不把整个对象取回来：
   // 本 handle 是不是拖拽源（高亮），以及是否正在从 tool 柄拖拽（此时隐藏所有 source 柄）。
-  const isConnectingSelf = useContextSelector(
-    WorkflowUIContext,
-    (v) => v.connectingEdge?.handleId === handleId
-  );
-  const isConnectingTool = useContextSelector(
-    WorkflowUIContext,
+  const isConnectingSelf = useWorkflowUIValue((v) => v.connectingEdge?.handleId === handleId);
+  const isConnectingTool = useWorkflowUIValue(
     (v) => v.connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools
   );
-  const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
+  const nodeIsHover = useWorkflowUIValue((v) => v.hoverNodeId === nodeId);
 
   const active = nodeIsHover || !!selected || isConnectingSelf;
 
@@ -169,7 +164,7 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
     graph.isHandleConnected({ nodeId, handleId, direction: 'target' })
   );
   // 这里只需要「有没有在拖拽连线」这一个事实，不需要 connectingEdge 对象本身。
-  const isConnecting = useContextSelector(WorkflowUIContext, (v) => !!v.connectingEdge);
+  const isConnecting = useWorkflowUIValue((v) => !!v.connectingEdge);
 
   const translateStr = useMemo(() => {
     if (!translate) return '';

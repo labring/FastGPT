@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, HStack, Input, InputGroup, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useField } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';

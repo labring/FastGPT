@@ -1,5 +1,5 @@
 import React from 'react';
-import { getNodeAllSource } from '@/web/core/workflow/utils';
+import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -25,13 +25,13 @@ import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { type FieldErrors, useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useWorkflowPersistence } from '@/web/core/workflow/editor/session/workflowSession';
 import {
   useDocumentGetNodeById,
   useGraphQueries,
   useWorkflowSnapshotGetter
 } from '../nodes/render/useWorkflowDocument';
-import { WorkflowDebugContext } from '../../context/workflowDebugContext';
+import { useWorkflowDebugValue } from '../../debug/workflowDebugSession';
 import {
   checkInputShouldRenderInDebug,
   debugNodeShouldShowAllInputs,
@@ -63,14 +63,11 @@ export const useDebug = () => {
   const getWorkflow = useWorkflowSnapshotGetter();
   const getNodeById = useDocumentGetNodeById();
   const graph = useGraphQueries();
-  const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
-  const setDebugChatId = useContextSelector(WorkflowDebugContext, (v) => v.setDebugChatId);
-  const onOpenNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onOpenNodeDebug);
+  const onStartNodeDebug = useWorkflowDebugValue((v) => v.onStartNodeDebug);
+  const setDebugChatId = useWorkflowDebugValue((v) => v.setDebugChatId);
+  const onOpenNodeDebug = useWorkflowDebugValue((v) => v.onOpenNodeDebug);
   // 调试输入改读 host 出站边界（与保存发布同一个 codec）。
-  const serializeWorkflowAndCheck = useContextSelector(
-    WorkflowHostContext,
-    (v) => v.serializeWorkflowAndCheck
-  );
+  const { serializeWorkflowAndCheck } = useWorkflowPersistence();
 
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(() =>
     (getWorkflow()?.chatConfig?.variables ?? []).reduce(
@@ -163,14 +160,22 @@ export const useDebug = () => {
     );
     const customVar = variables.filter((item) => item.type === VariableInputEnum.custom);
     const internalVar = variables.filter((item) => item.type === VariableInputEnum.internal);
-    const referenceSourceNodes = getNodeAllSource({
-      nodeId: runtimeNode.nodeId,
-      getNodeById,
-      edges: workflow?.edges ?? [],
-      chatConfig: chatConfig as AppChatConfigType,
-      t: workflowT,
-      getChildNodeIds: graph?.getChildNodeIds
-    });
+    const referenceSourceNodes = [
+      ...(graph?.getSourceNodeIds({ nodeId: runtimeNode.nodeId, includeChildren: true }) ?? [])
+        .map((sourceNodeId) => getNodeById(sourceNodeId))
+        .filter((sourceNode): sourceNode is NonNullable<typeof sourceNode> => !!sourceNode)
+        .map((sourceNode) => ({
+          nodeId: sourceNode.nodeId,
+          sourceLabel: sourceNode.name,
+          icon: sourceNode.avatar,
+          outputs: sourceNode.outputs.map((output) => ({ ...output })),
+          catchError: sourceNode.catchError
+        })),
+      getGlobalVariableNode({
+        chatConfig: chatConfig as AppChatConfigType,
+        t: workflowT
+      })
+    ];
     const workflowStartFileInput = getWorkflowStartDebugFileInput({
       flowNodeType: runtimeNode.flowNodeType,
       fileSelectConfig: debugFileSelectConfig

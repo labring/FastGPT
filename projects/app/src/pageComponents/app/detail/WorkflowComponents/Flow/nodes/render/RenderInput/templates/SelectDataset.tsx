@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useField } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 

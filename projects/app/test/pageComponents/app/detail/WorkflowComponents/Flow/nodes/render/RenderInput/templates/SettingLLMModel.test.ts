@@ -20,8 +20,12 @@ vi.mock('@fastgpt/web/hooks/useMemoEnhance', () => ({
   useMemoEnhance: (fn: () => unknown) => fn()
 }));
 vi.mock('ahooks', () => ({ useLocalStorageState: () => [mocks.remembered, mocks.remember] }));
-vi.mock('@/web/core/workflow/editor', () => ({
-  useNode: () => ({ data: { inputs: mocks.nodeInputs }, updateNode: mocks.updateNode })
+vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
+  useNode: () => ({ data: { inputs: mocks.nodeInputs }, updateNode: mocks.updateNode }),
+  useNodeActions: () => ({ updateNode: mocks.updateNode })
+}));
+vi.mock('@/web/core/workflow/editor/react/useField', () => ({
+  useField: () => undefined
 }));
 vi.mock('@/components/core/ai/SettingLLMModel', () => ({ default: 'model-settings' }));
 import Wrapper from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/SettingLLMModel';

@@ -18,7 +18,9 @@ import ListItem from './ListItem';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useField, useNodeActions, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { useWorkflowSnapshotGetter } from '../render/useWorkflowDocument';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 

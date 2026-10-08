@@ -11,7 +11,7 @@ import { defaultToolParamFormData } from '../../components/ToolParamsEditModal/c
 import IOTitle from '../../../components/IOTitle';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useNode } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from '../useWorkflowDocument';
 const ToolParamsEditModal = dynamic(() => import('../../components/ToolParamsEditModal'));

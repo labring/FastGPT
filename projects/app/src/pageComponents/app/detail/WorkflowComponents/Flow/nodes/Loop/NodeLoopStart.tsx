@@ -16,7 +16,8 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,

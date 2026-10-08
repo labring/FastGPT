@@ -5,7 +5,8 @@ import ToolParamConfig from './ToolParamConfig';
 import { useTranslation } from 'next-i18next';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { Position } from 'reactflow';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const IOTitle = ({
   text,

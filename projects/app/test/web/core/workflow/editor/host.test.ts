@@ -2,7 +2,6 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useContextSelector } from 'use-context-selector';
 import { ReactFlowProvider } from 'reactflow';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
@@ -11,11 +10,17 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import {
-  WorkflowHostContext,
-  WorkflowHostProvider,
+  useWorkflowHistory,
+  useWorkflowPersistence,
+  useWorkflowRuntime,
+  useWorkflowSessionActions,
+  WorkflowSessionProvider,
   mergeViewOverlayPatches,
-  type WorkflowHostValue
-} from '@/web/core/workflow/editor/host';
+  type WorkflowHistoryState,
+  type WorkflowPersistenceState,
+  type WorkflowSessionActions
+} from '@/web/core/workflow/editor/session/workflowSession';
+import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 
 vi.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
@@ -41,13 +46,16 @@ vi.mock('@/web/core/ai/model/modelData', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   ensureModelCatalog: vi.fn(async () => ({}))
 }));
-vi.mock('@/web/core/workflow/editor/react', () => ({
+vi.mock('@/web/core/workflow/editor/react/workflowEditorProvider', () => ({
   WorkflowEditorProvider: ({ children }: { children: React.ReactNode }) => children
 }));
 
 const t = ((key: string) => key) as never;
 
 type TestAppDetail = { chatConfig: Record<string, unknown> };
+type TestHost = { runtime: WorkflowRuntimePort | null } & WorkflowSessionActions &
+  WorkflowPersistenceState &
+  WorkflowHistoryState;
 
 describe('workflow renderer overlays', () => {
   it('keeps equal patches as a no-op', () => {
@@ -65,8 +73,8 @@ describe('workflow renderer overlays', () => {
 /**
  * 挂真实 Provider 树（AppContext -> ReactFlowProvider -> host）+ 计数型观察者。
  * host 在 ReactFlowProvider 内（问题焦点要 fitView），测试同样需要这层 Provider。
- * chatConfig 必须与文档一致，否则 host 的单向同步 effect 会额外发一笔 updateChatConfig。
- * setAppDetail 按真实 setter 语义应用 updater，断言才能读到 host 回写后的 appDetail；
+ * chatConfig 通过 Session props 注入且必须与文档一致，否则 host 的单向同步 effect 会额外发一笔 updateChatConfig。
+ * onChatConfigChange 按真实页面装配回写 appDetail，断言才能读到 host 回写后的 appDetail；
  * Provider value 只渲染一次，因此回写不会再触发同步 effect（测试里不存在双向循环）。
  */
 const renderHost = async (chatConfig: unknown = {}) => {
@@ -76,10 +84,15 @@ const renderHost = async (chatConfig: unknown = {}) => {
   const setAppDetail = vi.fn((updater: (detail: TestAppDetail) => TestAppDetail) => {
     appDetail.current = updater(appDetail.current);
   });
-  let host: WorkflowHostValue | undefined;
+  let host: TestHost | undefined;
 
   const Observer = () => {
-    host = useContextSelector(WorkflowHostContext, (value) => value);
+    host = {
+      runtime: useWorkflowRuntime(),
+      ...useWorkflowSessionActions(),
+      ...useWorkflowPersistence(),
+      ...useWorkflowHistory()
+    };
     return null;
   };
 
@@ -91,7 +104,16 @@ const renderHost = async (chatConfig: unknown = {}) => {
         React.createElement(
           ReactFlowProvider,
           null,
-          React.createElement(WorkflowHostProvider, null, React.createElement(Observer))
+          React.createElement(
+            WorkflowSessionProvider,
+            {
+              appDetailChatConfig: chatConfig,
+              onChatConfigChange: (nextChatConfig: Record<string, unknown>) => {
+                appDetail.current.chatConfig = nextChatConfig;
+              }
+            },
+            React.createElement(Observer)
+          )
         )
       )
     );
@@ -119,7 +141,7 @@ const answerDocument = () =>
     t
   });
 
-describe('WorkflowHostProvider version history', () => {
+describe('WorkflowSessionProvider version history', () => {
   beforeEach(() => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>');
     vi.stubGlobal('window', dom.window);
@@ -167,7 +189,7 @@ describe('WorkflowHostProvider version history', () => {
       return history.undoCount + history.redoCount;
     })();
     act(() => {
-      readHost().switchVersion(initialVersion, 'ignored-copy-title');
+      expect(readHost().switchVersion(initialVersion, 'ignored-copy-title')).toBe(true);
     });
 
     expect(readHost().versions).toHaveLength(versionCount);
@@ -179,6 +201,7 @@ describe('WorkflowHostProvider version history', () => {
     expect(liveVersions[0]?.contentRevision).toBe(initialVersion.contentRevision);
     expect(readHost().versions.every((item) => item.content === undefined)).toBe(true);
     // 回放恢复的 chatConfig 由 Runtime 变更事件回写 appDetail，不再依赖条目快照。
+    expect(readHost().runtime!.getWorkflow().chatConfig.welcomeText).toBeUndefined();
     expect(appDetail.current.chatConfig.welcomeText).toBeUndefined();
 
     const serialized = await readHost().serializeWorkflowAndCheck(true);
@@ -272,7 +295,7 @@ describe('WorkflowHostProvider version history', () => {
   it('exposes the runtime issue view hydrated from the document', async () => {
     const container = document.createElement('div');
     const root = createRoot(container);
-    let host: WorkflowHostValue | undefined;
+    let host: TestHost | undefined;
     const initial = materializeWorkflow({
       input: {
         nodes: [
@@ -292,7 +315,12 @@ describe('WorkflowHostProvider version history', () => {
     });
 
     const Observer = () => {
-      host = useContextSelector(WorkflowHostContext, (value) => value);
+      host = {
+        runtime: useWorkflowRuntime(),
+        ...useWorkflowSessionActions(),
+        ...useWorkflowPersistence(),
+        ...useWorkflowHistory()
+      };
       return null;
     };
 
@@ -304,7 +332,7 @@ describe('WorkflowHostProvider version history', () => {
           React.createElement(
             ReactFlowProvider,
             null,
-            React.createElement(WorkflowHostProvider, null, React.createElement(Observer))
+            React.createElement(WorkflowSessionProvider, null, React.createElement(Observer))
           )
         )
       );

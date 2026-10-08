@@ -2,7 +2,6 @@ import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useContextSelector } from 'use-context-selector';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -17,8 +16,8 @@ import {
 } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import { WorkflowDebugContext } from '../../../../context/workflowDebugContext';
+import { useWorkflowOverlayActions } from '@/web/core/workflow/editor/session/workflowSession';
+import { useWorkflowDebugValue } from '../../../../debug/workflowDebugSession';
 
 type NodeDebugResponseProps = {
   nodeId: string;
@@ -69,10 +68,10 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
 
   // 按字段订阅：debug context 里还有 debugChatId、onOpenNodeDebug 等本组件不读的字段。
-  const onStopNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStopNodeDebug);
-  const onNextNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onNextNodeDebug);
-  const workflowDebugData = useContextSelector(WorkflowDebugContext, (v) => v.workflowDebugData);
-  const patchViewData = useContextSelector(WorkflowHostContext, (v) => v.patchViewData);
+  const onStopNodeDebug = useWorkflowDebugValue((v) => v.onStopNodeDebug);
+  const onNextNodeDebug = useWorkflowDebugValue((v) => v.onNextNodeDebug);
+  const workflowDebugData = useWorkflowDebugValue((v) => v.workflowDebugData);
+  const patchViewData = useWorkflowOverlayActions();
 
   const statusData = {
     running: {

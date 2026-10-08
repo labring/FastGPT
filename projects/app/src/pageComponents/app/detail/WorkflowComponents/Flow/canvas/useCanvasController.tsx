@@ -20,24 +20,25 @@ import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/l
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
-import { useKeyboard } from './useKeyboard';
+import { useKeyboard } from '../hooks/useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { type THelperLine } from '@/web/core/workflow/type';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import { useCanvas, useWorkflowActions } from '@/web/core/workflow/editor';
+import {
+  useWorkflowIssueFocusAction,
+  useWorkflowIssueFocusRef,
+  useWorkflowRuntime
+} from '@/web/core/workflow/editor/session/workflowSession';
+import { useCanvas } from '@/web/core/workflow/editor/react/useWorkflowQueries';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
-import { WorkflowUIContext } from '../context/workflowUIContext';
-import { WorkflowModalContext } from '../context/workflowModalContext';
+import { useWorkflowCanvasValue } from './workflowCanvasContext';
+import { useWorkflowUIValue } from './canvasState';
+import { useWorkflowModalValue } from '../panels/workflowPanelState';
 import { type HelperLinesController } from '../components/HelperLines';
 import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
-import {
-  areNodeRectsIntersecting,
-  getNodeRect,
-  type DimensionReader
-} from '../context/dimensionIndex';
+import { areNodeRectsIntersecting, getNodeRect, type DimensionReader } from './dimensionIndex';
 
 /** 只为真实发生位置变化的节点创建 geometry command；节点查找一次完成。 */
 export const collectGeometryUpdates = ({
@@ -473,44 +474,45 @@ const deselectChanges = (nodeIds: readonly string[]): NodeSelectionChange[] =>
  * 常规清选中 C 是个位数，0.1ms 以内。再快只能自己按 id 建 Map 重建数组，那会绕开唯一的变更漏斗。
  */
 export const useClearCanvasSelection = () => {
-  const onNodesChange = useContextSelector(WorkflowCanvasContext, (v) => v.onNodesChange);
-  const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
-  const issueFocusRef = useContextSelector(WorkflowHostContext, (v) => v.issueFocusRef);
+  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
+  const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const issueFocusRef = useWorkflowIssueFocusRef();
 
   return useMemoizedFn(() => {
     const nodeIds = collectClearSelectionIds(getNodes(), issueFocusRef.current);
     if (nodeIds.length === 0) return;
-    onNodesChange(deselectChanges(nodeIds));
+    applyNodeChanges(deselectChanges(nodeIds));
   });
 };
 
-export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
+export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
   // 画布本地交互数组（拖拽帧、选中、测量尺寸）仍读 renderer 数组：handleNodesChange 要在
   // 应用变更后同步读回最终位置提交几何，reactflow store 得等下一次 commit 才刷新。
   // 这四个都是 useMemoizedFn，身份恒定；整体订阅会让每次投影（含拖拽帧）都刷新本 hook 的消费方。
-  const onNodesChange = useContextSelector(WorkflowCanvasContext, (v) => v.onNodesChange);
-  const onEdgesChange = useContextSelector(WorkflowCanvasContext, (v) => v.onEdgesChange);
-  const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
+  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
+  const applyEdgeChanges = useWorkflowCanvasValue((v) => v.applyEdgeChanges);
+  const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
   // 只用写能力与事件期读取：稳定 action 句柄订阅数为零，画布组件不再随结构变化重渲染。
   const actions = useWorkflowActions();
   const canvas = useCanvas();
 
   /** 标红焦点归 host：取消选中标红节点时清除焦点，画布不再自己维护错误标记。 */
-  const focusIssueNode = useContextSelector(WorkflowHostContext, (v) => v.focusIssueNode);
-  const issueFocusRef = useContextSelector(WorkflowHostContext, (v) => v.issueFocusRef);
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const focusIssueNode = useWorkflowIssueFocusAction();
+  const issueFocusRef = useWorkflowIssueFocusRef();
+  const runtime = useWorkflowRuntime();
   // 三个都是 setState dispatcher，身份恒定；整体订阅会让 hover 带动本 hook 的消费方刷新。
-  const setHoverEdgeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverEdgeId);
-  const setMenu = useContextSelector(WorkflowUIContext, (v) => v.setMenu);
-  const setConnectingEdge = useContextSelector(WorkflowUIContext, (v) => v.setConnectingEdge);
-  const setHandleParams = useContextSelector(WorkflowModalContext, (v) => v.setHandleParams);
+  const setHoverEdgeId = useWorkflowUIValue((v) => v.setHoverEdgeId);
+  const openContextMenu = useWorkflowUIValue((v) => v.openContextMenu);
+  const closeContextMenu = useWorkflowUIValue((v) => v.closeContextMenu);
+  const setConnectingEdge = useWorkflowUIValue((v) => v.setConnectingEdge);
+  const openNodeTemplates = useWorkflowModalValue((v) => v.openNodeTemplates);
 
   const { flowToScreenPosition, getZoom, getNode, getEdge } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
+  const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
 
   /*
     删除批次里 onEdgesChange 早于 onNodesChange，此时还不知道节点会不会真被删掉。
@@ -669,7 +671,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     /** 只对确实选中的节点发 select 变更；全量 map 会换掉整份画布数组身份，带动所有节点卡片重渲染。 */
     const deselect = (nodeIds: string[]) => {
       if (nodeIds.length === 0) return;
-      onNodesChange(deselectChanges(nodeIds));
+      applyNodeChanges(deselectChanges(nodeIds));
     };
 
     deselect(collectSelectionConflictIds({ nodes: getNodes(), node }));
@@ -840,7 +842,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       ...changes.filter((c) => c.type !== 'remove'),
       ...childChanges
     ];
-    onNodesChange(localChanges);
+    applyNodeChanges(localChanges);
 
     if (attemptedNodeIds.size > 0) {
       pendingEdgeDisconnects.current = dropEdgeDisconnectsOfRemovedNodes(
@@ -878,7 +880,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
     // 结构删除统一交给 runtime 重投影：这里不乐观移除画布边，
     // 否则节点删除被拒时画布先掉边、文档还留着，视图和数据会对不上。
-    onEdgesChange(changes.filter((change) => change.type !== 'remove'));
+    applyEdgeChanges(changes.filter((change) => change.type !== 'remove'));
 
     if (removedEdges.length === 0) return;
     pendingEdgeDisconnects.current.push(...removedEdges);
@@ -934,7 +936,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
           ) {
             const popoverPosition = getTemplatesListPopoverPosition({ nodeId });
             const addNodePosition = getAddNodePosition({ nodeId, handleId });
-            setHandleParams({
+            openNodeTemplates({
               ...params,
               popoverPosition,
               addNodePosition
@@ -950,7 +952,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       setConnectingEdge,
       getTemplatesListPopoverPosition,
       getAddNodePosition,
-      setHandleParams,
+      openNodeTemplates,
       canvas
     ]
   );
@@ -1026,13 +1028,13 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       if (top + contextMenuHeight + margin > viewportHeight) {
         top = Math.max(margin, viewportHeight - contextMenuHeight - margin);
       }
-      setMenu({ top, left });
+      openContextMenu({ top, left });
     },
-    [setMenu]
+    [openContextMenu]
   );
   const onPaneClick = useCallback(() => {
-    setMenu(null);
-  }, [setMenu]);
+    closeContextMenu();
+  }, [closeContextMenu]);
 
   // 旧的防抖全量快照推送已删除：历史由 Runtime 在每笔事务内维护。
 
@@ -1050,7 +1052,3 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     onPaneClick
   };
 };
-
-export default function Dom() {
-  return <></>;
-}

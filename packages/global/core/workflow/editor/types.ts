@@ -1,11 +1,6 @@
 import type { AppChatConfigType } from '../../app/type';
 import type { CanonicalWorkflowData } from '../migration/schema';
-import type {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType,
-  ReferenceItemValueType,
-  ReferenceValueType
-} from '../type/io';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import type { StoreEdgeItemType } from '../type/edge';
 import type { NodeTemplateContext, StoreNodeItemType, WorkflowCheckIssue } from '../type/node';
 import type { WorkflowIOValueTypeEnum } from '../constants';
@@ -16,7 +11,9 @@ import type { NodeContainerCheckError } from '../template/context';
 export type DeepReadonly<T> = T extends (...args: any[]) => any
   ? T
   : T extends readonly (infer U)[]
-    ? readonly DeepReadonly<U>[]
+    ? number extends T['length']
+      ? readonly DeepReadonly<U>[]
+      : { readonly [K in keyof T]: DeepReadonly<T[K]> }
     : T extends object
       ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
       : T;
@@ -79,6 +76,8 @@ export type WorkflowGraphQueries = {
   getIncomingEdges: (nodeId: string) => readonly WorkflowEdgeEndpoint[];
   /** 容器的直接子节点 id，空串表示文档根级；非容器或无子节点返回共享空数组。O(直接子节点)。 */
   getChildNodeIds: (parentId: string) => readonly string[];
+  /** 当前节点可引用的普通来源节点 id；可选包含当前容器的直接子节点。 */
+  getSourceNodeIds: (query: { nodeId: string; includeChildren?: boolean }) => readonly string[];
 };
 
 /** 一条输入或输出字段的引用诊断。 */
@@ -100,7 +99,7 @@ export type WorkflowReferenceStatus = {
 
 /** Reference View 中可供当前字段选择的实时来源输出。 */
 export type WorkflowReferenceOption = {
-  reference: ReferenceItemValueType;
+  reference: readonly [string, string];
   sourceType?: WorkflowIOValueTypeEnum;
   sourceLabel?: string;
   outputLabel?: string;
@@ -123,6 +122,14 @@ export type WorkflowFieldQuery = {
   nodeId: string;
   fieldKey: string;
   kind?: 'input' | 'output';
+};
+
+/** 引用选择器查询参数；适用于字段外嵌套值（ifElse、动态输入等）。 */
+export type WorkflowReferenceOptionsQuery = {
+  nodeId: string;
+  valueType?: WorkflowIOValueTypeEnum;
+  /** 容器节点是否额外暴露直接子节点输出。 */
+  includeChildren?: boolean;
 };
 
 /** 工作流 scoped snapshot；工作流级问题通过独立 gate 读取，不进入普通语义快照。 */
@@ -333,6 +340,7 @@ export type WorkflowRuntimePort = {
   getNode: (nodeId: string) => WorkflowNodeSnapshot | undefined;
   getNodeView: (nodeId: string) => WorkflowNodeViewSnapshot | undefined;
   getField: (query: WorkflowFieldQuery) => WorkflowFieldSnapshot | undefined;
+  getReferenceOptions: (query: WorkflowReferenceOptionsQuery) => readonly WorkflowReferenceOption[];
   getHistory: () => HistorySnapshot;
   getSavepoint: () => WorkflowSavepoint;
   getChangeLog: () => readonly WorkflowChange[];

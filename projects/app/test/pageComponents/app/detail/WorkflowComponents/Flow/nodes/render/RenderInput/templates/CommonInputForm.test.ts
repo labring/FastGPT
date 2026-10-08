@@ -14,6 +14,7 @@ vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react')>()),
   useCallback: (fn: unknown) => fn,
   useMemo: (fn: () => unknown) => fn(),
+  useContext: () => undefined,
   useEffect: (fn: () => void) => {
     mocks.effects.push(fn);
   }
@@ -27,11 +28,14 @@ vi.mock('use-context-selector', async (importOriginal) => ({
   ...(await importOriginal<typeof import('use-context-selector')>()),
   useContextSelector: (_: unknown, select: (data: unknown) => unknown) => select({ appDetail: {} })
 }));
-vi.mock('@/web/core/workflow/editor', () => ({
+vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
   useNode: () => ({
     data: { inputs: mocks.nodeInputs, flowNodeType: 'answerNode' },
     updateNode: mocks.updateNode
   }),
+  useNodeActions: () => ({ updateNode: mocks.updateNode })
+}));
+vi.mock('@/web/core/workflow/editor/react/useField', () => ({
   useField: () => ({ data: {}, reference: [], setValue: mocks.setValue })
 }));
 vi.mock(
@@ -56,7 +60,7 @@ vi.mock('@/components/common/PromptEditor/OptimizerPopover', () => ({ default: (
 import CommonInputForm from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderInput/templates/CommonInputForm';
 
 /** 组件外层是 data-workflow-history 包裹层，InputRender 元素挂在 children 上。 */
-const renderInputProps = (element: any) => element.props.children.props;
+const renderInputProps = (element: any) => element.props.children.props.children.props;
 
 describe('CommonInputForm model selection', () => {
   beforeEach(() => {

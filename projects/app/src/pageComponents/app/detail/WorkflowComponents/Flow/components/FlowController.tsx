@@ -7,14 +7,14 @@ import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
 import { useKeyPress } from 'ahooks';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import { WorkflowUIContext } from '../context/workflowUIContext';
+import { useWorkflowHistory } from '@/web/core/workflow/editor/session/workflowSession';
+import { useWorkflowUIValue } from '../canvas/canvasState';
 import {
   getWorkflowHistoryShortcut,
   isExternalHistoryTarget,
   isWorkflowShortcutInputtingTarget
 } from '../hooks/keyboard';
-import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
+import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
 import WorkflowMiniMap from './WorkflowMiniMap';
 
 const buttonStyle = {
@@ -25,20 +25,14 @@ const buttonStyle = {
 
 const FlowController = React.memo(function FlowController() {
   const { zoomIn, zoomOut } = useReactFlow();
-  const fitNodes = useContextSelector(WorkflowCanvasContext, (v) => v.fitNodes);
-  const undo = useContextSelector(WorkflowHostContext, (v) => v.undo);
-  const redo = useContextSelector(WorkflowHostContext, (v) => v.redo);
-  const canUndo = useContextSelector(WorkflowHostContext, (v) => v.canUndo);
-  const canRedo = useContextSelector(WorkflowHostContext, (v) => v.canRedo);
+  const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
+  const { undo, redo, canUndo, canRedo } = useWorkflowHistory();
   // 按字段订阅：hover 会换 UI context 的值身份，控制器只读这五个字段，不该跟着刷新。
-  const workflowControlMode = useContextSelector(WorkflowUIContext, (v) => v.workflowControlMode);
-  const setWorkflowControlMode = useContextSelector(
-    WorkflowUIContext,
-    (v) => v.setWorkflowControlMode
-  );
-  const mouseInCanvas = useContextSelector(WorkflowUIContext, (v) => v.mouseInCanvas);
-  const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
-  const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
+  const workflowControlMode = useWorkflowUIValue((v) => v.workflowControlMode);
+  const setWorkflowControlMode = useWorkflowUIValue((v) => v.setWorkflowControlMode);
+  const mouseInCanvas = useWorkflowUIValue((v) => v.mouseInCanvas);
+  const presentationMode = useWorkflowUIValue((v) => v.presentationMode);
+  const setPresentationMode = useWorkflowUIValue((v) => v.setPresentationMode);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
@@ -86,7 +80,7 @@ const FlowController = React.memo(function FlowController() {
   useKeyPress(['shift.space'], (e) => {
     e.preventDefault();
     if (!mouseInCanvas) return;
-    setPresentationMode((v) => !v);
+    setPresentationMode(!presentationMode);
   });
 
   const Render = useMemo(() => {

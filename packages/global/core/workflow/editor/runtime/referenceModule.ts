@@ -22,6 +22,7 @@ import type { TUpdateListItem } from '../../template/system/variableUpdate/type'
 import type {
   WorkflowFieldIdentity,
   WorkflowNodeData,
+  WorkflowReferenceOptionsQuery,
   WorkflowReferenceOption,
   WorkflowReferenceStatus
 } from '../types';
@@ -552,8 +553,9 @@ export const createReferenceModule = (document: DocumentReadApi) => {
    * 从目标节点反向遍历所有上游节点，visited 保证循环图有限终止。
    * 结果按 nodeId 记忆化到本轮派生结束；返回的 Set 共享只读，调用方不得原地修改。
    */
-  const getIncomingSources = (nodeId: string): ReadonlySet<string> => {
-    const memoized = incomingSourcesCache.get(nodeId);
+  const getIncomingSources = (nodeId: string, includeChildren = false): ReadonlySet<string> => {
+    const cacheKey = includeChildren ? `${nodeId}\0children` : nodeId;
+    const memoized = incomingSourcesCache.get(cacheKey);
     if (memoized) return memoized;
     const graphIndex = document.getGraphIndex();
     const sourceIds = new Set<string>();
@@ -591,7 +593,10 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         queue.push(edge.data.source);
       });
     }
-    incomingSourcesCache.set(nodeId, sourceIds);
+    if (includeChildren) {
+      graphIndex.childrenByParent.get(nodeId)?.forEach((childId) => sourceIds.add(childId));
+    }
+    incomingSourcesCache.set(cacheKey, sourceIds);
     return sourceIds;
   };
 
@@ -805,13 +810,14 @@ export const createReferenceModule = (document: DocumentReadApi) => {
   };
 
   /** 返回当前字段可选的实时来源；失效引用不会重新出现在选择列表。 */
-  const getReferenceOptions = (
-    nodeId: string,
-    input: FlowNodeInputItemType
-  ): WorkflowReferenceOption[] => {
+  const getReferenceOptions = ({
+    nodeId,
+    valueType,
+    includeChildren
+  }: WorkflowReferenceOptionsQuery): WorkflowReferenceOption[] => {
     const nodeIndex = document.getNodeIndex();
     const graphIndex = document.getGraphIndex();
-    const sourceIds = getIncomingSources(nodeId);
+    const sourceIds = getIncomingSources(nodeId, includeChildren);
     const options: WorkflowReferenceOption[] = [];
 
     [...sourceIds]
@@ -831,7 +837,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
               ? getHTTPToolParamOutputs({ ...sourceNode.data, id: sourceNode.data.nodeId })
               : [])
           ],
-          valueType: input.valueType,
+          valueType,
           catchError: sourceNode.data.catchError
         }).forEach((output) => {
           options.push({
@@ -846,7 +852,7 @@ export const createReferenceModule = (document: DocumentReadApi) => {
 
     getWorkflowGlobalVariables({ chatConfig: document.getDocument().chatConfig }).forEach(
       (variable) => {
-        if (!workflowValueTypeIsCompatible(variable.valueType, input.valueType)) return;
+        if (!workflowValueTypeIsCompatible(variable.valueType, valueType)) return;
         options.push({
           reference: [VARIABLE_NODE_ID, variable.key],
           sourceType: variable.valueType,

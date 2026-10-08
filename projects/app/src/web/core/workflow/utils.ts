@@ -11,7 +11,6 @@ import {
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getGlobalVariableNode } from './adapt';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
@@ -21,13 +20,8 @@ import {
   getHandleId,
   getSelectedInputRenderType,
   isWorkflowSystemModelInput,
-  nodeInputIsReference,
   workflowModelKeyMappings
 } from '@fastgpt/global/core/workflow/utils';
-import {
-  getWorkflowReferenceItems,
-  isWorkflowEdgeSourceHandleValid
-} from '@fastgpt/global/core/workflow/editor/utils';
 import { type TFunction } from 'next-i18next';
 import {
   type FlowNodeInputItemType,
@@ -576,129 +570,6 @@ export const getOutputDisconnectCommands = ({
     if (edge.source === nodeId && edge.sourceHandle === handle) indexes.push(index);
   });
   return indexes.sort((a, b) => b - a).map((index) => ({ index }));
-};
-
-/**
- * 获取当前节点可引用的普通来源 ID。
- * 按当前节点到根容器的入边和 reference 输入遍历，visited 防止坏 parent 数据循环。
- */
-export const getNodeAllSourceIds = ({
-  nodeId,
-  getNodeById,
-  edges,
-  includeChildren,
-  getChildNodeIds,
-  getIncomingEdges
-}: {
-  nodeId: string;
-  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
-  edges: readonly WorkflowGraphEdge[];
-  includeChildren?: boolean;
-  /** 容器的直接子节点：由 Runtime 图查询提供（byParent 索引），app 侧不再自建整表。 */
-  getChildNodeIds?: (parentId: string) => readonly string[];
-  /**
-   * 指向某节点的入边：由 Runtime 图查询提供（byTarget 索引），O(入度)。
-   * 不传则回落到全量扫 `edges`（O(E)），每个节点扫一遍就是 O(V·E)。
-   */
-  getIncomingEdges?: (nodeId: string) => readonly WorkflowGraphEdge[];
-}): string[] => {
-  const node = getNodeById(nodeId);
-  if (!node) return [];
-
-  const sourceIds = new Set<string>();
-  const searchedTargetNodeIds = new Set<string>();
-  const collectIncoming = (targetNodeIds: string[]) => {
-    const queue = targetNodeIds.filter(Boolean);
-    while (queue.length > 0) {
-      const targetNodeId = queue.shift();
-      if (!targetNodeId || searchedTargetNodeIds.has(targetNodeId)) continue;
-      searchedTargetNodeIds.add(targetNodeId);
-      const incoming = getIncomingEdges
-        ? getIncomingEdges(targetNodeId)
-        : edges.filter((edge) => edge.target === targetNodeId);
-      incoming.forEach((edge) => {
-        if (edge.target !== targetNodeId) return;
-        if (!isWorkflowEdgeSourceHandleValid(getNodeById(edge.source), edge.sourceHandle)) return;
-        sourceIds.add(edge.source);
-        queue.push(edge.source);
-      });
-    }
-  };
-
-  const containerNodes = [node];
-  const visitedParentIds = new Set<string>([node.nodeId]);
-  let parentNode = node;
-  while (parentNode.parentNodeId && !visitedParentIds.has(parentNode.parentNodeId)) {
-    const nextParent = getNodeById(parentNode.parentNodeId);
-    if (!nextParent) break;
-    containerNodes.push(nextParent);
-    visitedParentIds.add(nextParent.nodeId);
-    parentNode = nextParent;
-  }
-  // 先完整遍历当前节点来源，再按容器层级遍历；同层来源优先于父容器来源。
-  collectIncoming([node.nodeId]);
-  containerNodes.slice(1).forEach((container) => collectIncoming([container.nodeId]));
-
-  containerNodes.slice(1).forEach((container) => {
-    container.inputs.forEach((input) => {
-      if (!nodeInputIsReference(input)) return;
-      getWorkflowReferenceItems(input.value).forEach(([refNodeId]) => {
-        if (refNodeId === VARIABLE_NODE_ID || !getNodeById(refNodeId)) return;
-        sourceIds.add(refNodeId);
-        collectIncoming([refNodeId]);
-      });
-    });
-  });
-
-  if (includeChildren && getChildNodeIds) {
-    getChildNodeIds(nodeId).forEach((childId) => {
-      if (getNodeById(childId)) sourceIds.add(childId);
-    });
-  }
-
-  return [...sourceIds];
-};
-
-/** 获取当前节点可引用的来源节点，并追加 global variable 节点供 selector 展示。 */
-export const getNodeAllSource = ({
-  nodeId,
-  getNodeById,
-  edges,
-  chatConfig,
-  t,
-  includeChildren,
-  getChildNodeIds,
-  getIncomingEdges
-}: {
-  nodeId: string;
-  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
-  edges: readonly WorkflowGraphEdge[];
-  chatConfig: AppChatConfigType;
-  t: TFunction;
-  includeChildren?: boolean;
-  getChildNodeIds?: (parentId: string) => readonly string[];
-  getIncomingEdges?: (nodeId: string) => readonly WorkflowGraphEdge[];
-}): FlowNodeItemType[] => {
-  if (!getNodeById(nodeId)) return [];
-
-  const sourceNodes = getNodeAllSourceIds({
-    nodeId,
-    getNodeById,
-    edges,
-    includeChildren,
-    getChildNodeIds,
-    getIncomingEdges
-  })
-    .map((sourceNodeId) => getNodeById(sourceNodeId))
-    .filter((sourceNode): sourceNode is FlowNodeItemType => !!sourceNode);
-
-  return [
-    ...sourceNodes,
-    getGlobalVariableNode({
-      t,
-      chatConfig
-    })
-  ];
 };
 
 /* ====== Variables ======= */

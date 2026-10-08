@@ -7,9 +7,12 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { hydrateRuntime, serializeRuntime } from '@/web/core/workflow/editor/codec';
+import {
+  hydrateRuntime,
+  serializeRuntime,
+  uiWorkflow2StoreWorkflow
+} from '@/web/core/workflow/editor/codec';
 import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 

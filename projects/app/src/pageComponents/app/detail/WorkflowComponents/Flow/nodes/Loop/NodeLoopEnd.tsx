@@ -16,7 +16,7 @@ import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useDocumentGetNodeById } from '../render/useWorkflowDocument';
-import { useNode } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 const typeMap = {
   [WorkflowIOValueTypeEnum.string]: WorkflowIOValueTypeEnum.arrayString,

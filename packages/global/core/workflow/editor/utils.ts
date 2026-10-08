@@ -100,9 +100,11 @@ export type WorkflowReferenceSourceNode = {
   catchError?: boolean;
 };
 
+type WorkflowSourceNode = Pick<FlowNodeItemType, 'nodeId' | 'flowNodeType' | 'inputs'>;
+
 /** 多分支节点只允许当前仍存在的 source handle 参与来源计算。 */
 export const isWorkflowEdgeSourceHandleValid = (
-  sourceNode: FlowNodeItemType | undefined,
+  sourceNode: WorkflowSourceNode | undefined,
   sourceHandle: string | null | undefined
 ) => {
   if (!sourceNode) return false;

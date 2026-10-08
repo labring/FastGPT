@@ -1,16 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 
 /** 图查询夹具节点：只带判定需要的字段，其余由 runtime 入站边界补齐。 */
-const node = (nodeId: string, flowNodeType: FlowNodeTypeEnum, parentNodeId?: string) =>
+const node = (
+  nodeId: string,
+  flowNodeType: FlowNodeTypeEnum,
+  parentNodeId?: string,
+  inputs: unknown[] = []
+) =>
   ({
     nodeId,
     flowNodeType,
     name: nodeId,
-    inputs: [],
+    inputs,
     outputs: [],
     ...(parentNodeId ? { parentNodeId } : {})
   }) as never;
@@ -43,7 +53,16 @@ const createGraphRuntime = (): WorkflowRuntimePort =>
       node('answer', FlowNodeTypeEnum.answerNode),
       node('tool1', FlowNodeTypeEnum.toolCall),
       node('http', FlowNodeTypeEnum.chatNode),
-      node('loop', FlowNodeTypeEnum.loopRun),
+      node('loop', FlowNodeTypeEnum.loopRun, undefined, [
+        {
+          key: NodeInputKeyEnum.loopRunInputArray,
+          label: 'Input',
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.reference,
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: ['start', 'source']
+        }
+      ]),
       node('loopStart', FlowNodeTypeEnum.loopRunStart, 'loop'),
       node('child', FlowNodeTypeEnum.answerNode, 'loop')
     ],
@@ -227,6 +246,27 @@ describe('workflow runtime graph queries', () => {
     expect(queries.getChildNodeIds('loop')).toEqual(['loopStart', 'floating']);
     editor.undo();
     expect(queries.getChildNodeIds('loop')).toEqual(['loopStart', 'child', 'floating']);
+  });
+
+  it('getSourceNodeIds 收回来源闭包、容器引用和可选直接子节点', () => {
+    const editor = createGraphRuntime();
+    const queries = editor.getGraphQueries();
+
+    expect(queries.getSourceNodeIds({ nodeId: 'child' })).toEqual(['start']);
+    expect(queries.getSourceNodeIds({ nodeId: 'child' })).toBe(
+      queries.getSourceNodeIds({ nodeId: 'child' })
+    );
+    expect(queries.getSourceNodeIds({ nodeId: 'loop', includeChildren: true })).toEqual([
+      'loopStart',
+      'child'
+    ]);
+
+    // 几何变化不改变来源查询身份；结构变化后按新 document 重新计算。
+    editor.dispatch({ type: 'commitGeometry', nodeId: 'child', position: { x: 10, y: 20 } });
+    expect(queries.getSourceNodeIds({ nodeId: 'child' })).toEqual(['start']);
+    editor.dispatch({ type: 'disconnectEdge', edge: flowEdge });
+    expect(queries.getSourceNodeIds({ nodeId: 'child' })).toEqual(['start']);
+    expect(queries.getSourceNodeIds({ nodeId: 'answer' })).toEqual(['tool1']);
   });
 
   it('整文档替换后按新文档重建查询结果', () => {

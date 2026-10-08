@@ -10,7 +10,7 @@ import { Box, Button, CloseButton, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import type { WorkflowVersionEntry } from '@/web/core/workflow/editor/host';
+import type { WorkflowVersionEntry } from '@/web/core/workflow/editor/session/workflowHistory';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import Tag from '@fastgpt/web/components/common/Tag';
 import MyIcon from '@fastgpt/web/components/common/Icon';

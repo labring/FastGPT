@@ -23,7 +23,7 @@ import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import { hasDynamicToolInput } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/RenderToolInput';
 
 describe('workflow tool node templates', () => {

@@ -36,6 +36,6 @@ export const normalizeEdgeHandles = (edge: {
   sourceHandle?: string | null;
   targetHandle?: string | null;
 }) => ({
-  sourceHandle: (edge.sourceHandle || '').replace(/-source-(top|bottom|left)$/, '-source-right'),
-  targetHandle: (edge.targetHandle || '').replace(/-target-(top|bottom|right)$/, '-target-left')
+  sourceHandle: (edge.sourceHandle ?? '').replace(/-source-(top|bottom|left)$/, '-source-right'),
+  targetHandle: (edge.targetHandle ?? '').replace(/-target-(top|bottom|right)$/, '-target-left')
 });

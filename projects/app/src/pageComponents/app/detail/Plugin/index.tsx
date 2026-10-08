@@ -12,9 +12,9 @@ import { useTranslation } from 'next-i18next';
 import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
 
 import Flow from '../WorkflowComponents/Flow';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import { WorkflowUIProvider } from '../WorkflowComponents/Flow/context/workflowUIContext';
-import { WorkflowModalProvider } from '../WorkflowComponents/Flow/context/workflowModalContext';
+import { useWorkflowSessionActions } from '@/web/core/workflow/editor/session/workflowSession';
+import { WorkflowUIProvider } from '../WorkflowComponents/Flow/canvas/canvasState';
+import { WorkflowModalProvider } from '../WorkflowComponents/Flow/panels/workflowPanelState';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -23,7 +23,7 @@ const WorkflowEdit = () => {
   const { t } = useTranslation();
   const { appDetail, currentTab } = useContextSelector(AppContext, (e) => e);
 
-  const initRuntime = useContextSelector(WorkflowHostContext, (v) => v.initRuntime);
+  const { initRuntime } = useWorkflowSessionActions();
 
   useMount(() => {
     initRuntime(

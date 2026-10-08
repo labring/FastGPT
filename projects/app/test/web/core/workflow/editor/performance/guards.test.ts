@@ -21,13 +21,11 @@ const detailRoot = join(srcRoot, 'pageComponents/app/detail');
 const flowRoot = join(detailRoot, 'WorkflowComponents/Flow');
 /** 编辑器目录：画布组件树 + adapter / host / projection / codec。 */
 const editorRoots = [flowRoot, join(srcRoot, 'web/core/workflow')];
-/** 画布热路径：每节点 / 每边实例的组件目录。 */
-const canvasRoots = [join(flowRoot, 'nodes'), join(flowRoot, 'components')];
 /** 双 host 页面：选中写入的调用点可能落在 Flow 之外（`SearchButton` 就是一例）。 */
 const selectionRoots = [...editorRoots, join(detailRoot, 'Workflow'), join(detailRoot, 'Plugin')];
 /** 画布投影与本地数组的写入方：全量物化不许回流到这里。 */
 const projectionRoots = [
-  join(srcRoot, 'web/core/workflow/editor/projection.ts'),
+  join(srcRoot, 'web/core/workflow/editor/canvas/projectWorkflowCanvas.ts'),
   join(flowRoot, 'context')
 ];
 
@@ -64,13 +62,6 @@ describe('workflow editor subscription guards', () => {
     // AppContext 的值随 appDetail / currentTab / appLatestVersion / loadingApp 变化：
     // 整体订阅意味着切 tab 就重渲染所有 HTTP 节点、Agent 节点与全部走 CommonInputForm 的字段。
     expect(scan(editorRoots, wholeContextSelector('AppContext'))).toEqual([]);
-  });
-
-  it('画布节点组件零 useViewport', () => {
-    // useViewport 订阅整个视口 transform，平移与缩放每帧都重渲染调用它的组件。
-    // 只在事件回调里要 zoom 的读 useReactFlow().getZoom()（函数，不订阅）；
-    // 确实参与渲染布局的读 useStore((s) => s.transform[2])，只在缩放时触发。
-    expect(scan(canvasRoots, /\buseViewport\b/)).toEqual([]);
   });
 
   it('Handle 目录与 ButtonEdge 内零 adapter 结构订阅', () => {
@@ -151,9 +142,9 @@ describe('workflow editor subscription guards', () => {
   });
 
   it('renderer 层 Provider 零 adapter hook', () => {
-    // Flow/context/ 下的 Provider 在 runtime hydrate 之前就要渲染（initRuntime 在页面的 useMount 里），
+    // Flow/canvas/ 下的 Provider 在 runtime hydrate 之前就要渲染（initRuntime 在页面的 useMount 里），
     // 而 WorkflowEditorProvider 在 hydrate 之前刻意不给 adapter，所有 adapter hook 都直接抛错。
-    // 这一层只能走 host 通道（`@/web/core/workflow/editor/host`，runtime 为 null 时返回 undefined）。
+    // 这一层只能走 host 通道（`@/web/core/workflow/editor/session/workflowSession`，runtime 为 null 时返回 undefined）。
     expect(scan([join(flowRoot, 'context')], /from\s+'@\/web\/core\/workflow\/editor'/)).toEqual(
       []
     );

@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { getNodeAllSourceIds, splitToolInputsByMode } from '@/web/core/workflow/utils';
+import { splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 describe('splitToolInputsByMode', () => {
   it('keeps Agent-generated editable inputs out of common inputs', () => {
@@ -108,45 +107,5 @@ describe('splitToolInputsByMode', () => {
     expect(
       toolCallInputs.find((input) => input.key === NodeInputKeyEnum.userChatInput)?.selectedType
     ).toBe(FlowNodeInputTypeEnum.agentGenerated);
-  });
-});
-
-describe('getNodeAllSourceIds', () => {
-  const fakeNode = (nodeId: string) => ({ nodeId, inputs: [] }) as unknown as FlowNodeItemType;
-  const nodes = new Map([
-    ['L', fakeNode('L')],
-    ['LS', fakeNode('LS')],
-    ['X', fakeNode('X')]
-  ]);
-  const getNodeById = (nodeId: string | null | undefined) =>
-    nodeId ? nodes.get(nodeId) : undefined;
-  // 容器的直接子节点由 Runtime 图查询提供，app 侧不再自建 childrenNodeIdListMap。
-  const getChildNodeIds = (parentId: string) => (parentId === 'L' ? ['LS'] : []);
-
-  it('expands container children only when includeChildren is set', () => {
-    expect(
-      getNodeAllSourceIds({
-        nodeId: 'L',
-        getNodeById,
-        edges: [],
-        includeChildren: true,
-        getChildNodeIds
-      })
-    ).toEqual(['LS']);
-    expect(getNodeAllSourceIds({ nodeId: 'L', getNodeById, edges: [], getChildNodeIds })).toEqual(
-      []
-    );
-  });
-
-  it('drops children that no longer exist in the document', () => {
-    expect(
-      getNodeAllSourceIds({
-        nodeId: 'L',
-        getNodeById,
-        edges: [],
-        includeChildren: true,
-        getChildNodeIds: () => ['X', 'gone']
-      })
-    ).toEqual(['X']);
   });
 });

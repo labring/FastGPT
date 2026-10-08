@@ -5,7 +5,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
-import { createWorkflowEditorAdapter } from '@/web/core/workflow/editor/react';
+import { createWorkflowEditorAdapter } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
 
 const t = ((key: string) => key) as never;
 

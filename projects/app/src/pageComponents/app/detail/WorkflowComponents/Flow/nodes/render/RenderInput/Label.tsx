@@ -14,7 +14,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getToolInputDisplayRenderTypeList } from '@fastgpt/global/core/app/formEdit/utils';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
-import { useNodeActions } from '@/web/core/workflow/editor/react';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 
 type Props = {
   nodeId: string;

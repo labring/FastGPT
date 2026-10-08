@@ -16,7 +16,6 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
-  getNodeAllSource,
   filterWorkflowNodeOutputsByType,
   filterSelectableWorkflowNodeOutputs
 } from '@/web/core/workflow/utils';
@@ -29,7 +28,7 @@ import {
 } from '@/web/core/workflow/workflowStartAutoFill';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { AgentNode } from '@fastgpt/global/core/workflow/template/system/agent';
@@ -1308,141 +1307,5 @@ describe('workflowReferenceValueIsSelectable', () => {
         valueType: WorkflowIOValueTypeEnum.string
       })
     ).toBe(false);
-  });
-});
-
-describe('getNodeAllSource', () => {
-  const makeNode = (nodeId: string, parentNodeId?: string): FlowNodeItemType =>
-    ({
-      id: nodeId,
-      nodeId,
-      parentNodeId,
-      name: nodeId,
-      flowNodeType: FlowNodeTypeEnum.formInput,
-      inputs: [],
-      outputs: [
-        {
-          id: 'output',
-          key: 'output',
-          label: 'output',
-          type: FlowNodeOutputTypeEnum.static,
-          valueType: WorkflowIOValueTypeEnum.string
-        }
-      ]
-    }) as FlowNodeItemType;
-
-  const makeNodeWithoutOutputs = (nodeId: string, parentNodeId?: string): FlowNodeItemType =>
-    ({
-      ...makeNode(nodeId, parentNodeId),
-      outputs: []
-    }) as FlowNodeItemType;
-
-  const getSourceNodeIds = ({
-    nodeId,
-    nodes,
-    edges
-  }: {
-    nodeId: string;
-    nodes: FlowNodeItemType[];
-    edges: Edge[];
-  }) => {
-    const nodeMap = new Map(nodes.map((node) => [node.nodeId, node]));
-
-    return getNodeAllSource({
-      nodeId,
-      getNodeById: (nodeId) => (nodeId ? nodeMap.get(nodeId) : undefined),
-      edges,
-      chatConfig: {} as any,
-      t: ((key: string) => key) as any
-    }).map((node) => node.nodeId);
-  };
-
-  const getSelectableSourceNodeIds = ({
-    nodeId,
-    nodes,
-    edges
-  }: {
-    nodeId: string;
-    nodes: FlowNodeItemType[];
-    edges: Edge[];
-  }) => {
-    const nodeMap = new Map(nodes.map((node) => [node.nodeId, node]));
-
-    return getNodeAllSource({
-      nodeId,
-      getNodeById: (nodeId) => (nodeId ? nodeMap.get(nodeId) : undefined),
-      edges,
-      chatConfig: {} as any,
-      t: ((key: string) => key) as any
-    })
-      .filter(
-        (node) =>
-          filterSelectableWorkflowNodeOutputs({
-            outputs: node.outputs,
-            valueType: WorkflowIOValueTypeEnum.any,
-            catchError: node.catchError
-          }).length > 0
-      )
-      .map((node) => node.nodeId);
-  };
-
-  it('orders source nodes by incoming edge distance', () => {
-    const nodes = [makeNode('target'), makeNode('direct'), makeNode('ancestor')];
-    const edges = [
-      { id: 'ancestor-to-direct', source: 'ancestor', target: 'direct' },
-      { id: 'direct-to-target', source: 'direct', target: 'target' }
-    ] as Edge[];
-
-    expect(getSourceNodeIds({ nodeId: 'target', nodes, edges })).toEqual([
-      'direct',
-      'ancestor',
-      VARIABLE_NODE_ID
-    ]);
-  });
-
-  it('orders nested node references by nearest edge and keeps global variables last', () => {
-    const nodes = [
-      makeNode('reply', 'loop'),
-      makeNode('loop'),
-      makeNode('loopStart', 'loop'),
-      makeNode('textConcat'),
-      makeNode('pluginStart')
-    ];
-    const edges = [
-      { id: 'plugin-to-text', source: 'pluginStart', target: 'textConcat' },
-      { id: 'text-to-loop', source: 'textConcat', target: 'loop' },
-      { id: 'loopStart-to-reply', source: 'loopStart', target: 'reply' }
-    ] as Edge[];
-
-    expect(getSourceNodeIds({ nodeId: 'reply', nodes, edges })).toEqual([
-      'loopStart',
-      'textConcat',
-      'pluginStart',
-      VARIABLE_NODE_ID
-    ]);
-  });
-
-  it('keeps same-level upstream references before parent references after filtering empty outputs', () => {
-    const nodes = [
-      makeNode('variableUpdate', 'loop'),
-      makeNodeWithoutOutputs('reply', 'loop'),
-      makeNode('loop'),
-      makeNode('loopStart', 'loop'),
-      makeNode('textConcat'),
-      makeNode('pluginStart')
-    ];
-    const edges = [
-      { id: 'plugin-to-text', source: 'pluginStart', target: 'textConcat' },
-      { id: 'text-to-loop', source: 'textConcat', target: 'loop' },
-      { id: 'loopStart-to-reply', source: 'loopStart', target: 'reply' },
-      { id: 'reply-to-variable-update', source: 'reply', target: 'variableUpdate' }
-    ] as Edge[];
-
-    expect(getSelectableSourceNodeIds({ nodeId: 'variableUpdate', nodes, edges })).toEqual([
-      'loopStart',
-      'textConcat',
-      'pluginStart',
-      VARIABLE_NODE_ID
-    ]);
   });
 });

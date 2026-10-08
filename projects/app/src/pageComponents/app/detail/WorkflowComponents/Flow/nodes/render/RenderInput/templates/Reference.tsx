@@ -3,11 +3,6 @@ import type { RenderInputProps } from '../type';
 import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import {
-  filterSelectableWorkflowNodeOutputs,
-  getNodeAllSource,
-  type WorkflowGraphEdge
-} from '@/web/core/workflow/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
@@ -18,11 +13,9 @@ import type {
 } from '@fastgpt/global/core/workflow/type/io';
 import type {
   WorkflowFieldSnapshot,
-  WorkflowReferenceStatus,
-  WorkflowSnapshot
+  WorkflowReferenceOption,
+  WorkflowReferenceStatus
 } from '@fastgpt/global/core/workflow/editor/types';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   getWorkflowReferenceItems,
   isConfiguredReferenceValue
@@ -31,14 +24,10 @@ import type { TFunction } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { useWorkflowReferenceScope } from '@fastgpt/web/components/common/Textarea/PromptEditor/context';
-import { useField } from '@/web/core/workflow/editor';
+import { useField, useReferenceOptions } from '@/web/core/workflow/editor/react/useField';
+import { useWorkflowEditorAdapter } from '@/web/core/workflow/editor/react/workflowEditorProvider';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
-import {
-  useDocumentGetNodeById,
-  useGraphQueries,
-  useNodeWorkflowDocument,
-  useWorkflowSnapshotGetter
-} from '../../useWorkflowDocument';
 
 const MultipleRowSelect = dynamic(() =>
   import('@fastgpt/web/components/common/MySelect/MultipleRowSelect').then(
@@ -78,70 +67,38 @@ type SelectProps<T extends boolean> = CommonSelectProps & {
   onSelect: (val?: T extends true ? ReferenceArrayValueType : ReferenceItemValueType) => void;
 };
 
-/**
- * 计算某节点当前可引用的来源列表：普通模块纯函数，只读文档图查询面。
- * 不进 Context、不建订阅，由调用方决定何时计算（常驻派生列表或打开选择器时一次性计算）。
- */
-export const getReferenceList = ({
-  workflow,
-  getNodeById,
-  getChildNodeIds,
-  nodeId,
-  valueType = WorkflowIOValueTypeEnum.any,
-  includeChildren,
-  t,
-  getIncomingEdges
+const referenceOptionsToList = ({
+  options,
+  t
 }: {
-  /** 语义快照：只取 edges 与 chatConfig；按 id 查节点走 port 的 getNode。 */
-  workflow: WorkflowSnapshot;
-  getNodeById: (nodeId: string | null | undefined) => FlowNodeItemType | undefined;
-  /** 容器的直接子节点，来自 Runtime 图查询；不传则不展开子工作流。 */
-  getChildNodeIds?: (parentId: string) => readonly string[];
-  nodeId: string;
-  valueType?: WorkflowIOValueTypeEnum;
-  /** 容器节点（loopRun）需要引用自身子工作流的输出时传 true。 */
-  includeChildren?: boolean;
+  options: readonly WorkflowReferenceOption[];
   t: TFunction;
-  /** Runtime 入边索引；传了上游遍历就是 O(入度) 而不是每个节点全量扫一遍边。 */
-  getIncomingEdges?: (nodeId: string) => readonly WorkflowGraphEdge[];
 }): ReferenceListItem[] => {
-  const sourceNodes = getNodeAllSource({
-    nodeId,
-    getNodeById,
-    edges: workflow.edges,
-    // 只读快照与纯函数入参只差 readonly 修饰，这里只做引用传递，不写回文档。
-    chatConfig: workflow.chatConfig as AppChatConfigType,
-    t,
-    includeChildren,
-    getChildNodeIds,
-    getIncomingEdges
-  });
+  const bySource = new Map<string, ReferenceListItem>();
 
-  const isArray = valueType?.includes('array');
-
-  // 转换为 select 的数据结构
-  return sourceNodes
-    .map((node) => ({
+  options.forEach((option) => {
+    const [sourceId, outputId] = option.reference;
+    const source: ReferenceListItem = bySource.get(sourceId) ?? {
       label: (
         <Flex alignItems={'center'}>
-          <Avatar src={node.avatar} w={isArray ? '1rem' : '1.05rem'} borderRadius={'xs'} />
-          <Box ml={1}>{node.name}</Box>
+          <Avatar src={option.icon} w={'1.05rem'} borderRadius={'xs'} />
+          <Box ml={1}>{option.sourceLabel ? t(option.sourceLabel as any) : sourceId}</Box>
         </Flex>
       ),
-      value: node.nodeId,
-      name: node.name,
-      avatar: node.avatar,
-      children: filterSelectableWorkflowNodeOutputs({
-        outputs: node.outputs,
-        valueType,
-        catchError: node.catchError
-      }).map((output) => ({
-        label: t(output.label as any),
-        value: output.id,
-        valueType: output.valueType
-      }))
-    }))
-    .filter((item) => item.children.length > 0);
+      value: sourceId,
+      name: option.sourceLabel ? t(option.sourceLabel as any) : sourceId,
+      avatar: option.icon,
+      children: []
+    };
+    source.children.push({
+      label: option.outputLabel ? t(option.outputLabel as any) : outputId,
+      value: outputId,
+      valueType: option.sourceType
+    });
+    bySource.set(sourceId, source);
+  });
+
+  return [...bySource.values()];
 };
 
 /**
@@ -158,24 +115,9 @@ export const useReference = ({
   includeChildren?: boolean;
 }) => {
   const { t } = useSafeTranslation();
-  const { workflow, getNodeById, graph } = useNodeWorkflowDocument({ nodeId, includeChildren });
+  const options = useReferenceOptions({ nodeId, valueType, includeChildren });
 
-  const referenceList = useMemo(
-    () =>
-      workflow
-        ? getReferenceList({
-            workflow,
-            getNodeById,
-            getChildNodeIds: graph?.getChildNodeIds,
-            nodeId,
-            valueType,
-            includeChildren,
-            t,
-            getIncomingEdges: graph?.getIncomingEdges
-          })
-        : [],
-    [workflow, getNodeById, graph, nodeId, valueType, includeChildren, t]
-  );
+  const referenceList = useMemo(() => referenceOptionsToList({ options, t }), [options, t]);
 
   return { referenceList };
 };
@@ -194,28 +136,16 @@ export const useLazyReferenceList = ({
   includeChildren?: boolean;
 }) => {
   const { t } = useSafeTranslation();
-  const getWorkflow = useWorkflowSnapshotGetter();
-  // 两个都是非订阅读取：懒加载列表只在打开选择器时算一次，组件本身不随文档变化重渲染。
-  const getNodeById = useDocumentGetNodeById();
-  const graph = useGraphQueries();
+  const adapter = useWorkflowEditorAdapter();
+  const query = useMemo(
+    () => ({ nodeId, valueType, ...(includeChildren ? { includeChildren: true } : {}) }),
+    [includeChildren, nodeId, valueType]
+  );
   const [referenceList, setReferenceList] = useState<ReferenceListItem[]>([]);
 
   const loadReferenceList = useCallback(() => {
-    const workflow = getWorkflow();
-    if (!workflow) return;
-    setReferenceList(
-      getReferenceList({
-        workflow,
-        getNodeById,
-        getChildNodeIds: graph?.getChildNodeIds,
-        nodeId,
-        valueType,
-        includeChildren,
-        t,
-        getIncomingEdges: graph?.getIncomingEdges
-      })
-    );
-  }, [getWorkflow, getNodeById, graph, includeChildren, nodeId, t, valueType]);
+    setReferenceList(referenceOptionsToList({ options: adapter.getReferenceOptions(query), t }));
+  }, [adapter, query, t]);
 
   return { referenceList, loadReferenceList };
 };
@@ -228,11 +158,15 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
   const field = useField(nodeId, item.key, 'input');
   const currentInput = (field?.data.input ?? item) as FlowNodeInputItemType;
-  const getWorkflow = useWorkflowSnapshotGetter();
-  const { referenceList, loadReferenceList } = useLazyReferenceList({
-    nodeId,
-    valueType: currentInput.valueType
-  });
+  const node = useNode(nodeId);
+  const referenceList = useMemo(
+    () =>
+      referenceOptionsToList({
+        options: field?.data.referenceOptions ?? [],
+        t
+      }),
+    [field?.data.referenceOptions, t]
+  );
 
   const isArray = currentInput.valueType?.includes('array') ?? false;
 
@@ -243,7 +177,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
     [field]
   );
 
-  const flowNodeType = getWorkflow()?.nodes.find((node) => node.nodeId === nodeId)?.flowNodeType;
+  const flowNodeType = node?.data.flowNodeType;
   // 嵌套容器节点（loop/parallelRun/loopRun）里的下拉向上展开，避免被子节点覆盖。
   const popDirection = useMemo(
     () => (flowNodeType && isNestedParentNodeType(flowNodeType) ? 'top' : 'bottom'),
@@ -261,7 +195,6 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
         onSelect={onSelect}
         popDirection={popDirection}
         isArray={isArray}
-        onOpenList={loadReferenceList}
       />
     </WorkflowFieldScope>
   );

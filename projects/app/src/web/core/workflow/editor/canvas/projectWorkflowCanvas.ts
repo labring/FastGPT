@@ -28,7 +28,7 @@ import {
   normalizeEdgeHandles,
   type CanvasNode,
   type ViewDataKey
-} from '@/web/core/workflow/editor/canvas';
+} from '@/web/core/workflow/editor/canvas/canvasTypes';
 
 /** host 持有的按节点视图数据（不进文档）。 */
 export type ViewDataOverlayMap = Record<string, Partial<Record<ViewDataKey, unknown>>>;

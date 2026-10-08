@@ -21,7 +21,8 @@ import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const customOutputConfig = {

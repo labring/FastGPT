@@ -6,7 +6,7 @@ import { Box, Textarea } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { useField } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
 
 const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs } = data;

@@ -22,9 +22,9 @@ import { useMemoizedFn } from 'ahooks';
 import { isEqual } from 'lodash-es';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppChatConfigTypeSchema } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import {
   hydrateWorkflowEditor,
@@ -41,38 +41,26 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ensureModelCatalog } from '@/web/core/ai/model/modelData';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { peekWorkflowEnvironmentModels } from '@/web/core/workflow/modelData';
-import {
-  collectWorkflowErrorIssues,
-  renderWorkflowIssueMessage
-} from '@/web/core/workflow/issueView';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { AppContext } from '@/pageComponents/app/detail/context';
-import { materializeWorkflow, serializeRuntime } from './codec';
-import type { ViewDataOverlayMap } from './projection';
-import type { ViewOverlayPatch } from './canvas';
-import { WorkflowEditorProvider } from './react';
+import { materializeWorkflow } from '../codec';
+import type { ViewDataOverlayMap } from '../canvas/projectWorkflowCanvas';
+import type { ViewOverlayPatch } from '../canvas/canvasTypes';
+import { WorkflowEditorProvider } from '../react/workflowEditorProvider';
 import { disposeWorkflowMonacoModels } from '@fastgpt/web/components/common/Textarea/monacoModelRegistry';
-import { getWorkflowEditorPathPrefix } from './workflowEditorPath';
+import { getWorkflowEditorPathPrefix } from '../workflowEditorPath';
+import {
+  recordWorkflowVersion,
+  syncWorkflowLiveVersion,
+  type WorkflowVersionEntry
+} from './workflowHistory';
+import {
+  markWorkflowSaved,
+  serializeWorkflowAndCheckData,
+  serializeWorkflowData
+} from './workflowPersistence';
 
-/** Runtime 最多保留 100 笔 history；版本列表包含当前状态，因此最多 101 项。 */
-const MAX_VERSION_ENTRIES = 101;
-
-/**
- * 版本列表条目。每笔 Runtime command 记录一条，live 标记当前版本。
- *
- * `content` 只服务云端版本（由 switchCloudVersion 现场构造，不进列表）：本地条目的切换按
- * contentRevision 回放 Runtime History，侧边栏展示只读 title，所以本地条目不快照文档，
- * 省掉每笔命令一次全量 canonicalize + 深拷贝与最多 101 份常驻文档副本。
- */
-export type WorkflowVersionEntry = {
-  title: string;
-  content?: CanonicalWorkflowData;
-  contentRevision?: number;
-  live?: boolean;
-};
-
-export type WorkflowHostValue = {
+type WorkflowSessionValue = {
   runtime: WorkflowRuntimePort | null;
   /** 当前工作流编辑页的 Monaco model 生命周期标识。 */
   editorSessionId: string;
@@ -116,13 +104,29 @@ export type WorkflowHostValue = {
   markSaved: () => void;
 
   /** 问题焦点节点 id：投影据此标红并选中该节点；undefined 表示无焦点。 */
+  issueFocusNodeId?: string;
   issueFocusRef: MutableRefObject<string | undefined>;
   /** 标红并定位到指定节点；传 undefined 只清除标红（节点被点击或取消选中）。 */
   focusIssueNode: (nodeId?: string) => void;
 
   initRuntime: (content: CanonicalWorkflowData) => void;
   loadDocument: (content: CanonicalWorkflowData) => void;
+  sessionActions: WorkflowSessionActions;
+  persistence: WorkflowPersistenceState;
+  historyState: WorkflowHistoryState;
 };
+
+export type WorkflowSessionActions = Pick<WorkflowSessionValue, 'initRuntime' | 'loadDocument'>;
+
+export type WorkflowPersistenceState = Pick<
+  WorkflowSessionValue,
+  'isSaved' | 'serializeWorkflow' | 'serializeWorkflowAndCheck' | 'markSaved' | 'leaveSaveSign'
+>;
+
+export type WorkflowHistoryState = Pick<
+  WorkflowSessionValue,
+  'undo' | 'redo' | 'canUndo' | 'canRedo' | 'versions' | 'switchVersion' | 'switchCloudVersion'
+>;
 
 /** 合并 renderer overlay；完全相同的 patch 保持原引用，避免无意义的画布重投影。 */
 export const mergeViewOverlayPatches = ({
@@ -150,7 +154,7 @@ const notImplemented = (): never => {
   throw new Error('WorkflowHost missing');
 };
 
-export const WorkflowHostContext = createContext<WorkflowHostValue>({
+const WorkflowSessionContext = createContext<WorkflowSessionValue>({
   runtime: null,
   editorSessionId: '',
   viewTick: 0,
@@ -169,11 +173,73 @@ export const WorkflowHostContext = createContext<WorkflowHostValue>({
   serializeWorkflow: notImplemented,
   serializeWorkflowAndCheck: notImplemented,
   markSaved: notImplemented,
+  issueFocusNodeId: undefined,
   issueFocusRef: { current: undefined },
   focusIssueNode: notImplemented,
   initRuntime: notImplemented,
-  loadDocument: notImplemented
+  loadDocument: notImplemented,
+  sessionActions: {
+    initRuntime: notImplemented,
+    loadDocument: notImplemented
+  },
+  persistence: {
+    isSaved: true,
+    serializeWorkflow: notImplemented,
+    serializeWorkflowAndCheck: notImplemented,
+    markSaved: notImplemented,
+    leaveSaveSign: { current: true }
+  },
+  historyState: {
+    undo: notImplemented,
+    redo: notImplemented,
+    canUndo: false,
+    canRedo: false,
+    versions: [],
+    switchVersion: notImplemented,
+    switchCloudVersion: notImplemented
+  }
 });
+
+export const useWorkflowRuntime = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.runtime);
+
+export const useWorkflowEditorSessionId = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.editorSessionId);
+
+export const useWorkflowIssueFocusAction = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.focusIssueNode);
+
+export const useWorkflowIssueFocusNodeId = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.issueFocusNodeId);
+
+export const useWorkflowSessionActions = (): WorkflowSessionActions =>
+  useContextSelector(WorkflowSessionContext, (value) => value.sessionActions);
+
+export const useWorkflowPersistence = (): WorkflowPersistenceState =>
+  useContextSelector(WorkflowSessionContext, (value) => value.persistence);
+
+export const useWorkflowHistory = (): WorkflowHistoryState =>
+  useContextSelector(WorkflowSessionContext, (value) => value.historyState);
+
+export const useWorkflowViewTick = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.viewTick);
+
+export const useWorkflowIssueFocusRef = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.issueFocusRef);
+
+export const useWorkflowIssueFocusTick = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.issueFocusTick);
+
+export const useWorkflowOverlayRef = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.overlaysRef);
+
+export const useWorkflowOverlayValue = (nodeId?: string) => {
+  useWorkflowViewTick();
+  return useContextSelector(
+    WorkflowSessionContext,
+    (value) => value.overlaysRef.current[nodeId ?? '']
+  );
+};
 
 /**
  * 语义通道：订阅 runtime 事件，但按 `getWorkflow()` 的快照身份决定是否重渲染。
@@ -190,7 +256,7 @@ export const WorkflowHostContext = createContext<WorkflowHostValue>({
  * 只在事件回调里读当前值用 getter（不建订阅）。
  */
 export const useWorkflowSnapshot = (): WorkflowSnapshot | undefined => {
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const runtime = useWorkflowRuntime();
 
   const subscribe = useMemo(
     () => (onStoreChange: () => void) => runtime?.subscribe(onStoreChange) ?? (() => undefined),
@@ -204,16 +270,35 @@ export const useWorkflowSnapshot = (): WorkflowSnapshot | undefined => {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 };
 
+/** Debug、搜索等 renderer view 写入方只拿 overlay 命令，不依赖 Host 其余生命周期状态。 */
+export const useWorkflowOverlayActions = () =>
+  useContextSelector(WorkflowSessionContext, (value) => value.patchViewData);
+
 /**
  * 编辑器 host Provider：挂在 ReactFlowProvider 内、renderer 之上。
  * Runtime 为 null（尚未 hydrate）时不挂 adapter，其余编辑器状态照常供给。
  */
-export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
+type WorkflowSessionProviderProps = {
+  children: ReactNode;
+  /** 测试或外层预先 hydrate 的场景可直接交给 Session 接管生命周期。 */
+  runtime?: WorkflowRuntimePort;
+  /** 页面层注入的应用身份，用于构造编辑器级资源标识。 */
+  appId?: string;
+  /** 页面层当前 chatConfig；Session 只负责同步到 Runtime。 */
+  appDetailChatConfig?: AppChatConfigType;
+  /** Runtime chatConfig 变化后回写页面状态。 */
+  onChatConfigChange?: (chatConfig: AppChatConfigType) => void;
+};
+
+export const WorkflowSessionProvider = ({
+  children,
+  runtime: initialRuntime,
+  appId = '',
+  appDetailChatConfig,
+  onChatConfigChange
+}: WorkflowSessionProviderProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const appId = useContextSelector(AppContext, (v) => v.appId);
-  const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
-  const appDetailChatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const showSandbox = feConfigs?.show_agent_sandbox;
@@ -246,12 +331,21 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
   const pendingSaveRevision = useRef<number | undefined>(undefined);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
   const leaveSaveSign = useRef(true);
+  const [issueFocusNodeId, setIssueFocusNodeId] = useState<string>();
   const issueFocusRef = useRef<string | undefined>(undefined);
-  // 订阅回调里回写 appDetail，用 ref 避免 chatConfig 变化导致重新订阅。
-  const setAppDetailRef = useRef(setAppDetail);
+  const updateIssueFocusNode = useMemoizedFn((nodeId?: string) => {
+    if (issueFocusRef.current === nodeId) return false;
+    issueFocusRef.current = nodeId;
+    setIssueFocusNodeId(nodeId);
+    return true;
+  });
+  // 订阅回调里回写页面状态，用 ref 避免 chatConfig 变化导致重新订阅。
+  const onChatConfigChangeRef = useRef(onChatConfigChange);
+  const appDetailChatConfigRef = useRef(appDetailChatConfig);
   useEffect(() => {
-    setAppDetailRef.current = setAppDetail;
-  }, [setAppDetail]);
+    onChatConfigChangeRef.current = onChatConfigChange;
+    appDetailChatConfigRef.current = appDetailChatConfig;
+  }, [appDetailChatConfig, onChatConfigChange]);
 
   /**
    * Runtime 的环境事实来源：模型目录与 sandbox 开关。
@@ -273,36 +367,14 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
     setVersionsRaw(next);
   });
 
-  /**
-   * 每笔成功 command 立即记录，不对连续字段输入做合并。
-   * 只记 title 与 contentRevision：本地版本切换按 contentRevision 回放 Runtime History，
-   * 不需要条目自带文档快照。
-   */
   const recordVersionHistory = useMemoizedFn((current: WorkflowRuntimePort) => {
-    const liveIndex = versionsRef.current.findIndex((entry) => entry.live);
-    const currentBranch =
-      liveIndex >= 0 ? versionsRef.current.slice(liveIndex) : versionsRef.current;
-    const nextVersions = [
-      {
-        title: formatTime2YMDHMS(new Date()),
-        contentRevision: current.getSavepoint().contentRevision,
-        live: true
-      },
-      ...currentBranch.map((entry) => (entry.live ? { ...entry, live: false } : entry))
-    ];
-    setVersions(nextVersions.slice(0, MAX_VERSION_ENTRIES));
+    setVersions(recordWorkflowVersion({ current, versions: versionsRef.current }));
   });
 
   /** undo/redo 只移动当前版本标记，不新增侧边栏记录。 */
   const syncLiveVersion = useMemoizedFn((current: WorkflowRuntimePort) => {
-    const contentRevision = current.getSavepoint().contentRevision;
-    if (!versionsRef.current.some((entry) => entry.contentRevision === contentRevision)) return;
-    setVersions(
-      versionsRef.current.map((entry) => ({
-        ...entry,
-        live: entry.contentRevision === contentRevision
-      }))
-    );
+    const next = syncWorkflowLiveVersion({ current, versions: versionsRef.current });
+    if (next) setVersions(next);
   });
 
   const teardownRuntime = useMemoizedFn(() => {
@@ -322,9 +394,10 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
       if (change.changedRecords.chatConfig && !next.isDisposed()) {
         // snapshot 是 DeepReadonly；appDetail 需要可变类型，这里只做引用替换不修改内容。
         const nextConfig = AppChatConfigTypeSchema.parse(next.getWorkflow().chatConfig);
-        setAppDetailRef.current((detail) =>
-          isEqual(detail.chatConfig, nextConfig) ? detail : { ...detail, chatConfig: nextConfig }
-        );
+        if (!isEqual(appDetailChatConfigRef.current, nextConfig)) {
+          appDetailChatConfigRef.current = nextConfig;
+          onChatConfigChangeRef.current?.(nextConfig);
+        }
       }
       if (change.origin === 'command' && !suppressVersionHistoryRef.current) {
         recordVersionHistory(next);
@@ -336,10 +409,26 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
     setRuntime(next);
   });
 
+  useEffect(() => {
+    if (!initialRuntime || runtimeRef.current === initialRuntime) return;
+    attachRuntime(initialRuntime);
+    overlaysRef.current = {};
+    updateIssueFocusNode(undefined);
+    pendingSaveRevision.current = undefined;
+    setVersions([
+      {
+        title: t('app:app.version_initial'),
+        contentRevision: initialRuntime.getSavepoint().contentRevision,
+        live: true
+      }
+    ]);
+    bumpView();
+  }, [attachRuntime, bumpView, initialRuntime, setVersions, t, updateIssueFocusNode]);
+
   // SystemConfigDrawer 只写 appDetail.chatConfig；这里单向同步进文档（相等时跳过，避免死循环）。
   useEffect(() => {
     const current = runtimeRef.current;
-    if (!current || current.isDisposed()) return;
+    if (appDetailChatConfig === undefined || !current || current.isDisposed()) return;
     const docConfig = current.getWorkflow().chatConfig;
     if (!isEqual(docConfig, appDetailChatConfig)) {
       current.dispatch({ type: 'updateChatConfig', chatConfig: appDetailChatConfig });
@@ -356,73 +445,44 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
    * 标红，用于节点被点击或取消选中的场景，此时不应移动视口。
    */
   const focusIssueNode = useMemoizedFn((nodeId?: string) => {
-    if (issueFocusRef.current !== nodeId) {
-      issueFocusRef.current = nodeId;
+    if (updateIssueFocusNode(nodeId)) {
       setIssueFocusTick((tick) => tick + 1);
       bumpView();
     }
   });
 
-  const serializeWorkflow = useMemoizedFn((): StoreWorkflow | undefined => {
-    const current = runtimeRef.current;
-    if (!current || current.isDisposed()) return undefined;
-    pendingSaveRevision.current = current.getSavepoint().contentRevision;
-    return serializeRuntime(current);
-  });
+  const serializeWorkflow = useMemoizedFn(() =>
+    serializeWorkflowData({
+      runtimeRef,
+      pendingSaveRevisionRef: pendingSaveRevision
+    })
+  );
 
-  /**
-   * 保存、发布与调试共用的 gate：先确保模型目录就绪，再让 Runtime 按当前环境事实重算整份
-   * Issue View，然后只读它判定。校验失败只更新标红焦点与提示，不序列化不完整文档；
-   * hideTip 用于静默预检。
-   */
-  const serializeWorkflowAndCheck = useMemoizedFn(async (hideTip = false) => {
-    const current = runtimeRef.current;
-    if (!current || current.isDisposed()) return undefined;
-    // 目录冷启动可能还没就绪，此时模型类问题会整体漏判，gate 必须等它到位。
-    const catalog = await ensureModelCatalog().catch(() => undefined);
-    if (!catalog) {
-      if (!hideTip) toast({ status: 'error', title: t('common:model_catalog_load_failed') });
-      return undefined;
-    }
-    if (current.isDisposed()) return undefined;
+  const serializeWorkflowAndCheck = useMemoizedFn((hideTip = false) =>
+    serializeWorkflowAndCheckData({
+      runtimeRef,
+      pendingSaveRevisionRef: pendingSaveRevision,
+      hideTip,
+      toast,
+      t,
+      focusIssueNode
+    })
+  );
 
-    const errors = collectWorkflowErrorIssues(current);
-    if (errors.length === 0) {
-      // 校验通过：清掉上一次 gate 留下的标红焦点，选中态由投影还原成本地交互值。
-      focusIssueNode(undefined);
-      return serializeWorkflow();
-    }
-    if (!hideTip) {
-      // 标红节点按文档节点顺序取第一个，不依赖 Issue View 的数组顺序。
-      const firstErrorNodeId = current
-        .getWorkflow()
-        .nodes.find((node) => node.issues.some((issue) => issue.level === 'error'))?.nodeId;
-      if (firstErrorNodeId) focusIssueNode(firstErrorNodeId);
-      toast({
-        status: 'warning',
-        title: t('common:core.workflow.Check Failed'),
-        description: errors.map((issue) => renderWorkflowIssueMessage(issue, t)).join('\n')
-      });
-    }
-    return undefined;
-  });
-
-  const markSaved = useMemoizedFn(() => {
-    const current = runtimeRef.current;
-    if (!current || current.isDisposed()) return;
-    const revision = pendingSaveRevision.current ?? current.getSavepoint().contentRevision;
-    pendingSaveRevision.current = undefined;
-    current.markSaved(revision);
-    // 只影响 isSaved（host 派生状态），画布投影不读保存态，不需要动视图计数器。
-    notifyHost();
-  });
+  const markSaved = useMemoizedFn(() =>
+    markWorkflowSaved({
+      runtimeRef,
+      pendingSaveRevisionRef: pendingSaveRevision,
+      notifyHost
+    })
+  );
 
   const initRuntime = useMemoizedFn((content: CanonicalWorkflowData) => {
     // Issue View 由 Runtime 按文档规则与环境事实算出；Workflow 与 Plugin host 共用这一份接线。
     const nextRuntime = hydrateWorkflowEditor(content, { getEnvironment });
     attachRuntime(nextRuntime);
     overlaysRef.current = {};
-    issueFocusRef.current = undefined;
+    updateIssueFocusNode(undefined);
     pendingSaveRevision.current = undefined;
     const initialTitle = t('app:app.version_initial');
     setVersions([
@@ -446,7 +506,7 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
     const res = current.dispatch({ type: 'replaceDocument', document: content });
     if (!res.ok) return;
     overlaysRef.current = {};
-    issueFocusRef.current = undefined;
+    updateIssueFocusNode(undefined);
     pendingSaveRevision.current = undefined;
     bumpView();
   });
@@ -488,7 +548,7 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
       }
 
       overlaysRef.current = {};
-      issueFocusRef.current = undefined;
+      updateIssueFocusNode(undefined);
       pendingSaveRevision.current = undefined;
       // 文档替换事件已经带动画布投影，但那次投影读到的还是清理前的 overlay 与标红焦点，
       // 这里再 bump 一次让画布按清理后的视图数据重投影。
@@ -506,7 +566,7 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
       // 本地条目走 replayHistory，chatConfig 变化已由 Runtime 变更事件回写 appDetail。
       if (entry.content) {
         const nextChatConfig = entry.content.chatConfig;
-        setAppDetail((detail) => ({ ...detail, chatConfig: nextChatConfig }));
+        onChatConfigChangeRef.current?.(nextChatConfig);
       }
       return true;
     }
@@ -590,7 +650,34 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
     [teardownRuntime]
   );
 
-  const value = useMemo(
+  const sessionActions = useMemo<WorkflowSessionActions>(
+    () => ({ initRuntime, loadDocument }),
+    [initRuntime, loadDocument]
+  );
+  const persistence = useMemo<WorkflowPersistenceState>(
+    () => ({
+      isSaved,
+      serializeWorkflow,
+      serializeWorkflowAndCheck,
+      markSaved,
+      leaveSaveSign
+    }),
+    [isSaved, serializeWorkflow, serializeWorkflowAndCheck, markSaved]
+  );
+  const historyState = useMemo<WorkflowHistoryState>(
+    () => ({
+      undo,
+      redo,
+      canUndo: history?.canUndo ?? false,
+      canRedo: history?.canRedo ?? false,
+      versions,
+      switchVersion,
+      switchCloudVersion
+    }),
+    [undo, redo, history?.canUndo, history?.canRedo, versions, switchVersion, switchCloudVersion]
+  );
+
+  const value: WorkflowSessionValue = useMemo(
     () => ({
       runtime,
       editorSessionId,
@@ -610,10 +697,14 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
       serializeWorkflow,
       serializeWorkflowAndCheck,
       markSaved,
+      issueFocusNodeId,
       issueFocusRef,
       focusIssueNode,
       initRuntime,
-      loadDocument
+      loadDocument,
+      sessionActions,
+      persistence,
+      historyState
     }),
     [
       runtime,
@@ -632,18 +723,22 @@ export const WorkflowHostProvider = ({ children }: { children: ReactNode }) => {
       serializeWorkflow,
       serializeWorkflowAndCheck,
       markSaved,
+      issueFocusNodeId,
       focusIssueNode,
       initRuntime,
-      loadDocument
+      loadDocument,
+      sessionActions,
+      persistence,
+      historyState
     ]
   );
 
   return (
-    <WorkflowHostContext.Provider value={value}>
+    <WorkflowSessionContext.Provider value={value}>
       <WorkflowEditorProvider runtime={runtime}>
         {children}
         {authExpiredModal}
       </WorkflowEditorProvider>
-    </WorkflowHostContext.Provider>
+    </WorkflowSessionContext.Provider>
   );
 };

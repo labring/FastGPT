@@ -11,7 +11,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 
 type DynamicOutputsProps = {

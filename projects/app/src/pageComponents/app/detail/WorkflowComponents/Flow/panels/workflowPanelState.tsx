@@ -1,7 +1,7 @@
 // renderer 层：功能性弹窗状态（历史版本 / 运行预览 / 添加节点 Popover）
 import React, { useCallback, useState } from 'react';
 import type { OnConnectStartParams } from 'reactflow';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 import ChatTest from '../ChatTest';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -24,32 +24,48 @@ type WorkflowModalContextValue = {
   /** 当前打开的右侧工作流弹窗，历史版本与运行预览通过单一状态互斥。 */
   activePanel: WorkflowActivePanel;
 
-  /** 切换当前工作流弹窗。 */
-  setActivePanel: React.Dispatch<React.SetStateAction<WorkflowActivePanel>>;
+  /** 打开指定的工作流面板；同一时刻只保留一个面板。 */
+  openPanel: (panel: Exclude<WorkflowActivePanel, null>) => void;
+
+  /** 关闭当前工作流面板。 */
+  closePanel: () => void;
 
   /** 添加节点 Popover 参数。 */
   handleParams: handleParamsType | null;
 
-  /** 设置添加节点 Popover 参数。 */
-  setHandleParams: React.Dispatch<React.SetStateAction<handleParamsType | null>>;
+  /** 打开添加节点 Popover。 */
+  openNodeTemplates: (params: handleParamsType) => void;
+
+  /** 关闭添加节点 Popover。 */
+  closeNodeTemplates: () => void;
 
   /** 写入运行预览数据并打开运行预览。 */
-  setWorkflowTestData: React.Dispatch<React.SetStateAction<WorkflowTestData | undefined>>;
+  openWorkflowTest: (data: WorkflowTestData) => void;
 };
 
-export const WorkflowModalContext = createContext<WorkflowModalContextValue>({
+const WorkflowModalContext = createContext<WorkflowModalContextValue>({
   activePanel: null,
-  setActivePanel: function (_value: React.SetStateAction<WorkflowActivePanel>): void {
+  openPanel: function (_panel: Exclude<WorkflowActivePanel, null>): void {
+    throw new Error('Function not implemented.');
+  },
+  closePanel: function (): void {
     throw new Error('Function not implemented.');
   },
   handleParams: null,
-  setHandleParams: function (_value: React.SetStateAction<handleParamsType | null>): void {
+  openNodeTemplates: function (_params: handleParamsType): void {
     throw new Error('Function not implemented.');
   },
-  setWorkflowTestData: function (_value: React.SetStateAction<WorkflowTestData | undefined>): void {
+  closeNodeTemplates: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  openWorkflowTest: function (_data: WorkflowTestData): void {
     throw new Error('Function not implemented.');
   }
 });
+
+/** Modal 读取入口；Context 本身不出模块。 */
+export const useWorkflowModalValue = <T,>(selector: (value: WorkflowModalContextValue) => T): T =>
+  useContextSelector(WorkflowModalContext, selector);
 
 /**
  * 弹窗状态 Provider：管理右侧面板互斥状态、添加节点 Popover 参数与运行预览数据，并渲染 ChatTest 面板。
@@ -61,22 +77,38 @@ export const WorkflowModalProvider = ({ children }: { children: React.ReactNode 
   const [workflowTestData, setWorkflowTestDataState] = useState<WorkflowTestData>();
   const { chatId } = useChatStore();
 
-  const setWorkflowTestData = useCallback<
-    React.Dispatch<React.SetStateAction<WorkflowTestData | undefined>>
-  >((value) => {
-    setWorkflowTestDataState(value);
+  const openPanel = useCallback((panel: Exclude<WorkflowActivePanel, null>) => {
+    setActivePanel(panel);
+  }, []);
+  const closePanel = useCallback(() => setActivePanel(null), []);
+  const openNodeTemplates = useCallback((params: handleParamsType) => {
+    setHandleParams(params);
+  }, []);
+  const closeNodeTemplates = useCallback(() => setHandleParams(null), []);
+  const openWorkflowTest = useCallback((data: WorkflowTestData) => {
+    setWorkflowTestDataState(data);
     setActivePanel('run');
   }, []);
 
   const contextValue = useMemoEnhance(
     () => ({
       activePanel,
-      setActivePanel,
+      openPanel,
+      closePanel,
       handleParams,
-      setHandleParams,
-      setWorkflowTestData
+      openNodeTemplates,
+      closeNodeTemplates,
+      openWorkflowTest
     }),
-    [activePanel, handleParams, setWorkflowTestData]
+    [
+      activePanel,
+      openPanel,
+      closePanel,
+      handleParams,
+      openNodeTemplates,
+      closeNodeTemplates,
+      openWorkflowTest
+    ]
   );
 
   return (
@@ -85,7 +117,7 @@ export const WorkflowModalProvider = ({ children }: { children: React.ReactNode 
       <ChatTest
         isOpen={activePanel === 'run'}
         {...workflowTestData}
-        onClose={() => setActivePanel(null)}
+        onClose={closePanel}
         chatId={chatId}
       />
     </WorkflowModalContext.Provider>

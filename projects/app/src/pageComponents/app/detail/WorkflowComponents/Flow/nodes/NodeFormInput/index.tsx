@@ -32,7 +32,8 @@ import DndDrag, {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;

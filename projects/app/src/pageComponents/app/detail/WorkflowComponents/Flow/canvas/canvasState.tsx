@@ -4,12 +4,13 @@ import { useLocalStorageState } from 'ahooks';
 import React, { type PropsWithChildren, useCallback, useEffect, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { useWorkflowSnapshot } from '@/web/core/workflow/editor/host';
+import { useWorkflowSnapshot } from '@/web/core/workflow/editor/session/workflowSession';
 import { useWorkflowDemoTrack } from '@/web/common/middle/tracks/workflowDemoTrack';
 import type { OnConnectStartParams } from 'reactflow';
 import type { NodeTemplateContext } from '@fastgpt/global/core/workflow/type/node';
 
 type MousePosition = { x: number; y: number };
+export type ContextMenuPosition = { top: number; left: number };
 
 /**
  * 连线拖拽状态：源 handle 参数 + 拖拽开始时由 Runtime 算好的 placement context。
@@ -25,19 +26,19 @@ type WorkflowUIContextValue = {
   hoverNodeId?: string;
 
   /** 设置悬停的节点 ID */
-  setHoverNodeId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  setHoverNodeId: (nodeId?: string) => void;
 
   /** 悬停的边 ID */
   hoverEdgeId?: string;
 
   /** 设置悬停的边 ID */
-  setHoverEdgeId: React.Dispatch<React.SetStateAction<string | undefined>>;
+  setHoverEdgeId: (edgeId?: string) => void;
 
   /** 正在拖拽连线的源 handle 与 placement context；连接柄高亮与可连接判定都读它 */
   connectingEdge?: ConnectingEdgeState;
 
   /** 设置正在拖拽连线的源 handle */
-  setConnectingEdge: React.Dispatch<React.SetStateAction<ConnectingEdgeState | undefined>>;
+  setConnectingEdge: (state?: ConnectingEdgeState) => void;
 
   /** 鼠标是否在 Canvas 中 */
   mouseInCanvas: boolean;
@@ -58,24 +59,23 @@ type WorkflowUIContextValue = {
   presentationMode: boolean;
 
   /** 设置演示模式 */
-  setPresentationMode: React.Dispatch<React.SetStateAction<boolean>>;
+  setPresentationMode: (enabled: boolean) => void;
 
   /** 右键菜单 */
-  menu: { top: number; left: number } | null;
+  menu: ContextMenuPosition | null;
 
   /** 设置右键菜单 */
-  setMenu: React.Dispatch<React.SetStateAction<{ top: number; left: number } | null>>;
+  openContextMenu: (position: ContextMenuPosition) => void;
+  closeContextMenu: () => void;
 };
-export const WorkflowUIContext = createContext<WorkflowUIContextValue>({
-  setHoverNodeId: function (_value: React.SetStateAction<string | undefined>): void {
+const WorkflowUIContext = createContext<WorkflowUIContextValue>({
+  setHoverNodeId: function (_nodeId?: string): void {
     throw new Error('Function not implemented.');
   },
-  setHoverEdgeId: function (_value: React.SetStateAction<string | undefined>): void {
+  setHoverEdgeId: function (_edgeId?: string): void {
     throw new Error('Function not implemented.');
   },
-  setConnectingEdge: function (
-    _value: React.SetStateAction<ConnectingEdgeState | undefined>
-  ): void {
+  setConnectingEdge: function (_state?: ConnectingEdgeState): void {
     throw new Error('Function not implemented.');
   },
   mouseInCanvas: false,
@@ -88,14 +88,21 @@ export const WorkflowUIContext = createContext<WorkflowUIContextValue>({
     throw new Error('Function not implemented.');
   },
   presentationMode: false,
-  setPresentationMode: function (_value: React.SetStateAction<boolean>): void {
+  setPresentationMode: function (_enabled: boolean): void {
     throw new Error('Function not implemented.');
   },
   menu: null,
-  setMenu: function (_value: React.SetStateAction<{ top: number; left: number } | null>): void {
+  openContextMenu: function (_position: ContextMenuPosition): void {
+    throw new Error('Function not implemented.');
+  },
+  closeContextMenu: function (): void {
     throw new Error('Function not implemented.');
   }
 });
+
+/** UI 交互读取入口；Context 本身不出模块，调用方只能选择语义字段。 */
+export const useWorkflowUIValue = <T,>(selector: (value: WorkflowUIContextValue) => T): T =>
+  useContextSelector(WorkflowUIContext, selector);
 
 /**
  * 画布交互状态 Provider：只承载 renderer 层的瞬时交互状态，不持有工作流文档数据。
@@ -188,25 +195,42 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
   useWorkflowDemoTrack(appId, nodeAmount, presentationMode);
 
   // 右键菜单
-  const [menu, setMenu] = useState<{ top: number; left: number } | null>(null);
+  const [menu, setMenu] = useState<ContextMenuPosition | null>(null);
+  const setHoverNodeIdValue = useCallback((nodeId?: string) => setHoverNodeId(nodeId), []);
+  const setHoverEdgeIdValue = useCallback((edgeId?: string) => setHoverEdgeId(edgeId), []);
+  const setConnectingEdgeValue = useCallback(
+    (state?: ConnectingEdgeState) => setConnectingEdge(state),
+    []
+  );
+  const setWorkflowControlModeValue = useCallback(
+    (value: 'drag' | 'select') => setWorkflowControlMode(value),
+    [setWorkflowControlMode]
+  );
+  const setPresentationModeValue = useCallback(
+    (enabled: boolean) => setPresentationMode(enabled),
+    []
+  );
+  const openContextMenu = useCallback((position: ContextMenuPosition) => setMenu(position), []);
+  const closeContextMenu = useCallback(() => setMenu(null), []);
 
   const contextValue = useMemoEnhance(() => {
     return {
       hoverNodeId,
-      setHoverNodeId,
+      setHoverNodeId: setHoverNodeIdValue,
       hoverEdgeId,
-      setHoverEdgeId,
+      setHoverEdgeId: setHoverEdgeIdValue,
       connectingEdge,
-      setConnectingEdge,
+      setConnectingEdge: setConnectingEdgeValue,
       mouseInCanvas,
       getMousePosition,
       reactFlowWrapperCallback,
       workflowControlMode,
-      setWorkflowControlMode,
+      setWorkflowControlMode: setWorkflowControlModeValue,
       presentationMode,
-      setPresentationMode,
+      setPresentationMode: setPresentationModeValue,
       menu,
-      setMenu
+      openContextMenu,
+      closeContextMenu
     };
   }, [
     hoverNodeId,
@@ -216,9 +240,11 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
     getMousePosition,
     reactFlowWrapperCallback,
     workflowControlMode,
-    setWorkflowControlMode,
+    setWorkflowControlModeValue,
     presentationMode,
-    menu
+    menu,
+    openContextMenu,
+    closeContextMenu
   ]);
 
   return <WorkflowUIContext.Provider value={contextValue}>{children}</WorkflowUIContext.Provider>;

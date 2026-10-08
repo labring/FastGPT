@@ -6,7 +6,10 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
-import { hydrateWorkflowEditor, migrateStoreWorkflow } from '@fastgpt/global/core/workflow/editor';
+import {
+  hydrateWorkflowEditor,
+  migrateStoreWorkflow
+} from '@fastgpt/global/core/workflow/editor/protocol';
 import type {
   WorkflowChange,
   WorkflowCommand,

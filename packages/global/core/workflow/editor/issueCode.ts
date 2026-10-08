@@ -39,9 +39,9 @@ export const WorkflowIssueCode = {
   sandboxPlanNotSupported: 'sandbox_plan_not_supported'
 } as const;
 
-export type WorkflowIssueCode = (typeof WorkflowIssueCode)[keyof typeof WorkflowIssueCode];
-
 export const WorkflowIssueCodeSchema = z.enum(WorkflowIssueCode);
+
+export type WorkflowIssueCode = z.infer<typeof WorkflowIssueCodeSchema>;
 
 /**
  * code -> 完整 i18n key（含命名空间）。多个 code 可以共用一条文案，

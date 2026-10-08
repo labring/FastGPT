@@ -10,15 +10,19 @@ import dagre from '@dagrejs/dagre';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { cloneDeep } from 'lodash-es';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowUIContext } from '../context/workflowUIContext';
-import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
+import { useWorkflowUIValue } from '../canvas/canvasState';
+import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
 import { getHandleIndex } from '../utils/edge';
 import { getParentNodeSizeAndPosition } from '../utils/layout';
-import { useCanvas, useWorkflowActions } from '@/web/core/workflow/editor';
-import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
-import { WorkflowHostContext, useWorkflowSnapshot } from '@/web/core/workflow/editor/host';
-import { useClearCanvasSelection } from '../hooks/useWorkflow';
-import { type DimensionReader, type NodeCardDimension } from '../context/dimensionIndex';
+import { useCanvas } from '@/web/core/workflow/editor/react/useWorkflowQueries';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import {
+  useWorkflowRuntime,
+  useWorkflowSnapshot
+} from '@/web/core/workflow/editor/session/workflowSession';
+import { useClearCanvasSelection } from '../canvas/useCanvasController';
+import { type DimensionReader, type NodeCardDimension } from '../canvas/dimensionIndex';
 
 /** 右键菜单单项：执行动作后关闭菜单。不依赖父组件状态，放模块级避免每次渲染重建组件。 */
 const ContextMenuItem = ({
@@ -31,7 +35,7 @@ const ContextMenuItem = ({
   label: string;
   onClick: () => any;
 } & StackProps) => {
-  const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
+  const closeContextMenu = useWorkflowUIValue((ctx) => ctx.closeContextMenu);
 
   return (
     <HStack
@@ -42,7 +46,7 @@ const ContextMenuItem = ({
       _hover={{ bg: 'myGray.50', color: 'primary.500' }}
       onClick={() => {
         onClick();
-        setMenu(null);
+        closeContextMenu();
       }}
       {...props}
     >
@@ -56,7 +60,7 @@ const ContextMenuItem = ({
 
 const ContextMenu = () => {
   const { t } = useTranslation();
-  const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
+  const menu = useWorkflowUIValue((v) => v.menu!);
   const actions = useWorkflowActions();
   const canvas = useCanvas();
   const clearCanvasSelection = useClearCanvasSelection();
@@ -64,12 +68,12 @@ const ContextMenu = () => {
   // 自动对齐只读 renderer 交互状态（位置、测量尺寸）；写入走画布本地数组，
   // 受控模式下 useReactFlow().setNodes 会被转成整份 reset 变更。
   const { screenToFlowPosition } = useReactFlow();
-  const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
-  const fitNodes = useContextSelector(WorkflowCanvasContext, (v) => v.fitNodes);
-  const edges = useContextSelector(WorkflowCanvasContext, (v) => v.edges);
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
-  const setCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.setNodes);
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
+  const edges = useWorkflowCanvasValue((v) => v.edges);
+  const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
+  const replaceNodes = useWorkflowCanvasValue((v) => v.replaceNodes);
+  const runtime = useWorkflowRuntime();
   // 语义通道：快照只在语义版本变化时换身份，节点增删会带动下面的折叠判定重算。
   const workflow = useWorkflowSnapshot();
 
@@ -409,7 +413,7 @@ const ContextMenu = () => {
       const dimension = getLayoutDimension(node.id);
       return dimension ? { ...node, ...dimension } : node;
     });
-    setCanvasNodes(renderNodes);
+    replaceNodes(renderNodes);
     canvas.commitGeometry(
       renderNodes.flatMap((node) => {
         const previous = previousPositions.get(node.id);
@@ -422,7 +426,7 @@ const ContextMenu = () => {
     setTimeout(() => {
       fitNodes(undefined, { padding: 0.3 });
     });
-  }, [canvas, edges, fitNodes, getNodeDimension, getNodes, setCanvasNodes]);
+  }, [canvas, edges, fitNodes, getNodeDimension, getNodes, replaceNodes]);
 
   const onAddComment = useCallback(() => {
     // Compensate for menu position offset (set in onPaneContextMenu)

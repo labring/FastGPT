@@ -52,7 +52,8 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode, useNodeWorkflowDocument } from '../render/useWorkflowDocument';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
@@ -155,14 +156,13 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   };
 
   const variables = useMemoEnhance(() => {
-    if (!workflow) return [];
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       t,
-      getIncomingEdges: graph?.getIncomingEdges
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
   }, [nodeId, workflow, getNodeById, graph, t]);
 
@@ -266,14 +266,13 @@ export function RenderHttpProps({
   }, [feConfigs?.externalProviderWorkflowVariables]);
 
   const variables = useMemoEnhance(() => {
-    if (!workflow) return [];
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       t,
-      getIncomingEdges: graph?.getIncomingEdges
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
   }, [nodeId, workflow, getNodeById, graph, t]);
 

@@ -17,6 +17,8 @@ import type {
   WorkflowIssueUpdate,
   WorkflowIssuesSnapshot,
   WorkflowNodeSnapshot,
+  WorkflowReferenceOptionsQuery,
+  WorkflowReferenceOption,
   WorkflowRuntimePort,
   WorkflowRuntimeOptions,
   WorkflowSavepoint,
@@ -144,6 +146,7 @@ export const createWorkflowEditor = (
     string,
     { record: NodeRecord; issues: WorkflowCheckIssue[]; snapshot: WorkflowNodeSnapshot }
   >();
+  const referenceOptionsCache = new Map<string, readonly WorkflowReferenceOption[]>();
   const edgeSnapshotCache = new Map<EdgeRecord, WorkflowEdgeSnapshot>();
   const fieldSnapshotCache = new Map<
     string,
@@ -201,6 +204,7 @@ export const createWorkflowEditor = (
 
   /** 先记录再通知；单个 listener 异常不能破坏其他订阅者的一致观察。 */
   const publish = (change: WorkflowChange) => {
+    if (change.kind !== 'geometry') referenceOptionsCache.clear();
     changeLog.push(change);
     if (changeLog.length > MAX_CHANGE_LOG) changeLog.splice(0, changeLog.length - MAX_CHANGE_LOG);
     listeners.forEach((listener) => {
@@ -318,7 +322,9 @@ export const createWorkflowEditor = (
     if (cached?.field === field) return cached.snapshot;
 
     const statuses = input ? reference.getFieldStatuses(nodeId, input) : [];
-    const referenceOptions = input ? reference.getReferenceOptions(nodeId, input) : [];
+    const referenceOptions = input
+      ? reference.getReferenceOptions({ nodeId, valueType: input.valueType })
+      : [];
     const snapshot = freezeValue({
       nodeId,
       key: fieldKey,
@@ -335,6 +341,23 @@ export const createWorkflowEditor = (
       snapshot
     });
     return snapshot;
+  };
+
+  /** 返回稳定的引用选择项；通用嵌套值与字段 snapshot 共用 Runtime Reference 语义。 */
+  const getReferenceOptions = ({
+    nodeId,
+    valueType,
+    includeChildren
+  }: WorkflowReferenceOptionsQuery): readonly WorkflowReferenceOption[] => {
+    ensureActive();
+    const cacheKey = `${nodeId}\0${valueType ?? '*'}\0${includeChildren ? 'children' : 'direct'}`;
+    const cached = referenceOptionsCache.get(cacheKey);
+    if (cached) return cached;
+    const options = freezeValue(
+      cloneValue(reference.getReferenceOptions({ nodeId, valueType, includeChildren }))
+    ) as readonly WorkflowReferenceOption[];
+    referenceOptionsCache.set(cacheKey, options);
+    return options;
   };
 
   /** 扁平命令路由：geometry 交给 NodeView，其余交给 Document。 */
@@ -595,6 +618,7 @@ export const createWorkflowEditor = (
       return nodeView.getNodeViewSnapshot(nodeId);
     },
     getField: getFieldSnapshot,
+    getReferenceOptions,
     getHistory: () => history.getSnapshot(),
     getSavepoint: () => {
       ensureActive();
@@ -661,6 +685,7 @@ export const createWorkflowEditor = (
       nodeSnapshotCache.clear();
       edgeSnapshotCache.clear();
       fieldSnapshotCache.clear();
+      referenceOptionsCache.clear();
       workflowSnapshotCache = undefined;
       workflowIssuesCache = undefined;
       chatConfigSnapshotCache = undefined;

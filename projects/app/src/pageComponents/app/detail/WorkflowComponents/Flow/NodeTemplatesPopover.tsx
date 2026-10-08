@@ -9,19 +9,19 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
 import React from 'react';
 import { type Node } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
-import { usePlacementContext, useWorkflowActions } from '@/web/core/workflow/editor';
-import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
-import { WorkflowModalContext } from './context/workflowModalContext';
+import { usePlacementContext } from '@/web/core/workflow/editor/react/useWorkflowQueries';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import { useWorkflowModalValue } from './panels/workflowPanelState';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
-import { popoverHeight, popoverWidth, useClearCanvasSelection } from './hooks/useWorkflow';
+import { popoverHeight, popoverWidth, useClearCanvasSelection } from './canvas/useCanvasController';
 
 const NodeTemplatesPopover = () => {
   // 按字段订阅：整体订阅会让 activePanel 与运行预览数据的变化也带动本组件刷新。
-  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
-  const setHandleParams = useContextSelector(WorkflowModalContext, (v) => v.setHandleParams);
+  const handleParams = useWorkflowModalValue((v) => v.handleParams);
+  const closeNodeTemplates = useWorkflowModalValue((v) => v.closeNodeTemplates);
 
   const actions = useWorkflowActions();
   const clearCanvasSelection = useClearCanvasSelection();
@@ -60,7 +60,7 @@ const NodeTemplatesPopover = () => {
     });
 
     if (validNewNodes.length === 0) {
-      setHandleParams(null);
+      closeNodeTemplates();
       return;
     }
 
@@ -82,11 +82,11 @@ const NodeTemplatesPopover = () => {
     const result = actions.addNodes(storeNodes, newEdge);
     // 节点与首条连线在同一事务内提交，撤销只需一步。
     if (!result.ok) {
-      setHandleParams(null);
+      closeNodeTemplates();
       return result;
     }
 
-    setHandleParams(null);
+    closeNodeTemplates();
     return result;
   });
 
@@ -95,7 +95,7 @@ const NodeTemplatesPopover = () => {
   return (
     <Popover
       isOpen={!!handleParams}
-      onClose={() => setHandleParams(null)}
+      onClose={closeNodeTemplates}
       closeOnBlur={true}
       closeOnEsc={true}
       autoFocus={true}

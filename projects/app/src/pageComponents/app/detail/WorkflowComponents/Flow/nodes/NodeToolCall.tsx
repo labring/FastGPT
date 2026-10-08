@@ -21,7 +21,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from './render/useWorkflowDocument';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();

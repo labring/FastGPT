@@ -3,22 +3,25 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { useWorkflowActions } from '@/web/core/workflow/editor';
-import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { useKeyPress as useKeyPressEffect } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useCallback } from 'react';
 import { type Node, useKeyPress, useReactFlow } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowUIContext } from '../context/workflowUIContext';
+import { useWorkflowUIValue } from '../canvas/canvasState';
 import { isWorkflowShortcutInputtingTarget } from './keyboard';
-import { useClearCanvasSelection } from './useWorkflow';
+import { useClearCanvasSelection } from '../canvas/useCanvasController';
 import { useWorkflowUtils } from './useUtils';
+import {
+  useWorkflowIssueFocusRef,
+  useWorkflowRuntime
+} from '@/web/core/workflow/editor/session/workflowSession';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
-  const mouseInCanvas = useContextSelector(WorkflowUIContext, (v) => v.mouseInCanvas);
-  const getMousePosition = useContextSelector(WorkflowUIContext, (v) => v.getMousePosition);
+  const mouseInCanvas = useWorkflowUIValue((v) => v.mouseInCanvas);
+  const getMousePosition = useWorkflowUIValue((v) => v.getMousePosition);
 
   const { copyData } = useCopyData();
   const { computedNewNodeName } = useWorkflowUtils();
@@ -27,6 +30,8 @@ export const useKeyboard = () => {
   const { screenToFlowPosition, getNodes } = useReactFlow();
   const actions = useWorkflowActions();
   const clearCanvasSelection = useClearCanvasSelection();
+  const runtime = useWorkflowRuntime();
+  const issueFocusRef = useWorkflowIssueFocusRef();
 
   const isDowningCtrl = useKeyPress(['Meta', 'Control']);
 
@@ -37,13 +42,30 @@ export const useKeyboard = () => {
   const onCopy = useCallback(async () => {
     if (hasInputtingElement()) return;
     const nodes = getNodes();
+    if (!runtime) return;
 
-    const selectedNodes = nodes.filter(
-      (node) => node.selected && !node.data?.isError && node.data?.unique !== true
-    );
+    const selectedNodes = nodes.flatMap((node) => {
+      if (!node.selected || node.id === issueFocusRef.current || node.data?.unique === true) {
+        return [];
+      }
+
+      const snapshot = runtime.getNode(node.id);
+      if (!snapshot) return [];
+      const { issues: _issues, ...data } = snapshot;
+
+      return [
+        {
+          id: node.id,
+          type: node.type,
+          // 只序列化 Runtime canonical data；overlay 和 ReactFlow 投影字段不进入剪贴板。
+          data,
+          position: runtime.getNodeView(node.id)?.position ?? node.position
+        }
+      ];
+    });
     if (selectedNodes.length === 0) return;
     copyData(JSON.stringify(selectedNodes), t('common:core.workflow.Copy node'));
-  }, [copyData, getNodes, hasInputtingElement, t]);
+  }, [copyData, getNodes, hasInputtingElement, issueFocusRef, runtime, t]);
 
   const onPaste = useCallback(async () => {
     if (hasInputtingElement()) return;
@@ -133,7 +155,3 @@ export const useKeyboard = () => {
     isDowningCtrl
   };
 };
-
-export default function Dom() {
-  return <></>;
-}

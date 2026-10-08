@@ -25,7 +25,8 @@ import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput'
 
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode, useNodeWorkflowDocument } from '../render/useWorkflowDocument';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
@@ -128,14 +129,13 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   // Editor variables for PromptEditor
   const editorVariables = useMemoEnhance(() => {
-    if (!workflow) return [];
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       t,
-      getIncomingEdges: graph?.getIncomingEdges
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
   }, [nodeId, workflow, getNodeById, graph, t]);
   const externalVariables = useMemo(

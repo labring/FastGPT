@@ -7,28 +7,28 @@ import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/const
 import { createContext, useContextSelector } from 'use-context-selector';
 
 import { useMemoizedFn } from 'ahooks';
-import React, {
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-  useEffect,
-  useMemo,
-  useRef,
-  useState
-} from 'react';
+import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type Edge,
   type EdgeChange,
   type Node,
   type NodeChange,
-  applyEdgeChanges,
-  applyNodeChanges,
+  applyEdgeChanges as applyReactFlowEdgeChanges,
+  applyNodeChanges as applyReactFlowNodeChanges,
   useReactFlow,
   useStore
 } from 'reactflow';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import { createProjectionCache, projectRuntimeCanvas } from '@/web/core/workflow/editor/projection';
-import type { CanvasNode } from '@/web/core/workflow/editor/canvas';
+import {
+  useWorkflowIssueFocusRef,
+  useWorkflowOverlayRef,
+  useWorkflowRuntime,
+  useWorkflowViewTick
+} from '@/web/core/workflow/editor/session/workflowSession';
+import {
+  createProjectionCache,
+  projectRuntimeCanvas
+} from '@/web/core/workflow/editor/canvas/projectWorkflowCanvas';
+import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import {
   classifyRenderableGraph,
   createMeasurementQueue,
@@ -97,8 +97,8 @@ const areSourceHandleCentersEqual = (
 type WorkflowCanvasContextType = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   renderedNodes: Node<FlowNodeItemType, string | undefined>[];
-  setNodes: Dispatch<SetStateAction<Node<FlowNodeItemType, string | undefined>[]>>;
-  onNodesChange: OnChange<NodeChange>;
+  replaceNodes: (nodes: CanvasNode[]) => void;
+  applyNodeChanges: OnChange<NodeChange>;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
   fitNodes: (nodeIds?: readonly string[], options?: ViewportFitOptions) => boolean;
   dimensionIndex: ReadonlyMap<string, NodeDimensions>;
@@ -113,16 +113,16 @@ type WorkflowCanvasContextType = {
   onViewportChange: (viewport: CanvasViewport) => void;
   edges: Edge<any>[];
   renderedEdges: Edge<any>[];
-  setEdges: Dispatch<SetStateAction<Edge<any>[]>>;
-  onEdgesChange: OnChange<EdgeChange>;
+  replaceEdges: (edges: Edge<any>[]) => void;
+  applyEdgeChanges: OnChange<EdgeChange>;
 };
-export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
+const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
   nodes: [],
   renderedNodes: [],
-  setNodes: function () {
+  replaceNodes: function () {
     throw new Error('Function not implemented.');
   },
-  onNodesChange: function () {
+  applyNodeChanges: function () {
     throw new Error('Function not implemented.');
   },
   getNodes: function () {
@@ -155,23 +155,26 @@ export const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
   },
   edges: [],
   renderedEdges: [],
-  setEdges: function () {
+  replaceEdges: function () {
     throw new Error('Function not implemented.');
   },
-  onEdgesChange: function () {
+  applyEdgeChanges: function () {
     throw new Error('Function not implemented.');
   }
 });
+
+export const useWorkflowCanvasValue = <T,>(selector: (value: WorkflowCanvasContextType) => T): T =>
+  useContextSelector(WorkflowCanvasContext, selector);
 
 const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const { setViewport } = useReactFlow();
   const canvasWidth = useStore((state) => state.width);
   const canvasHeight = useStore((state) => state.height);
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
-  const viewTick = useContextSelector(WorkflowHostContext, (v) => v.viewTick);
-  const overlaysRef = useContextSelector(WorkflowHostContext, (v) => v.overlaysRef);
+  const runtime = useWorkflowRuntime();
+  const viewTick = useWorkflowViewTick();
+  const overlaysRef = useWorkflowOverlayRef();
   // 标红焦点归 host：投影时合并，画布数组不再是问题状态的写入方。
-  const issueFocusRef = useContextSelector(WorkflowHostContext, (v) => v.issueFocusRef);
+  const issueFocusRef = useWorkflowIssueFocusRef();
 
   // 交互状态层：reactflow 本地数组，语义值以 Runtime 投影为准。
   const [nodes, setNodesRaw] = useState<CanvasNode[]>([]);
@@ -771,23 +774,21 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     return runtime ? runtime.subscribe(syncFromRuntime) : undefined;
   }, [syncFromRuntime, runtime, viewTick]);
 
-  const setNodes = useMemoizedFn((action: SetStateAction<CanvasNode[]>) => {
+  const replaceNodes = useMemoizedFn((next: CanvasNode[]) => {
     const current = nodesRef.current;
-    const next = typeof action === 'function' ? action(current) : action;
     if (next === current) return;
     setCanvasNodes(next);
   });
 
-  const setEdges = useMemoizedFn((action: SetStateAction<Edge<any>[]>) => {
+  const replaceEdges = useMemoizedFn((next: Edge<any>[]) => {
     const current = edgesRef.current;
-    const next = typeof action === 'function' ? action(current) : action;
     if (next === current) return;
     edgesRef.current = next;
     setEdgesRaw(next);
     reconcileRenderState(nodesRef.current);
   });
 
-  const onNodesChange = useMemoizedFn((changes: NodeChange[]) => {
+  const applyNodeChanges = useMemoizedFn((changes: NodeChange[]) => {
     const prev = nodesRef.current;
 
     // Runtime 删除节点会级联删除后代；本地同步补全 remove 变更，避免重投影前残留一帧。
@@ -816,15 +817,15 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    const next = applyNodeChanges(effectiveChanges, prev);
+    const next = applyReactFlowNodeChanges(effectiveChanges, prev);
     if (next !== prev) {
       setCanvasNodes(next);
     }
   });
 
-  const onEdgesChange = useMemoizedFn((changes: EdgeChange[]) => {
+  const applyEdgeChanges = useMemoizedFn((changes: EdgeChange[]) => {
     const prev = edgesRef.current;
-    const next = applyEdgeChanges(changes, prev);
+    const next = applyReactFlowEdgeChanges(changes, prev);
     if (next !== prev) {
       edgesRef.current = next;
       setEdgesRaw(next);
@@ -960,8 +961,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     () => ({
       nodes,
       renderedNodes,
-      setNodes,
-      onNodesChange,
+      replaceNodes,
+      applyNodeChanges,
       getNodes,
       fitNodes,
       dimensionIndex,
@@ -976,14 +977,14 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       onViewportChange,
       edges,
       renderedEdges,
-      setEdges,
-      onEdgesChange
+      replaceEdges,
+      applyEdgeChanges
     }),
     [
       nodes,
       renderedNodes,
-      setNodes,
-      onNodesChange,
+      replaceNodes,
+      applyNodeChanges,
       getNodes,
       fitNodes,
       dimensionIndex,
@@ -998,8 +999,8 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       onViewportChange,
       edges,
       renderedEdges,
-      setEdges,
-      onEdgesChange
+      replaceEdges,
+      applyEdgeChanges
     ]
   );
 

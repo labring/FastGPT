@@ -4,7 +4,13 @@ import { getAppPermission } from '@/web/core/app/api';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import {
+  useWorkflowIssueFocusAction,
+  useWorkflowIssueFocusNodeId,
+  useWorkflowOverlayActions,
+  useWorkflowOverlayValue,
+  useWorkflowRuntime
+} from '@/web/core/workflow/editor/session/workflowSession';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import {
   getWorkflowIssueUIStatus,
@@ -64,22 +70,18 @@ import { useBoolean, useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useReactFlow } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
 import { omit } from 'lodash-es';
 import { migrateToolInputConfig } from '@fastgpt/global/core/app/formEdit/utils';
-import {
-  useField,
-  useNodeActions,
-  useNodeValue,
-  useWorkflowActions
-} from '@/web/core/workflow/editor';
-import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNodeActions, useNodeValue } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
-import { WorkflowUIContext } from '../../context/workflowUIContext';
-import { WorkflowCanvasContext } from '../../context/workflowCanvasContext';
+import { useWorkflowUIValue } from '../../canvas/canvasState';
+import { useWorkflowCanvasValue } from '../../canvas/workflowCanvasContext';
 import { useDebug } from '../../hooks/useDebug';
 import { useNodeOutputValidity } from '../../hooks/useNodeOutputValidity';
-import { useClearCanvasSelection } from '../../hooks/useWorkflow';
+import { useClearCanvasSelection } from '../../canvas/useCanvasController';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { useIsToolNode } from './useWorkflowDocument';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
@@ -181,24 +183,19 @@ const NodeCard = (props: Props) => {
 
   // 问题文案归 Runtime：直接读节点 snapshot 的 Issue View，标红焦点仍由 host 单点持有。
   const nodeIssues = useNodeValue(nodeId, (handle) => handle?.data.issues);
-  const isError = useContextSelector(
-    WorkflowHostContext,
-    (v) => v.issueFocusRef.current === nodeId
-  );
+  const isError = useWorkflowIssueFocusNodeId() === nodeId;
   // 教程元信息是画布视图数据（不进文档），由下面的工具详情请求写进 host overlay。
-  const viewData = useContextSelector(WorkflowHostContext, (v) => v.overlaysRef.current[nodeId]);
+  const viewData = useWorkflowOverlayValue(nodeId);
   const courseUrl = viewData?.courseUrl as string | undefined;
   const readmeUrl = (viewData?.readmeUrl as string | undefined) ?? node?.readmeUrl;
 
   // 标红焦点归 host：点击标红节点即清除焦点（旧 onUpdateNodeError(nodeId, false) 行为）。
-  const focusIssueNode = useContextSelector(WorkflowHostContext, (v) => v.focusIssueNode);
-  const patchViewData = useContextSelector(WorkflowHostContext, (v) => v.patchViewData);
-  const isMeasuring = useContextSelector(WorkflowCanvasContext, (v) =>
-    v.measurementNodeIds.includes(nodeId)
-  );
-  const fitNodes = useContextSelector(WorkflowCanvasContext, (v) => v.fitNodes);
-  const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
-  const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
+  const focusIssueNode = useWorkflowIssueFocusAction();
+  const patchViewData = useWorkflowOverlayActions();
+  const isMeasuring = useWorkflowCanvasValue((v) => v.measurementNodeIds.includes(nodeId));
+  const fitNodes = useWorkflowCanvasValue((v) => v.fitNodes);
+  const presentationMode = useWorkflowUIValue((v) => v.presentationMode);
+  const setPresentationMode = useWorkflowUIValue((v) => v.setPresentationMode);
 
   const nodeActions = useNodeActions(nodeId);
   const inputConfigField = useField(nodeId, NodeInputKeyEnum.systemInputConfig, 'input');
@@ -950,7 +947,7 @@ const MenuRender = React.memo(function MenuRender({
   const { openDebugNode, DebugInputModal } = useDebug();
   const actions = useWorkflowActions();
   const nodeActions = useNodeActions(nodeId);
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const runtime = useWorkflowRuntime();
   const clearCanvasSelection = useClearCanvasSelection();
   // 删除走 ReactFlow 的 deleteElements：它派生的 remove 变更由画布变更漏斗接管。
   const { deleteElements } = useReactFlow();

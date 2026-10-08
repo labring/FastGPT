@@ -1,6 +1,6 @@
 import type { Node } from 'reactflow';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { getNodeRect, type DimensionReader } from '../context/dimensionIndex';
+import { getNodeRect, type DimensionReader } from '../canvas/dimensionIndex';
 
 export type ContainerBounds = {
   left: number;

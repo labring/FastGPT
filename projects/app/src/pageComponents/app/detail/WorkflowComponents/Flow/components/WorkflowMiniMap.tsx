@@ -7,7 +7,6 @@ import React, {
   useState
 } from 'react';
 import { Panel, useReactFlow, useStore, useViewport } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
 import {
   WORKFLOW_NODE_MEASUREMENT_ESTIMATE,
   getAbsoluteNodePositions,
@@ -17,8 +16,8 @@ import {
   type NodeDimensions,
   type NodeRect,
   type ViewportNode
-} from '../context/dimensionIndex';
-import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
+} from '../canvas/dimensionIndex';
+import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
 
 type WorkflowMiniMapProps = {
   ariaLabel: string;
@@ -204,8 +203,8 @@ const WorkflowMiniMap = React.memo(function WorkflowMiniMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const pointerIdRef = useRef<number>();
   const [canvasSize, setCanvasSize] = useState(DEFAULT_SIZE);
-  const nodes = useContextSelector(WorkflowCanvasContext, (value) => value.nodes);
-  const dimensions = useContextSelector(WorkflowCanvasContext, (value) => value.dimensionIndex);
+  const nodes = useWorkflowCanvasValue((value) => value.nodes);
+  const dimensions = useWorkflowCanvasValue((value) => value.dimensionIndex);
   const { setViewport } = useReactFlow();
   const viewport = useViewport();
   const flowWidth = useStore((state) => state.width);

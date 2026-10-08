@@ -6,16 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor';
+import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
-import {
-  WorkflowEditorProvider,
-  useFieldValue,
-  useNodeValue,
-  useWorkflowActions,
-  useWorkflowValue,
-  type WorkflowActionsHandle
-} from '@/web/core/workflow/editor/react';
+import { WorkflowEditorProvider } from '@/web/core/workflow/editor/react/workflowEditorProvider';
+import { useFieldValue } from '@/web/core/workflow/editor/react/useField';
+import { useNodeValue } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import type { WorkflowActionsHandle } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
 
 const t = ((key: string) => key) as never;
 

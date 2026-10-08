@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 import React, { useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useWorkflowSessionActions } from '@/web/core/workflow/editor/session/workflowSession';
 import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
@@ -23,7 +23,7 @@ type Props = {
 const ImportSettings = ({ onClose }: Props) => {
   const { toast } = useToast();
 
-  const loadDocument = useContextSelector(WorkflowHostContext, (v) => v.loadDocument);
+  const { loadDocument } = useWorkflowSessionActions();
   const chatConfig = useContextSelector(AppContext, (v) => v.appDetail.chatConfig);
   const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();

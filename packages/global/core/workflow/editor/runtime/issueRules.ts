@@ -196,11 +196,15 @@ export const collectNodeIssues = (
 
   const issues: WorkflowCheckIssue[] = [];
   /** 同一节点上 code + inputKey 相同即视为同一条问题，重复命中只保留第一条。 */
-  const addIssue = (
-    code: WorkflowIssueCode,
-    inputKey?: string,
-    params?: Record<string, string>
-  ) => {
+  const addIssue = ({
+    code,
+    inputKey,
+    params
+  }: {
+    code: WorkflowIssueCode;
+    inputKey?: string;
+    params?: Record<string, string>;
+  }) => {
     if (issues.some((issue) => issue.code === code && issue.inputKey === inputKey)) return;
     issues.push({
       nodeId,
@@ -224,9 +228,9 @@ export const collectNodeIssues = (
     !!inputMap.get(NodeInputKeyEnum.useAgentSandbox)?.value
   ) {
     if (!environment.sandbox.configured) {
-      addIssue('sandbox_not_configured', NodeInputKeyEnum.useAgentSandbox);
+      addIssue({ code: 'sandbox_not_configured', inputKey: NodeInputKeyEnum.useAgentSandbox });
     } else if (!environment.sandbox.planSupported) {
-      addIssue('sandbox_plan_not_supported', NodeInputKeyEnum.useAgentSandbox);
+      addIssue({ code: 'sandbox_plan_not_supported', inputKey: NodeInputKeyEnum.useAgentSandbox });
     }
   }
 
@@ -259,7 +263,7 @@ export const collectNodeIssues = (
     const inputName = getInputName(modelInput ?? inputMap.get(inputKey) ?? { key: inputKey });
     if (isEmptyModelValue(value)) {
       if (defaultWhenEmpty) return;
-      addIssue('model_required', inputKey, { inputName });
+      addIssue({ code: 'model_required', inputKey, params: { inputName } });
       return;
     }
     const available = !isEmptyModelValue(modelId)
@@ -271,10 +275,14 @@ export const collectNodeIssues = (
         )
       : models.some((item) => item.model === model && item.type === type);
     if (available) return;
-    addIssue('model_unavailable', inputKey, {
-      model: String(value),
-      nodeName: data.name,
-      inputName
+    addIssue({
+      code: 'model_unavailable',
+      inputKey,
+      params: {
+        model: String(value),
+        nodeName: data.name,
+        inputName
+      }
     });
   };
 
@@ -297,9 +305,9 @@ export const collectNodeIssues = (
 
   const pluginStatus = data.pluginData?.status;
   if (pluginStatus === PluginStatusEnum.Offline) {
-    addIssue('tool_offline');
+    addIssue({ code: 'tool_offline' });
   } else if (data.pluginData?.error) {
-    addIssue(resolvePluginErrorIssueCode(data.pluginData.error));
+    addIssue({ code: resolvePluginErrorIssueCode(data.pluginData.error) });
   }
 
   // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活；
@@ -310,7 +318,7 @@ export const collectNodeIssues = (
     systemInputConfig &&
     !isToolInputValueConfigured({ input: systemInputConfig })
   ) {
-    addIssue('tool_waiting_config', NodeInputKeyEnum.systemInputConfig);
+    addIssue({ code: 'tool_waiting_config', inputKey: NodeInputKeyEnum.systemInputConfig });
   }
 
   if (!skipNodeRuleTypes.has(data.flowNodeType)) {
@@ -417,7 +425,7 @@ export const collectNodeIssues = (
         })
       );
       if (!ifElseList || hasIncompleteCondition) {
-        addIssue('if_else_incomplete', NodeInputKeyEnum.ifElseList);
+        addIssue({ code: 'if_else_incomplete', inputKey: NodeInputKeyEnum.ifElseList });
       }
 
       ifElseList?.forEach((branch, branchIndex) => {
@@ -427,8 +435,10 @@ export const collectNodeIssues = (
             reference.getValueStatuses({ value: condition.variable, targetNodeId: nodeId })
           );
           if (variableCode) {
-            addIssue(variableCode, `${prefix}.variable`, {
-              inputName: 'common:core.workflow.variable'
+            addIssue({
+              code: variableCode,
+              inputKey: `${prefix}.variable`,
+              params: { inputName: 'common:core.workflow.variable' }
             });
           }
 
@@ -441,7 +451,11 @@ export const collectNodeIssues = (
             })
           );
           if (valueCode) {
-            addIssue(valueCode, `${prefix}.value`, { inputName: 'common:value' });
+            addIssue({
+              code: valueCode,
+              inputKey: `${prefix}.value`,
+              params: { inputName: 'common:value' }
+            });
           }
         });
       });
@@ -452,23 +466,28 @@ export const collectNodeIssues = (
         | Array<{ value?: string }>
         | undefined;
       if (!options || options.length === 0) {
-        addIssue('user_select_empty', NodeInputKeyEnum.userSelectOptions);
+        addIssue({ code: 'user_select_empty', inputKey: NodeInputKeyEnum.userSelectOptions });
       } else if (options.some((option) => !option.value)) {
-        addIssue('user_select_value_empty', NodeInputKeyEnum.userSelectOptions);
+        addIssue({
+          code: 'user_select_value_empty',
+          inputKey: NodeInputKeyEnum.userSelectOptions
+        });
       }
     }
 
     if (data.flowNodeType === FlowNodeTypeEnum.formInput) {
       const forms = inputMap.get(NodeInputKeyEnum.userInputForms)?.value as unknown[] | undefined;
       if (!forms || forms.length === 0) {
-        addIssue('form_input_empty', NodeInputKeyEnum.userInputForms);
+        addIssue({ code: 'form_input_empty', inputKey: NodeInputKeyEnum.userInputForms });
       }
     }
 
     if (data.flowNodeType === FlowNodeTypeEnum.datasetConcatNode) {
       if (!inputs.some((input) => input.canEdit)) {
-        addIssue('required_input_empty', NodeInputKeyEnum.datasetQuoteList, {
-          inputName: 'common:core.workflow.Dataset quote'
+        addIssue({
+          code: 'required_input_empty',
+          inputKey: NodeInputKeyEnum.datasetQuoteList,
+          params: { inputName: 'common:core.workflow.Dataset quote' }
         });
       }
     }
@@ -478,9 +497,9 @@ export const collectNodeIssues = (
         | Array<{ value?: string }>
         | undefined;
       if (!agents || agents.length === 0) {
-        addIssue('classify_question_empty', NodeInputKeyEnum.agents);
+        addIssue({ code: 'classify_question_empty', inputKey: NodeInputKeyEnum.agents });
       } else if (agents.some((agent) => !agent.value)) {
-        addIssue('classify_question_value_empty', NodeInputKeyEnum.agents);
+        addIssue({ code: 'classify_question_value_empty', inputKey: NodeInputKeyEnum.agents });
       }
     }
 
@@ -508,12 +527,12 @@ export const collectNodeIssues = (
         }
         return !input.key || !input.label || isEmptyReferenceValue(input.value);
       });
-      if (hasIncompleteDynamicInput) addIssue('code_input_incomplete');
+      if (hasIncompleteDynamicInput) addIssue({ code: 'code_input_incomplete' });
     }
 
     if (data.flowNodeType === FlowNodeTypeEnum.httpRequest468) {
       if (isEmptyInputValue(inputMap.get(NodeInputKeyEnum.httpReqUrl)?.value)) {
-        addIssue('http_url_empty', NodeInputKeyEnum.httpReqUrl);
+        addIssue({ code: 'http_url_empty', inputKey: NodeInputKeyEnum.httpReqUrl });
       }
     }
 
@@ -522,7 +541,7 @@ export const collectNodeIssues = (
         | unknown[]
         | undefined;
       if (!extractKeys || extractKeys.length === 0) {
-        addIssue('context_extract_empty', NodeInputKeyEnum.extractKeys);
+        addIssue({ code: 'context_extract_empty', inputKey: NodeInputKeyEnum.extractKeys });
       }
     }
 
@@ -537,7 +556,7 @@ export const collectNodeIssues = (
             childIdSet.has(child.data.nodeId) &&
             child.data.flowNodeType === FlowNodeTypeEnum.loopRunBreak
         );
-        if (!hasBreak) addIssue('loop_run_missing_break');
+        if (!hasBreak) addIssue({ code: 'loop_run_missing_break' });
       }
     }
 
@@ -546,7 +565,7 @@ export const collectNodeIssues = (
         (edge) => edge.data.sourceHandle === NodeOutputKeyEnum.selectedTools
       );
       if (!hasToolConnection && !inputMap.get(NodeInputKeyEnum.useAgentSandbox)?.value) {
-        addIssue('tool_call_empty', NodeInputKeyEnum.useAgentSandbox);
+        addIssue({ code: 'tool_call_empty', inputKey: NodeInputKeyEnum.useAgentSandbox });
       }
     }
 
@@ -564,13 +583,16 @@ export const collectNodeIssues = (
         code: WorkflowIssueCode;
       }) => {
         // 只有定位到具体条目的引用问题才带下标；必填问题统一挂在 updateList 上。
-        addIssue(
+        addIssue({
           code,
-          code !== 'required_input_empty' && index !== undefined
-            ? `${NodeInputKeyEnum.updateList}[${index}].${field}`
-            : NodeInputKeyEnum.updateList,
-          { inputName: field === 'variable' ? 'common:core.workflow.variable' : 'common:value' }
-        );
+          inputKey:
+            code !== 'required_input_empty' && index !== undefined
+              ? `${NodeInputKeyEnum.updateList}[${index}].${field}`
+              : NodeInputKeyEnum.updateList,
+          params: {
+            inputName: field === 'variable' ? 'common:core.workflow.variable' : 'common:value'
+          }
+        });
       };
 
       if (!updateList || updateList.length === 0) {
@@ -651,7 +673,11 @@ export const collectNodeIssues = (
           : [];
       const referenceIssueCode = pickReferenceIssueCode(referenceStatuses);
       if (referenceIssueCode) {
-        addIssue(referenceIssueCode, input.key, { inputName: getInputName(input) });
+        addIssue({
+          code: referenceIssueCode,
+          inputKey: input.key,
+          params: { inputName: getInputName(input) }
+        });
       }
 
       if (skipGenericRequiredCheck(input)) return;
@@ -677,7 +703,11 @@ export const collectNodeIssues = (
         valueIsEmpty &&
         !(data.flowNodeType === FlowNodeTypeEnum.code && input.canEdit)
       ) {
-        addIssue('required_input_empty', input.key, { inputName: getInputName(input) });
+        addIssue({
+          code: 'required_input_empty',
+          inputKey: input.key,
+          params: { inputName: getInputName(input) }
+        });
       }
     });
   }
@@ -691,11 +721,11 @@ export const collectNodeIssues = (
         : outgoingEdges;
 
     if (!isStartNode && incomingEdges.length === 0) {
-      addIssue('no_upstream');
+      addIssue({ code: 'no_upstream' });
     } else if (!isStartNode && !reachableNodeIds.has(nodeId)) {
-      addIssue('unreachable_from_start');
+      addIssue({ code: 'unreachable_from_start' });
     } else if (incomingEdges.length === 0 && meaningfulOutgoingEdges.length === 0) {
-      addIssue('isolated_node');
+      addIssue({ code: 'isolated_node' });
     }
   }
 

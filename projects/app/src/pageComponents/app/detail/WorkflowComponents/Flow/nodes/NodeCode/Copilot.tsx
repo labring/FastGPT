@@ -32,7 +32,8 @@ import { getEditorVariables } from '../../../utils';
 import { extractCodeFromMarkdown } from './parser';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
 import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 export type OnOptimizeCodeProps = {
   optimizerInput: string;
@@ -71,14 +72,13 @@ const NodeCopilot = ({
   const isInputEmpty = !optimizerInput.trim();
 
   const editorVariables = useMemoEnhance(() => {
-    if (!workflow) return [];
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       t,
-      getIncomingEdges: graph?.getIncomingEdges
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     }).filter((item) => item.parent.id !== nodeId);
   }, [nodeId, getNodeById, graph, workflow, t]);
 

@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/web/core/workflow/editor/host', async () => {
-  const { createContext } = await import('use-context-selector');
-  return { WorkflowHostContext: createContext({}) };
+vi.mock('@/web/core/workflow/editor/session/workflowSession', async () => {
+  return { useWorkflowOverlayActions: () => vi.fn() };
 });
 
 vi.mock('@/pageComponents/app/detail/context', async () => {
@@ -22,7 +21,7 @@ import {
   createNextWorkflowDebugData,
   createWorkflowDebugData,
   getWorkflowDebugRuntimeContext
-} from '@/pageComponents/app/detail/WorkflowComponents/context/workflowDebugContext';
+} from '@/pageComponents/app/detail/WorkflowComponents/debug/workflowDebugSession';
 
 const runtimeNodes = [
   { nodeId: 'entry-node', inputs: [] },

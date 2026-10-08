@@ -1,27 +1,26 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Box, Flex, Button, IconButton, type ButtonProps, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useKeyPress, useThrottleEffect } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import type { ViewOverlayPatch } from '@/web/core/workflow/editor/canvas';
+import { useWorkflowOverlayActions } from '@/web/core/workflow/editor/session/workflowSession';
+import type { ViewOverlayPatch } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import { useWorkflowSnapshotGetter } from '../../WorkflowComponents/Flow/nodes/render/useWorkflowDocument';
-import { WorkflowCanvasContext } from '../../WorkflowComponents/Flow/context/workflowCanvasContext';
-import { getDimensionedNodes } from '../../WorkflowComponents/Flow/context/dimensionIndex';
+import { useWorkflowCanvasValue } from '../../WorkflowComponents/Flow/canvas/workflowCanvasContext';
+import { getDimensionedNodes } from '../../WorkflowComponents/Flow/canvas/dimensionIndex';
 
 const SearchButton = (props: ButtonProps) => {
   const { t } = useTranslation();
   // 命中节点读文档一次性算，不建订阅；高亮标记是画布视图数据，写进 host overlay 由投影合并。
   const getWorkflow = useWorkflowSnapshotGetter();
-  const patchViewData = useContextSelector(WorkflowHostContext, (state) => state.patchViewData);
+  const patchViewData = useWorkflowOverlayActions();
   const { fitView } = useReactFlow();
-  const getNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
-  const onNodesChange = useContextSelector(WorkflowCanvasContext, (v) => v.onNodesChange);
+  const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
+  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
   const { isMac } = useSystem();
 
   const [keyword, setKeyword] = useState<string>();
@@ -97,14 +96,14 @@ const SearchButton = (props: ButtonProps) => {
         id: node.id,
         selected: node.id === activeNodeId
       }));
-    if (changes.length > 0) onNodesChange(changes);
+    if (changes.length > 0) applyNodeChanges(changes);
   }, [
     fitView,
     getNodes,
     getNodeDimension,
     getWorkflow,
     keyword,
-    onNodesChange,
+    applyNodeChanges,
     patchViewData,
     searchIndex
   ]);

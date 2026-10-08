@@ -51,12 +51,11 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
 import type { Node } from 'reactflow';
 import { useReactFlow } from 'reactflow';
-import { useContextSelector } from 'use-context-selector';
-import type { WorkflowDispatchResult } from '@/web/core/workflow/editor';
+import type { WorkflowDispatchResult } from '@fastgpt/global/core/workflow/editor/types';
 import { useDocumentGetNodeById } from '../../nodes/render/useWorkflowDocument';
-import { WorkflowModalContext } from '../../context/workflowModalContext';
-import { WorkflowCanvasContext } from '../../context/workflowCanvasContext';
-import { areNodeRectsIntersecting, getNodeRect } from '../../context/dimensionIndex';
+import { useWorkflowModalValue } from '../../panels/workflowPanelState';
+import { useWorkflowCanvasValue } from '../../canvas/workflowCanvasContext';
+import { areNodeRectsIntersecting, getNodeRect } from '../../canvas/dimensionIndex';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { sliderWidth } from '../../NodeTemplatesModal';
 import { TemplateTypeEnum } from './header';
@@ -97,7 +96,7 @@ const NodeTemplateListItem = ({
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
-  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
+  const handleParams = useWorkflowModalValue((v) => v.handleParams);
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isToolSet = template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
@@ -255,10 +254,10 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
+  const handleParams = useWorkflowModalValue((v) => v.handleParams);
   const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
-  const getCanvasNodes = useContextSelector(WorkflowCanvasContext, (v) => v.getNodes);
-  const getNodeDimension = useContextSelector(WorkflowCanvasContext, (v) => v.getNodeDimension);
+  const getCanvasNodes = useWorkflowCanvasValue((v) => v.getNodes);
+  const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
   // 落点归属读文档：只用来解析来源节点的父容器，容器合法性由 runtime 判定。
   const getNodeById = useDocumentGetNodeById();
   const [lastSelectedModelId] = useLocalStorageState<string>('workflow_default_llm_model', {

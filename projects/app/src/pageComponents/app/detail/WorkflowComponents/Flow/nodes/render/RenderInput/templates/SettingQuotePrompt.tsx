@@ -33,7 +33,8 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
-import { useField, useNodeActions } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNodeActions } from '@/web/core/workflow/editor/react/useNode';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useNodeWorkflowDocument } from '../../useWorkflowDocument';
 

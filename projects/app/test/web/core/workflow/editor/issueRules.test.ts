@@ -23,11 +23,12 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { createWorkflowEditor, migrateStoreWorkflow } from '@fastgpt/global/core/workflow/editor';
+import { createWorkflowEditor } from '@fastgpt/global/core/workflow/editor/runtime/runtime';
+import { migrateStoreWorkflow } from '@fastgpt/global/core/workflow/editor/protocol';
 import { WorkflowIssueCode } from '@fastgpt/global/core/workflow/editor/issueCode';
 import type { WorkflowEnvironment } from '@fastgpt/global/core/workflow/editor/types';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import { AssignedAnswerModule } from '@fastgpt/global/core/workflow/template/system/assignedAnswer';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/index';
@@ -129,19 +130,13 @@ const setValue = (
 /** 用同一份 canonical 文档 hydrate runtime，只读 Issue View。 */
 const runRuntime = (canonical: CanonicalWorkflowData, environment: WorkflowEnvironment) => {
   const editor = createWorkflowEditor(canonical, { getEnvironment: () => environment });
-  const workflow = editor.getWorkflow();
+  editor.refreshIssues('all');
+  const { issues, chatConfigIssues } = editor.getWorkflowIssues();
   editor.dispose();
   return {
-    codes: [
-      ...workflow.issues.map((issue) => issue.code),
-      ...workflow.chatConfigIssues.map((issue) => issue.code)
-    ],
-    nodes: new Set(
-      workflow.issues.map((issue) => `${issue.nodeId}|${issue.code}|${issue.inputKey ?? ''}`)
-    ),
-    config: new Set(
-      workflow.chatConfigIssues.map((issue) => `${issue.code}|${issue.inputKey ?? ''}`)
-    )
+    codes: [...issues.map((issue) => issue.code), ...chatConfigIssues.map((issue) => issue.code)],
+    nodes: new Set(issues.map((issue) => `${issue.nodeId}|${issue.code}|${issue.inputKey ?? ''}`)),
+    config: new Set(chatConfigIssues.map((issue) => `${issue.code}|${issue.inputKey ?? ''}`))
   };
 };
 

@@ -3,7 +3,7 @@ import {
   EDGE_ID_PREFIX,
   encodeRuntimeEdgeId,
   normalizeEdgeHandles
-} from '@/web/core/workflow/editor/canvas';
+} from '@/web/core/workflow/editor/canvas/canvasTypes';
 
 describe('workflow canvas boundary helpers', () => {
   it('encodes runtime edge indexes without depending on ReactFlow edge ids', () => {

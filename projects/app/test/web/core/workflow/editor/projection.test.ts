@@ -14,13 +14,13 @@ import type {
   WorkflowRuntimePort
 } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
-import type { CanvasNode } from '@/web/core/workflow/editor/canvas';
+import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
 import {
   createProjectionCache,
   projectRuntimeCanvas,
   type ProjectionCache,
   type ViewDataOverlayMap
-} from '@/web/core/workflow/editor/projection';
+} from '@/web/core/workflow/editor/canvas/projectWorkflowCanvas';
 
 const t = ((key: string) => key) as never;
 

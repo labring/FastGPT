@@ -1,21 +1,22 @@
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import { useContextSelector } from 'use-context-selector';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type {
   WorkflowChange,
   WorkflowGraphQueries,
   WorkflowRuntimePort
 } from '@fastgpt/global/core/workflow/editor/types';
-import { useWorkflowValue } from '@/web/core/workflow/editor';
-import { useWorkflowSnapshot, WorkflowHostContext } from '@/web/core/workflow/editor/host';
-import { getNodeAllSourceIds } from '@/web/core/workflow/utils';
+import { useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import {
+  useWorkflowRuntime,
+  useWorkflowSnapshot
+} from '@/web/core/workflow/editor/session/workflowSession';
 
 /**
  * 读取最新文档快照的稳定入口：不订阅工作流数据 Context，也不订阅任何计数器，
  * 因此文档变化不会让调用方重渲染。供「打开时一次性计算」的场景（引用选择器）使用。
  */
 export const useWorkflowSnapshotGetter = () => {
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const runtime = useWorkflowRuntime();
 
   return useCallback(
     () => (runtime && !runtime.isDisposed() ? runtime.getWorkflow() : undefined),
@@ -30,7 +31,7 @@ export const useWorkflowSnapshotGetter = () => {
  * 重算时机由调用方的语义快照（`useWorkflowDocument().workflow`）或 `useWorkflowValue` 决定。
  */
 export const useGraphQueries = (): WorkflowGraphQueries | undefined => {
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const runtime = useWorkflowRuntime();
 
   return useMemo(() => runtime?.getGraphQueries(), [runtime]);
 };
@@ -43,7 +44,7 @@ export const useGraphQueries = (): WorkflowGraphQueries | undefined => {
  * 桥接统一在这里做一次，纯函数签名不动。
  */
 export const useDocumentGetNodeById = () => {
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const runtime = useWorkflowRuntime();
 
   return useCallback(
     (nodeId: string | null | undefined) =>
@@ -93,7 +94,7 @@ type UpstreamRevisionStore = {
  *   与只改 inputs 的 `updateNode`）与列表无关，不算命中——这一条才是「打字不刷新下游」的关键；
  * - `affectedRecords` 整个不参与判定：它是「引用状态需要重算」的下游集合，节点记录本身没变，
  *   字段引用状态由 `useField` 那条通道自己投递。
- * - 结构变化只比较来源闭包与祖先容器链；连线变化未改变这两组集合时不命中。
+ * - 结构或 chatConfig 变化保守地让所有节点失效：结构事务可能改变派生 output 语义，即使来源闭包 id 不变。
  *
  * 稳态成本：无关提交通知到达时只做 O(变更条数) 的集合查询；命中后更新闭包缓存，
  * 结构变化只在集合实际变化时触发重算。保守方向只会多算不会漏算。
@@ -125,14 +126,7 @@ const createUpstreamRevisionStore = ({
     const own = new Set<string>([nodeId]);
     if (!runtime || runtime.isDisposed()) return { sources, own };
     const graph = runtime.getGraphQueries();
-    getNodeAllSourceIds({
-      nodeId,
-      getNodeById: readNode,
-      edges: runtime.getWorkflow().edges,
-      includeChildren,
-      getChildNodeIds: graph.getChildNodeIds,
-      getIncomingEdges: graph.getIncomingEdges
-    }).forEach((id) => sources.add(id));
+    graph.getSourceNodeIds({ nodeId, includeChildren }).forEach((id) => sources.add(id));
     // 祖先容器链单独收：容器的 reference 输入会往闭包里追加来源，但容器本身不一定在闭包内。
     const visited = new Set<string>([nodeId]);
     let parentId = readNode(nodeId)?.parentNodeId;
@@ -154,9 +148,6 @@ const createUpstreamRevisionStore = ({
     return { sources: sourceNodes, own: ownNodes };
   };
 
-  const sameSet = (left: Set<string>, right: Set<string>) =>
-    left.size === right.size && [...left].every((id) => right.has(id));
-
   // 结构事件到达前先保留当前闭包，后续才能判断连线是否真的改变本节点的来源。
   ensureNodeSets();
 
@@ -165,14 +156,10 @@ const createUpstreamRevisionStore = ({
     if (change.kind === 'geometry') return;
     const structureChanged = change.kind === 'replace' || change.affectedRecords.structure;
     let nextSets: { sources: Set<string>; own: Set<string> } | undefined;
-    let hit = change.kind === 'replace' || change.changedRecords.chatConfigVariablesChanged;
+    let hit = change.kind === 'replace' || change.changedRecords.chatConfig;
     if (structureChanged) {
-      const previousSets = ensureNodeSets();
       nextSets = computeNodeSets();
-      hit =
-        hit ||
-        !sameSet(previousSets.sources, nextSets.sources) ||
-        !sameSet(previousSets.own, nextSets.own);
+      hit = true;
     }
     if (!hit) {
       const { sources, own } = ensureNodeSets();
@@ -234,7 +221,7 @@ export const useNodeWorkflowDocument = ({
   nodeId: string;
   includeChildren?: boolean;
 }) => {
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const runtime = useWorkflowRuntime();
   const store = useMemo(
     () => createUpstreamRevisionStore({ runtime, nodeId, includeChildren }),
     [runtime, nodeId, includeChildren]

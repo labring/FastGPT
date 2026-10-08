@@ -10,17 +10,15 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { useQuery } from '@tanstack/react-query';
 import { getAppDetailById } from '@/web/core/app/api';
-import { useField } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { WorkflowCanvasContext } from '../../../../context/workflowCanvasContext';
+import { useWorkflowCanvasValue } from '../../../../canvas/workflowCanvasContext';
 
 const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const currentAppId = useContextSelector(AppContext, (ctx) => ctx.appDetail._id);
-  const isMeasuring = useContextSelector(WorkflowCanvasContext, (ctx) =>
-    ctx.measurementNodeIds.includes(nodeId)
-  );
+  const isMeasuring = useWorkflowCanvasValue((ctx) => ctx.measurementNodeIds.includes(nodeId));
   const field = useField(nodeId, item.key, 'input');
   const currentInput = field?.data.input ?? item;
 

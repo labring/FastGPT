@@ -25,7 +25,7 @@ import {
   getWorkflowStartDebugFileInput,
   getWorkflowStartDebugQuery
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useDebugInput';
-import { getWorkflowDebugRuntimeContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowDebugContext';
+import { getWorkflowDebugRuntimeContext } from '@/pageComponents/app/detail/WorkflowComponents/debug/workflowDebugSession';
 import { toChatAuthApiTarget } from '@/web/core/chat/utils';
 
 const appId = '68ad85a7463006c963799a05';

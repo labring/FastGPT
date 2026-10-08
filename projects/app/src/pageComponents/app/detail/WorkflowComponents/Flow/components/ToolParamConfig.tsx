@@ -8,9 +8,9 @@ import { SystemToolSecretInputTypeMap } from '@fastgpt/global/core/app/tool/syst
 import SecretInputModal, {
   type ToolParamsFormType
 } from '@/pageComponents/app/tool/SecretInputModal';
-import { useContextSelector } from 'use-context-selector';
-import { useField, useNode } from '@/web/core/workflow/editor';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowOverlayValue } from '@/web/core/workflow/editor/session/workflowSession';
 
 const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInputItemType[] }) => {
   const { t } = useTranslation();
@@ -24,10 +24,7 @@ const ToolConfig = ({ nodeId, inputs }: { nodeId?: string; inputs?: FlowNodeInpu
   });
   // 教程地址是画布视图数据（不进文档），由 NodeCard 拉到工具详情后写进 host overlay；
   // 选择器返回原始值，overlay 更新时 host 会 bump，这里随之刷新。
-  const courseUrl = useContextSelector(
-    WorkflowHostContext,
-    (v) => v.overlaysRef.current[nodeId ?? '']?.courseUrl as string | undefined
-  );
+  const courseUrl = useWorkflowOverlayValue(nodeId)?.courseUrl as string | undefined;
 
   const inputConfig = useMemo(
     () => inputs?.find((item) => item.key === NodeInputKeyEnum.systemInputConfig),

@@ -4,7 +4,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import { getToolIdentityKey } from '@fastgpt/global/core/app/tool/utils';
-import { useField } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
 
 /**
  * Adapts the ChatAgent's useSkillManager to work in the workflow node context.

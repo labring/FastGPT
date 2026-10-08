@@ -27,15 +27,16 @@ import CatchError from '../render/RenderOutput/CatchError';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import NodeCopilot from './Copilot';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { useWorkflowUIValue } from '../../canvas/canvasState';
 import { WorkflowNodeOffscreenMeasurementContext } from '../render/Handle/handleRenderContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useWorkflowEditorSessionId } from '@/web/core/workflow/editor/session/workflowSession';
 import { getWorkflowEditorPath } from '@/web/core/workflow/editor/workflowEditorPath';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { splitNodeOutputs, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from '../render/useWorkflowDocument';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { getSandboxPackages } from '@/web/core/workflow/api';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -54,8 +55,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const node = useNode(nodeId);
   const codeField = useField(nodeId, NodeInputKeyEnum.code, 'input');
   const appId = useContextSelector(AppContext, (v) => v.appId);
-  const editorSessionId = useContextSelector(WorkflowHostContext, (v) => v.editorSessionId);
-  const presentationMode = useContextSelector(WorkflowUIContext, (ctx) => ctx.presentationMode);
+  const editorSessionId = useWorkflowEditorSessionId();
+  const presentationMode = useWorkflowUIValue((ctx) => ctx.presentationMode);
   const offscreenMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({

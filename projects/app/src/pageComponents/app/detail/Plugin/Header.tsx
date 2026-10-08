@@ -27,8 +27,12 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import PublishHistories from '../PublishHistoriesSlider';
 import SaveButton from '../Workflow/components/SaveButton';
 import AppCard from '../WorkflowComponents/AppCard';
-import { WorkflowModalContext } from '../WorkflowComponents/Flow/context/workflowModalContext';
-import { WorkflowHostContext, type WorkflowVersionEntry } from '@/web/core/workflow/editor/host';
+import { useWorkflowModalValue } from '../WorkflowComponents/Flow/panels/workflowPanelState';
+import {
+  useWorkflowHistory,
+  useWorkflowPersistence
+} from '@/web/core/workflow/editor/session/workflowSession';
+import type { WorkflowVersionEntry } from '@/web/core/workflow/editor/session/workflowHistory';
 
 const Header = () => {
   const { t } = useTranslation();
@@ -49,26 +53,16 @@ const Header = () => {
     onClose: onCloseBackConfirm
   } = useDisclosure();
 
-  const flowData2StoreDataAndCheck = useContextSelector(
-    WorkflowHostContext,
-    (v) => v.serializeWorkflowAndCheck
-  );
+  const { serializeWorkflowAndCheck: flowData2StoreDataAndCheck } = useWorkflowPersistence();
 
-  const setWorkflowTestData = useContextSelector(
-    WorkflowModalContext,
-    (v) => v.setWorkflowTestData
-  );
-  // host 是历史、版本与保存状态的唯一来源；按字段选择，避免每次编辑都重渲染 Header。
-  const versions = useContextSelector(WorkflowHostContext, (v) => v.versions);
-  const switchVersion = useContextSelector(WorkflowHostContext, (v) => v.switchVersion);
-  const switchCloudVersion = useContextSelector(WorkflowHostContext, (v) => v.switchCloudVersion);
-  const serializeWorkflow = useContextSelector(WorkflowHostContext, (v) => v.serializeWorkflow);
-  const markSaved = useContextSelector(WorkflowHostContext, (v) => v.markSaved);
-  const isSaved = useContextSelector(WorkflowHostContext, (v) => v.isSaved);
-  const leaveSaveSignRef = useContextSelector(WorkflowHostContext, (v) => v.leaveSaveSign);
+  const openWorkflowTest = useWorkflowModalValue((v) => v.openWorkflowTest);
+  const { versions, switchVersion, switchCloudVersion } = useWorkflowHistory();
+  const { isSaved, leaveSaveSign, serializeWorkflow, markSaved } = useWorkflowPersistence();
+  const leaveSaveSignRef = leaveSaveSign;
 
-  const activePanel = useContextSelector(WorkflowModalContext, (v) => v.activePanel);
-  const setActivePanel = useContextSelector(WorkflowModalContext, (v) => v.setActivePanel);
+  const activePanel = useWorkflowModalValue((v) => v.activePanel);
+  const openPanel = useWorkflowModalValue((v) => v.openPanel);
+  const closePanel = useWorkflowModalValue((v) => v.closePanel);
   const showHistoryModal = activePanel === 'history';
 
   const { lastAppListRouteType } = useSystemStore();
@@ -166,7 +160,7 @@ const Header = () => {
                 w={'34px'}
                 h={'34px'}
                 variant={'whitePrimary'}
-                onClick={() => setActivePanel(showHistoryModal ? null : 'history')}
+                onClick={() => (showHistoryModal ? closePanel() : openPanel('history'))}
               />
               <Button
                 leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
@@ -177,7 +171,7 @@ const Header = () => {
                 onClick={async () => {
                   const data = await flowData2StoreDataAndCheck();
                   if (data) {
-                    setWorkflowTestData(data);
+                    openWorkflowTest(data);
                   }
                 }}
               >
@@ -205,9 +199,10 @@ const Header = () => {
     t,
     loading,
     onClickSave,
-    setActivePanel,
+    openPanel,
+    closePanel,
     flowData2StoreDataAndCheck,
-    setWorkflowTestData
+    openWorkflowTest
   ]);
 
   return (
@@ -217,7 +212,7 @@ const Header = () => {
         <PublishHistories<WorkflowVersionEntry>
           isOpen={showHistoryModal}
           onClose={() => {
-            setActivePanel(null);
+            closePanel();
           }}
           past={versions}
           onSwitchCloudVersion={switchCloudVersion}

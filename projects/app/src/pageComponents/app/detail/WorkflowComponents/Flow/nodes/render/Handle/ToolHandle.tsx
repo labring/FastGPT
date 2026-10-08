@@ -5,13 +5,10 @@ import { useTranslation } from 'next-i18next';
 import { type Connection, Handle, Position } from 'reactflow';
 import { useCallback, useContext, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowUIContext } from '../../../context/workflowUIContext';
-import {
-  isConnectionTargetAllowed,
-  useWorkflowActions,
-  useWorkflowValue
-} from '@/web/core/workflow/editor';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { isConnectionTargetAllowed } from '@fastgpt/global/core/workflow/editor/utils';
+import { useWorkflowUIValue } from '../../../canvas/canvasState';
+import { useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
 
 const handleSize = '20px';
@@ -25,8 +22,8 @@ type ToolHandleProps = BoxProps & {
 export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const renderHandle = useContext(WorkflowHandleRenderContext);
   // 工具柄的可连接判定要读任意源节点与父节点：走 port 的非订阅节点读取，不挂整份文档图 reader。
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
-  const connectingEdge = useContextSelector(WorkflowUIContext, (ctx) => ctx.connectingEdge);
+  const runtime = useWorkflowRuntime();
+  const connectingEdge = useWorkflowUIValue((ctx) => ctx.connectingEdge);
   // 「本节点已被挂成工具」= 存在 targetHandle 为 selectedTools 的入边，走图索引 O(入度)。
   const connected = useWorkflowValue((_structure, graph) => graph.isMountedTool(nodeId));
 
@@ -98,11 +95,8 @@ export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
   // 边集合只在 onConnect 回调里读：走非订阅 getter，本组件对结构变更的订阅数为零。
   const { disconnectEdge, getEdges } = useWorkflowActions();
-  const connectingEdge = useContextSelector(
-    WorkflowUIContext,
-    (ctx) => ctx.connectingEdge?.nodeId === nodeId
-  );
-  const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
+  const connectingEdge = useWorkflowUIValue((ctx) => ctx.connectingEdge?.nodeId === nodeId);
+  const nodeIsHover = useWorkflowUIValue((v) => v.hoverNodeId === nodeId);
 
   const active = useMemo(() => nodeIsHover || connectingEdge, [nodeIsHover, connectingEdge]);
 

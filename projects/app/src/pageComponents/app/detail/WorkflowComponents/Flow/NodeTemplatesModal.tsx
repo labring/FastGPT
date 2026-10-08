@@ -5,9 +5,10 @@ import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 import { useMemoizedFn } from 'ahooks';
 import React from 'react';
-import { usePlacementContext, useWorkflowActions } from '@/web/core/workflow/editor';
-import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas';
-import { useClearCanvasSelection } from './hooks/useWorkflow';
+import { usePlacementContext } from '@/web/core/workflow/editor/react/useWorkflowQueries';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
+import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import { useClearCanvasSelection } from './canvas/useCanvasController';
 import AppDetailPanelModal, { usePanelContentMounted } from '../../components/AppDetailPanelModal';
 
 type ModuleTemplateListProps = {

@@ -1,4 +1,4 @@
-import { NodeOutputKeyEnum } from '../../constants';
+import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '../../constants';
 import { stripCanvasSizeInputs } from '../../migration/migrate';
 import {
   FlowNodeTypeEnum,
@@ -8,7 +8,12 @@ import {
 import { StoreEdgeItemTypeSchema, type StoreEdgeItemType } from '../../type/edge';
 import { StoreNodeItemTypeSchema, type NodeTemplateContext } from '../../type/node';
 import { AppChatConfigTypeSchema } from '../../../app/type';
-import { isConnectionTargetAllowed, isWorkflowEdgeSourceHandleValid } from '../utils';
+import {
+  getWorkflowReferenceItems,
+  isConnectionTargetAllowed,
+  isWorkflowEdgeSourceHandleValid
+} from '../utils';
+import { nodeInputIsReference } from '../../utils';
 import { applyWorkflowStartInputAutoFill } from '../startAutoFill';
 import type {
   PlacementRequest,
@@ -158,7 +163,15 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     return nodeIndex.get(nodeId)?.index ?? -1;
   };
 
-  const getFlowNodeById = (working: RuntimeDocument, nodeId: string, meta?: MutationMeta) => {
+  const getFlowNodeById = ({
+    working,
+    nodeId,
+    meta
+  }: {
+    working: RuntimeDocument;
+    nodeId: string;
+    meta?: MutationMeta;
+  }) => {
     const indexedNode = getWorkingNode(nodeId, meta);
     if (indexedNode) return { ...indexedNode.data, id: indexedNode.data.nodeId };
     const data = working.nodes.find(({ data }) => data.nodeId === nodeId)?.data;
@@ -168,10 +181,7 @@ export const createDocumentModule = (initial: CanonicalResult) => {
   /** 判断边的 source handle 是否仍由分支节点当前配置提供。 */
   const isSourceEdgeValid = (edge: EdgeRecord) => {
     const sourceData = getNodeById(edge.data.source)?.data;
-    return isWorkflowEdgeSourceHandleValid(
-      sourceData ? { ...sourceData, id: sourceData.nodeId } : undefined,
-      edge.data.sourceHandle
-    );
+    return isWorkflowEdgeSourceHandleValid(sourceData, edge.data.sourceHandle);
   };
 
   const getDescendantNodeIds = (rootIds: ReadonlySet<string>) =>
@@ -191,6 +201,83 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     { bucket: EdgeRecord[]; endpoints: readonly WorkflowEdgeEndpoint[] }
   >();
   const childNodeIdsCache = new Map<string, { bucket: string[]; nodeIds: readonly string[] }>();
+  const sourceNodeIdsCache = new Map<
+    string,
+    { document: RuntimeDocument; nodeIds: readonly string[] }
+  >();
+
+  const getSourceNodeIds = ({
+    nodeId,
+    includeChildren = false
+  }: {
+    nodeId: string;
+    includeChildren?: boolean;
+  }) => {
+    const cacheKey = `${nodeId}\0${includeChildren ? 'children' : 'sources'}`;
+    const cached = sourceNodeIdsCache.get(cacheKey);
+    if (cached?.document === document) return cached.nodeIds;
+
+    const node = nodeIndex.get(nodeId)?.record.data;
+    if (!node) return EMPTY_NODE_IDS;
+
+    const sourceIds = new Set<string>();
+    const searchedTargetNodeIds = new Set<string>();
+    const getFlowNode = (sourceNodeId: string) => {
+      return nodeIndex.get(sourceNodeId)?.record.data;
+    };
+    const collectIncoming = (targetNodeIds: readonly string[]) => {
+      const queue = [...targetNodeIds];
+      while (queue.length > 0) {
+        const targetNodeId = queue.shift();
+        if (!targetNodeId || searchedTargetNodeIds.has(targetNodeId)) continue;
+        searchedTargetNodeIds.add(targetNodeId);
+        (graphIndex.byTarget.get(targetNodeId) ?? []).forEach((edge) => {
+          if (
+            edge.data.target !== targetNodeId ||
+            !isWorkflowEdgeSourceHandleValid(getFlowNode(edge.data.source), edge.data.sourceHandle)
+          ) {
+            return;
+          }
+          sourceIds.add(edge.data.source);
+          queue.push(edge.data.source);
+        });
+      }
+    };
+
+    const containerNodes = [node];
+    const visitedParentIds = new Set<string>([node.nodeId]);
+    let parentNodeId = node.parentNodeId;
+    while (parentNodeId && !visitedParentIds.has(parentNodeId)) {
+      const parent = nodeIndex.get(parentNodeId)?.record.data;
+      if (!parent) break;
+      containerNodes.push(parent);
+      visitedParentIds.add(parent.nodeId);
+      parentNodeId = parent.parentNodeId;
+    }
+
+    collectIncoming([node.nodeId]);
+    containerNodes.slice(1).forEach((container) => collectIncoming([container.nodeId]));
+    containerNodes.slice(1).forEach((container) => {
+      container.inputs.forEach((input) => {
+        if (!nodeInputIsReference(input)) return;
+        getWorkflowReferenceItems(input.value).forEach(([referenceNodeId]) => {
+          if (referenceNodeId === VARIABLE_NODE_ID || !nodeIndex.has(referenceNodeId)) return;
+          sourceIds.add(referenceNodeId);
+          collectIncoming([referenceNodeId]);
+        });
+      });
+    });
+
+    if (includeChildren) {
+      graphIndex.childrenByParent.get(nodeId)?.forEach((childId) => {
+        if (nodeIndex.has(childId)) sourceIds.add(childId);
+      });
+    }
+
+    const nodeIds = freezeValue([...sourceIds]) as readonly string[];
+    sourceNodeIdsCache.set(cacheKey, { document, nodeIds });
+    return nodeIds;
+  };
 
   /**
    * 图查询面：只读已提交的 GraphIndex，不建第二份索引，也不做深拷贝。
@@ -233,7 +320,8 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       const nodeIds = freezeValue([...bucket]) as readonly string[];
       childNodeIdsCache.set(parentId, { bucket, nodeIds });
       return nodeIds;
-    }
+    },
+    getSourceNodeIds
   }) as WorkflowGraphQueries;
 
   const getGraphQueries = () => graphQueries;
@@ -347,8 +435,8 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     ignoreEdgeId?: RuntimeEdgeId,
     meta?: MutationMeta
   ) => {
-    const source = getFlowNodeById(working, edge.source, meta);
-    const target = getFlowNodeById(working, edge.target, meta);
+    const source = getFlowNodeById({ working, nodeId: edge.source, meta });
+    const target = getFlowNodeById({ working, nodeId: edge.target, meta });
     if (
       !source ||
       !target ||

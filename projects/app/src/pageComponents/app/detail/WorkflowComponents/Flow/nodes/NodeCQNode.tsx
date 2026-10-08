@@ -17,7 +17,9 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getOutputDisconnectCommands, splitToolInputsByMode } from '@/web/core/workflow/utils';
 import { useIsToolNode } from './render/useWorkflowDocument';
-import { useField, useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 /** 分类源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
 const sourceTranslate = [34, 0] as [number, number];

@@ -7,7 +7,7 @@ import {
   startDebugStep,
   stopDebugSession,
   type DebugStepNodeResponse
-} from '@/web/core/workflow/editor/debugSession';
+} from '@/web/core/workflow/editor/debug/workflowDebugOverlay';
 
 const runningStatus = { status: 'running', message: '', showResult: false };
 

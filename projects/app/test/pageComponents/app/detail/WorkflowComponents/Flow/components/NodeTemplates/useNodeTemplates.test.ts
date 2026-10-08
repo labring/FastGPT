@@ -72,7 +72,7 @@ vi.mock('@/pageComponents/app/detail/context', () => ({
   AppContext: { value: { appDetail: { _id: 'current-app' } } }
 }));
 // 本测试只关心分页路由，桩掉文档读取入口即可，
-// 同时避免引入 editor/host 模块链（上面的 react mock 未提供 createContext）。
+// 同时避免引入 editor/session 模块链（上面的 adapter mock 未提供 createContext）。
 vi.mock(
   '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/useWorkflowDocument',
   () => ({

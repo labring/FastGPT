@@ -7,10 +7,42 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor';
+import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
-import { WorkflowHostContext, type WorkflowHostValue } from '@/web/core/workflow/editor/host';
+import { WorkflowSessionProvider } from '@/web/core/workflow/editor/session/workflowSession';
 import { useNodeWorkflowDocument } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/render/useWorkflowDocument';
+
+vi.mock('next-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key })
+}));
+vi.mock('@/pageComponents/app/detail/context', async () => {
+  const { createContext } = await import('use-context-selector');
+  return {
+    AppContext: createContext({
+      appId: '',
+      appDetail: { chatConfig: {} },
+      setAppDetail: () => undefined
+    })
+  };
+});
+vi.mock('@/web/core/workflow/localDraft/useWorkflowDraftLifecycle', () => ({
+  useWorkflowDraftLifecycle: () => ({ authExpiredModal: undefined })
+}));
+vi.mock('@fastgpt/web/hooks/useToast', () => ({
+  useToast: () => ({ toast: vi.fn() })
+}));
+vi.mock('@/web/common/system/useSystemStore', () => ({
+  useSystemStore: () => ({ feConfigs: {} })
+}));
+vi.mock('@/web/support/user/useUserStore', () => ({
+  useUserStore: () => ({ teamPlanStatus: undefined })
+}));
+vi.mock('@/web/core/ai/model/useUserModelStore', () => ({
+  useUserModelStore: { subscribe: () => () => undefined }
+}));
+vi.mock('@/web/core/ai/model/modelData', () => ({
+  ensureModelCatalog: vi.fn(async () => ({}))
+}));
 
 const t = ((key: string) => key) as never;
 
@@ -105,13 +137,11 @@ describe('useNodeWorkflowDocument upstream revision', () => {
     runtime = hydrateRuntime({ input: createStoreWorkflow(), t });
     observed = {};
 
-    // 只用到 host context 的 runtime 字段，其余入口在本测试里不会被调用。
-    const hostValue = { runtime } as unknown as WorkflowHostValue;
     await act(async () => {
       root.render(
         React.createElement(
-          WorkflowHostContext.Provider,
-          { value: hostValue },
+          WorkflowSessionProvider,
+          { runtime },
           ['A', 'B', 'C'].map((nodeId) => React.createElement(Leaf, { key: nodeId, nodeId }))
         )
       );

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { WorkflowCanvasContext } from '../Flow/context/workflowCanvasContext';
+import { useWorkflowCanvasValue } from '../Flow/canvas/workflowCanvasContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { postWorkflowDebug } from '@/web/core/workflow/api';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
@@ -12,7 +12,7 @@ import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { ChatItemMiniType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useWorkflowOverlayActions } from '@/web/core/workflow/editor/session/workflowSession';
 import {
   failDebugStep,
   openDebugSession,
@@ -21,7 +21,7 @@ import {
   stopDebugSession,
   type DebugSessionState,
   type DebugSessionTransition
-} from '@/web/core/workflow/editor/debugSession';
+} from '@/web/core/workflow/editor/debug/workflowDebugOverlay';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -72,6 +72,9 @@ type WorkflowDebugContextValue = {
   /** 设置调试会话的文件上传 chatId */
   setDebugChatId: (chatId: string) => void;
 };
+
+export const useWorkflowDebugValue = <T,>(selector: (value: WorkflowDebugContextValue) => T): T =>
+  useContextSelector(WorkflowDebugContext, selector);
 
 /** 生成调试子树的文件上传上下文，确保草稿上传与调试运行共享同一 chatId。 */
 export const getWorkflowDebugRuntimeContext = ({
@@ -135,7 +138,7 @@ export const createNextWorkflowDebugData = ({
   chatId: debugData.chatId
 });
 
-export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
+const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
   onNextNodeDebug: function (_debugData: DebugDataType): Promise<void> {
     throw new Error('Function not implemented.');
   },
@@ -164,8 +167,8 @@ export const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
 
 export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode }) => {
   // 获取依赖的 context
-  const onNodesChange = useContextSelector(WorkflowCanvasContext, (v) => v.onNodesChange);
-  const patchViewData = useContextSelector(WorkflowHostContext, (v) => v.patchViewData);
+  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
+  const patchViewData = useWorkflowOverlayActions();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const appId = appDetail._id;
 
@@ -190,10 +193,10 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
         selectedNodeIds: transition.nextSelectedNodeIds
       };
       // 先写选中再 bump 投影，重投影时读到的本地数组已经是最新选中态。
-      if (transition.selectionPatches.length > 0) onNodesChange(transition.selectionPatches);
+      if (transition.selectionPatches.length > 0) applyNodeChanges(transition.selectionPatches);
       if (transition.overlayPatches.length > 0) patchViewData(transition.overlayPatches);
     },
-    [onNodesChange, patchViewData]
+    [applyNodeChanges, patchViewData]
   );
 
   // 单步调试 - 执行下一步节点

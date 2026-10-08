@@ -6,10 +6,13 @@ import type {
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { useEffect } from 'react';
-import { useNodeActions, useNodeValue } from '@/web/core/workflow/editor';
+import { useNodeActions, useNodeValue } from '@/web/core/workflow/editor/react/useNode';
 
 /**
  * 按当前模型能力刷新节点输出的 `invalid` 派生标记，结果写回文档（节点折叠时也照常同步）。
+ *
+ * `invalid` 不被执行层读取，但会被 Runtime Reference module 用于过滤可引用输出；
+ * 在模型目录变化时仍需进入文档语义，不能只放进 Canvas overlay。
  *
  * 模型详情加载或失败时保留原状态不回写；标记全部相等时不提交，避免每次重渲染都推一条历史。
  * 读取基准是节点 scoped snapshot：等待期间节点被删除时 useNode 返回 undefined，

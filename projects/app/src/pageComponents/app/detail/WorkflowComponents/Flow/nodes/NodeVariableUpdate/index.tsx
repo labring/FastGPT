@@ -37,7 +37,7 @@ import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSele
 import VariableSelector from './VariableSelector';
 import ValueRenderer from './ValueRenderer';
 import { useNodeWorkflowDocument } from '../render/useWorkflowDocument';
-import { useField } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 // 切换目标变量时按新类型生成默认操作字段与初值，
@@ -66,14 +66,13 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const variables = useMemoEnhance(() => {
-    if (!workflow) return [];
+    if (!workflow || !graph) return [];
     return getEditorVariables({
       nodeId,
       getNodeById,
-      edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       t,
-      getIncomingEdges: graph?.getIncomingEdges
+      getSourceNodeIds: (sourceNodeId) => graph.getSourceNodeIds({ nodeId: sourceNodeId })
     });
   }, [nodeId, getNodeById, graph, workflow, t]);
   const { feConfigs } = useSystemStore();

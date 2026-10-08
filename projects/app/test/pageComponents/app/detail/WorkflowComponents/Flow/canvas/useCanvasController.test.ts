@@ -3,7 +3,7 @@ import type { Node, NodePositionChange, XYPosition } from 'reactflow';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 // Mock Markdown component: its CSS imports (katex) cannot be resolved under vitest.
-// useWorkflow.tsx transitively imports AppContext -> Markdown.
+// useCanvasController.tsx transitively imports AppContext -> Markdown.
 vi.mock('@/components/Markdown', () => ({ default: () => null }));
 vi.mock('katex/dist/katex.min.css', () => ({}));
 
@@ -18,7 +18,7 @@ import {
   dropEdgeDisconnectsOfRemovedNodes,
   popoverWidth,
   popoverHeight
-} from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useWorkflow';
+} from '@/pageComponents/app/detail/WorkflowComponents/Flow/canvas/useCanvasController';
 
 // Helpers
 const buildNode = (

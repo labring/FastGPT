@@ -23,7 +23,8 @@ import RenderInput from './render/RenderInput';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import RenderOutput from './render/RenderOutput';
 import ValueTypeLabel from './render/ValueTypeLabel';
-import { useField, useNode } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { WorkflowFieldScope } from '@/web/core/workflow/editor/WorkflowFieldScope';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {

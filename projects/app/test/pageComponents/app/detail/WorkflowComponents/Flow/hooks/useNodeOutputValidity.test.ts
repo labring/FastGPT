@@ -27,7 +27,7 @@ vi.mock('react', async (original) => ({
     mocks.effect = effect;
   }
 }));
-vi.mock('@/web/core/workflow/editor', () => ({
+vi.mock('@/web/core/workflow/editor/react/useNode', () => ({
   // 模拟 scoped 节点句柄：节点存在时返回文档快照与 updateNode；节点删除后，
   // 旧句柄的写入被 Runtime 拒绝且不产生历史（对齐 adapter 的 not_found 契约）。
   useNode: () =>
@@ -42,7 +42,20 @@ vi.mock('@/web/core/workflow/editor', () => ({
             mocks.doc = { ...mocks.doc, ...resolved };
           }
         }
-      : undefined
+      : undefined,
+  useNodeActions: () =>
+    mocks.doc
+      ? {
+          updateNode: (patch: (node: DocNode) => Partial<DocNode>) => {
+            if (!mocks.doc) return;
+            const resolved = patch(mocks.doc);
+            mocks.updateCalls.push(resolved);
+            mocks.doc = { ...mocks.doc, ...resolved };
+          }
+        }
+      : undefined,
+  useNodeValue: (_nodeId: string, selector: (node: { data: DocNode } | undefined) => unknown) =>
+    selector(mocks.doc ? { data: mocks.doc } : undefined)
 }));
 vi.mock('@/web/core/ai/model/useModelDetail', () => ({ useModelDetail: mocks.detail }));
 

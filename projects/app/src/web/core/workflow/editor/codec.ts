@@ -1,5 +1,5 @@
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { TFunction } from 'i18next';
 import {
   hydrateWorkflowEditor,
@@ -11,19 +11,114 @@ import type {
   WorkflowRuntimeOptions,
   WorkflowRuntimePort
 } from '@fastgpt/global/core/workflow/editor/types';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  getSelectedInputRenderType,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
+import {
+  normalizeFlowNodeInputType,
+  serializeAgentTool
+} from '@fastgpt/global/core/app/formEdit/utils';
+import { SelectedToolItemTypeSchema } from '@fastgpt/global/core/app/formEdit/type';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
-import { uiWorkflow2StoreWorkflow } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import type { Edge, Node } from 'reactflow';
 import {
   StoreNodeItemTypeSchema,
-  type FlowNodeItemType
+  type FlowNodeItemType,
+  type StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { CanonicalWorkflowData } from '@fastgpt/global/core/workflow/migration';
 
 type HydrateWorkflowEditorOptions = {
   input: unknown;
   chatConfig?: AppChatConfigType;
   t: TFunction;
+};
+
+const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
+  const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });
+  return {
+    ...inputWithSelectedType,
+    selectedType: getSelectedInputRenderType(inputWithSelectedType)
+  };
+};
+
+/**
+ * 将画布形状归一化为 StoreWorkflow；保留旧保存路径的工具序列化、引用值和悬挂边过滤行为。
+ * 定义放在 editor codec，避免 web/core 反向依赖 pageComponents。
+ */
+export const uiWorkflow2StoreWorkflow = ({
+  nodes,
+  edges
+}: {
+  nodes: Node<FlowNodeItemType, string | undefined>[];
+  edges: Edge<any>[];
+}): { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] } => {
+  const toolNodeIds = new Set(
+    edges
+      .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
+      .map((edge) => edge.target)
+  );
+
+  const formatNodes = nodes.map((item) => {
+    const inputs =
+      item.data.flowNodeType === FlowNodeTypeEnum.pluginInput
+        ? item.data.inputs
+        : item.data.inputs.map((input) =>
+            normalizeStoreNodeInput(input, toolNodeIds.has(item.data.nodeId))
+          );
+    const selectedToolsInput = inputs.find((input) => input.key === NodeInputKeyEnum.selectedTools);
+    if (
+      item.data.flowNodeType === FlowNodeTypeEnum.agent &&
+      selectedToolsInput &&
+      !nodeInputIsReference(selectedToolsInput) &&
+      Array.isArray(selectedToolsInput.value)
+    ) {
+      const serializedTools: any[] = [];
+      for (const tool of selectedToolsInput.value as any[]) {
+        const parsed = SelectedToolItemTypeSchema.safeParse(tool);
+        if (parsed.success) serializedTools.push(serializeAgentTool({ tool: parsed.data }));
+      }
+      selectedToolsInput.value = serializedTools as any;
+    }
+
+    return {
+      nodeId: item.data.nodeId,
+      parentNodeId: item.data.parentNodeId,
+      name: item.data.name,
+      intro: item.data.intro,
+      avatar: item.data.avatar,
+      flowNodeType: item.data.flowNodeType,
+      showStatus: item.data.showStatus,
+      position: item.position,
+      version: item.data.version,
+      inputs,
+      outputs: item.data.outputs.map(({ invalidCondition: _, ...output }) => output),
+      pluginId: item.data.pluginId,
+      toolConfig: item.data.toolConfig,
+      catchError: item.data.catchError
+    };
+  });
+
+  const nodeIdSet = new Set(formatNodes.map((node) => node.nodeId));
+  const formatEdges: StoreEdgeItemType[] = edges
+    .map((item) => ({
+      source: item.source,
+      target: item.target,
+      sourceHandle: item.sourceHandle || '',
+      targetHandle: item.targetHandle || ''
+    }))
+    .filter(
+      (item) =>
+        item.sourceHandle !== '' &&
+        item.targetHandle !== '' &&
+        nodeIdSet.has(item.source) &&
+        nodeIdSet.has(item.target)
+    );
+
+  return { nodes: formatNodes, edges: formatEdges };
 };
 
 /**

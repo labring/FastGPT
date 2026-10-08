@@ -24,7 +24,7 @@ import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 import FileSelect from '@/components/core/app/FileSelect';
 import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
-import { WorkflowHostContext } from '@/web/core/workflow/editor/host';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import type { WorkflowCommand } from '@fastgpt/global/core/workflow/editor/types';
 import {
   FlowNodeInputItemTypeSchema,
@@ -390,7 +390,7 @@ function FileSelectConfig({ setAppDetail }: ComponentProps) {
     (v) => v.appDetail.chatConfig?.fileSelectConfig
   );
   // 文件上传开关同时更新开始节点输出和下游自动填充引用，合并为一个 Runtime 事务。
-  const runtime = useContextSelector(WorkflowHostContext, (v) => v.runtime);
+  const runtime = useWorkflowRuntime();
   const { workflow } = useWorkflowDocument();
   // 只读快照与自动填充纯函数的入参只差 readonly 修饰，桥接沿用原 reader 的写法。
   const nodeList = workflow?.nodes as unknown as readonly FlowNodeItemType[] | undefined;

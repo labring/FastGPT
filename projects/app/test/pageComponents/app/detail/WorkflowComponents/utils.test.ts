@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  uiWorkflow2StoreWorkflow,
   filterExportModules,
   getEditorVariables
 } from '@/pageComponents/app/detail/WorkflowComponents/utils';
+import { uiWorkflow2StoreWorkflow } from '@/web/core/workflow/editor/codec';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -707,15 +707,14 @@ describe('WorkflowComponents utils', () => {
           outputs: []
         }
       ];
-      const edges = [];
       const t = (key: string) => key;
 
       const result = getEditorVariables({
         nodeId,
         getNodeById: (nodeId) => nodeList.find((node) => node.nodeId === nodeId),
-        edges,
         chatConfig: {},
-        t
+        t,
+        getSourceNodeIds: () => []
       });
 
       expect(result[0]).toEqual({
@@ -733,9 +732,9 @@ describe('WorkflowComponents utils', () => {
       const result = getEditorVariables({
         nodeId: 'nonexistent',
         getNodeById: () => undefined,
-        edges: [],
         chatConfig: {},
-        t: (key: string) => key
+        t: (key: string) => key,
+        getSourceNodeIds: () => []
       });
 
       expect(result).toEqual([]);
@@ -754,7 +753,6 @@ describe('WorkflowComponents utils', () => {
       const result = getEditorVariables({
         nodeId: 'node1',
         getNodeById: (nodeId) => nodeList.find((node) => node.nodeId === nodeId),
-        edges: [],
         chatConfig: {
           variables: [{ key: 'name', label: 'name', description: '', type: 'input' }]
         },
@@ -762,11 +760,54 @@ describe('WorkflowComponents utils', () => {
           ({
             name: '名称',
             'workflow:use_user_id': '用户 ID'
-          })[key] || key
+          })[key] || key,
+        getSourceNodeIds: () => []
       });
 
       expect(result.find((item) => item.key === 'name')?.label).toBe('name');
       expect(result.find((item) => item.key === 'userId')?.label).toBe('用户 ID');
+    });
+
+    it('should map Runtime source ids to upstream variables', () => {
+      const nodeList = [
+        {
+          nodeId: 'node1',
+          name: 'Node 1',
+          inputs: [],
+          outputs: []
+        },
+        {
+          nodeId: 'source1',
+          name: 'Source 1',
+          avatar: 'source-avatar',
+          inputs: [],
+          outputs: [
+            {
+              id: 'result',
+              label: 'Result',
+              type: FlowNodeOutputTypeEnum.source
+            }
+          ]
+        }
+      ] as FlowNodeItemType[];
+
+      const result = getEditorVariables({
+        nodeId: 'node1',
+        getNodeById: (nodeId) => nodeList.find((node) => node.nodeId === nodeId),
+        chatConfig: {},
+        t: (key: string) => key,
+        getSourceNodeIds: () => ['source1']
+      });
+
+      expect(result).toContainEqual({
+        key: 'result',
+        label: 'Result',
+        parent: {
+          id: 'source1',
+          label: 'Source 1',
+          avatar: 'source-avatar'
+        }
+      });
     });
   });
 });

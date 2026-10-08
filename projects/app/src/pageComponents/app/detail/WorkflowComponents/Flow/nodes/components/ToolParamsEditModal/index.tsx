@@ -18,7 +18,8 @@ import { z } from 'zod';
 import { toolParamKeyReg } from './utils';
 import { defaultToolParamFormData } from './constants';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const customValueType = 'custom' as const;
 

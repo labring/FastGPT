@@ -31,7 +31,8 @@ import {
   splitToolInputsByMode
 } from '@/web/core/workflow/utils';
 import { useIsToolNode } from '../render/useWorkflowDocument';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs, outputs, nodeId, catchError } = data;

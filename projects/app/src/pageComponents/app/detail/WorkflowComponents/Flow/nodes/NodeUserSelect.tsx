@@ -16,7 +16,9 @@ import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
 import DraggableInputList from '@/components/core/app/DraggableInputList';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useField, useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 /** 选项源柄的平移量：模块级常量，避免每次渲染换数组身份打穿 MySourceHandle 的 React.memo。 */
 const optionHandleTranslate = [58, 0] as [number, number];

@@ -9,13 +9,13 @@ import {
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useContextSelector } from 'use-context-selector';
 import { useThrottleEffect } from 'ahooks';
-import { WorkflowDebugContext } from '../../context/workflowDebugContext';
-import { WorkflowUIContext } from '../context/workflowUIContext';
-import { WorkflowSelectionContext } from '../context/workflowSelectionContext';
+import { useWorkflowDebugValue } from '../../debug/workflowDebugSession';
+import { useWorkflowUIValue } from '../canvas/canvasState';
+import { useWorkflowSelectionValue } from '../context/workflowSelectionContext';
 import { getCustomStepPath } from '../utils/edge';
-import { useNode, useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions, useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
 
 export const CustomConnectionLine = ({
   fromX,
@@ -60,27 +60,24 @@ const ButtonEdge = (props: EdgeProps) => {
   } = props;
 
   // 四个订阅全部收窄成本边关心的原始值，选中/hover/debug 的无关变更不再重渲染这条边。
-  const endpointSelected = useContextSelector(
-    WorkflowSelectionContext,
+  const endpointSelected = useWorkflowSelectionValue(
     (v) => !!(v.selectedNodesMap[source] || v.selectedNodesMap[target])
   );
   // debug 态下本边（按 handle 精确匹配）的状态；不在 debug 或没匹配到 runtime 边时为 undefined。
-  const debugStatus = useContextSelector(
-    WorkflowDebugContext,
+  const debugStatus = useWorkflowDebugValue(
     (v) =>
       v.workflowDebugData?.runtimeEdges.find(
         (edge) => edge.sourceHandle === sourceHandleId && edge.targetHandle === targetHandleId
       )?.status
   );
   // debug 态下两端点之间是否存在 runtime 边：只用来决定线宽，不需要整条边数据。
-  const hasDebugEndpoints = useContextSelector(
-    WorkflowDebugContext,
+  const hasDebugEndpoints = useWorkflowDebugValue(
     (v) =>
       !!v.workflowDebugData?.runtimeEdges.some(
         (edge) => edge.source === source && edge.target === target
       )
   );
-  const isHover = useContextSelector(WorkflowUIContext, (v) => v.hoverEdgeId === id);
+  const isHover = useWorkflowUIValue((v) => v.hoverEdgeId === id);
   // 结构订阅只剩一个用途：结构变了要重算同源边偏移。写命令走稳定 action 句柄，订阅数为零。
   const structureEdges = useWorkflowValue((structure) => structure.edges);
   const { disconnectEdge } = useWorkflowActions();

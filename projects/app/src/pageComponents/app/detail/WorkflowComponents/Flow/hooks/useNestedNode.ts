@@ -11,10 +11,11 @@ import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
-import { useNode, useWorkflowValue } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowValue } from '@/web/core/workflow/editor/react/useWorkflow';
 import { useDocumentGetNodeById } from '../nodes/render/useWorkflowDocument';
 import { AppContext } from '../../../context';
-import { WorkflowCanvasContext } from '../context/workflowCanvasContext';
+import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
 import { WorkflowNodeOffscreenMeasurementContext } from '../nodes/render/Handle/handleRenderContext';
 
 type UseNestedNodeParams = {
@@ -42,9 +43,7 @@ export const useNestedNode = ({
   const getNodeById = useDocumentGetNodeById();
   const node = useNode(nodeId);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const containerLayout = useContextSelector(WorkflowCanvasContext, (value) =>
-    value.containerLayouts.get(nodeId)
-  );
+  const containerLayout = useWorkflowCanvasValue((value) => value.containerLayouts.get(nodeId));
   const isMeasurement = useContext(WorkflowNodeOffscreenMeasurementContext);
 
   // ── 1. Read the container array input（外框尺寸是常量，不再从 inputs 读）─────

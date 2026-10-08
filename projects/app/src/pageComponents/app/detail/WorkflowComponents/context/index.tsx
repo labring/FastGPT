@@ -1,12 +1,14 @@
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
-import { WorkflowHostProvider } from '@/web/core/workflow/editor/host';
-import WorkflowCanvasProvider from '../Flow/context/workflowCanvasContext';
-import { WorkflowDebugProvider } from './workflowDebugContext';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { WorkflowSessionProvider } from '@/web/core/workflow/editor/session/workflowSession';
+import WorkflowCanvasProvider from '../Flow/canvas/workflowCanvasContext';
+import { WorkflowDebugProvider } from '../debug/workflowDebugSession';
+import { useContextSelector } from 'use-context-selector';
 
 /* 
   ReactFlowProvider
-  └── WorkflowHostProvider             // Runtime lifecycle, persistence and issue state
+  └── WorkflowSessionProvider          // Runtime lifecycle, persistence and issue state
   └── WorkflowCanvasProvider       // renderer projection and interaction state
           └── WorkflowDebugProvider    // debug session renderer state
 
@@ -18,13 +20,21 @@ import { WorkflowDebugProvider } from './workflowDebugContext';
  * 工作流编辑器装配：ReactFlow + host + renderer canvas state。
  */
 export const ReactFlowCustomProvider = ({ children }: { children: React.ReactNode }) => {
+  const appId = useContextSelector(AppContext, (value) => value.appId);
+  const appDetailChatConfig = useContextSelector(AppContext, (value) => value.appDetail.chatConfig);
+  const setAppDetail = useContextSelector(AppContext, (value) => value.setAppDetail);
+
   return (
     <ReactFlowProvider>
-      <WorkflowHostProvider>
+      <WorkflowSessionProvider
+        appId={appId}
+        appDetailChatConfig={appDetailChatConfig}
+        onChatConfigChange={(chatConfig) => setAppDetail((detail) => ({ ...detail, chatConfig }))}
+      >
         <WorkflowCanvasProvider>
           <WorkflowDebugProvider>{children}</WorkflowDebugProvider>
         </WorkflowCanvasProvider>
-      </WorkflowHostProvider>
+      </WorkflowSessionProvider>
     </ReactFlowProvider>
   );
 };

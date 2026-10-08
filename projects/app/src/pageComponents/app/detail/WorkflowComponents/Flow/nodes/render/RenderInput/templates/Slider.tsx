@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box } from '@chakra-ui/react';
 import MySlider from '@/components/Slider';
-import { useField } from '@/web/core/workflow/editor';
+import { useField } from '@/web/core/workflow/editor/react/useField';
 
 const SliderRender = ({ item, nodeId }: RenderInputProps) => {
   const field = useField(nodeId, item.key, 'input');

@@ -9,7 +9,7 @@ import type { NodeSelectionChange } from 'reactflow';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import type { ViewOverlayPatch } from './canvas';
+import type { ViewOverlayPatch } from '../canvas/canvasTypes';
 
 type DebugResult = FlowNodeItemType['debugResult'];
 

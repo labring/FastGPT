@@ -12,7 +12,8 @@ import ToolParamsEditModal from '../components/ToolParamsEditModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { defaultToolParamFormData } from '../components/ToolParamsEditModal/constants';
 import { getOutputDisconnectCommands } from '@/web/core/workflow/utils';
-import { useNode, useWorkflowActions } from '@/web/core/workflow/editor';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
+import { useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 
 const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
