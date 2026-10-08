@@ -100,7 +100,7 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     networks:
-      - vector
+      - data
     volumes:
       - fastgpt-milvus-minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
@@ -119,7 +119,7 @@ services:
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
       - ETCD_SNAPSHOT_COUNT=50000
     networks:
-      - vector
+      - data
     volumes:
       - fastgpt-milvus-etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
