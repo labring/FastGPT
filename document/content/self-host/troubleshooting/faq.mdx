@@ -144,7 +144,7 @@ description: FastGPT 私有部署常见问题排查方式
 
 适用版本：已按 4.17.0 核实。浏览器上传文件用的地址取自 `FILE_DOMAIN`，没设置时取自 `FE_DOMAIN`。页面是 HTTPS、而这个地址是 `http://` 时，浏览器会把请求当作混合内容拦截，请求到不了服务端。
 
-怎么做：把对应配置改成可以访问的 HTTPS 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
+怎么做：把对应配置改成可以访问的 https 地址（设置了 `FILE_DOMAIN` 就改它，否则改 `FE_DOMAIN`），然后重启。可以在浏览器控制台确认是否有 Mixed Content 报错。
 
 ---
 
