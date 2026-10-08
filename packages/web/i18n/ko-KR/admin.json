@@ -644,6 +644,7 @@
   "no_teams": "팀 기록 없음 ~",
   "no_plans": "플랜 기록 없음 ~",
   "no_apps": "앱 기록 없음 ~",
+  "no_datasets": "지식베이스 기록 없음 ~",
   "no_invoices": "청구서 기록 없음 ~",
   "auto_suspend_when_idle_minutes": "무작업 시 자동 일시중지 (분)",
   "no_users": "사용자 기록 없음 ~",

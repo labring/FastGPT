@@ -644,6 +644,7 @@
   "no_teams": "无团队记录～",
   "no_plans": "无套餐记录～",
   "no_apps": "无应用记录～",
+  "no_datasets": "无知识库记录～",
   "no_invoices": "无开票记录～",
   "auto_suspend_when_idle_minutes": "无操作自动挂起 (分钟)",
   "no_users": "无用户记录～",
