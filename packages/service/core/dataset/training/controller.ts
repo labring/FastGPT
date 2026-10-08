@@ -110,19 +110,38 @@ export const lockTrainingDataByTeamId = async (
   const timerId = `lock_training_data--${teamId}`;
   const errorMsg = i18nT('common:code_error.team_error.ai_points_not_enough');
 
-  const lockCurrentTraining = () => {
-    if (!currentTrainingId) return Promise.resolve();
+  const lockCurrentTraining = async () => {
+    if (!currentTrainingId) return;
 
-    return MongoDatasetTraining.updateOne(
+    const task = await MongoDatasetTraining.findOneAndUpdate(
       {
         teamId,
         _id: currentTrainingId
       },
       {
-        lockTime: BLOCKED_LOCK_TIME,
-        errorMsg
+        $set: {
+          lockTime: BLOCKED_LOCK_TIME,
+          errorMsg,
+          expireAt: null
+        }
       }
     );
+
+    if (task?.dataId) {
+      await MongoDatasetData.updateOne(
+        {
+          _id: task.dataId,
+          teamId,
+          indexStatus: DatasetDataIndexStatusEnum.indexing
+        },
+        {
+          $set: {
+            indexStatus: DatasetDataIndexStatusEnum.error,
+            indexErrorMsg: errorMsg
+          }
+        }
+      );
+    }
   };
 
   // 5 分钟闸门：并发/多节点调用时，只有首个抢到锁的会执行；TTL 作为兜底
@@ -136,6 +155,18 @@ export const lockTrainingDataByTeamId = async (
   }
 
   try {
+    const tasks = await MongoDatasetTraining.find(
+      {
+        teamId,
+        $or: [
+          { retryCount: { $gt: 0 } },
+          ...(currentTrainingId ? [{ _id: currentTrainingId }] : [])
+        ]
+      },
+      { dataId: 1 }
+    ).lean();
+    const dataIds = tasks.flatMap((item) => (item.dataId ? [item.dataId] : []));
+
     await MongoDatasetTraining.updateMany(
       {
         teamId,
@@ -145,10 +176,29 @@ export const lockTrainingDataByTeamId = async (
         ]
       },
       {
-        lockTime: BLOCKED_LOCK_TIME,
-        errorMsg
+        $set: {
+          lockTime: BLOCKED_LOCK_TIME,
+          errorMsg,
+          expireAt: null
+        }
       }
     );
+
+    if (dataIds.length > 0) {
+      await MongoDatasetData.updateMany(
+        {
+          _id: { $in: dataIds },
+          teamId,
+          indexStatus: DatasetDataIndexStatusEnum.indexing
+        },
+        {
+          $set: {
+            indexStatus: DatasetDataIndexStatusEnum.error,
+            indexErrorMsg: errorMsg
+          }
+        }
+      );
+    }
   } catch (error) {
     logger.error('lockTrainingDataByTeamId failed', { teamId, error });
   } finally {

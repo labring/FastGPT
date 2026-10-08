@@ -92,7 +92,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
         model: vectorModel
       });
     }
-  } else if (!!nextQ || !!datasetData.imageId) {
+  } else {
     const { tokens } = await updateDatasetDataSystemIndexes({
       dataId,
       q: nextQ,

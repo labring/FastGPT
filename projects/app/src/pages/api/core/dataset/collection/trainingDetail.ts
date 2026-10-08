@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/service/core/dataset/training/query';
 import { subMinutes } from 'date-fns';
 import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
+import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training/constant';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
   parse: 0,
@@ -29,15 +30,7 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   imageParse: 0
 };
 
-const MODE_LOCK_TIMEOUT_MINUTES: Record<TrainingModeEnum, number> = {
-  parse: 10,
-  qa: 10,
-  chunk: 3,
-  index: 3,
-  image: 10,
-  auto: 10,
-  imageParse: 10
-};
+const TRAINING_LOCK_TIMEOUT_MINUTES = TRAINING_LEASE_TIMEOUT_MS / 60 / 1000;
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
   const { collectionId } = parseApiInput({
@@ -67,12 +60,10 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
   };
 
   const now = new Date();
-  const activeTrainingExpr = Object.entries(MODE_LOCK_TIMEOUT_MINUTES).map(
-    ([mode, timeoutMinutes]) => ({
-      mode,
-      lockTime: { $gt: subMinutes(now, timeoutMinutes), $lt: BLOCKED_LOCK_TIME }
-    })
-  );
+  const activeLockTimeExpr = {
+    $gt: subMinutes(now, TRAINING_LOCK_TIMEOUT_MINUTES),
+    $lt: BLOCKED_LOCK_TIME
+  };
 
   const [ququedCountData, trainingCountData, errorCountData, trainedCount] = (await Promise.all([
     MongoDatasetTraining.aggregate([
@@ -80,9 +71,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
         $match: {
           ...match,
           retryCount: { $gt: 0 },
-          lockTime: { $lt: BLOCKED_LOCK_TIME },
-          // 只统计当前集合里未被 worker 领取或锁超时后可重试的任务，避免跨知识库队列污染状态展示。
-          $nor: activeTrainingExpr
+          lockTime: { $lte: subMinutes(now, TRAINING_LOCK_TIMEOUT_MINUTES) }
         }
       },
       {
@@ -97,7 +86,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
         $match: {
           ...match,
           retryCount: { $gt: 0 },
-          $or: activeTrainingExpr
+          lockTime: activeLockTimeExpr
         }
       },
       {

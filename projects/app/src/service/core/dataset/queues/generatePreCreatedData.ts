@@ -185,20 +185,16 @@ const updatePreCreatedData = async ({
   );
   const rebuildUpdateInput = await getRebuildUpdateInput(trainingData);
 
-  let tokens = 0;
-  await lease.complete(async (session) => {
-    ({ tokens } = await updateDatasetDataByIndexes({
-      dataId: String(datasetData._id),
-      ...rebuildUpdateInput,
-      imageIndex: !!trainingData.collection.imageIndex,
-      model: embModel,
-      indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
-      indexPrefix: trainingData.collection.indexPrefixTitle
-        ? `# ${trainingData.collection.name}`
-        : undefined,
-      session
-    }));
+  const { tokens } = await updateDatasetDataByIndexes({
+    dataId: String(datasetData._id),
+    ...rebuildUpdateInput,
+    imageIndex: !!trainingData.collection.imageIndex,
+    model: embModel,
+    indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
+    indexPrefix: trainingData.collection.indexPrefixTitle
+      ? `# ${trainingData.collection.name}`
+      : undefined,
+    lease
   });
-
   return { tokens };
 };

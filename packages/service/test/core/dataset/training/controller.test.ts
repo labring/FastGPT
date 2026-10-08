@@ -2,6 +2,8 @@ import { getModelTestDefaults } from '@test/modelCache';
 import { describe, expect, it } from 'vitest';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   lockTrainingDataByTeamId,
   pushDataListToTrainingQueue
@@ -101,6 +103,7 @@ describe('dataset training controller', () => {
 
     expect(lockedTraining?.lockTime).toEqual(BLOCKED_LOCK_TIME);
     expect(lockedTraining?.errorMsg).toBe(errorMsg);
+    expect(lockedTraining?.expireAt).toBeNull();
     expect(finalErrorLockedTrainingCount).toBe(1);
     expect(
       isFinalErrorTraining({
@@ -152,5 +155,47 @@ describe('dataset training controller', () => {
     expect(lockedTraining?.errorMsg).toBe(errorMsg);
     expect(untouchedTraining?.lockTime).not.toEqual(BLOCKED_LOCK_TIME);
     expect(untouchedTraining?.errorMsg).toBeUndefined();
+  });
+  it('should mark associated indexing data as error when locking tasks', async () => {
+    const root = await getRootUser();
+    const datasetId = '507f1f77bcf86cd799439021';
+    const collectionId = '507f1f77bcf86cd799439022';
+    const billId = 'test';
+
+    const [data] = await MongoDatasetData.create([
+      {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId,
+        collectionId,
+        q: 'test q',
+        a: 'test a',
+        indexStatus: DatasetDataIndexStatusEnum.indexing
+      }
+    ]);
+
+    const [training] = await MongoDatasetTraining.create([
+      {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId,
+        collectionId,
+        dataId: String(data._id),
+        billId,
+        mode: TrainingModeEnum.chunk,
+        retryCount: 3
+      }
+    ]);
+
+    await lockTrainingDataByTeamId(String(root.teamId));
+
+    const updatedData = await MongoDatasetData.findById(data._id).lean();
+    const updatedTraining = await MongoDatasetTraining.findById(training._id).lean();
+    const errorMsg = i18nT('common:code_error.team_error.ai_points_not_enough');
+
+    expect(updatedTraining?.lockTime).toEqual(BLOCKED_LOCK_TIME);
+    expect(updatedTraining?.expireAt).toBeNull();
+    expect(updatedData?.indexStatus).toBe(DatasetDataIndexStatusEnum.error);
+    expect(updatedData?.indexErrorMsg).toBe(errorMsg);
   });
 });

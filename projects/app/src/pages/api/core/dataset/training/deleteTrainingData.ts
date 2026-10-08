@@ -11,7 +11,7 @@ import {
   DeleteTrainingDataResponseSchema,
   type DeleteTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
-import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
   const { collectionId, dataId } = parseApiInput({
@@ -33,14 +33,11 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     collectionId: collection._id,
     _id: dataId
   };
-  if (!isDatasetSynonymEnabled()) {
-    await MongoDatasetTraining.deleteOne(trainingMatch);
-    return DeleteTrainingDataResponseSchema.parse(undefined);
-  }
-
   await mongoSessionRun(async (session) => {
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
-    if (training?.dataId && training.synonymVersion) {
+    if (!training) return;
+
+    if (training.dataId && training.synonymVersion) {
       await MongoDatasetData.updateOne(
         {
           _id: training.dataId,
@@ -50,6 +47,26 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
         { session }
       );
     }
+
+    if (training.dataId) {
+      await MongoDatasetData.updateOne(
+        {
+          _id: training.dataId,
+          teamId: collection.teamId,
+          datasetId: collection.datasetId,
+          collectionId: collection._id,
+          indexStatus: DatasetDataIndexStatusEnum.indexing
+        },
+        {
+          $set: {
+            indexStatus: DatasetDataIndexStatusEnum.error,
+            indexErrorMsg: 'Training task deleted'
+          }
+        },
+        { session }
+      );
+    }
+
     await MongoDatasetTraining.deleteOne(trainingMatch, { session });
   });
 

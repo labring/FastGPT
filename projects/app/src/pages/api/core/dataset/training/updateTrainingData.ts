@@ -16,6 +16,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
   const body = parseApiInput({ req, bodySchema: UpdateTrainingDataBodySchema }).body;
@@ -57,22 +58,33 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       ...retryMatch,
       ...finalErrorTrainingMatch
     };
-    const failedTasks = await MongoDatasetTraining.find(taskMatch).select('dataId').lean();
-    await MongoDatasetTraining.updateMany(taskMatch, {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      lockTime: new Date('2000')
-    });
-    const dataIds = failedTasks.flatMap((task) => (task.dataId ? [task.dataId] : []));
-    if (dataIds.length) {
-      await MongoDatasetData.updateMany(
-        { _id: { $in: dataIds }, indexStatus: DatasetDataIndexStatusEnum.error },
+
+    await mongoSessionRun(async (session) => {
+      const failedTasks = await MongoDatasetTraining.find(taskMatch, { dataId: 1 })
+        .session(session)
+        .lean();
+      await MongoDatasetTraining.updateMany(
+        taskMatch,
         {
-          $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
-          $unset: { indexErrorMsg: '' }
-        }
+          $unset: { errorMsg: '' },
+          retryCount: 3,
+          lockTime: new Date('2000')
+        },
+        { session }
       );
-    }
+      const dataIds = failedTasks.flatMap((task) => (task.dataId ? [task.dataId] : []));
+      if (dataIds.length) {
+        await MongoDatasetData.updateMany(
+          { _id: { $in: dataIds }, indexStatus: DatasetDataIndexStatusEnum.error },
+          {
+            $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
+            $unset: { indexErrorMsg: '' }
+          },
+          { session }
+        );
+      }
+    });
+
     return UpdateTrainingDataResponseSchema.parse(undefined);
   }
 
@@ -107,34 +119,34 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     _id: data._id
   };
 
-  if (data.dataId) {
-    await MongoDatasetData.updateOne(
-      { _id: data.dataId, indexStatus: DatasetDataIndexStatusEnum.error },
-      { $set: { indexStatus: DatasetDataIndexStatusEnum.indexing }, $unset: { indexErrorMsg: '' } }
-    );
-  }
+  const nextMode = data.imageId && q ? await getDatasetIndexTrainingMode(data) : undefined;
 
-  // Add to chunk
-  if (data.imageId && q) {
-    await MongoDatasetTraining.updateOne(trainingMatch, {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      mode: await getDatasetIndexTrainingMode(data),
-      ...(q !== undefined && { q }),
-      ...(a !== undefined && { a }),
-      ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: new Date('2000')
-    });
-  } else {
-    await MongoDatasetTraining.updateOne(trainingMatch, {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      ...(q !== undefined && { q }),
-      ...(a !== undefined && { a }),
-      ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: new Date('2000')
-    });
-  }
+  await mongoSessionRun(async (session) => {
+    if (data.dataId) {
+      await MongoDatasetData.updateOne(
+        { _id: data.dataId, indexStatus: DatasetDataIndexStatusEnum.error },
+        {
+          $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
+          $unset: { indexErrorMsg: '' }
+        },
+        { session }
+      );
+    }
+
+    await MongoDatasetTraining.updateOne(
+      trainingMatch,
+      {
+        $unset: { errorMsg: '' },
+        retryCount: 3,
+        ...(nextMode && { mode: nextMode }),
+        ...(q !== undefined && { q }),
+        ...(a !== undefined && { a }),
+        ...(chunkIndex !== undefined && { chunkIndex }),
+        lockTime: new Date('2000')
+      },
+      { session }
+    );
+  });
 
   return UpdateTrainingDataResponseSchema.parse(undefined);
 }

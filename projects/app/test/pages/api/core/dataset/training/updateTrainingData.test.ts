@@ -30,7 +30,13 @@ describe('updateTrainingData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(MongoDatasetTraining.find).mockReturnValue({
+      session: () => ({
+        lean: vi.fn().mockResolvedValue([])
+      }),
       select: () => ({
+        session: () => ({
+          lean: vi.fn().mockResolvedValue([])
+        }),
         lean: vi.fn().mockResolvedValue([])
       })
     } as any);
@@ -72,7 +78,8 @@ describe('updateTrainingData', () => {
         $unset: { errorMsg: '' },
         retryCount: 3,
         lockTime: new Date('2000')
-      }
+      },
+      expect.objectContaining({ session: null })
     );
   });
 
@@ -98,7 +105,8 @@ describe('updateTrainingData', () => {
         $unset: { errorMsg: '' },
         retryCount: 3,
         lockTime: new Date('2000')
-      }
+      },
+      expect.objectContaining({ session: null })
     );
   });
 
@@ -133,15 +141,19 @@ describe('updateTrainingData', () => {
         collectionId
       })
     );
-    expect(MongoDatasetTraining.updateOne).toHaveBeenCalledWith(match, {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      mode: TrainingModeEnum.chunk,
-      q: 'question',
-      a: 'answer',
-      chunkIndex: 1,
-      lockTime: new Date('2000')
-    });
+    expect(MongoDatasetTraining.updateOne).toHaveBeenCalledWith(
+      match,
+      {
+        $unset: { errorMsg: '' },
+        retryCount: 3,
+        mode: TrainingModeEnum.chunk,
+        q: 'question',
+        a: 'answer',
+        chunkIndex: 1,
+        lockTime: new Date('2000')
+      },
+      expect.objectContaining({ session: null })
+    );
   });
 
   it('should reject when single training data is not found', async () => {
@@ -184,7 +196,8 @@ describe('updateTrainingData', () => {
       match,
       expect.objectContaining({
         q: 'question'
-      })
+      }),
+      expect.objectContaining({ session: null })
     );
   });
 

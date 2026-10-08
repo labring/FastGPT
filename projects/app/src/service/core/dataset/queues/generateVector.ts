@@ -277,22 +277,18 @@ const rebuildData = async ({
   );
   const rebuildUpdateInput = await getRebuildUpdateInput(trainingData);
 
-  let tokens = 0;
-  await lease.complete(async (session) => {
-    ({ tokens } = await updateDatasetDataByIndexes({
-      dataId: String(datasetData._id),
-      ...rebuildUpdateInput,
-      imageIndex: !!trainingData.collection.imageIndex,
-      model: embModel,
-      indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
-      indexPrefix: trainingData.collection.indexPrefixTitle
-        ? `# ${trainingData.collection.name}`
-        : undefined,
-      forceRebuild: true,
-      session
-    }));
+  const { tokens } = await updateDatasetDataByIndexes({
+    dataId: String(datasetData._id),
+    ...rebuildUpdateInput,
+    imageIndex: !!trainingData.collection.imageIndex,
+    model: embModel,
+    indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
+    indexPrefix: trainingData.collection.indexPrefixTitle
+      ? `# ${trainingData.collection.name}`
+      : undefined,
+    forceRebuild: true,
+    lease
   });
-
   return { tokens };
 };
 
@@ -309,31 +305,27 @@ const insertData = async ({
     getDatasetModelReference(trainingData.dataset, 'embedding')
   );
 
-  let tokens = 0;
-  await lease.complete(async (session) => {
-    // insert new data to dataset
-    ({ tokens } = await createDatasetData({
-      teamId: trainingData.teamId,
-      tmbId: trainingData.tmbId,
-      datasetId: trainingData.datasetId,
-      collectionId: trainingData.collectionId,
-      q: trainingData.q,
-      a: trainingData.a,
-      imageId: trainingData.imageId,
-      imageDescMap: trainingData.imageDescMap,
-      ...(trainingData.dataMetadata && { metadata: trainingData.dataMetadata }),
-      chunkIndex: trainingData.chunkIndex,
-      indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
-      indexes: trainingData.indexes || [],
-      indexPrefix: trainingData.collection.indexPrefixTitle
-        ? `# ${trainingData.collection.name}`
-        : undefined,
-      embeddingModel: embModel,
-      imageIndex: !!trainingData.collection.imageIndex,
-      session
-    }));
+  // insert new data to dataset
+  const { tokens } = await createDatasetData({
+    teamId: trainingData.teamId,
+    tmbId: trainingData.tmbId,
+    datasetId: trainingData.datasetId,
+    collectionId: trainingData.collectionId,
+    q: trainingData.q,
+    a: trainingData.a,
+    imageId: trainingData.imageId,
+    imageDescMap: trainingData.imageDescMap,
+    ...(trainingData.dataMetadata && { metadata: trainingData.dataMetadata }),
+    chunkIndex: trainingData.chunkIndex,
+    indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
+    indexes: trainingData.indexes || [],
+    indexPrefix: trainingData.collection.indexPrefixTitle
+      ? `# ${trainingData.collection.name}`
+      : undefined,
+    embeddingModel: embModel,
+    imageIndex: !!trainingData.collection.imageIndex,
+    lease
   });
-
   return {
     tokens
   };

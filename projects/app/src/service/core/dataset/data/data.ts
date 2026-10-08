@@ -26,6 +26,7 @@ import {
   getDatasetSynonymTransformContext,
   isDatasetSynonymEnabled
 } from '@fastgpt/service/core/dataset/synonym/entity';
+import { type TrainingTaskLease } from '@fastgpt/service/core/dataset/training/service';
 
 type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes' | 'q'> & {
   q?: string;
@@ -39,11 +40,13 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   forceRebuild?: boolean;
   /** 传入时复用调用方事务，用于把训练任务删除、状态推进并入同一次写入边界。 */
   session?: ClientSession;
+  /** 传入训练任务租约：向量生成完毕后在租约 complete 事务内原子提交主数据并删除任务。 */
+  lease?: TrainingTaskLease;
 };
 
 type UpdateDatasetDataSystemIndexesProps = Omit<
   UpdateDatasetDataByIndexesProps,
-  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session'
+  'indexes' | 'q' | 'forceRebuild' | 'imageDescMap' | 'session' | 'lease'
 > & {
   q?: string;
   imageIndex?: boolean;
@@ -108,10 +111,16 @@ export class DatasetDataOperation {
    * 在调用方已开启的事务内执行，没有传入事务时自行开启一个。
    * 提前落库的向量回写需要把训练任务删除并入同一次写入边界，因此必须复用调用方 session。
    */
-  private runInSession<T>(
-    session: ClientSession | undefined,
-    fn: (session: ClientSession) => Promise<T>
-  ) {
+  private runInSession<T>({
+    session,
+    fn,
+    lease
+  }: {
+    session?: ClientSession;
+    fn: (session: ClientSession) => Promise<T>;
+    lease?: TrainingTaskLease;
+  }) {
+    if (lease) return lease.complete(fn);
     if (session) return fn(session);
     return mongoSessionRun(fn);
   }
@@ -144,13 +153,15 @@ export class DatasetDataOperation {
     imageIndex,
     imageDescMap,
     metadata,
-    session
+    session,
+    lease
   }: CreateDatasetDataPropsType & {
     embeddingModel: EmbeddingSystemModelDataType;
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
-    session: ClientSession;
+    session?: ClientSession;
+    lease?: TrainingTaskLease;
   }) {
     // 纯图片数据允许没有正文；indexQ 保持为空，避免生成普通 default 文本向量索引。
     const dataQ = q || '';
@@ -196,50 +207,66 @@ export class DatasetDataOperation {
       throw new Error('同义词配置已变化，请重试数据写入');
     };
     // 主数据保存的是带 dataId 的 indexes，因此需要先完成向量写入。
-    const [{ _id }] = await MongoDatasetData.create(
-      [
-        {
-          teamId,
-          tmbId,
-          datasetId,
-          collectionId,
-          q: dataQ,
-          a,
-          imageId,
-          imageDescMap,
-          ...(metadata && { metadata }),
-          chunkIndex,
-          indexes: results,
-          ...(synonymContext && { synonymVersion: synonymContext.version })
-        }
-      ],
-      { session, ordered: true }
-    );
+    let insertId = '';
+    try {
+      await this.runInSession({
+        session,
+        lease,
+        fn: async (mongoSession) => {
+          const [{ _id }] = await MongoDatasetData.create(
+            [
+              {
+                teamId,
+                tmbId,
+                datasetId,
+                collectionId,
+                q: dataQ,
+                a,
+                imageId,
+                imageDescMap,
+                ...(metadata && { metadata }),
+                chunkIndex,
+                indexes: results,
+                ...(synonymContext && { synonymVersion: synonymContext.version })
+              }
+            ],
+            { session: mongoSession, ordered: true }
+          );
+          insertId = String(_id);
 
-    // 全文索引为派生数据:主数据保留原文，同义词转换后由各全文实现处理。
-    // getFullTextStore() 按 provider 分发:mongo 写 dataset_data_texts(内部 jiebaSplit);milvus 为 no-op(全文行随向量写入 modeldata_v2)。
-    await getFullTextStore().write(
-      [
-        {
-          teamId,
-          datasetId,
-          collectionId,
-          dataId: String(_id),
-          fullText:
-            synonymContext?.transformText(`${indexQ}\n${a}`.trim()) ?? `${indexQ}\n${a}`.trim()
-        }
-      ],
-      session
-    );
-    await assertSynonymContextCurrent();
+          await getFullTextStore().write(
+            [
+              {
+                teamId,
+                datasetId,
+                collectionId,
+                dataId: String(_id),
+                fullText:
+                  synonymContext?.transformText(
+                    `${indexQ}
+${a}`.trim()
+                  ) ??
+                  `${indexQ}
+${a}`.trim()
+              }
+            ],
+            mongoSession
+          );
+          await assertSynonymContextCurrent();
 
-    // 图片在创建成功后从临时对象转为正式引用，不再允许 TTL 自动删除。
-    // 同样校验归属，防止外库 key 借数据创建入口被意外移除 TTL 提升为永久对象。
-    if (
-      isS3ObjectKey(imageId, 'dataset') &&
-      isAuthorizedDatasetFileS3Key({ key: imageId, datasetId })
-    ) {
-      await removeS3TTL({ key: imageId, bucketName: 'private', session });
+          if (
+            isS3ObjectKey(imageId, 'dataset') &&
+            isAuthorizedDatasetFileS3Key({ key: imageId, datasetId })
+          ) {
+            await removeS3TTL({ key: imageId, bucketName: 'private', session: mongoSession });
+          }
+        }
+      });
+    } catch (error) {
+      await this.indexOperation
+        .deleteVectors({ teamId, idList: results.map((index) => index.dataId) })
+        .catch(() => {});
+      throw error;
     }
 
     this.pushCollectionUpdate({
@@ -249,7 +276,7 @@ export class DatasetDataOperation {
     });
 
     return {
-      insertId: _id,
+      insertId,
       tokens
     };
   }
@@ -273,7 +300,8 @@ export class DatasetDataOperation {
     metadata,
     forceRebuild = false,
     imageDescMap,
-    session
+    session,
+    lease
   }: UpdateDatasetDataByIndexesProps) {
     const embModel = model;
 
@@ -338,67 +366,82 @@ export class DatasetDataOperation {
         .filter((item) => !item.skipped)
         .map((item) => item.index.dataId)
         .filter(Boolean) as string[];
-      await this.runInSession(session, async (mongoSession) => {
-        if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
-          throw new Error('同义词配置已变化，请重试索引更新');
-        }
-        // 同义词开启时使用 CAS，避免 embedding 期间的编辑与同义词版本交叉覆盖。
-        const updateResult = await MongoDatasetData.updateOne(
-          { _id: mongoData._id, ...(synonymContext && { updateTime }) },
-          {
-            $set: {
-              // 用归一化后的旧值比较：缺失的 a/q 与空串语义相同，不应因此写入一条无变化的历史。
-              ...(nextQ !== (mongoData.q ?? '') || nextA !== (mongoData.a ?? '')
-                ? {
-                    history: [
-                      { q: mongoData.q, a: mongoData.a, updateTime },
-                      ...(mongoData.history?.slice(0, 9) ?? [])
-                    ]
-                  }
-                : {}),
-              q: nextQ,
-              a: nextA,
-              ...(metadata !== undefined ? { metadata } : {}),
-              ...(imageDescMap !== undefined ? { imageDescMap } : {}),
-              indexes: newIndexes,
-              indexStatus: DatasetDataIndexStatusEnum.indexed,
-              ...(synonymContext && { synonymVersion: synonymContext.version }),
-              updateTime: new Date()
-            },
-            $unset: {
-              ...(synonymContext ? { synonymRebuildingVersion: '' } : {}),
-              indexErrorMsg: ''
-            }
-          },
-          { session: mongoSession }
-        );
-        if (synonymContext && updateResult.modifiedCount !== 1) {
-          throw new Error('数据已变化，请重试索引更新');
-        }
-
-        // Q/A 变化会影响全文检索结果,需要和主数据一并更新(milvus 下为 no-op,全文随向量 upsert 覆盖)。
-        await getFullTextStore().write(
-          [
+      await this.runInSession({
+        session,
+        lease,
+        fn: async (mongoSession) => {
+          if (synonymContext?.isCurrent && !(await synonymContext.isCurrent())) {
+            throw new Error('同义词配置已变化，请重试索引更新');
+          }
+          // 同义词开启时使用 CAS，避免 embedding 期间的编辑与同义词版本交叉覆盖。
+          const updateResult = await MongoDatasetData.updateOne(
+            { _id: mongoData._id, ...(synonymContext && { updateTime }) },
             {
-              teamId: String(mongoData.teamId),
-              datasetId: String(mongoData.datasetId),
-              collectionId: String(mongoData.collectionId),
-              dataId: String(mongoData._id),
-              fullText:
-                synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
-                `${nextQ}\n${nextA}`.trim()
-            }
-          ],
-          mongoSession
-        );
+              $set: {
+                // 用归一化后的旧值比较：缺失的 a/q 与空串语义相同，不应因此写入一条无变化的历史。
+                ...(nextQ !== (mongoData.q ?? '') || nextA !== (mongoData.a ?? '')
+                  ? {
+                      history: [
+                        { q: mongoData.q, a: mongoData.a, updateTime },
+                        ...(mongoData.history?.slice(0, 9) ?? [])
+                      ]
+                    }
+                  : {}),
+                q: nextQ,
+                a: nextA,
+                ...(metadata !== undefined ? { metadata } : {}),
+                ...(imageDescMap !== undefined ? { imageDescMap } : {}),
+                indexes: newIndexes,
+                indexStatus: DatasetDataIndexStatusEnum.indexed,
+                ...(synonymContext && { synonymVersion: synonymContext.version }),
+                updateTime: new Date()
+              },
+              $unset: {
+                ...(synonymContext ? { synonymRebuildingVersion: '' } : {}),
+                indexErrorMsg: ''
+              }
+            },
+            { session: mongoSession }
+          );
+          if (synonymContext && updateResult.modifiedCount !== 1) {
+            throw new Error('数据已变化，请重试索引更新');
+          }
 
-        await this.indexOperation.deleteVectors({
-          teamId: mongoData.teamId,
-          idList: deleteVectorIdList
-        });
+          // Q/A 变化会影响全文检索结果,需要和主数据一并更新(milvus 下为 no-op,全文随向量 upsert 覆盖)。
+          await getFullTextStore().write(
+            [
+              {
+                teamId: String(mongoData.teamId),
+                datasetId: String(mongoData.datasetId),
+                collectionId: String(mongoData.collectionId),
+                dataId: String(mongoData._id),
+                fullText:
+                  synonymContext?.transformText(`${nextQ}\n${nextA}`.trim()) ??
+                  `${nextQ}\n${nextA}`.trim()
+              }
+            ],
+            mongoSession
+          );
+
+          await this.indexOperation.deleteVectors({
+            teamId: mongoData.teamId,
+            idList: deleteVectorIdList
+          });
+
+          if (!lease && mongoData.indexStatus === DatasetDataIndexStatusEnum.error) {
+            await MongoDatasetTraining.deleteMany(
+              {
+                teamId: mongoData.teamId,
+                datasetId: mongoData.datasetId,
+                dataId: mongoData._id
+              },
+              { session: mongoSession }
+            );
+          }
+        }
       });
     } catch (error) {
-      if (synonymContext) {
+      if (synonymContext || lease) {
         await this.indexOperation
           .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
           .catch(() => {});
@@ -529,6 +572,8 @@ export class DatasetDataOperation {
                     { $literal: nextSystemIndexes }
                   ]
                 },
+                indexStatus: { $literal: DatasetDataIndexStatusEnum.indexed },
+                indexErrorMsg: '$$REMOVE',
                 ...(synonymContext && {
                   synonymVersion: synonymContext.version,
                   synonymRebuildingVersion: '$$REMOVE'
@@ -563,6 +608,17 @@ export class DatasetDataOperation {
           teamId: mongoData.teamId,
           idList: deleteVectorIdList
         });
+
+        if (mongoData.indexStatus === DatasetDataIndexStatusEnum.error) {
+          await MongoDatasetTraining.deleteMany(
+            {
+              teamId: mongoData.teamId,
+              datasetId: mongoData.datasetId,
+              dataId: mongoData._id
+            },
+            { session }
+          );
+        }
       });
     } catch (error) {
       if (synonymContext) {
@@ -632,7 +688,8 @@ export const createDatasetData = async (
     indexSize?: number;
     imageIndex?: boolean;
     imageDescMap?: Record<string, string>;
-    session: ClientSession;
+    session?: ClientSession;
+    lease?: TrainingTaskLease;
   }
 ) => {
   return new DatasetDataOperation(props.embeddingModel).create(props);

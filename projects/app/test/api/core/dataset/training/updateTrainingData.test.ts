@@ -10,6 +10,8 @@ import type {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getRootUser, getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
@@ -342,5 +344,94 @@ describe('update training data test', () => {
     expect(res.code).not.toBe(200);
     expect(existingTrainingData?.q).toBe('origin');
     expect(existingTrainingData?.a).toBe('origin');
+  });
+  it('should restore data indexStatus from error to indexing during single and batch retry', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'test',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test'
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'test',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const [dataSingle, dataBatch] = await MongoDatasetData.create([
+      {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        q: 'single data',
+        a: 'single a',
+        indexStatus: DatasetDataIndexStatusEnum.error,
+        indexErrorMsg: 'prev error'
+      },
+      {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        q: 'batch data',
+        a: 'batch a',
+        indexStatus: DatasetDataIndexStatusEnum.error,
+        indexErrorMsg: 'prev error'
+      }
+    ]);
+
+    const [trainingSingle, trainingBatch] = await MongoDatasetTraining.create([
+      {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        dataId: String(dataSingle._id),
+        billId: 'test',
+        mode: TrainingModeEnum.chunk,
+        errorMsg: 'failed',
+        retryCount: 0
+      },
+      {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        dataId: String(dataBatch._id),
+        billId: 'test',
+        mode: TrainingModeEnum.chunk,
+        errorMsg: 'failed',
+        retryCount: 0
+      }
+    ]);
+
+    // Single retry
+    await Call<UpdateTrainingDataBody, EmptyQuery, UpdateTrainingDataResponse>(handler, {
+      auth: root,
+      body: {
+        dataId: trainingSingle._id,
+        q: 'single retry'
+      }
+    });
+
+    const updatedDataSingle = await MongoDatasetData.findById(dataSingle._id).lean();
+    expect(updatedDataSingle?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
+    expect(updatedDataSingle?.indexErrorMsg).toBeUndefined();
+
+    // Batch retry
+    await Call<UpdateTrainingDataBody, EmptyQuery, UpdateTrainingDataResponse>(handler, {
+      auth: root,
+      body: {
+        collectionId: collection._id
+      }
+    });
+
+    const updatedDataBatch = await MongoDatasetData.findById(dataBatch._id).lean();
+    expect(updatedDataBatch?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
+    expect(updatedDataBatch?.indexErrorMsg).toBeUndefined();
   });
 });
