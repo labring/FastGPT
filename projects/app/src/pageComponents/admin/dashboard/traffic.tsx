@@ -24,7 +24,7 @@ const ChartsBoxStyles = {
 
 export default function TrafficPage(): JSX.Element {
   const theme = useTheme();
-  const { t } = useClientTranslation();
+  const { t } = useClientTranslation('admin');
 
   const { dateRange, granularity } = useDashboardFilters();
 
