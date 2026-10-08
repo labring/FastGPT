@@ -139,7 +139,6 @@ export const buildLegacyDomainOverrides = ({
     disableCache: optionalBool(serviceEnv.DISABLE_CACHE),
     enableTeamPluginUpload: optionalBool(feConfigs.enable_team_plugin_upload),
     showEmptyChat: optionalBool(feConfigs.show_emptyChat),
-    showGit: optionalBool(feConfigs.show_git),
     showDatasetFeishu: optionalBool(feConfigs.show_dataset_feishu),
     showDatasetYuque: optionalBool(feConfigs.show_dataset_yuque),
     showDatasetDingtalk: optionalBool(feConfigs.show_dataset_dingtalk),
@@ -524,6 +523,7 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
  * 检测已改由环境变量承载、但旧库仍有值的历史字段。
  * customApiDomain / customSharePageDomain / scripts 需要部署者手动补入 ENV，
  * 迁移阶段无法自动搬运（涉及 DNS、证书与安全边界），因此只输出告警。
+ * show_git 同样改由环境变量承载：旧库显式关闭（false）时提示补入 SHOW_GIT=false。
  */
 export const collectEnvRehomedWarnings = ({
   feConfigs
@@ -540,6 +540,10 @@ export const collectEnvRehomedWarnings = ({
   }
   if (Array.isArray(feConfigs.scripts) && feConfigs.scripts.length > 0) {
     warnings.push('scripts -> 请配置环境变量 SCRIPTS（JSON 字符串）');
+  }
+  // show_git 改由环境变量承载：旧库显式关闭过时需要部署者补入 ENV，否则升级后默认开启
+  if (feConfigs.show_git === false) {
+    warnings.push('show_git=false -> 请配置环境变量 SHOW_GIT=false');
   }
   if (isNonEmpty(feConfigs.ip_whitelist)) {
     warnings.push('ip_whitelist 已废弃，旧值将被忽略');
