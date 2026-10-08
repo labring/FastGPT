@@ -553,6 +553,78 @@ export const collectEnvRehomedWarnings = ({
 };
 
 /**
+ * 迁移容错：旧值可能不满足当前 Schema 的收紧校验（例如环境变量侧允许 0，
+ * 新 Schema 要求正整数）。若直接写入会让 blockStartup 迁移抛错、节点永久无法启动。
+ * 这里逐域剔除校验不过的叶子值并记录告警，让升级继续可用；管理员可依据告警重新配置。
+ * 贪心策略：先整域校验，失败后按报错路径逐个剔除叶子并重试，直到通过或全部剔完。
+ */
+export const sanitizeOverridesForSchema = ({
+  overrides,
+  warnings
+}: {
+  overrides: DomainOverrides;
+  warnings: string[];
+}): DomainOverrides => {
+  const removePath = (target: Record<string, unknown>, path: (string | number)[]): boolean => {
+    const [head, ...rest] = path;
+    if (head === undefined) return false;
+    if (rest.length === 0) {
+      if (Array.isArray(target)) {
+        if (typeof head === 'number' && head < target.length) {
+          target.splice(head, 1);
+          return true;
+        }
+        return false;
+      }
+      if (typeof head === 'string' && head in target) {
+        delete target[head];
+        return true;
+      }
+      return false;
+    }
+    const child = target[head as string];
+    if (child && typeof child === 'object') {
+      return removePath(child as Record<string, unknown>, rest);
+    }
+    return false;
+  };
+
+  const result: DomainOverrides = {};
+
+  for (const domain of SYSTEM_INSTANCE_CONFIG_DOMAINS) {
+    const raw = overrides[domain];
+    if (!raw) continue;
+
+    let candidate = structuredClone(raw) as Record<string, unknown>;
+    // 循环剔除：每轮校验拿到一个非法叶子路径就删掉重试，直到整域通过
+    for (;;) {
+      try {
+        resolveDomainEffectiveConfig(domain, candidate);
+        break;
+      } catch (error) {
+        const issues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
+        const badPath = issues.find(
+          (issue) => Array.isArray(issue.path) && issue.path.length > 0
+        )?.path;
+        if (!badPath || !removePath(candidate, badPath)) {
+          // 无法定位或无法剔除（如整域形态错误）：丢弃整个域，保证迁移不阻塞启动
+          warnings.push(`${domain} 配置与当前 Schema 不兼容，已整体跳过迁移并回落默认值`);
+          candidate = {};
+          break;
+        }
+        warnings.push(`${domain}.${badPath.join('.')} 值不满足当前校验，已跳过该项`);
+      }
+    }
+
+    if (Object.keys(candidate).length > 0) {
+      result[domain] = candidate;
+    }
+  }
+
+  return result;
+};
+
+/**
  * 读取旧配置来源并生成迁移计划。
  * 幂等判定按域进行：对比迁移目标 Domain 与已有文档，统计缺失数量。
  * 不能只看 count>0，否则部分写入失败后重跑会把残缺状态误判为已完成，
@@ -573,7 +645,13 @@ export const inspectInstanceConfigMigration = async () => {
   const systemEnv = (legacyFastgpt?.value?.systemEnv ?? {}) as LegacySystemEnv;
   const proConfig = (legacyPro?.value ?? {}) as LegacyProConfig;
 
-  const overrides = buildSparseLegacyOverrides({ feConfigs, systemEnv, proConfig });
+  const rawOverrides = buildSparseLegacyOverrides({ feConfigs, systemEnv, proConfig });
+  // 旧值可能不满足收紧后的 Schema；先净化再统计缺失域，避免 blockStartup 迁移崩溃
+  const schemaSanitizedWarnings: string[] = [];
+  const overrides = sanitizeOverridesForSchema({
+    overrides: rawOverrides,
+    warnings: schemaSanitizedWarnings
+  });
   const existingDomains = new Set<string>(existingDocs.map((doc) => String(doc._id)));
   const missingDomainCount = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter(
     (domain) => !!overrides[domain] && !existingDomains.has(domain)
@@ -585,6 +663,7 @@ export const inspectInstanceConfigMigration = async () => {
     hasLegacyConfig: !!legacyFastgpt || !!legacyPro,
     hasLegacyProConfig: !!legacyPro,
     envRehomedWarnings: collectEnvRehomedWarnings({ feConfigs }),
+    schemaSanitizedWarnings,
     overrides
   };
 };
