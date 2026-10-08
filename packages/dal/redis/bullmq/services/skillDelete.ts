@@ -1,4 +1,5 @@
 import { bullMQ, type BullMQBinding } from '../binding';
+import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
 import { defaultJobOptions, defaultWorkerOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
@@ -35,9 +36,14 @@ export class SkillDeleteMQService {
   /** 投递以 teamId-skillId 去重的 Skill 删除任务。 */
   addJob(data: AgentSkillDeleteJobData) {
     const jobId = `${String(data.teamId)}-${String(data.skillId)}`;
-    return this.getQueue().add('delete_agent_skill', data, {
-      jobId,
-      delay: 1000
+    return addOrRequeueFailedJob({
+      queue: this.getQueue(),
+      name: 'delete_agent_skill',
+      data,
+      opts: {
+        jobId,
+        delay: 1000
+      }
     });
   }
 }

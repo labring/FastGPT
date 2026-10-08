@@ -1,4 +1,5 @@
 import { bullMQ, type BullMQBinding } from '../binding';
+import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
 import { defaultJobOptions, defaultWorkerOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
@@ -46,7 +47,18 @@ export class S3FileDeleteMQService {
       throw new Error('Invalid s3 delete job data');
     })();
 
-    await this.getQueue().add('delete-s3-files', data, { jobId, ...s3DeleteJobOptions });
+    const queue = this.getQueue();
+    if (!jobId) {
+      await queue.add('delete-s3-files', data, s3DeleteJobOptions);
+      return;
+    }
+
+    await addOrRequeueFailedJob({
+      queue,
+      name: 'delete-s3-files',
+      data,
+      opts: { jobId, ...s3DeleteJobOptions }
+    });
   }
 }
 
