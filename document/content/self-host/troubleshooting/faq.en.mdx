@@ -148,3 +148,27 @@ Applies to: the local development environment (`deploy/dev`). `fastgpt-plugin` r
 What to do: in Docker Desktop (version 4.34 or later, signed in), go to Settings → Resources → Network, check Enable host networking, and restart; or develop under WSL2, Linux, or macOS, as the development docs recommend.
 
 ---
+
+### The model reports "Download multimodal file timed out", or can't read images
+
+Applies to: 4.15.2 and later. `MULTIPLE_DATA_TO_BASE64` defaults to `true` in 4.15.2 and to `false` from 4.15.3. When it is `false`, FastGPT passes file download short links that start with `http(s)://` to the model provider, which downloads them itself. The short link prefix is the first one set among `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`, `FILE_DOMAIN`, and `FE_DOMAIN`. If it is an internal address, the provider cannot reach it and the download times out (it may return `Download multimodal file timed out`).
+
+What to do (either one): set `MULTIPLE_DATA_TO_BASE64=true` so FastGPT converts the file to base64 before sending it (larger requests); or set `FILE_DOMAIN` to a FastGPT address the provider can reach from the public internet, rather than changing `FE_DOMAIN`, which is the address your users use to access FastGPT.
+
+---
+
+### Importing a template reports "The template file format is incorrect, it should be the csv file with the first column as q,a,indexes"
+
+Applies to: 4.9.11–4.15.8.
+
+Cause: These versions only accept CSV files, and the file content (after trimming leading and trailing whitespace) must start with `q,a,indexes`. A header with every column wrapped in quotes (such as `"q","a","indexes"`), a header written as `index`, or extra content before the first line all trigger this error.
+
+What to do: fill in the CSV template provided on the import page, open the file in a text editor and confirm the first line starts with `q,a,indexes`, and do not save it as `.xlsx`. You can also upgrade to 4.16.0 or later: it supports `.csv` and `.xlsx`, with the headers `q`, `a`, `index` (repeatable), and `metadata` (optional), and the old `q,a,indexes` header still works, so you do not need to change the file. See [Template Import](/en/guide/dataset/template) for the new template.
+
+---
+
+### How do I get the model's thinking content when calling the chat API?
+
+Applies to: 4.15.2 and later. The thinking content is returned in a separate `reasoning_content` field, apart from the body text in `content`: in streaming responses, a chunk that carries thinking has `reasoning_content` in its `choices[0].delta`; in non-streaming responses, a plain text answer has `reasoning_content` in `choices[0].message`. The field is present only when the model actually outputs thinking content and FastGPT can recognize it: the upstream returns a `reasoning_content` field, or, with thinking support turned on in the model config, the body wraps it in `<think></think>`. From 4.17.1, OpenAI-type channels of AI Proxy can also map the upstream `reasoning` field to `reasoning_content`.
+
+---

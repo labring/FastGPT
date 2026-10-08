@@ -155,3 +155,27 @@ description: FastGPT 私有部署常见问题排查方式
 怎么做：在 Docker Desktop（4.34 及以上，需登录）的 Settings → Resources → Network 里勾选 Enable host networking，然后重启；或者按开发文档的建议，改在 WSL2、Linux、macOS 下开发。
 
 ---
+
+### 模型报 Download multimodal file timed out，或读不到图片怎么办？
+
+适用版本：4.15.2 及以后。`MULTIPLE_DATA_TO_BASE64` 默认值在 4.15.2 是 `true`，4.15.3 起是 `false`。为 `false` 时，FastGPT 把 `http(s)://` 开头的文件下载短链交给模型服务商去下载。短链前缀依次取 `FILE_DOWNLOAD_PUBLIC_URL_PREFIX`、`FILE_DOMAIN`、`FE_DOMAIN` 中第一个设置了的；如果是内网地址，模型服务商访问不到，就会下载超时（可能返回 `Download multimodal file timed out`）。
+
+怎么做（二选一）：设置 `MULTIPLE_DATA_TO_BASE64=true`，让 FastGPT 转成 base64 再发给模型（请求体会变大）；或者把 `FILE_DOMAIN` 配置成模型服务商能从公网访问到的 FastGPT 地址，而不是改 `FE_DOMAIN`（它是用户访问 FastGPT 的地址）。
+
+---
+
+### 导入模板时报“模板文件格式不正确，应该是首列为 q,a,indexes 的 csv 文件”怎么办？
+
+适用版本：4.9.11～4.15.8。
+
+原因：这些版本只接受 CSV 文件，并且文件内容（去掉首尾空白后）必须以 `q,a,indexes` 开头。表头每一列都加了引号（如 `"q","a","indexes"`）、写成了 `index`，或者第一行前面多了别的内容，都会报这个错。
+
+怎么做：使用导入页提供的 CSV 模板填写内容，用文本编辑器打开确认第一行以 `q,a,indexes` 开头，不要另存成 `.xlsx`。也可以升级到 4.16.0 及以后：支持 `.csv` 和 `.xlsx`，表头为 `q`、`a`、`index`（可重复）、`metadata`（可选），旧版的 `q,a,indexes` 表头仍然可用，不需要改文件。新模板的写法见 [模板导入](/guide/dataset/template)。
+
+---
+
+### 调用对话接口时，怎么拿到模型的思考内容？
+
+适用版本：4.15.2 及以后。思考内容放在单独的 `reasoning_content` 字段里，和正文 `content` 分开：流式返回时，有思考增量的数据块，其 `choices[0].delta` 里带 `reasoning_content`；非流式返回时，普通文本回答的 `choices[0].message` 里带 `reasoning_content`。只有模型实际输出了思考内容、并且 FastGPT 能识别时才有这个字段：上游返回 `reasoning_content` 字段，或者在模型配置里打开思考支持后，正文里用 `<think></think>` 包起来。4.17.1 起，AI Proxy 的 OpenAI 类型渠道还可以把上游的 `reasoning` 字段映射成 `reasoning_content`。
+
+---
