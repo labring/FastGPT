@@ -832,6 +832,16 @@ describe('markdown 字符串处理函数测试', () => {
       );
     });
 
+    it.each(['https://example.com/a>b.png', 'https://example.com/a<b.png'])(
+      '裸目的地址保留未转义的尖括号：%s',
+      (url) => {
+        const node = `![figure](${url})`;
+        expect(matchMarkdownImages(node)).toEqual([
+          { altText: 'figure', url, fullMatch: node, index: 0 }
+        ]);
+      }
+    );
+
     it.each([
       'https://example.com/a.png "caption"',
       "https://example.com/a.png 'caption'",
@@ -864,10 +874,12 @@ describe('markdown 字符串处理函数测试', () => {
       '![bad](<https://example.com/a.png>"caption")',
       '![bad](https://example.com/a.png invalid)',
       '![bad](https://example.com/a(1 .png)',
-      '![bad](https://example.com/a<1.png)',
       '![bad](https://example.com/a.png "unclosed)',
       '![bad](https://example.com/a.png "caption" extra)',
-      '![bad](https://example.com/a.png (nested (title)))'
+      '![bad](https://example.com/a.png (nested (title)))',
+      '![bad](\n\nhttps://example.com/a.png)',
+      '![bad](https://example.com/a.png\n\n"caption")',
+      '![bad](https://example.com/a.png "line 1\n\nline 2")'
     ])('忽略不完整节点并继续扫描后续图片：%s', (invalid) => {
       const valid = '![ok](https://example.com/ok.png "ok")';
       const matches = matchMarkdownImages(`${invalid} ${valid}`);
@@ -877,6 +889,28 @@ describe('markdown 字符串处理函数测试', () => {
           url: 'https://example.com/ok.png',
           fullMatch: valid,
           index: invalid.length + 1
+        }
+      ]);
+    });
+
+    it('目的地址和标题之间至多允许一个换行，标题可跨行但不能包含空行', () => {
+      const oneLineEnding = '![figure](https://example.com/a.png\n"caption")';
+      expect(matchMarkdownImages(oneLineEnding)).toEqual([
+        {
+          altText: 'figure',
+          url: 'https://example.com/a.png',
+          fullMatch: oneLineEnding,
+          index: 0
+        }
+      ]);
+
+      const multilineTitle = '![figure](https://example.com/a.png "line 1\nline 2")';
+      expect(matchMarkdownImages(multilineTitle)).toEqual([
+        {
+          altText: 'figure',
+          url: 'https://example.com/a.png',
+          fullMatch: multilineTitle,
+          index: 0
         }
       ]);
     });

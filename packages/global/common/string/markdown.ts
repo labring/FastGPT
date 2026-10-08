@@ -327,9 +327,31 @@ const scanMarkdownImages = (text = '') => {
   const readDestination = (contentStart: number) => {
     let cursor = contentStart;
     const skipWhitespace = () => {
-      while (cursor < text.length && /[ \t\r\n]/.test(text[cursor])) cursor++;
+      let lineEndingCount = 0;
+
+      while (cursor < text.length) {
+        const char = text[cursor];
+        if (char === ' ' || char === '\t') {
+          cursor++;
+          continue;
+        }
+        if (char === '\r') {
+          lineEndingCount++;
+          cursor += text[cursor + 1] === '\n' ? 2 : 1;
+          continue;
+        }
+        if (char === '\n') {
+          lineEndingCount++;
+          cursor++;
+          continue;
+        }
+        break;
+      }
+
+      // Inline link components may be separated by spaces/tabs and at most one line ending.
+      return lineEndingCount <= 1;
     };
-    skipWhitespace();
+    if (!skipWhitespace()) return;
     const angled = text[cursor] === '<';
     if (angled) cursor++;
     const urlStart = cursor;
@@ -346,7 +368,6 @@ const scanMarkdownImages = (text = '') => {
         if (char === '<' || char === '\r' || char === '\n') return;
       } else {
         if (/[ \t\r\n]/.test(char) || (char === ')' && depth === 0)) break;
-        if (char === '<' || char === '>') return;
         if (char === '(') depth++;
         if (char === ')') depth--;
       }
@@ -356,7 +377,7 @@ const scanMarkdownImages = (text = '') => {
     const urlEnd = cursor;
     if (angled) cursor++;
     const afterDestination = cursor;
-    skipWhitespace();
+    if (!skipWhitespace()) return;
 
     if (text[cursor] !== ')') {
       // 标题必须由空白分隔；引号或括号包裹的说明不能送给下载回调。
@@ -365,17 +386,28 @@ const scanMarkdownImages = (text = '') => {
       if (opening !== '"' && opening !== "'" && opening !== '(') return;
       const closing = opening === '(' ? ')' : opening;
       cursor++;
+      let titleLineHasContent = false;
       while (cursor < text.length && text[cursor] !== closing) {
         if (text[cursor] === '\\') {
           cursor += 2;
+          titleLineHasContent = true;
+          continue;
+        }
+        if (text[cursor] === '\r' || text[cursor] === '\n') {
+          if (!titleLineHasContent) return;
+          titleLineHasContent = false;
+          cursor += text[cursor] === '\r' && text[cursor + 1] === '\n' ? 2 : 1;
           continue;
         }
         if (opening === '(' && text[cursor] === '(') return;
+        if (text[cursor] !== ' ' && text[cursor] !== '\t') {
+          titleLineHasContent = true;
+        }
         cursor++;
       }
       if (cursor >= text.length) return;
       cursor++;
-      skipWhitespace();
+      if (!skipWhitespace()) return;
     }
     if (text[cursor] !== ')') return;
     return { urlStart, urlEnd, imageEnd: cursor + 1 };
