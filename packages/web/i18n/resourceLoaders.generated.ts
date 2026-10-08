@@ -5,6 +5,8 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 
 type LocaleResource = Record<string, string | Record<string, unknown>>;
 type ResourceLoader = () => Promise<{ default: LocaleResource }>;
+type LanguageBundle = Record<I18nNsType[number], LocaleResource>;
+type BundleLoader = () => Promise<{ default: LanguageBundle }>;
 
 export const generatedLoaders: Record<localeType, Record<I18nNsType[number], ResourceLoader>> = {
   en: {
@@ -131,4 +133,11 @@ export const generatedLoaders: Record<localeType, Record<I18nNsType[number], Res
     skill: () => import('./ko-KR/skill.json'),
     price: () => import('./ko-KR/price.json')
   }
+};
+
+export const generatedLanguageBundles: Record<localeType, BundleLoader> = {
+  en: () => import(/* webpackChunkName: "i18n-en" */ './bundles/en'),
+  'zh-CN': () => import(/* webpackChunkName: "i18n-zh-CN" */ './bundles/zh-CN'),
+  'zh-Hant': () => import(/* webpackChunkName: "i18n-zh-Hant" */ './bundles/zh-Hant'),
+  'ko-KR': () => import(/* webpackChunkName: "i18n-ko-KR" */ './bundles/ko-KR')
 };
