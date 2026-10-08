@@ -30,9 +30,10 @@ describe('migrateInstanceConfigs', () => {
     vi.clearAllMocks();
   });
 
-  it('skips writes when target collection already initialized (idempotent)', async () => {
+  it('skips writes when all target domains already exist (idempotent)', async () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 5,
+      missingDomainCount: 0,
       hasLegacyConfig: true,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
@@ -58,6 +59,7 @@ describe('migrateInstanceConfigs', () => {
   it('logs warnings for fields re-homed to environment variables', async () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 0,
+      missingDomainCount: 1,
       hasLegacyConfig: true,
       hasLegacyProConfig: false,
       envRehomedWarnings: ['customApiDomain -> 请配置环境变量 CUSTOM_API_DOMAIN'],
@@ -77,6 +79,7 @@ describe('migrateInstanceConfigs', () => {
   it('applies migrations and reports each stage when collection is empty', async () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 0,
+      missingDomainCount: 2,
       hasLegacyConfig: true,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
@@ -104,9 +107,32 @@ describe('migrateInstanceConfigs', () => {
     expect(context.assertActive).toHaveBeenCalled();
   });
 
+  it('applies migration when collection has legacy-config domains already (partial repair)', async () => {
+    // 部分写入失败后的残缺状态：已有文档但目标 Domain 不齐全，必须重跑补齐
+    mocks.inspectInstanceConfigMigration.mockResolvedValue({
+      existingDomainCount: 1,
+      missingDomainCount: 1,
+      hasLegacyConfig: true,
+      hasLegacyProConfig: true,
+      envRehomedWarnings: [],
+      overrides: { site: { name: 'My Site' }, auth: { teamMode: 'multi' } }
+    });
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['auth'],
+      migratedCount: 1
+    });
+
+    const context = createContext();
+    const result = await migrateInstanceConfigs(context);
+
+    expect(result).toEqual({ migratedDomainCount: 1, skipped: false });
+    expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
+  });
+
   it('applies migrations even when only legacy fastgptPro config exists', async () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 0,
+      missingDomainCount: 1,
       hasLegacyConfig: false,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],

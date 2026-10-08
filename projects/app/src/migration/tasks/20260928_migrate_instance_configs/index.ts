@@ -4,7 +4,8 @@ import { applyInstanceConfigMigration, inspectInstanceConfigMigration } from './
 
 /**
  * 将旧 systemConfigs 集合与 DB 类环境变量迁移到 system_instance_configs。
- * 幂等：目标集合已有文档时跳过写入，重复执行不覆盖管理员后续修改。
+ * 幂等：按域补写缺失的 Domain 文档，已存在的不覆盖管理员后续修改；
+ * 目标 Domain 全部齐全时整体跳过。
  */
 export const migrateInstanceConfigs = async (context: SystemMigrationContext) => {
   await context.reportProgress({
@@ -24,14 +25,16 @@ export const migrateInstanceConfigs = async (context: SystemMigrationContext) =>
     status: SystemMigrationStatusEnum.succeeded,
     params: {
       existingDomainCount: inspection.existingDomainCount,
+      missingDomainCount: inspection.missingDomainCount,
       hasLegacyConfig: inspection.hasLegacyConfig
     }
   });
 
   await context.assertActive();
 
-  // 已初始化过：保留现状，避免覆盖管理员已保存的配置。
-  if (inspection.existingDomainCount > 0) {
+  // 迁移目标 Domain 已全部存在：保留现状，避免覆盖管理员已保存的配置。
+  // 按域判定（而非 count>0），部分写入失败后重跑仍会补齐缺失 Domain。
+  if (inspection.missingDomainCount === 0) {
     context.logger.info('Instance config already initialized, migration skipped', {
       existingDomainCount: inspection.existingDomainCount
     });
