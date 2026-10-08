@@ -10,7 +10,6 @@ import {
 } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   AdminSettingPage,
   AdminSettingSection,
@@ -34,18 +33,18 @@ const StorageSettingComponent = () => {
   );
 
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('storage');
-  const { feConfigs } = useSystemStore();
 
   const { control, handleSubmit, reset } = useForm<StorageConfigForm>({
     defaultValues: effectiveConfig
   });
 
   // 部署只读信息（由站点信息页移入）
+  // FILE_DOMAIN 由环境变量注入且不下发前端，此处仅说明默认行为
   const deploymentInfo = useMemo(
     () => ({
-      fileDomain: (feConfigs as any)?.fileDomain || t('admin:same_as_service_domain')
+      fileDomain: t('admin:same_as_service_domain')
     }),
-    [feConfigs, t]
+    [t]
   );
 
   useEffect(() => {

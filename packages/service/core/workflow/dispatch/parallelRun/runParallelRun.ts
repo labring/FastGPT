@@ -5,7 +5,6 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 
 import { serviceEnv } from '../../../../env';
-import { getSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/controller';
 import { runWorkflow } from '..';
 import { getNodeResponseChildResponseCount } from '../../../chat/nodeResponseStorage';
 import {

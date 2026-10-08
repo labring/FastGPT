@@ -7,7 +7,6 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { useMemo, useRef, useState, useCallback } from 'react';
-import { useTranslation } from 'next-i18next';
 import { getOperationLogs } from '@/web/admin/system/audit/api';
 import { adminAuditLogMap } from '@fastgpt/web/support/user/audit/constants';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';

@@ -12,7 +12,6 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   AdminSettingPage,
   AdminSettingSection,
@@ -61,8 +60,6 @@ const LimitsSettingComponent = () => {
   const auth = useDomainConfig('auth');
   const storage = useDomainConfig('storage');
   const vector = useDomainConfig('vector');
-  const { feConfigs } = useSystemStore();
-  const fileDomain = (feConfigs as any)?.fileDomain;
 
   const isLoading =
     resource.isLoading ||
@@ -431,19 +428,20 @@ const LimitsSettingComponent = () => {
             label={t('admin:file_service_domain')}
             tooltip={t('admin:dedicated_file_storage_domain_provided_by_file_domain')}
           >
-            <AdminReadonlyInput value={(fileDomain as string) || '与服务域名一致'} />
+            {/* FILE_DOMAIN 由环境变量注入且不下发前端，此处仅说明默认行为 */}
+            <AdminReadonlyInput value={t('admin:same_as_service_domain')} />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:object_storage_driver_status')}
             tooltip={t('admin:infrastructure_connections_configured_via_storage_environmen')}
           >
-            <AdminReadonlyInput value="已通过环境变量安全注入" />
+            <AdminReadonlyInput value={t('admin:storage_injected_via_env')} />
           </AdminFormItem>
           <AdminFormItem
             label={t('admin:storage_bucket_topology')}
             tooltip={t('admin:private_and_public_buckets_have_been_initialized')}
           >
-            <AdminReadonlyInput value="已初始化 (Public / Private Bucket)" />
+            <AdminReadonlyInput value={t('admin:storage_bucket_initialized')} />
           </AdminFormItem>
         </SimpleGrid>
       </AdminSettingSection>
