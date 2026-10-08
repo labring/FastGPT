@@ -254,58 +254,81 @@ const AdminHome = () => {
                 display={{ base: 'none', md: 'block' }}
               />
               <Box flex="1 1 360px">
-                <Box color={statusDisplay.color} fontSize="11px" mb={4} h={'16px'}>
-                  <Box
-                    as="span"
-                    display="inline-block"
-                    w="6px"
-                    h="6px"
-                    mr={2}
-                    borderRadius="50%"
-                    bg={statusDisplay.dot}
-                  />
-                  {t(`admin:${statusDisplay.labelKey}`)}
-                </Box>
-                <Flex alignItems="center" gap={4}>
-                  <Box color="myGray.500" fontSize="12px">
-                    {t('admin:license_expires_at')}
-                  </Box>
-                  <Box fontSize="24px" fontWeight="500" lineHeight="1">
-                    {formatDate(licenseData?.expiredTime)}
-                  </Box>
-                </Flex>
+                {licenseLoading ? (
+                  /* License 检测中：状态徽标与有效期数值用骨架占位，
+                     避免先渲染「尚未激活」/「--」再跳变为真实状态（与租户名骨架屏体验一致） */
+                  <>
+                    <Skeleton h="16px" w="110px" mb={4} />
+                    <Flex alignItems="center" gap={4}>
+                      <Box color="myGray.500" fontSize="12px">
+                        {t('admin:license_expires_at')}
+                      </Box>
+                      <Skeleton h="24px" w="150px" />
+                    </Flex>
+                  </>
+                ) : (
+                  <>
+                    <Box color={statusDisplay.color} fontSize="11px" mb={4} h={'16px'}>
+                      <Box
+                        as="span"
+                        display="inline-block"
+                        w="6px"
+                        h="6px"
+                        mr={2}
+                        borderRadius="50%"
+                        bg={statusDisplay.dot}
+                      />
+                      {t(`admin:${statusDisplay.labelKey}`)}
+                    </Box>
+                    <Flex alignItems="center" gap={4}>
+                      <Box color="myGray.500" fontSize="12px">
+                        {t('admin:license_expires_at')}
+                      </Box>
+                      <Box fontSize="24px" fontWeight="500" lineHeight="1">
+                        {formatDate(licenseData?.expiredTime)}
+                      </Box>
+                    </Flex>
+                  </>
+                )}
               </Box>
               <Flex alignItems="center" gap={3} justifyContent="flex-end">
-                {!isActivated && (
-                  <Link
-                    href={commercialDocUrl}
-                    isExternal
-                    color="myGray.500"
-                    fontSize="12px"
-                    textDecoration="underline"
-                    whiteSpace="nowrap"
-                    _hover={{ color: 'primary.600' }}
-                  >
-                    {t('admin:license_learn_commercial')}
-                  </Link>
+                {licenseLoading ? (
+                  /* 按钮文案依赖授权状态，检测中同样骨架占位，避免「激活」跳变为「变更 License」 */
+                  <Skeleton h="36px" w="130px" borderRadius="6px" />
+                ) : (
+                  <>
+                    {!isActivated && (
+                      <Link
+                        href={commercialDocUrl}
+                        isExternal
+                        color="myGray.500"
+                        fontSize="12px"
+                        textDecoration="underline"
+                        whiteSpace="nowrap"
+                        _hover={{ color: 'primary.600' }}
+                      >
+                        {t('admin:license_learn_commercial')}
+                      </Link>
+                    )}
+                    <Button
+                      variant={isLicenseActionPrimary ? 'primary' : 'outline'}
+                      color={isLicenseActionPrimary ? 'white' : 'primary.600'}
+                      borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
+                      borderRadius="6px"
+                      py={2}
+                      px={'14px'}
+                      fontSize="14px"
+                      leftIcon={<MyIcon name="common/settingLight" w="18px" />}
+                      onClick={onLicenseButtonClick}
+                    >
+                      {isExpired
+                        ? t('admin:license_renew')
+                        : isActivated
+                          ? t('admin:license_change')
+                          : t('admin:license_activate')}
+                    </Button>
+                  </>
                 )}
-                <Button
-                  variant={isLicenseActionPrimary ? 'primary' : 'outline'}
-                  color={isLicenseActionPrimary ? 'white' : 'primary.600'}
-                  borderColor={isLicenseActionPrimary ? 'primary.500' : 'primary.300'}
-                  borderRadius="6px"
-                  py={2}
-                  px={'14px'}
-                  fontSize="14px"
-                  leftIcon={<MyIcon name="common/settingLight" w="18px" />}
-                  onClick={onLicenseButtonClick}
-                >
-                  {isExpired
-                    ? t('admin:license_renew')
-                    : isActivated
-                      ? t('admin:license_change')
-                      : t('admin:license_activate')}
-                </Button>
               </Flex>
             </Grid>
           )}
