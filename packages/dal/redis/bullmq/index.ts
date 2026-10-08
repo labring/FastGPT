@@ -3,6 +3,7 @@ export { getConfiguredRedisBullMQRuntime, getRedisBullMQRuntime } from './contex
 export { QueueNames } from './names';
 export { RedisBullMQRuntime } from './runtime';
 export { addOrRequeueFailedJob } from './job-recovery';
+export * from './options';
 export { DelayedError, UnrecoverableError } from 'bullmq';
 export * from './services';
 export type {

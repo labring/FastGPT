@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/dal/redis/bullmq/services/datasetSync';
 import { CollectionUpdateMQService } from '@fastgpt/dal/redis/bullmq/services/collectionUpdate';
 import { S3FileDeleteMQService } from '@fastgpt/dal/redis/bullmq/services/s3FileDelete';
+import { SkillDeleteMQService } from '@fastgpt/dal/redis/bullmq/services/skillDelete';
 
 describe('BullMQ business services', () => {
   beforeEach(() => {
@@ -44,7 +45,7 @@ describe('BullMQ business services', () => {
           delay: 5000
         },
         removeOnComplete: true,
-        removeOnFail: { age: 30 * 24 * 60 * 60 }
+        removeOnFail: { count: 10000 }
       }
     });
     expect(queue.add).toHaveBeenCalledWith('delete_app', data, {
@@ -128,6 +129,28 @@ describe('BullMQ business services', () => {
     });
   });
 
+  it('uses failed-job recovery for Skill deletion jobs', async () => {
+    const queue = {
+      add: vi.fn().mockResolvedValue({ id: 'job-skill-delete' }),
+      getJob: vi.fn().mockResolvedValue(null)
+    };
+    const binding = {
+      getQueue: vi.fn(() => queue),
+      getWorker: vi.fn(),
+      getLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }))
+    } as unknown as BullMQBinding;
+    const service = new SkillDeleteMQService(binding);
+    const data = { teamId: 'team-1', skillId: 'skill-1' };
+
+    await expect(service.addJob(data)).resolves.toEqual({ id: 'job-skill-delete' });
+
+    expect(queue.getJob).toHaveBeenCalledWith('team-1-skill-1');
+    expect(queue.add).toHaveBeenCalledWith('delete_agent_skill', data, {
+      jobId: 'team-1-skill-1',
+      delay: 1000
+    });
+  });
+
   it('rethrows collection update enqueue failures after logging', async () => {
     const error = new Error('queue unavailable');
     const queue = {
@@ -183,7 +206,10 @@ describe('BullMQ business services', () => {
   });
 
   it('uses bucket-qualified encoded job IDs for S3 object and prefix deletions', async () => {
-    const queue = { add: vi.fn().mockResolvedValue({ id: 'job-3' }) };
+    const queue = {
+      add: vi.fn().mockResolvedValue({ id: 'job-3' }),
+      getJob: vi.fn().mockResolvedValue(null)
+    };
     const binding = {
       getQueue: vi.fn(() => queue),
       getWorker: vi.fn()

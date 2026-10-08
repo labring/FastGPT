@@ -1,6 +1,7 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { addOrRequeueFailedJob } from '../job-recovery';
 import { QueueNames } from '../names';
+import { defaultJobOptions, defaultWorkerOptions } from '../options';
 import type { Processor, Queue, Worker } from '../types';
 
 export type TeamDeleteJobData = {
@@ -8,15 +9,7 @@ export type TeamDeleteJobData = {
 };
 
 const teamDeleteQueueOptions = {
-  defaultJobOptions: {
-    attempts: 10,
-    backoff: {
-      type: 'exponential' as const,
-      delay: 5000
-    },
-    removeOnComplete: true,
-    removeOnFail: { age: 30 * 24 * 60 * 60 }
-  }
+  defaultJobOptions
 };
 
 /** Team 删除队列的业务合同和生命周期入口。 */
@@ -32,10 +25,7 @@ export class TeamDeleteMQService {
   getWorker(processor: Processor<TeamDeleteJobData>): Worker<TeamDeleteJobData> {
     return this.binding.getWorker<TeamDeleteJobData>(QueueNames.teamDelete, processor, {
       concurrency: 1,
-      removeOnFail: {
-        age: 90 * 24 * 60 * 60,
-        count: 10000
-      }
+      ...defaultWorkerOptions
     });
   }
 

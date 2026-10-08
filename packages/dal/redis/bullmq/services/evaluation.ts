@@ -1,5 +1,6 @@
 import { bullMQ, type BullMQBinding } from '../binding';
 import { QueueNames } from '../names';
+import { defaultWorkerOptions, fastRetryJobOptions } from '../options';
 import type { Processor, Queue, Worker, WorkerOptions } from '../types';
 
 export type EvaluationJobData = {
@@ -13,13 +14,7 @@ export class EvaluationMQService {
   /** 获取评测队列；队列连接在首次调用时才创建。 */
   getQueue(): Queue<EvaluationJobData> {
     return this.binding.getQueue<EvaluationJobData>(QueueNames.evaluation, {
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000
-        }
-      }
+      defaultJobOptions: fastRetryJobOptions
     });
   }
 
@@ -29,9 +24,7 @@ export class EvaluationMQService {
     opts?: Omit<WorkerOptions, 'connection'>
   ): Worker<EvaluationJobData> {
     return this.binding.getWorker<EvaluationJobData>(QueueNames.evaluation, processor, {
-      removeOnFail: {
-        count: 1000
-      },
+      ...defaultWorkerOptions,
       ...opts
     });
   }
