@@ -21,6 +21,7 @@ import { migrateDatasetTagsV2 } from './tasks/4171/20260907_migrate_dataset_tags
 import { backfillAppResourceSnapshots } from './tasks/4171/20260916_backfill_app_resource_snapshots';
 import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_channel_reasoning_mapping';
 import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
+import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_dataset_rebuild_status';
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
 
 export type SystemMigrationLogger = {
@@ -479,6 +480,37 @@ export const systemMigrations = [
     onFailure: SystemMigrationFailurePolicyEnum.continue,
     manual: true,
     run: migrateChunkTraining
+  },
+  {
+    id: '20261009_migrate_dataset_rebuild_status',
+    version: '4.17.1',
+    nameKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.name'),
+    descriptionKey: i18nT(
+      'system_migration:migrations.20261009_migrate_dataset_rebuild_status.description'
+    ),
+    resultKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.result'),
+    progressSteps: [
+      {
+        key: 'datas',
+        labelKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.datas')
+      },
+      {
+        key: 'trainings',
+        labelKey: i18nT(
+          'system_migration:migrations.20261009_migrate_dataset_rebuild_status.trainings'
+        )
+      },
+      {
+        key: 'validation',
+        labelKey: i18nT(
+          'system_migration:migrations.20261009_migrate_dataset_rebuild_status.validation'
+        )
+      }
+    ],
+    blockStartup: false,
+    onFailure: SystemMigrationFailurePolicyEnum.continue,
+    manual: true,
+    run: migrateDatasetRebuildStatus
   }
 ] as const satisfies readonly SystemMigration[];
 

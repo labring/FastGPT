@@ -1,3 +1,4 @@
+import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -73,7 +74,7 @@ export const createDatasetSynonymMutation = async ({
   const [current, existingTraining, existingRebuildingData] = await Promise.all([
     MongoDatasetSynonym.findOne({ teamId, datasetId }).lean(),
     MongoDatasetTraining.exists({ teamId, datasetId }),
-    MongoDatasetData.exists({ teamId, datasetId, rebuilding: true })
+    MongoDatasetData.exists({ teamId, datasetId, ...rebuildingDatasetDataMatch })
   ]);
 
   if (type === DatasetSynonymMutationTypeEnum.delete && !current) {
@@ -100,18 +101,12 @@ export const createDatasetSynonymMutation = async ({
   const vectorModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );
-  const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
-  const vlmModelData = modelHandle.getVlmModelData(getDatasetModelReference(dataset, 'vlm'), {
-    optional: true
-  });
   const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: `${dataset.name}-同义词重建`,
     billSource: UsageSourceEnum.training,
-    vectorModelId: vectorModelData.modelId!,
-    agentModelId: agentModelData.modelId,
-    vllmModelId: vlmModelData?.modelId
+    vectorModelId: vectorModelData.modelId!
   });
 
   const affectedDataCount = await mongoSessionRun(async (session) => {
@@ -226,8 +221,6 @@ export const createDatasetSynonymMutation = async ({
           tmbId,
           datasetId,
           billId: String(usageId),
-          vectorModel: vectorModelData,
-          vlmModel: vlmModelData,
           synonymVersion: fileVersion
         },
         session

@@ -2,8 +2,8 @@ import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as modelApi from '@fastgpt/service/core/ai/model';
 import {
-  getRebuildBaseIndexes,
-  getRebuildUpdateInput
+  getIndexTrainingBaseIndexes,
+  getIndexTrainingUpdateInput
 } from '@/service/core/dataset/queues/indexInput';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type {
@@ -55,7 +55,7 @@ beforeEach(() => {
   });
 });
 
-describe('generateRebuildIndex image embedding helpers', () => {
+describe('index training image embedding helpers', () => {
   it('propagates unexpected VLM lookup failures', async () => {
     const modelHandle = await modelApi.getModelHandle();
     const lookup = vi.spyOn(modelApi, 'getModelHandle').mockResolvedValue({
@@ -66,7 +66,7 @@ describe('generateRebuildIndex image embedding helpers', () => {
     });
     try {
       await expect(
-        getRebuildBaseIndexes({
+        getIndexTrainingBaseIndexes({
           indexes: [{ type: DatasetDataIndexTypeEnum.image, text: 'description' }],
           dataset: { vlmModelId: vlmModel.modelId },
           collection: { imageIndex: true }
@@ -80,7 +80,7 @@ describe('generateRebuildIndex image embedding helpers', () => {
   it.each([false, true])(
     'keeps text indexes with an unavailable VLM and imageIndex=%s',
     async (imageIndex) => {
-      const result = await getRebuildBaseIndexes({
+      const result = await getIndexTrainingBaseIndexes({
         indexes: [
           { type: DatasetDataIndexTypeEnum.default, text: 'system' },
           { type: DatasetDataIndexTypeEnum.custom, text: 'manual' }
@@ -96,7 +96,7 @@ describe('generateRebuildIndex image embedding helpers', () => {
   it.each([false, true])(
     'drops old image descriptions with an unavailable VLM and imageIndex=%s',
     async (imageIndex) => {
-      const result = await getRebuildBaseIndexes({
+      const result = await getIndexTrainingBaseIndexes({
         indexes: [
           { type: DatasetDataIndexTypeEnum.image, text: 'old description' },
           { type: DatasetDataIndexTypeEnum.custom, text: 'manual' }
@@ -110,7 +110,7 @@ describe('generateRebuildIndex image embedding helpers', () => {
   );
 
   it('should drop system indexes and keep supported external image description indexes when rebuilding', async () => {
-    const result = await getRebuildBaseIndexes({
+    const result = await getIndexTrainingBaseIndexes({
       indexes: [
         { type: DatasetDataIndexTypeEnum.default, text: 'old default', dataId: 'default_id' },
         { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_id' },
@@ -155,7 +155,7 @@ describe('generateRebuildIndex image embedding helpers', () => {
   });
 
   it('should drop VLM image description indexes when collection image index is disabled', async () => {
-    const result = await getRebuildBaseIndexes({
+    const result = await getIndexTrainingBaseIndexes({
       indexes: [
         { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_id' },
         {
@@ -188,7 +188,7 @@ describe('generateRebuildIndex image embedding helpers', () => {
   });
 
   it('uses a newly generated pure-image description without requiring imageDescMap', async () => {
-    const result = await getRebuildUpdateInput({
+    const result = await getIndexTrainingUpdateInput({
       q: 'new VLM description',
       indexes: [],
       dataset: {
@@ -217,7 +217,7 @@ describe('generateRebuildIndex image embedding helpers', () => {
       { type: DatasetDataIndexTypeEnum.question, text: 'new generated question' },
       { type: DatasetDataIndexTypeEnum.summary, text: 'new generated summary' }
     ];
-    const result = await getRebuildUpdateInput({
+    const result = await getIndexTrainingUpdateInput({
       q: 'content',
       indexes: generatedIndexes,
       dataset: {
@@ -242,19 +242,19 @@ describe('generateRebuildIndex image embedding helpers', () => {
   });
 });
 
-describe('getRebuildUpdateInput answer preservation', () => {
+describe('getIndexTrainingUpdateInput answer preservation', () => {
   it.each([
-    { trainingAnswer: undefined, dataAnswer: 'stored answer', expected: 'stored answer' },
-    { trainingAnswer: '', dataAnswer: 'stored answer', expected: 'stored answer' },
+    { trainingAnswer: undefined, dataAnswer: 'stored answer', expected: '' },
+    { trainingAnswer: '', dataAnswer: 'stored answer', expected: '' },
     { trainingAnswer: 'edited answer', dataAnswer: 'stored answer', expected: 'edited answer' },
     { trainingAnswer: '', dataAnswer: '', expected: '' }
   ])('preserves the answer for %j', async ({ trainingAnswer, dataAnswer, expected }) => {
-    // 使用真实 schema 默认值，复现未携带 a 的重建任务在读取后得到 a='' 的场景。
+    // 首次训练直接使用 schema 实际值，空串不回退到预落库正文。
     const task = new MongoDatasetTraining({
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.index,
       ...(trainingAnswer !== undefined && { a: trainingAnswer })
     });
-    const result = await getRebuildUpdateInput({
+    const result = await getIndexTrainingUpdateInput({
       ...task.toObject(),
       dataset: {
         vectorModelId: visionEmbeddingModel.modelId,
@@ -269,7 +269,7 @@ describe('getRebuildUpdateInput answer preservation', () => {
       }
     });
 
-    expect(result).toMatchObject({ q: 'stored question', a: expected });
+    expect(result).toMatchObject({ q: '', a: expected });
   });
 });
 
@@ -301,7 +301,6 @@ describe('dataset rebuild queue', () => {
         tmbId: String(tmbId),
         datasetId: String(datasetId),
         billId: 'bill-id',
-        vectorModel: visionEmbeddingModel,
         synonymVersion: 2
       })
     ).resolves.toBe(0);
@@ -339,7 +338,6 @@ describe('dataset rebuild queue', () => {
       tmbId: String(tmbId),
       datasetId: String(datasetId),
       billId: 'bill-id',
-      vectorModel: visionEmbeddingModel,
       synonymVersion: 2
     });
 
@@ -385,7 +383,7 @@ describe('dataset rebuild queue', () => {
         collectionId: orphanCollectionId,
         q: 'orphan',
         indexes: [],
-        rebuilding: true
+        indexStatus: 'waitingRebuild'
       }))
     );
     const validData = await MongoDatasetData.create({
@@ -395,7 +393,7 @@ describe('dataset rebuild queue', () => {
       collectionId: collection._id,
       q: 'valid',
       indexes: [],
-      rebuilding: true
+      indexStatus: 'waitingRebuild'
     });
     global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
 
@@ -403,8 +401,7 @@ describe('dataset rebuild queue', () => {
       teamId: String(teamId),
       tmbId: String(tmbId),
       datasetId: String(datasetId),
-      billId: 'bill-id',
-      vectorModel: visionEmbeddingModel
+      billId: 'bill-id'
     });
 
     expect(createdCount).toBe(1);
@@ -419,7 +416,7 @@ describe('dataset rebuild queue', () => {
     ).resolves.toBe(orphanCollectionIds.length);
   });
 
-  it('uses image training modes for synonym rebuilds', async () => {
+  it('uses only rebuild mode for synonym rebuilds including images', async () => {
     const teamId = new Types.ObjectId();
     const tmbId = new Types.ObjectId();
     const datasetId = new Types.ObjectId();
@@ -439,7 +436,7 @@ describe('dataset rebuild queue', () => {
       q: 'content ![markdown](dataset/team/markdown.png)',
       imageId: 'dataset/team/main.png',
       indexes: [],
-      rebuilding: true
+      indexStatus: 'indexed'
     });
 
     await seedDatasetRebuildTasks({
@@ -447,13 +444,11 @@ describe('dataset rebuild queue', () => {
       tmbId: String(tmbId),
       datasetId: String(datasetId),
       billId: 'bill-id',
-      vectorModel: visionEmbeddingModel,
-      vlmModel,
       synonymVersion: 2
     });
 
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.imageParse,
+      mode: TrainingModeEnum.rebuild,
       synonymVersion: 2,
       q: '',
       indexes: []

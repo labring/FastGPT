@@ -7,7 +7,7 @@ import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/co
 type DataList = GetDatasetDataListResponse['list'];
 
 /**
- * 当前已加载的数据存在待索引项时，每 3 秒刷新一次展示数据。
+ * 当前已加载的数据存在待索引、待重建或重建中项时，每 3 秒刷新一次展示数据。
  * 保留已加载页和滚动位置；切换集合、搜索或列表变化后丢弃旧响应，避免覆盖手动保存。
  */
 export const useIndexingDataRefresh = ({
@@ -26,7 +26,12 @@ export const useIndexingDataRefresh = ({
   useEffect(() => {
     if (
       !collectionId ||
-      !data.some((item) => item.indexStatus === DatasetDataIndexStatusEnum.indexing)
+      !data.some(
+        (item) =>
+          item.indexStatus === DatasetDataIndexStatusEnum.indexing ||
+          item.indexStatus === DatasetDataIndexStatusEnum.waitingRebuild ||
+          item.indexStatus === DatasetDataIndexStatusEnum.rebuilding
+      )
     )
       return;
 

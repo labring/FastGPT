@@ -1,3 +1,4 @@
+import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from '../training/schema';
@@ -15,7 +16,7 @@ export const getDatasetSynonymDetail = async ({
 
   const [file, rebuildingData, training] = await Promise.all([
     MongoDatasetSynonym.findOne({ teamId, datasetId }).lean(),
-    MongoDatasetData.exists({ teamId, datasetId, rebuilding: true }),
+    MongoDatasetData.exists({ teamId, datasetId, ...rebuildingDatasetDataMatch }),
     MongoDatasetTraining.exists({ teamId, datasetId })
   ]);
   return {

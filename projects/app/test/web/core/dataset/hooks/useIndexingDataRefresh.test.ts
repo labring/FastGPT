@@ -104,6 +104,31 @@ describe('useIndexingDataRefresh', () => {
     expect(getDatasetDataList).toHaveBeenCalledTimes(2);
   });
 
+  it.each([DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.rebuildError])(
+    'refreshes rebuild transitions until %s and stops polling at the terminal state',
+    async (terminalStatus) => {
+      await render();
+      const initial = { ...makeItem('1'), indexStatus: DatasetDataIndexStatusEnum.waitingRebuild };
+      await act(async () => setData([initial]));
+      vi.mocked(getDatasetDataList)
+        .mockResolvedValueOnce({
+          total: 1,
+          list: [{ ...initial, indexStatus: DatasetDataIndexStatusEnum.rebuilding }]
+        })
+        .mockResolvedValueOnce({
+          total: 1,
+          list: [{ ...initial, indexStatus: terminalStatus }]
+        });
+
+      await tick();
+      expect(data[0].indexStatus).toBe(DatasetDataIndexStatusEnum.rebuilding);
+      await tick();
+      expect(data[0].indexStatus).toBe(terminalStatus);
+      await tick();
+      expect(getDatasetDataList).toHaveBeenCalledTimes(2);
+    }
+  );
+
   it('removes completed rows that no longer match the search and stops polling', async () => {
     await render({ searchText: 'pending' });
     await act(async () => setData([makeItem('1')]));

@@ -461,3 +461,46 @@ describe('retryFailedTrainingTasks', () => {
     ).toBe(0);
   });
 });
+
+describe('rebuild status failure and retry', () => {
+  it('keeps automatic retries rebuilding and moves terminal failures to rebuildError', async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.rebuilding);
+    const task = await MongoDatasetTraining.create({
+      ...context,
+      tmbId: new Types.ObjectId(),
+      billId: 'rebuild-status',
+      mode: TrainingModeEnum.rebuild,
+      retryCount: 2,
+      lockTime: new Date()
+    });
+    const lease = createTrainingTaskLease(task);
+    try {
+      await lease.fail(new Error('temporary'));
+    } finally {
+      await lease.stop();
+    }
+    expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.rebuilding
+    });
+    const retryTask = await MongoDatasetTraining.findById(task._id);
+    if (!retryTask) throw new Error('Expected retry task');
+    const retryLease = createTrainingTaskLease(retryTask);
+    try {
+      await retryLease.fail(new Error('exhausted'));
+    } finally {
+      await retryLease.stop();
+    }
+    expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.rebuildError,
+      indexErrorMsg: 'exhausted'
+    });
+    await retryFailedTrainingTasks({ teamId: context.teamId, datasetId: context.datasetId });
+    const data = await MongoDatasetData.findById(context.dataId).lean();
+    expect(data?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuilding);
+    expect(data?.indexErrorMsg).toBeUndefined();
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      retryCount: 3,
+      mode: TrainingModeEnum.rebuild
+    });
+  });
+});

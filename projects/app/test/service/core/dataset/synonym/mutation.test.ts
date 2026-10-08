@@ -132,7 +132,7 @@ describe('createDatasetSynonymMutation', () => {
       fileVersion: 1
     });
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.imageParse,
+      mode: TrainingModeEnum.rebuild,
       synonymVersion: 1,
       q: '',
       a: '',
@@ -141,9 +141,7 @@ describe('createDatasetSynonymMutation', () => {
     });
     expect(mockCreateTrainingUsage).toHaveBeenCalledWith(
       expect.objectContaining({
-        vectorModelId: '507f1f77bcf86cd799439021',
-        agentModelId: '507f1f77bcf86cd799439023',
-        vllmModelId: '507f1f77bcf86cd799439022'
+        vectorModelId: '507f1f77bcf86cd799439021'
       })
     );
     expect(result.affectedDataCount).toBe(1);
@@ -235,7 +233,7 @@ describe('createDatasetSynonymMutation', () => {
       collectionId,
       q: 'pending',
       indexes: [],
-      rebuilding: true
+      indexStatus: 'waitingRebuild'
     });
 
     await expect(

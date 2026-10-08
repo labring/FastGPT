@@ -27,10 +27,29 @@ export const isDatasetDataSystemIndexType = (type?: DatasetDataIndexTypeEnum) =>
 export const isDatasetDataIndexed = (indexStatus?: DatasetDataIndexStatusEnum) =>
   indexStatus === undefined || indexStatus === DatasetDataIndexStatusEnum.indexed;
 
+/** 正在重建或等待入队的数据；失败任务由 training 队列继续管理。 */
+export const rebuildingDatasetDataMatch = {
+  indexStatus: {
+    $in: [DatasetDataIndexStatusEnum.waitingRebuild, DatasetDataIndexStatusEnum.rebuilding]
+  }
+};
+
 /**
  * 已完成索引（或字段缺失）的 Mongo 查询条件。
  * 用于 trainedCount 统计、重建选择和写入保护等需要区分待索引数据的场景。
  */
 export const indexedDatasetDataMatch = {
   $or: [{ indexStatus: DatasetDataIndexStatusEnum.indexed }, { indexStatus: { $exists: false } }]
+};
+
+/** 重建失败的数据仍保有旧索引；取消旧任务后，后续模型/同义词重建必须仍能选中它。 */
+export const rebuildableDatasetDataMatch = {
+  $or: [
+    {
+      indexStatus: {
+        $in: [DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.rebuildError]
+      }
+    },
+    { indexStatus: { $exists: false } }
+  ]
 };

@@ -318,7 +318,6 @@ export const DatasetDataSchema = DatasetDataFieldSchema.extend({
   forbid: z.boolean().optional().meta({ description: '是否禁用' }),
   fullTextToken: z.string().meta({ description: '全文 token' }),
   indexes: z.array(DatasetDataIndexItemSchema).meta({ description: '向量索引' }),
-  rebuilding: z.boolean().optional().meta({ description: '重建中' }),
   indexStatus: z
     .enum(DatasetDataIndexStatusEnum)
     .optional()

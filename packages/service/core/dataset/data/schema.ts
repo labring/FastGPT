@@ -1,5 +1,5 @@
 import { defineIndex, connectionMongo, getMongoModel } from '../../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+const { Schema } = connectionMongo;
 import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   TeamCollectionName,
@@ -86,7 +86,6 @@ const DatasetDataSchema = new Schema({
     type: Number,
     default: 0
   },
-  rebuilding: Boolean,
   indexStatus: {
     type: String,
     enum: Object.values(DatasetDataIndexStatusEnum)
@@ -117,7 +116,12 @@ defineIndex(DatasetDataSchema, {
 });
 // rebuild data
 defineIndex(DatasetDataSchema, {
-  key: { rebuilding: 1, teamId: 1, datasetId: 1 }
+  key: { indexStatus: 1, teamId: 1, datasetId: 1 }
+});
+// FastGPT 旧版重建标记索引已由 indexStatus 索引替代。
+defineIndex(DatasetDataSchema, {
+  key: { rebuilding: 1, teamId: 1, datasetId: 1 },
+  deprecated: true
 });
 if (serviceEnv.DATASET_SYNONYM_ENABLED) {
   defineIndex(DatasetDataSchema, {

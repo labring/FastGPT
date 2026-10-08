@@ -11,6 +11,7 @@ import {
   DeleteTrainingDataResponseSchema,
   type DeleteTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
@@ -55,11 +56,17 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
           teamId: collection.teamId,
           datasetId: collection.datasetId,
           collectionId: collection._id,
-          indexStatus: DatasetDataIndexStatusEnum.indexing
+          indexStatus:
+            training.mode === TrainingModeEnum.rebuild
+              ? DatasetDataIndexStatusEnum.rebuilding
+              : DatasetDataIndexStatusEnum.indexing
         },
         {
           $set: {
-            indexStatus: DatasetDataIndexStatusEnum.error,
+            indexStatus:
+              training.mode === TrainingModeEnum.rebuild
+                ? DatasetDataIndexStatusEnum.rebuildError
+                : DatasetDataIndexStatusEnum.error,
             indexErrorMsg: 'Training task deleted'
           }
         },

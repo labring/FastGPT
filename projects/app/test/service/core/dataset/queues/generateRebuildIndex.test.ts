@@ -24,6 +24,13 @@ import {
 import { createMockVectorsResponse, mockGetVectors } from '@test/mocks/core/ai/embedding';
 import { serviceEnv } from '@fastgpt/service/env';
 import * as rebuildService from '@/service/core/dataset/queues/rebuild';
+import updateTrainingData from '@/pages/api/core/dataset/training/updateTrainingData';
+import type {
+  UpdateTrainingDataBody,
+  UpdateTrainingDataResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
+import { Call } from '@test/utils/request';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
@@ -41,7 +48,7 @@ let embeddingModel: NonNullable<ReturnType<typeof getModelTestDefaults>['embeddi
 
 const createContext = async ({
   indexStatus,
-  indexes = [],
+  indexes,
   mode = TrainingModeEnum.index
 }: {
   indexStatus?: DatasetDataIndexStatusEnum;
@@ -71,7 +78,11 @@ const createContext = async ({
     collectionId: collection._id,
     q: 'chunk content',
     chunkIndex: 0,
-    indexes,
+    indexes:
+      indexes ??
+      (mode === TrainingModeEnum.rebuild
+        ? [{ type: DatasetDataIndexTypeEnum.default, text: 'chunk content', dataId: 'old_vector' }]
+        : []),
     ...(indexStatus && { indexStatus })
   });
 
@@ -138,17 +149,19 @@ describe('pre-created data queue routing', () => {
         await MongoDatasetTraining.updateOne({ _id: task._id }, { $set: { synonymVersion: 1 } });
       }
       await MongoDatasetCollection.deleteOne({ _id: collection._id });
-      const model = vi.spyOn(modelService, 'getModelHandle').mockImplementationOnce(async () => {
-        expect(vi.getTimerCount()).toBe(1);
-        throw new Error('model catalog unavailable');
-      });
+      const enqueue = vi
+        .spyOn(rebuildService, 'enqueueNextDatasetRebuildTask')
+        .mockImplementation(async () => {
+          expect(vi.getTimerCount()).toBe(1);
+          throw new Error('enqueue unavailable');
+        });
       try {
         await generateRebuildIndex();
-        expect(model).toHaveBeenCalledTimes(1);
+        expect(enqueue).toHaveBeenCalled();
         expect(global.vectorQueueLen).toBe(0);
         expect(await MongoDatasetTraining.findById(task._id).lean()).not.toBeNull();
       } finally {
-        model.mockRestore();
+        enqueue.mockRestore();
         synonym.mockRestore();
       }
     }
@@ -193,7 +206,7 @@ describe('pre-created data queue routing', () => {
       .mockRejectedValueOnce(new Error('completion failed'));
     mockGetVectors.mockImplementation(async ({ inputs }) => {
       expect(mockVectorRefreshCreateTime).toHaveBeenCalledWith({
-        teamId: data.teamId,
+        teamId: String(data.teamId),
         idList: ['old_vector']
       });
       expect((await MongoDatasetData.findById(data._id).lean())?.indexes).toMatchObject(oldIndexes);
@@ -273,7 +286,7 @@ describe('pre-created data queue routing', () => {
   });
 
   it('retains a normal rebuild task when scheduling the next item fails', async () => {
-    const { data, task } = await createContext({ mode: TrainingModeEnum.rebuild });
+    const { data, task } = await createContext({ mode: TrainingModeEnum.rebuild, indexes: [] });
     const enqueue = vi
       .spyOn(rebuildService, 'enqueueNextDatasetRebuildTask')
       .mockRejectedValue(new Error('enqueue failed'));
@@ -400,7 +413,7 @@ describe('pre-created data queue routing', () => {
 
     expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
     const updated = await MongoDatasetData.findById(data._id).lean();
-    expect(updated?.rebuilding).toBeUndefined();
+    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
     // 内容未变化时不写入历史记录。
     expect(updated?.history ?? []).toHaveLength(0);
   });
@@ -425,36 +438,145 @@ describe('pre-created data queue routing', () => {
     expect(updated!.indexes.map((index) => index.text)).toContain('legacy custom index');
   });
 
-  it.each([TrainingModeEnum.rebuild, TrainingModeEnum.index])(
-    'preserves a stored QA answer in the %s queue when training has only its default answer',
-    async (mode) => {
-      const answer = 'stored QA answer';
-      const { data, task } = await createContext({
-        mode,
-        indexStatus:
-          mode === TrainingModeEnum.index
-            ? DatasetDataIndexStatusEnum.indexing
-            : DatasetDataIndexStatusEnum.indexed
-      });
-      await MongoDatasetData.updateOne({ _id: data._id }, { $set: { a: answer } });
-      expect(task.a).toBe('');
-      mockVectorInsert.mockImplementation(async ({ vectors }: { vectors: number[][] }) => ({
-        insertIds: vectors.map((_, index) => `qa_vector_${index}`)
-      }));
+  it('keeps an explicitly cleared answer through failed and successful index retries', async () => {
+    const mode = TrainingModeEnum.index;
+    const answer = 'old QA answer';
+    const { root, data, task } = await createContext({
+      mode,
+      indexStatus: DatasetDataIndexStatusEnum.error,
+      indexes: [
+        { type: DatasetDataIndexTypeEnum.default, text: answer, dataId: 'old_answer_vector' }
+      ]
+    });
+    await MongoDatasetData.updateOne({ _id: data._id }, { $set: { a: answer } });
+    await MongoDatasetTraining.updateOne(
+      { _id: task._id },
+      { $set: { a: answer, retryCount: 0, errorMsg: 'index failed' } }
+    );
 
-      if (mode === TrainingModeEnum.rebuild) await generateRebuildIndex();
-      else await generatePreCreatedData();
+    const editResult = await Call<
+      UpdateTrainingDataBody,
+      Record<string, never>,
+      UpdateTrainingDataResponse
+    >(updateTrainingData, {
+      auth: root,
+      body: { dataId: task._id, q: 'chunk content', a: '' }
+    });
+    expect(editResult.code).toBe(200);
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      a: ''
+    });
+    // 编辑先保存在训练记录中；正文和索引必须由 worker 原子提交。
+    expect((await MongoDatasetData.findById(data._id).lean())?.a).toBe(answer);
 
-      const updated = await MongoDatasetData.findById(data._id).lean();
-      expect(updated).toMatchObject({
-        q: 'chunk content',
-        a: answer,
-        indexStatus: DatasetDataIndexStatusEnum.indexed
-      });
-      expect(updated!.indexes.map((index) => index.text)).toContain(answer);
-      expect(await MongoDatasetTraining.findById(task._id).lean()).toBeNull();
+    const runQueue = generatePreCreatedData;
+    const removeTask = vi
+      .spyOn(MongoDatasetTraining, 'deleteOne')
+      .mockRejectedValueOnce(new Error('completion failed'));
+    try {
+      await runQueue();
+    } finally {
+      removeTask.mockRestore();
     }
-  );
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      a: '',
+      errorMsg: 'completion failed'
+    });
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      a: answer,
+      indexes: [{ text: answer, dataId: 'old_answer_vector' }]
+    });
+
+    // 再次仅重试（不传 a）不能丢失上次编辑的清空语义。
+    const retryResult = await Call<
+      UpdateTrainingDataBody,
+      Record<string, never>,
+      UpdateTrainingDataResponse
+    >(updateTrainingData, { auth: root, body: { dataId: task._id } });
+    expect(retryResult.code).toBe(200);
+    await runQueue();
+
+    const updated = await MongoDatasetData.findById(data._id).lean();
+    expect(updated).toMatchObject({
+      a: '',
+      indexStatus: DatasetDataIndexStatusEnum.indexed,
+      history: [{ a: answer }]
+    });
+    expect(updated!.indexes.map((index) => index.text)).not.toContain(answer);
+    const fullText = await MongoDatasetDataText.findOne({ dataId: data._id }).lean();
+    expect(fullText?.fullTextToken).toBe(await jiebaSplit({ text: 'chunk content' }));
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toBeNull();
+  });
+
+  it('rebuilds stored indexes and ignores all training text and index drafts', async () => {
+    const storedIndexes = [
+      { type: DatasetDataIndexTypeEnum.default, text: 'stored default', dataId: 'old_default' },
+      { type: DatasetDataIndexTypeEnum.custom, text: 'stored custom', dataId: 'old_custom' },
+      { type: DatasetDataIndexTypeEnum.question, text: 'stored question', dataId: 'old_question' },
+      { type: DatasetDataIndexTypeEnum.summary, text: 'stored summary', dataId: 'old_summary' },
+      {
+        type: DatasetDataIndexTypeEnum.image,
+        text: 'stored image description',
+        dataId: 'old_image'
+      }
+    ];
+    const { data, task, dataset, collection } = await createContext({
+      mode: TrainingModeEnum.rebuild,
+      indexes: storedIndexes
+    });
+    await MongoDatasetData.updateOne(
+      { _id: data._id },
+      {
+        $set: {
+          q: 'stored body',
+          a: 'stored answer',
+          imageDescMap: { image: 'existing description' }
+        }
+      }
+    );
+    await MongoDatasetTraining.updateOne(
+      { _id: task._id },
+      {
+        $set: {
+          q: 'training body',
+          a: 'training answer',
+          indexes: [{ type: DatasetDataIndexTypeEnum.custom, text: 'training draft' }]
+        }
+      }
+    );
+    await MongoDataset.updateOne({ _id: dataset._id }, { $set: { vlmModelId: 'missing-vlm' } });
+    await MongoDatasetCollection.updateOne(
+      { _id: collection._id },
+      { $set: { imageIndex: false } }
+    );
+    mockVectorInsert.mockImplementation(async ({ vectors }: { vectors: number[][] }) => ({
+      insertIds: vectors.map((_, index) => `rebuilt_${index}`)
+    }));
+    const modelHandle = await modelService.getModelHandle();
+    const vlmLookup = vi.spyOn(modelHandle, 'getVlmModelData').mockImplementation(() => {
+      throw new Error('rebuild must not look up VLM');
+    });
+    try {
+      await generateRebuildIndex();
+      expect(vlmLookup).not.toHaveBeenCalled();
+    } finally {
+      vlmLookup.mockRestore();
+    }
+    expect(
+      mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+    ).toEqual(storedIndexes.map((index) => index.text));
+    const updated = await MongoDatasetData.findById(data._id).lean();
+    expect(updated).toMatchObject({
+      q: 'stored body',
+      a: 'stored answer',
+      imageDescMap: { image: 'existing description' }
+    });
+    expect(updated!.indexes.map(({ type, text }) => ({ type, text }))).toEqual(
+      storedIndexes.map(({ type, text }) => ({ type, text }))
+    );
+    expect(updated?.history ?? []).toHaveLength(0);
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toBeNull();
+  });
 });
 
 // 仅接管心跳定时器，Mongo 和业务等待仍使用真实时间。

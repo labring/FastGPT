@@ -310,13 +310,25 @@ const DataCard = () => {
         <ScrollData px={5} pb={5}>
           <Flex flexDir={'column'} gap={2}>
             {datasetDataList.map((item, index) => {
-              // 待索引数据只读可见：点击提示不可修改，不进入编辑弹层，也不渲染删除入口。error 与已索引一致，可编辑可删除。
-              const isIndexing = item.indexStatus === DatasetDataIndexStatusEnum.indexing;
+              // 索引中、待重建和重建中的数据只读，避免与 worker 写入竞争；失败数据可编辑和删除。
+              const isIndexing =
+                !!item.indexStatus &&
+                [
+                  DatasetDataIndexStatusEnum.indexing,
+                  DatasetDataIndexStatusEnum.waitingRebuild,
+                  DatasetDataIndexStatusEnum.rebuilding
+                ].includes(item.indexStatus);
               const canModify = !isIndexing;
               const indexStatusInfo = getDatasetDataIndexStatusMapData(item.indexStatus);
               const indexStatusLabel = (() => {
                 if (item.indexStatus === DatasetDataIndexStatusEnum.indexing)
                   return t('dataset:data_index_status_indexing');
+                if (item.indexStatus === DatasetDataIndexStatusEnum.waitingRebuild)
+                  return t('dataset:data_index_status_waiting_rebuild');
+                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuilding)
+                  return t('dataset:data_index_status_rebuilding');
+                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildError)
+                  return t('dataset:data_index_status_rebuild_error');
                 if (item.indexStatus === DatasetDataIndexStatusEnum.error)
                   return t('dataset:data_index_status_error');
                 return t('dataset:data_index_status_indexed');

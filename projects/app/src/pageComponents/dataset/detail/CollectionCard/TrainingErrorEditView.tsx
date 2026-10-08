@@ -60,7 +60,14 @@ const TrainingErrorEditView = ({
         <Button variant={'whiteBase'} onClick={onCancel}>
           {t('common:Cancel')}
         </Button>
-        <Button isLoading={loading} variant={'primary'} onClick={handleSubmit(onSave)}>
+        <Button
+          isLoading={loading}
+          variant={'primary'}
+          onClick={handleSubmit(({ q, a }) => {
+            // 隐藏的答案框仍有表单默认空串，仅提交实际展示的答案字段以免误清空。
+            onSave({ q, ...(editChunk?.a && { a }) });
+          })}
+        >
           {t('common:Confirm')}
         </Button>
       </Flex>

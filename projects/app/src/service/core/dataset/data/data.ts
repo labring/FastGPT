@@ -21,7 +21,10 @@ import {
   DatasetDataIndexOperation,
   type DatasetDataIndexDraft
 } from '@/service/core/dataset/data/dataIndex';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import {
   getDatasetSynonymTransformContext,
   isDatasetSynonymEnabled
@@ -44,7 +47,7 @@ type UpdateDatasetDataByIndexesProps = Omit<UpdateDatasetDataPropsType, 'indexes
   commit?: CommitDatasetData;
   q?: string;
   indexes?: NonNullable<UpdateDatasetDataPropsType['indexes']>;
-  /** VLM rebuild 产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
+  /** 首次训练产生的派生图片描述，与 indexes 在同一次 CAS 中写回。 */
   imageDescMap?: Record<string, string>;
   model: EmbeddingSystemModelDataType;
   indexSize?: number;
@@ -60,6 +63,12 @@ type UpdateDatasetDataSystemIndexesProps = Omit<
   q?: string;
   imageIndex?: boolean;
   indexes?: DatasetDataIndexDraft[];
+};
+
+type RebuildDatasetDataIndexesProps = {
+  dataId: string;
+  model: EmbeddingSystemModelDataType;
+  commit?: CommitDatasetData;
 };
 
 /*
@@ -472,6 +481,93 @@ export class DatasetDataOperation {
   }
 
   /**
+   * 仅用已存 indexes 重建向量和全文索引，不读取或修改 q/a、图片描述、历史记录。
+   * 保留索引类型和原文，不重新分块或调用增强阶段；不支持的图片向量由索引层跳过。
+   * 新索引与任务完成原子提交，CAS 防止覆盖在途编辑；提交失败清理新向量，成功后清理旧向量。
+   */
+  async rebuildIndexes({ dataId, commit }: RebuildDatasetDataIndexesProps) {
+    const mongoData = await MongoDatasetData.findById(dataId)
+      .select('_id teamId datasetId collectionId indexes updateTime')
+      .lean();
+    if (!mongoData) return Promise.reject('Data not found');
+
+    const synonymContext = isDatasetSynonymEnabled()
+      ? await getDatasetSynonymTransformContext({
+          teamId: String(mongoData.teamId),
+          datasetId: String(mongoData.datasetId)
+        })
+      : undefined;
+    const oldVectorIds = mongoData.indexes.map((index) => index.dataId);
+    await refreshDatasetDataVectorCreateTime({ teamId: mongoData.teamId, idList: oldVectorIds });
+    const { tokens, indexes } = await this.indexOperation.insertVectors({
+      indexes: mongoData.indexes.map(({ type, text }) => ({ type, text })),
+      teamId: String(mongoData.teamId),
+      datasetId: String(mongoData.datasetId),
+      collectionId: String(mongoData.collectionId),
+      transformText: synonymContext?.transformText
+    });
+
+    try {
+      await this.commitDataWrite({
+        commit,
+        fn: async (session) => {
+          if (synonymContext && !(await synonymContext.isCurrent())) {
+            throw new Error('同义词配置已变化，请重试索引更新');
+          }
+          const result = await MongoDatasetData.updateOne(
+            { _id: mongoData._id, updateTime: mongoData.updateTime },
+            {
+              $set: {
+                indexes,
+                indexStatus: DatasetDataIndexStatusEnum.indexed,
+                updateTime: new Date(),
+                ...(synonymContext && { synonymVersion: synonymContext.version })
+              },
+              $unset: {
+                indexErrorMsg: '',
+                ...(synonymContext && { synonymRebuildingVersion: '' })
+              }
+            },
+            { session }
+          );
+          if (result.matchedCount !== 1) throw new Error('数据已变化，请重试索引更新');
+
+          // 全文派生文本同样来自已存索引；图片源只参与向量化，不进入全文检索。
+          const fullText = indexes
+            .filter((index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding)
+            .map((index) => index.text)
+            .join('\n');
+          await getFullTextStore().write(
+            [
+              {
+                teamId: String(mongoData.teamId),
+                datasetId: String(mongoData.datasetId),
+                collectionId: String(mongoData.collectionId),
+                dataId: String(mongoData._id),
+                fullText: synonymContext?.transformText(fullText) ?? fullText
+              }
+            ],
+            session
+          );
+        }
+      });
+    } catch (error) {
+      await this.indexOperation
+        .deleteVectors({ teamId: mongoData.teamId, idList: indexes.map((index) => index.dataId) })
+        .catch(() => {});
+      throw error;
+    }
+
+    await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: oldVectorIds });
+    this.pushCollectionUpdate({
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      collectionId: mongoData.collectionId
+    });
+    return { tokens };
+  }
+
+  /**
    * 只重建系统生成的索引：默认文本索引和多模态图片向量索引。
    *
    * “更新索引”按钮不能碰用户手动维护的索引。这里写 Mongo 时基于数据库当前值过滤，
@@ -712,6 +808,11 @@ export const createDatasetData = async (
  */
 export const updateDatasetDataByIndexes = async (props: UpdateDatasetDataByIndexesProps) => {
   return new DatasetDataOperation(props.model).updateByIndexes(props);
+};
+
+/** 重新向量化 data 中已存的 indexes；正文和索引生成策略不参与 rebuild。 */
+export const rebuildDatasetDataIndexes = async (props: RebuildDatasetDataIndexesProps) => {
+  return new DatasetDataOperation(props.model).rebuildIndexes(props);
 };
 
 /**

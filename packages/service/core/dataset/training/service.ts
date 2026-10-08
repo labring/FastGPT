@@ -213,16 +213,31 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
           throw new TrainingLeaseLostError();
         }
         // data 的错误状态只表示最终索引写入失败，不能由前置增强阶段写入。
-        if ((retryCount === 0 || blocked) && task.mode === TrainingModeEnum.index && task.dataId) {
+        if (
+          (retryCount === 0 || blocked) &&
+          [TrainingModeEnum.index, TrainingModeEnum.rebuild].includes(task.mode) &&
+          task.dataId
+        ) {
           await MongoDatasetData.updateOne(
             {
               _id: task.dataId,
               teamId: task.teamId,
               datasetId: task.datasetId,
               collectionId: task.collectionId,
-              indexStatus: DatasetDataIndexStatusEnum.indexing
+              indexStatus:
+                task.mode === TrainingModeEnum.rebuild
+                  ? DatasetDataIndexStatusEnum.rebuilding
+                  : DatasetDataIndexStatusEnum.indexing
             },
-            { $set: { indexStatus: DatasetDataIndexStatusEnum.error, indexErrorMsg: errorMsg } },
+            {
+              $set: {
+                indexStatus:
+                  task.mode === TrainingModeEnum.rebuild
+                    ? DatasetDataIndexStatusEnum.rebuildError
+                    : DatasetDataIndexStatusEnum.error,
+                indexErrorMsg: errorMsg
+              }
+            },
             { session }
           );
         }
@@ -317,7 +332,7 @@ export const retryFailedTrainingTasks = async (
       })
         .sort({ _id: 1 })
         .limit(500)
-        .select('_id dataId')
+        .select('_id dataId mode')
         .session(session)
         .lean();
       if (!tasks.length) return tasks;
@@ -326,7 +341,26 @@ export const retryFailedTrainingTasks = async (
         getTrainingTaskReadyUpdate(),
         { session }
       );
-      const dataIds = tasks.flatMap((task) => (task.dataId ? [task.dataId] : []));
+      const rebuildDataIds = tasks.flatMap((task) =>
+        task.mode === TrainingModeEnum.rebuild && task.dataId ? [task.dataId] : []
+      );
+      if (rebuildDataIds.length) {
+        await MongoDatasetData.updateMany(
+          {
+            ...scope,
+            _id: { $in: rebuildDataIds },
+            indexStatus: DatasetDataIndexStatusEnum.rebuildError
+          },
+          {
+            $set: { indexStatus: DatasetDataIndexStatusEnum.rebuilding },
+            $unset: { indexErrorMsg: '' }
+          },
+          { session }
+        );
+      }
+      const dataIds = tasks.flatMap((task) =>
+        task.mode !== TrainingModeEnum.rebuild && task.dataId ? [task.dataId] : []
+      );
       if (dataIds.length) {
         await MongoDatasetData.updateMany(
           { ...scope, _id: { $in: dataIds }, indexStatus: DatasetDataIndexStatusEnum.error },

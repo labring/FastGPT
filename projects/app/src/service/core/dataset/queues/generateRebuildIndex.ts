@@ -1,20 +1,17 @@
 import { getModelHandle } from '@fastgpt/service/core/ai/model';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
-import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
+import { rebuildDatasetDataIndexes } from '@/service/core/dataset/data/data';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
-import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import type {
-  DatasetDataSchemaType,
   DatasetSchemaType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
-import { getRebuildUpdateInput } from './indexInput';
 import { enqueueNextDatasetRebuildTask } from './rebuild';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 import {
@@ -32,15 +29,9 @@ const reduceQueue = () => {
 };
 
 type PopulateType = {
-  dataset: Pick<DatasetSchemaType, 'vectorModelId' | 'vectorModel' | 'vlmModelId' | 'vlmModel'>;
-  collection: { name: string; indexPrefixTitle: boolean; imageIndex?: boolean };
-  data?: {
-    _id: string;
-    q: string;
-    a?: string;
-    imageId?: string;
-    indexes: DatasetDataSchemaType['indexes'];
-  };
+  dataset: Pick<DatasetSchemaType, 'vectorModelId' | 'vectorModel'>;
+  collection: { _id: string };
+  data?: { _id: string };
 };
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
 
@@ -69,15 +60,15 @@ export async function generateRebuildIndex(): Promise<any> {
           populate: [
             {
               path: 'dataset',
-              select: 'vectorModelId vectorModel vlmModelId vlmModel'
+              select: 'vectorModelId vectorModel'
             },
             {
               path: 'collection',
-              select: 'name indexPrefixTitle imageIndex'
+              select: '_id'
             },
             {
               path: 'data',
-              select: '_id q a imageId indexes'
+              select: '_id'
             }
           ]
         });
@@ -181,24 +172,18 @@ const enqueueFollowingDatasetRebuild = async ({
 }: {
   trainingData: TrainingDataType;
 }) => {
-  const modelHandle = await getModelHandle();
   return retryFn(() =>
     enqueueNextDatasetRebuildTask({
       teamId: String(trainingData.teamId),
       tmbId: String(trainingData.tmbId),
       datasetId: String(trainingData.datasetId),
       billId: trainingData.billId,
-      vectorModel: modelHandle.getEmbeddingModelData(
-        getDatasetModelReference(trainingData.dataset, 'embedding')
-      ),
-      vlmModel: modelHandle.getVlmModelData(getDatasetModelReference(trainingData.dataset, 'vlm'), {
-        optional: true
-      }),
       synonymVersion: trainingData.synonymVersion
     })
   );
 };
 
+/** 从 data 的已存索引执行重建，并通过租约原子提交索引替换和任务完成。 */
 const rebuildData = async ({
   trainingData,
   lease
@@ -219,18 +204,9 @@ const rebuildData = async ({
   const embModel = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(trainingData.dataset, 'embedding')
   );
-  const rebuildUpdateInput = await getRebuildUpdateInput(trainingData);
-
-  const { tokens } = await updateDatasetDataByIndexes({
+  const { tokens } = await rebuildDatasetDataIndexes({
     dataId: String(datasetData._id),
-    ...rebuildUpdateInput,
-    imageIndex: !!trainingData.collection.imageIndex,
     model: embModel,
-    indexSize: trainingData.indexSize || getMaxIndexSize(embModel),
-    indexPrefix: trainingData.collection.indexPrefixTitle
-      ? `# ${trainingData.collection.name}`
-      : undefined,
-    forceRebuild: true,
     commit: lease.complete
   });
   return { tokens };

@@ -19,6 +19,54 @@ import { describe, expect, it } from 'vitest';
 type EmptyQuery = Record<string, never>;
 
 describe('update training data test', () => {
+  it('rejects text edits on rebuild tasks and allows retry without text', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'rebuild',
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'rebuild',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    const data = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'original',
+      indexStatus: DatasetDataIndexStatusEnum.rebuildError,
+      indexErrorMsg: 'failed'
+    });
+    const task = await MongoDatasetTraining.create({
+      dataId: data._id,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      billId: 'rebuild',
+      mode: TrainingModeEnum.rebuild,
+      retryCount: 0,
+      errorMsg: 'failed'
+    });
+    const edit = await Call(handler, { auth: root, body: { dataId: task._id, a: '' } });
+    expect(edit.code).not.toBe(200);
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      retryCount: 0,
+      errorMsg: 'failed'
+    });
+    const retry = await Call(handler, { auth: root, body: { dataId: task._id } });
+    expect(retry.code).toBe(200);
+    const updated = await MongoDatasetData.findById(data._id).lean();
+    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuilding);
+    expect(updated?.indexErrorMsg).toBeUndefined();
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({ retryCount: 3 });
+  });
+
   it('should update training data', async () => {
     const root = await getRootUser();
     const dataset = await MongoDataset.create({
@@ -41,7 +89,7 @@ describe('update training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild
+      mode: TrainingModeEnum.index
     });
 
     const res = await Call<UpdateTrainingDataBody, EmptyQuery, UpdateTrainingDataResponse>(
@@ -91,7 +139,7 @@ describe('update training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.index,
       errorMsg: 'failed',
       retryCount: 0
     });

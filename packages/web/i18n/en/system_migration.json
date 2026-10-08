@@ -111,5 +111,11 @@
   "migrations.20261008_migrate_chunk_training.description": "Run manually after all App/Pro nodes have been upgraded, old training workers have stopped, and their leases have expired. Converts legacy chunk tasks and pre-creates data for enhancement tasks while preserving index drafts and billing. Successful conversion clears old errors, resets retries, and releases the task lock.",
   "migrations.20261008_migrate_chunk_training.result": "Legacy training tasks migrated",
   "migrations.20261008_migrate_chunk_training.trainings": "Migrate training tasks",
-  "migrations.20261008_migrate_chunk_training.validation": "Verify no legacy tasks remain"
+  "migrations.20261008_migrate_chunk_training.validation": "Verify no legacy tasks remain",
+  "migrations.20261009_migrate_dataset_rebuild_status.name": "Migrate index rebuild statuses",
+  "migrations.20261009_migrate_dataset_rebuild_status.description": "Complete the chunk training migration first. Run after all old App/Pro nodes have been upgraded, old workers have stopped and their leases have expired. Convert rebuilding flags and existing rebuild tasks to indexStatus while preserving content, indexes and training progress.",
+  "migrations.20261009_migrate_dataset_rebuild_status.result": "Migration complete. {{remainingCount}} legacy statuses remain.",
+  "migrations.20261009_migrate_dataset_rebuild_status.datas": "Migrate legacy rebuild flags",
+  "migrations.20261009_migrate_dataset_rebuild_status.trainings": "Restore rebuild task statuses",
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "Validate migration"
 }

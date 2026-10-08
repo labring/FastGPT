@@ -10,6 +10,10 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -154,7 +158,10 @@ describe('delete training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       q: 'rebuild',
-      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.rebuilding,
+      indexes: [
+        { type: DatasetDataIndexTypeEnum.default, text: 'saved index', dataId: 'old-vector' }
+      ],
       synonymRebuildingVersion: 2
     });
     const training = await MongoDatasetTraining.create({
@@ -179,8 +186,13 @@ describe('delete training data test', () => {
 
     expect(res.code).toBe(200);
     await expect(MongoDatasetTraining.findById(training._id)).resolves.toBeNull();
-    await expect(MongoDatasetData.findById(data._id).lean()).resolves.not.toHaveProperty(
-      'synonymRebuildingVersion'
-    );
+    const updated = await MongoDatasetData.findById(data._id).lean();
+    expect(updated).not.toHaveProperty('synonymRebuildingVersion');
+    expect(updated).toMatchObject({
+      q: 'rebuild',
+      indexes: [{ text: 'saved index', dataId: 'old-vector' }],
+      indexStatus: DatasetDataIndexStatusEnum.rebuildError,
+      indexErrorMsg: 'Training task deleted'
+    });
   });
 });

@@ -1,4 +1,5 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { getModelHandle, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -9,7 +10,6 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { type ApiRequestProps } from '@fastgpt/next/type';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -19,7 +19,10 @@ import {
   type RebuildEmbeddingResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
-import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
+import {
+  rebuildableDatasetDataMatch,
+  rebuildingDatasetDataMatch
+} from '@fastgpt/global/core/dataset/data/utils';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -44,7 +47,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
 
   // check rebuilding or training
   const [rebuilding, training] = await Promise.all([
-    MongoDatasetData.findOne({ teamId, datasetId, rebuilding: true }),
+    MongoDatasetData.findOne({ teamId, datasetId, ...rebuildingDatasetDataMatch }),
     MongoDatasetTraining.findOne({ teamId, datasetId })
   ]);
 
@@ -52,29 +55,16 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     return Promise.reject('数据集正在训练或者重建中，请稍后再试');
   }
 
-  const vlmModelData = modelHandle.getVlmModelData(
-    {
-      modelId: dataset.vlmModelId ? String(dataset.vlmModelId) : undefined,
-      model: dataset.vlmModel
-    },
-    { optional: true }
-  );
-  const { availableVlmModel, supportImageIndex } = getDatasetImageIndexCapability({
-    vectorModel: vectorModelData,
-    vlmModel: vlmModelData
-  });
+  // 此处只维护后续导入的图片索引开关；重建本身不解析图片或查询 VLM 模型。
+  const supportImageIndex =
+    isImageEmbeddingModel(vectorModelData) || !!(dataset.vlmModelId || dataset.vlmModel);
 
   const { usageId } = await createTrainingUsage({
     teamId,
     tmbId,
     appName: '切换索引模型',
     billSource: UsageSourceEnum.training,
-    vectorModelId: vectorModelData.modelId!,
-    agentModelId: modelHandle.getLLMModelData({
-      modelId: dataset.agentModelId ? String(dataset.agentModelId) : undefined,
-      model: dataset.agentModel
-    }).modelId,
-    vllmModelId: availableVlmModel?.modelId
+    vectorModelId: vectorModelData.modelId!
   });
 
   // update vector model and dataset.data rebuild field
@@ -109,11 +99,11 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
         datasetId,
         // 只标记已完成索引的数据：待索引数据还没有向量，向量必然按处理时刻的模型生成，
         // 无需重建；该过滤同时避免同一 dataId 出现原链路任务与重建任务双写。
-        ...indexedDatasetDataMatch
+        ...rebuildableDatasetDataMatch
       },
       {
         $set: {
-          rebuilding: true
+          indexStatus: DatasetDataIndexStatusEnum.waitingRebuild
         }
       },
       {
@@ -126,9 +116,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     teamId,
     tmbId,
     datasetId,
-    billId: String(usageId),
-    vectorModel: vectorModelData,
-    vlmModel: vlmModelData
+    billId: String(usageId)
   });
 
   return RebuildEmbeddingResponseSchema.parse(undefined);

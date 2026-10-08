@@ -19,7 +19,7 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
 import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
-import { getRebuildUpdateInput } from './indexInput';
+import { getIndexTrainingUpdateInput } from './indexInput';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
@@ -184,11 +184,11 @@ const updatePreCreatedData = async ({
   const embModel = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(trainingData.dataset, 'embedding')
   );
-  const rebuildUpdateInput = await getRebuildUpdateInput(trainingData);
+  const indexTrainingInput = await getIndexTrainingUpdateInput(trainingData);
 
   const { tokens } = await updateDatasetDataByIndexes({
     dataId: String(datasetData._id),
-    ...rebuildUpdateInput,
+    ...indexTrainingInput,
     imageIndex: !!trainingData.collection.imageIndex,
     model: embModel,
     indexSize: trainingData.indexSize || getMaxIndexSize(embModel),

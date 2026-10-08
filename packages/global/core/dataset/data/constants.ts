@@ -14,7 +14,10 @@ export enum DatasetDataIndexTypeEnum {
 export enum DatasetDataIndexStatusEnum {
   indexing = 'indexing',
   indexed = 'indexed',
-  error = 'error'
+  error = 'error',
+  waitingRebuild = 'waitingRebuild',
+  rebuilding = 'rebuilding',
+  rebuildError = 'rebuildError'
 }
 
 export const DatasetDataIndexMap: Record<
@@ -61,7 +64,10 @@ export const DatasetDataIndexStatusMap: Record<
     label:
       | 'dataset:data_index_status_indexing'
       | 'dataset:data_index_status_indexed'
-      | 'dataset:data_index_status_error';
+      | 'dataset:data_index_status_error'
+      | 'dataset:data_index_status_waiting_rebuild'
+      | 'dataset:data_index_status_rebuilding'
+      | 'dataset:data_index_status_rebuild_error';
     colorSchema: 'red' | 'blue' | 'green';
   }
 > = {
@@ -72,6 +78,18 @@ export const DatasetDataIndexStatusMap: Record<
   [DatasetDataIndexStatusEnum.indexed]: {
     label: i18nT('dataset:data_index_status_indexed'),
     colorSchema: 'green'
+  },
+  [DatasetDataIndexStatusEnum.waitingRebuild]: {
+    label: i18nT('dataset:data_index_status_waiting_rebuild'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.rebuilding]: {
+    label: i18nT('dataset:data_index_status_rebuilding'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.rebuildError]: {
+    label: i18nT('dataset:data_index_status_rebuild_error'),
+    colorSchema: 'red'
   },
   [DatasetDataIndexStatusEnum.error]: {
     label: i18nT('dataset:data_index_status_error'),

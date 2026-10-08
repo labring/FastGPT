@@ -312,13 +312,13 @@ datasetId_1_externalFileId_1 (unique)
     updateTime: Date
   }],
 
-  rebuilding?: boolean                // 重建中标志
+  indexStatus?: indexing | indexed | error | waitingRebuild | rebuilding | rebuildError
 }
 
 // 索引
 teamId_1_datasetId_1_collectionId_1_chunkIndex_1_updateTime_-1
 teamId_1_datasetId_1_collectionId_1_indexes.dataId_1
-rebuilding_1_teamId_1_datasetId_1
+indexStatus_1_teamId_1_datasetId_1
 ```
 
 ### 4. DatasetTraining Schema (dataset_trainings 集合)

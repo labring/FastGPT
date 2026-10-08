@@ -1,5 +1,8 @@
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { describe, expect, it } from 'vitest';
 import {
+  assertDatasetDataWritable,
   matchDatasetDataMarkdownImages,
   uniqueDatasetDataMarkdownImageUrls
 } from '@fastgpt/service/core/dataset/data/utils';
@@ -29,5 +32,23 @@ describe('uniqueDatasetDataMarkdownImageUrls', () => {
         ''
       ])
     ).toEqual(['https://example.com/a.png', 'https://example.com/b.png']);
+  });
+});
+
+describe('assertDatasetDataWritable', () => {
+  it.each([
+    DatasetDataIndexStatusEnum.indexing,
+    DatasetDataIndexStatusEnum.waitingRebuild,
+    DatasetDataIndexStatusEnum.rebuilding
+  ])('protects in-progress status %s', async (status) => {
+    await expect(assertDatasetDataWritable(status)).rejects.toBe(DatasetErrEnum.dataNotIndexed);
+  });
+  it.each([
+    undefined,
+    DatasetDataIndexStatusEnum.indexed,
+    DatasetDataIndexStatusEnum.error,
+    DatasetDataIndexStatusEnum.rebuildError
+  ])('allows edits of completed or failed status %s', (status) => {
+    expect(assertDatasetDataWritable(status)).toBeUndefined();
   });
 });

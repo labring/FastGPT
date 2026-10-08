@@ -1,6 +1,7 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { Box, Button, Flex, Table, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type {
   GetDatasetTrainingErrorBody,
   GetTrainingDataDetailResponse,
@@ -150,10 +151,14 @@ const ActionButtons = ({
       >
         {t('dataset:dataset.ReTrain')}
       </ErrorActionButton>
-      <Box w={'1px'} height={'16px'} bg={'#E8EBF0'} />
-      <ErrorActionButton icon={'edit'} isLoading={isEditLoading} onClick={() => onEdit(item)}>
-        {t('dataset:dataset.Edit_Chunk')}
-      </ErrorActionButton>
+      {item.mode !== TrainingModeEnum.rebuild && (
+        <>
+          <Box w={'1px'} height={'16px'} bg={'#E8EBF0'} />
+          <ErrorActionButton icon={'edit'} isLoading={isEditLoading} onClick={() => onEdit(item)}>
+            {t('dataset:dataset.Edit_Chunk')}
+          </ErrorActionButton>
+        </>
+      )}
       <Box w={'1px'} height={'16px'} bg={'#E8EBF0'} />
       <ErrorActionButton icon={'delete'} isLoading={isDeleteLoading} onClick={() => onDelete(item)}>
         {t('dataset:dataset.Delete_Chunk')}
@@ -420,6 +425,7 @@ const TrainingErrorList = ({
     });
   };
   const handleEditItem = (item: TrainingErrorItemType) => {
+    if (item.mode === TrainingModeEnum.rebuild) return;
     if (!checkPermission(permission.hasWritePer)) return;
 
     const collectionId = getItemCollectionId(item);

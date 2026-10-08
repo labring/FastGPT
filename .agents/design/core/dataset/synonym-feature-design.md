@@ -70,14 +70,14 @@ mapping 使用 `teamId + datasetId + fileVersion` 归属配置版本，保存标
 
 `dataset_datas.synonymVersion` 记录当前派生索引使用的配置版本，`synonymRebuildingVersion` 是领取标记；`dataset_trainings.synonymVersion` 记录任务目标版本。不增加同义词专用 mode。
 
-规则变化后，种子任务和后续链式任务持续领取版本不一致且未被领取的 data。同义词任务复用模型切换的完整 rebuild，根据数据内容和模型能力进入 `imageParse`、`image`、`auto` 或 `rebuild`，重新生成图片描述、自动索引和全部向量。成功写入时更新 `synonymVersion` 并释放领取标记；失败任务保留在现有 training 重试和错误处理流程中。同义词 rebuild training 不参与普通 training 的七天 TTL，避免 MongoDB 后台删除绕过应用层 claim 清理；用户手动删除任务时继续在事务中释放 claim。
+规则变化后，种子任务和后续链式任务持续领取版本不一致且未被领取的 data。同义词任务与模型切换都只创建 `rebuild` 阶段，以 `data.indexes` 的已存类型和原文重新生成向量，不读取 q/a、不重新分块，也不进入 `imageParse`、`image` 或 `auto`。图片向量只使用已存 `imageEmbedding` 索引，目标模型不支持时跳过；全文派生文本来自文本索引，图片源不进入全文检索。成功写入时更新 `synonymVersion` 并释放领取标记；失败任务保留在现有 training 重试和错误处理流程中。同义词 rebuild training 不参与普通 training 的七天 TTL，避免 MongoDB 后台删除绕过应用层 claim 清理；用户手动删除任务时继续在事务中释放 claim。
 
 ## 4. 更新流程
 
 上传、替换和删除共用 mutation 服务：
 
 1. 校验知识库写权限和页面读取到的配置 ID/version。
-2. 检查现有 `dataset_trainings` 和 `data.rebuilding`，队列忙时禁止再次修改。
+2. 检查现有 `dataset_trainings` 和 `data.indexStatus` 的待重建/重建中状态，队列忙时禁止再次修改。
 3. 创建现有训练账单。
 4. 在事务中写入新 mapping、CAS 切换配置、清理旧 mapping，并按目标版本领取 data、创建受 vector worker 并发上限约束的普通种子任务。
 5. 事务提交后清理当前进程 matcher cache。
@@ -89,7 +89,7 @@ mapping 写入、配置 CAS、首批 data 领取或种子任务创建失败会�
 
 ## 5. Worker 与状态
 
-worker 不识别任务来源。所有带 `dataId` 的 training 都走已有 rebuild 路径，并在执行前补充下一条普通任务。
+worker 不识别任务来源。`rebuild` 任务只读取已存 data.indexes，并在执行前补充下一条 rebuild 任务；首次训练的 `index` 任务单独处理训练正文和增强阶段产物。rebuild 错误只支持重试或删除，正文编辑通过 data 更新接口执行。
 
 管理页的处理中状态通过现有 `dataset_trainings` 查询，不在同义词配置中维护第二份状态。重建失败继续显示在已有训练错误入口。
 

@@ -25,6 +25,7 @@ import {
   createDatasetData,
   deleteDatasetData,
   updateDatasetDataByIndexes,
+  rebuildDatasetDataIndexes,
   updateDatasetDataSystemIndexes
 } from '@/service/core/dataset/data/data';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -806,6 +807,189 @@ describe('Dataset data service', () => {
       );
       expect(mockVectorDelete.mock.calls[0]?.[0].idList).toEqual(
         expect.arrayContaining(['custom_old', 'default_old', 'old_markdown_image'])
+      );
+    });
+  });
+
+  describe('rebuildDatasetDataIndexes', () => {
+    it.each([true, false])('uses only the stored image index with vision=%s', async (vision) => {
+      const previousBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+      Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: false });
+      try {
+        const source = 'https://example.com/saved.png';
+        const { data } = await createMongoData({
+          q: '![other](https://example.com/body.png)',
+          imageId: 'https://example.com/main.png',
+          indexes: [
+            { type: DatasetDataIndexTypeEnum.imageEmbedding, text: source, dataId: 'old_image' }
+          ]
+        });
+        await rebuildDatasetDataIndexes({
+          dataId: String(data._id),
+          model: vision ? visionEmbeddingModel : embeddingModel
+        });
+        const updated = await MongoDatasetData.findById(data._id).lean();
+        expect(updated?.q).toBe(data.q);
+        expect(updated?.imageId).toBe(data.imageId);
+        if (vision) {
+          expect(updated?.indexes).toMatchObject([
+            { type: DatasetDataIndexTypeEnum.imageEmbedding, text: source }
+          ]);
+          expect(
+            mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+          ).toEqual([source]);
+        } else {
+          expect(updated?.indexes).toEqual([]);
+          expect(mockGetVectors).not.toHaveBeenCalled();
+        }
+        expect(
+          (await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken
+        ).toBe('');
+      } finally {
+        Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: previousBase64 });
+      }
+    });
+
+    it('uses only saved index text and keeps body, metadata and history unchanged', async () => {
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
+      const storedIndexes = [
+        { type: DatasetDataIndexTypeEnum.default, text: 'saved text', dataId: 'old_default' },
+        { type: DatasetDataIndexTypeEnum.custom, text: 'saved custom', dataId: 'old_custom' }
+      ];
+      const { data } = await createMongoData({
+        q: 'body is not an index',
+        a: 'answer is not an index',
+        indexes: storedIndexes,
+        history: [{ q: 'previous', a: 'previous answer', updateTime: new Date(0) }]
+      });
+      await rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel });
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated).toMatchObject({
+        q: data.q,
+        a: data.a,
+        history: [{ q: 'previous', a: 'previous answer' }]
+      });
+      expect(updated!.indexes.map(({ type, text }) => ({ type, text }))).toEqual(
+        storedIndexes.map(({ type, text }) => ({ type, text }))
+      );
+      expect(
+        mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+      ).toEqual(storedIndexes.map((index) => index.text));
+      expect(mockCountPromptTokens).not.toHaveBeenCalled();
+      const fullText = await MongoDatasetDataText.findOne({ dataId: data._id }).lean();
+      expect(fullText?.fullTextToken).toBe(await jiebaSplit({ text: 'saved text\nsaved custom' }));
+    });
+
+    it('does not generate indexes from a body when the stored indexes are empty', async () => {
+      const { data } = await createMongoData({ indexes: [] });
+      const result = await rebuildDatasetDataIndexes({
+        dataId: String(data._id),
+        model: embeddingModel
+      });
+      expect(result.tokens).toBe(0);
+      expect(mockGetVectors).not.toHaveBeenCalled();
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        q: data.q,
+        a: data.a,
+        indexes: []
+      });
+    });
+
+    it('preserves concurrent edits and cleans new vectors when the index snapshot changes', async () => {
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
+      const { data } = await createMongoData();
+      const replacement = [
+        { type: DatasetDataIndexTypeEnum.custom, text: 'concurrent', dataId: 'concurrent_vector' }
+      ];
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await MongoDatasetData.updateOne(
+          { _id: data._id },
+          {
+            $set: { indexes: replacement, updateTime: new Date(Date.now() + 10_000) }
+          }
+        );
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+      await expect(
+        rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel })
+      ).rejects.toThrow('数据已变化');
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated?.indexes).toMatchObject(replacement);
+      expect(mockVectorDelete).toHaveBeenCalledWith(
+        expect.objectContaining({ idList: ['id_1', 'id_2'] })
+      );
+      expect(mockVectorDelete).not.toHaveBeenCalledWith(
+        expect.objectContaining({ idList: ['custom_old', 'default_old'] })
+      );
+    });
+
+    it('transforms saved index text for synonyms without changing its stored text', async () => {
+      const { root, dataset, data } = await createMongoData({
+        q: 'unrelated body',
+        indexes: [{ type: DatasetDataIndexTypeEnum.custom, text: '退钱', dataId: 'old_vector' }]
+      });
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      await MongoDatasetSynonymMapping.create({
+        logicalMappingId: new Types.ObjectId(),
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        synonymFileId: synonym._id,
+        fileVersion: 1,
+        standardizedTerm: '退款',
+        normalizedStandardizedTerm: '退款',
+        synonymTerms: ['退钱'],
+        normalizedSynonymTerms: ['退钱'],
+        allTerms: '退款 退钱',
+        fingerprint: '退款:退钱'
+      });
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        { $set: { synonymRebuildingVersion: 1 } }
+      );
+      await rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel });
+      expect(
+        mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+      ).toEqual(['退款']);
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        q: 'unrelated body',
+        indexes: [{ text: '退钱' }],
+        synonymVersion: 1
+      });
+      expect(await MongoDatasetData.findById(data._id).lean()).not.toHaveProperty(
+        'synonymRebuildingVersion'
+      );
+      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
+        await jiebaSplit({ text: '退款' })
+      );
+    });
+
+    it('rolls back rebuilt indexes when the synonym snapshot changes during embedding', async () => {
+      const { root, dataset, data } = await createMongoData();
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 1,
+        enabled: true,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        await MongoDatasetSynonym.updateOne({ _id: synonym._id }, { $set: { version: 2 } });
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+      await expect(
+        rebuildDatasetDataIndexes({ dataId: String(data._id), model: embeddingModel })
+      ).rejects.toThrow('同义词配置已变化');
+      expect((await MongoDatasetData.findById(data._id).lean())?.indexes).toMatchObject(
+        data.indexes.map(({ type, text, dataId }) => ({ type, text, dataId }))
+      );
+      expect(mockVectorDelete).toHaveBeenCalledWith(
+        expect.objectContaining({ idList: ['id_1', 'id_2'] })
       );
     });
   });

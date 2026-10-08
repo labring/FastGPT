@@ -1,19 +1,11 @@
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import {
-  getDatasetImageIndexCapability,
-  getDatasetImageTrainingMode
-} from '@fastgpt/service/core/dataset/utils';
-import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
-import { indexedDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
-import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model/schema';
+import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 type DatasetRebuildContext = {
@@ -21,14 +13,12 @@ type DatasetRebuildContext = {
   tmbId: string;
   datasetId: string;
   billId: string;
-  vectorModel: EmbeddingSystemModelDataType;
-  vlmModel?: LLMSystemModelDataType;
   synonymVersion?: number;
 };
 
 /**
- * 原子领取一条标记为 rebuilding 的 data，并写入现有 training 队列。
- * 模型切换和同义词更新共用相同的图片/VLM 分流与任务结构。
+ * 原子领取一条处于 waitingRebuild 的 data，并写入现有 training 队列。
+ * 模型切换和同义词更新都只创建 rebuild 阶段，索引内容由 worker 从 data 读取。
  */
 export const enqueueNextDatasetRebuildTask = async (
   context: DatasetRebuildContext,
@@ -47,38 +37,41 @@ export const enqueueNextDatasetRebuildTask = async (
               synonymRebuildingVersion: { $ne: context.synonymVersion },
               // 待索引数据不参与同义词重建：其向量必然按处理时刻的词表生成，
               // 选中会与在途任务争抢同一 dataId。
-              ...indexedDatasetDataMatch
+              ...rebuildableDatasetDataMatch
             }
           : {
-              rebuilding: true,
+              indexStatus: DatasetDataIndexStatusEnum.waitingRebuild,
               teamId: context.teamId,
               datasetId: context.datasetId
             },
         context.synonymVersion
           ? {
               $set: {
+                indexStatus: DatasetDataIndexStatusEnum.rebuilding,
                 synonymRebuildingVersion: context.synonymVersion,
                 updateTime: new Date()
               }
             }
           : {
-              $unset: { rebuilding: '' },
-              $set: { updateTime: new Date() }
+              $set: { indexStatus: DatasetDataIndexStatusEnum.rebuilding, updateTime: new Date() }
             },
         { session }
       ).select({
         _id: 1,
         collectionId: 1,
-        imageId: 1,
-        q: 1,
-        indexes: 1
+        chunkIndex: 1
       });
       if (!data) return false;
 
       const collection = await MongoDatasetCollection.findById(data.collectionId)
-        .select('imageIndex')
+        .select('_id')
         .session(session);
       if (!collection) {
+        await MongoDatasetData.updateOne(
+          { _id: data._id },
+          { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } },
+          { session }
+        );
         // collection 可能处于删除中间态；同义词重建只需跳过入队，不能删除业务 data。
         if (context.synonymVersion) {
           await MongoDatasetData.updateOne(
@@ -93,19 +86,6 @@ export const enqueueNextDatasetRebuildTask = async (
         continue;
       }
 
-      const { supportVlm, supportImageIndex } = getDatasetImageIndexCapability({
-        vectorModel: context.vectorModel,
-        vlmModel: context.vlmModel
-      });
-      const hasMarkdownImages =
-        !!collection.imageIndex && uniqueDatasetDataMarkdownImageUrls([data.q]).length > 0;
-      const mode = getDatasetImageTrainingMode({
-        supportVlm,
-        supportImageIndex,
-        imageId: data.imageId,
-        hasMarkdownImages
-      });
-
       await MongoDatasetTraining.create(
         [
           {
@@ -114,15 +94,11 @@ export const enqueueNextDatasetRebuildTask = async (
             datasetId: context.datasetId,
             collectionId: data.collectionId,
             billId: context.billId,
-            mode: mode === TrainingModeEnum.index ? TrainingModeEnum.rebuild : mode,
+            mode: TrainingModeEnum.rebuild,
             ...(context.synonymVersion && { synonymVersion: context.synonymVersion }),
             ...(context.synonymVersion && { expireAt: null }),
             dataId: data._id,
-            ...(data.imageId && { imageId: data.imageId }),
-            ...(mode === TrainingModeEnum.image && {
-              q: data.q,
-              indexes: data.indexes
-            }),
+            chunkIndex: data.chunkIndex,
             retryCount: 3
           }
         ],
@@ -137,7 +113,7 @@ export const enqueueNextDatasetRebuildTask = async (
 
 /**
  * 创建受 vector worker 并发上限约束的种子任务，后续任务由 worker 链式补充。
- * 传入 session 时与调用方的 rebuilding 标记原子提交，避免只留下标记而没有任务。
+ * 传入 session 时与调用方的待重建状态原子提交，避免只留下标记而没有任务。
  */
 export const seedDatasetRebuildTasks = async (
   context: DatasetRebuildContext,

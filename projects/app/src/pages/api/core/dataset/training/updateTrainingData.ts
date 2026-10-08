@@ -22,6 +22,7 @@ import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/co
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 
+/** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
   const body = parseApiInput({ req, bodySchema: UpdateTrainingDataBodySchema }).body;
 
@@ -87,6 +88,13 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     return Promise.reject('data not found');
   }
 
+  if (
+    data.mode === TrainingModeEnum.rebuild &&
+    (q !== undefined || a !== undefined || chunkIndex !== undefined)
+  ) {
+    return Promise.reject('重建任务不支持编辑正文');
+  }
+
   const trainingMatch = {
     teamId: collection.teamId,
     datasetId: collection.datasetId,
@@ -104,9 +112,20 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
   await mongoSessionRun(async (session) => {
     if (data.dataId) {
       await MongoDatasetData.updateOne(
-        { _id: data.dataId, indexStatus: DatasetDataIndexStatusEnum.error },
         {
-          $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
+          _id: data.dataId,
+          indexStatus:
+            data.mode === TrainingModeEnum.rebuild
+              ? DatasetDataIndexStatusEnum.rebuildError
+              : DatasetDataIndexStatusEnum.error
+        },
+        {
+          $set: {
+            indexStatus:
+              data.mode === TrainingModeEnum.rebuild
+                ? DatasetDataIndexStatusEnum.rebuilding
+                : DatasetDataIndexStatusEnum.indexing
+          },
           $unset: { indexErrorMsg: '' }
         },
         { session }

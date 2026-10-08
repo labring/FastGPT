@@ -1,3 +1,4 @@
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { connectionMongo, Types, type ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getTrainingTaskReadyUpdate } from '@fastgpt/service/core/dataset/training/utils';
@@ -116,7 +117,10 @@ export const migrateLegacyTraining = async (_id: Types.ObjectId, session?: Clien
       ? await datas.findOne({ _id: task.dataId, ...scope }, { session })
       : null;
     if (task.dataId && !data) fail('referenced data missing or mismatched; source task retained');
-    if (data?.indexStatus != null && !['indexing', 'error', 'indexed'].includes(data.indexStatus)) {
+    if (
+      data?.indexStatus != null &&
+      !Object.values(DatasetDataIndexStatusEnum).includes(data.indexStatus)
+    ) {
       fail('unknown indexStatus; source task retained');
     }
     const isNew = !task.dataId;

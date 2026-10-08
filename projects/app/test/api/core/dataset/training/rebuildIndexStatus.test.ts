@@ -131,7 +131,7 @@ describe('rebuild paths skip pending index data', () => {
     const rows = await MongoDatasetData.find({ datasetId: dataset._id }).lean();
     for (const pendingId of [String(indexingPending._id), String(indexing._id)]) {
       const row = rows.find((item) => String(item._id) === pendingId);
-      expect(row?.rebuilding).toBeUndefined();
+      expect(row?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
       expect(row?.synonymRebuildingVersion).toBeUndefined();
     }
     expect(await MongoDatasetData.findById(indexingPending._id).lean()).toMatchObject({
@@ -139,6 +139,55 @@ describe('rebuild paths skip pending index data', () => {
     });
     expect(await MongoDatasetData.findById(indexing._id).lean()).toMatchObject({
       indexStatus: DatasetDataIndexStatusEnum.indexing
+    });
+  });
+
+  it('includes rebuild failures with cancelled tasks in a subsequent model rebuild', async () => {
+    const { root, dataset, collection } = await createContext();
+    const data = await createData({
+      root,
+      dataset,
+      collection,
+      indexStatus: DatasetDataIndexStatusEnum.rebuildError
+    });
+    const res = await Call(handler, {
+      auth: root,
+      body: { datasetId: String(dataset._id), vectorModelId: nextModel.modelId }
+    });
+    expect(res.code).toBe(200);
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.rebuilding
+    });
+    expect(await MongoDatasetTraining.findOne({ dataId: data._id }).lean()).toMatchObject({
+      mode: TrainingModeEnum.rebuild
+    });
+  });
+
+  it('includes rebuild failures with cancelled tasks in a subsequent synonym rebuild', async () => {
+    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
+    const { root, dataset, collection } = await createContext();
+    const data = await createData({
+      root,
+      dataset,
+      collection,
+      indexStatus: DatasetDataIndexStatusEnum.rebuildError,
+      synonymVersion: 1
+    });
+    await expect(
+      enqueueNextDatasetRebuildTask({
+        teamId: String(root.teamId),
+        tmbId: String(root.tmbId),
+        datasetId: String(dataset._id),
+        billId: 'bill-id',
+        synonymVersion: 2
+      })
+    ).resolves.toBe(true);
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.rebuilding
+    });
+    expect(await MongoDatasetTraining.findOne({ dataId: data._id }).lean()).toMatchObject({
+      mode: TrainingModeEnum.rebuild,
+      synonymVersion: 2
     });
   });
 
@@ -166,7 +215,6 @@ describe('rebuild paths skip pending index data', () => {
       tmbId: String(root.tmbId),
       datasetId: String(dataset._id),
       billId: 'bill-id',
-      vectorModel: nextModel,
       synonymVersion: 2
     });
 
@@ -200,7 +248,6 @@ describe('rebuild paths skip pending index data', () => {
       tmbId: String(root.tmbId),
       datasetId: String(dataset._id),
       billId: 'bill-id',
-      vectorModel: nextModel,
       synonymVersion: 2
     });
 
