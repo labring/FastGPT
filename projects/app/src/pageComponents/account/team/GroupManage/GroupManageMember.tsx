@@ -18,6 +18,7 @@ import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type'
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
+import TeamMemberEditLoader from '../TeamMemberEditLoader';
 
 export type GroupMemberSelectedType = {
   name: string;
@@ -287,25 +288,6 @@ function GroupEditModal({
   const { t } = useSafeTranslation();
   const groupId = useMemo(() => String(group._id), [group._id]);
 
-  const { data: groupMembers, loading: isLoadingGroupMembers } = useRequest(
-    async () => {
-      const res = await getTeamMembers({
-        groupId,
-        pageSize: 100000,
-        pageNum: 1
-      });
-      return res.list as TeamMemberItemType<{
-        withOrgs: true;
-        withPermission: true;
-        withGroupRole: true;
-      }>[];
-    },
-    {
-      manual: false,
-      refreshDeps: [groupId]
-    }
-  );
-
   return (
     <MyModal
       onClose={onClose}
@@ -315,17 +297,17 @@ function GroupEditModal({
       minW="800px"
       h={'100%'}
       isCentered
-      isLoading={isLoadingGroupMembers || !groupMembers}
     >
-      {groupMembers && !isLoadingGroupMembers && (
-        <GroupEditModalContent
-          key={groupId}
-          group={group}
-          initialMembers={groupMembers}
-          onClose={onClose}
-          onSuccess={onSuccess}
-        />
-      )}
+      <TeamMemberEditLoader key={groupId} params={{ groupId }}>
+        {(groupMembers) => (
+          <GroupEditModalContent
+            group={group}
+            initialMembers={groupMembers as GroupEditContentProps['initialMembers']}
+            onClose={onClose}
+            onSuccess={onSuccess}
+          />
+        )}
+      </TeamMemberEditLoader>
     </MyModal>
   );
 }

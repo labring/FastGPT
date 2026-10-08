@@ -49,8 +49,12 @@ export const getTeamMembers = (
     groupId?: string;
     tmbIds?: string[];
     currentFirst?: boolean;
-  }>
-) => POST<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/member/list`, props);
+  }>,
+  cancelToken?: AbortController
+) =>
+  POST<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/member/list`, props, {
+    cancelToken
+  });
 export const getTeamMemberCount = () =>
   GET<{ count: number }>(`/proApi/support/user/team/member/count`);
 

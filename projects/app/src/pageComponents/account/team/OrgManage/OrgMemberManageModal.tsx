@@ -13,6 +13,7 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import TeamMemberEditLoader from '../TeamMemberEditLoader';
 
 export type GroupFormType = {
   members: {
@@ -200,23 +201,6 @@ function OrgMemberManageModal({
   const { t } = useSafeTranslation();
   const orgId = currentOrg._id;
 
-  const { data: orgMembers, loading: isLoadingOrgMembers } = useRequest(
-    async () => {
-      const res = await getTeamMembers({
-        orgId,
-        pageSize: 100000,
-        pageNum: 1,
-        withOrgs: false,
-        withPermission: false
-      });
-      return res.list;
-    },
-    {
-      manual: false,
-      refreshDeps: [orgId]
-    }
-  );
-
   return (
     <MyModal
       isOpen
@@ -226,17 +210,17 @@ function OrgMemberManageModal({
       minW="800px"
       h={'100%'}
       isCentered
-      isLoading={isLoadingOrgMembers || !orgMembers}
     >
-      {orgMembers && !isLoadingOrgMembers && (
-        <OrgMemberManageContent
-          key={orgId}
-          currentOrg={currentOrg}
-          initialMembers={orgMembers}
-          refetchOrgs={refetchOrgs}
-          onClose={onClose}
-        />
-      )}
+      <TeamMemberEditLoader key={orgId} params={{ orgId, withOrgs: false, withPermission: false }}>
+        {(orgMembers) => (
+          <OrgMemberManageContent
+            currentOrg={currentOrg}
+            initialMembers={orgMembers}
+            refetchOrgs={refetchOrgs}
+            onClose={onClose}
+          />
+        )}
+      </TeamMemberEditLoader>
     </MyModal>
   );
 }
