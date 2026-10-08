@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { useRequiredQueryParam } from '@fastgpt/web/hooks/useRequiredQueryParam';
+import { useRequiredQueryParam } from '@/web/common/hooks/useRequiredQueryParam';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
@@ -75,11 +75,11 @@ const AppDetail = () => {
 };
 
 const Provider = () => {
-  const { isReady } = useRequiredQueryParam('appId', {
+  const { value: appId } = useRequiredQueryParam('appId', {
     fallbackRoute: '/dashboard/agent'
   });
 
-  if (!isReady) {
+  if (!appId) {
     return <Loading fixed={false} />;
   }
 

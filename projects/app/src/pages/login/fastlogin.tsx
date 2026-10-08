@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken } from '@/web/support/user/auth';
@@ -14,6 +14,7 @@ import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
 import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
+/** 使用 CSR 门禁恢复后的凭据完成登录；相同 code/token 在本次挂载中只消费一次。 */
 const FastLogin = () => {
   const router = useRouter();
   const {
@@ -32,6 +33,7 @@ const FastLogin = () => {
   const { toast } = useToast();
   const { t, i18n } = useSafeTranslation();
   const resolveLoginRedirect = useLoginRedirectAfterLogin();
+  const handledCredentialsRef = useRef<{ code: string; token: string }>();
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
       const safeCallbackUrl = validateRedirectUrl(callbackUrl);
@@ -86,12 +88,16 @@ const FastLogin = () => {
   );
 
   useEffect(() => {
-    if (!router.isReady) return;
+    // code 为一次性凭据；路由对象或翻译函数更新不能重复消费，同页新凭据仍允许登录。
+    const handledCredentials = handledCredentialsRef.current;
+    if (handledCredentials?.code === code && handledCredentials.token === token) return;
+    handledCredentialsRef.current = { code, token };
+
     clearToken();
     const safeCallbackUrl = validateRedirectUrl(callbackUrl);
     router.prefetch(safeCallbackUrl);
     authCode(code, token);
-  }, [authCode, callbackUrl, code, router.isReady, router, token]);
+  }, [authCode, callbackUrl, code, router, token]);
 
   return <Loading />;
 };

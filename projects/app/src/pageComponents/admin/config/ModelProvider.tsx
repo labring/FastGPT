@@ -34,7 +34,7 @@ const ModelProvider = () => {
   const modelTab = modelTabList.find((item) => item.value === queryModelTab)?.value ?? 'config';
 
   useEffect(() => {
-    if (!router.isReady || queryModelTab === undefined) return;
+    if (queryModelTab === undefined) return;
     if (typeof queryModelTab === 'string' && queryModelTab === modelTab) return;
 
     // “可用模型”及已关闭的 AI Proxy 页面都统一回退到模型配置。

@@ -192,7 +192,7 @@ const provider = () => {
   );
 
   useEffect(() => {
-    if (!router.isReady || !initd) return;
+    if (!initd) return;
 
     if (error) {
       toast({
@@ -247,19 +247,7 @@ const provider = () => {
         authProps(props);
       }
     })();
-  }, [
-    router.isReady,
-    initd,
-    authProps,
-    error,
-    loginStore,
-    router,
-    state,
-    t,
-    toast,
-    props,
-    errorRedirectPage
-  ]);
+  }, [initd, authProps, error, loginStore, router, state, t, toast, props, errorRedirectPage]);
 
   return <Loading />;
 };

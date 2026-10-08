@@ -50,7 +50,7 @@ const CancelAccountPage = () => {
   const isPendingView = status?.status === 'pending';
 
   useEffect(() => {
-    if (loading || !router.isReady || !status) return;
+    if (loading || !status) return;
     if (status.status === 'pending' || isMemberView || isVerificationView) return;
     void router.replace('/account/info');
   }, [isMemberView, isVerificationView, loading, router, status]);

@@ -103,7 +103,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const isLicenseValid = useMemo(() => isLicenseActive(licenseData), [licenseData]);
   useEffect(() => {
     if (
-      !router.isReady ||
       !isRoot ||
       licenseLoading ||
       isLicenseValid ||

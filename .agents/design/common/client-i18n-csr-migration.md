@@ -316,10 +316,25 @@ SSR 聊天页面直接渲染，不等待 CSR 门禁，因此仍输出服务端�
 同一 CSR 区域内的目录、筛选和页面导航不因路由门禁新增白屏；业务请求仅随 ID 或筛选条件刷新。
 已有语言包门禁和 CSR/SSR 分支切换的行为独立保留。
 
-因此 App/Skill/知识库列表可移除 `disabled: !router.isReady`、`ready: router.isReady`
-以及 refreshDeps 中的 `router.isReady`，创建应用页也无需额外的就绪 wrapper。
-必填参数、权限、业务配置等约束仍在所属业务边界校验；跨 SSR/CSR 共用的初始化 effect
-可以保留路由检查。营销来源初始化即使未传 `sourceDomain` 也必须调用 helper，以保留
+因此 CSR 专用业务组件不再检查 `router.isReady`，包括 App/Skill/知识库列表、详情页、
+快速登录与 Provider 回调、账号模型与注销、管理员入口、模型 tab 归一、价格页和工作流引导。
+`initd`、用户身份、权限、请求完成状态、沙箱状态等业务条件仍由原组件校验。
+
+快速登录按当前 `code + token` 快照记录已发起的请求，防止路由对象或翻译函数更新导致
+一次性凭据被重复消费；同页收到新凭据时仍允许新的登录请求。
+
+`useRequiredQueryParam` 仅被 app 的三个 CSR 详情页使用，放在 app 的 `web/common/hooks`，
+只返回参数值和 query。缺少 `appId`、`skillId`、`datasetId` 时仍阻止业务 Provider 挂载并跳转，
+但不再重复等待 hydration 或返回混合了参数校验的 `isReady`。
+
+以下路由检查有独立的边界，必须保留：
+
+- `ClientRouteReadyGate`：应用壳的 CSR 首次初始化门禁。
+- `useInitApp`：SSR 聊天页也会执行营销归因，需等待其 query hydration。
+- `LoginContainer`、`PostLoginActionOrchestrator`：SSR 聊天页复用，不能假定经过 CSR 门禁。
+- `projects/marketplace`：独立应用，未接入 app 的门禁，不在本轮移除范围内。
+
+营销来源初始化即使未传 `sourceDomain` 也必须调用 helper，以保留
 `document.referrer` 回落和首次来源锁定语义。
 
 验证要求：未就绪时 AppContent 和 Layout 的 effect 不执行；就绪后首次请求携带正确 query；

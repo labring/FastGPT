@@ -7,9 +7,9 @@ export type UseRequiredQueryParamOptions = {
 };
 
 /**
- * CSR 页面安全读取必填 Query 参数的守卫 Hook：
- * 1. 在 router.isReady 且参数缺失时，自动平稳重定向到 fallbackRoute。
- * 2. 只有在 router.isReady 且参数非空时，isReady 才为 true 并返回参数值。
+ * 校验 app 的 CSR 详情页必填参数；调用方由 AppShell 的路由门禁保障首次 query 已就绪。
+ * 数组参数取首项，缺失或为空时返回空字符串，并在配置了 fallbackRoute 时重定向。
+ * 只处理参数有效性，不承担 SSR 页面的 hydration 等待。
  */
 export function useRequiredQueryParam<T extends string = string>(
   key: string,
@@ -18,17 +18,15 @@ export function useRequiredQueryParam<T extends string = string>(
   const router = useRouter();
   const rawValue = router.query[key];
   const value = (Array.isArray(rawValue) ? rawValue[0] : rawValue) as T | undefined;
-  const isReady = router.isReady && !!value;
 
   useEffect(() => {
-    if (router.isReady && !value && options?.fallbackRoute) {
-      router.replace(options.fallbackRoute);
+    if (!value && options?.fallbackRoute) {
+      void router.replace(options.fallbackRoute);
     }
-  }, [router.isReady, value, options?.fallbackRoute, router]);
+  }, [value, options?.fallbackRoute, router]);
 
   return {
-    isReady,
-    value: (value || '') as T,
+    value: (value ?? '') as T,
     query: router.query
   };
 }

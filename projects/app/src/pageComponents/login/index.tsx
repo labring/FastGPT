@@ -21,7 +21,7 @@ import LoginGuideLink from './LoginForm/LoginGuideLink';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
-/** 登录容器先完成自动跳转判断，再暴露可见页面，避免方式选择页短暂闪现。 */
+/** 登录容器也被 SSR 聊天页复用，需等待路由和自动跳转判断，避免方式选择页短暂闪现。 */
 export const LoginContainer = ({
   children,
   onSuccess

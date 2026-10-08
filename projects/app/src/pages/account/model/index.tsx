@@ -13,7 +13,7 @@ const ModelProvider = () => {
   const router = useRouter();
 
   useEffect(() => {
-    if (!router.isReady || !initd || feConfigs.isPlus) return;
+    if (!initd || feConfigs.isPlus) return;
     void router.replace('/account/info');
   }, [feConfigs.isPlus, initd, router]);
 

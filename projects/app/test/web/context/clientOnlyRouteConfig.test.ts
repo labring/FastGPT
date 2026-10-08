@@ -20,8 +20,11 @@ describe('clientOnlyRouteConfig', () => {
     expect(isClientOnlyRoute('/dataset/list')).toBe(true);
     expect(isClientOnlyRoute('/dataset/detail')).toBe(true);
     expect(isClientOnlyRoute('/app/detail')).toBe(true);
+    expect(isClientOnlyRoute('/skill/detail')).toBe(true);
     expect(isClientOnlyRoute('/price')).toBe(true);
     expect(isClientOnlyRoute('/login')).toBe(true);
+    expect(isClientOnlyRoute('/login/provider')).toBe(true);
+    expect(isClientOnlyRoute('/login/fastlogin')).toBe(true);
     expect(isClientOnlyRoute('/')).toBe(true);
   });
 

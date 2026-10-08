@@ -21,7 +21,7 @@ export const useSystemConfigAutoOpen = ({
   const handledAppIdRef = useRef<string>();
 
   useEffect(() => {
-    if (!router.isReady || !appId || handledAppIdRef.current === appId) return;
+    if (!appId || handledAppIdRef.current === appId) return;
 
     const autoOpenQuery = router.query[SYSTEM_CONFIG_AUTO_OPEN_QUERY_KEY];
     const shouldOpenForNewApp = Array.isArray(autoOpenQuery)

@@ -136,6 +136,7 @@ export const useInitApp = () => {
   const hasInitedMarketingRef = useRef(false);
 
   useEffect(() => {
+    // 应用初始化同样用于 SSR 聊天页，归因仍需独立等待 query hydration。
     if (!router.isReady || hasInitedMarketingRef.current) return;
     hasInitedMarketingRef.current = true;
 
