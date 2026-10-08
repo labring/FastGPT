@@ -15,45 +15,9 @@ import {
   findOverridesNotAllowedByEdition,
   getServiceEdition
 } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
-import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { initSystemConfig } from '@/service/common/system';
 import { assertStorageDownloadConfig } from '@/service/common/system/assertStorageDownloadConfig';
-
-/**
- * 站点域保存前后同步 S3 头像资源生命周期。
- * navbarItems 与 favicon 的头像资源受 TTL 管控：
- * - 保留使用的头像需移除 TTL（避免被自动回收）
- * - 被替换或删除的头像需清理（避免存储泄漏）
- */
-const syncSiteAvatarLifecycle = async ({
-  previous,
-  next
-}: {
-  previous: { favicon?: string; navbarItems?: { avatar?: string }[] };
-  next: { favicon?: string; navbarItems?: { avatar?: string }[] };
-}) => {
-  const s3AvatarSource = getS3AvatarSource();
-
-  await s3AvatarSource.refreshAvatar(next.favicon, previous.favicon);
-
-  const previousAvatars = new Set(
-    (previous.navbarItems ?? []).map((item) => item.avatar).filter(Boolean) as string[]
-  );
-  const nextAvatars = new Set(
-    (next.navbarItems ?? []).map((item) => item.avatar).filter(Boolean) as string[]
-  );
-
-  for (const avatar of nextAvatars) {
-    if (!previousAvatars.has(avatar)) {
-      await s3AvatarSource.removeAvatarTTL(avatar);
-    }
-  }
-  for (const avatar of previousAvatars) {
-    if (!nextAvatars.has(avatar)) {
-      await s3AvatarSource.deleteAvatar(avatar);
-    }
-  }
-};
+import { syncSiteAvatarLifecycle } from '@/service/common/system/syncSiteAvatarLifecycle';
 
 /**
  * Admin API - 保存并更新单个 Domain 的稀疏覆盖配置
