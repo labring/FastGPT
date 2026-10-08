@@ -5,7 +5,7 @@ import React, { useMemo } from 'react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { Box, Flex, Grid, Text } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dynamic from 'next/dynamic';
 import Markdown from '@/components/Markdown';
@@ -27,7 +27,7 @@ const StandardPlanContentList = ({
   mode: `${SubModeEnum}`;
   standplan?: TeamPlanStandardType;
 }) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
 
   const { subPlans, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();

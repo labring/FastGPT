@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { Trans } from 'next-i18next';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
@@ -50,7 +50,7 @@ export const BillingModeSwitch = ({
   value: `${SubModeEnum}`;
   onChange: (mode: `${SubModeEnum}`) => void;
 }) => {
-  const { t } = useClientTranslation('price');
+  const { t } = useSafeTranslation();
   const isYear = value === SubModeEnum.year;
 
   return (
@@ -153,7 +153,7 @@ const Standard = ({
   hideBillingToggle?: boolean;
   responsiveCardLayout?: boolean;
 }) => {
-  const { t, i18n } = useClientTranslation('price');
+  const { t, i18n } = useSafeTranslation();
   const { userInfo } = useUserStore();
   const isChinese = i18n.language.startsWith('zh');
 

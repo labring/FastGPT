@@ -1,6 +1,6 @@
 import type { I18nNsType } from './i18next';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { generatedLoaders } from './resourceLoaders.generated';
+import { generatedLoaders, generatedLanguageBundles } from './resourceLoaders.generated';
 import { I18N_NAMESPACES } from './constants';
 
 export type ResourceStatus = 'pending' | 'loaded' | 'failed';
@@ -68,30 +68,26 @@ export const loadLocaleResource = async (language: localeType, namespace: I18nNs
   }
 };
 
-/** 加载一个语言的完整 namespace 集合，并将状态同步到既有的 language + namespace 记录。 */
+/** 加载一个语言的完整 namespace 集合（通过单个聚合 bundle chunk 一次性下载）。 */
 export const loadLanguageBundle = async (language: localeType) => {
   const existingPending = pendingLanguageBundles.get(language);
   if (existingPending) return existingPending;
 
-  const loaders = generatedLoaders[language];
-  if (!loaders) throw new Error(`Missing i18n language bundle loader: ${language}`);
+  const bundleLoader = generatedLanguageBundles[language];
+  if (!bundleLoader) throw new Error(`Missing i18n language bundle loader: ${language}`);
 
   LANGUAGE_BUNDLE_NAMESPACES.forEach((namespace) => {
     resourceStatus.set(getResourceKey(language, namespace), 'pending');
   });
 
   const loading = Promise.resolve()
-    .then(() => {
+    .then(async () => {
       const simulatedNamespace = LANGUAGE_BUNDLE_NAMESPACES.find(shouldSimulateLoadError);
       if (simulatedNamespace) {
         throw new Error(`Simulated i18n resource load failure: ${language}/${simulatedNamespace}`);
       }
-      return Promise.all(
-        LANGUAGE_BUNDLE_NAMESPACES.map(async (namespace) => {
-          const resource = (await loaders[namespace]()).default;
-          return [namespace, resource] as const;
-        })
-      ).then((resources) => Object.fromEntries(resources) as LanguageBundle);
+      const bundle = (await bundleLoader()).default as LanguageBundle;
+      return bundle;
     })
     .then((bundle) => {
       LANGUAGE_BUNDLE_NAMESPACES.forEach((namespace) => {

@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import { packageBillTypes, billTypeMap } from '@fastgpt/global/support/wallet/bill/constants';
 import type { GetBillListQueryType } from '@fastgpt/global/openapi/support/wallet/bill/api';
 import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import ApplyInvoiceModal from '@/pageComponents/account/bill/ApplyInvoiceModal';
 import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
@@ -22,7 +22,7 @@ const BillTable = dynamic(() => import('@/pageComponents/account/bill/BillTable'
 const InvoiceHeaderForm = dynamic(() => import('@/pageComponents/account/bill/InvoiceHeaderForm'));
 const InvoiceTable = dynamic(() => import('@/pageComponents/account/bill/InvoiceTable'));
 const BillAndInvoice = () => {
-  const { t } = useClientTranslation(['account_bill', 'account']);
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { invoiceTab = InvoiceTabEnum.bill } = router.query as { invoiceTab: `${InvoiceTabEnum}` };
 

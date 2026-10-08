@@ -7,7 +7,7 @@ import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
 import { addDays } from 'date-fns';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -37,7 +37,7 @@ export enum UsageTabEnum {
 }
 
 const UsageTable = () => {
-  const { t } = useClientTranslation(['account_usage', 'account']);
+  const { t } = useSafeTranslation();
   const labels = useCommonFilterLabels();
   const { userInfo } = useUserStore();
   const router = useRouter();

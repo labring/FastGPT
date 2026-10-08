@@ -1,8 +1,12 @@
-import type { ReactElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { JSDOM } from 'jsdom';
+import React, { act, type ComponentType } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import ClientRouteReadyGate from '@/web/context/ClientRouteReadyGate';
 
 const mocks = vi.hoisted(() => ({
   router: {
+    isReady: true,
     query: {} as Record<string, string>,
     asPath: '/login/provider?state=oauth-state',
     pathname: '/login/provider',
@@ -18,7 +22,8 @@ const mocks = vi.hoisted(() => ({
         flow?: string;
       }
     | undefined,
-  effects: [] as Array<() => void>,
+  initd: true,
+  loginSuccess: undefined as ((result: unknown) => Promise<void>) | undefined,
   resolveLoginRedirect: vi.fn(),
   setUserInfo: vi.fn(),
   setLoginStore: vi.fn(),
@@ -27,13 +32,11 @@ const mocks = vi.hoisted(() => ({
   resetUserModelCatalogAfterLogin: vi.fn()
 }));
 
-vi.mock('react', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('react')>()),
-  useCallback: <T>(callback: T) => callback,
-  useEffect: (effect: () => void) => {
-    mocks.effects.push(effect);
-  },
-  useRef: <T>(value?: T) => ({ current: value })
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en' }
+  })
 }));
 
 vi.mock('next/router', () => ({
@@ -45,7 +48,10 @@ vi.mock('ahooks', () => ({
 }));
 
 vi.mock('@/pageComponents/login/LoginModal', () => ({
-  default: 'login-modal'
+  default: ({ onSuccess }: { onSuccess: (result: unknown) => Promise<void> }) => {
+    mocks.loginSuccess = onSuccess;
+    return null;
+  }
 }));
 
 vi.mock('@/web/common/i18n/utils', () => ({
@@ -62,7 +68,7 @@ vi.mock('@/web/support/user/useUserStore', () => ({
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
   useSystemStore: () => ({
-    initd: true,
+    initd: mocks.initd,
     loginStore: mocks.loginStore,
     setLoginStore: mocks.setLoginStore
   })
@@ -108,7 +114,7 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({
 }));
 
 vi.mock('@fastgpt/web/components/common/MyLoading', () => ({
-  default: 'loading'
+  default: () => null
 }));
 
 vi.mock('next-i18next', () => ({
@@ -158,14 +164,41 @@ const user = {
 const invitationRoute = '/account/team?invitelinkid=invite-1';
 
 describe('login page invitation redirects', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  const render = async (Component: ComponentType = Provider) => {
+    await act(async () =>
+      root.render(
+        React.createElement(ClientRouteReadyGate, { enabled: true }, React.createElement(Component))
+      )
+    );
+  };
+
   beforeEach(() => {
+    const dom = new JSDOM('<!doctype html><html><body></body></html>');
+    vi.stubGlobal('window', dom.window);
+    vi.stubGlobal('document', dom.window.document);
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     vi.clearAllMocks();
-    mocks.effects.length = 0;
+    mocks.router.isReady = true;
     mocks.router.query = {};
     mocks.router.asPath = '/login/provider?state=oauth-state';
     mocks.loginStore = undefined;
+    mocks.initd = true;
+    mocks.loginSuccess = undefined;
+    mocks.oauthLogin.mockResolvedValue({ user });
     mocks.resolveLoginRedirect.mockResolvedValue(invitationRoute);
     vi.stubGlobal('location', { origin: 'https://fastgpt.example.com' });
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    window.close();
+    vi.unstubAllGlobals();
   });
 
   it('keeps the invitation fallback in regular login', async () => {
@@ -174,10 +207,8 @@ describe('login page invitation redirects', () => {
       lastTmbId: 'tmb-a'
     };
 
-    const page = Login() as ReactElement<{
-      onSuccess: (result: { user: typeof user }) => Promise<void>;
-    }>;
-    await page.props.onSuccess({ user });
+    await render(Login);
+    await act(async () => mocks.loginSuccess!({ user }));
 
     expect(mocks.resolveLoginRedirect).toHaveBeenCalledWith({
       user,
@@ -197,9 +228,7 @@ describe('login page invitation redirects', () => {
     mocks.router.query = { state: 'oauth-state', code: 'oauth-code' };
     mocks.oauthLogin.mockResolvedValue({ user });
 
-    Provider();
-    expect(mocks.effects).toHaveLength(1);
-    mocks.effects[0]();
+    await render();
 
     await vi.waitFor(() => {
       expect(mocks.resolveLoginRedirect).toHaveBeenCalledWith({
@@ -209,5 +238,46 @@ describe('login page invitation redirects', () => {
       });
       expect(mocks.router.replace).toHaveBeenCalledWith(invitationRoute);
     });
+  });
+
+  it('waits for the CSR route gate before executing the hydrated OAuth callback', async () => {
+    mocks.loginStore = {
+      provider: 'sso',
+      lastRoute: invitationRoute,
+      lastTmbId: 'tmb-a',
+      state: 'oauth-state'
+    };
+    mocks.router.isReady = false;
+    mocks.router.query = {};
+
+    await render();
+
+    expect(mocks.oauthLogin).not.toHaveBeenCalled();
+    expect(mocks.router.replace).not.toHaveBeenCalled();
+    expect(mocks.setLoginStore).not.toHaveBeenCalled();
+    expect(mocks.clearToken).not.toHaveBeenCalled();
+
+    mocks.router.query = { state: 'oauth-state', code: 'oauth-code' };
+    mocks.router.isReady = true;
+    await render();
+
+    expect(mocks.oauthLogin).toHaveBeenCalledOnce();
+    expect(mocks.router.replace).toHaveBeenCalledWith(invitationRoute);
+  });
+
+  it('continues waiting for system initialization after the CSR route is ready', async () => {
+    mocks.initd = false;
+    mocks.loginStore = {
+      provider: 'sso',
+      lastRoute: invitationRoute,
+      state: 'oauth-state'
+    };
+    mocks.router.query = { state: 'oauth-state', code: 'oauth-code' };
+    await render();
+    expect(mocks.oauthLogin).not.toHaveBeenCalled();
+
+    mocks.initd = true;
+    await render();
+    expect(mocks.oauthLogin).toHaveBeenCalledOnce();
   });
 });

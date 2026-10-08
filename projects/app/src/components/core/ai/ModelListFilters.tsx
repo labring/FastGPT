@@ -4,7 +4,7 @@ import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { SingleSelectFilter } from '@fastgpt/web/components/common/TagFilter';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useMemo } from 'react';
 
 type ModelListFiltersProps = {
@@ -34,7 +34,7 @@ const ModelListFilters = ({
   onSearchChange,
   px
 }: ModelListFiltersProps) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
 
   const providerOptions = useMemo(() => {
     const availableProviderIdSet = new Set(models.map((model) => model.provider));

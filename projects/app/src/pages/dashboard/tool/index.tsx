@@ -1,8 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
-import { serviceSideProps } from '@/web/common/i18n/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
@@ -40,7 +39,7 @@ const EditFolderModal = dynamic(
 );
 
 const MyTools = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
   const {
@@ -295,11 +294,3 @@ function ContextRender() {
 }
 
 export default ContextRender;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['app', 'user']))
-    }
-  };
-}

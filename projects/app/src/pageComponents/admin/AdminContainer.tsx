@@ -203,7 +203,7 @@ const AdminContainer = ({
 
   // 非 root 访问管理员区域时重定向回个人中心
   useEffect(() => {
-    if (!router.isReady || !initd || !userInfo || isRoot) return;
+    if (!initd || !userInfo || isRoot) return;
     void router.replace('/account/info');
   }, [initd, isRoot, router, userInfo]);
 

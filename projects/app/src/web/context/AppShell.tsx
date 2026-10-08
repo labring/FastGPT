@@ -4,9 +4,9 @@ import Layout from '@/components/Layout';
 import QueryClientContext from '@/web/context/QueryClient';
 import ChakraUIContext from '@/web/context/ChakraUI';
 import { useInitApp } from '@/web/context/useInitApp';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import NextHead from '@/components/common/NextHead';
-import { type ReactElement, type ReactNode, useEffect } from 'react';
+import React, { type ReactElement, type ReactNode, useEffect } from 'react';
 import { type NextPage } from 'next';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
@@ -16,6 +16,8 @@ import { appClientEnv } from '@/web/common/system/env';
 import ClientI18nBoundary from '@fastgpt/web/i18n/ClientI18nBoundary';
 import ClientI18nGate from '@fastgpt/web/i18n/ClientI18nGate';
 import { LANG_KEY } from '@fastgpt/web/i18n/utils';
+import ClientRouteReadyGate from './ClientRouteReadyGate';
+import { useTranslation } from 'next-i18next';
 
 type NextPageWithLayout = NextPage & {
   setLayout?: (page: ReactElement) => JSX.Element;
@@ -33,7 +35,7 @@ const routesWithoutLayout = openAPIReferenceRoutes;
 /** 渲染依赖 common 翻译资源的 Head、应用初始化、Layout 和页面内容。 */
 const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) => {
   const { feConfigs, scripts, title } = useInitApp();
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
 
   useEffect(() => {
     document.addEventListener(
@@ -76,7 +78,8 @@ const AppContent = ({ Component, pageProps, renderPage }: AppPropsWithLayout) =>
 
 /** 完整语言包就绪后再挂载 client-only 应用，避免页面内出现 key 或二次骨架切换。 */
 const ClientI18nRoot = ({ children }: { children: ReactNode }) => {
-  const { i18n } = useTranslation();
+  // 外层也只订阅语言，避免在门禁开放前自动加载默认 namespace。
+  const { i18n } = useTranslation([]);
 
   return (
     <ClientI18nGate defaultLanguage="en" storageKey={LANG_KEY} fallback={null}>
@@ -95,7 +98,9 @@ const AppShell = (props: AppPropsWithLayout) => {
     <QueryClientContext>
       <SystemStoreContextProvider waitForReady={props.clientOnly}>
         <ChakraUIContext>
-          {props.clientOnly ? <ClientI18nRoot>{content}</ClientI18nRoot> : content}
+          <ClientRouteReadyGate enabled={props.clientOnly ?? false}>
+            {props.clientOnly ? <ClientI18nRoot>{content}</ClientI18nRoot> : content}
+          </ClientRouteReadyGate>
         </ChakraUIContext>
       </SystemStoreContextProvider>
     </QueryClientContext>

@@ -24,6 +24,14 @@ describe('marketing utils', () => {
     vi.stubGlobal('document', { referrer: '' });
   });
 
+  it('falls back to document.referrer when no sourceDomain is provided', () => {
+    vi.stubGlobal('document', { referrer: 'https://campaign.example.com' });
+
+    initFastGPTSemSourceDomain();
+
+    expect(getFastGPTSem()?.sourceDomain).toBe('https://campaign.example.com');
+  });
+
   it('should lock sourceDomain after the first init even when source is empty', () => {
     initFastGPTSemSourceDomain();
     vi.stubGlobal('document', { referrer: 'https://redirect.example.com' });

@@ -9,9 +9,8 @@ import { authorizePasswordChange } from '@/web/support/user/account/password/api
 import { usePasswordChangeStore } from '@/web/support/user/account/password/store';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useTranslation } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import {
   AccountExternalVerificationMethodSchema,
@@ -31,7 +30,7 @@ import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { resetUserModelCatalogAfterLogin } from '@/web/core/ai/model/useUserModelStore';
 
 const provider = () => {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useSafeTranslation();
   const { initd, loginStore, setLoginStore } = useSystemStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
@@ -193,6 +192,8 @@ const provider = () => {
   );
 
   useEffect(() => {
+    if (!initd) return;
+
     if (error) {
       toast({
         status:
@@ -210,7 +211,11 @@ const provider = () => {
       return;
     }
 
-    if (!props || !initd) return;
+    const hasCallbackParams = Boolean(state || Object.keys(props).length > 0);
+    if (!hasCallbackParams) {
+      router.replace(errorRedirectPage);
+      return;
+    }
 
     const callbackKey = router.asPath;
     if (handledCallbackRef.current === callbackKey) return;
@@ -248,11 +253,3 @@ const provider = () => {
 };
 
 export default provider;
-
-export async function getServerSideProps(context: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(context, ['login', 'account_info']))
-    }
-  };
-}

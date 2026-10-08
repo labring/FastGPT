@@ -27,14 +27,14 @@ import Tag from '@fastgpt/web/components/common/Tag';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { format } from 'date-fns/format';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
 import { useCallback } from 'react';
 
 const CreateInvitationModal = dynamic(() => import('./CreateInvitationModal'));
 
 const InviteModal = ({ onClose }: { onClose: () => void }) => {
-  const { t } = useClientTranslation('account_team');
+  const { t } = useSafeTranslation();
 
   const {
     data: invitationLinkList,

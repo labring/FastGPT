@@ -16,7 +16,7 @@ import type { RoleListType, RoleValueType } from '@fastgpt/global/support/permis
 import { useContextSelector } from 'use-context-selector';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { CollaboratorContext } from './context';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { ManageRoleVal } from '@fastgpt/global/support/permission/constant';
 
@@ -103,7 +103,7 @@ function RoleSelect({
   onDelete,
   disabled
 }: PermissionSelectProps) {
-  const { t } = useClientTranslation(['user']);
+  const { t } = useSafeTranslation();
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<NodeJS.Timeout>();
 

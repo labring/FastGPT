@@ -21,7 +21,7 @@ import LoginGuideLink from './LoginForm/LoginGuideLink';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
-/** 登录容器先完成自动跳转判断，再暴露可见页面，避免方式选择页短暂闪现。 */
+/** 等待系统配置和自动登录结果，避免方式选择页在自动跳转前短暂闪现。 */
 export const LoginContainer = ({
   children,
   onSuccess
@@ -74,9 +74,7 @@ export const LoginContainer = ({
   );
   const pageType =
     selectedPageType ??
-    (initd && router.isReady && (!autoLoginMethod || autoLoginFailed)
-      ? initialPageType
-      : undefined);
+    (initd && (!autoLoginMethod || autoLoginFailed) ? initialPageType : undefined);
 
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -90,13 +88,13 @@ export const LoginContainer = ({
   }, [feConfigs?.oauth?.wechat, resetChatCache]);
 
   useEffect(() => {
-    if (!initd || !router.isReady || initializedRef.current) return;
+    if (!initd || initializedRef.current) return;
     initializedRef.current = true;
 
     if (autoLoginMethod) {
       void startLogin(autoLoginMethod).catch(() => setAutoLoginFailed(true));
     }
-  }, [autoLoginMethod, initd, router.isReady, startLogin]);
+  }, [autoLoginMethod, initd, startLogin]);
 
   return (
     <>

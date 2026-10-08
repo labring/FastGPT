@@ -1,13 +1,13 @@
 import { ModalBody, Box, Input, Button, ModalFooter, Grid } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateCustomDomainVerifyFile } from '@/web/support/customDomain/api';
 import { useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 function domainVerifyModal({ onClose, domain }: { onClose: () => void; domain: string }) {
-  const { t } = useClientTranslation('account_custom_domain');
+  const { t } = useSafeTranslation();
   const { watch, handleSubmit, register } = useForm({
     defaultValues: {
       path: '',

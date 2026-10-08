@@ -4,7 +4,6 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import AppSelect from '@/components/Select/AppSelect';
 import FileSelector, { type SelectFileItemType } from '@/components/Select/FileSelectorBox';
 import { fileDownload } from '@/web/common/file/utils';
-import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDefault } from '@/web/core/ai/model/useModelDefault';
 import { getAppDetailById } from '@/web/core/app/api';
@@ -23,7 +22,8 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { Trans, useTranslation } from 'next-i18next';
+import { Trans } from 'next-i18next';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -37,7 +37,7 @@ type EvaluationFormType = {
 };
 
 const EvaluationCreating = () => {
-  const { t } = useTranslation();
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -365,11 +365,3 @@ const EvaluationCreating = () => {
 };
 
 export default EvaluationCreating;
-
-export async function getServerSideProps(content: any) {
-  return {
-    props: {
-      ...(await serviceSideProps(content, ['dashboard_evaluation', 'file']))
-    }
-  };
-}

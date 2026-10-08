@@ -14,7 +14,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import dynamic from 'next/dynamic';
 import { providerMap, customDomainStatusMap } from '@/web/support/customDomain/const';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -42,7 +42,7 @@ const CreateCustomDomainModal = dynamic(
 // );
 
 const CustomDomain = () => {
-  const { t } = useClientTranslation(['account_custom_domain']);
+  const { t } = useSafeTranslation();
   const router = useRouter();
   const { teamPlanStatus } = useUserStore();
 

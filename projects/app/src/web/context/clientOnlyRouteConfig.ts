@@ -1,12 +1,10 @@
-const standaloneClientOnlyRoutes = new Set(['/dashboard/tool/marketplace', '/price']);
+// Both chat entry points read app-specific playground configuration on the server.
+// Keep them SSR-enabled; pages without an equivalent SSR dependency remain client-only.
+const ssrRoutes = new Set(['/chat', '/chat/share']);
 
-const clientOnlyRouteExceptions = new Set(['/account/cancel']);
-
-/** 集中识别无需 SSR 的页面；i18n 资源不再按路由声明。 */
+/** 集中识别无需 SSR 的页面；依赖服务端配置的聊天页面保留 SSR，其余页面默认 client-only。 */
 export const isClientOnlyRoute = (pathname: string) => {
-  if (standaloneClientOnlyRoutes.has(pathname)) return true;
-  if (clientOnlyRouteExceptions.has(pathname)) return false;
-  return (
-    pathname.startsWith('/account/') || pathname === '/admin' || pathname.startsWith('/admin/')
-  );
+  if (!pathname) return true;
+  if (ssrRoutes.has(pathname)) return false;
+  return true;
 };

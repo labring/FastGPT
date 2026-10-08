@@ -29,8 +29,8 @@ vi.mock('@fastgpt/web/hooks/useToast', () => ({
   useToast: () => ({ toast: mocks.toast })
 }));
 
-vi.mock('@fastgpt/web/i18n/useClientTranslation', () => ({
-  useClientTranslation: () => ({ t: mocks.translate })
+vi.mock('@fastgpt/web/hooks/useSafeTranslation', () => ({
+  useSafeTranslation: () => ({ t: mocks.translate })
 }));
 
 import { useModelChannelTest } from '@/pageComponents/model/useModelChannelTest';
