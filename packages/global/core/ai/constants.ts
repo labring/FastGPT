@@ -73,8 +73,8 @@ export const defaultSTTModels: STTSystemModelDataType[] = [
   {
     type: ModelTypeEnum.stt,
     provider: 'OpenAI',
-    model: 'whisper-1',
-    name: 'whisper-1',
+    model: 'gpt-transcribe',
+    name: 'gpt-transcribe',
     modelId: '',
     scope: ModelScopeEnum.system,
     charsPointsPrice: 0,
