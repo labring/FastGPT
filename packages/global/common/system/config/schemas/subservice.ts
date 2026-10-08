@@ -1,4 +1,5 @@
 import z from 'zod';
+import { SANDBOX_VOLUME_NAME_RE } from '../../../../core/ai/sandbox/volume';
 import {
   nonNegativeInteger,
   positiveInteger,
@@ -77,7 +78,18 @@ const AgentSandboxSubserviceConfigSchema = z.strictObject({
       useServerProxy: z.boolean().default(true),
       volumeManagerUrl: urlWithDefault(),
       volumeManagerToken: textWithDefault(),
-      volumeNamePrefix: z.string().min(1).max(100).default('fastgpt-session')
+      // 与 env 侧 SandboxVolumeNameSchema 对齐：前缀会拼进 PVC/named volume 名，
+      // 必须满足 DNS label 子集，否则运行时 createSessionVolumeName 的 parse 会抛错。
+      // 保留 max(100)：前缀 + sandboxId 需容纳在 253 字符的 DNS label 内。
+      volumeNamePrefix: z
+        .string()
+        .trim()
+        .min(1)
+        .max(100)
+        .regex(SANDBOX_VOLUME_NAME_RE, {
+          message: 'Volume name prefix must use lowercase alphanumeric characters and hyphens'
+        })
+        .default('fastgpt-session')
     })
     .prefault({
       baseUrl: '',

@@ -322,3 +322,26 @@ describe('systemInstanceConfigRegistry', () => {
     }
   });
 });
+
+describe('agentSandbox.opensandbox.volumeNamePrefix validation', () => {
+  const withPrefix = (volumeNamePrefix: string) => ({
+    agentSandbox: { opensandbox: { volumeNamePrefix } }
+  });
+
+  it('accepts a DNS-label-safe prefix', () => {
+    const config = resolveDomainEffectiveConfig('subservice', withPrefix('fastgpt-session'));
+    expect(config.agentSandbox.opensandbox.volumeNamePrefix).toBe('fastgpt-session');
+  });
+
+  it('rejects prefixes with uppercase, underscore, or dot (must match runtime volume name rules)', () => {
+    // 运行时 createSessionVolumeName 会对 `${prefix}-${id}` 做 DNS label 校验，
+    // 管理端必须提前拒绝非法前缀，否则保存成功但沙箱启动才报错。
+    expect(() => resolveDomainEffectiveConfig('subservice', withPrefix('FastGPT'))).toThrow();
+    expect(() => resolveDomainEffectiveConfig('subservice', withPrefix('fast_gpt'))).toThrow();
+    expect(() => resolveDomainEffectiveConfig('subservice', withPrefix('fast.gpt'))).toThrow();
+  });
+
+  it('rejects a prefix that does not end with an alphanumeric character', () => {
+    expect(() => resolveDomainEffectiveConfig('subservice', withPrefix('fastgpt-'))).toThrow();
+  });
+});
