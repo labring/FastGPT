@@ -236,6 +236,64 @@ describe('pagination.ts', () => {
       expect(typeof result.offset).toBe('number');
     });
 
+    it('应该优先使用 offset 而不是 pageNum（即使 offset 为 0）', () => {
+      const req = {
+        body: {
+          pageSize: 10,
+          pageNum: 5,
+          offset: 0
+        },
+        query: {}
+      } as any;
+
+      const result = parsePaginationRequest(req);
+
+      expect(result).toEqual({
+        pageSize: 10,
+        offset: 0
+      });
+    });
+
+    it('应该优先使用 query 中的 offset: 0 而不是 pageNum', () => {
+      const req = {
+        body: {},
+        query: {
+          pageSize: '10',
+          pageNum: '5',
+          offset: '0'
+        }
+      } as any;
+
+      const result = parsePaginationRequest(req);
+
+      expect(result).toEqual({
+        pageSize: 10,
+        offset: 0
+      });
+    });
+
+    it('应该安全兼容 body 或 query 为 undefined/null 的请求', () => {
+      expect(
+        parsePaginationRequest({
+          body: null,
+          query: { offset: '10' }
+        } as unknown as NodeApiRequest)
+      ).toEqual({
+        pageSize: 10,
+        offset: 10
+      });
+
+      expect(
+        parsePaginationRequest({
+          body: { offset: 10 },
+          query: undefined
+        } as unknown as NodeApiRequest)
+      ).toEqual({
+        pageSize: 10,
+        offset: 10
+      });
+    });
+
     it('应该优先使用 offset 而不是 pageNum（当两者都存在时）', () => {
       const req = {
         body: {
