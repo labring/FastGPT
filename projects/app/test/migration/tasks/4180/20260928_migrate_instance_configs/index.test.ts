@@ -30,10 +30,12 @@ describe('migrateInstanceConfigs', () => {
     vi.clearAllMocks();
   });
 
-  it('skips writes when all target domains already exist (idempotent)', async () => {
+  it('skips writes when all target domains already exist with no missing field (idempotent)', async () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 5,
       missingDomainCount: 0,
+      pendingBackfillDomainCount: 0,
+      pendingBackfillPaths: [],
       hasLegacyConfig: true,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
@@ -44,7 +46,7 @@ describe('migrateInstanceConfigs', () => {
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 0, skipped: true });
+    expect(result).toEqual({ migratedDomainCount: 0, backfilledDomainCount: 0, skipped: true });
     // 已初始化时绝不写入，避免覆盖管理员配置
     expect(mocks.applyInstanceConfigMigration).not.toHaveBeenCalled();
     expect(context.logger.info).toHaveBeenCalled();
@@ -57,10 +59,45 @@ describe('migrateInstanceConfigs', () => {
     expect(succeededKeys).toEqual(expect.arrayContaining(['inspect', 'migrate', 'validate']));
   });
 
+  it('does not skip when existing domains still miss fields (field-level backfill)', async () => {
+    // 域已齐全但字段缺失：客户已配置的环境变量还没进库，必须继续回填而不是整体跳过
+    mocks.inspectInstanceConfigMigration.mockResolvedValue({
+      existingDomainCount: 2,
+      missingDomainCount: 0,
+      pendingBackfillDomainCount: 1,
+      pendingBackfillPaths: ['site.customApiDomain'],
+      hasLegacyConfig: true,
+      hasLegacyProConfig: true,
+      envRehomedWarnings: [],
+      schemaSanitizedWarnings: [],
+      overrides: { site: { customApiDomain: 'https://api.example.com' } }
+    });
+    mocks.applyInstanceConfigMigration.mockResolvedValue({
+      domains: ['site'],
+      migratedCount: 1,
+      createdDomains: [],
+      backfilledDomains: ['site'],
+      backfilledPaths: ['site.customApiDomain']
+    });
+
+    const context = createContext();
+    const result = await migrateInstanceConfigs(context);
+
+    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 1, skipped: false });
+    expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
+    // 补写的字段要落在日志里，便于排查某个值为什么变成这个
+    expect(context.logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('backfilled'),
+      expect.objectContaining({ backfilledPaths: ['site.customApiDomain'] })
+    );
+  });
+
   it('logs warnings for fields re-homed to environment variables', async () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 0,
       missingDomainCount: 1,
+      pendingBackfillDomainCount: 0,
+      pendingBackfillPaths: [],
       hasLegacyConfig: true,
       hasLegacyProConfig: false,
       envRehomedWarnings: ['customApiDomain -> 请配置环境变量 CUSTOM_API_DOMAIN'],
@@ -69,7 +106,10 @@ describe('migrateInstanceConfigs', () => {
     });
     mocks.applyInstanceConfigMigration.mockResolvedValue({
       domains: ['site'],
-      migratedCount: 1
+      migratedCount: 1,
+      createdDomains: ['site'],
+      backfilledDomains: [],
+      backfilledPaths: []
     });
 
     const context = createContext();
@@ -82,6 +122,8 @@ describe('migrateInstanceConfigs', () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 0,
       missingDomainCount: 2,
+      pendingBackfillDomainCount: 0,
+      pendingBackfillPaths: [],
       hasLegacyConfig: true,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
@@ -90,13 +132,16 @@ describe('migrateInstanceConfigs', () => {
     });
     mocks.applyInstanceConfigMigration.mockResolvedValue({
       domains: ['site', 'auth'],
-      migratedCount: 2
+      migratedCount: 2,
+      createdDomains: ['site', 'auth'],
+      backfilledDomains: [],
+      backfilledPaths: []
     });
 
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 2, skipped: false });
+    expect(result).toEqual({ migratedDomainCount: 2, backfilledDomainCount: 0, skipped: false });
     expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
 
     // 三个声明阶段都应被标记为成功
@@ -115,6 +160,8 @@ describe('migrateInstanceConfigs', () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 1,
       missingDomainCount: 1,
+      pendingBackfillDomainCount: 0,
+      pendingBackfillPaths: [],
       hasLegacyConfig: true,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
@@ -123,13 +170,16 @@ describe('migrateInstanceConfigs', () => {
     });
     mocks.applyInstanceConfigMigration.mockResolvedValue({
       domains: ['auth'],
-      migratedCount: 1
+      migratedCount: 1,
+      createdDomains: ['auth'],
+      backfilledDomains: [],
+      backfilledPaths: []
     });
 
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 1, skipped: false });
+    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 0, skipped: false });
     expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
   });
 
@@ -137,6 +187,8 @@ describe('migrateInstanceConfigs', () => {
     mocks.inspectInstanceConfigMigration.mockResolvedValue({
       existingDomainCount: 0,
       missingDomainCount: 1,
+      pendingBackfillDomainCount: 0,
+      pendingBackfillPaths: [],
       hasLegacyConfig: false,
       hasLegacyProConfig: true,
       envRehomedWarnings: [],
@@ -145,13 +197,16 @@ describe('migrateInstanceConfigs', () => {
     });
     mocks.applyInstanceConfigMigration.mockResolvedValue({
       domains: ['auth'],
-      migratedCount: 1
+      migratedCount: 1,
+      createdDomains: ['auth'],
+      backfilledDomains: [],
+      backfilledPaths: []
     });
 
     const context = createContext();
     const result = await migrateInstanceConfigs(context);
 
-    expect(result).toEqual({ migratedDomainCount: 1, skipped: false });
+    expect(result).toEqual({ migratedDomainCount: 1, backfilledDomainCount: 0, skipped: false });
     expect(mocks.applyInstanceConfigMigration).toHaveBeenCalledTimes(1);
   });
 });
