@@ -65,6 +65,10 @@ export const isWorkflowShortcutInputtingTarget = (target?: EventTarget | Node | 
   return isEditableElement(selection.anchorNode) || isEditableElement(selection.focusNode);
 };
 
+/** 粘贴完成后生成 ReactFlow 本地选中变更；选中态不进入 Runtime 文档。 */
+export const getPasteSelectionChanges = (nodeIds: readonly string[]) =>
+  nodeIds.map((id) => ({ type: 'select' as const, id, selected: true }));
+
 /** 撤销重做快捷键只需要修饰键与主键，不依赖完整 KeyboardEvent，便于单测。 */
 export type WorkflowHistoryShortcutEvent = Pick<
   KeyboardEvent,

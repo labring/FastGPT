@@ -34,6 +34,7 @@ import { AssignedAnswerModule } from '@fastgpt/global/core/workflow/template/sys
 import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/index';
 import { ContextExtractModule } from '@fastgpt/global/core/workflow/template/system/contextExtract/index';
 import { DatasetConcatModule } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
+import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { WorkflowStart } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
@@ -125,6 +126,17 @@ const setValue = (
   value: unknown
 ) => {
   inputOf(canonical, nodeId, key).value = value as any;
+};
+
+const setManualValue = (
+  canonical: CanonicalWorkflowData,
+  nodeId: string,
+  key: string,
+  value: unknown
+) => {
+  const input = inputOf(canonical, nodeId, key);
+  input.selectedType = FlowNodeInputTypeEnum.textarea;
+  input.value = value as any;
 };
 
 /** 用同一份 canonical 文档 hydrate runtime，只读 Issue View。 */
@@ -401,6 +413,15 @@ const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
   'code:tool_no_permission': { nodes: ['http|tool_no_permission|'], config: [] },
   'code:tool_missing': { nodes: ['http|tool_missing|'], config: [] },
   'code:tool_load_failed': { nodes: ['http|tool_load_failed|'], config: [] },
+  'code:resource_state': {
+    nodes: [
+      `agent|resource_missing|${NodeInputKeyEnum.datasetParams}`,
+      'agent|resource_missing|skills',
+      'agent|resource_no_permission|datasets'
+    ],
+    config: []
+  },
+  'code:dataset_model_requires_selection': { nodes: [], config: [] },
   'code:model_required': {
     nodes: ['chat|model_required|modelId', 'chat|required_input_empty|userChatInput'],
     config: []
@@ -443,6 +464,11 @@ const EXPECTED_ISSUES: Record<string, { nodes: string[]; config: string[] }> = {
   },
   'code:dataset_concat': {
     nodes: ['concat|required_input_empty|system_datasetQuoteList'],
+    config: []
+  },
+  'code:dataset_valid': { nodes: [], config: [] },
+  'code:dataset_model_unavailable': {
+    nodes: ['dataset|model_unavailable|rerankModelId'],
     config: []
   },
   'code:model_unavailable_short': {
@@ -752,6 +778,58 @@ const codeFixtures: Fixture[] = [
     expectCodes: [WorkflowIssueCode.toolLoadFailed]
   },
   {
+    name: 'code:resource_state',
+    nodes: [startNode(), named(AgentNode, 'agent')],
+    edges: [edge('start', 'agent', 0)],
+    mutate: (canonical) => {
+      setValue(canonical, 'agent', NodeInputKeyEnum.aiModelId, 'llm-1');
+      setValue(canonical, 'agent', NodeInputKeyEnum.userChatInput, [
+        'start',
+        NodeOutputKeyEnum.userChatInput
+      ]);
+      setValue(canonical, 'agent', NodeInputKeyEnum.datasetSelectList, [
+        { datasetId: 'denied', error: 'resource_no_permission' }
+      ]);
+      setValue(canonical, 'agent', NodeInputKeyEnum.skills, [
+        { skillId: 'missing', error: 'resource_missing' }
+      ]);
+      nodeOf(canonical, 'agent').inputs.push({
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: {
+          datasets: [{ datasetId: 'missing', error: 'resource_missing' }]
+        }
+      } as any);
+    },
+    expectCodes: [WorkflowIssueCode.resourceMissing, WorkflowIssueCode.resourceNoPermission]
+  },
+  {
+    name: 'code:dataset_model_requires_selection',
+    nodes: [startNode(), named(AgentNode, 'agent')],
+    edges: [edge('start', 'agent', 0)],
+    mutate: (canonical) => {
+      setValue(canonical, 'agent', NodeInputKeyEnum.aiModelId, 'llm-1');
+      setValue(canonical, 'agent', NodeInputKeyEnum.userChatInput, [
+        'start',
+        NodeOutputKeyEnum.userChatInput
+      ]);
+      setValue(canonical, 'agent', NodeInputKeyEnum.datasetSelectList, []);
+      setValue(canonical, 'agent', NodeInputKeyEnum.datasetSearchUsingExtensionQuery, true);
+      setValue(canonical, 'agent', NodeInputKeyEnum.datasetSearchExtensionModelId, 'gone');
+      nodeOf(canonical, 'agent').inputs.push({
+        key: NodeInputKeyEnum.datasetParams,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        value: {
+          datasets: [],
+          [NodeInputKeyEnum.datasetSearchUsingReRank]: true,
+          [NodeInputKeyEnum.datasetSearchRerankModelId]: 'gone'
+        }
+      } as any);
+    }
+  },
+  {
     name: 'code:model_required',
     nodes: [startNode(), named(AiChatModule, 'chat')],
     edges: [edge('start', 'chat', 0)],
@@ -828,6 +906,31 @@ const codeFixtures: Fixture[] = [
     nodes: [startNode(), named(DatasetConcatModule, 'concat')],
     edges: [edge('start', 'concat', 0)],
     expectCodes: [WorkflowIssueCode.requiredInputEmpty]
+  },
+  {
+    name: 'code:dataset_valid',
+    nodes: [startNode(), named(DatasetSearchModule, 'dataset')],
+    edges: [edge('start', 'dataset', 0)],
+    mutate: (canonical) => {
+      setValue(canonical, 'dataset', NodeInputKeyEnum.datasetSelectList, [
+        { datasetId: 'valid-dataset', name: 'valid' }
+      ]);
+      setManualValue(canonical, 'dataset', NodeInputKeyEnum.datasetSearchInput, 'query');
+    }
+  },
+  {
+    name: 'code:dataset_model_unavailable',
+    nodes: [startNode(), named(DatasetSearchModule, 'dataset')],
+    edges: [edge('start', 'dataset', 0)],
+    mutate: (canonical) => {
+      setValue(canonical, 'dataset', NodeInputKeyEnum.datasetSelectList, [
+        { datasetId: 'valid-dataset', name: 'valid' }
+      ]);
+      setManualValue(canonical, 'dataset', NodeInputKeyEnum.datasetSearchInput, 'query');
+      setValue(canonical, 'dataset', NodeInputKeyEnum.datasetSearchUsingReRank, true);
+      setValue(canonical, 'dataset', NodeInputKeyEnum.datasetSearchRerankModelId, 'gone-rerank');
+    },
+    expectCodes: [WorkflowIssueCode.modelUnavailable]
   },
   {
     name: 'code:model_unavailable_short',

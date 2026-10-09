@@ -398,6 +398,94 @@ describe('workflow editor runtime modules', () => {
     ]);
   });
 
+  it('does not treat ordinary multiple-select values as references', () => {
+    const editor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'select',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Select',
+          inputs: [
+            {
+              key: 'sources',
+              label: 'Sources',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.multipleSelect,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.multipleSelect,
+              valueType: WorkflowIOValueTypeEnum.arrayString,
+              value: [],
+              list: [
+                { label: 'Alpha', value: 'alpha' },
+                { label: 'Beta', value: 'beta' }
+              ]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+    const query = { nodeId: 'select', fieldKey: 'sources' };
+
+    for (const value of [[], ['alpha'], ['alpha', 'beta']]) {
+      editor.dispatch({ type: 'updateField', ...query, value });
+      expect(editor.getField(query)?.references).toEqual([]);
+      expect(
+        editor.getNode('select')?.issues.filter((issue) => issue.code.includes('reference'))
+      ).toEqual([]);
+    }
+
+    const referenceEditor = createWorkflowEditor({
+      nodes: [
+        {
+          nodeId: 'source',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Source',
+          inputs: [],
+          outputs: [
+            {
+              id: 'text',
+              key: 'text',
+              type: FlowNodeOutputTypeEnum.source,
+              valueType: WorkflowIOValueTypeEnum.string
+            }
+          ]
+        },
+        {
+          nodeId: 'select',
+          flowNodeType: FlowNodeTypeEnum.textEditor,
+          name: 'Select',
+          inputs: [
+            {
+              key: 'sources',
+              label: 'Sources',
+              renderTypeList: [
+                FlowNodeInputTypeEnum.multipleSelect,
+                FlowNodeInputTypeEnum.reference
+              ],
+              selectedType: FlowNodeInputTypeEnum.reference,
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: [['source', 'text']]
+            }
+          ],
+          outputs: []
+        }
+      ],
+      edges: [],
+      chatConfig: {}
+    });
+    referenceEditor.dispatch({
+      type: 'connectEdge',
+      edge: { source: 'source', target: 'select', sourceHandle: 'source', targetHandle: 'target' }
+    });
+    expect(referenceEditor.getField(query)?.references.map((status) => status.code)).toEqual([
+      'valid'
+    ]);
+  });
+
   it('keeps structured and dynamic values on value-based reference checks', () => {
     const editor = createWorkflowEditor({
       nodes: [
@@ -591,7 +679,21 @@ describe('workflow editor runtime modules', () => {
 
   it('replaces the whole document as an exclusive transaction', () => {
     const editor = createRuntime();
-    const document = editor.getWorkflowData();
+    const document = {
+      ...editor.getWorkflowData(),
+      chatConfig: {
+        ...editor.getWorkflowData().chatConfig,
+        welcomeText: 'replacement',
+        variables: [
+          {
+            key: 'customerName',
+            label: 'Customer name',
+            type: 'input',
+            description: 'Name used by the workflow'
+          }
+        ]
+      }
+    };
     const mixed = editor.dispatch([
       { type: 'replaceDocument', document },
       { type: 'updateNode', nodeId: 'answer', patch: { name: 'Ignored' } }
@@ -602,6 +704,8 @@ describe('workflow editor runtime modules', () => {
     const result = editor.dispatch({ type: 'replaceDocument', document });
     expect(result.ok).toBe(true);
     expect(result.change?.kind).toBe('replace');
+    expect(result.change?.changedRecords.chatConfig).toBe(true);
+    expect(result.change?.changedRecords.chatConfigVariablesChanged).toBe(true);
     // 整文档替换是全量失效分支，必须发布结构失效，投影与引用闭包才会整体重算。
     expect(result.change?.affectedRecords.structure).toBe(true);
     expect(editor.getWorkflowData()).toEqual(document);

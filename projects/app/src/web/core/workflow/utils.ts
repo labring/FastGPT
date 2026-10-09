@@ -331,11 +331,8 @@ export const storeNode2FlowNode = ({
           description: t(outputTemplate.description ?? (storeOutput.description as any)),
           id: storeOutput.id ?? outputTemplate.id,
           value: storeOutput.value ?? outputTemplate.value,
-          // invalid 是按当前模型能力算出的派生标记，由 useNodeOutputValidity 写回文档，
-          // 模板里的值只是新建节点的初始默认。画布每轮重投影都会重新物化，若让模板覆盖，
-          // 写回结果会被抹掉并立刻触发下一次写回，历史条目随投影无限增长。
-          // ponytail: invalid 仍是文档里的派生状态；正解是投影/runtime 内按模型信息派生。
-          invalid: storeOutput.invalid ?? outputTemplate.invalid
+          // invalid 是编辑器层按当前模型能力计算的派生状态，不从持久化节点恢复。
+          invalid: outputTemplate.invalid
         };
       })
       .concat(

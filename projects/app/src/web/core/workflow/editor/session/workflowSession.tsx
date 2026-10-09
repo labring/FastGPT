@@ -316,6 +316,7 @@ export const WorkflowSessionProvider = ({
 
   const [runtime, setRuntime] = useState<WorkflowRuntimePort | null>(null);
   const runtimeRef = useRef<WorkflowRuntimePort | null>(null);
+  const initialRuntimeSeenRef = useRef(false);
   const [viewTick, setViewTick] = useState(0);
   const [issueFocusTick, setIssueFocusTick] = useState(0);
   /**
@@ -341,11 +342,11 @@ export const WorkflowSessionProvider = ({
   });
   // 订阅回调里回写页面状态，用 ref 避免 chatConfig 变化导致重新订阅。
   const onChatConfigChangeRef = useRef(onChatConfigChange);
-  const appDetailChatConfigRef = useRef(appDetailChatConfig);
+  const translationRef = useRef(t);
   useEffect(() => {
     onChatConfigChangeRef.current = onChatConfigChange;
-    appDetailChatConfigRef.current = appDetailChatConfig;
-  }, [appDetailChatConfig, onChatConfigChange]);
+    translationRef.current = t;
+  }, [appDetailChatConfig, onChatConfigChange, t]);
 
   /**
    * Runtime 的环境事实来源：模型目录与 sandbox 开关。
@@ -386,6 +387,15 @@ export const WorkflowSessionProvider = ({
     runtimeRef.current = null;
   });
 
+  const resetSessionState = useMemoizedFn((nextVersions: WorkflowVersionEntry[]) => {
+    overlaysRef.current = {};
+    updateIssueFocusNode(undefined);
+    pendingSaveRevision.current = undefined;
+    leaveSaveSign.current = true;
+    setVersions(nextVersions);
+    bumpView();
+  });
+
   const attachRuntime = useMemoizedFn((next: WorkflowRuntimePort) => {
     teardownRuntime();
     runtimeRef.current = next;
@@ -394,10 +404,7 @@ export const WorkflowSessionProvider = ({
       if (change.changedRecords.chatConfig && !next.isDisposed()) {
         // snapshot 是 DeepReadonly；appDetail 需要可变类型，这里只做引用替换不修改内容。
         const nextConfig = AppChatConfigTypeSchema.parse(next.getWorkflow().chatConfig);
-        if (!isEqual(appDetailChatConfigRef.current, nextConfig)) {
-          appDetailChatConfigRef.current = nextConfig;
-          onChatConfigChangeRef.current?.(nextConfig);
-        }
+        onChatConfigChangeRef.current?.(nextConfig);
       }
       if (change.origin === 'command' && !suppressVersionHistoryRef.current) {
         recordVersionHistory(next);
@@ -409,21 +416,41 @@ export const WorkflowSessionProvider = ({
     setRuntime(next);
   });
 
+  const initialRuntimeActive = !!initialRuntime && !initialRuntime.isDisposed();
+
   useEffect(() => {
-    if (!initialRuntime || runtimeRef.current === initialRuntime) return;
-    attachRuntime(initialRuntime);
-    overlaysRef.current = {};
-    updateIssueFocusNode(undefined);
-    pendingSaveRevision.current = undefined;
-    setVersions([
+    const nextInitialRuntime =
+      initialRuntime && !initialRuntime.isDisposed() ? initialRuntime : undefined;
+    if (!nextInitialRuntime) {
+      // 普通页面先挂载子组件，再由 initRuntime 创建内部 Runtime；这不是外部 prop 移除。
+      if (!initialRuntimeSeenRef.current) return;
+      initialRuntimeSeenRef.current = false;
+      if (!runtimeRef.current) return;
+      teardownRuntime();
+      setRuntime(null);
+      resetSessionState([]);
+      return;
+    }
+    initialRuntimeSeenRef.current = true;
+    if (runtimeRef.current === nextInitialRuntime) return;
+    attachRuntime(nextInitialRuntime);
+    resetSessionState([
       {
-        title: t('app:app.version_initial'),
-        contentRevision: initialRuntime.getSavepoint().contentRevision,
+        title: translationRef.current('app:app.version_initial'),
+        contentRevision: nextInitialRuntime.getSavepoint().contentRevision,
         live: true
       }
     ]);
-    bumpView();
-  }, [attachRuntime, bumpView, initialRuntime, setVersions, t, updateIssueFocusNode]);
+  }, [
+    attachRuntime,
+    bumpView,
+    initialRuntime,
+    initialRuntimeActive,
+    resetSessionState,
+    setVersions,
+    teardownRuntime,
+    updateIssueFocusNode
+  ]);
 
   // SystemConfigDrawer 只写 appDetail.chatConfig；这里单向同步进文档（相等时跳过，避免死循环）。
   useEffect(() => {
@@ -479,21 +506,24 @@ export const WorkflowSessionProvider = ({
 
   const initRuntime = useMemoizedFn((content: CanonicalWorkflowData) => {
     // Issue View 由 Runtime 按文档规则与环境事实算出；Workflow 与 Plugin host 共用这一份接线。
-    const nextRuntime = hydrateWorkflowEditor(content, { getEnvironment });
+    let nextRuntime: WorkflowRuntimePort;
+    try {
+      nextRuntime = hydrateWorkflowEditor(content, { getEnvironment });
+    } catch (error) {
+      teardownRuntime();
+      setRuntime(null);
+      resetSessionState([]);
+      throw error;
+    }
     attachRuntime(nextRuntime);
-    overlaysRef.current = {};
-    updateIssueFocusNode(undefined);
-    pendingSaveRevision.current = undefined;
     const initialTitle = t('app:app.version_initial');
-    setVersions([
+    resetSessionState([
       {
         title: initialTitle,
         contentRevision: nextRuntime.getSavepoint().contentRevision,
         live: true
       }
     ]);
-    // 新建 runtime 会重挂画布订阅，这里 bump 是为了同步清掉上一份 overlay 与标红焦点。
-    bumpView();
   });
 
   /** 导入等重载路径：保留 Runtime 实例与历史（导入可撤销），整文档替换并清视图数据。 */
@@ -516,7 +546,12 @@ export const WorkflowSessionProvider = ({
     (entry: WorkflowVersionEntry, _customTitle: string): boolean => {
       const current = runtimeRef.current;
       if (!current || current.isDisposed()) return false;
-      if (entry.live) return true;
+      if (
+        entry.contentRevision !== undefined &&
+        current.getSavepoint().contentRevision === entry.contentRevision
+      ) {
+        return true;
+      }
 
       // 本地条目按 contentRevision 定位（与 syncLiveVersion 同一把钥匙）：
       // undo/redo 与切换都会重建条目对象，身份比较在调用方持有上一轮条目时会失配。
@@ -553,21 +588,18 @@ export const WorkflowSessionProvider = ({
       // 文档替换事件已经带动画布投影，但那次投影读到的还是清理前的 overlay 与标红焦点，
       // 这里再 bump 一次让画布按清理后的视图数据重投影。
       bumpView();
+      const activeRevision = current.getSavepoint().contentRevision;
       setVersions(
-        versionsRef.current.map((item) => ({
-          ...item,
-          live:
-            entry.contentRevision !== undefined
-              ? item.contentRevision === entry.contentRevision
-              : item === entry
-        }))
+        entry.contentRevision === undefined
+          ? [
+              { ...entry, contentRevision: activeRevision, live: true },
+              ...versionsRef.current.map((item) => ({ ...item, live: false }))
+            ].slice(0, 101)
+          : versionsRef.current.map((item) => ({
+              ...item,
+              live: item.contentRevision === activeRevision
+            }))
       );
-      // 云端整文档替换后按替换结果同步一次 chatConfig；
-      // 本地条目走 replayHistory，chatConfig 变化已由 Runtime 变更事件回写 appDetail。
-      if (entry.content) {
-        const nextChatConfig = entry.content.chatConfig;
-        onChatConfigChangeRef.current?.(nextChatConfig);
-      }
       return true;
     }
   );
@@ -646,8 +678,10 @@ export const WorkflowSessionProvider = ({
   useEffect(
     () => () => {
       teardownRuntime();
+      setRuntime(null);
+      resetSessionState([]);
     },
-    [teardownRuntime]
+    [resetSessionState, teardownRuntime]
   );
 
   const sessionActions = useMemo<WorkflowSessionActions>(

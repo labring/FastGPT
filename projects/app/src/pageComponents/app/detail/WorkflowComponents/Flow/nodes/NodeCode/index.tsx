@@ -7,7 +7,10 @@ import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../components/IOTitle';
 import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
@@ -41,7 +44,11 @@ import { getSandboxPackages } from '@/web/core/workflow/api';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, catchError } = data;
+  const { nodeId } = data;
+  const node = useNode(nodeId);
+  const inputs = (node?.data.inputs ?? data.inputs) as FlowNodeInputItemType[];
+  const outputs = (node?.data.outputs ?? data.outputs) as FlowNodeOutputItemType[];
+  const catchError = node?.data.catchError ?? data.catchError;
   const { successOutputs, errorOutputs } = useMemoEnhance(
     () => splitNodeOutputs(outputs),
     [outputs]
@@ -52,7 +59,6 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   ) as FlowNodeInputItemType;
 
   // CustomComponent 由 RenderInput 以普通函数调用，hooks 只能取在组件顶层。
-  const node = useNode(nodeId);
   const codeField = useField(nodeId, NodeInputKeyEnum.code, 'input');
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const editorSessionId = useWorkflowEditorSessionId();

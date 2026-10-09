@@ -24,7 +24,6 @@ import type {
   WorkflowRuntimePort
 } from '@fastgpt/global/core/workflow/editor/types';
 import {
-  encodeRuntimeEdgeId,
   normalizeEdgeHandles,
   type CanvasNode,
   type ViewDataKey
@@ -240,8 +239,8 @@ export const projectRuntimeCanvas = ({
   );
   const localEdgeById = new Map(localEdges.map((edge) => [edge.id, edge]));
 
-  const edges = workflow.edges.map((edge, index) => {
-    const id = encodeRuntimeEdgeId(index);
+  const edges = runtime.getCanvasEdges().map((edge) => {
+    const id = edge.id;
     const { sourceHandle, targetHandle } = normalizeEdgeHandles(edge);
     const zIndex = childNodeIds.has(edge.source) ? 1001 : undefined;
     const selected = localEdgeById.get(id)?.selected;
@@ -281,13 +280,10 @@ export const projectRuntimeCanvas = ({
     return next;
   });
 
-  // 删除边会使后续 wfedge-N 下标整体前移，缓存按 id 命中不了新值时重建即可，但要清掉越界 id。
-  if (cache.edges.size > edges.length) {
-    for (let i = edges.length; ; i++) {
-      const id = encodeRuntimeEdgeId(i);
-      if (!cache.edges.delete(id)) break;
-    }
-  }
+  const aliveEdgeIds = new Set(edges.map((edge) => edge.id));
+  cache.edges.forEach((_, edgeId) => {
+    if (!aliveEdgeIds.has(edgeId)) cache.edges.delete(edgeId);
+  });
 
   return { nodes, edges };
 };

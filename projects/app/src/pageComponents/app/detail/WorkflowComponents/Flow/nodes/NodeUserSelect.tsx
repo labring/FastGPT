@@ -7,7 +7,10 @@ import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
@@ -25,8 +28,10 @@ const optionHandleTranslate = [58, 0] as [number, number];
 
 const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId } = data;
   const node = useNode(nodeId);
+  const inputs = (node?.data.inputs ?? data.inputs) as FlowNodeInputItemType[];
+  const outputs = (node?.data.outputs ?? data.outputs) as FlowNodeOutputItemType[];
   // 边集合只在删除选项的回调里读，走非订阅 getter：点击时取当前值，组件不订阅结构变更。
   const { getEdges } = useWorkflowActions();
   // CustomComponent 是被 RenderInput 直接调用的普通函数，字段句柄必须在组件顶层取。

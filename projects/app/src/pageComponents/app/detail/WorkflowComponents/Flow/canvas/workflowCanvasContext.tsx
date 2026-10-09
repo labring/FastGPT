@@ -771,7 +771,19 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
    */
   useEffect(() => {
     syncFromRuntime();
-    return runtime ? runtime.subscribe(syncFromRuntime) : undefined;
+    return runtime
+      ? runtime.subscribe((change) => {
+          // 普通字段由 scoped node/field hook 消费；只有会影响画布外壳、边或位置的事件才重投影。
+          if (
+            change.kind === 'replace' ||
+            change.kind === 'geometry' ||
+            change.affectedRecords.structure ||
+            change.changedRecords.edgeIds.length > 0
+          ) {
+            syncFromRuntime();
+          }
+        })
+      : undefined;
   }, [syncFromRuntime, runtime, viewTick]);
 
   const replaceNodes = useMemoizedFn((next: CanvasNode[]) => {

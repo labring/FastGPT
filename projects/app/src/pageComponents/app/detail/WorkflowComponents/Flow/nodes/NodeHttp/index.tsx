@@ -33,7 +33,10 @@ import {
 import { useTranslation } from 'next-i18next';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { type EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
@@ -845,7 +848,11 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
 
 const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, catchError } = data;
+  const { nodeId } = data;
+  const node = useNode(nodeId);
+  const inputs = (node?.data.inputs ?? data.inputs) as FlowNodeInputItemType[];
+  const outputs = (node?.data.outputs ?? data.outputs) as FlowNodeOutputItemType[];
+  const catchError = node?.data.catchError ?? data.catchError;
   const isTool = useIsToolNode(nodeId);
   const { commonInputs } = useMemoEnhance(
     () => splitToolInputsByMode(inputs, isTool),

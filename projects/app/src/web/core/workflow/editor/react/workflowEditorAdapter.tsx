@@ -446,7 +446,13 @@ export const createWorkflowEditorAdapter = (
     notify(dataListeners);
     notify(viewListeners);
     notify(fieldListenersToNotify);
-    notify(referenceListeners);
+    if (
+      change.kind === 'replace' ||
+      change.affectedRecords.structure ||
+      change.changedRecords.edgeIds.length > 0
+    ) {
+      notify(referenceListeners);
+    }
     if (structureChanged) {
       notify(workflowListeners);
     }

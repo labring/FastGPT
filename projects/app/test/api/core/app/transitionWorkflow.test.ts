@@ -33,6 +33,13 @@ const historicalModules = [
   }
 ];
 
+const referenceSnapshots = [
+  {
+    reference: ['deleted-node', 'output'] as [string, string],
+    sourceLabel: 'Deleted node'
+  }
+];
+
 describe('Transition workflow', () => {
   it.each([false, true])('writes canonical workflow when createNew is %s', async (createNew) => {
     const [user] = (await getFakeUsers(1)).members;
@@ -52,7 +59,10 @@ describe('Transition workflow', () => {
       body: { name: 'simple app', type: AppTypeEnum.simple, modules: [] }
     });
     const sourceAppId = createResult.data!;
-    await MongoApp.updateOne({ _id: sourceAppId }, { modules: historicalModules });
+    await MongoApp.updateOne(
+      { _id: sourceAppId },
+      { modules: historicalModules, referenceSnapshots }
+    );
 
     const result = await Call<
       TransitionWorkflowBodyType,
@@ -71,10 +81,12 @@ describe('Transition workflow', () => {
 
     expect(result.code).toBe(200);
     expect(app?.type).toBe(AppTypeEnum.workflow);
+    expect(app?.referenceSnapshots).toEqual(referenceSnapshots);
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
     if (createNew) {
       expect(version?.nodes).toEqual(app?.modules);
+      expect(version?.referenceSnapshots).toEqual(referenceSnapshots);
     }
   });
 });

@@ -107,7 +107,8 @@ const MID_SNAPSHOT = {
   icon: 'core/workflow/template/answer'
 };
 
-const joinReference = (reference: readonly string[]) => reference.join(String.fromCharCode(0));
+const joinReference = (reference: readonly (string | undefined)[]) =>
+  reference.join(String.fromCharCode(0));
 
 /** 出站不变量：导出的每条快照都必须「实时来源已不可解析且仍有 consumer」，否则就是孤立索引。 */
 const expectNoOrphanSnapshots = (data: CanonicalWorkflowData) => {
@@ -115,7 +116,9 @@ const expectNoOrphanSnapshots = (data: CanonicalWorkflowData) => {
   const consumerKeys = new Set(
     data.nodes.flatMap((node) =>
       node.inputs.flatMap((input) =>
-        getWorkflowReferenceItemsFromValue(input.value).map((reference) => joinReference(reference))
+        getWorkflowReferenceItemsFromValue(input.value, { includeCanonicalReferences: true }).map(
+          (reference) => joinReference(reference)
+        )
       )
     )
   );
@@ -198,6 +201,38 @@ describe('reference snapshots', () => {
     expect(editor.getWorkflowData().referenceSnapshots).toEqual([]);
   });
 
+  it('keeps snapshot cache reads isolated across restore, undo, redo and export', () => {
+    const editor = createSnapshotRuntime();
+    editor.dispatch({ type: 'removeNodes', nodeIds: ['mid'] });
+    expect(editor.getWorkflowData().referenceSnapshots).toEqual([MID_SNAPSHOT]);
+
+    editor.dispatch({
+      type: 'addNode',
+      node: {
+        nodeId: 'mid',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        name: 'Restored Middle',
+        inputs: [],
+        outputs: [
+          {
+            id: 'text',
+            key: 'text',
+            type: FlowNodeOutputTypeEnum.source,
+            valueType: WorkflowIOValueTypeEnum.string,
+            label: 'Restored Text'
+          }
+        ]
+      }
+    });
+    expect(editor.getWorkflowData().referenceSnapshots).toEqual([]);
+
+    expect(editor.undo().ok).toBe(true);
+    expect(editor.getWorkflowData().referenceSnapshots).toEqual([MID_SNAPSHOT]);
+
+    expect(editor.redo().ok).toBe(true);
+    expect(editor.getWorkflowData().referenceSnapshots).toEqual([]);
+  });
+
   it('drops the snapshot from the export once the last consumer is gone', () => {
     const editor = createSnapshotRuntime();
     editor.dispatch({ type: 'removeNodes', nodeIds: ['mid'] });
@@ -230,6 +265,39 @@ describe('reference snapshots', () => {
       expect.objectContaining({ code: 'invalid_reference', ...MID_SNAPSHOT })
     );
     expectNoOrphanSnapshots(data);
+  });
+
+  it('does not let snapshot cache writes change an undoable document', () => {
+    const editor = createSnapshotRuntime();
+    editor.dispatch({ type: 'removeNodes', nodeIds: ['mid'] });
+
+    // 先命中快照缓存，再恢复来源；旧实现会直接 delete 历史文档共享的 Map。
+    expect(editor.getField(query)?.references[0]).toEqual(
+      expect.objectContaining({ code: 'invalid_reference', ...MID_SNAPSHOT })
+    );
+    editor.dispatch({
+      type: 'addNode',
+      node: {
+        nodeId: 'mid',
+        flowNodeType: FlowNodeTypeEnum.answerNode,
+        name: 'Middle',
+        inputs: [],
+        outputs: [
+          {
+            id: 'text',
+            key: 'text',
+            type: FlowNodeOutputTypeEnum.source,
+            valueType: WorkflowIOValueTypeEnum.string,
+            label: 'Middle Text'
+          }
+        ]
+      }
+    });
+
+    expect(editor.undo().ok).toBe(true);
+    expect(editor.getField(query)?.references[0]).toEqual(
+      expect.objectContaining({ code: 'invalid_reference', ...MID_SNAPSHOT })
+    );
   });
 
   it('keeps snapshots untouched for a pure geometry transaction', () => {

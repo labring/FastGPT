@@ -41,8 +41,8 @@ const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowVersio
   isOpen: boolean;
   onClose: () => void;
   past: T[];
-  onSwitchTmpVersion: (params: T, customTitle: string) => void;
-  onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
+  onSwitchTmpVersion: (params: T, customTitle: string) => boolean | Promise<boolean>;
+  onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => boolean | Promise<boolean>;
   topOffset?: AppDetailPanelModalProps['top'];
   panelHeight?: AppDetailPanelModalProps['height'];
 }) => {
@@ -100,7 +100,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowVersionEntry>({
   onSwitchTmpVersion
 }: {
   past: T[];
-  onSwitchTmpVersion: (params: T, customTitle: string) => void;
+  onSwitchTmpVersion: (params: T, customTitle: string) => boolean | Promise<boolean>;
 }) => {
   const { t } = useSafeTranslation();
   const { toast } = useToast();
@@ -116,7 +116,11 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowVersionEntry>({
             onClick={async () => {
               const initialSnapshot = past[past.length - 1];
 
-              onSwitchTmpVersion(initialSnapshot, t('app:version_initial_copy'));
+              const switched = await onSwitchTmpVersion(
+                initialSnapshot,
+                t('app:version_initial_copy')
+              );
+              if (!switched) return;
               toast({
                 title: t('workflow:workflow.Switch_success'),
                 status: 'success'
@@ -141,8 +145,12 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowVersionEntry>({
               _hover={{
                 bg: 'primary.50'
               }}
-              onClick={() => {
-                onSwitchTmpVersion(item, `${t('app:version_copy')}-${item.title}`);
+              onClick={async () => {
+                const switched = await onSwitchTmpVersion(
+                  item,
+                  `${t('app:version_copy')}-${item.title}`
+                );
+                if (!switched) return;
                 toast({
                   title: t('workflow:workflow.Switch_success'),
                   status: 'success'
@@ -193,7 +201,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowVersionEntry>({
 const TeamCloud = ({
   onSwitchCloudVersion
 }: {
-  onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => void;
+  onSwitchCloudVersion: (appVersion: AppVersionSchemaType) => boolean | Promise<boolean>;
 }) => {
   const { t } = useSafeTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -220,7 +228,8 @@ const TeamCloud = ({
 
       if (!versionDetail) return;
 
-      onSwitchCloudVersion(versionDetail);
+      const switched = await onSwitchCloudVersion(versionDetail);
+      if (!switched) return;
       toast({
         title: t('workflow:workflow.Switch_success'),
         status: 'success'

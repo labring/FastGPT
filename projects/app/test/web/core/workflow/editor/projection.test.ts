@@ -15,6 +15,7 @@ import type {
 } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import type { CanvasNode } from '@/web/core/workflow/editor/canvas/canvasTypes';
+import type { Edge } from 'reactflow';
 import {
   createProjectionCache,
   projectRuntimeCanvas,
@@ -88,6 +89,7 @@ const project = (
     overlays?: ViewDataOverlayMap;
     errorNodeId?: string;
     localNodes?: CanvasNode[];
+    localEdges?: Edge<any>[];
     cache?: ProjectionCache;
   } = {}
 ) =>
@@ -96,7 +98,7 @@ const project = (
     overlays: options.overlays ?? {},
     errorNodeId: options.errorNodeId,
     localNodes: options.localNodes ?? [],
-    localEdges: [],
+    localEdges: options.localEdges ?? [],
     cache: options.cache ?? createProjectionCache()
   });
 
@@ -291,12 +293,12 @@ describe('workflow editor projection', () => {
     expect(second.nodes[0]).not.toBe(first.nodes[0]);
   });
 
-  it('projects runtime edges by index and prunes stale cache entries', () => {
+  it('keeps edge identity and selection stable after deleting a preceding edge', () => {
     const runtime = createRuntime();
     const cache = createProjectionCache();
     const first = project(runtime, { cache });
 
-    expect(first.edges.map((edge) => edge.id)).toEqual(['wfedge-0', 'wfedge-1']);
+    expect(first.edges.map((edge) => edge.id)).toEqual(['edge-0', 'edge-1']);
     expect(first.edges[0]).toMatchObject({
       source: 'start',
       target: 'http',
@@ -305,10 +307,17 @@ describe('workflow editor projection', () => {
     });
 
     runtime.dispatch({ type: 'disconnectEdge', index: 0 });
-    const second = project(runtime, { cache });
+    const second = project(runtime, {
+      cache,
+      localEdges: [{ ...first.edges[1], selected: true }]
+    });
 
-    expect(second.edges.map((edge) => edge.id)).toEqual(['wfedge-0']);
-    expect(second.edges[0]).toMatchObject({ source: 'http', target: 'answer' });
+    expect(second.edges.map((edge) => edge.id)).toEqual(['edge-1']);
+    expect(second.edges[0]).toMatchObject({
+      source: 'http',
+      target: 'answer',
+      selected: true
+    });
     expect(cache.edges.size).toBe(1);
   });
 

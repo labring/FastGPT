@@ -1,4 +1,8 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
@@ -37,7 +41,12 @@ import isEqual from 'lodash-es/isEqual';
 
 const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs, isFolded, catchError } = data;
+  const { nodeId } = data;
+  const node = useNode(nodeId);
+  const inputs = (node?.data.inputs ?? data.inputs) as FlowNodeInputItemType[];
+  const outputs = (node?.data.outputs ?? data.outputs) as FlowNodeOutputItemType[];
+  const isFolded = node?.view.isFolded ?? data.isFolded;
+  const catchError = node?.data.catchError ?? data.catchError;
   /**
    * 容器要按类型找子节点（起始/中断）：结构快照没有 flowNodeType，按 id 查节点走 port 的
    * getNode（非订阅），子节点列表走 Runtime 图查询的 byParent 索引。
@@ -46,7 +55,6 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
    */
   const getNodeById = useDocumentGetNodeById();
   const childNodeIds = useWorkflowValue((_structure, graph) => graph.getChildNodeIds(nodeId));
-  const node = useNode(nodeId);
   // 建中断节点是写命令，边集合只在两个回调/effect 里按点击时的当前值读：
   // 都走稳定 action 句柄，容器不订阅结构通道（06a-5 A 类 + B 类）。
   const { addNode, getEdges } = useWorkflowActions();

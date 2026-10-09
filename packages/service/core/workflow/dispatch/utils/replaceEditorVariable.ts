@@ -4,6 +4,7 @@ import {
   formatVariableValByType,
   getReferenceVariableValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import {
   checkStrOversize,
   logOversizeString,
@@ -83,7 +84,8 @@ export function replaceEditorVariable({
           return getReferenceVariableValue({
             value: input.value,
             nodesMap,
-            variables
+            variables,
+            isReferenceVal: nodeInputIsReference(input)
           });
         }
       })();

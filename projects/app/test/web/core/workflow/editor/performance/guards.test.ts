@@ -110,6 +110,18 @@ describe('workflow editor subscription guards', () => {
     expect(scan(projectionRoots, /\bstoreNode2FlowNode\b/)).toEqual([]);
   });
 
+  it('画布与 Reference 不对普通字段事件做全量刷新', () => {
+    const canvasSource = readFileSync(join(flowRoot, 'canvas/workflowCanvasContext.tsx'), 'utf8');
+    const adapterSource = readFileSync(
+      join(srcRoot, 'web/core/workflow/editor/react/workflowEditorAdapter.tsx'),
+      'utf8'
+    );
+
+    expect(canvasSource).not.toMatch(/runtime\.subscribe\(syncFromRuntime\)/);
+    expect(canvasSource).toMatch(/change\.affectedRecords\.structure/);
+    expect(adapterSource).toMatch(/change\.changedRecords\.edgeIds\.length > 0/);
+  });
+
   it('画布节点组件零 useWorkflowDocument()', () => {
     // 整份语义快照的身份按 semanticVersion 换，单字段提交也 bump：节点组件订阅它等于
     // 「任意一笔写入都重算并重渲染全部节点的派生列表」。节点作用域一律用

@@ -4,6 +4,7 @@ import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import React, { useMemo } from 'react';
+import { useNodeOutputValidity } from '../../../hooks/useNodeOutputValidity';
 import DynamicOutputs from './DynamicOutputs';
 import OutputLabel from './Label';
 
@@ -14,6 +15,7 @@ const RenderOutput = ({
   nodeId: string;
   flowOutputList: FlowNodeOutputItemType[];
 }) => {
+  const invalidOutputKeys = useNodeOutputValidity(nodeId);
   const dynamicOutputs = useMemoEnhance(
     () => flowOutputList.filter((item) => item.type === FlowNodeOutputTypeEnum.dynamic),
     [flowOutputList]
@@ -39,7 +41,7 @@ const RenderOutput = ({
             output.type === FlowNodeOutputTypeEnum.hidden
           )
             return null;
-          if (!output.label || output.invalid === true) return null;
+          if (!output.label || invalidOutputKeys.has(output.key)) return null;
 
           return (
             <FormLabel

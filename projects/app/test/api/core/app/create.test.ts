@@ -97,6 +97,49 @@ describe('create api', () => {
     expect(res4.data).toBeDefined();
   });
 
+  it('round trips exported reference snapshots through create api', async () => {
+    const [user] = (await getFakeUsers(1)).members;
+    await MongoResourcePermission.findOneAndUpdate(
+      {
+        resourceType: 'team',
+        teamId: user.teamId,
+        resourceId: null,
+        tmbId: user.tmbId
+      },
+      {
+        permission: TeamAppCreatePermissionVal
+      },
+      { upsert: true }
+    );
+
+    const referenceSnapshots: NonNullable<AppSchemaType['referenceSnapshots']> = [
+      {
+        reference: ['deleted-node', 'output'],
+        sourceLabel: 'Deleted node'
+      }
+    ];
+    const result = await Call<CreateAppBodyType, EmptyRequestParams, string>(createapi.default, {
+      auth: user,
+      body: {
+        name: 'snapshot workflow',
+        type: AppTypeEnum.workflow,
+        modules: [],
+        edges: [],
+        chatConfig: {},
+        referenceSnapshots
+      }
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.code).toBe(200);
+    const [app, version] = await Promise.all([
+      MongoApp.findById(result.data).lean(),
+      MongoAppVersion.findOne({ appId: result.data }).lean()
+    ]);
+    expect(app?.referenceSnapshots).toEqual(referenceSnapshots);
+    expect(version?.referenceSnapshots).toEqual(referenceSnapshots);
+  });
+
   it('keeps community template avatar from plugin detail when database has stale avatar', async () => {
     const users = await getFakeUsers(1);
     await MongoResourcePermission.findOneAndUpdate(
@@ -157,7 +200,13 @@ describe('create api', () => {
           ],
           outputs: []
         }
-      ] as unknown as AppSchemaType['modules']
+      ] as unknown as AppSchemaType['modules'],
+      referenceSnapshots: [
+        {
+          reference: ['deleted-node', 'output'],
+          sourceLabel: 'Deleted node'
+        }
+      ]
     });
 
     const [app, version] = await Promise.all([
@@ -169,5 +218,12 @@ describe('create api', () => {
     expect(input?.selectedType).toBe(FlowNodeInputTypeEnum.reference);
     expect(input).not.toHaveProperty('selectedTypeIndex');
     expect(version?.nodes).toEqual(app?.modules);
+    expect(app?.referenceSnapshots).toEqual([
+      {
+        reference: ['deleted-node', 'output'],
+        sourceLabel: 'Deleted node'
+      }
+    ]);
+    expect(version?.referenceSnapshots).toEqual(app?.referenceSnapshots);
   });
 });

@@ -8,6 +8,7 @@ import {
   OpenAPIAppScheduledTriggerConfigSchema,
   UpdateAppBodySchema
 } from '@fastgpt/global/openapi/core/app/common/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { PublishAppBodySchema } from '@fastgpt/global/openapi/core/app/version/api';
 import type { z } from 'zod';
 import { describe, expect, it } from 'vitest';
@@ -44,6 +45,24 @@ describe('CreateAppBodySchema', () => {
         chatConfig: {}
       }).success
     ).toBe(true);
+  });
+
+  it('preserves reference snapshots through create request migration', () => {
+    const referenceSnapshots = [
+      {
+        reference: ['deleted-node', 'output'],
+        sourceLabel: 'Deleted node'
+      }
+    ];
+    const result = CreateAppRequestBodySchema.parse({
+      name: 'snapshot app',
+      type: AppTypeEnum.workflow,
+      modules: [currentNode],
+      edges: [],
+      referenceSnapshots
+    });
+
+    expect(result.referenceSnapshots).toEqual(referenceSnapshots);
   });
 
   it('preserves empty scheduled trigger compatibility', () => {

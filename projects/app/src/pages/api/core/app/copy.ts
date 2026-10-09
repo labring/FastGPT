@@ -71,6 +71,7 @@ async function handler(req: ApiRequestProps<CopyAppBodyType>): Promise<CopyAppRe
       storageModules,
       edges: app.edges,
       chatConfig: app.chatConfig,
+      referenceSnapshots: app.referenceSnapshots,
       teamId: app.teamId,
       tmbId,
       pluginData: app.pluginData,

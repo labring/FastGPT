@@ -21,6 +21,8 @@ const PENDING_HANDLE_CODES = new Set<WorkflowIssueCode>([
   'tool_load_failed',
   'tool_no_permission',
   'tool_offline',
+  'resource_missing',
+  'resource_no_permission',
   'model_unavailable',
   'model_unavailable_short',
   'sandbox_not_configured',
@@ -45,18 +47,11 @@ export const collectWorkflowErrorIssues = (runtime: WorkflowRuntimePort) => {
 /**
  * 渲染 Issue 文案：code 查 i18n key，params 交给 i18next 插值。
  *
- * `params.inputName` 存的是 label 原始字符串（模板 label 是 i18nT 返回的 key，用户自定义 label
- * 是自由文本），所以对它再翻译一次；i18next 未命中 key 时原样返回，自由文本不受影响，
- * 语言切换后文案自动跟随，Issue 本身不需要重算。
- * `params.nodeName` 是文档里已翻译的节点名，属于工作流自身信息，语言切换后保持不变。
- * 其余 params（如 model）是纯数据，不翻译。
+ * `params.inputName`、`params.nodeName` 和 `params.model` 都是 Issue 产生时确定的插值数据；
+ * 不把用户输入或文档字段再次当作翻译 key，避免动态 key 绕过静态收集。
  */
 export const renderWorkflowIssueMessage = (issue: WorkflowIssueLike, t: TFunction) => {
   const key = WORKFLOW_ISSUE_I18N_KEYS[issue.code] as any;
   const params = issue.params;
-  if (!params) return t(key);
-  return t(key, {
-    ...params,
-    ...(params.inputName ? { inputName: t(params.inputName as any) } : {})
-  });
+  return params ? t(key, params) : t(key);
 };

@@ -68,7 +68,14 @@ describe('Copy', () => {
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     const appId = res2.data as string;
+    const referenceSnapshots = [
+      {
+        reference: ['deleted-node', 'output'] as [string, string],
+        sourceLabel: 'Deleted node'
+      }
+    ];
     await MongoApp.findByIdAndUpdate(appId, {
+      type: AppTypeEnum.workflow,
       modules: [
         {
           nodeId: 'chat-node',
@@ -84,7 +91,8 @@ describe('Copy', () => {
           ],
           outputs: []
         }
-      ]
+      ],
+      referenceSnapshots
     });
 
     const res3 = await Call<CopyAppBodyType, Record<string, never>, CopyAppResponseType>(
@@ -140,6 +148,7 @@ describe('Copy', () => {
       getCachedModelHandle()
         ?.getActiveModels()
         .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
+    expect(copiedApp?.referenceSnapshots).toEqual(referenceSnapshots);
     expect(copiedApp?.modules[0].inputs).toEqual([
       expect.objectContaining({
         key: NodeInputKeyEnum.aiModelId,

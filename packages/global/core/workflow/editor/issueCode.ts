@@ -31,6 +31,8 @@ export const WorkflowIssueCode = {
   toolLoadFailed: 'tool_load_failed',
   toolNoPermission: 'tool_no_permission',
   toolOffline: 'tool_offline',
+  resourceMissing: 'resource_missing',
+  resourceNoPermission: 'resource_no_permission',
   modelUnavailable: 'model_unavailable',
   /** 工作流级（chatConfig）模型问题：文案不含节点名，与节点级 model_unavailable 分开。 */
   modelUnavailableShort: 'model_unavailable_short',
@@ -72,6 +74,8 @@ export const WORKFLOW_ISSUE_I18N_KEYS: Record<WorkflowIssueCode, string> = {
   [WorkflowIssueCode.toolLoadFailed]: 'common:core.workflow.check.tool_load_failed',
   [WorkflowIssueCode.toolNoPermission]: 'common:core.workflow.check.tool_no_permission',
   [WorkflowIssueCode.toolOffline]: 'common:core.workflow.check.tool_missing',
+  [WorkflowIssueCode.resourceMissing]: 'common:core.workflow.check.resource_missing',
+  [WorkflowIssueCode.resourceNoPermission]: 'common:core.workflow.check.resource_no_permission',
   [WorkflowIssueCode.modelUnavailable]: 'common:core.workflow.check.model_unavailable',
   [WorkflowIssueCode.modelUnavailableShort]: 'common:core.workflow.check.model_unavailable_short',
   [WorkflowIssueCode.modelRequired]: 'common:core.workflow.check.model_required_short',

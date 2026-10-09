@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ReactFlowProvider } from 'reactflow';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { materializeWorkflow } from '@/web/core/workflow/editor/codec';
+import { hydrateWorkflowEditor } from '@fastgpt/global/core/workflow/editor/protocol';
 import { peekWorkflowEnvironmentModels } from '@/web/core/workflow/modelData';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -77,7 +78,11 @@ describe('workflow renderer overlays', () => {
  * onChatConfigChange 按真实页面装配回写 appDetail，断言才能读到 host 回写后的 appDetail；
  * Provider value 只渲染一次，因此回写不会再触发同步 effect（测试里不存在双向循环）。
  */
-const renderHost = async (chatConfig: unknown = {}) => {
+const renderHost = async (
+  chatConfig: unknown = {},
+  initialRuntime?: WorkflowRuntimePort,
+  additionalChildren?: React.ReactNode
+) => {
   const container = document.createElement('div');
   const root = createRoot(container);
   const appDetail = { current: { chatConfig } as TestAppDetail };
@@ -96,7 +101,7 @@ const renderHost = async (chatConfig: unknown = {}) => {
     return null;
   };
 
-  await act(async () => {
+  const render = (runtime?: WorkflowRuntimePort) =>
     root.render(
       React.createElement(
         AppContext.Provider,
@@ -107,19 +112,26 @@ const renderHost = async (chatConfig: unknown = {}) => {
           React.createElement(
             WorkflowSessionProvider,
             {
+              runtime,
               appDetailChatConfig: chatConfig,
               onChatConfigChange: (nextChatConfig: Record<string, unknown>) => {
                 appDetail.current.chatConfig = nextChatConfig;
               }
             },
-            React.createElement(Observer)
+            React.createElement(
+              React.Fragment,
+              null,
+              React.createElement(Observer),
+              additionalChildren
+            )
           )
         )
       )
     );
-  });
 
-  return { root, appDetail, setAppDetail, readHost: () => host! };
+  await act(async () => render(initialRuntime));
+
+  return { root, appDetail, setAppDetail, readHost: () => host!, render };
 };
 
 const answerDocument = () =>
@@ -281,13 +293,108 @@ describe('WorkflowSessionProvider version history', () => {
       expect(readHost().switchCloudVersion(cloudVersion)).toBe(true);
     });
 
-    // 云端版本走 replaceDocument，且不新增“My Edit”记录。
-    expect(readHost().versions).toHaveLength(localCount);
+    // 云端替换保留一条 cloud-active 版本项，便于按 Runtime revision 回放本地历史。
+    expect(readHost().versions).toHaveLength(localCount + 1);
     expect(readHost().runtime!.getWorkflow().chatConfig).toEqual(
       expect.objectContaining({ welcomeText: 'cloud hello' })
     );
     // chatConfig 回写 appDetail（订阅回写与切换后的显式同步都走同一个 setter）。
     expect(appDetail.current.chatConfig.welcomeText).toBe('cloud hello');
+    expect(readHost().versions.filter((item) => item.live)).toHaveLength(1);
+    expect(readHost().versions.find((item) => item.live)?.contentRevision).toEqual(
+      expect.any(Number)
+    );
+    expect(readHost().versions.find((item) => item.live)?.content).toBeDefined();
+
+    act(() => root.unmount());
+  });
+
+  it('switches back to a local version after switching to cloud', async () => {
+    const initial = answerDocument();
+    const { root, readHost } = await renderHost(initial.chatConfig);
+    act(() => readHost().initRuntime(initial));
+    const localVersion = readHost().versions[0]!;
+
+    const cloudVersion = {
+      nodes: [],
+      edges: [],
+      chatConfig: { welcomeText: 'cloud hello' },
+      versionName: 'v1'
+    } as unknown as AppVersionSchemaType;
+
+    act(() => {
+      expect(readHost().switchCloudVersion(cloudVersion)).toBe(true);
+    });
+    expect(readHost().versions.find((item) => item.live)?.content).toBeDefined();
+
+    act(() => {
+      expect(readHost().switchVersion(localVersion, 'ignored-copy-title')).toBe(true);
+    });
+    expect(
+      readHost()
+        .runtime!.getWorkflow()
+        .nodes.map((node) => node.nodeId)
+    ).toContain('answer');
+    expect(readHost().versions.find((item) => item.live)?.contentRevision).toBe(
+      localVersion.contentRevision
+    );
+
+    act(() => readHost().redo());
+    expect(readHost().runtime!.getWorkflow().chatConfig.welcomeText).toBe('cloud hello');
+    expect(readHost().versions.find((item) => item.live)?.content).toBeDefined();
+
+    act(() => readHost().undo());
+    expect(readHost().runtime!.getWorkflow().chatConfig.welcomeText).toBeUndefined();
+
+    act(() => root.unmount());
+  });
+
+  it('tears down the previous runtime when the runtime prop is removed', async () => {
+    const initial = answerDocument();
+    const runtime = hydrateWorkflowEditor(initial);
+    const { root, readHost, render } = await renderHost(initial.chatConfig, runtime);
+
+    expect(readHost().runtime).toBe(runtime);
+    act(() => render(undefined));
+
+    expect(runtime.isDisposed()).toBe(true);
+    expect(readHost().runtime).toBeNull();
+    expect(readHost().versions).toEqual([]);
+
+    act(() => {
+      expect(() => readHost().initRuntime(null as never)).toThrow();
+    });
+    expect(readHost().runtime).toBeNull();
+    expect(readHost().versions).toEqual([]);
+
+    const disposedRuntime = hydrateWorkflowEditor(initial);
+    const disposedSpy = vi.spyOn(disposedRuntime, 'dispose');
+    await act(async () => render(disposedRuntime));
+    disposedRuntime.dispose();
+    await act(async () => render(disposedRuntime));
+    expect(readHost().runtime).toBeNull();
+    expect(readHost().versions).toEqual([]);
+    expect(disposedSpy).toHaveBeenCalledTimes(1);
+
+    act(() => root.unmount());
+  });
+
+  it('keeps a runtime initialized by a child when no runtime prop was supplied', async () => {
+    const initial = answerDocument();
+    const Bootstrap = () => {
+      const { initRuntime } = useWorkflowSessionActions();
+      React.useEffect(() => initRuntime(initial), [initRuntime]);
+      return null;
+    };
+    const { root, readHost } = await renderHost(
+      initial.chatConfig,
+      undefined,
+      React.createElement(Bootstrap)
+    );
+
+    expect(readHost().runtime).not.toBeNull();
+    expect(readHost().runtime?.isDisposed()).toBe(false);
+    expect(readHost().versions).toHaveLength(1);
 
     act(() => root.unmount());
   });

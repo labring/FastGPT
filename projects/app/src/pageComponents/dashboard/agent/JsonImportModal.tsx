@@ -166,6 +166,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
         modules: workflow.nodes,
         edges: workflow.edges || [],
         chatConfig: workflow.chatConfig,
+        referenceSnapshots: workflow.referenceSnapshots,
         utmParams: getUtmParams()
       });
     },

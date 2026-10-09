@@ -1,8 +1,12 @@
 import type { WorkflowIOValueTypeEnum } from '../../constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum, VARIABLE_NODE_ID } from '../../constants';
-import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '../../node/constant';
 import { isToolParamInput } from '../../../app/formEdit/utils';
-import { nodeInputIsReference } from '../../utils';
+import { getSelectedInputRenderType, nodeInputIsReference } from '../../utils';
 import { i18nT } from '../../../../common/i18n/utils';
 import {
   filterSelectableWorkflowNodeOutputs,
@@ -55,9 +59,11 @@ import type {
 const getSourceIdentityKey = ([nodeId, outputId]: ReferenceItemValueType) =>
   `${nodeId}\0${outputId}`;
 
-const snapshotMapCache = new WeakMap<object, Map<string, WorkflowReferenceSnapshot>>();
+const snapshotMapCache = new WeakMap<object, ReadonlyMap<string, WorkflowReferenceSnapshot>>();
 
-const toSnapshotMap = (snapshots: readonly WorkflowReferenceSnapshot[]) => {
+const toSnapshotMap = (
+  snapshots: readonly WorkflowReferenceSnapshot[]
+): ReadonlyMap<string, WorkflowReferenceSnapshot> => {
   const cached = snapshotMapCache.get(snapshots);
   if (cached) return cached;
   const snapshotMap = new Map(
@@ -760,13 +766,15 @@ export const createReferenceModule = (document: DocumentReadApi) => {
             };
 
             (value as TUpdateListItem[]).forEach((item) => {
-              getWorkflowReferenceItemsFromValue(item.variable).forEach((reference) => {
+              getWorkflowReferenceItemsFromValue(item.variable, {
+                includeCanonicalReferences: true
+              }).forEach((reference) => {
                 addStatus(reference, item.valueType);
               });
               const variableType = getReferenceValueType(item.variable);
-              getWorkflowReferenceItemsFromValue(item.value).forEach((reference) => {
-                addStatus(reference, variableType);
-              });
+              getWorkflowReferenceItemsFromValue(item.value, {
+                includeCanonicalReferences: item.renderType === FlowNodeInputTypeEnum.reference
+              }).forEach((reference) => addStatus(reference, variableType));
             });
             return result;
           })()
@@ -786,6 +794,15 @@ export const createReferenceModule = (document: DocumentReadApi) => {
    * 按值判定引用状态：ifElse 条件与 variableUpdate 条目的引用嵌在结构化 value 里，
    * 不是独立字段，因此复用整字段的来源范围与类型兼容规则；malformed 数组同样报 invalid_reference。
    */
+  const isOrdinaryMultipleSelectValue = (targetNodeId: string, value: unknown) => {
+    const node = document.getNodeById(targetNodeId);
+    return node?.data.inputs.some((input) => {
+      const selectedType = getSelectedInputRenderType(input);
+      if (selectedType !== FlowNodeInputTypeEnum.multipleSelect) return false;
+      return input.value === value || (input.value === undefined && input.defaultValue === value);
+    });
+  };
+
   const getValueStatuses = ({
     value,
     targetNodeId,
@@ -795,9 +812,12 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     targetNodeId: string;
     targetType?: WorkflowIOValueTypeEnum;
   }): WorkflowReferenceStatus[] => {
-    const statuses = getWorkflowReferenceItemsFromValue(value).map((reference) =>
-      getReferenceStatus({ reference, targetType, targetNodeId })
-    );
+    // Multiple-select 的选项值也可能是二元字符串数组；只有选中 reference 模式才按引用解释。
+    if (isOrdinaryMultipleSelectValue(targetNodeId, value)) return [];
+
+    const statuses = getWorkflowReferenceItemsFromValue(value, {
+      includeCanonicalReferences: true
+    }).map((reference) => getReferenceStatus({ reference, targetType, targetNodeId }));
     return hasMalformedReferenceArray(value) || (statuses.length === 0 && !isEmptyValue(value))
       ? [{ code: 'invalid_reference' as const }, ...statuses]
       : statuses;
@@ -927,7 +947,8 @@ export const createReferenceModule = (document: DocumentReadApi) => {
       };
     };
 
-    const snapshots = toSnapshotMap(previous.referenceSnapshots);
+    // 缓存 Map 只读；本次事务需要删改时复制，避免污染历史文档共享的缓存。
+    const snapshots = new Map(toSnapshotMap(previous.referenceSnapshots));
     let previousScope: ReferenceSourceScope | undefined;
     sourceKeys.forEach((sourceKey) => {
       const reference = parseSourceIdentityKey(sourceKey);

@@ -90,7 +90,8 @@ export const readCustomOutputSnapshot = ({
     const resolved = getReferenceVariableValue({
       value: refValue,
       nodesMap,
-      variables: variableState.toRuntimeRecord()
+      variables: variableState.toRuntimeRecord(),
+      isReferenceVal: true
     });
     snapshot[item.key] = formatVariableValByType(resolved, item.valueType);
   }

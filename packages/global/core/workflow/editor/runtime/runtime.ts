@@ -7,6 +7,7 @@ import type {
   WorkflowChangedRecords,
   WorkflowCommand,
   WorkflowCommandError,
+  WorkflowCanvasEdgeSnapshot,
   WorkflowDispatchResult,
   WorkflowEdgeSnapshot,
   WorkflowFieldIdentity,
@@ -148,6 +149,10 @@ export const createWorkflowEditor = (
   >();
   const referenceOptionsCache = new Map<string, readonly WorkflowReferenceOption[]>();
   const edgeSnapshotCache = new Map<EdgeRecord, WorkflowEdgeSnapshot>();
+  const canvasEdgeSnapshotCache = new Map<EdgeRecord, WorkflowCanvasEdgeSnapshot>();
+  let canvasEdgesSnapshotCache:
+    | { version: number; edges: readonly WorkflowCanvasEdgeSnapshot[] }
+    | undefined;
   const fieldSnapshotCache = new Map<
     string,
     {
@@ -259,6 +264,29 @@ export const createWorkflowEditor = (
     const snapshot = freezeValue(cloneValue(edge.data)) as WorkflowEdgeSnapshot;
     edgeSnapshotCache.set(edge, snapshot);
     return snapshot;
+  };
+
+  const getCanvasEdgeSnapshot = (edge: EdgeRecord): WorkflowCanvasEdgeSnapshot => {
+    const cached = canvasEdgeSnapshotCache.get(edge);
+    if (cached) return cached;
+    const snapshot = freezeValue({
+      id: edge.id,
+      ...cloneValue(edge.data)
+    }) as WorkflowCanvasEdgeSnapshot;
+    canvasEdgeSnapshotCache.set(edge, snapshot);
+    return snapshot;
+  };
+
+  const getCanvasEdges = (): readonly WorkflowCanvasEdgeSnapshot[] => {
+    ensureActive();
+    if (canvasEdgesSnapshotCache?.version === semanticVersion) {
+      return canvasEdgesSnapshotCache.edges;
+    }
+    const edges = freezeValue(
+      document.getDocument().edges.map(getCanvasEdgeSnapshot)
+    ) as readonly WorkflowCanvasEdgeSnapshot[];
+    canvasEdgesSnapshotCache = { version: semanticVersion, edges };
+    return edges;
   };
 
   const getChatConfigSnapshot = (chatConfig: AppChatConfigType): AppChatConfigType => {
@@ -599,6 +627,7 @@ export const createWorkflowEditor = (
 
   const port: WorkflowRuntimePort = {
     getWorkflow: getWorkflowSnapshot,
+    getCanvasEdges,
     getWorkflowIssues,
     /** 返回不含 runtime-only state 的 canonical 深拷贝；runtime disposed 后拒绝读取。 */
     getWorkflowData: () => {
@@ -684,6 +713,8 @@ export const createWorkflowEditor = (
       history.clear();
       nodeSnapshotCache.clear();
       edgeSnapshotCache.clear();
+      canvasEdgeSnapshotCache.clear();
+      canvasEdgesSnapshotCache = undefined;
       fieldSnapshotCache.clear();
       referenceOptionsCache.clear();
       workflowSnapshotCache = undefined;

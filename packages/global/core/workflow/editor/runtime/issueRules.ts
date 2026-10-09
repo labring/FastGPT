@@ -192,6 +192,11 @@ export const collectNodeIssues = (
   const nodeId = data.nodeId;
   const inputs = data.inputs;
   const inputMap = new Map(inputs.map((input) => [input.key, input]));
+  const datasetSelectInput = inputMap.get(NodeInputKeyEnum.datasetSelectList);
+  const hasSelectedDataset =
+    !datasetSelectInput ||
+    nodeInputIsReference(datasetSelectInput) ||
+    (Array.isArray(datasetSelectInput.value) && datasetSelectInput.value.length > 0);
   const models = environment.models;
 
   const issues: WorkflowCheckIssue[] = [];
@@ -310,6 +315,37 @@ export const collectNodeIssues = (
     addIssue({ code: resolvePluginErrorIssueCode(data.pluginData.error) });
   }
 
+  /** 资源选择器沿用服务端返回的 error 标记，统一映射为稳定 Issue code。 */
+  const addResourceIssues = (value: unknown, inputKey: string) => {
+    if (!Array.isArray(value)) return;
+    const resourceItems = value.filter(
+      (item): item is { error?: unknown } => !!item && typeof item === 'object'
+    );
+    if (resourceItems.some((item) => item.error === 'resource_no_permission')) {
+      addIssue({ code: 'resource_no_permission', inputKey });
+    }
+    if (resourceItems.some((item) => item.error && item.error !== 'resource_no_permission')) {
+      addIssue({ code: 'resource_missing', inputKey });
+    }
+  };
+
+  [NodeInputKeyEnum.datasetSelectList, NodeInputKeyEnum.skills].forEach((key) =>
+    addResourceIssues(inputMap.get(key)?.value, key)
+  );
+
+  const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
+  if (
+    data.flowNodeType === FlowNodeTypeEnum.agent &&
+    datasetParamsInput?.value &&
+    typeof datasetParamsInput.value === 'object' &&
+    !Array.isArray(datasetParamsInput.value)
+  ) {
+    addResourceIssues(
+      (datasetParamsInput.value as { datasets?: unknown }).datasets,
+      NodeInputKeyEnum.datasetParams
+    );
+  }
+
   // 工具调用下游工具只有 systemInputConfig 未配置时才算未激活；
   // 普通必填参数为空由下面的通用必填校验单独提示，不能复用整体工具配置状态。
   const systemInputConfig = inputMap.get(NodeInputKeyEnum.systemInputConfig);
@@ -358,7 +394,9 @@ export const collectNodeIssues = (
         modelIdKey === NodeInputKeyEnum.datasetSearchExtensionModelId;
       // 问题提示只展示实际 ID；旧名称或 defaultValue 不能掩盖尚未选择模型的状态。
       // 可选功能的开关缺省表示未开启，不借用模板默认值。
-      const featureValue = featureKey ? inputMap.get(featureKey)?.value : true;
+      const featureValue = featureKey
+        ? hasSelectedDataset && inputMap.get(featureKey)?.value
+        : true;
       addModelIssue({
         modelId: isDatasetQueryExtension
           ? modelIdInput?.value
@@ -376,7 +414,6 @@ export const collectNodeIssues = (
       });
     }
 
-    const datasetParamsInput = inputMap.get(NodeInputKeyEnum.datasetParams);
     if (
       data.flowNodeType === FlowNodeTypeEnum.agent &&
       datasetParamsInput?.value &&
@@ -384,11 +421,14 @@ export const collectNodeIssues = (
       !Array.isArray(datasetParamsInput.value)
     ) {
       const datasetParams = datasetParamsInput.value as Record<string, unknown>;
+      const hasSelectedDataset =
+        Array.isArray(datasetParams.datasets) && datasetParams.datasets.length > 0;
       addModelIssue({
         modelId: datasetParams[NodeInputKeyEnum.datasetSearchRerankModelId],
         model: datasetParams[NodeInputKeyEnum.datasetSearchRerankModel],
         type: ModelTypeEnum.rerank,
-        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
+        featureEnabled:
+          hasSelectedDataset && Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingReRank]),
         defaultWhenEmpty: true,
         inputKey: NodeInputKeyEnum.datasetParams,
         modelInput: { key: NodeInputKeyEnum.datasetSearchRerankModelId }
@@ -397,7 +437,9 @@ export const collectNodeIssues = (
         modelId: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModelId],
         model: datasetParams[NodeInputKeyEnum.datasetSearchExtensionModel],
         type: ModelTypeEnum.llm,
-        featureEnabled: Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
+        featureEnabled:
+          hasSelectedDataset &&
+          Boolean(datasetParams[NodeInputKeyEnum.datasetSearchUsingExtensionQuery]),
         defaultWhenEmpty: true,
         inputKey: NodeInputKeyEnum.datasetParams,
         modelInput: { key: NodeInputKeyEnum.datasetSearchExtensionModelId }

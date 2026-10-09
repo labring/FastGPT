@@ -161,6 +161,19 @@ const createStoreWorkflow = () => ({
 });
 
 describe('workflow editor codec', () => {
+  it('does not persist editor-only output invalid state', () => {
+    const input = createStoreWorkflow();
+    const node = input.nodes.find((item) => item.nodeId === 'answer');
+    if (!node) throw new Error('answer node fixture missing');
+    node.outputs = node.outputs.map((output) => ({ ...output, invalid: true }));
+
+    const output = serializeRuntime(hydrateRuntime({ input, t }));
+
+    expect(output.nodes.flatMap((item) => item.outputs).every((item) => !('invalid' in item))).toBe(
+      true
+    );
+  });
+
   it('materializes templates and preserves persistence semantics', () => {
     const input = createStoreWorkflow();
     const inputSnapshot = structuredClone(input);

@@ -618,6 +618,88 @@ describe('getWorkflowNodeRunParams', () => {
     expect(variableState.getToRuntimeRecordCount()).toBe(1);
   });
 
+  it('全部来源失效时在 dispatch 参数边界拒绝执行', () => {
+    const variableState = createVariableState();
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: [
+          ['missing-node', 'output'],
+          [VARIABLE_NODE_ID, 'missing-variable']
+        ],
+        valueType: WorkflowIOValueTypeEnum.arrayAny
+      }
+    ];
+
+    expect(() =>
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: variableState.state
+      })
+    ).toThrow('Workflow reference source is unavailable');
+  });
+
+  it('部分来源失效时只向执行层传递仍可解析的值', () => {
+    const variableState = createVariableState({ liveVariable: 'live' });
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+    sourceNode.outputs = [
+      {
+        id: 'output',
+        key: 'output',
+        type: FlowNodeOutputTypeEnum.static,
+        value: 'source-value'
+      }
+    ];
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: [
+          ['source', 'output'],
+          ['missing-node', 'output'],
+          [VARIABLE_NODE_ID, 'liveVariable']
+        ],
+        valueType: WorkflowIOValueTypeEnum.arrayAny
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map([['source', sourceNode]]),
+      variableState: variableState.state
+    });
+
+    expect(params.payload).toEqual(['source-value', 'live']);
+  });
+
+  it('变量引用失效时不允许继续执行', () => {
+    const variableState = createVariableState();
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: [VARIABLE_NODE_ID, 'missing-variable'],
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    expect(() =>
+      getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: new Map(),
+        variableState: variableState.state
+      })
+    ).toThrow('Workflow reference source is unavailable');
+  });
+
   it('同节点引用工具参数时不读取 input value', () => {
     const variableState = createVariableState();
     const node = createNode('code', FlowNodeTypeEnum.code);

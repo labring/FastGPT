@@ -905,6 +905,11 @@ export const createDocumentModule = (initial: CanonicalResult) => {
           );
         }
         const rebuilt = buildDocument(command.document, nextEdgeId);
+        meta.chatConfigChanged = !valuesEqual(working.chatConfig, rebuilt.document.chatConfig);
+        meta.chatConfigVariablesChanged = !valuesEqual(
+          working.chatConfig.variables,
+          rebuilt.document.chatConfig.variables
+        );
         working.nodes = rebuilt.document.nodes;
         working.edges = rebuilt.document.edges;
         working.chatConfig = rebuilt.document.chatConfig;

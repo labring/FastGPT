@@ -191,14 +191,18 @@ const migrateCreateAppBodyWorkflow = (value: unknown) => {
     const workflow = migrateWorkflowToCurrent({
       nodes: body.modules,
       edges: body.edges,
-      chatConfig: body.chatConfig
+      chatConfig: body.chatConfig,
+      referenceSnapshots: body.referenceSnapshots
     });
 
     return {
       ...body,
       modules: workflow.nodes,
       edges: workflow.edges,
-      chatConfig: workflow.chatConfig
+      chatConfig: workflow.chatConfig,
+      ...(body.referenceSnapshots !== undefined
+        ? { referenceSnapshots: workflow.referenceSnapshots }
+        : {})
     };
   } catch {
     return value;
@@ -244,6 +248,9 @@ export const CreateAppBodySchema = z
     }),
     chatConfig: AppChatConfigInputSchema.strict().optional().meta({
       description: '聊天配置'
+    }),
+    referenceSnapshots: AppSchemaTypeSchema.shape.referenceSnapshots.meta({
+      description: '已删除引用来源的历史展示元数据'
     }),
     templateId: z.string().optional().meta({
       example: 'template-123',

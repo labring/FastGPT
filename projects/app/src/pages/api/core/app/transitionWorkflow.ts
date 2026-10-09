@@ -48,6 +48,7 @@ async function handler(
         modules: decodeToolSetNodesFromStorage(app.modules),
         edges: app.edges,
         chatConfig: app.chatConfig,
+        referenceSnapshots: app.referenceSnapshots,
         teamId: app.teamId,
         tmbId,
         session
@@ -68,6 +69,7 @@ async function handler(
       modules: decodeToolSetNodesFromStorage(app.modules),
       edges: app.edges,
       chatConfig: app.chatConfig,
+      referenceSnapshots: app.referenceSnapshots,
       teamId,
       session
     });

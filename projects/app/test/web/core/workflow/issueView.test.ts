@@ -31,12 +31,14 @@ const readNamespace = (language: string, namespace: string) => {
 };
 
 /** 假 t：把 key 与插值参数原样拼出来，便于断言 inputName 是否被二次翻译。 */
-const t = ((key: string, params?: Record<string, string>) =>
-  params
+const t = ((key: string, params?: Record<string, string>) => {
+  if (key === 'common:core.ai.Model') return '模型';
+  return params
     ? `${key}|${Object.entries(params)
         .map(([name, value]) => `${name}=${value}`)
         .join(',')}`
-    : key) as never;
+    : key;
+}) as never;
 
 const createIssue = (issue: Omit<WorkflowCheckIssue, 'nodeId' | 'level'>): WorkflowCheckIssue => ({
   nodeId: 'node',
@@ -45,7 +47,7 @@ const createIssue = (issue: Omit<WorkflowCheckIssue, 'nodeId' | 'level'>): Workf
 });
 
 describe('renderWorkflowIssueMessage', () => {
-  it('resolves the i18n key by code and re-translates inputName', () => {
+  it('resolves the i18n key by code and keeps inputName as interpolation data', () => {
     const message = renderWorkflowIssueMessage(
       createIssue({
         code: WorkflowIssueCode.requiredInputEmpty,
@@ -54,7 +56,7 @@ describe('renderWorkflowIssueMessage', () => {
       t
     );
 
-    // inputName 是 label 原始字符串（i18n key），渲染层对它再翻译一次，语言切换才会跟随。
+    // inputName 不能再次作为动态翻译 key，避免用户输入绕过静态收集。
     expect(message).toBe(
       'common:core.workflow.check.required_input_empty|inputName=common:core.ai.Model'
     );
@@ -84,6 +86,8 @@ describe('renderWorkflowIssueMessage', () => {
 describe('getWorkflowIssueUIStatus', () => {
   it('marks external dependency failures as pending_handle', () => {
     expect(getWorkflowIssueUIStatus(WorkflowIssueCode.invalidReference)).toBe('pending_handle');
+    expect(getWorkflowIssueUIStatus(WorkflowIssueCode.resourceMissing)).toBe('pending_handle');
+    expect(getWorkflowIssueUIStatus(WorkflowIssueCode.resourceNoPermission)).toBe('pending_handle');
     expect(getWorkflowIssueUIStatus(WorkflowIssueCode.toolOffline)).toBe('pending_handle');
     expect(getWorkflowIssueUIStatus(WorkflowIssueCode.sandboxNotConfigured)).toBe('pending_handle');
   });

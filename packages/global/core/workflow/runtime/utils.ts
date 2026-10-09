@@ -310,14 +310,15 @@ export const getReferenceVariableValue = ({
   value,
   nodesMap,
   variables,
-  isReferenceVal = true
+  isReferenceVal
 }: {
   value?: ReferenceValueType;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, unknown>;
+  /** 明确告诉解析器数组值就是引用数组；未指定时保留无法证明为引用的普通多选数据。 */
   isReferenceVal?: boolean;
 }) => {
-  if (!value || !isReferenceVal) return value;
+  if (!value || isReferenceVal === false) return value;
 
   /** 解析单个引用：全局变量走 variables，节点输出走 nodesMap；来源缺失一律 undefined。 */
   const resoleValue = (value: [string, string | undefined]) => {
@@ -341,22 +342,22 @@ export const getReferenceVariableValue = ({
   }
 
   // handle reference array
-  // 两列表格（string[][] 字面量）与引用数组在结构上无法区分，只有至少一项来源真实存在时
-  // 才按引用数组逐项解析，否则原样返回，避免把表格数据吃掉（见 #7051）。
-  // ponytail: 全部来源都失效的引用数组仍会整体透传；要区分它需要调用方声明「这是引用」，
-  // 目前只有 http468 / replaceEditorVariable 会传非引用值，等它们改按 input 元数据判定后再收紧。
-  if (
+  // 两列表格（string[][] 字面量）与引用数组在结构上无法区分：自动模式只有发现实时来源
+  // 才解析；明确的引用字段即使所有来源都失效也必须返回 undefined，不能把 ID 数组透传到执行层。
+  const isReferenceArray =
     Array.isArray(value) &&
     value.length > 0 &&
-    value.every((item) => isValidReferenceValueFormat(item)) &&
-    value.some((item) => isValidReferenceValueFormat(item, nodesMap))
-  ) {
-    return value
+    value.every((item) => isValidReferenceValueFormat(item));
+  const hasResolvableReference =
+    isReferenceArray && value.some((item) => isValidReferenceValueFormat(item, nodesMap));
+  if (isReferenceArray && (isReferenceVal === true || hasResolvableReference)) {
+    const resolved = value
       .map<any>((val) => {
         return resoleValue(val as [string, string | undefined]);
       })
       .flat()
       .filter((item) => item !== undefined);
+    return resolved.length > 0 ? resolved : undefined;
   }
 
   return value;

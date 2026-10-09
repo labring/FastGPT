@@ -50,8 +50,19 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     req,
     bodySchema: CreateAppRequestBodySchema
   });
-  const { parentId, name, avatar, intro, type, modules, edges, chatConfig, templateId, utmParams } =
-    body;
+  const {
+    parentId,
+    name,
+    avatar,
+    intro,
+    type,
+    modules,
+    edges,
+    chatConfig,
+    referenceSnapshots,
+    templateId,
+    utmParams
+  } = body;
 
   // 凭证校验
   const { teamId, tmbId, userId, isRoot } = parentId
@@ -91,6 +102,7 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     modules,
     edges,
     chatConfig,
+    referenceSnapshots,
     teamId,
     tmbId,
     userAvatar: tmb?.avatar,
@@ -130,6 +142,7 @@ export const onCreateApp = async ({
   storageModules,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   tmbId,
   pluginData,
@@ -147,6 +160,7 @@ export const onCreateApp = async ({
   storageModules?: AppSchemaType['modules'];
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
+  referenceSnapshots?: AppSchemaType['referenceSnapshots'];
   intro?: string;
   teamId: string;
   tmbId: string;
@@ -172,8 +186,13 @@ export const onCreateApp = async ({
   const normalizedWorkflow = migrateWorkflowToCurrent({
     nodes: modules ?? [],
     edges: edges ?? [],
-    chatConfig
+    chatConfig,
+    referenceSnapshots
   });
+  const persistedReferenceSnapshots =
+    type === AppTypeEnum.workflow || type === AppTypeEnum.workflowTool
+      ? normalizedWorkflow.referenceSnapshots
+      : undefined;
   const modelHandle = await getModelHandle();
   formatModels({
     nodes: normalizedWorkflow.nodes,
@@ -231,6 +250,9 @@ export const onCreateApp = async ({
           modules: storageNodes ?? normalizedWorkflow.nodes,
           edges: normalizedWorkflow.edges,
           chatConfig: normalizedWorkflow.chatConfig,
+          ...(persistedReferenceSnapshots !== undefined && {
+            referenceSnapshots: persistedReferenceSnapshots
+          }),
           type,
           version: 'v2',
           pluginData,
@@ -252,6 +274,9 @@ export const onCreateApp = async ({
             nodes: storageNodes ?? normalizedWorkflow.nodes,
             edges: normalizedWorkflow.edges,
             chatConfig: normalizedWorkflow.chatConfig,
+            ...(persistedReferenceSnapshots !== undefined && {
+              referenceSnapshots: persistedReferenceSnapshots
+            }),
             versionName: name,
             username,
             avatar: userAvatar,
@@ -309,6 +334,7 @@ export const onUpdateAppWorkflow = async ({
   modules,
   edges,
   chatConfig,
+  referenceSnapshots,
   teamId,
   session
 }: {
@@ -316,13 +342,15 @@ export const onUpdateAppWorkflow = async ({
   modules?: AppSchemaType['modules'];
   edges?: AppSchemaType['edges'];
   chatConfig?: AppSchemaType['chatConfig'];
+  referenceSnapshots?: AppSchemaType['referenceSnapshots'];
   teamId: string;
   session?: ClientSession;
 }) => {
   const workflow = migrateWorkflowToCurrent({
     nodes: modules ?? [],
     edges: edges ?? [],
-    chatConfig
+    chatConfig,
+    referenceSnapshots
   });
   const modelHandle = await getModelHandle();
   formatModels({
@@ -341,6 +369,7 @@ export const onUpdateAppWorkflow = async ({
       modules: workflow.nodes,
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
+      referenceSnapshots: workflow.referenceSnapshots,
       updateTime: new Date()
     },
     { session }

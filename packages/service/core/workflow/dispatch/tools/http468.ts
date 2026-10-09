@@ -28,6 +28,7 @@ import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
+import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -468,7 +469,8 @@ export const replaceJsonBodyString = (
             return getReferenceVariableValue({
               value: input.value,
               nodesMap: runtimeNodesMap,
-              variables: allVariables
+              variables: allVariables,
+              isReferenceVal: nodeInputIsReference(input)
             });
           }
         })();

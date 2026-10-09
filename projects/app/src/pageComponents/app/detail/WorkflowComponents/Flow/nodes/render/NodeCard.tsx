@@ -80,7 +80,6 @@ import { canvasNodeToStoreNode } from '@/web/core/workflow/editor/canvas/canvasT
 import { useWorkflowUIValue } from '../../canvas/canvasState';
 import { useWorkflowCanvasValue } from '../../canvas/workflowCanvasContext';
 import { useDebug } from '../../hooks/useDebug';
-import { useNodeOutputValidity } from '../../hooks/useNodeOutputValidity';
 import { useClearCanvasSelection } from '../../canvas/useCanvasController';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { useIsToolNode } from './useWorkflowDocument';
@@ -137,11 +136,6 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
   } catch {
     return;
   }
-};
-
-const NodeOutputValidity = ({ nodeId }: { nodeId: string }) => {
-  useNodeOutputValidity(nodeId);
-  return null;
 };
 
 const NodeCard = (props: Props) => {
@@ -433,7 +427,6 @@ const NodeCard = (props: Props) => {
         }}
         {...(isError ? { onMouseDownCapture: () => focusIssueNode(undefined) } : {})}
       >
-        <NodeOutputValidity nodeId={nodeId} />
         {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
 
         {foldedOverlay}

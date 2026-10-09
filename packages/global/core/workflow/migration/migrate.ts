@@ -25,6 +25,18 @@ export const stripCanvasSizeInputs = (inputs: FlowNodeInputItemType[]): FlowNode
     ? inputs.filter((input) => !canvasSizeInputKeys.has(input.key))
     : inputs;
 
+/** 判断节点列表是否包含带 moduleId 但缺少有效 nodeId 的 V1 历史节点。 */
+export const isLegacyV1Workflow = (nodes: unknown): boolean => {
+  if (!Array.isArray(nodes)) return false;
+  return nodes.some((node) => {
+    if (!node || typeof node !== 'object' || Array.isArray(node)) return false;
+    const record = node as Record<string, unknown>;
+    const hasModuleId = typeof record.moduleId === 'string' && record.moduleId.length > 0;
+    const hasValidNodeId = typeof record.nodeId === 'string' && record.nodeId.length > 0;
+    return hasModuleId && !hasValidNodeId;
+  });
+};
+
 /**
  * 将外部 workflow 迁移为严格 canonical 数据。
  *
@@ -32,15 +44,7 @@ export const stripCanvasSizeInputs = (inputs: FlowNodeInputItemType[]): FlowNode
  */
 export const migrateWorkflowToCurrent = (input: LegacyWorkflowDataInput): CanonicalWorkflowData => {
   // V1 工作流已不再支持，普通入口只接受 V2/current 数据。
-  const hasLegacyV1Node = input.nodes.some(
-    (node) =>
-      !!node &&
-      typeof node === 'object' &&
-      typeof (node as Record<string, unknown>).flowType === 'string' &&
-      (typeof (node as Record<string, unknown>).moduleId === 'string' ||
-        typeof (node as Record<string, unknown>).nodeId !== 'string')
-  );
-  if (hasLegacyV1Node) {
+  if (isLegacyV1Workflow(input.nodes)) {
     throw new Error('V1 workflows are no longer supported');
   }
 

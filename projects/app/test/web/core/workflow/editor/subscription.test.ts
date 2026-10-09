@@ -13,7 +13,7 @@ import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/t
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import { WorkflowEditorProvider } from '@/web/core/workflow/editor/react/workflowEditorProvider';
 import { useFieldValue } from '@/web/core/workflow/editor/react/useField';
-import { useNodeValue } from '@/web/core/workflow/editor/react/useNode';
+import { useNode, useNodeValue } from '@/web/core/workflow/editor/react/useNode';
 import {
   useWorkflow,
   useWorkflowActions,
@@ -271,6 +271,30 @@ describe('workflow editor subscription API', () => {
     });
     expect(renders).toBe(3);
     expect(names.at(-1)).toBeUndefined();
+  });
+
+  it('reads the current node fields after a canvas node keeps its identity', async () => {
+    const values: unknown[] = [];
+    const Leaf = () => {
+      const node = useNode('answer');
+      values.push(node?.data.inputs.find((input) => input.key === 'extraText')?.value);
+      return null;
+    };
+    await mount(Leaf);
+
+    expect(values).toEqual(['before']);
+
+    act(() => {
+      runtime.dispatch({
+        type: 'updateField',
+        nodeId: 'answer',
+        fieldKey: 'extraText',
+        kind: 'input',
+        value: 'after'
+      });
+    });
+
+    expect(values.at(-1)).toBe('after');
   });
 
   it('scopes field subscriptions, tolerates a fresh query object and a deleted field', async () => {

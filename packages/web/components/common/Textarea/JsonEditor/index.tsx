@@ -79,14 +79,15 @@ const JSONEditor = ({
   const [placeholderDisplay, setPlaceholderDisplay] = useState('block');
   const initialY = useRef(0);
   const monaco = useMonaco();
+  const modelUriRef = useRef<string>();
 
   useEffect(() => {
-    if (!monaco || !path) return;
-    const model = monaco.editor.getModel(monaco.Uri.parse(path));
+    if (!monaco || !modelUriRef.current) return;
+    const model = monaco.editor.getModel(monaco.Uri.parse(modelUriRef.current));
     if (model) {
       registerJsonEditorContext(model, variables);
     }
-  }, [monaco, path, variables]);
+  }, [monaco, variables]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     initialY.current = e.clientY;
@@ -213,11 +214,12 @@ const JSONEditor = ({
           onBlur
         }}
         onMount={(editor) => {
-          if (path) {
-            const model = editor.getModel();
-            if (model) {
+          const model = editor.getModel();
+          if (model) {
+            modelUriRef.current = model.uri.toString();
+            registerJsonEditorContext(model, variables);
+            if (path) {
               registerWorkflowMonacoModel(model);
-              registerJsonEditorContext(model, variables);
             }
           }
 

@@ -1,16 +1,18 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { WorkflowVariableStateLike } from '../../types/runtime';
 import {
   getReferenceVariableValue,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  isValidReferenceValueFormat,
+  nodeInputIsReference
+} from '@fastgpt/global/core/workflow/utils';
 import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/workflowTagFilter';
 import { replaceEditorVariable } from './replaceEditorVariable';
 
@@ -54,6 +56,44 @@ export const getWorkflowNodeRunParams = ({
     return runtimeVariables;
   };
 
+  /** 引用输入在执行前必须至少命中一个现存来源；部分失效由解析器裁剪，全部失效直接拒绝执行。 */
+  const resolveReferenceInputValue = (value: unknown) => {
+    const isExecutableReference = (item: unknown): item is [string, string] =>
+      isValidReferenceValueFormat(item) &&
+      item[0].length > 0 &&
+      typeof item[1] === 'string' &&
+      item[1].length > 0;
+    const references = isExecutableReference(value)
+      ? [value]
+      : Array.isArray(value) && value.length > 0 && value.every(isExecutableReference)
+        ? (value as [string, string][])
+        : [];
+    const variables = getRuntimeVariables();
+    const hasLiveSource = references.some(([sourceNodeId, outputId]) => {
+      if (sourceNodeId === VARIABLE_NODE_ID) {
+        return Object.prototype.hasOwnProperty.call(variables, outputId);
+      }
+      const sourceNode = runtimeNodesMap.get(sourceNodeId);
+      // Agent 生成参数引用节点 input；它不是可执行 output，但仍需保留旧的 undefined 语义。
+      return (
+        sourceNode?.outputs.some((output) => output.id === outputId) === true ||
+        sourceNode?.inputs.some(
+          (input) => input.key === outputId && input.defaultToAgentGenerated === true
+        ) === true
+      );
+    });
+    if (references.length > 0 && !hasLiveSource) {
+      throw new Error('Workflow reference source is unavailable');
+    }
+
+    return getReferenceVariableValue({
+      value: value as Parameters<typeof getReferenceVariableValue>[0]['value'],
+      nodesMap: runtimeNodesMap,
+      variables,
+      isReferenceVal: true
+    });
+  };
+
   node.inputs.forEach((input) => {
     // Special input, not format
     if (input.key === dynamicInput?.key) return;
@@ -74,12 +114,7 @@ export const getWorkflowNodeRunParams = ({
     let value = rawValue;
 
     if (isReferenceInput && !needsTextReplace) {
-      value = getReferenceVariableValue({
-        value,
-        nodesMap: runtimeNodesMap,
-        variables: getRuntimeVariables(),
-        isReferenceVal: true
-      });
+      value = resolveReferenceInputValue(value);
     } else {
       if (needsTextReplace) {
         value = replaceEditorVariable({
@@ -90,12 +125,7 @@ export const getWorkflowNodeRunParams = ({
       }
 
       if (isReferenceInput) {
-        value = getReferenceVariableValue({
-          value,
-          nodesMap: runtimeNodesMap,
-          variables: getRuntimeVariables(),
-          isReferenceVal: true
-        });
+        value = resolveReferenceInputValue(value);
       }
     }
 
@@ -110,13 +140,7 @@ export const getWorkflowNodeRunParams = ({
         ...datasetParams,
         collectionFilterMatch: formatCollectionFilterMatchParam({
           value: datasetParams.collectionFilterMatch,
-          resolveReference: (refValue) =>
-            getReferenceVariableValue({
-              value: refValue as ReferenceValueType,
-              nodesMap: runtimeNodesMap,
-              variables: getRuntimeVariables(),
-              isReferenceVal: true
-            })
+          resolveReference: (refValue) => resolveReferenceInputValue(refValue)
         })
       };
     }
@@ -124,13 +148,7 @@ export const getWorkflowNodeRunParams = ({
     if (input.key === NodeInputKeyEnum.collectionFilterMatch) {
       const formatted = formatCollectionFilterMatchParam({
         value,
-        resolveReference: (refValue) =>
-          getReferenceVariableValue({
-            value: refValue as ReferenceValueType,
-            nodesMap: runtimeNodesMap,
-            variables: getRuntimeVariables(),
-            isReferenceVal: true
-          })
+        resolveReference: (refValue) => resolveReferenceInputValue(refValue)
       });
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = formatted;

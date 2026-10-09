@@ -41,6 +41,16 @@ export type WorkflowNodeSnapshot = DeepReadonly<
 export type WorkflowEdgeSnapshot = DeepReadonly<StoreEdgeItemType>;
 
 /**
+ * 画布专用连线 snapshot：保留 Runtime 的稳定身份，避免 ReactFlow 用数组下标重编码。
+ * 该视图只供编辑器投影使用，不进入 StoreWorkflow 或普通结构查询。
+ */
+export type WorkflowCanvasEdgeSnapshot = DeepReadonly<
+  StoreEdgeItemType & {
+    id: RuntimeEdgeId;
+  }
+>;
+
+/**
  * 图查询返回的只读边端点视图：只带连线判定需要的四个字段。
  * 内部边记录形状（Runtime Edge ID、索引桶）不出现在这里，之后改索引结构不必动 app。
  */
@@ -335,6 +345,8 @@ export type WorkflowDispatchResult = {
 /** Workflow Runtime Port 的唯一行为测试与 adapter seam。 */
 export type WorkflowRuntimePort = {
   getWorkflow: () => WorkflowSnapshot;
+  /** 画布投影专用边视图，包含 Runtime 稳定 id；不用于持久化。 */
+  getCanvasEdges: () => readonly WorkflowCanvasEdgeSnapshot[];
   getWorkflowIssues: () => WorkflowIssuesSnapshot;
   getWorkflowData: () => CanonicalWorkflowData;
   getNode: (nodeId: string) => WorkflowNodeSnapshot | undefined;

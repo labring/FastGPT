@@ -30,6 +30,7 @@ import type {
   RuntimeEdgeItemType,
   StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
+import type { ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 
@@ -1447,6 +1448,36 @@ describe('getReferenceVariableValue', () => {
       variables: {}
     });
     expect(result).toEqual(['value1']);
+  });
+
+  it('should return undefined when an explicit reference array has no live source', () => {
+    const result = getReferenceVariableValue({
+      value: [
+        ['missingNode', 'out1'],
+        [VARIABLE_NODE_ID, 'missingVariable']
+      ],
+      nodesMap: {},
+      variables: {},
+      isReferenceVal: true
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should preserve an ordinary multi-select array when no source proves it is a reference', () => {
+    const selectedOptions: ReferenceValueType = [
+      ['option-a', 'Option A'],
+      ['option-b', 'Option B']
+    ];
+
+    expect(
+      getReferenceVariableValue({
+        value: selectedOptions,
+        nodesMap: {},
+        variables: {},
+        isReferenceVal: false
+      })
+    ).toEqual(selectedOptions);
   });
 
   it('should drop dead references and keep resolving the rest of an array', () => {
