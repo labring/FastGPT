@@ -91,6 +91,22 @@ describe('removeDuplicateSearchResults', () => {
     expect(removeDuplicateSearchResults([text, image])).toEqual([text, image]);
   });
 
+  it('keeps text and image identity boundaries distinct', () => {
+    const first = candidate('first', { q: 'a', imageId: 'bc' });
+    const second = candidate('second', { q: 'ab', imageId: 'c' });
+    const third = candidate('third', { q: '', imageId: 'abc' });
+
+    expect(removeDuplicateSearchResults([first, second, third])).toEqual([first, second, third]);
+  });
+
+  it('normalizes colons in text while preserving colons in image identities', () => {
+    const first = candidate('first', { q: 'a:b', imageId: 'c' });
+    const duplicate = candidate('duplicate', { q: 'ab', imageId: 'c' });
+    const distinct = candidate('distinct', { q: 'a', imageId: 'b:c' });
+
+    expect(removeDuplicateSearchResults([first, duplicate, distinct])).toEqual([first, distinct]);
+  });
+
   it('preserves punctuation and whitespace normalization for text-only results', () => {
     const first = candidate('first', { q: 'Hello, world!', a: 'An answer.' });
     const duplicate = candidate('duplicate', { q: 'Hello world', a: 'An\nanswer' });

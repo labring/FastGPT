@@ -66,7 +66,8 @@ export const removeDuplicateSearchResults = (data: SearchDataResponseItemType[])
   return data.filter((item) => {
     // 文本保留原有标点/空白归一化规则；可选回答为空时不拼入字面量 undefined。
     const text = `${item.q}${item.a ?? ''}`.replace(/[^\p{L}\p{N}]/gu, '');
-    const str = hashStr(JSON.stringify([text, item.imageId ?? '']));
+    // 归一化文本不含冒号，首个冒号可唯一确定字段边界，无需 JSON 序列化。
+    const str = hashStr(`${text}:${item.imageId ?? ''}`);
     if (set.has(str)) return false;
     set.add(str);
     return true;
