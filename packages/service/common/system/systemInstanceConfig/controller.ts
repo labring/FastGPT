@@ -298,6 +298,26 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
 };
 
 let currentSnapshot: SystemInstanceConfig | null = null;
+let currentInstanceVersionTag = '0';
+
+/** 获取基于所有 Domain 文档当前 revision 聚合生成的确定性版本标识 */
+export const getInstanceConfigVersionTag = (): string => currentInstanceVersionTag;
+
+/**
+ * 统一计算系统全局初始化缓存标记（systemInitBufferId）。
+ * 结合实例配置版本签名和授权版本时间戳，确保多节点确定性一致，
+ * 避免不同节点各自使用 Date.now() 或各并行任务先后覆写产生竞态。
+ */
+export const computeSystemInitBufferId = ({
+  instanceVersionTag = currentInstanceVersionTag,
+  licenseUpdateTime
+}: {
+  instanceVersionTag?: string;
+  licenseUpdateTime?: number;
+} = {}): string => {
+  const licenseTag = licenseUpdateTime ?? 0;
+  return `v_${instanceVersionTag}_l_${licenseTag}`;
+};
 
 /**
  * 一次性获取所有 11 个 Domain 的最新配置合成快照。
@@ -306,6 +326,12 @@ let currentSnapshot: SystemInstanceConfig | null = null;
 export const getSystemInstanceConfigSnapshot = async (): Promise<SystemInstanceConfig> => {
   try {
     const docs = await MongoSystemInstanceConfig.find({}).lean();
+
+    const versionSig = docs
+      .map((d) => `${d._id}:${d.revision ?? 0}`)
+      .sort()
+      .join(';');
+    currentInstanceVersionTag = versionSig || '0';
 
     const domainOverridesMap: Partial<Record<SystemInstanceConfigDomainKey, unknown>> = {};
     for (const doc of docs) {
@@ -371,6 +397,11 @@ export const reloadSystemInstanceConfig = async (): Promise<SystemInstanceConfig
   const snapshot = await getSystemInstanceConfigSnapshot();
   currentSnapshot = snapshot;
   global.systemInstanceConfig = snapshot;
-  global.systemInitBufferId = Date.now().toString();
+  global.systemInitBufferId = computeSystemInitBufferId({
+    instanceVersionTag: currentInstanceVersionTag,
+    licenseUpdateTime: (global.licenseData as any)?.expiredTime
+      ? new Date((global.licenseData as any).expiredTime).getTime()
+      : undefined
+  });
   return snapshot;
 };
