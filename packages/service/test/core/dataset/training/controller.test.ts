@@ -14,8 +14,11 @@ import {
   finalErrorTrainingMatch,
   isFinalErrorTraining
 } from '@fastgpt/service/core/dataset/training/query';
+import { retryFailedTrainingTasks } from '@fastgpt/service/core/dataset/training/service';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getRootUser } from '@test/datas/users';
+
+vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
 describe('dataset training controller', () => {
   it.each([TrainingModeEnum.auto, TrainingModeEnum.imageParse])(
@@ -157,6 +160,174 @@ describe('dataset training controller', () => {
     expect(untouchedTraining?.lockTime).not.toEqual(BLOCKED_LOCK_TIME);
     expect(untouchedTraining?.errorMsg).toBeUndefined();
   });
+  it.each([false, true])(
+    'synchronizes rebuild pause and retry without changing completed data (lockHeld=%s)',
+    async (lockHeld) => {
+      const root = await getRootUser();
+      const scope = {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: '507f1f77bcf86cd799439021',
+        collectionId: '507f1f77bcf86cd799439022'
+      };
+      const [data, completed] = await MongoDatasetData.create([
+        {
+          ...scope,
+          q: 'saved content',
+          indexes: [],
+          indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
+        },
+        {
+          ...scope,
+          q: 'completed content',
+          indexes: [],
+          indexStatus: DatasetDataIndexStatusEnum.indexed
+        }
+      ]);
+      const [task, stale] = await MongoDatasetTraining.create([
+        {
+          ...scope,
+          billId: 'test',
+          dataId: data._id,
+          mode: TrainingModeEnum.rebuild,
+          retryCount: 3
+        },
+        {
+          ...scope,
+          billId: 'test',
+          dataId: completed._id,
+          mode: TrainingModeEnum.rebuild,
+          retryCount: 3
+        }
+      ]);
+      const lockSpy = lockHeld
+        ? vi.spyOn(timerLockUtils, 'checkTimerLock').mockResolvedValueOnce(false)
+        : undefined;
+      try {
+        await lockTrainingDataByTeamId(String(root.teamId), String(task._id));
+      } finally {
+        lockSpy?.mockRestore();
+      }
+      const paused = await MongoDatasetData.findById(data._id).lean();
+      const pausedTask = await MongoDatasetTraining.findById(task._id).lean();
+      expect(paused).toMatchObject({
+        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
+        indexErrorMsg: i18nT('common:code_error.team_error.ai_points_not_enough'),
+        q: data.q,
+        indexes: data.indexes
+      });
+      expect(pausedTask).toMatchObject({
+        lockTime: BLOCKED_LOCK_TIME,
+        retryCount: 3,
+        expireAt: null
+      });
+      expect((await MongoDatasetData.findById(completed._id).lean())?.indexStatus).toBe(
+        DatasetDataIndexStatusEnum.indexed
+      );
+      if (lockHeld)
+        expect((await MongoDatasetTraining.findById(stale._id).lean())?.lockTime).not.toEqual(
+          BLOCKED_LOCK_TIME
+        );
+      await retryFailedTrainingTasks({ teamId: String(root.teamId), datasetId: scope.datasetId });
+      const retried = await MongoDatasetData.findById(data._id).lean();
+      expect(retried?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildIndexRunning);
+      expect(retried?.indexErrorMsg).toBeUndefined();
+      expect((await MongoDatasetTraining.findById(task._id).lean())?.lockTime).not.toEqual(
+        BLOCKED_LOCK_TIME
+      );
+    }
+  );
+
+  it('rolls back both task and rebuild data when pause synchronization fails', async () => {
+    const root = await getRootUser();
+    const scope = {
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: '507f1f77bcf86cd799439021',
+      collectionId: '507f1f77bcf86cd799439022'
+    };
+    const data = await MongoDatasetData.create({
+      ...scope,
+      q: 'saved',
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
+    });
+    const task = await MongoDatasetTraining.create({
+      ...scope,
+      billId: 'test',
+      dataId: data._id,
+      mode: TrainingModeEnum.rebuild,
+      retryCount: 3
+    });
+    const spy = vi
+      .spyOn(MongoDatasetData, 'bulkWrite')
+      .mockRejectedValueOnce(new Error('pause synchronization failed'));
+    try {
+      await lockTrainingDataByTeamId(String(root.teamId));
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await MongoDatasetData.findById(data._id).lean())?.indexStatus).toBe(
+      DatasetDataIndexStatusEnum.rebuildIndexRunning
+    );
+    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+      lockTime: task.lockTime,
+      expireAt: task.expireAt
+    });
+    await lockTrainingDataByTeamId(String(root.teamId));
+    expect((await MongoDatasetData.findById(data._id).lean())?.indexStatus).toBe(
+      DatasetDataIndexStatusEnum.rebuildIndexFailed
+    );
+  });
+
+  it('pauses multiple batches and does not modify a foreign data reference', async () => {
+    const root = await getRootUser();
+    const scope = {
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: '507f1f77bcf86cd799439021',
+      collectionId: '507f1f77bcf86cd799439022'
+    };
+    const datas = await MongoDatasetData.insertMany(
+      Array.from({ length: 301 }, () => ({
+        ...scope,
+        q: 'saved',
+        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
+      }))
+    );
+    const foreign = await MongoDatasetData.create({
+      ...scope,
+      teamId: '507f1f77bcf86cd799439033',
+      q: 'foreign',
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
+    });
+    await MongoDatasetTraining.insertMany(
+      [...datas, foreign].map((data) => ({
+        ...scope,
+        billId: 'test',
+        dataId: data._id,
+        mode: TrainingModeEnum.rebuild,
+        retryCount: 3
+      }))
+    );
+    await lockTrainingDataByTeamId(String(root.teamId));
+    expect(
+      await MongoDatasetTraining.countDocuments({
+        teamId: root.teamId,
+        lockTime: BLOCKED_LOCK_TIME,
+        expireAt: null
+      })
+    ).toBe(302);
+    expect(
+      await MongoDatasetData.countDocuments({
+        teamId: root.teamId,
+        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
+      })
+    ).toBe(301);
+    expect((await MongoDatasetData.findById(foreign._id).lean())?.indexStatus).toBe(
+      DatasetDataIndexStatusEnum.rebuildIndexRunning
+    );
+  });
+
   const lockModes = [
     TrainingModeEnum.index,
     TrainingModeEnum.imageParse,

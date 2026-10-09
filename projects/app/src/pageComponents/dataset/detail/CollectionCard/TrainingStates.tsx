@@ -141,21 +141,12 @@ const ProgressView = ({
               errorCount: trainingDetail.errorCounts.rebuild,
               label: t('dataset:process.Index_Rebuild'),
               status: getTrainingStatus(TrainingModeEnum.rebuild),
-              // 等待和执行可能并存，重建阶段同时展示两种数量。
-              statusText: [
-                trainingDetail.queuedCounts.rebuild > 0
-                  ? t('dataset:dataset.Training_Waiting', {
-                      count: trainingDetail.queuedCounts.rebuild
-                    })
-                  : undefined,
+              statusText:
                 trainingDetail.trainingCounts.rebuild > 0
                   ? t('dataset:dataset.Training_Count', {
                       count: trainingDetail.trainingCounts.rebuild
                     })
                   : undefined
-              ]
-                .filter(Boolean)
-                .join(' / ')
             }
           ]
         : []),

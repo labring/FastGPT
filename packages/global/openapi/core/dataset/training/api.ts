@@ -310,11 +310,11 @@ export type GetDatasetTrainingQueueQuery = z.infer<typeof GetDatasetTrainingQueu
 export const GetDatasetTrainingQueueResponseSchema = z.object({
   rebuildingCount: z.number().meta({
     example: 5,
-    description: '处于 rebuildIndexPending、尚未进入训练队列的数据条数'
+    description: '索引待重建、重建中及重建失败的数据总条数，直接按 data.indexStatus 统计'
   }),
   trainingCount: z.number().meta({
     example: 12,
-    description: '训练队列中的数据条数'
+    description: '普通训练队列中的数据条数，不包含 rebuild 任务'
   })
 });
 export type GetDatasetTrainingQueueResponse = z.infer<typeof GetDatasetTrainingQueueResponseSchema>;

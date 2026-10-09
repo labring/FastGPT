@@ -31,8 +31,11 @@ import {
   remainingTrainingMatch,
   trainingModeRanks
 } from '@fastgpt/service/core/dataset/training/query';
-import { type TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  datasetDataStatusCountFields,
+  type DatasetDataStatusCounts
+} from '@fastgpt/service/core/dataset/data/query';
 import {
   ListCollectionV2BodySchema,
   ListCollectionV2ResponseSchema,
@@ -63,8 +66,8 @@ type TrainingAmountAggregateItem = {
   }[];
 };
 
-/** 合并集合 training 与待入队的重建 data，避免排到后面的集合被误标为已就绪。 */
-const formatTrainingStatus = (item?: TrainingAmountAggregateItem, waitingRebuildCount = 0) =>
+/** 合并普通 training 与 data 重建状态；重建任务不再从 training 重复统计。 */
+const formatTrainingStatus = (item?: TrainingAmountAggregateItem, data?: DatasetDataStatusCounts) =>
   getCollectionTrainingStatusByMode({
     modeCounts: Object.fromEntries(
       (item?.modeCounts ?? []).map(({ mode, activeCount, finalErrorCount }) => [
@@ -72,7 +75,10 @@ const formatTrainingStatus = (item?: TrainingAmountAggregateItem, waitingRebuild
         { activeCount, finalErrorCount }
       ])
     ),
-    waitingRebuildCount
+    rebuildIndexCounts: {
+      activeCount: data?.rebuildIndexActiveCount ?? 0,
+      finalErrorCount: data?.rebuildIndexFailedCount ?? 0
+    }
   });
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
@@ -281,7 +287,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   // Compute data amount
   const [trainingAmount, dataAmount, collectionPermissionMap, tags]: [
     TrainingAmountAggregateItem[],
-    { _id: string; count: number; waitingRebuildCount: number }[],
+    (DatasetDataStatusCounts & { _id: string })[],
     Map<string, CollectionPermission> | undefined,
     (CollectionTagLabelType[] | undefined)[]
   ] = await Promise.all([
@@ -292,7 +298,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
             teamId: new Types.ObjectId(teamId),
             datasetId: new Types.ObjectId(datasetId),
             collectionId: { $in: collectionIds },
-            ...remainingTrainingMatch
+            ...remainingTrainingMatch,
+            mode: { $ne: TrainingModeEnum.rebuild }
           }
         },
         {
@@ -379,16 +386,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 },
-            waitingRebuildCount: {
-              $sum: {
-                $cond: [
-                  { $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildIndexPending] },
-                  1,
-                  0
-                ]
-              }
-            }
+            ...datasetDataStatusCountFields
           }
         }
       ],
@@ -406,7 +404,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
     ...formatTrainingStatus(
       trainingAmount.find((amount) => String(amount._id) === String(item._id)),
-      dataAmount.find((amount) => String(amount._id) === String(item._id))?.waitingRebuildCount ?? 0
+      dataAmount.find((amount) => String(amount._id) === String(item._id))
     ),
     permission: getCollectionPermission(item, collectionPermissionMap)
   }));

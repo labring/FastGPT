@@ -87,7 +87,7 @@
   "dataset.Operation": "작업",
   "dataset.ReTrain": "재학습",
   "dataset.Training Process": "학습 상태",
-  "dataset.Training_Count": "{{count}} 그룹 학습",
+  "dataset.Training_Count": "{{count}}개 처리 중",
   "dataset.Training_Errors": "오류 ({{count}})",
   "dataset.Training_Status": "학습 상태",
   "dataset.Training_Waiting": "{{count}} 그룹 데이터 대기 필요",

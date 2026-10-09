@@ -28,7 +28,8 @@ import {
   remainingTrainingMatch,
   trainingModeRanks
 } from '@fastgpt/service/core/dataset/training/query';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { datasetDataStatusCountFields } from '@fastgpt/service/core/dataset/data/query';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 
 /**
@@ -47,7 +48,7 @@ const getCollectionTrainingStatus = async ({
   datasetId: Types.ObjectId;
   collectionId: Types.ObjectId;
 }) => {
-  const [[trainingStatus], waitingRebuildCount] = await Promise.all([
+  const [[trainingStatus], [dataStatus]] = await Promise.all([
     MongoDatasetTraining.aggregate(
       [
         {
@@ -55,7 +56,8 @@ const getCollectionTrainingStatus = async ({
             teamId,
             datasetId,
             collectionId,
-            ...remainingTrainingMatch
+            ...remainingTrainingMatch,
+            mode: { $ne: TrainingModeEnum.rebuild }
           }
         },
         {
@@ -105,14 +107,12 @@ const getCollectionTrainingStatus = async ({
       ],
       readFromSecondary
     ),
-    MongoDatasetData.countDocuments(
-      {
-        teamId,
-        datasetId,
-        collectionId,
-        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
-      },
-      { ...readFromSecondary }
+    MongoDatasetData.aggregate(
+      [
+        { $match: { teamId, datasetId, collectionId } },
+        { $group: { _id: null, ...datasetDataStatusCountFields } }
+      ],
+      readFromSecondary
     )
   ]);
 
@@ -130,7 +130,10 @@ const getCollectionTrainingStatus = async ({
         }) => [mode, { activeCount, finalErrorCount }]
       )
     ),
-    waitingRebuildCount
+    rebuildIndexCounts: {
+      activeCount: dataStatus?.rebuildIndexActiveCount ?? 0,
+      finalErrorCount: dataStatus?.rebuildIndexFailedCount ?? 0
+    }
   });
 };
 

@@ -87,7 +87,7 @@
   "dataset.Operation": "操作",
   "dataset.ReTrain": "重試",
   "dataset.Training Process": "訓練狀態",
-  "dataset.Training_Count": "{{count}} 組訓練中",
+  "dataset.Training_Count": "{{count}} 條處理中",
   "dataset.Training_Errors": "異常（{{count}}）",
   "dataset.Training_Status": "訓練狀態",
   "dataset.Training_Waiting": "需等待 {{count}} 組資料",

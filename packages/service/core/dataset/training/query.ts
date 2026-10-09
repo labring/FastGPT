@@ -159,22 +159,19 @@ export const getSlowestTrainingStatus = (
 };
 
 /**
- * 合并各 training 阶段与尚未入队的重建数据，统一集合列表和详情的剩余数量及最慢阶段。
- * rebuildIndexPending 没有 training，入队后改为 rebuildIndexRunning，后续只由 training 统计。
+ * 合并普通训练阶段与 data 的重建状态，统一集合列表和详情的数量及最慢阶段。
+ * 重建以 data 为唯一统计来源；覆盖 training 的 rebuild 数量，避免排队、执行或残留任务重复计数。
  */
 export const getCollectionTrainingStatusByMode = ({
   modeCounts,
-  waitingRebuildCount = 0
+  rebuildIndexCounts = { activeCount: 0, finalErrorCount: 0 }
 }: {
   modeCounts: Partial<Record<TrainingModeEnum, TrainingStatusCount>>;
-  waitingRebuildCount?: number;
+  rebuildIndexCounts?: TrainingStatusCount;
 }): CollectionTrainingStatusType => {
   const counts = {
     ...modeCounts,
-    [TrainingModeEnum.rebuild]: {
-      activeCount: (modeCounts.rebuild?.activeCount ?? 0) + waitingRebuildCount,
-      finalErrorCount: modeCounts.rebuild?.finalErrorCount ?? 0
-    }
+    [TrainingModeEnum.rebuild]: rebuildIndexCounts
   };
   const activeTrainingAmount = Object.values(counts).reduce(
     (sum, count) => sum + (count?.activeCount ?? 0),

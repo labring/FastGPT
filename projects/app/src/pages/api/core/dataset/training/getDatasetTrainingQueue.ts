@@ -1,3 +1,4 @@
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -29,13 +30,23 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
 
   const [rebuildingCount, trainingCount] = await Promise.all([
     MongoDatasetData.countDocuments(
-      { indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending, teamId, datasetId },
+      {
+        indexStatus: {
+          $in: [
+            DatasetDataIndexStatusEnum.rebuildIndexPending,
+            DatasetDataIndexStatusEnum.rebuildIndexRunning,
+            DatasetDataIndexStatusEnum.rebuildIndexFailed
+          ]
+        },
+        teamId,
+        datasetId
+      },
       {
         ...readFromSecondary
       }
     ),
     MongoDatasetTraining.countDocuments(
-      { teamId, datasetId },
+      { teamId, datasetId, mode: { $ne: TrainingModeEnum.rebuild } },
       {
         ...readFromSecondary
       }

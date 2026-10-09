@@ -22,7 +22,7 @@ vi.mock('next-i18next', () => ({
       if (key === 'dataset:process.Index_Rebuild') return '索引重建';
       if (key === 'dataset:process.Is_Ready') return '已就绪';
       if (key === 'dataset:dataset.Training_Waiting') return `需等待 ${options?.count} 组数据`;
-      if (key === 'dataset:dataset.Training_Count') return `${options?.count} 组训练中`;
+      if (key === 'dataset:dataset.Training_Count') return `${options?.count} 条处理中`;
       if (key === 'dataset:training.Error') return `${options?.count} 组异常`;
       return key;
     }
@@ -115,14 +115,13 @@ describe('TrainingStates rebuild stage', () => {
     expect(rebuildRow()).toBeUndefined();
   });
 
-  it('shows queued, running and failed rebuild counts before the ready stage', async () => {
+  it('shows combined rebuild processing and failed counts before the ready stage', async () => {
     const detail = createDetail();
-    detail.queuedCounts.rebuild = 6;
-    detail.trainingCounts.rebuild = 2;
+    detail.trainingCounts.rebuild = 8;
     detail.errorCounts.rebuild = 1;
     await render(detail);
     const row = rebuildRow()!;
-    expect(row.textContent).toContain('需等待 6 组数据 / 2 组训练中');
+    expect(row.textContent).toContain('8 条处理中');
     expect(row.textContent).toContain('1 组异常');
     expect(row.getAttribute('data-bg')).toBe('red.50');
     expect(container.textContent!.indexOf('索引重建')).toBeLessThan(
@@ -132,15 +131,15 @@ describe('TrainingStates rebuild stage', () => {
 
   it('keeps the observed rebuild stage checked after completion until the modal is closed', async () => {
     const queued = createDetail();
-    queued.queuedCounts.rebuild = 7;
+    queued.trainingCounts.rebuild = 7;
     await render(queued);
-    expect(rebuildRow()?.textContent).toContain('需等待 7 组数据');
+    expect(rebuildRow()?.textContent).toContain('7 条处理中');
     expect(rebuildRow()?.parentElement?.querySelector('[data-icon="common/check"]')).toBeNull();
 
     const running = createDetail();
     running.trainingCounts.rebuild = 2;
     await render(running);
-    expect(rebuildRow()?.textContent).toContain('2 组训练中');
+    expect(rebuildRow()?.textContent).toContain('2 条处理中');
 
     const completed = createDetail();
     completed.trainedCount = 7;
@@ -148,7 +147,7 @@ describe('TrainingStates rebuild stage', () => {
     expect(rebuildRow()).toBeDefined();
     expect(rebuildRow()?.parentElement?.querySelector('[data-icon="common/check"]')).not.toBeNull();
     expect(rebuildRow()?.textContent).not.toContain('组数据');
-    expect(rebuildRow()?.textContent).not.toContain('组训练中');
+    expect(rebuildRow()?.textContent).not.toContain('条处理中');
     await act(async () => root.render(null));
     await render(completed);
     expect(rebuildRow()).toBeUndefined();

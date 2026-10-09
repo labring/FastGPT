@@ -105,7 +105,7 @@ describe('dataset training query helpers', () => {
 });
 
 describe('getCollectionTrainingStatusByMode', () => {
-  it('returns ready only when training and pending rebuild data are empty', () => {
+  it('returns ready only when training and rebuild data are empty', () => {
     expect(getCollectionTrainingStatusByMode({ modeCounts: {} })).toEqual({
       trainingAmount: 0,
       activeTrainingAmount: 0,
@@ -114,7 +114,10 @@ describe('getCollectionTrainingStatusByMode', () => {
       slowestTrainingStatus: CollectionTrainingStatusEnum.ready
     });
     expect(
-      getCollectionTrainingStatusByMode({ modeCounts: {}, waitingRebuildCount: 3 })
+      getCollectionTrainingStatusByMode({
+        modeCounts: {},
+        rebuildIndexCounts: { activeCount: 3, finalErrorCount: 0 }
+      })
     ).toMatchObject({
       trainingAmount: 3,
       activeTrainingAmount: 3,
@@ -124,21 +127,24 @@ describe('getCollectionTrainingStatusByMode', () => {
       slowestTrainingStatus: CollectionTrainingStatusEnum.running
     });
   });
-  it('adds pending rebuild counts without changing earlier stages or mutating input', () => {
+  it('uses data rebuild counts instead of training counts without mutating input', () => {
     const modeCounts = {
       [TrainingModeEnum.qa]: { activeCount: 0, finalErrorCount: 1 },
       [TrainingModeEnum.rebuild]: { activeCount: 2, finalErrorCount: 2 }
     };
-    expect(getCollectionTrainingStatusByMode({ modeCounts, waitingRebuildCount: 3 })).toMatchObject(
-      {
-        trainingAmount: 8,
-        activeTrainingAmount: 5,
-        finalErrorAmount: 3,
-        hasError: true,
-        slowestTrainingMode: TrainingModeEnum.qa,
-        slowestTrainingStatus: CollectionTrainingStatusEnum.error
-      }
-    );
+    expect(
+      getCollectionTrainingStatusByMode({
+        modeCounts,
+        rebuildIndexCounts: { activeCount: 3, finalErrorCount: 0 }
+      })
+    ).toMatchObject({
+      trainingAmount: 4,
+      activeTrainingAmount: 3,
+      finalErrorAmount: 1,
+      hasError: true,
+      slowestTrainingMode: TrainingModeEnum.qa,
+      slowestTrainingStatus: CollectionTrainingStatusEnum.error
+    });
     expect(modeCounts.rebuild.activeCount).toBe(2);
   });
 });

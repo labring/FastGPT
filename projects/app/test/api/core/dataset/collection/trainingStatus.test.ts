@@ -26,7 +26,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 describe('collection training status api', () => {
-  it('includes waiting rebuild data without counting enqueued rebuilds twice', async () => {
+  it('counts rebuild data once regardless of queue status or admission', async () => {
     const root = await getRootUser();
     const dataset = await MongoDataset.create({
       name: 'rebuild-counts',
@@ -130,13 +130,13 @@ describe('collection training status api', () => {
     const before = await readCounts();
     expect(before.code).toBe(200);
     expect(before.data).toMatchObject({
-      queuedCounts: { rebuild: 4, index: 0 },
-      trainingCounts: { rebuild: 1, index: 0 },
+      queuedCounts: { rebuild: 0, index: 0 },
+      trainingCounts: { rebuild: 5, index: 0 },
       errorCounts: { rebuild: 1, index: 0 },
       trainedCount: 1
     });
 
-    // rebuildIndexPending 入队后由 data 计数切换到 training 计数，等待总量保持不变。
+    // 待重建进入 training 后仍只按 data 统计，处理中总量保持不变。
     await enqueueNextDatasetRebuildTask({
       teamId: String(root.teamId),
       tmbId: String(root.tmbId),
@@ -145,11 +145,88 @@ describe('collection training status api', () => {
     });
     const after = await readCounts();
     expect(after.code).toBe(200);
-    expect(after.data.queuedCounts.rebuild).toBe(4);
-    expect(after.data.trainingCounts.rebuild).toBe(1);
+    expect(after.data.queuedCounts.rebuild).toBe(0);
+    expect(after.data.trainingCounts.rebuild).toBe(5);
     expect(after.data.errorCounts.rebuild).toBe(1);
     await checkCollectionStatus();
   });
+  it('uses data states for orphan failures and ignores stale rebuild training records', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'data-only-rebuild',
+      teamId: root.teamId,
+      tmbId: root.tmbId
+    });
+    const scope = { teamId: root.teamId, tmbId: root.tmbId, datasetId: dataset._id };
+    const collection = await MongoDatasetCollection.create({
+      ...scope,
+      name: 'data-only-rebuild',
+      type: DatasetCollectionTypeEnum.file
+    });
+    const dataScope = { ...scope, collectionId: collection._id };
+    const datas = await MongoDatasetData.create(
+      [
+        DatasetDataIndexStatusEnum.rebuildIndexPending,
+        DatasetDataIndexStatusEnum.rebuildIndexRunning,
+        DatasetDataIndexStatusEnum.rebuildIndexFailed,
+        DatasetDataIndexStatusEnum.indexed,
+        undefined
+      ].map((indexStatus) => ({ ...dataScope, q: 'saved content', indexes: [], indexStatus }))
+    );
+    await MongoDatasetData.create({
+      ...dataScope,
+      collectionId: new Types.ObjectId(),
+      q: 'outside',
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
+    });
+    await MongoDatasetTraining.create({
+      ...dataScope,
+      billId: 'test',
+      mode: TrainingModeEnum.rebuild,
+      dataId: datas[3]._id,
+      retryCount: 0,
+      errorMsg: 'stale failure'
+    });
+    const check = async (failed: number, ready: number) => {
+      const list = await Call(listHandler, {
+        auth: root,
+        body: { datasetId: dataset._id, pageNum: 1, pageSize: 10 }
+      });
+      const detail = await Call(detailHandler, { auth: root, query: { id: collection._id } });
+      const modal = await Call(trainingDetailHandler, {
+        auth: root,
+        query: { collectionId: collection._id }
+      });
+      const expected = {
+        trainingAmount: 2 + failed,
+        activeTrainingAmount: 2,
+        finalErrorAmount: failed,
+        hasError: failed > 0,
+        slowestTrainingMode: TrainingModeEnum.rebuild,
+        slowestTrainingStatus: CollectionTrainingStatusEnum.running
+      };
+      expect(list.data.list[0]).toMatchObject(expected);
+      expect(detail.data).toMatchObject(expected);
+      expect(modal.data).toMatchObject({
+        queuedCounts: { rebuild: 0 },
+        trainingCounts: { rebuild: 2 },
+        errorCounts: { rebuild: failed },
+        trainedCount: ready
+      });
+    };
+    await check(1, 2);
+    await MongoDatasetTraining.updateMany(
+      { datasetId: dataset._id },
+      { $set: { retryCount: 3, lockTime: new Date() } }
+    );
+    await check(1, 2);
+    await MongoDatasetData.updateOne(
+      { _id: datas[2]._id },
+      { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } }
+    );
+    await check(0, 3);
+  });
+
   it('shows pending rebuild status without any training task in list and detail', async () => {
     const root = await getRootUser();
     const dataset = await MongoDataset.create({
@@ -282,6 +359,16 @@ describe('collection training status api', () => {
       datasetId: dataset._id
     });
 
+    const rebuildData = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'saved content',
+      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
+    });
+
     await MongoDatasetTraining.create([
       {
         teamId: root.teamId,
@@ -299,6 +386,7 @@ describe('collection training status api', () => {
         collectionId: collection._id,
         billId: 'test',
         mode: TrainingModeEnum.rebuild,
+        dataId: rebuildData._id,
         retryCount: 0,
         errorMsg: 'final error'
       }
@@ -359,6 +447,16 @@ describe('collection training status api', () => {
       datasetId: dataset._id
     });
 
+    const rebuildData = await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'saved content',
+      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
+    });
+
     await MongoDatasetTraining.create([
       {
         teamId: root.teamId,
@@ -388,6 +486,7 @@ describe('collection training status api', () => {
         collectionId: collection._id,
         billId: 'test',
         mode: TrainingModeEnum.rebuild,
+        dataId: rebuildData._id,
         retryCount: 0,
         errorMsg: 'final failed'
       }

@@ -87,7 +87,7 @@
   "dataset.Operation": "operate",
   "dataset.ReTrain": "Retrain",
   "dataset.Training Process": "Indexing status",
-  "dataset.Training_Count": "{{count}} groups indexing",
+  "dataset.Training_Count": "{{count}} items processing",
   "dataset.Training_Errors": "Errors ({{count}})",
   "dataset.Training_Status": "Indexing status",
   "dataset.Training_Waiting": "Need to wait for {{count}} group data",

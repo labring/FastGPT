@@ -103,7 +103,7 @@ const filterTrainingDataList = <T extends { q?: string; a?: string; imageId?: st
     return true;
   });
 
-/** 欠费仅暂停训练并记录任务错误，保留 data 状态和任务原有的 TTL 策略。 */
+/** 欠费分批暂停训练；重建 data 同事务标记失败，普通训练保留 data 状态和原 TTL。 */
 export const lockTrainingDataByTeamId = async (
   teamId: string,
   currentTrainingId?: string
@@ -111,49 +111,89 @@ export const lockTrainingDataByTeamId = async (
   const timerId = `lock_training_data--${teamId}`;
   const errorMsg = i18nT('common:code_error.team_error.ai_points_not_enough');
 
-  const lockCurrentTraining = async () => {
-    if (!currentTrainingId) return;
-
-    await MongoDatasetTraining.updateOne(
-      {
-        teamId,
-        _id: currentTrainingId
-      },
-      {
-        $set: {
-          lockTime: BLOCKED_LOCK_TIME,
-          errorMsg
+  // 每批同时更新任务和关联重建 data，避免状态统计仍把已暂停的任务计入处理中。
+  const pauseTasks = async (currentOnly = false) => {
+    if (currentOnly && !currentTrainingId) return;
+    let afterId: string | undefined;
+    while (true) {
+      const batch = await mongoSessionRun(async (session) => {
+        const tasks = await MongoDatasetTraining.find({
+          teamId,
+          ...(currentOnly
+            ? { _id: currentTrainingId }
+            : {
+                $or: [
+                  { retryCount: { $gt: 0 } },
+                  ...(currentTrainingId ? [{ _id: currentTrainingId }] : [])
+                ],
+                ...(afterId && { _id: { $gt: afterId } })
+              })
+        })
+          .select('_id mode dataId datasetId collectionId')
+          .sort({ _id: 1 })
+          .limit(300)
+          .session(session)
+          .lean();
+        if (!tasks.length) return tasks;
+        await MongoDatasetTraining.updateMany(
+          { teamId, _id: { $in: tasks.map(({ _id }) => _id) } },
+          { $set: { lockTime: BLOCKED_LOCK_TIME, errorMsg } },
+          { session }
+        );
+        // 重建失败需要用户处理，保留任务避免 TTL 删除后只剩 data 的失败状态。
+        const rebuildIds = tasks
+          .filter((task) => task.mode === TrainingModeEnum.rebuild)
+          .map(({ _id }) => _id);
+        if (rebuildIds.length) {
+          await MongoDatasetTraining.updateMany(
+            { teamId, _id: { $in: rebuildIds } },
+            { $set: { expireAt: null } },
+            { session }
+          );
         }
-      }
-    );
+        const updates = tasks.flatMap((task) =>
+          task.mode === TrainingModeEnum.rebuild && task.dataId
+            ? [
+                {
+                  updateOne: {
+                    filter: {
+                      _id: task.dataId,
+                      teamId,
+                      datasetId: task.datasetId,
+                      collectionId: task.collectionId,
+                      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
+                    },
+                    update: {
+                      $set: {
+                        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
+                        indexErrorMsg: errorMsg
+                      }
+                    }
+                  }
+                }
+              ]
+            : []
+        );
+        if (updates.length) await MongoDatasetData.bulkWrite(updates, { session });
+        return tasks;
+      });
+      if (!batch.length || currentOnly) return;
+      afterId = String(batch[batch.length - 1]._id);
+    }
   };
 
   // 并发/多节点调用时，只有首个抢到锁的会批量更新；30 分钟 TTL 仅用于定时锁兜底。
   const acquired = await checkTimerLock({ timerId, lockMinuted: 30 });
   if (!acquired) {
     // 其它 worker 已在执行团队级锁定时，当前已领取任务仍需要单独标记，避免最后一次重试被扣到 0 后不可见。
-    await lockCurrentTraining().catch((error) => {
+    await pauseTasks(true).catch((error) => {
       logger.error('lock current training data failed', { teamId, currentTrainingId, error });
     });
     return;
   }
 
   try {
-    await MongoDatasetTraining.updateMany(
-      {
-        teamId,
-        $or: [
-          { retryCount: { $gt: 0 } },
-          ...(currentTrainingId ? [{ _id: currentTrainingId }] : [])
-        ]
-      },
-      {
-        $set: {
-          lockTime: BLOCKED_LOCK_TIME,
-          errorMsg
-        }
-      }
-    );
+    await pauseTasks();
   } catch (error) {
     logger.error('lockTrainingDataByTeamId failed', { teamId, error });
   } finally {
