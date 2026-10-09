@@ -6,9 +6,9 @@ import {
   isProEdition,
   isConfigFieldAllowed,
   getDomainAllowedKeys,
-  filterDomainDataByEdition,
-  type SystemInstanceConfigDomainKey
-} from '@fastgpt/global/common/system/config';
+  filterDomainDataByEdition
+} from '@fastgpt/global/common/system/config/permission';
+import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
 
 /**
  * 前端 /admin 页面专用的版本与字段级权限 Hook。

@@ -6,7 +6,7 @@ import {
   getDomainDefaultConfig,
   resolveDomainEffectiveConfig
 } from '@fastgpt/global/common/system/config/schema';
-import { pruneDefaultOverrides } from '@fastgpt/global/common/system/config';
+import { pruneDefaultOverrides } from '@fastgpt/global/common/system/config/merge';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { serviceEnv } from '@fastgpt/service/env';

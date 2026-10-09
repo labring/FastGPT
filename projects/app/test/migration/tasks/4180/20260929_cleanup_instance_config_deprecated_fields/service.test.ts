@@ -5,7 +5,7 @@ import {
   stripDeprecatedOverrides,
   cleanupInstanceConfigDeprecatedFields,
   verifyInstanceConfigDeprecatedFields
-} from '@/migration/tasks/20260929_cleanup_instance_config_deprecated_fields/service';
+} from '@/migration/tasks/4180/20260929_cleanup_instance_config_deprecated_fields/service';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 
 const logger = { info: () => {}, warn: () => {}, error: () => {} };

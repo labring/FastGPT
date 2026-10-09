@@ -1,5 +1,5 @@
 import type { SystemEnvType } from '@fastgpt/global/common/system/types';
-import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config';
+import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 
 /**
  * 合成运行时 systemEnv：实例配置（SystemInstanceConfig）为权威数据源，

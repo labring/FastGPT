@@ -13,15 +13,13 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
-import {
-  AdminSettingPage,
-  AdminSettingSection,
-  AdminFormItem,
-  AdminSwitchRow,
-  ConnectivityTestInput,
-  type SettingTOCItem
-} from '@/pageComponents/admin/settings';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
+import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 

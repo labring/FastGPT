@@ -1,7 +1,7 @@
 import type {
   ProbeConnectionBody,
   ProbeConnectionResponse
-} from '@fastgpt/global/openapi/admin/system/instanceConfig';
+} from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import { axiosWithoutSSRF } from '../../api/axios';
 
 /**

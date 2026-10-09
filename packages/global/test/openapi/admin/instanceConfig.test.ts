@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   GetDomainConfigQuerySchema,
   GetDomainConfigResponseSchema,
-  UpdateDomainConfigBodySchema,
+  UpdateDomainConfigBodySchema
+} from '../../../openapi/admin/system/instanceConfig/api';
+import {
   ProbeConnectionBodySchema,
   ProbeConnectionResponseSchema
-} from '../../../openapi/admin/system/instanceConfig';
+} from '../../../openapi/admin/system/instanceConfig/probe';
 
 describe('Instance config OpenAPI schemas', () => {
   it('validates GetDomainConfigQuerySchema', () => {

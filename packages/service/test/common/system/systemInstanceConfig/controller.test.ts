@@ -5,7 +5,8 @@ import {
   getSystemInstanceConfigSnapshot
 } from '../../../../common/system/systemInstanceConfig/controller';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
-import { getDomainDefaultConfig, SECRET_MASK } from '@fastgpt/global/common/system/config';
+import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
+import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 
 describe('systemInstanceConfig controller', () => {
   beforeEach(async () => {

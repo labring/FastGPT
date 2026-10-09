@@ -7,12 +7,12 @@ const mocks = vi.hoisted(() => ({
   applyInstanceConfigMigration: vi.fn()
 }));
 
-vi.mock('@/migration/tasks/20260928_migrate_instance_configs/service', () => ({
+vi.mock('@/migration/tasks/4180/20260928_migrate_instance_configs/service', () => ({
   inspectInstanceConfigMigration: mocks.inspectInstanceConfigMigration,
   applyInstanceConfigMigration: mocks.applyInstanceConfigMigration
 }));
 
-import { migrateInstanceConfigs } from '@/migration/tasks/20260928_migrate_instance_configs';
+import { migrateInstanceConfigs } from '@/migration/tasks/4180/20260928_migrate_instance_configs';
 
 const createContext = () =>
   ({
