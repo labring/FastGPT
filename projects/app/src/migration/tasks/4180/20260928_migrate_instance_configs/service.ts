@@ -642,15 +642,79 @@ export const sanitizeOverridesForSchema = ({
   return result;
 };
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * 计算 target 相对已有 overrides 缺失的子树（只补缺、不覆盖）。
+ *
+ * 已有对象上存在该 key 就不再下沉，数组与 null 都按原子值处理，
+ * 因此管理员显式清空的值（'' / [] / null）不会被迁移重新填回。
+ * 返回 undefined 表示该域无需写入。
+ */
+const computeMissingOverrides = (
+  existing: unknown,
+  target: Record<string, unknown>
+): Record<string, unknown> | undefined => {
+  const existingObject = isPlainObject(existing) ? existing : undefined;
+  const missing: Record<string, unknown> = {};
+
+  for (const [key, targetValue] of Object.entries(target)) {
+    if (targetValue === undefined) continue;
+
+    // 已有文档没有这个键：整棵子树一起补写
+    if (!existingObject || !(key in existingObject)) {
+      missing[key] = targetValue;
+      continue;
+    }
+
+    if (isPlainObject(targetValue)) {
+      const nested = computeMissingOverrides(existingObject[key], targetValue);
+      if (nested) missing[key] = nested;
+    }
+  }
+
+  return Object.keys(missing).length > 0 ? missing : undefined;
+};
+
+/** 把补缺子树合并回已有 overrides；已有值始终优先，只追加缺失键。 */
+const mergeMissingOverrides = (
+  existing: Record<string, unknown>,
+  missing: Record<string, unknown>
+): Record<string, unknown> => {
+  const merged: Record<string, unknown> = { ...existing };
+
+  for (const [key, value] of Object.entries(missing)) {
+    const current = merged[key];
+    if (isPlainObject(current) && isPlainObject(value)) {
+      merged[key] = mergeMissingOverrides(current, value);
+    } else if (!(key in merged)) {
+      merged[key] = value;
+    }
+  }
+
+  return merged;
+};
+
+/** 展开补缺子树的叶子路径（数组与 null 视为叶子），用于日志与迁移结果统计。 */
+const flattenOverridePaths = (value: Record<string, unknown>, prefix: string[] = []): string[] =>
+  Object.entries(value).flatMap(([key, child]) =>
+    isPlainObject(child)
+      ? flattenOverridePaths(child, [...prefix, key])
+      : [[...prefix, key].join('.')]
+  );
+
 /**
  * 读取旧配置来源并生成迁移计划。
- * 幂等判定按域进行：对比迁移目标 Domain 与已有文档，统计缺失数量。
- * 不能只看 count>0，否则部分写入失败后重跑会把残缺状态误判为已完成，
- * 缺失 Domain 将永久回落到 Schema 默认值（配置被静默重置）。
+ *
+ * 完成度按「域是否齐全」+「域内是否还缺字段」两级判定：
+ * - 只看 count>0 会把部分写入失败后的残缺状态误判为已完成；
+ * - 只看整域是否存在，会让曾经被写入过的域里客户已配置的环境变量永久进不来，
+ *   因为环境变量只在这条迁移链路上进入实例配置。
  */
 export const inspectInstanceConfigMigration = async () => {
   const [existingDocs, legacyFastgpt, legacyPro] = await Promise.all([
-    MongoSystemInstanceConfig.find({}, { _id: 1 }).lean(),
+    MongoSystemInstanceConfig.find({}, { _id: 1, overrides: 1 }).lean(),
     MongoSystemConfigs.findOne({ type: SystemConfigsTypeEnum.fastgpt })
       .sort({ createTime: -1 })
       .lean(),
@@ -675,9 +739,28 @@ export const inspectInstanceConfigMigration = async () => {
     (domain) => !!overrides[domain] && !existingDomains.has(domain)
   ).length;
 
+  // 已有域里仍缺失的字段：整域存在不代表迁移已完成，客户已配置的环境变量可能还没进来
+  const existingOverridesByDomain = new Map<string, Record<string, unknown>>(
+    existingDocs.map((doc) => [String(doc._id), (doc.overrides ?? {}) as Record<string, unknown>])
+  );
+  const pendingBackfillPaths: string[] = [];
+  const pendingBackfillDomainCount = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter((domain) => {
+    const targetOverrides = overrides[domain];
+    const existingOverrides = existingOverridesByDomain.get(domain);
+    if (!targetOverrides || !existingOverrides) return false;
+
+    const missing = computeMissingOverrides(existingOverrides, targetOverrides);
+    if (!missing) return false;
+
+    pendingBackfillPaths.push(...flattenOverridePaths(missing).map((path) => `${domain}.${path}`));
+    return true;
+  }).length;
+
   return {
     existingDomainCount: existingDocs.length,
     missingDomainCount,
+    pendingBackfillDomainCount,
+    pendingBackfillPaths,
     hasLegacyConfig: !!legacyFastgpt || !!legacyPro,
     hasLegacyProConfig: !!legacyPro,
     envRehomedWarnings: collectEnvRehomedWarnings({ feConfigs }),
@@ -686,9 +769,16 @@ export const inspectInstanceConfigMigration = async () => {
   };
 };
 
+/** 回填撞上管理员并发保存时的重试次数；仍冲突则抛错，避免静默漏写客户配置。 */
+const MAX_BACKFILL_CONFLICT_RETRIES = 3;
+
 /**
- * 按域幂等写入 Domain 文档：$setOnInsert 只补写缺失的 Domain，
- * 已存在的文档（可能被管理员修改过）绝不覆盖，失败后重跑可继续补齐。
+ * 按域幂等写入 Domain 文档：
+ * - 文档不存在：整域新建，等价于首次迁移；
+ * - 文档已存在：只补写缺失的叶子字段，已有值绝不覆盖（管理员保存过的配置优先）。
+ *
+ * 已存在的域不能整域跳过：客户的环境变量只在这条迁移链路上进入实例配置，
+ * 只要该域曾被旧版本迁移或管理员写入过，整域跳过就会让客户已配置的 env 值永久丢失。
  */
 export const applyInstanceConfigMigration = async ({
   overrides,
@@ -698,32 +788,98 @@ export const applyInstanceConfigMigration = async ({
   logger: SystemMigrationLogger;
 }) => {
   const domains = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter((domain) => !!overrides[domain]);
-  const migratedDomains: SystemInstanceConfigDomainKey[] = [];
+  const createdDomains: SystemInstanceConfigDomainKey[] = [];
+  const backfilledDomains: SystemInstanceConfigDomainKey[] = [];
+  const backfilledPaths: string[] = [];
+
+  /**
+   * 回填单个域：revision 乐观锁重试，只写缺失字段。
+   * 返回本次补写的叶子路径，空数组表示无需写入（不递增 revision）。
+   */
+  const backfillDomain = async (
+    domain: SystemInstanceConfigDomainKey,
+    targetOverrides: Record<string, unknown>
+  ): Promise<string[]> => {
+    for (let attempt = 0; attempt <= MAX_BACKFILL_CONFLICT_RETRIES; attempt++) {
+      const doc = await MongoSystemInstanceConfig.findById(domain).lean();
+      // 文档被并发删除：本次不处理，交给下一轮迁移补齐
+      if (!doc) return [];
+
+      const existingOverrides = (doc.overrides ?? {}) as Record<string, unknown>;
+      const missing = computeMissingOverrides(existingOverrides, targetOverrides);
+      if (!missing) return [];
+
+      const mergedOverrides = mergeMissingOverrides(existingOverrides, missing);
+      // 合并结果必须能被运行时解析：补进来的字段可能与管理员的既有值构成跨字段冲突
+      // （例如 parallelMaxConcurrency > maxLoopTimes）。这类冲突无法在不改管理员值的前提下消解，
+      // 因此跳过该域回填并告警，而不是抛错阻塞启动；管理员可依据告警手动收敛配置。
+      try {
+        resolveDomainEffectiveConfig(domain, mergedOverrides);
+      } catch (error) {
+        logger.warn(
+          'Instance config backfill skipped: merged config conflicts with existing values',
+          { domain, missingPaths: flattenOverridePaths(missing), error }
+        );
+        return [];
+      }
+
+      const updated = await MongoSystemInstanceConfig.updateOne(
+        { _id: domain, revision: doc.revision },
+        { $set: { overrides: mergedOverrides, updatedAt: new Date() }, $inc: { revision: 1 } },
+        { runValidators: true }
+      );
+      if (updated.modifiedCount > 0) return flattenOverridePaths(missing);
+    }
+
+    throw new Error(
+      `Instance config backfill for domain "${domain}" keeps conflicting with concurrent writes`
+    );
+  };
 
   for (const domain of domains) {
-    const rawOverrides = overrides[domain]!;
+    const targetOverrides = overrides[domain]!;
     // 先执行两阶段校验，确保写入值与运行时解析结果一致（与 controller 写入路径一致，
     // updateOne 不跑 schema validator，由这里显式校验兜底）。
-    resolveDomainEffectiveConfig(domain, rawOverrides);
+    resolveDomainEffectiveConfig(domain, targetOverrides);
 
-    const result = await MongoSystemInstanceConfig.updateOne(
+    const inserted = await MongoSystemInstanceConfig.updateOne(
       { _id: domain },
       {
         $setOnInsert: {
           schemaVersion: SYSTEM_INSTANCE_CONFIG_SCHEMA_VERSION,
           revision: 1,
-          overrides: rawOverrides,
+          overrides: targetOverrides,
           updatedBy: { actor: 'migration' }
         }
       },
       { upsert: true, runValidators: false }
     );
-    // 仅统计真正新建的 Domain，已存在被跳过的不计入迁移结果
-    if (result.upsertedCount > 0) {
-      migratedDomains.push(domain);
+
+    if (inserted.upsertedCount > 0) {
+      createdDomains.push(domain);
+      continue;
+    }
+
+    const filledPaths = await backfillDomain(domain, targetOverrides);
+    if (filledPaths.length > 0) {
+      backfilledDomains.push(domain);
+      backfilledPaths.push(...filledPaths.map((path) => `${domain}.${path}`));
     }
   }
 
-  logger.info('Instance config migration applied', { domains: migratedDomains });
-  return { domains: migratedDomains, migratedCount: migratedDomains.length };
+  const writtenDomains = [...createdDomains, ...backfilledDomains];
+
+  logger.info('Instance config migration applied', {
+    createdDomains,
+    backfilledDomains,
+    backfilledPaths
+  });
+
+  return {
+    domains: writtenDomains,
+    migratedCount: writtenDomains.length,
+    createdDomains,
+    backfilledDomains,
+    backfilledPaths
+  };
 };
