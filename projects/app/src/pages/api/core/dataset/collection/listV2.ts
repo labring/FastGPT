@@ -25,10 +25,10 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  getCollectionTrainingStatusByMode,
-  getCollectionTrainingModeCountsPipeline
+  getCollectionTrainingStatusFromCounts,
+  getCollectionTrainingModeCountsPipeline,
+  type CollectionTrainingModeCount
 } from '@fastgpt/service/core/dataset/training/query';
-import type { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   datasetDataRebuildStatusCountFields,
   type DatasetDataRebuildStatusCounts
@@ -49,38 +49,12 @@ import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permissio
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 
-const defaultCollectionTrainingStatus = getCollectionTrainingStatusByMode({ modeCounts: {} });
+const defaultCollectionTrainingStatus = getCollectionTrainingStatusFromCounts({});
 
 type TrainingAmountAggregateItem = {
   _id: string;
-  modeCounts: {
-    mode: TrainingModeEnum;
-    activeCount: number;
-    finalErrorCount: number;
-  }[];
+  modeCounts: CollectionTrainingModeCount[];
 };
-
-/** 合并普通 training 与 data 重建状态；重建任务不再从 training 重复统计。 */
-const formatTrainingStatus = (
-  item?: TrainingAmountAggregateItem,
-  data?: DatasetDataRebuildStatusCounts
-) =>
-  getCollectionTrainingStatusByMode({
-    modeCounts: Object.fromEntries(
-      (item?.modeCounts ?? []).map(({ mode, activeCount, finalErrorCount }) => [
-        mode,
-        { activeCount, finalErrorCount }
-      ])
-    ),
-    rebuildIndexCounts: {
-      activeCount: data?.rebuildIndexActiveCount ?? 0,
-      finalErrorCount: data?.rebuildIndexFailedCount ?? 0
-    },
-    rebuildSynonymCounts: {
-      activeCount: data?.rebuildSynonymActiveCount ?? 0,
-      finalErrorCount: data?.rebuildSynonymFailedCount ?? 0
-    }
-  });
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
   const {
@@ -325,16 +299,22 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     Promise.all(collections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags })))
   ]);
 
-  const list = collections.map((item, index) => ({
-    ...item,
-    tags: tags[index],
-    dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
-    ...formatTrainingStatus(
-      trainingAmount.find((amount) => String(amount._id) === String(item._id)),
-      dataAmount.find((amount) => String(amount._id) === String(item._id))
-    ),
-    permission: getCollectionPermission(item, collectionPermissionMap)
-  }));
+  const trainingAmountMap = new Map(trainingAmount.map((item) => [String(item._id), item]));
+  const dataAmountMap = new Map(dataAmount.map((item) => [String(item._id), item]));
+  const list = collections.map((item, index) => {
+    const collectionId = String(item._id);
+    const dataCounts = dataAmountMap.get(collectionId);
+    return {
+      ...item,
+      tags: tags[index],
+      dataAmount: dataCounts?.count ?? 0,
+      ...getCollectionTrainingStatusFromCounts({
+        modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
+        rebuildCounts: dataCounts
+      }),
+      permission: getCollectionPermission(item, collectionPermissionMap)
+    };
+  });
 
   // count collections
   return ListCollectionV2ResponseSchema.parse({ list, total });

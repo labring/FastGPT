@@ -8,11 +8,10 @@ import {
   UpdateDatasetBodySchema,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   removeDatasetSyncJobScheduler,
@@ -130,12 +129,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const clearVlmModel = vlmValue !== undefined && isEmptyModelValue(vlmValue);
   const vlmModelData = modelHandle.getVlmModelData(vlmReference, { optional: true });
 
-  updateTraining({
-    teamId: dataset.teamId,
-    datasetId: id,
-    shouldReset: !!agentModelData
-  });
-
   const onUpdate = async (session: ClientSession) => {
     // Website dataset update chunkSettings, need to clean up dataset
     if (
@@ -235,32 +228,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   });
 }
 export default NextAPI(handler);
-
-const updateTraining = async ({
-  teamId,
-  datasetId,
-  shouldReset
-}: {
-  teamId: string;
-  datasetId: string;
-  shouldReset: boolean;
-}) => {
-  if (!shouldReset) return;
-
-  await MongoDatasetTraining.updateMany(
-    {
-      teamId,
-      datasetId,
-      mode: { $in: [TrainingModeEnum.qa, TrainingModeEnum.auto] }
-    },
-    {
-      $set: {
-        retryCount: 3,
-        lockTime: new Date('2000/1/1')
-      }
-    }
-  );
-};
 
 const updateSyncSchedule = async ({
   dataset,

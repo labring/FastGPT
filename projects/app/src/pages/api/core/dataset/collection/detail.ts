@@ -22,10 +22,14 @@ import {
   GetCollectionDetailResponseSchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
-  getCollectionTrainingStatusByMode,
-  getCollectionTrainingModeCountsPipeline
+  getCollectionTrainingStatusFromCounts,
+  getCollectionTrainingModeCountsPipeline,
+  type CollectionTrainingModeCount
 } from '@fastgpt/service/core/dataset/training/query';
-import { datasetDataRebuildStatusCountFields } from '@fastgpt/service/core/dataset/data/query';
+import {
+  datasetDataRebuildStatusCountFields,
+  type DatasetDataRebuildStatusCounts
+} from '@fastgpt/service/core/dataset/data/query';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   datasetDataRebuildIndexProcessingStatuses,
@@ -50,11 +54,11 @@ const getCollectionTrainingStatus = async ({
   collectionId: Types.ObjectId;
 }) => {
   const [[trainingStatus], [dataStatus]] = await Promise.all([
-    MongoDatasetTraining.aggregate(
+    MongoDatasetTraining.aggregate<{ modeCounts: CollectionTrainingModeCount[] }>(
       getCollectionTrainingModeCountsPipeline({ teamId, datasetId, collectionId }),
       readFromSecondary
     ),
-    MongoDatasetData.aggregate(
+    MongoDatasetData.aggregate<DatasetDataRebuildStatusCounts>(
       [
         {
           $match: {
@@ -76,28 +80,9 @@ const getCollectionTrainingStatus = async ({
     )
   ]);
 
-  return getCollectionTrainingStatusByMode({
-    modeCounts: Object.fromEntries(
-      (trainingStatus?.modeCounts ?? []).map(
-        ({
-          mode,
-          activeCount,
-          finalErrorCount
-        }: {
-          mode: string;
-          activeCount: number;
-          finalErrorCount: number;
-        }) => [mode, { activeCount, finalErrorCount }]
-      )
-    ),
-    rebuildIndexCounts: {
-      activeCount: dataStatus?.rebuildIndexActiveCount ?? 0,
-      finalErrorCount: dataStatus?.rebuildIndexFailedCount ?? 0
-    },
-    rebuildSynonymCounts: {
-      activeCount: dataStatus?.rebuildSynonymActiveCount ?? 0,
-      finalErrorCount: dataStatus?.rebuildSynonymFailedCount ?? 0
-    }
+  return getCollectionTrainingStatusFromCounts({
+    modeCounts: trainingStatus?.modeCounts,
+    rebuildCounts: dataStatus
   });
 };
 

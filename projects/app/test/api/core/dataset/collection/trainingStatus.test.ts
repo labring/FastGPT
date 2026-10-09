@@ -1,6 +1,7 @@
 import listHandler from '@/pages/api/core/dataset/collection/listV2';
 import detailHandler from '@/pages/api/core/dataset/collection/detail';
 import trainingDetailHandler from '@/pages/api/core/dataset/collection/trainingDetail';
+import type { ListCollectionV2ResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
   CollectionTrainingStatusEnum,
   DatasetCollectionTypeEnum,
@@ -294,6 +295,25 @@ describe('collection training status api', () => {
 
   it('should expose unified active/final error/slowest status in list and detail', async () => {
     const { root, dataset, collection } = await createDatasetCollectionFixture();
+    const [emptyCollection, readyCollection] = await MongoDatasetCollection.create(
+      ['empty', 'ready'].map((name) => ({
+        name,
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id
+      }))
+    );
+    await MongoDatasetData.create(
+      ['ready-1', 'ready-2'].map((q) => ({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: readyCollection._id,
+        q,
+        indexStatus: DatasetDataIndexStatusEnum.indexed
+      }))
+    );
 
     const rebuildData = await MongoDatasetData.create({
       teamId: root.teamId,
@@ -328,7 +348,7 @@ describe('collection training status api', () => {
       }
     ]);
 
-    const listRes = await Call(listHandler, {
+    const listRes = await Call<unknown, unknown, ListCollectionV2ResponseType>(listHandler, {
       auth: root,
       body: {
         datasetId: dataset._id,
@@ -338,7 +358,11 @@ describe('collection training status api', () => {
     });
 
     expect(listRes.code).toBe(200);
-    expect(listRes.data.list[0]).toMatchObject({
+    expect(listRes.data.list).toHaveLength(3);
+    expect(
+      listRes.data.list.find((item) => String(item._id) === String(collection._id))
+    ).toMatchObject({
+      dataAmount: 1,
       trainingAmount: 2,
       activeTrainingAmount: 1,
       finalErrorAmount: 1,
@@ -346,6 +370,21 @@ describe('collection training status api', () => {
       slowestTrainingMode: TrainingModeEnum.parse,
       slowestTrainingStatus: CollectionTrainingStatusEnum.running
     });
+    for (const [target, dataAmount] of [
+      [emptyCollection, 0],
+      [readyCollection, 2]
+    ] as const) {
+      expect(
+        listRes.data.list.find((item) => String(item._id) === String(target._id))
+      ).toMatchObject({
+        dataAmount,
+        trainingAmount: 0,
+        activeTrainingAmount: 0,
+        finalErrorAmount: 0,
+        hasError: false,
+        slowestTrainingStatus: CollectionTrainingStatusEnum.ready
+      });
+    }
 
     const detailRes = await Call(detailHandler, {
       auth: root,
