@@ -39,6 +39,10 @@ export const authWorkflowToolByTmbId = async ({
   return app;
 };
 
+/**
+ * 校验成员的应用权限并返回实际有效权限，供下游会话等资源继续鉴权。
+ * hidden 应用允许同团队成员读取，但仅团队管理员拥有日志权限；返回权限不随本次请求权限变化。
+ */
 export const authAppByTmbId = async ({
   tmbId,
   appId,
@@ -85,7 +89,8 @@ export const authAppByTmbId = async ({
         ...app,
         permission: new AppPermission({
           isOwner: false,
-          role: sumPer(ReadRoleVal, AppReadChatLogRoleVal)
+          // Read 调用也会消费日志权限位，不能向普通成员附带授予日志权限。
+          role: tmbPer.hasManagePer ? sumPer(ReadRoleVal, AppReadChatLogRoleVal) : ReadRoleVal
         })
       };
     }

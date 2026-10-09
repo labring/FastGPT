@@ -123,7 +123,7 @@ describe('authAppByTmbId', () => {
     await expect(
       authAppByTmbId({ tmbId: 'member-tmb', appId, per: ReadPermissionVal })
     ).resolves.toMatchObject({
-      app: { permission: { hasReadPer: true, hasReadChatLogPer: true } }
+      app: { permission: { hasReadPer: true, hasReadChatLogPer: false } }
     });
     await expect(
       authAppByTmbId({ tmbId: 'member-tmb', appId, per: WritePermissionVal })
@@ -136,11 +136,22 @@ describe('authAppByTmbId', () => {
       teamId: 'team-a',
       permission: { isOwner: false, hasManagePer: true }
     });
+    // 返回权限取决于成员身份，不能因本次只请求 Read 而丢失管理员的日志权限。
+    await expect(
+      authAppByTmbId({ tmbId: 'member-tmb', appId, per: ReadPermissionVal })
+    ).resolves.toMatchObject({
+      app: { permission: { hasReadPer: true, hasReadChatLogPer: true, hasWritePer: false } }
+    });
     await expect(
       authAppByTmbId({ tmbId: 'member-tmb', appId, per: AppReadChatLogPerVal })
     ).resolves.toMatchObject({
       app: { permission: { role: ReadPermissionVal | AppReadChatLogRoleVal } }
     });
+    for (const per of [WritePermissionVal, ManagePermissionVal]) {
+      await expect(authAppByTmbId({ tmbId: 'member-tmb', appId, per })).rejects.toBe(
+        AppErrEnum.unAuthApp
+      );
+    }
   });
 
   it('allows root access and rejects cross-team access', async () => {
