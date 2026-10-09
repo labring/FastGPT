@@ -3,7 +3,11 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
-import { reloadSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
+import {
+  reloadSystemInstanceConfig,
+  computeSystemInitBufferId,
+  getInstanceConfigVersionTag
+} from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
@@ -267,6 +271,14 @@ export async function initSystemConfig() {
 
   const { refreshLangfuseTracing } = await import('@fastgpt/service/common/langfuse');
   await refreshLangfuseTracing();
+
+  // 全部加载完成后统一设置确定性全局缓存标记，结合实例配置多域版本和授权版本
+  global.systemInitBufferId = computeSystemInitBufferId({
+    instanceVersionTag: getInstanceConfigVersionTag(),
+    licenseUpdateTime: licenseData?.expiredTime
+      ? new Date(licenseData.expiredTime).getTime()
+      : undefined
+  });
 
   logger.info('System config loaded', {
     fastgpt: {
