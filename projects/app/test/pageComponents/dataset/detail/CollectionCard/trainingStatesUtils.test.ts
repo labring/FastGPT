@@ -113,6 +113,7 @@ describe('trainingStatesUtils', () => {
         chunk: 0,
         index: 0,
         rebuildIndex: 1,
+        rebuildSynonym: 0,
         image: 0,
         auto: 0,
         imageParse: 0
@@ -145,6 +146,7 @@ describe('trainingStatesUtils', () => {
         chunk: 0,
         index: 0,
         rebuildIndex: 2,
+        rebuildSynonym: 0,
         image: 0,
         auto: 0,
         imageParse: 0
@@ -175,5 +177,16 @@ describe('trainingStatesUtils', () => {
     expect(isTrainingStepHighlighted(TrainingStatus.Running)).toBe(true);
     expect(isTrainingStepHighlighted(TrainingStatus.Error)).toBe(true);
     expect(isTrainingStepHighlighted(TrainingStatus.NotStart)).toBe(false);
+  });
+  it('does not let another flow block completion of this flow', () => {
+    const detail = createTrainingDetail();
+    detail.trainingCounts.rebuildSynonym = 3;
+    expect(
+      getTrainingStepStatus({
+        trainingDetail: detail,
+        mode: TrainingModeEnum.rebuildIndex,
+        modeOrder: [TrainingModeEnum.rebuildIndex]
+      })
+    ).toBe(TrainingStatus.Ready);
   });
 });

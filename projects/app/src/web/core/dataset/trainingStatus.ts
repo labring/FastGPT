@@ -104,3 +104,12 @@ export const getCollectionTrainingStatusColorSchema = ({
       return 'lightGray';
   }
 };
+
+/** 仅处理中或异常的集合允许打开进度弹窗；已就绪及尚未加载状态时不提供入口。 */
+export const canOpenCollectionTrainingStates = ({
+  slowestTrainingStatus
+}: {
+  slowestTrainingStatus?: CollectionTrainingStatusEnum;
+}) =>
+  slowestTrainingStatus === CollectionTrainingStatusEnum.running ||
+  slowestTrainingStatus === CollectionTrainingStatusEnum.error;

@@ -130,13 +130,13 @@ describe('collection training status api', () => {
     const before = await readCounts();
     expect(before.code).toBe(200);
     expect(before.data).toMatchObject({
-      queuedCounts: { rebuildIndex: 0, rebuildSynonym: 0, index: 0 },
-      trainingCounts: { rebuildIndex: 5, index: 0 },
+      queuedCounts: { rebuildIndex: 3, rebuildSynonym: 0, index: 0 },
+      trainingCounts: { rebuildIndex: 2, index: 0 },
       errorCounts: { rebuildIndex: 1, index: 0 },
       trainedCount: 1
     });
 
-    // 待重建进入 training 后仍只按 data 统计，处理中总量保持不变。
+    // 待重建进入 training 后，待重建减少、重建中增加，总量保持不变。
     await enqueueNextDatasetRebuildTask({
       teamId: String(root.teamId),
       tmbId: String(root.tmbId),
@@ -145,8 +145,8 @@ describe('collection training status api', () => {
     });
     const after = await readCounts();
     expect(after.code).toBe(200);
-    expect(after.data.queuedCounts.rebuildIndex).toBe(0);
-    expect(after.data.trainingCounts.rebuildIndex).toBe(5);
+    expect(after.data.queuedCounts.rebuildIndex).toBe(2);
+    expect(after.data.trainingCounts.rebuildIndex).toBe(3);
     expect(after.data.errorCounts.rebuildIndex).toBe(1);
     await checkCollectionStatus();
   });
@@ -208,8 +208,8 @@ describe('collection training status api', () => {
       expect(list.data.list[0]).toMatchObject(expected);
       expect(detail.data).toMatchObject(expected);
       expect(modal.data).toMatchObject({
-        queuedCounts: { rebuildIndex: 0, rebuildSynonym: 0 },
-        trainingCounts: { rebuildIndex: 2 },
+        queuedCounts: { rebuildIndex: 1, rebuildSynonym: 0 },
+        trainingCounts: { rebuildIndex: 1 },
         errorCounts: { rebuildIndex: failed },
         trainedCount: ready
       });

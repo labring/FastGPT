@@ -60,6 +60,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import TrainingStates from './TrainingStates';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import {
+  canOpenCollectionTrainingStates,
   getCollectionTrainingStatusColorSchema,
   getCollectionTrainingStatusText
 } from '@/web/core/dataset/trainingStatus';
@@ -127,6 +128,7 @@ const CollectionCard = () => {
         return {
           ...collection,
           icon,
+          canOpenTrainingStates: canOpenCollectionTrainingStates(collection),
           statusText,
           statusColorSchema
         };
@@ -513,15 +515,21 @@ const CollectionCard = () => {
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
                   <Td py={2}>
-                    <MyTooltip label={t('common:Click_to_expand')}>
+                    <MyTooltip
+                      label={
+                        !collection.canOpenTrainingStates ? undefined : t('common:Click_to_expand')
+                      }
+                    >
                       <MyTag
                         showDot
                         colorSchema={collection.statusColorSchema}
                         type={'fill'}
                         fontSize={'mini'}
                         letterSpacing={'0.5px'}
+                        cursor={!collection.canOpenTrainingStates ? 'default' : 'pointer'}
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!collection.canOpenTrainingStates) return;
                           setTrainingStatesCollection({
                             collectionId: collection._id,
                             permission: collection.permission
@@ -530,7 +538,9 @@ const CollectionCard = () => {
                       >
                         <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
                           {t(collection.statusText as any)}
-                          <MyIcon name={'common/maximize'} w={'10px'} h={'10px'} />
+                          {collection.canOpenTrainingStates && (
+                            <MyIcon name={'common/maximize'} w={'10px'} h={'10px'} />
+                          )}
                         </Flex>
                       </MyTag>
                     </MyTooltip>

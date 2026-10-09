@@ -92,7 +92,7 @@ mapping 写入、配置 CAS、首批 data 领取或种子任务创建失败会�
 
 两个 Worker 只领取各自 mode。`rebuildIndex` 按索引待重建状态续接；`rebuildSynonym` 按同义词待重建状态续接，并从配置读取当前版本。二者共享 embedding 并发上限和底层 indexes 重建；首次训练 `index` 单独处理正文和增强产物。重建错误只支持重试或删除，正文编辑通过 data 更新接口执行。
 
-集合列表、详情和训练弹窗在同一次 data 聚合中，分别统计 `rebuildIndexPending/Running/Failed` 和 `rebuildSynonymPending/Running/Failed`。两类 training 均排除出普通训练聚合，避免重复计数；未入队的数据纳入处理中数量。弹窗分别显示“索引重建”和“同义词重建”，失败记录沿用训练异常列表。
+集合列表、详情和训练弹窗在同一次 data 聚合中，分别统计 `rebuildIndexPending/Running/Failed` 和 `rebuildSynonymPending/Running/Failed`。两类 training 均排除出普通训练聚合，避免重复计数。集合列表和详情合计 Pending + Running；训练弹窗将 Pending 计入 queuedCounts、Running 计入 trainingCounts，分别显示“待重建 → 索引重建 → 已就绪”和“待重建 → 同义词重建 → 已就绪”。新导入沿用原有配置阶段，混合模式分别展示链路，错误展示在所属模式的阶段，异常列表继续提供重试和删除。集合列表和数据页的已就绪标签不再打开弹窗；已经打开的弹窗保留本轮链路，完成后各阶段显示打勾。
 
 旧 `mode=rebuild` 通过迁移转为 `rebuildIndex`，携带词表版本的旧重建转为 `rebuildSynonym` 并恢复关联 data 状态，清除 training 的旧版本字段。旧轮次尚未入队的数据由同义词 Worker 按版本差异逐条领取，避免迁移事务全库更新；新轮次在入口统一标记 Pending，进度包括全部未入队数据。旧节点停止后执行迁移，v1 断点升级到 v2 时重扫，重复执行不会回退新状态。
 

@@ -1,4 +1,5 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -34,7 +35,7 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
 
 const TRAINING_LOCK_TIMEOUT_MINUTES = TRAINING_LEASE_TIMEOUT_MS / 60 / 1000;
 
-/** 汇总普通训练阶段；重建处理中、失败及已就绪数量统一从 data 一次聚合获取。 */
+/** 汇总普通训练阶段；重建按 data 状态区分待重建、重建中和失败，一次聚合获取。 */
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
   const { collectionId } = parseApiInput({
     req,
@@ -111,7 +112,30 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     ]),
     MongoDatasetData.aggregate([
       { $match: match },
-      { $group: { _id: null, ...datasetDataStatusCountFields } }
+      {
+        $group: {
+          _id: null,
+          ...datasetDataStatusCountFields,
+          rebuildIndexPendingCount: {
+            $sum: {
+              $cond: [
+                { $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildIndexPending] },
+                1,
+                0
+              ]
+            }
+          },
+          rebuildSynonymPendingCount: {
+            $sum: {
+              $cond: [
+                { $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildSynonymPending] },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
     ])
   ]);
 
@@ -137,9 +161,13 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     { ...defaultCounts }
   );
 
-  trainingCounts.rebuildIndex = dataStatus?.rebuildIndexActiveCount ?? 0;
+  queuedCounts.rebuildIndex = dataStatus?.rebuildIndexPendingCount ?? 0;
+  trainingCounts.rebuildIndex =
+    (dataStatus?.rebuildIndexActiveCount ?? 0) - queuedCounts.rebuildIndex;
   errorCounts.rebuildIndex = dataStatus?.rebuildIndexFailedCount ?? 0;
-  trainingCounts.rebuildSynonym = dataStatus?.rebuildSynonymActiveCount ?? 0;
+  queuedCounts.rebuildSynonym = dataStatus?.rebuildSynonymPendingCount ?? 0;
+  trainingCounts.rebuildSynonym =
+    (dataStatus?.rebuildSynonymActiveCount ?? 0) - queuedCounts.rebuildSynonym;
   errorCounts.rebuildSynonym = dataStatus?.rebuildSynonymFailedCount ?? 0;
 
   return GetCollectionTrainingDetailResponseSchema.parse({

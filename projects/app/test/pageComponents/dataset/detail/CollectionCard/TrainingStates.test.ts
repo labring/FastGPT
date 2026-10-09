@@ -22,6 +22,8 @@ vi.mock('next-i18next', () => ({
       if (key === 'dataset:process.Index_Rebuild') return '索引重建';
       if (key === 'dataset:process.Synonym_Rebuild') return '同义词重建';
       if (key === 'dataset:process.Is_Ready') return '已就绪';
+      if (key === 'dataset:process.Rebuild_Pending') return '待重建';
+      if (key === 'dataset:dataset.Rebuild_Pending_Count') return `${options?.count} 条待重建`;
       if (key === 'dataset:dataset.Training_Waiting') return `需等待 ${options?.count} 组数据`;
       if (key === 'dataset:dataset.Training_Count') return `${options?.count} 条处理中`;
       if (key === 'dataset:training.Error') return `${options?.count} 组异常`;
@@ -170,5 +172,101 @@ describe('TrainingStates rebuild stage', () => {
     await act(async () => root.render(null));
     await render(completed);
     expect(rebuildRow()).toBeUndefined();
+  });
+  it.each(['rebuildIndex', 'rebuildSynonym'] as const)(
+    'shows only the three-step %s flow, including failed-only rounds',
+    async (mode) => {
+      const detail = createDetail();
+      detail.trainingType = DatasetCollectionDataProcessModeEnum.qa;
+      detail.advancedTraining.imageIndex = true;
+      detail.advancedTraining.autoIndexes = true;
+      detail.queuedCounts[mode] = 3;
+      await render(detail);
+      const labels = () =>
+        Array.from(container.querySelectorAll('[data-bg]'))
+          .map((row) => row.textContent)
+          .filter(Boolean);
+      const rebuildLabel = mode === 'rebuildIndex' ? '索引重建' : '同义词重建';
+      expect(labels()).toEqual(['待重建3 条待重建', rebuildLabel, '已就绪dataset:training_ready']);
+      expect(container.textContent).not.toContain('process.Parsing');
+      expect(container.textContent).not.toContain('process.Get QA');
+      expect(container.textContent).not.toContain('process.Auto_Index');
+
+      detail.queuedCounts[mode] = 0;
+      detail.errorCounts[mode] = 2;
+      await render(detail);
+      expect(labels()).toEqual([
+        '待重建',
+        `${rebuildLabel}2 组异常`,
+        '已就绪dataset:training_ready'
+      ]);
+      expect(container.querySelector('[data-bg="red.50"]')?.textContent).toContain(rebuildLabel);
+    }
+  );
+
+  it('shows each rebuild flow separately when both modes are present', async () => {
+    const detail = createDetail();
+    detail.queuedCounts.rebuildIndex = 2;
+    detail.trainingCounts.rebuildSynonym = 1;
+    detail.errorCounts.rebuildSynonym = 1;
+    await render(detail);
+    const rows = Array.from(container.querySelectorAll('[data-bg]'))
+      .map((row) => row.textContent)
+      .filter(Boolean);
+    expect(rows).toEqual([
+      '待重建2 条待重建',
+      '索引重建',
+      '已就绪dataset:training_ready',
+      '待重建',
+      '同义词重建1 组异常1 条处理中',
+      '已就绪dataset:training_ready'
+    ]);
+    detail.queuedCounts.rebuildIndex = 0;
+    await render(detail);
+    const index = rebuildRow()!;
+    expect(index.parentElement?.querySelector('[data-icon="common/check"]')).not.toBeNull();
+  });
+
+  it('preserves the configured import stages for new imports and their errors', async () => {
+    const detail = createDetail();
+    detail.trainingType = DatasetCollectionDataProcessModeEnum.qa;
+    detail.advancedTraining.imageIndex = true;
+    detail.advancedTraining.autoIndexes = true;
+    detail.errorCounts.qa = 1;
+    await render(detail);
+    expect(container.textContent).toContain('process.Parsing');
+    expect(container.textContent).toContain('process.Get QA');
+    expect(container.textContent).toContain('process.Image_Index');
+    expect(container.textContent).toContain('process.Auto_Index');
+    expect(container.textContent).toContain('process.Vectorizing');
+    expect(container.textContent).not.toContain('待重建');
+    expect(container.querySelector('[data-bg="red.50"]')?.textContent).toContain('process.Get QA');
+  });
+  it('keeps image parsing stages for newly imported images', async () => {
+    const detail = createDetail();
+    detail.trainingType = DatasetCollectionDataProcessModeEnum.imageParse;
+    detail.queuedCounts.imageParse = 2;
+    await render(detail);
+    expect(container.textContent).toContain('process.Parse_Image');
+    expect(container.textContent).toContain('需等待 2 组数据');
+    expect(container.textContent).not.toContain('待重建');
+  });
+
+  it('does not append rebuilding to the import chain when both are active', async () => {
+    const detail = createDetail();
+    detail.trainingCounts.index = 1;
+    detail.queuedCounts.rebuildIndex = 2;
+    await render(detail);
+    const rows = Array.from(container.querySelectorAll('[data-bg]'))
+      .map((row) => row.textContent)
+      .filter(Boolean);
+    expect(rows).toEqual([
+      'dataset:process.Parsing',
+      'dataset:process.Vectorizing1 条处理中',
+      '已就绪dataset:training_ready',
+      '待重建2 条待重建',
+      '索引重建',
+      '已就绪dataset:training_ready'
+    ]);
   });
 });

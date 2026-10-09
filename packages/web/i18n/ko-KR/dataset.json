@@ -293,5 +293,7 @@
   "process.Synonym_Rebuild": "동의어 재구축",
   "data_index_status_synonym_pending": "동의어 재구축 대기",
   "data_index_status_synonym_running": "동의어 재구축 중",
-  "data_index_status_synonym_failed": "동의어 재구축 실패"
+  "data_index_status_synonym_failed": "동의어 재구축 실패",
+  "process.Rebuild_Pending": "재구축 대기",
+  "dataset.Rebuild_Pending_Count": "재구축 대기 {{count}}개"
 }

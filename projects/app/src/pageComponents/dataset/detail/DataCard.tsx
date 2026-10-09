@@ -37,6 +37,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import dynamic from 'next/dynamic';
 import { downloadFetch } from '@/web/common/system/utils';
 import {
+  canOpenCollectionTrainingStates,
   getCollectionTrainingStatusColorSchema,
   getCollectionTrainingStatusText
 } from '@/web/core/dataset/trainingStatus';
@@ -122,7 +123,8 @@ const DataCard = () => {
     if (!collection) return;
     return {
       text: getCollectionTrainingStatusText(collection),
-      colorSchema: getCollectionTrainingStatusColorSchema(collection)
+      colorSchema: getCollectionTrainingStatusColorSchema(collection),
+      canOpen: canOpenCollectionTrainingStates(collection)
     };
   }, [collection]);
 
@@ -270,17 +272,20 @@ const DataCard = () => {
             {!!collectionTrainingStatus && (
               <MyTag
                 type={'fill'}
-                cursor={'pointer'}
+                cursor={collectionTrainingStatus.canOpen ? 'pointer' : 'default'}
                 rounded={'full'}
                 ml={2}
                 colorSchema={collectionTrainingStatus.colorSchema}
                 onClick={() => {
+                  if (!collectionTrainingStatus.canOpen) return;
                   setErrorModalId(collection?._id || '');
                 }}
               >
                 <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
                   {t(collectionTrainingStatus.text as any)}
-                  <MyIcon name={'common/maximize'} w={'11px'} />
+                  {collectionTrainingStatus.canOpen && (
+                    <MyIcon name={'common/maximize'} w={'11px'} />
+                  )}
                 </Flex>
               </MyTag>
             )}

@@ -242,11 +242,10 @@ export const GetCollectionTrainingDetailResponseSchema = z.object({
     })
     .meta({ description: '高级训练配置' }),
   queuedCounts: TrainingCountsSchema.meta({
-    description:
-      '普通训练排队数量，rebuildIndex/rebuildSynonym 固定为 0，待处理数据统一计入各自 trainingCountsIndex'
+    description: '排队数量；rebuildIndex/rebuildSynonym 分别按 data 的 Pending 状态统计'
   }),
   trainingCounts: TrainingCountsSchema.meta({
-    description: '处理中数量；rebuildIndex/rebuildSynonym 按 data 各自 Pending 和 Running 状态合计'
+    description: '处理中数量；rebuildIndex/rebuildSynonym 分别按 data 的 Running 状态统计'
   }),
   errorCounts: TrainingCountsSchema.meta({
     description: '错误数量；rebuildIndex/rebuildSynonym 按 data 各自 Failed 状态统计'

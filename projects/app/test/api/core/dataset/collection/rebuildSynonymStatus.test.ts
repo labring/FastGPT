@@ -70,8 +70,8 @@ describe('synonym rebuild data status counts', () => {
     expect(list.data.list[0]).toMatchObject(expected);
     expect(detail.data).toMatchObject(expected);
     expect(modal.data).toMatchObject({
-      queuedCounts: { rebuildSynonym: 0 },
-      trainingCounts: { rebuildSynonym: 3, rebuildIndex: 0 },
+      queuedCounts: { rebuildSynonym: 2 },
+      trainingCounts: { rebuildSynonym: 1, rebuildIndex: 0 },
       errorCounts: { rebuildSynonym: 1, rebuildIndex: 0 },
       trainedCount: 1
     });
