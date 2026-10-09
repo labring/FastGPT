@@ -49,6 +49,7 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/tools/price': true,
   '/price': true,
   '/skill/detail': true,
+  '/config/tool/marketplace': true,
   '/dashboard/tool/marketplace': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
@@ -62,6 +63,7 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/tools/price': true,
   '/price': true,
   '/skill/detail': true,
+  '/config/tool/marketplace': true,
   '/dashboard/tool/marketplace': true
 };
 
