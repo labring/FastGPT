@@ -356,12 +356,6 @@ export const DatasetTrainingSchema = z.object({
   expireAt: z.coerce.date().meta({ description: '过期时间' }),
   lockTime: z.coerce.date().meta({ description: '锁定时间' }),
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
-  synonymVersion: z
-    .number()
-    .int()
-    .positive()
-    .optional()
-    .meta({ description: '任务目标同义词版本' }),
   dataId: ObjectIdSchema.optional().meta({ description: '数据 ID' }),
   q: z.string().meta({ description: '问题/主文本' }),
   a: z.string().meta({ description: '回答/补充文本' }),

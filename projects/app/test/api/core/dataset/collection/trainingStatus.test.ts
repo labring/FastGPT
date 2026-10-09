@@ -77,7 +77,7 @@ describe('collection training status api', () => {
       {
         ...scope,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         dataId: datas[3]._id,
         retryCount: 3,
         lockTime: new Date('2000')
@@ -85,7 +85,7 @@ describe('collection training status api', () => {
       {
         ...scope,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         dataId: datas[4]._id,
         retryCount: 3,
         lockTime: new Date()
@@ -93,7 +93,7 @@ describe('collection training status api', () => {
       {
         ...scope,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         dataId: datas[5]._id,
         retryCount: 0,
         lockTime: new Date('2000'),
@@ -116,7 +116,7 @@ describe('collection training status api', () => {
         activeTrainingAmount: 5,
         finalErrorAmount: 1,
         hasError: true,
-        slowestTrainingMode: TrainingModeEnum.rebuild,
+        slowestTrainingMode: TrainingModeEnum.rebuildIndex,
         slowestTrainingStatus: CollectionTrainingStatusEnum.running
       };
       expect(list.code).toBe(200);
@@ -130,9 +130,9 @@ describe('collection training status api', () => {
     const before = await readCounts();
     expect(before.code).toBe(200);
     expect(before.data).toMatchObject({
-      queuedCounts: { rebuild: 0, index: 0 },
-      trainingCounts: { rebuild: 5, index: 0 },
-      errorCounts: { rebuild: 1, index: 0 },
+      queuedCounts: { rebuildIndex: 0, rebuildSynonym: 0, index: 0 },
+      trainingCounts: { rebuildIndex: 5, index: 0 },
+      errorCounts: { rebuildIndex: 1, index: 0 },
       trainedCount: 1
     });
 
@@ -145,9 +145,9 @@ describe('collection training status api', () => {
     });
     const after = await readCounts();
     expect(after.code).toBe(200);
-    expect(after.data.queuedCounts.rebuild).toBe(0);
-    expect(after.data.trainingCounts.rebuild).toBe(5);
-    expect(after.data.errorCounts.rebuild).toBe(1);
+    expect(after.data.queuedCounts.rebuildIndex).toBe(0);
+    expect(after.data.trainingCounts.rebuildIndex).toBe(5);
+    expect(after.data.errorCounts.rebuildIndex).toBe(1);
     await checkCollectionStatus();
   });
   it('uses data states for orphan failures and ignores stale rebuild training records', async () => {
@@ -182,7 +182,7 @@ describe('collection training status api', () => {
     await MongoDatasetTraining.create({
       ...dataScope,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       dataId: datas[3]._id,
       retryCount: 0,
       errorMsg: 'stale failure'
@@ -202,15 +202,15 @@ describe('collection training status api', () => {
         activeTrainingAmount: 2,
         finalErrorAmount: failed,
         hasError: failed > 0,
-        slowestTrainingMode: TrainingModeEnum.rebuild,
+        slowestTrainingMode: TrainingModeEnum.rebuildIndex,
         slowestTrainingStatus: CollectionTrainingStatusEnum.running
       };
       expect(list.data.list[0]).toMatchObject(expected);
       expect(detail.data).toMatchObject(expected);
       expect(modal.data).toMatchObject({
-        queuedCounts: { rebuild: 0 },
-        trainingCounts: { rebuild: 2 },
-        errorCounts: { rebuild: failed },
+        queuedCounts: { rebuildIndex: 0, rebuildSynonym: 0 },
+        trainingCounts: { rebuildIndex: 2 },
+        errorCounts: { rebuildIndex: failed },
         trainedCount: ready
       });
     };
@@ -263,7 +263,7 @@ describe('collection training status api', () => {
       trainingAmount: 1,
       activeTrainingAmount: 1,
       finalErrorAmount: 0,
-      slowestTrainingMode: TrainingModeEnum.rebuild,
+      slowestTrainingMode: TrainingModeEnum.rebuildIndex,
       slowestTrainingStatus: CollectionTrainingStatusEnum.running
     };
     expect(list.data.list[0]).toMatchObject(expected);
@@ -385,7 +385,7 @@ describe('collection training status api', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         dataId: rebuildData._id,
         retryCount: 0,
         errorMsg: 'final error'
@@ -485,7 +485,7 @@ describe('collection training status api', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         dataId: rebuildData._id,
         retryCount: 0,
         errorMsg: 'final failed'
@@ -505,7 +505,7 @@ describe('collection training status api', () => {
     expect(res.data.queuedCounts.qa).toBe(0);
     expect(res.data.trainingCounts.qa).toBe(1);
     expect(res.data.errorCounts.qa).toBe(0);
-    expect(res.data.errorCounts.rebuild).toBe(1);
+    expect(res.data.errorCounts.rebuildIndex).toBe(1);
   });
 
   it('should not include other dataset training records in collection queued counts', async () => {
@@ -550,7 +550,7 @@ describe('collection training status api', () => {
         datasetId: otherDataset._id,
         collectionId: otherCollection._id,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 3,
         lockTime: new Date('2000')
       })),
@@ -575,6 +575,6 @@ describe('collection training status api', () => {
 
     expect(res.code).toBe(200);
     expect(res.data.queuedCounts.parse).toBe(1);
-    expect(res.data.queuedCounts.rebuild).toBe(0);
+    expect(res.data.queuedCounts.rebuildIndex).toBe(0);
   });
 });

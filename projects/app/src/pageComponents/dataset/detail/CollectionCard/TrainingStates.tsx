@@ -23,10 +23,12 @@ import {
 
 const ProgressView = ({
   trainingDetail,
-  hasSeenRebuild
+  hasSeenRebuild,
+  hasSeenSynonymRebuild
 }: {
   trainingDetail: GetCollectionTrainingDetailResponseType;
   hasSeenRebuild: boolean;
+  hasSeenSynonymRebuild: boolean;
 }) => {
   const { t } = useTranslation();
   const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;
@@ -35,11 +37,14 @@ const ProgressView = ({
   const isImageIndex = trainingDetail.advancedTraining.imageIndex;
   const isAutoIndexes = trainingDetail.advancedTraining.autoIndexes;
   const hasRebuildTasks =
-    trainingDetail.queuedCounts.rebuild +
-      trainingDetail.trainingCounts.rebuild +
-      trainingDetail.errorCounts.rebuild >
+    trainingDetail.queuedCounts.rebuildIndex +
+      trainingDetail.trainingCounts.rebuildIndex +
+      trainingDetail.errorCounts.rebuildIndex >
     0;
   const showRebuild = hasRebuildTasks || hasSeenRebuild;
+  const showSynonymRebuild =
+    hasSeenSynonymRebuild ||
+    trainingDetail.trainingCounts.rebuildSynonym + trainingDetail.errorCounts.rebuildSynonym > 0;
 
   const statesArray = useMemo(() => {
     const isReady = isTrainingDetailReady(trainingDetail);
@@ -50,7 +55,8 @@ const ProgressView = ({
       ...(isImageIndex ? [TrainingModeEnum.image] : []),
       ...(isAutoIndexes ? [TrainingModeEnum.auto] : []),
       TrainingModeEnum.index,
-      ...(showRebuild ? [TrainingModeEnum.rebuild] : [])
+      ...(showRebuild ? [TrainingModeEnum.rebuildIndex] : []),
+      ...(showSynonymRebuild ? [TrainingModeEnum.rebuildSynonym] : [])
     ];
 
     const getTrainingStatus = (mode: TrainingModeEnum) =>
@@ -138,15 +144,25 @@ const ProgressView = ({
       ...(showRebuild
         ? [
             {
-              errorCount: trainingDetail.errorCounts.rebuild,
+              errorCount: trainingDetail.errorCounts.rebuildIndex,
               label: t('dataset:process.Index_Rebuild'),
-              status: getTrainingStatus(TrainingModeEnum.rebuild),
+              status: getTrainingStatus(TrainingModeEnum.rebuildIndex),
               statusText:
-                trainingDetail.trainingCounts.rebuild > 0
+                trainingDetail.trainingCounts.rebuildIndex > 0
                   ? t('dataset:dataset.Training_Count', {
-                      count: trainingDetail.trainingCounts.rebuild
+                      count: trainingDetail.trainingCounts.rebuildIndex
                     })
                   : undefined
+            }
+          ]
+        : []),
+      ...(showSynonymRebuild
+        ? [
+            {
+              errorCount: trainingDetail.errorCounts.rebuildSynonym,
+              label: t('dataset:process.Synonym_Rebuild'),
+              status: getTrainingStatus(TrainingModeEnum.rebuildSynonym),
+              statusText: getStatusText(TrainingModeEnum.rebuildSynonym)
             }
           ]
         : []),
@@ -163,7 +179,16 @@ const ProgressView = ({
     ];
 
     return states;
-  }, [trainingDetail, isImageIndex, isAutoIndexes, t, isImageParse, isQA, showRebuild]);
+  }, [
+    trainingDetail,
+    isImageIndex,
+    isAutoIndexes,
+    t,
+    isImageParse,
+    isQA,
+    showRebuild,
+    showSynonymRebuild
+  ]);
 
   return (
     <Flex flexDirection={'column'} gap={6}>
@@ -275,6 +300,7 @@ const TrainingStates = ({
   const { t } = useTranslation();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
   const [hasSeenRebuild, setHasSeenRebuild] = useState(false);
+  const [hasSeenSynonymRebuild, setHasSeenSynonymRebuild] = useState(false);
 
   const {
     data: trainingDetail,
@@ -286,8 +312,15 @@ const TrainingStates = ({
     manual: false,
     onSuccess: (data) => {
       // 同一个弹窗内保留已出现的重建阶段，任务完成或切换页签后仍可看到完成状态。
-      if (data.queuedCounts.rebuild + data.trainingCounts.rebuild + data.errorCounts.rebuild > 0)
+      if (
+        data.queuedCounts.rebuildIndex +
+          data.trainingCounts.rebuildIndex +
+          data.errorCounts.rebuildIndex >
+        0
+      )
         setHasSeenRebuild(true);
+      if (data.trainingCounts.rebuildSynonym + data.errorCounts.rebuildSynonym > 0)
+        setHasSeenSynonymRebuild(true);
     }
   });
 
@@ -321,7 +354,11 @@ const TrainingStates = ({
           />
         </Flex>
         {tab === 'states' && trainingDetail && (
-          <ProgressView trainingDetail={trainingDetail} hasSeenRebuild={hasSeenRebuild} />
+          <ProgressView
+            trainingDetail={trainingDetail}
+            hasSeenRebuild={hasSeenRebuild}
+            hasSeenSynonymRebuild={hasSeenSynonymRebuild}
+          />
         )}
         {tab === 'errors' && (
           <TrainingErrorList

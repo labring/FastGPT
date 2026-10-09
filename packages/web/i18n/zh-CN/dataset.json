@@ -289,5 +289,9 @@
   "delete_following_folders_tip": "删除后，这些文件夹及其包含的全部知识库、关联索引和数据将被一并删除。",
   "data_indexing_cannot_modify": "数据索引中，暂不可更改",
   "training.delete_rebuild_data_title": "删除重建数据？",
-  "training.delete_rebuild_data_content": "删除此重建任务会同时删除原始数据及其全部索引，无法恢复。确认删除吗？"
+  "training.delete_rebuild_data_content": "删除此重建任务会同时删除原始数据及其全部索引，无法恢复。确认删除吗？",
+  "process.Synonym_Rebuild": "同义词重建",
+  "data_index_status_synonym_pending": "同义词待重建",
+  "data_index_status_synonym_running": "同义词重建中",
+  "data_index_status_synonym_failed": "同义词重建失败"
 }

@@ -160,9 +160,22 @@ describe('dataset training controller', () => {
     expect(untouchedTraining?.lockTime).not.toEqual(BLOCKED_LOCK_TIME);
     expect(untouchedTraining?.errorMsg).toBeUndefined();
   });
-  it.each([false, true])(
-    'synchronizes rebuild pause and retry without changing completed data (lockHeld=%s)',
-    async (lockHeld) => {
+  it.each(
+    [
+      {
+        mode: TrainingModeEnum.rebuildIndex,
+        running: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+        failed: DatasetDataIndexStatusEnum.rebuildIndexFailed
+      },
+      {
+        mode: TrainingModeEnum.rebuildSynonym,
+        running: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+        failed: DatasetDataIndexStatusEnum.rebuildSynonymFailed
+      }
+    ].flatMap((value) => [false, true].map((lockHeld) => ({ ...value, lockHeld })))
+  )(
+    'synchronizes rebuild pause and retry without changing completed data ($mode, lockHeld=$lockHeld)',
+    async ({ mode, running, failed, lockHeld }) => {
       const root = await getRootUser();
       const scope = {
         teamId: root.teamId,
@@ -175,7 +188,7 @@ describe('dataset training controller', () => {
           ...scope,
           q: 'saved content',
           indexes: [],
-          indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
+          indexStatus: running
         },
         {
           ...scope,
@@ -189,14 +202,14 @@ describe('dataset training controller', () => {
           ...scope,
           billId: 'test',
           dataId: data._id,
-          mode: TrainingModeEnum.rebuild,
+          mode,
           retryCount: 3
         },
         {
           ...scope,
           billId: 'test',
           dataId: completed._id,
-          mode: TrainingModeEnum.rebuild,
+          mode,
           retryCount: 3
         }
       ]);
@@ -211,7 +224,7 @@ describe('dataset training controller', () => {
       const paused = await MongoDatasetData.findById(data._id).lean();
       const pausedTask = await MongoDatasetTraining.findById(task._id).lean();
       expect(paused).toMatchObject({
-        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
+        indexStatus: failed,
         indexErrorMsg: i18nT('common:code_error.team_error.ai_points_not_enough'),
         q: data.q,
         indexes: data.indexes
@@ -230,7 +243,7 @@ describe('dataset training controller', () => {
         );
       await retryFailedTrainingTasks({ teamId: String(root.teamId), datasetId: scope.datasetId });
       const retried = await MongoDatasetData.findById(data._id).lean();
-      expect(retried?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildIndexRunning);
+      expect(retried?.indexStatus).toBe(running);
       expect(retried?.indexErrorMsg).toBeUndefined();
       expect((await MongoDatasetTraining.findById(task._id).lean())?.lockTime).not.toEqual(
         BLOCKED_LOCK_TIME
@@ -255,7 +268,7 @@ describe('dataset training controller', () => {
       ...scope,
       billId: 'test',
       dataId: data._id,
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       retryCount: 3
     });
     const spy = vi
@@ -305,7 +318,7 @@ describe('dataset training controller', () => {
         ...scope,
         billId: 'test',
         dataId: data._id,
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 3
       }))
     );

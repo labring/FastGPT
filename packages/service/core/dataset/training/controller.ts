@@ -1,3 +1,4 @@
+import { getTrainingDataIndexStatuses } from './utils';
 import { MongoDatasetTraining } from './schema';
 import type {
   PushDataChunkType,
@@ -44,7 +45,13 @@ const getTrainingModeLimit = async ({
   vlmModel?: LLMSystemModelDataType;
   vlmModelConfigured: boolean;
 }): Promise<{ maxToken: number; weight: number }> => {
-  if (mode === TrainingModeEnum.rebuild || mode === TrainingModeEnum.index) {
+  if (
+    [
+      TrainingModeEnum.rebuildIndex,
+      TrainingModeEnum.rebuildSynonym,
+      TrainingModeEnum.index
+    ].includes(mode)
+  ) {
     return {
       maxToken: Infinity,
       weight: vectorModel.config.weight
@@ -142,7 +149,9 @@ export const lockTrainingDataByTeamId = async (
         );
         // 重建失败需要用户处理，保留任务避免 TTL 删除后只剩 data 的失败状态。
         const rebuildIds = tasks
-          .filter((task) => task.mode === TrainingModeEnum.rebuild)
+          .filter((task) =>
+            [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(task.mode)
+          )
           .map(({ _id }) => _id);
         if (rebuildIds.length) {
           await MongoDatasetTraining.updateMany(
@@ -152,7 +161,8 @@ export const lockTrainingDataByTeamId = async (
           );
         }
         const updates = tasks.flatMap((task) =>
-          task.mode === TrainingModeEnum.rebuild && task.dataId
+          [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(task.mode) &&
+          task.dataId
             ? [
                 {
                   updateOne: {
@@ -161,11 +171,11 @@ export const lockTrainingDataByTeamId = async (
                       teamId,
                       datasetId: task.datasetId,
                       collectionId: task.collectionId,
-                      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
+                      indexStatus: getTrainingDataIndexStatuses(task.mode).running
                     },
                     update: {
                       $set: {
-                        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
+                        indexStatus: getTrainingDataIndexStatuses(task.mode).failed,
                         indexErrorMsg: errorMsg
                       }
                     }

@@ -152,7 +152,7 @@ const ActionButtons = ({
       >
         {t('dataset:dataset.ReTrain')}
       </ErrorActionButton>
-      {item.mode !== TrainingModeEnum.rebuild && (
+      {![TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(item.mode) && (
         <>
           <Box w={'1px'} height={'16px'} bg={'#E8EBF0'} />
           <ErrorActionButton icon={'edit'} isLoading={isEditLoading} onClick={() => onEdit(item)}>
@@ -432,7 +432,8 @@ const TrainingErrorList = ({
     });
   };
   const handleEditItem = (item: TrainingErrorItemType) => {
-    if (item.mode === TrainingModeEnum.rebuild) return;
+    if ([TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(item.mode))
+      return;
     if (!checkPermission(permission.hasWritePer)) return;
 
     const collectionId = getItemCollectionId(item);
@@ -443,7 +444,7 @@ const TrainingErrorList = ({
 
     const collectionId = getItemCollectionId(item);
     const onDelete = () => deleteData({ collectionId, dataId: String(item._id) });
-    if (item.mode === TrainingModeEnum.rebuild) {
+    if ([TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(item.mode)) {
       return openRebuildDeleteConfirm({ onConfirm: onDelete })();
     }
     return onDelete();

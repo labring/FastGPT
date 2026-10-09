@@ -5,59 +5,36 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
-import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 type DatasetRebuildContext = {
   teamId: string;
   tmbId: string;
   datasetId: string;
   billId: string;
-  synonymVersion?: number;
 };
 
 /**
  * 原子领取一条处于 rebuildIndexPending 的 data，并写入现有 training 队列。
- * 模型切换和同义词更新都只创建 rebuild 阶段，索引内容由 worker 从 data 读取。
+ * 只负责模型切换的 rebuildIndex 阶段，索引内容由 worker 从 data 读取。
  */
 export const enqueueNextDatasetRebuildTask = async (
   context: DatasetRebuildContext,
   session?: ClientSession
 ) => {
-  if (context.synonymVersion && !isDatasetSynonymEnabled()) return false;
-
   const enqueue = async (session: ClientSession) => {
     while (true) {
       const data = await MongoDatasetData.findOneAndUpdate(
-        context.synonymVersion
-          ? {
-              teamId: context.teamId,
-              datasetId: context.datasetId,
-              synonymVersion: { $ne: context.synonymVersion },
-              synonymRebuildingVersion: { $ne: context.synonymVersion },
-              // 待索引数据不参与同义词重建：其向量必然按处理时刻的词表生成，
-              // 选中会与在途任务争抢同一 dataId。
-              ...rebuildableDatasetDataMatch
-            }
-          : {
-              indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending,
-              teamId: context.teamId,
-              datasetId: context.datasetId
-            },
-        context.synonymVersion
-          ? {
-              $set: {
-                indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning,
-                synonymRebuildingVersion: context.synonymVersion,
-                updateTime: new Date()
-              }
-            }
-          : {
-              $set: {
-                indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning,
-                updateTime: new Date()
-              }
-            },
+        {
+          indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending,
+          teamId: context.teamId,
+          datasetId: context.datasetId
+        },
+        {
+          $set: {
+            indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+            updateTime: new Date()
+          }
+        },
         { session }
       ).select({
         _id: 1,
@@ -75,17 +52,6 @@ export const enqueueNextDatasetRebuildTask = async (
           { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } },
           { session }
         );
-        // collection 可能处于删除中间态；同义词重建只需跳过入队，不能删除业务 data。
-        if (context.synonymVersion) {
-          await MongoDatasetData.updateOne(
-            { _id: data._id },
-            {
-              $set: { synonymVersion: context.synonymVersion },
-              $unset: { synonymRebuildingVersion: '' }
-            },
-            { session }
-          );
-        }
         continue;
       }
 
@@ -97,9 +63,7 @@ export const enqueueNextDatasetRebuildTask = async (
             datasetId: context.datasetId,
             collectionId: data.collectionId,
             billId: context.billId,
-            mode: TrainingModeEnum.rebuild,
-            ...(context.synonymVersion && { synonymVersion: context.synonymVersion }),
-            ...(context.synonymVersion && { expireAt: null }),
+            mode: TrainingModeEnum.rebuildIndex,
             dataId: data._id,
             chunkIndex: data.chunkIndex,
             retryCount: 3

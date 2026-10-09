@@ -12,7 +12,8 @@ import type {
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
-import { enqueueNextDatasetRebuildTask } from './rebuild';
+import { enqueueNextDatasetSynonymRebuildTask } from './rebuildSynonym';
+import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 import {
   claimTrainingTask,
   TrainingLeaseLostError,
@@ -22,9 +23,9 @@ import {
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
 const reduceQueue = () => {
-  global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
+  global.synonymQueueLen = global.synonymQueueLen > 0 ? global.synonymQueueLen - 1 : 0;
 
-  return global.vectorQueueLen === 0;
+  return global.synonymQueueLen === 0;
 };
 
 type PopulateType = {
@@ -34,24 +35,26 @@ type PopulateType = {
 };
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
 
-/** 消费已有数据的重建任务；每条任务独立管理心跳，队列退出时归还并发名额。 */
-export async function generateRebuildIndex(): Promise<any> {
+/** 消费同义词重建任务；每条任务独立管理心跳，队列退出时归还并发名额。 */
+export async function generateRebuildSynonym(): Promise<any> {
+  if (!isDatasetSynonymEnabled()) return;
+  global.synonymQueueLen = global.synonymQueueLen ?? 0;
   const max = global.systemEnv?.vectorMaxProcess || 10;
-  logger.debug('Vector queue size check', { queueSize: global.vectorQueueLen, max });
+  logger.debug('Synonym rebuild queue size check', { queueSize: global.synonymQueueLen, max });
 
   if (global.vectorQueueLen + (global.synonymQueueLen ?? 0) + global.preCreatedQueueLen >= max)
     return;
-  global.vectorQueueLen++;
+  global.synonymQueueLen++;
 
   try {
-    while (true) {
+    while (isDatasetSynonymEnabled()) {
       const start = Date.now();
 
       // get training data
       let claimed;
       try {
         claimed = await claimTrainingTask<PopulateType>({
-          mode: TrainingModeEnum.rebuildIndex,
+          mode: TrainingModeEnum.rebuildSynonym,
           populate: [
             {
               path: 'dataset',
@@ -68,7 +71,7 @@ export async function generateRebuildIndex(): Promise<any> {
           ]
         });
       } catch (error) {
-        logger.error('Vector queue fetch task failed', { error });
+        logger.error('Synonym rebuild queue fetch task failed', { error });
         await delay(500);
         continue;
       }
@@ -82,14 +85,14 @@ export async function generateRebuildIndex(): Promise<any> {
         lease.start();
 
         if (!data.dataset || !data.collection) {
-          logger.info('Vector queue task skipped: dataset or collection missing', {
+          logger.info('Synonym rebuild queue task skipped: dataset or collection missing', {
             datasetId: data.datasetId,
             collectionId: data.collectionId,
             trainingId: data._id
           });
           // 当前集合被删除也必须续接数据集内其他集合的重建，避免种子任务全部跳过后断链。
           if (data.dataset && data.dataId) {
-            await enqueueFollowingDatasetRebuild({ trainingData: data });
+            await enqueueFollowingDatasetSynonymRebuild({ trainingData: data });
           }
           await lease.complete();
           continue;
@@ -100,7 +103,7 @@ export async function generateRebuildIndex(): Promise<any> {
           continue;
         }
 
-        logger.info('Vector queue task started', {
+        logger.info('Synonym rebuild queue task started', {
           trainingId: data._id,
           datasetId: data.datasetId,
           collectionId: data.collectionId,
@@ -124,7 +127,7 @@ export async function generateRebuildIndex(): Promise<any> {
             usageId: data.billId
           });
 
-          logger.info('Vector queue task finished', {
+          logger.info('Synonym rebuild queue task finished', {
             durationMs: Date.now() - start,
             trainingId: data._id,
             datasetId: data.datasetId,
@@ -132,7 +135,7 @@ export async function generateRebuildIndex(): Promise<any> {
             dataId: data.dataId
           });
         } catch (err: any) {
-          logger.error('Vector queue task failed', {
+          logger.error('Synonym rebuild queue task failed', {
             error: err,
             trainingId: data._id,
             datasetId: data.datasetId,
@@ -149,12 +152,12 @@ export async function generateRebuildIndex(): Promise<any> {
       }
     }
   } catch (error) {
-    logger.error('Vector queue loop failed', { error });
+    logger.error('Synonym rebuild queue loop failed', { error });
   } finally {
     if (reduceQueue()) {
-      logger.info('Vector queue drained', { queueSize: global.vectorQueueLen });
+      logger.info('Synonym rebuild queue drained', { queueSize: global.synonymQueueLen });
     }
-    logger.debug('Vector queue loop exit', { queueSize: global.vectorQueueLen });
+    logger.debug('Synonym rebuild queue loop exit', { queueSize: global.synonymQueueLen });
   }
 }
 
@@ -162,13 +165,13 @@ export async function generateRebuildIndex(): Promise<any> {
  * 在处理当前 rebuild 前先补充下一条任务。
  * 重试耗尽后必须向上抛错，让当前 training 保持可重试，避免链路在仍有 rebuilding data 时中断。
  */
-const enqueueFollowingDatasetRebuild = async ({
+const enqueueFollowingDatasetSynonymRebuild = async ({
   trainingData
 }: {
   trainingData: TrainingDataType;
 }) => {
   return retryFn(() =>
-    enqueueNextDatasetRebuildTask({
+    enqueueNextDatasetSynonymRebuildTask({
       teamId: String(trainingData.teamId),
       tmbId: String(trainingData.tmbId),
       datasetId: String(trainingData.datasetId),
@@ -186,11 +189,11 @@ const rebuildData = async ({
   lease: TrainingTaskLease;
 }) => {
   // 续接失败时保留当前 training 重试，否则最后一条任务可能结束而仍有 data 待重建。
-  await enqueueFollowingDatasetRebuild({ trainingData });
+  await enqueueFollowingDatasetSynonymRebuild({ trainingData });
 
   if (!trainingData.data) {
     await lease.complete();
-    return Promise.reject('Not data');
+    return { tokens: 0 };
   }
   const datasetData = trainingData.data;
   const modelHandle = await getModelHandle();

@@ -42,9 +42,9 @@ const createContext = async (indexStatus?: DatasetDataIndexStatusEnum) => {
 describe('getDatasetIndexTrainingMode', () => {
   it.each([
     [DatasetDataIndexStatusEnum.indexing, TrainingModeEnum.index],
-    [DatasetDataIndexStatusEnum.indexed, TrainingModeEnum.rebuild],
+    [DatasetDataIndexStatusEnum.indexed, TrainingModeEnum.rebuildIndex],
     [DatasetDataIndexStatusEnum.error, TrainingModeEnum.index],
-    [undefined, TrainingModeEnum.rebuild]
+    [undefined, TrainingModeEnum.rebuildIndex]
   ])('routes data with status %s to %s', async (status, expected) => {
     expect(await getDatasetIndexTrainingMode(await createContext(status))).toBe(expected);
   });
@@ -56,17 +56,17 @@ describe('getDatasetIndexTrainingMode', () => {
     );
     expect(
       await getDatasetIndexTrainingMode({ ...context, dataId: new Types.ObjectId().toString() })
-    ).toBe(TrainingModeEnum.rebuild);
+    ).toBe(TrainingModeEnum.rebuildIndex);
     expect(
       await getDatasetIndexTrainingMode({ ...context, teamId: new Types.ObjectId().toString() })
-    ).toBe(TrainingModeEnum.rebuild);
+    ).toBe(TrainingModeEnum.rebuildIndex);
   });
 });
 
 describe('createTrainingTaskLease', () => {
   it.each([
     TrainingModeEnum.index,
-    TrainingModeEnum.rebuild,
+    TrainingModeEnum.rebuildIndex,
     TrainingModeEnum.image,
     TrainingModeEnum.imageParse,
     TrainingModeEnum.auto,
@@ -128,7 +128,7 @@ describe('skipDatasetTrainingEnhancement', () => {
       }
       expect(advancedFresh?.mode).toBe(TrainingModeEnum.index);
       expect(advancedFresh?.expireAt).toBeInstanceOf(Date);
-      expect(advancedRebuild?.mode).toBe(TrainingModeEnum.rebuild);
+      expect(advancedRebuild?.mode).toBe(TrainingModeEnum.rebuildIndex);
       expect(advancedRebuild?.expireAt).toBeNull();
       expect(await MongoDatasetTraining.findById(unrelated._id).lean()).toMatchObject({
         mode: TrainingModeEnum.qa,
@@ -144,7 +144,7 @@ describe('skipDatasetTrainingEnhancement', () => {
       ).toBeTruthy();
       expect(
         await findAndLockTrainingTask({
-          mode: TrainingModeEnum.rebuild,
+          mode: TrainingModeEnum.rebuildIndex,
           filter: { _id: rebuildTask._id }
         })
       ).toBeTruthy();
@@ -425,8 +425,8 @@ describe('retryFailedTrainingTasks', () => {
         expireAt: null
       }))
     );
-    const updateData = MongoDatasetData.updateMany.bind(MongoDatasetData);
-    const update = vi.spyOn(MongoDatasetData, 'updateMany');
+    const updateData = MongoDatasetData.bulkWrite.bind(MongoDatasetData);
+    const update = vi.spyOn(MongoDatasetData, 'bulkWrite');
     update.mockImplementationOnce((...args) => updateData(...args));
     update.mockRejectedValueOnce(new Error('second batch failed'));
     try {
@@ -463,44 +463,58 @@ describe('retryFailedTrainingTasks', () => {
 });
 
 describe('rebuild status failure and retry', () => {
-  it('keeps automatic retries rebuilding and moves terminal failures to rebuildIndexFailed', async () => {
-    const context = await createContext(DatasetDataIndexStatusEnum.rebuildIndexRunning);
-    const task = await MongoDatasetTraining.create({
-      ...context,
-      tmbId: new Types.ObjectId(),
-      billId: 'rebuild-status',
-      mode: TrainingModeEnum.rebuild,
-      retryCount: 2,
-      lockTime: new Date()
-    });
-    const lease = createTrainingTaskLease(task);
-    try {
-      await lease.fail(new Error('temporary'));
-    } finally {
-      await lease.stop();
+  it.each([
+    {
+      mode: TrainingModeEnum.rebuildIndex,
+      running: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+      failed: DatasetDataIndexStatusEnum.rebuildIndexFailed
+    },
+    {
+      mode: TrainingModeEnum.rebuildSynonym,
+      running: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+      failed: DatasetDataIndexStatusEnum.rebuildSynonymFailed
     }
-    expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
-    });
-    const retryTask = await MongoDatasetTraining.findById(task._id);
-    if (!retryTask) throw new Error('Expected retry task');
-    const retryLease = createTrainingTaskLease(retryTask);
-    try {
-      await retryLease.fail(new Error('exhausted'));
-    } finally {
-      await retryLease.stop();
+  ])(
+    'keeps automatic retries running and restores the matching $mode state',
+    async ({ mode, running, failed }) => {
+      const context = await createContext(running);
+      const task = await MongoDatasetTraining.create({
+        ...context,
+        tmbId: new Types.ObjectId(),
+        billId: 'rebuild-status',
+        mode,
+        retryCount: 2,
+        lockTime: new Date()
+      });
+      const lease = createTrainingTaskLease(task);
+      try {
+        await lease.fail(new Error('temporary'));
+      } finally {
+        await lease.stop();
+      }
+      expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
+        indexStatus: running
+      });
+      const retryTask = await MongoDatasetTraining.findById(task._id);
+      if (!retryTask) throw new Error('Expected retry task');
+      const retryLease = createTrainingTaskLease(retryTask);
+      try {
+        await retryLease.fail(new Error('exhausted'));
+      } finally {
+        await retryLease.stop();
+      }
+      expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
+        indexStatus: failed,
+        indexErrorMsg: 'exhausted'
+      });
+      await retryFailedTrainingTasks({ teamId: context.teamId, datasetId: context.datasetId });
+      const data = await MongoDatasetData.findById(context.dataId).lean();
+      expect(data?.indexStatus).toBe(running);
+      expect(data?.indexErrorMsg).toBeUndefined();
+      expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
+        retryCount: 3,
+        mode
+      });
     }
-    expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
-      indexErrorMsg: 'exhausted'
-    });
-    await retryFailedTrainingTasks({ teamId: context.teamId, datasetId: context.datasetId });
-    const data = await MongoDatasetData.findById(context.dataId).lean();
-    expect(data?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildIndexRunning);
-    expect(data?.indexErrorMsg).toBeUndefined();
-    expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
-      retryCount: 3,
-      mode: TrainingModeEnum.rebuild
-    });
-  });
+  );
 });

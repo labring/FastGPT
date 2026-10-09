@@ -293,5 +293,9 @@
   "delete_following_folders_tip": "Once deleted, these folders, all knowledge bases inside them, and associated data will be deleted.",
   "data_indexing_cannot_modify": "Data is being indexed and cannot be modified at this time",
   "training.delete_rebuild_data_title": "Delete rebuild data?",
-  "training.delete_rebuild_data_content": "Deleting this rebuild task also permanently deletes the original data and all its indexes. Continue?"
+  "training.delete_rebuild_data_content": "Deleting this rebuild task also permanently deletes the original data and all its indexes. Continue?",
+  "process.Synonym_Rebuild": "Synonym rebuild",
+  "data_index_status_synonym_pending": "Pending synonym rebuild",
+  "data_index_status_synonym_running": "Rebuilding synonyms",
+  "data_index_status_synonym_failed": "Synonym rebuild failed"
 }

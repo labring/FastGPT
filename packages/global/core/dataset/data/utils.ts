@@ -32,7 +32,9 @@ export const rebuildingDatasetDataMatch = {
   indexStatus: {
     $in: [
       DatasetDataIndexStatusEnum.rebuildIndexPending,
-      DatasetDataIndexStatusEnum.rebuildIndexRunning
+      DatasetDataIndexStatusEnum.rebuildIndexRunning,
+      DatasetDataIndexStatusEnum.rebuildSynonymPending,
+      DatasetDataIndexStatusEnum.rebuildSynonymRunning
     ]
   }
 };
@@ -50,7 +52,11 @@ export const rebuildableDatasetDataMatch = {
   $or: [
     {
       indexStatus: {
-        $in: [DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.rebuildIndexFailed]
+        $in: [
+          DatasetDataIndexStatusEnum.indexed,
+          DatasetDataIndexStatusEnum.rebuildIndexFailed,
+          DatasetDataIndexStatusEnum.rebuildSynonymFailed
+        ]
       }
     },
     { indexStatus: { $exists: false } }

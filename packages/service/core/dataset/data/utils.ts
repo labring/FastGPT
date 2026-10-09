@@ -68,7 +68,9 @@ export const assertDatasetDataWritable = (indexStatus?: DatasetDataIndexStatusEn
     ![
       DatasetDataIndexStatusEnum.indexing,
       DatasetDataIndexStatusEnum.rebuildIndexPending,
-      DatasetDataIndexStatusEnum.rebuildIndexRunning
+      DatasetDataIndexStatusEnum.rebuildIndexRunning,
+      DatasetDataIndexStatusEnum.rebuildSynonymPending,
+      DatasetDataIndexStatusEnum.rebuildSynonymRunning
     ].includes(indexStatus)
   )
     return;

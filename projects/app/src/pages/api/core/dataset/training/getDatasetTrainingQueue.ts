@@ -35,7 +35,10 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
           $in: [
             DatasetDataIndexStatusEnum.rebuildIndexPending,
             DatasetDataIndexStatusEnum.rebuildIndexRunning,
-            DatasetDataIndexStatusEnum.rebuildIndexFailed
+            DatasetDataIndexStatusEnum.rebuildIndexFailed,
+            DatasetDataIndexStatusEnum.rebuildSynonymPending,
+            DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+            DatasetDataIndexStatusEnum.rebuildSynonymFailed
           ]
         },
         teamId,
@@ -46,7 +49,11 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
       }
     ),
     MongoDatasetTraining.countDocuments(
-      { teamId, datasetId, mode: { $ne: TrainingModeEnum.rebuild } },
+      {
+        teamId,
+        datasetId,
+        mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
+      },
       {
         ...readFromSecondary
       }

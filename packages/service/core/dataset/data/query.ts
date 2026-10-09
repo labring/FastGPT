@@ -34,6 +34,28 @@ export const datasetDataStatusCountFields = {
       ]
     }
   },
+  rebuildSynonymActiveCount: {
+    $sum: {
+      $cond: [
+        {
+          $in: [
+            '$indexStatus',
+            [
+              DatasetDataIndexStatusEnum.rebuildSynonymPending,
+              DatasetDataIndexStatusEnum.rebuildSynonymRunning
+            ]
+          ]
+        },
+        1,
+        0
+      ]
+    }
+  },
+  rebuildSynonymFailedCount: {
+    $sum: {
+      $cond: [{ $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildSynonymFailed] }, 1, 0]
+    }
+  },
   rebuildIndexFailedCount: {
     $sum: {
       $cond: [{ $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildIndexFailed] }, 1, 0]
@@ -46,4 +68,6 @@ export type DatasetDataStatusCounts = {
   trainedCount: number;
   rebuildIndexActiveCount: number;
   rebuildIndexFailedCount: number;
+  rebuildSynonymActiveCount: number;
+  rebuildSynonymFailedCount: number;
 };

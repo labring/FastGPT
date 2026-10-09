@@ -80,7 +80,7 @@ const createContext = async ({
     chunkIndex: 0,
     indexes:
       indexes ??
-      (mode === TrainingModeEnum.rebuild
+      (mode === TrainingModeEnum.rebuildIndex
         ? [{ type: DatasetDataIndexTypeEnum.default, text: 'chunk content', dataId: 'old_vector' }]
         : []),
     ...(indexStatus && { indexStatus })
@@ -141,13 +141,10 @@ describe('pre-created data queue routing', () => {
   it.each([false, true])(
     'stops the heartbeat when scheduling a missing-collection rebuild throws (synonym=%s)',
     async (synonymEnabled) => {
-      const { task, collection } = await createContext({ mode: TrainingModeEnum.rebuild });
+      const { task, collection } = await createContext({ mode: TrainingModeEnum.rebuildIndex });
       const synonym = vi
         .spyOn(synonymService, 'isDatasetSynonymEnabled')
         .mockReturnValue(synonymEnabled);
-      if (synonymEnabled) {
-        await MongoDatasetTraining.updateOne({ _id: task._id }, { $set: { synonymVersion: 1 } });
-      }
       await MongoDatasetCollection.deleteOne({ _id: collection._id });
       const enqueue = vi
         .spyOn(rebuildService, 'enqueueNextDatasetRebuildTask')
@@ -198,7 +195,7 @@ describe('pre-created data queue routing', () => {
       { type: DatasetDataIndexTypeEnum.default, text: 'chunk content', dataId: 'old_vector' }
     ];
     const { data, task } = await createContext({
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       indexes: oldIndexes
     });
     const removeTask = vi
@@ -250,7 +247,7 @@ describe('pre-created data queue routing', () => {
 
   it('retains committed rebuild vectors when old vector cleanup fails', async () => {
     const { data, task } = await createContext({
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       indexes: [
         { type: DatasetDataIndexTypeEnum.default, text: 'chunk content', dataId: 'old_vector' }
       ]
@@ -272,7 +269,7 @@ describe('pre-created data queue routing', () => {
     const indexes = [
       { type: DatasetDataIndexTypeEnum.default, text: 'chunk content', dataId: 'old_vector' }
     ];
-    const { data, task } = await createContext({ mode: TrainingModeEnum.rebuild, indexes });
+    const { data, task } = await createContext({ mode: TrainingModeEnum.rebuildIndex, indexes });
     mockVectorRefreshCreateTime.mockRejectedValue(new Error('refresh failed'));
     await generateRebuildIndex();
     expect(mockGetVectors).not.toHaveBeenCalled();
@@ -286,7 +283,10 @@ describe('pre-created data queue routing', () => {
   });
 
   it('retains a normal rebuild task when scheduling the next item fails', async () => {
-    const { data, task } = await createContext({ mode: TrainingModeEnum.rebuild, indexes: [] });
+    const { data, task } = await createContext({
+      mode: TrainingModeEnum.rebuildIndex,
+      indexes: []
+    });
     const enqueue = vi
       .spyOn(rebuildService, 'enqueueNextDatasetRebuildTask')
       .mockRejectedValue(new Error('enqueue failed'));
@@ -421,7 +421,7 @@ describe('pre-created data queue routing', () => {
   /** CP-03：关联数据无状态时继续走现有正式数据重建路径。 */
   it('keeps the rebuild path for data without indexStatus', async () => {
     const { data } = await createContext({
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       indexes: [
         {
           type: DatasetDataIndexTypeEnum.custom,
@@ -521,7 +521,7 @@ describe('pre-created data queue routing', () => {
       }
     ];
     const { data, task, dataset, collection } = await createContext({
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       indexes: storedIndexes
     });
     await MongoDatasetData.updateOne(

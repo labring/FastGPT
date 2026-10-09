@@ -316,7 +316,9 @@ const DataCard = () => {
                 [
                   DatasetDataIndexStatusEnum.indexing,
                   DatasetDataIndexStatusEnum.rebuildIndexPending,
-                  DatasetDataIndexStatusEnum.rebuildIndexRunning
+                  DatasetDataIndexStatusEnum.rebuildIndexRunning,
+                  DatasetDataIndexStatusEnum.rebuildSynonymPending,
+                  DatasetDataIndexStatusEnum.rebuildSynonymRunning
                 ].includes(item.indexStatus);
               const canModify = !isIndexing;
               const indexStatusInfo = getDatasetDataIndexStatusMapData(item.indexStatus);
@@ -329,6 +331,12 @@ const DataCard = () => {
                   return t('dataset:data_index_status_rebuilding');
                 if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexFailed)
                   return t('dataset:data_index_status_rebuild_error');
+                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildSynonymPending)
+                  return t('dataset:data_index_status_synonym_pending');
+                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildSynonymRunning)
+                  return t('dataset:data_index_status_synonym_running');
+                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildSynonymFailed)
+                  return t('dataset:data_index_status_synonym_failed');
                 if (item.indexStatus === DatasetDataIndexStatusEnum.error)
                   return t('dataset:data_index_status_error');
                 return t('dataset:data_index_status_indexed');

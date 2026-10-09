@@ -22,7 +22,8 @@ export const trainingModeRankMap: Record<TrainingModeEnum, number> = {
   [TrainingModeEnum.qa]: 2,
   [TrainingModeEnum.image]: 3,
   [TrainingModeEnum.auto]: 4,
-  [TrainingModeEnum.rebuild]: 5,
+  [TrainingModeEnum.rebuildIndex]: 5,
+  [TrainingModeEnum.rebuildSynonym]: 5,
   [TrainingModeEnum.index]: 5
 };
 
@@ -164,14 +165,17 @@ export const getSlowestTrainingStatus = (
  */
 export const getCollectionTrainingStatusByMode = ({
   modeCounts,
-  rebuildIndexCounts = { activeCount: 0, finalErrorCount: 0 }
+  rebuildIndexCounts = { activeCount: 0, finalErrorCount: 0 },
+  rebuildSynonymCounts = { activeCount: 0, finalErrorCount: 0 }
 }: {
   modeCounts: Partial<Record<TrainingModeEnum, TrainingStatusCount>>;
   rebuildIndexCounts?: TrainingStatusCount;
+  rebuildSynonymCounts?: TrainingStatusCount;
 }): CollectionTrainingStatusType => {
   const counts = {
     ...modeCounts,
-    [TrainingModeEnum.rebuild]: rebuildIndexCounts
+    [TrainingModeEnum.rebuildIndex]: rebuildIndexCounts,
+    [TrainingModeEnum.rebuildSynonym]: rebuildSynonymCounts
   };
   const activeTrainingAmount = Object.values(counts).reduce(
     (sum, count) => sum + (count?.activeCount ?? 0),

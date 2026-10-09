@@ -20,7 +20,8 @@ export const getTrainingStageText = (mode?: TrainingModeEnum) => {
     [TrainingModeEnum.qa]: i18nT('dataset:process.Get QA'),
     [TrainingModeEnum.image]: i18nT('dataset:process.Image_Index'),
     [TrainingModeEnum.auto]: i18nT('dataset:process.Auto_Index'),
-    [TrainingModeEnum.rebuild]: i18nT('dataset:process.Index_Rebuild'),
+    [TrainingModeEnum.rebuildIndex]: i18nT('dataset:process.Index_Rebuild'),
+    [TrainingModeEnum.rebuildSynonym]: i18nT('dataset:process.Synonym_Rebuild'),
     [TrainingModeEnum.index]: i18nT('dataset:process.Vectorizing')
   };
 
@@ -95,7 +96,8 @@ export const getCollectionTrainingStatusColorSchema = ({
     case TrainingModeEnum.auto:
       return 'cyan';
     case TrainingModeEnum.chunk:
-    case TrainingModeEnum.rebuild:
+    case TrainingModeEnum.rebuildIndex:
+    case TrainingModeEnum.rebuildSynonym:
     case TrainingModeEnum.index:
       return 'adora';
     default:

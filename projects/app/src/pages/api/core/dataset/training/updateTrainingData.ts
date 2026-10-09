@@ -16,7 +16,10 @@ import {
   type UpdateTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getTrainingTaskReadyUpdate } from '@fastgpt/service/core/dataset/training/utils';
+import {
+  getTrainingDataIndexStatuses,
+  getTrainingTaskReadyUpdate
+} from '@fastgpt/service/core/dataset/training/utils';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -89,7 +92,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
   }
 
   if (
-    data.mode === TrainingModeEnum.rebuild &&
+    [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(data.mode) &&
     (q !== undefined || a !== undefined || chunkIndex !== undefined)
   ) {
     return Promise.reject('重建任务不支持编辑正文');
@@ -114,17 +117,14 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       await MongoDatasetData.updateOne(
         {
           _id: data.dataId,
-          indexStatus:
-            data.mode === TrainingModeEnum.rebuild
-              ? DatasetDataIndexStatusEnum.rebuildIndexFailed
-              : DatasetDataIndexStatusEnum.error
+          teamId: data.teamId,
+          datasetId: data.datasetId,
+          collectionId: data.collectionId,
+          indexStatus: getTrainingDataIndexStatuses(data.mode).failed
         },
         {
           $set: {
-            indexStatus:
-              data.mode === TrainingModeEnum.rebuild
-                ? DatasetDataIndexStatusEnum.rebuildIndexRunning
-                : DatasetDataIndexStatusEnum.indexing
+            indexStatus: getTrainingDataIndexStatuses(data.mode).running
           },
           $unset: { indexErrorMsg: '' }
         },

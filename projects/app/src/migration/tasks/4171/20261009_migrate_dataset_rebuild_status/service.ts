@@ -1,6 +1,7 @@
 import { connectionMongo, Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { BLOCKED_LOCK_TIME } from '@fastgpt/service/core/dataset/training/query';
 
 // 兼容本轮开发期间已落库的旧状态名；正常业务只使用 rebuildIndex* 状态。
@@ -12,9 +13,12 @@ const legacyDataMatch = {
 };
 
 const rebuildTrainingMatch = {
-  // 旧重建可能仍处于增强/chunk 阶段；只有正式 data 才转换状态，预落库数据保持 indexing/error。
-  mode: { $in: ['rebuild', 'chunk', 'auto', 'image', 'imageParse'] },
-  dataId: { $ne: null }
+  $or: [
+    { mode: 'rebuild' },
+    { synonymVersion: { $exists: true } },
+    // 旧增强阶段只恢复正式 data 的状态，预落库数据保持 indexing/error。
+    { mode: { $in: ['chunk', 'auto', 'image', 'imageParse'] }, dataId: { $ne: null } }
+  ]
 };
 const legacyIndexedMatch = {
   $or: [
@@ -121,23 +125,66 @@ export const migrateRebuildStatusBatch = async ({
       .find({ _id: { $in: ids }, ...rebuildTrainingMatch }, { session })
       .toArray();
     for (const task of trainings) {
+      const isSynonym =
+        typeof task.synonymVersion === 'number' &&
+        task.synonymVersion > 0 &&
+        ['rebuild', TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(
+          task.mode
+        );
+      const config = isSynonym
+        ? await db
+            .collection('dataset_synonyms')
+            .findOne(
+              { teamId: task.teamId, datasetId: task.datasetId },
+              { session, projection: { version: 1 } }
+            )
+        : undefined;
+      const version = config?.version ?? task.synonymVersion;
       const failed = (task.retryCount ?? 0) <= 0 || task.lockTime >= BLOCKED_LOCK_TIME;
+      const nextMode = isSynonym ? TrainingModeEnum.rebuildSynonym : TrainingModeEnum.rebuildIndex;
       await datas.updateOne(
         {
           _id: task.dataId,
           teamId: task.teamId,
           datasetId: task.datasetId,
           collectionId: task.collectionId,
-          ...legacyIndexedMatch
+          ...(isSynonym
+            ? {
+                indexStatus: {
+                  $in: [
+                    'indexed',
+                    'rebuildIndexPending',
+                    'rebuildIndexRunning',
+                    'rebuildIndexFailed',
+                    'rebuildSynonymPending'
+                  ]
+                }
+              }
+            : legacyIndexedMatch)
         },
         {
           $set: {
-            indexStatus: failed
-              ? DatasetDataIndexStatusEnum.rebuildIndexFailed
-              : DatasetDataIndexStatusEnum.rebuildIndexRunning,
+            indexStatus: isSynonym
+              ? failed
+                ? DatasetDataIndexStatusEnum.rebuildSynonymFailed
+                : DatasetDataIndexStatusEnum.rebuildSynonymRunning
+              : failed
+                ? DatasetDataIndexStatusEnum.rebuildIndexFailed
+                : DatasetDataIndexStatusEnum.rebuildIndexRunning,
+            ...(isSynonym && { synonymRebuildingVersion: version }),
             ...(failed && { indexErrorMsg: task.errorMsg || 'Rebuild training stopped' })
           },
           ...(!failed && { $unset: { indexErrorMsg: '' } })
+        },
+        { session }
+      );
+      await db.collection('dataset_trainings').updateOne(
+        { _id: task._id },
+        {
+          ...((task.mode === 'rebuild' || isSynonym) && {
+            $set: { mode: nextMode, ...(isSynonym && { expireAt: null }) }
+          }),
+          $unset: { synonymVersion: '' }
         },
         { session }
       );
@@ -173,5 +220,8 @@ export const countRemainingRebuildStatuses = async () => {
       { $count: 'count' }
     ])
     .toArray();
-  return legacyFields + (legacyTraining?.count ?? 0);
+  const legacyTasks = await db
+    .collection('dataset_trainings')
+    .countDocuments({ $or: [{ mode: 'rebuild' }, { synonymVersion: { $exists: true } }] });
+  return legacyFields + (legacyTraining?.count ?? 0) + legacyTasks;
 };

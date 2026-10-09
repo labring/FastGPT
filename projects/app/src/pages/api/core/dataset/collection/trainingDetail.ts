@@ -24,7 +24,8 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   chunk: 0, // 兼容尚未迁移的历史任务统计
   parse: 0,
   qa: 0,
-  rebuild: 0,
+  rebuildIndex: 0,
+  rebuildSynonym: 0,
   index: 0,
   image: 0,
   auto: 0,
@@ -65,7 +66,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
       {
         $match: {
           ...match,
-          mode: { $ne: TrainingModeEnum.rebuild },
+          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] },
           retryCount: { $gt: 0 },
           lockTime: { $lte: subMinutes(now, TRAINING_LOCK_TIMEOUT_MINUTES) }
         }
@@ -81,7 +82,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
       {
         $match: {
           ...match,
-          mode: { $ne: TrainingModeEnum.rebuild },
+          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] },
           retryCount: { $gt: 0 },
           lockTime: activeLockTimeExpr
         }
@@ -97,7 +98,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
       {
         $match: {
           ...match,
-          mode: { $ne: TrainingModeEnum.rebuild },
+          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] },
           ...finalErrorTrainingMatch
         }
       },
@@ -136,8 +137,10 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     { ...defaultCounts }
   );
 
-  trainingCounts.rebuild = dataStatus?.rebuildIndexActiveCount ?? 0;
-  errorCounts.rebuild = dataStatus?.rebuildIndexFailedCount ?? 0;
+  trainingCounts.rebuildIndex = dataStatus?.rebuildIndexActiveCount ?? 0;
+  errorCounts.rebuildIndex = dataStatus?.rebuildIndexFailedCount ?? 0;
+  trainingCounts.rebuildSynonym = dataStatus?.rebuildSynonymActiveCount ?? 0;
+  errorCounts.rebuildSynonym = dataStatus?.rebuildSynonymFailedCount ?? 0;
 
   return GetCollectionTrainingDetailResponseSchema.parse({
     trainingType: collection.trainingType,

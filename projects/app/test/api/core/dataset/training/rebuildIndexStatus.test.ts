@@ -17,6 +17,8 @@ import { serviceEnv } from '@fastgpt/service/env';
 vi.unmock('@fastgpt/service/core/ai/model');
 
 import { enqueueNextDatasetRebuildTask } from '@/service/core/dataset/queues/rebuild';
+import { enqueueNextDatasetSynonymRebuildTask } from '@/service/core/dataset/queues/rebuildSynonym';
+import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 
 let testRoot: Awaited<ReturnType<typeof getRootUser>>;
 let currentModel: EmbeddingSystemModelDataType;
@@ -125,7 +127,7 @@ describe('rebuild paths skip pending index data', () => {
     expect(tasks.map((task) => String(task.dataId)).sort()).toEqual(
       [String(indexed._id), String(legacy._id)].sort()
     );
-    expect(tasks.every((task) => task.mode === TrainingModeEnum.rebuild)).toBe(true);
+    expect(tasks.every((task) => task.mode === TrainingModeEnum.rebuildIndex)).toBe(true);
 
     // 待索引数据不被选中，也没有重建标记残留。
     const rows = await MongoDatasetData.find({ datasetId: dataset._id }).lean();
@@ -159,7 +161,7 @@ describe('rebuild paths skip pending index data', () => {
       indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
     });
     expect(await MongoDatasetTraining.findOne({ dataId: data._id }).lean()).toMatchObject({
-      mode: TrainingModeEnum.rebuild
+      mode: TrainingModeEnum.rebuildIndex
     });
   });
 
@@ -170,7 +172,7 @@ describe('rebuild paths skip pending index data', () => {
       root,
       dataset,
       collection,
-      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending,
       synonymVersion: 1
     });
     await expect(
@@ -178,16 +180,14 @@ describe('rebuild paths skip pending index data', () => {
         teamId: String(root.teamId),
         tmbId: String(root.tmbId),
         datasetId: String(dataset._id),
-        billId: 'bill-id',
-        synonymVersion: 2
+        billId: 'bill-id'
       })
     ).resolves.toBe(true);
     expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
       indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
     });
     expect(await MongoDatasetTraining.findOne({ dataId: data._id }).lean()).toMatchObject({
-      mode: TrainingModeEnum.rebuild,
-      synonymVersion: 2
+      mode: TrainingModeEnum.rebuildIndex
     });
   });
 
@@ -195,6 +195,12 @@ describe('rebuild paths skip pending index data', () => {
   it('does not select pending index data for synonym rebuild', async () => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     const { root, dataset, collection } = await createContext();
+    await MongoDatasetSynonym.create({
+      teamId: root.teamId,
+      datasetId: dataset._id,
+      version: 2,
+      enabled: true
+    });
     const indexingPending = await createData({
       root,
       dataset,
@@ -206,23 +212,22 @@ describe('rebuild paths skip pending index data', () => {
       root,
       dataset,
       collection,
-      indexStatus: DatasetDataIndexStatusEnum.indexed,
+      indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymPending,
       synonymVersion: 1
     });
 
-    const enqueued = await enqueueNextDatasetRebuildTask({
+    const enqueued = await enqueueNextDatasetSynonymRebuildTask({
       teamId: String(root.teamId),
       tmbId: String(root.tmbId),
       datasetId: String(dataset._id),
-      billId: 'bill-id',
-      synonymVersion: 2
+      billId: 'bill-id'
     });
 
     expect(enqueued).toBe(true);
     const tasks = await MongoDatasetTraining.find({ datasetId: dataset._id }).lean();
     expect(tasks).toHaveLength(1);
     expect(String(tasks[0].dataId)).toBe(String(indexed._id));
-    expect(tasks[0].mode).toBe(TrainingModeEnum.rebuild);
+    expect(tasks[0].mode).toBe(TrainingModeEnum.rebuildSynonym);
 
     // 待索引数据保持原状，标记未被推进。
     expect(await MongoDatasetData.findById(indexingPending._id).lean()).toMatchObject({
@@ -235,6 +240,12 @@ describe('rebuild paths skip pending index data', () => {
   it('converges without residue when every row is pending index', async () => {
     serviceEnv.DATASET_SYNONYM_ENABLED = true;
     const { root, dataset, collection } = await createContext();
+    await MongoDatasetSynonym.create({
+      teamId: root.teamId,
+      datasetId: dataset._id,
+      version: 2,
+      enabled: true
+    });
     await createData({
       root,
       dataset,
@@ -243,12 +254,11 @@ describe('rebuild paths skip pending index data', () => {
       synonymVersion: 1
     });
 
-    const enqueued = await enqueueNextDatasetRebuildTask({
+    const enqueued = await enqueueNextDatasetSynonymRebuildTask({
       teamId: String(root.teamId),
       tmbId: String(root.tmbId),
       datasetId: String(dataset._id),
-      billId: 'bill-id',
-      synonymVersion: 2
+      billId: 'bill-id'
     });
 
     expect(enqueued).toBe(false);

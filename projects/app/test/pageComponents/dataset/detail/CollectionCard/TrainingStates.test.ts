@@ -20,6 +20,7 @@ vi.mock('next-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { count?: number }) => {
       if (key === 'dataset:process.Index_Rebuild') return '索引重建';
+      if (key === 'dataset:process.Synonym_Rebuild') return '同义词重建';
       if (key === 'dataset:process.Is_Ready') return '已就绪';
       if (key === 'dataset:dataset.Training_Waiting') return `需等待 ${options?.count} 组数据`;
       if (key === 'dataset:dataset.Training_Count') return `${options?.count} 条处理中`;
@@ -58,7 +59,8 @@ const createDetail = (): GetCollectionTrainingDetailResponseType => {
     parse: 0,
     qa: 0,
     chunk: 0,
-    rebuild: 0,
+    rebuildIndex: 0,
+    rebuildSynonym: 0,
     index: 0,
     image: 0,
     auto: 0,
@@ -115,10 +117,27 @@ describe('TrainingStates rebuild stage', () => {
     expect(rebuildRow()).toBeUndefined();
   });
 
+  it('shows synonym processing and failure counts separately from index rebuild', async () => {
+    const detail = createDetail();
+    detail.trainingCounts.rebuildSynonym = 6;
+    detail.errorCounts.rebuildSynonym = 1;
+    await render(detail);
+    expect(container.textContent).toContain('同义词重建');
+    expect(container.textContent).toContain('6 条处理中');
+    expect(container.textContent).toContain('1 组异常');
+    expect(rebuildRow()).toBeUndefined();
+    expect(container.textContent!.indexOf('同义词重建')).toBeLessThan(
+      container.textContent!.indexOf('已就绪')
+    );
+    await render(createDetail());
+    expect(container.textContent).toContain('同义词重建');
+    expect(container.textContent).not.toContain('6 条处理中');
+  });
+
   it('shows combined rebuild processing and failed counts before the ready stage', async () => {
     const detail = createDetail();
-    detail.trainingCounts.rebuild = 8;
-    detail.errorCounts.rebuild = 1;
+    detail.trainingCounts.rebuildIndex = 8;
+    detail.errorCounts.rebuildIndex = 1;
     await render(detail);
     const row = rebuildRow()!;
     expect(row.textContent).toContain('8 条处理中');
@@ -131,13 +150,13 @@ describe('TrainingStates rebuild stage', () => {
 
   it('keeps the observed rebuild stage checked after completion until the modal is closed', async () => {
     const queued = createDetail();
-    queued.trainingCounts.rebuild = 7;
+    queued.trainingCounts.rebuildIndex = 7;
     await render(queued);
     expect(rebuildRow()?.textContent).toContain('7 条处理中');
     expect(rebuildRow()?.parentElement?.querySelector('[data-icon="common/check"]')).toBeNull();
 
     const running = createDetail();
-    running.trainingCounts.rebuild = 2;
+    running.trainingCounts.rebuildIndex = 2;
     await render(running);
     expect(rebuildRow()?.textContent).toContain('2 条处理中');
 

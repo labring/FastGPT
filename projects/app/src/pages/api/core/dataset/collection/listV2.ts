@@ -78,6 +78,10 @@ const formatTrainingStatus = (item?: TrainingAmountAggregateItem, data?: Dataset
     rebuildIndexCounts: {
       activeCount: data?.rebuildIndexActiveCount ?? 0,
       finalErrorCount: data?.rebuildIndexFailedCount ?? 0
+    },
+    rebuildSynonymCounts: {
+      activeCount: data?.rebuildSynonymActiveCount ?? 0,
+      finalErrorCount: data?.rebuildSynonymFailedCount ?? 0
     }
   });
 
@@ -299,7 +303,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
             datasetId: new Types.ObjectId(datasetId),
             collectionId: { $in: collectionIds },
             ...remainingTrainingMatch,
-            mode: { $ne: TrainingModeEnum.rebuild }
+            mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
           }
         },
         {

@@ -45,7 +45,7 @@ describe('get training data detail test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       q: 'test',
       a: 'test'
     });
@@ -66,7 +66,7 @@ describe('get training data detail test', () => {
     expect(res.data).toBeDefined();
     expect(res.data?._id).toStrictEqual(String(trainingData._id));
     expect(res.data?.datasetId).toStrictEqual(String(dataset._id));
-    expect(res.data?.mode).toBe(TrainingModeEnum.rebuild);
+    expect(res.data?.mode).toBe(TrainingModeEnum.rebuildIndex);
     expect(res.data?.q).toBe('test');
     expect(res.data?.a).toBe('test');
   });
@@ -97,7 +97,7 @@ describe('get training data detail test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       q: 'test',
       a: 'test',
       imageId: ownImageId
@@ -147,7 +147,7 @@ describe('get training data detail test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       q: 'test',
       a: 'test',
       imageId: 'dataset/foreign-dataset/secret.png'
@@ -210,7 +210,7 @@ describe('get training data detail test', () => {
       datasetId: foreignDataset._id,
       collectionId: foreignCollection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       q: 'foreign',
       a: 'foreign'
     });

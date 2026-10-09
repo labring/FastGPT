@@ -17,7 +17,10 @@ export enum DatasetDataIndexStatusEnum {
   error = 'error',
   rebuildIndexPending = 'rebuildIndexPending',
   rebuildIndexRunning = 'rebuildIndexRunning',
-  rebuildIndexFailed = 'rebuildIndexFailed'
+  rebuildIndexFailed = 'rebuildIndexFailed',
+  rebuildSynonymPending = 'rebuildSynonymPending',
+  rebuildSynonymRunning = 'rebuildSynonymRunning',
+  rebuildSynonymFailed = 'rebuildSynonymFailed'
 }
 
 export const DatasetDataIndexMap: Record<
@@ -67,7 +70,10 @@ export const DatasetDataIndexStatusMap: Record<
       | 'dataset:data_index_status_error'
       | 'dataset:data_index_status_waiting_rebuild'
       | 'dataset:data_index_status_rebuilding'
-      | 'dataset:data_index_status_rebuild_error';
+      | 'dataset:data_index_status_rebuild_error'
+      | 'dataset:data_index_status_synonym_pending'
+      | 'dataset:data_index_status_synonym_running'
+      | 'dataset:data_index_status_synonym_failed';
     colorSchema: 'red' | 'blue' | 'green';
   }
 > = {
@@ -89,6 +95,18 @@ export const DatasetDataIndexStatusMap: Record<
   },
   [DatasetDataIndexStatusEnum.rebuildIndexFailed]: {
     label: i18nT('dataset:data_index_status_rebuild_error'),
+    colorSchema: 'red'
+  },
+  [DatasetDataIndexStatusEnum.rebuildSynonymPending]: {
+    label: i18nT('dataset:data_index_status_synonym_pending'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.rebuildSynonymRunning]: {
+    label: i18nT('dataset:data_index_status_synonym_running'),
+    colorSchema: 'blue'
+  },
+  [DatasetDataIndexStatusEnum.rebuildSynonymFailed]: {
+    label: i18nT('dataset:data_index_status_synonym_failed'),
     colorSchema: 'red'
   },
   [DatasetDataIndexStatusEnum.error]: {

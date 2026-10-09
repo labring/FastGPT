@@ -17,7 +17,8 @@ const createTrainingDetail = (
     parse: 0,
     qa: 0,
     chunk: 0,
-    rebuild: 0,
+    rebuildIndex: 0,
+    rebuildSynonym: 0,
     index: 0,
     image: 0,
     auto: 0,
@@ -47,13 +48,14 @@ describe('trainingStatesUtils', () => {
         qa: 0,
         chunk: 0,
         index: 0,
-        rebuild: 0,
+        rebuildIndex: 0,
+        rebuildSynonym: 0,
         image: 0,
         auto: 0,
         imageParse: 0
       }
     });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuild];
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuildIndex];
 
     expect(
       getTrainingStepStatus({
@@ -65,7 +67,7 @@ describe('trainingStatesUtils', () => {
     expect(
       getTrainingStepStatus({
         trainingDetail,
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         modeOrder
       })
     ).toBe(TrainingStatus.NotStart);
@@ -78,13 +80,14 @@ describe('trainingStatesUtils', () => {
         qa: 0,
         chunk: 0,
         index: 0,
-        rebuild: 0,
+        rebuildIndex: 0,
+        rebuildSynonym: 0,
         image: 0,
         auto: 0,
         imageParse: 0
       }
     });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuild];
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuildIndex];
 
     expect(
       getTrainingStepStatus({
@@ -96,7 +99,7 @@ describe('trainingStatesUtils', () => {
     expect(
       getTrainingStepStatus({
         trainingDetail,
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         modeOrder
       })
     ).toBe(TrainingStatus.NotStart);
@@ -109,14 +112,14 @@ describe('trainingStatesUtils', () => {
         qa: 0,
         chunk: 0,
         index: 0,
-        rebuild: 1,
+        rebuildIndex: 1,
         image: 0,
         auto: 0,
         imageParse: 0
       },
       trainedCount: 1
     });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuild];
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuildIndex];
 
     expect(
       getTrainingStepStatus({
@@ -128,7 +131,7 @@ describe('trainingStatesUtils', () => {
     expect(
       getTrainingStepStatus({
         trainingDetail,
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         modeOrder
       })
     ).toBe(TrainingStatus.Running);
@@ -141,13 +144,13 @@ describe('trainingStatesUtils', () => {
         qa: 0,
         chunk: 0,
         index: 0,
-        rebuild: 2,
+        rebuildIndex: 2,
         image: 0,
         auto: 0,
         imageParse: 0
       }
     });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuild];
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuildIndex];
 
     const parseStatus = getTrainingStepStatus({
       trainingDetail,
@@ -156,7 +159,7 @@ describe('trainingStatesUtils', () => {
     });
     const rebuildStatus = getTrainingStepStatus({
       trainingDetail,
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       modeOrder
     });
 

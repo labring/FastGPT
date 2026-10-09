@@ -24,15 +24,15 @@ export const UpdateTrainingDataBodySchema = z
     }),
     q: z.string().optional().meta({
       example: '什么是 FastGPT？',
-      description: '问题/主文本，仅非 rebuild 任务允许编辑'
+      description: '问题/主文本，仅非重建任务允许编辑'
     }),
     a: z.string().optional().meta({
       example: 'FastGPT 是一个 AI Agent 构建平台',
-      description: '回答/补充文本，仅非 rebuild 任务允许编辑，空串表示清空'
+      description: '回答/补充文本，仅非重建任务允许编辑，空串表示清空'
     }),
     chunkIndex: z.int().min(0).optional().meta({
       example: 0,
-      description: '块索引，仅非 rebuild 任务允许编辑'
+      description: '块索引，仅非重建任务允许编辑'
     })
   })
   .superRefine((data, ctx) => {
@@ -314,7 +314,7 @@ export const GetDatasetTrainingQueueResponseSchema = z.object({
   }),
   trainingCount: z.number().meta({
     example: 12,
-    description: '普通训练队列中的数据条数，不包含 rebuild 任务'
+    description: '普通训练队列中的数据条数，不包含 rebuildIndex/rebuildSynonym 任务'
   })
 });
 export type GetDatasetTrainingQueueResponse = z.infer<typeof GetDatasetTrainingQueueResponseSchema>;

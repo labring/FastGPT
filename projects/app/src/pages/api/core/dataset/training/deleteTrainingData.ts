@@ -40,7 +40,10 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
     if (!training) return;
 
-    if (training.mode === TrainingModeEnum.rebuild && training.dataId) {
+    if (
+      [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(training.mode) &&
+      training.dataId
+    ) {
       // 关联数据必须属于已鉴权集合；读取和删除共用事务，避免工作线程完成提交后误用旧索引。
       const data = await MongoDatasetData.findOne({
         _id: training.dataId,
@@ -61,20 +64,6 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
       }
       await MongoDatasetTraining.deleteOne(trainingMatch, { session });
       return;
-    }
-
-    if (training.dataId && training.synonymVersion) {
-      await MongoDatasetData.updateOne(
-        {
-          _id: training.dataId,
-          teamId: collection.teamId,
-          datasetId: collection.datasetId,
-          collectionId: collection._id,
-          synonymRebuildingVersion: training.synonymVersion
-        },
-        { $unset: { synonymRebuildingVersion: '' } },
-        { session }
-      );
     }
 
     if (training.dataId) {

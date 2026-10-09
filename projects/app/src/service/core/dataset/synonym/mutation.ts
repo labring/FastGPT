@@ -25,7 +25,9 @@ import {
   assertDatasetSynonymEnabled,
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
-import { seedDatasetRebuildTasks } from '../queues/rebuild';
+import { seedDatasetSynonymRebuildTasks } from '../queues/rebuildSynonym';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
 
 const SYNONYM_MAPPING_BATCH_SIZE = 1000;
 
@@ -209,19 +211,22 @@ export const createDatasetSynonymMutation = async ({
       { session }
     );
 
-    const affectedDataCount = await MongoDatasetData.countDocuments({
-      teamId,
-      datasetId,
-      synonymVersion: { $ne: fileVersion }
-    }).session(session);
+    // 整轮先标记待重建，未入队的数据也纳入进度；首次索引数据由原任务按最新词表处理。
+    const { modifiedCount: affectedDataCount } = await MongoDatasetData.updateMany(
+      { teamId, datasetId, synonymVersion: { $ne: fileVersion }, ...rebuildableDatasetDataMatch },
+      {
+        $set: { indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymPending },
+        $unset: { indexErrorMsg: '', synonymRebuildingVersion: '' }
+      },
+      { session }
+    );
     if (affectedDataCount > 0) {
-      await seedDatasetRebuildTasks(
+      await seedDatasetSynonymRebuildTasks(
         {
           teamId,
           tmbId,
           datasetId,
-          billId: String(usageId),
-          synonymVersion: fileVersion
+          billId: String(usageId)
         },
         session
       );

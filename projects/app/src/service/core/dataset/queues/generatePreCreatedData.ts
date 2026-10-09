@@ -20,7 +20,6 @@ import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/da
 import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
 import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { getIndexTrainingUpdateInput } from './indexInput';
-import { isDatasetSynonymEnabled } from '@fastgpt/service/core/dataset/synonym/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -56,7 +55,8 @@ export async function generatePreCreatedData(): Promise<any> {
   });
 
   // 普通 vector 与预落库索引共享 embedding 并发上限，避免拆队列后总并发翻倍。
-  if (global.vectorQueueLen + global.preCreatedQueueLen >= max) return;
+  if (global.vectorQueueLen + (global.synonymQueueLen ?? 0) + global.preCreatedQueueLen >= max)
+    return;
   global.preCreatedQueueLen++;
 
   try {
@@ -66,11 +66,6 @@ export async function generatePreCreatedData(): Promise<any> {
       try {
         claimed = await claimTrainingTask<PopulateType>({
           mode: TrainingModeEnum.index,
-          filter: {
-            ...(!isDatasetSynonymEnabled() && {
-              synonymVersion: { $exists: false }
-            })
-          },
           populate: [
             {
               path: 'dataset',

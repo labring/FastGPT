@@ -14,7 +14,7 @@ import {
   TRAINING_LEASE_HEARTBEAT_MS
 } from '@fastgpt/global/core/dataset/training/constant';
 
-import { getTrainingTaskReadyUpdate } from './utils';
+import { getTrainingDataIndexStatuses, getTrainingTaskReadyUpdate } from './utils';
 import { BLOCKED_LOCK_TIME, finalErrorTrainingMatch } from './query';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
@@ -215,7 +215,11 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
         // data 的错误状态只表示最终索引写入失败，不能由前置增强阶段写入。
         if (
           (retryCount === 0 || blocked) &&
-          [TrainingModeEnum.index, TrainingModeEnum.rebuild].includes(task.mode) &&
+          [
+            TrainingModeEnum.index,
+            TrainingModeEnum.rebuildIndex,
+            TrainingModeEnum.rebuildSynonym
+          ].includes(task.mode) &&
           task.dataId
         ) {
           await MongoDatasetData.updateOne(
@@ -224,17 +228,11 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
               teamId: task.teamId,
               datasetId: task.datasetId,
               collectionId: task.collectionId,
-              indexStatus:
-                task.mode === TrainingModeEnum.rebuild
-                  ? DatasetDataIndexStatusEnum.rebuildIndexRunning
-                  : DatasetDataIndexStatusEnum.indexing
+              indexStatus: getTrainingDataIndexStatuses(task.mode).running
             },
             {
               $set: {
-                indexStatus:
-                  task.mode === TrainingModeEnum.rebuild
-                    ? DatasetDataIndexStatusEnum.rebuildIndexFailed
-                    : DatasetDataIndexStatusEnum.error,
+                indexStatus: getTrainingDataIndexStatuses(task.mode).failed,
                 indexErrorMsg: errorMsg
               }
             },
@@ -277,7 +275,7 @@ export const getDatasetIndexTrainingMode = async (
     collectionId: training.collectionId,
     indexStatus: { $in: [DatasetDataIndexStatusEnum.indexing, DatasetDataIndexStatusEnum.error] }
   });
-  return data ? TrainingModeEnum.index : TrainingModeEnum.rebuild;
+  return data ? TrainingModeEnum.index : TrainingModeEnum.rebuildIndex;
 };
 
 /**
@@ -332,7 +330,7 @@ export const retryFailedTrainingTasks = async (
       })
         .sort({ _id: 1 })
         .limit(500)
-        .select('_id dataId mode')
+        .select('_id dataId mode collectionId')
         .session(session)
         .lean();
       if (!tasks.length) return tasks;
@@ -341,36 +339,28 @@ export const retryFailedTrainingTasks = async (
         getTrainingTaskReadyUpdate(),
         { session }
       );
-      const rebuildDataIds = tasks.flatMap((task) =>
-        task.mode === TrainingModeEnum.rebuild && task.dataId ? [task.dataId] : []
-      );
-      if (rebuildDataIds.length) {
-        await MongoDatasetData.updateMany(
+      // 按任务类型恢复对应 data；同义词失败不能被改成普通索引重建中。
+      const updates = tasks.flatMap((task) => {
+        if (!task.dataId) return [];
+        const statuses = getTrainingDataIndexStatuses(task.mode);
+        return [
           {
-            ...scope,
-            _id: { $in: rebuildDataIds },
-            indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
-          },
-          {
-            $set: { indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning },
-            $unset: { indexErrorMsg: '' }
-          },
-          { session }
-        );
-      }
-      const dataIds = tasks.flatMap((task) =>
-        task.mode !== TrainingModeEnum.rebuild && task.dataId ? [task.dataId] : []
-      );
-      if (dataIds.length) {
-        await MongoDatasetData.updateMany(
-          { ...scope, _id: { $in: dataIds }, indexStatus: DatasetDataIndexStatusEnum.error },
-          {
-            $set: { indexStatus: DatasetDataIndexStatusEnum.indexing },
-            $unset: { indexErrorMsg: '' }
-          },
-          { session }
-        );
-      }
+            updateOne: {
+              filter: {
+                ...scope,
+                collectionId: task.collectionId,
+                _id: task.dataId,
+                indexStatus: statuses.failed
+              },
+              update: {
+                $set: { indexStatus: statuses.running },
+                $unset: { indexErrorMsg: '' as const }
+              }
+            }
+          }
+        ];
+      });
+      if (updates.length) await MongoDatasetData.bulkWrite(updates, { session });
       return tasks;
     });
     if (!batch.length) break;

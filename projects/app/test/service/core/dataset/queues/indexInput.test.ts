@@ -18,8 +18,33 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { seedDatasetSynonymRebuildTasks } from '@/service/core/dataset/queues/rebuildSynonym';
+import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
 import { serviceEnv } from '@fastgpt/service/env';
+
+/** 同义词入口完成配置和待重建状态初始化，领取测试仅关注事务入队行为。 */
+const seedSynonymFixture = async (
+  context: Parameters<typeof seedDatasetSynonymRebuildTasks>[0]
+) => {
+  if (serviceEnv.DATASET_SYNONYM_ENABLED) {
+    await MongoDatasetSynonym.create({
+      teamId: context.teamId,
+      datasetId: context.datasetId,
+      version: 2,
+      enabled: true
+    });
+    await MongoDatasetData.updateMany(
+      {
+        datasetId: context.datasetId,
+        $or: [{ indexStatus: 'indexed' }, { indexStatus: { $exists: false } }]
+      },
+      { $set: { indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymPending } }
+    );
+  }
+  return seedDatasetSynonymRebuildTasks(context);
+};
 
 let visionEmbeddingModel: EmbeddingSystemModelDataType;
 let vlmModel: LLMSystemModelDataType;
@@ -296,12 +321,11 @@ describe('dataset rebuild queue', () => {
     });
 
     await expect(
-      seedDatasetRebuildTasks({
+      seedSynonymFixture({
         teamId: String(teamId),
         tmbId: String(tmbId),
         datasetId: String(datasetId),
-        billId: 'bill-id',
-        synonymVersion: 2
+        billId: 'bill-id'
       })
     ).resolves.toBe(0);
     await expect(MongoDatasetTraining.countDocuments({ datasetId })).resolves.toBe(0);
@@ -333,21 +357,20 @@ describe('dataset rebuild queue', () => {
     );
     global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
 
-    const createdCount = await seedDatasetRebuildTasks({
+    const createdCount = await seedSynonymFixture({
       teamId: String(teamId),
       tmbId: String(tmbId),
       datasetId: String(datasetId),
-      billId: 'bill-id',
-      synonymVersion: 2
+      billId: 'bill-id'
     });
 
     expect(createdCount).toBe(2);
     await expect(
-      MongoDatasetTraining.countDocuments({ datasetId, synonymVersion: 2 })
+      MongoDatasetTraining.countDocuments({ datasetId, mode: TrainingModeEnum.rebuildSynonym })
     ).resolves.toBe(2);
     const synonymTrainingList = await MongoDatasetTraining.find({
       datasetId,
-      synonymVersion: 2
+      mode: TrainingModeEnum.rebuildSynonym
     }).lean();
     expect(synonymTrainingList.every((training) => training.expireAt === null)).toBe(true);
     await expect(
@@ -407,7 +430,7 @@ describe('dataset rebuild queue', () => {
     expect(createdCount).toBe(1);
     const training = await MongoDatasetTraining.findOne({ dataId: validData._id }).lean();
     expect(training).toMatchObject({
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       retryCount: 3
     });
     expect(training?.expireAt).toBeInstanceOf(Date);
@@ -439,17 +462,15 @@ describe('dataset rebuild queue', () => {
       indexStatus: 'indexed'
     });
 
-    await seedDatasetRebuildTasks({
+    await seedSynonymFixture({
       teamId: String(teamId),
       tmbId: String(tmbId),
       datasetId: String(datasetId),
-      billId: 'bill-id',
-      synonymVersion: 2
+      billId: 'bill-id'
     });
 
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.rebuild,
-      synonymVersion: 2,
+      mode: TrainingModeEnum.rebuildSynonym,
       q: '',
       indexes: []
     });

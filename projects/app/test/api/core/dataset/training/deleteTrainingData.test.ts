@@ -56,7 +56,7 @@ describe('delete training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild
+      mode: TrainingModeEnum.rebuildIndex
     });
 
     const res = await Call<
@@ -121,7 +121,7 @@ describe('delete training data test', () => {
       datasetId: foreignDataset._id,
       collectionId: foreignCollection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild
+      mode: TrainingModeEnum.rebuildIndex
     });
 
     const res = await Call<
@@ -145,7 +145,9 @@ describe('delete training data test', () => {
 
   it.each([
     DatasetDataIndexStatusEnum.rebuildIndexRunning,
-    DatasetDataIndexStatusEnum.rebuildIndexFailed
+    DatasetDataIndexStatusEnum.rebuildIndexFailed,
+    DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+    DatasetDataIndexStatusEnum.rebuildSynonymFailed
   ])(
     'deletes original data and indexes when deleting a rebuild task with data status %s',
     async (indexStatus) => {
@@ -183,9 +185,13 @@ describe('delete training data test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
-        dataId: data._id,
-        synonymVersion: 2
+        mode: [
+          DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+          DatasetDataIndexStatusEnum.rebuildSynonymFailed
+        ].includes(indexStatus)
+          ? TrainingModeEnum.rebuildSynonym
+          : TrainingModeEnum.rebuildIndex,
+        dataId: data._id
       });
 
       await MongoDatasetDataText.create({
@@ -236,7 +242,7 @@ describe('delete training data test', () => {
       expect(mockVectorDelete).toHaveBeenCalledTimes(1);
     }
   );
-  it.each([TrainingModeEnum.rebuild, TrainingModeEnum.index])(
+  it.each([TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym, TrainingModeEnum.index])(
     'preserves foreign data referenced by a %s training task',
     async (mode) => {
       const root = await getRootUser();
@@ -273,8 +279,7 @@ describe('delete training data test', () => {
         collectionId: collection._id,
         billId: 'test',
         mode,
-        dataId: data._id,
-        synonymVersion: 2
+        dataId: data._id
       });
       const res = await Call(handler, {
         auth: root,
@@ -324,8 +329,7 @@ describe('delete training data test', () => {
       collectionId: collection._id,
       billId: 'test',
       mode: TrainingModeEnum.index,
-      dataId: data._id,
-      synonymVersion: 2
+      dataId: data._id
     });
     const res = await Call(handler, {
       auth: root,
@@ -336,8 +340,9 @@ describe('delete training data test', () => {
       q: 'initial data',
       indexStatus: DatasetDataIndexStatusEnum.error
     });
-    expect(await MongoDatasetData.findById(data._id).lean()).not.toHaveProperty(
-      'synonymRebuildingVersion'
+    expect(await MongoDatasetData.findById(data._id).lean()).toHaveProperty(
+      'synonymRebuildingVersion',
+      2
     );
     expect(mockVectorDelete).not.toHaveBeenCalled();
   });

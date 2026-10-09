@@ -49,7 +49,7 @@ describe('update training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'rebuild',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       retryCount: 0,
       errorMsg: 'failed'
     });
@@ -186,7 +186,7 @@ describe('update training data test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 0,
         errorMsg: 'final error'
       },
@@ -196,7 +196,7 @@ describe('update training data test', () => {
         datasetId: dataset._id,
         collectionId: collection._id,
         billId: 'test',
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 3,
         errorMsg: 'temporary error'
       }
@@ -270,7 +270,7 @@ describe('update training data test', () => {
           datasetId: dataset._id,
           collectionId: collection._id,
           billId: 'test',
-          mode: TrainingModeEnum.rebuild,
+          mode: TrainingModeEnum.rebuildIndex,
           retryCount: 0,
           errorMsg: 'final error'
         },
@@ -291,7 +291,7 @@ describe('update training data test', () => {
           datasetId: dataset._id,
           collectionId: collection._id,
           billId: 'test',
-          mode: TrainingModeEnum.rebuild,
+          mode: TrainingModeEnum.rebuildIndex,
           retryCount: 3,
           errorMsg: 'temporary error'
         },
@@ -301,7 +301,7 @@ describe('update training data test', () => {
           datasetId: foreignDataset._id,
           collectionId: foreignCollection._id,
           billId: 'test',
-          mode: TrainingModeEnum.rebuild,
+          mode: TrainingModeEnum.rebuildIndex,
           retryCount: 0,
           errorMsg: 'foreign final error'
         }
@@ -369,7 +369,7 @@ describe('update training data test', () => {
       datasetId: foreignDataset._id,
       collectionId: foreignCollection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       q: 'origin',
       a: 'origin'
     });

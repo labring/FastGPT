@@ -142,7 +142,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(updatedCollection?.imageIndex).toBe(true);
     expect(training).toEqual(
       expect.objectContaining({
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         q: '',
         retryCount: 3
       })
@@ -180,7 +180,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(updatedCollection?.imageIndex).toBe(false);
     expect(training).toEqual(
       expect.objectContaining({
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 3
       })
     );
@@ -218,7 +218,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
     expect(res.code).toBe(200);
     expect(training).toEqual(
       expect.objectContaining({
-        mode: TrainingModeEnum.rebuild,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 3
       })
     );

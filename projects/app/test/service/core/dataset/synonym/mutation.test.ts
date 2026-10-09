@@ -56,6 +56,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 }));
 
 import { createDatasetSynonymMutation } from '@/service/core/dataset/synonym/mutation';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 const teamId = new Types.ObjectId();
 const tmbId = new Types.ObjectId();
@@ -96,7 +97,56 @@ describe('createDatasetSynonymMutation', () => {
     });
   });
 
-  it('atomically activates mappings and creates ordinary full rebuild tasks', async () => {
+  it('marks the whole rebuild before seeding and leaves first-time indexing data alone', async () => {
+    const datas = await MongoDatasetData.create(
+      Array.from({ length: 7 }, (_, i) => ({
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q: `original-${i}`,
+        a: '',
+        indexes: [],
+        indexStatus:
+          i === 6 ? DatasetDataIndexStatusEnum.indexing : DatasetDataIndexStatusEnum.indexed
+      }))
+    );
+    const result = await createDatasetSynonymMutation({
+      req: {} as never,
+      datasetId: String(datasetId),
+      mappings: [createMapping()],
+      fileName: 'all.csv',
+      size: 10,
+      type: DatasetSynonymMutationTypeEnum.upload
+    });
+    expect(result.affectedDataCount).toBe(6);
+    expect(
+      await MongoDatasetData.countDocuments({
+        datasetId,
+        indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymPending
+      })
+    ).toBe(4);
+    expect(
+      await MongoDatasetData.countDocuments({
+        datasetId,
+        indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning
+      })
+    ).toBe(2);
+    const tasks = await MongoDatasetTraining.find({ datasetId }).lean();
+    expect(tasks).toHaveLength(2);
+    expect(
+      tasks.every((task) => task.mode === TrainingModeEnum.rebuildSynonym && task.expireAt === null)
+    ).toBe(true);
+    expect(tasks.every((task) => !('synonymVersion' in task))).toBe(true);
+    expect(await MongoDatasetData.findById(datas[6]._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
+      q: 'original-6',
+      a: '',
+      indexes: []
+    });
+  });
+
+  it('atomically activates mappings and creates independent synonym rebuild tasks', async () => {
     const data = await MongoDatasetData.create({
       teamId,
       tmbId,
@@ -132,8 +182,8 @@ describe('createDatasetSynonymMutation', () => {
       fileVersion: 1
     });
     await expect(MongoDatasetTraining.findOne({ dataId: data._id }).lean()).resolves.toMatchObject({
-      mode: TrainingModeEnum.rebuild,
-      synonymVersion: 1,
+      mode: TrainingModeEnum.rebuildSynonym,
+      expireAt: null,
       q: '',
       a: '',
       indexes: [],

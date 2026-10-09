@@ -40,6 +40,62 @@ const createContext = () => {
 };
 
 describe('migrateDatasetRebuildStatus', () => {
+  it.each([false, true])(
+    'splits legacy synonym tasks without a dataset-wide write (failed=%s)',
+    async (failed) => {
+      const task = await seed({
+        existing: true,
+        mode: 'rebuild',
+        status: 'rebuildIndexRunning',
+        retryCount: failed ? 0 : 3
+      });
+      await db()
+        .collection('dataset_trainings')
+        .updateOne({ _id: task._id }, { $set: { synonymVersion: 2 } });
+      await db().collection('dataset_synonyms').insertOne({
+        _id: new Types.ObjectId(),
+        teamId: task.teamId,
+        datasetId: task.datasetId,
+        version: 2,
+        enabled: true
+      });
+      const pending = {
+        _id: new Types.ObjectId(),
+        teamId: task.teamId,
+        datasetId: task.datasetId,
+        collectionId: task.collectionId,
+        indexStatus: 'indexed',
+        synonymVersion: 1,
+        q: 'unchanged',
+        indexes: [{ type: 'custom', text: 'original', dataId: 'old' }]
+      };
+      await db().collection('dataset_datas').insertOne(pending);
+      await migrateDatasetRebuildStatus(createContext().context);
+      expect(await db().collection('dataset_trainings').findOne({ _id: task._id })).toEqual({
+        ...task,
+        mode: 'rebuildSynonym'
+      });
+      expect(await db().collection('dataset_datas').findOne({ _id: task.dataId })).toMatchObject({
+        indexStatus: failed ? 'rebuildSynonymFailed' : 'rebuildSynonymRunning',
+        synonymRebuildingVersion: 2
+      });
+      expect(await db().collection('dataset_datas').findOne({ _id: pending._id })).toEqual(pending);
+      const before = await db()
+        .collection('dataset_datas')
+        .find({ datasetId: task.datasetId })
+        .sort({ _id: 1 })
+        .toArray();
+      await migrateDatasetRebuildStatus(createContext().context);
+      expect(
+        await db()
+          .collection('dataset_datas')
+          .find({ datasetId: task.datasetId })
+          .sort({ _id: 1 })
+          .toArray()
+      ).toEqual(before);
+    }
+  );
+
   it('renames persisted rebuild states without changing indexes, errors or new states on replay', async () => {
     const cases = [
       ['waitingRebuild', 'rebuildIndexPending'],
@@ -113,7 +169,10 @@ describe('migrateDatasetRebuildStatus', () => {
       q: original?.q,
       indexes: original?.indexes
     });
-    expect(await db().collection('dataset_trainings').findOne({ _id: active._id })).toEqual(active);
+    expect(await db().collection('dataset_trainings').findOne({ _id: active._id })).toEqual({
+      ...active,
+      mode: 'rebuildIndex'
+    });
     expect(
       await db()
         .collection('dataset_datas')

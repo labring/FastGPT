@@ -14,7 +14,7 @@ const CursorSchema = z
   .regex(/^[a-f0-9]{24}$/)
   .nullable();
 const CheckpointSchema = z.object({
-  version: z.literal(1),
+  version: z.union([z.literal(1), z.literal(2)]),
   stage: z.enum(['datas', 'trainings']),
   endId: CursorSchema,
   lastId: CursorSchema,
@@ -28,6 +28,8 @@ const CheckpointSchema = z.object({
  */
 export const migrateDatasetRebuildStatus = async (context: SystemMigrationContext) => {
   let checkpoint = await context.getCheckpoint(CheckpointSchema);
+  // v2 增加任务类型拆分；旧断点必须重扫，幂等批次不会回退已经转换的状态。
+  if (checkpoint?.version === 1) checkpoint = undefined;
   for (const stage of ['datas', 'trainings'] as const) {
     await context.reportProgress({ key: stage, status: SystemMigrationStatusEnum.running });
     if (stage === 'datas' && checkpoint?.stage === 'trainings') {
@@ -37,7 +39,7 @@ export const migrateDatasetRebuildStatus = async (context: SystemMigrationContex
     await context.assertActive();
     if (checkpoint?.stage !== stage || !checkpoint.endId) {
       checkpoint = {
-        version: 1,
+        version: 2,
         stage,
         endId: await getRebuildStatusEndId(stage),
         lastId: null,
@@ -76,7 +78,7 @@ export const migrateDatasetRebuildStatus = async (context: SystemMigrationContex
   if (remainingCount) {
     // 重置扫描窗口；遗漏的旧节点停掉后，重试也可处理前一个窗口之外的写入。
     await context.saveCheckpoint({
-      version: 1,
+      version: 2,
       stage: 'datas',
       endId: null,
       lastId: null,

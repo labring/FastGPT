@@ -57,7 +57,7 @@ const getCollectionTrainingStatus = async ({
             datasetId,
             collectionId,
             ...remainingTrainingMatch,
-            mode: { $ne: TrainingModeEnum.rebuild }
+            mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
           }
         },
         {
@@ -133,6 +133,10 @@ const getCollectionTrainingStatus = async ({
     rebuildIndexCounts: {
       activeCount: dataStatus?.rebuildIndexActiveCount ?? 0,
       finalErrorCount: dataStatus?.rebuildIndexFailedCount ?? 0
+    },
+    rebuildSynonymCounts: {
+      activeCount: dataStatus?.rebuildSynonymActiveCount ?? 0,
+      finalErrorCount: dataStatus?.rebuildSynonymFailedCount ?? 0
     }
   });
 };

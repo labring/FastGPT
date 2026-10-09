@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     streams,
     generateQA: vi.fn(),
     generateRebuildIndex: vi.fn(),
+    generateRebuildSynonym: vi.fn(),
     generatePreCreatedData: vi.fn(),
     datasetParseQueue: vi.fn()
   };
@@ -25,6 +26,9 @@ vi.mock('@fastgpt/service/core/dataset/training/schema', () => ({
 vi.mock('@/service/core/dataset/queues/generateQA', () => ({ generateQA: mocks.generateQA }));
 vi.mock('@/service/core/dataset/queues/generateRebuildIndex', () => ({
   generateRebuildIndex: mocks.generateRebuildIndex
+}));
+vi.mock('@/service/core/dataset/queues/generateRebuildSynonym', () => ({
+  generateRebuildSynonym: mocks.generateRebuildSynonym
 }));
 vi.mock('@/service/core/dataset/queues/generatePreCreatedData', () => ({
   generatePreCreatedData: mocks.generatePreCreatedData
@@ -58,9 +62,15 @@ describe('createDatasetTrainingMongoWatch', () => {
 
     stream.emit('change', {
       operationType: 'insert',
-      fullDocument: { mode: TrainingModeEnum.rebuild }
+      fullDocument: { mode: TrainingModeEnum.rebuildIndex }
     });
     await vi.waitFor(() => expect(mocks.generateRebuildIndex).toHaveBeenCalledOnce());
+    expect(mocks.generateRebuildSynonym).not.toHaveBeenCalled();
+    stream.emit('change', {
+      operationType: 'insert',
+      fullDocument: { mode: TrainingModeEnum.rebuildSynonym }
+    });
+    await vi.waitFor(() => expect(mocks.generateRebuildSynonym).toHaveBeenCalledOnce());
 
     stream.emit('change', {
       operationType: 'insert',

@@ -37,12 +37,12 @@ it('counts rebuild data separately from ordinary training without duplicates or 
     indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
   });
   await MongoDatasetTraining.create([
-    { ...scope, billId: 'test', dataId: datas[1]._id, mode: TrainingModeEnum.rebuild },
+    { ...scope, billId: 'test', dataId: datas[1]._id, mode: TrainingModeEnum.rebuildIndex },
     {
       ...scope,
       billId: 'test',
       dataId: datas[2]._id,
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.rebuildIndex,
       retryCount: 0,
       errorMsg: 'failed'
     },
