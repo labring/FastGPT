@@ -40,6 +40,8 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
     if (!training) return;
 
+    // 索引重建
+    // 同义词重建
     if (
       [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(training.mode) &&
       training.dataId
@@ -66,6 +68,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
       return;
     }
 
+    // 新建的
     if (training.dataId) {
       await MongoDatasetData.updateOne(
         {
