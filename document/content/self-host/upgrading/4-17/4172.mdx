@@ -24,25 +24,15 @@ releaseTime: '2026-10-09'
 
 - **任务作用**：将历史知识库分块数据中的旧版 `rebuilding` 布尔标记以及过渡状态统一迁移至全新的 `indexStatus` 重建状态体系，并恢复未完成任务的索引状态。
 - **执行顺序**：该任务依赖前述「历史分块训练任务迁移」，必须在前置任务成功完成后方可开始执行。
-- **性能与索引优化建议（大数据量场景）**：
+- **执行超时处理（大数据量场景）**：
   - 该脚本需要扫描 `dataset_datas` 集合清理历史旧字段。若知识库分块数据量极大（如百万至千万级），由于历史 `rebuilding` 字段未建立专门索引，全表扫描可能耗时较长。
-  - 为大幅提升迁移速度，建议在执行前在 MongoDB 中为 `dataset_datas` 临时创建部分索引（Partial Index），迁移执行完毕后可根据需要删除：
+  - 如果运行超时，可尝试在 MongoDB 中为 `dataset_datas` 补充创建部分索引（Partial Index），加速扫描；迁移执行完毕后可根据需要删除：
 
 ```javascript
 // 在 mongo shell (mongosh) 中执行，加速迁移扫描：
 db.dataset_datas.createIndex(
   { rebuilding: 1, _id: 1 },
   { partialFilterExpression: { rebuilding: { $exists: true } }, background: true }
-);
-
-db.dataset_datas.createIndex(
-  { indexStatus: 1, _id: 1 },
-  {
-    partialFilterExpression: {
-      indexStatus: { $in: ['waitingRebuild', 'rebuilding', 'rebuildError'] }
-    },
-    background: true
-  }
 );
 ```
 

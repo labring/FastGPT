@@ -24,25 +24,15 @@ This upgrade includes two **manual** system migration scripts. After upgrading, 
 
 - **Purpose**: Converts legacy `rebuilding` boolean flags and transitional states on dataset data chunks into the unified `indexStatus` rebuild lifecycle, recovering active index states for unfinalized tasks.
 - **Execution Order**: This task depends on the chunk training migration and can only run after the first migration has succeeded.
-- **Performance and index optimization (for large datasets)**:
+- **Timeout handling (large dataset scenarios)**:
   - This script scans `dataset_datas` to clean legacy fields. In environments with very large chunk volumes (millions to tens of millions), scanning without a dedicated index on `rebuilding` can take a long time.
-  - To significantly speed up the migration, you can temporarily create partial indexes in MongoDB before running the task (they can be removed after the migration completes):
+  - If the migration times out, you can try creating a supplementary partial index on `dataset_datas` in MongoDB to speed up the scan (it can be removed after the migration completes):
 
 ```javascript
 // Run in mongo shell (mongosh) to accelerate migration scanning:
 db.dataset_datas.createIndex(
   { rebuilding: 1, _id: 1 },
   { partialFilterExpression: { rebuilding: { $exists: true } }, background: true }
-);
-
-db.dataset_datas.createIndex(
-  { indexStatus: 1, _id: 1 },
-  {
-    partialFilterExpression: {
-      indexStatus: { $in: ['waitingRebuild', 'rebuilding', 'rebuildError'] }
-    },
-    background: true
-  }
 );
 ```
 
