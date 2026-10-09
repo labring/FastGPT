@@ -14,10 +14,10 @@ import {
   type GetCollectionTrainingDetailResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
-  BLOCKED_LOCK_TIME,
-  finalErrorTrainingMatch
+  activeTrainingExpr,
+  finalErrorTrainingExpr,
+  remainingTrainingMatch
 } from '@fastgpt/service/core/dataset/training/query';
-import { subMinutes } from 'date-fns';
 import { datasetDataStatusCountFields } from '@fastgpt/service/core/dataset/data/query';
 import { TRAINING_LEASE_TIMEOUT_MS } from '@fastgpt/global/core/dataset/training/constant';
 
@@ -32,8 +32,6 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   auto: 0,
   imageParse: 0
 };
-
-const TRAINING_LOCK_TIMEOUT_MINUTES = TRAINING_LEASE_TIMEOUT_MS / 60 / 1000;
 
 /** 汇总普通训练阶段；重建按 data 状态区分待重建、重建中和失败，一次聚合获取。 */
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
@@ -56,57 +54,35 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     collectionId: new Types.ObjectId(collection._id)
   };
 
-  const now = new Date();
-  const activeLockTimeExpr = {
-    $gt: subMinutes(now, TRAINING_LOCK_TIMEOUT_MINUTES),
-    $lt: BLOCKED_LOCK_TIME
-  };
-
-  const [ququedCountData, trainingCountData, errorCountData, [dataStatus]] = await Promise.all([
-    MongoDatasetTraining.aggregate<{ _id: TrainingModeEnum; count: number }>([
+  const leaseExpiredAt = new Date(Date.now() - TRAINING_LEASE_TIMEOUT_MS);
+  const [modeCounts, [dataStatus]] = await Promise.all([
+    MongoDatasetTraining.aggregate<{
+      _id: TrainingModeEnum;
+      queuedCount: number;
+      trainingCount: number;
+      errorCount: number;
+    }>([
       {
         $match: {
           ...match,
-          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] },
-          retryCount: { $gt: 0 },
-          lockTime: { $lte: subMinutes(now, TRAINING_LOCK_TIMEOUT_MINUTES) }
+          ...remainingTrainingMatch,
+          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
         }
       },
       {
         $group: {
           _id: '$mode',
-          count: { $sum: 1 }
-        }
-      }
-    ]),
-    MongoDatasetTraining.aggregate<{ _id: TrainingModeEnum; count: number }>([
-      {
-        $match: {
-          ...match,
-          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] },
-          retryCount: { $gt: 0 },
-          lockTime: activeLockTimeExpr
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          count: { $sum: 1 }
-        }
-      }
-    ]),
-    MongoDatasetTraining.aggregate<{ _id: TrainingModeEnum; count: number }>([
-      {
-        $match: {
-          ...match,
-          mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] },
-          ...finalErrorTrainingMatch
-        }
-      },
-      {
-        $group: {
-          _id: '$mode',
-          count: { $sum: 1 }
+          queuedCount: {
+            $sum: {
+              $cond: [{ $and: [activeTrainingExpr, { $lte: ['$lockTime', leaseExpiredAt] }] }, 1, 0]
+            }
+          },
+          trainingCount: {
+            $sum: {
+              $cond: [{ $and: [activeTrainingExpr, { $gt: ['$lockTime', leaseExpiredAt] }] }, 1, 0]
+            }
+          },
+          errorCount: { $sum: { $cond: [finalErrorTrainingExpr, 1, 0] } }
         }
       }
     ]),
@@ -139,27 +115,14 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     ])
   ]);
 
-  const queuedCounts = ququedCountData.reduce(
-    (acc, item) => {
-      acc[item._id] = item.count;
-      return acc;
-    },
-    { ...defaultCounts }
-  );
-  const trainingCounts = trainingCountData.reduce(
-    (acc, item) => {
-      acc[item._id] = item.count;
-      return acc;
-    },
-    { ...defaultCounts }
-  );
-  const errorCounts = errorCountData.reduce(
-    (acc, item) => {
-      acc[item._id] = item.count;
-      return acc;
-    },
-    { ...defaultCounts }
-  );
+  const queuedCounts = { ...defaultCounts };
+  const trainingCounts = { ...defaultCounts };
+  const errorCounts = { ...defaultCounts };
+  for (const item of modeCounts) {
+    queuedCounts[item._id] = item.queuedCount;
+    trainingCounts[item._id] = item.trainingCount;
+    errorCounts[item._id] = item.errorCount;
+  }
 
   queuedCounts.rebuildIndex = dataStatus?.rebuildIndexPendingCount ?? 0;
   trainingCounts.rebuildIndex =

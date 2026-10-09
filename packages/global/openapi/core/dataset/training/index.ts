@@ -8,7 +8,8 @@ import {
   GetTrainingErrorBodySchema,
   GetDatasetTrainingErrorBodySchema,
   HasDatasetTrainingErrorQuerySchema,
-  GetDatasetTrainingQueueQuerySchema
+  GetDatasetTrainingQueueQuerySchema,
+  GetDatasetTrainingQueueResponseSchema
 } from './api';
 
 export const DatasetTrainingPath: OpenAPIPath = {
@@ -154,14 +155,17 @@ export const DatasetTrainingPath: OpenAPIPath = {
   '/core/dataset/training/getDatasetTrainingQueue': {
     get: {
       summary: '获取训练队列状态',
-      description: '获取知识库当前的重建数量和训练队列数量',
+      description: '判断知识库是否存在普通训练任务或尚未处理完的重建数据，包含失败记录',
       tags: [DevApiTagsMap.datasetTraining],
       requestParams: {
         query: GetDatasetTrainingQueueQuerySchema
       },
       responses: {
         200: {
-          description: '成功返回重建数量和训练队列数量'
+          description: '成功返回是否存在训练任务',
+          content: {
+            'application/json': { schema: GetDatasetTrainingQueueResponseSchema }
+          }
         }
       }
     }

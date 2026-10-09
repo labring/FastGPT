@@ -1,10 +1,10 @@
-import { Box, Flex, ModalBody } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { Box, Flex } from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useMemo, useState } from 'react';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useDatasetStatusPolling } from '@/web/core/dataset/hooks/useDatasetStatusPolling';
 import { getDatasetCollectionTrainingDetail } from '@/web/core/dataset/api/collection';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -235,11 +235,8 @@ const TrainingStates = ({
   const {
     data: trainingDetail,
     loading,
-    runAsync: refreshTrainingDetail
-  } = useRequest(() => getDatasetCollectionTrainingDetail(collectionId), {
-    pollingInterval: 5000,
-    pollingWhenHidden: false,
-    manual: false,
+    run: refreshTrainingDetail
+  } = useDatasetStatusPolling(() => getDatasetCollectionTrainingDetail(collectionId), {
     onSuccess: (data) => {
       // 弹窗已打开时保留观察到的链路，完成后仍能看到各阶段打勾。
       const flows = getFlows(data);
@@ -260,61 +257,61 @@ const TrainingStates = ({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc="common/running"
       title={t('dataset:dataset.Training Process')}
-      minW={['90vw', '712px']}
+      size={'lg'}
+      w={'712px'}
+      h={'620px'}
+      bodyStyles={{ overflow: 'hidden' }}
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
-      <ModalBody px={9} minH={['90vh', '500px']}>
-        <Flex align="center" justify="space-between" mb={4}>
-          <FillRowTabs
-            py={1}
-            value={tab}
-            onChange={(e) => setTab(e as 'states' | 'errors')}
-            list={[
-              { label: t('dataset:dataset.Training Process'), value: 'states' },
-              {
-                label: t('dataset:dataset.Training_Errors', { count: errorCounts }),
-                value: 'errors'
-              }
-            ]}
-          />
-        </Flex>
-        {tab === 'states' &&
-          trainingDetail &&
-          (() => {
-            const flows = getFlows(trainingDetail);
-            const showIndex = flows.rebuildIndex || seenFlows.rebuildIndex;
-            const showSynonym = flows.rebuildSynonym || seenFlows.rebuildSynonym;
-            const showImport = flows.import || seenFlows.import || (!showIndex && !showSynonym);
-            return (
-              <Flex flexDirection="column" gap={8}>
-                {showImport && <ProgressView trainingDetail={trainingDetail} />}
-                {showIndex && (
-                  <ProgressView
-                    trainingDetail={trainingDetail}
-                    rebuildMode={TrainingModeEnum.rebuildIndex}
-                  />
-                )}
-                {showSynonym && (
-                  <ProgressView
-                    trainingDetail={trainingDetail}
-                    rebuildMode={TrainingModeEnum.rebuildSynonym}
-                  />
-                )}
-              </Flex>
-            );
-          })()}
-        {tab === 'errors' && (
-          <TrainingErrorList
-            scope={{ type: 'collection', collectionId }}
-            permission={permission}
-            onRefresh={refreshTrainingDetail}
-            onClose={onClose}
-            showFooter={errorCounts > 0}
-          />
-        )}
-      </ModalBody>
+      <Flex align="center" justify="space-between" mb={4} flexShrink={0}>
+        <FillRowTabs
+          py={1}
+          value={tab}
+          onChange={(e) => setTab(e as 'states' | 'errors')}
+          list={[
+            { label: t('dataset:dataset.Training Process'), value: 'states' },
+            {
+              label: t('dataset:dataset.Training_Errors', { count: errorCounts }),
+              value: 'errors'
+            }
+          ]}
+        />
+      </Flex>
+      {tab === 'states' &&
+        trainingDetail &&
+        (() => {
+          const flows = getFlows(trainingDetail);
+          const showIndex = flows.rebuildIndex || seenFlows.rebuildIndex;
+          const showSynonym = flows.rebuildSynonym || seenFlows.rebuildSynonym;
+          const showImport = flows.import || seenFlows.import || (!showIndex && !showSynonym);
+          return (
+            <Flex flexDirection="column" gap={8} minH={0} overflowY="auto">
+              {showImport && <ProgressView trainingDetail={trainingDetail} />}
+              {showIndex && (
+                <ProgressView
+                  trainingDetail={trainingDetail}
+                  rebuildMode={TrainingModeEnum.rebuildIndex}
+                />
+              )}
+              {showSynonym && (
+                <ProgressView
+                  trainingDetail={trainingDetail}
+                  rebuildMode={TrainingModeEnum.rebuildSynonym}
+                />
+              )}
+            </Flex>
+          );
+        })()}
+      {tab === 'errors' && (
+        <TrainingErrorList
+          scope={{ type: 'collection', collectionId }}
+          permission={permission}
+          onRefresh={refreshTrainingDetail}
+          onClose={onClose}
+          showFooter={errorCounts > 0}
+        />
+      )}
     </MyModal>
   );
 };

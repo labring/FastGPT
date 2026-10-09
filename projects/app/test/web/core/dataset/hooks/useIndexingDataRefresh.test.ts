@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDatasetDataList } from '@/web/core/dataset/api/data';
 import { useIndexingDataRefresh } from '@/web/core/dataset/hooks/useIndexingDataRefresh';
+import { DATASET_STATUS_POLLING_INTERVAL } from '@/web/core/dataset/hooks/useDatasetStatusPolling';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type { GetDatasetDataListResponse } from '@fastgpt/global/openapi/core/dataset/data/api';
 
@@ -24,6 +25,7 @@ describe('useIndexingDataRefresh', () => {
   let data: DataList;
   let total: number;
   let setData: React.Dispatch<React.SetStateAction<DataList>>;
+  let visibility: DocumentVisibilityState;
   const Harness = ({ collectionId = 'collection', searchText = '' }) => {
     [data, setData] = useState<DataList>([]);
     const [currentTotal, setTotal] = useState(0);
@@ -35,7 +37,11 @@ describe('useIndexingDataRefresh', () => {
     await act(async () => root.render(React.createElement(Harness, props)));
   };
   const tick = async () => {
-    await act(async () => vi.advanceTimersByTimeAsync(3000));
+    await act(async () => vi.advanceTimersByTimeAsync(DATASET_STATUS_POLLING_INTERVAL));
+  };
+  const setVisibility = async (state: DocumentVisibilityState) => {
+    visibility = state;
+    await act(async () => document.dispatchEvent(new window.Event('visibilitychange')));
   };
 
   beforeEach(() => {
@@ -43,6 +49,8 @@ describe('useIndexingDataRefresh', () => {
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    visibility = 'visible';
+    Object.defineProperty(document, 'visibilityState', { get: () => visibility });
     vi.useFakeTimers();
     vi.mocked(getDatasetDataList).mockReset();
     root = createRoot(document.createElement('div'));
@@ -102,6 +110,116 @@ describe('useIndexingDataRefresh', () => {
     expect(data[0].indexErrorMsg).toBe('failed');
     await tick();
     expect(getDatasetDataList).toHaveBeenCalledTimes(2);
+  });
+
+  it('pauses while hidden and resumes after one interval when visible', async () => {
+    await render();
+    await act(async () => setData([makeItem('1')]));
+    vi.mocked(getDatasetDataList).mockResolvedValue({
+      total: 1,
+      list: [{ ...makeItem('1'), indexStatus: DatasetDataIndexStatusEnum.indexed }]
+    });
+    await setVisibility('hidden');
+    await tick();
+    await tick();
+    expect(getDatasetDataList).not.toHaveBeenCalled();
+    await setVisibility('visible');
+    await act(async () => vi.advanceTimersByTimeAsync(DATASET_STATUS_POLLING_INTERVAL - 1));
+    expect(getDatasetDataList).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(data[0].indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
+    expect(getDatasetDataList).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not publish a partial page or fetch further pages when hidden mid-request', async () => {
+    await render();
+    const initial = Array.from({ length: 45 }, (_, i) => makeItem(String(i)));
+    await act(async () => setData(initial));
+    let resolve!: (value: GetDatasetDataListResponse) => void;
+    vi.mocked(getDatasetDataList)
+      .mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolve = done;
+          })
+      )
+      .mockImplementation(async ({ offset = 0, pageSize = 30 }) => ({
+        total: 45,
+        list: initial.slice(offset, offset + pageSize).map((item) => ({
+          ...item,
+          indexStatus: DatasetDataIndexStatusEnum.indexed
+        }))
+      }));
+    await tick();
+    await setVisibility('hidden');
+    await act(async () => resolve({ total: 45, list: initial.slice(0, 30) }));
+    await tick();
+    expect(getDatasetDataList).toHaveBeenCalledTimes(1);
+    expect(data).toBe(initial);
+    expect(total).toBe(0);
+    await setVisibility('visible');
+    await tick();
+    expect(getDatasetDataList).toHaveBeenCalledTimes(3);
+    expect(data).toHaveLength(45);
+    expect(total).toBe(45);
+  });
+
+  it('waits for a slow round to finish before starting the next interval', async () => {
+    await render();
+    const initial = [makeItem('1')];
+    await act(async () => setData(initial));
+    let resolve!: (value: GetDatasetDataListResponse) => void;
+    vi.mocked(getDatasetDataList)
+      .mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolve = done;
+          })
+      )
+      .mockResolvedValue({
+        total: 1,
+        list: [{ ...initial[0], indexStatus: DatasetDataIndexStatusEnum.indexed }]
+      });
+    await tick();
+    await tick();
+    await tick();
+    expect(getDatasetDataList).toHaveBeenCalledTimes(1);
+    await act(async () => resolve({ total: 1, list: initial.map((item) => ({ ...item })) }));
+    await act(async () => vi.advanceTimersByTimeAsync(DATASET_STATUS_POLLING_INTERVAL - 1));
+    expect(getDatasetDataList).toHaveBeenCalledTimes(1);
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(getDatasetDataList).toHaveBeenCalledTimes(2);
+  });
+
+  it('waits for the old request on search change and then fetches the current search', async () => {
+    await render();
+    const initial = [makeItem('1')];
+    await act(async () => setData(initial));
+    let resolve!: (value: GetDatasetDataListResponse) => void;
+    vi.mocked(getDatasetDataList)
+      .mockImplementationOnce(
+        () =>
+          new Promise((done) => {
+            resolve = done;
+          })
+      )
+      .mockResolvedValue({ total: 0, list: [] });
+    await tick();
+    await render({ searchText: 'other' });
+    await tick();
+    expect(getDatasetDataList).toHaveBeenCalledTimes(1);
+    await act(async () => resolve({ total: 999, list: initial }));
+    expect(data).toBe(initial);
+    expect(total).toBe(0);
+    await tick();
+    expect(getDatasetDataList).toHaveBeenCalledTimes(2);
+    expect(getDatasetDataList).toHaveBeenLastCalledWith({
+      collectionId: 'collection',
+      searchText: 'other',
+      offset: 0,
+      pageSize: 1
+    });
+    expect(data).toEqual([]);
   });
 
   it.each([

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { DatasetCollectionTypeEnum, TrainingModeEnum } from '../../../../core/dataset/constants';
-import { DatasetTrainingSchema } from '../../../../core/dataset/type';
+import { DatasetItemSchema, DatasetTrainingSchema } from '../../../../core/dataset/type';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
 
 /* ============================================================================
@@ -308,13 +308,6 @@ export const GetDatasetTrainingQueueQuerySchema = z.object({
 export type GetDatasetTrainingQueueQuery = z.infer<typeof GetDatasetTrainingQueueQuerySchema>;
 
 export const GetDatasetTrainingQueueResponseSchema = z.object({
-  rebuildingCount: z.number().meta({
-    example: 5,
-    description: '索引待重建、重建中及重建失败的数据总条数，直接按 data.indexStatus 统计'
-  }),
-  trainingCount: z.number().meta({
-    example: 12,
-    description: '普通训练队列中的数据条数，不包含 rebuildIndex/rebuildSynonym 任务'
-  })
+  hasTrainingTask: DatasetItemSchema.shape.hasTrainingTask
 });
 export type GetDatasetTrainingQueueResponse = z.infer<typeof GetDatasetTrainingQueueResponseSchema>;

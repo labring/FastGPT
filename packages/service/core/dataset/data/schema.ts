@@ -118,6 +118,10 @@ defineIndex(DatasetDataSchema, {
 defineIndex(DatasetDataSchema, {
   key: { indexStatus: 1, teamId: 1, datasetId: 1 }
 });
+// 集合列表统计数量和重建状态时直接读取索引，避免读取 q/a、indexes 等完整文档。
+defineIndex(DatasetDataSchema, {
+  key: { teamId: 1, datasetId: 1, collectionId: 1, indexStatus: 1 }
+});
 
 if (serviceEnv.DATASET_SYNONYM_ENABLED) {
   defineIndex(DatasetDataSchema, {

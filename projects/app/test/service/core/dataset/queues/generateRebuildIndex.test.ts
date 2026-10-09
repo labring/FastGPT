@@ -13,6 +13,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import { getRootUser } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
@@ -43,6 +44,7 @@ vi.mock('@/service/core/dataset/queues/utils', () => ({
 
 import { generateRebuildIndex } from '@/service/core/dataset/queues/generateRebuildIndex';
 import { generatePreCreatedData } from '@/service/core/dataset/queues/generatePreCreatedData';
+import { generateRebuildSynonym } from '@/service/core/dataset/queues/generateRebuildSynonym';
 
 let embeddingModel: NonNullable<ReturnType<typeof getModelTestDefaults>['embedding']>;
 
@@ -118,6 +120,7 @@ describe('pre-created data queue routing', () => {
   beforeEach(() => {
     Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
     global.vectorQueueLen = 0;
+    global.synonymQueueLen = 0;
     global.preCreatedQueueLen = 0;
     resetVectorMocks();
     mockVectorDelete.mockResolvedValue(undefined);
@@ -136,6 +139,90 @@ describe('pre-created data queue routing', () => {
         createMockVectorsResponse(inputs.map((input) => input.input))
       );
     mockVectorInsert.mockResolvedValue({ insertIds: ['pre_vector_1'] });
+  });
+
+  it.each([
+    [TrainingModeEnum.rebuildIndex, generateRebuildIndex, 'vectorQueueLen'],
+    [TrainingModeEnum.rebuildSynonym, generateRebuildSynonym, 'synonymQueueLen']
+  ] as const)(
+    'runs only one %s worker while other queues are busy',
+    async (mode, run, queueKey) => {
+      serviceEnv.DATASET_SYNONYM_ENABLED = true;
+      global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
+      const otherQueueKey = queueKey === 'vectorQueueLen' ? 'synonymQueueLen' : 'vectorQueueLen';
+      global[otherQueueKey] = 1;
+      global.preCreatedQueueLen = 1;
+      const indexes = [{ type: DatasetDataIndexTypeEnum.default, text: 'stored', dataId: 'old' }];
+      const indexStatus = (() => {
+        if (mode === TrainingModeEnum.rebuildIndex)
+          return DatasetDataIndexStatusEnum.rebuildIndexRunning;
+        return DatasetDataIndexStatusEnum.rebuildSynonymRunning;
+      })();
+      const first = await createContext({ mode, indexes, indexStatus });
+      const second = await createContext({ mode, indexes, indexStatus });
+      if (mode === TrainingModeEnum.rebuildSynonym) {
+        await MongoDatasetSynonym.create(
+          [first, second].map(({ root, dataset }) => ({
+            teamId: root.teamId,
+            datasetId: dataset._id,
+            version: 1,
+            enabled: false
+          }))
+        );
+      }
+      let resume!: () => void;
+      let started!: () => void;
+      const blocked = new Promise<void>((resolve) => {
+        resume = resolve;
+      });
+      const processing = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+        started();
+        await blocked;
+        return createMockVectorsResponse(inputs.map((input) => input.input));
+      });
+
+      const worker = run();
+      try {
+        await processing;
+        await run();
+        expect(mockGetVectors).toHaveBeenCalledTimes(1);
+        expect(global[queueKey]).toBe(1);
+        expect(
+          await MongoDatasetTraining.countDocuments({
+            _id: { $in: [first.task._id, second.task._id] },
+            lockTime: new Date('2000-01-01')
+          })
+        ).toBe(1);
+      } finally {
+        resume();
+        await worker;
+      }
+      expect(await MongoDatasetTraining.findById(first.task._id)).toBeNull();
+      expect(await MongoDatasetTraining.findById(second.task._id)).toBeNull();
+      expect(mockGetVectors).toHaveBeenCalledTimes(2);
+      expect(global[queueKey]).toBe(0);
+      expect(global[otherQueueKey]).toBe(1);
+      expect(global.preCreatedQueueLen).toBe(1);
+    }
+  );
+
+  it('lets ordinary index training run while both rebuild workers are busy', async () => {
+    global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
+    global.vectorQueueLen = 1;
+    global.synonymQueueLen = 1;
+    const { task, data } = await createContext({
+      indexStatus: DatasetDataIndexStatusEnum.indexing
+    });
+    await generatePreCreatedData();
+    expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      indexStatus: DatasetDataIndexStatusEnum.indexed
+    });
+    expect(global.vectorQueueLen).toBe(1);
+    expect(global.synonymQueueLen).toBe(1);
   });
 
   it.each([false, true])(

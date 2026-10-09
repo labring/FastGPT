@@ -10,7 +10,7 @@ import {
 import { postRebuildEmbedding } from '@/web/core/dataset/api/training';
 import { postDisableCollectionPermission } from '@/web/core/dataset/api';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { Box, Flex, Input, Switch } from '@chakra-ui/react';
+import { Box, Flex, Input, Switch, Skeleton, SkeletonText } from '@chakra-ui/react';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type';
@@ -41,8 +41,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     datasetDetail,
     loadDatasetDetail,
     updateDataset,
-    rebuildingCount,
-    trainingCount,
+    hasTrainingTask,
     refreshCollectionList
   } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
@@ -137,7 +136,19 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     reset(datasetDetail);
   }, [datasetDetail, datasetDetail._id, reset]);
 
-  const isTraining = rebuildingCount > 0 || trainingCount > 0;
+  const isTraining = hasTrainingTask;
+
+  if (datasetDetail._id !== datasetId) {
+    return (
+      <Box w="100%" p={6} aria-hidden="true">
+        <Flex alignItems="center" gap={1.5} mb={5}>
+          <Skeleton boxSize="20px" borderRadius="xs" flexShrink={0} />
+          <Skeleton h={5} flex={1} borderRadius="sm" />
+        </Flex>
+        <SkeletonText noOfLines={3} spacing={2} skeletonHeight={3} />
+      </Box>
+    );
+  }
 
   return (
     <Box w={'100%'} h={'100%'} p={6}>

@@ -1,13 +1,9 @@
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
 import {
   GetDatasetTrainingQueueQuerySchema,
   GetDatasetTrainingQueueResponseSchema,
@@ -28,41 +24,8 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
     per: ReadPermissionVal
   });
 
-  const [rebuildingCount, trainingCount] = await Promise.all([
-    MongoDatasetData.countDocuments(
-      {
-        indexStatus: {
-          $in: [
-            DatasetDataIndexStatusEnum.rebuildIndexPending,
-            DatasetDataIndexStatusEnum.rebuildIndexRunning,
-            DatasetDataIndexStatusEnum.rebuildIndexFailed,
-            DatasetDataIndexStatusEnum.rebuildSynonymPending,
-            DatasetDataIndexStatusEnum.rebuildSynonymRunning,
-            DatasetDataIndexStatusEnum.rebuildSynonymFailed
-          ]
-        },
-        teamId,
-        datasetId
-      },
-      {
-        ...readFromSecondary
-      }
-    ),
-    MongoDatasetTraining.countDocuments(
-      {
-        teamId,
-        datasetId,
-        mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
-      },
-      {
-        ...readFromSecondary
-      }
-    )
-  ]);
-
   return GetDatasetTrainingQueueResponseSchema.parse({
-    rebuildingCount,
-    trainingCount
+    hasTrainingTask: await hasDatasetTrainingTask({ teamId, datasetId })
   });
 }
 

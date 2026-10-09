@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/web/hooks/useRequest', () => ({
   useRequest: (_request: unknown, options: { onSuccess?: (data: unknown) => void }) => {
     mocks.onSuccess = options.onSuccess;
-    return { data: mocks.trainingDetail, loading: false, runAsync: vi.fn() };
+    return { data: mocks.trainingDetail, loading: false, run: vi.fn() };
   }
 }));
 vi.mock('next-i18next', () => ({
@@ -34,7 +34,7 @@ vi.mock('@chakra-ui/react', () => {
     React.createElement('div', { 'data-bg': bg }, children);
   return { Box, Flex: Box, ModalBody: Box };
 });
-vi.mock('@fastgpt/web/components/common/MyModal', () => ({
+vi.mock('@fastgpt/web/components/v2/common/MyModal', () => ({
   default: ({ children }: { children: React.ReactNode }) =>
     React.createElement(React.Fragment, null, children)
 }));

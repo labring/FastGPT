@@ -22,15 +22,16 @@ import {
   GetCollectionDetailResponseSchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
-  activeTrainingExpr,
-  finalErrorTrainingExpr,
   getCollectionTrainingStatusByMode,
-  remainingTrainingMatch,
-  trainingModeRanks
+  getCollectionTrainingModeCountsPipeline
 } from '@fastgpt/service/core/dataset/training/query';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { datasetDataStatusCountFields } from '@fastgpt/service/core/dataset/data/query';
+import { datasetDataRebuildStatusCountFields } from '@fastgpt/service/core/dataset/data/query';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import {
+  datasetDataRebuildIndexProcessingStatuses,
+  datasetDataRebuildSynonymProcessingStatuses,
+  datasetDataRebuildFailedStatuses
+} from '@fastgpt/global/core/dataset/data/utils';
 
 /**
  * 获取数据集集合的训练状态统计信息
@@ -50,67 +51,26 @@ const getCollectionTrainingStatus = async ({
 }) => {
   const [[trainingStatus], [dataStatus]] = await Promise.all([
     MongoDatasetTraining.aggregate(
+      getCollectionTrainingModeCountsPipeline({ teamId, datasetId, collectionId }),
+      readFromSecondary
+    ),
+    MongoDatasetData.aggregate(
       [
         {
           $match: {
             teamId,
             datasetId,
             collectionId,
-            ...remainingTrainingMatch,
-            mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
-          }
-        },
-        {
-          $addFields: {
-            modeRank: {
-              $switch: {
-                branches: trainingModeRanks.map(({ mode, rank }) => ({
-                  case: { $eq: ['$mode', mode] },
-                  then: rank
-                })),
-                default: 999
-              }
-            },
-            isActiveTraining: activeTrainingExpr,
-            isFinalErrorTraining: finalErrorTrainingExpr
-          }
-        },
-        {
-          $group: {
-            _id: '$mode',
-            modeRank: { $first: '$modeRank' },
-            activeCount: { $sum: { $cond: ['$isActiveTraining', 1, 0] } },
-            finalErrorCount: { $sum: { $cond: ['$isFinalErrorTraining', 1, 0] } },
-            trainingAmount: { $sum: 1 }
-          }
-        },
-        {
-          $sort: {
-            modeRank: 1
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            trainingAmount: { $sum: '$trainingAmount' },
-            activeTrainingAmount: { $sum: '$activeCount' },
-            finalErrorAmount: { $sum: '$finalErrorCount' },
-            modeCounts: {
-              $push: {
-                mode: '$_id',
-                activeCount: '$activeCount',
-                finalErrorCount: '$finalErrorCount'
-              }
+            indexStatus: {
+              $in: [
+                ...datasetDataRebuildIndexProcessingStatuses,
+                ...datasetDataRebuildSynonymProcessingStatuses,
+                ...datasetDataRebuildFailedStatuses
+              ]
             }
           }
-        }
-      ],
-      readFromSecondary
-    ),
-    MongoDatasetData.aggregate(
-      [
-        { $match: { teamId, datasetId, collectionId } },
-        { $group: { _id: null, ...datasetDataStatusCountFields } }
+        },
+        { $group: { _id: null, ...datasetDataRebuildStatusCountFields } }
       ],
       readFromSecondary
     )

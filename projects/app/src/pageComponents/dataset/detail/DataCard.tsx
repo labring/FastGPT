@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Box, Card, IconButton, Flex, Button } from '@chakra-ui/react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Box, Card, IconButton, Flex, Button, Skeleton, SkeletonText } from '@chakra-ui/react';
 import { getDatasetCollectionById } from '@/web/core/dataset/api/collection';
 import { getDatasetDataList, delOneDatasetDataById } from '@/web/core/dataset/api/data';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -41,10 +41,7 @@ import {
   getCollectionTrainingStatusColorSchema,
   getCollectionTrainingStatusText
 } from '@/web/core/dataset/trainingStatus';
-import {
-  DatasetDataIndexStatusEnum,
-  getDatasetDataIndexStatusMapData
-} from '@fastgpt/global/core/dataset/data/constants';
+import { getDatasetDataIndexStatusMapData } from '@fastgpt/global/core/dataset/data/constants';
 import { useIndexingDataRefresh } from '@/web/core/dataset/hooks/useIndexingDataRefresh';
 import { isDatasetDataProcessing } from '@fastgpt/global/core/dataset/data/utils';
 
@@ -80,19 +77,29 @@ const DataCard = () => {
     () => <EmptyTip text={t('common:core.dataset.data.Empty Tip')} />,
     [t]
   );
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const loadDataList = useCallback(async (...args: Parameters<typeof getDatasetDataList>) => {
+    try {
+      return await getDatasetDataList(...args);
+    } finally {
+      setIsInitialLoading(false);
+    }
+  }, []);
   const {
     data: datasetDataList,
+    isLoading,
     ScrollData,
     total,
     setTotal,
     refreshList,
     setData: setDatasetDataList
-  } = useScrollPagination(getDatasetDataList, {
+  } = useScrollPagination(loadDataList, {
     pageSize: 15,
     params: scrollParams,
     refreshDeps: [searchText, collectionId],
     EmptyTip: EmptyTipDom
   });
+  const showSkeleton = isInitialLoading || (isLoading && datasetDataList.length === 0);
   useIndexingDataRefresh({
     collectionId,
     searchText,
@@ -313,32 +320,31 @@ const DataCard = () => {
           />
         </Flex>
         {/* data */}
-        <ScrollData px={5} pb={5}>
+        <ScrollData px={5} pb={5} showLoadingOverlay={false} showPaginationTip={!showSkeleton}>
           <Flex flexDir={'column'} gap={2}>
+            {showSkeleton &&
+              Array.from({ length: 3 }, (_, index) => (
+                <Card
+                  key={index}
+                  p={3}
+                  boxShadow="none"
+                  bg={index % 2 === 1 ? 'myGray.50' : 'blue.50'}
+                  border="sm"
+                  aria-hidden="true"
+                >
+                  <Flex justifyContent="space-between" mb={4}>
+                    <Skeleton w={16} h={4} borderRadius="sm" />
+                    <Skeleton w={20} h={5} borderRadius="sm" />
+                  </Flex>
+                  <SkeletonText noOfLines={3} spacing={3} skeletonHeight={3} />
+                </Card>
+              ))}
             {datasetDataList.map((item, index) => {
               // 索引中、待重建和重建中的数据只读，避免与 worker 写入竞争；失败数据可编辑和删除。
               const isIndexing = isDatasetDataProcessing(item.indexStatus);
               const canModify = !isIndexing;
               const indexStatusInfo = getDatasetDataIndexStatusMapData(item.indexStatus);
-              const indexStatusLabel = (() => {
-                if (item.indexStatus === DatasetDataIndexStatusEnum.indexing)
-                  return t('dataset:data_index_status_indexing');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexPending)
-                  return t('dataset:data_index_status_waiting_rebuild');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexRunning)
-                  return t('dataset:data_index_status_rebuilding');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexFailed)
-                  return t('dataset:data_index_status_rebuild_error');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildSynonymPending)
-                  return t('dataset:data_index_status_synonym_pending');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildSynonymRunning)
-                  return t('dataset:data_index_status_synonym_running');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildSynonymFailed)
-                  return t('dataset:data_index_status_synonym_failed');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.error)
-                  return t('dataset:data_index_status_error');
-                return t('dataset:data_index_status_indexed');
-              })();
+              const indexStatusLabel = t(indexStatusInfo.label);
 
               return (
                 <Card

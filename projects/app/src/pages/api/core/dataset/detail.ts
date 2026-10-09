@@ -13,6 +13,7 @@ import {
 import { getDatasetSyncDatasetStatus } from '@fastgpt/service/core/dataset/datasetSync';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { hasDatasetTrainingTask } from '@fastgpt/service/core/dataset/training/entity';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> {
   const { id: datasetId } = parseApiInput({ req, querySchema: GetDatasetDetailQuerySchema }).query;
@@ -26,7 +27,10 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
     per: ReadPermissionVal
   });
 
-  const { status, errorMsg } = await getDatasetSyncDatasetStatus(datasetId);
+  const [{ status, errorMsg }, hasTrainingTask] = await Promise.all([
+    getDatasetSyncDatasetStatus(datasetId),
+    hasDatasetTrainingTask({ teamId: dataset.teamId, datasetId })
+  ]);
   const modelHandle = await getModelHandle();
   const vectorModel = modelHandle.findModelData(getDatasetModelReference(dataset, 'embedding'), {
     type: 'embedding'
@@ -42,6 +46,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDetailResponse> 
   return GetDatasetDetailResponseSchema.parse({
     ...dataset,
     status,
+    hasTrainingTask,
     errorMsg,
     permission,
     vectorModel: vectorModel ? desensitizeSystemModel(vectorModel) : undefined,

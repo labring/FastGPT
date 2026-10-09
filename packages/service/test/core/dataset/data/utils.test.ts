@@ -39,7 +39,9 @@ describe('assertDatasetDataWritable', () => {
   it.each([
     DatasetDataIndexStatusEnum.indexing,
     DatasetDataIndexStatusEnum.rebuildIndexPending,
-    DatasetDataIndexStatusEnum.rebuildIndexRunning
+    DatasetDataIndexStatusEnum.rebuildIndexRunning,
+    DatasetDataIndexStatusEnum.rebuildSynonymPending,
+    DatasetDataIndexStatusEnum.rebuildSynonymRunning
   ])('protects in-progress status %s', async (status) => {
     await expect(assertDatasetDataWritable(status)).rejects.toBe(DatasetErrEnum.dataNotIndexed);
   });
@@ -47,7 +49,8 @@ describe('assertDatasetDataWritable', () => {
     undefined,
     DatasetDataIndexStatusEnum.indexed,
     DatasetDataIndexStatusEnum.error,
-    DatasetDataIndexStatusEnum.rebuildIndexFailed
+    DatasetDataIndexStatusEnum.rebuildIndexFailed,
+    DatasetDataIndexStatusEnum.rebuildSynonymFailed
   ])('allows edits of completed or failed status %s', (status) => {
     expect(assertDatasetDataWritable(status)).toBeUndefined();
   });

@@ -54,9 +54,8 @@ export async function generatePreCreatedData(): Promise<any> {
     max
   });
 
-  // 普通 vector 与预落库索引共享 embedding 并发上限，避免拆队列后总并发翻倍。
-  if (global.vectorQueueLen + (global.synonymQueueLen ?? 0) + global.preCreatedQueueLen >= max)
-    return;
+  // 首次索引使用自己的并发预算；两类重建分别以并发 1 独立运行。
+  if (global.preCreatedQueueLen >= max) return;
   global.preCreatedQueueLen++;
 
   try {

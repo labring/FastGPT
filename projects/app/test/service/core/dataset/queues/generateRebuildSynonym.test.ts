@@ -169,7 +169,7 @@ describe('generateRebuildSynonym', () => {
     expect(mockGetVectors).not.toHaveBeenCalled();
   });
 
-  it('isolates task consumption and shares the embedding concurrency limit', async () => {
+  it('isolates task consumption and runs independently of the other index queues', async () => {
     const { task } = await createContext();
     await generateRebuildIndex();
     await generatePreCreatedData();
@@ -185,11 +185,12 @@ describe('generateRebuildSynonym', () => {
       { $set: { mode: TrainingModeEnum.rebuildSynonym } }
     );
     global.vectorQueueLen = 1;
+    global.preCreatedQueueLen = 1;
     await generateRebuildSynonym();
     expect(global.synonymQueueLen).toBe(0);
-    expect(mockGetVectors).not.toHaveBeenCalled();
-    global.vectorQueueLen = 0;
-    await generateRebuildSynonym();
+    expect(mockGetVectors).toHaveBeenCalled();
+    expect(global.vectorQueueLen).toBe(1);
+    expect(global.preCreatedQueueLen).toBe(1);
     expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
   });
 

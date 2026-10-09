@@ -6,6 +6,7 @@ import type {
   CollectionTrainingStatusType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
+import type { PipelineStage } from 'mongoose';
 
 type TrainingStatusCount = {
   activeCount: number;
@@ -108,6 +109,42 @@ export const finalErrorTrainingMatch = {
 export const remainingTrainingMatch = {
   $or: [activeTrainingMatch, finalErrorTrainingMatch]
 };
+
+/**
+ * 列表与详情共用的普通训练统计：直接按集合/阶段计数，再收敛为每个集合的阶段列表。
+ * 两类重建以 data 为权威来源，必须在这里排除；数量与最慢阶段统一由业务函数计算。
+ * 不累积逐条 training 数组，避免随后 unwind、排序和重复汇总。
+ */
+export const getCollectionTrainingModeCountsPipeline = (
+  match: Record<string, unknown>
+): PipelineStage[] => [
+  {
+    $match: {
+      ...match,
+      ...remainingTrainingMatch,
+      mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
+    }
+  },
+  {
+    $group: {
+      _id: { collectionId: '$collectionId', mode: '$mode' },
+      activeCount: { $sum: { $cond: [activeTrainingExpr, 1, 0] } },
+      finalErrorCount: { $sum: { $cond: [finalErrorTrainingExpr, 1, 0] } }
+    }
+  },
+  {
+    $group: {
+      _id: '$_id.collectionId',
+      modeCounts: {
+        $push: {
+          mode: '$_id.mode',
+          activeCount: '$activeCount',
+          finalErrorCount: '$finalErrorCount'
+        }
+      }
+    }
+  }
+];
 
 /**
  * rank 越小表示流程越早；collection 的“最慢阶段”就是剩余任务里流程最早的阶段。

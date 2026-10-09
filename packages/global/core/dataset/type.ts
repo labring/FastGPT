@@ -439,6 +439,10 @@ export const DatasetItemSchema = DatasetSchema.omit({
   vlmModel: true
 }).extend({
   status: z.enum(DatasetStatusEnum).meta({ description: '状态' }),
+  hasTrainingTask: z.boolean().meta({
+    description: '是否存在普通训练任务或待处理、处理中、失败的索引/同义词重建数据',
+    example: false
+  }),
   errorMsg: z.string().optional().meta({ description: '错误信息' }),
   vectorModel: EmbeddingSystemModelDataSchema.optional().meta({
     description: '向量模型；模型已删除时为空，已停用模型仍返回展示数据'

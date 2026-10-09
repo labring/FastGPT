@@ -75,6 +75,6 @@ describe('synonym rebuild data status counts', () => {
       errorCounts: { rebuildSynonym: 1, rebuildIndex: 0 },
       trainedCount: 1
     });
-    expect(queue.data).toEqual({ rebuildingCount: 4, trainingCount: 0 });
+    expect(queue.data).toEqual({ hasTrainingTask: true });
   });
 });
