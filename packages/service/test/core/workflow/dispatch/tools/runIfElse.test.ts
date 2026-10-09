@@ -142,6 +142,63 @@ describe('dispatchIfElse startWith / endWith', () => {
   });
 });
 
+describe('dispatchIfElse include / notInclude', () => {
+  const run = (value: unknown, condition: VariableConditionEnum, target: unknown) =>
+    dispatchIfElse(
+      buildProps({
+        value,
+        ifElseList: [
+          {
+            condition: 'AND',
+            list: [
+              {
+                variable: ref('input'),
+                condition,
+                value: target as string
+              }
+            ]
+          }
+        ],
+        sourceHandles: [
+          getHandleId('ifElse', 'source', IfElseResultEnum.IF),
+          getHandleId('ifElse', 'source', IfElseResultEnum.ELSE)
+        ]
+      })
+    );
+
+  it('should compare a non-string value of an any-typed variable as text', async () => {
+    const include = await run(2001, VariableConditionEnum.include, '001');
+    expect(include.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const notInclude = await run(2001, VariableConditionEnum.notInclude, '001');
+    expect(notInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should match a boolean value of an any-typed variable as text', async () => {
+    const include = await run(true, VariableConditionEnum.include, 'ru');
+    expect(include.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const notInclude = await run(true, VariableConditionEnum.notInclude, 'ru');
+    expect(notInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+
+  it('should still match array items and plain strings', async () => {
+    const arrayInclude = await run(['a', 'b'], VariableConditionEnum.include, 'b');
+    expect(arrayInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const stringInclude = await run('abcdef', VariableConditionEnum.include, 'cd');
+    expect(stringInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+
+    const stringNotInclude = await run('abcdef', VariableConditionEnum.notInclude, 'xy');
+    expect(stringNotInclude.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.IF);
+  });
+
+  it('should not match a missing value', async () => {
+    const result = await run(undefined, VariableConditionEnum.include, 'a');
+    expect(result.data?.[NodeOutputKeyEnum.ifElseResult]).toBe(IfElseResultEnum.ELSE);
+  });
+});
+
 describe('dispatchIfElse regex', () => {
   const run = (value: unknown, pattern: unknown) =>
     dispatchIfElse(

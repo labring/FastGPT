@@ -48,8 +48,10 @@ function isEmpty(value: any) {
 function isInclude(value: any, target: any) {
   if (Array.isArray(value)) {
     return value.map((item: any) => String(item)).includes(target);
-  } else if (typeof value === 'string') {
-    return value.includes(target);
+  } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    // any 类型的变量也提供「包含/不包含」，运行时可能拿到数字、布尔等非字符串值；
+    // 与 startWith/endWith 一样先转成字符串再匹配，直接返回 false 会让「不包含」恒真。
+    return String(value).includes(target);
   } else {
     return false;
   }
