@@ -82,7 +82,10 @@ describe('migration buildLegacyDomainOverrides', () => {
         ],
         externalProviderWorkflowVariables: [
           { name: 'Var', key: 'var', intro: 'intro', isOpen: true }
-        ]
+        ],
+        customApiDomain: 'https://api.custom.com',
+        customSharePageDomain: 'https://share.custom.com',
+        scripts: [{ src: 'https://cdn.example.com/analytics.js', async: 'true' }]
       },
       systemEnv: {}
     });
@@ -99,7 +102,37 @@ describe('migration buildLegacyDomainOverrides', () => {
       websiteSyncLimitMinuted: 90
     });
     expect(overrides.site?.navbarItems).toHaveLength(1);
+    expect(overrides.site?.customApiDomain).toBe('https://api.custom.com');
+    expect(overrides.site?.customSharePageDomain).toBe('https://share.custom.com');
+    expect(overrides.site?.scripts).toEqual([
+      { src: 'https://cdn.example.com/analytics.js', async: 'true' }
+    ]);
     expect(overrides.providers?.externalProviderWorkflowVariables).toHaveLength(1);
+  });
+
+  it('migrates all 4 PDF parser credentials from legacy systemEnv.customPdfParse', () => {
+    const overrides = buildLegacyDomainOverrides({
+      feConfigs: {},
+      systemEnv: {
+        customPdfParse: {
+          url: 'https://pdf.legacy.com',
+          key: 'pdf-key',
+          somarkApiKey: 'somark-secret',
+          doc2xKey: 'doc2x-secret',
+          textinAppId: 'textin-id',
+          textinSecretCode: 'textin-code'
+        }
+      }
+    });
+
+    expect(overrides.providers?.documentParse?.customPdf).toMatchObject({
+      url: 'https://pdf.legacy.com',
+      key: 'pdf-key',
+      somarkApiKey: 'somark-secret',
+      doc2xKey: 'doc2x-secret',
+      textinAppId: 'textin-id',
+      textinSecretCode: 'textin-code'
+    });
   });
 });
 

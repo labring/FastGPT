@@ -91,6 +91,31 @@ export const buildLegacyDomainOverrides = ({
     concatMd: optionalText(feConfigs.concatMd),
     appTemplateCourse: optionalText(feConfigs.appTemplateCourse),
     loginGuideDocUrl: optionalText(feConfigs.loginGuideDocUrl),
+    customApiDomain:
+      optionalText(feConfigs.customApiDomain) ?? optionalText(appEnv.CUSTOM_API_DOMAIN),
+    customSharePageDomain:
+      optionalText(feConfigs.customSharePageDomain) ??
+      optionalText(appEnv.CUSTOM_SHARE_PAGE_DOMAIN),
+    scripts:
+      Array.isArray(feConfigs.scripts) && feConfigs.scripts.length > 0
+        ? (compactDeep(feConfigs.scripts) as Record<string, string>[])
+        : (() => {
+            const fromEnv = (() => {
+              if (!appEnv.SCRIPTS) return [];
+              try {
+                const parsed = JSON.parse(appEnv.SCRIPTS);
+                return Array.isArray(parsed)
+                  ? parsed.filter(
+                      (item): item is Record<string, string> =>
+                        typeof item === 'object' && item !== null && !Array.isArray(item)
+                    )
+                  : [];
+              } catch {
+                return [];
+              }
+            })();
+            return fromEnv.length > 0 ? fromEnv : undefined;
+          })(),
     navbarItems: Array.isArray(feConfigs.navbarItems)
       ? (compactDeep(feConfigs.navbarItems) as Record<string, unknown>[])
       : undefined
@@ -252,10 +277,14 @@ export const buildLegacyDomainOverrides = ({
       customPdf: compact({
         url: optionalText(legacyCustomPdf.url) ?? optionalText(serviceEnv.CUSTOM_PDF_PARSE_URL),
         key: optionalText(legacyCustomPdf.key) ?? optionalText(serviceEnv.CUSTOM_PDF_PARSE_KEY),
-        somarkApiKey: optionalText(serviceEnv.SOMARK_API_KEY),
-        doc2xKey: optionalText(serviceEnv.DOC2X_KEY),
-        textinAppId: optionalText(serviceEnv.TEXTIN_APP_ID),
-        textinSecretCode: optionalText(serviceEnv.TEXTIN_SECRET_CODE)
+        somarkApiKey:
+          optionalText(legacyCustomPdf.somarkApiKey) ?? optionalText(serviceEnv.SOMARK_API_KEY),
+        doc2xKey: optionalText(legacyCustomPdf.doc2xKey) ?? optionalText(serviceEnv.DOC2X_KEY),
+        textinAppId:
+          optionalText(legacyCustomPdf.textinAppId) ?? optionalText(serviceEnv.TEXTIN_APP_ID),
+        textinSecretCode:
+          optionalText(legacyCustomPdf.textinSecretCode) ??
+          optionalText(serviceEnv.TEXTIN_SECRET_CODE)
       }),
       sangfor: compact({
         url: sangforUrl,
@@ -521,9 +550,7 @@ export const buildLegacyProOverrides = (pro: LegacyProConfig): DomainOverrides =
 
 /**
  * 检测已改由环境变量承载、但旧库仍有值的历史字段。
- * customApiDomain / customSharePageDomain / scripts 需要部署者手动补入 ENV，
- * 迁移阶段无法自动搬运（涉及 DNS、证书与安全边界），因此只输出告警。
- * show_git 同样改由环境变量承载：旧库显式关闭（false）时提示补入 SHOW_GIT=false。
+ * show_git 改由环境变量承载：旧库显式关闭（false）时提示补入 SHOW_GIT=false。
  */
 export const collectEnvRehomedWarnings = ({
   feConfigs
@@ -532,15 +559,6 @@ export const collectEnvRehomedWarnings = ({
 }): string[] => {
   const warnings: string[] = [];
 
-  if (isNonEmpty(feConfigs.customApiDomain)) {
-    warnings.push('customApiDomain -> 请配置环境变量 CUSTOM_API_DOMAIN');
-  }
-  if (isNonEmpty(feConfigs.customSharePageDomain)) {
-    warnings.push('customSharePageDomain -> 请配置环境变量 CUSTOM_SHARE_PAGE_DOMAIN');
-  }
-  if (Array.isArray(feConfigs.scripts) && feConfigs.scripts.length > 0) {
-    warnings.push('scripts -> 请配置环境变量 SCRIPTS（JSON 字符串）');
-  }
   // show_git 改由环境变量承载：旧库显式关闭过时需要部署者补入 ENV，否则升级后默认开启
   if (feConfigs.show_git === false) {
     warnings.push('show_git=false -> 请配置环境变量 SHOW_GIT=false');
