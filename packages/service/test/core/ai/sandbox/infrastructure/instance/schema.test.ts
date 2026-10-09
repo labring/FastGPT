@@ -38,11 +38,21 @@ describe('MongoSandboxInstance schema indexes', () => {
   it('registers the nested operation index for automatic cleanup', () => {
     expect(getSchemaDeprecatedMongoIndexes(MongoSandboxInstance.schema)).toEqual([
       {
+        indexName: 'sourceType_1_status_1_provider_1',
+        key: { sourceType: 1, status: 1, provider: 1 },
+        options: undefined
+      },
+      {
         indexName: 'status_1_metadata.operation.heartbeatAt_1',
         key: { status: 1, 'metadata.operation.heartbeatAt': 1 },
         options: undefined
       }
     ]);
+  });
+
+  it('indexes the per-team active quota count', () => {
+    const indexes = MongoSandboxInstance.schema.indexes();
+    expect(indexes.some(([keys]) => keys.teamId === 1 && keys.status === 1)).toBe(true);
   });
 
   it('accepts stable states without operation and matching transition operations', async () => {

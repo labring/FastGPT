@@ -45,6 +45,28 @@ export const sandboxStableStatusList = ['running', 'stopped', 'archived'] as con
 export const SandboxStableStatusSchema = z.enum(sandboxStableStatusList);
 export type SandboxStableStatusType = z.infer<typeof SandboxStableStatusSchema>;
 
+/**
+ * 计入沙箱 Quota 的实例状态：占用 provider 资源，或正在创建/恢复远端资源。
+ * 系统总上限与团队配额共用同一个计数池（忽略 provider 与 sourceType）。
+ * 不计入 stopped/archived（无远端计算资源）与 deleting（释放路径中的终态，不得被 Quota 阻塞）。
+ */
+export const sandboxActiveStatusList = [
+  'provisioning',
+  'legacyMigrating',
+  'running',
+  'stopping',
+  'archiving',
+  'restoring'
+] as const satisfies readonly SandboxInstanceStatusType[];
+
+const sandboxActiveStatusSet: ReadonlySet<SandboxInstanceStatusType> = new Set(
+  sandboxActiveStatusList
+);
+
+/** 判断实例是否处于计入 Quota 的活跃状态。 */
+export const isSandboxActiveStatus = (status: SandboxInstanceStatusType) =>
+  sandboxActiveStatusSet.has(status);
+
 export const sandboxOperationTypeList = [
   'provision',
   'legacyMigration',

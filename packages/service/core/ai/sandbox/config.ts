@@ -36,3 +36,23 @@ export const getAgentSandboxSkillMaxBytes = getAgentSandboxDiskBytes;
 
 /** 获取 IDE 单文件大小上限，等于磁盘基准。 */
 export const getAgentSandboxMaxFileBytes = getAgentSandboxDiskBytes;
+
+/** 判定管理台配置值是否生效：只接受正数，避免空值/0 意外收紧配额。 */
+const resolveConfiguredLimit = (configured: number | undefined, envLimit: number | undefined) =>
+  typeof configured === 'number' && configured > 0 ? configured : envLimit;
+
+/**
+ * 获取 Agent sandbox 活跃实例系统总上限（app 会话与技能编辑共用同一计数池）。
+ * 系统配置（管理台 feConfigs.limit）优先，env 兜底；undefined 表示不限制。
+ */
+export const getAgentSandboxMax = (): number | undefined =>
+  resolveConfiguredLimit(global.feConfigs?.limit?.agentSandboxMax, serviceEnv.AGENT_SANDBOX_MAX);
+
+/**
+ * 获取单团队 Agent sandbox 活跃实例配额；系统配置优先、env 兜底，undefined 表示不限制。
+ */
+export const getAgentSandboxMaxPerTeam = (): number | undefined =>
+  resolveConfiguredLimit(
+    global.feConfigs?.limit?.agentSandboxMaxPerTeam,
+    serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM
+  );

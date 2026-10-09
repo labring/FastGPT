@@ -48,6 +48,7 @@ import {
   restoreArchivedSandboxBeforeUse
 } from '../archive';
 import { migrateSandboxProviderBeforeUse } from '../providerMigration';
+import { checkSandboxQuota } from '../quota';
 import { withSandboxLifecycleLease, withSandboxSourceMutationLease } from '../lease';
 import { runSandboxLifecycleOperation, type SandboxLifecycleDefinition } from '../lifecycle/runner';
 import { assertSandboxSourceActive } from '../sourceGuard';
@@ -233,6 +234,9 @@ export class SandboxClient {
       throw new SandboxRuntimeNotRunningError(this.sandboxId);
     }
 
+    // 新建、复活前检查 Mongo 活跃实例配额；并发窗口由业务接受短暂超额。
+    const quota = await checkSandboxQuota(instanceIdentity);
+
     const runProvisioning = async (lease: RedisLeaseContext, allowRecordCreate: boolean) => {
       await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
       lease.assertValid();
@@ -248,6 +252,7 @@ export class SandboxClient {
         }
         const created = await createSandboxProvisioningInstance({
           ...instanceParams,
+          ...(quota?.teamId ? { teamId: quota.teamId } : {}),
           ...(runtimeImage ? { image: runtimeImage } : {})
         });
         current = created.instance;
@@ -536,6 +541,13 @@ export const getSandboxClient = async (
         sandboxId
       });
     } else {
+      const quota = await checkSandboxQuota({
+        provider: providerName,
+        sandboxId,
+        sourceType: sandboxClientProps.sourceType,
+        sourceId: sandboxClientProps.sourceId,
+        userId
+      });
       await migrateSandboxProviderBeforeUse({
         provider: providerName,
         sandboxId,
@@ -549,6 +561,7 @@ export const getSandboxClient = async (
         sourceType: sandboxClientProps.sourceType,
         sourceId: sandboxClientProps.sourceId,
         userId,
+        ...(quota?.teamId ? { teamId: quota.teamId } : {}),
         resourceLimit: opts.resourceLimits
           ? {
               cpuCount: opts.resourceLimits.cpuCount,

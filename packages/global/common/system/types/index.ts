@@ -265,8 +265,11 @@ export const FastGPTFeConfigsSchema = z.looseObject({
       websiteSyncLimitMinuted: NumSchema.optional().meta({
         description: '网页数据源自动同步时间间隔限制（分钟）'
       }),
-      agentSandboxMaxEditDebug: NumSchema.optional().meta({
-        description: '单团队 Agent 沙箱最大同时在线编辑调试数'
+      agentSandboxMax: NumSchema.optional().meta({
+        description: 'Agent 沙箱活跃实例系统总上限（app 会话与技能编辑共用计数池）'
+      }),
+      agentSandboxMaxPerTeam: NumSchema.optional().meta({
+        description: '单团队 Agent 沙箱活跃实例配额；不配置表示不限制'
       }),
       agentSandboxMaxSessionRuntime: NumSchema.optional().meta({
         description: 'Agent 沙箱最大会话运行时间（毫秒）'

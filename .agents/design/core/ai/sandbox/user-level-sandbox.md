@@ -61,6 +61,10 @@ sessionWorkDirectory = <workspaceRoot>/sessions/<chatId>
 - 顶层 `status` 是唯一权威生命周期状态。
 - `operation` 只记录 operation token、持久阶段、心跳和错误，不承担第二套状态判断。
 - 普通 runtime 不得连接 `legacyMigrating` 或其他过渡态实例。
+- 新建 / 停止后重启 / 归档恢复统一经过「系统总上限 + 团队配额」Quota 检查
+  （`application/quota.ts`）：用量为 Mongo 活跃实例数，超限返回 409；
+  stop/archive/delete/keepalive 等释放路径不经过检查，不会被 Quota 阻塞。详见
+  [Agent Sandbox 当前设计](./index.md) 的「Quota」。
 - 单个 Chat 删除不删除共享 Sandbox，也不单独清理 `sessions/<chatId>`。
 - App 或 Skill 删除负责清理所属 v2 与 Legacy 资源。
 
@@ -173,6 +177,7 @@ Source Mutation Lease -> Sandbox Lifecycle Lease
 - Sandbox Lifecycle Lease 以稳定 `sandboxId` 为键，跨 Provider 串行化单个物理身份的生命周期。
 - Legacy migration job lease 只防止管理员重复调度，不承担单条资源正确性。
 - prepare 初始化 lease 只保护运行时文件准备，不替代生命周期 lease。
+- Quota 检查只统计 Mongo 活跃实例；检查与记录写入之间允许并发窗口，因此高并发下可能短暂超过限制。
 
 长任务在每个远端副作用前后调用 lease `assertValid()`。Provider 的 create/start/stop/delete 必须
 基于稳定 ID 保持幂等，重复删除或 404 按成功处理。App/Skill source 在创建、恢复、迁移前必须仍然

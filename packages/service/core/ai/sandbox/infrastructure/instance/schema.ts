@@ -138,7 +138,11 @@ defineIndex(SandboxInstanceSchema, {
   options: { unique: true }
 });
 defineIndex(SandboxInstanceSchema, {
-  key: { sourceType: 1, status: 1, provider: 1 }
+  key: { sourceType: 1, status: 1, provider: 1 },
+  deprecated: true
+});
+defineIndex(SandboxInstanceSchema, {
+  key: { teamId: 1, status: 1 }
 });
 defineIndex(SandboxInstanceSchema, {
   key: { status: 1, lastActiveAt: 1 }

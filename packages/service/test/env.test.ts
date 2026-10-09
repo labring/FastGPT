@@ -44,6 +44,9 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX:
     process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX,
   AGENT_SANDBOX_APT_MIRROR: process.env.AGENT_SANDBOX_APT_MIRROR,
+  AGENT_SANDBOX_MAX: process.env.AGENT_SANDBOX_MAX,
+  AGENT_SANDBOX_MAX_EDIT_DEBUG: process.env.AGENT_SANDBOX_MAX_EDIT_DEBUG,
+  AGENT_SANDBOX_MAX_PER_TEAM: process.env.AGENT_SANDBOX_MAX_PER_TEAM,
   MILVUS_LANGUAGE_IDENTIFIER: process.env.MILVUS_LANGUAGE_IDENTIFIER,
   MILVUS_ADDRESS: process.env.MILVUS_ADDRESS,
   SANGFOR_CHUNK_URL: process.env.SANGFOR_CHUNK_URL
@@ -106,6 +109,9 @@ describe('serviceEnv', () => {
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX
     );
     vi.stubEnv('AGENT_SANDBOX_APT_MIRROR', originalEnv.AGENT_SANDBOX_APT_MIRROR);
+    vi.stubEnv('AGENT_SANDBOX_MAX', originalEnv.AGENT_SANDBOX_MAX);
+    vi.stubEnv('AGENT_SANDBOX_MAX_EDIT_DEBUG', originalEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG);
+    vi.stubEnv('AGENT_SANDBOX_MAX_PER_TEAM', originalEnv.AGENT_SANDBOX_MAX_PER_TEAM);
     vi.stubEnv('MILVUS_LANGUAGE_IDENTIFIER', originalEnv.MILVUS_LANGUAGE_IDENTIFIER);
     vi.stubEnv('MILVUS_ADDRESS', originalEnv.MILVUS_ADDRESS);
     vi.stubEnv('SANGFOR_CHUNK_URL', originalEnv.SANGFOR_CHUNK_URL);
@@ -559,6 +565,49 @@ describe('serviceEnv', () => {
     expect(customEnv.serviceEnv.AGENT_SANDBOX_MEMORY_MIB).toBe(4096);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_STORAGE_SIZE_GI).toBe(5);
     expect(customEnv.serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_NAME_PREFIX).toBe('custom-volume');
+  });
+
+  it('defaults the Agent Sandbox active instance limits and supports overrides', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_MAX', undefined);
+    vi.stubEnv('AGENT_SANDBOX_MAX_EDIT_DEBUG', undefined);
+    vi.stubEnv('AGENT_SANDBOX_MAX_PER_TEAM', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_MAX).toBe(100);
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM).toBeUndefined();
+
+    vi.stubEnv('AGENT_SANDBOX_MAX', '50');
+    vi.stubEnv('AGENT_SANDBOX_MAX_PER_TEAM', '10');
+    const customEnv = await importServiceEnv();
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_MAX).toBe(50);
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_MAX_PER_TEAM).toBe(10);
+  });
+
+  it('falls back to the legacy sandbox limit and prioritizes the new variable', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('AGENT_SANDBOX_MAX', undefined);
+    vi.stubEnv('AGENT_SANDBOX_MAX_EDIT_DEBUG', '20');
+    expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(20);
+    vi.stubEnv('AGENT_SANDBOX_MAX', '30');
+    expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(30);
+    vi.stubEnv('AGENT_SANDBOX_MAX', '');
+    expect((await importServiceEnv()).serviceEnv.AGENT_SANDBOX_MAX).toBe(20);
+    vi.stubEnv('AGENT_SANDBOX_MAX_EDIT_DEBUG', '0');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+  });
+
+  it('rejects non-positive Agent Sandbox active instance limits', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_MAX', '0');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
   });
 
   it('defaults AGENT_SANDBOX_SHOW_FREE_TIP to false and supports enabling it', async () => {

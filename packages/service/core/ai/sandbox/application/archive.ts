@@ -544,6 +544,8 @@ export async function restoreArchivedSandboxBeforeUse(params: {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
+  /** 由 Quota 检查从 source 解析的团队归属；仅用于补齐历史缺失 teamId 的记录。 */
+  teamId?: string;
   resourceLimit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   createConfig?: SandboxCreateSpec;
 }) {
@@ -672,6 +674,7 @@ export async function restoreArchivedSandboxBeforeUse(params: {
               sourceType: params.sourceType,
               sourceId: params.sourceId,
               userId: params.userId,
+              ...(params.teamId && !current.teamId ? { teamId: params.teamId } : {}),
               ...(restoredStorage !== undefined ? { storage: restoredStorage } : {}),
               ...(params.resourceLimit ? { limit: params.resourceLimit } : {}),
               ...(runtimeImage ? { image: runtimeImage } : {})
