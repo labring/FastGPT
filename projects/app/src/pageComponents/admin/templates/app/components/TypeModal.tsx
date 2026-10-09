@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -33,7 +33,7 @@ const TemplateTypeModal = ({
   onSuccess: () => void;
   typeList: TemplateTypeSchemaType[];
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
 
   const [editType, setEditType] = useState<TemplateTypeSchemaType>();
   const [localTypes, setLocalTypes] = useState<TemplateTypeSchemaType[]>(typeList);
@@ -208,7 +208,7 @@ const TemplateTypeItemModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
 
   const isEdit = !!type?.typeId;
 

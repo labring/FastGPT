@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input, Switch } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useState } from 'react';
 import FormLabel from '../FormLabel';
@@ -33,7 +33,7 @@ const NavbarItems = ({
   title: string;
   description: string;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [currentNavbarItem, setCurrentNavbarItem] = useState<NavbarItemType>();
 
   const onSubmit = (data: NavbarItemType) => {
@@ -229,7 +229,7 @@ const NavbarItemModal = ({
   onClose: () => void;
   onSubmit: (data: NavbarItemType) => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { register, setValue, watch, handleSubmit } = useForm({
     defaultValues: currentNavbarItem
   });

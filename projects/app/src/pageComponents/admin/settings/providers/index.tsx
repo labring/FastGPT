@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import {
   Input,
@@ -24,7 +24,7 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 type ProvidersConfigForm = SystemInstanceConfigDomainMap['providers'];
 
 const ProvidersSettingComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'documentParse', label: t('admin:provider_section_doc_parse') },

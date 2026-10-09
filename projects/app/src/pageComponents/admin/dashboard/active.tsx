@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo } from 'react';
 import { Box, useTheme, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -23,7 +23,7 @@ const ChartsBoxStyles = {
 };
 
 export default function ActivePage(): JSX.Element {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const theme = useTheme();
 
   const { dateRange, granularity } = useDashboardFilters();

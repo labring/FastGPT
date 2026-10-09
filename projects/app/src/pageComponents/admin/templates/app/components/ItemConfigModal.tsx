@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, HStack, Input, Switch, Textarea } from '@chakra-ui/react';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSelectFile } from '@fastgpt/web/common/file/hooks/useSelectFile';
@@ -77,7 +77,7 @@ const TemplateConfigModal = ({
   onSuccess: () => void;
 }) => {
   const { toast } = useToast();
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { isPc } = useSystem();
   const [isDragging, setIsDragging] = useState(false);
   const [workflowStr, setWorkflowStr] = useState('');

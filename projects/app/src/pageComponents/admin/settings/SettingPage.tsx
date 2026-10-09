@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Children, Fragment, isValidElement, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import BoxCard from '@/components/admin/BoxContainer/Card';
@@ -148,7 +148,7 @@ function SettingPage({
   /** 配置页内容的统一最大宽度，标题与表单字段共同受此约束。 */
   maxW?: BoxProps['maxW'];
 }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [activeTitle, setActiveTitle] = useState('');
 
   const handleScroll = throttle(() => {

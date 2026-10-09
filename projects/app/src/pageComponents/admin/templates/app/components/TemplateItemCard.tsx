@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { putUpdateTemplate, type AdminUpdateTemplateBodyType } from '@/web/admin/app/templates/api';
 import { Box, Checkbox, Flex, Switch, Td, Tr } from '@chakra-ui/react';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -33,7 +33,7 @@ const TemplateCard = ({
   property: string;
   refreshTemplates: () => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const isPluginSystemTemplate = template.templateId.startsWith(`${AppToolSourceEnum.community}-`);
   const isRecommend = isPluginSystemTemplate
     ? template.isPromoted === true

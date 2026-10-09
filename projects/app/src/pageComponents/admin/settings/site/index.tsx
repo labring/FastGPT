@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import { Box, Input, Textarea, SimpleGrid } from '@chakra-ui/react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -14,7 +14,7 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 type SiteConfigForm = SystemInstanceConfigDomainMap['site'];
 
 const SiteSettingComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'brand', label: t('admin:site_section_brand') },

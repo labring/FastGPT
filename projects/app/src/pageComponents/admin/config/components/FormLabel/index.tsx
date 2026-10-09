@@ -1,11 +1,11 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { StackProps } from '@chakra-ui/react';
 import { Box, HStack } from '@chakra-ui/react';
 import MarkDownModal from '@/components/admin/markdown/MarkDownModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const Description: React.FC<any> = ({ description }: { description?: string }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   if (description) {
     return (
       <MarkDownModal source={description}>
@@ -27,7 +27,7 @@ const FormLabel = ({
   description,
   ...props
 }: { title: string; description?: string } & StackProps) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   if (!title) return null;
   return (
     <HStack {...props}>

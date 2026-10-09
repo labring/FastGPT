@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Input, Textarea, SimpleGrid, Text } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
@@ -14,7 +14,7 @@ import PlansSettingSection, { type PlansSettingSectionHandle } from './PlansSett
 type CommercialConfigForm = SystemInstanceConfigDomainMap['commercial'];
 
 const CommercialSettingComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'plans', label: t('admin:pay_section_plans') },

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Flex } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 type AdminReadonlyInputProps = {
   value?: string;
@@ -19,7 +19,7 @@ const AdminReadonlyInput = ({
   placeholder,
   isTruncate = false
 }: AdminReadonlyInputProps) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const resolvedPlaceholder = placeholder ?? t('admin:not_configured');
   const hasValue = Boolean(value);
 
