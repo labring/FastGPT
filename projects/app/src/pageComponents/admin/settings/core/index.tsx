@@ -12,7 +12,7 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useDomainConfig, batchUpdateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
@@ -128,35 +128,52 @@ const CoreSettingComponent = () => {
 
   const { runAsync: onSave, loading: isSaving } = useRequest(
     async (formData: CoreConfigForm) => {
-      // 本页只覆盖各域的部分字段，用局部提交保留同域其它页面的配置
-      await auth.patchConfig(
-        {
-          defaultTeamBasicPermissionsEnabled: formData.defaultTeamBasicPermissionsEnabled,
-          ...(showTeamMode ? { teamMode: formData.teamMode } : {}),
-          loginProviders: {
-            ...(auth.effectiveConfig?.loginProviders ?? {}),
-            email: formData.email,
-            phone: formData.phone
+      // 跨域原子提交：auth、feature、storage、site 四个域合并为单个事务请求，避免多域分步提交留下半写
+      await batchUpdateDomainConfigApi({
+        items: [
+          {
+            domain: 'auth',
+            expectedRevision: auth.revision,
+            overrides: {
+              ...(auth.overrides as Record<string, unknown>),
+              defaultTeamBasicPermissionsEnabled: formData.defaultTeamBasicPermissionsEnabled,
+              ...(showTeamMode ? { teamMode: formData.teamMode } : {}),
+              loginProviders: {
+                ...((auth.effectiveConfig?.loginProviders ?? {}) as Record<string, unknown>),
+                email: formData.email,
+                phone: formData.phone
+              }
+            }
+          },
+          {
+            domain: 'feature',
+            expectedRevision: feature.revision,
+            overrides: {
+              ...(feature.overrides as Record<string, unknown>),
+              agentEngine: formData.agentEngine,
+              multipleDataToBase64: formData.multipleDataToBase64
+            }
+          },
+          {
+            domain: 'storage',
+            expectedRevision: storage.revision,
+            overrides: {
+              ...(storage.overrides as Record<string, unknown>),
+              downloadMode: formData.downloadMode,
+              externalEndpoint: formData.externalEndpoint || '',
+              cdnEndpoint: formData.cdnEndpoint || ''
+            }
+          },
+          {
+            domain: 'site',
+            expectedRevision: site.revision,
+            overrides: {
+              ...(site.overrides as Record<string, unknown>),
+              openApiPrefix: formData.openApiPrefix
+            }
           }
-        },
-        { silent: true }
-      );
-      await feature.patchConfig(
-        {
-          agentEngine: formData.agentEngine,
-          multipleDataToBase64: formData.multipleDataToBase64
-        },
-        { silent: true }
-      );
-      await storage.patchConfig(
-        {
-          downloadMode: formData.downloadMode,
-          externalEndpoint: formData.externalEndpoint || '',
-          cdnEndpoint: formData.cdnEndpoint || ''
-        },
-        { silent: true }
-      );
-      await site.patchConfig({ openApiPrefix: formData.openApiPrefix }, { silent: true });
+        ]
+      });
     },
     {
       successToast: 'admin:settings_saved',

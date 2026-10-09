@@ -10,7 +10,9 @@ import type {
 } from '@fastgpt/global/common/system/config/type';
 import type {
   GetDomainConfigResponse,
-  UpdateDomainConfigBody
+  UpdateDomainConfigBody,
+  BatchUpdateDomainConfigBody,
+  BatchUpdateDomainConfigResponse
 } from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 
 /**
@@ -29,6 +31,15 @@ export const updateDomainConfigApi = (
   data: UpdateDomainConfigBody
 ): Promise<GetDomainConfigResponse> => {
   return POST<GetDomainConfigResponse>('/admin/system/config/update', data);
+};
+
+/**
+ * 客户端 API 请求函数：跨域原子批量保存配置
+ */
+export const batchUpdateDomainConfigApi = (
+  data: BatchUpdateDomainConfigBody
+): Promise<BatchUpdateDomainConfigResponse> => {
+  return POST<BatchUpdateDomainConfigResponse>('/admin/system/config/batchUpdate', data);
 };
 
 /**

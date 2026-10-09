@@ -56,6 +56,28 @@ export type UpdateDomainConfigBody = z.infer<typeof UpdateDomainConfigBodySchema
 export const UpdateDomainConfigResponseSchema = GetDomainConfigResponseSchema;
 export type UpdateDomainConfigResponse = GetDomainConfigResponse;
 
+/* ============================================================================
+ * API: 批量更新多个 Domain 的配置（原子事务提交）
+ * Route: POST /api/admin/system/config/batchUpdate
+ * ============================================================================ */
+
+export const BatchUpdateDomainConfigItemSchema = z.object({
+  domain: SystemInstanceConfigDomainKeySchema,
+  expectedRevision: z.number().int().nonnegative(),
+  overrides: z.record(z.string(), z.unknown())
+});
+export type BatchUpdateDomainConfigItem = z.infer<typeof BatchUpdateDomainConfigItemSchema>;
+
+export const BatchUpdateDomainConfigBodySchema = z.object({
+  items: z.array(BatchUpdateDomainConfigItemSchema).min(1).max(20)
+});
+export type BatchUpdateDomainConfigBody = z.infer<typeof BatchUpdateDomainConfigBodySchema>;
+
+export const BatchUpdateDomainConfigResponseSchema = z.object({
+  results: z.array(GetDomainConfigResponseSchema)
+});
+export type BatchUpdateDomainConfigResponse = z.infer<typeof BatchUpdateDomainConfigResponseSchema>;
+
 export const AdminInstanceConfigPath: OpenAPIPath = {
   '/api/admin/system/config/get': {
     get: {
@@ -103,6 +125,30 @@ export const AdminInstanceConfigPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: UpdateDomainConfigResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/api/admin/system/config/batchUpdate': {
+    post: {
+      summary: '跨域批量原子保存实例配置',
+      description: '多配置域批量提交并执行统一校验与原子写入，避免部分域写入失败破坏一致性',
+      tags: [DevApiTagsMap.adminSettings],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: BatchUpdateDomainConfigBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '批量更新成功',
+          content: {
+            'application/json': {
+              schema: BatchUpdateDomainConfigResponseSchema
             }
           }
         }
