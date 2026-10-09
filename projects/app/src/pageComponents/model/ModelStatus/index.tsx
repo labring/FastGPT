@@ -39,9 +39,9 @@ import {
   postModelStatusProbe,
   putModelStatusProbeConfig,
   postTestModelStatusWebhook
-} from '@/web/core/ai/model/api';
+} from '@/web/core/ai/model/statusApi';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
-import ModelTabHeader from '../ModelTabHeader';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 
 const statusColorMap = {
   green: 'green',

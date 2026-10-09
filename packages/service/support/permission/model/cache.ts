@@ -3,10 +3,10 @@ import { MongoTmpData } from '../../tmpData/schema';
 import { TmpDataEnum } from '@fastgpt/global/support/tmpData/constants';
 
 const myModelsCacheFilter = {
-  dataId: { $regex: new RegExp(`^${TmpDataEnum.MyModels}--`) }
+  dataId: { $regex: new RegExp('^' + TmpDataEnum.MyModels + '--') }
 };
 
-/** 删除团队下所有成员的模型权限缓存；权限写入成功后无需主动重建。 */
+/** 删除团队下所有成员的模型目录缓存；权限写入成功后无需主动重建。 */
 export const clearMyModelsCache = ({
   teamId,
   session
@@ -17,7 +17,11 @@ export const clearMyModelsCache = ({
   MongoTmpData.deleteMany(
     {
       $or: [
-        { dataId: { $regex: new RegExp(`^${TmpDataEnum.MyModels}--${String(teamId)}--`) } },
+        {
+          dataId: {
+            $regex: new RegExp('^' + TmpDataEnum.MyModels + '--' + String(teamId) + '--')
+          }
+        },
         {
           ...myModelsCacheFilter,
           'data.teamId': teamId
@@ -27,6 +31,6 @@ export const clearMyModelsCache = ({
     { session }
   );
 
-/** 模型新增、启用、停用或删除后，删除所有成员的模型列表缓存。 */
+/** 模型目录变化后清除所有成员的模型目录缓存。 */
 export const clearAllMyModelsCache = ({ session }: { session?: ClientSession } = {}) =>
   MongoTmpData.deleteMany(myModelsCacheFilter, { session });

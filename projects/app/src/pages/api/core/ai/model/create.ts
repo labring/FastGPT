@@ -1,9 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createModelWithLifecycle } from '@fastgpt/service/core/ai/model/lifecycle';
-import { resolveChannelType } from '@fastgpt/global/core/ai/model';
+import { resolveChannelType } from '@fastgpt/global/core/ai/model/utils';
 import {
   CreateModelBodySchema,
   type CreateModelBody,

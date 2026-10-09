@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { isWorkflowSystemModelInput } from '@fastgpt/global/core/workflow/utils';
@@ -6,9 +6,9 @@ import { isWorkflowSystemModelInput } from '@fastgpt/global/core/workflow/utils'
 /** 获取一次目录后同步投影模型名称，缺失或停用引用只影响展示，不改变工作流本身。 */
 export const getChatModelNameListByModules = async (
   nodes: StoreNodeItemType[],
-  context?: { teamId?: string }
+  context: { teamId: string }
 ): Promise<string[]> => {
-  const modelHandle = await getModelHandle(context);
+  const modelHandle = await getTeamModelHandle(context);
   const modelList = nodes
     .map((item) => {
       const modelIdInput = item.inputs.find(

@@ -29,9 +29,9 @@ import {
   putModelsStatus,
   postUpdateModelChannels
 } from '@/web/core/ai/model/api';
-import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import ModelScopeCell from '@/components/core/ai/ModelScopeCell';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -45,7 +45,7 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import ModelCapabilityTags from '@/components/core/ai/ModelCapabilityTags';
 import { accountContentScrollStyles, accountPageRootStyles } from '@/pageComponents/account/styles';
-import ModelTabHeader from './ModelTabHeader';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import { useLockFn, useSet } from 'ahooks';
 import ModelChannelCount from './ModelChannelCount';
@@ -81,7 +81,7 @@ const ModelEditButton = React.memo(
     onSuccess,
     isDisabled
   }: {
-    model: SystemModelListItem;
+    model: ModelConfigListItem;
     providers: ModelProviderItemType[];
     channelType: ChannelType;
     onSuccess: () => Promise<void>;
@@ -114,13 +114,7 @@ const ModelEditButton = React.memo(
 );
 ModelEditButton.displayName = 'ModelEditButton';
 
-const ModelTable = ({
-  Tab,
-  channelType
-}: {
-  Tab: React.ReactNode;
-  channelType: ChannelType;
-}) => {
+const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: ChannelType }) => {
   const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
@@ -155,7 +149,7 @@ const ModelTable = ({
     getModelProvider,
     language: i18n.language
   });
-  const getModelId = useCallback((model: SystemModelListItem) => model.modelId, []);
+  const getModelId = useCallback((model: ModelConfigListItem) => model.modelId, []);
   const {
     selectedItems,
     setSelectedItems,
@@ -238,7 +232,7 @@ const ModelTable = ({
   });
 
   /** 点击渠道数打开关联弹窗；提交时由服务端按差集原子增删渠道关联 */
-  const [channelModel, setChannelModel] = useState<SystemModelListItem>();
+  const [channelModel, setChannelModel] = useState<ModelConfigListItem>();
   const updateModelChannels = async (nextChannelIds: number[]) => {
     if (!channelModel) return;
     const currentIds = new Set(channelModel.channels.map((channel) => channel.id));
@@ -543,11 +537,8 @@ const ModelTable = ({
                             <ModelScopeCell
                               modelId={item.modelId}
                               scope={item.scope}
+                              ownerTmbId={item.tmbId}
                               isAccountConfig
-                              hasManagePer={Boolean(
-                                userInfo?.team.permission.hasManagePer ||
-                                item.tmbId === userInfo?.team.tmbId
-                              )}
                               selectedHint={t('config_model:available_range')}
                             />
                           </Td>
@@ -697,7 +688,7 @@ const ModelTable = ({
       )}
       {isOpenDefaultModel && (
         <DefaultModelModal
-          models={modelItems as unknown as SystemModelDataType[]}
+          models={modelItems as unknown as AIModelDataType[]}
           defaultModelIds={
             modelConfigData && 'defaultModelIds' in modelConfigData
               ? modelConfigData.defaultModelIds

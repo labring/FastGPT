@@ -1,7 +1,7 @@
 import { getModelDetail, postUpdateModelChannels } from '@/web/core/ai/model/api';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { SystemModelListItem } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ModelConfigListItem } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
@@ -13,7 +13,7 @@ import { submitUpdatedModel } from './submit';
 import { useModelChannelTest } from './useModelChannelTest';
 
 type ModelEditWorkflowProps = {
-  model: SystemModelListItem;
+  model: ModelConfigListItem;
   channelType: ChannelType;
   onSuccess: () => void | Promise<void>;
   onClose: () => void;
@@ -59,6 +59,11 @@ export const useModelEditWorkflow = ({
     [detail?.channels]
   );
 
+  /** 即时渠道写入同时刷新详情和父列表；取消编辑不能撤销已经提交的渠道关联。 */
+  const refreshChannelBindings = async () => {
+    await Promise.all([refreshDetail(), onSuccess()]);
+  };
+
   /** 即时解除渠道与当前模型的关联，由服务端原子清理渠道内的模型映射 */
   const removeChannel = async (channelId: number) => {
     if (!detail) return;
@@ -68,7 +73,7 @@ export const useModelEditWorkflow = ({
       removeChannelIds: [channelId]
     });
 
-    await refreshDetail();
+    await refreshChannelBindings();
     toast({
       status: 'success',
       title: t('config_model:channel_disassociate_success')
@@ -90,7 +95,7 @@ export const useModelEditWorkflow = ({
       removeChannelIds: [...currentAssociatedIds].filter((id) => !nextSelectedSet.has(id))
     });
 
-    await refreshDetail();
+    await refreshChannelBindings();
     setShowAssociateChannel(false);
     toast({
       status: 'success',
@@ -98,7 +103,7 @@ export const useModelEditWorkflow = ({
     });
   };
 
-  const submitModel = async (data: SystemModelDocumentDataType) => {
+  const submitModel = async (data: AIModelDocumentDataType) => {
     await submitUpdatedModel({
       modelId: model.modelId,
       modelData: data,
@@ -107,10 +112,7 @@ export const useModelEditWorkflow = ({
   };
 
   /** 新建渠道成功后刷新 */
-  const refreshAfterChannelCreated = () => {
-    refreshDetail();
-    onSuccess();
-  };
+  const refreshAfterChannelCreated = refreshChannelBindings;
 
   const navigateToChannelManagement = () => {
     onClose();

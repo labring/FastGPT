@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import type { NextApiResponse } from 'next';
 
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
@@ -29,7 +29,7 @@ async function handler(
     authToken: true,
     authApiKey: true
   });
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const qgModel = modelHandle.getDefaultModelData('llm');
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({

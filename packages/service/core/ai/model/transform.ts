@@ -1,9 +1,9 @@
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
-  SystemModelDocumentDataSchema,
-  type SystemModelDataType,
-  type SystemModelDocumentDataType
+  AIModelDocumentDataSchema,
+  type AIModelDataType,
+  type AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
 
 const configKeysMap: Record<ModelTypeEnum, string[]> = {
@@ -45,9 +45,7 @@ const configKeysMap: Record<ModelTypeEnum, string[]> = {
 };
 
 /** 将插件扁平模型协议转换为 `ai_models` 使用的 canonical 文档。 */
-export const flatModelToDocumentData = (
-  input: Record<string, any>
-): SystemModelDocumentDataType => {
+export const flatModelToDocumentData = (input: Record<string, any>): AIModelDocumentDataType => {
   const normalized = { ...input };
   if (normalized.type === ModelTypeEnum.llm) {
     normalized.maxResponse = normalized.maxResponse ?? normalized.maxTokens ?? 16000;
@@ -61,7 +59,7 @@ export const flatModelToDocumentData = (
     ...(normalized.config && typeof normalized.config === 'object' ? normalized.config : {})
   };
 
-  return SystemModelDocumentDataSchema.parse(
+  return AIModelDocumentDataSchema.parse(
     Object.fromEntries(
       Object.entries({ ...normalized, scope: ModelScopeEnum.system, config }).filter(
         ([, value]) => value !== undefined
@@ -71,7 +69,7 @@ export const flatModelToDocumentData = (
 };
 
 /** 生成可返回客户端的脱敏模型副本，不修改运行时快照对象。 */
-export const desensitizeSystemModel = <T extends SystemModelDataType>(model: T): T => ({
+export const desensitizeModel = <T extends AIModelDataType>(model: T): T => ({
   ...model,
   config: {
     ...model.config,
@@ -84,15 +82,14 @@ export const desensitizeSystemModel = <T extends SystemModelDataType>(model: T):
   requestUrl: undefined,
   requestAuth: undefined
 });
-export const desensitizeModel = desensitizeSystemModel;
 
 /** 写入前校验数据库模型与同名插件模板的类型一致。 */
 export const assertSystemModelTypesMatchPluginTemplates = ({
   models,
   pluginDocuments
 }: {
-  models: Array<Pick<SystemModelDocumentDataType, 'model' | 'type'>>;
-  pluginDocuments: Array<Pick<SystemModelDocumentDataType, 'model' | 'type'>>;
+  models: Array<Pick<AIModelDocumentDataType, 'model' | 'type'>>;
+  pluginDocuments: Array<Pick<AIModelDocumentDataType, 'model' | 'type'>>;
 }) => {
   const pluginModelNames = new Set(pluginDocuments.map((model) => model.model));
   const pluginModelKeys = new Set(pluginDocuments.map((model) => `${model.type}:${model.model}`));

@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
-import { channelTypeToScope } from '@fastgpt/global/core/ai/model';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
+import { channelTypeToScope } from '@fastgpt/global/core/ai/model/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateModelStatusBodySchema,
@@ -15,12 +15,13 @@ async function handler(req: ApiRequestProps<UpdateModelStatusBody>): Promise<voi
     bodySchema: UpdateModelStatusBodySchema
   }).body;
 
-  const { tmbId } = await authModelManage({ req, channelType });
+  const { tmbId, teamId } = await authModelManage({ req, channelType });
 
   await updateModelStatus({
     modelIds,
     isActive,
     scope: channelTypeToScope(channelType),
+    teamId,
     tmbId: channelType === 'team' ? tmbId : undefined
   });
 }

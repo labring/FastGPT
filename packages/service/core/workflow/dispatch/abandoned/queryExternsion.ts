@@ -1,4 +1,4 @@
-import { getModelHandle } from '../../../ai/model';
+import { getTeamModelHandle } from '../../../ai/model/index';
 /* Abandoned */
 
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
@@ -37,7 +37,7 @@ export const dispatchQueryExtension = async (props: Props): Promise<Response> =>
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId: props.runningAppInfo.teamId });
   const queryExtensionModel = modelHandle.getLLMModelData({ modelId, model });
   const embeddingModel = modelHandle.getDefaultModelData('embedding');
   const chatHistories = getHistories(history, histories);

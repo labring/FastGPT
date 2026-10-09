@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ColorSchemaType } from '@fastgpt/web/components/common/Tag/index';
@@ -66,7 +66,7 @@ type FormatModelTableListProps<T extends BaseFormatModelItem> = {
 /**
  * 纯计算模型列表格式化与过滤函数（脱离 React 渲染生命周期，易于测试和复用）
  */
-const formatModelTableList = <T extends BaseFormatModelItem>({
+export const formatModelTableList = <T extends BaseFormatModelItem>({
   models,
   modelType,
   provider,
@@ -77,110 +77,47 @@ const formatModelTableList = <T extends BaseFormatModelItem>({
   language,
   t
 }: FormatModelTableListProps<T>): FormattedModelTableItem<T>[] => {
-  const formatLLMModelList = models
-    .filter((item) => item.type === ModelTypeEnum.llm)
-    .map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.chat'),
-      priceLabel: (
-        <PriceTiersLabel
-          config={item}
-          unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        />
-      ),
-      tagColor: 'blue' as ColorSchemaType
-    }));
-
-  const formatVectorModelList = models
-    .filter((item) => item.type === ModelTypeEnum.embedding)
-    .map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.embedding'),
-      priceLabel: item.charsPointsPrice ? (
-        <Flex color={'myGray.700'}>
-          {`${t('common:Input')}: `}
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        </Flex>
-      ) : (
-        '-'
-      ),
-      tagColor: 'yellow' as ColorSchemaType
-    }));
-
-  const formatAudioSpeechModelList = models
-    .filter((item) => item.type === ModelTypeEnum.tts)
-    .map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.tts'),
-      priceLabel: item.charsPointsPrice ? (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K ${t('common:unit.character')}`}
-        </Flex>
-      ) : (
-        '-'
-      ),
-      tagColor: 'green' as ColorSchemaType
-    }));
-
-  const formatWhisperModel = models
-    .filter((item) => item.type === ModelTypeEnum.stt)
-    .map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.stt'),
-      priceLabel: item.charsPointsPrice ? (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 60${t('common:unit.seconds')}`}
-        </Flex>
-      ) : (
-        '-'
-      ),
-      tagColor: 'purple' as ColorSchemaType
-    }));
-
-  const formatRerankModelList = models
-    .filter((item) => item.type === ModelTypeEnum.rerank)
-    .map((item) => ({
-      ...item,
-      typeLabel: t('common:model.type.reRank'),
-      priceLabel: item.charsPointsPrice ? (
-        <Flex color={'myGray.700'}>
-          {`${t('common:Input')}: `}
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
-          </Box>
-          {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        </Flex>
-      ) : (
-        '-'
-      ),
-      tagColor: 'red' as ColorSchemaType
-    }));
-
-  const formattedModelMap = new Map(
-    [
-      ...formatLLMModelList,
-      ...formatVectorModelList,
-      ...formatAudioSpeechModelList,
-      ...formatWhisperModel,
-      ...formatRerankModelList
-    ].map((item) => [item.modelId ?? item.name, item] as const)
-  );
-
-  const list = models.flatMap((item) => {
-    if (modelType && item.type !== modelType) return [];
-    const key = item.modelId ?? item.name;
-    const formattedModel = formattedModelMap.get(key);
-    return formattedModel ? [formattedModel] : [];
-  });
+  // 逐项投影保留原始身份和顺序；公开价格目录没有 modelId，同名模型也不能互相覆盖。
+  const list = models
+    .filter((item) => !modelType || item.type === modelType)
+    .map((item) => {
+      const presentation = {
+        [ModelTypeEnum.llm]: { typeLabel: t('common:model.type.chat'), color: 'blue' },
+        [ModelTypeEnum.embedding]: {
+          typeLabel: t('common:model.type.embedding'),
+          color: 'yellow'
+        },
+        [ModelTypeEnum.tts]: { typeLabel: t('common:model.type.tts'), color: 'green' },
+        [ModelTypeEnum.stt]: { typeLabel: t('common:model.type.stt'), color: 'purple' },
+        [ModelTypeEnum.rerank]: { typeLabel: t('common:model.type.reRank'), color: 'red' }
+      } as const;
+      const { typeLabel, color } = presentation[item.type];
+      const unit =
+        item.type === ModelTypeEnum.stt
+          ? `60${t('common:unit.seconds')}`
+          : item.type === ModelTypeEnum.tts
+            ? `1K ${t('common:unit.character')}`
+            : '1K Tokens';
+      const priceLabel =
+        item.type === ModelTypeEnum.llm ? (
+          <PriceTiersLabel
+            config={item}
+            unitLabel={`${t('common:support.wallet.subscription.point')} / ${unit}`}
+          />
+        ) : item.charsPointsPrice ? (
+          <Flex color={'myGray.700'}>
+            {(item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank) &&
+              `${t('common:Input')}: `}
+            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+              {item.charsPointsPrice}
+            </Box>
+            {` ${t('common:support.wallet.subscription.point')} / ${unit}`}
+          </Flex>
+        ) : (
+          '-'
+        );
+      return { ...item, typeLabel, tagColor: color, priceLabel };
+    });
 
   const enrichedList = list.map((item) => {
     const providerMeta = getModelProvider(item.provider, language);
@@ -250,7 +187,7 @@ export const useModelTableFormat = <T extends BaseFormatModelItem>({
   getModelProvider,
   language
 }: UseModelTableFormatProps<T>) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
 
   const formattedList = useMemo(
     () =>

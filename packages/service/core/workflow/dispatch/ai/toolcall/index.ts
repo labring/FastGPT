@@ -1,4 +1,4 @@
-import { getModelHandle } from '../../../../ai/model';
+import { getTeamModelHandle } from '../../../../ai/model/index';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '../../../types/runtime';
@@ -76,7 +76,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const useSandbox = isAppChat ? appSandboxAvailability?.available === true : !!useAgentSandbox;
 
   try {
-    const modelHandle = await getModelHandle({ teamId: runningAppInfo.teamId });
+    const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
     const toolModel = modelHandle.getLLMModelData({ modelId, model });
     const useVision = aiChatVision && toolModel.config.vision;
     const useAudio = aiChatAudio && toolModel.config.audio;

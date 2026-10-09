@@ -2,16 +2,16 @@ import { assertModelAvailable } from '@fastgpt/service/core/ai/utils';
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  LLMSystemModelDataType,
+  LLMModelDataType,
   ModelReferenceType,
-  SystemModelDataType
+  AIModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError, getErrText } from '@fastgpt/global/common/error/utils';
 import { createModelHandle } from '../../../../core/ai/model/handle';
-import { isImageEmbeddingModel } from '../../../../core/ai/model';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
 
-const vlm: LLMSystemModelDataType = {
+const vlm: LLMModelDataType = {
   modelId: '68ee0bd23d17260b7829b137',
   type: ModelTypeEnum.llm,
   scope: 'system' as const,
@@ -22,7 +22,7 @@ const vlm: LLMSystemModelDataType = {
   config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000, vision: true }
 };
 
-const createHandle = (models: SystemModelDataType[] = [vlm]) =>
+const createHandle = (models: AIModelDataType[] = [vlm]) =>
   createModelHandle({
     models,
     defaultModels: {},
@@ -35,7 +35,7 @@ describe('getVlmModelData and model lookup', () => {
   it('returns the snapshot model and narrows the result', () => {
     const handle = createHandle();
     const model = handle.getVlmModelData({ modelId: vlm.modelId });
-    expectTypeOf(model).toEqualTypeOf<LLMSystemModelDataType>();
+    expectTypeOf(model).toEqualTypeOf<LLMModelDataType>();
     expect(model.modelId).toBe(vlm.modelId);
     expect(Object.isFrozen(model)).toBe(true);
   });
@@ -45,7 +45,7 @@ describe('getVlmModelData and model lookup', () => {
   });
 
   it('does not index team models into modelsByName map to prevent tenant model hijacking', () => {
-    const teamModel: SystemModelDataType = {
+    const teamModel: AIModelDataType = {
       modelId: 'team-model-id',
       type: ModelTypeEnum.llm,
       scope: 'team' as const,
@@ -66,7 +66,7 @@ describe('getVlmModelData and model lookup', () => {
   });
 
   it('resolves legacy model name only to system model when system and multiple members install models with the same name', () => {
-    const sysGpt: SystemModelDataType = {
+    const sysGpt: AIModelDataType = {
       modelId: 'sys-gpt-id',
       type: ModelTypeEnum.llm,
       scope: 'system' as const,
@@ -76,7 +76,7 @@ describe('getVlmModelData and model lookup', () => {
       isActive: true,
       config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 100000, vision: true }
     };
-    const memberAGpt: SystemModelDataType = {
+    const memberAGpt: AIModelDataType = {
       modelId: 'member-a-gpt-id',
       type: ModelTypeEnum.llm,
       scope: 'team' as const,
@@ -88,7 +88,7 @@ describe('getVlmModelData and model lookup', () => {
       isActive: true,
       config: { maxContext: 128000, maxResponse: 4096, quoteMaxToken: 100000, vision: true }
     };
-    const memberBGpt: SystemModelDataType = {
+    const memberBGpt: AIModelDataType = {
       modelId: 'member-b-gpt-id',
       type: ModelTypeEnum.llm,
       scope: 'team' as const,
@@ -131,7 +131,7 @@ describe('getVlmModelData and model lookup', () => {
     expect(() => handle.getVlmModelData(reference)).toThrow(ModelErrEnum.unExist);
   });
 
-  it.each<SystemModelDataType>([
+  it.each<AIModelDataType>([
     { ...vlm, isActive: false },
     { ...vlm, config: { ...vlm.config, vision: false } },
     {

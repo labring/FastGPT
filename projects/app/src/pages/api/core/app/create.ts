@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
@@ -176,7 +176,7 @@ export const onCreateApp = async ({
     edges: edges ?? [],
     chatConfig
   });
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,
@@ -341,7 +341,7 @@ export const onUpdateAppWorkflow = async ({
     edges: edges ?? [],
     chatConfig
   });
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   formatModels({
     nodes: workflow.nodes,
     chatConfig: workflow.chatConfig,

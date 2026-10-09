@@ -1,14 +1,14 @@
+import { createModelHandle } from '@fastgpt/service/core/ai/model/handle';
 import {
-  createModelHandle,
-  getCachedModelHandle,
-  publishModelHandle
-} from '@fastgpt/service/core/ai/model/handle';
+  getCachedSystemModelHandle,
+  publishSystemModelHandle
+} from '@fastgpt/service/core/ai/model/cache';
 import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 /** 测试显式注入目录，不再依赖 Node 全局变量。默认值按当前真实 handle 的槽位读取。 */
 export const getModelTestDefaults = (): SystemDefaultModelType => {
-  const handle = getCachedModelHandle();
+  const handle = getCachedSystemModelHandle();
   const defaults: SystemDefaultModelType = {};
   if (!handle) return defaults;
   for (const slot of [
@@ -30,8 +30,8 @@ export const getModelTestDefaults = (): SystemDefaultModelType => {
 
 /** 局部覆盖测试目录并发布新快照；未指定的数据保留，避免测试回写冻结的共享对象。 */
 export const setModelTestSnapshot = (patch: Partial<Parameters<typeof createModelHandle>[0]>) => {
-  const previous = getCachedModelHandle();
-  publishModelHandle(
+  const previous = getCachedSystemModelHandle();
+  publishSystemModelHandle(
     createModelHandle({
       defaultModels: getModelTestDefaults(),
       configuredDefaultModelIds: previous?.configuredDefaultModelIds ?? {},
@@ -48,8 +48,8 @@ export const setModelTestSnapshot = (patch: Partial<Parameters<typeof createMode
 };
 
 /** 旧测试的 ID/名称索引转换为唯一模型列表；仅作为 fixture 输入，不公开生产 Map。 */
-export const setModelTestMap = (map?: Map<string, SystemModelDataType>) => {
-  if (!map) return publishModelHandle(undefined);
+export const setModelTestMap = (map?: Map<string, AIModelDataType>) => {
+  if (!map) return publishSystemModelHandle(undefined);
   setModelTestSnapshot({
     models: [...new Map([...map.values()].map((model) => [model.modelId, model])).values()]
   });
@@ -57,17 +57,17 @@ export const setModelTestMap = (map?: Map<string, SystemModelDataType>) => {
 
 export const getModelTestMap = () =>
   new Map(
-    (getCachedModelHandle()?.getAllModels() ?? []).flatMap((model) => [
+    (getCachedSystemModelHandle()?.getAllModels() ?? []).flatMap((model) => [
       [`id:${model.modelId}`, model] as const,
       [`model:${model.model}`, model] as const
     ])
   );
 
 /** 新增/替换 fixture 模型，显式重新发布而不是修改 handle 内部 Map。 */
-export const addModelTestModel = (model: SystemModelDataType) =>
+export const addModelTestModel = (model: AIModelDataType) =>
   setModelTestSnapshot({
     models: [
-      ...(getCachedModelHandle()?.getAllModels() ?? []).filter(
+      ...(getCachedSystemModelHandle()?.getAllModels() ?? []).filter(
         (item) => item.modelId !== model.modelId
       ),
       model

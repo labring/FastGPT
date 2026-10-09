@@ -1,11 +1,11 @@
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import { isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { findSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
+import { findSystemDefaultModelIds } from '@fastgpt/service/core/ai/model/catalog/entity';
 import type { ModelRequirement } from './types';
 
-type StoredModel = SystemModelDocumentDataType & { _id: unknown };
+type StoredModel = AIModelDocumentDataType & { _id: unknown };
 
 export type ModelCatalog = Awaited<ReturnType<typeof loadModelCatalog>>;
 

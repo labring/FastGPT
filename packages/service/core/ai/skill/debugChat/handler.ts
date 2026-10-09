@@ -1,4 +1,4 @@
-import { getModelHandle } from '../../model';
+import { getTeamModelHandle } from '../../model';
 import type { NodeApiRequest, NodeApiResponse } from '../../../../types/http';
 import {
   DispatchNodeResponseKeyEnum,
@@ -119,7 +119,7 @@ export async function handleSkillDebugChat(
       skillId,
       per: WritePermissionVal
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getTeamModelHandle({ teamId });
     const modelData = modelHandle.getLLMModelData({ modelId });
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {

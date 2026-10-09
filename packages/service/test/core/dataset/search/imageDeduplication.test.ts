@@ -6,8 +6,8 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  RerankSystemModelDataType
+  EmbeddingModelDataType,
+  RerankModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import type { SearchDatasetDataProps } from '@fastgpt/service/core/dataset/search/type';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -37,7 +37,7 @@ vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
 
 import { searchDatasetData } from '@fastgpt/service/core/dataset/search/defaultRecall';
 
-const model: EmbeddingSystemModelDataType = {
+const model: EmbeddingModelDataType = {
   modelId: '507f1f77bcf86cd799439017',
   provider: 'openai',
   model: 'image-embedding',
@@ -47,7 +47,7 @@ const model: EmbeddingSystemModelDataType = {
   isActive: true,
   config: { defaultToken: 100, maxToken: 100, weight: 0, vision: true }
 };
-const rerankModel: RerankSystemModelDataType = {
+const rerankModel: RerankModelDataType = {
   modelId: '507f1f77bcf86cd799439018',
   provider: 'openai',
   model: 'rerank',

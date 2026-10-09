@@ -1,4 +1,4 @@
-import { getModelHandle } from '../ai/model';
+import { getSystemModelHandle } from '../ai/model/index';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
@@ -173,7 +173,7 @@ const generateChatTitleFromQuestion = async ({
   question: string;
   teamId: string;
 }): Promise<string | undefined> => {
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getSystemModelHandle();
   const titleModel = modelHandle.getDefaultModelData('chatTitleLLM');
   if (!titleModel?.model) return question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
   const questionForTitle = question.slice(0, CHAT_TITLE_QUESTION_MAX_LENGTH);

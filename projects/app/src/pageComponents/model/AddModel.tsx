@@ -1,8 +1,9 @@
+import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
 import { useModelChannelTest } from './useModelChannelTest';
 import type { ModelChannelSummary } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { getModelTemplates, postModelsFromTemplates } from '@/web/core/ai/model/api';
-import { defaultChannel } from '@fastgpt/global/core/ai/channel';
+import { defaultChannel } from '@fastgpt/global/core/ai/model/channel';
 import {
   Box,
   Button,
@@ -22,10 +23,10 @@ import {
 } from '@chakra-ui/react';
 import type { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { modelTypeList, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { channelTypeToScope, resolveChannelType } from '@fastgpt/global/core/ai/model';
+import { channelTypeToScope, resolveChannelType } from '@fastgpt/global/core/ai/model/utils';
 import type {
-  SystemModelDataType,
-  SystemModelDocumentDataType
+  AIModelDataType,
+  AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import {
   sortModelsByProvider,
@@ -58,7 +59,7 @@ import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 const EditChannelModal = dynamic(() => import('./Channel/EditChannelModal'), { ssr: false });
 
 /** 空白模型只使用固定默认值；数值草稿的 NaN 表示未填写，提交时再补齐引用上限。 */
-const createBlankSystemModelData = ({
+const createBlankModelData = ({
   type,
   channelType,
   scope
@@ -66,7 +67,7 @@ const createBlankSystemModelData = ({
   type: ModelTypeEnum;
   channelType?: ChannelType;
   scope?: ModelScopeEnum;
-}): SystemModelDocumentDataType => {
+}): AIModelDocumentDataType => {
   const resolvedScope = channelTypeToScope(
     resolveChannelType({ channelType, scope })
   ) as ModelScopeEnum.system;
@@ -240,6 +241,40 @@ const ModelTypeSelector = ({
 };
 
 /**
+ * 统一管理模型新建流程中的渠道选择与新建渠道自动勾选。
+ *
+ * 【职责与行为】
+ * 1. 维护当前选中的渠道集合（内部统一以 Set<number> 维护，避免重复并保持与 ModelLinkedChannels 一致）。
+ * 2. 对外同时暴露 Set 与 Array 格式的读写接口，抹平 ModelLinkedChannels 与 ModelChannelSelector 的格式差异。
+ * 3. 新建渠道后直接使用服务端返回的 ID 自动选中，列表刷新只负责展示最新摘要。
+ * 4. 依赖外部由 useModelConfig 提供的 onRefresh 进行父级渠道列表刷新，杜绝在子组件内重复并发请求 getModelConfig。
+ */
+const useChannelAutoSelect = ({ onRefresh }: { onRefresh?: () => unknown | Promise<unknown> }) => {
+  const [selectedChannelIds, setSelectedChannelIds] = useState<Set<number>>(new Set());
+  const onChannelCreated = useCallback(
+    async (created?: CreateChannelResponse) => {
+      if (created) setSelectedChannelIds((previous) => new Set([...previous, created.id]));
+      await onRefresh?.();
+    },
+    [onRefresh]
+  );
+
+  const selectedChannelIdList = useMemo(() => [...selectedChannelIds], [selectedChannelIds]);
+
+  const setSelectedChannelIdList = useCallback((ids: number[]) => {
+    setSelectedChannelIds(new Set(ids));
+  }, []);
+
+  return {
+    selectedChannelIds,
+    setSelectedChannelIds,
+    selectedChannelIdList,
+    setSelectedChannelIdList,
+    onChannelCreated
+  };
+};
+
+/**
  * 空白新建模型的两步控制器。
  *
  * 类型选择和参数表单共享同一个 Modal，创建状态只包含持久化字段，不持有或发送 modelId。
@@ -250,14 +285,16 @@ const BlankModelCreateModal = ({
   providers,
   channels,
   channelType,
+  onRefreshChannels,
   onSuccess,
   onClose
 }: {
-  createModelData: (type: ModelTypeEnum) => SystemModelDocumentDataType;
-  defaultModelData?: SystemModelDocumentDataType;
+  createModelData: (type: ModelTypeEnum) => AIModelDocumentDataType;
+  defaultModelData?: AIModelDocumentDataType;
   providers: ModelProviderItemType[];
   channels: ModelChannelSummary[];
   channelType: ChannelType;
+  onRefreshChannels?: () => unknown | Promise<unknown>;
   onSuccess: () => unknown | Promise<unknown>;
   onClose: () => void;
 }) => {
@@ -268,7 +305,9 @@ const BlankModelCreateModal = ({
     defaultModelData?.type ?? ModelTypeEnum.llm
   );
   const [submitting, setSubmitting] = useState(false);
-  const [selectedChannelIds, setSelectedChannelIds] = useState<Set<number>>(new Set());
+  const { selectedChannelIds, setSelectedChannelIds, onChannelCreated } = useChannelAutoSelect({
+    onRefresh: onRefreshChannels ?? onSuccess
+  });
   const [showAssociateChannel, setShowAssociateChannel] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [draftModel, setDraftModel] = useState(defaultModelData?.model ?? '');
@@ -279,6 +318,9 @@ const BlankModelCreateModal = ({
     [defaultModelData, createModelData, selectedType]
   );
   const { openConfirm: openLeaveConfirm, ConfirmModal: LeaveConfirmModal } = useConfirm();
+
+  const currentDraftModel = draftModel.trim() || modelData.model.trim();
+  const currentProviderAvatar = providers.find((p) => p.id === modelData.provider)?.avatar;
 
   const { testingChannelIds, testModelChannel: handleTestModelChannel } = useModelChannelTest({
     target: { source: 'draft', getModelData: () => modelFormGetValuesRef.current?.() },
@@ -434,18 +476,17 @@ const BlankModelCreateModal = ({
 
       {showCreateChannel && (
         <EditChannelModal
-          defaultConfig={{ ...defaultChannel, models: [] }}
+          defaultConfig={{
+            ...defaultChannel,
+            models: []
+          }}
           fixedModel={{
-            model: draftModel.trim() || t('config_model:model_pending_creation')
+            model: currentDraftModel || t('config_model:model_pending_creation'),
+            avatar: currentProviderAvatar
           }}
           channelType={channelType}
-          allowEmptyModels
-          onSuccess={async (createdChannelId) => {
-            if (createdChannelId !== undefined) {
-              setSelectedChannelIds((current) => new Set([...current, createdChannelId]));
-            }
-            onSuccess();
-          }}
+          allowEmptyModels={true}
+          onSuccess={onChannelCreated}
           onClose={() => setShowCreateChannel(false)}
         />
       )}
@@ -464,13 +505,13 @@ const TemplateCreateModal = ({
   onRefresh,
   onSelectSingleTemplate
 }: {
-  installedModels: SystemModelDataType[];
+  installedModels: AIModelDataType[];
   channels: ModelChannelSummary[];
   channelType: ChannelType;
   onClose: () => void;
   onSuccess: () => Promise<void>;
   onRefresh?: () => Promise<void>;
-  onSelectSingleTemplate?: (template: SystemModelDocumentDataType) => void;
+  onSelectSingleTemplate?: (template: AIModelDocumentDataType) => void;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const [step, setStep] = useState<1 | 2>(1);
@@ -478,7 +519,10 @@ const TemplateCreateModal = ({
   const [providerFilter, setProviderFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<ModelTypeEnum | ''>('');
   const [templateSearch, setTemplateSearch] = useState('');
-  const [selectedChannelIds, setSelectedChannelIds] = useState<number[]>([]);
+  const { selectedChannelIdList, setSelectedChannelIdList, onChannelCreated } =
+    useChannelAutoSelect({
+      onRefresh: onRefresh ?? onSuccess
+    });
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const {
     data,
@@ -564,7 +608,8 @@ const TemplateCreateModal = ({
     () =>
       postModelsFromTemplates({
         templates: selectedTemplates.map(({ type, model }) => ({ type, model })),
-        channelType
+        channelType,
+        channelIds: selectedChannelIdList
       }),
     {
       onSuccess: () => {
@@ -820,8 +865,8 @@ const TemplateCreateModal = ({
           }))}
           channels={channels}
           channelType={channelType}
-          selectedChannelIds={selectedChannelIds}
-          onChange={setSelectedChannelIds}
+          selectedChannelIds={selectedChannelIdList}
+          onChange={setSelectedChannelIdList}
           showCurrentModel={false}
           showSelectedModelCount
           showTest={false}
@@ -831,21 +876,17 @@ const TemplateCreateModal = ({
 
       {showCreateChannel && (
         <EditChannelModal
-          defaultConfig={{ ...defaultChannel, models: [] }}
+          defaultConfig={{
+            ...defaultChannel,
+            models: selectedTemplates.map((model) => model.model)
+          }}
           fixedModels={selectedTemplates.map((model) => ({
             model: model.model,
             avatar: providerMap.get(model.provider)?.avatar
           }))}
           channelType={channelType}
-          allowEmptyModels
-          onSuccess={async (createdChannelId) => {
-            if (createdChannelId !== undefined) {
-              setSelectedChannelIds((current) =>
-                current.includes(createdChannelId) ? current : [...current, createdChannelId]
-              );
-            }
-            onRefresh?.();
-          }}
+          allowEmptyModels={selectedTemplates.length === 0}
+          onSuccess={onChannelCreated}
           onClose={() => setShowCreateChannel(false)}
         />
       )}
@@ -863,7 +904,7 @@ const AddModel = ({
   buttonBoxProps,
   ...buttonProps
 }: {
-  installedModels: SystemModelDataType[];
+  installedModels: AIModelDataType[];
   channels: ModelChannelSummary[];
   providers: ModelProviderItemType[];
   channelType: ChannelType;
@@ -872,11 +913,9 @@ const AddModel = ({
 } & ButtonProps) => {
   const [showBlankCreate, setShowBlankCreate] = useState(false);
   const [showTemplateCreate, setShowTemplateCreate] = useState(false);
-  const [templateForConfig, setTemplateForConfig] = useState<SystemModelDocumentDataType | null>(
-    null
-  );
+  const [templateForConfig, setTemplateForConfig] = useState<AIModelDocumentDataType | null>(null);
   const getBlankModelData = useCallback(
-    (type: ModelTypeEnum) => createBlankSystemModelData({ type, channelType }),
+    (type: ModelTypeEnum) => createBlankModelData({ type, channelType }),
     [channelType]
   );
 
@@ -895,6 +934,7 @@ const AddModel = ({
           channels={channels}
           channelType={channelType}
           onClose={() => setShowBlankCreate(false)}
+          onRefreshChannels={onSuccess}
           onSuccess={onSuccess}
         />
       )}
@@ -906,10 +946,8 @@ const AddModel = ({
           channels={channels}
           channelType={channelType}
           onClose={() => setTemplateForConfig(null)}
-          onSuccess={async () => {
-            setTemplateForConfig(null);
-            await onSuccess();
-          }}
+          onRefreshChannels={onSuccess}
+          onSuccess={onSuccess}
         />
       )}
       {showTemplateCreate && (

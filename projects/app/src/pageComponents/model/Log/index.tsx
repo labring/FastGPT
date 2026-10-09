@@ -30,12 +30,10 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import type {
-  ChannelLogListItem,
-  ChannelType
-} from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ChannelLogListItem } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
-import ModelTabHeader from '../ModelTabHeader';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 
@@ -50,13 +48,7 @@ type LogDetailType = Omit<ChannelLogListItem, 'model' | 'request_at'> & {
   request_body?: string;
   response_body?: string;
 };
-const ChannelLog = ({
-  Tab,
-  channelType
-}: {
-  Tab: React.ReactNode;
-  channelType: ChannelType;
-}) => {
+const ChannelLog = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: ChannelType }) => {
   const { t, i18n } = useSafeTranslation();
   const { models: availableModels, getModelProvider } = useModelConfig({
     channelType,
@@ -434,7 +426,7 @@ const LogDetail = ({
           <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
             <LogDetailTitle flex={'0 0 150px'}>{t('config_model:model_ttfb_time')}</LogDetailTitle>
             <LogDetailContainer>
-              {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds}ms` : '-'}
+              {detailData.ttfb_milliseconds ? `${detailData.ttfb_milliseconds.toFixed(2)}s` : '-'}
             </LogDetailContainer>
           </GridItem>
           <GridItem display={'flex'} borderBottomWidth="1px">

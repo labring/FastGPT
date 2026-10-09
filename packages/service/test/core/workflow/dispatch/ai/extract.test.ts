@@ -16,7 +16,17 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+  getSystemModelHandle: async () => ({
+    getLLMModelData: (...args: unknown[]) => {
+      const model = getLLMModelMock(...args);
+      return {
+        ...model,
+        modelId: '68ad85a7463006c963799a65',
+        config: model.config ?? model
+      };
+    }
+  }),
+  getTeamModelHandle: async () => ({
     getLLMModelData: (...args: unknown[]) => {
       const model = getLLMModelMock(...args);
       return {

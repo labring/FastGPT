@@ -28,7 +28,7 @@ import { Call } from '@test/utils/request';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RebuildEmbeddingBodySchema } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
 
 /** Snapshot ACL rows in a stable order so assertions compare exact permission sets. */
 const toPermissionRows = (collaborators: { tmbId?: unknown; permission: number }[]) =>
@@ -101,7 +101,7 @@ describe('update dataset', () => {
     'resolves legacy model updates without overriding canonical selections (%s)',
     async (mode) => {
       const owner = (await getFakeUsers(1)).members[0];
-      const previousModels = getCachedModelHandle()!.getAllModels();
+      const previousModels = getCachedSystemModelHandle()!.getAllModels();
       const llm = getModelTestDefaults().llm!;
       setModelTestSnapshot({
         models: previousModels.map((model) =>

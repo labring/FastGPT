@@ -3,16 +3,23 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { AIModelDataSchema } from '@fastgpt/global/core/ai/model/schema';
+import { createModelHandle } from '@fastgpt/service/core/ai/model/handle';
 
 const mocks = vi.hoisted(() => ({
   getAppLatestVersion: vi.fn(),
   getAppDraftResourceBaseline: vi.fn(),
   checkAppResourceReadPermissions: vi.fn(),
-  getUnauthorizedAppResources: vi.fn(),
+  getTeamModelHandle: vi.fn(),
   authAppByTmbId: vi.fn(),
   authDatasetByTmbId: vi.fn(),
   authSkillByTmbId: vi.fn(),
   getTmbInfoByTmbId: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/ai/model/index', () => ({
+  getTeamModelHandle: mocks.getTeamModelHandle
 }));
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
@@ -38,6 +45,7 @@ vi.mock('@fastgpt/service/support/user/team/controller', () => ({
 
 import {
   authTargetModelResource,
+  getUnauthorizedAppResources,
   filterAuthorizedAppResources,
   checkAppResourceReadPermissions
 } from '@fastgpt/service/support/permission/app/resource';
@@ -247,5 +255,59 @@ describe('filterAuthorizedAppResources', () => {
         tmbId: validTmbId
       })
     ).rejects.toThrow('MongoTimeoutError: query exceeded limit');
+  });
+});
+
+describe('team models in App resource permissions', () => {
+  const teamId = '65f000000000000000000002';
+  const tmbId = '65f000000000000000000001';
+  const ownId = '65f000000000000000000011';
+  const disabledId = '65f000000000000000000012';
+  const privateId = '65f000000000000000000013';
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.getTmbInfoByTmbId.mockResolvedValue({ teamId });
+    const models = [
+      { modelId: ownId, tmbId, isActive: true },
+      { modelId: disabledId, tmbId, isActive: false },
+      { modelId: privateId, tmbId: '65f000000000000000000099', isActive: true }
+    ].map((model) =>
+      AIModelDataSchema.parse({
+        ...model,
+        model: model.modelId,
+        name: 'Private model',
+        provider: 'OpenAI',
+        type: 'llm',
+        scope: 'team',
+        teamId,
+        config: { maxContext: 4096, maxResponse: 1024, quoteMaxToken: 1024 }
+      })
+    );
+    mocks.getTeamModelHandle.mockResolvedValue(
+      createModelHandle({
+        models,
+        defaultModels: {},
+        configuredDefaultModelIds: {},
+        revision: 1,
+        version: 'app-resource-team-catalog'
+      })
+    );
+  });
+
+  it('allows an owned team model using one snapshot for existence and real ACL projection', async () => {
+    await expect(
+      checkAppResourceReadPermissions({ resources: [{ type: 'model', id: ownId }], tmbId })
+    ).resolves.toBeUndefined();
+    expect(mocks.getTeamModelHandle).toHaveBeenCalledExactlyOnceWith({ teamId });
+  });
+  it('distinguishes a disabled model from another member private model in the same snapshot', async () => {
+    const disabled = { type: 'model' as const, id: disabledId };
+    const privateModel = { type: 'model' as const, id: privateId };
+    expect(
+      await getUnauthorizedAppResources({ resources: [disabled, privateModel], tmbId })
+    ).toEqual([
+      { resource: disabled, error: ModelErrEnum.unExist },
+      { resource: privateModel, error: ERROR_ENUM.unAuthModel }
+    ]);
   });
 });

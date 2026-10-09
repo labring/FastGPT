@@ -1,6 +1,7 @@
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { getModelHandle, isImageEmbeddingModel } from '@fastgpt/service/core/ai/model';
-import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
+import { authModelUse } from '@fastgpt/service/support/permission/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -38,7 +39,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     datasetId,
     per: OwnerPermissionVal
   });
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const vectorModelData = modelHandle.getEmbeddingModelData({ modelId: vectorModelId });
   await authModelUse({ modelId: vectorModelData.modelId, tmbId, teamId });
 

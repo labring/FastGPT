@@ -6,7 +6,7 @@ import {
   type ModelReference,
   type GetModelDetailResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { authAndGetModelInstance } from '@fastgpt/service/support/permission/model/controller';
+import { authAndGetModelInstance } from '@fastgpt/service/support/permission/model/auth';
 import { getModelDetailService } from '@fastgpt/service/core/ai/model/query';
 
 /** 获取模型详细信息及渠道关联状态，统一通过 authAndGetModelInstance 进行鉴权与模型定位。 */

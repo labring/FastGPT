@@ -23,6 +23,7 @@ describe('AIProxyClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAxiosWithoutSSRF.mockReset();
     client = new AIProxyClient(() => config);
   });
 
@@ -98,7 +99,7 @@ describe('AIProxyClient', () => {
 
     it('create posts payload to /api/channel/', async () => {
       mockAxiosWithoutSSRF.mockResolvedValueOnce({
-        data: { success: true, data: null }
+        data: { success: true, data: { id: 12 } }
       });
 
       await client.system.channels.create({
@@ -201,7 +202,7 @@ describe('AIProxyClient', () => {
 
     it('create posts to group-scoped endpoint', async () => {
       mockAxiosWithoutSSRF.mockResolvedValueOnce({
-        data: { success: true, data: null }
+        data: { success: true, data: { id: 12 } }
       });
 
       await client.group(groupId).channels.create({
@@ -218,6 +219,44 @@ describe('AIProxyClient', () => {
           data: expect.objectContaining({ name: 'member-ch' })
         })
       );
+    });
+
+    it('resolves an empty creation response by exact name across pages in the same group', async () => {
+      mockAxiosWithoutSSRF
+        .mockResolvedValueOnce({ data: { success: true, data: null } })
+        .mockResolvedValueOnce({
+          data: { success: true, data: { channels: [{ id: 1, name: 'target-extra' }], total: 2 } }
+        })
+        .mockResolvedValueOnce({
+          data: { success: true, data: { channels: [{ id: 22, name: 'target' }], total: 2 } }
+        });
+      await expect(
+        client.group(groupId).channels.create({ name: 'target', type: 1, key: 'sk', models: [] })
+      ).resolves.toEqual({ id: 22 });
+      expect(mockAxiosWithoutSSRF).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          url: `https://aiproxy.example.com/api/group/${encodeURIComponent(groupId)}/channels/search?page=2&per_page=100&keyword=target`
+        })
+      );
+    });
+
+    it.each([
+      { channels: [] },
+      {
+        channels: [
+          { id: 1, name: 'target' },
+          { id: 2, name: 'target' }
+        ]
+      }
+    ])('does not invent an ID for missing or ambiguous creation results', async ({ channels }) => {
+      mockAxiosWithoutSSRF
+        .mockResolvedValueOnce({ data: { success: true, data: null } })
+        .mockResolvedValueOnce({
+          data: { success: true, data: { channels, total: channels.length } }
+        });
+      await expect(
+        client.group(groupId).channels.create({ name: 'target', type: 1, key: 'sk', models: [] })
+      ).rejects.toThrow('could not be resolved uniquely');
     });
 
     it('batchDelete posts to group batch_delete endpoint', async () => {

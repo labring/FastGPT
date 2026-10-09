@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { updateDatasetDataIndex } from '@/service/core/dataset/data/dataIndex';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
@@ -29,7 +29,7 @@ async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> 
     per: WritePermissionVal,
     assertWritable: true
   });
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const embeddingModel = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(collection.dataset, 'embedding')
   );

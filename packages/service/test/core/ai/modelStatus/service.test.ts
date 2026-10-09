@@ -2,7 +2,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   aggregateRecordsToTimelinePoints,
@@ -16,7 +16,7 @@ import { MongoSystemConfigs } from '../../../../common/system/config/schema';
 import * as modelStatusService from '../../../../core/ai/modelStatus/service';
 import { MODEL_TEST_TIMEOUT_MS } from '../../../../core/ai/model/test';
 
-const model: SystemModelDataType = {
+const model: AIModelDataType = {
   modelId: 'model-status-test-id',
   type: ModelTypeEnum.llm,
   provider: 'OpenAI',

@@ -30,7 +30,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
 import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 
 const mocks = vi.hoisted(() => ({
@@ -587,7 +587,7 @@ describe('checkAppResourceReadPermissions', () => {
     const owner = await getUser(`model-resource-owner-${getNanoid(6)}`);
     const member = await getUser(`model-resource-member-${getNanoid(6)}`, owner.teamId);
     const modelId = String(new Types.ObjectId());
-    const previousHandle = getCachedModelHandle()!;
+    const previousHandle = getCachedSystemModelHandle()!;
     const previousModels = previousHandle.getAllModels();
     const previousDefaults = getModelTestDefaults();
     const model = {

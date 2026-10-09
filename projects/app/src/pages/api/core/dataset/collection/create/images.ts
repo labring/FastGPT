@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDatasetCollectionCreate } from '@fastgpt/service/support/permission/dataset/auth';
 import {
@@ -62,7 +62,7 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionWithResult
       limit: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
       increment: result.fileMetadata.length
     });
-    const modelHandle = await getModelHandle({ teamId });
+    const modelHandle = await getTeamModelHandle({ teamId });
     const { supportVlm, supportImageEmbedding } = getDatasetImageIndexCapability({
       vectorModel: modelHandle.getEmbeddingModelData(
         getDatasetModelReference(dataset, 'embedding')

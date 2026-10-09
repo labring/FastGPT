@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
 /* Dataset collection source parse, not max size. */
@@ -166,7 +166,7 @@ export const datasetParseQueue = async (): Promise<any> => {
 
         try {
           // 解析阶段只严格校验向量模型；辅助模型仅取分块元数据，不校验启用或可调用状态。
-          const modelHandle = await getModelHandle({ teamId: String(dataset.teamId) });
+          const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
           const embeddingModelData = modelHandle.getEmbeddingModelData(
             getDatasetModelReference(dataset, 'embedding')
           );

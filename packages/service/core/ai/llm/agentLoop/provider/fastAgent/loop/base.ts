@@ -11,7 +11,7 @@ import { compressRequestMessages, compressToolResponse } from '../../../../compr
 import { filterEmptyAssistantMessages } from './message';
 import { countGptMessagesTokens } from '../../../../../../../common/string/tiktoken';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentLoopAssistantResponse } from '../../../domain/tool';
 import type {
   AgentLoopChildrenInteractiveParams,
@@ -143,7 +143,7 @@ export const onCompressContext = async ({
   isAborted: RunAgentCallProps['isAborted'];
   messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
-  modelData: LLMSystemModelDataType;
+  modelData: LLMModelDataType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   tools?: ChatCompletionTool[];
   userKey: RunAgentCallProps['userKey'];

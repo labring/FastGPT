@@ -90,7 +90,12 @@ vi.mock('@fastgpt/service/core/dataset/training/controller', () => ({
 
 vi.mock('@fastgpt/service/core/ai/model', () => {
   return {
-    getModelHandle: async () => ({
+    getSystemModelHandle: async () => ({
+      getEmbeddingModelData: mockGetDatasetEmbeddingModel,
+      getLLMModelData: mockGetDatasetAgentModel,
+      getVlmModelData: mockGetDatasetVlmModel
+    }),
+    getTeamModelHandle: async () => ({
       getEmbeddingModelData: mockGetDatasetEmbeddingModel,
       getLLMModelData: mockGetDatasetAgentModel,
       getVlmModelData: mockGetDatasetVlmModel

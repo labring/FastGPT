@@ -12,7 +12,7 @@ import {
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { serviceEnv } from '@fastgpt/service/env';
 vi.unmock('@fastgpt/service/core/ai/model');
 
@@ -21,8 +21,8 @@ import { enqueueNextDatasetSynonymRebuildTask } from '@/service/core/dataset/que
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 
 let testRoot: Awaited<ReturnType<typeof getRootUser>>;
-let currentModel: EmbeddingSystemModelDataType;
-let nextModel: EmbeddingSystemModelDataType;
+let currentModel: EmbeddingModelDataType;
+let nextModel: EmbeddingModelDataType;
 
 const createContext = async () => {
   const root = testRoot;

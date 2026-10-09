@@ -6,7 +6,7 @@ import {
   isTeamModel,
   resolveChannelType,
   scopeToChannelType
-} from '@fastgpt/global/core/ai/model';
+} from '@fastgpt/global/core/ai/model/utils';
 
 describe('model scope helpers', () => {
   describe('isSystemModel / isTeamModel', () => {

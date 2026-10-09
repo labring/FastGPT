@@ -1,5 +1,5 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
+import { authModelUse } from '@fastgpt/service/support/permission/model/auth';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { resolveReadableCollectionIds } from '@fastgpt/service/support/permission/collection/auth';
@@ -100,7 +100,7 @@ export async function handler(
     })
   );
 
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const { rerankModelData, extensionModelData } = getDatasetSearchAuxiliaryModels(
     {
       usingReRank,

@@ -2,8 +2,8 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Grid, GridItem, HStack, Input, Switch } from '@chakra-ui/react';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { MAX_MODEL_PRICE_TIERS } from '@fastgpt/global/core/ai/model/pricing';
 import type { ModelProviderItemType } from '@fastgpt/global/core/ai/model/provider';
 import {
@@ -147,8 +147,8 @@ const SwitchField = ({
 }: {
   label: string;
   tip?: string;
-  field: FieldPath<SystemModelDocumentDataType>;
-  register: UseFormRegister<SystemModelDocumentDataType>;
+  field: FieldPath<AIModelDocumentDataType>;
+  register: UseFormRegister<AIModelDocumentDataType>;
 }) => (
   <GridItem>
     <Flex alignItems={'center'} gap={1} mb={3}>
@@ -166,7 +166,7 @@ const ProviderField = React.memo(function ProviderField({
   providerList,
   t
 }: {
-  control: Control<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
   providerList: { label: React.ReactNode; value: string }[];
   t: ReturnType<typeof useSafeTranslation>['t'];
 }) {
@@ -202,8 +202,8 @@ const ResponseFormatField = React.memo(function ResponseFormatField({
   setValue,
   t
 }: {
-  control: Control<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
+  setValue: UseFormSetValue<AIModelDocumentDataType>;
   t: ReturnType<typeof useSafeTranslation>['t'];
 }) {
   const responseFormatList = useWatch({
@@ -253,8 +253,8 @@ const DefaultConfigField = React.memo(function DefaultConfigField({
   tip,
   onDraftChange
 }: {
-  control: Control<SystemModelDocumentDataType>;
-  setValue: UseFormSetValue<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
+  setValue: UseFormSetValue<AIModelDocumentDataType>;
   label: string;
   tip: string;
   onDraftChange?: () => void;
@@ -293,7 +293,7 @@ const VoicesField = React.memo(function VoicesField({
   t,
   onDraftChange
 }: {
-  control: Control<SystemModelDocumentDataType>;
+  control: Control<AIModelDocumentDataType>;
   t: ReturnType<typeof useSafeTranslation>['t'];
   onDraftChange?: () => void;
 }) {
@@ -343,13 +343,13 @@ const VoicesField = React.memo(function VoicesField({
   );
 });
 
-export type ModelConfigFormGetValues = () => SystemModelDocumentDataType;
+export type ModelConfigFormGetValues = () => AIModelDocumentDataType;
 
 type ModelConfigFormProps = {
-  modelData: SystemModelDocumentDataType;
+  modelData: AIModelDocumentDataType;
   providers: ModelProviderItemType[];
   formId: string;
-  onSubmit: (modelData: SystemModelDocumentDataType) => Promise<unknown>;
+  onSubmit: (modelData: AIModelDocumentDataType) => Promise<unknown>;
   channelType?: ChannelType;
   isModelIdReadOnly?: boolean;
   channelSection?: {
@@ -391,7 +391,7 @@ const ModelConfigForm = ({
     setValue,
     handleSubmit,
     formState: { isDirty }
-  } = useForm<SystemModelDocumentDataType>({
+  } = useForm<AIModelDocumentDataType>({
     defaultValues: {
       // 空白草稿的引用上限不向输入框写入 NaN，保持视觉上未填写。
       ...(initialModelData.type === ModelTypeEnum.llm &&
@@ -469,7 +469,7 @@ const ModelConfigForm = ({
   }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: submitModelRequest, loading: submittingModel } = useRequest(
-    async (data: SystemModelDocumentDataType) => {
+    async (data: AIModelDocumentDataType) => {
       data.name = data.name?.trim() || data.model;
       if (data.type === ModelTypeEnum.llm) {
         // 数字输入留空会产生 NaN；仅未填写时按上下文计算，保留显式填写的 0。

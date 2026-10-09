@@ -20,8 +20,8 @@ import DataTableComponent from './DataTableComponent';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model/schema';
 import { accountContentScrollStyles } from '@/pageComponents/account/styles';
-import ModelTabHeader from '../ModelTabHeader';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
 type ModelDashboardData = {
   x: string;

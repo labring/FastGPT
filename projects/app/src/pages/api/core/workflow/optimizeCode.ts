@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -6,7 +6,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { responseWrite } from '@fastgpt/service/common/response';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
+import { authModelUse } from '@fastgpt/service/support/permission/model/auth';
 import { createUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
@@ -102,7 +102,7 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       authToken: true,
       authApiKey: true
     });
-    const modelHandle = await getModelHandle({ teamId });
+    const modelHandle = await getTeamModelHandle({ teamId });
     const modelData = modelHandle.getLLMModelData({ modelId });
     await authModelUse({ modelId: modelData.modelId, tmbId, teamId });
 

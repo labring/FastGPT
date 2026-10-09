@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { loadModelCatalog } from '@/migration/tasks/4170/20260903_model_references/modelCatalog';
 
 describe('loadModelCatalog', () => {
@@ -12,7 +12,7 @@ describe('loadModelCatalog', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     await MongoAIModel.deleteMany({});
-    await MongoAIDefaultModel.deleteMany({});
+    await MongoAIModelCatalog.deleteMany({});
   });
 
   it('accepts an empty catalog but guards every operation needing a model', async () => {
@@ -58,7 +58,7 @@ describe('loadModelCatalog', () => {
         config: {}
       }
     ]);
-    await MongoAIDefaultModel.collection.insertOne({
+    await MongoAIModelCatalog.collection.insertOne({
       scope: 'system',
       defaultModelIds: {
         llm: String(ids[1]),
@@ -102,7 +102,7 @@ describe('loadModelCatalog', () => {
     expect(catalog.resolveFallbackModelId({ type: ModelTypeEnum.tts })).toBeUndefined();
     expect(catalog.resolveFallbackModelId({ type: ModelTypeEnum.stt })).toBeUndefined();
 
-    await MongoAIDefaultModel.deleteMany({});
+    await MongoAIModelCatalog.deleteMany({});
     const fallbackCatalog = await loadModelCatalog();
     expect(fallbackCatalog.resolveFallbackModelId(llmRequirement)).toBe(String(ids[0]));
     expect(fallbackCatalog.resolveFallbackModelId(visionRequirement)).toBe(String(ids[1]));
@@ -172,7 +172,7 @@ describe('loadModelCatalog', () => {
         String(ids[3]),
         String(ids[1])
       ]) {
-        await MongoAIDefaultModel.collection.updateOne(
+        await MongoAIModelCatalog.collection.updateOne(
           { scope: 'system' },
           {
             $set: {

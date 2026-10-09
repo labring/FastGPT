@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -15,7 +15,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { desensitizeSystemModel } from '@fastgpt/service/core/ai/model/transform';
+import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
@@ -111,7 +111,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
     return { updateTime: -1, _id: -1 };
   })();
   const myDatasets = await MongoDataset.find(findDatasetQuery).sort(datasetSort).lean();
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const formatDatasets = myDatasets
     .map((dataset) => {
       const vectorModel = modelHandle.findModelData(
@@ -147,7 +147,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
         name: dataset.name,
         intro: dataset.intro,
         type: dataset.type,
-        vectorModel: vectorModel ? desensitizeSystemModel(vectorModel) : undefined,
+        vectorModel: vectorModel ? desensitizeModel(vectorModel) : undefined,
         inheritPermission: dataset.inheritPermission,
         tmbId: dataset.tmbId,
         createTime: dataset.createTime ?? new Types.ObjectId(String(dataset._id)).getTimestamp(),

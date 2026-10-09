@@ -1,4 +1,4 @@
-import { getModelHandle } from '../../../core/ai/model';
+import { getSystemModelHandle } from '../../../core/ai/model/index';
 import { UsageItemTypeEnum, UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { MongoUsage } from './schema';
 import { type ClientSession } from '../../../common/mongo';
@@ -10,7 +10,7 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { formatModelChars2Points } from './utils';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoUsageItem } from './usageItemSchema';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -85,7 +85,7 @@ export const pushLLMTrainingUsage = async ({
   type
 }: {
   teamId: string;
-  model: SystemModelDataType;
+  model: AIModelDataType;
   inputTokens: number;
   outputTokens: number;
   usageId: string;
@@ -181,7 +181,7 @@ export const pushWhisperUsage = async ({
   duration: number;
   source: UsageSourceEnum;
 }) => {
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getSystemModelHandle();
   const whisperModel = modelHandle.getDefaultModelData('stt');
 
   const { totalPoints, modelId } = formatModelChars2Points({

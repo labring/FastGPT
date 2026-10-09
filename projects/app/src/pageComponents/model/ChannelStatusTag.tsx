@@ -1,6 +1,6 @@
-import { ChannelStatusEnum, ChannelStatusMap } from '@fastgpt/global/core/ai/channel';
+import { ChannelStatusEnum, ChannelStatusMap } from '@fastgpt/global/core/ai/model/channel';
 import MyTag, { type ColorSchemaType, type TagProps } from '@fastgpt/web/components/common/Tag';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 /**
  * 获取渠道状态对应的静态国际化文案。
@@ -33,7 +33,7 @@ const ChannelStatusTag = ({
 }: {
   status?: number;
 } & Omit<TagProps, 'children'>) => {
-  const { t } = useClientTranslation('config_model');
+  const { t } = useSafeTranslation();
   const statusConfig = ChannelStatusMap[status as keyof typeof ChannelStatusMap];
 
   return (

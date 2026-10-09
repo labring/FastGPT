@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 /*
   insert one data to dataset (immediately insert)
@@ -56,7 +56,7 @@ async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
     ...item,
     text: simpleText(item.text)
   }));
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const vectorModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );

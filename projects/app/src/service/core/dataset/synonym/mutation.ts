@@ -1,5 +1,5 @@
 import { rebuildingDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import path from 'node:path';
@@ -100,7 +100,7 @@ export const createDatasetSynonymMutation = async ({
   const fileVersion = (current?.version ?? 0) + 1;
   const now = new Date();
   const normalizedFileName = path.basename(fileName) || 'synonyms.csv';
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const vectorModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );

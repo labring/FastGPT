@@ -4,7 +4,7 @@ import type {
   SystemMigrationProgressInput
 } from '@fastgpt/global/migration/schema';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
@@ -98,7 +98,7 @@ describe('4163 dataset model reference migration', () => {
     vi.clearAllMocks();
     await Promise.all([
       MongoAIModel.deleteMany({}),
-      MongoAIDefaultModel.deleteMany({}),
+      MongoAIModelCatalog.deleteMany({}),
       MongoDataset.deleteMany({}),
       MongoEvaluation.deleteMany({}),
       MongoResourcePermission.deleteMany({ resourceType: PerResourceTypeEnum.model }),
@@ -662,7 +662,7 @@ describe('4163 dataset model reference migration', () => {
       model: 'configured-default',
       type: ModelTypeEnum.llm
     });
-    await MongoAIDefaultModel.create({
+    await MongoAIModelCatalog.create({
       scope: 'system',
       defaultModelIds: { llm: String(configuredDefault._id) }
     });

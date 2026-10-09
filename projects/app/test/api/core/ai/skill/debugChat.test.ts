@@ -33,7 +33,7 @@ import {
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const debugChatMocks = vi.hoisted(() => ({
   dispatchWorkFlow: vi.fn(),
@@ -315,7 +315,7 @@ describe('debugChat handler — parameter validation', () => {
   beforeEach(async () => {
     testUser = await getUser(`debug-chat-user-${getNanoid(6)}`);
     vi.clearAllMocks();
-    const modelData: LLMSystemModelDataType = {
+    const modelData: LLMModelDataType = {
       modelId: '507f1f77bcf86cd799439012',
       provider: 'test',
       model: 'gpt-4o',

@@ -1,4 +1,4 @@
-import * as modelService from '@fastgpt/service/core/ai/model';
+import * as modelService from '@fastgpt/service/core/ai/model/index';
 import * as synonymService from '@fastgpt/service/core/dataset/synonym/entity';
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -584,7 +584,7 @@ describe('pre-created data queue routing', () => {
         dataId: 'old_image'
       }
     ];
-    const { data, task, dataset, collection } = await createContext({
+    const { root, data, task, dataset, collection } = await createContext({
       mode: TrainingModeEnum.rebuildIndex,
       indexes: storedIndexes
     });
@@ -617,15 +617,26 @@ describe('pre-created data queue routing', () => {
     mockVectorInsert.mockImplementation(async ({ vectors }: { vectors: number[][] }) => ({
       insertIds: vectors.map((_, index) => `rebuilt_${index}`)
     }));
-    const modelHandle = await modelService.getModelHandle();
-    const vlmLookup = vi.spyOn(modelHandle, 'getVlmModelData').mockImplementation(() => {
+    const getTeamModelHandle = modelService.getTeamModelHandle;
+    const vlmLookup = vi.fn(() => {
       throw new Error('rebuild must not look up VLM');
     });
+    const handleLookup = vi
+      .spyOn(modelService, 'getTeamModelHandle')
+      .mockImplementation(async (context) => {
+        const modelHandle = await getTeamModelHandle(context);
+        return new Proxy(modelHandle, {
+          get(target, property, receiver) {
+            if (property === 'getVlmModelData') return vlmLookup;
+            return Reflect.get(target, property, receiver);
+          }
+        });
+      });
     try {
       await generateRebuildIndex();
       expect(vlmLookup).not.toHaveBeenCalled();
     } finally {
-      vlmLookup.mockRestore();
+      handleLookup.mockRestore();
     }
     expect(
       mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))

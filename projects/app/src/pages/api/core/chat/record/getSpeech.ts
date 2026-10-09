@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 
@@ -43,7 +43,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       sourceId,
       outLinkAuthData
     });
-    const modelHandle = await getModelHandle({ teamId });
+    const modelHandle = await getTeamModelHandle({ teamId });
     const ttsModel = modelHandle.getTTSModelData({
       modelId: ttsConfig.modelId,
       model: ttsConfig.model

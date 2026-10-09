@@ -91,7 +91,9 @@ flowchart TD
      ```
      `own` 模式保证只在拥有者的私有渠道内寻找健康渠道；无渠道时 AIProxy 返回 404，绝不跨组泄漏，亦绝不私自回退到系统渠道。
 4. **模型使用权限（Catalog Permission）与租户协作边界**：
-   - **系统模型（System Model）**：若未配置协作者权限（默认状态），全团队所有成员默认具有使用权；若已配置协作者，则仅授权协作者可使用。
+   - **系统模型（System Model）**：
+     - 若未配置协作者权限（默认状态），全团队所有成员默认具有使用权；
+     - 若已配置协作者，**拥有团队管理权限（`hasManagePer`，含团队管理员与 Root 超级管理员）的成员始终全量可见并可使用**，以便随时查看、维护和重新配置权限；普通成员仅被显式授权的协作者可使用。
    - **团队模型（Team Model）**：严格归创建者（`tmbId`）所有，且仅在当前团队内生效：
      - **未配置权限时，仅创建者自己能够使用**；团队拥有者（Team Owner）亦无特权旁路，不能访问未授权的其他成员团队模型；
      - **已配置权限时，创建者本人与被显式授权的协作者可以使用**。
@@ -112,7 +114,7 @@ flowchart TD
   - `resolve.ts`（单查渠道）：捕获 404 转为 `undefined`；
   - `summary.ts`（查询渠道摘要）：新用户未初始化渠道时捕获 404 转为空列表 `[]`，其余系统级错误正常抛出，由 API 层统一返回错误码供前端直接 Toast，严禁全量静默吞错；
 - **运行时无可用渠道拦截**：
-  在五大模型运行时调用出口（LLM、Embedding、Rerank、TTS、STT）统一使用 `normalizeRelayNoChannelError`，将 AIProxy 404 无渠道精准转换为 `ModelErrEnum.noAvailableChannel`。
+  - 在五大模型运行时调用出口（LLM、Embedding、Rerank、TTS、STT）统一使用 `normalizeRelayNoChannelError`，将 AIProxy 404 无渠道精准转换为 `ModelErrEnum.noAvailableChannel`。
 
 ### 2. 领域层概念收敛与模型管理规范 (`packages/global` & `packages/service`)
 - **统一多租户作用域类型约定**：
@@ -120,7 +122,7 @@ flowchart TD
 - **通用模型判断 Helper**：
   在 `@fastgpt/global/core/ai/model/utils.ts` 中封装 `isSystemModel` 与 `isTeamModel`，彻底消除全仓多处非类型安全的 `(model as { tmbId?: string })` 强转断言；归属字段统一直接读取受类型保障的 `model.tmbId` 与 `model.teamId`；
 - **新建模型快捷关联收敛至服务端**：
-  在 `/api/core/ai/model/create` 接口支持可选的 `channelIds`；由服务端 `appendModelToChannels` 严格在租户权限校验后幂等追加关联，完全废弃前端拉取全量渠道并发写回的脏逻辑。
+  在单模型创建 `/api/core/ai/model/create` 与模板批量创建 `/api/core/ai/model/createFromTemplates` 接口中，均支持可选的 `channelIds`；由服务端 `appendModelToChannels` 严格在租户权限校验后幂等追加关联，完全废弃前端拉取全量渠道并发写回的脏逻辑。
 
 ### 3. API 路由层收敛 (`projects/app/src/pages/api/core/ai/model/channel/`)
 全部接口基于 `parseApiInput` 进行 Zod 校验，强绑定 `session.tmbId`：

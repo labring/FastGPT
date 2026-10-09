@@ -34,7 +34,7 @@ import {
   type ChannelInfoType,
   ChannelStatusEnum,
   defaultChannel
-} from '@fastgpt/global/core/ai/channel';
+} from '@fastgpt/global/core/ai/model/channel';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -42,7 +42,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import ModelTabHeader from '../ModelTabHeader';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
 import { useLockFn, useSet } from 'ahooks';
@@ -50,21 +50,13 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import type {
-  ChannelListItem,
-  ChannelType
-} from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ChannelListItem } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
-const ChannelTable = ({
-  Tab,
-  channelType
-}: {
-  Tab: React.ReactNode;
-  channelType: ChannelType;
-}) => {
+const ChannelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: ChannelType }) => {
   const { t, i18n } = useSafeTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
@@ -144,7 +136,7 @@ const ChannelTable = ({
     }: {
       channelId: number;
       channelName: string;
-      status: ChannelStatusEnum;
+      status: 1 | 2;
     }) => {
       updatingChannelIdsDispatch.add(channelId);
       try {
@@ -263,7 +255,7 @@ const ChannelTable = ({
           });
           toast({
             status: 'success',
-            title: t('common:Delete_Success')
+            title: t('common:delete_success')
           });
           setSelectedItems([]);
           refreshChannelList();
@@ -459,9 +451,8 @@ const ChannelTable = ({
                               return e;
                             })();
                             updateChannel({
-                              ...item,
+                              id: item.id,
                               channelType,
-                              key: '',
                               priority: val
                             });
                           }}

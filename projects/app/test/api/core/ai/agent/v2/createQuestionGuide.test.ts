@@ -18,7 +18,11 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppLatestVersion: mocks.getAppLatestVersion
 }));
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+  getSystemModelHandle: async () => ({
+    getLLMModelData: mocks.getLLMModelData,
+    getDefaultModelData: vi.fn()
+  }),
+  getTeamModelHandle: async () => ({
     getLLMModelData: mocks.getLLMModelData,
     getDefaultModelData: vi.fn()
   })

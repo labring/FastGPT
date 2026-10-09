@@ -12,6 +12,7 @@ import {
 } from '../../../../openapi/core/ai/model/api';
 import { AIModelPath } from '../../../../openapi/core/ai/model';
 import { ChannelPath } from '../../../../openapi/core/ai/model/channel';
+import { GetAffectedModelsQuerySchema } from '../../../../openapi/core/ai/model/channel/api';
 import { openAPITagGroups, openAPIPaths } from '../../../../openapi/path';
 import { openAPIDocument } from '../../../../openapi/provider/devapi';
 import { DevApiTagsMap } from '../../../../openapi/tag';
@@ -109,6 +110,13 @@ describe('admin system model API schemas', () => {
         channelType: 'system'
       }).templates
     ).toHaveLength(500);
+    expect(
+      CreateModelsFromTemplatesBodySchema.parse({
+        templates: [{ type: 'llm', model: 'gpt-4o' }],
+        channelType: 'system',
+        channelIds: [1, 2]
+      }).channelIds
+    ).toEqual([1, 2]);
     expect(() =>
       CreateModelsFromTemplatesBodySchema.parse({ templates, channelType: 'system' })
     ).toThrow();
@@ -236,5 +244,28 @@ describe('admin system model API schemas', () => {
     });
     expect(parsed).not.toHaveProperty('unknownTopLevel');
     expect(parsed.config).not.toHaveProperty('unknownConfig');
+  });
+
+  it('parses affectedModels query with various id formats', () => {
+    expect(GetAffectedModelsQuerySchema.parse({ ids: [3], channelType: 'system' })).toEqual({
+      ids: [3],
+      channelType: 'system'
+    });
+    expect(GetAffectedModelsQuerySchema.parse({ ids: '3', channelType: 'system' })).toEqual({
+      ids: [3],
+      channelType: 'system'
+    });
+    expect(GetAffectedModelsQuerySchema.parse({ ids: ['3', '4'], channelType: 'team' })).toEqual({
+      ids: [3, 4],
+      channelType: 'team'
+    });
+    expect(GetAffectedModelsQuerySchema.parse({ ids: '3,4', channelType: 'system' })).toEqual({
+      ids: [3, 4],
+      channelType: 'system'
+    });
+    expect(() => GetAffectedModelsQuerySchema.parse({ ids: [], channelType: 'system' })).toThrow();
+    expect(() =>
+      GetAffectedModelsQuerySchema.parse({ ids: 'invalid', channelType: 'system' })
+    ).toThrow();
   });
 });

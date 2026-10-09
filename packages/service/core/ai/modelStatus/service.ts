@@ -8,7 +8,7 @@ import {
   ModelStatusProbeStatusEnum,
   type ModelStatusProbeStatus
 } from '@fastgpt/global/core/ai/model/status';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   GetModelStatusResponse,
   ModelStatusProbeConfigResponse,
@@ -26,7 +26,7 @@ import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { MongoSystemConfigs } from '../../../common/system/config/schema';
-import { getModelHandle } from '../model';
+import { getSystemModelHandle } from '../model/index';
 import { MongoUser } from '../../../support/user/schema';
 import { getUserDefaultTeam } from '../../../support/user/team/controller';
 import { MongoModelStatusProbeRecord } from './schema';
@@ -241,7 +241,7 @@ const getModelStatusItem = ({
   model,
   records
 }: {
-  model: SystemModelDataType;
+  model: AIModelDataType;
   records: ModelStatusProbeRecordType[];
 }): ModelStatusProbeModel => {
   const latest = records.at(-1);
@@ -272,8 +272,8 @@ const getModelStatusItem = ({
  * 同时统计绿/黄/红状态的模型总数与最近一次探测完成时间。
  */
 export const getModelStatus = async (): Promise<GetModelStatusResponse> => {
-  const [config, modelHandle] = await Promise.all([getStoredConfig(), getModelHandle()]);
-  const models = [...modelHandle.getActiveModels()] as SystemModelDataType[];
+  const [config, modelHandle] = await Promise.all([getStoredConfig(), getSystemModelHandle()]);
+  const models = [...modelHandle.getActiveModels()] as AIModelDataType[];
   const modelIds = models.map((model) => model.modelId);
   const since = new Date(Date.now() - MODEL_STATUS_WINDOW_MS);
   const records = modelIds.length
@@ -326,7 +326,7 @@ export const probeModelStatus = async ({
   signal,
   test = testModelConnection
 }: {
-  model: SystemModelDataType;
+  model: AIModelDataType;
   teamId?: string;
   signal?: AbortSignal;
   test?: typeof testModelConnection;
@@ -535,7 +535,7 @@ const executeModelStatusProbe = async ({
 }): Promise<RunModelStatusProbeResponse> => {
   const startedAt = new Date();
   const [modelHandle, resolvedTeamId] = await Promise.all([
-    getModelHandle(),
+    getSystemModelHandle(),
     teamId ? Promise.resolve(teamId) : getRootTeamId()
   ]);
   const models = modelHandle.getActiveModels();
@@ -640,7 +640,7 @@ export const getModelStatusProbeConstants = () => ({
 export const testModelStatusWebhook = async (
   input?: TestModelStatusWebhookBody
 ): Promise<TestModelStatusWebhookResponse> => {
-  const [config, modelHandle] = await Promise.all([getStoredConfig(), getModelHandle()]);
+  const [config, modelHandle] = await Promise.all([getStoredConfig(), getSystemModelHandle()]);
   const targetUrl = input?.webhookUrl?.trim() || config.webhookUrl;
   if (!targetUrl) {
     throw new UserError('Webhook URL is required');
@@ -651,9 +651,9 @@ export const testModelStatusWebhook = async (
       ? input.webhookToken
       : config.webhookToken;
 
-  const activeModels = [...modelHandle.getActiveModels()] as SystemModelDataType[];
+  const activeModels = [...modelHandle.getActiveModels()] as AIModelDataType[];
   const sampleModel =
-    activeModels[0] || (modelHandle.getAllModels()[0] as SystemModelDataType | undefined);
+    activeModels[0] || (modelHandle.getAllModels()[0] as AIModelDataType | undefined);
 
   const modelInfo = sampleModel
     ? {

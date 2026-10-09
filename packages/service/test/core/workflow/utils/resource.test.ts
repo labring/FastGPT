@@ -10,11 +10,13 @@ const mocks = vi.hoisted(() => ({
   mongoDatasetFindOne: vi.fn(),
   checkAppResourceReadPermissions: vi.fn(),
   resolveAppResourcesByPermission: vi.fn(),
-  getModelHandle: vi.fn()
+  getSystemModelHandle: vi.fn(),
+  getTeamModelHandle: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: mocks.getModelHandle
+  getSystemModelHandle: mocks.getSystemModelHandle,
+  getTeamModelHandle: mocks.getSystemModelHandle
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
@@ -57,7 +59,7 @@ describe('workflow resource context', () => {
     );
     mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
     mocks.checkAppResourceReadPermissions.mockResolvedValue(undefined);
-    mocks.getModelHandle.mockResolvedValue({
+    mocks.getSystemModelHandle.mockResolvedValue({
       getAllModels: () => [],
       getSystemDefaultModelIds: () => ({})
     });
@@ -171,7 +173,7 @@ describe('workflow resource context', () => {
   });
 
   it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
-    mocks.getModelHandle.mockResolvedValue({
+    mocks.getSystemModelHandle.mockResolvedValue({
       getAllModels: () => [{ model: 'legacy-llm', modelId: 'resolved-model-id', type: 'llm' }],
       getSystemDefaultModelIds: () => ({})
     });

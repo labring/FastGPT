@@ -1,5 +1,5 @@
 import { ModelScopeEnum } from '../constants';
-import type { ChannelType } from '../../../openapi/core/ai/model/channel/api';
+import type { ChannelType } from './scope';
 
 /**
  * 统一判定模型是否为系统全局模型。
@@ -27,9 +27,6 @@ export const isTeamModel = (model?: {
   return !isSystemModel(model);
 };
 
-/** 模型/渠道接口的作用域取值，与 AIScopeSchema / ChannelType 保持一致。 */
-export type ModelChannelScope = ChannelType;
-
 /** 将接口层 channelType 转换为模型存储使用的 ModelScopeEnum。 */
 export const channelTypeToScope = (channelType?: ChannelType): ModelScopeEnum =>
   channelType === 'team' ? ModelScopeEnum.team : ModelScopeEnum.system;
@@ -49,3 +46,7 @@ export const resolveChannelType = ({
   channelType?: ChannelType;
   scope?: string | ModelScopeEnum;
 }): ChannelType => channelType ?? scopeToChannelType(scope);
+
+/** embedding 模型是否支持图片输入；未配置时按纯文本模型处理。 */
+export const isImageEmbeddingModel = (model?: { config?: { vision?: boolean } }): boolean =>
+  model?.config?.vision === true;

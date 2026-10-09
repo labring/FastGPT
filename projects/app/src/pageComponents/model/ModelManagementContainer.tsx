@@ -3,8 +3,8 @@ import type React from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/model/ModelConfigTable'));
 const ChannelTable = dynamic(() => import('@/pageComponents/model/Channel'));
@@ -36,7 +36,7 @@ export const ModelManagementContainer = ({
   renderCustomTab,
   onBeforeTabChange
 }: ModelManagementContainerProps) => {
-  const { t } = useClientTranslation(['config_model', 'config']);
+  const { t } = useSafeTranslation();
   const router = useRouter();
 
   const baseTabList = useMemo<{ label: string; value: ModelTabType }[]>(

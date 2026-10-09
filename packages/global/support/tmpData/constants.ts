@@ -39,7 +39,7 @@ type _TmpDataType = {
     tmbId: string;
     modelIds: string[];
     version: string;
-    catalogRevision?: number;
+    catalogVersion: string;
   };
   [TmpDataEnum.PasswordChangeSession]: {
     userId: string;

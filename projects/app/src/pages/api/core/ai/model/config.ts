@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
 import {
   getSystemModelConfigService,
   getTeamModelListService
@@ -18,12 +18,12 @@ async function handler(
   req: ApiRequestProps<Record<string, never>, GetModelConfigQuery>
 ): Promise<GetModelConfigResponse> {
   const { channelType } = parseApiInput({ req, querySchema: GetModelConfigQuerySchema }).query;
-  const { tmbId } = await authModelManage({ req, channelType });
+  const { tmbId, teamId } = await authModelManage({ req, channelType });
 
   return GetModelConfigResponseSchema.parse(
     channelType === 'system'
       ? await getSystemModelConfigService()
-      : await getTeamModelListService({ tmbId })
+      : await getTeamModelListService({ tmbId, teamId })
   );
 }
 

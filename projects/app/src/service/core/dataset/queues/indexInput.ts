@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import type {
   DatasetDataSchemaType,
@@ -43,7 +43,7 @@ export const getIndexTrainingBaseIndexes = async (trainingData: TrainingDataType
 
   let supportVlm = false;
   if (trainingData.collection.imageIndex) {
-    const modelHandle = await getModelHandle({ teamId: String(trainingData.teamId) });
+    const modelHandle = await getTeamModelHandle({ teamId: String(trainingData.teamId) });
     try {
       supportVlm = !!modelHandle.getVlmModelData(
         getDatasetModelReference(trainingData.dataset, 'vlm'),

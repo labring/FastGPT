@@ -1,5 +1,5 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
+import { authModelUse } from '@fastgpt/service/support/permission/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -63,7 +63,7 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
       });
 
   // check model valid
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const rawVectorModel =
     modelHandle.getEmbeddingModelData(
       { modelId: vectorModelId, model: vectorModel },

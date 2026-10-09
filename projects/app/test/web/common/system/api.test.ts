@@ -9,7 +9,7 @@ vi.mock('@/web/common/api/request', () => ({
   DELETE: vi.fn()
 }));
 
-import { getUserModelCatalog } from '@/web/core/ai/model/api';
+import { getUserModelCatalog } from '@/web/core/ai/model/catalogApi';
 
 describe('getUserModelCatalog', () => {
   beforeEach(() => {

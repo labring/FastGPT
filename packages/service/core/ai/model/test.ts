@@ -1,15 +1,15 @@
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType,
-  RerankSystemModelDataType,
-  STTSystemModelDataType,
-  SystemModelDataType,
-  TTSSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType,
+  RerankModelDataType,
+  STTModelDataType,
+  AIModelDataType,
+  TTSModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
-import { getAIApi, getModelOpenAIOptions } from '../config';
+import { requestSpeech } from '../audio/speech';
 import { getVectors } from '../embedding';
 import { aiTranscriptions } from '../audio/transcriptions';
 import { reRankRecall } from '../rerank';
@@ -41,7 +41,7 @@ export const testModelConnection = async ({
   signal: parentSignal,
   onRequestStart
 }: {
-  model: SystemModelDataType;
+  model: AIModelDataType;
   teamId?: string;
   channelId?: number;
   timeoutMs?: number;
@@ -108,7 +108,7 @@ const testLLMModel = async ({
   signal,
   onRequestStart
 }: {
-  model: LLMSystemModelDataType;
+  model: LLMModelDataType;
   headers: Record<string, string>;
   teamId: string;
   timeoutMs: number;
@@ -145,7 +145,7 @@ const testEmbeddingModel = ({
   signal,
   onRequestStart
 }: {
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   headers: Record<string, string>;
   timeoutMs: number;
   signal: AbortSignal;
@@ -171,7 +171,7 @@ const testTTSModel = async ({
   signal,
   onRequestStart
 }: {
-  model: TTSSystemModelDataType;
+  model: TTSModelDataType;
   headers: Record<string, string>;
   timeoutMs: number;
   signal: AbortSignal;
@@ -180,24 +180,17 @@ const testTTSModel = async ({
   const voice = model.config.voices[0]?.value;
   if (!voice) throw new UserError('TTS model test requires at least one voice');
 
-  const { ai, requestMeta } = getAIApi({ timeout: timeoutMs });
-  onRequestStart?.();
-  await ai.audio.speech.create(
-    {
-      model: model.model,
-      voice: voice as any,
-      input: 'Hi',
-      response_format: 'mp3',
-      speed: 1
-    },
-    getModelOpenAIOptions({
-      model,
-      baseUrl: requestMeta?.baseUrl,
-      headers,
-      signal,
-      maxRetries: 0
-    })
-  );
+  await requestSpeech({
+    model,
+    voice,
+    input: 'Hi',
+    speed: 1,
+    timeoutMs,
+    headers,
+    signal,
+    maxRetries: 0,
+    onRequestStart
+  });
 };
 
 /**
@@ -211,7 +204,7 @@ const testSTTModel = async ({
   signal,
   onRequestStart
 }: {
-  model: STTSystemModelDataType;
+  model: STTModelDataType;
   headers: Record<string, string>;
   timeoutMs: number;
   signal: AbortSignal;
@@ -241,7 +234,7 @@ const testReRankModel = async ({
   signal,
   onRequestStart
 }: {
-  model: RerankSystemModelDataType;
+  model: RerankModelDataType;
   headers: Record<string, string>;
   timeoutMs: number;
   signal: AbortSignal;

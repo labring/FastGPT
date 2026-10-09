@@ -20,8 +20,8 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
@@ -208,7 +208,7 @@ describe('getTrainingModeByCollection', () => {
 });
 
 describe('getDatasetImageIndexCapability', () => {
-  const visionEmbeddingModel: EmbeddingSystemModelDataType = {
+  const visionEmbeddingModel: EmbeddingModelDataType = {
     modelId: '507f1f77bcf86cd799439011',
     provider: 'test',
     model: 'vision-embedding-model',
@@ -223,7 +223,7 @@ describe('getDatasetImageIndexCapability', () => {
       vision: true
     }
   };
-  const datasetVlmModel: LLMSystemModelDataType = {
+  const datasetVlmModel: LLMModelDataType = {
     modelId: '507f1f77bcf86cd799439012',
     provider: 'test',
     model: 'dataset-vlm-model',

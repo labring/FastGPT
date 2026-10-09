@@ -13,7 +13,8 @@ export enum ModelErrEnum {
   unAuthChannel = 'unAuthChannel',
   channelNotExist = 'channelNotExist',
   channelNameConflict = 'channelNameConflict',
-  noAvailableChannel = 'modelNoAvailableChannel'
+  noAvailableChannel = 'modelNoAvailableChannel',
+  teamModelDisabled = 'teamModelDisabled'
 }
 
 const modelErrList = [
@@ -66,6 +67,11 @@ const modelErrList = [
     statusText: ModelErrEnum.noAvailableChannel,
     message: i18nT('common:code_error.model_error.no_available_channel'),
     httpStatus: 404
+  },
+  {
+    statusText: ModelErrEnum.teamModelDisabled,
+    message: i18nT('common:code_error.model_error.team_model_disabled'),
+    httpStatus: 403
   }
 ];
 

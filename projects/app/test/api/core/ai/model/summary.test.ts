@@ -1,3 +1,8 @@
+vi.mock('@fastgpt/service/core/ai/model/index', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/index')>()),
+  getTeamModelHandle: async () =>
+    (await import('@fastgpt/service/core/ai/model/cache')).getCachedSystemModelHandle()!
+}));
 import type { getModelTestMap } from '@test/modelCache';
 import { getModelTestDefaults, setModelTestMap } from '@test/modelCache';
 import { handler } from '@/pages/api/core/ai/model/summary';
@@ -6,7 +11,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   authOutLink: vi.fn(),
-  findMember: vi.fn(),
   permission: vi.fn(),
   authApp: vi.fn(),
   getAppDraftResourceBaseline: vi.fn()
@@ -16,10 +20,7 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
 vi.mock('@/service/support/permission/auth/outLink', () => ({ authOutLink: mocks.authOutLink }));
-vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
-  MongoTeamMember: { findOne: mocks.findMember }
-}));
-vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
+vi.mock('@fastgpt/service/support/permission/model/catalog', () => ({
   getMemberModelCatalogPermission: mocks.permission
 }));
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({ authApp: mocks.authApp }));
@@ -71,10 +72,10 @@ describe('POST /api/core/ai/model/summary', () => {
     expect(mocks.permission).toHaveBeenCalledWith({
       teamId: 'team',
       tmbId: 'member',
-      isTeamOwner: false,
+      hasManagePer: false,
       includeInactive: true,
       catalogSnapshot: expect.objectContaining({
-        revision: expect.any(Number),
+        version: expect.any(String),
         models: expect.any(Array)
       })
     });
@@ -91,7 +92,6 @@ describe('POST /api/core/ai/model/summary', () => {
     mocks.authOutLink.mockResolvedValue({
       outLinkConfig: { teamId: 'link-team', tmbId: 'link-member' }
     });
-    mocks.findMember.mockReturnValue({ lean: vi.fn().mockResolvedValue({ role: 'owner' }) });
     const req = { body: { modelIds: ['active'], outLinkAuthData } } as any;
     await handler(req);
     expect(mocks.authUserPer).not.toHaveBeenCalled();
@@ -99,10 +99,10 @@ describe('POST /api/core/ai/model/summary', () => {
     expect(mocks.permission).toHaveBeenCalledWith({
       teamId: 'link-team',
       tmbId: 'link-member',
-      isTeamOwner: true,
+      hasManagePer: false,
       includeInactive: true,
       catalogSnapshot: expect.objectContaining({
-        revision: expect.any(Number),
+        version: expect.any(String),
         models: expect.any(Array)
       })
     });

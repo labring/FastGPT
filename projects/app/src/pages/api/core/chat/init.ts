@@ -199,7 +199,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       app: {
         chatConfig: appChatConfig,
         chatModels: await getChatModelNameListByModules(nodes, {
-          teamId: app.teamId ? String(app.teamId) : undefined
+          teamId: String(app.teamId)
         }),
         name: app.name,
         avatar: app.avatar ?? '',

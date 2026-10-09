@@ -1,5 +1,5 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { authModelUse } from '@fastgpt/service/support/permission/model/controller';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
+import { authModelUse } from '@fastgpt/service/support/permission/model/auth';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
@@ -104,7 +104,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     return Promise.reject(DatasetErrEnum.unAuthDataset);
   }
 
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
         ...rawChunkSettings,

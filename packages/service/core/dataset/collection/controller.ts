@@ -1,4 +1,4 @@
-import { getModelHandle } from '../../ai/model';
+import { getTeamModelHandle } from '../../ai/model/index';
 import { getDatasetModelReference } from '../model';
 import {
   DatasetCollectionDataProcessModeEnum,
@@ -69,7 +69,7 @@ export const createCollectionAndInsertData = async ({
   billId?: string;
   session?: ClientSession;
 }): Promise<CreateCollectionWithResultResponseType> => {
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId: String(dataset.teamId) });
   const agentModelData = modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent'));
   const embeddingModelData = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')

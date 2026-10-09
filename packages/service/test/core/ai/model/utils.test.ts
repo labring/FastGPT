@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import {
-  desensitizeSystemModel,
-  flatModelToDocumentData
-} from '../../../../core/ai/model/transform';
+import { desensitizeModel, flatModelToDocumentData } from '../../../../core/ai/model/transform';
 
 describe('flatModelToDocumentData', () => {
   it('moves type-specific fields into config and normalizes plugin maxTokens', () => {
@@ -96,7 +93,7 @@ describe('system model response filtering', () => {
       }
     };
 
-    const result = desensitizeSystemModel(model);
+    const result = desensitizeModel(model);
 
     expect(result).toMatchObject({
       ...model,

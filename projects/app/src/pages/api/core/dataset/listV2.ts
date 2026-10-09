@@ -13,9 +13,9 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { desensitizeSystemModel } from '@fastgpt/service/core/ai/model/transform';
+import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import {
   findResourceKeysByCollaboratorsPermission,
@@ -210,7 +210,7 @@ async function handler(
     roleListMap.set(resourceId, list);
   });
 
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const formatDatasets = myDatasets.map((dataset) => {
     const { Per, privateDataset } = (() => {
       const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];
@@ -248,7 +248,7 @@ async function handler(
           getDatasetModelReference(dataset, 'embedding'),
           { type: 'embedding' }
         );
-        return vectorModel ? desensitizeSystemModel(vectorModel) : undefined;
+        return vectorModel ? desensitizeModel(vectorModel) : undefined;
       })(),
       inheritPermission: dataset.inheritPermission,
       tmbId: dataset.tmbId,

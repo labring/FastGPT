@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateModelBodySchema,
@@ -15,11 +15,12 @@ async function handler(req: ApiRequestProps<UpdateModelBody>): Promise<void> {
   }).body;
   const { channelType } = input;
 
-  const { tmbId } = await authModelManage({ req, channelType });
+  const { tmbId, teamId } = await authModelManage({ req, channelType });
 
   await updateModelWithLifecycle({
     ...input,
     channelType,
+    teamId,
     tmbId: channelType === 'team' ? tmbId : undefined
   });
 }

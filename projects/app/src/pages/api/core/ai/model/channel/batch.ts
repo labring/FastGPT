@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
-import { batchOperateChannels } from '@fastgpt/service/core/ai/channel/service';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
+import { batchOperateChannels } from '@fastgpt/service/core/ai/model/channel/service';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   BatchChannelBodySchema,
@@ -15,9 +15,9 @@ async function handler(req: ApiRequestProps<BatchChannelBody>): Promise<BatchCha
   const body = parseApiInput({ req, bodySchema: BatchChannelBodySchema }).body;
   const { channelType, action } = body;
 
-  const { tmbId } = await authModelManage({ req, channelType, resource: 'channel' });
+  const { tmbId, teamId } = await authModelManage({ req, channelType, resource: 'channel' });
 
-  const result = await batchOperateChannels({ body, tmbId });
+  const result = await batchOperateChannels({ body, tmbId, teamId });
   return action === 'delete'
     ? BatchDeleteChannelsResponseSchema.parse({ affectedModels: result.affectedModels })
     : undefined;

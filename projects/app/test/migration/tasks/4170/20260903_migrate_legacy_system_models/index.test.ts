@@ -4,7 +4,7 @@ import type { SystemMigrationContext } from '@/migration/registry';
 
 const mocks = vi.hoisted(() => ({
   preloadModelProviders: vi.fn(),
-  getPluginSystemModelDocuments: vi.fn(),
+  getPluginModelDocuments: vi.fn(),
   loadInstalledModels: vi.fn(),
   inspectLegacySystemModelMigration: vi.fn(),
   bootstrapAIModelsFromLegacy: vi.fn()
@@ -13,11 +13,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@fastgpt/service/core/ai/model/provider/controller', () => ({
   preloadModelProviders: mocks.preloadModelProviders
 }));
-vi.mock('@fastgpt/service/core/ai/model/catalog', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   loadInstalledModels: mocks.loadInstalledModels
 }));
 vi.mock('@fastgpt/service/core/ai/model/template', () => ({
-  getPluginSystemModelDocuments: mocks.getPluginSystemModelDocuments
+  getPluginModelDocuments: mocks.getPluginModelDocuments
 }));
 vi.mock('@/migration/tasks/4170/20260903_migrate_legacy_system_models/service', () => ({
   inspectLegacySystemModelMigration: mocks.inspectLegacySystemModelMigration,
@@ -41,7 +41,7 @@ describe('migrateLegacySystemModels', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.preloadModelProviders.mockResolvedValue(undefined);
-    mocks.getPluginSystemModelDocuments.mockResolvedValue([{ model: 'plugin-model' }]);
+    mocks.getPluginModelDocuments.mockResolvedValue([{ model: 'plugin-model' }]);
     mocks.loadInstalledModels.mockResolvedValue(undefined);
     mocks.inspectLegacySystemModelMigration.mockResolvedValue({ sourceCount: 3, targetCount: 0 });
     mocks.bootstrapAIModelsFromLegacy.mockResolvedValue({
@@ -62,7 +62,7 @@ describe('migrateLegacySystemModels', () => {
     });
 
     expect(mocks.preloadModelProviders).toHaveBeenCalledOnce();
-    expect(mocks.getPluginSystemModelDocuments).toHaveBeenCalledOnce();
+    expect(mocks.getPluginModelDocuments).toHaveBeenCalledOnce();
     expect(context.assertActive).toHaveBeenCalledTimes(2);
     expect(mocks.bootstrapAIModelsFromLegacy).toHaveBeenCalledWith({
       pluginDocuments: [{ model: 'plugin-model' }]
@@ -112,7 +112,7 @@ describe('migrateLegacySystemModels', () => {
     });
 
     expect(mocks.preloadModelProviders).toHaveBeenCalledOnce();
-    expect(mocks.getPluginSystemModelDocuments).toHaveBeenCalledOnce();
+    expect(mocks.getPluginModelDocuments).toHaveBeenCalledOnce();
     expect(mocks.bootstrapAIModelsFromLegacy).toHaveBeenCalledWith({
       pluginDocuments: [{ model: 'plugin-model' }]
     });
@@ -144,7 +144,7 @@ describe('migrateLegacySystemModels', () => {
     });
 
     expect(mocks.preloadModelProviders).not.toHaveBeenCalled();
-    expect(mocks.getPluginSystemModelDocuments).not.toHaveBeenCalled();
+    expect(mocks.getPluginModelDocuments).not.toHaveBeenCalled();
     expect(mocks.bootstrapAIModelsFromLegacy).toHaveBeenCalledWith({ pluginDocuments: [] });
     expect(mocks.loadInstalledModels).toHaveBeenCalledOnce();
   });

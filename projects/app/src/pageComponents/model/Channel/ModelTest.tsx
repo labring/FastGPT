@@ -13,7 +13,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import { FixedTableLayout } from '@fastgpt/web/components/common/FixedTable';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
 type ModelTestItem = {
   label: React.ReactNode;

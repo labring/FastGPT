@@ -1,4 +1,4 @@
-import { getModelHandle } from '../../../../ai/model';
+import { getTeamModelHandle } from '../../../../ai/model/index';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getQuoteTemplate } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
@@ -30,6 +30,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     histories,
     node: { name, version, inputs },
     runningUserInfo,
+    runningAppInfo,
     workflowStreamResponse,
     chatConfig,
     usageId,
@@ -66,7 +67,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   let aiChatVideo = rawAiChatVideo;
   let fileLinks = rawFileLinks;
   let userChatInput = rawUserChatInput;
-  const modelHandle = await getModelHandle({ teamId: runningUserInfo?.teamId });
+  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
   const modelConstantsData = modelHandle.getLLMModelData({ modelId, model });
 
   try {

@@ -4,31 +4,18 @@ import {
   normalizeModelPricingForRead,
   normalizeModelPricingForSave
 } from '@fastgpt/global/core/ai/model/pricing';
-import {
-  ImportedSystemModelSchema,
-  type ParsedSystemModelsWithJsonBody
-} from '@fastgpt/global/openapi/core/ai/model/api';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '../../../support/permission/schema';
-import { runSystemModelTransaction } from './entity';
+import { type ParsedSystemModelsWithJsonBody } from '@fastgpt/global/openapi/core/ai/model/api';
+import { runModelTransaction } from './catalog/transaction';
+import { deleteModelRecords } from './cleanup';
 import { MongoAIModel } from './schema';
-import { updatedReloadSystemModel } from './catalog';
-import { MongoModelStatusProbeRecord } from '../modelStatus/schema';
-import { getSystemModelConfigUpdate } from './utils';
+import { updatedReloadSystemModel } from './catalog/service';
+import { getModelConfigUpdate } from './utils';
 
 /**
  * 用导入配置替换系统模型集合，保留可匹配实例的稳定 ID，并在同一事务内清理派生权限与探测记录。
  */
-export const importSystemModels = async ({
-  config
-}: ParsedSystemModelsWithJsonBody): Promise<void> => {
-  const latestRecords = config.flatMap((record) => {
-    const modelId = record.modelId;
-    return typeof modelId === 'string' && modelId.trim().length > 0
-      ? [{ record, modelId: modelId.trim() }]
-      : [];
-  });
-  if (config.length > 0 && latestRecords.length === 0) return;
+export const importSystemModels = async ({ config }: ParsedSystemModelsWithJsonBody) => {
+  const latestRecords = config.map((record) => ({ record, modelId: record.modelId }));
 
   const assertNoDuplicateIds = (models: Array<{ modelId: string }>) => {
     const modelIds = new Set<string>();
@@ -39,7 +26,7 @@ export const importSystemModels = async ({
   };
   assertNoDuplicateIds(latestRecords);
 
-  await runSystemModelTransaction(async (session) => {
+  const changes = await runModelTransaction({ scope: ModelScopeEnum.system }, async (session) => {
     const existingModels = await MongoAIModel.find(
       { scope: ModelScopeEnum.system },
       '_id model type'
@@ -60,7 +47,7 @@ export const importSystemModels = async ({
     );
     const resolvedLocalModelIds = new Set<string>();
 
-    const importedModels = latestRecords.map(({ record, modelId }, index) => {
+    const importedModels = latestRecords.map(({ record, modelId }) => {
       const existingByModelId = existingModelMap.get(modelId);
       const existingByModelName =
         typeof record.model === 'string' ? existingModelNameMap.get(record.model) : undefined;
@@ -75,25 +62,10 @@ export const importSystemModels = async ({
         resolvedLocalModelIds.add(existingModel.modelId);
       }
 
-      const parsed = ImportedSystemModelSchema.safeParse(
-        existingModel
-          ? {
-              ...record,
-              modelId,
-              model:
-                existingByModelId &&
-                typeof record.model === 'string' &&
-                record.model.trim().length > 0
-                  ? record.model.trim()
-                  : existingModel.model,
-              type: existingModel.type
-            }
-          : { ...record, modelId }
-      );
-      if (!parsed.success) {
-        throw new UserError(`Invalid system model at index ${index}: ${parsed.error.message}`);
+      if (existingModel && existingModel.type !== record.type) {
+        throw new UserError(`Model type cannot be changed: ${modelId}`);
       }
-      return { data: parsed.data, existingModel };
+      return { data: record, existingModel };
     });
 
     const resolvedModels = importedModels.map(
@@ -108,7 +80,7 @@ export const importSystemModels = async ({
           };
         }
 
-        const targetModel = modelData.model || existingModel.model;
+        const targetModel = modelData.model;
         return {
           modelId: existingModel.modelId,
           model: targetModel,
@@ -135,38 +107,34 @@ export const importSystemModels = async ({
     const removedModelIds = existingModels
       .filter(({ _id }) => !retainedModelIds.has(String(_id)))
       .map(({ _id }) => _id);
-    if (removedModelIds.length > 0) {
-      await MongoAIModel.deleteMany(
-        { _id: { $in: removedModelIds }, scope: ModelScopeEnum.system },
-        { session }
-      );
-      await MongoResourcePermission.deleteMany(
-        {
-          resourceType: PerResourceTypeEnum.model,
-          resourceId: { $in: removedModelIds }
-        },
-        { session }
-      );
-      await MongoModelStatusProbeRecord.deleteMany(
-        { modelId: { $in: removedModelIds.map(String) } },
-        { session }
-      );
-    }
+    await deleteModelRecords(removedModelIds.map(String), session);
 
-    if (importedModels.length === 0) return;
-    await MongoAIModel.bulkWrite(
-      resolvedModels.map(({ modelId, model, modelData, isExistingModel }) => ({
-        updateOne: {
-          filter: isExistingModel
-            ? { _id: modelId, scope: ModelScopeEnum.system }
-            : { scope: ModelScopeEnum.system, model },
-          update: isExistingModel ? getSystemModelConfigUpdate(modelData) : { $set: modelData },
-          upsert: !isExistingModel
-        }
-      })),
-      { session }
-    );
+    if (resolvedModels.length > 0)
+      await MongoAIModel.bulkWrite(
+        resolvedModels.map(({ modelId, model, modelData, isExistingModel }) => ({
+          updateOne: {
+            filter: isExistingModel
+              ? { _id: modelId, scope: ModelScopeEnum.system }
+              : { scope: ModelScopeEnum.system, model },
+            update: isExistingModel ? getModelConfigUpdate(modelData) : { $set: modelData },
+            upsert: !isExistingModel
+          }
+        })),
+        { session }
+      );
+    return {
+      renamedModels: resolvedModels.flatMap((model) => {
+        const oldModel = existingModelMap.get(model.modelId)?.model;
+        return oldModel && oldModel !== model.model
+          ? [{ modelId: model.modelId, oldModel, newModel: model.model }]
+          : [];
+      }),
+      removedModels: existingModels
+        .filter(({ _id }) => !retainedModelIds.has(String(_id)))
+        .map(({ model }) => model)
+    };
   });
 
   await updatedReloadSystemModel();
+  return changes;
 };

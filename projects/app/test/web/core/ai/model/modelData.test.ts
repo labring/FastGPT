@@ -3,17 +3,11 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { MyLLMModelItemType } from '@fastgpt/global/openapi/core/ai/model/api';
 
 const mocks = vi.hoisted(() => ({ catalog: vi.fn(), summary: vi.fn(), member: 'member' }));
-vi.mock('@/web/core/ai/model/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/web/core/ai/model/api')>();
+vi.mock('@/web/core/ai/model/catalogApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/web/core/ai/model/catalogApi')>();
   return {
     ...actual,
-    getUserModelCatalog: mocks.catalog
-  };
-});
-vi.mock('@/web/common/system/api', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/web/common/system/api')>();
-  return {
-    ...actual,
+    getUserModelCatalog: mocks.catalog,
     getUserModelSummaries: mocks.summary
   };
 });

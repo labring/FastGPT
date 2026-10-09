@@ -20,7 +20,7 @@ const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
 const mockResolveReadableCollectionIds = vi.hoisted(() => vi.fn());
 const mockAuthModelUse = vi.hoisted(() => vi.fn());
 
-vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
   authModelUse: mockAuthModelUse
 }));
 
@@ -50,7 +50,15 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+  getSystemModelHandle: async () => ({
+    getDefaultModelData: mockGetDefaultModelData,
+    getRerankModelData: mockGetRerankModelData,
+    getEmbeddingModelData: mockGetEmbeddingModelData,
+    getLLMModelData: mockGetLLMModelData,
+    findModelData: mockGetOptionalVlmModelData,
+    getOptionalVlmModelData: mockGetOptionalVlmModelData
+  }),
+  getTeamModelHandle: async () => ({
     getDefaultModelData: mockGetDefaultModelData,
     getRerankModelData: mockGetRerankModelData,
     getEmbeddingModelData: mockGetEmbeddingModelData,

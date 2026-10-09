@@ -1,7 +1,10 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
-import { getMemberChannelList, getSystemChannelList } from '@fastgpt/service/core/ai/channel/list';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
+import {
+  getMemberChannelList,
+  getSystemChannelList
+} from '@fastgpt/service/core/ai/model/channel/list';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ListChannelsQuerySchema,
@@ -19,7 +22,7 @@ async function handler(
     querySchema: ListChannelsQuerySchema
   }).query;
 
-  const { tmbId } = await authModelManage({ req, channelType, resource: 'channel' });
+  const { tmbId, teamId } = await authModelManage({ req, channelType, resource: 'channel' });
 
   if (channelType === 'system') {
     return ListChannelsResponseSchema.parse(
@@ -27,7 +30,7 @@ async function handler(
     );
   }
   return ListChannelsResponseSchema.parse(
-    await getMemberChannelList({ tmbId, pageNum, pageSize, search })
+    await getMemberChannelList({ teamId, tmbId, pageNum, pageSize, search })
   );
 }
 

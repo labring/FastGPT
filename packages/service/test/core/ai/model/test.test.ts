@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const mocks = vi.hoisted(() => ({
   getAIApi: vi.fn(),
@@ -46,7 +46,7 @@ const ttsModel = {
   scope: 'system',
   isActive: true,
   config: { voices: [{ label: 'Alloy', value: 'alloy' }] }
-} as SystemModelDataType;
+} as AIModelDataType;
 
 const createModel = (type: ModelTypeEnum, config = {}) =>
   ({
@@ -58,7 +58,7 @@ const createModel = (type: ModelTypeEnum, config = {}) =>
     scope: 'system',
     isActive: true,
     config
-  }) as SystemModelDataType;
+  }) as AIModelDataType;
 
 const waitForAbort = (signal: AbortSignal, onAbort?: () => void) =>
   new Promise<void>((_, reject) => {
@@ -77,6 +77,7 @@ describe('testModelConnection request timeout', () => {
     vi.useRealTimers();
     vi.clearAllMocks();
     mocks.getAIApi.mockReturnValue({
+      requestMeta: { baseUrl: 'https://provider.example/v1' },
       ai: { audio: { speech: { create: mocks.createSpeech } } }
     });
   });

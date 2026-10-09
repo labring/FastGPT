@@ -26,7 +26,13 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+  getSystemModelHandle: async () => ({
+    getDefaultModelData: (slot: string) =>
+      (({ chatTitleLLM: getDefaultChatTitleModelDataMock }) as Record<string, () => unknown>)[
+        slot
+      ]?.()
+  }),
+  getTeamModelHandle: async () => ({
     getDefaultModelData: (slot: string) =>
       (({ chatTitleLLM: getDefaultChatTitleModelDataMock }) as Record<string, () => unknown>)[
         slot

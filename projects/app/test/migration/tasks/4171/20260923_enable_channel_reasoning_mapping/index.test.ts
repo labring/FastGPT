@@ -1,5 +1,5 @@
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
-import { REASONING_FIELD_MAPPING_CHANNEL_TYPES } from '@fastgpt/global/core/ai/channel';
+import { REASONING_FIELD_MAPPING_CHANNEL_TYPES } from '@fastgpt/global/core/ai/model/channel';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

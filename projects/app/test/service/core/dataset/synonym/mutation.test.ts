@@ -33,7 +33,27 @@ vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
 }));
 vi.mock('@fastgpt/service/core/ai/model', () => ({
   isImageEmbeddingModel: (model?: { config?: { vision?: boolean } }) => !!model?.config?.vision,
-  getModelHandle: async () => ({
+  getSystemModelHandle: async () => ({
+    getLLMModelData: () => ({
+      modelId: '507f1f77bcf86cd799439023',
+      name: 'Agent',
+      model: 'agent-model',
+      config: {}
+    }),
+    getEmbeddingModelData: () => ({
+      modelId: '507f1f77bcf86cd799439021',
+      name: 'Embedding',
+      model: 'embedding',
+      config: { maxToken: 8192 }
+    }),
+    getVlmModelData: () => ({
+      modelId: '507f1f77bcf86cd799439022',
+      name: 'VLM',
+      model: 'vlm-model',
+      config: { vision: true }
+    })
+  }),
+  getTeamModelHandle: async () => ({
     getLLMModelData: () => ({
       modelId: '507f1f77bcf86cd799439023',
       name: 'Agent',

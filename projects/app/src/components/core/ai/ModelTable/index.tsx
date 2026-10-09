@@ -1,4 +1,4 @@
-import { getPublicModelCatalog } from '@/web/core/ai/model/api';
+import { getPublicModelCatalog } from '@/web/core/ai/model/catalogApi';
 import { useModelList } from '@/web/core/ai/model/useModelList';
 import { useUserModelStore } from '@/web/core/ai/model/useUserModelStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -38,7 +38,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ModelListFilters from '../ModelListFilters';
 import ModelCapabilityTags from '../ModelCapabilityTags';
 import TestModeBetaTag from '../TestModeBetaTag';
-import ModelTabHeader from '@/pageComponents/model/ModelTabHeader';
+import ModelTabHeader from '@/components/core/ai/ModelTabHeader';
 import ModelScopeCell from '../ModelScopeCell';
 import { useModelTableFormat } from '../hooks/useModelTableFormat';
 
@@ -235,6 +235,7 @@ const ModelTable = ({
                       <ModelScopeCell
                         modelId={item.modelId}
                         scope={item.scope}
+                        ownerTmbId={'tmbId' in item ? item.tmbId : undefined}
                         hasManagePer={userInfo?.team.permission.hasManagePer}
                         selectedHint={modelPermissionConfigHint}
                       />

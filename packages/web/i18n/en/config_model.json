@@ -273,5 +273,6 @@
   "available_range": "Availability",
   "available_to_all": "Available to all",
   "only_available_to_self": "Only available to self",
+  "shared_with_me": "Shared with me",
   "system_model_tag": "System"
 }

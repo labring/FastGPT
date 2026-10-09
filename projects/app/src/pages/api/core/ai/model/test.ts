@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import {
   authAndGetModelInstance,
   authModelInstanceAccess
-} from '@fastgpt/service/support/permission/model/controller';
+} from '@fastgpt/service/support/permission/model/auth';
 import { testModelConnection } from '@fastgpt/service/core/ai/model/test';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -13,8 +13,8 @@ import {
   type TestDraftModelBody,
   type TestModelQuery
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { isTeamModel, channelTypeToScope } from '@fastgpt/global/core/ai/model';
-import type { SystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { isTeamModel, channelTypeToScope } from '@fastgpt/global/core/ai/model/utils';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
@@ -37,14 +37,14 @@ async function handleDraftTest(req: ApiRequestProps<TestDraftModelBody>): Promis
     requestUrl: undefined,
     requestAuth: undefined,
     scope: channelTypeToScope(channelType)
-  } as SystemModelDataType;
+  } as AIModelDataType;
 
   const isTeam = isTeamModel(draftModel);
-  const authResult = await authModelInstanceAccess({ req, model: draftModel, isTeam });
+  const authResult = await authModelInstanceAccess({ req, model: draftModel });
 
   // 草稿或未带归属的团队模型测试时，归属回退为当前成员，保证请求落在成员自己的渠道桶
   if (isTeam) {
-    draftModel.tmbId = draftModel.tmbId || authResult.ownerTmbId;
+    draftModel.tmbId = draftModel.tmbId ?? authResult.ownerTmbId;
   }
 
   logger.debug('Test draft model', { model: draftModel.model, type: draftModel.type, channelId });
@@ -62,11 +62,7 @@ async function handleInstalledTest(
     querySchema: TestModelQuerySchema
   }).query;
 
-  const {
-    model: installedModel,
-    teamId,
-    ownerTmbId
-  } = await authAndGetModelInstance({
+  const { model: installedModel, teamId } = await authAndGetModelInstance({
     req,
     modelId,
     channelType
@@ -77,10 +73,6 @@ async function handleInstalledTest(
     ? { ...installedModel, requestUrl: undefined, requestAuth: undefined }
     : installedModel;
 
-  if (isTeamModel(modelData)) {
-    modelData.tmbId = modelData.tmbId || ownerTmbId;
-  }
-
   logger.debug('Test installed model', { model: modelData.model, type: modelData.type, channelId });
   return testModelConnection({ model: modelData, teamId, channelId });
 }
@@ -90,7 +82,9 @@ async function handler(req: ApiRequestProps<TestDraftModelBody, TestModelQuery>)
   if (req.method === 'POST') {
     return handleDraftTest(req as ApiRequestProps<TestDraftModelBody>);
   }
-  return handleInstalledTest(req as ApiRequestProps<Record<string, never>, TestModelQuery>);
+  return handleInstalledTest(
+    req as unknown as ApiRequestProps<Record<string, never>, TestModelQuery>
+  );
 }
 
 export default NextAPI(handler);

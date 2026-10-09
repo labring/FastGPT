@@ -130,11 +130,12 @@ export class AIProxyClient {
       }
     };
 
-    const listAll = async (): Promise<T[]> => {
+    const listAll = async (params: Pick<ChannelListParams, 'search'> = {}): Promise<T[]> => {
       const all: T[] = [];
       let page = 1;
       for (;;) {
         const { channels, total } = await list({
+          ...params,
           page,
           perPage: AIPROXY_LIST_PAGE_SIZE
         });
@@ -150,8 +151,18 @@ export class AIProxyClient {
       list,
       listAll,
       get: (id: number): Promise<T> => this.get<T>(`${basePath}/channel/${id}`),
-      create: (data: AddChannelData): Promise<void> =>
-        this.post<void>(`${basePath}/channel/`, data),
+      /** 上游旧版创建返回空 data；在同一分组内分页精确查名补齐资源 ID，协议差异不泄露到 UI。 */
+      create: async (data: AddChannelData): Promise<{ id: number }> => {
+        const result = await this.post<{ id: number } | null>(`${basePath}/channel/`, data);
+        if (result && Number.isInteger(result.id) && result.id > 0) return { id: result.id };
+        const matches = (await listAll({ search: data.name.trim() })).filter(
+          (channel) => channel.name.trim() === data.name.trim()
+        );
+        if (matches.length !== 1) {
+          throw new Error('Channel was created but its ID could not be resolved uniquely');
+        }
+        return { id: matches[0].id };
+      },
       update: (id: number, data: UpdateChannelData): Promise<void> =>
         this.put<void>(`${basePath}/channel/${id}`, data),
       delete: (id: number): Promise<void> => this.del<void>(`${basePath}/channel/${id}`),

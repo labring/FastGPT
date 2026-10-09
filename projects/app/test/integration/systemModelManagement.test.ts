@@ -1,12 +1,13 @@
-import { getCachedModelHandle, publishModelHandle } from '@fastgpt/service/core/ai/model/handle';
+import {
+  getCachedSystemModelHandle,
+  publishSystemModelHandle
+} from '@fastgpt/service/core/ai/model/cache';
 
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { type CreateModelBody } from '@fastgpt/global/openapi/core/ai/model/api';
-
-// 全局测试配置提供 MongoMemoryReplSet；这里恢复真实 session，覆盖提交与回滚。
-vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
 const external = vi.hoisted(() => ({
   listModels: vi.fn()
@@ -24,17 +25,20 @@ import {
   createModel as createSystemModel,
   createModelsFromTemplates as createSystemModelsFromTemplates,
   deleteModels as deleteSystemModels,
-  updateSystemDefaultModels,
   updateModel as updateSystemModel,
   updateModelStatus
 } from '@fastgpt/service/core/ai/model/mutation';
+import { updateSystemDefaultModels } from '@fastgpt/service/core/ai/model/default/service';
 import { importSystemModels } from '@fastgpt/service/core/ai/model/import';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
-import * as catalogEntity from '@fastgpt/service/core/ai/model/entity';
-import { refreshModelHandle, loadInstalledModels } from '@fastgpt/service/core/ai/model/catalog';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+import * as catalogEntity from '@fastgpt/service/core/ai/model/catalog/entity';
+import {
+  refreshModelHandle,
+  loadInstalledModels
+} from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 
@@ -51,14 +55,19 @@ const createDraft = (model: string): CreateModelBody['modelData'] => ({
 
 describe('system model management integration: MongoDB transactions and runtime catalog', () => {
   beforeEach(async () => {
+    const { mongoSessionRun: actualMongoSessionRun } = await vi.importActual<
+      typeof import('@fastgpt/service/common/mongo/sessionRun')
+    >('@fastgpt/service/common/mongo/sessionRun');
+    // setup 已载入无事务 mock；保留同一个 mock 函数引用，只替换为真实事务实现。
+    vi.mocked(mongoSessionRun).mockImplementation(actualMongoSessionRun);
     external.listModels.mockReset().mockResolvedValue([]);
     await Promise.all([
       MongoAIModel.deleteMany({}),
       MongoModelStatusProbeRecord.deleteMany({}),
-      MongoAIDefaultModel.deleteMany({}),
+      MongoAIModelCatalog.deleteMany({}),
       MongoResourcePermission.deleteMany({})
     ]);
-    publishModelHandle(undefined);
+    publishSystemModelHandle(undefined);
     await loadInstalledModels();
   });
 
@@ -75,9 +84,9 @@ describe('system model management integration: MongoDB transactions and runtime 
       model: 'integration-new',
       isActive: true
     });
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    expect(getCachedModelHandle()?.revision).toBe(1);
-    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
+    expect(getCachedSystemModelHandle()?.revision).toBe(1);
+    expect(getCachedSystemModelHandle()?.getAllModels()).toMatchObject([
       { modelId, model: 'integration-new' }
     ]);
   });
@@ -90,7 +99,7 @@ describe('system model management integration: MongoDB transactions and runtime 
     );
 
     expect(await MongoAIModel.countDocuments({ model: 'duplicate' })).toBe(1);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
   });
 
   it('removes probe records and permissions when deleting models', async () => {
@@ -129,8 +138,8 @@ describe('system model management integration: MongoDB transactions and runtime 
     expect(await MongoAIModel.countDocuments()).toBe(0);
     expect(await MongoModelStatusProbeRecord.countDocuments()).toBe(0);
     expect(await MongoResourcePermission.countDocuments()).toBe(0);
-    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(2);
+    expect(getCachedSystemModelHandle()?.getAllModels()).toEqual([]);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(2);
   });
 
   it('rolls back model, probe, and permission deletion when a transactional write fails', async () => {
@@ -160,13 +169,13 @@ describe('system model management integration: MongoDB transactions and runtime 
 
     expect(await MongoAIModel.findById(modelId).lean()).not.toBeNull();
     expect(await MongoModelStatusProbeRecord.countDocuments({ modelId })).toBe(1);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    expect(getCachedModelHandle()?.revision).toBe(1);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
+    expect(getCachedSystemModelHandle()?.revision).toBe(1);
   });
 
   it('returns committed creation after reload failure and repairs the snapshot at the next read barrier', async () => {
     const failure = vi
-      .spyOn(catalogEntity, 'readSystemModelSnapshot')
+      .spyOn(catalogEntity, 'readModelCatalogSnapshot')
       .mockRejectedValueOnce(new Error('Injected snapshot read failure'));
 
     const { modelId } = await createSystemModel({
@@ -174,12 +183,12 @@ describe('system model management integration: MongoDB transactions and runtime 
     });
 
     expect(await MongoAIModel.findById(modelId).lean()).not.toBeNull();
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    expect(getCachedModelHandle()?.revision).toBe(0);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
+    expect(getCachedSystemModelHandle()?.revision).toBe(0);
     failure.mockRestore();
     await refreshModelHandle();
-    expect(getCachedModelHandle()?.revision).toBe(1);
-    expect(getCachedModelHandle()?.getAllModels()).toMatchObject([
+    expect(getCachedSystemModelHandle()?.revision).toBe(1);
+    expect(getCachedSystemModelHandle()?.getAllModels()).toMatchObject([
       { modelId, model: 'reload-repair' }
     ]);
   });
@@ -195,7 +204,7 @@ describe('system model management integration: MongoDB transactions and runtime 
       })
     ).rejects.toThrow('no longer exists');
     expect(await MongoAIModel.countDocuments()).toBe(0);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(0);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
   });
 
   it('uses the latest template parameters, skips installed names and leaves instances unchanged later', async () => {
@@ -228,7 +237,7 @@ describe('system model management integration: MongoDB transactions and runtime 
     });
     external.listModels.mockResolvedValue([]);
     await loadInstalledModels();
-    expect(getCachedModelHandle()?.getAllModels()).toHaveLength(2);
+    expect(getCachedSystemModelHandle()?.getAllModels()).toHaveLength(2);
     expect(external.listModels).toHaveBeenCalledTimes(1);
   });
 
@@ -241,34 +250,38 @@ describe('system model management integration: MongoDB transactions and runtime 
       updateModelStatus({ modelIds: [modelId, missingId], isActive: false })
     ).rejects.toBeDefined();
     expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({ isActive: true });
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    expect(getCachedModelHandle()?.revision).toBe(1);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
+    expect(getCachedSystemModelHandle()?.revision).toBe(1);
     await updateModelStatus({ modelIds: [modelId], isActive: false });
     expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({ isActive: false });
-    expect(await catalogEntity.readSystemModelRevision()).toBe(2);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(2);
   });
 
   it('preserves configured defaults when creating another model and rolls back invalid default changes', async () => {
     const { modelId } = await createSystemModel({
       modelData: createDraft('default')
     });
-    await updateSystemDefaultModels({ llm: modelId, chatTitleLLMModelId: modelId });
-    const defaultsBefore = await MongoAIDefaultModel.find({}, { defaultModelIds: 1 }).lean();
+    await updateSystemDefaultModels({ llm: modelId, chatTitleLLM: modelId });
+    const defaultsBefore = await MongoAIModelCatalog.find({}, { defaultModelIds: 1 }).lean();
     const second = await createSystemModel({ modelData: createDraft('second') });
     expect(second.modelId).not.toBe(modelId);
-    expect(await MongoAIDefaultModel.find({}, { defaultModelIds: 1 }).lean()).toEqual(
+    expect(await MongoAIModelCatalog.find({}, { defaultModelIds: 1 }).lean()).toEqual(
       defaultsBefore
     );
-    const revision = await catalogEntity.readSystemModelRevision();
+    const revision = await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system });
     await expect(
-      updateSystemDefaultModels({ llm: second.modelId, datasetImageLLMModelId: modelId })
+      updateSystemDefaultModels({ llm: second.modelId, datasetImageLLM: modelId })
     ).rejects.toBeDefined();
-    expect(await MongoAIDefaultModel.find({}, { defaultModelIds: 1 }).lean()).toEqual(
+    expect(await MongoAIModelCatalog.find({}, { defaultModelIds: 1 }).lean()).toEqual(
       defaultsBefore
     );
-    expect(await catalogEntity.readSystemModelRevision()).toBe(revision);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(
+      revision
+    );
     await updateSystemDefaultModels({});
-    expect(await catalogEntity.readSystemModelRevision()).toBe(revision + 1);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(
+      revision + 1
+    );
   });
 
   it('prechecks immutable type and clears omitted request credentials on update', async () => {
@@ -306,43 +319,38 @@ describe('system model management integration: MongoDB transactions and runtime 
     });
   });
 
-  it('keeps JSON import atomic and distinguishes legacy no-ID records from deliberate empty configuration', async () => {
-    const { modelId } = await createSystemModel({
-      modelData: createDraft('json-original')
-    });
+  it('rejects invalid JSON records and immutable type changes, and allows deliberate empty replacement', async () => {
+    const { UpdateSystemModelsWithJsonBodySchema } =
+      await import('@fastgpt/global/openapi/core/ai/model/api');
+    const { modelId } = await createSystemModel({ modelData: createDraft('json-original') });
     const before = await MongoAIModel.find({}).lean();
+    expect(() =>
+      UpdateSystemModelsWithJsonBodySchema.parse({
+        config: JSON.stringify([
+          { ...createDraft('invalid'), modelId: 'invalid', config: { maxContext: 'bad' } }
+        ])
+      })
+    ).toThrow();
+    expect(() =>
+      UpdateSystemModelsWithJsonBodySchema.parse({
+        config: JSON.stringify([createDraft('missing-id')])
+      })
+    ).toThrow();
     await expect(
       importSystemModels({
-        config: [
-          { ...createDraft('external'), modelId: 'external' },
-          { ...createDraft('invalid'), modelId: 'invalid', config: { maxContext: 'bad' } }
-        ]
+        config: [{ ...createDraft('type-change'), modelId, type: ModelTypeEnum.stt, config: {} }]
       })
-    ).rejects.toThrow('Invalid system model');
+    ).rejects.toThrow('Model type cannot be changed');
     expect(await MongoAIModel.find({}).lean()).toEqual(before);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
-    await importSystemModels({ config: [createDraft('legacy')] });
-    expect(await MongoAIModel.find({}).lean()).toEqual(before);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
     await importSystemModels({
-      config: [
-        {
-          ...createDraft('injected-name'),
-          modelId,
-          type: ModelTypeEnum.stt,
-          name: 'Imported',
-          inputPrice: 0,
-          outputPrice: 2
-        }
-      ]
+      config: [{ ...createDraft('imported-name'), modelId, name: 'Imported' }]
     });
-    const imported = await MongoAIModel.findById(modelId).lean();
-    expect(imported).toMatchObject({ model: 'injected-name', type: 'llm', name: 'Imported' });
-    expect(imported).not.toHaveProperty('inputPrice');
-    expect(imported).not.toHaveProperty('outputPrice');
-    expect(imported?.priceTiers).toEqual(
-      expect.arrayContaining([expect.objectContaining({ inputPrice: 0, outputPrice: 2 })])
-    );
+    expect(await MongoAIModel.findById(modelId).lean()).toMatchObject({
+      model: 'imported-name',
+      type: 'llm',
+      name: 'Imported'
+    });
     await MongoResourcePermission.collection.insertOne({
       resourceType: PerResourceTypeEnum.model,
       resourceId: new connectionMongo.Types.ObjectId(modelId)
@@ -367,7 +375,7 @@ describe('system model management integration: MongoDB transactions and runtime 
   });
 
   it('rolls back MongoDB when model insert fails and succeeds on retry', async () => {
-    const beforeDefaults = await MongoAIDefaultModel.findOne().lean();
+    const beforeDefaults = await MongoAIModelCatalog.findOne().lean();
     vi.spyOn(MongoAIModel, 'create').mockImplementationOnce(() => {
       throw new Error('Injected model insert failure');
     });
@@ -376,14 +384,14 @@ describe('system model management integration: MongoDB transactions and runtime 
     await expect(createSystemModel(input)).rejects.toThrow('Injected model insert failure');
 
     expect(await MongoAIModel.countDocuments()).toBe(0);
-    expect(await MongoAIDefaultModel.findOne().lean()).toEqual(beforeDefaults);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(0);
-    expect(getCachedModelHandle()?.getAllModels()).toEqual([]);
+    expect(await MongoAIModelCatalog.findOne().lean()).toEqual(beforeDefaults);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
+    expect(getCachedSystemModelHandle()?.getAllModels()).toEqual([]);
 
     await createSystemModel(input);
 
     expect(await MongoAIModel.countDocuments()).toBe(1);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
   });
 
   it('rejects concurrent duplicate creation through the real unique index with one committed revision', async () => {
@@ -394,6 +402,6 @@ describe('system model management integration: MongoDB transactions and runtime 
     expect(results.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
     expect(results.filter(({ status }) => status === 'rejected')).toHaveLength(1);
     expect(await MongoAIModel.countDocuments({ model: 'concurrent' })).toBe(1);
-    expect(await catalogEntity.readSystemModelRevision()).toBe(1);
+    expect(await catalogEntity.readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(1);
   });
 });

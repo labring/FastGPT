@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -10,7 +10,7 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 
 import { checkTeamAiPointsAndLock } from './utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize
@@ -105,7 +105,7 @@ export async function generateQA(): Promise<any> {
         });
 
         try {
-          const modelHandle = await getModelHandle({ teamId: String(data.teamId) });
+          const modelHandle = await getTeamModelHandle({ teamId: String(data.teamId) });
           const modelData = modelHandle.getLLMModelData(
             getDatasetModelReference(data.dataset, 'agent')
           );
@@ -223,7 +223,7 @@ async function formatSplitText({
 }: {
   answer: string;
   rawText: string;
-  llmModel: LLMSystemModelDataType;
+  llmModel: LLMModelDataType;
 }) {
   answer = answer.replace(/\\n/g, '\n'); // 将换行符替换为空格
   const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q\d|$)/g; // 匹配Q和A的正则表达式

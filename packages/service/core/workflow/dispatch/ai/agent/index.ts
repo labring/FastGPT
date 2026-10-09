@@ -1,4 +1,4 @@
-import { getModelHandle } from '../../../../ai/model';
+import { getTeamModelHandle } from '../../../../ai/model/index';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
@@ -141,7 +141,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
   } = props;
   const datasetParams = getAgentDatasetParams(props.params);
-  const modelHandle = await getModelHandle({ teamId: runningUserInfo?.teamId });
+  const modelHandle = await getTeamModelHandle({ teamId: runningAppInfo.teamId });
   const agentModel = modelHandle.getLLMModelData({ modelId, model });
   const dynamicDataset = nodeHasDynamicInput(props.node, [
     NodeInputKeyEnum.datasetSelectList,

@@ -1,4 +1,4 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
 
 import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/list';
@@ -548,7 +548,7 @@ describe('POST /api/core/ai/skill/list', () => {
       tmbId: user.tmbId
     });
 
-    const legacyModel = getCachedModelHandle()
+    const legacyModel = getCachedSystemModelHandle()
       ?.getActiveModels()
       .find((model) => model.type === ModelTypeEnum.llm)!;
     const draftNode = createSkillNode(draftSkill);

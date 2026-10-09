@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
-import { deleteChannel } from '@fastgpt/service/core/ai/channel/service';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
+import { deleteChannel } from '@fastgpt/service/core/ai/model/channel/service';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteChannelQuerySchema,
@@ -19,9 +19,9 @@ async function handler(
     querySchema: DeleteChannelQuerySchema
   }).query;
 
-  const { tmbId } = await authModelManage({ req, channelType, resource: 'channel' });
+  const { tmbId, teamId } = await authModelManage({ req, channelType, resource: 'channel' });
 
-  return DeleteChannelResponseSchema.parse(await deleteChannel({ id, channelType, tmbId }));
+  return DeleteChannelResponseSchema.parse(await deleteChannel({ id, channelType, tmbId, teamId }));
 }
 
 export default NextAPI(handler);

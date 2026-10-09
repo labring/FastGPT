@@ -1,4 +1,5 @@
-import { type ChannelInfoType } from '@fastgpt/global/core/ai/channel';
+import type { CreateChannelResponse } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import { type ChannelInfoType } from '@fastgpt/global/core/ai/model/channel';
 import { Box, type BoxProps, Button, Flex, Input, HStack } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -17,7 +18,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { useModelConfig } from '@/web/core/ai/model/useModelConfig';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import { useLockFn } from 'ahooks';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
 const LabelStyles: BoxProps = {
   fontSize: 'sm',
@@ -46,7 +47,7 @@ const EditChannelModal = ({
   allowEmptyModels?: boolean;
   channelType: ChannelType;
   onClose: () => void;
-  onSuccess: (createdChannelId?: number) => unknown | Promise<unknown>;
+  onSuccess: (createdChannelData?: CreateChannelResponse) => unknown | Promise<unknown>;
 }) => {
   const { t, i18n } = useSafeTranslation();
   const {
@@ -59,8 +60,9 @@ const EditChannelModal = ({
   const currentModels = fixedModels ?? (fixedModel ? [fixedModel] : []);
   const isCompactCreate = !isEdit && currentModels.length > 0;
 
-  const { register, handleSubmit, control, setValue } = useForm<ChannelInfoType>({
-    defaultValues: defaultConfig
+  const { configs: _configs, ...formDefaults } = defaultConfig;
+  const { register, handleSubmit, control, setValue } = useForm<Omit<ChannelInfoType, 'configs'>>({
+    defaultValues: formDefaults
   });
 
   const providerType = useWatch({ control, name: 'type' });
@@ -114,17 +116,22 @@ const EditChannelModal = ({
         return Promise.reject(t('config_model:selected_model_empty'));
       }
       if (isEdit) {
-        await putChannel({ ...data, channelType });
+        await putChannel({
+          ...data,
+          status: data.status === 1 || data.status === 2 ? data.status : undefined,
+          channelType
+        });
         await onSuccess();
         return;
       }
 
-      await postCreateChannel({
+      const createdChannel = await postCreateChannel({
         ...data,
+        status: data.status === 1 || data.status === 2 ? data.status : undefined,
         channelType,
         model_mapping: data.model_mapping ?? {}
       });
-      await onSuccess();
+      await onSuccess(createdChannel);
     },
     {
       onSuccess() {

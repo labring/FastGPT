@@ -1,7 +1,11 @@
 import z from 'zod';
 import { PaginationResponseSchema } from '../../../../api';
-import { IntSchema } from '../../../../../common/zod';
-import { AIScopeSchema, type AIScope } from '../../scope';
+import { IntSchema, NumSchema, queryArrayParam } from '../../../../../common/zod';
+import {
+  ChannelConfigSchema,
+  ChannelManualStatusSchema
+} from '../../../../../core/ai/model/channel';
+import { ChannelTypeSchema } from '../../../../../core/ai/model/scope';
 
 const OptionalIntSchema = z.preprocess(
   (value) => (value === '' || value === undefined ? undefined : value),
@@ -10,54 +14,33 @@ const OptionalIntSchema = z.preprocess(
 
 // AI Proxy 渠道管理 Schema
 // 渠道归属类型：system 为系统渠道，team 为团队成员渠道
-export const ChannelTypeEnumSchema = AIScopeSchema;
-export type ChannelType = AIScope;
 
 // ═══ Shared channel payload (create/update) ═══
 // Mirrors aiproxy AddChannelRequest (core/controller/channel.go).
 // status is narrowed to the literal union (1=启用 / 2=禁用) so the parsed body
 // is directly assignable to the service AddChannelData type without casts.
-export const ChannelBodySchema = z.object({
-  name: z.string().meta({ description: '渠道名' }),
-  type: z
-    .number()
-    .int()
-    .meta({ description: '提供商类型（如 1=openai、14=anthropic、36=deepseek）' }),
-  key: z.string().meta({ description: 'aiproxy 原生 API Key 凭证' }),
-  base_url: z.string().optional().meta({ description: '自定义端点覆盖' }),
-  models: z
-    .array(z.string())
-    .meta({ description: '渠道服务的上游模型名（与模型 model 字段匹配）' }),
-  model_mapping: z
-    .record(z.string(), z.string())
-    .optional()
-    .meta({ description: '公共名 → 上游实际名映射' }),
-  priority: z.number().int().optional().meta({ description: '负载均衡权重，默认 10' }),
-  status: z
-    .union([z.literal(1), z.literal(2)])
-    .optional()
-    .meta({ description: '1=启用 / 2=禁用' }),
-  sets: z.array(z.string()).optional().meta({ description: '模型集合，默认 default' }),
-  configs: z.record(z.string(), z.unknown()).optional().meta({ description: '提供商额外配置' })
-});
-export type ChannelBody = z.infer<typeof ChannelBodySchema>;
-
 // ═══ POST /api/core/ai/model/channel/create ═══
 // The caller declares the channel kind explicitly (channelType) — the server does
 // not infer it from the role, so root can create member channels too (root is
 // also a team admin). groupId is never sent; it is always derived from the session.
-export const CreateChannelBodySchema = ChannelBodySchema.extend({
-  channelType: ChannelTypeEnumSchema.meta({
+export const CreateChannelBodySchema = ChannelConfigSchema.extend({
+  channelType: ChannelTypeSchema.meta({
     description: 'system=系统渠道（root 专用）；team=本人所在团队的成员渠道'
   })
 });
 export type CreateChannelBody = z.infer<typeof CreateChannelBodySchema>;
 
+/** POST /api/core/ai/model/channel/create：返回实际创建的渠道身份，前端无需按名称反查。 */
+export const CreateChannelResponseSchema = z.object({
+  id: IntSchema.positive().meta({ example: 12, description: '实际创建的 AIProxy 渠道 ID' })
+});
+export type CreateChannelResponse = z.infer<typeof CreateChannelResponseSchema>;
+
 // ═══ PUT /api/core/ai/model/channel/update ═══
 // AI Proxy 使用 patch 语义：未提供的字段保持不变，显式空值才会覆盖已有配置。
-export const UpdateChannelBodySchema = ChannelBodySchema.partial().extend({
+export const UpdateChannelBodySchema = ChannelConfigSchema.partial().extend({
   id: z.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
-  channelType: ChannelTypeEnumSchema.meta({
+  channelType: ChannelTypeSchema.meta({
     description: 'system=系统渠道（root 专用）；team=成员渠道'
   })
 });
@@ -66,8 +49,8 @@ export type UpdateChannelBody = z.infer<typeof UpdateChannelBodySchema>;
 // ═══ DELETE /api/core/ai/model/channel/delete ═══
 // Resource id via query — same convention as model delete (DeleteModelQuerySchema).
 export const DeleteChannelQuerySchema = z.object({
-  id: z.coerce.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
-  channelType: ChannelTypeEnumSchema.meta({
+  id: IntSchema.meta({ example: 12, description: 'aiproxy 渠道 ID' }),
+  channelType: ChannelTypeSchema.meta({
     description: 'system=系统渠道（root 专用）；team=成员渠道'
   })
 });
@@ -91,8 +74,8 @@ export type DeleteChannelResponse = z.infer<typeof DeleteChannelResponseSchema>;
 // POST carries id + status in the body (no GET-style query precedent exists for status ops).
 export const UpdateChannelStatusBodySchema = z.object({
   id: z.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
-  status: z.union([z.literal(1), z.literal(2)]).meta({ description: '1=启用 / 2=禁用' }),
-  channelType: ChannelTypeEnumSchema.meta({
+  status: ChannelManualStatusSchema.meta({ description: '1=启用 / 2=禁用' }),
+  channelType: ChannelTypeSchema.meta({
     description: 'system=系统渠道（root 专用）；team=成员渠道'
   })
 });
@@ -102,7 +85,7 @@ export type UpdateChannelStatusBody = z.infer<typeof UpdateChannelStatusBodySche
 export const BatchDeleteChannelsBodySchema = z.object({
   action: z.literal('delete'),
   ids: z.array(z.number().int()).min(1).meta({ description: '待删除的渠道 ID 列表' }),
-  channelType: ChannelTypeEnumSchema.meta({
+  channelType: ChannelTypeSchema.meta({
     description: 'system=系统渠道（root 专用）；team=成员渠道'
   })
 });
@@ -116,8 +99,8 @@ export type BatchDeleteChannelsResponse = z.infer<typeof BatchDeleteChannelsResp
 export const BatchUpdateChannelsStatusBodySchema = z.object({
   action: z.literal('status'),
   ids: z.array(z.number().int()).min(1).meta({ description: '待更新状态的渠道 ID 列表' }),
-  status: z.union([z.literal(1), z.literal(2)]).meta({ description: '1=启用 / 2=禁用' }),
-  channelType: ChannelTypeEnumSchema.meta({
+  status: ChannelManualStatusSchema.meta({ description: '1=启用 / 2=禁用' }),
+  channelType: ChannelTypeSchema.meta({
     description: 'system=系统渠道（root 专用）；team=成员渠道'
   })
 });
@@ -133,8 +116,8 @@ export type BatchChannelResponse = BatchDeleteChannelsResponse | void;
 
 // ═══ GET /api/core/ai/model/channel/models ═══
 export const GetChannelModelsQuerySchema = z.object({
-  id: z.coerce.number().int().meta({ example: 12, description: 'aiproxy 渠道 ID' }),
-  channelType: ChannelTypeEnumSchema.meta({
+  id: IntSchema.meta({ example: 12, description: 'aiproxy 渠道 ID' }),
+  channelType: ChannelTypeSchema.meta({
     description: 'system=系统渠道（root 专用）；team=成员渠道'
   })
 });
@@ -146,23 +129,13 @@ export const ChannelModelsResponseSchema = z.object({
 export type ChannelModelsResponse = z.infer<typeof ChannelModelsResponseSchema>;
 
 // ═══ GET /api/core/ai/model/channel/affectedModels ═══
-export const GetAffectedModelsQuerySchema = z
-  .object({
-    id: z.coerce.number().int().optional().meta({ description: '单渠道 ID（兼容老字段）' }),
-    ids: z
-      .preprocess(
-        (val) => (Array.isArray(val) ? val : val !== undefined ? [val] : undefined),
-        z.array(z.coerce.number().int()).optional()
-      )
-      .meta({ example: [12], description: '待检查的渠道 ID 列表' }),
-    channelType: ChannelTypeEnumSchema.meta({
-      description: 'system=系统渠道（root 专用）；team=成员渠道'
-    })
-  })
-  .transform((data) => ({
-    ids: data.ids ?? (data.id !== undefined ? [data.id] : []),
-    channelType: data.channelType
-  }));
+export const GetAffectedModelsQuerySchema = z.object({
+  ids: queryArrayParam(z.array(IntSchema).min(1)).meta({
+    example: [12],
+    description: '待检查的渠道 ID 列表'
+  }),
+  channelType: ChannelTypeSchema
+});
 export type GetAffectedModelsQuery = z.infer<typeof GetAffectedModelsQuerySchema>;
 
 export const AffectedModelsResponseSchema = z.object({
@@ -172,10 +145,10 @@ export type AffectedModelsResponse = z.infer<typeof AffectedModelsResponseSchema
 
 // ═══ GET /api/core/ai/model/channel/list ═══
 export const ListChannelsQuerySchema = z.object({
-  pageNum: z.coerce.number().optional().meta({ description: '页码，从 1 开始' }),
-  pageSize: z.coerce.number().optional().meta({ description: '每页条数，不传返回全量' }),
+  pageNum: NumSchema.optional().meta({ description: '页码，从 1 开始' }),
+  pageSize: NumSchema.optional().meta({ description: '每页条数，不传返回全量' }),
   search: z.string().optional().meta({ description: '模糊搜索关键字（名称、模型等）' }),
-  channelType: ChannelTypeEnumSchema.optional().meta({
+  channelType: ChannelTypeSchema.optional().meta({
     description: 'system=系统渠道（仅 root）；team=当前登录成员本人的私有渠道'
   })
 });
@@ -229,7 +202,7 @@ export type ProviderMetasResponse = z.infer<typeof ProviderMetasResponseSchema>;
  * Tags: ['Model', 'Channel', 'Log', 'Read']
  * ============================================================================ */
 
-export const ChannelObservabilityScopeSchema = ChannelTypeEnumSchema.meta({
+export const ChannelObservabilityScopeSchema = ChannelTypeSchema.meta({
   example: 'team',
   description: 'system=系统渠道（仅 root）；team=当前成员本人的私有渠道'
 });

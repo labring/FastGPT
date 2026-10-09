@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   parseApiInput: vi.fn(),
   authDatasetCollection: vi.fn(),
   checkDatasetIndexLimit: vi.fn(),
-  getModelHandle: vi.fn(),
+  getSystemModelHandle: vi.fn(),
+  getTeamModelHandle: vi.fn(),
   getTrainingModeByCollection: vi.fn(),
   getDatasetImageIndexCapability: vi.fn(),
   pushDataListToTrainingQueue: vi.fn(),
@@ -31,7 +32,8 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: mocks.getModelHandle
+  getSystemModelHandle: mocks.getSystemModelHandle,
+  getTeamModelHandle: mocks.getSystemModelHandle
 }));
 
 vi.mock('@fastgpt/service/core/dataset/collection/utils', () => ({
@@ -74,7 +76,7 @@ describe('pushData imageId authorization', () => {
         dataset: { _id: datasetId }
       }
     });
-    mocks.getModelHandle.mockResolvedValue({
+    mocks.getSystemModelHandle.mockResolvedValue({
       getEmbeddingModelData: vi.fn(() => ({ modelId: 'vec-model' })),
       getLLMModelData: vi.fn(() => ({ modelId: 'agent-model' })),
       getVlmModelData: vi.fn()

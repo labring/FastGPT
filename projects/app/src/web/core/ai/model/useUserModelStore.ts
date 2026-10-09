@@ -19,7 +19,7 @@ import {
   GetModelCatalogResponseSchema,
   type GetModelCatalogResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { getUserModelCatalog } from './api';
+import { getUserModelCatalog } from './catalogApi';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { resetLogoutState } from '@/web/support/user/logoutState';
 

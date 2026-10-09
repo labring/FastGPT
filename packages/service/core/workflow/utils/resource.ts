@@ -19,7 +19,7 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { MongoApp } from '../../app/schema';
 import { MongoDataset } from '../../dataset/schema';
-import { getModelHandle } from '../../ai/model';
+import { getTeamModelHandle } from '../../ai/model/index';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
 import {
@@ -391,11 +391,11 @@ export const prepareWorkflowDebugResourceContext = async ({
   appId: string;
   nodes?: Array<StoreNodeItemType | RuntimeNodeItemType>;
   chatConfig?: AppChatConfigType;
-  teamId?: string;
+  teamId: string;
   tmbId: string;
   isRoot?: boolean;
 }) => {
-  const modelHandle = await getModelHandle();
+  const modelHandle = await getTeamModelHandle({ teamId });
   if (nodes) {
     formatModels({
       nodes: nodes as StoreNodeItemType[],

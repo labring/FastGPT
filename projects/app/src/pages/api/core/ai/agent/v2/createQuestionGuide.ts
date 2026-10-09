@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import type { NextApiResponse } from 'next';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
@@ -70,7 +70,7 @@ async function handler(
     field: 'obj value time'
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const qgModelData = (() => {
     if (inputQuestionGuide?.modelId !== undefined || inputQuestionGuide?.model !== undefined) {
       return modelHandle.getLLMModelData({

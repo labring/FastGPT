@@ -1,6 +1,6 @@
 import {
-  SystemModelDocumentDataSchema,
-  type SystemModelDocumentDataType
+  AIModelDocumentDataSchema,
+  type AIModelDocumentDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
@@ -9,8 +9,8 @@ import { LegacySystemModelCollectionName } from '@fastgpt/service/core/ai/model/
 import { getLegacyDefaultModelFlags, repairSystemModelDocument } from './utils';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { assertSystemModelTypesMatchPluginTemplates } from '@fastgpt/service/core/ai/model/transform';
-import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/defaultModel/entity';
-import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import { upsertSystemDefaultModelIds } from '@fastgpt/service/core/ai/model/catalog/entity';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 
 export type BootstrapAIModelsResult = {
   status: 'migrated';
@@ -42,7 +42,7 @@ export const inspectLegacySystemModelMigration = async () => {
 export const bootstrapAIModelsFromLegacy = async ({
   pluginDocuments
 }: {
-  pluginDocuments: SystemModelDocumentDataType[];
+  pluginDocuments: AIModelDocumentDataType[];
 }): Promise<BootstrapAIModelsResult> => {
   // 故意通过原生 collection 读取，避免在旧表上注册 Schema、索引或写入中间状态。
   const legacyCollection = MongoAIModel.db.collection(LegacySystemModelCollectionName);
@@ -50,7 +50,7 @@ export const bootstrapAIModelsFromLegacy = async ({
   const pluginMap = new Map(pluginDocuments.map((item) => [item.model, item]));
   const modelIds = new Set<string>();
   type MigrationCandidate = {
-    document: SystemModelDocumentDataType & {
+    document: AIModelDocumentDataType & {
       _id: (typeof records)[number]['_id'];
     };
     defaultFlags: ReturnType<typeof getLegacyDefaultModelFlags>;
@@ -91,13 +91,13 @@ export const bootstrapAIModelsFromLegacy = async ({
     const targetRecords = await MongoAIModel.collection
       .find({ scope: ModelScopeEnum.system }, { session })
       .toArray();
-    const existingDefaultModel = await MongoAIDefaultModel.collection.findOne(
+    const existingDefaultModel = await MongoAIModelCatalog.collection.findOne(
       { scope: ModelScopeEnum.system },
       { session }
     );
     const targetModels = targetRecords.map((record) => ({
       _id: record._id,
-      document: SystemModelDocumentDataSchema.parse(record)
+      document: AIModelDocumentDataSchema.parse(record)
     }));
     const targetByModel = new Map<string, (typeof targetModels)[number]>();
     const targetById = new Map(targetModels.map((model) => [String(model._id), model]));

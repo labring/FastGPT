@@ -1,6 +1,6 @@
 import { MongoDataset } from '../schema';
 import { getDatasetModelReference } from '../model';
-import { getModelHandle } from '../../ai/model';
+import { getTeamModelHandle } from '../../ai/model/index';
 import type { ModelHandle } from '../../ai/model/handle';
 
 /**
@@ -43,6 +43,6 @@ export const getDatasetSearchVlmModel = async ({
       const dataset = datasetMap.get(id);
       return dataset ? [dataset] : [];
     }),
-    modelHandle ?? (await getModelHandle())
+    modelHandle ?? (await getTeamModelHandle({ teamId }))
   );
 };

@@ -35,7 +35,19 @@ const ModelProvider = () => {
 
   const handleBeforeTabChange = useCallback(
     (targetTab: ModelTabType, options?: { silent?: boolean }) => {
-      if (!canManageModel && targetTab !== 'active_model') {
+      if (targetTab === 'active_model') return true;
+
+      if (!feConfigs.enable_team_model) {
+        if (!options?.silent) {
+          toast({
+            status: 'warning',
+            title: t('common:code_error.model_error.team_model_disabled')
+          });
+        }
+        return false;
+      }
+
+      if (!canManageModel) {
         if (!options?.silent) {
           toast({
             status: 'warning',
@@ -46,29 +58,50 @@ const ModelProvider = () => {
       }
       return true;
     },
-    [canManageModel, t, toast]
+    [canManageModel, feConfigs.enable_team_model, t, toast]
   );
 
   useEffect(() => {
     if (!router.isReady) return;
-    if (!canManageModel && router.query.modelTab && router.query.modelTab !== 'active_model') {
-      toast({
-        status: 'warning',
-        title: t('common:error_un_permission')
-      });
-      void router.replace(
-        {
-          pathname: router.pathname,
-          query: {
-            ...router.query,
-            modelTab: 'active_model'
-          }
-        },
-        undefined,
-        { shallow: true }
-      );
+    if (router.query.modelTab && router.query.modelTab !== 'active_model') {
+      if (!feConfigs.enable_team_model) {
+        toast({
+          status: 'warning',
+          title: t('common:code_error.model_error.team_model_disabled')
+        });
+        void router.replace(
+          {
+            pathname: router.pathname,
+            query: {
+              ...router.query,
+              modelTab: 'active_model'
+            }
+          },
+          undefined,
+          { shallow: true }
+        );
+        return;
+      }
+
+      if (!canManageModel) {
+        toast({
+          status: 'warning',
+          title: t('common:error_un_permission')
+        });
+        void router.replace(
+          {
+            pathname: router.pathname,
+            query: {
+              ...router.query,
+              modelTab: 'active_model'
+            }
+          },
+          undefined,
+          { shallow: true }
+        );
+      }
     }
-  }, [canManageModel, router, t, toast]);
+  }, [canManageModel, feConfigs.enable_team_model, router, t, toast]);
 
   useEffect(() => {
     if (!initd || feConfigs.isPlus) return;

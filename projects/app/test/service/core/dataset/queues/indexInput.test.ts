@@ -1,14 +1,14 @@
 import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import * as modelApi from '@fastgpt/service/core/ai/model';
+import * as modelApi from '@fastgpt/service/core/ai/model/index';
 import {
   getIndexTrainingBaseIndexes,
   getIndexTrainingUpdateInput
 } from '@/service/core/dataset/queues/indexInput';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import type {
-  EmbeddingSystemModelDataType,
-  LLMSystemModelDataType
+  EmbeddingModelDataType,
+  LLMModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import {
   DatasetCollectionTypeEnum,
@@ -46,8 +46,9 @@ const seedSynonymFixture = async (
   return seedDatasetSynonymRebuildTasks(context);
 };
 
-let visionEmbeddingModel: EmbeddingSystemModelDataType;
-let vlmModel: LLMSystemModelDataType;
+let visionEmbeddingModel: EmbeddingModelDataType;
+let vlmModel: LLMModelDataType;
+const teamId = '68ad85a7463006c963799a06';
 
 beforeEach(() => {
   Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
@@ -81,8 +82,8 @@ beforeEach(() => {
 
 describe('index training image embedding helpers', () => {
   it('propagates unexpected VLM lookup failures', async () => {
-    const modelHandle = await modelApi.getModelHandle();
-    const lookup = vi.spyOn(modelApi, 'getModelHandle').mockResolvedValue({
+    const modelHandle = await modelApi.getTeamModelHandle({ teamId });
+    const lookup = vi.spyOn(modelApi, 'getTeamModelHandle').mockResolvedValue({
       ...modelHandle,
       getVlmModelData: () => {
         throw new Error('unexpected catalog failure');
@@ -91,6 +92,7 @@ describe('index training image embedding helpers', () => {
     try {
       await expect(
         getIndexTrainingBaseIndexes({
+          teamId,
           indexes: [{ type: DatasetDataIndexTypeEnum.image, text: 'description' }],
           dataset: { vlmModelId: vlmModel.modelId },
           collection: { imageIndex: true }
@@ -105,6 +107,7 @@ describe('index training image embedding helpers', () => {
     'keeps text indexes with an unavailable VLM and imageIndex=%s',
     async (imageIndex) => {
       const result = await getIndexTrainingBaseIndexes({
+        teamId,
         indexes: [
           { type: DatasetDataIndexTypeEnum.default, text: 'system' },
           { type: DatasetDataIndexTypeEnum.custom, text: 'manual' }
@@ -121,6 +124,7 @@ describe('index training image embedding helpers', () => {
     'drops old image descriptions with an unavailable VLM and imageIndex=%s',
     async (imageIndex) => {
       const result = await getIndexTrainingBaseIndexes({
+        teamId,
         indexes: [
           { type: DatasetDataIndexTypeEnum.image, text: 'old description' },
           { type: DatasetDataIndexTypeEnum.custom, text: 'manual' }
@@ -135,6 +139,7 @@ describe('index training image embedding helpers', () => {
 
   it('should drop system indexes and keep supported external image description indexes when rebuilding', async () => {
     const result = await getIndexTrainingBaseIndexes({
+      teamId,
       indexes: [
         { type: DatasetDataIndexTypeEnum.default, text: 'old default', dataId: 'default_id' },
         { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_id' },
@@ -180,6 +185,7 @@ describe('index training image embedding helpers', () => {
 
   it('should drop VLM image description indexes when collection image index is disabled', async () => {
     const result = await getIndexTrainingBaseIndexes({
+      teamId,
       indexes: [
         { type: DatasetDataIndexTypeEnum.custom, text: 'manual', dataId: 'manual_id' },
         {
@@ -213,6 +219,7 @@ describe('index training image embedding helpers', () => {
 
   it('uses a newly generated pure-image description without requiring imageDescMap', async () => {
     const result = await getIndexTrainingUpdateInput({
+      teamId,
       q: 'new VLM description',
       indexes: [],
       dataset: {
@@ -242,6 +249,7 @@ describe('index training image embedding helpers', () => {
       { type: DatasetDataIndexTypeEnum.summary, text: 'new generated summary' }
     ];
     const result = await getIndexTrainingUpdateInput({
+      teamId,
       q: 'content',
       indexes: generatedIndexes,
       dataset: {
@@ -280,6 +288,7 @@ describe('getIndexTrainingUpdateInput answer preservation', () => {
     });
     const result = await getIndexTrainingUpdateInput({
       ...task.toObject(),
+      teamId,
       dataset: {
         vectorModelId: visionEmbeddingModel.modelId,
         vlmModelId: vlmModel.modelId

@@ -1,4 +1,4 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
 import { getModelTestDefaults } from '@test/modelCache';
 import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
@@ -146,7 +146,7 @@ describe('Copy', () => {
     }).lean();
     const expectedFallbackModelId =
       getModelTestDefaults().llm?.modelId ??
-      getCachedModelHandle()
+      getCachedSystemModelHandle()
         ?.getActiveModels()
         .find((model) => model.type === ModelTypeEnum.llm)?.modelId;
     expect(copiedVersion?.nodes[0].inputs).toEqual([

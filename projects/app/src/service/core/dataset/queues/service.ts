@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { rebuildDatasetDataIndexes } from '@/service/core/dataset/data/data';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -97,7 +97,7 @@ export const runDatasetRebuildQueue = async ({
             await lease.complete();
             continue;
           }
-          const modelHandle = await getModelHandle({ teamId: String(data.teamId) });
+          const modelHandle = await getTeamModelHandle({ teamId: String(data.teamId) });
           const model = modelHandle.getEmbeddingModelData(
             getDatasetModelReference(data.dataset, 'embedding')
           );

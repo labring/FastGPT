@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
@@ -49,7 +49,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
       authApiKey: true
     });
     const dataset = collection.dataset;
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getTeamModelHandle({ teamId });
     const vectorModelData = modelHandle.getEmbeddingModelData(
       getDatasetModelReference(dataset, 'embedding')
     );

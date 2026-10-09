@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import {
   updateDatasetDataSystemIndexes,
@@ -47,7 +47,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse>
   });
 
   const dataset = collection.dataset;
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   const vectorModel = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(dataset, 'embedding')
   );

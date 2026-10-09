@@ -1,4 +1,9 @@
-import { getCachedModelHandle } from '@fastgpt/service/core/ai/model/handle';
+vi.mock('@fastgpt/service/core/ai/model/index', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/index')>()),
+  getTeamModelHandle: async () =>
+    (await import('@fastgpt/service/core/ai/model/cache')).getCachedSystemModelHandle()!
+}));
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
 import type { getModelTestMap } from '@test/modelCache';
 import { setModelTestSnapshot, setModelTestMap } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,7 +12,6 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   authOutLink: vi.fn(),
-  findTeamMember: vi.fn(),
   getMemberModelCatalogPermission: vi.fn()
 }));
 
@@ -15,14 +19,11 @@ vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => ha
 vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
-vi.mock('@fastgpt/service/support/permission/model/controller', () => ({
+vi.mock('@fastgpt/service/support/permission/model/catalog', () => ({
   getMemberModelCatalogPermission: mocks.getMemberModelCatalogPermission
 }));
 vi.mock('@/service/support/permission/auth/outLink', () => ({
   authOutLink: mocks.authOutLink
-}));
-vi.mock('@fastgpt/service/support/user/team/teamMemberSchema', () => ({
-  MongoTeamMember: { findOne: mocks.findTeamMember }
 }));
 
 import { handler } from '@/pages/api/core/ai/model/catalog';
@@ -55,16 +56,13 @@ describe('GET /api/core/ai/model/catalog', () => {
     mocks.authOutLink.mockResolvedValue({
       outLinkConfig: { teamId: 'outlink-team', tmbId: 'outlink-member' }
     });
-    mocks.findTeamMember.mockReturnValue({
-      lean: vi.fn().mockResolvedValue({ role: 'member' })
-    });
     setModelTestSnapshot({ version: 'catalog-version' });
     setModelTestMap(
       new Map([[`id:${model.modelId}`, model]]) as ReturnType<typeof getModelTestMap>
     );
     setModelTestSnapshot({
       models: [model] as ReturnType<
-        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+        NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getActiveModels']
       >
     });
     setModelTestSnapshot({ configuredDefaultModelIds: { llm: model.modelId } });
@@ -120,7 +118,7 @@ describe('GET /api/core/ai/model/catalog', () => {
       await expect(
         handler({ query: { version: '3:catalog-version:permission-version' } } as any)
       ).rejects.toBe(failure);
-      expect(getCachedModelHandle()?.getActiveModels()).toHaveLength(1);
+      expect(getCachedSystemModelHandle()?.getActiveModels()).toHaveLength(1);
       if (stage === 'authentication') {
         expect(mocks.getMemberModelCatalogPermission).not.toHaveBeenCalled();
       }
@@ -142,17 +140,13 @@ describe('GET /api/core/ai/model/catalog', () => {
 
     expect(mocks.authOutLink).toHaveBeenCalledWith({ ...outLinkAuthData, req });
     expect(mocks.authUserPer).not.toHaveBeenCalled();
-    expect(mocks.findTeamMember).toHaveBeenCalledWith(
-      { _id: 'outlink-member', teamId: 'outlink-team' },
-      'role'
-    );
     expect(mocks.getMemberModelCatalogPermission).toHaveBeenCalledWith({
       teamId: 'outlink-team',
       tmbId: 'outlink-member',
-      isTeamOwner: false,
+      hasManagePer: false,
       catalogSnapshot: {
-        models: getCachedModelHandle()?.getActiveModels(),
-        revision: getCachedModelHandle()?.revision ?? 0
+        models: getCachedSystemModelHandle()?.getActiveModels(),
+        version: getCachedSystemModelHandle()?.version
       }
     });
   });
@@ -166,7 +160,7 @@ describe('GET /api/core/ai/model/catalog', () => {
     };
     setModelTestSnapshot({
       models: [model, secondModel] as ReturnType<
-        NonNullable<ReturnType<typeof getCachedModelHandle>>['getActiveModels']
+        NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getActiveModels']
       >
     });
     mocks.getMemberModelCatalogPermission.mockResolvedValue({
@@ -188,7 +182,7 @@ describe('GET /api/core/ai/model/catalog', () => {
         model,
         { ...model, modelId: 'inactive', isActive: false },
         { ...model, modelId: 'hidden', isActive: false }
-      ] as ReturnType<NonNullable<ReturnType<typeof getCachedModelHandle>>['getAllModels']>
+      ] as ReturnType<NonNullable<ReturnType<typeof getCachedSystemModelHandle>>['getAllModels']>
     });
     mocks.getMemberModelCatalogPermission.mockResolvedValue({
       modelIds: [model.modelId, 'inactive'],
@@ -222,5 +216,28 @@ describe('GET /api/core/ai/model/catalog', () => {
     });
     const result = await handler({ query: {} } as any);
     expect(result.data?.models.map((m) => m.modelId)).toEqual([model.modelId]);
+  });
+
+  it('forwards hasManagePer to getMemberModelCatalogPermission', async () => {
+    mocks.authUserPer.mockResolvedValueOnce({
+      teamId: 'admin-team',
+      tmbId: 'admin-tmb',
+      isRoot: true,
+      permission: { hasManagePer: true }
+    });
+    mocks.getMemberModelCatalogPermission.mockResolvedValueOnce({
+      modelIds: [model.modelId],
+      version: 'admin-perm-version'
+    });
+
+    await handler({ query: {} } as any);
+
+    expect(mocks.getMemberModelCatalogPermission).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'admin-team',
+        tmbId: 'admin-tmb',
+        hasManagePer: true
+      })
+    );
   });
 });

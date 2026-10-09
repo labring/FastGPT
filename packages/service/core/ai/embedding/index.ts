@@ -1,4 +1,4 @@
-import { type EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { type EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { getAIApi, getModelOpenAIOptions } from '../config';
 import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
 import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
@@ -11,7 +11,7 @@ import { truncateTextByFormattedTokenLimit } from './tokenLimit';
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
 type GetVectorsBaseProps = {
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   type?: `${EmbeddingTypeEnm}`;
   headers?: Record<string, string>;
   timeoutMs?: number;

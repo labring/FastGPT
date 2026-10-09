@@ -6,7 +6,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -82,7 +82,7 @@ const compressToolResponse: typeof rawCompressToolResponse = ((args: any) =>
     ...args
   })) as typeof rawCompressToolResponse;
 
-const model: LLMSystemModelDataType = {
+const model: LLMModelDataType = {
   modelId: '507f1f77bcf86cd799439016',
   type: ModelTypeEnum.llm,
   provider: 'openai',
@@ -100,12 +100,12 @@ const model: LLMSystemModelDataType = {
   }
 };
 
-const largeContextModel: LLMSystemModelDataType = {
+const largeContextModel: LLMModelDataType = {
   ...model,
   config: { ...model.config, maxContext: 32000 }
 };
 
-const toolCompressionModel: LLMSystemModelDataType = {
+const toolCompressionModel: LLMModelDataType = {
   ...model,
   config: { ...model.config, maxContext: 12000 }
 };

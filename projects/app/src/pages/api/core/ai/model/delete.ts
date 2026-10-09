@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteModelsBodySchema,
@@ -14,11 +14,12 @@ async function handler(req: ApiRequestProps<DeleteModelsBody>): Promise<void> {
     bodySchema: DeleteModelsBodySchema
   }).body;
 
-  const { tmbId } = await authModelManage({ req, channelType });
+  const { tmbId, teamId } = await authModelManage({ req, channelType });
 
   await deleteModelsWithLifecycle({
     modelIds,
     channelType,
+    teamId,
     tmbId: channelType === 'team' ? tmbId : undefined
   });
 }

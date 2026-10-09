@@ -5,10 +5,7 @@ import type {
   StreamResponseType
 } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type {
-  LLMModelConfigType,
-  LLMSystemModelDataType
-} from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelConfigType, LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 // Mock dependencies
@@ -123,10 +120,10 @@ const defaultSupportParams = {
 
 // Helper to create mock model data
 const createMockModelData = (
-  overrides?: Partial<Omit<LLMSystemModelDataType, 'config'>> & {
+  overrides?: Partial<Omit<LLMModelDataType, 'config'>> & {
     config?: Partial<LLMModelConfigType>;
   }
-): LLMSystemModelDataType => ({
+): LLMModelDataType => ({
   modelId: '68ad85a7463006c963799a05',
   type: ModelTypeEnum.llm,
   provider: 'openai',

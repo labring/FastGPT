@@ -251,7 +251,8 @@ export const AIModelPath: OpenAPIPath = {
   '/proApi/system/model/collaborator/list': {
     get: {
       summary: '获取模型协作者',
-      description: '按稳定模型 ID 获取协作者',
+      description:
+        '按稳定模型 ID 获取协作者。系统模型可用范围对登录成员公开；团队私有模型仅所有者或具备模型管理权限的协作者可读。',
       tags: [DevApiTagsMap.model],
       requestParams: { query: ModelCollaboratorListQuerySchema },
       responses: {
@@ -265,7 +266,8 @@ export const AIModelPath: OpenAPIPath = {
   '/proApi/system/model/collaborator/batchList': {
     post: {
       summary: '批量获取模型协作者',
-      description: '批量获取多个稳定模型 ID 对应的协作者',
+      description:
+        '批量获取多个稳定模型 ID 对应的协作者，读取策略与单条接口一致；不可见私有模型返回空项。',
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: ModelCollaboratorBatchListBodySchema } }

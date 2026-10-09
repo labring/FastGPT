@@ -13,7 +13,7 @@ import {
   type GetAppVersionDetailResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
 import { normalizeAppVersionWorkflow } from '@fastgpt/service/core/app/version/controller';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
 
 async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponseType> {
@@ -38,7 +38,7 @@ async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponse
     result,
     AppResourcesSchema.safeParse(result.resources).success
       ? []
-      : (await getModelHandle()).getAllModels()
+      : (await getTeamModelHandle({ teamId: String(app.teamId) })).getAllModels()
   );
   await rewriteAppWorkflowToDetail({
     nodes: normalizedWorkflow.nodes,

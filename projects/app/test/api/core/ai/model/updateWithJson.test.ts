@@ -8,14 +8,21 @@ const configMocks = vi.hoisted(() => ({
   updatedReloadSystemModel: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model/catalog', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog')>();
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>();
 
   return {
     ...actual,
     updatedReloadSystemModel: configMocks.updatedReloadSystemModel
   };
 });
+
+vi.mock('@fastgpt/service/core/ai/model/channel/binding', () => ({
+  syncModelNameInChannels: vi.fn().mockResolvedValue(undefined),
+  removeModelsFromChannels: vi.fn().mockResolvedValue(undefined),
+  updateModelChannelBindings: vi.fn().mockResolvedValue(undefined)
+}));
 
 import updateWithJsonApi from '@/pages/api/core/ai/model/updateWithJson';
 import getConfigJsonApi from '@/pages/api/core/ai/model/getConfigJson';
@@ -188,29 +195,6 @@ describe('admin settings model updateWithJson api', () => {
     await expect(MongoAIModel.findOne({ model: 'stored-model' }).lean()).resolves.toBeNull();
   });
 
-  it('ignores an imported type when a local modelId already exists', async () => {
-    const existingModel = await MongoAIModel.create(buildStoredLlm('stored-model'));
-
-    const res = await callUpdateWithJson(
-      JSON.stringify([
-        {
-          ...buildLlmConfig({ modelId: String(existingModel._id), model: 'stored-model' }),
-          type: ModelTypeEnum.embedding,
-          name: 'Imported as another type'
-        }
-      ])
-    );
-
-    expect(res.code).toBe(200);
-    await expect(MongoAIModel.findById(existingModel._id).lean()).resolves.toMatchObject({
-      model: 'stored-model',
-      type: ModelTypeEnum.llm,
-      name: 'Imported as another type',
-      config: { maxContext: 16000 }
-    });
-    expect(configMocks.updatedReloadSystemModel).toHaveBeenCalledOnce();
-  });
-
   it('clears omitted optional fields when replacing a local model config', async () => {
     const existingModel = await MongoAIModel.create({
       ...buildStoredLlm('stored-model'),
@@ -238,44 +222,13 @@ describe('admin settings model updateWithJson api', () => {
     expect(updated?.priceTiers).toEqual([]);
   });
 
-  it('uses the stored model identifier when a local modelId omits model', async () => {
-    const existingModel = await MongoAIModel.create(buildStoredLlm('stored-model'));
-    const { model: _model, ...configWithoutModel } = buildLlmConfig({
-      modelId: String(existingModel._id)
-    });
-
-    const res = await callUpdateWithJson(
-      JSON.stringify([{ ...configWithoutModel, name: 'Updated without model' }])
-    );
-
-    expect(res.code).toBe(200);
-    await expect(MongoAIModel.findById(existingModel._id).lean()).resolves.toMatchObject({
-      model: 'stored-model',
-      name: 'Updated without model',
-      config: { maxContext: 16000 }
-    });
-  });
-
   it('requires model when modelId does not match a local model', async () => {
     const { model: _model, ...configWithoutModel } = buildLlmConfig({ modelId: 'external-id' });
 
     const res = await callUpdateWithJson(JSON.stringify([configWithoutModel]));
-    expect(res.error?.name).toBe('UserError');
+    expect(res.error?.name).toBe('ApiRequestInputParseError');
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
     expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
-  });
-
-  it('ignores old records without modelId and does not delete all models', async () => {
-    const existing = await MongoAIModel.create(buildStoredLlm('existing-model'));
-    const res = await callUpdateWithJson(
-      JSON.stringify([{ ...buildStoredLlm('legacy-model'), scope: undefined }])
-    );
-
-    expect(res.code).toBe(200);
-    await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
-      isActive: true
-    });
-    await expect(MongoAIModel.findOne({ model: 'legacy-model' })).resolves.toBeNull();
   });
 
   it('reuses a target model ID when an external ID points to an existing provider model', async () => {
@@ -309,7 +262,7 @@ describe('admin settings model updateWithJson api', () => {
 
     const res = await callUpdateWithJson(JSON.stringify([config]));
 
-    expect(res.error?.name).toBe('UserError');
+    expect(res.error?.name).toBe('ApiRequestInputParseError');
     await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
   });
 

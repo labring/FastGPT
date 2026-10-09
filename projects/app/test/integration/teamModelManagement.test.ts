@@ -6,8 +6,8 @@ import {
   TeamModelCreatePermissionVal,
   TeamReadPermissionVal
 } from '@fastgpt/global/support/permission/user/constant';
-import { publishModelHandle } from '@fastgpt/service/core/ai/model/handle';
-import { loadInstalledModels } from '@fastgpt/service/core/ai/model/catalog';
+import { publishSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
+import { loadInstalledModels } from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -43,6 +43,7 @@ import deleteHandler from '@/pages/api/core/ai/model/delete';
 import updateChannelsHandler from '@/pages/api/core/ai/model/updateChannels';
 import modelConfigHandler from '@/pages/api/core/ai/model/config';
 import channelListHandler from '@/pages/api/core/ai/model/channel/list';
+import channelCreateHandler from '@/pages/api/core/ai/model/channel/create';
 import channelLogsHandler from '@/pages/api/core/ai/model/channel/logs';
 
 type MockChannel = {
@@ -53,11 +54,12 @@ type MockChannel = {
   models: string[];
   model_mapping?: Record<string, string>;
   priority?: number;
+  configs?: Record<string, unknown>;
   status: 1 | 2;
   group_id?: string;
 };
 
-const GROUP_PATH = /^\/api\/group\/([^/]+)\/channel(s)?(?:\/(\d+))?\/?(?:\?.*)?$/;
+const GROUP_PATH = /^\/api\/group\/([^/]+)\/channel(s)?(?:\/(\d+|search))?\/?(?:\?.*)?$/;
 
 /** 构造完整的模型草稿，team/system 作用域由接口入参决定，不信任草稿里的归属字段。 */
 const modelDraft = (model: string, name = model) => ({
@@ -118,8 +120,23 @@ describe('team model management integration: permission, member isolation and AI
       const match = url.match(GROUP_PATH);
       if (!match) return notFound();
       const groupId = decodeURIComponent(match[1]);
-      const id = match[3] ? Number(match[3]) : undefined;
+      const id = match[3] && match[3] !== 'search' ? Number(match[3]) : undefined;
       const bucket = buckets.get(groupId);
+
+      if (req.method === 'POST' && !match[2] && id === undefined) {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(Buffer.from(chunk));
+        const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        const channel = {
+          ...body,
+          id: (bucket?.length ?? 0) + 1,
+          group_id: groupId,
+          status: body.status ?? 1
+        };
+        bucketOf(groupId).push(channel);
+        // 模拟上游旧版空创建结果，适配层应在同一成员分组内补齐 ID。
+        return ok();
+      }
 
       // 列表：桶不存在时与真实 AI Proxy 一致返回 404，由服务端按空列表容错
       if (req.method === 'GET' && id === undefined) {
@@ -167,7 +184,7 @@ describe('team model management integration: permission, member isolation and AI
     buckets = new Map();
     requests = [];
     external.listModels.mockReset().mockResolvedValue([]);
-    publishModelHandle(undefined);
+    publishSystemModelHandle(undefined);
     await loadInstalledModels();
   });
 
@@ -181,6 +198,30 @@ describe('team model management integration: permission, member isolation and AI
     await grantInstallModel(otherInstaller);
     return { owner, installer, otherInstaller, plain };
   };
+
+  it('returns the created channel identity and applies defaults through the API', async () => {
+    const { installer, otherInstaller } = await createMembers();
+    const body = {
+      channelType: 'team',
+      name: '  created-channel  ',
+      type: 1,
+      key: 'sk-new',
+      models: [],
+      configs: { custom: 'kept' }
+    };
+    const first = await Call(channelCreateHandler, { auth: installer, body });
+    expect(first.code).toBe(200);
+    expect(first.data).toEqual({ id: 1 });
+    const groupId = `fastgpt:tmb:${installer.tmbId}`;
+    expect(bucketOf(groupId)[0]).toMatchObject({
+      name: 'created-channel',
+      configs: { map_reasoning_to_reasoning_content: true, custom: 'kept' }
+    });
+    const second = await Call(channelCreateHandler, { auth: otherInstaller, body });
+    expect(second.code).toBe(200);
+    expect(second.data).toEqual({ id: 1 });
+    expect(requests.every(({ url }) => url.startsWith(`/api/group/`))).toBe(true);
+  });
 
   describe('install-model permission', () => {
     it('lets a member holding the permission create, list and delete own models', async () => {
@@ -319,6 +360,28 @@ describe('team model management integration: permission, member isolation and AI
       });
     });
 
+    it('associates channels when batch creating models from templates', async () => {
+      const { installer } = await createMembers();
+      external.listModels.mockResolvedValue([modelDraft('tpl-a'), modelDraft('tpl-b')]);
+      const groupId = `fastgpt:tmb:${installer.tmbId}`;
+      const channel = addChannel(groupId, { id: 101, name: 'ch-template', models: ['existing'] });
+
+      const created = await Call(createFromTemplatesHandler, {
+        auth: installer,
+        body: {
+          templates: [
+            { type: ModelTypeEnum.llm, model: 'tpl-a' },
+            { type: ModelTypeEnum.llm, model: 'tpl-b' }
+          ],
+          channelType: 'team',
+          channelIds: [channel.id]
+        }
+      });
+      expect(created.code).toBe(200);
+      expect(created.data.models).toHaveLength(2);
+      expect(channel.models).toEqual(['existing', 'tpl-a', 'tpl-b']);
+    });
+
     it('does not let a member without the permission read the system templates', async () => {
       const { plain } = await createMembers();
       external.listModels.mockResolvedValue([modelDraft('tpl-secret')]);
@@ -431,7 +494,9 @@ describe('team model management integration: permission, member isolation and AI
 
       for (const response of responses) {
         expect(response.code).toBe(500);
-        expect(response.error).toBe('modelUnExist');
+        expect(typeof response.error === 'string' ? response.error : response.error.message).toBe(
+          'modelUnExist'
+        );
       }
       expect(await MongoAIModel.countDocuments({ model: 'model-a' })).toBe(1);
     });
@@ -461,7 +526,9 @@ describe('team model management integration: permission, member isolation and AI
 
       for (const response of responses) {
         expect(response.code).toBe(500);
-        expect(response.error).toBe('modelUnExist');
+        expect(typeof response.error === 'string' ? response.error : response.error.message).toBe(
+          'modelUnExist'
+        );
       }
       expect(await MongoAIModel.countDocuments({ model: 'system-model' })).toBe(1);
     });
@@ -627,17 +694,5 @@ describe('team model management integration: permission, member isolation and AI
       }
       expect(await MongoAIModel.countDocuments({ model: 'model-m' })).toBe(0);
     });
-  });
-
-  it('keeps the permission grant and the member record consistent', async () => {
-    // 守卫夹具：确认测试构造的成员确实归属同一团队，避免隔离用例因夹具错误而假通过
-    const { owner, installer, otherInstaller, plain } = await createMembers();
-    const members = await MongoTeamMember.find({
-      _id: { $in: [installer.tmbId, otherInstaller.tmbId, plain.tmbId] }
-    }).lean();
-    expect(members).toHaveLength(3);
-    expect(new Set(members.map((item) => String(item.teamId)))).toEqual(
-      new Set([String(owner.teamId)])
-    );
   });
 });

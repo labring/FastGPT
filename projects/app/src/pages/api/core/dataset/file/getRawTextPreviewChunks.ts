@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/next/type';
@@ -37,7 +37,7 @@ async function handler(
     datasetId,
     per: WritePermissionVal
   });
-  const modelHandle = await getModelHandle({ teamId: dataset.teamId });
+  const modelHandle = await getTeamModelHandle({ teamId: dataset.teamId });
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
     llmModel: modelHandle.getLLMModelData(getDatasetModelReference(dataset, 'agent')),

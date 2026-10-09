@@ -1,8 +1,8 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
-import { getChannelLogDetail } from '@fastgpt/service/core/ai/channel/observability';
-import { resolveChannelObservabilityScope } from '@fastgpt/service/core/ai/channel/resolve';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
+import { getChannelLogDetail } from '@fastgpt/service/core/ai/model/channel/observability';
+import { resolveChannelObservabilityScope } from '@fastgpt/service/core/ai/model/channel/resolve';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetChannelLogDetailQuerySchema,

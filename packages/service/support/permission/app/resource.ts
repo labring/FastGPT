@@ -18,9 +18,9 @@ import {
 import { authDatasetByTmbId } from '../dataset/auth';
 import { authSkillByTmbId } from '../skill/auth';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
-import { getMemberModelIds } from '../model/controller';
+import { getMemberModelIds } from '../model/catalog';
 import { authAppByTmbId } from './auth';
-import { getModelHandle } from '../../../core/ai/model';
+import { getTeamModelHandle } from '../../../core/ai/model/index';
 
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -98,23 +98,17 @@ export const getUnauthorizedAppResources = async ({
   const modelResources = normalizedResources.filter((resource) => resource.type === 'model');
   const modelCatalog = await (async () => {
     if (modelResources.length === 0) return;
-    const handle = await getModelHandle();
-    return {
-      snapshot: { models: handle.getAllModels(), revision: handle.revision },
-      activeModelIds: new Set(handle.getActiveModels().map((model) => model.modelId))
-    };
-  })();
-  const permittedModelIds = await (async () => {
-    if (modelResources.length === 0) return new Set<string>();
-
-    const { teamId, permission } = await getTmbInfoByTmbId({ tmbId });
+    const { teamId } = await getTmbInfoByTmbId({ tmbId });
+    const handle = await getTeamModelHandle({ teamId });
     const modelIds = await getMemberModelIds({
       teamId,
       tmbId,
-      isTeamOwner: permission.isOwner || (isRoot && allowRootCrossTeam),
-      catalogSnapshot: modelCatalog?.snapshot
+      catalogSnapshot: { models: handle.getAllModels(), version: handle.version }
     });
-    return new Set(modelIds);
+    return {
+      activeModelIds: new Set(handle.getActiveModels().map((model) => model.modelId)),
+      permittedModelIds: new Set(modelIds)
+    };
   })();
   const rootAccess = isRoot && allowRootCrossTeam;
 
@@ -161,7 +155,7 @@ export const getUnauthorizedAppResources = async ({
         if (!modelCatalog?.activeModelIds.has(resource.id)) {
           return { resource, error: ModelErrEnum.unExist };
         }
-        if (!permittedModelIds.has(resource.id)) {
+        if (!modelCatalog.permittedModelIds.has(resource.id)) {
           return { resource, error: ERROR_ENUM.unAuthModel };
         }
       } catch (error) {

@@ -6,6 +6,7 @@ import {
   BatchDeleteChannelsResponseSchema,
   ChannelModelsResponseSchema,
   CreateChannelBodySchema,
+  CreateChannelResponseSchema,
   DeleteChannelQuerySchema,
   DeleteChannelResponseSchema,
   GetAffectedModelsQuerySchema,
@@ -47,14 +48,15 @@ export const ChannelPath: OpenAPIPath = {
     post: {
       summary: '创建渠道',
       description:
-        '按角色裁决目标：root 创建系统渠道；成员在本人团队 group 创建渠道（group 由 aiproxy 幂等自建）。groupId 一律服务端推导。',
+        '由 channelType 显式指定 system/team：system 仅 root 可用；team 固定为当前成员分组。返回创建的渠道 ID，groupId 一律由服务端推导。',
       tags: [DevApiTagsMap.model],
       requestBody: {
         content: { 'application/json': { schema: CreateChannelBodySchema } }
       },
       responses: {
         200: {
-          description: '操作成功（前端刷新列表获取新渠道）'
+          description: '创建成功，返回渠道 ID',
+          content: { 'application/json': { schema: CreateChannelResponseSchema } }
         }
       }
     }

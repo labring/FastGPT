@@ -1,4 +1,4 @@
-import { getModelHandle } from '../../../ai/model';
+import { getTeamModelHandle } from '../../../ai/model/index';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -161,7 +161,7 @@ export const dispatchDatasetSearch = async (
       dynamic: dynamicDataset,
       tmbId
     });
-    const modelHandle = await getModelHandle({ teamId });
+    const modelHandle = await getTeamModelHandle({ teamId });
     const vectorModel = modelHandle.getEmbeddingModelData({
       modelId: dataset?.vectorModelId,
       model: dataset?.vectorModel

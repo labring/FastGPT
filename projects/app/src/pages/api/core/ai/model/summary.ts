@@ -8,8 +8,8 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/summary';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
-import { getMemberModelCatalogPermission } from '@fastgpt/service/support/permission/model/controller';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
+import { getMemberModelCatalogPermission } from '@fastgpt/service/support/permission/model/catalog';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppDraftResourceBaseline } from '@fastgpt/service/core/app/version/controller';
@@ -26,11 +26,11 @@ export async function handler(
     bodySchema: GetModelSummariesBodySchema
   }).body;
   const identity = await authModelViewer({ req, outLinkAuthData });
-  const modelHandle = await getModelHandle({ teamId: identity.teamId });
+  const modelHandle = await getTeamModelHandle({ teamId: identity.teamId });
   const { modelIds: permittedIds } = await getMemberModelCatalogPermission({
     ...identity,
     includeInactive: true,
-    catalogSnapshot: { models: modelHandle.getAllModels(), revision: modelHandle.revision }
+    catalogSnapshot: { models: modelHandle.getAllModels(), version: modelHandle.version }
   });
   const permitted = new Set(permittedIds);
 

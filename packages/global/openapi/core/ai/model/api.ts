@@ -1,18 +1,18 @@
 import { ModelScopeEnum, ModelTypeEnum } from '../../../../core/ai/constants';
 import {
   EmbeddingModelConfigSchema,
-  EmbeddingSystemModelDocumentSchema,
+  EmbeddingModelDocumentSchema,
   LLMModelConfigSchema,
-  LLMSystemModelDocumentSchema,
+  LLMModelDocumentSchema,
   ModelPriceTierSchema,
   RerankModelConfigSchema,
-  RerankSystemModelDocumentSchema,
+  RerankModelDocumentSchema,
   STTModelConfigSchema,
-  STTSystemModelDocumentSchema,
-  SystemModelDataSchema,
-  SystemModelDocumentDataSchema,
+  STTModelDocumentSchema,
+  AIModelDataSchema,
+  AIModelDocumentDataSchema,
   TTSModelConfigSchema,
-  TTSSystemModelDocumentSchema
+  TTSModelDocumentSchema
 } from '../../../../core/ai/model/schema';
 import z from 'zod';
 import { IntSchema } from '../../../../common/zod';
@@ -20,7 +20,7 @@ import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { I18nStringSchema } from '../../../../common/i18n/type';
 import { ModelDefaultIdsSchema } from '../../../../core/ai/model/default';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { AIScopeSchema } from '../scope';
+import { ChannelTypeSchema } from '../../../../core/ai/model/scope';
 
 export const ModelChannelSummarySchema = z.object({
   id: IntSchema.positive().meta({ example: 1, description: 'AI Proxy 渠道 ID' }),
@@ -203,38 +203,16 @@ export const GetSystemModelsResponseSchema = z.object({
 });
 export type GetSystemModelsResponse = z.infer<typeof GetSystemModelsResponseSchema>;
 
-/* ============================================================================
- * API: 获取团队私有模型列表（用户侧模型配置）
- * Route: GET /api/core/ai/model/teamModels
- * Method: GET
- * Description: 获取当前登录团队成员名下的私有模型列表及关联的团队渠道摘要
- * Tags: ['模型管理', 'Read']
- * ============================================================================ */
-
-export const TeamModelListItemSchema = z
-  .object({
-    modelId: z.string().meta({ description: '模型稳定 ID' }),
-    model: z.string().meta({ description: 'Provider 请求使用的模型标识' }),
-    name: z.string().meta({ description: '模型展示名称' }),
-    provider: z.string().meta({ description: '模型提供商标识' }),
-    scope: z.nativeEnum(ModelScopeEnum).default(ModelScopeEnum.team),
-    type: z.nativeEnum(ModelTypeEnum),
-    tmbId: z.string().optional(),
-    avatar: z.string().optional(),
-    isActive: z.boolean().optional(),
-    testMode: z.boolean().optional(),
-    charsPointsPrice: z.number().optional(),
-    priceTiers: z.array(ModelPriceTierSchema).optional(),
-    inputPrice: z.number().optional(),
-    outputPrice: z.number().optional(),
-    config: z.record(z.string(), z.any()).optional(),
+/* GET /api/core/ai/model/config?channelType=team */
+export const ModelConfigListItemSchema = AIModelDataSchema.and(
+  z.object({
     channels: z.array(ModelChannelSummarySchema).meta({ description: '当前模型关联的渠道摘要' })
   })
-  .passthrough();
-export type TeamModelListItem = z.infer<typeof TeamModelListItemSchema>;
+);
+export type ModelConfigListItem = z.infer<typeof ModelConfigListItemSchema>;
 
 export const GetTeamModelsResponseSchema = z.object({
-  models: z.array(TeamModelListItemSchema),
+  models: z.array(ModelConfigListItemSchema),
   channels: z.array(ModelChannelSummarySchema),
   providers: z.array(ModelProviderSchema)
 });
@@ -249,10 +227,9 @@ export const ModelIdSchema = ObjectIdSchema.meta({
   description: '模型稳定 ObjectId'
 });
 
-export const ModelChannelTypeSchema = AIScopeSchema.meta({
+const ModelChannelTypeSchema = ChannelTypeSchema.meta({
   description: '模型作用域类型'
 });
-export type ModelChannelType = z.infer<typeof ModelChannelTypeSchema>;
 
 export const ModelReferenceSchema = z.object({
   modelId: ModelIdSchema,
@@ -291,7 +268,7 @@ export const ModelDetailChannelSchema = ModelChannelSummarySchema.extend({
 export type ModelDetailChannel = z.infer<typeof ModelDetailChannelSchema>;
 
 export const GetModelDetailResponseSchema = z.object({
-  model: SystemModelDataSchema.meta({ description: '完整模型参数' }),
+  model: AIModelDataSchema.meta({ description: '完整模型参数' }),
   channels: z.array(ModelDetailChannelSchema).meta({
     description: '全部渠道展示信息及其与当前模型的关联状态'
   })
@@ -316,11 +293,11 @@ const TestModelPriceFields = {
 
 export const TestDraftModelDataSchema = z
   .discriminatedUnion('type', [
-    LLMSystemModelDocumentSchema.omit(TestModelPriceFields),
-    EmbeddingSystemModelDocumentSchema.omit(TestModelPriceFields),
-    TTSSystemModelDocumentSchema.omit(TestModelPriceFields),
-    STTSystemModelDocumentSchema.omit(TestModelPriceFields),
-    RerankSystemModelDocumentSchema.omit(TestModelPriceFields)
+    LLMModelDocumentSchema.omit(TestModelPriceFields),
+    EmbeddingModelDocumentSchema.omit(TestModelPriceFields),
+    TTSModelDocumentSchema.omit(TestModelPriceFields),
+    STTModelDocumentSchema.omit(TestModelPriceFields),
+    RerankModelDocumentSchema.omit(TestModelPriceFields)
   ])
   .meta({ description: '仅包含实际模型调用所需字段的表单草稿；计费字段会被忽略' });
 
@@ -335,7 +312,6 @@ export const TestDraftModelBodySchema = z
     }),
     channelType: ModelChannelTypeSchema
   })
-  .strict()
   .superRefine(({ modelData }, ctx) => {
     if (modelData.type === ModelTypeEnum.tts && modelData.config.voices.length === 0) {
       ctx.addIssue({
@@ -369,40 +345,36 @@ export const GetModelTemplatesQuerySchema = z.object({
 export type GetModelTemplatesQuery = z.infer<typeof GetModelTemplatesQuerySchema>;
 
 export const GetModelTemplatesResponseSchema = z.object({
-  models: z.array(SystemModelDocumentDataSchema).meta({ description: '当前 Plugin 模型模板' }),
+  models: z.array(AIModelDocumentDataSchema).meta({ description: '当前 Plugin 模型模板' }),
   providers: z.array(ModelProviderSchema).meta({ description: '模型提供商元数据' })
 });
 export type GetModelTemplatesResponse = z.infer<typeof GetModelTemplatesResponseSchema>;
 
 /* POST /api/core/ai/model/updateChannels */
-export const UpdateModelChannelsBodySchema = z
-  .object({
-    modelId: ModelIdSchema,
-    channelType: AIScopeSchema.meta({
-      description: '模型作用域；必填，服务端据此先鉴权再查询模型，避免无权限成员探测模型是否存在'
-    }),
-    addChannelIds: z.array(IntSchema.positive()).max(500).optional().meta({
-      description: '需要关联到该模型的渠道 ID，已关联的渠道会被忽略'
-    }),
-    removeChannelIds: z.array(IntSchema.positive()).max(500).optional().meta({
-      description: '需要解除与该模型关联的渠道 ID，同时清理渠道内该模型的映射；渠道本身不删除'
-    })
+export const UpdateModelChannelsBodySchema = z.object({
+  modelId: ModelIdSchema,
+  channelType: ChannelTypeSchema.meta({
+    description: '模型作用域；必填，服务端据此先鉴权再查询模型，避免无权限成员探测模型是否存在'
+  }),
+  addChannelIds: z.array(IntSchema.positive()).max(500).optional().meta({
+    description: '需要关联到该模型的渠道 ID，已关联的渠道会被忽略'
+  }),
+  removeChannelIds: z.array(IntSchema.positive()).max(500).optional().meta({
+    description: '需要解除与该模型关联的渠道 ID，同时清理渠道内该模型的映射；渠道本身不删除'
   })
-  .strict();
+});
 export type UpdateModelChannelsBody = z.infer<typeof UpdateModelChannelsBodySchema>;
 
 /* POST /api/core/ai/model/create */
-export const CreateModelBodySchema = z
-  .object({
-    modelData: SystemModelDocumentDataSchema.meta({
-      description: '完整模型配置；未声明字段会被忽略，modelId 始终由服务端生成'
-    }),
-    channelType: ModelChannelTypeSchema,
-    channelIds: z.array(IntSchema.positive()).optional().meta({
-      description: '可选：创建模型后同时关联追加的已有渠道 ID 列表'
-    })
+export const CreateModelBodySchema = z.object({
+  modelData: AIModelDocumentDataSchema.meta({
+    description: '完整模型配置；未声明字段会被忽略，modelId 始终由服务端生成'
+  }),
+  channelType: ModelChannelTypeSchema,
+  channelIds: z.array(IntSchema.positive()).optional().meta({
+    description: '可选：创建模型后同时关联追加的已有渠道 ID 列表'
   })
-  .strict();
+});
 export type CreateModelBody = z.infer<typeof CreateModelBodySchema>;
 
 export const CreateModelResponseSchema = z.object({
@@ -411,30 +383,31 @@ export const CreateModelResponseSchema = z.object({
 export type CreateModelResponse = z.infer<typeof CreateModelResponseSchema>;
 
 /* POST /api/core/ai/model/createFromTemplates */
-export const CreateModelsFromTemplatesBodySchema = z
-  .object({
-    templates: z
-      .array(ModelTemplateReferenceSchema)
-      .min(1)
-      .max(500)
-      .superRefine((templates, ctx) => {
-        const keys = new Set<string>();
-        templates.forEach((template, index) => {
-          const key = template.model;
-          if (keys.has(key)) {
-            ctx.addIssue({
-              code: 'custom',
-              path: [index],
-              message: `Duplicate model template: ${template.model}`
-            });
-          }
-          keys.add(key);
-        });
-      })
-      .meta({ description: '本次选择的模板临时键' }),
-    channelType: ModelChannelTypeSchema
+export const CreateModelsFromTemplatesBodySchema = z.object({
+  templates: z
+    .array(ModelTemplateReferenceSchema)
+    .min(1)
+    .max(500)
+    .superRefine((templates, ctx) => {
+      const keys = new Set<string>();
+      templates.forEach((template, index) => {
+        const key = template.model;
+        if (keys.has(key)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [index],
+            message: `Duplicate model template: ${template.model}`
+          });
+        }
+        keys.add(key);
+      });
+    })
+    .meta({ description: '本次选择的模板临时键' }),
+  channelType: ModelChannelTypeSchema,
+  channelIds: z.array(IntSchema.positive()).optional().meta({
+    description: '可选：批量创建模型后同时关联追加的已有渠道 ID 列表'
   })
-  .strict();
+});
 export type CreateModelsFromTemplatesBody = z.infer<typeof CreateModelsFromTemplatesBodySchema>;
 
 export const CreatedModelSchema = ModelTemplateReferenceSchema.extend({
@@ -460,34 +433,22 @@ const UpdateModelField = {
 
 export const UpdateModelDataSchema = z
   .discriminatedUnion('type', [
-    LLMSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
-      .extend(UpdateModelField)
-      .strict(),
-    EmbeddingSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
-      .extend(UpdateModelField)
-      .strict(),
-    TTSSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
-      .extend(UpdateModelField)
-      .strict(),
-    STTSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
-      .extend(UpdateModelField)
-      .strict(),
-    RerankSystemModelDocumentSchema.omit({ tmbId: true, teamId: true })
-      .extend(UpdateModelField)
-      .strict()
+    LLMModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
+    EmbeddingModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
+    TTSModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
+    STTModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField),
+    RerankModelDocumentSchema.omit({ tmbId: true, teamId: true }).extend(UpdateModelField)
   ])
   .meta({
     description: '模型可编辑参数；model 为可选更新，type 仅用于分支校验不参与类型变更'
   });
 export type UpdateModelData = z.infer<typeof UpdateModelDataSchema>;
 
-export const UpdateModelBodySchema = z
-  .object({
-    modelId: ModelIdSchema,
-    modelData: UpdateModelDataSchema,
-    channelType: ModelChannelTypeSchema
-  })
-  .strict();
+export const UpdateModelBodySchema = z.object({
+  modelId: ModelIdSchema,
+  modelData: UpdateModelDataSchema,
+  channelType: ModelChannelTypeSchema
+});
 export type UpdateModelBody = z.infer<typeof UpdateModelBodySchema>;
 
 /* PUT /api/core/ai/model/updateStatus */
@@ -500,21 +461,14 @@ export type UpdateModelStatusBody = z.infer<typeof UpdateModelStatusBodySchema>;
 
 /* ============================================================================
  * API: 获取系统模型管理配置
- * Route: GET /api/core/ai/model/list?channelType=system
+ * Route: GET /api/core/ai/model/config?channelType=system
  * Method: GET
  * Description: 获取系统模型、渠道、Provider 与默认模型配置
  * Tags: ['Model', 'Admin', 'Read']
  * ============================================================================ */
 
-export const SystemModelListItemSchema = SystemModelDataSchema.and(
-  z.object({
-    channels: z.array(ModelChannelSummarySchema).meta({ description: '当前模型关联的渠道摘要' })
-  })
-);
-export type SystemModelListItem = z.infer<typeof SystemModelListItemSchema>;
-
 export const GetSystemModelConfigResponseSchema = z.object({
-  models: z.array(SystemModelListItemSchema),
+  models: z.array(ModelConfigListItemSchema),
   channels: z.array(ModelChannelSummarySchema).meta({
     description: '全部渠道摘要，供新增、编辑和关联渠道交互复用'
   }),
@@ -533,7 +487,7 @@ export type GetSystemModelConfigResponse = z.infer<typeof GetSystemModelConfigRe
 
 /* GET /api/core/ai/model/config */
 export const GetModelConfigQuerySchema = z.object({
-  channelType: AIScopeSchema.meta({
+  channelType: ChannelTypeSchema.meta({
     example: 'system',
     description: 'system=系统模型管理配置；team=当前成员私有模型配置'
   })
@@ -556,21 +510,20 @@ const ImportedModelIdField = {
 };
 
 export const ImportedSystemModelSchema = z.discriminatedUnion('type', [
-  LLMSystemModelDocumentSchema.extend({ ...ImportedModelIdField, config: LLMModelConfigSchema }),
-  EmbeddingSystemModelDocumentSchema.extend({
+  LLMModelDocumentSchema.extend({ ...ImportedModelIdField, config: LLMModelConfigSchema }),
+  EmbeddingModelDocumentSchema.extend({
     ...ImportedModelIdField,
     config: EmbeddingModelConfigSchema
   }),
-  TTSSystemModelDocumentSchema.extend({ ...ImportedModelIdField, config: TTSModelConfigSchema }),
-  STTSystemModelDocumentSchema.extend({ ...ImportedModelIdField, config: STTModelConfigSchema }),
-  RerankSystemModelDocumentSchema.extend({
+  TTSModelDocumentSchema.extend({ ...ImportedModelIdField, config: TTSModelConfigSchema }),
+  STTModelDocumentSchema.extend({ ...ImportedModelIdField, config: STTModelConfigSchema }),
+  RerankModelDocumentSchema.extend({
     ...ImportedModelIdField,
     config: RerankModelConfigSchema
   })
 ]);
 export type ImportedSystemModel = z.infer<typeof ImportedSystemModelSchema>;
 
-const ImportedSystemModelRecordListSchema = z.array(z.record(z.string(), z.unknown()));
 const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
   try {
     return JSON.parse(value) as unknown;
@@ -582,10 +535,10 @@ const JsonSystemModelListSchema = z.string().transform((value, ctx) => {
 
 /* PUT /api/core/ai/model/updateWithJson */
 export const UpdateSystemModelsWithJsonBodySchema = z.object({
-  config: JsonSystemModelListSchema.pipe(ImportedSystemModelRecordListSchema).meta({
+  config: JsonSystemModelListSchema.pipe(z.array(ImportedSystemModelSchema)).meta({
     example:
       '[{"modelId":"68ad85a7463006c963799a05","scope":"system","type":"llm","provider":"OpenAI","model":"gpt-5","name":"GPT-5","isActive":true,"config":{"maxContext":400000,"maxResponse":128000,"quoteMaxToken":300000,"toolChoice":true}}]',
-    description: '最新系统模型配置 JSON；无 modelId 的旧记录会被忽略'
+    description: '完整系统模型配置 JSON，每条记录必须包含源实例模型 ID'
   })
 });
 export type UpdateSystemModelsWithJsonBody = z.input<typeof UpdateSystemModelsWithJsonBodySchema>;

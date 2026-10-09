@@ -1,4 +1,4 @@
-import { isSystemModel } from '@fastgpt/global/core/ai/model';
+import { isSystemModel } from '@fastgpt/global/core/ai/model/utils';
 import type { AiproxyScopeModelInput } from '../config';
 
 export type LegacyModelEndpoint = {

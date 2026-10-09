@@ -24,7 +24,7 @@ import {
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -44,7 +44,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   });
 
   const normalizedWorkflow = migrateWorkflowToCurrent({ nodes, edges, chatConfig });
-  const modelHandle = await getModelHandle({ teamId });
+  const modelHandle = await getTeamModelHandle({ teamId });
   formatModels({
     nodes: normalizedWorkflow.nodes,
     chatConfig: normalizedWorkflow.chatConfig,

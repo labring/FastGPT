@@ -9,7 +9,7 @@ import {
 } from '../../../../config';
 import { getLegacyModelEndpoint } from '../../../../legacy/requestUrl';
 import { computedMaxToken } from '../../../../utils';
-import type { LLMSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 type Model = import('@mariozechner/pi-ai').Model<'openai-completions'>;
 
@@ -23,7 +23,7 @@ const supportedThinkingLevels = new Set<ThinkingLevel>([
 ]);
 
 export function getPiThinkingLevel(
-  modelData: LLMSystemModelDataType,
+  modelData: LLMModelDataType,
   reasoningEffort?: ReasoningEffort
 ): ThinkingLevel {
   if (
@@ -42,7 +42,7 @@ export function getPiThinkingLevel(
 }
 
 export function buildPiModel(
-  modelData: LLMSystemModelDataType,
+  modelData: LLMModelDataType,
   useVision?: boolean,
   userKey?: OpenaiAccountType,
   maxTokens?: number
@@ -97,10 +97,7 @@ export function buildPiModel(
   };
 }
 
-export function getModelApiKey(
-  modelData: LLMSystemModelDataType,
-  userKey?: OpenaiAccountType
-): string {
+export function getModelApiKey(modelData: LLMModelDataType, userKey?: OpenaiAccountType): string {
   if (userKey?.key) return userKey.key;
   const legacyEndpoint = getLegacyModelEndpoint(modelData);
   return legacyEndpoint?.apiKey || openaiBaseKey || '';

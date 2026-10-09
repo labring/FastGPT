@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/index';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { pushWhisperUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -53,7 +53,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       policy: MemberRateLimitPolicy.Transcriptions,
       memberId: String(tmbId)
     });
-    const modelHandle = await getModelHandle();
+    const modelHandle = await getSystemModelHandle();
     const transcriptionsResult = await aiTranscriptions({
       model: modelHandle.getDefaultModelData('stt'),
       fileStream: result.getReadStream(),

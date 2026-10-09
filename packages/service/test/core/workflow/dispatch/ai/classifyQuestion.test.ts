@@ -6,7 +6,10 @@ import { dispatchClassifyQuestion } from '@fastgpt/service/core/workflow/dispatc
 const { requestMock } = vi.hoisted(() => ({ requestMock: vi.fn() }));
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({ createLLMResponse: requestMock }));
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getModelHandle: async () => ({
+  getSystemModelHandle: async () => ({
+    getLLMModelData: () => ({ modelId: 'model', name: 'model', config: {} })
+  }),
+  getTeamModelHandle: async () => ({
     getLLMModelData: () => ({ modelId: 'model', name: 'model', config: {} })
   })
 }));

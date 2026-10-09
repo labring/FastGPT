@@ -6,8 +6,8 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { recallFromVectorStore } from '../../../../common/vectorDB/controller';
 import { getVectors } from '../../../ai/embedding';
-import { isImageEmbeddingModel } from '../../../ai/model';
-import type { EmbeddingSystemModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { MongoDatasetCollection } from '../../collection/schema';
 import { MongoDatasetData } from '../../data/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -43,7 +43,7 @@ const buildVectorRecallTasks = async ({
   imageCaptionQueries,
   imageQueries
 }: {
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   textQueries: string[];
   imageCaptionQueries: string[];
   imageQueries: string[];
@@ -145,7 +145,7 @@ export const embeddingRecall = async ({
 }: {
   teamId: string;
   datasetIds: string[];
-  model: EmbeddingSystemModelDataType;
+  model: EmbeddingModelDataType;
   imageQueries: string[];
   textQueries: string[];
   imageCaptionQueries: string[];

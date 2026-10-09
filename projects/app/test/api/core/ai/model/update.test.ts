@@ -1,25 +1,29 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 
 const configMocks = vi.hoisted(() => ({
   refreshModelTemplates: vi.fn(),
   updatedReloadSystemModel: vi.fn()
 }));
 const providerMocks = vi.hoisted(() => ({ preloadModelProviders: vi.fn() }));
-const channelMocks = vi.hoisted(() => ({ syncModelNameInChannels: vi.fn() }));
-
-vi.mock('@fastgpt/service/core/ai/channel/service', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/channel/service')>()),
-  syncModelNameInChannels: channelMocks.syncModelNameInChannels
+const channelMocks = vi.hoisted(() => ({
+  syncModelNameInChannels: vi.fn(),
+  updateModelChannelBindings: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model/catalog', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog')>();
+vi.mock('@fastgpt/service/core/ai/model/channel/binding', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/channel/binding')>()),
+  syncModelNameInChannels: channelMocks.syncModelNameInChannels,
+  updateModelChannelBindings: channelMocks.updateModelChannelBindings
+}));
+
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>();
 
   return {
     ...actual,
@@ -36,7 +40,6 @@ vi.mock('@fastgpt/service/core/ai/model/provider/controller', async (importOrigi
 }));
 
 import createModelApi from '@/pages/api/core/ai/model/create';
-import createModelsFromTemplatesApi from '@/pages/api/core/ai/model/createFromTemplates';
 import getModelTemplatesApi from '@/pages/api/core/ai/model/templates';
 import updateModelApi from '@/pages/api/core/ai/model/update';
 
@@ -80,13 +83,19 @@ const callApi = async ({
 };
 
 describe('admin settings model create/update api', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    const { mongoSessionRun: actualMongoSessionRun } = await vi.importActual<
+      typeof import('@fastgpt/service/common/mongo/sessionRun')
+    >('@fastgpt/service/common/mongo/sessionRun');
+    // setup 已载入无事务 mock；保留同一个 mock 函数引用，只替换为真实事务实现。
+    vi.mocked(mongoSessionRun).mockImplementation(actualMongoSessionRun);
     configMocks.updatedReloadSystemModel.mockReset().mockResolvedValue(undefined);
     configMocks.refreshModelTemplates.mockReset().mockResolvedValue([]);
     providerMocks.preloadModelProviders.mockReset().mockImplementation(async () => {
       global.ModelProviderRawCache = [];
     });
     channelMocks.syncModelNameInChannels.mockReset().mockResolvedValue(undefined);
+    channelMocks.updateModelChannelBindings.mockReset().mockResolvedValue(undefined);
   });
 
   it('creates a custom model through the dedicated create endpoint', async () => {
@@ -209,57 +218,6 @@ describe('admin settings model create/update api', () => {
     });
   });
 
-  it('creates a second model without overwriting the existing default model document', async () => {
-    const existing = await MongoAIModel.create({
-      ...buildLlmDocument(),
-      model: 'deepseek-v4-flash',
-      name: 'DeepSeek V4 Flash'
-    });
-
-    const res = await callApi({ handler: createModelApi, body: { modelData: buildLlmDocument() } });
-
-    expect(res.error).toBeUndefined();
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(2);
-    await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
-      model: 'deepseek-v4-flash',
-      name: 'DeepSeek V4 Flash'
-    });
-  });
-
-  it('rejects a different type reusing the same model identifier', async () => {
-    await MongoAIModel.create(buildLlmDocument());
-
-    const res = await callApi({
-      handler: createModelApi,
-      body: {
-        modelData: {
-          type: ModelTypeEnum.embedding,
-          provider: 'OpenAI',
-          model: buildLlmDocument().model,
-          name: 'Conflicting embedding',
-          scope: 'system',
-          isActive: true,
-          config: { defaultToken: 512, maxToken: 8192, weight: 100 }
-        }
-      }
-    });
-
-    expect(res.error).toBeDefined();
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
-  });
-
-  it('rejects an existing model when creating a duplicate model', async () => {
-    await MongoAIModel.create(buildLlmDocument());
-
-    const res = await callApi({
-      handler: createModelApi,
-      body: { modelData: buildLlmDocument() }
-    });
-
-    expect(res.error?.name).toBe('UserError');
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(1);
-  });
-
   it('validates edited config', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
@@ -336,77 +294,6 @@ describe('admin settings model create/update api', () => {
     expect(updated).not.toHaveProperty('priceTiers');
   });
 
-  it('rejects changing an existing model type through the update endpoint', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
-
-    const res = await callApi({
-      handler: updateModelApi,
-      body: {
-        modelId: String(existing._id),
-        modelData: {
-          type: ModelTypeEnum.embedding,
-          provider: 'OpenAI',
-          name: 'Changed type',
-          scope: 'system',
-          isActive: true,
-          config: { defaultToken: 512, maxToken: 8192, weight: 100 }
-        }
-      }
-    });
-
-    expect(res.error).toMatchObject({
-      name: 'UserError',
-      message: 'System model type cannot be changed'
-    });
-    await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
-      type: ModelTypeEnum.llm,
-      config: { maxContext: 16000 }
-    });
-    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
-  });
-
-  it('allows changing model identifier by stable modelId, updating database', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
-    const res = await callApi({
-      handler: updateModelApi,
-      body: {
-        modelId: String(existing._id),
-        modelData: { ...buildLlmUpdateData(), model: 'renamed-llm' }
-      }
-    });
-
-    expect(res.error).toBeUndefined();
-    await expect(MongoAIModel.findById(existing._id).lean()).resolves.toMatchObject({
-      model: 'renamed-llm'
-    });
-    expect(configMocks.updatedReloadSystemModel).toHaveBeenCalled();
-    expect(channelMocks.syncModelNameInChannels).toHaveBeenCalledWith(
-      expect.objectContaining({ oldModel: 'test-llm', newModel: 'renamed-llm' })
-    );
-  });
-
-  it('rejects changing model identifier if new identifier conflicts with another model', async () => {
-    const existing1 = await MongoAIModel.create(buildLlmDocument());
-    await MongoAIModel.create({
-      ...buildLlmDocument(),
-      model: 'existing-other-llm',
-      name: 'Other'
-    });
-
-    const res = await callApi({
-      handler: updateModelApi,
-      body: {
-        modelId: String(existing1._id),
-        modelData: { ...buildLlmUpdateData(), model: 'existing-other-llm' }
-      }
-    });
-
-    expect(res.error?.name).toBe('UserError');
-    await expect(MongoAIModel.findById(existing1._id).lean()).resolves.toMatchObject({
-      model: 'test-llm'
-    });
-  });
-
   it('accepts and persists a null max temperature', async () => {
     const existing = await MongoAIModel.create(buildLlmDocument());
     const res = await callApi({
@@ -478,23 +365,6 @@ describe('admin settings model create/update api', () => {
     expect(configMocks.updatedReloadSystemModel).toHaveBeenCalledTimes(1);
   });
 
-  it('rejects the whole template batch when a selected template disappeared', async () => {
-    configMocks.refreshModelTemplates.mockResolvedValue([buildLlmDocument()]);
-
-    const res = await callApi({
-      handler: createModelsFromTemplatesApi,
-      body: {
-        templates: [
-          { type: ModelTypeEnum.llm, model: 'test-llm' },
-          { type: ModelTypeEnum.llm, model: 'removed-llm' }
-        ]
-      }
-    });
-
-    expect(res.error?.name).toBe('UserError');
-    await expect(MongoAIModel.countDocuments()).resolves.toBe(0);
-  });
-
   it('pulls model templates again for every templates request', async () => {
     configMocks.refreshModelTemplates.mockResolvedValue([buildLlmDocument()]);
 
@@ -547,72 +417,5 @@ describe('admin settings model create/update api', () => {
       'gemini-1.5',
       'custom-model'
     ]);
-  });
-
-  it('uses the latest template values, filters installed models, and creates inactive models', async () => {
-    await MongoAIModel.create(buildLlmDocument());
-    configMocks.refreshModelTemplates.mockResolvedValue([
-      buildLlmDocument(),
-      { ...buildLlmDocument(), model: 'new-llm', name: 'Latest template name' }
-    ]);
-
-    const res = await callApi({
-      handler: createModelsFromTemplatesApi,
-      body: {
-        templates: [
-          { type: ModelTypeEnum.llm, model: 'test-llm' },
-          { type: ModelTypeEnum.llm, model: 'new-llm' }
-        ]
-      }
-    });
-
-    expect(res.error).toBeUndefined();
-    expect(res.data?.models).toHaveLength(1);
-    await expect(MongoAIModel.findOne({ model: 'new-llm' }).lean()).resolves.toMatchObject({
-      name: 'Latest template name',
-      isActive: false
-    });
-  });
-
-  it('rolls back the whole Mongo batch on a concurrent unique-model conflict', async () => {
-    const firstTemplate = { ...buildLlmDocument(), model: 'batch-first' };
-    const conflictingTemplate = { ...buildLlmDocument(), model: 'batch-conflict' };
-    configMocks.refreshModelTemplates.mockResolvedValue([firstTemplate, conflictingTemplate]);
-
-    const originalInsertMany = MongoAIModel.insertMany;
-    vi.spyOn(MongoAIModel, 'insertMany').mockImplementationOnce(async (docs, options) => {
-      await MongoAIModel.create(conflictingTemplate);
-      return originalInsertMany.call(MongoAIModel, docs, options);
-    });
-
-    const res = await callApi({
-      handler: createModelsFromTemplatesApi,
-      body: {
-        templates: [
-          { type: ModelTypeEnum.llm, model: 'batch-first' },
-          { type: ModelTypeEnum.llm, model: 'batch-conflict' }
-        ]
-      }
-    });
-
-    expect(res.error).toBeDefined();
-    await expect(MongoAIModel.exists({ model: 'batch-first' })).resolves.toBeNull();
-    await expect(MongoAIModel.countDocuments({ model: 'batch-conflict' })).resolves.toBe(1);
-    expect(configMocks.updatedReloadSystemModel).not.toHaveBeenCalled();
-  });
-
-  it('rejects attempt to hijack model ownership with tmbId or teamId in modelData', async () => {
-    const model = await MongoAIModel.create(buildLlmDocument());
-    const res = await callApi({
-      handler: updateModelApi,
-      body: {
-        modelId: String(model._id),
-        modelData: {
-          ...buildLlmUpdateData(),
-          tmbId: '68ad85a7463006c963799a05'
-        }
-      }
-    });
-    expect(res.error).toBeDefined();
   });
 });

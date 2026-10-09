@@ -273,5 +273,6 @@
   "available_range": "사용 가능 범위",
   "available_to_all": "모든 멤버가 사용 가능",
   "only_available_to_self": "본인만 사용 가능",
+  "shared_with_me": "나와 공유됨",
   "system_model_tag": "시스템"
 }

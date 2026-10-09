@@ -1,7 +1,7 @@
 import { decodeEmbedding, formatVectors } from '@fastgpt/service/core/ai/embedding/index';
 import type {
   EmbeddingModelConfigType,
-  EmbeddingSystemModelDataType
+  EmbeddingModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { EmbeddingTypeEnm, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -400,8 +400,8 @@ describe('getVectors function test', () => {
 
   const buildModel = (
     overrides: Partial<EmbeddingModelConfigType> &
-      Partial<Omit<EmbeddingSystemModelDataType, 'config'>> = {}
-  ): EmbeddingSystemModelDataType => {
+      Partial<Omit<EmbeddingModelDataType, 'config'>> = {}
+  ): EmbeddingModelDataType => {
     const {
       defaultToken = 512,
       maxToken = 8192,

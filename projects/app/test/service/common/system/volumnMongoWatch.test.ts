@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { MongoAIDefaultModel } from '@fastgpt/service/core/ai/defaultModel/schema';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { createFakeChangeStream, type FakeChangeStream } from '@test/utils/changeStream';
 
 const mocks = vi.hoisted(() => {
@@ -70,7 +70,7 @@ describe('startMongoWatch', () => {
 
   it('只监听配置、训练和模板，重启时关闭旧 watch，不打开模型目录 watch', async () => {
     const modelWatch = vi.spyOn(MongoAIModel, 'watch');
-    const defaultsWatch = vi.spyOn(MongoAIDefaultModel, 'watch');
+    const defaultsWatch = vi.spyOn(MongoAIModelCatalog, 'watch');
 
     await startMongoWatch();
     await startMongoWatch();

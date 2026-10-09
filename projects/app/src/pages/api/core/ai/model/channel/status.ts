@@ -1,7 +1,7 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
-import { updateChannelStatus } from '@fastgpt/service/core/ai/channel/service';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
+import { updateChannelStatus } from '@fastgpt/service/core/ai/model/channel/service';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateChannelStatusBodySchema,

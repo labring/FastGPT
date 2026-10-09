@@ -1,4 +1,4 @@
-import { getModelHandle } from '@fastgpt/service/core/ai/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import {
   claimTrainingTask,
@@ -123,7 +123,7 @@ export async function generatePreCreatedData(): Promise<any> {
         try {
           const { tokens } = await updatePreCreatedData({ trainingData: data, lease });
 
-          const modelHandle = await getModelHandle({ teamId: String(data.teamId) });
+          const modelHandle = await getTeamModelHandle({ teamId: String(data.teamId) });
           pushGenerateVectorUsage({
             teamId: data.teamId,
             tmbId: data.tmbId,
@@ -174,7 +174,7 @@ const updatePreCreatedData = async ({
   lease: TrainingTaskLease;
 }) => {
   const datasetData = trainingData.data!;
-  const modelHandle = await getModelHandle({ teamId: String(trainingData.teamId) });
+  const modelHandle = await getTeamModelHandle({ teamId: String(trainingData.teamId) });
   const embModel = modelHandle.getEmbeddingModelData(
     getDatasetModelReference(trainingData.dataset, 'embedding')
   );

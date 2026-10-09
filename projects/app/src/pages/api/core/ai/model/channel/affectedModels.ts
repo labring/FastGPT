@@ -1,11 +1,11 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
 import {
   getBatchChannelsAffectedModels,
   getChannelAffectedModels
-} from '@fastgpt/service/core/ai/channel/association';
-import { resolveChannelsForOperation } from '@fastgpt/service/core/ai/channel/resolve';
+} from '@fastgpt/service/core/ai/model/channel/association';
+import { resolveChannelsForOperation } from '@fastgpt/service/core/ai/model/channel/resolve';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetAffectedModelsQuerySchema,
@@ -23,11 +23,7 @@ async function handler(
     querySchema: GetAffectedModelsQuerySchema
   }).query;
 
-  if (ids.length === 0) {
-    return AffectedModelsResponseSchema.parse({ affectedModels: [] });
-  }
-
-  const { tmbId } = await authModelManage({ req, channelType, resource: 'channel' });
+  const { tmbId, teamId } = await authModelManage({ req, channelType, resource: 'channel' });
   const resolved = await resolveChannelsForOperation({
     ids,
     channelType,
@@ -35,8 +31,11 @@ async function handler(
   });
   const affectedModels =
     ids.length === 1
-      ? await getChannelAffectedModels(resolved[0].channel)
-      : await getBatchChannelsAffectedModels(resolved.map((r) => r.channel));
+      ? await getChannelAffectedModels(resolved[0].channel, teamId)
+      : await getBatchChannelsAffectedModels(
+          resolved.map((r) => r.channel),
+          teamId
+        );
 
   return AffectedModelsResponseSchema.parse({ affectedModels });
 }

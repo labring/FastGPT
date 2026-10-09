@@ -8,13 +8,11 @@ import {
 } from '@fastgpt/global/core/ai/model/provider';
 import type {
   GetSystemModelConfigResponse,
-  GetTeamModelsResponse,
-  SystemModelListItem
+  GetTeamModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { getModelConfig } from './api';
 import { useUserModelStore } from './useUserModelStore';
-import { clearModelCollaboratorsCache } from '@/components/core/ai/hooks/useModelCollaborators';
 
 type ModelConfigResponse = GetSystemModelConfigResponse | GetTeamModelsResponse;
 
@@ -34,10 +32,8 @@ export const useModelConfig = ({
     refreshDeps: [isTeam]
   });
 
-  const models = useMemo(
-    () => (request.data?.models ?? []) as SystemModelListItem[],
-    [request.data?.models]
-  );
+  const { runAsync } = request;
+  const models = useMemo(() => request.data?.models ?? [], [request.data?.models]);
   const channels = useMemo(() => request.data?.channels ?? [], [request.data?.channels]);
   const defaultModelIds = useMemo(
     () => (request.data as GetSystemModelConfigResponse | undefined)?.defaultModelIds ?? {},
@@ -76,9 +72,8 @@ export const useModelConfig = ({
   );
   const refresh = useCallback(async () => {
     useUserModelStore.getState().clearMemory();
-    clearModelCollaboratorsCache();
-    await request.runAsync();
-  }, [request.runAsync]);
+    await runAsync();
+  }, [runAsync]);
 
   return {
     ...request,

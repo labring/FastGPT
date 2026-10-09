@@ -1,8 +1,8 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/controller';
-import { getChannelModels } from '@fastgpt/service/core/ai/channel/association';
-import { resolveChannelForOperation } from '@fastgpt/service/core/ai/channel/resolve';
+import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
+import { getChannelModels } from '@fastgpt/service/core/ai/model/channel/association';
+import { resolveChannelForOperation } from '@fastgpt/service/core/ai/model/channel/resolve';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetChannelModelsQuerySchema,
@@ -20,9 +20,9 @@ async function handler(
     querySchema: GetChannelModelsQuerySchema
   }).query;
 
-  const { tmbId } = await authModelManage({ req, channelType, resource: 'channel' });
+  const { tmbId, teamId } = await authModelManage({ req, channelType, resource: 'channel' });
   const resolved = await resolveChannelForOperation({ id, channelType, tmbId });
-  const models = await getChannelModels(resolved.channel);
+  const models = await getChannelModels(resolved.channel, teamId);
 
   return ChannelModelsResponseSchema.parse({ models });
 }

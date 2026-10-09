@@ -1,10 +1,10 @@
 import { connectionMongo, defineIndex, getMongoModel } from '../../../common/mongo';
 import { AIModelCollectionName } from './constants';
 const { Schema } = connectionMongo;
-import type { SystemModelSchemaType } from '../type';
+import type { AIModelSchemaType } from '../type';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 
-const SystemModelSchema = new Schema(
+const AIModelSchema = new Schema(
   {
     model: {
       type: String,
@@ -63,7 +63,7 @@ const SystemModelSchema = new Schema(
   }
 );
 
-defineIndex(SystemModelSchema, {
+defineIndex(AIModelSchema, {
   key: { scope: 1, model: 1 },
   options: {
     unique: true,
@@ -71,7 +71,7 @@ defineIndex(SystemModelSchema, {
   }
 });
 
-defineIndex(SystemModelSchema, {
+defineIndex(AIModelSchema, {
   key: { scope: 1, tmbId: 1, model: 1 },
   options: {
     unique: true,
@@ -79,14 +79,11 @@ defineIndex(SystemModelSchema, {
   }
 });
 
-defineIndex(SystemModelSchema, {
+defineIndex(AIModelSchema, {
   key: { scope: 1, teamId: 1, model: 1 },
   options: {
     partialFilterExpression: { scope: ModelScopeEnum.team }
   }
 });
 
-export const MongoAIModel = getMongoModel<SystemModelSchemaType>(
-  AIModelCollectionName,
-  SystemModelSchema
-);
+export const MongoAIModel = getMongoModel<AIModelSchemaType>(AIModelCollectionName, AIModelSchema);

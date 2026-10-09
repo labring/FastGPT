@@ -135,14 +135,17 @@ const ModelLinkedChannels = ({
                       {onRemove && (
                         <PopoverConfirm
                           type={'delete'}
+                          placement={'bottom-end'}
                           content={t('config_model:confirm_remove_channel_association')}
                           onConfirm={() => onRemove(channel.id)}
                           Trigger={
-                            <MyIconButton
-                              icon="delete"
-                              tip={t('config_model:remove_channel_association')}
-                              hoverColor="red.500"
-                            />
+                            <Box>
+                              <MyIconButton
+                                icon="delete"
+                                tip={t('config_model:remove_channel_association')}
+                                hoverColor="red.500"
+                              />
+                            </Box>
                           }
                         />
                       )}

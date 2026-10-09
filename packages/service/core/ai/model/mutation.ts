@@ -1,546 +1,218 @@
-import type { SystemModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import type { ClientSession } from '../../../common/mongo';
-import { runSystemModelTransaction } from './entity';
+import { Types } from '../../../common/mongo';
+import type { ModelCatalogScope } from './catalog/entity';
+import { runModelTransaction } from './catalog/transaction';
+import { deleteModelRecords } from './cleanup';
 import { MongoAIModel } from './schema';
-import { MongoModelStatusProbeRecord } from '../modelStatus/schema';
-import { MongoResourcePermission } from '../../../support/permission/schema';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { assertModelAvailable } from '../utils';
-import { updatedReloadSystemModel } from './catalog';
-import { invalidateTeamModelCache } from './teamModelCache';
-import { clearMyModelsCache } from '../../../support/permission/model/cache';
-import { upsertSystemDefaultModelIds } from '../defaultModel/entity';
+import { updatedReloadSystemModel } from './catalog/service';
+import { invalidateTeamModelCatalog } from './teamModelCache';
 import { refreshModelTemplates } from './template';
-import {
-  CreateModelResponseSchema,
-  CreateModelsFromTemplatesResponseSchema,
-  type CreateModelBody,
-  type CreateModelResponse,
-  type CreateModelsFromTemplatesBody,
-  type CreateModelsFromTemplatesResponse,
-  type DeleteModelsBody,
-  type UpdateDefaultModelsBody,
-  type UpdateModelBody
+import type {
+  CreateModelBody,
+  CreateModelsFromTemplatesBody,
+  UpdateModelBody
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { channelTypeToScope, resolveChannelType } from '@fastgpt/global/core/ai/model';
-import {
-  getSystemModelConfigUpdate,
-  sanitizeTeamModelData,
-  type EditableSystemModelData
-} from './utils';
-import type { ChannelType } from '@fastgpt/global/openapi/core/ai/model/channel/api';
-import { getLogger, LogCategories } from '../../../common/logger';
+import { getModelConfigUpdate, sanitizeTeamModelData } from './utils';
+import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 
-const logger = getLogger(LogCategories.MODULE.AI.MODEL);
+type ModelMutationOwner = { channelType?: ChannelType; tmbId?: string; teamId?: string };
 
-/**
- * 更新一组已存在的系统模型，并保证目标集合完整命中。
- *
- * 该内部入口集中 system scope 和“不允许部分命中”的业务规则；是否开启事务由上层操作决定。
- */
-const updateExistingModels = async ({
-  modelIds,
-  update,
-  session,
-  scope = ModelScopeEnum.system,
-  tmbId
-}: {
-  modelIds: string[];
-  update: EditableSystemModelData | Pick<SystemModelDocumentDataType, 'isActive'>;
-  session?: ClientSession;
-  scope?: ModelScopeEnum;
-  tmbId?: string;
-}) => {
-  const query: Record<string, any> = { _id: { $in: modelIds }, scope };
-  if (scope === ModelScopeEnum.team && tmbId) {
-    query.tmbId = tmbId;
+/** 归属只来自鉴权身份；团队写入必须同时携带团队和成员，不能回退到系统版本或无归属查询。 */
+const getMutationScope = ({ channelType = 'system', teamId, tmbId }: ModelMutationOwner) => {
+  if (channelType === 'system') {
+    return {
+      context: { scope: ModelScopeEnum.system } satisfies ModelCatalogScope,
+      filter: { scope: ModelScopeEnum.system }
+    };
   }
-  const result = await MongoAIModel.updateMany(query, { $set: update }, { session });
-
-  if (result.matchedCount !== modelIds.length) {
-    return Promise.reject(ModelErrEnum.unExist);
+  if (!teamId || !tmbId || !Types.ObjectId.isValid(teamId) || !Types.ObjectId.isValid(tmbId)) {
+    throw new UserError(ModelErrEnum.unExist);
   }
+  return {
+    context: { scope: ModelScopeEnum.team, teamId } satisfies ModelCatalogScope,
+    filter: { scope: ModelScopeEnum.team, teamId, tmbId }
+  };
 };
 
-/** 按稳定 modelId 更新单个系统或团队模型的可编辑配置，并刷新运行时模型快照或团队缓存。 */
-export const updateModelConfig = async ({
+/** 提交后刷新本地目录；跨实例一致性由事务中的目录修订号负责，不再删除所有成员的权限缓存。 */
+const refreshMutationCatalog = async (context: ModelCatalogScope) => {
+  if (context.scope === ModelScopeEnum.team) invalidateTeamModelCatalog(context.teamId);
+  else await updatedReloadSystemModel();
+};
+
+/** 原子校验归属、类型和重名并更新配置；返回名称变更，渠道副作用由生命周期层协调。 */
+export const updateModel = async ({
   modelId,
   modelData,
-  scope = ModelScopeEnum.system,
-  tmbId
-}: {
-  modelId: string;
-  modelData: EditableSystemModelData;
-  scope?: ModelScopeEnum;
-  tmbId?: string;
-}) => {
-  let existingTeamId: string | undefined;
-
-  await runSystemModelTransaction(async (session) => {
-    const isTeam = scope === ModelScopeEnum.team;
-    if (isTeam && !tmbId) throw ModelErrEnum.unExist;
-    const query: Record<string, any> = { _id: modelId, scope };
-    if (isTeam) {
-      query.tmbId = tmbId;
-    }
-    const projection: Record<string, number> = { type: 1, model: 1 };
-    if (isTeam) {
-      projection.tmbId = 1;
-      projection.teamId = 1;
-    }
-    const existingModel = await MongoAIModel.findOne(query, projection).session(session).lean();
-    if (!existingModel) throw ModelErrEnum.unExist;
-    if (existingModel.type !== modelData.type) {
-      throw new UserError('System model type cannot be changed');
-    }
-    if (existingModel.teamId) {
-      existingTeamId = String(existingModel.teamId);
-    }
-
-    const trimmedModel = typeof modelData.model === 'string' ? modelData.model.trim() : undefined;
-    if (trimmedModel && trimmedModel !== existingModel.model) {
-      const duplicateQuery: Record<string, any> = {
-        scope,
-        model: trimmedModel,
+  ...owner
+}: UpdateModelBody & ModelMutationOwner) => {
+  const { context, filter } = getMutationScope(owner);
+  const change = await runModelTransaction(context, async (session) => {
+    const existing = await MongoAIModel.findOne({ _id: modelId, ...filter })
+      .session(session)
+      .lean();
+    if (!existing) throw new UserError(ModelErrEnum.unExist);
+    if (existing.type !== modelData.type) throw new UserError('Model type cannot be changed');
+    const newModel = modelData.model?.trim() ?? existing.model;
+    if (
+      newModel !== existing.model &&
+      (await MongoAIModel.exists({
+        ...filter,
+        model: newModel,
         _id: { $ne: modelId }
-      };
-      if (isTeam && existingModel.tmbId) {
-        duplicateQuery.tmbId = existingModel.tmbId;
-      }
-      const duplicate = await MongoAIModel.exists(duplicateQuery).session(session);
-      if (duplicate) {
-        throw new UserError(ModelErrEnum.alreadyExists);
-      }
-    }
-
-    const result = await MongoAIModel.updateOne(
-      {
-        _id: modelId,
-        scope,
-        type: existingModel.type,
-        ...(query.tmbId ? { tmbId: query.tmbId } : {})
-      },
-      getSystemModelConfigUpdate(modelData),
+      }).session(session))
+    )
+      throw new UserError(ModelErrEnum.alreadyExists);
+    await MongoAIModel.updateOne(
+      { _id: modelId, ...filter },
+      getModelConfigUpdate(
+        context.scope === ModelScopeEnum.team ? sanitizeTeamModelData(modelData) : modelData
+      ),
       { session }
     );
-    if (result.matchedCount !== 1) throw ModelErrEnum.unExist;
+    return { modelId, oldModel: existing.model, newModel };
   });
-
-  if (scope === ModelScopeEnum.team) {
-    invalidateTeamModelCache({ teamId: existingTeamId, tmbId, modelId });
-    if (existingTeamId) {
-      await clearMyModelsCache({ teamId: existingTeamId });
-    }
-  } else {
-    await updatedReloadSystemModel();
-  }
+  await refreshMutationCatalog(context);
+  return change;
 };
 
-/** 在单个 MongoDB 事务中批量更新系统或团队模型启停状态，并刷新运行时模型快照或团队缓存。 */
+/** 渠道改名失败时只补偿该次名称变化；条件更新避免覆盖之后已经成功提交的另一轮改名。 */
+export const restoreModelName = async ({
+  modelId,
+  oldModel,
+  newModel,
+  ...owner
+}: { modelId: string; oldModel: string; newModel: string } & ModelMutationOwner) => {
+  const { context, filter } = getMutationScope(owner);
+  await runModelTransaction(context, (session) =>
+    MongoAIModel.updateOne(
+      { _id: modelId, model: newModel, ...filter },
+      { $set: { model: oldModel } },
+      { session }
+    )
+  );
+  await refreshMutationCatalog(context);
+};
+
+/** 批量启停必须完整命中所属桶，否则整个事务回滚，不产生部分生效或错误修订号。 */
 export const updateModelStatus = async ({
   modelIds,
   isActive,
   scope = ModelScopeEnum.system,
-  tmbId
+  ...owner
 }: {
   modelIds: string[];
   isActive: boolean;
   scope?: ModelScopeEnum;
+  teamId?: string;
   tmbId?: string;
 }) => {
-  let teamIds: string[] = [];
-  if (scope === ModelScopeEnum.team) {
-    if (!tmbId) return Promise.reject(ModelErrEnum.unExist);
-    const existingModels = await MongoAIModel.find({
-      _id: { $in: modelIds },
-      scope,
-      tmbId
-    })
-      .select({ teamId: 1 })
-      .lean();
-    if (existingModels.length !== modelIds.length) {
-      return Promise.reject(ModelErrEnum.unExist);
-    }
-    teamIds = Array.from(
-      new Set(
-        existingModels
-          .map((m) => (m.teamId ? String(m.teamId) : undefined))
-          .filter((id): id is string => !!id)
-      )
-    );
-  }
-
-  await runSystemModelTransaction((session) =>
-    updateExistingModels({ modelIds, update: { isActive }, session, scope, tmbId })
-  );
-
-  if (scope === ModelScopeEnum.team) {
-    for (const teamId of teamIds) {
-      invalidateTeamModelCache({ teamId, tmbId });
-      await clearMyModelsCache({ teamId });
-    }
-    modelIds.forEach((modelId) => invalidateTeamModelCache({ modelId, tmbId }));
-  } else {
-    await updatedReloadSystemModel();
-  }
-};
-
-/** 更新系统或团队模型配置，在事务内原子检查实例可用性、类型与重名。 */
-export const updateModel = async ({
-  modelId,
-  modelData,
-  channelType,
-  tmbId,
-  syncModelName = async () => {}
-}: UpdateModelBody & {
-  tmbId?: string;
-  syncModelName?: (props: {
-    oldModel: string;
-    newModel: string;
-    channelType: ChannelType;
-    tmbId: string;
-  }) => Promise<void>;
-}): Promise<void> => {
-  const resolvedType = resolveChannelType({ channelType, scope: modelData.scope });
-  const isTeam = resolvedType === 'team';
-  if (isTeam && !tmbId) return Promise.reject(ModelErrEnum.unExist);
-
-  const existingModel = await MongoAIModel.findOne({
-    _id: modelId,
-    scope: channelTypeToScope(resolvedType),
-    ...(isTeam ? { tmbId } : {})
-  })
-    .select({ model: 1, type: 1, tmbId: 1, teamId: 1 })
-    .lean();
-  if (!existingModel) return Promise.reject(ModelErrEnum.unExist);
-  if (existingModel.type !== modelData.type) {
-    throw new UserError('System model type cannot be changed');
-  }
-
-  const targetModel = modelData.model?.trim() ?? existingModel.model;
-  const isModelRenamed = targetModel !== existingModel.model;
-
-  if (isModelRenamed) {
-    const conflict = await MongoAIModel.exists({
-      _id: { $ne: modelId },
-      scope: channelTypeToScope(resolvedType),
-      model: targetModel,
-      ...(isTeam ? { tmbId } : {})
-    });
-    if (conflict) {
-      throw new UserError(ModelErrEnum.alreadyExists);
-    }
-  }
-
-  await updateModelConfig({
-    modelId,
-    modelData: isTeam ? sanitizeTeamModelData(modelData) : modelData,
-    scope: channelTypeToScope(resolvedType),
-    tmbId: isTeam && tmbId ? tmbId : undefined
+  const { context, filter } = getMutationScope({
+    ...owner,
+    channelType: scope === ModelScopeEnum.team ? 'team' : 'system'
   });
-
-  if (isModelRenamed && syncModelName) {
-    try {
-      await syncModelName({
-        oldModel: existingModel.model,
-        newModel: targetModel,
-        channelType: resolvedType,
-        tmbId: tmbId ?? ''
-      });
-    } catch (error) {
-      await runSystemModelTransaction(async (session) => {
-        await MongoAIModel.updateOne(
-          { _id: modelId },
-          { $set: { model: existingModel.model } },
-          { session }
-        );
-      }).catch((rollbackError) => {
-        logger.error('Rollback Mongo model rename failed', {
-          modelId,
-          oldModel: existingModel.model,
-          rollbackError
-        });
-      });
-      if (isTeam) {
-        const teamIdStr = existingModel.teamId ? String(existingModel.teamId) : undefined;
-        invalidateTeamModelCache({ teamId: teamIdStr, tmbId, modelId });
-        if (teamIdStr) {
-          await clearMyModelsCache({ teamId: teamIdStr });
-        }
-      } else {
-        await updatedReloadSystemModel();
-      }
-      throw error;
-    }
-  }
+  await runModelTransaction(context, async (session) => {
+    const result = await MongoAIModel.updateMany(
+      { _id: { $in: modelIds }, ...filter },
+      { $set: { isActive } },
+      { session }
+    );
+    if (result.matchedCount !== new Set(modelIds).size) throw new UserError(ModelErrEnum.unExist);
+  });
+  await refreshMutationCatalog(context);
 };
 
-/**
- * 预检重名后事务创建模型；数据库唯一索引负责并发兜底。
- * 模型归属（scope/tmbId/teamId）统一在此注入，调用方只需传入当前会话身份，
- * 不允许由请求体决定归属；team 模型会剔除仅系统模型可用的直连配置。
- */
+/** 创建时覆盖请求中的归属字段；团队模型去除系统专用的直连配置，唯一索引负责并发重名兜底。 */
 export const createModel = async ({
   modelData,
-  channelType,
-  tmbId,
-  teamId
-}: Pick<CreateModelBody, 'modelData' | 'channelType'> & {
-  tmbId?: string;
-  teamId?: string;
-}): Promise<CreateModelResponse> => {
-  const resolvedType = resolveChannelType({ channelType, scope: modelData.scope });
-  const isTeam = resolvedType === 'team';
-  if (isTeam && (!tmbId || !teamId)) {
-    return Promise.reject(ModelErrEnum.unExist);
-  }
-  const resolvedScope = channelTypeToScope(resolvedType);
-  const ownerTmbId = isTeam ? tmbId : undefined;
-  // 归属字段只信任会话身份，忽略请求体中携带的 tmbId/teamId
-  const { tmbId: _ignoredTmbId, teamId: _ignoredTeamId, ...ownerlessModelData } = modelData;
-
-  const duplicateFilter: Record<string, unknown> = {
-    scope: resolvedScope,
-    model: modelData.model
-  };
-  if (ownerTmbId) duplicateFilter.tmbId = ownerTmbId;
-  const existingModel = await MongoAIModel.exists(duplicateFilter);
-  if (existingModel) {
-    throw new UserError(ModelErrEnum.alreadyExists);
-  }
-
-  const [model] = await runSystemModelTransaction((session) =>
-    MongoAIModel.create(
+  ...owner
+}: Pick<CreateModelBody, 'modelData' | 'channelType'> & ModelMutationOwner) => {
+  const { context, filter } = getMutationScope(owner);
+  const { tmbId: _tmbId, teamId: _teamId, scope: _scope, ...data } = modelData;
+  const [model] = await runModelTransaction(context, async (session) => {
+    if (await MongoAIModel.exists({ ...filter, model: data.model }).session(session)) {
+      throw new UserError(ModelErrEnum.alreadyExists);
+    }
+    return MongoAIModel.create(
       [
         {
-          ...(isTeam ? sanitizeTeamModelData(ownerlessModelData) : ownerlessModelData),
-          scope: resolvedScope,
-          ...(ownerTmbId ? { tmbId: ownerTmbId } : {}),
-          ...(isTeam && teamId ? { teamId } : {}),
-          isActive: modelData.isActive ?? false
+          ...(context.scope === ModelScopeEnum.team ? sanitizeTeamModelData(data) : data),
+          ...filter,
+          isActive: data.isActive ?? false
         }
       ],
       { session }
-    )
-  );
-  if (isTeam) {
-    invalidateTeamModelCache({ teamId, tmbId: ownerTmbId, modelId: String(model._id) });
-    if (teamId) {
-      await clearMyModelsCache({ teamId });
-    }
-  } else {
-    await updatedReloadSystemModel();
-  }
-
-  return CreateModelResponseSchema.parse({ modelId: String(model._id) });
+    );
+  });
+  await refreshMutationCatalog(context);
+  return { modelId: String(model._id) };
 };
 
-/** 提交时重新读取模板，预检后批量创建停用实例。 */
+/** 从最新模板创建缺失的停用实例；重复提交不会覆盖已安装模型或无意义地增加目录版本。 */
 export const createModelsFromTemplates = async ({
   templates,
-  channelType = 'system',
-  tmbId,
-  teamId
-}: CreateModelsFromTemplatesBody & {
-  tmbId?: string;
-  teamId?: string;
-}): Promise<CreateModelsFromTemplatesResponse> => {
+  ...owner
+}: CreateModelsFromTemplatesBody & ModelMutationOwner) => {
+  const { context, filter } = getMutationScope(owner);
   const latestTemplates = await refreshModelTemplates();
-  const latestTemplateMap = new Map(
+  const templateMap = new Map(
     latestTemplates.map((template) => [`${template.type}:${template.model}`, template])
   );
-  const selectedTemplates = templates.map((reference) => {
-    const key = `${reference.type}:${reference.model}`;
-    const template = latestTemplateMap.get(key);
-    if (!template) throw new UserError(`Model template no longer exists: ${key}`);
-    return template;
-  });
-
-  const isTeam = channelType === 'team';
-  if (isTeam && (!tmbId || !teamId)) {
-    return Promise.reject(ModelErrEnum.unExist);
-  }
-  const resolvedScope = channelTypeToScope(channelType);
-  const existingFilter: Record<string, unknown> = {
-    scope: resolvedScope,
-    model: { $in: selectedTemplates.map(({ model }) => model) }
-  };
-  if (isTeam) {
-    existingFilter.tmbId = tmbId;
-  }
-
-  const existingModels = await MongoAIModel.find(existingFilter).select({ model: 1 }).lean();
-  const existingModelNames = new Set(existingModels.map((model) => model.model));
-  const modelsToCreate = selectedTemplates
-    .filter((template) => !existingModelNames.has(template.model))
-    .map((template) => ({
-      ...template,
-      scope: resolvedScope,
-      ...(isTeam && tmbId ? { tmbId } : {}),
-      ...(isTeam && teamId ? { teamId } : {}),
-      isActive: false
-    }));
-
-  const createdModels = await runSystemModelTransaction(async (session) => {
-    if (modelsToCreate.length === 0) return [];
-    return MongoAIModel.insertMany(modelsToCreate, { session });
-  });
-
-  if (isTeam) {
-    invalidateTeamModelCache({ teamId, tmbId });
-    if (teamId) {
-      await clearMyModelsCache({ teamId });
-    }
-  } else {
-    await updatedReloadSystemModel();
-  }
-
-  return CreateModelsFromTemplatesResponseSchema.parse({
-    models: createdModels.map((model) => ({
+  const selected = Array.from(
+    new Map(
+      templates.map((reference) => {
+        const key = `${reference.type}:${reference.model}`;
+        const template = templateMap.get(key);
+        if (!template) throw new UserError(`Model template no longer exists: ${key}`);
+        return [template.model, template] as const;
+      })
+    ).values()
+  );
+  const existing = await MongoAIModel.find({
+    ...filter,
+    model: { $in: selected.map(({ model }) => model) }
+  })
+    .select({ model: 1 })
+    .lean();
+  const names = new Set(existing.map(({ model }) => model));
+  const missing = selected.filter(({ model }) => !names.has(model));
+  if (missing.length === 0) return { models: [] };
+  const models = await runModelTransaction(context, (session) =>
+    MongoAIModel.insertMany(
+      missing.map((template) => ({
+        ...(context.scope === ModelScopeEnum.team ? sanitizeTeamModelData(template) : template),
+        ...filter,
+        isActive: false
+      })),
+      { session }
+    )
+  );
+  await refreshMutationCatalog(context);
+  return {
+    models: models.map((model) => ({
       modelId: String(model._id),
       type: model.type,
       model: model.model
     }))
-  });
+  };
 };
 
-/**
- * 按稳定 ID 在同一事务删除模型、权限和探测历史并刷新缓存。
- * 返回被删除模型的上游模型名，供调用方清理 AI Proxy 渠道中的残留映射（属于 AI Proxy 侧副作用，不进事务）。
- */
+/** 同一事务删除实体、ACL 与探测记录；返回名称供生命周期层清理渠道引用。 */
 export const deleteModels = async ({
   modelIds,
-  channelType = 'system',
-  tmbId
-}: DeleteModelsBody & { tmbId?: string }): Promise<string[]> => {
-  const isTeam = channelType === 'team';
-  if (isTeam && !tmbId) return Promise.reject(ModelErrEnum.unExist);
-  const resolvedScope = channelTypeToScope(channelType);
-
-  const query: Record<string, unknown> = {
-    _id: { $in: modelIds },
-    scope: resolvedScope,
-    ...(isTeam ? { tmbId } : {})
-  };
-
-  const models = await MongoAIModel.find(query).select({ model: 1, teamId: 1 }).lean();
-  if (models.length !== modelIds.length) throw ModelErrEnum.unExist;
-  const teamIds = isTeam
-    ? Array.from(
-        new Set(
-          models
-            .map((m) => (m.teamId ? String(m.teamId) : undefined))
-            .filter((id): id is string => !!id)
-        )
-      )
-    : [];
-
-  await runSystemModelTransaction(async (session) => {
-    const result = await MongoAIModel.deleteMany(query, { session });
-    if (result.deletedCount !== modelIds.length) return Promise.reject(ModelErrEnum.unExist);
-
-    await MongoModelStatusProbeRecord.deleteMany({ modelId: { $in: modelIds } }, { session });
-
-    await MongoResourcePermission.deleteMany(
-      {
-        resourceType: PerResourceTypeEnum.model,
-        resourceId: { $in: modelIds }
-      },
-      { session }
-    );
+  ...owner
+}: { modelIds: string[] } & ModelMutationOwner): Promise<string[]> => {
+  const { context, filter } = getMutationScope(owner);
+  const models = await runModelTransaction(context, async (session) => {
+    const records = await MongoAIModel.find({ _id: { $in: modelIds }, ...filter })
+      .session(session)
+      .lean();
+    if (records.length !== new Set(modelIds).size) throw new UserError(ModelErrEnum.unExist);
+    await deleteModelRecords(modelIds, session);
+    return records;
   });
-
-  if (isTeam) {
-    for (const tId of teamIds) {
-      invalidateTeamModelCache({ teamId: tId, tmbId });
-      await clearMyModelsCache({ teamId: tId });
-    }
-    modelIds.forEach((mId) => invalidateTeamModelCache({ modelId: mId, tmbId }));
-  } else {
-    await updatedReloadSystemModel();
-  }
-
-  return models.map((item) => item.model);
-};
-
-/** 校验默认模型引用并提交配置，不接受失效或类型不匹配的引用。 */
-export const updateSystemDefaultModels = async (
-  defaults: UpdateDefaultModelsBody
-): Promise<void> => {
-  await runSystemModelTransaction(async (session) => {
-    const defaultFields = [
-      {
-        modelId: defaults[ModelTypeEnum.llm],
-        expectedType: ModelTypeEnum.llm
-      },
-      {
-        modelId: defaults[ModelTypeEnum.embedding],
-        expectedType: ModelTypeEnum.embedding
-      },
-      {
-        modelId: defaults[ModelTypeEnum.tts],
-        expectedType: ModelTypeEnum.tts
-      },
-      {
-        modelId: defaults[ModelTypeEnum.stt],
-        expectedType: ModelTypeEnum.stt
-      },
-      {
-        modelId: defaults[ModelTypeEnum.rerank],
-        expectedType: ModelTypeEnum.rerank
-      },
-      {
-        modelId: defaults.datasetTextLLMModelId,
-        expectedType: ModelTypeEnum.llm
-      },
-      {
-        modelId: defaults.datasetImageLLMModelId,
-        expectedType: ModelTypeEnum.llm,
-        requiresVision: true
-      },
-      {
-        modelId: defaults.chatTitleLLMModelId,
-        expectedType: ModelTypeEnum.llm
-      }
-    ].filter((item): item is typeof item & { modelId: string } => typeof item.modelId === 'string');
-
-    if (defaultFields.length > 0) {
-      const modelMap = new Map(
-        (
-          await MongoAIModel.find(
-            { scope: ModelScopeEnum.system },
-            '_id name model type isActive config.vision'
-          )
-            .session(session)
-            .lean()
-        ).map((model) => [String(model._id), model])
-      );
-
-      for (const { modelId, expectedType, requiresVision } of defaultFields) {
-        assertModelAvailable({
-          model: modelMap.get(modelId),
-          type: expectedType,
-          vision: requiresVision
-        });
-      }
-    }
-
-    const configuredDefaultModelIds = {
-      [ModelTypeEnum.llm]: defaults[ModelTypeEnum.llm],
-      [ModelTypeEnum.embedding]: defaults[ModelTypeEnum.embedding],
-      [ModelTypeEnum.tts]: defaults[ModelTypeEnum.tts],
-      [ModelTypeEnum.stt]: defaults[ModelTypeEnum.stt],
-      [ModelTypeEnum.rerank]: defaults[ModelTypeEnum.rerank],
-      datasetTextLLM: defaults.datasetTextLLMModelId,
-      datasetImageLLM: defaults.datasetImageLLMModelId,
-      chatTitleLLM: defaults.chatTitleLLMModelId
-    };
-
-    await upsertSystemDefaultModelIds(configuredDefaultModelIds, session);
-  });
-
-  await updatedReloadSystemModel();
+  await refreshMutationCatalog(context);
+  return models.map(({ model }) => model);
 };
