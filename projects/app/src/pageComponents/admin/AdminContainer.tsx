@@ -9,6 +9,7 @@ import SecondaryNavigationContainer, {
   type SecondaryNavigationTab
 } from '@/pageComponents/common/SecondaryNavigationContainer';
 import { unlicensedAdminRoutes } from '@/components/admin/constants';
+import { getUnlicensedAdminTabs } from '@/pageComponents/admin/navigationUtils';
 import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 
 /**
@@ -194,11 +195,7 @@ const AdminContainer = ({
 
     if (!licenseUnactivated) return tabs;
     // 开源版没有系统资源分组，四个可用入口直接平铺在导航栏中。
-    return unlicensedAdminRoutes.flatMap((route) => {
-      const tab = tabs.find((item) => item.value === route);
-      if (tab) return [tab];
-      return tabs.flatMap((item) => item.children?.filter((child) => child.value === route) ?? []);
-    });
+    return getUnlicensedAdminTabs(tabs, unlicensedAdminRoutes);
   }, [licenseCapabilities, licenseUnactivated]);
 
   // 非 root 访问管理员区域时重定向回个人中心
