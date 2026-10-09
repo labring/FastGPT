@@ -543,7 +543,7 @@ type MeasurementQueue = {
   getSize: () => number;
 };
 
-/** 小型优先队列：同一节点只保留最新 generation，取出后由 host 负责挂载生命周期。 */
+/** 小型优先队列：同一节点只保留最新 generation，取出后由 Canvas Context 负责挂载生命周期。 */
 export const createMeasurementQueue = (): MeasurementQueue => {
   const pending = new Map<string, MeasurementQueueEntry>();
 

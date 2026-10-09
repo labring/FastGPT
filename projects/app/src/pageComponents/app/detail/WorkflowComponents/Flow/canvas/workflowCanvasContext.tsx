@@ -186,6 +186,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const edgesRef = useRef<Edge<any>[]>(edges);
   const renderedNodesRef = useRef<CanvasNode[]>([]);
   const renderedEdgesRef = useRef<Edge<any>[]>([]);
+  // React Flow 的挂载集合只增量扩展；尺寸回写不应替换现有节点身份。
+  // shortcut: 已挂载节点只在工作流删除或折叠时回收，超大图再增加按距离回收。
+  const renderedNodeIdsRef = useRef(new Set<string>());
+  const renderedEdgeIdsRef = useRef(new Set<string>());
   const projectionCache = useRef(createProjectionCache());
   const [nodeDimensions, setNodeDimensions] = useState<ReadonlyMap<string, NodeDimensions>>(
     () => new Map()
@@ -317,10 +321,24 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     const orderedParentIds = [...parentIds].sort((left, right) => getDepth(right) - getDepth(left));
     const layouts = new Map<string, ParentNodeLayout>();
     let nextNodes = sourceNodes;
+    const nodeIndexById = new Map(sourceNodes.map((node, index) => [node.id, index]));
+    const writableNodes = new Map<string, CanvasNode>();
 
-    const ensureWritableNodes = () => {
-      if (nextNodes !== sourceNodes) return;
-      nextNodes = sourceNodes.map((node) => ({ ...node, position: { ...node.position } }));
+    // 只复制真正改位置的节点；否则一次容器测量会让整张画布的 props 全部换身份。
+    const getWritableNode = (nodeId: string) => {
+      const existing = writableNodes.get(nodeId);
+      if (existing) return existing;
+
+      const index = nodeIndexById.get(nodeId);
+      if (index === undefined) return;
+      if (nextNodes === sourceNodes) nextNodes = sourceNodes.slice();
+
+      const current = nextNodes[index];
+      if (!current) return;
+      const writable = { ...current, position: { ...current.position } };
+      nextNodes[index] = writable;
+      writableNodes.set(nodeId, writable);
+      return writable;
     };
 
     const getDimension = (nodeId: string) => {
@@ -363,7 +381,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       if (layout?.childBounds && newContainerIdsRef.current.has(parentId)) {
         const children = childrenByParent.get(parentId) ?? [];
         if (children.length > 1) {
-          ensureWritableNodes();
+          children.forEach((child) => getWritableNode(child.id));
           normalizeContainerChildPositions({
             nodes: nextNodes,
             parentId,
@@ -386,13 +404,9 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (layout?.positionDelta && (layout.positionDelta.x !== 0 || layout.positionDelta.y !== 0)) {
-        const parent = nextNodes.find((node) => node.id === parentId);
-        if (parent) {
-          ensureWritableNodes();
-          const writableParent = nextNodes.find((node) => node.id === parentId);
-          if (writableParent) {
-            writableParent.position = { x: layout.parentX, y: layout.parentY };
-          }
+        const writableParent = getWritableNode(parentId);
+        if (writableParent) {
+          writableParent.position = { x: layout.parentX, y: layout.parentY };
         }
       }
 
@@ -572,7 +586,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       }
 
       const priority = classification.priorities.get(node.id) ?? 2;
-      // 离屏节点不再由隐藏 MeasurementHost 预先测量；显式 fit 仍走上面的 pendingFit 分支。
+      // 离屏节点不预先挂载完整内容；显式 fit 仍走上面的 pendingFit 分支。
       if (priority > 1) {
         measurementQueueRef.current.remove(node.id);
         return;
@@ -599,18 +613,42 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     );
     scheduleMeasurementFrame();
 
-    // 测量节点直接复用 React Flow 的节点渲染树，避免同一节点同时存在隐藏副本。
-    const renderedNodeIds = new Set([
+    // 测量节点直接复用 React Flow 的节点渲染树，已挂载节点保留为 shell/full，避免测量完成时卸载。
+    const desiredNodeIds = new Set([
       ...renderedGraph.renderedNodeIds,
       ...[...nextModes].filter(([, mode]) => mode === 'measurement').map(([nodeId]) => nodeId)
     ]);
+
+    const activeNodeIds = new Set(nextNodes.map((node) => node.id));
+    const retainedNodeIds = renderedNodeIdsRef.current;
+    retainedNodeIds.forEach((nodeId) => {
+      if (!activeNodeIds.has(nodeId) || renderedGraph.hiddenNodeIds.has(nodeId)) {
+        retainedNodeIds.delete(nodeId);
+      }
+    });
+    desiredNodeIds.forEach((nodeId) => {
+      if (activeNodeIds.has(nodeId) && !renderedGraph.hiddenNodeIds.has(nodeId)) {
+        retainedNodeIds.add(nodeId);
+      }
+    });
+
+    const edgeById = new Map(edgesRef.current.map((edge) => [edge.id, edge]));
+    const retainedEdgeIds = renderedEdgeIdsRef.current;
+    retainedEdgeIds.forEach((edgeId) => {
+      const edge = edgeById.get(edgeId);
+      if (!edge || !retainedNodeIds.has(edge.source) || !retainedNodeIds.has(edge.target)) {
+        retainedEdgeIds.delete(edgeId);
+      }
+    });
+    renderedGraph.renderedEdgeIds.forEach((edgeId) => retainedEdgeIds.add(edgeId));
+
     publishRenderedGraph(
-      nextNodes.filter((node) => renderedNodeIds.has(node.id)),
+      nextNodes.filter((node) => retainedNodeIds.has(node.id)),
       edgesRef.current.filter(
         (edge) =>
-          renderedGraph.renderedEdgeIds.has(edge.id) &&
-          renderedNodeIds.has(edge.source) &&
-          renderedNodeIds.has(edge.target)
+          retainedEdgeIds.has(edge.id) &&
+          retainedNodeIds.has(edge.source) &&
+          retainedNodeIds.has(edge.target)
       )
     );
   }
