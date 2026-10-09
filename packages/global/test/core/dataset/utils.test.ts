@@ -349,7 +349,7 @@ describe('predictDataLimitLength', () => {
   describe('default modes (chunk, parse, imageParse)', () => {
     it('should return data.length for chunk mode', () => {
       const data = [1, 2, 3, 4, 5];
-      const result = predictDataLimitLength(TrainingModeEnum.chunk, data);
+      const result = predictDataLimitLength(TrainingModeEnum.index, data);
       expect(result).toBe(5);
     });
 
@@ -366,7 +366,7 @@ describe('predictDataLimitLength', () => {
     });
 
     it('should return 0 for chunk mode with empty array', () => {
-      const result = predictDataLimitLength(TrainingModeEnum.chunk, []);
+      const result = predictDataLimitLength(TrainingModeEnum.index, []);
       expect(result).toBe(0);
     });
   });
@@ -377,7 +377,7 @@ describe('predictDataLimitLength', () => {
       expect(predictDataLimitLength(TrainingModeEnum.qa, data)).toBe(20000);
       expect(predictDataLimitLength(TrainingModeEnum.auto, data)).toBe(5000);
       expect(predictDataLimitLength(TrainingModeEnum.image, data)).toBe(2000);
-      expect(predictDataLimitLength(TrainingModeEnum.chunk, data)).toBe(1000);
+      expect(predictDataLimitLength(TrainingModeEnum.index, data)).toBe(1000);
     });
 
     it('should handle arrays with different data types', () => {

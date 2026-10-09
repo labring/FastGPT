@@ -8,6 +8,11 @@ import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/dataset/detail';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { getUser } from '@test/datas/users';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { Call } from '@test/utils/request';
@@ -103,7 +108,60 @@ describe('GET /api/core/dataset/detail', () => {
       expect(result.code).toBe(200);
       expect(result.data).toMatchObject({ _id: String(dataset._id), name: 'Dataset detail' });
       expect(result.data).toHaveProperty('permission');
+      expect(result.data.hasTrainingTask).toBe(false);
       expect(result.data).not.toHaveProperty('createTime');
     }
   );
+
+  it('returns task existence for ordinary failures and every rebuild status while preserving sync status', async () => {
+    const owner = await getUser(`dataset-tasks-${getNanoid(6)}`);
+    const dataset = await MongoDataset.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      name: 'Task status',
+      type: DatasetTypeEnum.dataset
+    });
+    const scope = {
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      datasetId: dataset._id,
+      collectionId: new Types.ObjectId()
+    };
+    const read = async () => {
+      const result = await Call(handler, { auth: owner, query: { id: String(dataset._id) } });
+      expect(result.code).toBe(200);
+      expect(result.data.status).toBe('active');
+      expect(result.data).not.toHaveProperty('rebuildingCount');
+      expect(result.data).not.toHaveProperty('trainingCount');
+      return result.data.hasTrainingTask;
+    };
+    expect(await read()).toBe(false);
+    const training = await MongoDatasetTraining.create({
+      ...scope,
+      billId: 'test',
+      mode: TrainingModeEnum.index,
+      retryCount: 0,
+      errorMsg: 'manual retry required'
+    });
+    expect(await read()).toBe(true);
+    await MongoDatasetTraining.deleteOne({ _id: training._id });
+
+    const data = await MongoDatasetData.create({ ...scope, q: 'saved' });
+    for (const indexStatus of [
+      DatasetDataIndexStatusEnum.rebuildIndexPending,
+      DatasetDataIndexStatusEnum.rebuildIndexRunning,
+      DatasetDataIndexStatusEnum.rebuildIndexFailed,
+      DatasetDataIndexStatusEnum.rebuildSynonymPending,
+      DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+      DatasetDataIndexStatusEnum.rebuildSynonymFailed
+    ]) {
+      await MongoDatasetData.updateOne({ _id: data._id }, { $set: { indexStatus } });
+      expect(await read()).toBe(true);
+    }
+    await MongoDatasetData.updateOne(
+      { _id: data._id },
+      { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } }
+    );
+    expect(await read()).toBe(false);
+  });
 });

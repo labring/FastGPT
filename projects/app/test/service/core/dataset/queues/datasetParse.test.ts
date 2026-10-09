@@ -130,7 +130,7 @@ describe('datasetParseQueue model validation', () => {
           await MongoDatasetTraining.findOne({ collectionId: collection._id }).lean()
         ).toMatchObject({
           q: 'Original source text.',
-          mode: state === 'unconfigured' ? TrainingModeEnum.chunk : TrainingModeEnum.image
+          mode: state === 'unconfigured' ? TrainingModeEnum.index : TrainingModeEnum.image
         });
         expect(mocks.paragraph).not.toHaveBeenCalled();
         expect(mocks.usage).not.toHaveBeenCalled();
@@ -183,7 +183,7 @@ describe('datasetParseQueue model validation', () => {
     expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
     expect(
       await MongoDatasetTraining.findOne({ collectionId: collection._id }).lean()
-    ).toMatchObject({ q: 'AI paragraph text.', mode: TrainingModeEnum.chunk });
+    ).toMatchObject({ q: 'AI paragraph text.', mode: TrainingModeEnum.index });
     expect(mocks.usage).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ inputTokens: 2, outputTokens: 1 })
     );

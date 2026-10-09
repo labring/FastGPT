@@ -84,6 +84,14 @@ export class PgVectorCtrl implements VectorControllerType {
       insertIds: rows.map((row) => row.id)
     };
   };
+  /** 仅刷新当前团队指定的旧向量，保留内容；缺失 ID 视为已经清理。 */
+  refreshCreateTime: VectorControllerType['refreshCreateTime'] = async ({ teamId, idList }) => {
+    if (idList.length === 0) return;
+    await PgClient.query(
+      `UPDATE ${DatasetVectorTableName} SET createtime = CURRENT_TIMESTAMP WHERE team_id = $1 AND id = ANY($2::bigint[])`,
+      [String(teamId), idList]
+    );
+  };
   delete: VectorControllerType['delete'] = async (props) => {
     const { teamId } = props;
 

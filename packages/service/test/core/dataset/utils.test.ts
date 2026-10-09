@@ -176,7 +176,7 @@ describe('getDatasetImageTrainingMode', () => {
         supportImageIndex: false,
         hasMarkdownImages: true
       })
-    ).toBe(TrainingModeEnum.chunk);
+    ).toBe(TrainingModeEnum.index);
   });
 });
 
@@ -203,7 +203,7 @@ describe('getTrainingModeByCollection', () => {
         imageIndex: true,
         supportImageIndex: false
       })
-    ).toBe(TrainingModeEnum.chunk);
+    ).toBe(TrainingModeEnum.index);
   });
 });
 

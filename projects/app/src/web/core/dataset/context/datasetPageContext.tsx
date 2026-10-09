@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { getDatasetById, getDatasetPaths, putDatasetById } from '../api';
 import { getAllTags } from '../api/collection';
@@ -10,6 +9,7 @@ import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useDatasetStatusPolling } from '../hooks/useDatasetStatusPolling';
 import { filterApiDatasetServerPublicData } from '@fastgpt/global/core/dataset/apiDataset/utils';
 
 type DatasetPageContextType = {
@@ -17,6 +17,8 @@ type DatasetPageContextType = {
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
   updateDataset: (data: UpdateDatasetBody) => Promise<void>;
+  refreshCollectionList: () => void;
+  registerCollectionListRefresh: (refresh: () => void) => () => void;
 
   allDatasetTags: DatasetTagType[];
   isLoadingAllDatasetTags: boolean;
@@ -24,14 +26,12 @@ type DatasetPageContextType = {
   paths: ParentTreePathItemType[];
   refetchPaths: () => void;
 
-  rebuildingCount: number;
-  trainingCount: number;
+  hasTrainingTask: boolean;
   refetchDatasetTraining: () => void;
 };
 
 export const DatasetPageContext = createContext<DatasetPageContextType>({
-  rebuildingCount: 0,
-  trainingCount: 0,
+  hasTrainingTask: false,
   refetchDatasetTraining: function (): void {
     throw new Error('Function not implemented.');
   },
@@ -43,6 +43,8 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   updateDataset: function (_data: UpdateDatasetBody): Promise<void> {
     throw new Error('Function not implemented.');
   },
+  refreshCollectionList: () => {},
+  registerCollectionListRefresh: () => () => {},
   allDatasetTags: [],
   isLoadingAllDatasetTags: false,
   loadAllDatasetTags: function (): Promise<DatasetTagType[]> {
@@ -60,6 +62,18 @@ export const DatasetPageContextProvider = ({
   datasetId: string;
 }) => {
   const { feConfigs } = useSystemStore();
+
+  const collectionListRefreshRef = useRef<() => void>();
+  // 侧栏与集合列表属于不同子树，通过注册回调仅刷新当前挂载列表，不触发初始化请求。
+  const registerCollectionListRefresh = useCallback((refresh: () => void) => {
+    collectionListRefreshRef.current = refresh;
+    return () => {
+      if (collectionListRefreshRef.current === refresh) {
+        collectionListRefreshRef.current = undefined;
+      }
+    };
+  }, []);
+  const refreshCollectionList = useCallback(() => collectionListRefreshRef.current?.(), []);
 
   // dataset detail
   const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
@@ -98,12 +112,15 @@ export const DatasetPageContextProvider = ({
     }
   );
 
-  // training and rebuild queue
-  const { data: { rebuildingCount = 0, trainingCount = 0 } = {}, refetch: refetchDatasetTraining } =
-    useQuery(['getDatasetTrainingQueue', datasetId], () => getDatasetTrainingQueue(datasetId), {
-      enabled: !!datasetId,
-      refetchInterval: 10000
-    });
+  // 只刷新是否还有任务，不拉取任务数量；详情首次加载也提供同一字段。
+  const {
+    data: { hasTrainingTask = datasetDetail.hasTrainingTask } = {},
+    run: refetchDatasetTraining
+  } = useDatasetStatusPolling(() => getDatasetTrainingQueue(datasetId), {
+    ready: !!datasetId,
+    refreshDeps: [datasetId],
+    errorToast: ''
+  });
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
     () =>
@@ -128,11 +145,12 @@ export const DatasetPageContextProvider = ({
     datasetDetail,
     loadDatasetDetail,
     updateDataset,
+    refreshCollectionList,
+    registerCollectionListRefresh,
     paths,
     refetchPaths,
 
-    rebuildingCount,
-    trainingCount,
+    hasTrainingTask,
     refetchDatasetTraining,
 
     allDatasetTags,

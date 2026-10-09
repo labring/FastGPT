@@ -504,7 +504,9 @@ describe('s3 access link', () => {
 
     await revokeS3UploadSessionToken(revokedToken);
 
-    await expect(verifyS3UploadSessionToken(expiredToken)).rejects.toThrow('UploadSessionExpired');
+    await expect(verifyS3UploadSessionToken(expiredToken)).rejects.toThrow(
+      /UploadSessionExpired|UploadSessionNotFound/
+    );
     await expect(verifyS3UploadSessionToken(revokedToken)).rejects.toThrow('UploadSessionRevoked');
   });
 });

@@ -29,7 +29,8 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import {
   getSystemMigrationFailedRecords,
   getSystemMigrationList,
-  retrySystemMigration
+  retrySystemMigration,
+  startSystemMigration
 } from '@/web/common/system/migrations/api';
 import {
   getSystemMigrationDisplayStatus,
@@ -41,6 +42,12 @@ const statusVisual: Record<
   SystemMigrationDisplayStatus,
   { labelKey: string; color: string; background: string; border: string }
 > = {
+  [SystemMigrationStatusEnum.waiting]: {
+    labelKey: i18nT('system_migration:status_waiting'),
+    color: 'yellow.700',
+    background: 'yellow.50',
+    border: 'yellow.200'
+  },
   [SystemMigrationStatusEnum.pending]: {
     labelKey: i18nT('system_migration:status_pending'),
     color: 'myGray.600',
@@ -166,7 +173,9 @@ const MigrationCard = ({
   serverTime,
   onViewFailedRecords,
   onRetry,
-  retrying
+  retrying,
+  onStart,
+  starting
 }: {
   migration: SystemMigrationListItem;
   serverTime: Date;
@@ -176,6 +185,8 @@ const MigrationCard = ({
   ) => void;
   onRetry: (migrationId: string) => void;
   retrying: boolean;
+  onStart: (migrationId: string) => void;
+  starting: boolean;
 }) => {
   const { t } = useSafeTranslation();
   const displayStatus = getSystemMigrationDisplayStatus({ migration, serverTime });
@@ -219,6 +230,17 @@ const MigrationCard = ({
             {t(migration.descriptionKey as any)}
           </Box>
         </Box>
+        {migration.status === SystemMigrationStatusEnum.waiting && (
+          <Button
+            flexShrink={0}
+            size={'sm'}
+            variant={'primary'}
+            isLoading={starting}
+            onClick={() => onStart(migration.id)}
+          >
+            {t('system_migration:start_migration')}
+          </Button>
+        )}
         {!migration.blockStartup && migration.status === SystemMigrationStatusEnum.failed && (
           <Button
             flexShrink={0}
@@ -435,6 +457,13 @@ const SystemMigrationsPage = () => {
       onSuccess: () => void refetch()
     }
   );
+  const { runAsync: startMigration, loading: isStarting } = useRequest(
+    (migrationId: string) => startSystemMigration({ migrationId }),
+    {
+      successToast: t('system_migration:migration_start_requested'),
+      onSuccess: () => void refetch()
+    }
+  );
   const [failedRecordsTarget, setFailedRecordsTarget] = useState<{
     migration: SystemMigrationListItem;
     progress: SystemMigrationProgressListItem;
@@ -442,7 +471,11 @@ const SystemMigrationsPage = () => {
   const [pending, running, failed] = useMemo(() => {
     const migrations = data?.migrations ?? [];
     return [
-      migrations.filter((item) => item.status === SystemMigrationStatusEnum.pending).length,
+      migrations.filter(
+        (item) =>
+          item.status === SystemMigrationStatusEnum.pending ||
+          item.status === SystemMigrationStatusEnum.waiting
+      ).length,
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.running).length,
       migrations.filter((item) => item.status === SystemMigrationStatusEnum.failed).length
     ];
@@ -577,6 +610,8 @@ const SystemMigrationsPage = () => {
                     }
                     onRetry={(migrationId) => void retryMigration(migrationId)}
                     retrying={isRetrying}
+                    onStart={(migrationId) => void startMigration(migrationId)}
+                    starting={isStarting}
                   />
                 ))
               )}

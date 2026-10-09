@@ -2,22 +2,35 @@ import {
   CollectionTrainingStatusEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import type { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
+import type {
+  CollectionTrainingStatusType,
+  DatasetTrainingSchemaType
+} from '@fastgpt/global/core/dataset/type';
+import type { PipelineStage } from 'mongoose';
+import type { DatasetDataRebuildStatusCounts } from '../data/query';
 
 type TrainingStatusCount = {
   activeCount: number;
   finalErrorCount: number;
 };
 
+export type CollectionTrainingModeCount = TrainingStatusCount & {
+  mode: TrainingModeEnum;
+};
+
 export const BLOCKED_LOCK_TIME = new Date('2050-01-01');
 
 export const trainingModeRankMap: Record<TrainingModeEnum, number> = {
+  // 仅供迁移前的旧记录查询排序，不恢复 chunk 的生产或消费。
+  [TrainingModeEnum.chunk]: 5,
   [TrainingModeEnum.parse]: 0,
   [TrainingModeEnum.imageParse]: 1,
   [TrainingModeEnum.qa]: 2,
   [TrainingModeEnum.image]: 3,
   [TrainingModeEnum.auto]: 4,
-  [TrainingModeEnum.chunk]: 5
+  [TrainingModeEnum.rebuildIndex]: 5,
+  [TrainingModeEnum.rebuildSynonym]: 5,
+  [TrainingModeEnum.index]: 5
 };
 
 export const trainingModeRanks = Object.values(TrainingModeEnum).map((mode) => ({
@@ -103,6 +116,42 @@ export const remainingTrainingMatch = {
 };
 
 /**
+ * 列表与详情共用的普通训练统计：直接按集合/阶段计数，再收敛为每个集合的阶段列表。
+ * 两类重建以 data 为权威来源，必须在这里排除；数量与最慢阶段统一由业务函数计算。
+ * 不累积逐条 training 数组，避免随后 unwind、排序和重复汇总。
+ */
+export const getCollectionTrainingModeCountsPipeline = (
+  match: Record<string, unknown>
+): PipelineStage[] => [
+  {
+    $match: {
+      ...match,
+      ...remainingTrainingMatch,
+      mode: { $nin: [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym] }
+    }
+  },
+  {
+    $group: {
+      _id: { collectionId: '$collectionId', mode: '$mode' },
+      activeCount: { $sum: { $cond: [activeTrainingExpr, 1, 0] } },
+      finalErrorCount: { $sum: { $cond: [finalErrorTrainingExpr, 1, 0] } }
+    }
+  },
+  {
+    $group: {
+      _id: '$_id.collectionId',
+      modeCounts: {
+        $push: {
+          mode: '$_id.mode',
+          activeCount: '$activeCount',
+          finalErrorCount: '$finalErrorCount'
+        }
+      }
+    }
+  }
+];
+
+/**
  * rank 越小表示流程越早；collection 的“最慢阶段”就是剩余任务里流程最早的阶段。
  */
 export const getTrainingModeRank = (mode?: TrainingModeEnum) => {
@@ -151,3 +200,66 @@ export const getSlowestTrainingStatus = (
         : CollectionTrainingStatusEnum.error
   };
 };
+
+/**
+ * 合并普通训练阶段与 data 的重建状态，统一集合列表和详情的数量及最慢阶段。
+ * 重建以 data 为唯一统计来源；覆盖 training 的 rebuild 数量，避免排队、执行或残留任务重复计数。
+ */
+export const getCollectionTrainingStatusByMode = ({
+  modeCounts,
+  rebuildIndexCounts = { activeCount: 0, finalErrorCount: 0 },
+  rebuildSynonymCounts = { activeCount: 0, finalErrorCount: 0 }
+}: {
+  modeCounts: Partial<Record<TrainingModeEnum, TrainingStatusCount>>;
+  rebuildIndexCounts?: TrainingStatusCount;
+  rebuildSynonymCounts?: TrainingStatusCount;
+}): CollectionTrainingStatusType => {
+  const counts = {
+    ...modeCounts,
+    [TrainingModeEnum.rebuildIndex]: rebuildIndexCounts,
+    [TrainingModeEnum.rebuildSynonym]: rebuildSynonymCounts
+  };
+  const activeTrainingAmount = Object.values(counts).reduce(
+    (sum, count) => sum + (count?.activeCount ?? 0),
+    0
+  );
+  const finalErrorAmount = Object.values(counts).reduce(
+    (sum, count) => sum + (count?.finalErrorCount ?? 0),
+    0
+  );
+  return {
+    trainingAmount: activeTrainingAmount + finalErrorAmount,
+    activeTrainingAmount,
+    finalErrorAmount,
+    hasError: finalErrorAmount > 0,
+    ...getSlowestTrainingStatus(counts)
+  };
+};
+
+/**
+ * 将普通训练的阶段聚合结果与 data 重建计数转换为集合状态。
+ * 缺少聚合记录时按零计数，供列表、详情统一处理空集合和仅有重建任务的集合。
+ */
+export const getCollectionTrainingStatusFromCounts = ({
+  modeCounts = [],
+  rebuildCounts
+}: {
+  modeCounts?: CollectionTrainingModeCount[];
+  rebuildCounts?: DatasetDataRebuildStatusCounts;
+}): CollectionTrainingStatusType =>
+  getCollectionTrainingStatusByMode({
+    modeCounts: Object.fromEntries(
+      modeCounts.map(({ mode, activeCount, finalErrorCount }) => [
+        mode,
+        { activeCount, finalErrorCount }
+      ])
+    ),
+    rebuildIndexCounts: {
+      activeCount: rebuildCounts?.rebuildIndexActiveCount ?? 0,
+      finalErrorCount: rebuildCounts?.rebuildIndexFailedCount ?? 0
+    },
+    rebuildSynonymCounts: {
+      activeCount: rebuildCounts?.rebuildSynonymActiveCount ?? 0,
+      finalErrorCount: rebuildCounts?.rebuildSynonymFailedCount ?? 0
+    }
+  });

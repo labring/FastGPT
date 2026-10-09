@@ -1,10 +1,10 @@
-import { Box, Flex, ModalBody } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { Box, Flex } from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useMemo, useState } from 'react';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useDatasetStatusPolling } from '@/web/core/dataset/hooks/useDatasetStatusPolling';
 import { getDatasetCollectionTrainingDetail } from '@/web/core/dataset/api/collection';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -21,126 +21,86 @@ import {
   TrainingStatus
 } from './trainingStatesUtils';
 
+/** 按导入或某一种重建模式展示独立链路，避免把重建误画成导入的后续阶段。 */
 const ProgressView = ({
-  trainingDetail
+  trainingDetail,
+  rebuildMode
 }: {
   trainingDetail: GetCollectionTrainingDetailResponseType;
+  rebuildMode?: TrainingModeEnum.rebuildIndex | TrainingModeEnum.rebuildSynonym;
 }) => {
   const { t } = useTranslation();
-
-  const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;
-  const isImageParse =
-    trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
-  const isImageIndex = trainingDetail.advancedTraining.imageIndex;
-  const isAutoIndexes = trainingDetail.advancedTraining.autoIndexes;
-
   const statesArray = useMemo(() => {
-    const isReady = isTrainingDetailReady(trainingDetail);
-    const modeOrder = [
-      TrainingModeEnum.parse,
-      ...(isImageParse ? [TrainingModeEnum.imageParse] : []),
-      ...(isQA ? [TrainingModeEnum.qa] : []),
-      ...(isImageIndex ? [TrainingModeEnum.image] : []),
-      ...(isAutoIndexes ? [TrainingModeEnum.auto] : []),
-      TrainingModeEnum.chunk
-    ];
-
-    const getTrainingStatus = (mode: TrainingModeEnum) =>
-      getTrainingStepStatus({
-        trainingDetail,
-        mode,
-        modeOrder
-      });
-
-    // 只显示排队和处理中的数量
-    const getStatusText = (mode: TrainingModeEnum) => {
-      if (isReady) return;
-
-      if (trainingDetail.queuedCounts[mode] > 0) {
-        return t('dataset:dataset.Training_Waiting', {
-          count: trainingDetail.queuedCounts[mode]
-        });
+    const steps = (() => {
+      if (rebuildMode) {
+        return [
+          {
+            mode: rebuildMode,
+            label:
+              rebuildMode === TrainingModeEnum.rebuildIndex
+                ? t('dataset:process.Index_Rebuild')
+                : t('dataset:process.Synonym_Rebuild')
+          }
+        ];
       }
-      if (trainingDetail.trainingCounts[mode] > 0) {
-        return t('dataset:dataset.Training_Count', {
-          count: trainingDetail.trainingCounts[mode]
-        });
-      }
-      return;
-    };
-
+      return [
+        { mode: TrainingModeEnum.parse, label: t(TrainingProcess.parsing.label) },
+        ...(trainingDetail.trainingType === DatasetCollectionDataProcessModeEnum.imageParse
+          ? [{ mode: TrainingModeEnum.imageParse, label: t(TrainingProcess.parseImage.label) }]
+          : []),
+        ...(trainingDetail.trainingType === DatasetCollectionDataProcessModeEnum.qa
+          ? [{ mode: TrainingModeEnum.qa, label: t(TrainingProcess.getQA.label) }]
+          : []),
+        ...(trainingDetail.advancedTraining.imageIndex
+          ? [{ mode: TrainingModeEnum.image, label: t(TrainingProcess.imageIndex.label) }]
+          : []),
+        ...(trainingDetail.advancedTraining.autoIndexes
+          ? [{ mode: TrainingModeEnum.auto, label: t(TrainingProcess.autoIndex.label) }]
+          : []),
+        { mode: TrainingModeEnum.index, label: t(TrainingProcess.vectorizing.label) }
+      ];
+    })();
+    const modeOrder = steps.map(({ mode }) => mode);
+    const isReady = isTrainingDetailReady(trainingDetail, modeOrder);
     const states: {
       label: string;
       statusText?: string;
       status: TrainingStatus;
       errorCount: number;
-    }[] = [
-      {
-        label: t(TrainingProcess.parsing.label),
-        statusText: getStatusText(TrainingModeEnum.parse),
-        status: getTrainingStatus(TrainingModeEnum.parse),
-        errorCount: trainingDetail.errorCounts.parse
-      },
-      ...(isImageParse
-        ? [
-            {
-              errorCount: trainingDetail.errorCounts.imageParse,
-              label: t(TrainingProcess.parseImage.label),
-              statusText: getStatusText(TrainingModeEnum.imageParse),
-              status: getTrainingStatus(TrainingModeEnum.imageParse)
-            }
-          ]
-        : []),
-      ...(isQA
-        ? [
-            {
-              label: t(TrainingProcess.getQA.label),
-              statusText: getStatusText(TrainingModeEnum.qa),
-              status: getTrainingStatus(TrainingModeEnum.qa),
-              errorCount: trainingDetail.errorCounts.qa
-            }
-          ]
-        : []),
-      ...(isImageIndex
-        ? [
-            {
-              errorCount: trainingDetail.errorCounts.image,
-              label: t(TrainingProcess.imageIndex.label),
-              statusText: getStatusText(TrainingModeEnum.image),
-              status: getTrainingStatus(TrainingModeEnum.image)
-            }
-          ]
-        : []),
-      ...(isAutoIndexes
-        ? [
-            {
-              errorCount: trainingDetail.errorCounts.auto,
-              label: t(TrainingProcess.autoIndex.label),
-              statusText: getStatusText(TrainingModeEnum.auto),
-              status: getTrainingStatus(TrainingModeEnum.auto)
-            }
-          ]
-        : []),
-      {
-        errorCount: trainingDetail.errorCounts.chunk,
-        label: t(TrainingProcess.vectorizing.label),
-        statusText: getStatusText(TrainingModeEnum.chunk),
-        status: getTrainingStatus(TrainingModeEnum.chunk)
-      },
-      {
-        errorCount: 0,
-        label: t('dataset:process.Is_Ready'),
-        status: isReady ? TrainingStatus.Ready : TrainingStatus.NotStart,
-        statusText: isReady
-          ? undefined
-          : t('dataset:training_ready', {
-              count: trainingDetail.trainedCount
-            })
-      }
-    ];
+    }[] = [];
 
+    steps.forEach(({ mode, label }) => {
+      const statusText = (() => {
+        if (isReady) return;
+        // 重建待入队和已入队的数据合并展示，后台仍保留各自真实状态。
+        if (rebuildMode) {
+          const count = trainingDetail.queuedCounts[mode] + trainingDetail.trainingCounts[mode];
+          return count > 0 ? t('dataset:dataset.Training_Count', { count }) : undefined;
+        }
+        if (trainingDetail.queuedCounts[mode] > 0) {
+          return t('dataset:dataset.Training_Waiting', {
+            count: trainingDetail.queuedCounts[mode]
+          });
+        }
+        if (trainingDetail.trainingCounts[mode] > 0) {
+          return t('dataset:dataset.Training_Count', {
+            count: trainingDetail.trainingCounts[mode]
+          });
+        }
+      })();
+      const status = getTrainingStepStatus({ trainingDetail, mode, modeOrder });
+      states.push({ label, statusText, status, errorCount: trainingDetail.errorCounts[mode] });
+    });
+    states.push({
+      errorCount: 0,
+      label: t('dataset:process.Is_Ready'),
+      status: isReady ? TrainingStatus.Ready : TrainingStatus.NotStart,
+      statusText: isReady
+        ? undefined
+        : t('dataset:training_ready', { count: trainingDetail.trainedCount })
+    });
     return states;
-  }, [trainingDetail, isImageIndex, isAutoIndexes, t, isImageParse, isQA]);
+  }, [trainingDetail, rebuildMode, t]);
 
   return (
     <Flex flexDirection={'column'} gap={6}>
@@ -251,15 +211,41 @@ const TrainingStates = ({
 }) => {
   const { t } = useTranslation();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
+  const [seenFlows, setSeenFlows] = useState({
+    import: false,
+    rebuildIndex: false,
+    rebuildSynonym: false
+  });
+
+  /** 按实际任务及失败记录判定链路，不使用集合最初导入的配置推断重建模式。 */
+  const getFlows = (detail: GetCollectionTrainingDetailResponseType) => {
+    const hasMode = (mode: TrainingModeEnum) =>
+      detail.queuedCounts[mode] + detail.trainingCounts[mode] + detail.errorCounts[mode] > 0;
+    return {
+      import: Object.values(TrainingModeEnum).some(
+        (mode) =>
+          ![TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(mode) &&
+          hasMode(mode)
+      ),
+      rebuildIndex: hasMode(TrainingModeEnum.rebuildIndex),
+      rebuildSynonym: hasMode(TrainingModeEnum.rebuildSynonym)
+    };
+  };
 
   const {
     data: trainingDetail,
     loading,
-    runAsync: refreshTrainingDetail
-  } = useRequest(() => getDatasetCollectionTrainingDetail(collectionId), {
-    pollingInterval: 5000,
-    pollingWhenHidden: false,
-    manual: false
+    run: refreshTrainingDetail
+  } = useDatasetStatusPolling(() => getDatasetCollectionTrainingDetail(collectionId), {
+    onSuccess: (data) => {
+      // 弹窗已打开时保留观察到的链路，完成后仍能看到各阶段打勾。
+      const flows = getFlows(data);
+      setSeenFlows((previous) => ({
+        import: previous.import || flows.import,
+        rebuildIndex: previous.rebuildIndex || flows.rebuildIndex,
+        rebuildSynonym: previous.rebuildSynonym || flows.rebuildSynonym
+      }));
+    }
   });
 
   const errorCounts = Object.values(trainingDetail?.errorCounts || {}).reduce(
@@ -271,37 +257,61 @@ const TrainingStates = ({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc="common/running"
       title={t('dataset:dataset.Training Process')}
-      minW={['90vw', '712px']}
+      size={'lg'}
+      w={'712px'}
+      h={'620px'}
+      bodyStyles={{ overflow: 'hidden' }}
       isLoading={!trainingDetail && loading && tab === 'states'}
     >
-      <ModalBody px={9} minH={['90vh', '500px']}>
-        <Flex align="center" justify="space-between" mb={4}>
-          <FillRowTabs
-            py={1}
-            value={tab}
-            onChange={(e) => setTab(e as 'states' | 'errors')}
-            list={[
-              { label: t('dataset:dataset.Training Process'), value: 'states' },
-              {
-                label: t('dataset:dataset.Training_Errors', { count: errorCounts }),
-                value: 'errors'
-              }
-            ]}
-          />
-        </Flex>
-        {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
-        {tab === 'errors' && (
-          <TrainingErrorList
-            scope={{ type: 'collection', collectionId }}
-            permission={permission}
-            onRefresh={refreshTrainingDetail}
-            onClose={onClose}
-            showFooter={errorCounts > 0}
-          />
-        )}
-      </ModalBody>
+      <Flex align="center" justify="space-between" mb={4} flexShrink={0}>
+        <FillRowTabs
+          py={1}
+          value={tab}
+          onChange={(e) => setTab(e as 'states' | 'errors')}
+          list={[
+            { label: t('dataset:dataset.Training Process'), value: 'states' },
+            {
+              label: t('dataset:dataset.Training_Errors', { count: errorCounts }),
+              value: 'errors'
+            }
+          ]}
+        />
+      </Flex>
+      {tab === 'states' &&
+        trainingDetail &&
+        (() => {
+          const flows = getFlows(trainingDetail);
+          const showIndex = flows.rebuildIndex || seenFlows.rebuildIndex;
+          const showSynonym = flows.rebuildSynonym || seenFlows.rebuildSynonym;
+          const showImport = flows.import || seenFlows.import || (!showIndex && !showSynonym);
+          return (
+            <Flex flexDirection="column" gap={8} minH={0} overflowY="auto">
+              {showImport && <ProgressView trainingDetail={trainingDetail} />}
+              {showIndex && (
+                <ProgressView
+                  trainingDetail={trainingDetail}
+                  rebuildMode={TrainingModeEnum.rebuildIndex}
+                />
+              )}
+              {showSynonym && (
+                <ProgressView
+                  trainingDetail={trainingDetail}
+                  rebuildMode={TrainingModeEnum.rebuildSynonym}
+                />
+              )}
+            </Flex>
+          );
+        })()}
+      {tab === 'errors' && (
+        <TrainingErrorList
+          scope={{ type: 'collection', collectionId }}
+          permission={permission}
+          onRefresh={refreshTrainingDetail}
+          onClose={onClose}
+          showFooter={errorCounts > 0}
+        />
+      )}
     </MyModal>
   );
 };

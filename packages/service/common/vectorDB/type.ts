@@ -47,6 +47,13 @@ export const DelDatasetVectorCtrlPropsSchema = z.union([
 ]);
 export type DelDatasetVectorCtrlPropsType = z.infer<typeof DelDatasetVectorCtrlPropsSchema>;
 
+/** 刷新待替换向量的清理扫描时间；已不存在的向量无需补建。 */
+export const RefreshVectorCreateTimePropsSchema = z.object({
+  teamId: z.string(),
+  idList: z.array(z.string())
+});
+export type RefreshVectorCreateTimeProps = z.infer<typeof RefreshVectorCreateTimePropsSchema>;
+
 // Embedding recall props schema
 export const EmbeddingRecallCtrlPropsSchema = z.object({
   teamId: z.string(),
@@ -99,6 +106,9 @@ export interface VectorControllerType {
    * Delete vectors from the database
    */
   delete(props: DelDatasetVectorCtrlPropsType): Promise<void>;
+
+  /** 保留原向量内容，只刷新 createTime，使替换后的孤儿向量能重新进入 cron 扫描窗口。 */
+  refreshCreateTime(props: RefreshVectorCreateTimeProps): Promise<void>;
 
   /**
    * Embedding recall/search vectors

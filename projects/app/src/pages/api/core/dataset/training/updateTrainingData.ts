@@ -6,15 +6,26 @@ import {
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/next/type';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  getDatasetIndexTrainingMode,
+  retryFailedTrainingTasks
+} from '@fastgpt/service/core/dataset/training/service';
 import {
   UpdateTrainingDataBodySchema,
   UpdateTrainingDataResponseSchema,
   type UpdateTrainingDataResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { finalErrorTrainingMatch } from '@fastgpt/service/core/dataset/training/query';
+import {
+  getTrainingDataIndexStatuses,
+  getTrainingTaskReadyUpdate
+} from '@fastgpt/service/core/dataset/training/utils';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 
+/** 重试训练任务；首次训练允许编辑正文，rebuild 只重试已存索引。 */
 async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse> {
   const body = parseApiInput({ req, bodySchema: UpdateTrainingDataBodySchema }).body;
 
@@ -51,17 +62,8 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
       };
     })();
 
-    await MongoDatasetTraining.updateMany(
-      {
-        ...retryMatch,
-        ...finalErrorTrainingMatch
-      },
-      {
-        $unset: { errorMsg: '' },
-        retryCount: 3,
-        lockTime: new Date('2000')
-      }
-    );
+    await retryFailedTrainingTasks(retryMatch);
+
     return UpdateTrainingDataResponseSchema.parse(undefined);
   }
 
@@ -89,6 +91,13 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     return Promise.reject('data not found');
   }
 
+  if (
+    [TrainingModeEnum.rebuildIndex, TrainingModeEnum.rebuildSynonym].includes(data.mode) &&
+    (q !== undefined || a !== undefined || chunkIndex !== undefined)
+  ) {
+    return Promise.reject('重建任务不支持编辑正文');
+  }
+
   const trainingMatch = {
     teamId: collection.teamId,
     datasetId: collection.datasetId,
@@ -96,27 +105,48 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
     _id: data._id
   };
 
-  // Add to chunk
-  if (data.imageId && q) {
-    await MongoDatasetTraining.updateOne(trainingMatch, {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      mode: TrainingModeEnum.chunk,
-      ...(q !== undefined && { q }),
-      ...(a !== undefined && { a }),
-      ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: new Date('2000')
-    });
-  } else {
-    await MongoDatasetTraining.updateOne(trainingMatch, {
-      $unset: { errorMsg: '' },
-      retryCount: 3,
-      ...(q !== undefined && { q }),
-      ...(a !== undefined && { a }),
-      ...(chunkIndex !== undefined && { chunkIndex }),
-      lockTime: new Date('2000')
-    });
-  }
+  // 只有补充图片解析结果才跳过当前阶段；重试 index 必须保留其原阶段。
+  const nextMode =
+    data.mode === TrainingModeEnum.imageParse && data.imageId && q
+      ? await getDatasetIndexTrainingMode(data)
+      : undefined;
+
+  const readyUpdate = getTrainingTaskReadyUpdate();
+  await mongoSessionRun(async (session) => {
+    if (data.dataId) {
+      await MongoDatasetData.updateOne(
+        {
+          _id: data.dataId,
+          teamId: data.teamId,
+          datasetId: data.datasetId,
+          collectionId: data.collectionId,
+          indexStatus: getTrainingDataIndexStatuses(data.mode).failed
+        },
+        {
+          $set: {
+            indexStatus: getTrainingDataIndexStatuses(data.mode).running
+          },
+          $unset: { indexErrorMsg: '' }
+        },
+        { session }
+      );
+    }
+
+    await MongoDatasetTraining.updateOne(
+      trainingMatch,
+      {
+        ...readyUpdate,
+        $set: {
+          ...readyUpdate.$set,
+          ...(nextMode && { mode: nextMode }),
+          ...(q !== undefined && { q }),
+          ...(a !== undefined && { a }),
+          ...(chunkIndex !== undefined && { chunkIndex })
+        }
+      },
+      { session }
+    );
+  });
 
   return UpdateTrainingDataResponseSchema.parse(undefined);
 }

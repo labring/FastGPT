@@ -1,166 +1,85 @@
 import { describe, expect, it } from 'vitest';
-import {
-  DatasetCollectionDataProcessModeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import type { GetCollectionTrainingDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { createTrainingDetail } from './fixtures';
 import {
   getTrainingStepStatus,
   isTrainingStepHighlighted,
   TrainingStatus
 } from '@/pageComponents/dataset/detail/CollectionCard/trainingStatesUtils';
 
-const createTrainingDetail = (
-  overrides: Partial<GetCollectionTrainingDetailResponseType> = {}
-): GetCollectionTrainingDetailResponseType => {
-  const counts = {
-    parse: 0,
-    qa: 0,
-    chunk: 0,
-    image: 0,
-    auto: 0,
-    imageParse: 0
-  };
-
-  return {
-    trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-    advancedTraining: {
-      customPdfParse: false,
-      imageIndex: false,
-      autoIndexes: false
+describe('getTrainingStepStatus', () => {
+  it.each([
+    {
+      name: 'running first stage',
+      queued: 0,
+      parsing: 1,
+      rebuilding: 0,
+      trained: 0,
+      parseStatus: TrainingStatus.Running,
+      rebuildStatus: TrainingStatus.NotStart
     },
-    queuedCounts: { ...counts },
-    trainingCounts: { ...counts },
-    errorCounts: { ...counts },
-    trainedCount: 0,
-    ...overrides
-  };
-};
-
-describe('trainingStatesUtils', () => {
-  it('should mark parsing step as running while content parsing is active', () => {
-    const trainingDetail = createTrainingDetail({
-      trainingCounts: {
-        parse: 1,
-        qa: 0,
-        chunk: 0,
-        image: 0,
-        auto: 0,
-        imageParse: 0
-      }
-    });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.chunk];
-
+    {
+      name: 'queued first stage',
+      queued: 1,
+      parsing: 0,
+      rebuilding: 0,
+      trained: 0,
+      parseStatus: TrainingStatus.Queued,
+      rebuildStatus: TrainingStatus.NotStart
+    },
+    {
+      name: 'later stage started',
+      queued: 0,
+      parsing: 0,
+      rebuilding: 1,
+      trained: 1,
+      parseStatus: TrainingStatus.Ready,
+      rebuildStatus: TrainingStatus.Running
+    },
+    {
+      name: 'simultaneous active stages',
+      queued: 0,
+      parsing: 1,
+      rebuilding: 2,
+      trained: 0,
+      parseStatus: TrainingStatus.Running,
+      rebuildStatus: TrainingStatus.Running
+    }
+  ])('resolves $name', ({ queued, parsing, rebuilding, trained, parseStatus, rebuildStatus }) => {
+    const trainingDetail = createTrainingDetail({ trainedCount: trained });
+    trainingDetail.queuedCounts.parse = queued;
+    trainingDetail.trainingCounts.parse = parsing;
+    trainingDetail.trainingCounts.rebuildIndex = rebuilding;
+    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.rebuildIndex];
+    expect(getTrainingStepStatus({ trainingDetail, mode: TrainingModeEnum.parse, modeOrder })).toBe(
+      parseStatus
+    );
     expect(
-      getTrainingStepStatus({
-        trainingDetail,
-        mode: TrainingModeEnum.parse,
-        modeOrder
-      })
-    ).toBe(TrainingStatus.Running);
-    expect(
-      getTrainingStepStatus({
-        trainingDetail,
-        mode: TrainingModeEnum.chunk,
-        modeOrder
-      })
-    ).toBe(TrainingStatus.NotStart);
+      getTrainingStepStatus({ trainingDetail, mode: TrainingModeEnum.rebuildIndex, modeOrder })
+    ).toBe(rebuildStatus);
   });
 
-  it('should mark parsing step as queued while waiting to be picked by worker', () => {
-    const trainingDetail = createTrainingDetail({
-      queuedCounts: {
-        parse: 1,
-        qa: 0,
-        chunk: 0,
-        image: 0,
-        auto: 0,
-        imageParse: 0
-      }
-    });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.chunk];
-
+  it('does not let another flow block completion of this flow', () => {
+    const trainingDetail = createTrainingDetail();
+    trainingDetail.trainingCounts.rebuildSynonym = 3;
     expect(
       getTrainingStepStatus({
         trainingDetail,
-        mode: TrainingModeEnum.parse,
-        modeOrder
-      })
-    ).toBe(TrainingStatus.Queued);
-    expect(
-      getTrainingStepStatus({
-        trainingDetail,
-        mode: TrainingModeEnum.chunk,
-        modeOrder
-      })
-    ).toBe(TrainingStatus.NotStart);
-  });
-
-  it('should mark earlier steps ready after later steps start', () => {
-    const trainingDetail = createTrainingDetail({
-      trainingCounts: {
-        parse: 0,
-        qa: 0,
-        chunk: 1,
-        image: 0,
-        auto: 0,
-        imageParse: 0
-      },
-      trainedCount: 1
-    });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.chunk];
-
-    expect(
-      getTrainingStepStatus({
-        trainingDetail,
-        mode: TrainingModeEnum.parse,
-        modeOrder
+        mode: TrainingModeEnum.rebuildIndex,
+        modeOrder: [TrainingModeEnum.rebuildIndex]
       })
     ).toBe(TrainingStatus.Ready);
-    expect(
-      getTrainingStepStatus({
-        trainingDetail,
-        mode: TrainingModeEnum.chunk,
-        modeOrder
-      })
-    ).toBe(TrainingStatus.Running);
   });
+});
 
-  it('should keep multiple in-progress stages highlighted at the same time', () => {
-    const trainingDetail = createTrainingDetail({
-      trainingCounts: {
-        parse: 1,
-        qa: 0,
-        chunk: 2,
-        image: 0,
-        auto: 0,
-        imageParse: 0
-      }
-    });
-    const modeOrder = [TrainingModeEnum.parse, TrainingModeEnum.chunk];
-
-    const parseStatus = getTrainingStepStatus({
-      trainingDetail,
-      mode: TrainingModeEnum.parse,
-      modeOrder
-    });
-    const chunkStatus = getTrainingStepStatus({
-      trainingDetail,
-      mode: TrainingModeEnum.chunk,
-      modeOrder
-    });
-
-    expect(parseStatus).toBe(TrainingStatus.Running);
-    expect(chunkStatus).toBe(TrainingStatus.Running);
-    expect(isTrainingStepHighlighted(parseStatus)).toBe(true);
-    expect(isTrainingStepHighlighted(chunkStatus)).toBe(true);
-  });
-
-  it('should highlight completed steps and gray out only not-started steps', () => {
-    expect(isTrainingStepHighlighted(TrainingStatus.Ready)).toBe(true);
-    expect(isTrainingStepHighlighted(TrainingStatus.Queued)).toBe(true);
-    expect(isTrainingStepHighlighted(TrainingStatus.Running)).toBe(true);
-    expect(isTrainingStepHighlighted(TrainingStatus.Error)).toBe(true);
-    expect(isTrainingStepHighlighted(TrainingStatus.NotStart)).toBe(false);
+describe('isTrainingStepHighlighted', () => {
+  it.each([
+    [TrainingStatus.Ready, true],
+    [TrainingStatus.Queued, true],
+    [TrainingStatus.Running, true],
+    [TrainingStatus.Error, true],
+    [TrainingStatus.NotStart, false]
+  ])('highlights %s=%s', (status, expected) => {
+    expect(isTrainingStepHighlighted(status)).toBe(expected);
   });
 });

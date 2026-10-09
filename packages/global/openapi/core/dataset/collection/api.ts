@@ -241,9 +241,15 @@ export const GetCollectionTrainingDetailResponseSchema = z.object({
       autoIndexes: z.boolean().meta({ description: '自动索引' })
     })
     .meta({ description: '高级训练配置' }),
-  queuedCounts: TrainingCountsSchema.meta({ description: '排队中数量' }),
-  trainingCounts: TrainingCountsSchema.meta({ description: '训练中数量' }),
-  errorCounts: TrainingCountsSchema.meta({ description: '错误数量' }),
+  queuedCounts: TrainingCountsSchema.meta({
+    description: '排队数量；rebuildIndex/rebuildSynonym 分别按 data 的 Pending 状态统计'
+  }),
+  trainingCounts: TrainingCountsSchema.meta({
+    description: '处理中数量；rebuildIndex/rebuildSynonym 分别按 data 的 Running 状态统计'
+  }),
+  errorCounts: TrainingCountsSchema.meta({
+    description: '错误数量；rebuildIndex/rebuildSynonym 按 data 各自 Failed 状态统计'
+  }),
   trainedCount: z.number().meta({ description: '已训练数据量' })
 });
 export type GetCollectionTrainingDetailResponseType = z.infer<

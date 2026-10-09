@@ -7,7 +7,8 @@ import {
   useState,
   useMemo,
   useCallback,
-  useRef
+  useRef,
+  useEffect
 } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
@@ -34,8 +35,8 @@ type CollectionPageContextType = {
   collections: DatasetCollectionsListItemType[];
   Pagination: () => JSX.Element;
   total: number;
-  getData: (e: number) => void;
-  isGetting: boolean;
+  getData: (e: number) => Promise<void>;
+  isInitialLoading: boolean;
   pageNum: number;
   pageSize: number;
   scrollContainerRef: RefObject<HTMLDivElement>;
@@ -57,10 +58,10 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
     throw new Error('Function not implemented.');
   },
   total: 0,
-  getData: function (_e: number): void {
+  getData: async function (_e: number): Promise<void> {
     throw new Error('Function not implemented.');
   },
-  isGetting: false,
+  isInitialLoading: false,
   pageNum: 0,
   pageSize: 0,
   scrollContainerRef: { current: null },
@@ -79,24 +80,38 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
-  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail } = useContextSelector(
-    DatasetPageContext,
-    (v) => v
-  );
+  const {
+    datasetDetail,
+    datasetId,
+    updateDataset,
+    loadDatasetDetail,
+    registerCollectionListRefresh
+  } = useContextSelector(DatasetPageContext, (v) => v);
 
   // collection list
   const [searchText, setSearchText] = useState('');
   const [tagFilters, setTagFilters] = useState<CollectionTagFilterItem[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const loadCollections = useCallback(
+    async (params: Parameters<typeof getDatasetCollections>[0]) => {
+      try {
+        return await getDatasetCollections(params);
+      } finally {
+        // 首次请求结束后，后台刷新（包括空列表）都保留当前内容，不再展示加载占位。
+        setIsInitialLoading(false);
+      }
+    },
+    []
+  );
   const {
     data: collections,
     Pagination,
     total,
     getData,
-    isLoading: isGetting,
     pageNum,
     pageSize
-  } = usePagination(getDatasetCollections, {
+  } = usePagination(loadCollections, {
     defaultPageSize: 20,
     pageSizeCacheKey: 'dataset-detail-collections',
     storeToQuery: true,
@@ -109,6 +124,11 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     refreshDeps: [parentId, searchText, tagFilters, datasetDetail.collectionPermissionEnabled],
     scrollContainerRef
   });
+
+  useEffect(
+    () => registerCollectionListRefresh(() => getData(pageNum)),
+    [getData, pageNum, registerCollectionListRefresh]
+  );
 
   const syncDataset = useCallback(async () => {
     // 页面详情尚未加载或 query 缺失时，不发起一个必然失败的同步请求。
@@ -168,7 +188,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       Pagination,
       total,
       getData,
-      isGetting,
+      isInitialLoading,
       pageNum,
       pageSize,
       scrollContainerRef
@@ -178,7 +198,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       collections,
       tagFilters,
       getData,
-      isGetting,
+      isInitialLoading,
       onOpenWebsiteModal,
       onSyncDataset,
       openDatasetSyncConfirm,

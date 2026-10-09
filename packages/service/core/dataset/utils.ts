@@ -70,5 +70,5 @@ export const getDatasetImageTrainingMode = ({
 }) => {
   if (supportVlm && imageId) return TrainingModeEnum.imageParse;
   if (supportImageIndex && hasMarkdownImages) return TrainingModeEnum.image;
-  return TrainingModeEnum.chunk;
+  return TrainingModeEnum.index;
 };

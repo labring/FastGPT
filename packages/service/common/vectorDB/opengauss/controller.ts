@@ -116,10 +116,10 @@ class OgClass {
       .join(',');
   }
 
-  async query<T extends QueryResultRow = any>(sql: string) {
+  async query<T extends QueryResultRow = any>(sql: string, values?: unknown[]) {
     const og = await connectOg();
     const start = Date.now();
-    return og.query<T>(sql).then((res) => {
+    return og.query<T>(sql, values).then((res) => {
       const time = Date.now() - start;
 
       if (time > 1000) {

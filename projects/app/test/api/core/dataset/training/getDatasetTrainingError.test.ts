@@ -66,7 +66,7 @@ describe('dataset training error list test', () => {
         datasetId: dataset._id,
         collectionId: fileCollection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 0,
         errorMsg: 'file error',
         chunkIndex: 2
@@ -89,7 +89,7 @@ describe('dataset training error list test', () => {
         datasetId: dataset._id,
         collectionId: fileCollection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 0,
         errorMsg: '   ',
         chunkIndex: 3
@@ -111,7 +111,7 @@ describe('dataset training error list test', () => {
         datasetId: dataset._id,
         collectionId: linkCollection._id,
         billId: 'test',
-        mode: TrainingModeEnum.chunk,
+        mode: TrainingModeEnum.rebuildIndex,
         retryCount: 3,
         errorMsg: 'link chunk error',
         chunkIndex: 1
@@ -187,7 +187,7 @@ describe('dataset training error list test', () => {
     expect(loadMoreRes.data.list[0].errorCount).toBe(2);
     expect(loadMoreRes.data.list[0].hasMoreItems).toBe(false);
     expect(loadMoreRes.data.list[0].items).toHaveLength(1);
-    expect(loadMoreRes.data.list[0].items[0].mode).toBe(TrainingModeEnum.chunk);
+    expect(loadMoreRes.data.list[0].items[0].mode).toBe(TrainingModeEnum.rebuildIndex);
   });
 
   it.each([

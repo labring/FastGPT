@@ -25,16 +25,14 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  activeTrainingExpr,
-  finalErrorTrainingExpr,
-  getSlowestTrainingStatus,
-  remainingTrainingMatch,
-  trainingModeRanks
+  getCollectionTrainingStatusFromCounts,
+  getCollectionTrainingModeCountsPipeline,
+  type CollectionTrainingModeCount
 } from '@fastgpt/service/core/dataset/training/query';
 import {
-  CollectionTrainingStatusEnum,
-  type TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+  datasetDataRebuildStatusCountFields,
+  type DatasetDataRebuildStatusCounts
+} from '@fastgpt/service/core/dataset/data/query';
 import {
   ListCollectionV2BodySchema,
   ListCollectionV2ResponseSchema,
@@ -51,46 +49,11 @@ import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permissio
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 
-const defaultCollectionTrainingStatus = {
-  trainingAmount: 0,
-  activeTrainingAmount: 0,
-  finalErrorAmount: 0,
-  hasError: false,
-  slowestTrainingStatus: CollectionTrainingStatusEnum.ready
-};
+const defaultCollectionTrainingStatus = getCollectionTrainingStatusFromCounts({});
 
 type TrainingAmountAggregateItem = {
   _id: string;
-  trainingAmount: number;
-  activeTrainingAmount: number;
-  finalErrorAmount: number;
-  modeCounts: {
-    mode: TrainingModeEnum;
-    activeCount: number;
-    finalErrorCount: number;
-  }[];
-};
-
-const formatTrainingStatus = (item?: TrainingAmountAggregateItem) => {
-  if (!item) return defaultCollectionTrainingStatus;
-
-  const { slowestTrainingMode, slowestTrainingStatus } = getSlowestTrainingStatus(
-    Object.fromEntries(
-      item.modeCounts.map(({ mode, activeCount, finalErrorCount }) => [
-        mode,
-        { activeCount, finalErrorCount }
-      ])
-    )
-  );
-
-  return {
-    trainingAmount: item.trainingAmount,
-    activeTrainingAmount: item.activeTrainingAmount,
-    finalErrorAmount: item.finalErrorAmount,
-    hasError: item.finalErrorAmount > 0,
-    slowestTrainingMode,
-    slowestTrainingStatus
-  };
+  modeCounts: CollectionTrainingModeCount[];
 };
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
@@ -299,91 +262,17 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   // Compute data amount
   const [trainingAmount, dataAmount, collectionPermissionMap, tags]: [
     TrainingAmountAggregateItem[],
-    { _id: string; count: number }[],
+    (DatasetDataRebuildStatusCounts & { _id: string; count: number })[],
     Map<string, CollectionPermission> | undefined,
     (CollectionTagLabelType[] | undefined)[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
-      [
-        {
-          $match: {
-            teamId: new Types.ObjectId(teamId),
-            datasetId: new Types.ObjectId(datasetId),
-            collectionId: { $in: collectionIds },
-            ...remainingTrainingMatch
-          }
-        },
-        {
-          $addFields: {
-            modeRank: {
-              $switch: {
-                branches: trainingModeRanks.map(({ mode, rank }) => ({
-                  case: { $eq: ['$mode', mode] },
-                  then: rank
-                })),
-                default: 999
-              }
-            },
-            isActiveTraining: activeTrainingExpr,
-            isFinalErrorTraining: finalErrorTrainingExpr
-          }
-        },
-        {
-          $group: {
-            _id: '$collectionId',
-            trainingAmount: { $sum: 1 },
-            activeTrainingAmount: { $sum: { $cond: ['$isActiveTraining', 1, 0] } },
-            finalErrorAmount: { $sum: { $cond: ['$isFinalErrorTraining', 1, 0] } },
-            modeCounts: {
-              $push: {
-                mode: '$mode',
-                modeRank: '$modeRank',
-                activeCount: { $cond: ['$isActiveTraining', 1, 0] },
-                finalErrorCount: { $cond: ['$isFinalErrorTraining', 1, 0] }
-              }
-            }
-          }
-        },
-        { $unwind: '$modeCounts' },
-        {
-          $group: {
-            _id: {
-              collectionId: '$_id',
-              mode: '$modeCounts.mode',
-              modeRank: '$modeCounts.modeRank'
-            },
-            trainingAmount: { $first: '$trainingAmount' },
-            activeTrainingAmount: { $first: '$activeTrainingAmount' },
-            finalErrorAmount: { $first: '$finalErrorAmount' },
-            activeCount: { $sum: '$modeCounts.activeCount' },
-            finalErrorCount: { $sum: '$modeCounts.finalErrorCount' }
-          }
-        },
-        {
-          $sort: {
-            '_id.collectionId': 1,
-            '_id.modeRank': 1
-          }
-        },
-        {
-          $group: {
-            _id: '$_id.collectionId',
-            trainingAmount: { $first: '$trainingAmount' },
-            activeTrainingAmount: { $first: '$activeTrainingAmount' },
-            finalErrorAmount: { $first: '$finalErrorAmount' },
-            modeCounts: {
-              $push: {
-                mode: '$_id.mode',
-                activeCount: '$activeCount',
-                finalErrorCount: '$finalErrorCount'
-              }
-            }
-          }
-        }
-      ],
-      {
-        ...readFromSecondary
-      }
+      getCollectionTrainingModeCountsPipeline({
+        teamId: new Types.ObjectId(teamId),
+        datasetId: new Types.ObjectId(datasetId),
+        collectionId: { $in: collectionIds }
+      }),
+      readFromSecondary
     ),
     MongoDatasetData.aggregate(
       [
@@ -397,7 +286,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 }
+            count: { $sum: 1 },
+            ...datasetDataRebuildStatusCountFields
           }
         }
       ],
@@ -409,15 +299,22 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     Promise.all(collections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags })))
   ]);
 
-  const list = collections.map((item, index) => ({
-    ...item,
-    tags: tags[index],
-    dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
-    ...formatTrainingStatus(
-      trainingAmount.find((amount) => String(amount._id) === String(item._id))
-    ),
-    permission: getCollectionPermission(item, collectionPermissionMap)
-  }));
+  const trainingAmountMap = new Map(trainingAmount.map((item) => [String(item._id), item]));
+  const dataAmountMap = new Map(dataAmount.map((item) => [String(item._id), item]));
+  const list = collections.map((item, index) => {
+    const collectionId = String(item._id);
+    const dataCounts = dataAmountMap.get(collectionId);
+    return {
+      ...item,
+      tags: tags[index],
+      dataAmount: dataCounts?.count ?? 0,
+      ...getCollectionTrainingStatusFromCounts({
+        modeCounts: trainingAmountMap.get(collectionId)?.modeCounts,
+        rebuildCounts: dataCounts
+      }),
+      permission: getCollectionPermission(item, collectionPermissionMap)
+    };
+  });
 
   // count collections
   return ListCollectionV2ResponseSchema.parse({ list, total });

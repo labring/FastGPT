@@ -96,6 +96,16 @@ export const deleteDatasetDataVector: VectorControllerType['delete'] = async (pr
   return result;
 };
 
+/** 替换前分批刷新旧向量时间；任一批重试耗尽则中止，调用方不能继续生成或提交新索引。 */
+export const refreshDatasetDataVectorCreateTime: VectorControllerType['refreshCreateTime'] =
+  async ({ teamId, idList }) => {
+    const ids = [...new Set(idList)];
+    for (let offset = 0; offset < ids.length; offset += 100) {
+      const batch = ids.slice(offset, offset + 100);
+      await retryFn(() => Vector.refreshCreateTime({ teamId, idList: batch }));
+    }
+  };
+
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
 // Count vector
