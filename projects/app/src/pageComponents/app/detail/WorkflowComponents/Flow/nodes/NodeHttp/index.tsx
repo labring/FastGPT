@@ -51,7 +51,7 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import CatchError from '../render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { useNodeToolInputs, splitOutput } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
@@ -919,15 +919,8 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
 const NodeHttp = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
-  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (v) => v);
-  const { commonInputs, isTool } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
-  );
-  const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
-  );
+  const { commonInputs, isTool } = useNodeToolInputs(inputs, nodeId);
+  const { successOutputs, errorOutputs } = useMemo(() => splitOutput(outputs), [outputs]);
 
   const HttpMethodAndUrl = useMemoizedFn(() => (
     <RenderHttpMethodAndUrl nodeId={nodeId} inputs={inputs} />

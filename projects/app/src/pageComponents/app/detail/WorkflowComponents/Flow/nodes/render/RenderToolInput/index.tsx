@@ -11,8 +11,7 @@ import { defaultToolParamFormData } from '../../components/ToolParamsEditModal/c
 import { useContextSelector } from 'use-context-selector';
 import IOTitle from '../../../components/IOTitle';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../../context/workflowUtilsContext';
+import { useNodeToolInputs } from '../../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 const ToolParamsEditModal = dynamic(() => import('../../components/ToolParamsEditModal'));
 
@@ -33,11 +32,7 @@ const RenderToolInput = ({
 }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
-  const { toolInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
-  );
+  const { toolInputs } = useNodeToolInputs(inputs, nodeId);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
 

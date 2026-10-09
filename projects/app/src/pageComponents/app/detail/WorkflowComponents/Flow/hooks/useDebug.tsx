@@ -33,6 +33,7 @@ import { AppContext } from '../../../context';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { getUserFileAmountLimit } from '@fastgpt/global/core/workflow/fileLimit';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -63,7 +64,9 @@ export const useDebug = () => {
   const { t: workflowT } = useTranslation();
   const { toast } = useToast();
 
-  const { fitView, setNodes, getNodes } = useReactFlow<Node<FlowNodeItemType>, Edge>();
+  const { fitView } = useReactFlow();
+  const getNodes = useWorkflowStore((s) => s.getNodes);
+  const setNodes = useWorkflowStore((s) => s.setNodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
   const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
   const childrenNodeIdListMap = useContextSelector(
@@ -143,13 +146,13 @@ export const useDebug = () => {
 
     if (firstErrorNodeId) {
       onUpdateNodeError(firstErrorNodeId, true);
-      const firstErrorNode = nodes.find((node) => node.data.nodeId === firstErrorNodeId);
-      if (firstErrorNode) {
-        fitView({
-          nodes: [firstErrorNode],
-          padding: 0.3
-        });
-      }
+      fitView({
+        nodes: [{ id: firstErrorNodeId }],
+        includeHiddenNodes: true,
+        padding: 0.3,
+        minZoom: 0.7,
+        maxZoom: 1
+      });
     }
 
     toast({
@@ -382,29 +385,29 @@ export const useDebug = () => {
             })}
           </Box>
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
-            {customVar.map((item) => (
+            {customVar.map(({ key, ...restItem }) => (
               <LabelAndFormRender
-                {...item}
-                key={item.key}
-                label={item.label}
-                required={item.required}
-                description={t(item.description)}
-                inputType={variableInputTypeToInputType(item.type, item.valueType)}
+                key={key}
+                {...restItem}
+                label={restItem.label}
+                required={restItem.required}
+                description={t(restItem.description)}
+                inputType={variableInputTypeToInputType(restItem.type, restItem.valueType)}
                 form={variablesForm}
-                fieldName={`variables.${item.key}`}
+                fieldName={`variables.${key}`}
                 bg={'myGray.50'}
               />
             ))}
-            {internalVar.map((item) => (
+            {internalVar.map(({ key, ...restItem }) => (
               <LabelAndFormRender
-                {...item}
-                key={item.key}
-                label={item.label}
-                required={item.required}
-                description={t(item.description)}
-                inputType={variableInputTypeToInputType(item.type, item.valueType)}
+                key={key}
+                {...restItem}
+                label={restItem.label}
+                required={restItem.required}
+                description={t(restItem.description)}
+                inputType={variableInputTypeToInputType(restItem.type, restItem.valueType)}
                 form={variablesForm}
-                fieldName={`variables.${item.key}`}
+                fieldName={`variables.${key}`}
                 bg={'myGray.50'}
               />
             ))}

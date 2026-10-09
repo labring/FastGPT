@@ -30,6 +30,10 @@ vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsC
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext', () => ({
   WorkflowBufferDataContext: {}
 }));
+vi.mock('@/pageComponents/app/detail/WorkflowComponents/store/useWorkflowStore', () => ({
+  useWorkflowStore: (selector: (state: any) => any) =>
+    selector({ getNodeById: () => undefined, edges: [] })
+}));
 vi.mock('@/pageComponents/app/detail/context', () => ({ AppContext: {} }));
 vi.mock('@/pageComponents/app/detail/WorkflowComponents/utils', () => ({
   getEditorVariables: () => []

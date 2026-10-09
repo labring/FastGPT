@@ -9,12 +9,15 @@ import { useCallback } from 'react';
 import { type Node, useKeyPress, useReactFlow } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { isWorkflowShortcutInputtingTarget } from './keyboard';
 import { useWorkflowUtils } from './useUtils';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
-  const { screenToFlowPosition, getNodes, setNodes } = useReactFlow<Node<FlowNodeItemType>>();
+  const { screenToFlowPosition } = useReactFlow<Node<FlowNodeItemType>>();
+  const getNodes = useWorkflowStore((s) => s.getNodes);
+  const setNodes = useWorkflowStore((s) => s.setNodes);
   const mouseInCanvas = useContextSelector(WorkflowUIContext, (v) => v.mouseInCanvas);
   const getMousePosition = useContextSelector(WorkflowUIContext, (v) => v.getMousePosition);
 

@@ -9,8 +9,8 @@ import NodeTemplatesPopover from './NodeTemplatesPopover';
 import SearchButton from '../../Workflow/components/SearchButton';
 import SystemConfigDrawer from './SystemConfigDrawer';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowInitContext, WorkflowBufferDataContext } from '../context/workflowInitContext';
 import ContextMenu from './components/ContextMenu';
+import { useWorkflowStore } from '../store/useWorkflowStore';
 import FlowController from './components/FlowController';
 import HelperLines, { type HelperLinesController } from './components/HelperLines';
 import { useWorkflow } from './hooks/useWorkflow';
@@ -19,12 +19,13 @@ import {
   ReactFlow,
   SelectionMode,
   useReactFlow,
-  useNodesInitialized,
   type Node,
-  type NodeProps
+  type NodeProps,
+  type NodeTypes,
+  type EdgeTypes
 } from '@xyflow/react';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { WorkflowUIContext } from '../context/workflowUIContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
@@ -35,7 +36,7 @@ const NodeStopTool = React.memo((props: NodeProps<Node<FlowNodeItemType>>) => (
 ));
 NodeStopTool.displayName = 'NodeStopTool';
 
-const nodeTypes: Record<FlowNodeTypeEnum, any> = {
+const nodeTypes: NodeTypes = {
   [FlowNodeTypeEnum.emptyNode]: NodeSimple,
   [FlowNodeTypeEnum.globalVariable]: NodeSimple,
   [FlowNodeTypeEnum.textEditor]: NodeSimple,
@@ -75,19 +76,27 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.formInput]: dynamic(() => import('./nodes/NodeFormInput')),
   [FlowNodeTypeEnum.comment]: dynamic(() => import('./nodes/NodeComment'))
 };
-const edgeTypes = {
+const edgeTypes: EdgeTypes = {
   [EDGE_TYPE]: ButtonEdge
 };
 
 const Workflow = () => {
   const { t } = useTranslation();
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const edges = useWorkflowStore((s) => s.edges);
   const helperLinesRef = useRef<HelperLinesController>(null);
-  const { reactFlowWrapperCallback, workflowControlMode, menu } = useContextSelector(
+  const reactFlowWrapperCallback = useContextSelector(
     WorkflowUIContext,
-    (v) => v
+    (v) => v.reactFlowWrapperCallback
   );
+  const workflowControlMode = useWorkflowStore((s) => s.workflowControlMode);
+  const menu = useWorkflowStore((s) => s.menu);
+
+  const onFlowError = useCallback((id: string, message: string) => {
+    // 忽略首屏节点测量完成前或动态调整 handle 时产生的瞬态 008 警告
+    if (id === '008') return;
+    console.warn(`[React Flow]: ${message} (${id})`);
+  }, []);
 
   const {
     handleNodesChange,
@@ -95,6 +104,7 @@ const Workflow = () => {
     onConnectStart,
     onConnectEnd,
     customOnConnect,
+    isValidConnection,
     onEdgeMouseEnter,
     onEdgeMouseLeave,
     onNodeDragStop,
@@ -112,15 +122,47 @@ const Workflow = () => {
 
   const { fitView } = useReactFlow();
   const fitViewDone = useRef(false);
-  const nodesInitialized = useNodesInitialized();
 
   useEffect(() => {
-    // 自动定位画布：需等待 ReactFlow 初始化完成并测量出节点宽高后执行，仅执行一次
-    if (!nodesInitialized || fitViewDone.current || !nodes.length) return;
-
+    if (fitViewDone.current || !nodes.length) return;
     fitViewDone.current = true;
-    fitView({ padding: 0.3, nodes });
-  }, [nodesInitialized, nodes, fitView]);
+
+    // 优先自动聚焦到首个错误节点
+    const errorNode = nodes.find((n) => n.data?.isError);
+    if (errorNode) {
+      fitView({
+        nodes: [{ id: errorNode.id }],
+        includeHiddenNodes: true,
+        padding: 0.3,
+        minZoom: 0.7,
+        maxZoom: 1
+      });
+      return;
+    }
+
+    if (nodes.length <= 15) {
+      fitView({ padding: 0.3, includeHiddenNodes: true, minZoom: 0.6, maxZoom: 1 });
+    } else {
+      const startNode = nodes.find((n) => n.data?.flowNodeType === FlowNodeTypeEnum.workflowStart);
+      if (startNode) {
+        fitView({
+          nodes: [{ id: startNode.id }],
+          includeHiddenNodes: true,
+          padding: 0.4,
+          minZoom: 0.8,
+          maxZoom: 1
+        });
+      } else {
+        fitView({
+          nodes: [{ id: nodes[0].id }],
+          includeHiddenNodes: true,
+          padding: 0.4,
+          minZoom: 0.8,
+          maxZoom: 1
+        });
+      }
+    }
+  }, [nodes, fitView]);
 
   return (
     <>
@@ -170,6 +212,8 @@ const Workflow = () => {
           ref={reactFlowWrapperCallback}
           nodes={nodes}
           edges={edges}
+          onError={onFlowError}
+          onlyRenderVisibleElements={true}
           minZoom={minZoom}
           maxZoom={maxZoom}
           defaultEdgeOptions={defaultEdgeOptions}
@@ -178,6 +222,9 @@ const Workflow = () => {
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionRadius={50}
+          connectionDragThreshold={0}
+          isValidConnection={isValidConnection}
+          defaultViewport={{ x: 100, y: 100, zoom: 0.8 }}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgeChange}
           onConnect={customOnConnect}

@@ -16,11 +16,10 @@ import React, {
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useDebounceEffect, useUnmount } from 'ahooks';
-import { WorkflowBufferDataContext, WorkflowInitContext } from './workflowInitContext';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { WorkflowSnapshotContext } from './workflowSnapshotContext';
 import { WorkflowUtilsContext } from './workflowUtilsContext';
+import { useWorkflowStore } from '../store/useWorkflowStore';
 import {
   removeWorkflowLocalDraftByApp,
   saveWorkflowLocalDraft
@@ -51,10 +50,11 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const { t } = useTranslation();
   // 获取依赖的 context
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const edges = useWorkflowStore((s) => s.edges);
+  const past = useWorkflowStore((s) => s.past);
+  const future = useWorkflowStore((s) => s.future);
   const { userInfo } = useUserStore();
-  const { past, future } = useContextSelector(WorkflowSnapshotContext, (v) => v);
   const loginTmbId = userInfo?.team?.tmbId;
 
   // 保存状态
@@ -138,7 +138,6 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   const autoSaveFn = useCallback(
     async ({ fromBeforeUnload = false } = {}) => {
       if (isSaved || !leaveSaveSign.current) return;
-      console.log('Leave auto save');
       const data = flowData2StoreData();
       if (!data || data.nodes.length === 0) return;
 
@@ -220,7 +219,6 @@ export const WorkflowPersistenceProvider: React.FC<PropsWithChildren> = ({ child
   });
 
   const contextValue = useMemo(() => {
-    console.log('WorkflowPersistenceContextValue 更新了');
     return {
       isSaved,
       leaveSaveSign

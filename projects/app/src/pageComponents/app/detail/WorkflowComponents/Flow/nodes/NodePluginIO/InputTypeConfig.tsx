@@ -859,11 +859,17 @@ const InputTypeConfig = ({
                   gap={4}
                 >
                   {optionFields.map((item, i) => (
-                    <Draggable key={i} draggableId={i.toString()} index={i}>
+                    <Draggable
+                      key={i}
+                      draggableId={i.toString()}
+                      index={i}
+                      isDragDisabled={optionFields.length <= 1}
+                    >
                       {(provided, snapshot) => (
                         <Box
                           ref={provided.innerRef}
                           {...provided.draggableProps}
+                          {...(optionFields.length <= 1 ? provided.dragHandleProps : {})}
                           style={{
                             ...provided.draggableProps.style,
                             opacity: snapshot.isDragging ? 0.8 : 1

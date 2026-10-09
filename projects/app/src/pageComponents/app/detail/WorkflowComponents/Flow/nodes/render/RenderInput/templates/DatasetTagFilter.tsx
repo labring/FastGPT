@@ -15,7 +15,7 @@ import DatasetTagFilterRows, {
   DatasetTagFilterUpgradeButton,
   TagFilterLogicToggle
 } from '@/components/core/dataset/DatasetTagFilterRows';
-import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
+import { useWorkflowStore } from '@/pageComponents/app/detail/WorkflowComponents/store/useWorkflowStore';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -32,7 +32,8 @@ import {
 const DatasetTagFilterRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
+  const edges = useWorkflowStore((s) => s.edges);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
   const isLegacyNode = datasetSearchUsesLegacyFilter(inputs);

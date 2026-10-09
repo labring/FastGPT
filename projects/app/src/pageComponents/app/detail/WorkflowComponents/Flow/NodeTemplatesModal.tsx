@@ -1,14 +1,15 @@
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useReactFlow, useEdges, useNodes, type Node } from '@xyflow/react';
+import type { Node } from '@xyflow/react';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 import { buildNodeTemplateContext } from '@fastgpt/global/core/workflow/template/context';
 import { useMemoizedFn } from 'ahooks';
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../context/workflowActionsContext';
+import { useWorkflowStore } from '../store/useWorkflowStore';
 import AppDetailPanelModal from '../../components/AppDetailPanelModal';
 
 type ModuleTemplateListProps = {
@@ -19,14 +20,10 @@ type ModuleTemplateListProps = {
 export const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
-  const { setNodes, getNode } = useReactFlow<Node<FlowNodeItemType>>();
-  const edges = useEdges();
-  const nodes = useNodes<Node<FlowNodeItemType>>();
-
-  const getNodeById = useCallback(
-    (nodeId: string | null | undefined) => (nodeId ? getNode(nodeId)?.data : undefined),
-    [getNode]
-  );
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const edges = useWorkflowStore((s) => s.edges);
+  const setNodes = useWorkflowStore((s) => s.setNodes);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
   const hasToolNode = useMemo(
     () =>
       nodes.some(

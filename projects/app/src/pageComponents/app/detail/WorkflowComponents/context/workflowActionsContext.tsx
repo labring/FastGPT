@@ -586,7 +586,6 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   );
 
   const contextValue = useMemo(() => {
-    console.log('WorkflowActionsContextValue 更新了');
     return {
       onUpdateNodeError,
       onSyncWorkflowCheckIssues,

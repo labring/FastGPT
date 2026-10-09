@@ -25,8 +25,7 @@ import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import CatchError from '../render/RenderOutput/CatchError';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { useNodeToolInputs, splitOutput } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 
 const NodeExtract = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
@@ -35,16 +34,8 @@ const NodeExtract = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
-  );
-
-  const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
-  );
+  const { isTool, commonInputs } = useNodeToolInputs(inputs, nodeId);
+  const { successOutputs, errorOutputs } = useMemo(() => splitOutput(outputs), [outputs]);
 
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
 

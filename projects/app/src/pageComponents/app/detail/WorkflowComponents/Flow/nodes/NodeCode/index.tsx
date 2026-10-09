@@ -25,10 +25,9 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import CatchError from '../render/RenderOutput/CatchError';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import NodeCopilot from './Copilot';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { useNodeToolInputs, splitOutput } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import { useWorkflowStore } from '../../../store/useWorkflowStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSandboxPackages } from './api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -36,18 +35,14 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 const NodeCode = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, catchError } = data;
-  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
-  const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
-  );
+  const { successOutputs, errorOutputs } = useMemo(() => splitOutput(outputs), [outputs]);
 
   const codeType = inputs.find(
     (item) => item.key === NodeInputKeyEnum.codeType
   ) as FlowNodeInputItemType;
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (ctx) => ctx.onChangeNode);
-  const presentationMode = useContextSelector(WorkflowUIContext, (ctx) => ctx.presentationMode);
+  const presentationMode = useWorkflowStore((s) => s.presentationMode);
 
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
     content: t('workflow:code.Switch language confirm')
@@ -67,7 +62,7 @@ const NodeCode = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
       modules: packagesList,
       globals: packages?.builtinGlobals.join(', ')
     });
-  }, [packages, codeType.value]);
+  }, [packages, codeType.value, t]);
 
   const CustomComponent = useMemo(() => {
     return {
@@ -159,12 +154,18 @@ const NodeCode = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
         );
       }
     };
-  }, [packageText, codeType, nodeId, t, presentationMode, onChangeNode]);
+  }, [
+    packageText,
+    codeType,
+    nodeId,
+    t,
+    presentationMode,
+    onChangeNode,
+    openSwitchLangConfirm,
+    packages
+  ]);
 
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
-  );
+  const { isTool, commonInputs } = useNodeToolInputs(inputs, nodeId);
 
   const rtDoms = useMemo(() => {
     return [

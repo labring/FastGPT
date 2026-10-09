@@ -1,20 +1,16 @@
 import React, { useMemo } from 'react';
-import {
-  Handle,
-  Position,
-  useConnection,
-  useHandleConnections,
-  useNodesData,
-  type Node
-} from '@xyflow/react';
+import { Handle, Position, useConnection, useNodeConnections } from '@xyflow/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { WorkflowNodeDataContext } from '../../../../context/workflowInitContext';
+import {
+  WorkflowBufferDataContext,
+  WorkflowNodeDataContext
+} from '../../../../context/workflowInitContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
-import { WorkflowUIContext } from '../../../../context/workflowUIContext';
+import { useWorkflowStore } from '../../../../store/useWorkflowStore';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 const handleSizeConnected = 24;
@@ -62,17 +58,20 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 }: Props) {
   const { t } = useTranslation();
 
-  const node = useNodesData<Node<FlowNodeItemType>>(nodeId);
+  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
   const selected = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap[nodeId]);
-  const hoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId);
+  const nodeIsHover = useWorkflowStore((s) => s.hoverNodeId === nodeId);
 
   const connection = useConnection();
-  const sourceConnections = useHandleConnections({ type: 'source', id: handleId });
+  const sourceConnections = useNodeConnections({
+    id: nodeId,
+    handleType: 'source',
+    handleId
+  });
   const connected = sourceConnections.length > 0;
 
   const isConnectingThisHandle = connection.inProgress && connection.fromHandle?.id === handleId;
 
-  const nodeIsHover = hoverNodeId === nodeId;
   const active = useMemo(
     () => nodeIsHover || selected || isConnectingThisHandle,
     [nodeIsHover, selected, isConnectingThisHandle]
@@ -165,7 +164,11 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
 }: Props & {
   showHandle: boolean;
 }) {
-  const targetConnections = useHandleConnections({ type: 'target', id: handleId });
+  const targetConnections = useNodeConnections({
+    id: _nodeId,
+    handleType: 'target',
+    handleId
+  });
   const connected = targetConnections.length > 0;
   const connection = useConnection();
   const isConnecting = connection.inProgress;

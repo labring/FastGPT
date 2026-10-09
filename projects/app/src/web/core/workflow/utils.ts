@@ -18,7 +18,11 @@ import {
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { initNewIfElseList } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import {
+  initNewIfElseList,
+  getIfElseBranchHandleKey
+} from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   type FlowNodeInputItemType,
@@ -34,6 +38,7 @@ import type {
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
+  getHandleId,
   getSelectedInputRenderType,
   isWorkflowSystemModelInput,
   nodeInputIsReference,
@@ -42,11 +47,78 @@ import {
 import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { cloneDeep, isEqual } from 'lodash-es';
 import { type TFunction } from 'next-i18next';
-import type { Edge, Node, XYPosition } from '@xyflow/react';
+import { type Edge, type Node, type XYPosition, Position } from '@xyflow/react';
 import { workflowSystemVariables } from '../app/utils';
 import { getGlobalVariableNode } from './adapt';
 import { DatasetTagFilterVersionEnum } from '@fastgpt/global/core/dataset/constants';
 import { resolveDatasetTagFilterVersion } from '@fastgpt/global/core/dataset/search/tagFilter';
+
+export type FlowNodeHandleDescriptor = {
+  id: string;
+  translate?: [number, number];
+};
+
+/**
+ * 获取节点的全部输出 Handle 描述符（包含标准输出、异常捕获输出以及特定分支节点的动态分支输出）。
+ */
+export const getNodeOutputHandleDescriptors = ({
+  nodeId,
+  flowNodeType,
+  inputs,
+  outputs,
+  catchError
+}: {
+  nodeId: string;
+  flowNodeType: FlowNodeTypeEnum;
+  inputs?: FlowNodeInputItemType[];
+  outputs?: FlowNodeOutputItemType[];
+  catchError?: boolean;
+}): FlowNodeHandleDescriptor[] => {
+  const list: FlowNodeHandleDescriptor[] = [];
+
+  outputs?.forEach((output) => {
+    if (output.type === FlowNodeOutputTypeEnum.source) {
+      list.push({ id: getHandleId(nodeId, 'source', output.key), translate: [34, 0] });
+    }
+  });
+
+  if (catchError) {
+    list.push({ id: getHandleId(nodeId, 'source_catch', Position.Right), translate: [34, 0] });
+  }
+
+  if (flowNodeType === FlowNodeTypeEnum.ifElseNode) {
+    const ifElseList = inputs?.find((i) => i.key === NodeInputKeyEnum.ifElseList)?.value as
+      | IfElseListItemType[]
+      | undefined;
+    ifElseList?.forEach((item) => {
+      list.push({
+        id: getHandleId(nodeId, 'source', getIfElseBranchHandleKey(item)),
+        translate: [34, 0]
+      });
+    });
+    list.push({ id: getHandleId(nodeId, 'source', IfElseResultEnum.ELSE), translate: [18, 0] });
+  }
+
+  if (flowNodeType === FlowNodeTypeEnum.userSelect) {
+    const options = inputs?.find((i) => i.key === NodeInputKeyEnum.userSelectOptions)?.value as
+      | Array<{ key: string }>
+      | undefined;
+    options?.forEach((item) => {
+      list.push({ id: getHandleId(nodeId, 'source', item.key), translate: [58, 0] });
+    });
+  }
+
+  if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
+    const agents = inputs?.find((i) => i.key === NodeInputKeyEnum.agents)?.value as
+      | Array<{ key: string }>
+      | undefined;
+    agents?.forEach((item) => {
+      list.push({ id: getHandleId(nodeId, 'source', item.key), translate: [34, 0] });
+    });
+  }
+
+  return list;
+};
 
 /**
  * 将节点模板转换为画布节点，并按创建时语言初始化可编辑文本。
@@ -107,13 +179,24 @@ export const nodeTemplate2FlowNode = ({
     });
   }
 
+  const isComment = moduleItem.flowNodeType === FlowNodeTypeEnum.comment;
+  const commentSize = isComment
+    ? (moduleItem.inputs.find((i) => i.key === NodeInputKeyEnum.commentSize)?.value as
+        | { width: number; height: number }
+        | undefined)
+    : undefined;
+  const initialWidth = commentSize?.width ?? 524;
+  const initialHeight = commentSize?.height ?? 280;
+
   return {
     id: moduleItem.nodeId,
     type: moduleItem.flowNodeType,
     data: moduleItem,
     position: position,
     selected,
-    zIndex
+    zIndex: zIndex ?? (parentNodeId ? 2001 : undefined),
+    initialWidth,
+    initialHeight
   };
 };
 
@@ -356,14 +439,57 @@ export const storeNode2FlowNode = ({
 
   // 输出能力由始终挂载的节点逻辑就近读取模型后计算，折叠不影响能力同步。
 
+  const actualParentId = storeNode.parentNodeId || parentNodeId;
+
+  const isComment = storeNode.flowNodeType === FlowNodeTypeEnum.comment;
+  const commentSize = isComment
+    ? (nodeItem.inputs.find((i) => i.key === NodeInputKeyEnum.commentSize)?.value as
+        | { width: number; height: number }
+        | undefined)
+    : undefined;
+  const customWidth = Number(
+    nodeItem.inputs?.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value
+  );
+  const initialWidth =
+    commentSize?.width ??
+    (customWidth > 0
+      ? customWidth
+      : storeNode.flowNodeType === FlowNodeTypeEnum.httpRequest468
+        ? 666
+        : 400);
+  const initialHeight = commentSize?.height ?? 250;
+
   return {
     id: storeNode.nodeId,
     type: storeNode.flowNodeType,
     data: nodeItem,
     selected,
     position: storeNode.position || { x: 0, y: 0 },
-    zIndex
+    zIndex: zIndex ?? (actualParentId ? 2001 : undefined),
+    initialWidth,
+    initialHeight
   };
+};
+
+/**
+ * 批量将持久化节点恢复为画布节点
+ */
+export const storeNodes2FlowNodes = ({
+  nodes: storeNodes,
+  t,
+  toolNodeIds = new Set()
+}: {
+  nodes: StoreNodeItemType[];
+  t: TFunction;
+  toolNodeIds?: Set<string>;
+}): Node<FlowNodeItemType>[] => {
+  return storeNodes.map((item) =>
+    storeNode2FlowNode({
+      item,
+      t,
+      isTool: toolNodeIds.has(item.nodeId)
+    })
+  );
 };
 
 export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
@@ -784,7 +910,6 @@ export const compareSnapshot = (
   };
 
   if (!isEqual(formatEdge(clone1.edges), formatEdge(clone2.edges))) {
-    console.log('Edge not equal');
     return false;
   }
 
@@ -820,7 +945,6 @@ export const compareSnapshot = (
       }
     )
   ) {
-    console.log('chatConfig not equal');
     return false;
   }
 
@@ -861,12 +985,6 @@ export const compareSnapshot = (
   };
   const node1 = formatNodes(clone1.nodes);
   const node2 = formatNodes(clone2.nodes);
-
-  node1.forEach((node, i) => {
-    if (!isEqual(node, node2[i])) {
-      console.log('node not equal');
-    }
-  });
 
   return isEqual(node1, node2);
 };

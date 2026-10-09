@@ -5,8 +5,9 @@ import ToolParamConfig from './ToolParamConfig';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { Position, useReactFlow } from '@xyflow/react';
+import { Position } from '@xyflow/react';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 
 const IOTitle = ({
   text,
@@ -22,7 +23,7 @@ const IOTitle = ({
 } & StackProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getEdges, deleteElements } = useReactFlow();
+  const setEdges = useWorkflowStore((s) => s.setEdges);
 
   const handleCatchErrorChange = (checked: boolean) => {
     if (!nodeId) return;
@@ -34,13 +35,9 @@ const IOTitle = ({
       value: checked
     });
 
-    // Delete edges
-    const catchEdge = getEdges().find(
-      (edge) => edge.sourceHandle === getHandleId(nodeId, 'source_catch', Position.Right)
-    );
-    if (catchEdge) {
-      deleteElements({ edges: [catchEdge] });
-    }
+    // Delete edges connected to catch handle
+    const catchHandleId = getHandleId(nodeId, 'source_catch', Position.Right);
+    setEdges((edges) => edges.filter((edge) => edge.sourceHandle !== catchHandleId));
   };
 
   return (

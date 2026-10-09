@@ -12,7 +12,8 @@ import {
   useReactFlow,
   type NodeRemoveChange,
   type NodeSelectionChange,
-  type EdgeRemoveChange
+  type EdgeRemoveChange,
+  type OnNodeDrag
 } from '@xyflow/react';
 import {
   EDGE_TYPE,
@@ -31,16 +32,15 @@ import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   WorkflowBufferDataContext,
-  WorkflowInitContext,
   WorkflowNodeDataContext
 } from '../../context/workflowInitContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppContext } from '../../../context';
-import { WorkflowSnapshotContext } from '../../context/workflowSnapshotContext';
+import type { FastGPTWorkflowNode } from '../../context/type';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
-import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowModalContext } from '../../context/workflowModalContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { type HelperLinesController } from '../components/HelperLines';
 import {
   buildNodeTemplateContext,
@@ -443,31 +443,44 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
   const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
-  const { nodes, getRawNodeById } = useContextSelector(WorkflowInitContext, (state) => state);
-  const {
-    onNodesChange,
-    setNodes,
-    workflowStartNode,
-    getNodeById,
-    edges,
-    setEdges,
-    onEdgesChange
-  } = useContextSelector(WorkflowBufferDataContext, (state) => state);
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const getRawNodeById = useWorkflowStore((s) => s.getRawNodeById);
+  const onNodesChange = useWorkflowStore((s) => s.onNodesChange);
+  const setNodes = useWorkflowStore((s) => s.setNodes);
+  const edges = useWorkflowStore((s) => s.edges);
+  const setEdges = useWorkflowStore((s) => s.setEdges);
+  const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
+  const workflowStartNode = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v.workflowStartNode
+  );
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
 
-  const { setConnectingEdge, onChangeNode, onUpdateNodeError } = useContextSelector(
-    WorkflowActionsContext,
-    (v) => v
-  );
-  const pushPastSnapshot = useContextSelector(WorkflowSnapshotContext, (v) => v.pushPastSnapshot);
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
+  const setConnectingEdge = useContextSelector(WorkflowActionsContext, (v) => v.setConnectingEdge);
 
-  const { setHoverEdgeId, setMenu } = useContextSelector(WorkflowUIContext, (v) => v);
+  const pushPastSnapshot = useWorkflowStore((s) => s.pushPastSnapshot);
+  const setHoverEdgeId = useWorkflowStore((s) => s.setHoverEdgeId);
+  const setMenu = useWorkflowStore((s) => s.setMenu);
   const setHandleParams = useContextSelector(WorkflowModalContext, (v) => v.setHandleParams);
 
-  const { getIntersectingNodes, flowToScreenPosition, getZoom } = useReactFlow();
+  const { getIntersectingNodes, flowToScreenPosition, getZoom, getEdges } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
 
   const { scheduleParentSizeUpdate } = useRAF();
+
+  // 记录父容器节点拖拽周期中的初始绝对坐标快照，用于子节点等量同步位移
+  const dragParentMapRef = useRef<
+    Map<
+      string,
+      {
+        parentStartPos: XYPosition;
+        childrenStartPos: Map<string, XYPosition>;
+      }
+    >
+  >(new Map());
 
   /** 同步应用吸附结果，并命令式绘制当前帧辅助线。 */
   const applyHelperLineResult = useMemoizedFn(
@@ -485,7 +498,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
   // Check if a node is placed on top of a nested parent node (loop / parallelRun / loopRun)
   const checkNodeOverLoopNode = useMemoizedFn((node: Node<FlowNodeItemType>) => {
-    if (!node || node.data.parentNodeId) return;
+    if (!node || node.data.parentNodeId || isNestedParentNodeType(node.data.flowNodeType)) return;
 
     // 获取所有与当前节点相交的节点中，类型为嵌套父容器且未折叠的节点
     const intersections = getIntersectingNodes(node) as Node<FlowNodeItemType>[];
@@ -523,31 +536,49 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         }
       }
 
-      onChangeNode({
-        nodeId: node.id,
-        type: 'attr',
-        key: 'parentNodeId',
-        value: parentNode.id
-      });
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              zIndex: 2001,
+              data: {
+                ...n.data,
+                parentNodeId: parentNode.id
+              }
+            };
+          }
+          return n;
+        })
+      );
       // 删除当前节点与其他节点的连接
       setEdges((state) =>
         state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
       );
+      scheduleParentSizeUpdate(parentNode.id);
     }
+  });
+
+  /** 获取节点在画布坐标系中的绝对坐标 */
+  const getNodeCanvasPosition = useMemoizedFn((nodeId: string | null) => {
+    const node = getRawNodeById(nodeId);
+    return node?.position ?? { x: 0, y: 0 };
   });
 
   const getTemplatesListPopoverPosition = useMemoizedFn(({ nodeId }: { nodeId: string | null }) => {
     const node = getRawNodeById(nodeId);
     if (!node) return { x: 0, y: 0 };
 
+    const canvasPos = getNodeCanvasPosition(nodeId);
+
     const position = flowToScreenPosition({
-      x: node.position.x,
-      y: node.position.y
+      x: canvasPos.x,
+      y: canvasPos.y
     });
 
     const zoom = getZoom();
 
-    const nodeWidth = node.measured?.width ?? 0;
+    const nodeWidth = node.measured?.width ?? node.width ?? node.initialWidth ?? 350;
 
     let x = position.x + nodeWidth * zoom;
     let y = position.y;
@@ -579,19 +610,20 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       const node = getRawNodeById(nodeId);
       if (!node) return { x: 0, y: 0 };
 
-      const nodeWidth = node.measured?.width ?? 0;
-      const nodeHeight = node.measured?.height ?? 0;
+      const canvasPos = getNodeCanvasPosition(nodeId);
+      const nodeWidth = node.measured?.width ?? node.width ?? node.initialWidth ?? 350;
+      const nodeHeight = node.measured?.height ?? node.height ?? node.initialHeight ?? 100;
 
       if (handleId === 'selectedTools') {
         return {
-          x: node.position.x,
-          y: node.position.y + nodeHeight + 80
+          x: canvasPos.x,
+          y: canvasPos.y + nodeHeight + 80
         };
       }
 
       return {
-        x: node.position.x + nodeWidth + 120,
-        y: node.position.y
+        x: canvasPos.x + nodeWidth + 120,
+        y: canvasPos.y
       };
     }
   );
@@ -686,7 +718,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         return [];
       }
 
-      // 场景2: Loop 父节点拖拽 - 联动子节点
+      // 场景2: Loop/嵌套父节点拖拽 - 联动子节点
       if (isNestedParentNodeType(node.data.flowNodeType)) {
         const parentId = node.id;
         const helperLineScanner =
@@ -694,50 +726,73 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
             ? createHelperLineScanner({ change, node })
             : undefined;
 
-        // 一次遍历同时收集子节点并扫描顶层吸附候选。
-        const childNodes: Node[] = [];
-        for (const n of nodes) {
-          if (n.data.parentNodeId === parentId) {
-            childNodes.push(n);
-          } else if (!n.data.parentNodeId) {
-            helperLineScanner?.scanNode(n);
-          }
-        }
-
         if (helperLineScanner) {
+          const currentNodes = useWorkflowStore.getState().nodes;
+          for (const n of currentNodes) {
+            if (!n.data.parentNodeId && n.id !== parentId) {
+              helperLineScanner.scanNode(n);
+            }
+          }
           applyHelperLineResult(change, helperLineScanner.getResult());
         } else {
           helperLinesRef.current?.clear();
         }
 
-        // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
-        if (childNodes.length > 0) {
-          const initPosition = node.position;
-          const deltaX = change.position?.x ? change.position.x - initPosition.x : 0;
-          const deltaY = change.position?.y ? change.position.y - initPosition.y : 0;
+        // 维护本次拖拽周期的初始绝对坐标快照，避免逐帧相对累加导致的浮点误差与时序漂移
+        let dragState = dragParentMapRef.current.get(parentId);
+        if (!dragState) {
+          const currentNodes = useWorkflowStore.getState().nodes;
+          const parentNodeInStore = currentNodes.find((n) => n.id === parentId);
+          const parentStartPos = parentNodeInStore
+            ? { ...parentNodeInStore.position }
+            : change.position
+              ? { ...change.position }
+              : { x: 0, y: 0 };
 
-          const childNodesChange: NodePositionChange[] = childNodes.map((childNode) => {
-            if (change.dragging) {
-              const position = {
-                x: childNode.position.x + deltaX,
-                y: childNode.position.y + deltaY
-              };
-              return {
-                ...change,
-                id: childNode.id,
-                position,
-                positionAbsolute: position
-              };
+          const childrenStartPos = new Map<string, XYPosition>();
+          const collectDescendants = (pid: string): void => {
+            for (const n of currentNodes) {
+              if (n.data.parentNodeId === pid) {
+                childrenStartPos.set(n.id, { ...n.position });
+                if (isNestedParentNodeType(n.data.flowNodeType)) {
+                  collectDescendants(n.id);
+                }
+              }
             }
-            return {
-              ...change,
-              id: childNode.id
-            };
-          });
+          };
+          collectDescendants(parentId);
 
-          return childNodesChange;
+          dragState = { parentStartPos, childrenStartPos };
+          dragParentMapRef.current.set(parentId, dragState);
         }
-        return [];
+
+        const currentParentX = change.position?.x ?? dragState.parentStartPos.x;
+        const currentParentY = change.position?.y ?? dragState.parentStartPos.y;
+        const totalDeltaX = currentParentX - dragState.parentStartPos.x;
+        const totalDeltaY = currentParentY - dragState.parentStartPos.y;
+
+        const childNodesChange: NodePositionChange[] = [];
+        for (const [childId, startPos] of dragState.childrenStartPos.entries()) {
+          const targetPos: XYPosition = {
+            x: startPos.x + totalDeltaX,
+            y: startPos.y + totalDeltaY
+          };
+
+          childNodesChange.push({
+            id: childId,
+            type: 'position',
+            position: targetPos,
+            positionAbsolute: targetPos,
+            dragging: false
+          });
+        }
+
+        // 拖拽生命周期结束，清理缓存
+        if (!change.dragging) {
+          dragParentMapRef.current.delete(parentId);
+        }
+
+        return childNodesChange;
       }
 
       // 场景3: 普通节点拖拽 - 显示对齐辅助线
@@ -756,8 +811,8 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
       return [];
     }
   );
-  const handleNodesChange = useMemoizedFn((changes: NodeChange<Node<FlowNodeItemType>>[]) => {
-    const childChanges: NodeChange<Node<FlowNodeItemType>>[] = [];
+  const handleNodesChange = useMemoizedFn((changes: NodeChange<FastGPTWorkflowNode>[]) => {
+    const childChanges: NodePositionChange[] = [];
     const removedIds = new Set(
       changes.filter((c): c is NodeRemoveChange => c.type === 'remove').map((c) => c.id)
     );
@@ -815,11 +870,18 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         if (node) {
           childChanges.push(...handlePositionNode(change, node));
         }
+      } else if (change.type === 'dimensions') {
+        const node = getRawNodeById(change.id);
+        const parentId = node?.data?.parentNodeId;
+        if (parentId) {
+          scheduleParentSizeUpdate(parentId);
+        }
       }
     }
 
     // Remove separately
-    onNodesChange(changes.filter((c) => c.type !== 'remove').concat(childChanges as any));
+    const nonRemoveChanges = changes.filter((c) => c.type !== 'remove');
+    onNodesChange([...nonRemoveChanges, ...childChanges]);
   });
 
   const handleEdgeChange = useCallback(
@@ -835,17 +897,18 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     [selectedNodesMap, onEdgesChange]
   );
 
-  const onNodeDragStop = useCallback(
-    (_: any, node: Node) => {
+  const onNodeDragStop: OnNodeDrag<FastGPTWorkflowNode> = useCallback(
+    (_, node) => {
       helperLinesRef.current?.clear();
-      checkNodeOverLoopNode(node as Node<FlowNodeItemType>);
+      dragParentMapRef.current.clear();
+      checkNodeOverLoopNode(node);
     },
     [checkNodeOverLoopNode, helperLinesRef]
   );
 
   /* connect */
   const onConnectStart = useCallback(
-    (event: any, params: OnConnectStartParams) => {
+    (event: MouseEvent | TouchEvent, params: OnConnectStartParams) => {
       const { nodeId, handleId } = params;
       if (!nodeId || params.handleType === 'target') return;
 
@@ -863,8 +926,8 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
 
       // Check connect or click(If the mouse position remains basically unchanged, it indicates a click)
       if (params.handleId) {
-        const initialX = event.clientX;
-        const initialY = event.clientY;
+        const initialX = 'clientX' in event ? event.clientX : (event.touches[0]?.clientX ?? 0);
+        const initialY = 'clientY' in event ? event.clientY : (event.touches[0]?.clientY ?? 0);
         const startTime = Date.now();
 
         const handleMouseUp = (moveEvent: MouseEvent) => {
@@ -939,6 +1002,65 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     },
     [edges, nodes, onChangeNode, setEdges, workflowStartNode]
   );
+  /** 校验连线合法性，供 xyflow 原生拖拽高亮与最终提交共用 */
+  const isValidConnection = useCallback(
+    (connect: Connection | Edge) => {
+      if (!connect.source || !connect.target) return false;
+      if (connect.source === connect.target) return false;
+      if (!connect.sourceHandle || !connect.targetHandle) return false;
+
+      const sourceNode = getNodeById(connect.source);
+      const targetNode = getNodeById(connect.target);
+      if (!sourceNode || !targetNode) return false;
+
+      // 容器边界校验: 必须在同一层级 (相同 parentNodeId)
+      if ((sourceNode.parentNodeId || '') !== (targetNode.parentNodeId || '')) return false;
+
+      const currentEdges = getEdges();
+
+      // 同一源句柄不能重复连接到同一目标节点的同一目标句柄
+      const isDuplicate = currentEdges.some(
+        (edge) =>
+          edge.source === connect.source &&
+          edge.target === connect.target &&
+          edge.sourceHandle === connect.sourceHandle &&
+          edge.targetHandle === connect.targetHandle
+      );
+      if (isDuplicate) return false;
+
+      // 如果目标节点已有 selectedTools 连入，禁止其他普通句柄连入；反之亦然
+      for (const edge of currentEdges) {
+        if (edge.target === connect.target) {
+          if (
+            edge.targetHandle === NodeInputKeyEnum.selectedTools &&
+            connect.targetHandle !== NodeInputKeyEnum.selectedTools
+          ) {
+            return false;
+          }
+          if (
+            edge.targetHandle !== NodeInputKeyEnum.selectedTools &&
+            connect.targetHandle === NodeInputKeyEnum.selectedTools
+          ) {
+            return false;
+          }
+        }
+      }
+
+      const targetTemplate = moduleTemplatesFlat.find(
+        (item) => item.id === targetNode.flowNodeType
+      );
+      return isNodeConnectionAllowed({
+        targetTemplate,
+        targetNode,
+        sourceNode,
+        edges: currentEdges,
+        handleId: connect.sourceHandle,
+        getNodeById
+      });
+    },
+    [getEdges, getNodeById]
+  );
+
   const customOnConnect = useCallback(
     (connect: Connection) => {
       if (!connect.sourceHandle || !connect.targetHandle) {
@@ -951,23 +1073,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         });
       }
 
-      const sourceNode = getNodeById(connect.source);
-      const targetNode = getNodeById(connect.target);
-      const targetTemplate = targetNode
-        ? moduleTemplatesFlat.find((item) => item.id === targetNode.flowNodeType)
-        : undefined;
-      if (
-        !sourceNode ||
-        !targetNode ||
-        !isNodeConnectionAllowed({
-          targetTemplate,
-          targetNode,
-          sourceNode,
-          edges,
-          handleId: connect.sourceHandle,
-          getNodeById
-        })
-      ) {
+      if (!isValidConnection(connect)) {
         return;
       }
 
@@ -975,26 +1081,45 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
         connect
       });
     },
-    [edges, getNodeById, onConnect, t, toast]
+    [isValidConnection, onConnect, t, toast]
   );
+
+  const edgeHoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   /* edge */
   const onEdgeMouseEnter = useCallback(
-    (e: any, edge: Edge) => {
+    (_e: React.MouseEvent, edge: Edge) => {
+      if (edgeHoverTimerRef.current) {
+        clearTimeout(edgeHoverTimerRef.current);
+        edgeHoverTimerRef.current = null;
+      }
       setHoverEdgeId(edge.id);
     },
     [setHoverEdgeId]
   );
   const onEdgeMouseLeave = useCallback(() => {
-    setHoverEdgeId(undefined);
+    if (edgeHoverTimerRef.current) {
+      clearTimeout(edgeHoverTimerRef.current);
+    }
+    edgeHoverTimerRef.current = setTimeout(() => {
+      setHoverEdgeId(undefined);
+      edgeHoverTimerRef.current = null;
+    }, 150);
   }, [setHoverEdgeId]);
+
+  useEffect(() => {
+    return () => {
+      if (edgeHoverTimerRef.current) {
+        clearTimeout(edgeHoverTimerRef.current);
+      }
+    };
+  }, []);
 
   // context menu
   const onPaneContextMenu = useCallback(
-    (e: any) => {
+    (e: React.MouseEvent | MouseEvent) => {
       // Prevent native context menu from showing
       e.preventDefault();
-
       // Context menu dimensions
       const contextMenuWidth = 120;
       const contextMenuHeight = 120;
@@ -1047,6 +1172,7 @@ export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
     onConnectEnd,
     onConnect,
     customOnConnect,
+    isValidConnection,
     onEdgeMouseEnter,
     onEdgeMouseLeave,
     onNodeDragStop,

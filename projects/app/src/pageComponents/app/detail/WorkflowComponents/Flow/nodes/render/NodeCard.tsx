@@ -29,10 +29,15 @@ import type { NodeGradients } from '@fastgpt/global/core/workflow/node/constant'
 import {
   AppNodeFlowNodeTypeMap,
   FlowNodeTypeEnum,
+  FlowNodeOutputTypeEnum,
   isNestedParentNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type {
   FlowNodeItemType,
   StoreNodeItemType,
@@ -57,19 +62,66 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useBoolean, useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo, useState } from 'react';
-import { useReactFlow, useNodesData, type Node } from '@xyflow/react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useReactFlow, Position, type Node } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
-import { WorkflowUIContext } from '../../../context/workflowUIContext';
+import { useWorkflowStore } from '../../../store/useWorkflowStore';
 import { useDebug } from '../../hooks/useDebug';
 import { useNodeOutputValidity } from '../../hooks/useNodeOutputValidity';
 import { useWorkflowUtils } from '../../hooks/useUtils';
+import { getNodeOutputHandleDescriptors } from '@/web/core/workflow/utils';
+import { MySourceHandle } from './Handle';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import InlineEdit from './InlineEdit';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
+
+/**
+ * 离屏节点的输出句柄占位器：
+ * 保证在离屏节点未挂载重型 children 时，其所有的输出句柄（如 IF/ELSE 分支、问题分类分支等）
+ * 依然作为真实的 <Handle> 渲染在 DOM 中，供 ReactFlow 测量 handleBounds，杜绝 error#008 报错。
+ */
+const OffscreenOutputHandles = React.memo(function OffscreenOutputHandles({
+  nodeId,
+  flowNodeType,
+  inputs,
+  outputs,
+  catchError
+}: {
+  nodeId: string;
+  flowNodeType: FlowNodeTypeEnum;
+  inputs?: FlowNodeInputItemType[];
+  outputs?: FlowNodeOutputItemType[];
+  catchError?: boolean;
+}) {
+  const handles = useMemo(
+    () =>
+      getNodeOutputHandleDescriptors({
+        nodeId,
+        flowNodeType,
+        inputs,
+        outputs,
+        catchError
+      }),
+    [catchError, flowNodeType, inputs, nodeId, outputs]
+  );
+
+  return (
+    <Box position={'absolute'} right={0} top={'50%'} pointerEvents={'none'} visibility={'hidden'}>
+      {handles.map((h) => (
+        <MySourceHandle
+          key={h.id}
+          nodeId={nodeId}
+          handleId={h.id}
+          position={Position.Right}
+          translate={h.translate}
+        />
+      ))}
+    </Box>
+  );
+});
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -109,6 +161,12 @@ const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
   }
 };
 
+const NodeOutputValidityWatcher = React.memo(({ nodeId }: { nodeId: string }) => {
+  useNodeOutputValidity(nodeId);
+  return null;
+});
+NodeOutputValidityWatcher.displayName = 'NodeOutputValidityWatcher';
+
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
   const {
@@ -133,20 +191,53 @@ const NodeCard = (props: Props) => {
     isFolded,
     customStyle,
     inputs,
+    outputs,
     rtDoms,
     pluginId,
     flowNodeType,
-    colorSchema
+    colorSchema,
+    catchError,
+    showTargetHandle,
+    showSourceHandle,
+    parentNodeId
   } = props;
 
-  useNodeOutputValidity(nodeId);
+  const [hasIntersected, setHasIntersected] = useState(() =>
+    Boolean(props.selected || typeof IntersectionObserver === 'undefined')
+  );
+  const isRenderContent = hasIntersected || Boolean(selected);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (hasIntersected) return;
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setHasIntersected(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '600px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasIntersected]);
+
+  const hasOutputInvalidCondition = useMemo(
+    () => outputs?.some((item) => !!item.invalidCondition),
+    [outputs]
+  );
 
   const hasToolNode = useContextSelector(WorkflowBufferDataContext, (v) => v.hasToolNode);
+  const foldedNodesMap = useContextSelector(WorkflowBufferDataContext, (v) => v.foldedNodesMap);
   const onUpdateNodeError = useContextSelector(WorkflowActionsContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const setHoverNodeId = useContextSelector(WorkflowUIContext, (v) => v.setHoverNodeId);
-  const presentationMode = useContextSelector(WorkflowUIContext, (v) => v.presentationMode);
-  const setPresentationMode = useContextSelector(WorkflowUIContext, (v) => v.setPresentationMode);
+  const setHoverNodeId = useWorkflowStore((s) => s.setHoverNodeId);
+  const presentationMode = useWorkflowStore((s) => s.presentationMode);
+  const setPresentationMode = useWorkflowStore((s) => s.setPresentationMode);
   const { fitView } = useReactFlow();
 
   const inputConfig = useMemo(
@@ -248,8 +339,7 @@ const NodeCard = (props: Props) => {
   }, [presentationMode, isFolded, colorSchema, selected, isError, pluginId]);
 
   // Current node and parent node
-  const parentNode = useNodesData<Node<FlowNodeItemType>>(props.parentNodeId ?? '');
-  const hidden = !!parentNode?.data?.isFolded;
+  const hidden = props.parentNodeId ? !!foldedNodesMap[props.parentNodeId] : false;
   const node = props;
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
@@ -287,6 +377,13 @@ const NodeCard = (props: Props) => {
     {
       onSuccess(res) {
         if (!res) return;
+        if (
+          node?.courseUrl === res?.courseUrl &&
+          node?.readmeUrl === res?.readmeUrl &&
+          node?.userGuide === res?.userGuide
+        ) {
+          return;
+        }
         // 教程元信息由工具详情实时回写，兼容已保存的旧节点。
         onChangeNode([
           {
@@ -310,6 +407,7 @@ const NodeCard = (props: Props) => {
         ]);
       },
       manual: false,
+      ready: isRenderContent,
       errorToast: '',
       refreshDeps: [
         isAppNode,
@@ -361,6 +459,7 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
+      ref={cardRef}
       position={'relative'}
       outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
       outlineColor={'rgba(17, 24, 36, 0.05)'}
@@ -368,6 +467,9 @@ const NodeCard = (props: Props) => {
       boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
       {...customStyle}
     >
+      {hasOutputInvalidCondition && isRenderContent && (
+        <NodeOutputValidityWatcher nodeId={nodeId} />
+      )}
       <Flex
         hidden={hidden}
         flexDirection={'column'}
@@ -467,20 +569,33 @@ const NodeCard = (props: Props) => {
             >
               {!isFolded ? (
                 <>
-                  {inputConfig && !inputConfig?.value ? (
-                    <NodeSecret
-                      nodeId={nodeId}
-                      isFolder={node?.isFolder}
-                      courseUrl={node?.courseUrl}
-                      readmeUrl={node?.readmeUrl}
-                      hasSystemSecret={node?.hasSystemSecret}
-                      pluginId={node?.pluginId}
-                      source={node?.source}
-                      systemKeyCost={node?.systemKeyCost}
-                      inputConfig={inputConfig}
-                    />
+                  {isRenderContent ? (
+                    inputConfig && !inputConfig?.value ? (
+                      <NodeSecret
+                        nodeId={nodeId}
+                        isFolder={node?.isFolder}
+                        courseUrl={node?.courseUrl}
+                        readmeUrl={node?.readmeUrl}
+                        hasSystemSecret={node?.hasSystemSecret}
+                        pluginId={node?.pluginId}
+                        source={node?.source}
+                        systemKeyCost={node?.systemKeyCost}
+                        inputConfig={inputConfig}
+                      />
+                    ) : (
+                      children
+                    )
                   ) : (
-                    children
+                    <>
+                      <Box flex={1} minH={'100px'} />
+                      <OffscreenOutputHandles
+                        nodeId={nodeId}
+                        flowNodeType={flowNodeType}
+                        inputs={inputs}
+                        outputs={outputs}
+                        catchError={catchError}
+                      />
+                    </>
                   )}
                 </>
               ) : (
@@ -495,8 +610,18 @@ const NodeCard = (props: Props) => {
 
         {/* Handle - Always render handles outside the fold/unfold condition */}
         <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
-        <ConnectionSourceHandle nodeId={nodeId} />
-        <ConnectionTargetHandle nodeId={nodeId} />
+        <ConnectionSourceHandle
+          nodeId={nodeId}
+          showSourceHandle={showSourceHandle}
+          isFolded={isFolded}
+          flowNodeType={flowNodeType}
+          inputs={inputs}
+        />
+        <ConnectionTargetHandle
+          nodeId={nodeId}
+          showTargetHandle={showTargetHandle}
+          parentNodeId={parentNodeId}
+        />
         {RenderToolHandle}
 
         {/* Presentation Mode Overlay */}
@@ -912,12 +1037,14 @@ const MenuRender = React.memo(function MenuRender({
   const { t } = useTranslation();
   const { openDebugNode, DebugInputModal } = useDebug();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { deleteElements, setNodes } = useReactFlow<Node<FlowNodeItemType>>();
+  const { deleteElements } = useReactFlow<Node<FlowNodeItemType>>();
+  const setNodes = useWorkflowStore((s) => s.setNodes);
 
   const { computedNewNodeName } = useWorkflowUtils();
 
   // Get current node to check if folded
-  const currentNode = useNodesData<Node<FlowNodeItemType>>(nodeId)?.data;
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
+  const currentNode = getNodeById(nodeId);
   const isFolded = currentNode?.isFolded;
 
   const onCopyNode = useCallback(

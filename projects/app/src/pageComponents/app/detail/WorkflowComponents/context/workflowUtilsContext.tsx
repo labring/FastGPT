@@ -2,7 +2,7 @@ import React, { type ReactNode, useCallback, useEffect, useMemo } from 'react';
 // 工作流工具函数层
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWorkflowModelDetails } from '@/web/core/workflow/modelData';
-import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { storeEdge2RenderEdge, storeNodes2FlowNodes } from '@/web/core/workflow/utils';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow, type Node, type Edge } from '@xyflow/react';
 import { useTranslation } from 'next-i18next';
@@ -32,7 +32,7 @@ import { AppContext } from '../../context';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import { WorkflowActionsContext } from './workflowActionsContext';
 import { WorkflowBufferDataContext } from './workflowInitContext';
-import { WorkflowSnapshotContext } from './workflowSnapshotContext';
+import { useWorkflowStore } from '../store/useWorkflowStore';
 
 // 创建 Context
 type WorkflowUtilsContextValue = {
@@ -57,19 +57,6 @@ type WorkflowUtilsContextValue = {
       }
     | undefined
   >;
-  splitToolInputs: (
-    inputs: FlowNodeInputItemType[],
-    nodeId: string
-  ) => {
-    isTool: boolean;
-    toolInputs: FlowNodeInputItemType[];
-    commonInputs: FlowNodeInputItemType[];
-  };
-  splitOutput: (outputs: FlowNodeOutputItemType[]) => {
-    successOutputs: FlowNodeOutputItemType[];
-    hiddenOutputs: FlowNodeOutputItemType[];
-    errorOutputs: FlowNodeOutputItemType[];
-  };
 };
 
 /** 将工具输入和普通节点输入分开，避免 Agent 生成参数在节点内重复渲染。 */
@@ -99,6 +86,39 @@ export const splitToolInputsByMode = (inputs: FlowNodeInputItemType[], isTool: b
   };
 };
 
+/** 优化为单次遍历,分类输出项 */
+export const splitOutput = (outputs: FlowNodeOutputItemType[]) => {
+  const successOutputs: FlowNodeOutputItemType[] = [];
+  const hiddenOutputs: FlowNodeOutputItemType[] = [];
+  const errorOutputs: FlowNodeOutputItemType[] = [];
+
+  outputs.forEach((item) => {
+    if (
+      item.type === FlowNodeOutputTypeEnum.dynamic ||
+      item.type === FlowNodeOutputTypeEnum.static ||
+      item.type === FlowNodeOutputTypeEnum.source
+    ) {
+      successOutputs.push(item);
+    } else if (item.type === FlowNodeOutputTypeEnum.hidden) {
+      hiddenOutputs.push(item);
+    } else if (item.type === FlowNodeOutputTypeEnum.error) {
+      errorOutputs.push(item);
+    }
+  });
+
+  return {
+    successOutputs,
+    hiddenOutputs,
+    errorOutputs
+  };
+};
+
+/** 针对特定节点拆分工具输入与普通输入，仅订阅当前节点是否为工具节点，阻断全画布重渲染 */
+export const useNodeToolInputs = (inputs: FlowNodeInputItemType[], nodeId: string) => {
+  const isTool = useContextSelector(WorkflowBufferDataContext, (v) => !!v.toolNodesMap[nodeId]);
+  return useMemo(() => ({ isTool, ...splitToolInputsByMode(inputs, isTool) }), [inputs, isTool]);
+};
+
 export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
   initData: (...args: Parameters<WorkflowUtilsContextValue['initData']>) => {
     void args;
@@ -110,14 +130,6 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
   flowData2StoreDataAndCheck: (
     ...args: Parameters<WorkflowUtilsContextValue['flowData2StoreDataAndCheck']>
   ) => {
-    void args;
-    throw new Error('Function not implemented.');
-  },
-  splitOutput: (...args: Parameters<WorkflowUtilsContextValue['splitOutput']>) => {
-    void args;
-    throw new Error('Function not implemented.');
-  },
-  splitToolInputs: (...args: Parameters<WorkflowUtilsContextValue['splitToolInputs']>) => {
     void args;
     throw new Error('Function not implemented.');
   }
@@ -133,55 +145,15 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
 
   const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
-  const { edges, setEdges, setNodes, getNodes, toolNodesMap } = useContextSelector(
-    WorkflowBufferDataContext,
-    (v) => v
-  );
-  const { past, setPast } = useContextSelector(WorkflowSnapshotContext, (v) => v);
+  const edges = useWorkflowStore((s) => s.edges);
+  const setEdges = useWorkflowStore((s) => s.setEdges);
+  const setNodes = useWorkflowStore((s) => s.setNodes);
+  const getNodes = useWorkflowStore((s) => s.getNodes);
+  const setPast = useWorkflowStore((s) => s.setPast);
+  const setFuture = useWorkflowStore((s) => s.setFuture);
   const { onRemoveError, onUpdateNodeError, onSyncWorkflowCheckIssues } = useContextSelector(
     WorkflowActionsContext,
     (v) => v
-  );
-
-  // 优化为单次遍历,分类输出项
-  const splitOutput = useCallback((outputs: FlowNodeOutputItemType[]) => {
-    const successOutputs: FlowNodeOutputItemType[] = [];
-    const hiddenOutputs: FlowNodeOutputItemType[] = [];
-    const errorOutputs: FlowNodeOutputItemType[] = [];
-
-    outputs.forEach((item) => {
-      if (
-        item.type === FlowNodeOutputTypeEnum.dynamic ||
-        item.type === FlowNodeOutputTypeEnum.static ||
-        item.type === FlowNodeOutputTypeEnum.source
-      ) {
-        successOutputs.push(item);
-      } else if (item.type === FlowNodeOutputTypeEnum.hidden) {
-        hiddenOutputs.push(item);
-      } else if (item.type === FlowNodeOutputTypeEnum.error) {
-        errorOutputs.push(item);
-      }
-    });
-
-    return {
-      successOutputs,
-      hiddenOutputs,
-      errorOutputs
-    };
-  }, []);
-  /* If the module is connected by a tool, the tool input and the normal input are separated */
-  const splitToolInputs = useCallback(
-    (inputs: FlowNodeInputItemType[], nodeId: string) => {
-      const isTool = toolNodesMap[nodeId] ?? false;
-      const { toolInputs, commonInputs } = splitToolInputsByMode(inputs, isTool);
-
-      return {
-        isTool,
-        toolInputs,
-        commonInputs
-      };
-    },
-    [toolNodesMap]
   );
 
   // 将 UI 流程数据转换为存储格式
@@ -213,8 +185,11 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         if (!hideTip) {
           onUpdateNodeError(sandboxUnavailableNode.data.nodeId, true);
           fitView({
-            nodes: [sandboxUnavailableNode],
-            padding: 0.3
+            nodes: [{ id: sandboxUnavailableNode.data.nodeId }],
+            includeHiddenNodes: true,
+            padding: 0.3,
+            minZoom: 0.7,
+            maxZoom: 1
           });
           toast({
             status: 'warning',
@@ -260,13 +235,13 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
         if (firstErrorNodeId) {
           onUpdateNodeError(firstErrorNodeId, true);
-          const firstErrorNode = nodes.find((node) => node.data.nodeId === firstErrorNodeId);
-          if (firstErrorNode) {
-            fitView({
-              nodes: [firstErrorNode],
-              padding: 0.3
-            });
-          }
+          fitView({
+            nodes: [{ id: firstErrorNodeId }],
+            includeHiddenNodes: true,
+            padding: 0.3,
+            minZoom: 0.7,
+            maxZoom: 1
+          });
         }
 
         toast({
@@ -320,11 +295,13 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       onSyncWorkflowCheckIssues(issueMap);
     };
 
-    runScheduledCheck();
+    // 延迟首次全量扫描，避免挂载瞬间与首屏渲染争抢主线程
+    const initTimer = window.setTimeout(runScheduledCheck, 2000);
     const timer = window.setInterval(runScheduledCheck, 10_000);
 
     return () => {
       active = false;
+      window.clearTimeout(initTimer);
       window.clearInterval(timer);
     };
   }, [appDetail._id, edges, getNodes, onSyncWorkflowCheckIssues, t]);
@@ -348,18 +325,42 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
       const toolNodeIds = new Set(
         workflow.edges
-          .filter((edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools)
-          .map((edge) => edge.target)
+          .filter(
+            (edge) =>
+              edge.targetHandle === NodeOutputKeyEnum.selectedTools ||
+              edge.sourceHandle === NodeOutputKeyEnum.selectedTools
+          )
+          .map((edge) => edge.source)
       );
-      const nodes =
-        storeNodes?.map((item) =>
-          storeNode2FlowNode({
-            item,
+      const nodes = storeNodes
+        ? storeNodes2FlowNodes({
+            nodes: storeNodes,
             t,
-            isTool: toolNodeIds.has(item.nodeId)
+            toolNodeIds
           })
-        ) || [];
+        : [];
       const edges = workflow.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
+
+      const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+        nodes,
+        edges,
+        t
+      });
+
+      const initialNodes = nodes.map((node) => {
+        const nodeId = node.data.nodeId;
+        const issues = issueMap[nodeId];
+        const isError = hasError && firstErrorNodeId === nodeId;
+        return {
+          ...node,
+          selected: isError ? true : node.selected,
+          data: {
+            ...node.data,
+            workflowCheckIssues: issues?.length ? issues : undefined,
+            isError
+          }
+        };
+      });
 
       // 进入编辑器后延迟校验并定位到第一个错误节点；ReactFlow 渲染后再 fitView 才有效。
       const scheduleEntryCheck = (checkNodes: Node<FlowNodeItemType>[], checkEdges: Edge[]) => {
@@ -372,50 +373,49 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
           });
           onSyncWorkflowCheckIssues(issueMap);
           if (hasError && firstErrorNodeId) {
-            const errorNode = checkNodes.find((node) => node.data.nodeId === firstErrorNodeId);
             onUpdateNodeError(firstErrorNodeId, true);
-            if (errorNode) {
-              fitView({ nodes: [errorNode], padding: 0.3 });
-            }
+            fitView({
+              nodes: [{ id: firstErrorNodeId }],
+              includeHiddenNodes: true,
+              padding: 0.3,
+              minZoom: 0.7,
+              maxZoom: 1
+            });
           }
         }, 300);
       };
 
-      // 有历史记录，直接用历史记录覆盖
-      if (isInit && past.length > 0) {
-        const firstPast = past[0];
-        setNodes(firstPast.nodes);
-        setEdges(firstPast.edges);
-        setAppDetail((state) => ({ ...state, chatConfig: firstPast.chatConfig }));
-        scheduleEntryCheck(firstPast.nodes, firstPast.edges);
-        return;
-      }
       // 初始化一个历史记录
-      if (isInit && past.length === 0) {
+      if (isInit) {
         setPast([
           {
-            nodes: nodes,
+            nodes: initialNodes,
             edges: edges,
             title: t('app:app.version_initial'),
             isSaved: true,
             chatConfig: workflow.chatConfig
           }
         ]);
+        setFuture([]);
       }
 
       // Init memory data
-      setNodes(nodes);
+      setNodes(initialNodes);
       setEdges(edges);
       setAppDetail((state) => ({ ...state, chatConfig: workflow.chatConfig }));
-      scheduleEntryCheck(nodes, edges);
+      onSyncWorkflowCheckIssues(issueMap);
+      if (hasError && firstErrorNodeId) {
+        onUpdateNodeError(firstErrorNodeId, true);
+      }
+      scheduleEntryCheck(initialNodes, edges);
     },
     [
       appDetail.chatConfig,
-      past,
       setAppDetail,
       setEdges,
       setNodes,
       setPast,
+      setFuture,
       t,
       fitView,
       onSyncWorkflowCheckIssues,
@@ -424,15 +424,12 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
   );
 
   const contextValue = useMemo(() => {
-    console.log('WorkflowUtilsContextValue 更新了');
     return {
       initData,
       flowData2StoreData,
-      flowData2StoreDataAndCheck,
-      splitOutput,
-      splitToolInputs
+      flowData2StoreDataAndCheck
     };
-  }, [initData, flowData2StoreData, flowData2StoreDataAndCheck, splitOutput, splitToolInputs]);
+  }, [initData, flowData2StoreData, flowData2StoreDataAndCheck]);
 
   return (
     <WorkflowUtilsContext.Provider value={contextValue}>{children}</WorkflowUtilsContext.Provider>

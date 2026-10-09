@@ -15,9 +15,10 @@ import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils'
 import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../context';
 
@@ -40,25 +41,20 @@ export const useNestedNode = ({
   inputs,
   arrayInputKey = NodeInputKeyEnum.nestedInputArray
 }: UseNestedNodeParams): UseNestedNodeResult => {
-  const { getNodeById, nodeIds, childNodeIds } = useContextSelector(
+  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
+  const nodeIds = useContextSelector(WorkflowBufferDataContext, (v) => v.nodeIds);
+  const childNodeIds = useContextSelector(
     WorkflowBufferDataContext,
-    (v) => {
-      return {
-        getNodeById: v.getNodeById,
-        nodeIds: v.nodeIds,
-        childNodeIds: v.childrenNodeIdListMap[nodeId],
-        getNodeList: v.getNodeList
-      };
-    }
+    (v) => v.childrenNodeIdListMap[nodeId]
   );
-  // 订阅子节点尺寸变化：ReactFlow 完成测量后会更新 node.measured，
-  // 把它们压成字符串当 signal,有变化就重算 bounds,避免 50ms 定时器抢跑在测量前。
-  const childDimensionsSignal = useContextSelector(WorkflowInitContext, (v) => {
+  // 订阅子节点尺寸变化：直接从 store 订阅子节点 measured 测量值及 initial 尺寸，
+  // 把它们压成字符串当 signal，有变化就重算 bounds。
+  const childDimensionsSignal = useWorkflowStore((s) => {
     let signal = '';
-    for (const node of v.nodes) {
-      if (node.data.parentNodeId === nodeId) {
-        const w = node.measured?.width ?? 0;
-        const h = node.measured?.height ?? 0;
+    for (const node of s.nodes) {
+      if (node.data?.parentNodeId === nodeId) {
+        const w = node.measured?.width ?? node.initialWidth ?? 0;
+        const h = node.measured?.height ?? node.initialHeight ?? 0;
         signal += `${node.id}:${w}x${h}|`;
       }
     }
@@ -139,6 +135,18 @@ export const useNestedNode = ({
 
   // ── 3a. Maintain childrenNodeIdList ─────────────────────────────────────────
   useEffect(() => {
+    const currentChildrenList = inputs.find(
+      (input) => input.key === NodeInputKeyEnum.childrenNodeIdList
+    )?.value as string[] | undefined;
+
+    const isSame =
+      Array.isArray(currentChildrenList) &&
+      Array.isArray(childNodeIds) &&
+      currentChildrenList.length === childNodeIds.length &&
+      currentChildrenList.every((id, idx) => id === childNodeIds[idx]);
+
+    if (isSame) return;
+
     onChangeNode({
       nodeId,
       type: 'updateInput',
@@ -148,21 +156,22 @@ export const useNestedNode = ({
         value: childNodeIds
       }
     });
-  }, [childNodeIds, nodeId, onChangeNode]);
+  }, [childNodeIds, inputs, nodeId, onChangeNode]);
 
   // ── 3b. Trigger layout reset on child id / dimension change ─────────────────
   // 依赖 childDimensionsSignal,子节点被 ReactFlow 测量出新的 w/h 后会再触发一次,
   // 确保 bounds 计算基于真实尺寸,而不是赶在 50ms 定时器到期时还是 0 的状态。
+  const childIdsKey = useMemo(() => (childNodeIds || []).join(','), [childNodeIds]);
   useEffect(() => {
     const timer = setTimeout(() => resetParentNodeSizeAndPosition(nodeId), 50);
     return () => clearTimeout(timer);
-  }, [childNodeIds, childDimensionsSignal, nodeId, resetParentNodeSizeAndPosition]);
+  }, [childIdsKey, childDimensionsSignal, nodeId, resetParentNodeSizeAndPosition]);
 
   // ── 4 & 5. Measure input-box height, sync and re-layout ────────────────────
   const inputBoxRef = useRef<HTMLDivElement>(null);
   const size = useSize(inputBoxRef);
   useEffect(() => {
-    if (!size?.height) return;
+    if (!size?.height || loopNodeInputHeight?.value === size.height) return;
 
     onChangeNode({
       nodeId,

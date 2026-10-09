@@ -17,6 +17,7 @@ import {
 } from '@fastgpt/global/core/workflow/type/node';
 import type {
   FlowNodeInputItemType,
+  FlowNodeOutputItemType,
   ReferenceItemValueType,
   ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';

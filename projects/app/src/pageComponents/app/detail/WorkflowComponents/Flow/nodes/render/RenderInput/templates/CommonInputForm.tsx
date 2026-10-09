@@ -3,7 +3,7 @@ import InputRender from '@/components/core/app/formRender';
 import { InputTypeEnum } from '@/components/core/app/formRender/constant';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
-import { WorkflowBufferDataContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
+import { useWorkflowStore } from '@/pageComponents/app/detail/WorkflowComponents/store/useWorkflowStore';
 import { getEditorVariables } from '@/pageComponents/app/detail/WorkflowComponents/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -23,7 +23,8 @@ import type { RenderInputProps } from '../type';
 const CommonInputForm = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { getNodeById, edges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
+  const edges = useWorkflowStore((s) => s.edges);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { feConfigs } = useSystemStore();
 

@@ -6,24 +6,17 @@ import { createContext } from 'use-context-selector';
 
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { useDeepCompareEffect, useMemoizedFn } from 'ahooks';
+import { useMemoizedFn } from 'ahooks';
 import React, {
   type Dispatch,
   type ReactNode,
   type SetStateAction,
   useCallback,
   useMemo,
-  useRef
+  useEffect
 } from 'react';
-import {
-  type Edge,
-  type EdgeChange,
-  type Node,
-  type NodeChange,
-  useEdgesState,
-  useNodesState
-} from '@xyflow/react';
+import { type Edge, type EdgeChange, type Node, type NodeChange } from '@xyflow/react';
+import { useWorkflowStore } from '../store/useWorkflowStore';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -37,11 +30,7 @@ type WorkflowNodeContextType = {
 export const WorkflowInitContext = createContext<WorkflowNodeContextType>({
   nodes: [],
   rawNodesMap: {},
-  getRawNodeById: function (
-    nodeId: string | null | undefined
-  ): Node<FlowNodeItemType, string | undefined> | undefined {
-    throw new Error('Function not implemented.');
-  }
+  getRawNodeById: () => undefined
 });
 
 export type WorkflowNodeDataType = {
@@ -86,30 +75,14 @@ export const WorkflowBufferDataContext = createContext<WorkflowDataContextType>(
   nodeIds: [],
   nodeAmount: 0,
   foldedNodesMap: {},
-  getNodeById: function (nodeId: string | null | undefined): FlowNodeItemType | undefined {
-    throw new Error('Function not implemented.');
-  },
-  setNodes: function (
-    value: React.SetStateAction<Node<FlowNodeItemType, string | undefined>[]>
-  ): void {
-    throw new Error('Function not implemented.');
-  },
-  onNodesChange: function (changes: NodeChange[]): void {
-    throw new Error('Function not implemented.');
-  },
-  getNodes: function (): Node<FlowNodeItemType, string | undefined>[] {
-    throw new Error('Function not implemented.');
-  },
-  getNodeList: function (): FlowNodeItemType[] {
-    throw new Error('Function not implemented.');
-  },
+  getNodeById: () => undefined,
+  setNodes: () => {},
+  onNodesChange: () => {},
+  getNodes: () => [],
+  getNodeList: () => [],
   edges: [],
-  setEdges: function (value: React.SetStateAction<Edge<any>[]>): void {
-    throw new Error('Function not implemented.');
-  },
-  onEdgesChange: function (changes: EdgeChange[]): void {
-    throw new Error('Function not implemented.');
-  },
+  setEdges: () => {},
+  onEdgesChange: () => {},
   forbiddenSaveSnapshot: { current: false },
 
   childrenNodeIdListMap: {}
@@ -122,18 +95,47 @@ const WorkflowInitContextProvider = ({
   children: ReactNode;
   basicNodeTemplates: FlowNodeTemplateType[];
 }) => {
-  // Nodes
-  const [nodes = [], setNodes, onNodesChange] = useNodesState<Node<FlowNodeItemType>>([]);
-  const getNodes = useMemoizedFn(() => nodes);
+  // Connect to Zustand store
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const setNodes = useWorkflowStore((s) => s.setNodes);
+  const onNodesChange = useWorkflowStore((s) => s.onNodesChange);
+  const getNodes = useWorkflowStore((s) => s.getNodes);
 
-  const nodeFormat = useMemo(() => {
+  const edges = useWorkflowStore((s) => s.edges);
+  const setEdges = useWorkflowStore((s) => s.setEdges);
+  const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
+  const forbiddenSaveSnapshot = useWorkflowStore((s) => s.forbiddenSaveSnapshot);
+
+  useEffect(() => {
+    useWorkflowStore.getState().initWorkflowStore({ basicNodeTemplates });
+  }, [basicNodeTemplates]);
+
+  useEffect(() => {
+    return () => {
+      useWorkflowStore.getState().resetWorkflowStore();
+    };
+  }, []);
+
+  const {
+    nodeIds,
+    nodeList,
+    nodesMap,
+    rawNodesMap,
+    childrenNodeIdListMap,
+    selectedNodesMap,
+    workflowStartNode,
+    allNodeFolded,
+    hasToolNode,
+    hasLoopRunNode,
+    foldedNodesMap
+  } = useMemo(() => {
     const nodeIds: string[] = [];
     const nodeList: FlowNodeItemType[] = [];
     const nodesMap: Record<string, FlowNodeItemType> = {};
+    const rawNodesMap: Record<string, Node<FlowNodeItemType>> = {};
     const childrenNodeIdListMap: Record<string, string[]> = {};
     const selectedNodesMap: Record<string, boolean> = {};
     const foldedNodesMap: Record<string, boolean> = {};
-    const compareNodeList: any[] = [];
     let workflowStartNode: FlowNodeItemType | undefined = undefined;
     let allNodeFolded = true;
     let hasToolNode = false;
@@ -145,40 +147,14 @@ const WorkflowInitContextProvider = ({
       nodeIds.push(node.data.nodeId);
       nodeList.push(node.data);
       nodesMap[node.data.nodeId] = node.data;
-      compareNodeList.push({
-        nodeId: node.data.nodeId,
-        name: node.data.name,
-        parentNodeId: node.data.parentNodeId,
-        flowNodeType: node.data.flowNodeType,
-        version: node.data.version,
-        versionLabel: node.data.versionLabel,
-        isLatestVersion: node.data.isLatestVersion,
-        isFolded: node.data.isFolded,
-        inputs: node.data.inputs.map((input) => {
-          return {
-            key: input.key,
-            label: input.label,
-            valueType: input.valueType
-          };
-        }),
-        outputs: node.data.outputs.map((output) => {
-          return {
-            key: output.key,
-            id: output.id,
-            label: output.label,
-            type: output.type,
-            valueType: output.valueType,
-            invalid: output.invalid
-          };
-        }),
-        catchError: node.data.catchError
-      });
+      rawNodesMap[node.id] = node;
 
-      if (node.data.parentNodeId) {
-        childrenNodeIdListMap[node.data.parentNodeId] = [
-          ...(childrenNodeIdListMap[node.data.parentNodeId] || []),
-          node.data.nodeId
-        ];
+      const parentId = node.data.parentNodeId;
+      if (parentId) {
+        if (!childrenNodeIdListMap[parentId]) {
+          childrenNodeIdListMap[parentId] = [];
+        }
+        childrenNodeIdListMap[parentId].push(node.data.nodeId);
       }
 
       if (node.selected) {
@@ -207,45 +183,16 @@ const WorkflowInitContextProvider = ({
       nodeIds,
       nodeList,
       nodesMap,
+      rawNodesMap,
       childrenNodeIdListMap,
       selectedNodesMap,
       workflowStartNode,
       allNodeFolded,
       hasToolNode,
       hasLoopRunNode,
-
-      foldedNodesMap,
-      compareNodeList
+      foldedNodesMap
     };
   }, [nodes]);
-
-  // 拆解出常用的数据，避免重复计算
-  const nodeIds = useMemoEnhance(() => nodeFormat.nodeIds, [nodeFormat.nodeIds]);
-  const nodeList = useMemoEnhance(() => nodeFormat.nodeList, [nodeFormat.nodeList]);
-  const nodesMap = useMemoEnhance(() => nodeFormat.nodesMap, [nodeFormat.nodesMap]);
-  const compareNodeList = useMemoEnhance(
-    () => nodeFormat.compareNodeList,
-    [nodeFormat.compareNodeList]
-  );
-  const selectedNodesMap = useMemoEnhance(
-    () => nodeFormat.selectedNodesMap,
-    [nodeFormat.selectedNodesMap]
-  );
-  const childrenNodeIdListMap = useMemoEnhance(
-    () => nodeFormat.childrenNodeIdListMap,
-    [nodeFormat.childrenNodeIdListMap]
-  );
-  const workflowStartNode = useMemoEnhance(
-    () => nodeFormat.workflowStartNode,
-    [nodeFormat.workflowStartNode]
-  );
-  const foldedNodesMap = useMemoEnhance(
-    () => nodeFormat.foldedNodesMap,
-    [nodeFormat.foldedNodesMap]
-  );
-  const allNodeFolded = nodeFormat.allNodeFolded;
-  const hasToolNode = nodeFormat.hasToolNode;
-  const hasLoopRunNode = nodeFormat.hasLoopRunNode;
 
   const getNodeList = useMemoizedFn(() => nodeList);
 
@@ -262,29 +209,14 @@ const WorkflowInitContextProvider = ({
 
       return undefined;
     },
-    [compareNodeList]
+    [nodesMap]
   );
 
-  const rawNodeFormat = useMemo(() => {
-    const rawNodesMap: Record<string, Node<FlowNodeItemType, string | undefined>> = {};
-
-    nodes.forEach((node) => {
-      rawNodesMap[node.id] = node;
-    });
-
-    return {
-      rawNodesMap
-    };
-  }, [nodes]);
-  const rawNodesMap = useMemoEnhance(() => rawNodeFormat.rawNodesMap, [rawNodeFormat]);
   const getRawNodeById = useMemoizedFn((nodeId: string | null | undefined) => {
     return nodeId ? rawNodesMap[nodeId] : undefined;
   });
 
-  // Edges
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
-
-  const toolNodesMap = useMemoEnhance(() => {
+  const toolNodesMap = useMemo(() => {
     const selectedToolEdgeMap: Record<string, boolean> = {};
     edges.forEach((edge) => {
       if (edge.targetHandle === NodeOutputKeyEnum.selectedTools) {
@@ -303,26 +235,6 @@ const WorkflowInitContextProvider = ({
     );
   }, [nodeList, edges]);
 
-  // Snapshot blocking flag
-  const forbiddenSaveSnapshot = useRef(false);
-
-  // Elevate childNodes
-  useDeepCompareEffect(() => {
-    setNodes((nodes) =>
-      nodes.map((node) => (node.data.parentNodeId ? { ...node, zIndex: 1001 } : node))
-    );
-  }, [nodeList]);
-
-  // Elevate edges of childNodes - 使用nodesMap优化O(n)查找为O(1)
-  useDeepCompareEffect(() => {
-    setEdges((state) =>
-      state.map((item) => {
-        const sourceNode = nodesMap[item.source];
-        return sourceNode?.parentNodeId ? { ...item, zIndex: 1001 } : item;
-      })
-    );
-  }, [nodesMap, edges.length, setEdges]);
-
   // 数据Context - 只包含 原始nodes
   const rawNodeContextValue = useMemo(
     () => ({
@@ -333,16 +245,15 @@ const WorkflowInitContextProvider = ({
     [nodes, rawNodesMap, getRawNodeById]
   );
 
-  const nodeDataContextValue = useMemoEnhance(() => {
-    console.log('WoworkflowNodeDataContextValue 更新了');
-    return {
+  const nodeDataContextValue = useMemo(
+    () => ({
       selectedNodesMap
-    };
-  }, [selectedNodesMap]);
+    }),
+    [selectedNodesMap]
+  );
 
-  const workflowBufferDataContextValue = useMemoEnhance(() => {
-    console.log('WoworkflowBufferDataContextValue 更新了');
-    return {
+  const workflowBufferDataContextValue = useMemo(
+    () => ({
       nodeIds,
       basicNodeTemplates,
       workflowStartNode,
@@ -362,27 +273,29 @@ const WorkflowInitContextProvider = ({
       forbiddenSaveSnapshot,
       nodeAmount: nodeList.length,
       childrenNodeIdListMap
-    };
-  }, [
-    nodeIds,
-    basicNodeTemplates,
-    workflowStartNode,
-    allNodeFolded,
-    hasToolNode,
-    hasLoopRunNode,
-    toolNodesMap,
-    foldedNodesMap,
-    getNodeById,
-    setNodes,
-    onNodesChange,
-    getNodes,
-    getNodeList,
-    edges,
-    setEdges,
-    onEdgesChange,
-    nodeList.length,
-    childrenNodeIdListMap
-  ]);
+    }),
+    [
+      nodeIds,
+      basicNodeTemplates,
+      workflowStartNode,
+      allNodeFolded,
+      hasToolNode,
+      hasLoopRunNode,
+      toolNodesMap,
+      foldedNodesMap,
+      getNodeById,
+      setNodes,
+      onNodesChange,
+      getNodes,
+      getNodeList,
+      edges,
+      setEdges,
+      onEdgesChange,
+      forbiddenSaveSnapshot,
+      nodeList.length,
+      childrenNodeIdListMap
+    ]
+  );
 
   return (
     <WorkflowInitContext.Provider value={rawNodeContextValue}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Tooltip, type TooltipProps, useMergeRefs } from '@chakra-ui/react';
 
 const defaultTooltipProps = {
@@ -45,7 +45,6 @@ const useOverflowTooltipTrigger = ({
     }
 
     const target = triggerRef.current;
-
     if (!target) {
       setIsOverflow(false);
       return;
@@ -56,36 +55,9 @@ const useOverflowTooltipTrigger = ({
     );
   }, [enabled]);
 
-  useEffect(() => {
-    if (!enabled) return;
-
-    const frame = window.requestAnimationFrame(checkOverflow);
-
-    const target = triggerRef.current;
-    if (!target) {
-      return () => window.cancelAnimationFrame(frame);
-    }
-
-    const observer =
-      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(checkOverflow);
-    observer?.observe(target);
-
-    window.addEventListener('resize', checkOverflow);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      observer?.disconnect();
-      window.removeEventListener('resize', checkOverflow);
-    };
-  }, [checkOverflow, children, enabled]);
-
-  const setTriggerRef = useCallback(
-    (node: HTMLElement | null) => {
-      triggerRef.current = node;
-      checkOverflow();
-    },
-    [checkOverflow]
-  );
+  const setTriggerRef = useCallback((node: HTMLElement | null) => {
+    triggerRef.current = node;
+  }, []);
 
   const triggerElement = React.isValidElement(children) ? children : null;
   const childOriginRef = triggerElement
@@ -95,9 +67,41 @@ const useOverflowTooltipTrigger = ({
     | {
         onMouseEnter?: React.MouseEventHandler;
         onFocus?: React.FocusEventHandler;
+        onMouseLeave?: React.MouseEventHandler;
+        onBlur?: React.FocusEventHandler;
       }
     | undefined;
   const mergedRef = useMergeRefs(childOriginRef, setTriggerRef);
+
+  const handleMouseEnter = useCallback(
+    (event: React.MouseEvent) => {
+      checkOverflow();
+      triggerElementProps?.onMouseEnter?.(event);
+    },
+    [checkOverflow, triggerElementProps]
+  );
+
+  const handleFocus = useCallback(
+    (event: React.FocusEvent) => {
+      checkOverflow();
+      triggerElementProps?.onFocus?.(event);
+    },
+    [checkOverflow, triggerElementProps]
+  );
+
+  const handleMouseLeave = useCallback(
+    (event: React.MouseEvent) => {
+      triggerElementProps?.onMouseLeave?.(event);
+    },
+    [triggerElementProps]
+  );
+
+  const handleBlur = useCallback(
+    (event: React.FocusEvent) => {
+      triggerElementProps?.onBlur?.(event);
+    },
+    [triggerElementProps]
+  );
 
   if (!enabled) {
     return {
@@ -111,21 +115,19 @@ const useOverflowTooltipTrigger = ({
     triggerChildren: triggerElement ? (
       React.cloneElement(triggerElement as React.ReactElement<any>, {
         ref: mergedRef,
-        onMouseEnter: (event: React.MouseEvent) => {
-          checkOverflow();
-          triggerElementProps?.onMouseEnter?.(event);
-        },
-        onFocus: (event: React.FocusEvent) => {
-          checkOverflow();
-          triggerElementProps?.onFocus?.(event);
-        }
+        onMouseEnter: handleMouseEnter,
+        onFocus: handleFocus,
+        onMouseLeave: handleMouseLeave,
+        onBlur: handleBlur
       })
     ) : (
       <span
         ref={setTriggerRef}
         style={{ display: 'inline-block', maxWidth: '100%' }}
-        onMouseEnter={checkOverflow}
-        onFocus={checkOverflow}
+        onMouseEnter={handleMouseEnter}
+        onFocus={handleFocus}
+        onMouseLeave={handleMouseLeave}
+        onBlur={handleBlur}
       >
         {children}
       </span>

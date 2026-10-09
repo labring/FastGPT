@@ -16,19 +16,14 @@ import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
-import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { useNodeToolInputs } from '../../context/workflowUtilsContext';
 
 const NodeCQNode = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
-  );
+  const { isTool, commonInputs } = useNodeToolInputs(inputs, nodeId);
 
   const CustomComponent = useMemo(
     () => ({

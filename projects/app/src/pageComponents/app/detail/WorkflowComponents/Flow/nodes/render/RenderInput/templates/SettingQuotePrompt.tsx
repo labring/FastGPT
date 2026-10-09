@@ -21,10 +21,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
 import ValueTypeLabel from '../../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../../../../context/workflowInitContext';
+import { WorkflowNodeDataContext } from '../../../../../context/workflowInitContext';
+import { useWorkflowStore } from '@/pageComponents/app/detail/WorkflowComponents/store/useWorkflowStore';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -54,7 +52,8 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const { inputs = [], nodeId } = props;
   const { t } = useSafeTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const node = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById(nodeId));
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
+  const node = getNodeById(nodeId);
   const nodeVersion = node?.version;
 
   const { watch, setValue, handleSubmit } = useForm({

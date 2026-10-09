@@ -1,7 +1,7 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { type Node, type NodeProps, useReactFlow } from '@xyflow/react';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -25,22 +25,19 @@ import { LoopRunBreakNode as LoopRunBreakTemplate } from '@fastgpt/global/core/w
 import { useNestedNode } from '../../hooks/useNestedNode';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { splitOutput } from '../../../context/workflowUtilsContext';
 import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { useWorkflowStore } from '../../../store/useWorkflowStore';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const NodeLoopRun = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs, isFolded, catchError } = data;
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const splitOutput = useContextSelector(WorkflowUtilsContext, (v) => v.splitOutput);
-  const { setNodes, getNode } = useReactFlow<Node<FlowNodeItemType>>();
-  const getNodeById = useCallback(
-    (id: string | null | undefined) => (id ? getNode(id)?.data : undefined),
-    [getNode]
-  );
+  const setNodes = useWorkflowStore((s) => s.setNodes);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
+  const getRawNodeById = useWorkflowStore((s) => s.getRawNodeById);
   const childrenNodeIdListMap = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v.childrenNodeIdListMap
@@ -79,10 +76,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
     [inputs]
   );
 
-  const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
-  );
+  const { successOutputs, errorOutputs } = useMemo(() => splitOutput(outputs), [outputs]);
 
   // Mode sync is owned by the container, not the start node, because the start
   // node doesn't re-render reliably when the parent's mode input changes.
@@ -182,7 +176,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
         (id) => getNodeById(id)?.flowNodeType === FlowNodeTypeEnum.loopRunBreak
       );
       if (!hasBreak) {
-        const startRaw = startChildId ? getNode(startChildId) : undefined;
+        const startRaw = startChildId ? getRawNodeById(startChildId) : undefined;
         const position = startRaw?.position
           ? { x: startRaw.position.x + 500, y: startRaw.position.y + 150 }
           : { x: 500, y: 400 };
@@ -195,7 +189,7 @@ const NodeLoopRun = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
         setNodes((state) => [...state, breakNode]);
       }
     }
-  }, [mode, childNodeIds, nodeId, getNodeById, getNode, onChangeNode, setNodes, t]);
+  }, [mode, childNodeIds, nodeId, getNodeById, getRawNodeById, onChangeNode, setNodes, t]);
 
   useEffect(() => {
     const declared = inputs.filter((i) => i.canEdit === true);
