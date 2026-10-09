@@ -7,7 +7,7 @@ import {
   ProbeConnectionResponseSchema,
   type ProbeConnectionBody,
   type ProbeConnectionResponse
-} from '@fastgpt/global/openapi/admin/system/instanceConfig';
+} from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import { probeUrlConnection } from '@fastgpt/service/common/system/systemInstanceConfig/probe';
 
 /**

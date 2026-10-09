@@ -1,21 +1,26 @@
 import {
   type SystemInstanceConfigDomainKey,
   type SystemInstanceConfigDomainMap,
-  type SystemInstanceConfig,
-  type SystemInstanceConfigEdition,
   getDomainDefaultConfig,
   parseDomainOverrides,
   resolveDomainEffectiveConfig,
   resolveSystemInstanceConfig,
+  type SystemInstanceConfig
+} from '@fastgpt/global/common/system/config/schema';
+import {
   maskDomainSecrets,
   restorePreservedSecrets,
-  pruneDefaultOverrides,
   getSystemEdition,
   getDomainSecretKeys,
   getDomainAllowedKeys,
   isConfigFieldAllowed,
   filterDomainDataByEdition
-} from '@fastgpt/global/common/system/config';
+} from '@fastgpt/global/common/system/config/permission';
+import { pruneDefaultOverrides } from '@fastgpt/global/common/system/config/merge';
+import type {
+  SystemInstanceConfigEdition,
+  SystemInstanceConfigRegistryItem
+} from '@fastgpt/global/common/system/config/registry';
 import type {
   DeepPartial,
   SystemInstanceConfigUpdatedByType

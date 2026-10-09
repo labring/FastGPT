@@ -7,12 +7,15 @@ const mocks = vi.hoisted(() => ({
   verifyInstanceConfigDeprecatedFields: vi.fn()
 }));
 
-vi.mock('@/migration/tasks/20260929_cleanup_instance_config_deprecated_fields/service', () => ({
-  cleanupInstanceConfigDeprecatedFields: mocks.cleanupInstanceConfigDeprecatedFields,
-  verifyInstanceConfigDeprecatedFields: mocks.verifyInstanceConfigDeprecatedFields
-}));
+vi.mock(
+  '@/migration/tasks/4180/20260929_cleanup_instance_config_deprecated_fields/service',
+  () => ({
+    cleanupInstanceConfigDeprecatedFields: mocks.cleanupInstanceConfigDeprecatedFields,
+    verifyInstanceConfigDeprecatedFields: mocks.verifyInstanceConfigDeprecatedFields
+  })
+);
 
-import { cleanupInstanceConfigDeprecatedFieldsTask } from '@/migration/tasks/20260929_cleanup_instance_config_deprecated_fields';
+import { cleanupInstanceConfigDeprecatedFieldsTask } from '@/migration/tasks/4180/20260929_cleanup_instance_config_deprecated_fields';
 
 const createContext = () =>
   ({

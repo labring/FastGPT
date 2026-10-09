@@ -13,15 +13,13 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
-import {
-  AdminSettingPage,
-  AdminSettingSection,
-  AdminFormItem,
-  ConnectivityTestInput,
-  type SettingTOCItem
-} from '@/pageComponents/admin/settings';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityTestInput';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import ThirdPartyVariables from '@/pageComponents/admin/config/components/FormField/ThirdPartyVariables';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
 type ProvidersConfigForm = SystemInstanceConfigDomainMap['providers'];
 
