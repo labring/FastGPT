@@ -1309,5 +1309,22 @@
   "confirm_delete": "삭제 확인",
   "batch_partial_failed": "선택한 항목 중 일부를 처리하지 못했습니다",
   "related_count": "연관 앱",
-  "related_apps_hidden": "권한으로 인해 {{count}}개 앱이 더 숨겨져 있습니다"
+  "related_apps_hidden": "권한으로 인해 {{count}}개 앱이 더 숨겨져 있습니다",
+  "video_preparing": "비디오 준비 중...",
+  "video_cannot_play": "비디오를 직접 재생할 수 없습니다",
+  "audio_preparing": "오디오 준비 중...",
+  "audio_cannot_play": "오디오를 직접 재생할 수 없습니다",
+  "copy_as_markdown": "Markdown으로 복사",
+  "copy_as_csv": "CSV로 복사",
+  "download_as_csv": "CSV 다운로드",
+  "download_svg": "SVG 다운로드",
+  "download_image": "이미지 다운로드",
+  "view_fullscreen": "전체 화면",
+  "source_label": "소스 {{index}}",
+  "enable_word_wrap": "자동 줄바꿈 활성화",
+  "disable_word_wrap": "자동 줄바꿈 비활성화",
+  "copied": "복사됨",
+  "download_png": "PNG 다운로드",
+  "open_in_new_tab": "새 탭에서 열기",
+  "html_preview": "HTML 미리보기"
 }

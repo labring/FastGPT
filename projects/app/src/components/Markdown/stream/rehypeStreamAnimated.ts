@@ -1,5 +1,23 @@
 const STREAM_ANIMATED_BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']);
-const STREAM_ANIMATED_SKIP_TAGS = new Set(['pre', 'code', 'table', 'svg']);
+const STREAM_ANIMATED_SKIP_TAGS = new Set([
+  'pre',
+  'code',
+  'table',
+  'svg',
+  'video',
+  'audio',
+  'source',
+  'track',
+  'details',
+  'summary',
+  'progress',
+  'meter',
+  'button',
+  'input',
+  'textarea',
+  'select',
+  'option'
+]);
 const MAX_RETAINED_SEGMENTS = 14;
 const MAX_ANIMATED_SEGMENT_LENGTH = 64;
 

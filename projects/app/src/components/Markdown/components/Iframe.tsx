@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
-import { useMarkdownWidth } from '../hooks';
+import { useMarkdownWidth } from '../utils/hooks';
 
 const IframeBlock = ({ code }: { code: string }) => {
   const { width, Ref } = useMarkdownWidth();

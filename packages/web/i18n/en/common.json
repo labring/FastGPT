@@ -1318,5 +1318,22 @@
   "confirm_delete": "Confirm Delete",
   "batch_partial_failed": "Some selected items could not be processed",
   "related_count": "Related Apps",
-  "related_apps_hidden": "{{count}} more app(s) hidden due to permissions"
+  "related_apps_hidden": "{{count}} more app(s) hidden due to permissions",
+  "video_preparing": "Preparing video...",
+  "video_cannot_play": "Unable to play video directly",
+  "audio_preparing": "Preparing audio...",
+  "audio_cannot_play": "Unable to play audio directly",
+  "copy_as_markdown": "Copy as Markdown",
+  "copy_as_csv": "Copy as CSV",
+  "download_as_csv": "Download as CSV",
+  "download_svg": "Download SVG",
+  "download_image": "Download Image",
+  "view_fullscreen": "Fullscreen",
+  "source_label": "Source {{index}}",
+  "enable_word_wrap": "Enable word wrap",
+  "disable_word_wrap": "Disable word wrap",
+  "copied": "Copied",
+  "download_png": "Download PNG",
+  "open_in_new_tab": "Open in new tab",
+  "html_preview": "HTML Preview"
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AProps } from './A';
+import type { AProps } from '../components/A';
 
 export type MarkdownRendererRuntimeContextValue = {
   showAnimation?: boolean;

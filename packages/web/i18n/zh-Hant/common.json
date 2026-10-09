@@ -1318,5 +1318,22 @@
   "confirm_delete": "確認刪除",
   "batch_partial_failed": "部分選取項目操作失敗",
   "related_count": "關聯應用",
-  "related_apps_hidden": "其餘 {{count}} 個應用無權限查看"
+  "related_apps_hidden": "其餘 {{count}} 個應用無權限查看",
+  "video_preparing": "影片就緒中...",
+  "video_cannot_play": "影片無法直接播放",
+  "audio_preparing": "音訊就緒中...",
+  "audio_cannot_play": "音訊無法直接播放",
+  "copy_as_markdown": "複製為 Markdown",
+  "copy_as_csv": "複製為 CSV",
+  "download_as_csv": "下載為 CSV",
+  "download_svg": "下載 SVG",
+  "download_image": "下載圖片",
+  "view_fullscreen": "全螢幕查看",
+  "source_label": "來源 {{index}}",
+  "enable_word_wrap": "啟用自動換行",
+  "disable_word_wrap": "停用自動換行",
+  "copied": "已複製",
+  "download_png": "下載 PNG",
+  "open_in_new_tab": "新分頁開啟",
+  "html_preview": "HTML 預覽"
 }
