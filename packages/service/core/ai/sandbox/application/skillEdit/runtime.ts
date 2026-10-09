@@ -40,14 +40,11 @@ import type { SandboxClient } from '../runtime/client';
 import { getSandboxClient } from '../runtime/client';
 import { SandboxLifecycleStateError } from '../archive';
 import {
-  countRunningSandboxInstancesBySourceType,
   findSandboxInstanceBySandboxIdAndSource,
   findSandboxResourcesBySource,
   updateSandboxInstanceRecordBySandboxId
 } from '../../infrastructure/instance/repository';
-import { SandboxInstanceStatusEnum } from '../../type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { serviceEnv } from '../../../../../env';
 import { getAgentSandboxSkillMaxBytes } from '../../config';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { assertSandboxAvailable } from '../availability';
@@ -256,26 +253,6 @@ export async function initSkillEditRuntimeSandbox({
   const reportProgress = (sandboxId: string) => (phase: SandboxStatusItemType['phase']) =>
     onProgress?.({ sandboxId, phase });
 
-  const maxEditDebug =
-    global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG;
-
-  const ensureCanActivateEditDebugSandbox = async (params: {
-    sandboxId: string;
-    status?: string;
-  }) => {
-    if (maxEditDebug === undefined || params.status === SandboxStatusEnum.running) return;
-
-    const activeCount = await countRunningSandboxInstancesBySourceType(
-      ChatSourceTypeEnum.skillEdit,
-      providerConfig.provider
-    );
-    if (activeCount < maxEditDebug) return;
-
-    const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
-    onProgress?.({ sandboxId: params.sandboxId, phase: 'failed', message });
-    throw new Error(message);
-  };
-
   if (runtimeStatusInstance) {
     addLog.info('[Sandbox] Existing edit-debug sandbox will be activated by runtime client', {
       sandboxId: runtimeStatusInstance.sandboxId,
@@ -283,12 +260,6 @@ export async function initSkillEditRuntimeSandbox({
     });
   }
 
-  if (existingLifecycleStatus !== SandboxInstanceStatusEnum.restoring) {
-    await ensureCanActivateEditDebugSandbox({
-      sandboxId: sessionId,
-      status: runtimeStatusInstance?.status
-    });
-  }
   let sandbox: ISandbox | null = null;
   let sandboxClient: SandboxClient | null = null;
   const shouldCleanupCreatedSandboxOnFailure = !runtimeStatusInstance;

@@ -4,8 +4,10 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import {
   advanceSandboxOperation,
+  backfillSandboxInstanceTeamId,
   claimSandboxOperation,
   completeSandboxOperation,
+  countActiveSandboxInstances,
   createSandboxProvisioningInstance,
   createSandboxResourcesToArchiveCursor,
   deleteClaimedSandboxRecord,
@@ -354,5 +356,151 @@ describe('sandbox instance lifecycle repository', () => {
     expect((await collectArchiveCursor(new Date())).map((item) => item.sandboxId)).toContain(
       stoppedIdentity.sandboxId
     );
+  });
+
+  it('counts active instances for the system and per-team quota pools', async () => {
+    const teamId = `${prefix}team-${getNanoid()}`;
+    const activeFixtures = [
+      {
+        status: SandboxInstanceStatusEnum.provisioning,
+        operationType: SandboxOperationTypeEnum.provision
+      },
+      {
+        status: SandboxInstanceStatusEnum.legacyMigrating,
+        operationType: SandboxOperationTypeEnum.legacyMigration
+      },
+      { status: SandboxInstanceStatusEnum.running },
+      { status: SandboxInstanceStatusEnum.stopping, operationType: SandboxOperationTypeEnum.stop },
+      {
+        status: SandboxInstanceStatusEnum.archiving,
+        operationType: SandboxOperationTypeEnum.archive
+      },
+      {
+        status: SandboxInstanceStatusEnum.restoring,
+        operationType: SandboxOperationTypeEnum.restore
+      }
+    ] as const;
+    const baseline = await countActiveSandboxInstances();
+
+    await MongoSandboxInstance.create(
+      activeFixtures.map((fixture) => ({
+        provider: 'opensandbox',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: `${prefix}src-${getNanoid()}`,
+        userId: `${prefix}user-${getNanoid()}`,
+        sandboxId: `${prefix}${getNanoid()}`,
+        status: fixture.status,
+        lastActiveAt: oldDate,
+        createdAt: oldDate,
+        teamId,
+        ...('operationType' in fixture
+          ? {
+              operation: {
+                id: getNanoid(),
+                type: fixture.operationType,
+                phase: 'claimed',
+                startedAt: oldDate,
+                heartbeatAt: oldDate
+              }
+            }
+          : {})
+      }))
+    );
+    // 缺 teamId 的历史记录只计入系统总量，不计入任何团队。
+    await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: `${prefix}src-${getNanoid()}`,
+      userId: `${prefix}user-${getNanoid()}`,
+      sandboxId: `${prefix}${getNanoid()}`,
+      status: SandboxInstanceStatusEnum.running,
+      lastActiveAt: oldDate,
+      createdAt: oldDate
+    });
+    // stopped/archived/deleting 不计入 Quota。
+    await MongoSandboxInstance.create([
+      {
+        provider: 'opensandbox',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: `${prefix}src-${getNanoid()}`,
+        userId: `${prefix}user-${getNanoid()}`,
+        sandboxId: `${prefix}${getNanoid()}`,
+        status: SandboxInstanceStatusEnum.stopped,
+        lastActiveAt: oldDate,
+        createdAt: oldDate,
+        teamId
+      },
+      {
+        provider: 'opensandbox',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: `${prefix}src-${getNanoid()}`,
+        userId: `${prefix}user-${getNanoid()}`,
+        sandboxId: `${prefix}${getNanoid()}`,
+        status: SandboxInstanceStatusEnum.archived,
+        lastActiveAt: oldDate,
+        createdAt: oldDate,
+        teamId
+      },
+      {
+        provider: 'opensandbox',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: `${prefix}src-${getNanoid()}`,
+        userId: `${prefix}user-${getNanoid()}`,
+        sandboxId: `${prefix}${getNanoid()}`,
+        status: SandboxInstanceStatusEnum.deleting,
+        lastActiveAt: oldDate,
+        createdAt: oldDate,
+        teamId,
+        operation: {
+          id: getNanoid(),
+          type: SandboxOperationTypeEnum.delete,
+          phase: 'claimed',
+          startedAt: oldDate,
+          heartbeatAt: oldDate
+        }
+      }
+    ]);
+
+    expect(await countActiveSandboxInstances()).toBe(baseline + 7);
+    expect(await countActiveSandboxInstances({ teamId })).toBe(6);
+    expect(await countActiveSandboxInstances({ teamId: `${prefix}missing-team` })).toBe(0);
+  });
+
+  it('backfills only missing team ids and never overwrites existing ownership', async () => {
+    const identity = createAppIdentity();
+    await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sourceType: ChatSourceTypeEnum.app,
+      ...identity,
+      status: SandboxInstanceStatusEnum.running,
+      lastActiveAt: oldDate,
+      createdAt: oldDate
+    });
+
+    await expect(
+      backfillSandboxInstanceTeamId({
+        provider: 'opensandbox',
+        sandboxId: identity.sandboxId,
+        teamId: 'team-fill'
+      })
+    ).resolves.toMatchObject({ modifiedCount: 1 });
+    await expect(
+      backfillSandboxInstanceTeamId({
+        provider: 'opensandbox',
+        sandboxId: identity.sandboxId,
+        teamId: 'team-other'
+      })
+    ).resolves.toMatchObject({ modifiedCount: 0 });
+    await expect(
+      backfillSandboxInstanceTeamId({
+        provider: 'opensandbox',
+        sandboxId: `${prefix}missing`,
+        teamId: 'team-fill'
+      })
+    ).resolves.toMatchObject({ modifiedCount: 0 });
+
+    expect(
+      (await MongoSandboxInstance.findOne({ sandboxId: identity.sandboxId }).lean())?.teamId
+    ).toBe('team-fill');
   });
 });

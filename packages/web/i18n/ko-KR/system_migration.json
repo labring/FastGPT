@@ -117,5 +117,10 @@
   "migrations.20261009_migrate_dataset_rebuild_status.result": "마이그레이션 완료. 이전 상태 {{remainingCount}}개가 남아 있습니다.",
   "migrations.20261009_migrate_dataset_rebuild_status.datas": "이전 재색인 필드 변환",
   "migrations.20261009_migrate_dataset_rebuild_status.trainings": "재색인 작업 상태 복원",
-  "migrations.20261009_migrate_dataset_rebuild_status.validation": "마이그레이션 검증"
+  "migrations.20261009_migrate_dataset_rebuild_status.validation": "마이그레이션 검증",
+  "migrations.20261009_backfill_agent_sandbox_team_id.name": "샌드박스 인스턴스 팀 소속 백필",
+  "migrations.20261009_backfill_agent_sandbox_team_id.description": "레거시 Agent 샌드박스 인스턴스의 teamId를 App/Skill 소스에서 확인해 백필합니다. 소스가 삭제된 고아 레코드는 건너뛰고 집계하며, 소스는 있지만 teamId가 없는 레코드는 실패 목록에 기록되어 수정 후 재시도할 수 있습니다.",
+  "migrations.20261009_backfill_agent_sandbox_team_id.instances": "샌드박스 팀 소속 백필",
+  "migrations.20261009_backfill_agent_sandbox_team_id.validation": "샌드박스 팀 소속 백필 검증",
+  "migrations.20261009_backfill_agent_sandbox_team_id.result": "샌드박스 인스턴스 {{scannedCount}}개를 검사하고 팀 소속 {{backfilledCount}}개를 백필했으며, 고아 레코드 {{orphanCount}}개를 건너뛰었습니다."
 }
