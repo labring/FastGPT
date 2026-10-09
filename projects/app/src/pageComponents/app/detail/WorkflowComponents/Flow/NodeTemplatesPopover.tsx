@@ -11,11 +11,13 @@ import { buildNodeTemplateContext } from '@fastgpt/global/core/workflow/template
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
-import React, { useCallback, useMemo } from 'react';
-import { useReactFlow, useEdges, useNodes, type Node, type Edge } from '@xyflow/react';
+import React, { useMemo } from 'react';
+import type { Node } from '@xyflow/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../context/workflowActionsContext';
 import { WorkflowModalContext } from '../context/workflowModalContext';
+import { WorkflowLayoutContext } from '../context/workflowComputeContext';
+import { useWorkflowStore } from '../store/useWorkflowStore';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
@@ -24,14 +26,11 @@ import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
 const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
-  const { setNodes, setEdges, getNode } = useReactFlow<Node<FlowNodeItemType>, Edge>();
-  const nodes = useNodes<Node<FlowNodeItemType>>();
-  const edges = useEdges();
-
-  const getNodeById = useCallback(
-    (nodeId: string | null | undefined) => (nodeId ? getNode(nodeId)?.data : undefined),
-    [getNode]
-  );
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const edges = useWorkflowStore((s) => s.edges);
+  const setNodes = useWorkflowStore((s) => s.setNodes);
+  const setEdges = useWorkflowStore((s) => s.setEdges);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
   const workflowStartNode = useMemo(
     () => nodes.find((n) => n.data.flowNodeType === FlowNodeTypeEnum.workflowStart)?.data,
     [nodes]
@@ -53,6 +52,10 @@ const NodeTemplatesPopover = () => {
   const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
     WorkflowActionsContext,
     (v) => v.onRefreshSingleNodeWorkflowCheckIssues
+  );
+  const resetParentNodeSizeAndPosition = useContextSelector(
+    WorkflowLayoutContext,
+    (v) => v.resetParentNodeSizeAndPosition
   );
 
   const nodeTemplateContext = React.useMemo(
@@ -100,13 +103,14 @@ const NodeTemplatesPopover = () => {
       return;
     }
 
-    setNodes((state) => [
-      ...state.map((node) => ({
+    const updatedNodes = [
+      ...nodes.map((node) => ({
         ...node,
         selected: false
       })),
       ...validNewNodes
-    ]);
+    ];
+    setNodes(updatedNodes);
 
     if (!handleParams) return;
 
@@ -121,15 +125,13 @@ const NodeTemplatesPopover = () => {
         type: EDGE_TYPE
       }));
 
-    setEdges((state) => {
-      const newState = state.concat(newEdges);
-      return newState;
-    });
+    const updatedEdges = edges.concat(newEdges);
+    setEdges(updatedEdges);
 
     if (workflowStartNode) {
       const patches = collectWorkflowStartInputAutoFillPatches({
-        nodes: nodes.concat(validNewNodes),
-        edges: edges.concat(newEdges),
+        nodes: updatedNodes,
+        edges: updatedEdges,
         workflowStartNode
       });
 
@@ -143,6 +145,9 @@ const NodeTemplatesPopover = () => {
     setTimeout(() => {
       validNewNodes.forEach((node) => {
         onRefreshSingleNodeWorkflowCheckIssues(node.data.nodeId);
+        if (node.data.parentNodeId) {
+          resetParentNodeSizeAndPosition(node.data.parentNodeId);
+        }
       });
     }, 0);
   });

@@ -26,7 +26,7 @@ import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput'
 
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
-import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
+import { useNodeToolInputs, splitOutput } from '../../../context/workflowUtilsContext';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useModelDetail } from '@/web/core/ai/model/useModelDetail';
@@ -47,7 +47,6 @@ import { getToolIdentityKey, isDebugToolSource } from '@fastgpt/global/core/app/
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -100,7 +99,6 @@ const NodeAgent = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { toast } = useToast();
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const { splitToolInputs, splitOutput } = useContextSelector(WorkflowUtilsContext, (ctx) => ctx);
   const edges = useEdges();
   const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
   const getNodeById = useCallback(
@@ -117,14 +115,8 @@ const NodeAgent = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { openConfirm, ConfirmModal } = useConfirm();
 
   // Split tool/common inputs and outputs
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
-  );
-  const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [splitOutput, outputs]
-  );
+  const { isTool, commonInputs } = useNodeToolInputs(inputs, nodeId);
+  const { successOutputs, errorOutputs } = useMemo(() => splitOutput(outputs), [outputs]);
 
   // Editor variables for PromptEditor
   const editorVariables = useMemoEnhance(

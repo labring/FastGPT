@@ -1,9 +1,10 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { type Node, type NodeProps, useNodesData } from '@xyflow/react';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import { useContextSelector } from 'use-context-selector';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -26,29 +27,31 @@ const arrayItemTypeMap: Partial<Record<WorkflowIOValueTypeEnum, WorkflowIOValueT
 
 const NodeLoopRunStart = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
-  const { nodeId, outputs, parentNodeId } = data;
+  const { nodeId, outputs } = data;
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const parentNode = useNodesData<Node<FlowNodeItemType>>(parentNodeId ?? '');
+  const startNode = getNodeById(nodeId);
+  const parentNode = getNodeById(startNode?.parentNodeId);
 
   const parentMode =
-    (parentNode?.data?.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
+    (parentNode?.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunMode)?.value as
       | LoopRunModeEnum
       | undefined) ?? LoopRunModeEnum.array;
 
   const currentItemType = useMemo(() => {
     if (parentMode !== LoopRunModeEnum.array) return undefined;
-    const parentArrayInput = parentNode?.data?.inputs.find(
+    const parentArrayInput = parentNode?.inputs.find(
       (i) => i.key === NodeInputKeyEnum.loopRunInputArray
     );
     return arrayItemTypeMap[parentArrayInput?.valueType as keyof typeof arrayItemTypeMap];
-  }, [parentNode?.data?.inputs, parentMode]);
+  }, [parentNode?.inputs, parentMode]);
 
   // Output add/remove on mode switches lives in NodeLoopRun; this effect only
   // keeps currentItem.valueType in sync with the inferred parent array type.
   useEffect(() => {
     if (parentMode !== LoopRunModeEnum.array || !currentItemType) return;
-    const currentItem = outputs?.find((o) => o.key === NodeOutputKeyEnum.currentItem);
+    const currentItem = startNode?.outputs.find((o) => o.key === NodeOutputKeyEnum.currentItem);
     if (currentItem && currentItem.valueType !== currentItemType) {
       onChangeNode({
         nodeId,
@@ -57,7 +60,7 @@ const NodeLoopRunStart = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>)
         value: { ...currentItem, valueType: currentItemType }
       });
     }
-  }, [parentMode, currentItemType, nodeId, onChangeNode, outputs]);
+  }, [parentMode, currentItemType, nodeId, onChangeNode, startNode?.outputs]);
 
   return (
     <NodeCard

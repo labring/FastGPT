@@ -18,7 +18,32 @@ type Props = {
   bg?: string;
 };
 
-const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModalProps & Props) => {
+/**
+ * LLM 模型选择与高级参数配置组合组件。
+ * 包含模型下拉选择器（AIModelSelector）与参数配置弹窗（AISettingModal）。
+ * 显式解构并分离弹窗专用的控制参数（如 showResponseFormat 等），避免下透至底层 DOM 按钮引发 React 未知属性告警。
+ */
+const SettingLLMModel = ({
+  defaultData,
+  onChange,
+  showMaxToken,
+  showTemperature,
+  showTopP,
+  showStopSign,
+  showResponseFormat,
+  showReasoning,
+  showMultimodalConfig,
+  ...aiModelSelectorProps
+}: AIChatSettingsModalProps & Props) => {
+  const aiSettingModalProps: AIChatSettingsModalProps = {
+    showMaxToken,
+    showTemperature,
+    showTopP,
+    showStopSign,
+    showResponseFormat,
+    showReasoning,
+    showMultimodalConfig
+  };
   const { t } = useTranslation();
   const modelId = defaultData.modelId;
   const { toast } = useToast();
@@ -52,7 +77,7 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
       <HStack spacing={1}>
         <Box flex={'1 0 0'}>
           <AIModelSelector
-            {...props}
+            {...aiModelSelectorProps}
             modelType={ModelTypeEnum.llm}
             w={'100%'}
             value={modelId}
@@ -78,7 +103,7 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
               const settings = (() => {
                 // 只清理有显式开关的工作流配置，隐藏配置的表单交给后端判断模型能力。
                 if (
-                  props.showMultimodalConfig === false ||
+                  showMultimodalConfig === false ||
                   currentData.aiChatVision === undefined ||
                   !modelData
                 ) {
@@ -114,7 +139,7 @@ const SettingLLMModel = ({ defaultData, onChange, ...props }: AIChatSettingsModa
             onCloseAIChatSetting();
           }}
           defaultData={defaultData}
-          {...props}
+          {...aiSettingModalProps}
         />
       )}
     </Box>

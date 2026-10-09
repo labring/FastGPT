@@ -6,64 +6,28 @@
 
 import { type Node, Position, type XYPosition } from '@xyflow/react';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
-import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getNodeOutputHandleDescriptors } from '@/web/core/workflow/utils';
 
-// Get sort index from source node's output handle order
+/**
+ * 获取源节点输出句柄在卡片中的排列索引，用于多条分支连线重叠时的纵向排序。
+ */
 export const getHandleIndex = (
   edge: any,
   sourceNode: Node<FlowNodeItemType> | undefined
 ): number => {
   if (!sourceNode || !edge) return 0;
 
-  const { flowNodeType, inputs } = sourceNode.data;
   const handleId = edge.sourceHandle || '';
+  const descriptors = getNodeOutputHandleDescriptors({
+    nodeId: sourceNode.data.nodeId,
+    flowNodeType: sourceNode.data.flowNodeType,
+    inputs: sourceNode.data.inputs,
+    outputs: sourceNode.data.outputs,
+    catchError: sourceNode.data.catchError
+  });
 
-  // userSelect: sort by option index
-  if (flowNodeType === FlowNodeTypeEnum.userSelect) {
-    const options = inputs?.find((i) => i.key === NodeInputKeyEnum.userSelectOptions)?.value;
-    if (Array.isArray(options)) {
-      const idx = options.findIndex((opt: any) => handleId.includes(opt.key));
-      return idx >= 0 ? idx : 999;
-    }
-  }
-
-  // ifElseNode: sort by stable branch handle, ELSE always last.
-  if (flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-    const ifElseList = inputs?.find((i) => i.key === NodeInputKeyEnum.ifElseList)?.value as
-      | IfElseListItemType[]
-      | undefined;
-    if (Array.isArray(ifElseList)) {
-      const idx = ifElseList.findIndex((item, index) => {
-        const itemHandleId = getHandleId(
-          sourceNode.data.nodeId,
-          'source',
-          getIfElseBranchHandleKey(item)
-        );
-        return itemHandleId === handleId;
-      });
-      if (idx >= 0) return idx;
-    }
-    if (handleId === getHandleId(sourceNode.data.nodeId, 'source', IfElseResultEnum.ELSE)) {
-      return 999;
-    }
-    return 998;
-  }
-
-  // classifyQuestion: sort by agent index
-  if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
-    const agents = inputs?.find((i) => i.key === NodeInputKeyEnum.agents)?.value;
-    if (Array.isArray(agents)) {
-      const idx = agents.findIndex((agent: any) => handleId.includes(agent.key));
-      return idx >= 0 ? idx : 999;
-    }
-  }
-
-  return 0;
+  const idx = descriptors.findIndex((h) => h.id === handleId);
+  return idx >= 0 ? idx : 999;
 };
 
 export type PathParams = {

@@ -7,20 +7,14 @@ import Container from '../components/Container';
 import { useTranslation } from 'next-i18next';
 import RenderOutput from './render/RenderOutput';
 import RenderInput from './render/RenderInput';
-import { useContextSelector } from 'use-context-selector';
 import RenderToolInput, { hasDynamicToolInput } from './render/RenderToolInput';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { useNodeToolInputs } from '../../context/workflowUtilsContext';
 
 const NodeTool = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
 
   const { nodeId, inputs, outputs } = data;
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (v) => v.splitToolInputs);
-  const { commonInputs, isTool } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
-  );
+  const { commonInputs, isTool } = useNodeToolInputs(inputs, nodeId);
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>

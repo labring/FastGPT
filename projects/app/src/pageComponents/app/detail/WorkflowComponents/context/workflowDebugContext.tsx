@@ -338,8 +338,6 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
   );
 
   const contextValue = useMemoEnhance(() => {
-    console.log('WorkflowDebugContextValue 更新了');
-
     return {
       workflowDebugData,
       onNextNodeDebug,

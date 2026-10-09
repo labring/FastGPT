@@ -34,15 +34,23 @@ const SearchButton = (props: ButtonProps) => {
     if (!keyword) {
       setSearchIndex(0);
       setSearchedNodeCount(0);
-      setNodes((nds) =>
-        nds.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            searchedText: undefined
+      setNodes((nds) => {
+        let changed = false;
+        const nextNodes = nds.map((node) => {
+          if (node.data.searchedText) {
+            changed = true;
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                searchedText: undefined
+              }
+            };
           }
-        }))
-      );
+          return node;
+        });
+        return changed ? nextNodes : nds;
+      });
       return;
     }
 
@@ -52,34 +60,60 @@ const SearchButton = (props: ButtonProps) => {
 
     if (searchResult.length === 0) {
       setSearchedNodeCount(0);
-      setNodes((nds) =>
-        nds.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            searchedText: undefined
+      setNodes((nds) => {
+        let changed = false;
+        const nextNodes = nds.map((node) => {
+          if (node.data.searchedText) {
+            changed = true;
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                searchedText: undefined
+              }
+            };
           }
-        }))
-      );
+          return node;
+        });
+        return changed ? nextNodes : nds;
+      });
       return;
     }
 
     setSearchedNodeCount(searchResult.length);
     const searchedNode = searchResult[searchIndex] ?? searchResult[0];
+    const matchingIdSet = new Set(searchResult.map((item) => item.id));
 
     setNodes((nds) =>
-      nds.map((node) => ({
-        ...node,
-        selected: node.id === searchedNode.id,
-        data: {
-          ...node.data,
-          searchedText: searchResult.find((item) => item.id === node.id) ? keyword : undefined
+      nds.map((node) => {
+        const isMatch = matchingIdSet.has(node.id);
+        const shouldSelect = node.id === searchedNode.id;
+        const currentSearched = node.data.searchedText;
+        const targetSearched = isMatch ? keyword : undefined;
+
+        if (node.selected === shouldSelect && currentSearched === targetSearched) {
+          return node;
         }
-      }))
+
+        return {
+          ...node,
+          selected: shouldSelect,
+          data: {
+            ...node.data,
+            searchedText: targetSearched
+          }
+        };
+      })
     );
 
     if (searchedNode) {
-      fitView({ nodes: [searchedNode], padding: 0.6 });
+      fitView({
+        nodes: [{ id: searchedNode.id }],
+        includeHiddenNodes: true,
+        padding: 0.6,
+        minZoom: 0.7,
+        maxZoom: 1
+      });
     }
   }, [fitView, getNodes, keyword, searchIndex, setNodes]);
 

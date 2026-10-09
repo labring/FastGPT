@@ -15,6 +15,7 @@ import { useContextSelector } from 'use-context-selector';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowBufferDataContext } from '../../../../../context/workflowInitContext';
+import { useWorkflowStore } from '@/pageComponents/app/detail/WorkflowComponents/store/useWorkflowStore';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 
@@ -64,10 +65,11 @@ export const useReference = ({
 }) => {
   const { t } = useSafeTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
-  const { getNodeById, childrenNodeIdListMap } = useContextSelector(
+  const edges = useWorkflowStore((s) => s.edges);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
+  const childrenNodeIdListMap = useContextSelector(
     WorkflowBufferDataContext,
-    (v) => v
+    (v) => v.childrenNodeIdListMap
   );
 
   // 获取可选的变量列表
@@ -132,7 +134,7 @@ export const useReference = ({
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useSafeTranslation();
 
-  const getNodeById = useContextSelector(WorkflowBufferDataContext, (v) => v.getNodeById);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const isArray = item.valueType?.includes('array') ?? false;

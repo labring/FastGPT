@@ -296,6 +296,7 @@ const ListItem = ({
       <Box
         ref={provided.innerRef}
         {...provided.draggableProps}
+        {...(ifElseList.length <= 1 ? provided.dragHandleProps : {})}
         style={{
           ...provided.draggableProps.style,
           opacity: snapshot.isDragging ? 0.8 : 1

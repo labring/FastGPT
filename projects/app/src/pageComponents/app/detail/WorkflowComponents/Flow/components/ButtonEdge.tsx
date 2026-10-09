@@ -6,8 +6,7 @@ import {
   type Edge,
   type Node,
   type ConnectionLineComponentProps,
-  useReactFlow,
-  useEdges
+  useReactFlow
 } from '@xyflow/react';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -16,7 +15,7 @@ import { useContextSelector } from 'use-context-selector';
 import { useThrottleEffect } from 'ahooks';
 import { WorkflowNodeDataContext } from '../../context/workflowInitContext';
 import { WorkflowDebugContext } from '../../context/workflowDebugContext';
-import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { getCustomStepPath } from '../utils/edge';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
@@ -47,10 +46,10 @@ export const CustomConnectionLine = ({
 
 const ButtonEdge = (props: EdgeProps) => {
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
-  const { getNodes, getNode, deleteElements } = useReactFlow<Node<FlowNodeItemType>, Edge>();
-  const edges = useEdges();
+  const { getNode, getEdges } = useReactFlow<Node<FlowNodeItemType>, Edge>();
+  const setEdges = useWorkflowStore((s) => s.setEdges);
+  const setHoverEdgeId = useWorkflowStore((s) => s.setHoverEdgeId);
   const workflowDebugData = useContextSelector(WorkflowDebugContext, (v) => v.workflowDebugData);
-  const hoverEdgeId = useContextSelector(WorkflowUIContext, (v) => v.hoverEdgeId);
 
   const {
     id,
@@ -69,34 +68,36 @@ const ButtonEdge = (props: EdgeProps) => {
   } = props;
 
   // If parentNode is folded, the edge will not be displayed
-  const isFolded = useMemo(() => {
-    const sourceNode = getNode(source);
-    const targetNode = getNode(target);
-    if (sourceNode?.data.parentNodeId) {
-      return !!getNode(sourceNode.data.parentNodeId)?.data.isFolded;
+  const isFolded = useWorkflowStore((s) => {
+    const sourceNode = s.getNodeById(source);
+    if (sourceNode?.parentNodeId) {
+      return !!s.getNodeById(sourceNode.parentNodeId)?.isFolded;
     }
-    if (targetNode?.data.parentNodeId) {
-      return !!getNode(targetNode.data.parentNodeId)?.data.isFolded;
+    const targetNode = s.getNodeById(target);
+    if (targetNode?.parentNodeId) {
+      return !!s.getNodeById(targetNode.parentNodeId)?.isFolded;
     }
     return false;
-  }, [getNode, source, target]);
+  });
 
-  const defaultZIndex = useMemo(() => {
-    const node = getNode(source);
-    return node?.data.parentNodeId ? 2002 : 0;
-  }, [getNode, source]);
+  const defaultZIndex = useWorkflowStore((s) => {
+    const sourceNode = s.getNodeById(source);
+    if (sourceNode?.parentNodeId) return 2002;
+    const targetNode = s.getNodeById(target);
+    if (targetNode?.parentNodeId) return 2002;
+    return 0;
+  });
 
   // Offset edges from same source horizontally to avoid visual overlap
   const edgeStepOffset = useMemo(() => {
-    const sameSourceEdges = edges.filter((e) => e.source === source);
+    const allEdges = getEdges();
+    const sameSourceEdges = allEdges.filter((e) => e.source === source);
     if (sameSourceEdges.length <= 1) return 0;
 
-    const nodesMap = new Map(getNodes().map((n) => [n.id, n]));
-
-    // Sort edges by target node Y position
+    // Sort edges by target node Y position using O(1) getNode lookup
     const sortedEdges = [...sameSourceEdges].sort((a, b) => {
-      const nodeA = nodesMap.get(a.target);
-      const nodeB = nodesMap.get(b.target);
+      const nodeA = getNode(a.target);
+      const nodeB = getNode(b.target);
       return (nodeA?.position?.y ?? 0) - (nodeB?.position?.y ?? 0);
     });
 
@@ -111,13 +112,13 @@ const ButtonEdge = (props: EdgeProps) => {
 
     const maxOffset = Math.abs(targetX - sourceX) * 0.25;
     return Math.max(-maxOffset, Math.min(maxOffset, offset));
-  }, [edges, source, id, getNodes, sourceX, targetX]);
+  }, [getEdges, getNode, source, id, sourceX, targetX]);
 
   const onDelConnect = useCallback(
     (edgeId: string) => {
-      deleteElements({ edges: [{ id: edgeId }] });
+      setEdges((edges) => edges.filter((edge) => edge.id !== edgeId));
     },
-    [deleteElements]
+    [setEdges]
   );
 
   // Selected edge or source/target node selected
@@ -145,7 +146,7 @@ const ButtonEdge = (props: EdgeProps) => {
   });
 
   const isToolEdge = sourceHandleId === NodeOutputKeyEnum.selectedTools;
-  const isHover = hoverEdgeId === id;
+  const isHover = useWorkflowStore((s) => s.hoverEdgeId === id);
 
   const { newTargetX, newTargetY } = useMemo(() => {
     if (targetPosition === 'left') {
@@ -210,7 +211,11 @@ const ButtonEdge = (props: EdgeProps) => {
             borderRadius={'18px'}
             cursor={'pointer'}
             zIndex={defaultZIndex + 1000}
-            onClick={() => onDelConnect(id)}
+            onMouseEnter={() => setHoverEdgeId(id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelConnect(id);
+            }}
           >
             <MyIcon name={'core/workflow/closeEdge'} w={'100%'}></MyIcon>
           </Flex>
@@ -248,6 +253,7 @@ const ButtonEdge = (props: EdgeProps) => {
     newTargetX,
     newTargetY,
     onDelConnect,
+    setHoverEdgeId,
     id
   ]);
 
@@ -289,6 +295,7 @@ const ButtonEdge = (props: EdgeProps) => {
       <BaseEdge
         id={id}
         path={path}
+        interactionWidth={props.interactionWidth ?? 20}
         style={{
           ...edgeStyle,
           stroke: edgeColor,
@@ -311,7 +318,8 @@ const ButtonEdge = (props: EdgeProps) => {
     target,
     style,
     highlightEdge,
-    isFolded
+    isFolded,
+    props.interactionWidth
   ]);
 
   return (

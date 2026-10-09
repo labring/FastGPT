@@ -4,7 +4,6 @@ import {
   ControlButton,
   MiniMap,
   type MiniMapNodeProps,
-  type Node,
   Panel,
   useReactFlow
 } from '@xyflow/react';
@@ -15,9 +14,8 @@ import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import styles from './index.module.scss';
 import { useKeyPress } from 'ahooks';
-import { WorkflowSnapshotContext } from '../../context/workflowSnapshotContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 
 const buttonStyle = {
   border: 'none',
@@ -26,15 +24,18 @@ const buttonStyle = {
 };
 
 const FlowController = React.memo(function FlowController() {
-  const { fitView, zoomIn, zoomOut, getNode } = useReactFlow<Node<FlowNodeItemType>>();
-  const { undo, redo, canRedo, canUndo } = useContextSelector(WorkflowSnapshotContext, (v) => v);
-  const {
-    workflowControlMode,
-    setWorkflowControlMode,
-    mouseInCanvas,
-    presentationMode,
-    setPresentationMode
-  } = useContextSelector(WorkflowUIContext, (v) => v);
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
+  const undo = useWorkflowStore((s) => s.undo);
+  const redo = useWorkflowStore((s) => s.redo);
+  const canRedo = useWorkflowStore((s) => s.future.length > 0);
+  const canUndo = useWorkflowStore((s) => s.past.length > 1);
+
+  const workflowControlMode = useWorkflowStore((s) => s.workflowControlMode);
+  const setWorkflowControlMode = useWorkflowStore((s) => s.setWorkflowControlMode);
+  const presentationMode = useWorkflowStore((s) => s.presentationMode);
+  const setPresentationMode = useWorkflowStore((s) => s.setPresentationMode);
+  const getNodeById = useWorkflowStore((s) => s.getNodeById);
+  const mouseInCanvas = useContextSelector(WorkflowUIContext, (v) => v.mouseInCanvas);
   const { t } = useTranslation();
 
   const isMac = !window ? false : window.navigator.userAgent.toLocaleLowerCase().includes('mac');
@@ -68,7 +69,7 @@ const FlowController = React.memo(function FlowController() {
   useKeyPress(['shift.space'], (e) => {
     e.preventDefault();
     if (!mouseInCanvas) return;
-    setPresentationMode((v) => !v);
+    setPresentationMode(!presentationMode);
   });
 
   /*
@@ -77,15 +78,15 @@ const FlowController = React.memo(function FlowController() {
   const MiniMapNode = useCallback(
     ({ x, y, width, height, color, id }: MiniMapNodeProps) => {
       // If the node parentNode is folded, the child node will not be displayed
-      const node = getNode(id);
-      const parentNode = node?.data.parentNodeId ? getNode(node.data.parentNodeId) : undefined;
-      if (parentNode?.data.isFolded) {
+      const node = getNodeById(id);
+      const parentNode = node?.parentNodeId ? getNodeById(node?.parentNodeId) : undefined;
+      if (parentNode?.isFolded) {
         return null;
       }
 
-      return <rect x={x} y={y} width={width} height={height} fill={color} />;
+      return <rect x={x} y={y} width={width} height={height} fill={color || '#e2e2e2'} />;
     },
-    [getNode]
+    [getNodeById]
   );
 
   const Render = useMemo(() => {
@@ -149,7 +150,7 @@ const FlowController = React.memo(function FlowController() {
           {/* undo */}
           <MyTooltip label={isMac ? t('common:undo_tip_mac') : t('common:undo_tip')}>
             <ControlButton
-              onClick={undo}
+              onClick={() => undo()}
               style={buttonStyle}
               className={`${styles.customControlButton}`}
               disabled={!canUndo}
@@ -161,7 +162,7 @@ const FlowController = React.memo(function FlowController() {
           {/* redo */}
           <MyTooltip label={isMac ? t('common:redo_tip_mac') : t('common:redo_tip')}>
             <ControlButton
-              onClick={redo}
+              onClick={() => redo()}
               style={buttonStyle}
               className={`${styles.customControlButton}`}
               disabled={!canRedo}
@@ -186,9 +187,9 @@ const FlowController = React.memo(function FlowController() {
                 ...buttonStyle,
                 ...(presentationMode ? { backgroundColor: 'rgba(17, 24, 36, 0.05)' } : {})
               }}
-              className={`${styles.customControlButton}`}
+              className={`${styles.customControlButton} ${styles.presentationButton}`}
             >
-              <MyIcon name={'core/workflow/present'} fill="none" />
+              <MyIcon name={'core/workflow/present'} fill="none" style={{ fill: 'none' }} />
             </ControlButton>
           </MyTooltip>
 
@@ -198,7 +199,7 @@ const FlowController = React.memo(function FlowController() {
           <MyTooltip label={t('common:page_center')}>
             <ControlButton
               onClick={() => {
-                fitView({ padding: 0.3 });
+                fitView({ padding: 0.3, includeHiddenNodes: true, minZoom: 0.6, maxZoom: 1 });
               }}
               style={buttonStyle}
               className={`custom-workflow-fix_view ${styles.customControlButton}`}

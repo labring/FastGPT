@@ -1,5 +1,5 @@
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type Node, type NodeProps, useNodesData, useReactFlow } from '@xyflow/react';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import Reference from '../render/RenderInput/templates/Reference';
 import { Box } from '@chakra-ui/react';
@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { AppContext } from '../../../../context';
 import { useTranslation } from 'next-i18next';
 import { getGlobalVariableNode } from '@/web/core/workflow/adapt';
@@ -27,7 +28,7 @@ const typeMap = {
 
 const NodeLoopEnd = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { nodeId, inputs, parentNodeId } = data;
-  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { t } = useTranslation();
@@ -37,13 +38,12 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
     [inputs]
   );
 
-  const parentNode = useNodesData<Node<FlowNodeItemType>>(parentNodeId ?? '');
-
   const parallelRunIntro = useMemoEnhance(() => {
-    return parentNode?.data?.flowNodeType === FlowNodeTypeEnum.parallelRun
+    const parentNode = getNodeById(parentNodeId);
+    return parentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun
       ? t('workflow:parallel_run_end_intro')
       : undefined;
-  }, [parentNode?.data?.flowNodeType, t]);
+  }, [getNodeById, parentNodeId, t]);
 
   // Get loopEnd input value type
   const valueType = useMemo(() => {
@@ -55,29 +55,31 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
       t,
       chatConfig: appDetail.chatConfig
     });
-    const node =
-      targetId === globalNode.nodeId ? globalNode : targetId ? getNode(targetId)?.data : undefined;
+    const node = (() => {
+      if (targetId === globalNode.nodeId) return globalNode;
+      return getNodeById(targetId);
+    })();
 
     return node?.outputs.find((output) => output.id === inputItem?.value[1])
       ?.valueType as keyof typeof typeMap;
-  }, [appDetail.chatConfig, getNode, inputItem, t]);
+  }, [appDetail.chatConfig, getNodeById, inputItem, t]);
 
   useEffect(() => {
     if (!valueType) return;
 
-    const parentNodeData = parentNode?.data;
-    if (!parentNodeData) return;
+    const parentNode = getNodeById(parentNodeId);
+    if (!parentNode) return;
 
     const newArrayType = typeMap[valueType] ?? WorkflowIOValueTypeEnum.arrayAny;
 
-    if (parentNodeData.flowNodeType === FlowNodeTypeEnum.parallelRun) {
+    if (parentNode.flowNodeType === FlowNodeTypeEnum.parallelRun) {
       // For parallelRun parent: update parallelSuccessResults output type
-      const successOutput = parentNodeData.outputs.find(
+      const successOutput = parentNode.outputs.find(
         (output) => output.key === NodeOutputKeyEnum.parallelSuccessResults
       );
       if (successOutput && successOutput.valueType !== newArrayType) {
         onChangeNode({
-          nodeId: parentNodeData.nodeId,
+          nodeId: parentNode.nodeId,
           type: 'updateOutput',
           key: NodeOutputKeyEnum.parallelSuccessResults,
           value: { ...successOutput, valueType: newArrayType }
@@ -85,19 +87,19 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
       }
     } else {
       // For loop parent: update nestedArrayResult output type
-      const parentNodeOutput = parentNodeData.outputs.find(
+      const parentNodeOutput = parentNode.outputs.find(
         (output) => output.key === NodeOutputKeyEnum.nestedArrayResult
       );
       if (parentNodeOutput && parentNodeOutput.valueType !== newArrayType) {
         onChangeNode({
-          nodeId: parentNodeData.nodeId,
+          nodeId: parentNode.nodeId,
           type: 'updateOutput',
           key: NodeOutputKeyEnum.nestedArrayResult,
           value: { ...parentNodeOutput, valueType: newArrayType }
         });
       }
     }
-  }, [valueType, nodeId, onChangeNode, parentNode?.data]);
+  }, [valueType, nodeId, onChangeNode, parentNodeId, getNodeById]);
 
   return (
     <NodeCard

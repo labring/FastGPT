@@ -12,8 +12,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import RenderOutput from './render/RenderOutput';
 import { useContextSelector } from 'use-context-selector';
 import CatchError from './render/RenderOutput/CatchError';
-import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
+import { useNodeToolInputs, splitOutput } from '../../context/workflowUtilsContext';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import WorkflowSandboxConfig, {
   createSandboxEntrypointInput
@@ -28,20 +27,12 @@ const NodeToolCall = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => 
   const { nodeId, inputs, outputs, catchError } = data;
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const splitToolInputs = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitToolInputs);
-  const splitOutput = useContextSelector(WorkflowUtilsContext, (ctx) => ctx.splitOutput);
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
-  const { isTool, commonInputs } = useMemoEnhance(
-    () => splitToolInputs(inputs, nodeId),
-    [inputs, nodeId, splitToolInputs]
-  );
-  const { successOutputs, errorOutputs } = useMemoEnhance(
-    () => splitOutput(outputs),
-    [outputs, splitOutput]
-  );
+  const { isTool, commonInputs } = useNodeToolInputs(inputs, nodeId);
+  const { successOutputs, errorOutputs } = React.useMemo(() => splitOutput(outputs), [outputs]);
   const sandboxInput = React.useMemo(
     () => inputs.find((input) => input.key === NodeInputKeyEnum.useAgentSandbox),
     [inputs]

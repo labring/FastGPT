@@ -1,9 +1,10 @@
 import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
-import { type Node, type NodeProps, useNodesData } from '@xyflow/react';
+import { type Node, type NodeProps } from '@xyflow/react';
 import NodeCard from '../render/NodeCard';
 import { useContextSelector } from 'use-context-selector';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -28,22 +29,24 @@ const typeMap = {
 
 const NodeLoopStart = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) => {
   const { t } = useTranslation();
-  const { nodeId, outputs, parentNodeId } = data;
+  const { nodeId, outputs } = data;
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const parentNode = useNodesData<Node<FlowNodeItemType>>(parentNodeId ?? '');
+  const loopStartNode = getNodeById(nodeId);
 
   // According to the variable referenced by parentInput, find the output of the corresponding node and take its output valueType
   const loopItemInputType = useMemo(() => {
-    const parentArrayInput = parentNode?.data?.inputs.find(
+    const parentNode = getNodeById(loopStartNode?.parentNodeId);
+    const parentArrayInput = parentNode?.inputs.find(
       (input) => input.key === NodeInputKeyEnum.nestedInputArray
     );
     return typeMap[parentArrayInput?.valueType as keyof typeof typeMap];
-  }, [parentNode?.data?.inputs]);
+  }, [getNodeById, loopStartNode?.parentNodeId]);
 
   // Auth update loopStartInput output
   useEffect(() => {
-    const loopArrayOutput = outputs?.find(
+    const loopArrayOutput = loopStartNode?.outputs.find(
       (output) => output.key === NodeOutputKeyEnum.nestedStartInput
     );
 
@@ -70,7 +73,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) =>
       });
     }
     // if loopItemInputType is not undefined, and has loopArrayOutput, update loopStartInput output
-    if (loopItemInputType && loopArrayOutput) {
+    if (loopItemInputType && loopArrayOutput && loopArrayOutput.valueType !== loopItemInputType) {
       onChangeNode({
         nodeId,
         type: 'updateOutput',
@@ -81,7 +84,7 @@ const NodeLoopStart = ({ data, selected }: NodeProps<Node<FlowNodeItemType>>) =>
         }
       });
     }
-  }, [outputs, nodeId, onChangeNode, loopItemInputType, t]);
+  }, [loopStartNode?.outputs, nodeId, onChangeNode, loopItemInputType, t]);
 
   const Render = useMemo(() => {
     return (

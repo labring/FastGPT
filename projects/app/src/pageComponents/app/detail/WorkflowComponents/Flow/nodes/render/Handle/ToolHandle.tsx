@@ -7,15 +7,13 @@ import {
   Handle,
   Position,
   useConnection,
-  useEdges,
-  useHandleConnections,
+  useNodeConnections,
   useReactFlow,
   type Node,
   type Edge
 } from '@xyflow/react';
 import { useCallback, useMemo } from 'react';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowUIContext } from '../../../../context/workflowUIContext';
+import { useWorkflowStore } from '../../../../store/useWorkflowStore';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { isNodeConnectionAllowed } from '@fastgpt/global/core/workflow/template/context';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -33,9 +31,8 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
   const connectingHandleId = connection.inProgress ? connection.fromHandle?.id : undefined;
   const connectingNodeId = connection.inProgress ? connection.fromNode?.id : undefined;
 
-  const { getNode } = useReactFlow<Node<FlowNodeItemType>>();
-  const edges = useEdges();
-  const toolConnections = useHandleConnections({ type: 'target', id: handleId });
+  const { getNode, getEdges } = useReactFlow<Node<FlowNodeItemType>>();
+  const toolConnections = useNodeConnections({ id: nodeId, handleType: 'target', handleId });
   const connected = toolConnections.length > 0;
 
   const active = useMemo(() => {
@@ -54,12 +51,12 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
         targetTemplate,
         targetNode,
         sourceNode,
-        edges,
+        edges: getEdges(),
         handleId: connectingHandleId,
         getNodeById: (id) => (id ? getNode(id)?.data : undefined)
       })
     );
-  }, [connectingHandleId, connectingNodeId, edges, getNode, nodeId, show]);
+  }, [connectingHandleId, connectingNodeId, getEdges, getNode, nodeId, show]);
   // if top handle is connected, return null
   const showHandle = active || connected;
 
@@ -106,10 +103,10 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 
 export const ToolSourceHandle = ({ nodeId }: { nodeId: string }) => {
   const { t } = useTranslation();
-  const { setEdges } = useReactFlow<Node<FlowNodeItemType>, Edge>();
+  const setEdges = useWorkflowStore((s) => s.setEdges);
   const connection = useConnection();
   const isConnectingFromThisNode = connection.inProgress && connection.fromNode?.id === nodeId;
-  const nodeIsHover = useContextSelector(WorkflowUIContext, (v) => v.hoverNodeId === nodeId);
+  const nodeIsHover = useWorkflowStore((s) => s.hoverNodeId === nodeId);
 
   const active = useMemo(
     () => nodeIsHover || isConnectingFromThisNode,

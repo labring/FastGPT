@@ -12,7 +12,7 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { cloneDeep } from 'lodash-es';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { WorkflowUIContext } from '../../context/workflowUIContext';
+import { useWorkflowStore } from '../../store/useWorkflowStore';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
 import { getHandleIndex } from '../utils/edge';
 
@@ -51,8 +51,8 @@ const ContextMenuItem = ({
 
 const ContextMenu = () => {
   const { t } = useTranslation();
-  const menu = useContextSelector(WorkflowUIContext, (v) => v.menu!);
-  const setMenu = useContextSelector(WorkflowUIContext, (ctx) => ctx.setMenu);
+  const menu = useWorkflowStore((s) => s.menu);
+  const setMenu = useWorkflowStore((s) => s.setMenu);
   const { setNodes, allNodeFolded } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const getParentNodeSizeAndPosition = useContextSelector(
     WorkflowLayoutContext,
@@ -380,11 +380,13 @@ const ContextMenu = () => {
     setNodes(newNodes);
 
     window.requestAnimationFrame(() => {
-      fitView({ padding: 0.3 });
+      fitView({ padding: 0.3, includeHiddenNodes: true });
     });
   }, [fitView, getEdges, getNodes, getParentNodeSizeAndPosition, setNodes]);
 
   const onAddComment = useCallback(() => {
+    if (!menu) return;
+
     // Compensate for menu position offset (set in onPaneContextMenu)
     // menu.left = e.clientX - 12, menu.top = e.clientY + 6
     const mouseX = menu.left + 12;
@@ -403,7 +405,7 @@ const ContextMenu = () => {
       })),
       newNode
     ]);
-  }, [menu.left, menu.top, screenToFlowPosition, setNodes, t]);
+  }, [menu?.left, menu?.top, screenToFlowPosition, setNodes, t]);
 
   const onFold = useCallback(() => {
     setNodes((state) => {
@@ -426,6 +428,8 @@ const ContextMenu = () => {
   const handleCloseMenu = useCallback(() => {
     setMenu(null);
   }, [setMenu]);
+
+  if (!menu) return null;
 
   return (
     <Box>

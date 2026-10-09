@@ -5,4 +5,11 @@
     max-width: 18px;
     max-height: 18px;
   }
+
+  &.presentationButton svg {
+    fill: none;
+    path {
+      fill: none;
+    }
+  }
 }
