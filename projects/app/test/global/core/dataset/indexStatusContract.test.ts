@@ -1,13 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   DatasetDataIndexStatusEnum,
   DatasetDataIndexStatusMap,
   getDatasetDataIndexStatusMapData
 } from '@fastgpt/global/core/dataset/data/constants';
-import {
-  indexedDatasetDataMatch,
-  isDatasetDataIndexed
-} from '@fastgpt/global/core/dataset/data/utils';
 import { DatasetDataItemSchema, DatasetDataSchema } from '@fastgpt/global/core/dataset/type';
 import { GetDataListItemSchema } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { Types } from '@fastgpt/service/common/mongo';
@@ -31,32 +27,11 @@ const buildItem = (extra: Record<string, unknown> = {}) => ({
 });
 
 describe('indexStatus schema contract', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  /** DS-01：旧数据字段缺失时业务语义为已完成索引。 */
-  it('treats missing indexStatus as indexed without backfilling', () => {
-    expect(isDatasetDataIndexed(undefined)).toBe(true);
-    expect(isDatasetDataIndexed(DatasetDataIndexStatusEnum.indexed)).toBe(true);
-    expect(isDatasetDataIndexed(DatasetDataIndexStatusEnum.indexing)).toBe(false);
-  });
-
-  it('builds an indexed-or-missing query for status-aware reads', () => {
-    expect(indexedDatasetDataMatch).toEqual({
-      $or: [
-        { indexStatus: DatasetDataIndexStatusEnum.indexed },
-        { indexStatus: { $exists: false } }
-      ]
-    });
-  });
-
   /** DS-04：schema 必须接受 indexStatus，否则 strict 模式下写入会静默失效。 */
   it.each(Object.values(DatasetDataIndexStatusEnum))(
     'accepts %s on the mongo data schema',
     (indexStatus) => {
       expect(DatasetDataSchema.parse(buildItem({ indexStatus })).indexStatus).toBe(indexStatus);
-      expect(DatasetDataSchema.parse(buildItem()).indexStatus).toBeUndefined();
     }
   );
 
@@ -64,7 +39,8 @@ describe('indexStatus schema contract', () => {
     expect(() => DatasetDataSchema.parse(buildItem({ indexStatus: 'pending' }))).toThrow();
   });
 
-  it('keeps the field optional in the API item schemas', () => {
+  it('keeps the field optional in the data and API item schemas', () => {
+    expect(DatasetDataSchema.parse(buildItem()).indexStatus).toBeUndefined();
     expect(
       DatasetDataItemSchema.parse({
         id: new Types.ObjectId(),

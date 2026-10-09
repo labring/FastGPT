@@ -147,7 +147,7 @@ describe('pre-created data queue routing', () => {
   ] as const)(
     'runs only one %s worker while other queues are busy',
     async (mode, run, queueKey) => {
-      serviceEnv.DATASET_SYNONYM_ENABLED = true;
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
       global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
       const otherQueueKey = queueKey === 'vectorQueueLen' ? 'synonymQueueLen' : 'vectorQueueLen';
       global[otherQueueKey] = 1;
@@ -416,14 +416,18 @@ describe('pre-created data queue routing', () => {
     );
   });
 
-  /** CP-04 / DS-07 规则 3：待索引数据走提前落库路径，更新同一条数据。 */
-  it('updates the same pre-created data and marks it indexed', async () => {
-    const { data, task } = await createContext({
+  it('completes initial indexing in place and commits full-text without enqueueing a rebuild', async () => {
+    const { dataset, data, task } = await createContext({
       indexStatus: DatasetDataIndexStatusEnum.indexing
     });
-
+    mockGetVectors.mockImplementation(async ({ inputs }) => {
+      // 向量生成期间保持 indexing，完成后才与全文记录一起提交 indexed。
+      expect((await MongoDatasetData.findById(data._id).lean())?.indexStatus).toBe(
+        DatasetDataIndexStatusEnum.indexing
+      );
+      return createMockVectorsResponse(inputs.map((input) => input.input));
+    });
     await generatePreCreatedData();
-
     const updated = await MongoDatasetData.findById(data._id).lean();
     expect(updated).toMatchObject({
       indexStatus: DatasetDataIndexStatusEnum.indexed,
@@ -431,10 +435,12 @@ describe('pre-created data queue routing', () => {
     });
     expect(updated!.indexes.length).toBeGreaterThan(0);
     expect(updated!.indexes.every((index) => Boolean(index.dataId))).toBe(true);
-
-    // 同一 dataId 只有一条数据行，训练任务按现有逻辑删除。
+    expect(updated?.history ?? []).toHaveLength(0);
+    expect(mockGetVectors).toHaveBeenCalled();
     expect(await MongoDatasetData.countDocuments({ collectionId: data.collectionId })).toBe(1);
+    expect(await MongoDatasetDataText.countDocuments({ dataId: data._id })).toBe(1);
     expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
+    expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
   });
 
   it('does not consume pre-created tasks', async () => {
@@ -448,81 +454,6 @@ describe('pre-created data queue routing', () => {
     expect((await MongoDatasetData.findById(data._id).lean())?.indexStatus).toBe(
       DatasetDataIndexStatusEnum.indexing
     );
-  });
-
-  /**
-   * DS-07：新路径在向量处理前已经是 indexing。
-   * 向量调用发生在领取任务之后，因此在该回调里读库能观察到状态保持不变。
-   */
-  it('keeps pre-created data indexing before writing vectors', async () => {
-    const { data } = await createContext({
-      indexStatus: DatasetDataIndexStatusEnum.indexing
-    });
-
-    const statusesDuringVectorWrite: (string | undefined)[] = [];
-    mockGetVectors.mockImplementation(async ({ inputs }) => {
-      const current = await MongoDatasetData.findById(data._id).lean();
-      statusesDuringVectorWrite.push(current?.indexStatus);
-      return createMockVectorsResponse(inputs.map((input) => input.input));
-    });
-
-    await generatePreCreatedData();
-
-    expect(statusesDuringVectorWrite).not.toHaveLength(0);
-    expect(statusesDuringVectorWrite).toContain(DatasetDataIndexStatusEnum.indexing);
-    // 完成态仍收敛到 indexed。
-    expect((await MongoDatasetData.findById(data._id).lean())?.indexStatus).toBe(
-      DatasetDataIndexStatusEnum.indexed
-    );
-  });
-
-  /** DS-10.3：Mongo $text provider 的全文行与 indexed 标记同边界写入。 */
-  it('writes the full-text record together with the indexed status', async () => {
-    const { data } = await createContext({
-      indexStatus: DatasetDataIndexStatusEnum.indexing
-    });
-
-    await generatePreCreatedData();
-
-    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.indexed
-    });
-    expect(await MongoDatasetDataText.countDocuments({ dataId: data._id })).toBe(1);
-  });
-
-  /** DS-07：提前落库路径不得触发重建接力，任务表不产生重建链残留。 */
-  it('does not enqueue a following rebuild task', async () => {
-    const { dataset, data } = await createContext({
-      indexStatus: DatasetDataIndexStatusEnum.indexing
-    });
-
-    await generatePreCreatedData();
-
-    expect(await MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).toBe(0);
-    const updated = await MongoDatasetData.findById(data._id).lean();
-    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
-    // 内容未变化时不写入历史记录。
-    expect(updated?.history ?? []).toHaveLength(0);
-  });
-
-  /** CP-03：关联数据无状态时继续走现有正式数据重建路径。 */
-  it('keeps the rebuild path for data without indexStatus', async () => {
-    const { data } = await createContext({
-      mode: TrainingModeEnum.rebuildIndex,
-      indexes: [
-        {
-          type: DatasetDataIndexTypeEnum.custom,
-          text: 'legacy custom index',
-          dataId: 'legacy_vector_1'
-        }
-      ]
-    });
-
-    await generateRebuildIndex();
-
-    const updated = await MongoDatasetData.findById(data._id).lean();
-    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
-    expect(updated!.indexes.map((index) => index.text)).toContain('legacy custom index');
   });
 
   it('keeps an explicitly cleared answer through failed and successful index retries', async () => {
@@ -611,6 +542,7 @@ describe('pre-created data queue routing', () => {
       mode: TrainingModeEnum.rebuildIndex,
       indexes: storedIndexes
     });
+    expect(data.indexStatus).toBeUndefined();
     await MongoDatasetData.updateOne(
       { _id: data._id },
       {
@@ -656,6 +588,7 @@ describe('pre-created data queue routing', () => {
     expect(updated).toMatchObject({
       q: 'stored body',
       a: 'stored answer',
+      indexStatus: DatasetDataIndexStatusEnum.indexed,
       imageDescMap: { image: 'existing description' }
     });
     expect(updated!.indexes.map(({ type, text }) => ({ type, text }))).toEqual(

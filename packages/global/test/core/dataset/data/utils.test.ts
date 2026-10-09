@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
+  isDatasetDataIndexed,
+  indexedDatasetDataMatch,
   isDatasetDataProcessing,
   isDatasetDataFailed
 } from '@fastgpt/global/core/dataset/data/utils';
@@ -47,5 +49,26 @@ describe('isDatasetDataProcessing', () => {
 describe('isDatasetDataFailed', () => {
   it.each(cases)('identifies data failure for $status', ({ status, failed }) => {
     expect(isDatasetDataFailed(status)).toBe(failed);
+  });
+});
+
+describe('isDatasetDataIndexed', () => {
+  it.each([
+    [undefined, true],
+    [DatasetDataIndexStatusEnum.indexed, true],
+    ...Object.values(DatasetDataIndexStatusEnum)
+      .filter((status) => status !== DatasetDataIndexStatusEnum.indexed)
+      .map((status) => [status, false] as const)
+  ] as const)('treats %s as indexed=%s', (status, expected) => {
+    expect(isDatasetDataIndexed(status)).toBe(expected);
+  });
+
+  it('includes explicitly indexed and legacy data in the database query', () => {
+    expect(indexedDatasetDataMatch).toEqual({
+      $or: [
+        { indexStatus: DatasetDataIndexStatusEnum.indexed },
+        { indexStatus: { $exists: false } }
+      ]
+    });
   });
 });

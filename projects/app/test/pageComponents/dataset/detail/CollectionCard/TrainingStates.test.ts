@@ -3,6 +3,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { createTrainingDetail as createDetail } from './fixtures';
 import type { GetCollectionTrainingDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 
@@ -54,28 +55,6 @@ const TrainingStates = (
   await import('@/pageComponents/dataset/detail/CollectionCard/TrainingStates')
 ).default;
 
-const createDetail = (): GetCollectionTrainingDetailResponseType => {
-  const counts = {
-    parse: 0,
-    qa: 0,
-    chunk: 0,
-    rebuildIndex: 0,
-    rebuildSynonym: 0,
-    index: 0,
-    image: 0,
-    auto: 0,
-    imageParse: 0
-  };
-  return {
-    trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-    advancedTraining: { customPdfParse: false, imageIndex: false, autoIndexes: false },
-    queuedCounts: { ...counts },
-    trainingCounts: { ...counts },
-    errorCounts: { ...counts },
-    trainedCount: 0
-  };
-};
-
 describe('TrainingStates rebuild stage', () => {
   let root: Root;
   let container: HTMLDivElement;
@@ -92,9 +71,9 @@ describe('TrainingStates rebuild stage', () => {
     );
     await act(async () => mocks.onSuccess?.(detail));
   };
-  const rebuildRow = () =>
+  const rebuildRow = (label = '索引重建') =>
     Array.from(container.querySelectorAll('[data-bg]')).find((element) =>
-      element.textContent?.includes('索引重建')
+      element.textContent?.includes(label)
     );
   beforeEach(() => {
     const dom = new JSDOM('<!doctype html><html><body></body></html>');
@@ -117,60 +96,37 @@ describe('TrainingStates rebuild stage', () => {
     expect(rebuildRow()).toBeUndefined();
   });
 
-  it('shows synonym processing and failure counts separately from index rebuild', async () => {
-    const detail = createDetail();
-    detail.trainingCounts.rebuildSynonym = 6;
-    detail.errorCounts.rebuildSynonym = 1;
-    await render(detail);
-    expect(container.textContent).toContain('同义词重建');
-    expect(container.textContent).toContain('6 条处理中');
-    expect(container.textContent).toContain('1 组异常');
-    expect(rebuildRow()).toBeUndefined();
-    expect(container.textContent!.indexOf('同义词重建')).toBeLessThan(
-      container.textContent!.indexOf('已就绪')
-    );
-    await render(createDetail());
-    expect(container.textContent).toContain('同义词重建');
-    expect(container.textContent).not.toContain('6 条处理中');
-  });
+  it.each(['rebuildIndex', 'rebuildSynonym'] as const)(
+    'keeps the observed %s stage checked until the modal closes',
+    async (mode) => {
+      const label = mode === 'rebuildIndex' ? '索引重建' : '同义词重建';
+      const queued = createDetail();
+      queued.trainingCounts[mode] = 7;
+      await render(queued);
+      expect(rebuildRow(label)?.textContent).toContain('7 条处理中');
+      expect(
+        rebuildRow(label)?.parentElement?.querySelector('[data-icon="common/check"]')
+      ).toBeNull();
 
-  it('shows combined rebuild processing and failed counts before the ready stage', async () => {
-    const detail = createDetail();
-    detail.trainingCounts.rebuildIndex = 8;
-    detail.errorCounts.rebuildIndex = 1;
-    await render(detail);
-    const row = rebuildRow()!;
-    expect(row.textContent).toContain('8 条处理中');
-    expect(row.textContent).toContain('1 组异常');
-    expect(row.getAttribute('data-bg')).toBe('red.50');
-    expect(container.textContent!.indexOf('索引重建')).toBeLessThan(
-      container.textContent!.indexOf('已就绪')
-    );
-  });
+      const running = createDetail();
+      running.trainingCounts[mode] = 2;
+      await render(running);
+      expect(rebuildRow(label)?.textContent).toContain('2 条处理中');
 
-  it('keeps the observed rebuild stage checked after completion until the modal is closed', async () => {
-    const queued = createDetail();
-    queued.trainingCounts.rebuildIndex = 7;
-    await render(queued);
-    expect(rebuildRow()?.textContent).toContain('7 条处理中');
-    expect(rebuildRow()?.parentElement?.querySelector('[data-icon="common/check"]')).toBeNull();
-
-    const running = createDetail();
-    running.trainingCounts.rebuildIndex = 2;
-    await render(running);
-    expect(rebuildRow()?.textContent).toContain('2 条处理中');
-
-    const completed = createDetail();
-    completed.trainedCount = 7;
-    await render(completed);
-    expect(rebuildRow()).toBeDefined();
-    expect(rebuildRow()?.parentElement?.querySelector('[data-icon="common/check"]')).not.toBeNull();
-    expect(rebuildRow()?.textContent).not.toContain('组数据');
-    expect(rebuildRow()?.textContent).not.toContain('条处理中');
-    await act(async () => root.render(null));
-    await render(completed);
-    expect(rebuildRow()).toBeUndefined();
-  });
+      const completed = createDetail();
+      completed.trainedCount = 7;
+      await render(completed);
+      expect(rebuildRow(label)).toBeDefined();
+      expect(
+        rebuildRow(label)?.parentElement?.querySelector('[data-icon="common/check"]')
+      ).not.toBeNull();
+      expect(rebuildRow(label)?.textContent).not.toContain('组数据');
+      expect(rebuildRow(label)?.textContent).not.toContain('条处理中');
+      await act(async () => root.render(null));
+      await render(completed);
+      expect(rebuildRow(label)).toBeUndefined();
+    }
+  );
   it.each(['rebuildIndex', 'rebuildSynonym'] as const)(
     'merges pending and processing in the two-step %s flow, including failed-only rounds',
     async (mode) => {
@@ -193,6 +149,14 @@ describe('TrainingStates rebuild stage', () => {
       expect(container.textContent).not.toContain('process.Parsing');
       expect(container.textContent).not.toContain('process.Get QA');
       expect(container.textContent).not.toContain('process.Auto_Index');
+
+      detail.errorCounts[mode] = 1;
+      await render(detail);
+      expect(labels()).toEqual([
+        `${rebuildLabel}1 组异常5 条处理中`,
+        '已就绪dataset:training_ready'
+      ]);
+      expect(container.querySelector('[data-bg="red.50"]')?.textContent).toContain(rebuildLabel);
 
       detail.queuedCounts[mode] = 0;
       detail.trainingCounts[mode] = 0;

@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { getRootUser } from '@test/datas/users';
+import type { getRootUser } from '@test/datas/users';
+import { createDatasetCollectionFixture } from '@test/datas/dataset';
 
 const { mockAuthDatasetData } = vi.hoisted(() => ({ mockAuthDatasetData: vi.fn() }));
 
@@ -28,19 +26,7 @@ import getQuoteDataHandler from '@/pages/api/core/dataset/data/getQuoteData';
 
 /** 建立真实的数据行，用于验证 authDatasetData 的状态判断本身。 */
 const createData = async (indexStatus?: DatasetDataIndexStatusEnum) => {
-  const root = await getRootUser();
-  const dataset = await MongoDataset.create({
-    teamId: root.teamId,
-    tmbId: root.tmbId,
-    name: 'write protection'
-  });
-  const collection = await MongoDatasetCollection.create({
-    teamId: root.teamId,
-    tmbId: root.tmbId,
-    datasetId: dataset._id,
-    name: 'collection',
-    type: DatasetCollectionTypeEnum.file
-  });
+  const { root, dataset, collection } = await createDatasetCollectionFixture();
   const data = await MongoDatasetData.create({
     teamId: root.teamId,
     tmbId: root.tmbId,
@@ -124,18 +110,6 @@ describe('pending index data write protection', () => {
 
     expect(result.datasetData.q).toBe('chunk');
     expect(result.datasetData.indexStatus).toBe(DatasetDataIndexStatusEnum.indexing);
-  });
-
-  /** DS-04：鉴权返回的白名单对象必须带上 indexStatus，否则列表与详情读不到状态。 */
-  it('exposes indexStatus in the auth whitelist object', async () => {
-    const { root, data } = await createData(DatasetDataIndexStatusEnum.indexing);
-
-    const result = await authDatasetData({
-      ...(buildAuthReq(root) as any),
-      dataId: String(data._id)
-    });
-
-    expect(result.datasetData).toHaveProperty('indexStatus', DatasetDataIndexStatusEnum.indexing);
   });
 });
 

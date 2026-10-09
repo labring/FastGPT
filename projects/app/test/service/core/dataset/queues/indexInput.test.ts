@@ -51,8 +51,8 @@ let vlmModel: LLMSystemModelDataType;
 
 beforeEach(() => {
   Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
-  const defaultEmbeddingModel = getModelTestDefaults().embedding;
-  const defaultLLMModel = getModelTestDefaults().llm;
+  const defaultEmbeddingModel = getModelTestDefaults().embedding!;
+  const defaultLLMModel = getModelTestDefaults().llm!;
   visionEmbeddingModel = {
     ...defaultEmbeddingModel,
     modelId: '507f1f77bcf86cd799439021',
@@ -75,7 +75,6 @@ beforeEach(() => {
   };
 
   [visionEmbeddingModel, vlmModel].forEach((model) => {
-    addModelTestModel(model);
     addModelTestModel(model);
   });
 });

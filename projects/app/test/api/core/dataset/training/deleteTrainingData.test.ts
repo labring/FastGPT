@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/dataset/data/constants';
 import { serviceEnv } from '@fastgpt/service/env';
 import { getRootUser } from '@test/datas/users';
+import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -31,25 +32,11 @@ describe('delete training data test', () => {
     mockVectorDelete.mockResolvedValue(undefined);
   });
   afterEach(() => {
-    serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
+    Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: originalDatasetSynonymEnabled });
   });
 
   it('should delete training data', async () => {
-    const root = await getRootUser();
-    const dataset = await MongoDataset.create({
-      name: 'test',
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
-    });
-    const collection = await MongoDatasetCollection.create({
-      name: 'test',
-      type: DatasetCollectionTypeEnum.file,
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id
-    });
+    const { root, dataset, collection } = await createDatasetCollectionFixture();
     const trainingData = await MongoDatasetTraining.create({
       teamId: root.teamId,
       tmbId: root.tmbId,
@@ -151,22 +138,8 @@ describe('delete training data test', () => {
   ])(
     'deletes original data and indexes when deleting a rebuild task with data status %s',
     async (indexStatus) => {
-      serviceEnv.DATASET_SYNONYM_ENABLED = true;
-      const root = await getRootUser();
-      const dataset = await MongoDataset.create({
-        name: 'test',
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        vectorModel: 'test',
-        agentModel: 'test'
-      });
-      const collection = await MongoDatasetCollection.create({
-        name: 'test',
-        type: DatasetCollectionTypeEnum.file,
-        teamId: root.teamId,
-        tmbId: root.tmbId,
-        datasetId: dataset._id
-      });
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
+      const { root, dataset, collection } = await createDatasetCollectionFixture();
       const data = await MongoDatasetData.create({
         teamId: root.teamId,
         tmbId: root.tmbId,
@@ -297,21 +270,7 @@ describe('delete training data test', () => {
   );
 
   it('keeps initial-training data when cancelling an index task', async () => {
-    const root = await getRootUser();
-    const dataset = await MongoDataset.create({
-      name: 'initial',
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
-    });
-    const collection = await MongoDatasetCollection.create({
-      name: 'initial',
-      type: DatasetCollectionTypeEnum.file,
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id
-    });
+    const { root, dataset, collection } = await createDatasetCollectionFixture();
     const data = await MongoDatasetData.create({
       teamId: root.teamId,
       tmbId: root.tmbId,

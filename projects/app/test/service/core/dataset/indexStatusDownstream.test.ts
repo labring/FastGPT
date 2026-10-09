@@ -1,14 +1,12 @@
 import { getModelTestDefaults } from '@test/modelCache';
 import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { getRootUser } from '@test/datas/users';
+import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { Call } from '@test/utils/request';
 
 // 全局 S3 mock 未覆盖集合删除用到的批量删除接口，这里补齐。
@@ -32,19 +30,7 @@ vi.unmock('@fastgpt/service/common/mongo/sessionRun');
 import trainingDetailHandler from '@/pages/api/core/dataset/collection/trainingDetail';
 
 const createContext = async () => {
-  const root = await getRootUser();
-  const dataset = await MongoDataset.create({
-    teamId: root.teamId,
-    tmbId: root.tmbId,
-    name: 'index status contract'
-  });
-  const collection = await MongoDatasetCollection.create({
-    teamId: root.teamId,
-    tmbId: root.tmbId,
-    datasetId: dataset._id,
-    name: 'collection',
-    type: DatasetCollectionTypeEnum.file
-  });
+  const { root, dataset, collection } = await createDatasetCollectionFixture();
 
   const createData = async ({
     indexStatus,

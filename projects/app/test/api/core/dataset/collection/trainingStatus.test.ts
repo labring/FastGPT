@@ -11,7 +11,12 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { enqueueNextDatasetSynonymRebuildTask } from '@/service/core/dataset/queues/rebuildSynonym';
+import queueHandler from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
+import { createDatasetCollectionFixture } from '@test/datas/dataset';
 import { enqueueNextDatasetRebuildTask } from '@/service/core/dataset/queues/rebuild';
+import { serviceEnv } from '@fastgpt/service/env';
+import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
@@ -26,248 +31,193 @@ import { describe, expect, it, vi } from 'vitest';
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 describe('collection training status api', () => {
-  it('counts rebuild data once regardless of queue status or admission', async () => {
-    const root = await getRootUser();
-    const dataset = await MongoDataset.create({
-      name: 'rebuild-counts',
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
-    });
-    const collection = await MongoDatasetCollection.create({
-      name: 'rebuild-counts',
-      type: DatasetCollectionTypeEnum.file,
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id
-    });
-    const scope = {
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id,
-      collectionId: collection._id
-    };
-    const datas = await MongoDatasetData.create(
-      [
-        DatasetDataIndexStatusEnum.rebuildIndexPending,
-        DatasetDataIndexStatusEnum.rebuildIndexPending,
-        DatasetDataIndexStatusEnum.rebuildIndexPending,
-        DatasetDataIndexStatusEnum.rebuildIndexRunning,
-        DatasetDataIndexStatusEnum.rebuildIndexRunning,
-        DatasetDataIndexStatusEnum.rebuildIndexFailed,
-        DatasetDataIndexStatusEnum.indexing,
-        DatasetDataIndexStatusEnum.indexed
-      ].map((indexStatus, chunkIndex) => ({
-        ...scope,
-        q: 'saved content',
-        indexes: [],
-        chunkIndex,
-        indexStatus
-      }))
-    );
-    await MongoDatasetData.create({
-      ...scope,
-      collectionId: new Types.ObjectId(),
-      q: 'outside this collection',
-      indexes: [],
-      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
-    });
-    await MongoDatasetTraining.create([
-      {
-        ...scope,
-        billId: 'test',
-        mode: TrainingModeEnum.rebuildIndex,
-        dataId: datas[3]._id,
-        retryCount: 3,
-        lockTime: new Date('2000')
-      },
-      {
-        ...scope,
-        billId: 'test',
-        mode: TrainingModeEnum.rebuildIndex,
-        dataId: datas[4]._id,
-        retryCount: 3,
-        lockTime: new Date()
-      },
-      {
-        ...scope,
-        billId: 'test',
-        mode: TrainingModeEnum.rebuildIndex,
-        dataId: datas[5]._id,
-        retryCount: 0,
-        lockTime: new Date('2000'),
-        errorMsg: 'rebuild failed'
-      }
-    ]);
-    const readCounts = () =>
-      Call(trainingDetailHandler, {
-        auth: root,
-        query: { collectionId: collection._id }
-      });
-    const checkCollectionStatus = async () => {
-      const list = await Call(listHandler, {
-        auth: root,
-        body: { datasetId: dataset._id, pageNum: 1, pageSize: 10 }
-      });
-      const detail = await Call(detailHandler, { auth: root, query: { id: collection._id } });
-      const expected = {
-        trainingAmount: 6,
-        activeTrainingAmount: 5,
-        finalErrorAmount: 1,
-        hasError: true,
-        slowestTrainingMode: TrainingModeEnum.rebuildIndex,
-        slowestTrainingStatus: CollectionTrainingStatusEnum.running
-      };
-      expect(list.code).toBe(200);
-      expect(detail.code).toBe(200);
-      expect(
-        list.data.list.find((item: { _id: string }) => String(item._id) === String(collection._id))
-      ).toMatchObject(expected);
-      expect(detail.data).toMatchObject(expected);
-    };
-    await checkCollectionStatus();
-    const before = await readCounts();
-    expect(before.code).toBe(200);
-    expect(before.data).toMatchObject({
-      queuedCounts: { rebuildIndex: 3, rebuildSynonym: 0, index: 0 },
-      trainingCounts: { rebuildIndex: 2, index: 0 },
-      errorCounts: { rebuildIndex: 1, index: 0 },
-      trainedCount: 1
-    });
-
-    // 待重建进入 training 后，待重建减少、重建中增加，总量保持不变。
-    await enqueueNextDatasetRebuildTask({
-      teamId: String(root.teamId),
-      tmbId: String(root.tmbId),
-      datasetId: String(dataset._id),
-      billId: 'test'
-    });
-    const after = await readCounts();
-    expect(after.code).toBe(200);
-    expect(after.data.queuedCounts.rebuildIndex).toBe(2);
-    expect(after.data.trainingCounts.rebuildIndex).toBe(3);
-    expect(after.data.errorCounts.rebuildIndex).toBe(1);
-    await checkCollectionStatus();
-  });
-  it('uses data states for orphan failures and ignores stale rebuild training records', async () => {
-    const root = await getRootUser();
-    const dataset = await MongoDataset.create({
-      name: 'data-only-rebuild',
-      teamId: root.teamId,
-      tmbId: root.tmbId
-    });
-    const scope = { teamId: root.teamId, tmbId: root.tmbId, datasetId: dataset._id };
-    const collection = await MongoDatasetCollection.create({
-      ...scope,
-      name: 'data-only-rebuild',
-      type: DatasetCollectionTypeEnum.file
-    });
-    const dataScope = { ...scope, collectionId: collection._id };
-    const datas = await MongoDatasetData.create(
-      [
-        DatasetDataIndexStatusEnum.rebuildIndexPending,
-        DatasetDataIndexStatusEnum.rebuildIndexRunning,
-        DatasetDataIndexStatusEnum.rebuildIndexFailed,
-        DatasetDataIndexStatusEnum.indexed,
-        undefined
-      ].map((indexStatus) => ({ ...dataScope, q: 'saved content', indexes: [], indexStatus }))
-    );
-    await MongoDatasetData.create({
-      ...dataScope,
-      collectionId: new Types.ObjectId(),
-      q: 'outside',
-      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
-    });
-    await MongoDatasetTraining.create({
-      ...dataScope,
-      billId: 'test',
+  const rebuildModes = [
+    {
       mode: TrainingModeEnum.rebuildIndex,
-      dataId: datas[3]._id,
-      retryCount: 0,
-      errorMsg: 'stale failure'
-    });
-    const check = async (failed: number, ready: number) => {
-      const list = await Call(listHandler, {
-        auth: root,
-        body: { datasetId: dataset._id, pageNum: 1, pageSize: 10 }
-      });
-      const detail = await Call(detailHandler, { auth: root, query: { id: collection._id } });
-      const modal = await Call(trainingDetailHandler, {
-        auth: root,
-        query: { collectionId: collection._id }
-      });
-      const expected = {
-        trainingAmount: 2 + failed,
-        activeTrainingAmount: 2,
-        finalErrorAmount: failed,
-        hasError: failed > 0,
-        slowestTrainingMode: TrainingModeEnum.rebuildIndex,
-        slowestTrainingStatus: CollectionTrainingStatusEnum.running
-      };
-      expect(list.data.list[0]).toMatchObject(expected);
-      expect(detail.data).toMatchObject(expected);
-      expect(modal.data).toMatchObject({
-        queuedCounts: { rebuildIndex: 1, rebuildSynonym: 0 },
-        trainingCounts: { rebuildIndex: 1 },
-        errorCounts: { rebuildIndex: failed },
-        trainedCount: ready
-      });
-    };
-    await check(1, 2);
-    await MongoDatasetTraining.updateMany(
-      { datasetId: dataset._id },
-      { $set: { retryCount: 3, lockTime: new Date() } }
-    );
-    await check(1, 2);
-    await MongoDatasetData.updateOne(
-      { _id: datas[2]._id },
-      { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } }
-    );
-    await check(0, 3);
-  });
+      pending: DatasetDataIndexStatusEnum.rebuildIndexPending,
+      running: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+      failed: DatasetDataIndexStatusEnum.rebuildIndexFailed,
+      enqueue: enqueueNextDatasetRebuildTask
+    },
+    {
+      mode: TrainingModeEnum.rebuildSynonym,
+      pending: DatasetDataIndexStatusEnum.rebuildSynonymPending,
+      running: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+      failed: DatasetDataIndexStatusEnum.rebuildSynonymFailed,
+      enqueue: enqueueNextDatasetSynonymRebuildTask
+    }
+  ];
 
-  it('shows pending rebuild status without any training task in list and detail', async () => {
-    const root = await getRootUser();
-    const dataset = await MongoDataset.create({
-      name: 'pending-only',
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
-    });
-    const collection = await MongoDatasetCollection.create({
-      name: 'pending-only',
-      type: DatasetCollectionTypeEnum.file,
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id
-    });
+  /** 对照列表、详情、状态弹窗与队列入口，验证重建计数只取 data，不随 training 重复计数。 */
+  const readStatus = async ({
+    root,
+    dataset,
+    collection
+  }: Awaited<ReturnType<typeof createDatasetCollectionFixture>>) => {
+    const [list, detail, modal, queue] = await Promise.all([
+      Call(listHandler, { auth: root, body: { datasetId: dataset._id, pageNum: 1, pageSize: 10 } }),
+      Call(detailHandler, { auth: root, query: { id: collection._id } }),
+      Call(trainingDetailHandler, { auth: root, query: { collectionId: collection._id } }),
+      Call(queueHandler, { auth: root, query: { datasetId: dataset._id } })
+    ]);
+    for (const response of [list, detail, modal, queue]) expect(response.code).toBe(200);
+    return { list: list.data.list[0], detail: detail.data, modal: modal.data, queue: queue.data };
+  };
+
+  it.each(rebuildModes)(
+    'counts $mode once before and after queue admission',
+    async ({ mode, pending, running, failed, enqueue }) => {
+      const otherMode =
+        mode === TrainingModeEnum.rebuildIndex
+          ? TrainingModeEnum.rebuildSynonym
+          : TrainingModeEnum.rebuildIndex;
+      const context = await createDatasetCollectionFixture();
+      const { root, dataset, scope } = context;
+      Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: true });
+      if (mode === TrainingModeEnum.rebuildSynonym) {
+        await MongoDatasetSynonym.create({
+          teamId: root.teamId,
+          datasetId: dataset._id,
+          version: 2,
+          enabled: true
+        });
+      }
+      const datas = await MongoDatasetData.create(
+        [
+          pending,
+          pending,
+          pending,
+          running,
+          running,
+          failed,
+          DatasetDataIndexStatusEnum.indexing,
+          DatasetDataIndexStatusEnum.indexed,
+          undefined
+        ].map((indexStatus, chunkIndex) => ({
+          ...scope,
+          q: 'saved content',
+          indexes: [],
+          chunkIndex,
+          indexStatus,
+          synonymVersion: 2
+        }))
+      );
+      await MongoDatasetData.create({
+        ...scope,
+        collectionId: new Types.ObjectId(),
+        q: 'outside',
+        indexStatus: pending
+      });
+      await MongoDatasetTraining.create([
+        { ...scope, billId: 'test', mode, dataId: datas[3]._id, lockTime: new Date(0) },
+        { ...scope, billId: 'test', mode, dataId: datas[4]._id, lockTime: new Date() },
+        { ...scope, billId: 'test', mode, dataId: datas[5]._id, retryCount: 0, errorMsg: 'failed' },
+        { ...scope, billId: 'test', mode, dataId: datas[7]._id, retryCount: 0, errorMsg: 'stale' }
+      ]);
+      const check = async (queued: number, processing: number) => {
+        const status = await readStatus(context);
+        for (const result of [status.list, status.detail]) {
+          expect(result).toMatchObject({
+            trainingAmount: 6,
+            activeTrainingAmount: 5,
+            finalErrorAmount: 1,
+            hasError: true,
+            slowestTrainingMode: mode,
+            slowestTrainingStatus: CollectionTrainingStatusEnum.running
+          });
+        }
+        expect(status.modal).toMatchObject({
+          queuedCounts: { [mode]: queued, [otherMode]: 0, index: 0 },
+          trainingCounts: { [mode]: processing, [otherMode]: 0, index: 0 },
+          errorCounts: { [mode]: 1, [otherMode]: 0, index: 0 },
+          trainedCount: 2
+        });
+        expect(status.queue).toEqual({ hasTrainingTask: true });
+      };
+      await check(3, 2);
+      await enqueue({ ...scope, datasetId: String(dataset._id), billId: 'test' });
+      await check(2, 3);
+    }
+  );
+
+  it.each(rebuildModes)(
+    'uses $mode data for orphan failures and ignores stale tasks',
+    async ({ mode, pending, running, failed }) => {
+      const otherMode =
+        mode === TrainingModeEnum.rebuildIndex
+          ? TrainingModeEnum.rebuildSynonym
+          : TrainingModeEnum.rebuildIndex;
+      const context = await createDatasetCollectionFixture();
+      const { dataset, scope } = context;
+      const datas = await MongoDatasetData.create(
+        [pending, running, failed, DatasetDataIndexStatusEnum.indexed, undefined].map(
+          (indexStatus) => ({ ...scope, q: 'saved content', indexes: [], indexStatus })
+        )
+      );
+      await MongoDatasetData.create({
+        ...scope,
+        collectionId: new Types.ObjectId(),
+        q: 'outside',
+        indexStatus: failed
+      });
+      await MongoDatasetTraining.create({
+        ...scope,
+        billId: 'test',
+        mode,
+        dataId: datas[3]._id,
+        retryCount: 0,
+        errorMsg: 'stale'
+      });
+      const check = async (failedCount: number, ready: number) => {
+        const status = await readStatus(context);
+        for (const result of [status.list, status.detail]) {
+          expect(result).toMatchObject({
+            trainingAmount: 2 + failedCount,
+            activeTrainingAmount: 2,
+            finalErrorAmount: failedCount,
+            hasError: failedCount > 0,
+            slowestTrainingMode: mode,
+            slowestTrainingStatus: CollectionTrainingStatusEnum.running
+          });
+        }
+        expect(status.modal).toMatchObject({
+          queuedCounts: { [mode]: 1, [otherMode]: 0 },
+          trainingCounts: { [mode]: 1, [otherMode]: 0 },
+          errorCounts: { [mode]: failedCount, [otherMode]: 0 },
+          trainedCount: ready
+        });
+      };
+      await check(1, 2);
+      await MongoDatasetTraining.updateMany(
+        { datasetId: dataset._id },
+        { $set: { retryCount: 3, lockTime: new Date() } }
+      );
+      await check(1, 2);
+      await MongoDatasetData.updateOne(
+        { _id: datas[2]._id },
+        { $set: { indexStatus: DatasetDataIndexStatusEnum.indexed } }
+      );
+      await check(0, 3);
+    }
+  );
+
+  it('shows pending rebuild status without any training task', async () => {
+    const context = await createDatasetCollectionFixture();
     await MongoDatasetData.create({
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id,
-      collectionId: collection._id,
+      ...context.scope,
       q: 'pending',
-      indexes: [],
       indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
     });
-    const list = await Call(listHandler, {
-      auth: root,
-      body: { datasetId: dataset._id, pageNum: 1, pageSize: 10 }
-    });
-    const detail = await Call(detailHandler, { auth: root, query: { id: collection._id } });
-    expect(list.code).toBe(200);
-    expect(detail.code).toBe(200);
-    const expected = {
-      trainingAmount: 1,
-      activeTrainingAmount: 1,
-      finalErrorAmount: 0,
-      slowestTrainingMode: TrainingModeEnum.rebuildIndex,
-      slowestTrainingStatus: CollectionTrainingStatusEnum.running
-    };
-    expect(list.data.list[0]).toMatchObject(expected);
-    expect(detail.data).toMatchObject(expected);
+    const status = await readStatus(context);
+    for (const result of [status.list, status.detail]) {
+      expect(result).toMatchObject({
+        trainingAmount: 1,
+        activeTrainingAmount: 1,
+        finalErrorAmount: 0,
+        slowestTrainingMode: TrainingModeEnum.rebuildIndex,
+        slowestTrainingStatus: CollectionTrainingStatusEnum.running
+      });
+    }
   });
   it('returns each collection effective permission instead of the dataset permission', async () => {
     const users = await getFakeUsers(1);
@@ -343,21 +293,7 @@ describe('collection training status api', () => {
   });
 
   it('should expose unified active/final error/slowest status in list and detail', async () => {
-    const root = await getRootUser();
-    const dataset = await MongoDataset.create({
-      name: 'test',
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
-    });
-    const collection = await MongoDatasetCollection.create({
-      name: 'test',
-      type: DatasetCollectionTypeEnum.file,
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id
-    });
+    const { root, dataset, collection } = await createDatasetCollectionFixture();
 
     const rebuildData = await MongoDatasetData.create({
       teamId: root.teamId,
@@ -431,21 +367,7 @@ describe('collection training status api', () => {
   });
 
   it('should split current collection queued/running counts and final errors', async () => {
-    const root = await getRootUser();
-    const dataset = await MongoDataset.create({
-      name: 'test',
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      vectorModel: 'test',
-      agentModel: 'test'
-    });
-    const collection = await MongoDatasetCollection.create({
-      name: 'test',
-      type: DatasetCollectionTypeEnum.file,
-      teamId: root.teamId,
-      tmbId: root.tmbId,
-      datasetId: dataset._id
-    });
+    const { root, dataset, collection } = await createDatasetCollectionFixture();
 
     const rebuildData = await MongoDatasetData.create({
       teamId: root.teamId,
