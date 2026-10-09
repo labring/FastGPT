@@ -4,7 +4,7 @@ import {
   buildLegacyProOverrides,
   buildSparseLegacyOverrides,
   collectEnvRehomedWarnings
-} from '@/migration/tasks/20260928_migrate_instance_configs/service';
+} from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
 import {
   SYSTEM_INSTANCE_CONFIG_DOMAINS,
   resolveDomainEffectiveConfig

@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { AdminFormItem } from '@/pageComponents/admin/settings';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
 import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';

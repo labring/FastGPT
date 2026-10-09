@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config';
+import { resolveSystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import { buildAuthoritativeSystemEnv } from '@/service/common/system/buildAuthoritativeSystemEnv';
 
 describe('buildAuthoritativeSystemEnv', () => {

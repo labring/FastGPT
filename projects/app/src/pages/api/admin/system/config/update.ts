@@ -7,7 +7,7 @@ import {
   UpdateDomainConfigResponseSchema,
   type UpdateDomainConfigBody,
   type UpdateDomainConfigResponse
-} from '@fastgpt/global/openapi/admin/system/instanceConfig';
+} from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 import {
   updateDomainConfig,
   getDomainConfig,

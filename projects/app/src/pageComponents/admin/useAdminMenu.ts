@@ -57,8 +57,49 @@ export const communityAdminRoutes = [
   '/admin/migration'
 ] as const;
 
-const createLabelGetter = (t?: MenuTranslateFn) => (key: string, fallback: string) =>
-  t ? t('admin:' + key) : fallback;
+// 静态声明每个菜单项对应的完整 i18n key，避免动态拼接（'admin:' + key）导致静态扫描脚本无法提取
+const ADMIN_MENU_I18N_KEYS = {
+  menu_overview: 'admin:menu_overview',
+  menu_system_resources: 'admin:menu_system_resources',
+  menu_models: 'admin:menu_models',
+  menu_tools: 'admin:menu_tools',
+  menu_migration: 'admin:menu_migration',
+  menu_dashboard: 'admin:menu_dashboard',
+  menu_operation: 'admin:menu_operation',
+  menu_inform: 'admin:menu_inform',
+  menu_user_team: 'admin:menu_user_team',
+  menu_users: 'admin:menu_users',
+  menu_teams: 'admin:menu_teams',
+  menu_commercial: 'admin:menu_commercial',
+  menu_plans: 'admin:menu_plans',
+  menu_pays: 'admin:menu_pays',
+  menu_invoice: 'admin:menu_invoice',
+  menu_pay_settings: 'admin:menu_pay_settings',
+  menu_user_resources: 'admin:menu_user_resources',
+  menu_apps: 'admin:menu_apps',
+  menu_datasets: 'admin:menu_datasets',
+  menu_app_templates: 'admin:menu_app_templates',
+  menu_subservices: 'admin:menu_subservices',
+  menu_subservice_plugin: 'admin:menu_subservice_plugin',
+  menu_subservice_code_sandbox: 'admin:menu_subservice_code_sandbox',
+  menu_subservice_ai_proxy: 'admin:menu_subservice_ai_proxy',
+  menu_subservice_agent_sandbox: 'admin:menu_subservice_agent_sandbox',
+  menu_subservice_mcp: 'admin:menu_subservice_mcp',
+  menu_system_settings: 'admin:menu_system_settings',
+  menu_setting_core: 'admin:menu_setting_core',
+  menu_setting_site: 'admin:menu_setting_site',
+  menu_setting_feature: 'admin:menu_setting_feature',
+  menu_setting_auth: 'admin:menu_setting_auth',
+  menu_setting_security: 'admin:menu_setting_security',
+  menu_setting_limits: 'admin:menu_setting_limits',
+  menu_setting_providers: 'admin:menu_setting_providers',
+  menu_audit_log: 'admin:menu_audit_log'
+} as const;
+
+type AdminMenuKey = keyof typeof ADMIN_MENU_I18N_KEYS;
+
+const createLabelGetter = (t?: MenuTranslateFn) => (key: AdminMenuKey, fallback: string) =>
+  t ? t(ADMIN_MENU_I18N_KEYS[key]) : fallback;
 
 /**
  * 开源社区版菜单树：严格仅展示 系统概览、系统资源（系统模型/系统工具）、版本升级。

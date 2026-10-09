@@ -4,16 +4,14 @@ import { Box, Input, Textarea, SimpleGrid } from '@chakra-ui/react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import {
-  AdminSettingPage,
-  AdminSettingSection,
-  AdminFormItem,
-  AdminReadonlyInput,
-  type SettingTOCItem
-} from '@/pageComponents/admin/settings';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminReadonlyInput from '@/pageComponents/admin/settings/AdminReadonlyInput';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import NavbarItems from '@/pageComponents/admin/config/components/FormField/NavbarItems';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
 type SiteConfigForm = SystemInstanceConfigDomainMap['site'];
 

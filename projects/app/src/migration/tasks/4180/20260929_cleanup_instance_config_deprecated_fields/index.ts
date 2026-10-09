@@ -1,5 +1,5 @@
 import { SystemMigrationStatusEnum } from '@fastgpt/global/migration/constants';
-import type { SystemMigrationContext } from '../../registry';
+import type { SystemMigrationContext } from '../../../registry';
 import {
   cleanupInstanceConfigDeprecatedFields,
   verifyInstanceConfigDeprecatedFields
