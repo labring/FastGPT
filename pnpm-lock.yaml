@@ -53,7 +53,7 @@ catalogs:
       version: 2.0.8
     '@modelcontextprotocol/sdk':
       specifier: ^1
-      version: 1.26.0
+      version: 1.32.1
     '@node-rs/jieba':
       specifier: 2.0.1
       version: 2.0.1
@@ -595,16 +595,16 @@ importers:
         version: 2.0.8
       '@mariozechner/pi-agent-core':
         specifier: ^0.67.3
-        version: 0.67.3(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
+        version: 0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
       '@mariozechner/pi-ai':
         specifier: ^0.67.3
-        version: 0.67.3(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
+        version: 0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
       '@maxmind/geoip2-node':
         specifier: ^6.3.4
         version: 6.3.4
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.26.0(zod@4.1.12)
+        version: 1.32.1(zod@4.1.12)
       '@node-rs/jieba':
         specifier: 'catalog:'
         version: 2.0.1
@@ -1252,7 +1252,7 @@ importers:
         version: link:../../sdk/otel
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.26.0(zod@4.1.12)
+        version: 1.32.1(zod@4.1.12)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
@@ -1472,7 +1472,7 @@ importers:
         version: 2.0.8
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.26.0(zod@4.1.12)
+        version: 1.32.1(zod@4.1.12)
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1919,7 +1919,7 @@ importers:
         version: link:../../packages/global
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.26.0(zod@4.1.12)
+        version: 1.32.1(zod@4.1.12)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
@@ -3960,12 +3960,6 @@ packages:
     peerDependencies:
       vue: ^3.2.0
 
-  '@hono/node-server@1.19.9':
-    resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
-    engines: {node: '>=18.14.1'}
-    peerDependencies:
-      hono: ^4
-
   '@hono/node-server@2.0.12':
     resolution: {integrity: sha512-eWpQYr67tqJLeaSUl0Q+TquuYfUdTibpOJlUMV2FfUP7+KqCC5TufnwnlXL6mobZBJbGAYRd7ZvEBDCbLInjhg==}
     engines: {node: '>=20'}
@@ -4434,8 +4428,8 @@ packages:
   '@mixmark-io/domino@2.2.0':
     resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
 
-  '@modelcontextprotocol/sdk@1.26.0':
-    resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
+  '@modelcontextprotocol/sdk@1.32.1':
+    resolution: {integrity: sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw==}
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
@@ -7293,8 +7287,8 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  acorn@8.18.0:
-    resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
+  acorn@8.19.0:
+    resolution: {integrity: sha512-oJlA3XiRm7Cyk6qFD2Jn8ak9B7jSy0qy00ADO3+8dpT0LSjFihQYv4C02LFCSYJV3Q37xYwwRy5m+IpIiUzqWw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -9156,10 +9150,6 @@ packages:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
     engines: {node: '>=0.8.x'}
 
-  eventsource-parser@3.0.1:
-    resolution: {integrity: sha512-VARTJ9CYeuQYb0pZEPbzi740OWFgpHe7AYJ2WFZVnUDUQp5Dk2yJUgF36YsZ81cOyxT0QxmXD2EQpapAouzWVA==}
-    engines: {node: '>=18.0.0'}
-
   eventsource-parser@3.1.0:
     resolution: {integrity: sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==}
     engines: {node: '>=18.0.0'}
@@ -9881,10 +9871,6 @@ packages:
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
-  hono@4.11.7:
-    resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
-    engines: {node: '>=16.9.0'}
-
   hono@4.13.5:
     resolution: {integrity: sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw==}
     engines: {node: '>=16.9.0'}
@@ -10001,10 +9987,6 @@ packages:
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
-    engines: {node: '>=0.10.0'}
-
-  iconv-lite@0.7.2:
-    resolution: {integrity: sha512-im9DjEDQ55s9fL4EYzOAv0yMqmMBSZp6G0VvFyTMPKWxiSBHUj9NW/qqLmXUwXrrM7AvqSlTCfvqRb0cM8yYqw==}
     engines: {node: '>=0.10.0'}
 
   iconv-lite@0.7.3:
@@ -10474,9 +10456,6 @@ packages:
   jose@6.2.12:
     resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
 
-  jose@6.2.2:
-    resolution: {integrity: sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ==}
-
   jquery@3.7.1:
     resolution: {integrity: sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg==}
 
@@ -10711,8 +10690,8 @@ packages:
   lexical@0.12.6:
     resolution: {integrity: sha512-Nlfjc+k9cIWpOMv7XufF0Mv09TAXSemNAuAqFLaOwTcN+RvhvYTDtVLSp9D9r+5I097fYs1Vf/UYwH2xEpkFfQ==}
 
-  lib0@0.2.117:
-    resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
+  lib0@0.2.119:
+    resolution: {integrity: sha512-vh+TiejVy8Xm+hCdnRfn9BthGNvNUZdEXltNjVZL3TzRIKP3s1lnQh8pWd/Q0wCgY0FPAGVVjFF4ZiHUV3LFgA==}
     engines: {node: '>=16'}
     hasBin: true
 
@@ -17635,14 +17614,14 @@ snapshots:
 
   '@fortaine/fetch-event-source@3.0.6': {}
 
-  '@google/genai@1.50.1(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
+  '@google/genai@1.50.1(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)':
     dependencies:
       google-auth-library: 10.6.2
       p-retry: 4.6.2
       protobufjs: 7.5.5
       ws: 8.20.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.26.0(zod@4.1.12)
+      '@modelcontextprotocol/sdk': 1.32.1(zod@4.1.12)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -17684,10 +17663,6 @@ snapshots:
     dependencies:
       '@tanstack/vue-virtual': 3.13.12(vue@3.5.40(typescript@6.0.3))
       vue: 3.5.40(typescript@6.0.3)
-
-  '@hono/node-server@1.19.9(hono@4.11.7)':
-    dependencies:
-      hono: 4.11.7
 
   '@hono/node-server@2.0.12(hono@4.13.5)':
     dependencies:
@@ -18147,9 +18122,9 @@ snapshots:
 
   '@marijn/find-cluster-break@1.0.2': {}
 
-  '@mariozechner/pi-agent-core@0.67.3(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)':
+  '@mariozechner/pi-agent-core@0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)':
     dependencies:
-      '@mariozechner/pi-ai': 0.67.3(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
+      '@mariozechner/pi-ai': 0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
       - aws-crt
@@ -18159,11 +18134,11 @@ snapshots:
       - ws
       - zod
 
-  '@mariozechner/pi-ai@0.67.3(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)':
+  '@mariozechner/pi-ai@0.67.3(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@5.2.7(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)':
     dependencies:
       '@anthropic-ai/sdk': 0.73.0(zod@4.1.12)
       '@aws-sdk/client-bedrock-runtime': 3.1030.0
-      '@google/genai': 1.50.1(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      '@google/genai': 1.50.1(@modelcontextprotocol/sdk@1.32.1(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@mistralai/mistralai': 1.14.1(bufferutil@4.1.0)(utf-8-validate@5.0.10)
       '@sinclair/typebox': 0.34.49
       ajv: 8.17.1
@@ -18232,20 +18207,20 @@ snapshots:
 
   '@mixmark-io/domino@2.2.0': {}
 
-  '@modelcontextprotocol/sdk@1.26.0(zod@4.1.12)':
+  '@modelcontextprotocol/sdk@1.32.1(zod@4.1.12)':
     dependencies:
-      '@hono/node-server': 1.19.9(hono@4.11.7)
+      '@hono/node-server': 2.0.12(hono@4.13.5)
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
       content-type: 1.0.5
       cors: 2.8.6
       cross-spawn: 7.0.6
       eventsource: 3.0.6
-      eventsource-parser: 3.0.1
+      eventsource-parser: 3.1.0
       express: 5.2.1
       express-rate-limit: 8.2.1(express@5.2.1)
-      hono: 4.11.7
-      jose: 6.2.2
+      hono: 4.13.5
+      jose: 6.2.12
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0
       raw-body: 3.0.2
@@ -21790,7 +21765,7 @@ snapshots:
 
   acorn@8.16.0: {}
 
-  acorn@8.18.0:
+  acorn@8.19.0:
     optional: true
 
   address@1.2.2: {}
@@ -22272,9 +22247,9 @@ snapshots:
       content-type: 1.0.5
       debug: 4.4.3
       http-errors: 2.0.1
-      iconv-lite: 0.7.2
+      iconv-lite: 0.7.3
       on-finished: 2.4.1
-      qs: 6.15.3
+      qs: 6.16.0
       raw-body: 3.0.2
       type-is: 2.0.1
     transitivePeerDependencies:
@@ -24109,13 +24084,11 @@ snapshots:
 
   events@3.3.0: {}
 
-  eventsource-parser@3.0.1: {}
-
   eventsource-parser@3.1.0: {}
 
   eventsource@3.0.6:
     dependencies:
-      eventsource-parser: 3.0.1
+      eventsource-parser: 3.1.0
 
   execall@1.0.0:
     dependencies:
@@ -24188,7 +24161,7 @@ snapshots:
       once: 1.4.0
       parseurl: 1.3.3
       proxy-addr: 2.0.7
-      qs: 6.15.3
+      qs: 6.16.0
       range-parser: 1.2.1
       router: 2.2.0
       send: 1.2.1
@@ -25118,8 +25091,6 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono@4.11.7: {}
-
   hono@4.13.5: {}
 
   hookable@6.1.1: {}
@@ -25264,10 +25235,6 @@ snapshots:
       safer-buffer: 2.1.2
 
   iconv-lite@0.6.3:
-    dependencies:
-      safer-buffer: 2.1.2
-
-  iconv-lite@0.7.2:
     dependencies:
       safer-buffer: 2.1.2
 
@@ -25695,8 +25662,6 @@ snapshots:
 
   jose@6.2.12: {}
 
-  jose@6.2.2: {}
-
   jquery@3.7.1: {}
 
   js-base64@2.6.4: {}
@@ -25942,7 +25907,7 @@ snapshots:
 
   lexical@0.12.6: {}
 
-  lib0@0.2.117:
+  lib0@0.2.119:
     dependencies:
       isomorphic.js: 0.2.5
 
@@ -28394,7 +28359,7 @@ snapshots:
     dependencies:
       bytes: 3.1.2
       http-errors: 2.0.1
-      iconv-lite: 0.7.2
+      iconv-lite: 0.7.3
       unpipe: 1.0.0
 
   rc-config-loader@3.0.0:
@@ -30003,7 +29968,7 @@ snapshots:
   terser@5.39.0:
     dependencies:
       '@jridgewell/source-map': 0.3.11
-      acorn: 8.18.0
+      acorn: 8.19.0
       commander: 2.20.3
       source-map-support: 0.5.21
     optional: true
@@ -31396,7 +31361,7 @@ snapshots:
 
   yjs@13.6.24:
     dependencies:
-      lib0: 0.2.117
+      lib0: 0.2.119
 
   ylru@2.0.0: {}
 
