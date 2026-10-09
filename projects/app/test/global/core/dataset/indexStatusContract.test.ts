@@ -117,7 +117,8 @@ describe('indexStatus display contract', () => {
 
     locales.forEach(([locale, resource]) => {
       Object.values(DatasetDataIndexStatusEnum).forEach((status) => {
-        const key = `data_index_status_${status}`;
+        // 展示文案的 key 由状态映射统一维护；同一阶段的 pending/running 可以复用一个文案。
+        const key = DatasetDataIndexStatusMap[status].label.split(':')[1];
         expect(resource[key], `${locale} 缺少 ${key}`).toBeTruthy();
       });
     });
