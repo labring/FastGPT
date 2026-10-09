@@ -282,14 +282,26 @@ export async function registerNodeInstrumentation() {
 
     await startBusinessAfterSystemMigrations({
       runner: migrationRunner,
-      reloadModels: () =>
-        runInitializationStep({
+      reloadModels: async () => {
+        // 实例配置迁移可能改变存储策略；每个节点都需在业务启动前重新应用，不能只依赖 lease owner。
+        await runInitializationStep({
+          step: 'reload-system-config-after-startup-migrations',
+          action: async () => {
+            await getInitConfig();
+            initS3Buckets();
+          },
+          logger,
+          getErrText
+        });
+
+        await runInitializationStep({
           step: 'reload-system-models-after-startup-migrations',
           stage: InitialErrorEnum.PLUGIN_ERROR,
           action: () => loadInstalledModels(),
           logger,
           getErrText
-        }),
+        });
+      },
       startBusinessServices
     });
 
