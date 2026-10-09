@@ -18,7 +18,7 @@ export async function registerNodeInstrumentation() {
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
       { initVectorStore },
-      { initRootUser },
+      { initRootUser, initAgentUsers },
       { startMongoWatch },
       { startCron },
       { startTrainingQueue },
@@ -172,13 +172,20 @@ export async function registerNodeInstrumentation() {
       getErrText
     });
 
+    const rootTeamId = await runInitializationStep({
+      step: 'init-root-user',
+      action: () => initRootUser(),
+      logger,
+      getErrText
+    });
+    await runInitializationStep({
+      step: 'init-agent-users',
+      action: () => initAgentUsers(rootTeamId),
+      logger,
+      getErrText
+    });
+
     await Promise.all([
-      runInitializationStep({
-        step: 'init-root-user',
-        action: () => initRootUser(),
-        logger,
-        getErrText
-      }),
       // runInitializationStep({
       //   step: 'load-system-tools',
       //   stage: InitialErrorEnum.PLUGIN_ERROR,

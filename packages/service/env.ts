@@ -60,6 +60,8 @@ export const serviceEnv = createEnv({
 
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
+    AGENT_USERS: z.string().optional(),
+    DEFAULT_AGENT_PSW: z.string().optional(),
 
     // 官网访客归因 CRM；未配置地址时不进行身份上报
     CRM_API_URL: UrlSchema.optional(),
@@ -495,6 +497,15 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  const agentUsernames = serviceEnv.AGENT_USERS?.split(',')
+    .map((username) => username.trim())
+    .filter(Boolean);
+  if (agentUsernames?.length && !serviceEnv.DEFAULT_AGENT_PSW) {
+    throw new Error(
+      'Invalid environment configuration: DEFAULT_AGENT_PSW is required when AGENT_USERS is configured.'
+    );
+  }
+
   validateS3Env(serviceEnv);
 
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {

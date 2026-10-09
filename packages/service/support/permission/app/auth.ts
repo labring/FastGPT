@@ -21,6 +21,7 @@ import {
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { shouldInheritResourcePermission } from '../resourcePermissionPolicy';
+import { getAgentUserTmbIds } from '../../user/agentUser';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -61,7 +62,10 @@ export const authAppByTmbId = async ({
       return Promise.reject(AppErrEnum.unExist);
     }
 
-    if (isRoot) {
+    const isAgentApp = getAgentUserTmbIds().has(String(app.tmbId));
+
+    // 页面 root 访问 Agent 用户创建的应用时继续走 ACL，避免 root 绕过应用级授权。
+    if (isRoot && !isAgentApp) {
       return {
         ...app,
         permission: new AppPermission({ isOwner: true })
@@ -90,7 +94,8 @@ export const authAppByTmbId = async ({
       };
     }
 
-    const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
+    const isOwner =
+      String(app.tmbId) === String(tmbId) || (tmbPer.isOwner && !isAgentApp);
 
     const isGetParentClb =
       shouldInheritResourcePermission(app.inheritPermission) &&
