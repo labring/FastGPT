@@ -1,5 +1,6 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
+import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
 import {
   applyInstanceConfigMigration,
   inspectInstanceConfigMigration,
@@ -130,5 +131,175 @@ describe('applyInstanceConfigMigration (per-domain idempotency)', () => {
     const after = await inspectInstanceConfigMigration();
     expect(after.existingDomainCount).toBe(targetDomainCount);
     expect(after.missingDomainCount).toBe(0);
+    // 迁移写完后不应再有待补字段，否则任务每轮启动都会重复写入
+    expect(after.pendingBackfillDomainCount).toBe(0);
+    expect(after.pendingBackfillPaths).toEqual([]);
+  });
+
+  it('inspect reports field-level gaps inside an existing domain', async () => {
+    const target = await inspectInstanceConfigMigration();
+    const [domain] = Object.keys(target.overrides) as SystemInstanceConfigDomainKey[];
+    expect(domain).toBeDefined();
+
+    // 该域已落库但 overrides 为空：客户已配置的环境变量还没进库
+    await MongoSystemInstanceConfig.create({
+      _id: domain,
+      schemaVersion: 1,
+      revision: 1,
+      overrides: {}
+    });
+
+    const inspection = await inspectInstanceConfigMigration();
+    // 整域存在，因此不计入 missingDomainCount，但缺字段要单独暴露给任务停止跳过
+    expect(inspection.missingDomainCount).toBe(0);
+    expect(inspection.pendingBackfillDomainCount).toBe(1);
+    expect(inspection.pendingBackfillPaths.length).toBeGreaterThan(0);
+    expect(inspection.pendingBackfillPaths.every((path) => path.startsWith(`${domain}.`))).toBe(
+      true
+    );
+  });
+});
+
+describe('applyInstanceConfigMigration (field-level backfill)', () => {
+  beforeEach(async () => {
+    await MongoSystemInstanceConfig.deleteMany({});
+  });
+
+  it('backfills only missing fields into an existing domain and keeps existing values', async () => {
+    await MongoSystemInstanceConfig.create({
+      _id: 'site',
+      schemaVersion: 1,
+      revision: 1,
+      overrides: { name: 'Admin Site', favicon: '/admin.ico' },
+      updatedBy: { actor: 'admin' }
+    });
+
+    const result = await applyInstanceConfigMigration({
+      overrides: {
+        site: { name: 'Env Site', favicon: '/env.ico', docUrl: 'https://env.example.com' },
+        auth: { teamMode: 'multi' }
+      },
+      logger
+    });
+
+    // site 只补缺，auth 整域新建
+    expect(result.createdDomains).toEqual(['auth']);
+    expect(result.backfilledDomains).toEqual(['site']);
+    expect(result.backfilledPaths).toEqual(['site.docUrl']);
+
+    const siteDoc = await MongoSystemInstanceConfig.findById('site').lean();
+    expect(siteDoc?.overrides).toEqual({
+      name: 'Admin Site',
+      favicon: '/admin.ico',
+      docUrl: 'https://env.example.com'
+    });
+    expect(siteDoc?.revision).toBe(2);
+    // 回填不抢署名：该域最后仍是管理员保存的
+    expect(siteDoc?.updatedBy?.actor).toBe('admin');
+  });
+
+  it('backfills nested missing leaves and treats arrays as atomic values', async () => {
+    await MongoSystemInstanceConfig.create({
+      _id: 'security',
+      schemaVersion: 1,
+      revision: 1,
+      overrides: { censor: { baiduClientId: 'admin-id' }, fileUrlWhitelist: [] }
+    });
+
+    await applyInstanceConfigMigration({
+      overrides: {
+        security: {
+          censor: { baiduClientId: 'env-id', customCensorUrl: 'https://censor.example.com' },
+          fileUrlWhitelist: ['https://cdn.example.com'],
+          skipFileTypeCheck: true
+        }
+      },
+      logger
+    });
+
+    const doc = await MongoSystemInstanceConfig.findById('security').lean();
+    // 嵌套对象逐叶子补缺：已有叶子保持原值，缺失叶子补写
+    expect(doc?.overrides.censor).toEqual({
+      baiduClientId: 'admin-id',
+      customCensorUrl: 'https://censor.example.com'
+    });
+    // 数组按原子值处理：管理员显式清空后不会被迁移重新填回
+    expect(doc?.overrides.fileUrlWhitelist).toEqual([]);
+    expect(doc?.overrides.skipFileTypeCheck).toBe(true);
+  });
+
+  it('does not touch a domain when nothing is missing (no revision bump)', async () => {
+    await MongoSystemInstanceConfig.create({
+      _id: 'site',
+      schemaVersion: 1,
+      revision: 7,
+      overrides: { name: 'Keep', docUrl: 'https://keep.example.com' }
+    });
+
+    const result = await applyInstanceConfigMigration({
+      overrides: { site: { name: 'Env', docUrl: 'https://env.example.com' } },
+      logger
+    });
+
+    expect(result.domains).toEqual([]);
+    expect(result.backfilledPaths).toEqual([]);
+
+    const doc = await MongoSystemInstanceConfig.findById('site').lean();
+    // 无写入就不递增 revision，避免无意义地打断管理员的乐观锁
+    expect(doc?.revision).toBe(7);
+    expect(doc?.overrides).toEqual({ name: 'Keep', docUrl: 'https://keep.example.com' });
+  });
+
+  it('skips backfill and warns when merged values break a cross-field constraint', async () => {
+    // 管理员既有 parallelMaxConcurrency=100（自身合法：默认 maxLoopTimes=100），
+    // 待补的 maxLoopTimes=20 合并后违反 superRefine（100 > 20）
+    await MongoSystemInstanceConfig.create({
+      _id: 'performance',
+      schemaVersion: 1,
+      revision: 1,
+      overrides: { workflow: { parallelMaxConcurrency: 100 } }
+    });
+
+    const warn = vi.fn();
+    const result = await applyInstanceConfigMigration({
+      overrides: { performance: { workflow: { maxLoopTimes: 20 } } },
+      logger: { ...logger, warn }
+    });
+
+    // 无法在不改管理员值的前提下消解冲突：跳过该域回填、告警，但不抛错阻塞启动
+    expect(result.backfilledDomains).toEqual([]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('conflicts with existing values'),
+      expect.objectContaining({ domain: 'performance' })
+    );
+
+    const doc = await MongoSystemInstanceConfig.findById('performance').lean();
+    expect(doc?.overrides.workflow).toEqual({ parallelMaxConcurrency: 100 });
+  });
+
+  it('is idempotent: rerunning after a backfill writes nothing', async () => {
+    await MongoSystemInstanceConfig.create({
+      _id: 'site',
+      schemaVersion: 1,
+      revision: 1,
+      overrides: { name: 'Admin' }
+    });
+
+    const first = await applyInstanceConfigMigration({
+      overrides: { site: { name: 'Env', docUrl: 'https://env.example.com' } },
+      logger
+    });
+    expect(first.backfilledDomains).toEqual(['site']);
+
+    const afterFirst = await MongoSystemInstanceConfig.findById('site').lean();
+    const second = await applyInstanceConfigMigration({
+      overrides: { site: { name: 'Env', docUrl: 'https://env.example.com' } },
+      logger
+    });
+
+    expect(second.domains).toEqual([]);
+    const afterSecond = await MongoSystemInstanceConfig.findById('site').lean();
+    expect(afterSecond?.revision).toBe(afterFirst?.revision);
+    expect(afterSecond?.overrides).toEqual(afterFirst?.overrides);
   });
 });
