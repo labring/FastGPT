@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useDomainConfig } from '@/web/common/system/useDomainConfig';
+import { useDomainConfig, batchUpdateDomainConfigApi } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
@@ -99,53 +99,65 @@ const LimitsSettingComponent = () => {
 
   const { runAsync: onSave, loading: isSaving } = useRequest(
     async (formData: LimitsConfigForm) => {
-      // resource / performance 由本页完整覆盖，直接整域提交
-      await resource.updateConfig(
-        {
-          serviceRequestMaxContentLength: Number(formData.serviceRequestMaxContentLength) || 10,
-          systemMaxStringLengthM: Number(formData.systemMaxStringLengthM) || 100,
-          maxFolderDepth: Number(formData.maxFolderDepth) || 4,
-          appFolderMaxAmount: Number(formData.appFolderMaxAmount) || 1000,
-          datasetFolderMaxAmount: Number(formData.datasetFolderMaxAmount) || 1000,
-          uploadFileMaxSize: Number(formData.uploadFileMaxSize) || 1000,
-          uploadFileMaxAmount: Number(formData.uploadFileMaxAmount) || 1000,
-          exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0,
-          websiteSyncLimitMinuted: Number(formData.websiteSyncLimitMinuted) || 0
-        },
-        { silent: true }
-      );
-      await performance.updateConfig(
-        {
-          workflow: formData.workflow,
-          parse: formData.parse,
-          dataset: formData.dataset,
-          chat: formData.chat,
-          streamResume: formData.streamResume,
-          tracking: formData.tracking,
-          task: formData.task,
-          channel: formData.channel
-        },
-        { silent: true }
-      );
-
-      // 以下三项只是各自 Domain 的一个字段，局部提交以保留同域其它配置
-      await auth.patchConfig(
-        { openApiKeyMaxCount: Number(formData.openApiKeyMaxCount) || 100 },
-        { silent: true }
-      );
-      await storage.patchConfig(
-        {
-          fileUrlExpiredDays: Number(formData.fileUrlExpiredDays) || 90
-        },
-        { silent: true }
-      );
-      await vector.patchConfig(
-        {
-          hnswEfSearch: Number(formData.hnswEfSearch) || 100,
-          hnswMaxScanTuples: Number(formData.hnswMaxScanTuples) || 100000
-        },
-        { silent: true }
-      );
+      // 跨域原子提交：resource、performance、auth、storage、vector 五个域合并为单个事务请求
+      await batchUpdateDomainConfigApi({
+        items: [
+          {
+            domain: 'resource',
+            expectedRevision: resource.revision,
+            overrides: {
+              serviceRequestMaxContentLength: Number(formData.serviceRequestMaxContentLength) || 10,
+              systemMaxStringLengthM: Number(formData.systemMaxStringLengthM) || 100,
+              maxFolderDepth: Number(formData.maxFolderDepth) || 4,
+              appFolderMaxAmount: Number(formData.appFolderMaxAmount) || 1000,
+              datasetFolderMaxAmount: Number(formData.datasetFolderMaxAmount) || 1000,
+              uploadFileMaxSize: Number(formData.uploadFileMaxSize) || 1000,
+              uploadFileMaxAmount: Number(formData.uploadFileMaxAmount) || 1000,
+              exportDatasetLimitMinutes: Number(formData.exportDatasetLimitMinutes) || 0,
+              websiteSyncLimitMinuted: Number(formData.websiteSyncLimitMinuted) || 0
+            }
+          },
+          {
+            domain: 'performance',
+            expectedRevision: performance.revision,
+            overrides: {
+              workflow: formData.workflow,
+              parse: formData.parse,
+              dataset: formData.dataset,
+              chat: formData.chat,
+              streamResume: formData.streamResume,
+              tracking: formData.tracking,
+              task: formData.task,
+              channel: formData.channel
+            }
+          },
+          {
+            domain: 'auth',
+            expectedRevision: auth.revision,
+            overrides: {
+              ...(auth.overrides as Record<string, unknown>),
+              openApiKeyMaxCount: Number(formData.openApiKeyMaxCount) || 100
+            }
+          },
+          {
+            domain: 'storage',
+            expectedRevision: storage.revision,
+            overrides: {
+              ...(storage.overrides as Record<string, unknown>),
+              fileUrlExpiredDays: Number(formData.fileUrlExpiredDays) || 90
+            }
+          },
+          {
+            domain: 'vector',
+            expectedRevision: vector.revision,
+            overrides: {
+              ...(vector.overrides as Record<string, unknown>),
+              hnswEfSearch: Number(formData.hnswEfSearch) || 100,
+              hnswMaxScanTuples: Number(formData.hnswMaxScanTuples) || 100000
+            }
+          }
+        ]
+      });
     },
     {
       successToast: 'admin:settings_saved',
