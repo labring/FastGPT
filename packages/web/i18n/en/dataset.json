@@ -297,7 +297,5 @@
   "process.Synonym_Rebuild": "Synonym rebuild",
   "data_index_status_synonym_pending": "Pending synonym rebuild",
   "data_index_status_synonym_running": "Rebuilding synonyms",
-  "data_index_status_synonym_failed": "Synonym rebuild failed",
-  "process.Rebuild_Pending": "Pending rebuild",
-  "dataset.Rebuild_Pending_Count": "{{count}} items pending rebuild"
+  "data_index_status_synonym_failed": "Synonym rebuild failed"
 }

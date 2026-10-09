@@ -69,31 +69,15 @@ const ProgressView = ({
       errorCount: number;
     }[] = [];
 
-    if (rebuildMode) {
-      const pendingCount = trainingDetail.queuedCounts[rebuildMode];
-      states.push({
-        label: t('dataset:process.Rebuild_Pending'),
-        statusText:
-          pendingCount > 0
-            ? t('dataset:dataset.Rebuild_Pending_Count', { count: pendingCount })
-            : undefined,
-        status:
-          pendingCount > 0
-            ? TrainingStatus.Queued
-            : isReady ||
-                trainingDetail.trainingCounts[rebuildMode] > 0 ||
-                trainingDetail.errorCounts[rebuildMode] > 0
-              ? TrainingStatus.Ready
-              : TrainingStatus.NotStart,
-        errorCount: 0
-      });
-    }
-
     steps.forEach(({ mode, label }) => {
       const statusText = (() => {
         if (isReady) return;
-        // 重建的等待数量有独立阶段，处理阶段只展示已进入 training 的数量。
-        if (!rebuildMode && trainingDetail.queuedCounts[mode] > 0) {
+        // 重建待入队和已入队的数据合并展示，后台仍保留各自真实状态。
+        if (rebuildMode) {
+          const count = trainingDetail.queuedCounts[mode] + trainingDetail.trainingCounts[mode];
+          return count > 0 ? t('dataset:dataset.Training_Count', { count }) : undefined;
+        }
+        if (trainingDetail.queuedCounts[mode] > 0) {
           return t('dataset:dataset.Training_Waiting', {
             count: trainingDetail.queuedCounts[mode]
           });
@@ -104,13 +88,7 @@ const ProgressView = ({
           });
         }
       })();
-      const status = (() => {
-        if (!rebuildMode) return getTrainingStepStatus({ trainingDetail, mode, modeOrder });
-        if (isReady) return TrainingStatus.Ready;
-        if (trainingDetail.errorCounts[mode] > 0) return TrainingStatus.Error;
-        if (trainingDetail.trainingCounts[mode] > 0) return TrainingStatus.Running;
-        return TrainingStatus.NotStart;
-      })();
+      const status = getTrainingStepStatus({ trainingDetail, mode, modeOrder });
       states.push({ label, statusText, status, errorCount: trainingDetail.errorCounts[mode] });
     });
     states.push({

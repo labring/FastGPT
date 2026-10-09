@@ -293,7 +293,5 @@
   "process.Synonym_Rebuild": "同义词重建",
   "data_index_status_synonym_pending": "同义词待重建",
   "data_index_status_synonym_running": "同义词重建中",
-  "data_index_status_synonym_failed": "同义词重建失败",
-  "process.Rebuild_Pending": "待重建",
-  "dataset.Rebuild_Pending_Count": "{{count}} 条待重建"
+  "data_index_status_synonym_failed": "同义词重建失败"
 }
