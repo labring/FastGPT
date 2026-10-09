@@ -50,12 +50,12 @@ describe('collection training status api', () => {
     };
     const datas = await MongoDatasetData.create(
       [
-        DatasetDataIndexStatusEnum.waitingRebuild,
-        DatasetDataIndexStatusEnum.waitingRebuild,
-        DatasetDataIndexStatusEnum.waitingRebuild,
-        DatasetDataIndexStatusEnum.rebuilding,
-        DatasetDataIndexStatusEnum.rebuilding,
-        DatasetDataIndexStatusEnum.rebuildError,
+        DatasetDataIndexStatusEnum.rebuildIndexPending,
+        DatasetDataIndexStatusEnum.rebuildIndexPending,
+        DatasetDataIndexStatusEnum.rebuildIndexPending,
+        DatasetDataIndexStatusEnum.rebuildIndexRunning,
+        DatasetDataIndexStatusEnum.rebuildIndexRunning,
+        DatasetDataIndexStatusEnum.rebuildIndexFailed,
         DatasetDataIndexStatusEnum.indexing,
         DatasetDataIndexStatusEnum.indexed
       ].map((indexStatus, chunkIndex) => ({
@@ -71,7 +71,7 @@ describe('collection training status api', () => {
       collectionId: new Types.ObjectId(),
       q: 'outside this collection',
       indexes: [],
-      indexStatus: DatasetDataIndexStatusEnum.waitingRebuild
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
     });
     await MongoDatasetTraining.create([
       {
@@ -105,6 +105,28 @@ describe('collection training status api', () => {
         auth: root,
         query: { collectionId: collection._id }
       });
+    const checkCollectionStatus = async () => {
+      const list = await Call(listHandler, {
+        auth: root,
+        body: { datasetId: dataset._id, pageNum: 1, pageSize: 10 }
+      });
+      const detail = await Call(detailHandler, { auth: root, query: { id: collection._id } });
+      const expected = {
+        trainingAmount: 6,
+        activeTrainingAmount: 5,
+        finalErrorAmount: 1,
+        hasError: true,
+        slowestTrainingMode: TrainingModeEnum.rebuild,
+        slowestTrainingStatus: CollectionTrainingStatusEnum.running
+      };
+      expect(list.code).toBe(200);
+      expect(detail.code).toBe(200);
+      expect(
+        list.data.list.find((item: { _id: string }) => String(item._id) === String(collection._id))
+      ).toMatchObject(expected);
+      expect(detail.data).toMatchObject(expected);
+    };
+    await checkCollectionStatus();
     const before = await readCounts();
     expect(before.code).toBe(200);
     expect(before.data).toMatchObject({
@@ -114,7 +136,7 @@ describe('collection training status api', () => {
       trainedCount: 1
     });
 
-    // waitingRebuild 入队后由 data 计数切换到 training 计数，等待总量保持不变。
+    // rebuildIndexPending 入队后由 data 计数切换到 training 计数，等待总量保持不变。
     await enqueueNextDatasetRebuildTask({
       teamId: String(root.teamId),
       tmbId: String(root.tmbId),
@@ -126,6 +148,49 @@ describe('collection training status api', () => {
     expect(after.data.queuedCounts.rebuild).toBe(4);
     expect(after.data.trainingCounts.rebuild).toBe(1);
     expect(after.data.errorCounts.rebuild).toBe(1);
+    await checkCollectionStatus();
+  });
+  it('shows pending rebuild status without any training task in list and detail', async () => {
+    const root = await getRootUser();
+    const dataset = await MongoDataset.create({
+      name: 'pending-only',
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      vectorModel: 'test',
+      agentModel: 'test'
+    });
+    const collection = await MongoDatasetCollection.create({
+      name: 'pending-only',
+      type: DatasetCollectionTypeEnum.file,
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id
+    });
+    await MongoDatasetData.create({
+      teamId: root.teamId,
+      tmbId: root.tmbId,
+      datasetId: dataset._id,
+      collectionId: collection._id,
+      q: 'pending',
+      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
+    });
+    const list = await Call(listHandler, {
+      auth: root,
+      body: { datasetId: dataset._id, pageNum: 1, pageSize: 10 }
+    });
+    const detail = await Call(detailHandler, { auth: root, query: { id: collection._id } });
+    expect(list.code).toBe(200);
+    expect(detail.code).toBe(200);
+    const expected = {
+      trainingAmount: 1,
+      activeTrainingAmount: 1,
+      finalErrorAmount: 0,
+      slowestTrainingMode: TrainingModeEnum.rebuild,
+      slowestTrainingStatus: CollectionTrainingStatusEnum.running
+    };
+    expect(list.data.list[0]).toMatchObject(expected);
+    expect(detail.data).toMatchObject(expected);
   });
   it('returns each collection effective permission instead of the dataset permission', async () => {
     const users = await getFakeUsers(1);

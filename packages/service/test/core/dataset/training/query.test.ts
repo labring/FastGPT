@@ -7,6 +7,7 @@ import {
   BLOCKED_LOCK_TIME,
   compareTrainingModeBySlowest,
   getSlowestTrainingStatus,
+  getCollectionTrainingStatusByMode,
   getTrainingModeRank,
   hasEffectiveErrorMsg,
   isActiveTraining,
@@ -100,5 +101,44 @@ describe('dataset training query helpers', () => {
     expect(getSlowestTrainingStatus({})).toEqual({
       slowestTrainingStatus: CollectionTrainingStatusEnum.ready
     });
+  });
+});
+
+describe('getCollectionTrainingStatusByMode', () => {
+  it('returns ready only when training and pending rebuild data are empty', () => {
+    expect(getCollectionTrainingStatusByMode({ modeCounts: {} })).toEqual({
+      trainingAmount: 0,
+      activeTrainingAmount: 0,
+      finalErrorAmount: 0,
+      hasError: false,
+      slowestTrainingStatus: CollectionTrainingStatusEnum.ready
+    });
+    expect(
+      getCollectionTrainingStatusByMode({ modeCounts: {}, waitingRebuildCount: 3 })
+    ).toMatchObject({
+      trainingAmount: 3,
+      activeTrainingAmount: 3,
+      finalErrorAmount: 0,
+      hasError: false,
+      slowestTrainingMode: TrainingModeEnum.rebuild,
+      slowestTrainingStatus: CollectionTrainingStatusEnum.running
+    });
+  });
+  it('adds pending rebuild counts without changing earlier stages or mutating input', () => {
+    const modeCounts = {
+      [TrainingModeEnum.qa]: { activeCount: 0, finalErrorCount: 1 },
+      [TrainingModeEnum.rebuild]: { activeCount: 2, finalErrorCount: 2 }
+    };
+    expect(getCollectionTrainingStatusByMode({ modeCounts, waitingRebuildCount: 3 })).toMatchObject(
+      {
+        trainingAmount: 8,
+        activeTrainingAmount: 5,
+        finalErrorAmount: 3,
+        hasError: true,
+        slowestTrainingMode: TrainingModeEnum.qa,
+        slowestTrainingStatus: CollectionTrainingStatusEnum.error
+      }
+    );
+    expect(modeCounts.rebuild.activeCount).toBe(2);
   });
 });

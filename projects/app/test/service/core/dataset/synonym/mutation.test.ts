@@ -233,7 +233,7 @@ describe('createDatasetSynonymMutation', () => {
       collectionId,
       q: 'pending',
       indexes: [],
-      indexStatus: 'waitingRebuild'
+      indexStatus: 'rebuildIndexPending'
     });
 
     await expect(

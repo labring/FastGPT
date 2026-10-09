@@ -15,9 +15,9 @@ export enum DatasetDataIndexStatusEnum {
   indexing = 'indexing',
   indexed = 'indexed',
   error = 'error',
-  waitingRebuild = 'waitingRebuild',
-  rebuilding = 'rebuilding',
-  rebuildError = 'rebuildError'
+  rebuildIndexPending = 'rebuildIndexPending',
+  rebuildIndexRunning = 'rebuildIndexRunning',
+  rebuildIndexFailed = 'rebuildIndexFailed'
 }
 
 export const DatasetDataIndexMap: Record<
@@ -79,15 +79,15 @@ export const DatasetDataIndexStatusMap: Record<
     label: i18nT('dataset:data_index_status_indexed'),
     colorSchema: 'green'
   },
-  [DatasetDataIndexStatusEnum.waitingRebuild]: {
+  [DatasetDataIndexStatusEnum.rebuildIndexPending]: {
     label: i18nT('dataset:data_index_status_waiting_rebuild'),
     colorSchema: 'blue'
   },
-  [DatasetDataIndexStatusEnum.rebuilding]: {
+  [DatasetDataIndexStatusEnum.rebuildIndexRunning]: {
     label: i18nT('dataset:data_index_status_rebuilding'),
     colorSchema: 'blue'
   },
-  [DatasetDataIndexStatusEnum.rebuildError]: {
+  [DatasetDataIndexStatusEnum.rebuildIndexFailed]: {
     label: i18nT('dataset:data_index_status_rebuild_error'),
     colorSchema: 'red'
   },

@@ -315,19 +315,19 @@ const DataCard = () => {
                 !!item.indexStatus &&
                 [
                   DatasetDataIndexStatusEnum.indexing,
-                  DatasetDataIndexStatusEnum.waitingRebuild,
-                  DatasetDataIndexStatusEnum.rebuilding
+                  DatasetDataIndexStatusEnum.rebuildIndexPending,
+                  DatasetDataIndexStatusEnum.rebuildIndexRunning
                 ].includes(item.indexStatus);
               const canModify = !isIndexing;
               const indexStatusInfo = getDatasetDataIndexStatusMapData(item.indexStatus);
               const indexStatusLabel = (() => {
                 if (item.indexStatus === DatasetDataIndexStatusEnum.indexing)
                   return t('dataset:data_index_status_indexing');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.waitingRebuild)
+                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexPending)
                   return t('dataset:data_index_status_waiting_rebuild');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuilding)
+                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexRunning)
                   return t('dataset:data_index_status_rebuilding');
-                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildError)
+                if (item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexFailed)
                   return t('dataset:data_index_status_rebuild_error');
                 if (item.indexStatus === DatasetDataIndexStatusEnum.error)
                   return t('dataset:data_index_status_error');

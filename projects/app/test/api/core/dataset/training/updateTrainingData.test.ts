@@ -39,7 +39,7 @@ describe('update training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       q: 'original',
-      indexStatus: DatasetDataIndexStatusEnum.rebuildError,
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
       indexErrorMsg: 'failed'
     });
     const task = await MongoDatasetTraining.create({
@@ -62,7 +62,7 @@ describe('update training data test', () => {
     const retry = await Call(handler, { auth: root, body: { dataId: task._id } });
     expect(retry.code).toBe(200);
     const updated = await MongoDatasetData.findById(data._id).lean();
-    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuilding);
+    expect(updated?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildIndexRunning);
     expect(updated?.indexErrorMsg).toBeUndefined();
     expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({ retryCount: 3 });
   });

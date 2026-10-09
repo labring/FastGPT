@@ -103,7 +103,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
       },
       {
         $set: {
-          indexStatus: DatasetDataIndexStatusEnum.waitingRebuild
+          indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
         }
       },
       {

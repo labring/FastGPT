@@ -383,7 +383,7 @@ describe('dataset rebuild queue', () => {
         collectionId: orphanCollectionId,
         q: 'orphan',
         indexes: [],
-        indexStatus: 'waitingRebuild'
+        indexStatus: 'rebuildIndexPending'
       }))
     );
     const validData = await MongoDatasetData.create({
@@ -393,7 +393,7 @@ describe('dataset rebuild queue', () => {
       collectionId: collection._id,
       q: 'valid',
       indexes: [],
-      indexStatus: 'waitingRebuild'
+      indexStatus: 'rebuildIndexPending'
     });
     global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };
 

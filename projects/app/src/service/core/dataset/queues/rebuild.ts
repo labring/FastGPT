@@ -17,7 +17,7 @@ type DatasetRebuildContext = {
 };
 
 /**
- * 原子领取一条处于 waitingRebuild 的 data，并写入现有 training 队列。
+ * 原子领取一条处于 rebuildIndexPending 的 data，并写入现有 training 队列。
  * 模型切换和同义词更新都只创建 rebuild 阶段，索引内容由 worker 从 data 读取。
  */
 export const enqueueNextDatasetRebuildTask = async (
@@ -40,20 +40,23 @@ export const enqueueNextDatasetRebuildTask = async (
               ...rebuildableDatasetDataMatch
             }
           : {
-              indexStatus: DatasetDataIndexStatusEnum.waitingRebuild,
+              indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending,
               teamId: context.teamId,
               datasetId: context.datasetId
             },
         context.synonymVersion
           ? {
               $set: {
-                indexStatus: DatasetDataIndexStatusEnum.rebuilding,
+                indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning,
                 synonymRebuildingVersion: context.synonymVersion,
                 updateTime: new Date()
               }
             }
           : {
-              $set: { indexStatus: DatasetDataIndexStatusEnum.rebuilding, updateTime: new Date() }
+              $set: {
+                indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+                updateTime: new Date()
+              }
             },
         { session }
       ).select({

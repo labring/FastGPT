@@ -1,3 +1,4 @@
+import { deleteDatasetData } from '@/service/core/dataset/data/data';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -14,6 +15,7 @@ import {
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 
+/** 删除训练任务；重建任务同时删除原始数据及其索引，首次训练维持原有取消行为。 */
 async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse> {
   const { collectionId, dataId } = parseApiInput({
     req,
@@ -38,10 +40,36 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
     const training = await MongoDatasetTraining.findOne(trainingMatch).session(session);
     if (!training) return;
 
+    if (training.mode === TrainingModeEnum.rebuild && training.dataId) {
+      // 关联数据必须属于已鉴权集合；读取和删除共用事务，避免工作线程完成提交后误用旧索引。
+      const data = await MongoDatasetData.findOne({
+        _id: training.dataId,
+        teamId: collection.teamId,
+        datasetId: collection.datasetId,
+        collectionId: collection._id
+      })
+        .session(session)
+        .lean();
+      if (data) {
+        await deleteDatasetData(
+          {
+            ...data,
+            id: String(data._id)
+          },
+          session
+        );
+      }
+      await MongoDatasetTraining.deleteOne(trainingMatch, { session });
+      return;
+    }
+
     if (training.dataId && training.synonymVersion) {
       await MongoDatasetData.updateOne(
         {
           _id: training.dataId,
+          teamId: collection.teamId,
+          datasetId: collection.datasetId,
+          collectionId: collection._id,
           synonymRebuildingVersion: training.synonymVersion
         },
         { $unset: { synonymRebuildingVersion: '' } },
@@ -56,17 +84,11 @@ async function handler(req: ApiRequestProps): Promise<DeleteTrainingDataResponse
           teamId: collection.teamId,
           datasetId: collection.datasetId,
           collectionId: collection._id,
-          indexStatus:
-            training.mode === TrainingModeEnum.rebuild
-              ? DatasetDataIndexStatusEnum.rebuilding
-              : DatasetDataIndexStatusEnum.indexing
+          indexStatus: DatasetDataIndexStatusEnum.indexing
         },
         {
           $set: {
-            indexStatus:
-              training.mode === TrainingModeEnum.rebuild
-                ? DatasetDataIndexStatusEnum.rebuildError
-                : DatasetDataIndexStatusEnum.error,
+            indexStatus: DatasetDataIndexStatusEnum.error,
             indexErrorMsg: 'Training task deleted'
           }
         },

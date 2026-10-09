@@ -34,6 +34,12 @@ import { refreshDatasetDataVectorCreateTime } from '@fastgpt/service/common/vect
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
+/** 删除只需要定位信息和派生资源，调用方无需构造页面展示字段。 */
+type DeleteDatasetDataProps = Pick<
+  DatasetDataItemType,
+  'id' | 'teamId' | 'datasetId' | 'collectionId' | 'indexes' | 'imageId'
+>;
+
 /** 提交边界由上层注入；数据写入回调无需接收租约对象。 */
 type CommitDatasetData = (write: (session: ClientSession) => Promise<void>) => Promise<void>;
 
@@ -754,28 +760,31 @@ export class DatasetDataOperation {
    * 删除范围包含主数据、全文检索 token、图片文件和向量记录。图片 key 需要先校验，
    * 防止误删非 dataset 来源的 S3 对象。
    */
-  async delete(data: DatasetDataItemType) {
-    await mongoSessionRun(async (session) => {
-      await MongoDatasetData.deleteOne({ _id: data.id }, { session });
-      await MongoDatasetTraining.deleteMany({ dataId: data.id }, { session });
-      // getFullTextStore() 按引擎分发:mongo 删除 dataset_data_texts;milvus 为 no-op(全文行随向量删除清理)。
-      await getFullTextStore().deleteByDataId(data.id, session);
+  async delete(data: DeleteDatasetDataProps, session?: ClientSession) {
+    await this.commitDataWrite({
+      session,
+      fn: async (session) => {
+        await MongoDatasetData.deleteOne({ _id: data.id }, { session });
+        await MongoDatasetTraining.deleteMany({ dataId: data.id }, { session });
+        // getFullTextStore() 按引擎分发:mongo 删除 dataset_data_texts;milvus 为 no-op(全文行随向量删除清理)。
+        await getFullTextStore().deleteByDataId(data.id, session);
 
-      // 主数据删除后清理图片对象，避免孤儿文件继续占用存储。
-      // 仅删除归属于该数据块 dataset 的 key，避免脏数据里的外库 key 触发跨库物理删除。
-      if (
-        data.imageId &&
-        isS3ObjectKey(data.imageId, 'dataset') &&
-        isAuthorizedDatasetFileS3Key({ key: data.imageId, datasetId: data.datasetId })
-      ) {
-        await getS3DatasetSource().deleteDatasetFileByKey(data.imageId);
+        // 主数据删除后清理图片对象，避免孤儿文件继续占用存储。
+        // 仅删除归属于该数据块 dataset 的 key，避免脏数据里的外库 key 触发跨库物理删除。
+        if (
+          data.imageId &&
+          isS3ObjectKey(data.imageId, 'dataset') &&
+          isAuthorizedDatasetFileS3Key({ key: data.imageId, datasetId: data.datasetId })
+        ) {
+          await getS3DatasetSource().deleteDatasetFileByKey(data.imageId);
+        }
+
+        // data.indexes 中的 dataId 即向量 id，删除数据时需要全部清理。
+        await this.indexOperation.deleteVectors({
+          teamId: data.teamId,
+          idList: data.indexes.map((item) => item.dataId)
+        });
       }
-
-      // data.indexes 中的 dataId 即向量 id，删除数据时需要全部清理。
-      await this.indexOperation.deleteVectors({
-        teamId: data.teamId,
-        idList: data.indexes.map((item) => item.dataId)
-      });
     });
 
     this.pushCollectionUpdate({
@@ -826,8 +835,8 @@ export const updateDatasetDataSystemIndexes = async (
 };
 
 /**
- * 删除 dataset data 及其全文索引、图片和向量等派生资源。
+ * 删除 dataset data 及其全文索引、图片和向量等派生资源，可复用上层事务。
  */
-export const deleteDatasetData = async (data: DatasetDataItemType) => {
-  return new DatasetDataOperation().delete(data);
+export const deleteDatasetData = async (data: DeleteDatasetDataProps, session?: ClientSession) => {
+  return new DatasetDataOperation().delete(data, session);
 };

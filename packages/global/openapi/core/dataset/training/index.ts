@@ -56,7 +56,8 @@ export const DatasetTrainingPath: OpenAPIPath = {
   '/core/dataset/training/deleteTrainingData': {
     post: {
       summary: '删除训练数据',
-      description: '删除指定的训练数据条目，需要管理权限',
+      description:
+        '删除指定的训练任务，需要管理权限。索引重建任务会同时删除对应原始数据及全部索引；首次训练任务仅取消训练。',
       tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {

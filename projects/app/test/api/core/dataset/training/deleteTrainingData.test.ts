@@ -9,6 +9,8 @@ import {
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { mockVectorDelete, resetVectorMocks } from '@test/mocks/common/vector';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   DatasetDataIndexStatusEnum,
@@ -17,11 +19,17 @@ import {
 import { serviceEnv } from '@fastgpt/service/env';
 import { getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
 const originalDatasetSynonymEnabled = serviceEnv.DATASET_SYNONYM_ENABLED;
 
 describe('delete training data test', () => {
+  beforeEach(() => {
+    resetVectorMocks();
+    mockVectorDelete.mockResolvedValue(undefined);
+  });
   afterEach(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
   });
@@ -135,18 +143,165 @@ describe('delete training data test', () => {
     expect(existingTrainingData).toBeTruthy();
   });
 
-  it('should allow deleting rebuild tasks through the existing training flow', async () => {
-    serviceEnv.DATASET_SYNONYM_ENABLED = true;
+  it.each([
+    DatasetDataIndexStatusEnum.rebuildIndexRunning,
+    DatasetDataIndexStatusEnum.rebuildIndexFailed
+  ])(
+    'deletes original data and indexes when deleting a rebuild task with data status %s',
+    async (indexStatus) => {
+      serviceEnv.DATASET_SYNONYM_ENABLED = true;
+      const root = await getRootUser();
+      const dataset = await MongoDataset.create({
+        name: 'test',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      });
+      const collection = await MongoDatasetCollection.create({
+        name: 'test',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id
+      });
+      const data = await MongoDatasetData.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        q: 'rebuild',
+        indexStatus,
+        indexes: [
+          { type: DatasetDataIndexTypeEnum.default, text: 'saved index', dataId: 'old-vector' }
+        ],
+        synonymRebuildingVersion: 2
+      });
+      const training = await MongoDatasetTraining.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        billId: 'test',
+        mode: TrainingModeEnum.rebuild,
+        dataId: data._id,
+        synonymVersion: 2
+      });
+
+      await MongoDatasetDataText.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        dataId: data._id,
+        fullTextToken: 'saved index'
+      });
+      // 清理失败时 Mongo 事务回滚，保留任务和数据供用户再次处理。
+      mockVectorDelete.mockRejectedValue(new Error('vector cleanup failed'));
+      const failed = await Call(handler, {
+        auth: root,
+        body: { collectionId: collection._id, dataId: training._id }
+      });
+      expect(failed.code).not.toBe(200);
+      expect(await MongoDatasetTraining.findById(training._id)).not.toBeNull();
+      expect(await MongoDatasetData.findById(data._id)).not.toBeNull();
+      expect(await MongoDatasetDataText.findOne({ dataId: data._id })).not.toBeNull();
+      expect(mockVectorDelete).toHaveBeenCalled();
+      mockVectorDelete.mockResolvedValue(undefined);
+      resetVectorMocks();
+
+      const res = await Call<
+        deleteTrainingDataBody,
+        Record<string, never>,
+        deleteTrainingDataResponse
+      >(handler, {
+        auth: root,
+        body: { collectionId: collection._id, dataId: training._id }
+      });
+
+      expect(res.code).toBe(200);
+      await expect(MongoDatasetTraining.findById(training._id)).resolves.toBeNull();
+      await expect(MongoDatasetData.findById(data._id)).resolves.toBeNull();
+      await expect(MongoDatasetDataText.findOne({ dataId: data._id })).resolves.toBeNull();
+      expect(mockVectorDelete).toHaveBeenCalledWith({
+        teamId: String(root.teamId),
+        idList: ['old-vector']
+      });
+
+      // 重复删除同一个任务幂等，不再次清理向量。
+      const repeated = await Call(handler, {
+        auth: root,
+        body: { collectionId: collection._id, dataId: training._id }
+      });
+      expect(repeated.code).toBe(200);
+      expect(mockVectorDelete).toHaveBeenCalledTimes(1);
+    }
+  );
+  it.each([TrainingModeEnum.rebuild, TrainingModeEnum.index])(
+    'preserves foreign data referenced by a %s training task',
+    async (mode) => {
+      const root = await getRootUser();
+      const dataset = await MongoDataset.create({
+        name: 'scope',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      });
+      const [collection, foreignCollection] = await MongoDatasetCollection.create(
+        ['scope', 'foreign'].map((name) => ({
+          name,
+          type: DatasetCollectionTypeEnum.file,
+          teamId: root.teamId,
+          tmbId: root.tmbId,
+          datasetId: dataset._id
+        }))
+      );
+      const data = await MongoDatasetData.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: foreignCollection._id,
+        q: 'foreign data',
+        indexes: [],
+        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+        synonymRebuildingVersion: 2
+      });
+      const training = await MongoDatasetTraining.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        billId: 'test',
+        mode,
+        dataId: data._id,
+        synonymVersion: 2
+      });
+      const res = await Call(handler, {
+        auth: root,
+        body: { collectionId: collection._id, dataId: training._id }
+      });
+      expect(res.code).toBe(200);
+      await expect(MongoDatasetTraining.findById(training._id)).resolves.toBeNull();
+      expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+        q: 'foreign data',
+        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+        synonymRebuildingVersion: 2
+      });
+      expect(mockVectorDelete).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps initial-training data when cancelling an index task', async () => {
     const root = await getRootUser();
     const dataset = await MongoDataset.create({
-      name: 'test',
+      name: 'initial',
       teamId: root.teamId,
       tmbId: root.tmbId,
       vectorModel: 'test',
       agentModel: 'test'
     });
     const collection = await MongoDatasetCollection.create({
-      name: 'test',
+      name: 'initial',
       type: DatasetCollectionTypeEnum.file,
       teamId: root.teamId,
       tmbId: root.tmbId,
@@ -157,11 +312,9 @@ describe('delete training data test', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
-      q: 'rebuild',
-      indexStatus: DatasetDataIndexStatusEnum.rebuilding,
-      indexes: [
-        { type: DatasetDataIndexTypeEnum.default, text: 'saved index', dataId: 'old-vector' }
-      ],
+      q: 'initial data',
+      indexes: [],
+      indexStatus: DatasetDataIndexStatusEnum.indexing,
       synonymRebuildingVersion: 2
     });
     const training = await MongoDatasetTraining.create({
@@ -170,29 +323,22 @@ describe('delete training data test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       billId: 'test',
-      mode: TrainingModeEnum.rebuild,
+      mode: TrainingModeEnum.index,
       dataId: data._id,
       synonymVersion: 2
     });
-
-    const res = await Call<
-      deleteTrainingDataBody,
-      Record<string, never>,
-      deleteTrainingDataResponse
-    >(handler, {
+    const res = await Call(handler, {
       auth: root,
       body: { collectionId: collection._id, dataId: training._id }
     });
-
     expect(res.code).toBe(200);
-    await expect(MongoDatasetTraining.findById(training._id)).resolves.toBeNull();
-    const updated = await MongoDatasetData.findById(data._id).lean();
-    expect(updated).not.toHaveProperty('synonymRebuildingVersion');
-    expect(updated).toMatchObject({
-      q: 'rebuild',
-      indexes: [{ text: 'saved index', dataId: 'old-vector' }],
-      indexStatus: DatasetDataIndexStatusEnum.rebuildError,
-      indexErrorMsg: 'Training task deleted'
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      q: 'initial data',
+      indexStatus: DatasetDataIndexStatusEnum.error
     });
+    expect(await MongoDatasetData.findById(data._id).lean()).not.toHaveProperty(
+      'synonymRebuildingVersion'
+    );
+    expect(mockVectorDelete).not.toHaveBeenCalled();
   });
 });

@@ -116,14 +116,14 @@ async function handler(req: ApiRequestProps): Promise<UpdateTrainingDataResponse
           _id: data.dataId,
           indexStatus:
             data.mode === TrainingModeEnum.rebuild
-              ? DatasetDataIndexStatusEnum.rebuildError
+              ? DatasetDataIndexStatusEnum.rebuildIndexFailed
               : DatasetDataIndexStatusEnum.error
         },
         {
           $set: {
             indexStatus:
               data.mode === TrainingModeEnum.rebuild
-                ? DatasetDataIndexStatusEnum.rebuilding
+                ? DatasetDataIndexStatusEnum.rebuildIndexRunning
                 : DatasetDataIndexStatusEnum.indexing
           },
           $unset: { indexErrorMsg: '' }

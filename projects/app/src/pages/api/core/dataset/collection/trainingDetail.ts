@@ -115,10 +115,10 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
         }
       ]),
       MongoDatasetData.countDocuments(trainedMatch),
-      // waitingRebuild 尚无 training；入队时原子变为 rebuilding，不能把后者再计入等待。
+      // rebuildIndexPending 尚无 training；入队时原子变为 rebuildIndexRunning，不能把后者再计入等待。
       MongoDatasetData.countDocuments({
         ...match,
-        indexStatus: DatasetDataIndexStatusEnum.waitingRebuild
+        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
       })
     ]);
 

@@ -38,8 +38,8 @@ describe('uniqueDatasetDataMarkdownImageUrls', () => {
 describe('assertDatasetDataWritable', () => {
   it.each([
     DatasetDataIndexStatusEnum.indexing,
-    DatasetDataIndexStatusEnum.waitingRebuild,
-    DatasetDataIndexStatusEnum.rebuilding
+    DatasetDataIndexStatusEnum.rebuildIndexPending,
+    DatasetDataIndexStatusEnum.rebuildIndexRunning
   ])('protects in-progress status %s', async (status) => {
     await expect(assertDatasetDataWritable(status)).rejects.toBe(DatasetErrEnum.dataNotIndexed);
   });
@@ -47,7 +47,7 @@ describe('assertDatasetDataWritable', () => {
     undefined,
     DatasetDataIndexStatusEnum.indexed,
     DatasetDataIndexStatusEnum.error,
-    DatasetDataIndexStatusEnum.rebuildError
+    DatasetDataIndexStatusEnum.rebuildIndexFailed
   ])('allows edits of completed or failed status %s', (status) => {
     expect(assertDatasetDataWritable(status)).toBeUndefined();
   });

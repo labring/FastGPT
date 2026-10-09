@@ -27,14 +27,12 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   activeTrainingExpr,
   finalErrorTrainingExpr,
-  getSlowestTrainingStatus,
+  getCollectionTrainingStatusByMode,
   remainingTrainingMatch,
   trainingModeRanks
 } from '@fastgpt/service/core/dataset/training/query';
-import {
-  CollectionTrainingStatusEnum,
-  type TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { type TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   ListCollectionV2BodySchema,
   ListCollectionV2ResponseSchema,
@@ -51,13 +49,7 @@ import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permissio
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { CollectionPermission } from '@fastgpt/global/support/permission/collection/controller';
 
-const defaultCollectionTrainingStatus = {
-  trainingAmount: 0,
-  activeTrainingAmount: 0,
-  finalErrorAmount: 0,
-  hasError: false,
-  slowestTrainingStatus: CollectionTrainingStatusEnum.ready
-};
+const defaultCollectionTrainingStatus = getCollectionTrainingStatusByMode({ modeCounts: {} });
 
 type TrainingAmountAggregateItem = {
   _id: string;
@@ -71,27 +63,17 @@ type TrainingAmountAggregateItem = {
   }[];
 };
 
-const formatTrainingStatus = (item?: TrainingAmountAggregateItem) => {
-  if (!item) return defaultCollectionTrainingStatus;
-
-  const { slowestTrainingMode, slowestTrainingStatus } = getSlowestTrainingStatus(
-    Object.fromEntries(
-      item.modeCounts.map(({ mode, activeCount, finalErrorCount }) => [
+/** 合并集合 training 与待入队的重建 data，避免排到后面的集合被误标为已就绪。 */
+const formatTrainingStatus = (item?: TrainingAmountAggregateItem, waitingRebuildCount = 0) =>
+  getCollectionTrainingStatusByMode({
+    modeCounts: Object.fromEntries(
+      (item?.modeCounts ?? []).map(({ mode, activeCount, finalErrorCount }) => [
         mode,
         { activeCount, finalErrorCount }
       ])
-    )
-  );
-
-  return {
-    trainingAmount: item.trainingAmount,
-    activeTrainingAmount: item.activeTrainingAmount,
-    finalErrorAmount: item.finalErrorAmount,
-    hasError: item.finalErrorAmount > 0,
-    slowestTrainingMode,
-    slowestTrainingStatus
-  };
-};
+    ),
+    waitingRebuildCount
+  });
 
 async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseType> {
   const {
@@ -299,7 +281,7 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
   // Compute data amount
   const [trainingAmount, dataAmount, collectionPermissionMap, tags]: [
     TrainingAmountAggregateItem[],
-    { _id: string; count: number }[],
+    { _id: string; count: number; waitingRebuildCount: number }[],
     Map<string, CollectionPermission> | undefined,
     (CollectionTagLabelType[] | undefined)[]
   ] = await Promise.all([
@@ -397,7 +379,16 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 }
+            count: { $sum: 1 },
+            waitingRebuildCount: {
+              $sum: {
+                $cond: [
+                  { $eq: ['$indexStatus', DatasetDataIndexStatusEnum.rebuildIndexPending] },
+                  1,
+                  0
+                ]
+              }
+            }
           }
         }
       ],
@@ -414,7 +405,8 @@ async function handler(req: ApiRequestProps): Promise<ListCollectionV2ResponseTy
     tags: tags[index],
     dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
     ...formatTrainingStatus(
-      trainingAmount.find((amount) => String(amount._id) === String(item._id))
+      trainingAmount.find((amount) => String(amount._id) === String(item._id)),
+      dataAmount.find((amount) => String(amount._id) === String(item._id))?.waitingRebuildCount ?? 0
     ),
     permission: getCollectionPermission(item, collectionPermissionMap)
   }));

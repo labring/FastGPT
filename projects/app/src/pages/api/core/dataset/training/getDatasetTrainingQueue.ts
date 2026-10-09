@@ -29,7 +29,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
 
   const [rebuildingCount, trainingCount] = await Promise.all([
     MongoDatasetData.countDocuments(
-      { indexStatus: DatasetDataIndexStatusEnum.waitingRebuild, teamId, datasetId },
+      { indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending, teamId, datasetId },
       {
         ...readFromSecondary
       }

@@ -18,6 +18,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn, useScroll, useThrottleEffect } from 'ahooks';
@@ -182,6 +183,12 @@ const TrainingErrorList = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { openConfirm: openRebuildDeleteConfirm, ConfirmModal: RebuildDeleteConfirmModal } =
+    useConfirm({
+      type: 'delete',
+      title: t('dataset:training.delete_rebuild_data_title'),
+      content: t('dataset:training.delete_rebuild_data_content')
+    });
   const [editChunk, setEditChunk] = useState<GetTrainingDataDetailResponse>();
   const collectionScrollRef = useRef<HTMLDivElement>(null);
   const collectionAutoFillOffsetRef = useRef<number>();
@@ -435,7 +442,11 @@ const TrainingErrorList = ({
     if (!checkPermission(permission.hasManagePer)) return;
 
     const collectionId = getItemCollectionId(item);
-    return deleteData({ collectionId, dataId: String(item._id) });
+    const onDelete = () => deleteData({ collectionId, dataId: String(item._id) });
+    if (item.mode === TrainingModeEnum.rebuild) {
+      return openRebuildDeleteConfirm({ onConfirm: onDelete })();
+    }
+    return onDelete();
   };
   const handleRetryAll = async () => {
     if (!checkPermission(permission.hasWritePer)) return;
@@ -722,6 +733,7 @@ const TrainingErrorList = ({
         </ScrollData>
       )}
 
+      <RebuildDeleteConfirmModal />
       {showFooter && (
         <Flex justifyContent={'flex-end'} gap={3} mt={6} flexShrink={0}>
           <Button variant={'whiteBase'} onClick={onClose}>

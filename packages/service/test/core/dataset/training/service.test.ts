@@ -463,8 +463,8 @@ describe('retryFailedTrainingTasks', () => {
 });
 
 describe('rebuild status failure and retry', () => {
-  it('keeps automatic retries rebuilding and moves terminal failures to rebuildError', async () => {
-    const context = await createContext(DatasetDataIndexStatusEnum.rebuilding);
+  it('keeps automatic retries rebuilding and moves terminal failures to rebuildIndexFailed', async () => {
+    const context = await createContext(DatasetDataIndexStatusEnum.rebuildIndexRunning);
     const task = await MongoDatasetTraining.create({
       ...context,
       tmbId: new Types.ObjectId(),
@@ -480,7 +480,7 @@ describe('rebuild status failure and retry', () => {
       await lease.stop();
     }
     expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.rebuilding
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
     });
     const retryTask = await MongoDatasetTraining.findById(task._id);
     if (!retryTask) throw new Error('Expected retry task');
@@ -491,12 +491,12 @@ describe('rebuild status failure and retry', () => {
       await retryLease.stop();
     }
     expect(await MongoDatasetData.findById(context.dataId).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.rebuildError,
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
       indexErrorMsg: 'exhausted'
     });
     await retryFailedTrainingTasks({ teamId: context.teamId, datasetId: context.datasetId });
     const data = await MongoDatasetData.findById(context.dataId).lean();
-    expect(data?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuilding);
+    expect(data?.indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildIndexRunning);
     expect(data?.indexErrorMsg).toBeUndefined();
     expect(await MongoDatasetTraining.findById(task._id).lean()).toMatchObject({
       retryCount: 3,

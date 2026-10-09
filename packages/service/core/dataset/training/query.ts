@@ -2,7 +2,10 @@ import {
   CollectionTrainingStatusEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import type { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
+import type {
+  CollectionTrainingStatusType,
+  DatasetTrainingSchemaType
+} from '@fastgpt/global/core/dataset/type';
 
 type TrainingStatusCount = {
   activeCount: number;
@@ -152,5 +155,40 @@ export const getSlowestTrainingStatus = (
       (slowestCounts?.activeCount ?? 0) > 0
         ? CollectionTrainingStatusEnum.running
         : CollectionTrainingStatusEnum.error
+  };
+};
+
+/**
+ * 合并各 training 阶段与尚未入队的重建数据，统一集合列表和详情的剩余数量及最慢阶段。
+ * rebuildIndexPending 没有 training，入队后改为 rebuildIndexRunning，后续只由 training 统计。
+ */
+export const getCollectionTrainingStatusByMode = ({
+  modeCounts,
+  waitingRebuildCount = 0
+}: {
+  modeCounts: Partial<Record<TrainingModeEnum, TrainingStatusCount>>;
+  waitingRebuildCount?: number;
+}): CollectionTrainingStatusType => {
+  const counts = {
+    ...modeCounts,
+    [TrainingModeEnum.rebuild]: {
+      activeCount: (modeCounts.rebuild?.activeCount ?? 0) + waitingRebuildCount,
+      finalErrorCount: modeCounts.rebuild?.finalErrorCount ?? 0
+    }
+  };
+  const activeTrainingAmount = Object.values(counts).reduce(
+    (sum, count) => sum + (count?.activeCount ?? 0),
+    0
+  );
+  const finalErrorAmount = Object.values(counts).reduce(
+    (sum, count) => sum + (count?.finalErrorCount ?? 0),
+    0
+  );
+  return {
+    trainingAmount: activeTrainingAmount + finalErrorAmount,
+    activeTrainingAmount,
+    finalErrorAmount,
+    hasError: finalErrorAmount > 0,
+    ...getSlowestTrainingStatus(counts)
   };
 };

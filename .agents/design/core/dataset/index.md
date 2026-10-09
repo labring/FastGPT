@@ -312,7 +312,7 @@ datasetId_1_externalFileId_1 (unique)
     updateTime: Date
   }],
 
-  indexStatus?: indexing | indexed | error | waitingRebuild | rebuilding | rebuildError
+  indexStatus?: indexing | indexed | error | rebuildIndexPending | rebuildIndexRunning | rebuildIndexFailed
 }
 
 // 索引

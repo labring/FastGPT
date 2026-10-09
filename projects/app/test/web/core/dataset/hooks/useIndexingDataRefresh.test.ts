@@ -104,16 +104,19 @@ describe('useIndexingDataRefresh', () => {
     expect(getDatasetDataList).toHaveBeenCalledTimes(2);
   });
 
-  it.each([DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.rebuildError])(
+  it.each([DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.rebuildIndexFailed])(
     'refreshes rebuild transitions until %s and stops polling at the terminal state',
     async (terminalStatus) => {
       await render();
-      const initial = { ...makeItem('1'), indexStatus: DatasetDataIndexStatusEnum.waitingRebuild };
+      const initial = {
+        ...makeItem('1'),
+        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
+      };
       await act(async () => setData([initial]));
       vi.mocked(getDatasetDataList)
         .mockResolvedValueOnce({
           total: 1,
-          list: [{ ...initial, indexStatus: DatasetDataIndexStatusEnum.rebuilding }]
+          list: [{ ...initial, indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning }]
         })
         .mockResolvedValueOnce({
           total: 1,
@@ -121,7 +124,7 @@ describe('useIndexingDataRefresh', () => {
         });
 
       await tick();
-      expect(data[0].indexStatus).toBe(DatasetDataIndexStatusEnum.rebuilding);
+      expect(data[0].indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildIndexRunning);
       await tick();
       expect(data[0].indexStatus).toBe(terminalStatus);
       await tick();

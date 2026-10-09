@@ -233,7 +233,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       collectionId: collection._id,
       q: 'pending',
       indexes: [],
-      indexStatus: 'waitingRebuild'
+      indexStatus: 'rebuildIndexPending'
     });
 
     const res = await Call(handler, {
@@ -295,7 +295,7 @@ describe('POST /api/core/dataset/training/rebuildEmbedding', () => {
       vectorModelId: visionEmbeddingModel.modelId
     });
     await expect(MongoDatasetData.findById(data._id).lean()).resolves.toMatchObject({
-      indexStatus: 'waitingRebuild'
+      indexStatus: 'rebuildIndexPending'
     });
     await expect(MongoDatasetTraining.countDocuments({ datasetId: dataset._id })).resolves.toBe(0);
   });

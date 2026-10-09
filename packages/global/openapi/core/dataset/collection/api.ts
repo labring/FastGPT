@@ -242,7 +242,7 @@ export const GetCollectionTrainingDetailResponseSchema = z.object({
     })
     .meta({ description: '高级训练配置' }),
   queuedCounts: TrainingCountsSchema.meta({
-    description: '排队中数量，rebuild 包含 data 中尚未入队的 waitingRebuild 数据'
+    description: '排队中数量，rebuild 包含 data 中尚未入队的 rebuildIndexPending 数据'
   }),
   trainingCounts: TrainingCountsSchema.meta({ description: '训练中数量' }),
   errorCounts: TrainingCountsSchema.meta({ description: '错误数量' }),

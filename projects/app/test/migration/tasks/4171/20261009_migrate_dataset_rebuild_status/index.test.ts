@@ -40,6 +40,44 @@ const createContext = () => {
 };
 
 describe('migrateDatasetRebuildStatus', () => {
+  it('renames persisted rebuild states without changing indexes, errors or new states on replay', async () => {
+    const cases = [
+      ['waitingRebuild', 'rebuildIndexPending'],
+      ['rebuilding', 'rebuildIndexRunning'],
+      ['rebuildError', 'rebuildIndexFailed'],
+      ['rebuildIndexPending', 'rebuildIndexPending'],
+      ['rebuildIndexRunning', 'rebuildIndexRunning'],
+      ['rebuildIndexFailed', 'rebuildIndexFailed'],
+      ['indexing', 'indexing'],
+      ['error', 'error']
+    ] as const;
+    const records = cases.map(([indexStatus], i) => ({
+      _id: new Types.ObjectId(),
+      indexStatus,
+      ...(i > 0 && { rebuilding: true }),
+      q: 'original question',
+      a: 'original answer',
+      indexes: [{ type: 'custom', text: 'saved index', dataId: 'old-vector' }],
+      indexErrorMsg: 'preserved error',
+      updateTime: new Date('2026-10-09T00:00:00Z')
+    }));
+    await db().collection('dataset_datas').insertMany(records);
+    expect(await countRemainingRebuildStatuses()).toBe(records.length);
+
+    for (let run = 0; run < 2; run++) {
+      await expect(migrateDatasetRebuildStatus(createContext().context)).resolves.toEqual({
+        remainingCount: 0
+      });
+      for (const [i, record] of records.entries()) {
+        const { rebuilding, ...original } = record;
+        expect(await db().collection('dataset_datas').findOne({ _id: record._id })).toEqual({
+          ...original,
+          indexStatus: cases[i][1]
+        });
+      }
+    }
+  });
+
   it('migrates waiting, active, exhausted and blocked rebuilds without changing content or training', async () => {
     const waiting = await seed({ existing: true, mode: 'rebuild' });
     const active = await seed({ existing: true, mode: 'rebuild', status: 'indexed' });
@@ -61,10 +99,10 @@ describe('migrateDatasetRebuildStatus', () => {
     const { context } = createContext();
     await expect(migrateDatasetRebuildStatus(context)).resolves.toEqual({ remainingCount: 0 });
     for (const [task, status] of [
-      [waiting, 'waitingRebuild'],
-      [active, 'rebuilding'],
-      [failed, 'rebuildError'],
-      [blocked, 'rebuildError'],
+      [waiting, 'rebuildIndexPending'],
+      [active, 'rebuildIndexRunning'],
+      [failed, 'rebuildIndexFailed'],
+      [blocked, 'rebuildIndexFailed'],
       [initial, 'indexing']
     ] as const) {
       expect(await db().collection('dataset_datas').findOne({ _id: task.dataId })).toMatchObject({
@@ -113,7 +151,7 @@ describe('migrateDatasetRebuildStatus', () => {
       'checkpoint interrupted'
     );
     expect(await db().collection('dataset_datas').findOne({ _id: task.dataId })).toMatchObject({
-      indexStatus: 'waitingRebuild'
+      indexStatus: 'rebuildIndexPending'
     });
     await expect(migrateDatasetRebuildStatus(state.context)).resolves.toEqual({
       remainingCount: 0
@@ -176,14 +214,14 @@ describe('migrateRebuildStatusBatch', () => {
   });
 
   it('does not overwrite new statuses or orphan/mismatched training references', async () => {
-    const completed = await seed({ existing: true, mode: 'rebuild', status: 'rebuildError' });
+    const completed = await seed({ existing: true, mode: 'rebuild', status: 'rebuildIndexFailed' });
     const mismatched = await seed({ existing: true, mode: 'rebuild', status: 'indexed' });
     await db()
       .collection('dataset_trainings')
       .updateOne({ _id: mismatched._id }, { $set: { teamId: new Types.ObjectId() } });
     await migrateRebuildStatusBatch({ stage: 'trainings', ids: [completed._id, mismatched._id] });
     expect(await db().collection('dataset_datas').findOne({ _id: completed.dataId })).toMatchObject(
-      { indexStatus: 'rebuildError' }
+      { indexStatus: 'rebuildIndexFailed' }
     );
     expect(
       await db().collection('dataset_datas').findOne({ _id: mismatched.dataId })

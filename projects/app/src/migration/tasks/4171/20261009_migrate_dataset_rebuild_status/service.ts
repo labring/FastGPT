@@ -3,6 +3,14 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { BLOCKED_LOCK_TIME } from '@fastgpt/service/core/dataset/training/query';
 
+// 兼容本轮开发期间已落库的旧状态名；正常业务只使用 rebuildIndex* 状态。
+const legacyDataMatch = {
+  $or: [
+    { rebuilding: { $exists: true } },
+    { indexStatus: { $in: ['waitingRebuild', 'rebuilding', 'rebuildError'] } }
+  ]
+};
+
 const rebuildTrainingMatch = {
   // 旧重建可能仍处于增强/chunk 阶段；只有正式 data 才转换状态，预落库数据保持 indexing/error。
   mode: { $in: ['rebuild', 'chunk', 'auto', 'image', 'imageParse'] },
@@ -11,7 +19,7 @@ const rebuildTrainingMatch = {
 const legacyIndexedMatch = {
   $or: [
     { indexStatus: { $exists: false } },
-    { indexStatus: { $in: ['indexed', 'waitingRebuild'] } }
+    { indexStatus: { $in: ['indexed', 'rebuildIndexPending'] } }
   ]
 };
 
@@ -26,7 +34,7 @@ const getDb = () => {
 export const getRebuildStatusEndId = async (stage: 'datas' | 'trainings') => {
   const last = await getDb()
     .collection(stage === 'datas' ? 'dataset_datas' : 'dataset_trainings')
-    .findOne(stage === 'datas' ? { rebuilding: { $exists: true } } : rebuildTrainingMatch, {
+    .findOne(stage === 'datas' ? legacyDataMatch : rebuildTrainingMatch, {
       projection: { _id: 1 },
       sort: { _id: -1 }
     });
@@ -49,7 +57,7 @@ export const readRebuildStatusBatch = ({
     .collection(stage === 'datas' ? 'dataset_datas' : 'dataset_trainings')
     .find(
       {
-        ...(stage === 'datas' ? { rebuilding: { $exists: true } } : rebuildTrainingMatch),
+        ...(stage === 'datas' ? legacyDataMatch : rebuildTrainingMatch),
         _id: {
           $lte: new Types.ObjectId(endId),
           ...(lastId ? { $gt: new Types.ObjectId(lastId) } : {})
@@ -62,7 +70,8 @@ export const readRebuildStatusBatch = ({
     .toArray();
 
 /**
- * 每批一个短事务。旧 true 表示待入队，false 只清理；已有新状态与初次索引状态不被覆盖。
+ * 每批一个短事务。旧 true 表示待入队，false 只清理；旧枚举值等义更名。
+ * 已有 rebuildIndex* 状态与初次索引状态不被覆盖。
  * 训练阶段按仍存在的任务恢复重建中/失败，保留正文、索引、账单、重试次数和租约。
  * 业务提交后、checkpoint 前崩溃可以重放；已转换的数据不再满足条件。
  */
@@ -78,17 +87,28 @@ export const migrateRebuildStatusBatch = async ({
     const datas = db.collection('dataset_datas');
     if (stage === 'datas') {
       const batch = await datas
-        .find({ _id: { $in: ids }, rebuilding: { $exists: true } }, { session })
+        .find({ _id: { $in: ids }, ...legacyDataMatch }, { session })
         .toArray();
       for (const data of batch) {
-        if (typeof data.rebuilding !== 'boolean')
+        if ('rebuilding' in data && typeof data.rebuilding !== 'boolean')
           throw new Error(`Invalid rebuilding field on dataset data ${data._id}`);
-        const waiting =
-          data.rebuilding && (data.indexStatus == null || data.indexStatus === 'indexed');
+        const indexStatus = (() => {
+          switch (data.indexStatus) {
+            case 'waitingRebuild':
+              return DatasetDataIndexStatusEnum.rebuildIndexPending;
+            case 'rebuilding':
+              return DatasetDataIndexStatusEnum.rebuildIndexRunning;
+            case 'rebuildError':
+              return DatasetDataIndexStatusEnum.rebuildIndexFailed;
+          }
+          if (data.rebuilding && (data.indexStatus == null || data.indexStatus === 'indexed')) {
+            return DatasetDataIndexStatusEnum.rebuildIndexPending;
+          }
+        })();
         await datas.updateOne(
-          { _id: data._id, rebuilding: data.rebuilding },
+          { _id: data._id, ...legacyDataMatch },
           {
-            ...(waiting && { $set: { indexStatus: DatasetDataIndexStatusEnum.waitingRebuild } }),
+            ...(indexStatus && { $set: { indexStatus } }),
             $unset: { rebuilding: '' }
           },
           { session }
@@ -113,8 +133,8 @@ export const migrateRebuildStatusBatch = async ({
         {
           $set: {
             indexStatus: failed
-              ? DatasetDataIndexStatusEnum.rebuildError
-              : DatasetDataIndexStatusEnum.rebuilding,
+              ? DatasetDataIndexStatusEnum.rebuildIndexFailed
+              : DatasetDataIndexStatusEnum.rebuildIndexRunning,
             ...(failed && { indexErrorMsg: task.errorMsg || 'Rebuild training stopped' })
           },
           ...(!failed && { $unset: { indexErrorMsg: '' } })
@@ -128,9 +148,7 @@ export const migrateRebuildStatusBatch = async ({
 /** 完成条件来自业务集合；不能仅根据游标到达末尾判断成功。 */
 export const countRemainingRebuildStatuses = async () => {
   const db = getDb();
-  const legacyFields = await db
-    .collection('dataset_datas')
-    .countDocuments({ rebuilding: { $exists: true } });
+  const legacyFields = await db.collection('dataset_datas').countDocuments(legacyDataMatch);
   const [legacyTraining] = await db
     .collection('dataset_trainings')
     .aggregate([
@@ -141,7 +159,7 @@ export const countRemainingRebuildStatuses = async () => {
         $match: {
           $or: [
             { 'data.indexStatus': { $exists: false } },
-            { 'data.indexStatus': { $in: ['indexed', 'waitingRebuild'] } }
+            { 'data.indexStatus': { $in: ['indexed', 'rebuildIndexPending'] } }
           ],
           $expr: {
             $and: [

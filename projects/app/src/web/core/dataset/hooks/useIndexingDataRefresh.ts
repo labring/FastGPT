@@ -29,8 +29,8 @@ export const useIndexingDataRefresh = ({
       !data.some(
         (item) =>
           item.indexStatus === DatasetDataIndexStatusEnum.indexing ||
-          item.indexStatus === DatasetDataIndexStatusEnum.waitingRebuild ||
-          item.indexStatus === DatasetDataIndexStatusEnum.rebuilding
+          item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexPending ||
+          item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexRunning
       )
     )
       return;

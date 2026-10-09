@@ -72,9 +72,9 @@
   "data_index_status_indexing": "索引中",
   "data_index_status_indexed": "已索引",
   "data_index_status_error": "索引失敗",
-  "data_index_status_waiting_rebuild": "待重建",
-  "data_index_status_rebuilding": "重建中",
-  "data_index_status_rebuild_error": "重建失敗",
+  "data_index_status_waiting_rebuild": "索引待重建",
+  "data_index_status_rebuilding": "索引重建中",
+  "data_index_status_rebuild_error": "索引重建失敗",
   "data_index_image": "圖片索引",
   "data_index_image_embedding": "多模態圖片索引",
   "image_embedding_index_default_desc": "已透過多模態模型生成圖片向量，支援以圖搜圖",
@@ -287,5 +287,7 @@
   "delete_folders_confirm_title": "確認刪除 {{count}} 個文件夾",
   "delete_following_datasets_tip": "刪除以下知識庫會將其關聯的索引和數據一併刪除。",
   "delete_following_folders_tip": "刪除後，這些文件夾及其包含的全部知識庫、關聯索引和數據將被一併刪除。",
-  "data_indexing_cannot_modify": "資料索引中，暫不可更改"
+  "data_indexing_cannot_modify": "資料索引中，暫不可更改",
+  "training.delete_rebuild_data_title": "刪除重建資料？",
+  "training.delete_rebuild_data_content": "刪除此重建任務會同時刪除原始資料及其全部索引，無法復原。確認刪除嗎？"
 }

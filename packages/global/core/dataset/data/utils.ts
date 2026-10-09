@@ -30,7 +30,10 @@ export const isDatasetDataIndexed = (indexStatus?: DatasetDataIndexStatusEnum) =
 /** 正在重建或等待入队的数据；失败任务由 training 队列继续管理。 */
 export const rebuildingDatasetDataMatch = {
   indexStatus: {
-    $in: [DatasetDataIndexStatusEnum.waitingRebuild, DatasetDataIndexStatusEnum.rebuilding]
+    $in: [
+      DatasetDataIndexStatusEnum.rebuildIndexPending,
+      DatasetDataIndexStatusEnum.rebuildIndexRunning
+    ]
   }
 };
 
@@ -47,7 +50,7 @@ export const rebuildableDatasetDataMatch = {
   $or: [
     {
       indexStatus: {
-        $in: [DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.rebuildError]
+        $in: [DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.rebuildIndexFailed]
       }
     },
     { indexStatus: { $exists: false } }

@@ -148,7 +148,7 @@ describe('rebuild paths skip pending index data', () => {
       root,
       dataset,
       collection,
-      indexStatus: DatasetDataIndexStatusEnum.rebuildError
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
     });
     const res = await Call(handler, {
       auth: root,
@@ -156,7 +156,7 @@ describe('rebuild paths skip pending index data', () => {
     });
     expect(res.code).toBe(200);
     expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.rebuilding
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
     });
     expect(await MongoDatasetTraining.findOne({ dataId: data._id }).lean()).toMatchObject({
       mode: TrainingModeEnum.rebuild
@@ -170,7 +170,7 @@ describe('rebuild paths skip pending index data', () => {
       root,
       dataset,
       collection,
-      indexStatus: DatasetDataIndexStatusEnum.rebuildError,
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed,
       synonymVersion: 1
     });
     await expect(
@@ -183,7 +183,7 @@ describe('rebuild paths skip pending index data', () => {
       })
     ).resolves.toBe(true);
     expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
-      indexStatus: DatasetDataIndexStatusEnum.rebuilding
+      indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning
     });
     expect(await MongoDatasetTraining.findOne({ dataId: data._id }).lean()).toMatchObject({
       mode: TrainingModeEnum.rebuild,

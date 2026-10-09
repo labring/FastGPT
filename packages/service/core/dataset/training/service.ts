@@ -226,14 +226,14 @@ export const createTrainingTaskLease = (task: TrainingLeaseTask) => {
               collectionId: task.collectionId,
               indexStatus:
                 task.mode === TrainingModeEnum.rebuild
-                  ? DatasetDataIndexStatusEnum.rebuilding
+                  ? DatasetDataIndexStatusEnum.rebuildIndexRunning
                   : DatasetDataIndexStatusEnum.indexing
             },
             {
               $set: {
                 indexStatus:
                   task.mode === TrainingModeEnum.rebuild
-                    ? DatasetDataIndexStatusEnum.rebuildError
+                    ? DatasetDataIndexStatusEnum.rebuildIndexFailed
                     : DatasetDataIndexStatusEnum.error,
                 indexErrorMsg: errorMsg
               }
@@ -349,10 +349,10 @@ export const retryFailedTrainingTasks = async (
           {
             ...scope,
             _id: { $in: rebuildDataIds },
-            indexStatus: DatasetDataIndexStatusEnum.rebuildError
+            indexStatus: DatasetDataIndexStatusEnum.rebuildIndexFailed
           },
           {
-            $set: { indexStatus: DatasetDataIndexStatusEnum.rebuilding },
+            $set: { indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning },
             $unset: { indexErrorMsg: '' }
           },
           { session }
