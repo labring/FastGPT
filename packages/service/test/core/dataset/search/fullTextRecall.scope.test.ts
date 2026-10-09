@@ -1,21 +1,36 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { FullTextSearchItem } from '@fastgpt/service/common/vectorDB/type';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 
 const searchMock = vi.hoisted(() => vi.fn());
+const authCollectionMock = vi.hoisted(() => vi.fn());
 
-// 只替换全文引擎；主数据和集合回查运行真实 Mongo 查询，验证引擎结果不能扩大检索范围。
+// 异常引擎命中是防御性测试，不代表系统支持移动数据块；回查使用真实 Mongo。
 vi.mock('@fastgpt/service/core/dataset/data/textStore', () => ({
   getFullTextStore: () => ({ search: searchMock })
 }));
 
-import { fullTextRecall } from '@fastgpt/service/core/dataset/search/defaultRecall/fullTextRecall';
+// API 集成只固定已授权身份并绕过 HTTP 包装；入参解析、事务和数据库写入保持真实。
+vi.mock('@/service/middleware/entry', () => ({ NextAPI: (handler: unknown) => handler }));
+vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
+  authDataset: vi.fn(),
+  authDatasetCollection: authCollectionMock
+}));
+// 全局测试默认绕过事务；本组使用隔离的 replica set 验证真实 API 提交后的集合状态。
+vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => importOriginal());
 
-/** 创建独立资源，模拟索引比主数据旧或引擎忽略过滤条件的情况。 */
+import { fullTextRecall } from '@fastgpt/service/core/dataset/search/defaultRecall/fullTextRecall';
+import { multiQueryRecall } from '@fastgpt/service/core/dataset/search/defaultRecall/multiQueryRecall';
+import updateCollection from '@/pages/api/core/dataset/collection/update';
+
+/** 创建独立资源；异常归属只用于防御性覆盖，禁用回归使用真实集合更新接口。 */
 const createFixtures = async () => {
   const teamId = new Types.ObjectId();
   const otherTeamId = new Types.ObjectId();
@@ -83,6 +98,35 @@ const createFixtures = async () => {
       ...overrides
     });
 
+  const recallRequest = () =>
+    multiQueryRecall({
+      teamId: String(teamId),
+      datasetIds: [String(datasetId)],
+      model: {
+        modelId: String(new Types.ObjectId()),
+        provider: 'openai',
+        model: 'unused-embedding-model',
+        name: 'Unused embedding model',
+        type: ModelTypeEnum.embedding,
+        scope: ModelScopeEnum.system,
+        isActive: true,
+        config: { defaultToken: 100, maxToken: 100, weight: 0 }
+      },
+      readableCollectionIdList: [String(readable._id)],
+      embeddingLimit: 0,
+      fullTextLimit: 10,
+      textQueries: ['question'],
+      imageCaptionQueries: [],
+      imageQueries: []
+    });
+
+  const setForbid = async (forbid: boolean) => {
+    authCollectionMock.mockResolvedValue({ collection: readable, teamId, tmbId });
+    await (updateCollection as unknown as (req: ApiRequestProps) => Promise<unknown>)({
+      body: { id: String(readable._id), forbid }
+    } as ApiRequestProps);
+  };
+
   return {
     teamId,
     datasetId,
@@ -100,15 +144,25 @@ const createFixtures = async () => {
     otherTeamData,
     createData,
     hit,
-    recall
+    recall,
+    recallRequest,
+    setForbid
   };
 };
 
 beforeEach(() => {
   searchMock.mockReset();
+  authCollectionMock.mockReset();
 });
 
 describe.sequential('fullTextRecall authoritative Mongo scope', () => {
+  beforeAll(async () => {
+    // 分词模块异步加载原生词典，单独运行真实全文用例时必须等待初始化完成。
+    await vi.waitFor(async () => {
+      expect(await jiebaSplit({ text: 'question' })).toBe('question');
+    });
+  });
+
   it('keeps permitted content, metadata, indexes and source attribution', async () => {
     const f = await createFixtures();
     searchMock.mockResolvedValue([f.hit(f.readableData, 4)]);
@@ -258,21 +312,6 @@ describe.sequential('fullTextRecall authoritative Mongo scope', () => {
     expect(JSON.stringify(result)).not.toContain('hidden-source question');
   });
 
-  it('rejects stale collection IDs after a data row moves', async () => {
-    const f = await createFixtures();
-    const staleHit = f.hit(f.readableData);
-    await MongoDatasetData.updateOne(
-      { _id: f.readableData._id },
-      { $set: { collectionId: f.hidden._id } }
-    );
-    searchMock.mockResolvedValue([staleHit]);
-
-    await expect(f.recall()).resolves.toEqual({
-      textFullTextRecallResults: [],
-      imageCaptionFullTextRecallResults: []
-    });
-  });
-
   it('rejects data/collection dataset mismatches even when both datasets are selected', async () => {
     const f = await createFixtures();
     const inconsistent = await f.createData(f.readable, { datasetId: f.otherDatasetId });
@@ -370,7 +409,7 @@ describe.sequential('fullTextRecall authoritative Mongo scope', () => {
     ]);
   });
 
-  it('rejects a stale Mongo text index after data moves to an inaccessible collection', async () => {
+  it('excludes a collection disabled through the API while full-text recall is in flight', async () => {
     const f = await createFixtures();
     const { MongoFullTextStore } = await vi.importActual<
       typeof import('@fastgpt/service/core/dataset/data/textStore')
@@ -386,13 +425,15 @@ describe.sequential('fullTextRecall authoritative Mongo scope', () => {
         fullText: 'question'
       }
     ]);
-    await MongoDatasetData.updateOne(
-      { _id: f.readableData._id },
-      { $set: { collectionId: f.hidden._id } }
-    );
-    searchMock.mockImplementation((props) => store.search(props));
+    searchMock.mockImplementation(async (props) => {
+      // 调度层已读取禁用列表；真实索引命中后调用禁用 API，固定并发更新发生的时机。
+      expect(props.forbidCollectionIdList).not.toContain(String(f.readable._id));
+      const hits = await store.search(props);
+      await f.setForbid(true);
+      return hits;
+    });
 
-    const result = await f.recall({ filterCollectionIdList: [String(f.readable._id)] });
+    const result = await f.recallRequest();
 
     expect(await searchMock.mock.results[0].value).toEqual([
       expect.objectContaining({
@@ -400,7 +441,22 @@ describe.sequential('fullTextRecall authoritative Mongo scope', () => {
         collectionId: String(f.readable._id)
       })
     ]);
+    expect(await MongoDatasetCollection.findById(f.readable._id).lean()).toMatchObject({
+      forbid: true
+    });
+    const data = await MongoDatasetData.findById(f.readableData._id).lean();
+    expect(String(data?.collectionId)).toBe(String(f.readable._id));
+    expect(String(data?.datasetId)).toBe(String(f.datasetId));
+    expect(await MongoDatasetDataText.countDocuments({ dataId: f.readableData._id })).toBe(1);
     expect(result.textFullTextRecallResults).toEqual([]);
+
+    // 重新启用使用同一 API 和索引，正常检索无需重建索引即可恢复。
+    await f.setForbid(false);
+    searchMock.mockImplementation((props) => store.search(props));
+    const enabled = await f.recallRequest();
+    expect(enabled.textFullTextRecallResults.map((item) => item.id)).toEqual([
+      String(f.readableData._id)
+    ]);
   });
 
   it('keeps a live Mongo text index result with the same content and source', async () => {

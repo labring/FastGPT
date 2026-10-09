@@ -35,7 +35,8 @@ type DataCollectionMaps = {
 
 /**
  * 在请求范围内反查主数据和集合；全文索引不是权限或来源归属的权威数据。
- * collectionIds 已排除不可读和禁用集合，当前 forbid 状态仍需在 Mongo 中复核。
+ * 禁用列表读取后集合仍可能通过更新 API 被禁用；回查时复核 Mongo 可见的 forbid 状态。
+ * 保持现有副本读语义，不承诺跨副本即时一致性。
  */
 const buildDataCollectionMaps = async ({
   dataIds,
@@ -94,7 +95,7 @@ const buildDataCollectionMaps = async ({
 
 /**
  * 单个 FullTextSearchItem 组装为搜索结果(ISSUE-011 局部函数)。
- * data/collection 缺失或归属不一致时跳过，避免旧索引把内容归到错误来源。
+ * data/collection 缺失或归属不一致时跳过，防御异常索引命中的错误来源归属。
  */
 const buildItemFromFullTextSearch = ({
   item,
