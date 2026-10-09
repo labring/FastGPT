@@ -27,6 +27,7 @@ import {
   DatasetDataIndexTypeEnum
 } from '@fastgpt/global/core/dataset/data/constants';
 import {
+  getDatasetSynonymMatcher,
   getDatasetSynonymTransformContext,
   isDatasetSynonymEnabled
 } from '@fastgpt/service/core/dataset/synonym/entity';
@@ -77,6 +78,8 @@ type RebuildDatasetDataIndexesProps = {
   dataId: string;
   model: EmbeddingSystemModelDataType;
   commit?: CommitDatasetData;
+  /** 仅同义词重建允许复用输入未变化的向量；模型切换必须全量生成。 */
+  diffSynonym?: boolean;
 };
 
 /*
@@ -500,31 +503,85 @@ export class DatasetDataOperation {
 
   /**
    * 仅用已存 indexes 重建向量和全文索引，不读取或修改 q/a、图片描述、历史记录。
-   * 保留索引类型和原文，不重新分块或调用增强阶段；不支持的图片向量由索引层跳过。
+   * 同义词重建复用转换输入未变化的向量；模型重建全量生成，不支持的图片由索引层跳过。
    * 新索引与任务完成原子提交，CAS 防止覆盖在途编辑；提交失败清理新向量，成功后清理旧向量。
    */
-  async rebuildIndexes({ dataId, commit }: RebuildDatasetDataIndexesProps) {
+  async rebuildIndexes({ dataId, commit, diffSynonym = false }: RebuildDatasetDataIndexesProps) {
+    // 1. 读取已存索引快照，保留 updateTime 用于提交时检查并发修改。
     const mongoData = await MongoDatasetData.findById(dataId)
-      .select('_id teamId datasetId collectionId indexes updateTime')
+      .select('_id teamId datasetId collectionId indexes updateTime synonymVersion')
       .lean();
     if (!mongoData) return Promise.reject('Data not found');
 
+    // 2. 获取本次向量化使用的词表快照；功能关闭时不查询同义词配置。
     const synonymContext = isDatasetSynonymEnabled()
       ? await getDatasetSynonymTransformContext({
           teamId: String(mongoData.teamId),
           datasetId: String(mongoData.datasetId)
         })
       : undefined;
-    const oldVectorIds = mongoData.indexes.map((index) => index.dataId);
+
+    // 3. 仅在同义词差量重建时还原旧转换规则，用于比较实际 embedding 输入。
+    const previousTransformText = await (async () => {
+      if (!diffSynonym || !synonymContext) return;
+
+      // 版本 0 明确表示未使用词表，旧向量直接基于原文生成。
+      if (mongoData.synonymVersion === 0) return (text: string) => text;
+
+      // 未记录版本或历史快照已被清理时，全量生成，不能猜测旧向量的输入。
+      if (mongoData.synonymVersion === undefined) return;
+
+      const matcher = await getDatasetSynonymMatcher({
+        teamId: String(mongoData.teamId),
+        datasetId: String(mongoData.datasetId),
+        fileVersion: mongoData.synonymVersion
+      });
+      if (matcher.hasMappings) return (text: string) => matcher.transform(text).transformedText;
+    })();
+
+    // 4. 确定需要替换的索引和可复用的索引，此时 patch 中仍保留旧向量 ID。
+    const patchResult = (() => {
+      // 功能关闭或普通索引重建时，直接全量更新，不进入逐项 diff。
+      if (!diffSynonym || !synonymContext) {
+        return mongoData.indexes.map((index) => ({ type: 'update' as const, index: { ...index } }));
+      }
+
+      return this.indexOperation.buildPatch({
+        currentIndexes: mongoData.indexes,
+        nextIndexes: mongoData.indexes,
+        isSameIndex: (current, next) => {
+          // 同义词不会影响图片输入；其余索引比较实际送入 embedding 的文本。
+          if (current.type === DatasetDataIndexTypeEnum.imageEmbedding) return true;
+          return (
+            !!previousTransformText &&
+            previousTransformText(current.text) === synonymContext.transformText(next.text)
+          );
+        }
+      });
+    })();
+
+    // 5. 在 patch 回填新 ID 前保存待删除的旧 ID，并刷新时间以便一致性任务兜底清理。
+    const oldVectorIds = this.indexOperation.getDeleteVectorIdList(patchResult);
     await refreshDatasetDataVectorCreateTime({ teamId: mongoData.teamId, idList: oldVectorIds });
-    const { tokens, indexes } = await this.indexOperation.insertVectors({
-      indexes: mongoData.indexes.map(({ type, text }) => ({ type, text })),
+
+    // 6. 只为变更项生成向量；索引层会将新 ID 回填到 patch，复用项保持不变。
+    const tokens = await this.indexOperation.insertVectorForPatch({
+      patchResult,
       teamId: String(mongoData.teamId),
       datasetId: String(mongoData.datasetId),
       collectionId: String(mongoData.collectionId),
       transformText: synonymContext?.transformText
     });
 
+    // 7. 汇总最终索引，并单独记录本次新增的向量，确保回滚不会删除复用项。
+    const indexes = this.indexOperation.getWritablePatchIndexes(patchResult);
+    const newVectorIds = this.indexOperation
+      .getWritablePatchIndexes(
+        patchResult.filter((item) => item.type === 'create' || item.type === 'update')
+      )
+      .map((index) => index.dataId);
+
+    // 8. 校验词表和数据快照后，原子提交索引、全文和任务完成状态。
     try {
       await this.commitDataWrite({
         commit,
@@ -532,6 +589,7 @@ export class DatasetDataOperation {
           if (synonymContext && !(await synonymContext.isCurrent())) {
             throw new Error('同义词配置已变化，请重试索引更新');
           }
+
           const result = await MongoDatasetData.updateOne(
             { _id: mongoData._id, updateTime: mongoData.updateTime },
             {
@@ -550,7 +608,7 @@ export class DatasetDataOperation {
           );
           if (result.matchedCount !== 1) throw new Error('数据已变化，请重试索引更新');
 
-          // 全文派生文本同样来自已存索引；图片源只参与向量化，不进入全文检索。
+          // 历史全文可能来自 q/a，不能仅凭词表 diff 跳过写入；统一从已存文本索引派生。
           const fullText = indexes
             .filter((index) => index.type !== DatasetDataIndexTypeEnum.imageEmbedding)
             .map((index) => index.text)
@@ -571,17 +629,19 @@ export class DatasetDataOperation {
       });
     } catch (error) {
       await this.indexOperation
-        .deleteVectors({ teamId: mongoData.teamId, idList: indexes.map((index) => index.dataId) })
+        .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIds })
         .catch(() => {});
       throw error;
     }
 
+    // 9. 提交成功后再删除被替换的旧向量，并通知集合更新统计。
     await this.cleanupReplacedVectors({ teamId: mongoData.teamId, idList: oldVectorIds });
     this.pushCollectionUpdate({
       teamId: mongoData.teamId,
       datasetId: mongoData.datasetId,
       collectionId: mongoData.collectionId
     });
+
     return { tokens };
   }
 

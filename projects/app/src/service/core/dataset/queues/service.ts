@@ -11,6 +11,7 @@ import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/entity';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -41,6 +42,7 @@ export const runDatasetRebuildQueue = async ({
 
   // 检查和占用名额之间没有 await，防止同一进程的多次调度同时进入。
   global[queueKey] = 1;
+  const synonymCleanupContexts = new Map<string, RebuildContext>();
   try {
     while (isEnabled()) {
       const start = Date.now();
@@ -68,6 +70,9 @@ export const runDatasetRebuildQueue = async ({
         datasetId: String(data.datasetId),
         billId: data.billId
       };
+      if (mode === TrainingModeEnum.rebuildSynonym) {
+        synonymCleanupContexts.set(context.datasetId, context);
+      }
       /** 接力失败不能吞掉，否则当前任务完成后可能仍有待重建数据却没有 training。 */
       const enqueueFollowing = () => retryFn(() => enqueueNext(context));
       try {
@@ -99,6 +104,7 @@ export const runDatasetRebuildQueue = async ({
           const { tokens } = await rebuildDatasetDataIndexes({
             dataId: String(data.data._id),
             model,
+            diffSynonym: mode === TrainingModeEnum.rebuildSynonym,
             commit: lease.complete
           });
           pushGenerateVectorUsage({
@@ -133,6 +139,12 @@ export const runDatasetRebuildQueue = async ({
   } catch (error) {
     logger.error('Rebuild queue loop failed', { mode, error });
   } finally {
+    // 每轮消费结束后按知识库回收一次，避免逐条查询，也覆盖并行 worker 乱序完成的情况。
+    for (const context of synonymCleanupContexts.values()) {
+      await cleanupUnusedDatasetSynonymMappings(context).catch((error) => {
+        logger.error('Failed to clean up historical synonym mappings', { error, ...context });
+      });
+    }
     global[queueKey] = 0;
     logger.debug('Rebuild queue loop exit', { mode });
   }

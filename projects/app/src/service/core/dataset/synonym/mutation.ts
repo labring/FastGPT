@@ -23,6 +23,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   assertDatasetSynonymEnabled,
+  cleanupUnusedDatasetSynonymMappings,
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
 import { seedDatasetSynonymRebuildTasks } from '../queues/rebuildSynonym';
@@ -51,8 +52,8 @@ type DatasetSynonymMutationProps = {
 );
 
 /**
- * 原子切换当前同义词 matcher，并复用模型切换的全量 rebuild 编排重建历史数据。
- * mapping、配置、data 标记和普通 rebuild 种子任务在同一事务中提交。
+ * 原子切换当前同义词 matcher，并创建独立的同义词重建任务。
+ * mapping、配置、data 标记和种子任务在同一事务中提交；保留历史词表供差量比较。
  */
 export const createDatasetSynonymMutation = async ({
   req,
@@ -202,15 +203,6 @@ export const createDatasetSynonymMutation = async ({
       throw new Error('同义词配置已变化，请刷新页面后重试');
     }
 
-    await MongoDatasetSynonymMapping.deleteMany(
-      {
-        teamId,
-        datasetId,
-        fileVersion: { $ne: fileVersion }
-      },
-      { session }
-    );
-
     // 整轮先标记待重建，未入队的数据也纳入进度；首次索引数据由原任务按最新词表处理。
     const { modifiedCount: affectedDataCount } = await MongoDatasetData.updateMany(
       { teamId, datasetId, synonymVersion: { $ne: fileVersion }, ...rebuildableDatasetDataMatch },
@@ -230,6 +222,8 @@ export const createDatasetSynonymMutation = async ({
         },
         session
       );
+    } else {
+      await cleanupUnusedDatasetSynonymMappings({ teamId, datasetId }, session);
     }
     return affectedDataCount;
   });

@@ -13,7 +13,10 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
+import {
+  MongoDatasetSynonym,
+  MongoDatasetSynonymMapping
+} from '@fastgpt/service/core/dataset/synonym/schema';
 import { getRootUser } from '@test/datas/users';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
@@ -208,6 +211,49 @@ describe('pre-created data queue routing', () => {
       expect(global.preCreatedQueueLen).toBe(1);
     }
   );
+
+  it('completes unchanged synonym tasks without embedding and reclaims historical mappings', async () => {
+    serviceEnv.DATASET_SYNONYM_ENABLED = true;
+    const indexes = [{ type: DatasetDataIndexTypeEnum.default, text: 'unaffected', dataId: 'old' }];
+    const { root, dataset, data, task } = await createContext({
+      mode: TrainingModeEnum.rebuildSynonym,
+      indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+      indexes
+    });
+    const synonym = await MongoDatasetSynonym.create({
+      teamId: root.teamId,
+      datasetId: dataset._id,
+      version: 2,
+      enabled: false
+    });
+    await MongoDatasetSynonymMapping.create({
+      teamId: root.teamId,
+      datasetId: dataset._id,
+      synonymFileId: synonym._id,
+      logicalMappingId: new Types.ObjectId(),
+      fileVersion: 1,
+      standardizedTerm: '退款',
+      normalizedStandardizedTerm: '退款',
+      synonymTerms: ['退钱'],
+      normalizedSynonymTerms: ['退钱'],
+      allTerms: '退款 退钱',
+      fingerprint: '退款:退钱'
+    });
+    await MongoDatasetData.updateOne(
+      { _id: data._id },
+      { $set: { synonymVersion: 1, synonymRebuildingVersion: 2 } }
+    );
+    await generateRebuildSynonym();
+    expect(mockGetVectors).not.toHaveBeenCalled();
+    expect(mockVectorInsert).not.toHaveBeenCalled();
+    expect(await MongoDatasetTraining.findById(task._id)).toBeNull();
+    expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+      synonymVersion: 2,
+      indexStatus: DatasetDataIndexStatusEnum.indexed,
+      indexes
+    });
+    expect(await MongoDatasetSynonymMapping.countDocuments({ datasetId: dataset._id })).toBe(0);
+  });
 
   it('lets ordinary index training run while both rebuild workers are busy', async () => {
     global.systemEnv = { ...global.systemEnv, vectorMaxProcess: 1 };

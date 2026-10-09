@@ -40,6 +40,7 @@ import {
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { serviceEnv } from '@fastgpt/service/env';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { DatasetDataIndexOperation } from '@/service/core/dataset/data/dataIndex';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -1045,6 +1046,198 @@ describe('Dataset data service', () => {
   });
 
   describe('rebuildDatasetDataIndexes', () => {
+    /** 同时覆盖受词表影响、不受影响的文本和图片，验证差量清理不会误删复用向量。 */
+    const createSynonymRebuildData = async ({
+      previousVersion,
+      hasHistory = true,
+      currentTerm = '退款',
+      enabled = true
+    }: {
+      previousVersion?: number;
+      hasHistory?: boolean;
+      currentTerm?: string;
+      enabled?: boolean;
+    }) => {
+      const context = await createMongoData({
+        indexes: [
+          { type: DatasetDataIndexTypeEnum.custom, text: '退钱', dataId: 'old_alias' },
+          { type: DatasetDataIndexTypeEnum.default, text: '稳定文本', dataId: 'old_stable' },
+          {
+            type: DatasetDataIndexTypeEnum.imageEmbedding,
+            text: 'https://example.com/image.png',
+            dataId: 'old_image'
+          }
+        ]
+      });
+      const { root, dataset, data } = context;
+      const synonym = await MongoDatasetSynonym.create({
+        teamId: root.teamId,
+        datasetId: dataset._id,
+        version: 2,
+        enabled,
+        schemaVersion: DatasetSynonymSchemaVersion
+      });
+      for (const [fileVersion, term] of [
+        [1, '返款'],
+        [2, currentTerm]
+      ] as const) {
+        if ((fileVersion === 1 && !hasHistory) || (fileVersion === 2 && !enabled)) continue;
+        await MongoDatasetSynonymMapping.create({
+          logicalMappingId: new Types.ObjectId(),
+          teamId: root.teamId,
+          datasetId: dataset._id,
+          synonymFileId: synonym._id,
+          fileVersion,
+          standardizedTerm: term,
+          normalizedStandardizedTerm: term,
+          synonymTerms: ['退钱'],
+          normalizedSynonymTerms: ['退钱'],
+          allTerms: `${term} 退钱`,
+          fingerprint: `${term}:退钱`
+        });
+      }
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        {
+          $set: {
+            ...(previousVersion !== undefined && { synonymVersion: previousVersion }),
+            synonymRebuildingVersion: 2,
+            indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+            indexErrorMsg: 'previous failure'
+          }
+        }
+      );
+      return context;
+    };
+
+    it.each([
+      { name: 'unchanged inputs', previousVersion: 1, currentTerm: '返款', expected: [] },
+      { name: 'changed mapping', previousVersion: 1, expected: ['退款'] },
+      { name: 'deleted dictionary', previousVersion: 1, enabled: false, expected: ['退钱'] },
+      { name: 'first dictionary', previousVersion: 0, expected: ['退款'] },
+      {
+        name: 'missing snapshot',
+        previousVersion: 1,
+        hasHistory: false,
+        expected: ['退款', '稳定文本']
+      },
+      { name: 'unrecorded version', previousVersion: undefined, expected: ['退款', '稳定文本'] }
+    ])('diffs synonym rebuilds with $name', async ({ expected, ...options }) => {
+      const { data } = await createSynonymRebuildData(options);
+      const result = await rebuildDatasetDataIndexes({
+        dataId: String(data._id),
+        model: visionEmbeddingModel,
+        diffSynonym: true
+      });
+      expect(
+        mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+      ).toEqual(expected);
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated).toMatchObject({
+        indexStatus: DatasetDataIndexStatusEnum.indexed,
+        synonymVersion: 2,
+        q: data.q,
+        a: data.a
+      });
+      expect(updated).not.toHaveProperty('synonymRebuildingVersion');
+      expect(updated).not.toHaveProperty('indexErrorMsg');
+      expect(updated?.indexes.map(({ text }) => text)).toEqual(
+        data.indexes.map(({ text }) => text)
+      );
+      expect(updated?.indexes[2].dataId).toBe('old_image');
+      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
+        await jiebaSplit({
+          text: `${options.enabled === false ? '退钱' : (options.currentTerm ?? '退款')}\n稳定文本`
+        })
+      );
+      if (expected.length === 0) {
+        expect(result.tokens).toBe(0);
+        expect(updated?.indexes.map(({ dataId }) => dataId)).toEqual([
+          'old_alias',
+          'old_stable',
+          'old_image'
+        ]);
+        expect(mockVectorInsert).not.toHaveBeenCalled();
+        expect(mockVectorDelete).not.toHaveBeenCalled();
+      } else {
+        expect(updated?.indexes[0].dataId).toBe('id_1');
+        expect(updated?.indexes[1].dataId).toBe(expected.length === 1 ? 'old_stable' : 'id_2');
+        expect(mockVectorDelete).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            idList: expected.length === 1 ? ['old_alias'] : ['old_alias', 'old_stable']
+          })
+        );
+      }
+    });
+
+    it.each([true, false])(
+      'fully rebuilds without diff when switching models or synonyms are disabled (enabled=%s)',
+      async (enabled) => {
+        const { data } = await createSynonymRebuildData({
+          previousVersion: 1,
+          currentTerm: '返款'
+        });
+        serviceEnv.DATASET_SYNONYM_ENABLED = enabled;
+        const buildPatch = vi.spyOn(DatasetDataIndexOperation.prototype, 'buildPatch');
+        const findConfig = vi.spyOn(MongoDatasetSynonym, 'findOne');
+        const findMappings = vi.spyOn(MongoDatasetSynonymMapping, 'find');
+        try {
+          await rebuildDatasetDataIndexes({
+            dataId: String(data._id),
+            model: embeddingModel,
+            diffSynonym: !enabled
+          });
+          expect(buildPatch).not.toHaveBeenCalled();
+          if (!enabled) {
+            expect(findConfig).not.toHaveBeenCalled();
+            expect(findMappings).not.toHaveBeenCalled();
+          }
+        } finally {
+          buildPatch.mockRestore();
+          findConfig.mockRestore();
+          findMappings.mockRestore();
+        }
+        expect(
+          mockGetVectors.mock.calls.flatMap(([props]) => props.inputs.map((input) => input.input))
+        ).toEqual([enabled ? '返款' : '退钱', '稳定文本']);
+        expect(mockVectorDelete).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ idList: ['old_alias', 'old_stable', 'old_image'] })
+        );
+      }
+    );
+
+    it('rolls back only newly generated vectors when a differential rebuild cannot commit', async () => {
+      const { data } = await createSynonymRebuildData({ previousVersion: 1 });
+      await expect(
+        rebuildDatasetDataIndexes({
+          dataId: String(data._id),
+          model: visionEmbeddingModel,
+          diffSynonym: true,
+          commit: (write) =>
+            mongoSessionRun(async (session) => {
+              await write(session);
+              throw new Error('lease lost');
+            })
+        })
+      ).rejects.toThrow('lease lost');
+      expect(mockVectorDelete).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ idList: ['id_1'] })
+      );
+      const updated = await MongoDatasetData.findById(data._id).lean();
+      expect(updated).toMatchObject({
+        synonymVersion: 1,
+        indexStatus: DatasetDataIndexStatusEnum.rebuildSynonymRunning
+      });
+      expect(updated?.indexes.map(({ dataId }) => dataId)).toEqual([
+        'old_alias',
+        'old_stable',
+        'old_image'
+      ]);
+      expect((await MongoDatasetDataText.findOne({ dataId: data._id }).lean())?.fullTextToken).toBe(
+        'old token'
+      );
+    });
+
     it.each([true, false])('uses only the stored image index with vision=%s', async (vision) => {
       const previousBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
       Object.assign(serviceEnv, { MULTIPLE_DATA_TO_BASE64: false });

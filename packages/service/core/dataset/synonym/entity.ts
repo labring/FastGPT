@@ -10,9 +10,13 @@ import {
 } from './utils';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { serviceEnv } from '../../../env';
+import { MongoDatasetData } from '../data/schema';
+import type { ClientSession } from '../../../common/mongo';
+
+type DatasetSynonymMatcherSnapshot = DatasetSynonymMatcher & { hasMappings: boolean };
 
 const matcherCacheMaxWeight = DatasetSynonymLimits.maxTotalTermCodePoints * 2;
-const matcherCache = new Map<string, { matcher: DatasetSynonymMatcher; weight: number }>();
+const matcherCache = new Map<string, { matcher: DatasetSynonymMatcherSnapshot; weight: number }>();
 let matcherCacheWeight = 0;
 const transformConfigCacheTtl = 5000;
 const transformConfigCacheMaxSize = 1000;
@@ -127,7 +131,7 @@ export const getDatasetSynonymMatcher = async ({
   teamId: string;
   datasetId: string;
   fileVersion: number;
-}): Promise<DatasetSynonymMatcher> => {
+}): Promise<DatasetSynonymMatcherSnapshot> => {
   const cacheKey = getMatcherCacheKey({ teamId, datasetId, fileVersion });
   const cached = matcherCache.get(cacheKey);
   if (cached) {
@@ -137,7 +141,11 @@ export const getDatasetSynonymMatcher = async ({
   }
 
   const mappings = await getDatasetSynonymMappings({ teamId, datasetId, fileVersion });
-  const matcher = buildSynonymMatcher(mappings.map(toMatcherMapping));
+  const matcher = {
+    ...buildSynonymMatcher(mappings.map(toMatcherMapping)),
+    // 空版本可能是禁用词表，也可能已被旧代码清理；历史比较不能将它视为可靠快照。
+    hasMappings: mappings.length > 0
+  };
   const weight = mappings.reduce(
     (sum, mapping) =>
       sum +
@@ -178,6 +186,28 @@ export const invalidateDatasetSynonymMatcherCache = ({
     matcherCacheWeight -= matcherCache.get(key)?.weight ?? 0;
     matcherCache.delete(key);
   }
+};
+
+/** 所有数据追上当前词表后才回收历史版本；失败或在途数据仍需要旧快照重试。 */
+export const cleanupUnusedDatasetSynonymMappings = async (
+  { teamId, datasetId }: { teamId: string; datasetId: string },
+  session?: ClientSession
+) => {
+  if (!isDatasetSynonymEnabled()) return;
+  const config = await MongoDatasetSynonym.findOne({ teamId, datasetId }, null, { session }).lean();
+  if (!config) return;
+  const historicalData = await MongoDatasetData.exists({
+    teamId,
+    datasetId,
+    synonymVersion: { $ne: config.version }
+  }).session(session ?? null);
+  if (historicalData) return;
+
+  const { deletedCount } = await MongoDatasetSynonymMapping.deleteMany(
+    { teamId, datasetId, fileVersion: { $lt: config.version } },
+    { session }
+  );
+  if (deletedCount) invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
 };
 
 /** 返回当前已生效的 matcher；配置更新后立即用于查询和新写入。 */
