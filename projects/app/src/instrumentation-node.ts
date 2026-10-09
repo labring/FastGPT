@@ -278,7 +278,18 @@ export async function registerNodeInstrumentation() {
       logger.info('App node will remain not ready until all blocking migrations succeed');
       await migrationRunner.waitForBlockingMigrations();
 
-      // 每个节点只需重新读取迁移后的数据库模型；插件模板和自动预装已在初始加载阶段完成。
+      // 阻塞迁移执行（如实例配置迁移）后，每个节点重新读取并应用迁移后的实例配置及存储策略，再进入 ready。
+      await runInitializationStep({
+        step: 'reload-system-config-after-blocking-migrations',
+        action: async () => {
+          await getInitConfig();
+          initS3Buckets();
+        },
+        logger,
+        getErrText
+      });
+
+      // 每个节点重新读取迁移后的数据库模型；插件模板和自动预装已在初始加载阶段完成。
       await runInitializationStep({
         step: 'reload-system-models-after-blocking-migrations',
         stage: InitialErrorEnum.PLUGIN_ERROR,
