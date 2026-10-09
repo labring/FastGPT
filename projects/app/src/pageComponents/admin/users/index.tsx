@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
 import {
   Button,
@@ -209,7 +209,7 @@ const UserTable = () => {
 export default UserTable;
 
 function UserDetailModal({ user, onClose }: { user: UserItemType; onClose: () => void }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   return (
     <MyModal isOpen={true} onClose={onClose} title={'用户详情'} maxW={['90vw', '700px']}>
       <Flex alignItems={'center'} pb={4}>

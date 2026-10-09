@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
 import {
   Button,
@@ -35,7 +35,7 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const BillTable = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [username, setUsername] = useState<string>();
   const [billType, setBillType] = useState<BillTypeEnum | ''>('');
   const [billStatus, setBillStatus] = useState<BillStatusEnum | ''>(BillStatusEnum.SUCCESS);
@@ -222,7 +222,7 @@ const BillTable = () => {
 export default BillTable;
 
 function BillDetailModal({ bill, onClose }: { bill: BillItemType; onClose: () => void }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const billPayWayMap = {
     [BillPayWayEnum.wx]: {
       label: t('admin:wechat_short')

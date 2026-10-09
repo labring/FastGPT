@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Button, Checkbox, Flex, Grid, HStack } from '@chakra-ui/react';
 import { Box } from '@chakra-ui/react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -22,7 +22,7 @@ const QuickTemplateModal = ({
   templates: AppTemplateSchemaType[];
   refreshTemplates: () => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [currentAppType, setCurrentAppType] = useState<string>(AppTypeEnum.workflow);
   const [searchText, setSearchText] = useState<string>('');
 

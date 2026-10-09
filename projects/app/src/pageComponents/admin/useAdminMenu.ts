@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { isLicenseActive } from '@fastgpt/global/common/system/license/utils';
 
 /**
@@ -370,7 +370,7 @@ export const getAdminDefaultRoute = ({
  */
 export const useAdminMenu = () => {
   const { feConfigs, licenseData } = useSystemStore();
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
 
   // 商业版判断：根据 PRO_URL 是否存在（即 feConfigs?.isProService）
   const isPro = !!feConfigs?.isProService;

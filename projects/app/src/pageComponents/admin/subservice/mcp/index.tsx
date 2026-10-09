@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
@@ -12,7 +12,7 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
 const McpSubserviceComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
 
   const tocItems: SettingTOCItem[] = [

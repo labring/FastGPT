@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -25,7 +25,7 @@ type DashboardHeaderProps = {
 };
 
 const DashboardHeader = ({ currentTab, onTabChange }: DashboardHeaderProps) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { data: systemConfig } = useRequest(getInitFormData, {
     manual: false
   });

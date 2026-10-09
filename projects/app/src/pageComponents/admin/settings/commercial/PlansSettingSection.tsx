@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, {
   forwardRef,
   useCallback,
@@ -147,7 +147,7 @@ const DateInput = ({
 const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSectionProps>(
   (props, ref) => {
     const { onSavingChange } = props;
-    const { t } = useClientTranslation('admin');
+    const { t } = useSafeTranslation();
 
     const [openPlan, setOpenPlan] = useState(false);
 
