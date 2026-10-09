@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import {
   SimpleGrid,
@@ -42,7 +42,7 @@ const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
  * 字段跨越 auth / feature / storage / site 四个配置域，保存时逐域携带各自 revision 局部提交。
  */
 const CoreSettingComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'team', label: t('admin:core_section_team') },

@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
   Button,
@@ -32,7 +32,7 @@ type TFormData = {
 };
 
 export default function UserEditModal(props: { data: any; getData: any }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { data, getData } = props;
   const { toast } = useToast();

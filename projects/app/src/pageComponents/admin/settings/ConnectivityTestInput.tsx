@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
 import type { ProbeConnectionResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
@@ -36,7 +36,7 @@ const ConnectivityTestInput = ({
   isEditable = false,
   ...inputProps
 }: ConnectivityTestInputProps) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [isTesting, setIsTesting] = useState(false);
   const resolvedButtonText = buttonText ?? t('admin:probe_button');
   const resolvedPlaceholder = placeholder ?? t('admin:not_configured_service_address');

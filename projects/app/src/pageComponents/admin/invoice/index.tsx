@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import {
   finishInvoice,
@@ -37,7 +37,7 @@ import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 import { downloadFetch } from '@/web/common/system/utils';
 
 const InvoiceManageTable = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [search, setSearch] = useState<string>();
   const [uploadInvoiceId, setUploadInvoiceId] = useState<string>();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType>();
@@ -203,7 +203,7 @@ function InvoiceDetailModal({
   onClose: () => void;
   flashData: () => void;
 }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({});
 
   const { loading, run: uploadInvoice } = useRequest(
@@ -289,7 +289,7 @@ function InvoiceDetailModal({
 }
 
 function LabelItem({ label, value }: { label: string; value?: string }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   return (
     <Flex alignItems={'center'} justify={'space-between'}>
       <FormLabel flex={'0 0 120px'}>{label}</FormLabel>
@@ -309,7 +309,7 @@ function InvoiceFinishModal({
   flashData: () => void;
   invoice: InvoiceSchemaType;
 }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [selectedFile, setSelectedFile] = useState<File>();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({});
   const { loading, run: uploadInvoice } = useRequest(

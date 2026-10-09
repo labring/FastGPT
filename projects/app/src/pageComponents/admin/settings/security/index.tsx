@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import { Input, Textarea, SimpleGrid } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
@@ -19,7 +19,7 @@ type SecurityConfigForm = Omit<
 };
 
 const SecuritySettingComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'basic', label: t('admin:security_section_basic') },

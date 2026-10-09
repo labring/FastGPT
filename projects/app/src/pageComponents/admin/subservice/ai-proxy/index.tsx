@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React from 'react';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
@@ -8,7 +8,7 @@ import ConnectivityTestInput from '@/pageComponents/admin/settings/ConnectivityT
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 
 const AiProxySubserviceComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { effectiveConfig, isLoading } = useDomainConfig('subservice');
   const endpoint = effectiveConfig?.aiProxy?.endpoint || 'http://localhost:3000';
   const aiProxyHealthUrl = endpoint.replace(/\/+$/, '') + '/api/status';
