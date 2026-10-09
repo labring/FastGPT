@@ -3,11 +3,9 @@ import React, { useEffect, useMemo } from 'react';
 import { Box, Input, Textarea, SimpleGrid } from '@chakra-ui/react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
 import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
-import AdminReadonlyInput from '@/pageComponents/admin/settings/AdminReadonlyInput';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import NavbarItems from '@/pageComponents/admin/config/components/FormField/NavbarItems';
@@ -21,14 +19,12 @@ const SiteSettingComponent = () => {
     () => [
       { id: 'brand', label: t('admin:site_section_brand') },
       { id: 'externalLinks', label: t('admin:site_section_links') },
-      { id: 'siteCustom', label: t('admin:site_section_custom') },
-      { id: 'deployment', label: t('admin:site_section_deployment') }
+      { id: 'siteCustom', label: t('admin:site_section_custom') }
     ],
     [t]
   );
 
   const { effectiveConfig, isLoading, isUpdating, updateConfig } = useDomainConfig('site');
-  const { feConfigs } = useSystemStore();
 
   const { register, handleSubmit, reset, control, setValue } = useForm<SiteConfigForm>({
     defaultValues: effectiveConfig
@@ -46,15 +42,6 @@ const SiteSettingComponent = () => {
   const onSave = handleSubmit(async (formData) => {
     await updateConfig(formData);
   });
-
-  // 部署只读信息（文件服务域名与下载前缀已移至「文件与存储策略」页）
-  const deploymentInfo = useMemo(
-    () => ({
-      feDomain: typeof window !== 'undefined' ? window.location.origin : '',
-      basePath: process.env.NEXT_PUBLIC_BASE_URL || '/'
-    }),
-    [feConfigs]
-  );
 
   return (
     <AdminSettingPage
@@ -163,38 +150,6 @@ const SiteSettingComponent = () => {
             description={t('admin:add_custom_external_link_entries_to_the_left_navigation_bar')}
           />
         </Box>
-      </AdminSettingSection>
-
-      {/* 4. 部署拓扑（只读展示） */}
-      <AdminSettingSection
-        id="deployment"
-        title={t('admin:deployment_topology_read_only')}
-        showDivider
-      >
-        <SimpleGrid columns={[1, 2]} spacing={5}>
-          <AdminFormItem
-            label={t('admin:current_access_domain')}
-            tooltip={t('admin:origin_resolved_from_the_browser_s_current_access_environmen')}
-          >
-            <AdminReadonlyInput value={deploymentInfo.feDomain} />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:site_basepath')}
-            tooltip={t('admin:base_route_prefix_specified_by_next_public_base_url')}
-          >
-            <AdminReadonlyInput value={deploymentInfo.basePath} />
-          </AdminFormItem>
-
-          <AdminFormItem
-            label={t('admin:chinese_environment_redirect_url')}
-            tooltip={t('admin:provided_by_chinese_ip_redirect_url_the_url_to_redirect_to_w')}
-          >
-            <AdminReadonlyInput
-              value={feConfigs?.chineseRedirectUrl || t('admin:not_configured')}
-            />
-          </AdminFormItem>
-        </SimpleGrid>
       </AdminSettingSection>
     </AdminSettingPage>
   );
