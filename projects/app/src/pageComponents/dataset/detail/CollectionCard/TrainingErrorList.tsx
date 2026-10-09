@@ -105,7 +105,7 @@ const ActionButtons = ({
   const { t } = useTranslation();
 
   return (
-    <Flex alignItems={'center'} justifyContent={'space-between'} w={'100px'} gap={2}>
+    <Flex alignItems={'center'} w={'100px'} gap={2}>
       <MyIconButton
         as="button"
         aria-label={t('dataset:dataset.ReTrain')}
