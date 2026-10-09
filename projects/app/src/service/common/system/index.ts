@@ -213,10 +213,14 @@ export async function initSystemConfig() {
       fileUrlWhitelist: instanceConfig.security.fileUrlWhitelist,
       externalProviderWorkflowVariables: instanceConfig.providers.externalProviderWorkflowVariables,
 
-      // 部署绑定项永久由环境变量注入，优先级高于旧数据库值
-      customApiDomain: appEnv.CUSTOM_API_DOMAIN || '',
-      customSharePageDomain: appEnv.CUSTOM_SHARE_PAGE_DOMAIN || '',
-      scripts: parseEnvScripts(appEnv.SCRIPTS),
+      // 自定义域名与脚本：优先使用实例配置，未设置时回退环境变量
+      customApiDomain: instanceConfig.site.customApiDomain || appEnv.CUSTOM_API_DOMAIN || '',
+      customSharePageDomain:
+        instanceConfig.site.customSharePageDomain || appEnv.CUSTOM_SHARE_PAGE_DOMAIN || '',
+      scripts:
+        instanceConfig.site.scripts && instanceConfig.site.scripts.length > 0
+          ? instanceConfig.site.scripts
+          : parseEnvScripts(appEnv.SCRIPTS),
       mcpServerProxyEndpoint: instanceConfig.subservice.mcp.sseProxyUrl,
       limit: {
         ...defaultFeConfigs.limit,

@@ -36,5 +36,11 @@ export const SiteConfigSchema = z.strictObject({
   // 登录引导帮助文档外链
   loginGuideDocUrl: urlWithDefault(
     'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98'
-  )
+  ),
+  // 自定义对外 API 域名（若未配置回退到环境变量 CUSTOM_API_DOMAIN）
+  customApiDomain: urlWithDefault(),
+  // 自定义免登分享页面独立域名（若未配置回退到环境变量 CUSTOM_SHARE_PAGE_DOMAIN）
+  customSharePageDomain: urlWithDefault(),
+  // 前端注入的外部第三方脚本列表（键值对表示属性，如 src/async）
+  scripts: z.array(z.record(z.string(), z.string())).default([])
 });
