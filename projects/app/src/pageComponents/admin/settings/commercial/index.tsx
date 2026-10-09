@@ -42,18 +42,16 @@ const CommercialSettingComponent = () => {
     }
   }, [effectiveConfig, reset]);
 
-  // 订阅套餐存于旧 systemConfigs 集合，走独立通道保存。
-  // 该通道失败时已由内部 useRequest 提示，这里吞掉异常避免影响本页其它区块的保存状态。
   const savePlans = useCallback(async () => {
-    try {
-      await plansRef.current?.save();
-    } catch {
-      // ignore: 错误提示由 PlansSettingSection 内部处理
-    }
+    // 套餐保存失败必须向外冒泡中断整个保存流程，不能静默吞掉异常导致半成功状态
+    await plansRef.current?.save();
   }, []);
 
   const saveAll = useCallback(
     async (formData: CommercialConfigForm) => {
+      // 先保存套餐：若套餐校验或保存失败直接中断，不触发生效商业配置保存
+      await savePlans();
+
       await updateConfig({
         showCoupon: Boolean(formData.showCoupon),
         showDiscountCoupon: Boolean(formData.showDiscountCoupon),
@@ -62,8 +60,6 @@ const CommercialSettingComponent = () => {
         payment: formData.payment,
         billingNotify: formData.billingNotify
       });
-
-      await savePlans();
     },
     [savePlans, updateConfig]
   );
