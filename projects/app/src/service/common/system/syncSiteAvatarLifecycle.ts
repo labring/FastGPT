@@ -11,10 +11,10 @@ type SiteAvatarFields = {
  * - 保留使用的头像需移除 TTL（避免被自动回收）
  * - 被替换或删除的头像需清理（避免存储泄漏）
  *
- * 边界处理：
- * - refreshAvatar 在 newAvatar 为空时提前返回，favicon 被清空时需显式删除旧头像；
- *   但旧 favicon 若仍被新的导航项引用则不能删。
- * - 导航项被删除时，若其头像恰好仍是新 favicon，同样不能删。
+ * 计算全量引用集合：
+ * 只有在整个站点中（无论是 favicon 还是 navbarItems）彻底不再被引用的图片才执行删除；
+ * 新加入整个站点引用的图片才移除 TTL。
+ * 避免因逐字段判断导致共用图片（如 favicon 与导航项共用同一图）在替换某字段时被误删。
  */
 export const syncSiteAvatarLifecycle = async ({
   previous,
@@ -25,27 +25,26 @@ export const syncSiteAvatarLifecycle = async ({
 }) => {
   const s3AvatarSource = getS3AvatarSource();
 
-  const previousAvatars = new Set(
-    (previous.navbarItems ?? []).map((item) => item.avatar).filter(Boolean) as string[]
-  );
-  const nextAvatars = new Set(
-    (next.navbarItems ?? []).map((item) => item.avatar).filter(Boolean) as string[]
-  );
+  const getReferencedAvatars = (site: SiteAvatarFields): Set<string> => {
+    const list = [site.favicon, ...(site.navbarItems ?? []).map((item) => item.avatar)].filter(
+      Boolean
+    ) as string[];
+    return new Set(list);
+  };
 
-  await s3AvatarSource.refreshAvatar(next.favicon, previous.favicon);
+  const previousAll = getReferencedAvatars(previous);
+  const nextAll = getReferencedAvatars(next);
 
-  // favicon 由有值被清空：refreshAvatar 提前返回不会清理旧头像，这里显式删除
-  if (!next.favicon && previous.favicon && !nextAvatars.has(previous.favicon)) {
-    await s3AvatarSource.deleteAvatar(previous.favicon);
-  }
-
-  for (const avatar of nextAvatars) {
-    if (!previousAvatars.has(avatar)) {
+  // 1. 新增引用的头像：移除 TTL 避免被定时回收
+  for (const avatar of nextAll) {
+    if (!previousAll.has(avatar)) {
       await s3AvatarSource.removeAvatarTTL(avatar);
     }
   }
-  for (const avatar of previousAvatars) {
-    if (!nextAvatars.has(avatar) && avatar !== next.favicon) {
+
+  // 2. 彻底失去所有引用的头像：删除 S3 对象及 TTL 记录
+  for (const avatar of previousAll) {
+    if (!nextAll.has(avatar)) {
       await s3AvatarSource.deleteAvatar(avatar);
     }
   }
