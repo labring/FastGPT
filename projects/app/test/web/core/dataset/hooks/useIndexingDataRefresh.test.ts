@@ -104,29 +104,50 @@ describe('useIndexingDataRefresh', () => {
     expect(getDatasetDataList).toHaveBeenCalledTimes(2);
   });
 
-  it.each([DatasetDataIndexStatusEnum.indexed, DatasetDataIndexStatusEnum.rebuildIndexFailed])(
-    'refreshes rebuild transitions until %s and stops polling at the terminal state',
-    async (terminalStatus) => {
+  it.each([
+    {
+      pending: DatasetDataIndexStatusEnum.rebuildIndexPending,
+      running: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+      terminal: DatasetDataIndexStatusEnum.indexed
+    },
+    {
+      pending: DatasetDataIndexStatusEnum.rebuildIndexPending,
+      running: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+      terminal: DatasetDataIndexStatusEnum.rebuildIndexFailed
+    },
+    {
+      pending: DatasetDataIndexStatusEnum.rebuildSynonymPending,
+      running: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+      terminal: DatasetDataIndexStatusEnum.indexed
+    },
+    {
+      pending: DatasetDataIndexStatusEnum.rebuildSynonymPending,
+      running: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+      terminal: DatasetDataIndexStatusEnum.rebuildSynonymFailed
+    }
+  ])(
+    'refreshes $pending through $running to $terminal and stops polling',
+    async ({ pending, running, terminal }) => {
       await render();
       const initial = {
         ...makeItem('1'),
-        indexStatus: DatasetDataIndexStatusEnum.rebuildIndexPending
+        indexStatus: pending
       };
       await act(async () => setData([initial]));
       vi.mocked(getDatasetDataList)
         .mockResolvedValueOnce({
           total: 1,
-          list: [{ ...initial, indexStatus: DatasetDataIndexStatusEnum.rebuildIndexRunning }]
+          list: [{ ...initial, indexStatus: running }]
         })
         .mockResolvedValueOnce({
           total: 1,
-          list: [{ ...initial, indexStatus: terminalStatus }]
+          list: [{ ...initial, indexStatus: terminal }]
         });
 
       await tick();
-      expect(data[0].indexStatus).toBe(DatasetDataIndexStatusEnum.rebuildIndexRunning);
+      expect(data[0].indexStatus).toBe(running);
       await tick();
-      expect(data[0].indexStatus).toBe(terminalStatus);
+      expect(data[0].indexStatus).toBe(terminal);
       await tick();
       expect(getDatasetDataList).toHaveBeenCalledTimes(2);
     }

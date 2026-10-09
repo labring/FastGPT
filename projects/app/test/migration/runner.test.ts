@@ -54,6 +54,47 @@ describe('system migration runner', () => {
     ]);
   });
 
+  it('holds an already queued dependent task until its waiting or failed prerequisite succeeds', async () => {
+    const prerequisiteRun = vi
+      .fn(async () => undefined)
+      .mockRejectedValueOnce(new Error('failure'));
+    const dependentRun = vi.fn(async () => undefined);
+    const prerequisite = {
+      ...createMigration('20260903_runner_prerequisite', prerequisiteRun),
+      manual: true,
+      onFailure: SystemMigrationFailurePolicyEnum.continue
+    };
+    const dependent = {
+      ...createMigration('20260903_runner_dependent', dependentRun),
+      manual: true,
+      dependsOn: [prerequisite.id]
+    };
+    const runner = createSystemMigrationRunner({ migrations: [prerequisite, dependent], logger });
+    try {
+      await runner.start();
+      // 模拟旧节点已入队，不能仅依赖新启动接口的校验。
+      await enqueueManualMigration(dependent.id);
+      await runner.wake();
+      expect(dependentRun).not.toHaveBeenCalled();
+      await enqueueManualMigration(prerequisite.id);
+      await runner.wake();
+      expect(prerequisiteRun).toHaveBeenCalledTimes(1);
+      expect(dependentRun).not.toHaveBeenCalled();
+      expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
+        SystemMigrationStatusEnum.pending
+      );
+      await resetFailedMigration(prerequisite.id);
+      await runner.wake();
+      expect(prerequisiteRun).toHaveBeenCalledTimes(2);
+      expect(dependentRun).toHaveBeenCalledTimes(1);
+      expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
+        SystemMigrationStatusEnum.succeeded
+      );
+    } finally {
+      await runner.stop();
+    }
+  });
+
   it('skips waiting manual tasks, resumes after enqueue and recovers an expired manual lease', async () => {
     const manualRun = vi.fn(async () => undefined);
     const autoRun = vi.fn(async () => undefined);

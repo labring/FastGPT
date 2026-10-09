@@ -27,6 +27,22 @@ export const isDatasetDataSystemIndexType = (type?: DatasetDataIndexTypeEnum) =>
 export const isDatasetDataIndexed = (indexStatus?: DatasetDataIndexStatusEnum) =>
   indexStatus === undefined || indexStatus === DatasetDataIndexStatusEnum.indexed;
 
+/** 首次索引及两类重建的待处理/处理中状态；页面轮询与数据写保护使用相同边界。 */
+export const isDatasetDataProcessing = (indexStatus?: DatasetDataIndexStatusEnum) =>
+  indexStatus !== undefined &&
+  [
+    DatasetDataIndexStatusEnum.indexing,
+    DatasetDataIndexStatusEnum.rebuildIndexPending,
+    DatasetDataIndexStatusEnum.rebuildIndexRunning,
+    DatasetDataIndexStatusEnum.rebuildSynonymPending,
+    DatasetDataIndexStatusEnum.rebuildSynonymRunning
+  ].includes(indexStatus);
+
+/** 重建失败仍保有旧索引；只有完整替换索引后才能结束对应失败任务。 */
+export const isDatasetDataRebuildFailed = (indexStatus?: DatasetDataIndexStatusEnum) =>
+  indexStatus === DatasetDataIndexStatusEnum.rebuildIndexFailed ||
+  indexStatus === DatasetDataIndexStatusEnum.rebuildSynonymFailed;
+
 /** 正在重建或等待入队的数据；失败任务由 training 队列继续管理。 */
 export const rebuildingDatasetDataMatch = {
   indexStatus: {

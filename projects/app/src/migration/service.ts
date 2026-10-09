@@ -21,6 +21,19 @@ import type { SystemMigrationStateSchemaType } from './mongoSchema';
 const getStateMap = (states: SystemMigrationStateSchemaType[]) =>
   new Map(states.map((state) => [state._id, state]));
 
+/** 启动和重试均要求前置任务成功；缺失、等待、执行中和失败状态都不能作为完成依据。 */
+const assertMigrationDependenciesComplete = async (migration: SystemMigration): Promise<void> => {
+  const dependencyIds = migration.dependsOn ?? [];
+  if (!dependencyIds.length) return;
+  const stateMap = getStateMap(await getMigrationStates([...dependencyIds]));
+  const incompleteId = dependencyIds.find(
+    (id) => stateMap.get(id)?.status !== SystemMigrationStatusEnum.succeeded
+  );
+  if (incompleteId) {
+    throw new UserError(`Prerequisite system migration has not succeeded: ${incompleteId}`);
+  }
+};
+
 /** 静态阶段保证未执行项也可见，Mongo 只补充已经上报过的可变状态。 */
 const getProgressList = (
   migration: SystemMigration,
@@ -144,6 +157,7 @@ export const retryNonBlockingSystemMigration = async (
   if (migration.blockStartup) {
     throw new UserError('Blocking system migration must be recovered by restarting the App node');
   }
+  await assertMigrationDependenciesComplete(migration);
   if (!(await resetFailedMigration(migrationId))) {
     // 条件更新把重复点击、执行中和已成功任务统一挡在状态边界外。
     throw new UserError('Only a failed system migration can be retried');
@@ -177,6 +191,7 @@ export const startManualSystemMigration = async (
   if (!migration.manual || migration.blockStartup) {
     throw new UserError('Only a manual non-blocking system migration can be started');
   }
+  await assertMigrationDependenciesComplete(migration);
   await ensureMigrationStates([migration]);
   if (!(await enqueueManualMigration(migrationId))) {
     throw new UserError('Only a waiting system migration can be started');

@@ -89,6 +89,8 @@ export type SystemMigration = {
   delay?: boolean;
   /** 管理员确认执行条件后才入队；等待期间不阻塞启动或后续自动任务。 */
   manual?: boolean;
+  /** 必须先成功的前置任务 ID；只能引用注册表中更早的任务，避免乱序执行和循环依赖。 */
+  dependsOn?: readonly string[];
   /** 正常返回可选最终结果；Runner 会在提交 succeeded 时原子持久化。 */
   run: (context: SystemMigrationContext) => Promise<SystemMigrationResultData | void>;
 };
@@ -483,6 +485,7 @@ export const systemMigrations = [
   },
   {
     id: '20261009_migrate_dataset_rebuild_status',
+    dependsOn: ['20261008_migrate_chunk_training'],
     version: '4.17.1',
     nameKey: i18nT('system_migration:migrations.20261009_migrate_dataset_rebuild_status.name'),
     descriptionKey: i18nT(
@@ -526,6 +529,13 @@ export const validateSystemMigrationRegistry = (migrations: readonly SystemMigra
     }
     if (ids.has(migration.id)) {
       throw new Error(`Duplicate system migration id: ${migration.id}`);
+    }
+    for (const dependency of migration.dependsOn ?? []) {
+      if (!ids.has(dependency)) {
+        throw new Error(
+          `System migration ${migration.id} must depend on an earlier registered task: ${dependency}`
+        );
+      }
     }
     ids.add(migration.id);
 

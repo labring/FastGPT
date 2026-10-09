@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { getDatasetDataList } from '../api/data';
 import type { GetDatasetDataListResponse } from '@fastgpt/global/openapi/core/dataset/data/api';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataProcessing } from '@fastgpt/global/core/dataset/data/utils';
 
 type DataList = GetDatasetDataListResponse['list'];
 
@@ -24,16 +24,7 @@ export const useIndexingDataRefresh = ({
   setTotal: Dispatch<SetStateAction<number>>;
 }) => {
   useEffect(() => {
-    if (
-      !collectionId ||
-      !data.some(
-        (item) =>
-          item.indexStatus === DatasetDataIndexStatusEnum.indexing ||
-          item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexPending ||
-          item.indexStatus === DatasetDataIndexStatusEnum.rebuildIndexRunning
-      )
-    )
-      return;
+    if (!collectionId || !data.some((item) => isDatasetDataProcessing(item.indexStatus))) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;

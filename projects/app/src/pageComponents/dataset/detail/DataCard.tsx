@@ -46,6 +46,7 @@ import {
   getDatasetDataIndexStatusMapData
 } from '@fastgpt/global/core/dataset/data/constants';
 import { useIndexingDataRefresh } from '@/web/core/dataset/hooks/useIndexingDataRefresh';
+import { isDatasetDataProcessing } from '@fastgpt/global/core/dataset/data/utils';
 
 const InsertImagesModal = dynamic(() => import('./data/InsertImageModal'), {
   ssr: false
@@ -316,15 +317,7 @@ const DataCard = () => {
           <Flex flexDir={'column'} gap={2}>
             {datasetDataList.map((item, index) => {
               // 索引中、待重建和重建中的数据只读，避免与 worker 写入竞争；失败数据可编辑和删除。
-              const isIndexing =
-                !!item.indexStatus &&
-                [
-                  DatasetDataIndexStatusEnum.indexing,
-                  DatasetDataIndexStatusEnum.rebuildIndexPending,
-                  DatasetDataIndexStatusEnum.rebuildIndexRunning,
-                  DatasetDataIndexStatusEnum.rebuildSynonymPending,
-                  DatasetDataIndexStatusEnum.rebuildSynonymRunning
-                ].includes(item.indexStatus);
+              const isIndexing = isDatasetDataProcessing(item.indexStatus);
               const canModify = !isIndexing;
               const indexStatusInfo = getDatasetDataIndexStatusMapData(item.indexStatus);
               const indexStatusLabel = (() => {

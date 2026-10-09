@@ -199,6 +199,57 @@ describe('system migration service', () => {
 
 describe('startManualSystemMigration', () => {
   const manual = { ...migrations[0], id: '20261008_service_manual', manual: true };
+
+  it('requires a successful prerequisite before starting or retrying a dependent migration', async () => {
+    const prerequisite = { ...manual, id: '20261008_service_prerequisite' };
+    const dependent = {
+      ...manual,
+      id: '20261009_service_dependent',
+      dependsOn: [prerequisite.id]
+    };
+    const registry = [prerequisite, dependent];
+    await expect(startManualSystemMigration(dependent.id, registry)).rejects.toThrow(
+      prerequisite.id
+    );
+    await getSystemMigrationList(registry);
+    for (const status of [
+      SystemMigrationStatusEnum.waiting,
+      SystemMigrationStatusEnum.pending,
+      SystemMigrationStatusEnum.running,
+      SystemMigrationStatusEnum.failed
+    ]) {
+      await MongoSystemMigrationState.updateOne({ _id: prerequisite.id }, { $set: { status } });
+      await expect(startManualSystemMigration(dependent.id, registry)).rejects.toThrow(
+        prerequisite.id
+      );
+      expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
+        SystemMigrationStatusEnum.waiting
+      );
+    }
+    await MongoSystemMigrationState.updateOne(
+      { _id: dependent.id },
+      { $set: { status: SystemMigrationStatusEnum.failed } }
+    );
+    await expect(retryNonBlockingSystemMigration(dependent.id, registry)).rejects.toThrow(
+      prerequisite.id
+    );
+    await MongoSystemMigrationState.updateOne(
+      { _id: prerequisite.id },
+      { $set: { status: SystemMigrationStatusEnum.succeeded } }
+    );
+    await retryNonBlockingSystemMigration(dependent.id, registry);
+    expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
+      SystemMigrationStatusEnum.pending
+    );
+    await MongoSystemMigrationState.updateOne(
+      { _id: dependent.id },
+      { $set: { status: SystemMigrationStatusEnum.waiting } }
+    );
+    await startManualSystemMigration(dependent.id, registry);
+    expect((await MongoSystemMigrationState.findById(dependent.id))?.status).toBe(
+      SystemMigrationStatusEnum.pending
+    );
+  });
   it('lists a waiting task without blocking readiness, then accepts exactly one concurrent start', async () => {
     const list = await getSystemMigrationList([manual]);
     expect(list.businessReady).toBe(true);

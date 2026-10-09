@@ -551,6 +551,14 @@ export const createSystemMigrationRunner = ({
         if (state?.status === SystemMigrationStatusEnum.waiting || (!state && item.manual))
           continue;
 
+        // 执行前再次校验依赖，覆盖旧节点已入队和绕过启动入口的任务；失败前置不会被 continue 绕过。
+        if (
+          item.dependsOn?.some(
+            (id) => stateMap.get(id)?.status !== SystemMigrationStatusEnum.succeeded
+          )
+        )
+          continue;
+
         if (state?.status === SystemMigrationStatusEnum.failed) {
           logObservedFailure(item, state);
           if (!item.blockStartup && item.onFailure === SystemMigrationFailurePolicyEnum.continue) {

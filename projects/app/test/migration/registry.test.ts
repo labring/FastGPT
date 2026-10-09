@@ -97,6 +97,7 @@ describe('validateSystemMigrationRegistry', () => {
   it('appends the rebuild field migration without changing prior registration order', () => {
     expect(systemMigrations.at(-1)).toMatchObject({
       id: '20261009_migrate_dataset_rebuild_status',
+      dependsOn: ['20261008_migrate_chunk_training'],
       version: '4.17.1',
       manual: true,
       blockStartup: false,
@@ -133,6 +134,18 @@ describe('validateSystemMigrationRegistry', () => {
       ])
     ).toThrow('Duplicate system migration id');
   });
+
+  it.each(['20260903_missing', '20260903_dependency', '20260904_later'])(
+    'rejects a missing, self or later dependency: %s',
+    (dependency) => {
+      expect(() =>
+        validateSystemMigrationRegistry([
+          { ...createMigration('20260903_dependency'), dependsOn: [dependency] },
+          createMigration('20260904_later')
+        ])
+      ).toThrow('must depend on an earlier registered task');
+    }
+  );
 
   it('rejects a blocking migration that continues after failure', () => {
     expect(() =>

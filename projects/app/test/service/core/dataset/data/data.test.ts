@@ -6,14 +6,23 @@ import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { retryFailedTrainingTasks } from '@fastgpt/service/core/dataset/training/service';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
 import { DatasetSynonymSchemaVersion } from '@fastgpt/global/core/dataset/synonym';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { DatasetCollectionTypeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type {
   DatasetDataIndexItemType,
   DatasetDataItemType
@@ -185,6 +194,171 @@ describe('Dataset data service', () => {
 
   afterAll(() => {
     serviceEnv.DATASET_SYNONYM_ENABLED = originalDatasetSynonymEnabled;
+  });
+
+  describe('manual repair of failed rebuild data', () => {
+    const cases = [
+      {
+        failed: DatasetDataIndexStatusEnum.rebuildIndexFailed,
+        running: DatasetDataIndexStatusEnum.rebuildIndexRunning,
+        mode: TrainingModeEnum.rebuildIndex
+      },
+      {
+        failed: DatasetDataIndexStatusEnum.rebuildSynonymFailed,
+        running: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
+        mode: TrainingModeEnum.rebuildSynonym
+      }
+    ];
+    /** 失败任务与旧向量同时保留，使用真实 Mongo 事务验证修复和重试的状态边界。 */
+    const createFailedRebuild = async (item: (typeof cases)[number]) => {
+      const context = await createMongoData({ q: 'old question', a: '' });
+      const { data, root, dataset, collection } = context;
+      await MongoDatasetData.updateOne(
+        { _id: data._id },
+        {
+          $set: {
+            indexStatus: item.failed,
+            indexErrorMsg: 'rebuild failed',
+            synonymVersion: 1,
+            synonymRebuildingVersion: 2
+          }
+        }
+      );
+      const training = await MongoDatasetTraining.create({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        dataId: data._id,
+        billId: 'repair',
+        mode: item.mode,
+        retryCount: 0,
+        errorMsg: 'rebuild failed',
+        expireAt: null
+      });
+      return { ...context, training };
+    };
+
+    it.each(
+      cases.flatMap((item) => [
+        { ...item, synonymEnabled: true },
+        { ...item, synonymEnabled: false }
+      ])
+    )(
+      'fully repairs $failed and clears its task (synonym enabled: $synonymEnabled)',
+      async (item) => {
+        Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: item.synonymEnabled });
+        const { data, training } = await createFailedRebuild(item);
+        await updateDatasetDataByIndexes({
+          dataId: String(data._id),
+          indexes: data.indexes.map(({ type, text, dataId }) => ({ type, text, dataId })),
+          model: embeddingModel
+        });
+        const repaired = await MongoDatasetData.findById(data._id).lean();
+        expect(repaired?.indexStatus).toBe(DatasetDataIndexStatusEnum.indexed);
+        expect(repaired?.indexErrorMsg).toBeUndefined();
+        expect(repaired?.synonymRebuildingVersion).toBeUndefined();
+        expect(repaired?.synonymVersion).toBe(0);
+        expect(repaired?.indexes).toHaveLength(2);
+        expect(
+          repaired?.indexes.every(({ dataId }) => !['custom_old', 'default_old'].includes(dataId))
+        ).toBe(true);
+        expect(mockGetVectors).toHaveBeenCalled();
+        expect(await MongoDatasetTraining.findById(training._id)).toBeNull();
+      }
+    );
+
+    it('rolls back the repaired data and replacement vectors if task removal fails', async () => {
+      const { data, training } = await createFailedRebuild(cases[0]);
+      const deleteTaskSpy = vi
+        .spyOn(MongoDatasetTraining, 'deleteMany')
+        .mockRejectedValueOnce(new Error('task removal failed'));
+      try {
+        await expect(
+          updateDatasetDataByIndexes({
+            dataId: String(data._id),
+            indexes: [],
+            model: embeddingModel
+          })
+        ).rejects.toThrow('task removal failed');
+        expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+          indexStatus: cases[0].failed,
+          indexErrorMsg: 'rebuild failed',
+          indexes: expect.arrayContaining([
+            expect.objectContaining({ dataId: 'custom_old' }),
+            expect.objectContaining({ dataId: 'default_old' })
+          ])
+        });
+        expect(await MongoDatasetTraining.findById(training._id).lean()).toMatchObject({
+          retryCount: 0
+        });
+        expect(mockVectorDelete).toHaveBeenCalledWith({ teamId: data.teamId, idList: ['id_1'] });
+      } finally {
+        deleteTaskSpy.mockRestore();
+      }
+    });
+
+    it.each(cases)(
+      'preserves $failed and its task after a system-only edit, then permits manual retry',
+      async (item) => {
+        const { data, training } = await createFailedRebuild(item);
+        await updateDatasetDataSystemIndexes({
+          dataId: String(data._id),
+          q: 'new question',
+          model: embeddingModel
+        });
+        const edited = await MongoDatasetData.findById(data._id).lean();
+        expect(edited).toMatchObject({
+          q: 'new question',
+          indexStatus: item.failed,
+          indexErrorMsg: 'rebuild failed',
+          synonymVersion: 1,
+          synonymRebuildingVersion: 2,
+          indexes: expect.arrayContaining([
+            expect.objectContaining({ dataId: 'custom_old', text: 'old custom index' })
+          ])
+        });
+        expect(await MongoDatasetTraining.findById(training._id).lean()).toMatchObject({
+          retryCount: 0,
+          errorMsg: 'rebuild failed'
+        });
+        await retryFailedTrainingTasks({ teamId: data.teamId, datasetId: data.datasetId });
+        expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+          indexStatus: item.running,
+          q: 'new question'
+        });
+        expect((await MongoDatasetData.findById(data._id).lean())?.indexErrorMsg).toBeUndefined();
+        expect(await MongoDatasetTraining.findById(training._id).lean()).toMatchObject({
+          retryCount: 3
+        });
+      }
+    );
+
+    it.each(['full', 'system'] as const)(
+      'does not overwrite a concurrent retry or delete its task during %s repair',
+      async (kind) => {
+        Object.assign(serviceEnv, { DATASET_SYNONYM_ENABLED: false });
+        const { data, training } = await createFailedRebuild(cases[0]);
+        mockGetVectors.mockImplementationOnce(async ({ inputs }) => {
+          await retryFailedTrainingTasks({ teamId: data.teamId, datasetId: data.datasetId });
+          return createMockVectorsResponse(inputs.map((input) => input.input));
+        });
+        const props = { dataId: String(data._id), q: 'edited question', model: embeddingModel };
+        const repair =
+          kind === 'full'
+            ? updateDatasetDataByIndexes({ ...props, indexes: [] })
+            : updateDatasetDataSystemIndexes(props);
+        await expect(repair).rejects.toThrow('数据已变化');
+        expect(await MongoDatasetData.findById(data._id).lean()).toMatchObject({
+          indexStatus: cases[0].running,
+          q: 'old question'
+        });
+        expect(await MongoDatasetTraining.findById(training._id).lean()).toMatchObject({
+          retryCount: 3
+        });
+        expect(mockVectorDelete).toHaveBeenCalledWith({ teamId: data.teamId, idList: ['id_1'] });
+      }
+    );
   });
 
   describe('createDatasetData', () => {
