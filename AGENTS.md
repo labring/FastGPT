@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-FastGPT 是一个 AI Agent 构建平台,通过 Flow 提供开箱即用的数据处理、模型调用能力和可视化工作流编排。这是一个基于 NextJS 构建的全栈 TypeScript 应用,后端使用 MongoDB/PostgreSQL。
+FastGPT 是一个 AI Agent 构建平台,提供开箱即用的数据处理、模型调用能力和可视化工作流编排。这是一个基于 NextJS 构建的全栈 TypeScript 应用,后端使用 MongoDB/PostgreSQL。
 
 **技术栈**: NextJS + TypeScript + ChakraUI + MongoDB + VectorDB(PG, Milvus, Zilliz, OceanBase, SeekDB, OpenGauss......)
 
