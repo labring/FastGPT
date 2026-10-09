@@ -1,17 +1,16 @@
 // Editor Debug Session 的 transition 计算：纯函数，不持有任何 React 状态。
 //
 // 调试结果只作为 host overlay（ViewDataKey.debugResult）展示，不进 Document / History / Savepoint；
-// 选中是 renderer 状态，用 reactflow 的 select change 局部提交。
+// 选中是 renderer 状态，只输出 node id intent，由 Canvas 转成 ReactFlow change。
 // 每个 transition 只对「session 自己写过 overlay 的节点」与「本步实际有结果、有运行态或选中变化的节点」
 // 产出 patch：清理集合来自 session 足迹而不是当前画布数组，所以调试期间被删除的节点既不会被扫到，
 // 也不会让停止流程报错（overlay patch 按 id 下发，节点不存在时自然无效）。
-import type { NodeSelectionChange } from 'reactflow';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { ViewOverlayPatch } from '../canvas/canvasTypes';
 
-type DebugResult = FlowNodeItemType['debugResult'];
+// region publicApi Debug session contracts
 
 /** 服务端单步响应里单个节点的执行结果，即 `WorkflowDebugResponse['nodeResponses']` 的值。 */
 export type DebugStepNodeResponse = {
@@ -29,42 +28,29 @@ export type DebugSessionState = {
 /** 一次 transition 的写入计划，以及写入之后 session 的新足迹。 */
 export type DebugSessionTransition = {
   overlayPatches: ViewOverlayPatch[];
-  selectionPatches: NodeSelectionChange[];
+  /** Canvas 应达到的完整选中集合，不携带 ReactFlow 的实现细节。 */
+  selectedNodeIds: string[];
   nextWrittenNodeIds: string[];
-  nextSelectedNodeIds: string[];
 };
 
+// endregion
+
+// region internalState Debug overlay transition helpers
+
+type DebugResult = FlowNodeItemType['debugResult'];
 /** 运行中占位：请求发出前写在本步 entry 节点上。 */
 const runningStatus: DebugResult = { status: 'running', message: '', showResult: false };
 
 const clearOverlayPatches = (nodeIds: readonly string[]): ViewOverlayPatch[] =>
   nodeIds.map((nodeId) => ({ nodeId, values: { debugResult: undefined } }));
 
-const selectChanges = (nodeIds: readonly string[], selected: boolean): NodeSelectionChange[] =>
-  nodeIds.map((id) => ({ id, type: 'select', selected }));
-
-/** 选中差集：只取消不再选中的旧节点，只新增之前没选中的新节点，其余节点身份不变。 */
-const diffSelection = (
-  previousNodeIds: readonly string[],
-  nextNodeIds: readonly string[]
-): NodeSelectionChange[] => {
-  const nextSet = new Set(nextNodeIds);
-  const previousSet = new Set(previousNodeIds);
-  return [
-    ...selectChanges(
-      previousNodeIds.filter((nodeId) => !nextSet.has(nodeId)),
-      false
-    ),
-    ...selectChanges(
-      nextNodeIds.filter((nodeId) => !previousSet.has(nodeId)),
-      true
-    )
-  ];
-};
-
 const mergeNodeIds = (nodeIds: readonly string[], extraNodeIds: readonly string[]) => [
   ...new Set([...nodeIds, ...extraNodeIds])
 ];
+
+// endregion
+
+// region transitions Debug session state transitions
 
 /**
  * open：打开调试弹窗时清掉上一轮 session 留下的 overlay。
@@ -75,20 +61,17 @@ export const openDebugSession = ({
   selectedNodeIds
 }: DebugSessionState): DebugSessionTransition => ({
   overlayPatches: clearOverlayPatches(writtenNodeIds),
-  selectionPatches: [],
-  nextWrittenNodeIds: [],
-  nextSelectedNodeIds: selectedNodeIds
+  selectedNodeIds,
+  nextWrittenNodeIds: []
 });
 
 /** stop：结束 session，清掉写过的 overlay 并取消 session 自己的选中。 */
 export const stopDebugSession = ({
-  writtenNodeIds,
-  selectedNodeIds
+  writtenNodeIds
 }: DebugSessionState): DebugSessionTransition => ({
   overlayPatches: clearOverlayPatches(writtenNodeIds),
-  selectionPatches: selectChanges(selectedNodeIds, false),
-  nextWrittenNodeIds: [],
-  nextSelectedNodeIds: []
+  selectedNodeIds: [],
+  nextWrittenNodeIds: []
 });
 
 /**
@@ -97,7 +80,6 @@ export const stopDebugSession = ({
  */
 export const startDebugStep = ({
   writtenNodeIds,
-  selectedNodeIds,
   entryNodeIds
 }: DebugSessionState & { entryNodeIds: string[] }): DebugSessionTransition => {
   const valuesByNodeId = new Map<string, ViewOverlayPatch['values']>();
@@ -106,9 +88,8 @@ export const startDebugStep = ({
 
   return {
     overlayPatches: [...valuesByNodeId].map(([nodeId, values]) => ({ nodeId, values })),
-    selectionPatches: selectChanges(selectedNodeIds, false),
-    nextWrittenNodeIds: entryNodeIds,
-    nextSelectedNodeIds: []
+    selectedNodeIds: [],
+    nextWrittenNodeIds: entryNodeIds
   };
 };
 
@@ -119,7 +100,6 @@ export const startDebugStep = ({
  */
 export const resolveDebugStep = ({
   writtenNodeIds,
-  selectedNodeIds,
   entryNodeIds,
   nodeResponses
 }: DebugSessionState & {
@@ -144,9 +124,8 @@ export const resolveDebugStep = ({
 
   return {
     overlayPatches,
-    selectionPatches: diffSelection(selectedNodeIds, nextSelectedNodeIds),
-    nextWrittenNodeIds: mergeNodeIds(writtenNodeIds, Object.keys(nodeResponses)),
-    nextSelectedNodeIds
+    selectedNodeIds: nextSelectedNodeIds,
+    nextWrittenNodeIds: mergeNodeIds(writtenNodeIds, Object.keys(nodeResponses))
   };
 };
 
@@ -164,7 +143,8 @@ export const failDebugStep = ({
     const debugResult: DebugResult = { status: 'failed', message, showResult: true };
     return { nodeId, values: { debugResult } };
   }),
-  selectionPatches: [],
-  nextWrittenNodeIds: mergeNodeIds(writtenNodeIds, entryNodeIds),
-  nextSelectedNodeIds: selectedNodeIds
+  selectedNodeIds,
+  nextWrittenNodeIds: mergeNodeIds(writtenNodeIds, entryNodeIds)
 });
+
+// endregion

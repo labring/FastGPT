@@ -39,6 +39,8 @@ import { type HelperLinesController } from '../components/HelperLines';
 import { translateNodeContainerCheckError } from '@fastgpt/global/core/workflow/template/context';
 import { areNodeRectsIntersecting, getNodeRect, type DimensionReader } from './nodeDimensions';
 
+// region geometryHelpers Canvas geometry and helper-line calculations
+
 /** 只为真实发生位置变化的节点创建 geometry command；节点查找一次完成。 */
 export const collectGeometryUpdates = ({
   nodeIds,
@@ -465,12 +467,6 @@ const deselectChanges = (nodeIds: readonly string[]): NodeSelectionChange[] =>
 
 /**
  * 清空画布选中态：只对当前真的选中的节点发 `select` 变更，未选中节点保持对象身份。
- *
- * 为什么不用 `useReactFlow().setNodes`：受控模式下它把整个数组转成 N 个 `reset` 变更，
- * `applyNodeChanges` 一见 reset 就丢弃原数组整份重建（N 次对象展开 + 全部节点卡片重渲染）。
- *
- * ponytail: applyNodeChanges 对每个节点扫一遍变更（O(N*C)），1000 节点全选后清选中实测约 6ms；
- * 常规清选中 C 是个位数，0.1ms 以内。再快只能自己按 id 建 Map 重建数组，那会绕开唯一的变更漏斗。
  */
 export const useClearCanvasSelection = () => {
   const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
@@ -1051,3 +1047,5 @@ export const useCanvasController = ({ helperLinesRef }: UseWorkflowParams) => {
     onPaneClick
   };
 };
+
+// endregion

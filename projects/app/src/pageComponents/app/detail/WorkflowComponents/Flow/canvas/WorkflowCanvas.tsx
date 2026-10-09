@@ -52,6 +52,8 @@ import { ToolSourceHandle, ToolTargetHandle } from '../nodes/render/Handle/ToolH
 import { useIsToolNode } from '../nodes/render/useWorkflowDocument';
 import { getNodeShellHandleModel } from '../utils/nodeHandle';
 
+// region nodeTypes Canvas node type registration
+
 const NodeSimple = dynamic(() => import('../nodes/NodeSimple'));
 const NodeStopTool = React.memo((props: NodeProps<FlowNodeItemType>) => (
   <NodeSimple {...props} minW={'100px'} maxW={'300px'} />
@@ -100,6 +102,10 @@ const baseNodeTypes: Record<FlowNodeTypeEnum, CanvasNodeComponent> = {
   [FlowNodeTypeEnum.formInput]: dynamic(() => import('../nodes/NodeFormInput')),
   [FlowNodeTypeEnum.comment]: dynamic(() => import('../nodes/NodeComment'))
 };
+
+// endregion
+
+// region nodeRendering Canvas node measurement and virtualization
 
 const MeasuredNode = React.memo(
   ({
@@ -380,6 +386,10 @@ const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
 };
 
+// endregion
+
+// region canvasView ReactFlow canvas and overlays
+
 const ViewportObserver = () => {
   const onViewportChange = useWorkflowCanvasValue((v) => v.onViewportChange);
   const { x, y, zoom } = useViewport();
@@ -581,6 +591,10 @@ const WorkflowCanvas = () => {
   );
 };
 
+// endregion
+
+// region canvasEntry Canvas provider and runtime gate
+
 /**
  * 画布入口：选中态属于 renderer 交互层，Provider 挂在画布组件之上，
  * 覆盖 Canvas controller 与节点/边渲染器（Handle、ButtonEdge）等全部消费者。
@@ -600,3 +614,5 @@ const WorkflowRuntimeGate = ({ children }: { children: React.ReactNode }) => {
 };
 
 export default React.memo(WorkflowCanvasEntry);
+
+// endregion

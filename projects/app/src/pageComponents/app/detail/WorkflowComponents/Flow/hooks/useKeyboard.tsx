@@ -1,4 +1,3 @@
-import React from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { isNestedParentNodeType } from '@fastgpt/global/core/workflow/node/constant';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -11,7 +10,7 @@ import { useCallback } from 'react';
 import { type Node, useKeyPress, useReactFlow } from 'reactflow';
 import { useWorkflowUIValue } from '../canvas/canvasState';
 import { useWorkflowCanvasValue } from '../canvas/workflowCanvasContext';
-import { getPasteSelectionChanges, isWorkflowShortcutInputtingTarget } from './keyboard';
+import { isWorkflowShortcutInputtingTarget } from './keyboard';
 import { useClearCanvasSelection } from '../canvas/useCanvasController';
 import { useWorkflowUtils } from './useUtils';
 import {
@@ -23,7 +22,7 @@ export const useKeyboard = () => {
   const { t } = useTranslation();
   const mouseInCanvas = useWorkflowUIValue((v) => v.mouseInCanvas);
   const getMousePosition = useWorkflowUIValue((v) => v.getMousePosition);
-  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
+  const selectNodes = useWorkflowCanvasValue((v) => v.selectNodes);
 
   const { copyData } = useCopyData();
   const { computedNewNodeName } = useWorkflowUtils();
@@ -130,19 +129,19 @@ export const useKeyboard = () => {
       if (result.ok) {
         // Runtime 事件同步投影后再落选中态，避免新节点尚未进入本地 ReactFlow 数组。
         queueMicrotask(() => {
-          applyNodeChanges(getPasteSelectionChanges(newNodes.map((node) => node.id)));
+          selectNodes(newNodes.map((node) => node.id));
         });
       }
     } catch {}
   }, [
-    applyNodeChanges,
     actions,
     clearCanvasSelection,
     computedNewNodeName,
     getMousePosition,
     hasInputtingElement,
     mouseInCanvas,
-    screenToFlowPosition
+    screenToFlowPosition,
+    selectNodes
   ]);
 
   useKeyPressEffect(['ctrl.c', 'meta.c'], (e) => {

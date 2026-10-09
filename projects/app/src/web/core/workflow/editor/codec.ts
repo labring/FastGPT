@@ -31,11 +31,17 @@ import {
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { CanonicalWorkflowData } from '@fastgpt/global/core/workflow/migration';
 
+// region codecContracts Workflow codec boundary contracts
+
 type HydrateWorkflowEditorOptions = {
   input: unknown;
   chatConfig?: AppChatConfigType;
   t: TFunction;
 };
+
+// endregion
+
+// region codecNormalization Workflow input normalization
 
 const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number], isTool: boolean) => {
   const inputWithSelectedType = normalizeFlowNodeInputType(input, { isTool });
@@ -121,12 +127,17 @@ export const uiWorkflow2StoreWorkflow = ({
   return { nodes: formatNodes, edges: formatEdges };
 };
 
+// endregion
+
+// region codecHydration Workflow materialization and runtime creation
+
 /**
- * 入站边界（ADR 0001）：migration 之后做 Template Materialization，剥离画布专用字段，
+ * 入站边界：migration 之后做 Template Materialization，剥离画布专用字段，
  * 得到严格 canonical 数据。模板目录与 i18n 都留在边界外；保存时归一化（工具序列化、
  * 引用裁剪）只发生在出站边界，入站提前执行会把未水合数据当成用户编辑结果处理。
  * hydrate 与版本切换（replaceDocument）共用同一份物化结果。
  */
+
 export const materializeWorkflow = ({
   input,
   chatConfig,
@@ -180,11 +191,16 @@ export const hydrateRuntime = ({
 }: HydrateWorkflowEditorOptions & WorkflowRuntimeOptions): WorkflowRuntimePort =>
   hydrateWorkflowEditor(materializeWorkflow({ input, chatConfig, t }), options);
 
+// endregion
+
+// region codecSerialization Runtime export normalization
+
 /**
  * 出站边界：读取 Runtime 完整导出，并用旧保存路径的 Workflow Normalization 原样包住
  * （工具输入模式归一、工具选择序列化、按节点存在性过滤边、剥离画布函数字段）。
  * 失效引用不再被裁剪：它们要留在数据里，配合根级 Reference Snapshots 展示历史名字。
  */
+
 export const serializeRuntime = (runtime: WorkflowRuntimePort): StoreWorkflow => {
   const data = serializeWorkflowEditor(runtime);
   // 把 Runtime 导出包装成 reactflow 形状，
@@ -205,3 +221,5 @@ export const serializeRuntime = (runtime: WorkflowRuntimePort): StoreWorkflow =>
     referenceSnapshots: data.referenceSnapshots
   } as StoreWorkflow;
 };
+
+// endregion

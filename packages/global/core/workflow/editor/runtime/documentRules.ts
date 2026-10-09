@@ -53,6 +53,8 @@ import type {
  * Document module 的有状态工厂只组合这些规则，不重复实现。
  */
 
+// region documentConstruction Document normalization and change recording
+
 const systemProtectedDeleteTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.pluginInput,
   FlowNodeTypeEnum.pluginOutput,
@@ -303,6 +305,10 @@ export const documentToCanonical = ({
   referenceSnapshots: cloneValue(document.referenceSnapshots)
 });
 
+// endregion
+
+// region placementRules Placement and deletion rules
+
 const isForbiddenDeleteNode = (node: NodeRecord) =>
   node.forbidDelete === true || systemProtectedDeleteTypes.has(node.data.flowNodeType);
 
@@ -455,6 +461,10 @@ export const resolveStructureChanged = (meta: MutationMeta): boolean =>
       !valuesEqual(before.data.outputs, after.data.outputs)
   );
 
+// endregion
+
+// region graphIndexes Graph and workflow start indexes
+
 /** childrenByParent 里文档根对应的桶：parentNodeId 为空即根级子节点。 */
 export const ROOT_PARENT_KEY = '';
 
@@ -563,6 +573,10 @@ export const collectDescendantNodeIds = (
   rootIds.forEach(visit);
   return descendants;
 };
+
+// endregion
+
+// region derivedFields Persisted derived field maintenance
 
 /** Persisted Derived Field：容器子节点清单。执行层读它，因此必须留在持久化数据里。 */
 const childrenNodeIdListKey = NodeInputKeyEnum.childrenNodeIdList;
@@ -694,3 +708,5 @@ export const applyPersistedDerivedFields = ({
   });
   return { nodes: nextNodes, changes };
 };
+
+// endregion

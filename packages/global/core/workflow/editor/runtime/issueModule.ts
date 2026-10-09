@@ -30,6 +30,8 @@ export const createIssueModule = ({
    */
   getEnvironment?: () => WorkflowEnvironment;
 }) => {
+  // region issueState Issue state and reachability tracking
+
   /** Issue View：唯一读取面，由 rebuildIssues 全量或按候选节点重算。 */
   let issuesByNode = new Map<string, WorkflowCheckIssue[]>();
   /** 工作流级问题桶：chatConfig 的模型问题不属于任何节点。 */
@@ -108,6 +110,10 @@ export const createIssueModule = ({
     }
     reachableNodeIds = nextReachableNodeIds;
   };
+
+  // endregion
+
+  // region issueRebuild Issue recomputation and transaction refresh
 
   /**
    * 按当前 Document 与环境事实更新 Issue View；局部事务只重算受影响节点。
@@ -220,6 +226,10 @@ export const createIssueModule = ({
     addChangedIssueRecords(meta, previousIssues, candidateNodeIds);
   };
 
+  // endregion
+
+  // region issueLifecycle Issue module cleanup and public assembly
+
   const clear = () => {
     issuesByNode = new Map();
     configIssues = [];
@@ -237,4 +247,6 @@ export const createIssueModule = ({
     rebuildForTransaction,
     clear
   };
+
+  // endregion
 };

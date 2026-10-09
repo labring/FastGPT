@@ -60,7 +60,9 @@ import type {
  * 领域规则全部在 Document / NodeView / Reference / Issue / History module 内。
  */
 
-const MAX_CHANGE_LOG = 100;
+// region runtimeSetup Runtime command guards and module setup
+
+const MAX_CHANGE_LOG = 200;
 
 /** 没有 issue 变化时复用的空通知载荷。 */
 const EMPTY_ISSUE_UPDATE = freezeValue({ nodeIds: [] }) as WorkflowIssueUpdate;
@@ -109,6 +111,8 @@ const workflowCommandTypes = new Set<string>([
 /** 运行时守卫闭合 command 边界，避免 JS 调用方让未知命令静默成功。 */
 const isWorkflowCommand = (value: unknown): value is WorkflowCommand =>
   isObject(value) && typeof value.type === 'string' && workflowCommandTypes.has(value.type);
+
+// endregion
 
 /** 从 strict canonical fixture 创建 Workflow Runtime Port；editor 特性通过 options 注入。 */
 export const createWorkflowEditor = (
@@ -174,6 +178,10 @@ export const createWorkflowEditor = (
   let chatConfigSnapshotCache:
     | { record: AppChatConfigType; snapshot: AppChatConfigType }
     | undefined;
+
+  // endregion
+
+  // region runtimeSnapshots Runtime snapshots and publication
 
   const ensureActive = () => {
     if (disposed) throw new Error('Workflow editor has been disposed');
@@ -387,6 +395,10 @@ export const createWorkflowEditor = (
     referenceOptionsCache.set(cacheKey, options);
     return options;
   };
+
+  // endregion
+
+  // region runtimeCommands Runtime command and history pipeline
 
   /** 扁平命令路由：geometry 交给 NodeView，其余交给 Document。 */
   const applyCommand = (ctx: TransactionContext, command: WorkflowCommand) => {
@@ -623,7 +635,11 @@ export const createWorkflowEditor = (
     return { ok: true, change };
   };
 
+  // endregion
+
   issue.rebuildIssues();
+
+  // region runtimePort Runtime public port assembly
 
   const port: WorkflowRuntimePort = {
     getWorkflow: getWorkflowSnapshot,
@@ -727,5 +743,6 @@ export const createWorkflowEditor = (
     }
   };
 
+  // endregion
   return port;
 };

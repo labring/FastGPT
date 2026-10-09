@@ -20,7 +20,7 @@ const SearchButton = (props: ButtonProps) => {
   const { fitView } = useReactFlow();
   const getNodes = useWorkflowCanvasValue((v) => v.getNodes);
   const getNodeDimension = useWorkflowCanvasValue((v) => v.getNodeDimension);
-  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
+  const selectNodes = useWorkflowCanvasValue((v) => v.selectNodes);
   const { isMac } = useSystem();
 
   const [keyword, setKeyword] = useState<string>();
@@ -84,28 +84,16 @@ const SearchButton = (props: ButtonProps) => {
       fittedSearchTargetRef.current = fitTargetKey;
       fitView({ nodes: [dimensionedNode], padding: 0.6, minZoom: 0.6 });
     }
-    /**
-     * 只对选中态真的要变的节点发 select 变更。受控模式下 `useReactFlow().setNodes` 会把整份数组
-     * 转成 N 个 reset 变更，而 `applyNodeChanges` 一见 reset 就整份重建（06 总纲决策 13）；
-     * 搜索是 500ms 节流的按键路径，全量 map 会让每次按键都重渲染全部节点卡片。
-     */
-    const changes = getNodes()
-      .filter((node) => !!node.selected !== (node.id === activeNodeId))
-      .map((node) => ({
-        type: 'select' as const,
-        id: node.id,
-        selected: node.id === activeNodeId
-      }));
-    if (changes.length > 0) applyNodeChanges(changes);
+    selectNodes([activeNodeId]);
   }, [
     fitView,
     getNodes,
     getNodeDimension,
     getWorkflow,
     keyword,
-    applyNodeChanges,
     patchViewData,
-    searchIndex
+    searchIndex,
+    selectNodes
   ]);
 
   useThrottleEffect(

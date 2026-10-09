@@ -9,6 +9,8 @@ import { useWorkflowDemoTrack } from '@/web/common/middle/tracks/workflowDemoTra
 import type { OnConnectStartParams } from 'reactflow';
 import type { NodeTemplateContext } from '@fastgpt/global/core/workflow/type/node';
 
+// region canvasContext Canvas interaction context contract
+
 type MousePosition = { x: number; y: number };
 export type ContextMenuPosition = { top: number; left: number };
 
@@ -249,3 +251,5 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
 
   return <WorkflowUIContext.Provider value={contextValue}>{children}</WorkflowUIContext.Provider>;
 };
+
+// endregion

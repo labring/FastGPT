@@ -86,6 +86,8 @@ const EMPTY_NODE_IDS = freezeValue([]) as readonly string[];
 
 /** Create the Workflow Document module；入参是入站边界已经组装好的初始文档与视图。 */
 export const createDocumentModule = (initial: CanonicalResult) => {
+  // region documentState Document state and graph index maintenance
+
   let document = initial.document;
   let nextEdgeId = initial.nextEdgeId;
   let nodeIndex: Map<string, IndexedNode> = buildNodeIndex(document.nodes);
@@ -141,6 +143,10 @@ export const createDocumentModule = (initial: CanonicalResult) => {
   const rebuildWorkflowStartIds = () => {
     workflowStartIds = collectWorkflowStartIds(document.nodes);
   };
+
+  // endregion
+
+  // region documentQueries Document graph and placement queries
 
   const getWorkingNode = (nodeId: string, meta?: MutationMeta) => {
     const change = meta?.nodeChanges.get(nodeId);
@@ -418,6 +424,10 @@ export const createDocumentModule = (initial: CanonicalResult) => {
       handleId: request.node?.handleId,
       isSidebar: request.isSidebar
     });
+
+  // endregion
+
+  // region documentTransactions Document transaction mutation helpers
 
   /** placement 校验用的容器 context：作用域是目标容器，没有来源节点，按侧边栏口径产出。 */
   const getContainerPlacementContext = (
@@ -952,6 +962,10 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     });
   };
 
+  // endregion
+
+  // region documentLifecycle Document module cleanup and public assembly
+
   const clear = () => {
     nodeIndex.clear();
     graphIndex.bySource.clear();
@@ -992,4 +1006,6 @@ export const createDocumentModule = (initial: CanonicalResult) => {
     addAffectedStructure,
     clear
   };
+
+  // endregion
 };

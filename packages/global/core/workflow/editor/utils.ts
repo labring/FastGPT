@@ -6,11 +6,10 @@ import {
   WorkflowIOValueTypeEnum
 } from '../constants';
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../node/constant';
-import { getHandleId, nodeInputIsReference } from '../utils';
+import { getHandleId } from '../utils';
 import { moduleTemplatesFlat } from '../template/constants';
 import { isNodeConnectionAllowed } from '../template/context';
 import type {
-  FlowNodeInputItemType,
   FlowNodeOutputItemType,
   ReferenceItemValueType,
   ReferenceValueType
@@ -19,6 +18,8 @@ import type { FlowNodeItemType, NodeTemplateContext } from '../type/node';
 import type { AppChatConfigType } from '../../app/type';
 import type { WorkflowReferenceStatus } from './types';
 import { getWorkflowGlobalVariables } from './variables';
+
+// region valueCompatibility Workflow value compatibility rules
 
 const workflowValueTypeCompatMap: Record<WorkflowIOValueTypeEnum, WorkflowIOValueTypeEnum[]> = {
   [WorkflowIOValueTypeEnum.string]: [WorkflowIOValueTypeEnum.string],
@@ -91,6 +92,10 @@ export const filterWorkflowNodeOutputsByType = (
   valueType: WorkflowIOValueTypeEnum
 ): FlowNodeOutputItemType[] =>
   outputs.filter((output) => workflowValueTypeIsCompatible(output.valueType, valueType));
+
+// endregion
+
+// region referenceValidation Reference source and target validation
 
 export type WorkflowReferenceSourceNode = {
   nodeId: string;
@@ -218,6 +223,10 @@ export const getHTTPToolParamOutputs = (node: FlowNodeItemType) =>
       }))
     : [];
 
+// endregion
+
+// region referenceParsing Reference value parsing helpers
+
 const WORKFLOW_TEXT_REFERENCE_REGEXP = /\{\{\$([^$.]+)\.([^$]+)\$\}\}/g;
 
 /** 递归提取 canonical 与文本引用；可关闭非 reference 字段中的 canonical tuple 解析。 */
@@ -249,6 +258,10 @@ export const getWorkflowReferenceItemsFromValue = (
   visit(value);
   return [...new Map(references.map((reference) => [reference.join('\0'), reference])).values()];
 };
+
+// endregion
+
+// region referenceStatus Reference source and status derivation
 
 /** 按引用 ID 查找来源节点和输出；sourceNodes 优先，未命中时回退到当前节点表。 */
 export const getWorkflowReferenceSource = ({
@@ -372,3 +385,5 @@ export const workflowReferenceValueIsSelectable = ({
         chatConfig
       }).code === 'valid'
   );
+
+// endregion

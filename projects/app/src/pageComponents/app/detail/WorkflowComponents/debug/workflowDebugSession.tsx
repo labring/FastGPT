@@ -1,9 +1,10 @@
 // 工作流调试功能层
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useWorkflowCanvasValue } from '../Flow/canvas/workflowCanvasContext';
 import { AppContext } from '@/pageComponents/app/detail/context';
+import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import { postWorkflowDebug } from '@/web/core/workflow/api';
 import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -25,6 +26,8 @@ import {
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+// region publicApi Debug context and data transforms
 
 export type DebugDataType = {
   runtimeNodes: RuntimeNodeItemType[];
@@ -138,6 +141,10 @@ export const createNextWorkflowDebugData = ({
   chatId: debugData.chatId
 });
 
+// endregion
+
+// region internalState Debug provider implementation
+
 const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
   onNextNodeDebug: function (_debugData: DebugDataType): Promise<void> {
     throw new Error('Function not implemented.');
@@ -167,7 +174,8 @@ const WorkflowDebugContext = createContext<WorkflowDebugContextValue>({
 
 export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode }) => {
   // 获取依赖的 context
-  const applyNodeChanges = useWorkflowCanvasValue((v) => v.applyNodeChanges);
+  const selectNodes = useWorkflowCanvasValue((v) => v.selectNodes);
+  const runtime = useWorkflowRuntime();
   const patchViewData = useWorkflowOverlayActions();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const appId = appDetail._id;
@@ -181,27 +189,37 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
    * 用 ref 而不是 state——异步单步里要同步读到最新值，且足迹变化本身不需要触发重渲染。
    */
   const sessionRef = useRef<DebugSessionState>({ writtenNodeIds: [], selectedNodeIds: [] });
+  const debugGenerationRef = useRef(0);
 
   /**
    * 应用一次 transition：overlay 合并成一次 patchViewData（每次调用都会 bump 投影），
-   * 选中走 reactflow 的局部 select change，未变化的节点保持对象身份。
+   * 选中只提交 node id intent，由 Canvas 按当前本地节点计算 ReactFlow change。
    */
   const applyTransition = useCallback(
     (transition: DebugSessionTransition) => {
+      const previousSelectedNodeIds = sessionRef.current.selectedNodeIds;
+      const selectionChanged =
+        previousSelectedNodeIds.length !== transition.selectedNodeIds.length ||
+        previousSelectedNodeIds.some(
+          (nodeId, index) => nodeId !== transition.selectedNodeIds[index]
+        );
       sessionRef.current = {
         writtenNodeIds: transition.nextWrittenNodeIds,
-        selectedNodeIds: transition.nextSelectedNodeIds
+        selectedNodeIds: transition.selectedNodeIds
       };
       // 先写选中再 bump 投影，重投影时读到的本地数组已经是最新选中态。
-      if (transition.selectionPatches.length > 0) applyNodeChanges(transition.selectionPatches);
+      if (selectionChanged) selectNodes(transition.selectedNodeIds);
       if (transition.overlayPatches.length > 0) patchViewData(transition.overlayPatches);
     },
-    [applyNodeChanges, patchViewData]
+    [patchViewData, selectNodes]
   );
 
   // 单步调试 - 执行下一步节点
   const onNextNodeDebug = useCallback(
     async (debugData: DebugDataType) => {
+      const generation = ++debugGenerationRef.current;
+      const requestRuntime = runtime;
+
       // 1. Set isEntry field and collect this step's entry nodes
       const entryNodeIdSet = new Set(debugData.entryNodeIds);
       const runtimeNodes = debugData.runtimeNodes.map((item) => ({
@@ -241,6 +259,8 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
           chatId: debugData.chatId
         });
 
+        if (generation !== debugGenerationRef.current || requestRuntime?.isDisposed()) return;
+
         // 4. Store debug result
         // memoryNodes 和 memoryEdges 包含完整响应，同时保留续跑所需的 chatId。
         setWorkflowDebugData(
@@ -260,6 +280,8 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
         // 5. 写入本步结果并选中真正跑过的 entry 节点（交互续跑同样走这里）
         applyTransition(resolveDebugStep({ ...sessionRef.current, entryNodeIds, nodeResponses }));
       } catch (error) {
+        if (generation !== debugGenerationRef.current || requestRuntime?.isDisposed()) return;
+
         // 失败态只写本次 entry 节点，失败信息在 session 内展示，不影响其它节点
         applyTransition(
           failDebugStep({
@@ -270,11 +292,12 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
         );
       }
     },
-    [appId, applyTransition, appDetail.chatConfig]
+    [appId, applyTransition, appDetail.chatConfig, runtime]
   );
 
   // 停止调试 - 清理调试状态
   const onStopNodeDebug = useCallback(() => {
+    debugGenerationRef.current += 1;
     setWorkflowDebugData(undefined);
     applyTransition(stopDebugSession(sessionRef.current));
   }, [applyTransition]);
@@ -283,6 +306,31 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
   const onOpenNodeDebug = useCallback(() => {
     applyTransition(openDebugSession(sessionRef.current));
   }, [applyTransition]);
+
+  useEffect(() => {
+    const unsubscribe = runtime?.subscribe((change) => {
+      if (change.kind !== 'replace') return;
+
+      debugGenerationRef.current += 1;
+      setWorkflowDebugData(undefined);
+      applyTransition(stopDebugSession(sessionRef.current));
+    });
+
+    return () => {
+      unsubscribe?.();
+      debugGenerationRef.current += 1;
+    };
+  }, [applyTransition, runtime]);
+
+  const previousAppIdRef = useRef(appId);
+  useEffect(() => {
+    if (previousAppIdRef.current === appId) return;
+    previousAppIdRef.current = appId;
+    debugGenerationRef.current += 1;
+    setWorkflowDebugData(undefined);
+    setDebugChatId(undefined);
+    applyTransition(stopDebugSession(sessionRef.current));
+  }, [appId, applyTransition]);
 
   // 开始调试 - 初始化调试会话
   const onStartNodeDebug = useCallback(
@@ -335,3 +383,5 @@ export const WorkflowDebugProvider = ({ children }: { children: React.ReactNode 
     </WorkflowRuntimeContextProvider>
   );
 };
+
+// endregion

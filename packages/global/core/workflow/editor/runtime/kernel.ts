@@ -13,6 +13,8 @@ import type { WorkflowCommandError, WorkflowFieldIdentity } from '../types';
  * 这些函数没有单一领域归属，被多个 module 复用，集中放置避免 module 之间互相 import 实现细节。
  */
 
+// region valueSemantics Runtime value cloning and freezing
+
 export const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
@@ -72,6 +74,10 @@ export const valuesEqual = (left: unknown, right: unknown): boolean => {
   return compare(left, right);
 };
 
+// endregion
+
+// region errorAndReferences Runtime errors and reference extraction
+
 export const getError = (
   code: WorkflowCommandError['code'],
   message: string,
@@ -96,6 +102,10 @@ export const getInputReferences = (input: FlowNodeInputItemType): ReferenceItemV
     includeCanonicalReferences: canContainCanonicalReferences
   });
 };
+
+// endregion
+
+// region fieldIdentity Runtime field identity helpers
 
 /** 为输入 key 与输出 id 生成统一的稳定字段身份。 */
 export const getFieldIdentity = ({
@@ -150,3 +160,5 @@ export const addFieldIdentity = (
 ) => {
   fields.set(getFieldIdentityKey(field), field);
 };
+
+// endregion

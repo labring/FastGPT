@@ -1,3 +1,5 @@
+// region dimensionContracts Canvas dimension and viewport contracts
+
 export type NodeCardDimension = {
   width: number;
   height: number;
@@ -83,6 +85,10 @@ type RenderableGraphClassification = ViewportNodeClassification & {
   renderedNodeIds: ReadonlySet<string>;
   renderedEdgeIds: ReadonlySet<string>;
 };
+
+// endregion
+
+// region dimensionProjection Canvas viewport classification and fit calculation
 
 const WORKFLOW_VIEWPORT_OVERSCAN = 240;
 export const WORKFLOW_NODE_MEASUREMENT_ESTIMATE: NodeDimensions = {
@@ -526,6 +532,10 @@ export const classifyRenderableGraph = ({
   };
 };
 
+// endregion
+
+// region dimensionMeasurement Canvas measurement queue and batching
+
 type MeasurementQueueEntry = {
   nodeId: string;
   generation: number;
@@ -762,3 +772,5 @@ export const createDimensionBatcher = ({
 
   return { enqueue, remove, dispose };
 };
+
+// endregion

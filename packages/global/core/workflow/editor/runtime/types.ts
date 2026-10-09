@@ -17,6 +17,8 @@ import type {
 import type { AppChatConfigType } from '../../../app/type';
 import type { WorkflowIOValueTypeEnum } from '../../constants';
 
+// region documentTypes Runtime document and reference graph types
+
 /** Runtime 内部私有契约；不通过 editor/index.ts 对外暴露。 */
 
 /** Document 持有的节点语义记录；画布视图不在其中。 */
@@ -103,6 +105,10 @@ export type MutationMeta = {
   removedEdges: Map<string, EdgeRecord>;
 };
 
+// endregion
+
+// region historyTypes Runtime mutation and history types
+
 /** 两种记录都带事务前后的 Content Revision，replay 时恢复，Savepoint 因此可被撤销回干净状态。 */
 export type HistoryEntry =
   | {
@@ -122,10 +128,18 @@ export type HistoryEntry =
       change: WorkflowChange;
     };
 
+// endregion
+
+// region statusTypes Runtime field status types
+
 export type FieldStatusCache = {
   field: FlowNodeInputItemType;
   statuses: WorkflowReferenceStatus[];
 };
+
+// endregion
+
+// region moduleContracts Runtime module interfaces and staging types
 
 export type CanonicalResult = {
   document: RuntimeDocument;
@@ -188,3 +202,5 @@ export type GeometryCommand = Extract<WorkflowCommand, { type: 'commitGeometry' 
 export type GeometryStageResult =
   | { ok: false; error: WorkflowCommandError }
   | { ok: true; views?: NodeViewStore };
+
+// endregion

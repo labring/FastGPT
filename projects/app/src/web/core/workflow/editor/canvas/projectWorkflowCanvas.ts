@@ -29,7 +29,10 @@ import {
   type ViewDataKey
 } from '@/web/core/workflow/editor/canvas/canvasTypes';
 
+// region projectionContracts Canvas projection contracts
+
 /** host 持有的按节点视图数据（不进文档）。 */
+
 export type ViewDataOverlayMap = Record<string, Partial<Record<ViewDataKey, unknown>>>;
 
 /**
@@ -37,6 +40,7 @@ export type ViewDataOverlayMap = Record<string, Partial<Record<ViewDataKey, unkn
  * canonical 文档不携带（StoreNodeItemTypeSchema 会剥掉），投影时按 flowNodeType 浅合并回来。
  * 模板目录是静态常量；同类型取首个匹配，与旧物化路径的 find 语义一致。
  */
+
 const templateByNodeType = new Map<FlowNodeTypeEnum, FlowNodeTemplateType>();
 moduleTemplatesFlat.forEach((template) => {
   if (!templateByNodeType.has(template.flowNodeType)) {
@@ -79,6 +83,10 @@ export const createProjectionCache = (): ProjectionCache => ({
   nodes: new Map(),
   edges: new Map()
 });
+
+// endregion
+
+// region projectionRuntime Runtime canvas projection
 
 /** 交互字段只在本地数组上维护；重投影时按 id 保留，避免手势中被 runtime 值覆盖。 */
 const INTERACTION_FIELDS = ['selected', 'dragging', 'width', 'height', 'measured'] as const;
@@ -287,3 +295,5 @@ export const projectRuntimeCanvas = ({
 
   return { nodes, edges };
 };
+
+// endregion

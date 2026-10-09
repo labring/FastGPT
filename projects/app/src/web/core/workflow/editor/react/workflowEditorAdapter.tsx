@@ -24,6 +24,8 @@ import type {
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
 
+// region adapterContracts React adapter public contracts
+
 export type WorkflowNodeIdentity = {
   nodeId: string;
   parentNodeId?: string;
@@ -113,6 +115,10 @@ export type WorkflowCanvasHandle = {
   commitGeometry: (updates: readonly WorkflowGeometryUpdate[]) => WorkflowDispatchResult;
 };
 
+// endregion
+
+// region adapterInternals React adapter cache and listener helpers
+
 type Listener = () => void;
 type ListenerRegistry = Map<string, Set<Listener>>;
 
@@ -147,6 +153,10 @@ const collectRegistryListeners = (registry: ListenerRegistry, nodeIds: readonly 
   return notified;
 };
 
+// endregion
+
+// region adapterContracts React adapter public contracts
+
 export type WorkflowEditorAdapter = {
   connect: () => void;
   getWorkflowSnapshot: () => WorkflowStructureHandle;
@@ -169,6 +179,10 @@ export type WorkflowEditorAdapter = {
   getPlacementContext: (request: PlacementRequest) => NodeTemplateContext | null;
   dispose: () => void;
 };
+
+// endregion
+
+// region adapterImplementation React adapter runtime bridge
 
 /**
  * 将 host-owned runtime 接入 React external store；adapter 释放自身订阅，生命周期不管理 runtime。
@@ -533,3 +547,5 @@ export const createWorkflowEditorAdapter = (
     }
   };
 };
+
+// endregion

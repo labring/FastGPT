@@ -43,6 +43,8 @@ import type { DocumentReadApi, NodeRecord, ReferenceReadApi } from './types';
  * 边界与 documentRules.ts 一致；状态、scope 与缓存归 issueModule。
  */
 
+// region issueInputs Issue rule inputs and classifiers
+
 /** 规则入参：文档只读面、引用只读面、可达集合与本轮环境事实。 */
 export type IssueRuleInput = {
   document: DocumentReadApi;
@@ -173,6 +175,10 @@ const resolvePluginErrorIssueCode = (
 /** 动态引用（{{...}}）与数组形式的模型值由运行时解析，编辑期不判定可用性。 */
 const isDynamicModelValue = (value: unknown) =>
   Array.isArray(value) || (typeof value === 'string' && /^\{\{.*\}\}$/.test(value));
+
+// endregion
+
+// region nodeIssues Node issue collection
 
 /**
  * 计算单个节点的全部 Issue。
@@ -774,6 +780,10 @@ export const collectNodeIssues = (
   return issues;
 };
 
+// endregion
+
+// region configIssues Workflow configuration issue collection
+
 /**
  * 工作流级问题：chatConfig 里的模型不属于任何画布节点，单独成桶。
  * 目录未就绪时跳过，与节点级模型规则保持一致。
@@ -839,3 +849,5 @@ export const collectConfigIssues = ({
   });
   return issues;
 };
+
+// endregion

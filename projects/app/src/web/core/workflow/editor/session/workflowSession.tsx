@@ -60,6 +60,8 @@ import {
   serializeWorkflowData
 } from './workflowPersistence';
 
+// region sessionContracts Session state and public hook contracts
+
 type WorkflowSessionValue = {
   runtime: WorkflowRuntimePort | null;
   /** 当前工作流编辑页的 Monaco model 生命周期标识。 */
@@ -274,6 +276,10 @@ export const useWorkflowSnapshot = (): WorkflowSnapshot | undefined => {
 export const useWorkflowOverlayActions = () =>
   useContextSelector(WorkflowSessionContext, (value) => value.patchViewData);
 
+// endregion
+
+// region sessionProvider Runtime lifecycle, persistence, and host state
+
 /**
  * 编辑器 host Provider：挂在 ReactFlowProvider 内、renderer 之上。
  * Runtime 为 null（尚未 hydrate）时不挂 adapter，其余编辑器状态照常供给。
@@ -304,6 +310,8 @@ export const WorkflowSessionProvider = ({
   const showSandbox = feConfigs?.show_agent_sandbox;
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
 
+  // appId intentionally rotates the session identity when switching apps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const editorSessionId = useMemo(() => getNanoid(12), [appId]);
   const editorModelUriPrefix = useMemo(
     () => getWorkflowEditorPathPrefix({ appId, sessionId: editorSessionId }),
@@ -776,3 +784,5 @@ export const WorkflowSessionProvider = ({
     </WorkflowSessionContext.Provider>
   );
 };
+
+// endregion

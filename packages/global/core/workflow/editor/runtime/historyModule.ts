@@ -7,11 +7,12 @@ import type { HistoryEntry, MutationMeta, NodeViewChange, RuntimeDocument } from
  *
  * 语义事务用 checkpoint（事务前后两个数组壳，节点记录共享引用），纯几何事务只存视图 delta。
  * 两类记录都带事务前后的 Content Revision，replay 时一并恢复，
- * 因此撤销回已保存内容会自然回到干净状态（见 ADR 0002）。
+ * 因此撤销回已保存内容会自然回到干净状态。
  */
 
-/** ponytail: keep history bounded; raise only after measuring a real undo-depth need. */
-const MAX_HISTORY = 100;
+// region historyEntries History entry construction
+
+const MAX_HISTORY = 200;
 
 /** 把事务内登记的视图变化摊平成 history 记录；缺省一侧表示该侧节点不存在。 */
 export const collectViewChanges = (meta: MutationMeta): NodeViewChange[] =>
@@ -65,6 +66,10 @@ export const createGeometryHistoryEntry = ({
   change
 });
 
+// endregion
+
+// region historyState History stack lifecycle
+
 /** Create the Workflow History module. */
 export const createHistoryModule = () => {
   const past: HistoryEntry[] = [];
@@ -103,3 +108,5 @@ export const createHistoryModule = () => {
 
   return { push, take, getSnapshot, clear };
 };
+
+// endregion

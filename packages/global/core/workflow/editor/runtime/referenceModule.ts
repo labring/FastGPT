@@ -56,6 +56,8 @@ import type {
  * 只读 Document 的 staged/committed 状态，不写 Document。
  */
 
+// region referenceGraph Reference graph construction and updates
+
 const getSourceIdentityKey = ([nodeId, outputId]: ReferenceItemValueType) =>
   `${nodeId}\0${outputId}`;
 
@@ -377,6 +379,10 @@ const addAffectedConsumerFields = ({
   });
 };
 
+// endregion
+
+// region referenceState Reference module state and source resolution
+
 /** Create the Workflow Reference module. */
 export const createReferenceModule = (document: DocumentReadApi) => {
   let referenceGraph = buildReferenceGraph(document.getDocument().nodes);
@@ -445,6 +451,10 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         }
       : currentSource;
   };
+
+  // endregion
+
+  // region referenceTransactions Reference graph transaction updates
 
   const getGraph = () => referenceGraph;
   const forkGraph = () => forkReferenceGraph(referenceGraph);
@@ -554,6 +564,10 @@ export const createReferenceModule = (document: DocumentReadApi) => {
       return input ? getInputReferences(input).length > 0 : false;
     });
   };
+
+  // endregion
+
+  // region referenceQueries Reference status and option queries
 
   /**
    * 从目标节点反向遍历所有上游节点，visited 保证循环图有限终止。
@@ -886,6 +900,10 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     return options;
   };
 
+  // endregion
+
+  // region referenceSnapshots Reference snapshot capture and compaction
+
   /**
    * 语义事务里增量捕获引用来源快照，只扫描本轮受影响的 source key：
    * `meta.changedNodeIds`、selectedTools 边变化、chatConfig 变化（映射到全局变量）。
@@ -1006,6 +1024,10 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     return compacted;
   };
 
+  // endregion
+
+  // region referenceLifecycle Reference cache invalidation and cleanup
+
   /** 事务提交后按字段身份丢弃缓存，避免 scoped snapshot 复用过期状态。 */
   const invalidateFieldStatuses = (fields: Iterable<WorkflowFieldIdentity>) => {
     invalidateIncomingSources();
@@ -1062,4 +1084,6 @@ export const createReferenceModule = (document: DocumentReadApi) => {
     clearFieldStatusCache,
     clear
   };
+
+  // endregion
 };

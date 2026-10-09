@@ -54,51 +54,14 @@ import { getNodeShellHandleModel } from '../utils/nodeHandle';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
-type PendingFitRequest = {
-  nodeIds?: readonly string[];
-  options?: ViewportFitOptions;
-};
-
-type WorkflowRenderMode = 'full' | 'shell' | 'measurement';
-
-const defaultViewport: CanvasViewport = {
-  x: 0,
-  y: 0,
-  zoom: 1,
-  width: 0,
-  height: 0
-};
-
-const scheduleFrame = (callback: () => void) => {
-  if (typeof requestAnimationFrame === 'function') return requestAnimationFrame(callback);
-  return setTimeout(callback, 0) as unknown as number;
-};
-
-const cancelFrame = (handle: number) => {
-  if (typeof cancelAnimationFrame === 'function') {
-    cancelAnimationFrame(handle);
-    return;
-  }
-  clearTimeout(handle);
-};
-
-const areSourceHandleCentersEqual = (
-  previous: ReadonlyMap<string, { x: number; y: number }> | undefined,
-  next: ReadonlyMap<string, { x: number; y: number }> | undefined
-) => {
-  if (previous === next) return true;
-  if (!previous || !next || previous.size !== next.size) return false;
-  return [...next].every(([handleId, center]) => {
-    const previousCenter = previous.get(handleId);
-    return previousCenter?.x === center.x && previousCenter?.y === center.y;
-  });
-};
+// region publicApi Canvas selector contract
 
 type WorkflowCanvasContextType = {
   nodes: Node<FlowNodeItemType, string | undefined>[];
   renderedNodes: Node<FlowNodeItemType, string | undefined>[];
   replaceNodes: (nodes: CanvasNode[]) => void;
   applyNodeChanges: OnChange<NodeChange>;
+  selectNodes: (nodeIds: readonly string[]) => void;
   getNodes: () => Node<FlowNodeItemType, string | undefined>[];
   fitNodes: (nodeIds?: readonly string[], options?: ViewportFitOptions) => boolean;
   nodeDimensions: ReadonlyMap<string, NodeDimensions>;
@@ -123,6 +86,9 @@ const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
     throw new Error('Function not implemented.');
   },
   applyNodeChanges: function () {
+    throw new Error('Function not implemented.');
+  },
+  selectNodes: function () {
     throw new Error('Function not implemented.');
   },
   getNodes: function () {
@@ -166,7 +132,57 @@ const WorkflowCanvasContext = createContext<WorkflowCanvasContextType>({
 export const useWorkflowCanvasValue = <T,>(selector: (value: WorkflowCanvasContextType) => T): T =>
   useContextSelector(WorkflowCanvasContext, selector);
 
+// endregion
+
+// region internalState Canvas helpers
+
+type PendingFitRequest = {
+  nodeIds?: readonly string[];
+  options?: ViewportFitOptions;
+};
+
+type WorkflowRenderMode = 'full' | 'shell' | 'measurement';
+
+const defaultViewport: CanvasViewport = {
+  x: 0,
+  y: 0,
+  zoom: 1,
+  width: 0,
+  height: 0
+};
+
+const scheduleFrame = (callback: () => void) => {
+  if (typeof requestAnimationFrame === 'function') return requestAnimationFrame(callback);
+  return setTimeout(callback, 0) as unknown as number;
+};
+
+const cancelFrame = (handle: number) => {
+  if (typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(handle);
+    return;
+  }
+  clearTimeout(handle);
+};
+
+const areSourceHandleCentersEqual = (
+  previous: ReadonlyMap<string, { x: number; y: number }> | undefined,
+  next: ReadonlyMap<string, { x: number; y: number }> | undefined
+) => {
+  if (previous === next) return true;
+  if (!previous || !next || previous.size !== next.size) return false;
+  return [...next].every(([handleId, center]) => {
+    const previousCenter = previous.get(handleId);
+    return previousCenter?.x === center.x && previousCenter?.y === center.y;
+  });
+};
+
+// endregion
+
+// region canvasProvider Canvas projection and interaction state
+
 const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
+  // region canvasState Canvas runtime state and render refs
+
   const { setViewport } = useReactFlow();
   const canvasWidth = useStore((state) => state.width);
   const canvasHeight = useStore((state) => state.height);
@@ -220,6 +236,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   const initializedCanvasRef = useRef(false);
   const newContainerIdsRef = useRef(new Set<string>());
   const pendingFitRef = useRef<PendingFitRequest>();
+
+  // endregion
+
+  // region canvasProjection Canvas projection and virtualization
 
   const publishMeasurementNodeIds = (next: Set<string>) => {
     const previous = measurementNodeIdsRef.current;
@@ -824,6 +844,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       : undefined;
   }, [syncFromRuntime, runtime, viewTick]);
 
+  // endregion
+
+  // region canvasCommands Canvas interaction commands and viewport controls
+
   const replaceNodes = useMemoizedFn((next: CanvasNode[]) => {
     const current = nodesRef.current;
     if (next === current) return;
@@ -869,6 +893,24 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
 
     const next = applyReactFlowNodeChanges(effectiveChanges, prev);
     if (next !== prev) {
+      setCanvasNodes(next);
+    }
+  });
+
+  /** 按高层 node id intent 更新选中态，调用方不需要理解 ReactFlow NodeChange。 */
+  const selectNodes = useMemoizedFn((nodeIds: readonly string[]) => {
+    const selectedNodeIds = new Set(nodeIds);
+    const changes = nodesRef.current
+      .filter((node) => node.selected !== selectedNodeIds.has(node.id))
+      .map((node) => ({
+        id: node.id,
+        type: 'select' as const,
+        selected: selectedNodeIds.has(node.id)
+      }));
+    if (changes.length === 0) return;
+
+    const next = applyReactFlowNodeChanges(changes, nodesRef.current);
+    if (next !== nodesRef.current) {
       setCanvasNodes(next);
     }
   });
@@ -1007,12 +1049,17 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
     [dimensionBatcher]
   );
 
+  // endregion
+
+  // region canvasAssembly Canvas context assembly
+
   const contextValue = useMemo(
     () => ({
       nodes,
       renderedNodes,
       replaceNodes,
       applyNodeChanges,
+      selectNodes,
       getNodes,
       fitNodes,
       nodeDimensions,
@@ -1035,6 +1082,7 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
       renderedNodes,
       replaceNodes,
       applyNodeChanges,
+      selectNodes,
       getNodes,
       fitNodes,
       nodeDimensions,
@@ -1057,6 +1105,10 @@ const WorkflowCanvasProvider = ({ children }: { children: ReactNode }) => {
   return (
     <WorkflowCanvasContext.Provider value={contextValue}>{children}</WorkflowCanvasContext.Provider>
   );
+
+  // endregion
 };
 
 export default WorkflowCanvasProvider;
+
+// endregion

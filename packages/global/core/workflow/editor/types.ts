@@ -7,6 +7,8 @@ import type { WorkflowIOValueTypeEnum } from '../constants';
 import type { ModelTypeEnum } from '../../ai/constants';
 import type { NodeContainerCheckError } from '../template/context';
 
+// region snapshotTypes Workflow snapshot contracts
+
 /** 递归只读类型，用于阻止调用方通过 scoped snapshot 修改运行时数据。 */
 export type DeepReadonly<T> = T extends (...args: any[]) => any
   ? T
@@ -162,6 +164,10 @@ export type WorkflowIssuesSnapshot = DeepReadonly<{
  */
 export type WorkflowConfigIssue = DeepReadonly<Omit<WorkflowCheckIssue, 'nodeId'>>;
 
+// endregion
+
+// region environmentTypes Runtime environment and savepoint contracts
+
 /**
  * editor 在 hydrate 时注入的环境事实来源。
  *
@@ -205,6 +211,10 @@ export type WorkflowSavepoint = DeepReadonly<{
   contentRevision: number;
   isDirty: boolean;
 }>;
+
+// endregion
+
+// region changeTypes Workflow change contracts
 
 /** 通知来源，undo/redo 也通过同一 external-store 事件通道发布。 */
 export type WorkflowChangeOrigin = 'command' | 'undo' | 'redo';
@@ -274,6 +284,10 @@ export type WorkflowChange =
   | WorkflowGeometryChange
   | WorkflowReplaceChange;
 
+// endregion
+
+// region commandTypes Workflow command and dispatch contracts
+
 /** 运行时可接受的闭合工作流命令。瞬时 Canvas frame 不属于该联合。 */
 export type WorkflowCommand =
   | { type: 'addNode'; node: StoreNodeItemType }
@@ -342,6 +356,10 @@ export type WorkflowDispatchResult = {
   error?: WorkflowCommandError;
 };
 
+// endregion
+
+// region runtimePort Runtime public port contract
+
 /** Workflow Runtime Port 的唯一行为测试与 adapter seam。 */
 export type WorkflowRuntimePort = {
   getWorkflow: () => WorkflowSnapshot;
@@ -388,3 +406,5 @@ export type WorkflowRuntimePort = {
   isDisposed: () => boolean;
   dispose: () => void;
 };
+
+// endregion

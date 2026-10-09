@@ -18,6 +18,8 @@ import type {
  * 语义事务也只在节点视图真的变化时登记一条视图变化。
  */
 
+// region viewState Node view state operations
+
 export const mergeNodeView = ({
   current,
   position,
@@ -113,6 +115,10 @@ export const replaceStagedNodeViews = ({
   resolved.forEach((view, nodeId) => views.set(nodeId, view));
 };
 
+// endregion
+
+// region geometryValidation Node view command validation
+
 /** 校验 geometry command 的数值边界；纯 geometry 与混合事务共用此规则。 */
 const validateGeometryCommand = (command: GeometryCommand): WorkflowCommandError | undefined => {
   if (
@@ -130,6 +136,10 @@ const validateGeometryCommand = (command: GeometryCommand): WorkflowCommandError
   }
   return undefined;
 };
+
+// endregion
+
+// region viewModule Node view module assembly
 
 /** Create the Workflow Node View module. */
 export const createNodeViewModule = ({
@@ -251,3 +261,5 @@ export const createNodeViewModule = ({
     clear
   };
 };
+
+// endregion

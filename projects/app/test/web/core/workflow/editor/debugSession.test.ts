@@ -25,9 +25,8 @@ describe('debugSession open/stop', () => {
       { nodeId: 'a', values: { debugResult: undefined } },
       { nodeId: 'b', values: { debugResult: undefined } }
     ]);
-    expect(transition.selectionPatches).toEqual([]);
+    expect(transition.selectedNodeIds).toEqual(['a']);
     expect(transition.nextWrittenNodeIds).toEqual([]);
-    expect(transition.nextSelectedNodeIds).toEqual(['a']);
   });
 
   it('stop 只清 session 集合，调试期间删掉的节点不残留也不报错', () => {
@@ -41,16 +40,15 @@ describe('debugSession open/stop', () => {
       { nodeId: 'a', values: { debugResult: undefined } },
       { nodeId: 'deleted', values: { debugResult: undefined } }
     ]);
-    expect(transition.selectionPatches).toEqual([{ id: 'a', type: 'select', selected: false }]);
+    expect(transition.selectedNodeIds).toEqual([]);
     expect(transition.nextWrittenNodeIds).toEqual([]);
-    expect(transition.nextSelectedNodeIds).toEqual([]);
   });
 
   it('空 session 的 open/stop 不产生任何写入', () => {
     const empty = { writtenNodeIds: [], selectedNodeIds: [] };
 
     expect(openDebugSession(empty).overlayPatches).toEqual([]);
-    expect(stopDebugSession(empty).selectionPatches).toEqual([]);
+    expect(stopDebugSession(empty).selectedNodeIds).toEqual([]);
   });
 });
 
@@ -66,9 +64,8 @@ describe('debugSession step', () => {
       { nodeId: 'a', values: { debugResult: undefined } },
       { nodeId: 'b', values: { debugResult: runningStatus } }
     ]);
-    expect(transition.selectionPatches).toEqual([{ id: 'a', type: 'select', selected: false }]);
+    expect(transition.selectedNodeIds).toEqual([]);
     expect(transition.nextWrittenNodeIds).toEqual(['b']);
-    expect(transition.nextSelectedNodeIds).toEqual([]);
   });
 
   it('entry 节点带着上一步结果时合并成一条 patch', () => {
@@ -122,12 +119,11 @@ describe('debugSession step', () => {
       }
     ]);
     // c 是 skip，不进选中集合
-    expect(transition.selectionPatches).toEqual([{ id: 'b', type: 'select', selected: true }]);
+    expect(transition.selectedNodeIds).toEqual(['b']);
     expect(transition.nextWrittenNodeIds).toEqual(['b', 'c']);
-    expect(transition.nextSelectedNodeIds).toEqual(['b']);
   });
 
-  it('选中只 patch 旧选中与新选中的差集', () => {
+  it('选中输出完整集合，不暴露 ReactFlow patch', () => {
     const transition = resolveDebugStep({
       writtenNodeIds: [],
       selectedNodeIds: ['b'],
@@ -135,8 +131,7 @@ describe('debugSession step', () => {
       nodeResponses: { b: { type: 'run' }, c: { type: 'run' } }
     });
 
-    expect(transition.selectionPatches).toEqual([{ id: 'c', type: 'select', selected: true }]);
-    expect(transition.nextSelectedNodeIds).toEqual(['b', 'c']);
+    expect(transition.selectedNodeIds).toEqual(['b', 'c']);
   });
 
   it('交互续跑：interactiveResponse 落 overlay，下一轮 step 按足迹清掉', () => {
@@ -156,12 +151,12 @@ describe('debugSession step', () => {
     // 用户提交交互后继续跑：entry 仍是同一个节点，上一轮结果被清成运行中
     const next = startDebugStep({
       writtenNodeIds: resolved.nextWrittenNodeIds,
-      selectedNodeIds: resolved.nextSelectedNodeIds,
+      selectedNodeIds: resolved.selectedNodeIds,
       entryNodeIds: ['b']
     });
 
     expect(next.overlayPatches).toEqual([{ nodeId: 'b', values: { debugResult: runningStatus } }]);
-    expect(next.selectionPatches).toEqual([{ id: 'b', type: 'select', selected: false }]);
+    expect(next.selectedNodeIds).toEqual([]);
   });
 
   it('无响应时不写 overlay，也不改选中', () => {
@@ -173,9 +168,8 @@ describe('debugSession step', () => {
     });
 
     expect(transition.overlayPatches).toEqual([]);
-    expect(transition.selectionPatches).toEqual([{ id: 'b', type: 'select', selected: false }]);
+    expect(transition.selectedNodeIds).toEqual([]);
     expect(transition.nextWrittenNodeIds).toEqual(['b']);
-    expect(transition.nextSelectedNodeIds).toEqual([]);
   });
 });
 
@@ -194,9 +188,8 @@ describe('debugSession fail', () => {
         values: { debugResult: { status: 'failed', message: 'Debug failed', showResult: true } }
       }
     ]);
-    expect(transition.selectionPatches).toEqual([]);
+    expect(transition.selectedNodeIds).toEqual([]);
     expect(transition.nextWrittenNodeIds).toEqual(['b']);
-    expect(transition.nextSelectedNodeIds).toEqual([]);
   });
 
   it('entry 为空时失败态不产生写入', () => {
