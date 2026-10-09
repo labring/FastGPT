@@ -105,7 +105,7 @@ const ActionButtons = ({
   const { t } = useTranslation();
 
   return (
-    <Flex alignItems={'center'} w={'100px'} gap={2}>
+    <Flex alignItems={'center'} justifyContent={'center'} w={'100px'} gap={1}>
       <MyIconButton
         as="button"
         aria-label={t('dataset:dataset.ReTrain')}
@@ -596,23 +596,25 @@ const TrainingErrorList = ({
             <Table variant={'simple'}>
               <Thead>
                 <Tr>
-                  <Th pr={0}>{t('dataset:dataset.Chunk_Number')}</Th>
-                  <Th pr={0}>{t('dataset:dataset.Training_Status')}</Th>
-                  <Th>{t('dataset:dataset.Error_Message')}</Th>
-                  <Th w={'124px'}>{t('dataset:dataset.Operation')}</Th>
+                  <Th p={3}>{t('dataset:dataset.Chunk_Number')}</Th>
+                  <Th p={3}>{t('dataset:dataset.Training_Status')}</Th>
+                  <Th p={3}>{t('dataset:dataset.Error_Message')}</Th>
+                  <Th w={'124px'} p={3} textAlign={'center'}>
+                    {t('dataset:dataset.Operation')}
+                  </Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {collectionItems.map((item) => (
                   <Tr key={String(item._id)}>
-                    <Td>{item.chunkIndex + 1}</Td>
-                    <Td>
+                    <Td p={3}>{item.chunkIndex + 1}</Td>
+                    <Td p={3}>
                       <TrainingStageText item={item} />
                     </Td>
-                    <Td maxW={50}>
+                    <Td maxW={50} p={3}>
                       <ErrorMessage errorMsg={item.errorMsg} />
                     </Td>
-                    <Td w={'124px'} px={3}>
+                    <Td w={'124px'} p={3}>
                       <ActionButtons
                         item={item}
                         isRetryLoading={updateLoading}
