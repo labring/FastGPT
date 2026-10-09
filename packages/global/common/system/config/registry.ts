@@ -63,7 +63,10 @@ export const systemInstanceConfigRegistry: readonly SystemInstanceConfigRegistry
       'concatMd',
       'navbarItems',
       'appTemplateCourse',
-      'loginGuideDocUrl'
+      'loginGuideDocUrl',
+      'customApiDomain',
+      'customSharePageDomain',
+      'scripts'
     ],
     { edition: 'all', secret: false, applyMode: 'live' }
   ),
