@@ -38,8 +38,9 @@ export const isDatasetDataProcessing = (indexStatus?: DatasetDataIndexStatusEnum
     DatasetDataIndexStatusEnum.rebuildSynonymRunning
   ].includes(indexStatus);
 
-/** 重建失败仍保有旧索引；只有完整替换索引后才能结束对应失败任务。 */
-export const isDatasetDataRebuildFailed = (indexStatus?: DatasetDataIndexStatusEnum) =>
+/** 首次训练及两类重建失败；手动保存时必须完整重算索引，才能结束失败任务。 */
+export const isDatasetDataFailed = (indexStatus?: DatasetDataIndexStatusEnum) =>
+  indexStatus === DatasetDataIndexStatusEnum.error ||
   indexStatus === DatasetDataIndexStatusEnum.rebuildIndexFailed ||
   indexStatus === DatasetDataIndexStatusEnum.rebuildSynonymFailed;
 

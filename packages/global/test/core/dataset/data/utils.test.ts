@@ -2,39 +2,39 @@ import { describe, expect, it } from 'vitest';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   isDatasetDataProcessing,
-  isDatasetDataRebuildFailed
+  isDatasetDataFailed
 } from '@fastgpt/global/core/dataset/data/utils';
 
 const cases = [
-  { status: undefined, processing: false, rebuildFailed: false },
-  { status: DatasetDataIndexStatusEnum.indexing, processing: true, rebuildFailed: false },
-  { status: DatasetDataIndexStatusEnum.indexed, processing: false, rebuildFailed: false },
-  { status: DatasetDataIndexStatusEnum.error, processing: false, rebuildFailed: false },
+  { status: undefined, processing: false, failed: false },
+  { status: DatasetDataIndexStatusEnum.indexing, processing: true, failed: false },
+  { status: DatasetDataIndexStatusEnum.indexed, processing: false, failed: false },
+  { status: DatasetDataIndexStatusEnum.error, processing: false, failed: true },
   {
     status: DatasetDataIndexStatusEnum.rebuildIndexPending,
     processing: true,
-    rebuildFailed: false
+    failed: false
   },
   {
     status: DatasetDataIndexStatusEnum.rebuildIndexRunning,
     processing: true,
-    rebuildFailed: false
+    failed: false
   },
-  { status: DatasetDataIndexStatusEnum.rebuildIndexFailed, processing: false, rebuildFailed: true },
+  { status: DatasetDataIndexStatusEnum.rebuildIndexFailed, processing: false, failed: true },
   {
     status: DatasetDataIndexStatusEnum.rebuildSynonymPending,
     processing: true,
-    rebuildFailed: false
+    failed: false
   },
   {
     status: DatasetDataIndexStatusEnum.rebuildSynonymRunning,
     processing: true,
-    rebuildFailed: false
+    failed: false
   },
   {
     status: DatasetDataIndexStatusEnum.rebuildSynonymFailed,
     processing: false,
-    rebuildFailed: true
+    failed: true
   }
 ];
 
@@ -44,8 +44,8 @@ describe('isDatasetDataProcessing', () => {
   });
 });
 
-describe('isDatasetDataRebuildFailed', () => {
-  it.each(cases)('identifies rebuild failure for $status', ({ status, rebuildFailed }) => {
-    expect(isDatasetDataRebuildFailed(status)).toBe(rebuildFailed);
+describe('isDatasetDataFailed', () => {
+  it.each(cases)('identifies data failure for $status', ({ status, failed }) => {
+    expect(isDatasetDataFailed(status)).toBe(failed);
   });
 });

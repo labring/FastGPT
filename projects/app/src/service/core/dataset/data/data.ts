@@ -15,7 +15,7 @@ import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import {
   datasetDataSystemIndexTypes,
-  isDatasetDataRebuildFailed,
+  isDatasetDataFailed,
   isDatasetDataSystemIndexType
 } from '@fastgpt/global/core/dataset/data/utils';
 import {
@@ -32,6 +32,7 @@ import {
 } from '@fastgpt/service/core/dataset/synonym/entity';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { refreshDatasetDataVectorCreateTime } from '@fastgpt/service/common/vectorDB/controller';
+import { assertDatasetDataWritable } from '@fastgpt/service/core/dataset/data/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -312,7 +313,7 @@ export class DatasetDataOperation {
    * 这个路径用于“手动指定全部索引”的更新：调用方给出的 indexes 会和系统索引
    * 一起格式化后与当前 indexes 做 diff，新增/变更的索引重建向量，删除的索引清理旧向量。
    * 先刷新旧向量时间，再生成新向量、提交 data，最后删除旧向量；删除失败由 cron 尝试补偿。
-   * 重建失败时强制替换全部向量，并在同一事务内清理失败任务，不能复用旧模型的同文索引。
+   * 数据失败时强制替换全部向量，并在同一事务内清理失败任务，不能复用旧模型的同文索引。
    */
   async updateByIndexes({
     dataId,
@@ -338,8 +339,10 @@ export class DatasetDataOperation {
 
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
+    // API 鉴权后可能已被重试接管；Worker 自带租约提交边界，不走手动编辑写保护。
+    if (!commit) await assertDatasetDataWritable(mongoData.indexStatus);
 
-    const isRebuildFailed = isDatasetDataRebuildFailed(mongoData.indexStatus);
+    const isFailed = isDatasetDataFailed(mongoData.indexStatus);
     // 获取新的索引组合
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
@@ -371,7 +374,7 @@ export class DatasetDataOperation {
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
       nextIndexes: indexesWithExistingSystemIds,
-      isSameIndex: forceRebuild || isRebuildFailed ? () => false : undefined
+      isSameIndex: forceRebuild || isFailed ? () => false : undefined
     });
     // 先保存旧向量 id；insertVectorForPatch 会原地把 update 项替换成新 dataId。
     const deleteVectorIdList = this.indexOperation.getDeleteVectorIdList(patchResult);
@@ -408,8 +411,8 @@ export class DatasetDataOperation {
           const updateResult = await MongoDatasetData.updateOne(
             {
               _id: mongoData._id,
-              ...((synonymContext || isRebuildFailed) && { updateTime }),
-              ...(isRebuildFailed && { indexStatus: mongoData.indexStatus })
+              ...((synonymContext || isFailed) && { updateTime }),
+              ...(isFailed && { indexStatus: mongoData.indexStatus })
             },
             {
               $set: {
@@ -428,19 +431,19 @@ export class DatasetDataOperation {
                 ...(imageDescMap !== undefined ? { imageDescMap } : {}),
                 indexes: newIndexes,
                 indexStatus: DatasetDataIndexStatusEnum.indexed,
-                ...((synonymContext || isRebuildFailed) && {
+                ...((synonymContext || isFailed) && {
                   synonymVersion: synonymContext?.version ?? 0
                 }),
                 updateTime: new Date()
               },
               $unset: {
-                ...(synonymContext || isRebuildFailed ? { synonymRebuildingVersion: '' } : {}),
+                ...(synonymContext || isFailed ? { synonymRebuildingVersion: '' } : {}),
                 indexErrorMsg: ''
               }
             },
             { session: mongoSession }
           );
-          if ((synonymContext || isRebuildFailed) && updateResult.modifiedCount !== 1) {
+          if ((synonymContext || isFailed) && updateResult.modifiedCount !== 1) {
             throw new Error('数据已变化，请重试索引更新');
           }
 
@@ -460,10 +463,7 @@ export class DatasetDataOperation {
             mongoSession
           );
 
-          if (
-            !commit &&
-            (mongoData.indexStatus === DatasetDataIndexStatusEnum.error || isRebuildFailed)
-          ) {
+          if (!commit && isFailed) {
             await MongoDatasetTraining.deleteMany(
               {
                 teamId: mongoData.teamId,
@@ -476,7 +476,7 @@ export class DatasetDataOperation {
         }
       });
     } catch (error) {
-      if (synonymContext || commit || isRebuildFailed) {
+      if (synonymContext || commit || isFailed) {
         await this.indexOperation
           .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
           .catch(() => {});
@@ -586,12 +586,12 @@ export class DatasetDataOperation {
   }
 
   /**
-   * 只重建系统生成的索引：默认文本索引和多模态图片向量索引。
+   * 保存正文/答案并重建系统索引；失败数据额外重算全部保留索引。
    *
-   * “更新索引”按钮不能碰用户手动维护的索引。这里写 Mongo 时基于数据库当前值过滤，
-   * 只替换 `default` / `imageEmbedding`，再拼回新生成的系统索引，避免 custom、question、
-   * summary、image 等外部索引被格式化、去重或并发覆盖。
-   * 重建失败时只修复系统索引，仍保留失败状态、同义词版本及任务，供用户重试剩余索引。
+   * 正常数据只替换 `default` / `imageEmbedding`，并基于数据库当前值保留外部索引，
+   * 避免 custom、question、summary、image 等外部索引被格式化、去重或并发覆盖。
+   * 首次训练或重建失败时，保留外部索引文本但替换全部向量；成功提交后清理失败任务，
+   * 避免旧模型或旧同义词版本的外部索引被误标为已就绪。
    */
   async updateSystemIndexes({
     dataId,
@@ -605,8 +605,9 @@ export class DatasetDataOperation {
   }: UpdateDatasetDataSystemIndexesProps) {
     const mongoData = await MongoDatasetData.findById(dataId);
     if (!mongoData) return Promise.reject('Data not found');
+    await assertDatasetDataWritable(mongoData.indexStatus);
 
-    const isRebuildFailed = isDatasetDataRebuildFailed(mongoData.indexStatus);
+    const isFailed = isDatasetDataFailed(mongoData.indexStatus);
     const embModel = model;
     const nextQ = q ?? mongoData.q ?? '';
     const nextA = a ?? mongoData.a ?? '';
@@ -636,9 +637,20 @@ export class DatasetDataOperation {
 
     const patchResult = this.indexOperation.buildPatch({
       currentIndexes: mongoData.indexes,
-      nextIndexes: nextSystemIndexDrafts,
-      currentIndexFilter: (index) => isDatasetDataSystemIndexType(index.type),
-      isSameIndex: (current, next) => current.text === next.text && current.type === next.type
+      nextIndexes: isFailed
+        ? [
+            ...mongoData.indexes
+              .filter((index) => !isDatasetDataSystemIndexType(index.type))
+              .map(({ type, text, dataId }) => ({ type, text, dataId })),
+            ...nextSystemIndexDrafts
+          ]
+        : nextSystemIndexDrafts,
+      currentIndexFilter: isFailed
+        ? undefined
+        : (index) => isDatasetDataSystemIndexType(index.type),
+      isSameIndex: isFailed
+        ? () => false
+        : (current, next) => current.text === next.text && current.type === next.type
     });
     // insertVectorForPatch 会覆盖 update 项的 dataId，因此需先保留旧向量 id。
     const deleteVectorIdList = this.indexOperation.getDeleteVectorIdList(patchResult);
@@ -658,7 +670,7 @@ export class DatasetDataOperation {
         collectionId: mongoData.collectionId,
         transformText: synonymContext?.transformText
       });
-      const nextSystemIndexes = this.indexOperation.getWritablePatchIndexes(patchResult);
+      const nextIndexes = this.indexOperation.getWritablePatchIndexes(patchResult);
       newVectorIdList = patchResult
         .filter((item) => item.type === 'create' || item.type === 'update')
         .filter((item) => !item.skipped)
@@ -671,8 +683,8 @@ export class DatasetDataOperation {
         const updateResult = await MongoDatasetData.updateOne(
           {
             _id: mongoData._id,
-            ...((synonymContext || isRebuildFailed) && { updateTime }),
-            ...(isRebuildFailed && { indexStatus: mongoData.indexStatus })
+            ...((synonymContext || isFailed) && { updateTime }),
+            ...(isFailed && { indexStatus: mongoData.indexStatus })
           },
           [
             {
@@ -693,27 +705,27 @@ export class DatasetDataOperation {
                   : {}),
                 q: { $literal: nextQ },
                 a: { $literal: nextA },
-                indexes: {
-                  $concatArrays: [
-                    {
-                      $filter: {
-                        input: '$indexes',
-                        as: 'index',
-                        cond: {
-                          $not: [{ $in: ['$$index.type', datasetDataSystemIndexTypes] }]
-                        }
-                      }
+                indexes: isFailed
+                  ? { $literal: nextIndexes }
+                  : {
+                      $concatArrays: [
+                        {
+                          $filter: {
+                            input: '$indexes',
+                            as: 'index',
+                            cond: {
+                              $not: [{ $in: ['$$index.type', datasetDataSystemIndexTypes] }]
+                            }
+                          }
+                        },
+                        { $literal: nextIndexes }
+                      ]
                     },
-                    { $literal: nextSystemIndexes }
-                  ]
-                },
-                ...(!isRebuildFailed && {
-                  indexStatus: { $literal: DatasetDataIndexStatusEnum.indexed },
-                  indexErrorMsg: '$$REMOVE',
-                  ...(synonymContext && {
-                    synonymVersion: synonymContext.version,
-                    synonymRebuildingVersion: '$$REMOVE'
-                  })
+                indexStatus: { $literal: DatasetDataIndexStatusEnum.indexed },
+                indexErrorMsg: '$$REMOVE',
+                ...((synonymContext || isFailed) && {
+                  synonymVersion: synonymContext?.version ?? 0,
+                  synonymRebuildingVersion: '$$REMOVE'
                 }),
                 updateTime: { $literal: new Date() }
               }
@@ -721,7 +733,7 @@ export class DatasetDataOperation {
           ],
           { session }
         );
-        if ((synonymContext || isRebuildFailed) && updateResult.modifiedCount !== 1) {
+        if ((synonymContext || isFailed) && updateResult.modifiedCount !== 1) {
           throw new Error('数据已变化，请重试索引更新');
         }
 
@@ -741,7 +753,7 @@ export class DatasetDataOperation {
           session
         );
 
-        if (mongoData.indexStatus === DatasetDataIndexStatusEnum.error) {
+        if (isFailed) {
           await MongoDatasetTraining.deleteMany(
             {
               teamId: mongoData.teamId,
@@ -753,7 +765,7 @@ export class DatasetDataOperation {
         }
       });
     } catch (error) {
-      if (synonymContext || isRebuildFailed) {
+      if (synonymContext || isFailed) {
         await this.indexOperation
           .deleteVectors({ teamId: mongoData.teamId, idList: newVectorIdList })
           .catch(() => {});
