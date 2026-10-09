@@ -26,6 +26,7 @@ import type {
   SystemInstanceConfigUpdatedByType
 } from '@fastgpt/global/common/system/config/type';
 import { MongoSystemInstanceConfig } from './schema';
+import { mongoSessionRun } from '../../mongo/sessionRun';
 import { serviceEnv } from '../../../env';
 import { getLogger, LogCategories } from '../../logger';
 
@@ -300,6 +301,96 @@ export const updateDomainConfig = async <T extends SystemInstanceConfigDomainKey
   });
 
   return result;
+};
+
+export type BatchUpdateItemInput = {
+  domain: SystemInstanceConfigDomainKey;
+  expectedRevision: number;
+  overrides: Record<string, unknown>;
+};
+
+/**
+ * 跨域批量原子保存：在单个 Mongo 事务中执行全域的 revision 校验与持久化。
+ * 任一域冲突或写入失败整体回滚，避免多域分步提交产生脏数据与半生效状态。
+ */
+export const batchUpdateDomainConfigs = async ({
+  items,
+  actor
+}: {
+  items: BatchUpdateItemInput[];
+  actor: SystemInstanceConfigUpdatedByType;
+}): Promise<SystemInstanceConfigDomainKey[]> => {
+  if (items.length === 0) return [];
+
+  // 1. 预校验与准备阶段：对所有域执行敏感字段恢复、形态校验、终审校验和默认值剪枝
+  const preparedItems = await Promise.all(
+    items.map(async ({ domain, expectedRevision, overrides: submittedOverrides }) => {
+      const existing = await MongoSystemInstanceConfig.findById(domain).lean();
+      const currentRevision = existing?.revision ?? 0;
+      if (currentRevision !== expectedRevision) {
+        throw new Error(
+          `Revision conflict for domain "${domain}": current revision is ${currentRevision}, expected ${expectedRevision}`
+        );
+      }
+
+      const rawOverrides = restorePreservedSecrets(domain, submittedOverrides, existing?.overrides);
+      const parsedOverrides = parseDomainOverrides(domain, rawOverrides);
+      resolveDomainEffectiveConfig(domain, parsedOverrides);
+
+      const defaultValues = getDomainDefaultConfig(domain);
+      const cleanOverrides = pruneDefaultOverrides(parsedOverrides, defaultValues) ?? {};
+
+      return {
+        domain,
+        existing,
+        expectedRevision,
+        cleanOverrides
+      };
+    })
+  );
+
+  // 2. 事务执行阶段：在同一个 session 中执行所有文档的新建或带 revision 限制的更新
+  await mongoSessionRun(async (session) => {
+    for (const item of preparedItems) {
+      if (!item.existing) {
+        const newDoc = new MongoSystemInstanceConfig({
+          _id: item.domain,
+          revision: 1,
+          overrides: item.cleanOverrides,
+          updatedBy: actor
+        });
+        await newDoc.save({ session });
+      } else {
+        const updatedDoc = await MongoSystemInstanceConfig.findOneAndUpdate(
+          { _id: item.domain, revision: item.expectedRevision },
+          {
+            $set: {
+              overrides: item.cleanOverrides,
+              updatedBy: actor,
+              updatedAt: new Date()
+            },
+            $inc: { revision: 1 }
+          },
+          { session, new: true, runValidators: false }
+        ).lean();
+
+        if (!updatedDoc) {
+          throw new Error(
+            `Revision conflict for domain "${item.domain}": concurrent modification detected`
+          );
+        }
+      }
+    }
+  });
+
+  // 3. 事务成功后即时刷新单例快照
+  await reloadSystemInstanceConfig().catch((error) => {
+    logger.error('Failed to reload system instance config snapshot after batch update', {
+      error
+    });
+  });
+
+  return preparedItems.map((item) => item.domain);
 };
 
 let currentSnapshot: SystemInstanceConfig | null = null;

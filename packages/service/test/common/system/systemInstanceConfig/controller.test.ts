@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import {
   getDomainConfig,
   updateDomainConfig,
+  batchUpdateDomainConfigs,
   getSystemInstanceConfigSnapshot
 } from '../../../../common/system/systemInstanceConfig/controller';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
@@ -169,6 +170,73 @@ describe('systemInstanceConfig controller', () => {
       expect(snapshot.performance.workflow.maxRunTimes).toBe(999);
       expect(snapshot.security.csrfEnabled).toBe(true); // default
       expect(snapshot.subservice.agentSandbox.provider).toBe('none'); // default
+    });
+  });
+
+  describe('batchUpdateDomainConfigs (cross-domain atomic transaction)', () => {
+    it('atomically saves multiple domains in a single transaction', async () => {
+      const updated = await batchUpdateDomainConfigs({
+        items: [
+          {
+            domain: 'site',
+            expectedRevision: 0,
+            overrides: { name: 'Batch Site' }
+          },
+          {
+            domain: 'auth',
+            expectedRevision: 0,
+            overrides: { openApiKeyMaxCount: 88 }
+          }
+        ],
+        actor: { actor: 'admin' }
+      });
+
+      expect(updated).toEqual(['site', 'auth']);
+
+      const siteDoc = await MongoSystemInstanceConfig.findById('site').lean();
+      const authDoc = await MongoSystemInstanceConfig.findById('auth').lean();
+
+      expect(siteDoc?.overrides.name).toBe('Batch Site');
+      expect(siteDoc?.revision).toBe(1);
+      expect(authDoc?.overrides.openApiKeyMaxCount).toBe(88);
+      expect(authDoc?.revision).toBe(1);
+    });
+
+    it('rolls back completely if any domain in the batch encounters a revision conflict', async () => {
+      // 预先建立 site 文档 revision=1
+      await MongoSystemInstanceConfig.create({
+        _id: 'site',
+        revision: 1,
+        overrides: { name: 'Existing Site' },
+        updatedBy: { actor: 'system' }
+      });
+
+      // 批量提交中 site 期望版本错误（传 0，实际是 1），auth 是新域（期望 0）
+      await expect(
+        batchUpdateDomainConfigs({
+          items: [
+            {
+              domain: 'auth',
+              expectedRevision: 0,
+              overrides: { openApiKeyMaxCount: 999 }
+            },
+            {
+              domain: 'site',
+              expectedRevision: 0, // conflict!
+              overrides: { name: 'Should Not Persist' }
+            }
+          ],
+          actor: { actor: 'admin' }
+        })
+      ).rejects.toThrow(/Revision conflict/);
+
+      // 确认事务全部回滚：auth 没有被创建，site 没有被修改
+      const authDoc = await MongoSystemInstanceConfig.findById('auth').lean();
+      expect(authDoc).toBeNull();
+
+      const siteDoc = await MongoSystemInstanceConfig.findById('site').lean();
+      expect(siteDoc?.overrides.name).toBe('Existing Site');
+      expect(siteDoc?.revision).toBe(1);
     });
   });
 });
