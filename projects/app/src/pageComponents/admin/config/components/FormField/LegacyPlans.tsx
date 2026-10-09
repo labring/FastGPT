@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import {
   StandardSubLevelEnum,
@@ -23,7 +23,7 @@ const LegacyPlans = ({
   value: StandSubPlanLevelMapType;
   onChange: (value: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [editedLevel, setEditedLevel] = useState<StandardSubLevelEnum>();
 
   // 解析并检查是否有旧版套餐数据

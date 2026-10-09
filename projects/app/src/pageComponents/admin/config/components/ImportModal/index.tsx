@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { ConfigFormType } from '@/pageComponents/admin/config/type';
 import { formatConfigStore2FormSchema } from '@/web/admin/config/adapt';
 import { Button, useDisclosure } from '@chakra-ui/react';
@@ -13,7 +13,7 @@ export default function ImportModal(props: {
   setFormData: any;
   setRawData: any;
 }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { children, value, setFormData, setRawData } = props;
   const [configData, setConfigData] = React.useState<string>('');

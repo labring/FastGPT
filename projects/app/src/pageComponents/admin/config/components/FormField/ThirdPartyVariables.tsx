@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Input, Switch, Textarea } from '@chakra-ui/react';
 import type { ExternalProviderWorkflowVarType } from '@fastgpt/global/common/system/types';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -21,7 +21,7 @@ const ThirdPartyVariables = ({
   title: string;
   titleExtra?: ReactNode;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { toast } = useToast();
 
   const [currentThirdPartyVariable, setCurrentThirdPartyVariable] =
@@ -191,7 +191,7 @@ const ThirdPartyVariableItemModal = ({
   onClose: () => void;
   onSubmit: (data: ExternalProviderWorkflowVarType) => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { register, setValue, handleSubmit } = useForm({
     defaultValues: currentThirdPartyVariable
   });

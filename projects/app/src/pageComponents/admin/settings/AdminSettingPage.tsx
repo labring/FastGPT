@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { throttle } from 'lodash-es';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import AdminHeader from '../AdminHeader';
 import AdminSettingTOC, { type SettingTOCItem } from './AdminSettingTOC';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 type AdminSettingPageProps = {
   headerTitle?: string;
@@ -35,7 +35,7 @@ const AdminSettingPage = ({
   children,
   maxW = '840px'
 }: AdminSettingPageProps) => {
-  const { t } = useClientTranslation();
+  const { t } = useSafeTranslation();
   const [activeId, setActiveId] = useState<string>('');
   const currentActiveId = activeId || tocItems[0]?.id || '';
 

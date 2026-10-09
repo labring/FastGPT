@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import {
   NumberInput,
@@ -36,7 +36,7 @@ const numberInputProps = { variant: 'whiteOutline' as const, maxW: '400px' };
  * 保存时逐域提交，各自携带 revision 由服务端做乐观锁校验。
  */
 const LimitsSettingComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'requestAndText', label: t('admin:request_text_limits') },

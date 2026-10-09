@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React from 'react';
 import { Box, Button, HStack, Input, Textarea, Text } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -24,7 +24,7 @@ import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
 import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 
 const InformSetting = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const tocItems: SettingTOCItem[] = [
     { id: 'systemModal', label: t('admin:system_announcement_config') },
     { id: 'sendInform', label: t('admin:send_system_notification') },

@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useState } from 'react';
 import { Box, Flex, Grid, GridItem, HStack, Skeleton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -65,7 +65,7 @@ const DataItem = ({ icon, title, count = 0, color, isLoading = false }: DataItem
 };
 
 export default function DashboardOverview(): JSX.Element {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [currentTab, setCurrentTab] = useState<DashboardTab>('overview');
   const { data: userStats, loading: userStatsLoading } = useRequest(getUserStats, {
     manual: false

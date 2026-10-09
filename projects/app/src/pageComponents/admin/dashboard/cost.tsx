@@ -10,7 +10,7 @@ import {
   getStartTime,
   useDashboardFilters
 } from '@/pageComponents/admin/dashboard/utils';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 
 const ChartsBoxStyles = {
   px: 5,
@@ -24,7 +24,7 @@ const ChartsBoxStyles = {
 
 export default function CostPage(): JSX.Element {
   const theme = useTheme();
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
 
   const { dateRange, granularity } = useDashboardFilters();
 

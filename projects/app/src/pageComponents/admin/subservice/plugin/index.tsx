@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import { Input } from '@chakra-ui/react';
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -14,7 +14,7 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
 const PluginSubserviceComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
 
   const tocItems: SettingTOCItem[] = useMemo(

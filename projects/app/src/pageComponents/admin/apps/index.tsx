@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
 import {
   Button,
@@ -25,7 +25,7 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const AppTable = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [appDetail, setAppDetail] = useState<any>();
   const [searchKey, setSearchKey] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -145,7 +145,7 @@ const AppTable = () => {
 export default AppTable;
 
 function AppDetailModal({ app, onClose }: { app: any; onClose: () => void }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   return (
     <MyModal isOpen={true} onClose={onClose} title={'应用详情'} maxW={['90vw', '700px']}>
       <Flex alignItems={'center'} pb={4}>

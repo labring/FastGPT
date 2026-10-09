@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { Table, Thead, Tbody, Tr, Th, Td, Flex, Box, FormLabel } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -26,7 +26,7 @@ import type { AdminAuditListItemType } from '@fastgpt/global/openapi/admin/syste
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const AuditTable = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const labels = useCommonFilterLabels();
   const [memberFilter, setMemberFilter] = useState(createMultiSelectFilter<string>());
   const [eventFilter, setEventFilter] =
@@ -207,7 +207,7 @@ const AuditTable = () => {
 };
 
 function AuditDetailModal({ log, onClose }: { log: AdminAuditListItemType; onClose: () => void }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const i18nData = adminAuditLogMap[log.event as AdminAuditEventEnum];
   const metadata = defaultMetadataProcessor(log.metadata, t);
 

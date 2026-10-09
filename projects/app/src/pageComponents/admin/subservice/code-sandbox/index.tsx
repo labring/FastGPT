@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React from 'react';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import { Box, Wrap, Tag } from '@chakra-ui/react';
@@ -23,7 +23,7 @@ const pythonBuiltins = [
 const nodeBuiltins = ['crypto', 'path', 'url', 'lodash', 'dayjs', 'axios', 'qs'];
 
 const CodeSandboxSubserviceComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { effectiveConfig, isLoading } = useDomainConfig('subservice');
   const baseUrl = effectiveConfig?.codeSandbox?.baseUrl || 'http://localhost:3002';
   const sandboxHealthUrl = baseUrl.replace(/\/+$/, '') + '/health';

@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, FormControl, FormLabel, Input, useDisclosure } from '@chakra-ui/react';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -35,7 +35,7 @@ const defaultData: TFormData = {
 };
 
 export default function PlanAddModal(props: { updateData: any }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { updateData } = props;
   const { toast } = useToast();

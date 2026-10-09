@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
   Button,
@@ -30,7 +30,7 @@ const AddPackageModal = ({
   onSubmit: (data: PointsPackageItem) => void;
   editingPackage?: PointsPackageItem;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { handleSubmit, watch, setValue } = useForm<PointsPackageItem>({
     defaultValues: editingPackage || {
       points: 1000,
@@ -126,7 +126,7 @@ const ExtraPointsPackages = ({
   value: PointsPackageItem[];
   onChange: (value: PointsPackageItem[]) => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [isAddingPackage, setIsAddingPackage] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number>();
 

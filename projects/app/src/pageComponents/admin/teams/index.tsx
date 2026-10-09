@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
 import {
   Table,
@@ -24,7 +24,7 @@ import { FixedTableContainer } from '@fastgpt/web/components/common/FixedTable';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const TeamTable = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [search, setSearch] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 

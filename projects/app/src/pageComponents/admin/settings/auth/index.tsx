@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect, useMemo } from 'react';
 import {
   Input,
@@ -29,7 +29,7 @@ type AuthConfigForm = Omit<SystemInstanceConfigDomainMap['auth'], 'fastLogin'> &
 };
 
 const AuthSettingComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const tocItems: SettingTOCItem[] = useMemo(
     () => [
       { id: 'apiAndPassword', label: t('admin:api_password_policy') },

@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useEffect } from 'react';
 import {
   Input,
@@ -24,7 +24,7 @@ import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/syste
 type SubserviceConfigForm = SystemInstanceConfigDomainMap['subservice'];
 
 const AgentSandboxSubserviceComponent = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { effectiveConfig, isLoading, isUpdating, patchConfig } = useDomainConfig('subservice');
 
   const tocItems: SettingTOCItem[] = [

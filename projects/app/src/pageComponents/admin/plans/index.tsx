@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useRef, useState } from 'react';
 import {
   Table,
@@ -58,7 +58,7 @@ export type PlanType = {
 };
 
 const PlanTable = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [search, setSearch] = useState<string>();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const standardSubLevelMap = {

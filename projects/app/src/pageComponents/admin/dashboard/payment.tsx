@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useState, useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -24,7 +24,7 @@ const ChartsBoxStyles = {
 };
 
 export default function PaymentPage(): JSX.Element {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const theme = useTheme();
 
   const [orderAmountType, setOrderAmountType] = useState<'all' | 'success'>('success');

@@ -1,5 +1,5 @@
 'use client';
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Center, Flex, Table, Tbody, useDisclosure } from '@chakra-ui/react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import SingleSelectFilter from '@fastgpt/web/components/common/TagFilter/SingleSelectFilter';
@@ -21,7 +21,7 @@ import BoxPageRoot from '@/components/admin/BoxContainer/PageRoot';
 import { accountTitleTextStyles } from '@/pageComponents/account/styles';
 
 const AppTemplate = () => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const {
     isOpen: isOpenTypeModal,
     onOpen: onOpenTypeModal,

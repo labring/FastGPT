@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import { Box, Button, Flex, Grid, Input } from '@chakra-ui/react';
 import {
   StandardSubLevelEnum,
@@ -28,7 +28,7 @@ const CustomPlanModal = ({
   onClose: () => void;
   onChange: (e: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const level = StandardSubLevelEnum.custom;
   const { handleSubmit, watch, setValue } = useForm({
     defaultValues: planMap[level]
@@ -155,7 +155,7 @@ const StandardPlans = ({
   value: StandSubPlanLevelMapType;
   onChange: (value: StandSubPlanLevelMapType) => void;
 }) => {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const [editedLevel, setEditedLevel] = useState<StandardSubLevelEnum | 'custom'>();
 
   const levels = useMemo(

@@ -1,4 +1,4 @@
-import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
+import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import {
   Box,
   Button,
@@ -34,7 +34,7 @@ export default function PlanEditModal(props: {
   getData: any;
   subType: `${SubTypeEnum}`;
 }) {
-  const { t } = useClientTranslation('admin');
+  const { t } = useSafeTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { data, getData, subType } = props;
   const { toast } = useToast();
