@@ -35,10 +35,13 @@ export const getFastGPTConfigFromDB = async (): Promise<{
 
   const fastgptConfigTime = fastgptConfig?.createTime.getTime().toString();
   const licenseConfigTime = licenseConfig?.createTime.getTime().toString();
-  // 利用配置文件的创建时间（更新时间）来做缓存，如果前端命中缓存，则不需要再返回配置文件
-  global.systemInitBufferId = fastgptConfigTime
-    ? `${fastgptConfigTime}-${licenseConfigTime}`
-    : undefined;
+  // 仅当全局尚未生成过实例配置版本的 bufferId 时，才做旧格式兜底；
+  // 避免在 initSystemConfig 并行加载中用旧配置时间戳覆写最新的实例版本号
+  if (!global.systemInitBufferId) {
+    global.systemInitBufferId = fastgptConfigTime
+      ? `${fastgptConfigTime}-${licenseConfigTime}`
+      : undefined;
+  }
 
   return {
     fastgptConfig: config as FastGPTConfigFileType,
