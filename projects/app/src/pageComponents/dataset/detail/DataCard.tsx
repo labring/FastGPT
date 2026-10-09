@@ -387,7 +387,9 @@ const DataCard = () => {
                       bg={'white'}
                       fontWeight={'500'}
                     >
-                      <Box color={'blue.600'}>#{item.chunkIndex ?? '-'} </Box>
+                      <Box color={'blue.600'}>
+                        #{typeof item.chunkIndex === 'number' ? item.chunkIndex + 1 : '-'}
+                      </Box>
                       <Box
                         ml={1.5}
                         className={'textEllipsis'}
