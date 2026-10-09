@@ -58,10 +58,10 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 import { createDatasetSynonymMutation } from '@/service/core/dataset/synonym/mutation';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
-  cleanupUnusedDatasetSynonymMappings,
   getDatasetSynonymMatcher,
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
+import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 
 const teamId = new Types.ObjectId();
 const tmbId = new Types.ObjectId();

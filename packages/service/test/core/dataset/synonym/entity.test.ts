@@ -3,7 +3,6 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
 import {
   assertDatasetSynonymEnabled,
-  cleanupUnusedDatasetSynonymMappings,
   getDatasetSynonymRuntimeConfig,
   getDatasetSynonymTransformContext
 } from '@fastgpt/service/core/dataset/synonym/entity';
@@ -33,7 +32,6 @@ describe('dataset synonym feature switch', () => {
     expect(context.version).toBe(0);
     expect(context.transformText('keep original text')).toBe('keep original text');
     await expect(context.isCurrent()).resolves.toBe(true);
-    await cleanupUnusedDatasetSynonymMappings({ teamId: 'team-id', datasetId: 'dataset-id' });
     expect(findConfig).not.toHaveBeenCalled();
   });
 

@@ -10,8 +10,6 @@ import {
 } from './utils';
 import { MongoDatasetSynonym, MongoDatasetSynonymMapping } from './schema';
 import { serviceEnv } from '../../../env';
-import { MongoDatasetData } from '../data/schema';
-import type { ClientSession } from '../../../common/mongo';
 
 type DatasetSynonymMatcherSnapshot = DatasetSynonymMatcher & { hasMappings: boolean };
 
@@ -186,28 +184,6 @@ export const invalidateDatasetSynonymMatcherCache = ({
     matcherCacheWeight -= matcherCache.get(key)?.weight ?? 0;
     matcherCache.delete(key);
   }
-};
-
-/** 所有数据追上当前词表后才回收历史版本；失败或在途数据仍需要旧快照重试。 */
-export const cleanupUnusedDatasetSynonymMappings = async (
-  { teamId, datasetId }: { teamId: string; datasetId: string },
-  session?: ClientSession
-) => {
-  if (!isDatasetSynonymEnabled()) return;
-  const config = await MongoDatasetSynonym.findOne({ teamId, datasetId }, null, { session }).lean();
-  if (!config) return;
-  const historicalData = await MongoDatasetData.exists({
-    teamId,
-    datasetId,
-    synonymVersion: { $ne: config.version }
-  }).session(session ?? null);
-  if (historicalData) return;
-
-  const { deletedCount } = await MongoDatasetSynonymMapping.deleteMany(
-    { teamId, datasetId, fileVersion: { $lt: config.version } },
-    { session }
-  );
-  if (deletedCount) invalidateDatasetSynonymMatcherCache({ teamId, datasetId });
 };
 
 /** 返回当前已生效的 matcher；配置更新后立即用于查询和新写入。 */

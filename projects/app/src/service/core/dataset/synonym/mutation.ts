@@ -23,9 +23,9 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   assertDatasetSynonymEnabled,
-  cleanupUnusedDatasetSynonymMappings,
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
+import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 import { seedDatasetSynonymRebuildTasks } from '../queues/rebuildSynonym';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { rebuildableDatasetDataMatch } from '@fastgpt/global/core/dataset/data/utils';

@@ -11,7 +11,7 @@ import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
-import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/entity';
+import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
