@@ -14,14 +14,12 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import { useAdminPermission } from '@/pageComponents/admin/useAdminPermission';
-import {
-  AdminSettingPage,
-  AdminSettingSection,
-  AdminFormItem,
-  AdminSwitchRow,
-  type SettingTOCItem
-} from '@/pageComponents/admin/settings';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
 type CoreConfigForm = {
   teamMode: SystemInstanceConfigDomainMap['auth']['teamMode'];

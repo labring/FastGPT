@@ -57,3 +57,4 @@ pro/admin/worker/
 .worktrees/
 
 .pi
+.zcodeignore

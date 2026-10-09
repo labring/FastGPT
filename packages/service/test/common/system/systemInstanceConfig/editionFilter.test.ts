@@ -6,7 +6,7 @@ import {
   updateDomainConfig
 } from '../../../../common/system/systemInstanceConfig/controller';
 import { MongoSystemInstanceConfig } from '../../../../common/system/systemInstanceConfig/schema';
-import { SECRET_MASK } from '@fastgpt/global/common/system/config';
+import { SECRET_MASK } from '@fastgpt/global/common/system/config/permission';
 
 describe('service edition gating for Admin config APIs', () => {
   beforeEach(async () => {

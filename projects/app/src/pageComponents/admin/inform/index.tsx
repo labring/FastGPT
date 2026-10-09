@@ -18,12 +18,10 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 import ImageInput from '@/pageComponents/admin/settings/ImageInput';
 import { useMount } from 'ahooks';
-import {
-  AdminSettingPage,
-  AdminSettingSection,
-  AdminFormItem,
-  type SettingTOCItem
-} from '@/pageComponents/admin/settings';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
 
 const InformSetting = () => {
   const { t } = useClientTranslation('admin');

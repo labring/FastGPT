@@ -10,14 +10,12 @@ import {
 } from '@chakra-ui/react';
 import { useForm, Controller } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
-import {
-  AdminSettingPage,
-  AdminSettingSection,
-  AdminFormItem,
-  AdminReadonlyInput,
-  type SettingTOCItem
-} from '@/pageComponents/admin/settings';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminReadonlyInput from '@/pageComponents/admin/settings/AdminReadonlyInput';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
 type StorageConfigForm = SystemInstanceConfigDomainMap['storage'];
 

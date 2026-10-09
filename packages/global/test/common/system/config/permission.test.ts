@@ -8,7 +8,7 @@ import {
   filterDomainDataByEdition,
   restorePreservedSecrets,
   SECRET_MASK
-} from '@fastgpt/global/common/system/config';
+} from '@fastgpt/global/common/system/config/permission';
 
 describe('Edition detection', () => {
   it('identifies edition strictly by presence of PRO_URL (isProService)', () => {

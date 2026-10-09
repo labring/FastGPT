@@ -15,14 +15,12 @@ import {
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { useDomainConfig } from '@/web/common/system/useDomainConfig';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import {
-  AdminSettingPage,
-  AdminSettingSection,
-  AdminFormItem,
-  AdminSwitchRow,
-  type SettingTOCItem
-} from '@/pageComponents/admin/settings';
-import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config';
+import AdminSettingPage from '@/pageComponents/admin/settings/AdminSettingPage';
+import AdminSettingSection from '@/pageComponents/admin/settings/AdminSettingSection';
+import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
+import AdminSwitchRow from '@/pageComponents/admin/settings/AdminSwitchRow';
+import type { SettingTOCItem } from '@/pageComponents/admin/settings/AdminSettingTOC';
+import type { SystemInstanceConfigDomainMap } from '@fastgpt/global/common/system/config/type';
 
 type AuthConfigForm = Omit<SystemInstanceConfigDomainMap['auth'], 'fastLogin'> & {
   /** 登录防护字段属 security 域，页面迁入后在此一并编辑 */

@@ -3,15 +3,15 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { GET, POST } from '@/web/common/api/request';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
+import type { SystemInstanceConfigDomainKey } from '@fastgpt/global/common/system/config/schema';
 import type {
-  SystemInstanceConfigDomainKey,
   SystemInstanceConfigDomainMap,
   DeepPartial
-} from '@fastgpt/global/common/system/config';
+} from '@fastgpt/global/common/system/config/type';
 import type {
   GetDomainConfigResponse,
   UpdateDomainConfigBody
-} from '@fastgpt/global/openapi/admin/system/instanceConfig';
+} from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 
 /**
  * 客户端 API 请求函数：获取单个 Domain 配置

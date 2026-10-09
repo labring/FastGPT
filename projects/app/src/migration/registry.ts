@@ -23,8 +23,8 @@ import { enableChannelReasoningMapping } from './tasks/4171/20260923_enable_chan
 import { backfillMemberNameSet } from './tasks/4171/20260928_backfill_member_name_set';
 import { migrateDatasetRebuildStatus } from './tasks/4171/20261009_migrate_dataset_rebuild_status';
 import { migrateChunkTraining } from './tasks/4171/20261008_migrate_chunk_training';
-import { migrateInstanceConfigs } from './tasks/20260928_migrate_instance_configs';
-import { cleanupInstanceConfigDeprecatedFieldsTask } from './tasks/20260929_cleanup_instance_config_deprecated_fields';
+import { migrateInstanceConfigs } from './tasks/4180/20260928_migrate_instance_configs';
+import { cleanupInstanceConfigDeprecatedFieldsTask } from './tasks/4180/20260929_cleanup_instance_config_deprecated_fields';
 
 export type SystemMigrationLogger = {
   info: (message: string, metadata?: Record<string, unknown>) => void;

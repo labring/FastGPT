@@ -8,6 +8,8 @@ import type {
   SystemInstanceDomainDocumentSchema
 } from './schema';
 
+export type { SystemInstanceConfigDomainKey, SystemInstanceConfigDomainMap };
+
 export type SystemConfigsType = {
   _id: string;
   type: `${SystemConfigsTypeEnum}`;

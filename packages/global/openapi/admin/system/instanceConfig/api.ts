@@ -1,4 +1,6 @@
 import z from 'zod';
+import type { OpenAPIPath } from '../../../type';
+import { DevApiTagsMap } from '../../../tag';
 import {
   SystemInstanceConfigDomainKeySchema,
   SystemInstanceConfigUpdatedBySchema
@@ -53,3 +55,58 @@ export type UpdateDomainConfigBody = z.infer<typeof UpdateDomainConfigBodySchema
 
 export const UpdateDomainConfigResponseSchema = GetDomainConfigResponseSchema;
 export type UpdateDomainConfigResponse = GetDomainConfigResponse;
+
+export const AdminInstanceConfigPath: OpenAPIPath = {
+  '/api/admin/system/config/get': {
+    get: {
+      summary: '获取指定 Domain 的实例配置',
+      description: '获取指定配置域的当前乐观锁版本、稀疏 Overrides、生效配置快照以及脱敏密钥键',
+      tags: [DevApiTagsMap.adminSettings],
+      parameters: [
+        {
+          name: 'domain',
+          in: 'query',
+          required: true,
+          schema: {
+            type: 'string',
+            description: '配置域标识，如 site, auth, security 等'
+          }
+        }
+      ],
+      responses: {
+        200: {
+          description: '成功获取配置',
+          content: {
+            'application/json': {
+              schema: GetDomainConfigResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/api/admin/system/config/update': {
+    post: {
+      summary: '更新指定 Domain 的实例配置',
+      description: '带乐观锁版本号保存指定配置域的稀疏覆盖增量，自动执行两阶段严格校验',
+      tags: [DevApiTagsMap.adminSettings],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateDomainConfigBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '更新成功',
+          content: {
+            'application/json': {
+              schema: UpdateDomainConfigResponseSchema
+            }
+          }
+        }
+      }
+    }
+  }
+};

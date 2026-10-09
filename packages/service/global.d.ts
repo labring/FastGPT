@@ -4,7 +4,7 @@ import type {
   SystemEnvType
 } from '@fastgpt/global/common/system/types';
 import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config';
+import type { SystemInstanceConfig } from '@fastgpt/global/common/system/config/schema';
 import type { WorkerNameEnum } from './worker/utils';
 
 declare global {

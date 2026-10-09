@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MongoSystemInstanceConfig } from '@fastgpt/service/common/system/systemInstanceConfig/schema';
 import { getSystemInstanceConfigSnapshot } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
-import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config';
+import { getDomainDefaultConfig } from '@fastgpt/global/common/system/config/schema';
 
 describe('getSystemInstanceConfigSnapshot fallback behavior', () => {
   it('falls back to full defaults when the DB read fails', async () => {

@@ -4,7 +4,7 @@ import {
   applyInstanceConfigMigration,
   inspectInstanceConfigMigration,
   sanitizeOverridesForSchema
-} from '@/migration/tasks/20260928_migrate_instance_configs/service';
+} from '@/migration/tasks/4180/20260928_migrate_instance_configs/service';
 
 const logger = {
   info: () => {},

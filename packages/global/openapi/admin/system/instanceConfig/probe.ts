@@ -1,4 +1,6 @@
 import z from 'zod';
+import type { OpenAPIPath } from '../../../type';
+import { DevApiTagsMap } from '../../../tag';
 
 /* ============================================================================
  * API: 后端探测目标 URL 连通性
@@ -26,3 +28,30 @@ export const ProbeConnectionResponseSchema = z.object({
   error: z.string().optional().meta({ description: '失败异常说明（若失败）' })
 });
 export type ProbeConnectionResponse = z.infer<typeof ProbeConnectionResponseSchema>;
+
+export const AdminInstanceConfigProbePath: OpenAPIPath = {
+  '/api/admin/system/config/probe': {
+    post: {
+      summary: '后端探测目标服务 URL 连通性',
+      description: '由后端服务发起 HTTP 探测请求，检测目标 URL 连通性与网络延迟',
+      tags: [DevApiTagsMap.adminSettings],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ProbeConnectionBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '探测完成',
+          content: {
+            'application/json': {
+              schema: ProbeConnectionResponseSchema
+            }
+          }
+        }
+      }
+    }
+  }
+};

@@ -6,7 +6,7 @@ import {
   GetDomainConfigQuerySchema,
   GetDomainConfigResponseSchema,
   type GetDomainConfigResponse
-} from '@fastgpt/global/openapi/admin/system/instanceConfig';
+} from '@fastgpt/global/openapi/admin/system/instanceConfig/api';
 import { getDomainConfigForAdmin } from '@fastgpt/service/common/system/systemInstanceConfig/controller';
 
 /**

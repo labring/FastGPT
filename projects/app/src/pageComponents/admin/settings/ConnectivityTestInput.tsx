@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useClientTranslation } from '@fastgpt/web/i18n/useClientTranslation';
 import { Box, Button, HStack, Input, Tag, Text, type InputProps } from '@chakra-ui/react';
 import { POST } from '@/web/common/api/request';
-import type { ProbeConnectionResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig';
+import type { ProbeConnectionResponse } from '@fastgpt/global/openapi/admin/system/instanceConfig/probe';
 import AdminReadonlyInput from './AdminReadonlyInput';
 
 export type ConnectivityTestInputProps = Omit<InputProps, 'value' | 'onChange'> & {
