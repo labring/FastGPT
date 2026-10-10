@@ -13,8 +13,6 @@ import json5 from 'json5';
 import { useMount } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useScreen } from '@fastgpt/web/hooks/useScreen';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { MarkdownRendererRuntimeContext } from '../utils/runtimeContext';
@@ -26,24 +24,7 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
   const { showAnimation } = useContext(MarkdownRendererRuntimeContext);
   const chartRef = useRef<HTMLDivElement>(null);
   const eChart = useRef<ECharts>();
-  const { isPc } = useSystem();
-  const [width, setWidth] = useState(400);
   const [hasRenderError, setHasRenderError] = useState(false);
-
-  const findMarkdownDom = useCallback(() => {
-    if (!chartRef.current) return;
-
-    // 一直找到 parent = markdown 的元素
-    let parent = chartRef.current?.parentElement;
-    while (parent && !parent.className.includes('chat-box-card')) {
-      parent = parent.parentElement;
-    }
-
-    const ChatItemDom = parent?.parentElement;
-    const clientWidth = ChatItemDom?.clientWidth ? ChatItemDom.clientWidth - (isPc ? 90 : 60) : 500;
-    setWidth(clientWidth);
-    return parent?.parentElement;
-  }, [isPc]);
 
   useMount(() => {
     // @ts-ignore
@@ -91,6 +72,8 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
           }
           eChart.current = module.init(chartRef.current);
           eChart.current.setOption(parsedOption);
+          // 初始化完成后立即根据容器真实宽度自适应拉满
+          eChart.current.resize();
           setHasRenderError(false);
         } catch {
           // 捕获 ECharts 内部因非法配置（如 legend: true 等）抛出的运行时错误，杜绝未捕获异常击穿触发 Dev Overlay
@@ -109,8 +92,6 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
         }
       });
 
-    findMarkdownDom();
-
     return () => {
       isMounted = false;
       if (eChart.current) {
@@ -118,16 +99,23 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
         eChart.current = undefined;
       }
     };
-  }, [parsedOption, findMarkdownDom]);
+  }, [parsedOption]);
 
-  const { screenWidth } = useScreen();
+  // 监听容器自身尺寸变化，无论处于何种页面布局或侧边栏展开状态，自动 100% 拉满重绘
   useEffect(() => {
-    findMarkdownDom();
-  }, [screenWidth, findMarkdownDom]);
+    const chartDom = chartRef.current;
+    if (!chartDom) return;
 
-  useEffect(() => {
-    eChart.current?.resize();
-  }, [width]);
+    const resizeObserver = new ResizeObserver(() => {
+      eChart.current?.resize();
+    });
+
+    resizeObserver.observe(chartDom);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [parsedOption]);
 
   // 复制图表配置 JSON
   const handleCopyCode = useCallback(() => {
@@ -180,11 +168,12 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
     return <CodeBlockErrorCard title={t('common:echarts_syntax_error')} code={code} />;
   }
 
-  // 3. 正常完成态：展示图表与全功能悬浮操作栏
+  // 3. 正常完成态：展示图表与全功能悬浮操作栏，w="100%" 完全拉满
   return (
     <Box
       position={'relative'}
       my={3}
+      w={'100%'}
       borderRadius={'md'}
       overflow={'hidden'}
       border={'1px solid'}
@@ -243,8 +232,8 @@ const EChartsCodeBlock = ({ code }: { code: string }) => {
         </MyTooltip>
       </HStack>
 
-      <Box overflowX={'auto'} p={2}>
-        <Box h={'400px'} w={`${width}px`} ref={chartRef} />
+      <Box p={2} w={'100%'}>
+        <Box h={'400px'} w={'100%'} ref={chartRef} />
       </Box>
     </Box>
   );
