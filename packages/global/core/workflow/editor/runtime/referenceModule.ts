@@ -522,14 +522,16 @@ export const createReferenceModule = (document: DocumentReadApi) => {
         changedSourceNodeIds.add(nodeId);
         return;
       }
-      // HTTP 节点的参数配置同样决定其对外引用来源，所以要额外比较 inputs。
+      // HTTP 参数和动态分支配置都决定对外可用的来源/句柄，所以要额外比较 inputs。
       const sourceMetadataChanged =
         previous.data.name !== next.data.name ||
         previous.data.avatar !== next.data.avatar ||
         previous.data.flowNodeType !== next.data.flowNodeType ||
         previous.data.catchError !== next.data.catchError ||
         !valuesEqual(previous.data.outputs, next.data.outputs) ||
-        (previous.data.flowNodeType === FlowNodeTypeEnum.httpRequest468 &&
+        ((previous.data.flowNodeType === FlowNodeTypeEnum.httpRequest468 ||
+          previous.data.flowNodeType === FlowNodeTypeEnum.userSelect ||
+          previous.data.flowNodeType === FlowNodeTypeEnum.classifyQuestion) &&
           !valuesEqual(previous.data.inputs, next.data.inputs));
       if (sourceMetadataChanged) changedSourceNodeIds.add(nodeId);
     });

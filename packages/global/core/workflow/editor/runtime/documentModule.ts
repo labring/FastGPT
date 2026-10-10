@@ -420,20 +420,20 @@ export const createDocumentModule = (initial: CanonicalResult) => {
         ? isUniqueRootNodeType(flowNodeType)
         : isNestedChildSystemNodeType(flowNodeType);
 
-    /**
-     * 工具子流程可经过多个普通节点，沿入边索引上溯找到任一 selectedTools 根边即可。
-     * 只读已提交的 graphIndex.byTarget：上面那段 working 回落只覆盖节点，事务内 staged 的边
-     * 在这里不可见。当前没有命令会在同一笔事务里既改边又派生 context，因此这是前提而非现行 bug。
-     */
+    /** 工具子流程可经过多个普通节点，沿 staged/committed 入边上溯找到任一 selectedTools 根边。 */
     const isConnectedTool = (nodeId: string) => {
       const pendingNodeIds = [nodeId];
       const visitedNodeIds = new Set<string>();
+      const getIncomingEdges = (targetNodeId: string) =>
+        meta
+          ? working.edges.filter(({ data }) => data.target === targetNodeId)
+          : (graphIndex.byTarget.get(targetNodeId) ?? []);
       while (pendingNodeIds.length) {
         const currentId = pendingNodeIds.pop()!;
         if (visitedNodeIds.has(currentId)) continue;
         visitedNodeIds.add(currentId);
 
-        for (const { data } of graphIndex.byTarget.get(currentId) ?? []) {
+        for (const { data } of getIncomingEdges(currentId)) {
           if (data.targetHandle === NodeOutputKeyEnum.selectedTools) return true;
           if (data.source) pendingNodeIds.push(data.source);
         }

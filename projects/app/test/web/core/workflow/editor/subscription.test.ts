@@ -12,8 +12,8 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { WorkflowRuntimePort } from '@fastgpt/global/core/workflow/editor/types';
 import { hydrateRuntime } from '@/web/core/workflow/editor/codec';
 import { WorkflowEditorProvider } from '@/web/core/workflow/editor/react/workflowEditorProvider';
-import { useField, useFieldActions } from '@/web/core/workflow/editor/react/useField';
-import { useNode, useNodeActions } from '@/web/core/workflow/editor/react/useNode';
+import { useField } from '@/web/core/workflow/editor/react/useField';
+import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflow, useWorkflowActions } from '@/web/core/workflow/editor/react/useWorkflow';
 import type { WorkflowActionsHandle } from '@/web/core/workflow/editor/react/workflowEditorAdapter';
 
@@ -267,6 +267,34 @@ describe('workflow editor subscription API', () => {
     });
     expect(renders).toBe(3);
     expect(names.at(-1)).toBeUndefined();
+  });
+
+  it('notifies primitive node selectors when parent placement changes', async () => {
+    const parentIds: (string | undefined)[] = [];
+    const Leaf = () => {
+      parentIds.push(useNode('answer', (node) => node?.data.parentNodeId));
+      return null;
+    };
+    await mount(Leaf);
+
+    expect(parentIds).toEqual([undefined]);
+
+    const workflow = runtime.getWorkflowData();
+    act(() => {
+      expect(
+        runtime.dispatch({
+          type: 'replaceDocument',
+          document: {
+            ...workflow,
+            nodes: workflow.nodes.map((node) =>
+              node.nodeId === 'answer' ? { ...node, parentNodeId: 'container' } : node
+            )
+          }
+        }).ok
+      ).toBe(true);
+    });
+
+    expect(parentIds.at(-1)).toBe('container');
   });
 
   it('reads the current node fields after a canvas node keeps its identity', async () => {

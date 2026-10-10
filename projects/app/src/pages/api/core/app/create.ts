@@ -361,6 +361,7 @@ export const onUpdateAppWorkflow = async ({
     modelReferencePolicy: 'fallback'
   });
   await beforeUpdateAppFormat({ nodes: workflow.nodes, teamId });
+  const resourceRefs = extractAppResourceRefsFromNodes(workflow.nodes);
 
   return await MongoApp.findByIdAndUpdate(
     appId,
@@ -370,6 +371,7 @@ export const onUpdateAppWorkflow = async ({
       edges: workflow.edges,
       chatConfig: workflow.chatConfig,
       referenceSnapshots: workflow.referenceSnapshots,
+      resourceRefs,
       updateTime: new Date()
     },
     { session }

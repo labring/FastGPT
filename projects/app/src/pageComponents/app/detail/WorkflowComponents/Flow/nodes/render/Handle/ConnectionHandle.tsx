@@ -5,13 +5,11 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { isConnectionTargetAllowed } from '@fastgpt/global/core/workflow/editor/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { useContextSelector } from 'use-context-selector';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import { useNode } from '@/web/core/workflow/editor/react/useNode';
 import { useWorkflow } from '@/web/core/workflow/editor/react/useWorkflow';
-import { useWorkflowRuntime } from '@/web/core/workflow/editor/session/workflowSession';
 import { useWorkflowUIValue } from '../../../canvas/canvasState';
 import { WorkflowHandleRenderContext } from './handleRenderContext';
 
@@ -128,8 +126,11 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
 }) {
   const renderHandle = useContext(WorkflowHandleRenderContext);
   const connectingEdge = useWorkflowUIValue((v) => v.connectingEdge);
-  // 目标柄要按拖拽源节点的父容器判定上下文，直接读 port 的节点快照，不再挂整份文档图 reader。
-  const runtime = useWorkflowRuntime();
+  const nodeFlowNodeType = useNode(nodeId, (node) => node?.data.flowNodeType);
+  const nodeParentNodeId = useNode(nodeId, (node) => node?.data.parentNodeId);
+  const connectingNodeId = connectingEdge?.nodeId ?? nodeId;
+  const connectingNodeFlowNodeType = useNode(connectingNodeId, (node) => node?.data.flowNodeType);
+  const connectingNodeParentNodeId = useNode(connectingNodeId, (node) => node?.data.parentNodeId);
 
   /**
    * 禁止连接的图判定：本节点已被挂成工具，或本次拖拽的 source handle 已经连到本节点。
@@ -145,14 +146,17 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
   );
 
   const { LeftHandle } = useMemo(() => {
-    // 这里刻意用 port 的非订阅读取而不是 useNode：判定只吃 flowNodeType 与 parentNodeId，
-    // 两者都只在结构变更时改变，而 parentNodeId 只在 connectingEdge 存在时被消费；
-    // connectingEdge 变化本身就会重渲染并重跑本 memo，所以读到的永远是当前值。
-    // 换成 useNode 会让本节点的几何提交、字段写入与 issue 刷新都带动目标柄重渲染。
-    const node = runtime?.getNode(nodeId);
-    const connectingNode = connectingEdge?.nodeId
-      ? runtime?.getNode(connectingEdge.nodeId)
-      : undefined;
+    const node =
+      nodeFlowNodeType === undefined
+        ? undefined
+        : { flowNodeType: nodeFlowNodeType, parentNodeId: nodeParentNodeId };
+    const connectingNode =
+      connectingNodeFlowNodeType === undefined
+        ? undefined
+        : {
+            flowNodeType: connectingNodeFlowNodeType,
+            parentNodeId: connectingNodeParentNodeId
+          };
 
     let forbidConnect = forbidConnectByGraph;
 
@@ -211,7 +215,15 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
       showHandle,
       LeftHandle
     };
-  }, [connectingEdge, nodeId, runtime, forbidConnectByGraph]);
+  }, [
+    connectingEdge,
+    connectingNodeFlowNodeType,
+    connectingNodeParentNodeId,
+    forbidConnectByGraph,
+    nodeFlowNodeType,
+    nodeParentNodeId,
+    nodeId
+  ]);
 
   return renderHandle ? <>{LeftHandle}</> : null;
 });

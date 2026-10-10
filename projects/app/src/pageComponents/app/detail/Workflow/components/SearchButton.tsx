@@ -76,7 +76,12 @@ const SearchButton = (props: ButtonProps) => {
       setSearchedNodeCount(0);
       return;
     }
-    if (matchedNodeIds.length === 0) return;
+    if (matchedNodeIds.length === 0) {
+      fittedSearchTargetRef.current = undefined;
+      setSearchIndex(0);
+      setSearchedNodeCount(0);
+      return;
+    }
 
     setSearchedNodeCount(matchedNodeIds.length);
     const activeNodeId = matchedNodeIds[searchIndex] ?? matchedNodeIds[0];

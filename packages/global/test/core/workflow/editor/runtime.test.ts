@@ -25,6 +25,7 @@ import type {
   WorkflowRuntimePort
 } from '@fastgpt/global/core/workflow/editor/types';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 
 const createRuntime = (): WorkflowRuntimePort => {
   const editor = createWorkflowEditor({
@@ -728,6 +729,107 @@ describe('workflow editor runtime modules', () => {
       'valid'
     ]);
   });
+
+  it.each([
+    {
+      flowNodeType: FlowNodeTypeEnum.userSelect,
+      inputKey: NodeInputKeyEnum.userSelectOptions,
+      outputKey: NodeOutputKeyEnum.selectResult
+    },
+    {
+      flowNodeType: FlowNodeTypeEnum.classifyQuestion,
+      inputKey: NodeInputKeyEnum.agents,
+      outputKey: NodeOutputKeyEnum.cqResult
+    }
+  ])(
+    'refreshes references after changing $flowNodeType branch inputs',
+    ({ flowNodeType, inputKey, outputKey }) => {
+      const editor = createWorkflowEditor({
+        nodes: [
+          {
+            nodeId: 'start',
+            flowNodeType: FlowNodeTypeEnum.workflowStart,
+            name: 'Start',
+            inputs: [],
+            outputs: [
+              {
+                id: 'source',
+                key: 'source',
+                type: FlowNodeOutputTypeEnum.source,
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          },
+          {
+            nodeId: 'branch',
+            flowNodeType,
+            name: 'Branch',
+            inputs: [
+              {
+                key: inputKey,
+                label: 'Branch options',
+                renderTypeList: [FlowNodeInputTypeEnum.custom],
+                valueType: WorkflowIOValueTypeEnum.any,
+                value: [{ key: 'option1', value: 'Option 1' }]
+              }
+            ],
+            outputs: [
+              {
+                id: outputKey,
+                key: outputKey,
+                type: FlowNodeOutputTypeEnum.static,
+                valueType: WorkflowIOValueTypeEnum.string
+              }
+            ]
+          },
+          {
+            nodeId: 'answer',
+            flowNodeType: FlowNodeTypeEnum.answerNode,
+            name: 'Answer',
+            inputs: [
+              {
+                key: NodeInputKeyEnum.answerText,
+                label: 'Answer',
+                renderTypeList: [FlowNodeInputTypeEnum.reference],
+                selectedType: FlowNodeInputTypeEnum.reference,
+                valueType: WorkflowIOValueTypeEnum.string,
+                value: [['branch', outputKey]]
+              }
+            ],
+            outputs: []
+          }
+        ],
+        edges: [
+          { source: 'start', target: 'branch', sourceHandle: 'source', targetHandle: 'target' },
+          {
+            source: 'branch',
+            target: 'answer',
+            sourceHandle: getHandleId('branch', 'source', 'option1'),
+            targetHandle: 'target'
+          }
+        ],
+        chatConfig: {}
+      });
+      const field = { nodeId: 'answer', fieldKey: NodeInputKeyEnum.answerText };
+
+      expect(editor.getField(field)?.references.map((status) => status.code)).toEqual(['valid']);
+
+      editor.dispatch({
+        type: 'updateField',
+        nodeId: 'branch',
+        fieldKey: inputKey,
+        kind: 'input',
+        value: []
+      });
+
+      expect(editor.getField(field)?.references.map((status) => status.code)).toEqual([
+        'unreachable_reference'
+      ]);
+      expect(editor.getNode('answer')?.issues).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code: 'no_upstream' })])
+      );
+    }
+  );
 
   it('keeps structured and dynamic values on value-based reference checks', () => {
     const editor = createWorkflowEditor({

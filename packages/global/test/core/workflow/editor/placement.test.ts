@@ -54,6 +54,17 @@ const createToolChainRuntime = (): WorkflowRuntimePort =>
     chatConfig: {}
   } as never);
 
+const createStagedToolPlacementRuntime = (): WorkflowRuntimePort =>
+  createWorkflowEditor({
+    nodes: [
+      node('tool', FlowNodeTypeEnum.toolCall),
+      node('middle', FlowNodeTypeEnum.chatNode),
+      node('stop', FlowNodeTypeEnum.stopTool)
+    ],
+    edges: [],
+    chatConfig: {}
+  } as never);
+
 describe('placement context', () => {
   it('无来源节点且非侧边栏时不产出 context', () => {
     const editor = createScopeRuntime();
@@ -128,6 +139,24 @@ describe('placement context', () => {
     expect(isConnectedTool('n1')).toBe(true);
     expect(isConnectedTool('tool1')).toBe(false);
     expect(isConnectedTool('start')).toBe(false);
+  });
+
+  it('同一批新增 selectedTools 边后仍能连接 stopTool', () => {
+    const editor = createStagedToolPlacementRuntime();
+
+    const result = editor.dispatch([
+      {
+        type: 'connectEdge',
+        edge: edge('tool', 'middle', NodeOutputKeyEnum.selectedTools)
+      },
+      {
+        type: 'connectEdge',
+        edge: edge('middle', 'stop')
+      }
+    ]);
+
+    expect(result.ok).toBe(true);
+    expect(editor.getWorkflow().edges).toHaveLength(2);
   });
 
   it('连线校验消费同一份 context：toolParams 只接受工具调用的 selectedTools 柄', () => {
