@@ -1,13 +1,13 @@
-vi.mock('@fastgpt/service/core/ai/model/index', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/index')>()),
-  getTeamModelHandle: async () =>
-    (await import('@fastgpt/service/core/ai/model/cache')).getCachedSystemModelHandle()!
-}));
-import type { getModelTestMap } from '@test/modelCache';
-import { getModelTestDefaults, setModelTestMap } from '@test/modelCache';
 import { handler } from '@/pages/api/core/ai/model/summary';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { getModelTestMap } from '@test/modelCache';
+import { getModelTestDefaults, setModelTestMap } from '@test/modelCache';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
+  getTeamModelHandle: async () =>
+    (await import('@fastgpt/service/core/ai/model/catalog/cache')).getCachedSystemModelHandle()!
+}));
 const mocks = vi.hoisted(() => ({
   authUserPer: vi.fn(),
   authOutLink: vi.fn(),
@@ -20,8 +20,8 @@ vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
   authUserPer: mocks.authUserPer
 }));
 vi.mock('@/service/support/permission/auth/outLink', () => ({ authOutLink: mocks.authOutLink }));
-vi.mock('@fastgpt/service/support/permission/model/catalog', () => ({
-  getMemberModelCatalogPermission: mocks.permission
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  authModels: mocks.permission
 }));
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({ authApp: mocks.authApp }));
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
@@ -35,9 +35,11 @@ describe('POST /api/core/ai/model/summary', () => {
       teamId: 'team',
       tmbId: 'member',
       isRoot: false,
-      tmb: { role: 'member' }
+      tmb: { permission: { hasManagePer: false } }
     });
-    mocks.permission.mockResolvedValue({ modelIds: ['active', 'disabled'], version: 'p' });
+    mocks.permission.mockImplementation(async ({ modelIds }) =>
+      modelIds.filter((modelId: string) => modelId.startsWith('forbidden'))
+    );
     const base = {
       ...getModelTestDefaults().llm!,
       name: 'Model',
@@ -70,14 +72,15 @@ describe('POST /api/core/ai/model/summary', () => {
     ]);
     expect(JSON.stringify(result)).not.toMatch(/secret|private|requestAuth|config/);
     expect(mocks.permission).toHaveBeenCalledWith({
-      teamId: 'team',
-      tmbId: 'member',
-      hasManagePer: false,
-      includeInactive: true,
-      catalogSnapshot: expect.objectContaining({
-        version: expect.any(String),
-        models: expect.any(Array)
-      })
+      actor: {
+        teamId: 'team',
+        tmbId: 'member',
+        isRoot: false,
+        teamPermission: { hasManagePer: false }
+      },
+      modelIds: expect.any(Array),
+      action: 'use',
+      handle: expect.anything()
     });
   });
   it('authenticates before looking up even deleted model IDs', async () => {
@@ -97,14 +100,10 @@ describe('POST /api/core/ai/model/summary', () => {
     expect(mocks.authUserPer).not.toHaveBeenCalled();
     expect(mocks.authOutLink).toHaveBeenCalledWith({ ...outLinkAuthData, req });
     expect(mocks.permission).toHaveBeenCalledWith({
-      teamId: 'link-team',
-      tmbId: 'link-member',
-      hasManagePer: false,
-      includeInactive: true,
-      catalogSnapshot: expect.objectContaining({
-        version: expect.any(String),
-        models: expect.any(Array)
-      })
+      actor: { source: 'outLink', teamId: 'link-team', tmbId: 'link-member' },
+      modelIds: expect.any(Array),
+      action: 'use',
+      handle: expect.anything()
     });
   });
   it.each([[], [''], Array(101).fill('active')])(
@@ -153,5 +152,12 @@ describe('POST /api/core/ai/model/summary', () => {
       { modelId: 'active', name: 'Model', avatar: 'logo.svg', status: 'active' },
       { modelId: 'forbidden', name: 'Model', avatar: 'logo.svg', status: 'forbidden' }
     ]);
+  });
+  it('propagates storage failures while reading the app baseline', async () => {
+    const appId = '68ad85a7463006c963799a05';
+    const failure = new Error('baseline storage unavailable');
+    mocks.authApp.mockResolvedValue({ app: { _id: appId } });
+    mocks.getAppDraftResourceBaseline.mockRejectedValue(failure);
+    await expect(handler({ body: { appId, modelIds: ['active'] } } as any)).rejects.toBe(failure);
   });
 });

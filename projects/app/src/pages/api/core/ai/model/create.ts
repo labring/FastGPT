@@ -1,15 +1,15 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { authModelScope } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { createModelWithLifecycle } from '@fastgpt/service/core/ai/model/lifecycle';
 import { resolveChannelType } from '@fastgpt/global/core/ai/model/utils';
 import {
   CreateModelBodySchema,
-  type CreateModelBody,
   CreateModelResponseSchema,
+  type CreateModelBody,
   type CreateModelResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createModel } from '@fastgpt/service/core/ai/model/service';
 
 async function handler(req: ApiRequestProps<CreateModelBody>): Promise<CreateModelResponse> {
   const { modelData, channelIds, channelType } = parseApiInput({
@@ -18,9 +18,9 @@ async function handler(req: ApiRequestProps<CreateModelBody>): Promise<CreateMod
   }).body;
   const resolvedType = resolveChannelType({ channelType, scope: modelData.scope });
 
-  const { tmbId, teamId } = await authModelManage({ req, channelType: resolvedType });
+  const { tmbId, teamId } = await authModelScope({ req, channelType: resolvedType });
 
-  const createResult = await createModelWithLifecycle({
+  const createResult = await createModel({
     modelData,
     channelType: resolvedType,
     channelIds,

@@ -1,6 +1,9 @@
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDocumentDataType } from '@fastgpt/global/core/ai/model/schema';
 import type { UpdateQuery } from 'mongoose';
+import { isProVersion } from '../../../common/system/constants';
 import type { AIModelSchemaType } from '../type';
 
 export type EditableModelData = Omit<AIModelDocumentDataType, 'model'> & {
@@ -90,4 +93,10 @@ export const sanitizeTeamModelData = <T extends object>(
     teamId?: unknown;
   };
   return rest;
+};
+
+/** 团队模型与渠道是商业版功能；停用时拒绝管理入口，系统模型不受此开关限制。 */
+export const assertTeamModelEnabled = async () => {
+  if (!isProVersion()) throw SystemErrEnum.commercialFeature;
+  if (global.feConfigs?.enable_team_model === false) throw ModelErrEnum.teamModelDisabled;
 };

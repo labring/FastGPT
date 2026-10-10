@@ -1,11 +1,9 @@
-import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import * as modelApi from '@fastgpt/service/core/ai/model/index';
 import {
   getIndexTrainingBaseIndexes,
   getIndexTrainingUpdateInput
 } from '@/service/core/dataset/queues/indexInput';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
+import { seedDatasetSynonymRebuildTasks } from '@/service/core/dataset/queues/rebuildSynonym';
 import type {
   EmbeddingModelDataType,
   LLMModelDataType
@@ -14,15 +12,19 @@ import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetDataIndexStatusEnum,
+  DatasetDataIndexTypeEnum
+} from '@fastgpt/global/core/dataset/data/constants';
 import { Types } from '@fastgpt/service/common/mongo';
+import * as modelApi from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { seedDatasetSynonymRebuildTasks } from '@/service/core/dataset/queues/rebuildSynonym';
 import { MongoDatasetSynonym } from '@fastgpt/service/core/dataset/synonym/schema';
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { serviceEnv } from '@fastgpt/service/env';
+import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /** 同义词入口完成配置和待重建状态初始化，领取测试仅关注事务入队行为。 */
 const seedSynonymFixture = async (

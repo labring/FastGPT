@@ -7,13 +7,13 @@ import {
   type GetSystemModelConfigResponse,
   type GetTeamModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { getModelProviderMetadata } from './provider/controller';
+import { getSystemModelHandle, getTeamModelHandle } from './catalog/service';
 import {
   getMemberChannelSummaryItems,
   getSystemChannelSummaryItems,
   groupChannelSummariesByModel
 } from './channel/summary';
-import { getSystemModelHandle, getTeamModelHandle } from './index';
+import { getModelProviderMetadata } from './provider/controller';
 import { desensitizeModel } from './transform';
 
 /** 聚合管理员视角系统模型、渠道、Provider 与默认模型配置。 */

@@ -1,19 +1,18 @@
-import { createServer, type Server } from 'node:http';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
   TeamModelCreatePermissionVal,
   TeamReadPermissionVal
 } from '@fastgpt/global/support/permission/user/constant';
-import { publishSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
+import { publishSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { loadInstalledModels } from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getRootUser, getUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
 import type { parseHeaderCertRet } from '@test/mocks/request';
+import { Call } from '@test/utils/request';
+import { createServer, type Server } from 'node:http';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // 恢复真实 session，模型删除要走真实 MongoDB 事务。
 vi.unmock('@fastgpt/service/common/mongo/sessionRun');
@@ -36,15 +35,15 @@ vi.mock('@fastgpt/service/core/ai/model/provider/controller', () => ({
   getModelProvider: (provider: string) => ({ id: provider, name: provider, avatar: '', order: 0 })
 }));
 
-import templatesHandler from '@/pages/api/core/ai/model/templates';
+import channelCreateHandler from '@/pages/api/core/ai/model/channel/create';
+import channelListHandler from '@/pages/api/core/ai/model/channel/list';
+import channelLogsHandler from '@/pages/api/core/ai/model/channel/logs';
+import modelConfigHandler from '@/pages/api/core/ai/model/config';
 import createHandler from '@/pages/api/core/ai/model/create';
 import createFromTemplatesHandler from '@/pages/api/core/ai/model/createFromTemplates';
 import deleteHandler from '@/pages/api/core/ai/model/delete';
+import templatesHandler from '@/pages/api/core/ai/model/templates';
 import updateChannelsHandler from '@/pages/api/core/ai/model/updateChannels';
-import modelConfigHandler from '@/pages/api/core/ai/model/config';
-import channelListHandler from '@/pages/api/core/ai/model/channel/list';
-import channelCreateHandler from '@/pages/api/core/ai/model/channel/create';
-import channelLogsHandler from '@/pages/api/core/ai/model/channel/logs';
 
 type MockChannel = {
   id: number;
@@ -292,7 +291,9 @@ describe('team model management integration: permission, member isolation and AI
 
       for (const response of responses) {
         expect(response.code).toBe(500);
-        expect(['unAuthModel', 'unAuthChannel']).toContain(response.error);
+        expect(['unAuthTeam', 'modelUnExist']).toContain(
+          typeof response.error === 'string' ? response.error : response.error.message
+        );
       }
       // 被拒绝的请求不得改动模型数据，也不得触达 AI Proxy
       expect(await MongoAIModel.find({}).lean()).toEqual(before);
@@ -392,7 +393,7 @@ describe('team model management integration: permission, member isolation and AI
       });
 
       expect(response.code).toBe(500);
-      expect(response.error).toBe('unAuthModel');
+      expect(response.error).toBe('unAuthTeam');
     });
 
     it('keeps system templates root-only when the scope is system', async () => {

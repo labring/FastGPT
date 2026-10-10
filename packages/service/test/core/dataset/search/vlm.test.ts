@@ -1,16 +1,16 @@
-import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { getModelTestMap, setModelTestMap } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   getDatasetSearchVlmModel,
   findFirstDatasetSearchVlmModel as resolveModels
 } from '../../../../core/dataset/search/vlm';
 
 const findMock = vi.hoisted(() => vi.fn());
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()),
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
   getTeamModelHandle: async () => getCachedSystemModelHandle()!
 }));
 vi.mock('@fastgpt/service/core/dataset/schema', () => ({

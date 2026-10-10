@@ -1,11 +1,15 @@
-import { runModelTransaction } from '@fastgpt/service/core/ai/model/catalog/transaction';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
   getCachedSystemModelHandle,
   publishSystemModelHandle
-} from '@fastgpt/service/core/ai/model/cache';
-import { setModelTestSnapshot, getModelTestDefaults } from '@test/modelCache';
+} from '@fastgpt/service/core/ai/model/catalog/cache';
+import * as modelEntity from '@fastgpt/service/core/ai/model/catalog/entity';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+import { runModelTransaction } from '@fastgpt/service/core/ai/model/catalog/transaction';
+import { preloadModelProviders } from '@fastgpt/service/core/ai/model/provider/controller';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -40,10 +44,6 @@ vi.mock('@fastgpt/global/common/system/utils', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/global/common/system/utils')>()),
   delay: reloadMocks.delay
 }));
-import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { preloadModelProviders } from '@fastgpt/service/core/ai/model/provider/controller';
-import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
-import * as modelEntity from '@fastgpt/service/core/ai/model/catalog/entity';
 
 import {
   loadInstalledModels,

@@ -1,10 +1,10 @@
+import { delay, withTimeout } from '@fastgpt/global/common/system/utils';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import { SimpleLRUCache } from '../../../common/cache/simpleLru';
-import { readModelCatalogRevision, readModelCatalogSnapshot } from './catalog/entity';
+import { SimpleLRUCache } from '../../../../common/cache/simpleLru';
+import { getLogger, LogCategories } from '../../../../common/logger';
+import { formatDbModelToRuntimeModel } from '../runtime';
+import { readModelCatalogRevision, readModelCatalogSnapshot } from './entity';
 import { createModelHandle, type ModelHandle } from './handle';
-import { formatDbModelToRuntimeModel } from './runtime';
-import { withTimeout, delay } from '@fastgpt/global/common/system/utils';
-import { getLogger, LogCategories } from '../../../common/logger';
 
 const teamHandles = new SimpleLRUCache<
   string,
@@ -116,4 +116,14 @@ export const getScopedTeamModelHandle = async ({
   });
   teamLoads.set(teamId, request);
   return request;
+};
+
+let systemHandle: ModelHandle | undefined;
+
+/** 目录加载器内部读取已发布快照；业务入口必须先执行数据库修订号检查。 */
+export const getCachedSystemModelHandle = () => systemHandle;
+
+/** 原子发布完整系统快照，已发出的不可变 handle 不会被后续发布修改。 */
+export const publishSystemModelHandle = (handle: ModelHandle | undefined) => {
+  systemHandle = handle;
 };

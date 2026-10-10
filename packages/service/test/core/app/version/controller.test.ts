@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   findOneMock,
@@ -25,7 +25,7 @@ const {
   getSystemModelHandleMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model/index', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: getSystemModelHandleMock,
   getTeamModelHandle: getSystemModelHandleMock
 }));
@@ -51,16 +51,16 @@ vi.mock('@fastgpt/service/common/mongo/sessionRun', async (importOriginal) => {
   return importOriginal();
 });
 
+import type { ClientSession } from '@fastgpt/service/common/mongo';
+import { MongoTransactionConflictError } from '@fastgpt/service/common/mongo/sessionRun';
 import {
   getAppDraftVersion,
   getAppDraftWorkflow,
   getAppLatestVersion,
-  getAppVersionById,
   getAppPublishedWorkflowMap,
+  getAppVersionById,
   updateAppPublishedVersion
 } from '@fastgpt/service/core/app/version/controller';
-import type { ClientSession } from '@fastgpt/service/common/mongo';
-import { MongoTransactionConflictError } from '@fastgpt/service/common/mongo/sessionRun';
 
 const createAgentVersion = (resources?: unknown) => ({
   _id: '507f1f77bcf86cd799439011',

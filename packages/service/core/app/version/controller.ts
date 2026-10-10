@@ -1,21 +1,21 @@
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   AppResourcesSchema,
   type AppResource,
   type AppResourcesType,
   type AppSchemaType
 } from '@fastgpt/global/core/app/type';
-import { MongoApp } from '../schema';
-import { MongoAppVersion } from './schema';
-import { Types, type ClientSession } from '../../../common/mongo';
+import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
 import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
+import { Types, type ClientSession } from '../../../common/mongo';
+import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
+import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import { decodeToolSetNodesFromStorage } from '../jsonSchemaStorage';
 import { mergeAppResources, resolveStoredAppResources } from '../resources';
-import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { isInteractiveNodeType } from '@fastgpt/global/core/workflow/node/constant';
-import { MongoTransactionConflictError } from '../../../common/mongo/sessionRun';
-import { getTeamModelHandle } from '../../ai/model/index';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { MongoApp } from '../schema';
+import { MongoAppVersion } from './schema';
 
 type VersionResourceSource = Pick<AppVersionSchemaType, 'nodes' | 'chatConfig' | 'resources'> & {
   resourceRefs?: unknown;

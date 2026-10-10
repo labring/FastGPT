@@ -1,27 +1,25 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { authModelConfig } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   ModelReferenceSchema,
-  type ModelReference,
-  type GetModelDetailResponse
+  type GetModelDetailResponse,
+  type ModelReference
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { authAndGetModelInstance } from '@fastgpt/service/support/permission/model/auth';
-import { getModelDetailService } from '@fastgpt/service/core/ai/model/query';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getModelDetailService } from '@fastgpt/service/core/ai/model/config';
 
-/** 获取模型详细信息及渠道关联状态，统一通过 authAndGetModelInstance 进行鉴权与模型定位。 */
+/** 获取模型详细信息及渠道关联状态，按 ID 鉴权后读取模型配置。 */
 async function handler(
   req: ApiRequestProps<Record<string, never>, ModelReference>
 ): Promise<GetModelDetailResponse> {
   const { modelId, channelType } = parseApiInput({ req, querySchema: ModelReferenceSchema }).query;
 
-  const { model, ownerTmbId } = await authAndGetModelInstance({
-    req,
-    modelId,
-    channelType
-  });
+  const {
+    models: [model]
+  } = await authModelConfig({ req, modelIds: [modelId], channelType });
 
-  return getModelDetailService({ model, ownerTmbId });
+  return getModelDetailService({ model, ownerTmbId: model.tmbId ?? undefined });
 }
 
 export default NextAPI(handler);

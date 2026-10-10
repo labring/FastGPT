@@ -1,22 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Types } from '@fastgpt/service/common/mongo';
+import {
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import {
   DatasetSynonymMutationTypeEnum,
   DatasetSynonymSchemaVersion,
   type NormalizedSynonymMappingType
 } from '@fastgpt/global/core/dataset/synonym';
-import {
-  DatasetCollectionTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   MongoDatasetSynonym,
   MongoDatasetSynonymMapping
 } from '@fastgpt/service/core/dataset/synonym/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { serviceEnv } from '@fastgpt/service/env';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock(import('@fastgpt/service/common/mongo/sessionRun'));
 
@@ -31,7 +31,7 @@ vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
 vi.mock('@fastgpt/service/support/wallet/usage/controller', () => ({
   createTrainingUsage: mockCreateTrainingUsage
 }));
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   isImageEmbeddingModel: (model?: { config?: { vision?: boolean } }) => !!model?.config?.vision,
   getSystemModelHandle: async () => ({
     getLLMModelData: () => ({
@@ -77,11 +77,11 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 
 import { createDatasetSynonymMutation } from '@/service/core/dataset/synonym/mutation';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 import {
   getDatasetSynonymMatcher,
   invalidateDatasetSynonymMatcherCache
 } from '@fastgpt/service/core/dataset/synonym/entity';
-import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 
 const teamId = new Types.ObjectId();
 const tmbId = new Types.ObjectId();

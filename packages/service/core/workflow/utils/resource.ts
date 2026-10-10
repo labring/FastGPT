@@ -1,3 +1,5 @@
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import type {
   AppChatConfigType,
   AppResource,
@@ -5,23 +7,21 @@ import type {
   AppResourceType,
   AppSchemaType
 } from '@fastgpt/global/core/app/type';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   formatModels,
   isWorkflowSystemModelInput,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
-import { MongoApp } from '../../app/schema';
-import { MongoDataset } from '../../dataset/schema';
-import { getTeamModelHandle } from '../../ai/model/index';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../../../support/permission/app/auth';
+import { resolveAppResourcesByPermission } from '../../../support/permission/app/resource';
 import { authDatasetByTmbId } from '../../../support/permission/dataset/auth';
+import { assertAuthModels } from '../../../support/permission/model/auth';
+import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import {
   extractAppResources,
   extractDatasetModelsFromParams,
@@ -29,16 +29,14 @@ import {
   mergeAppResources,
   resolveSystemModelId
 } from '../../app/resources';
-import {
-  checkAppResourceReadPermissions,
-  resolveAppResourcesByPermission
-} from '../../../support/permission/app/resource';
-import { getWorkflowResourceContext } from './context';
+import { MongoApp } from '../../app/schema';
 import {
   getAppLatestVersion,
   getAppVersionById,
   type AppPublishedWorkflow
 } from '../../app/version/controller';
+import { MongoDataset } from '../../dataset/schema';
+import { getWorkflowResourceContext } from './context';
 
 export type WorkflowResourceContext = {
   teamId?: string;
@@ -114,16 +112,18 @@ const modelFeatureKeyMap = new Map<string, NodeInputKeyEnum>([
 /**
  * 在统一节点调度边界校验实际使用的模型资源。
  *
- * 静态输入只能使用当前 Version 快照声明的模型；引用输入和非 App 工作流按运行成员权限校验。
+ * 静态输入只能使用当前 Version 快照声明的模型；引用输入和非 App 工作流按运行成员的 `use` 权限校验。
  * 这里只判断资源身份和授权来源，模型类型、启用状态仍由具体调用点的 typed getter 校验。
  */
 export const assertWorkflowNodeModelResources = async ({
   node,
   params,
+  teamId,
   tmbId
 }: {
   node: Pick<RuntimeNodeItemType, 'flowNodeType' | 'inputs'>;
   params: Record<string, unknown>;
+  teamId: string;
   tmbId: string;
 }) => {
   const modelReferences: Array<{ value: unknown; dynamic: boolean }> = [];
@@ -152,7 +152,7 @@ export const assertWorkflowNodeModelResources = async ({
   }
 
   const context = getWorkflowResourceContext();
-  const permissionResources = new Map<string, AppResource>();
+  const permissionModelIds = new Set<string>();
   modelReferences.forEach(({ value, dynamic }) => {
     const id = resolveSystemModelId(value);
     if (!id) return;
@@ -160,15 +160,14 @@ export const assertWorkflowNodeModelResources = async ({
       assertWorkflowResource({ context, type: 'model', id });
       return;
     }
-    permissionResources.set(id, { type: 'model', id });
+    permissionModelIds.add(id);
   });
 
-  if (permissionResources.size > 0) {
-    await checkAppResourceReadPermissions({
-      resources: Array.from(permissionResources.values()),
-      tmbId,
-      isRoot: context?.isRoot,
-      allowRootCrossTeam: context?.isRoot
+  if (permissionModelIds.size > 0) {
+    await assertAuthModels({
+      actor: { teamId, tmbId, isRoot: context?.isRoot ?? false },
+      modelIds: Array.from(permissionModelIds),
+      action: 'use'
     });
   }
 };

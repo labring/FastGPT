@@ -118,7 +118,7 @@ vi.mock('@fastgpt/service/core/ai/embedding', async (importOriginal) => {
 /**
  * Setup global mock for AI model module
  */
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => {
   const actual = (await importOriginal()) as any;
   return {
     ...actual,

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mockGetDefaultModelData = vi.hoisted(() => vi.fn());
 
 const mockAuthDataset = vi.hoisted(() => vi.fn());
@@ -18,10 +18,10 @@ const mockAddAuditLog = vi.hoisted(() => vi.fn());
 const mockCreateExternalUrl = vi.hoisted(() => vi.fn());
 const mockTeamFrequencyLimit = vi.hoisted(() => vi.fn());
 const mockResolveReadableCollectionIds = vi.hoisted(() => vi.fn());
-const mockAuthModelUse = vi.hoisted(() => vi.fn());
+const mockAssertAuthModels = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
-  authModelUse: mockAuthModelUse
+  assertAuthModels: mockAssertAuthModels
 }));
 
 vi.mock('@fastgpt/service/support/permission/dataset/auth', () => ({
@@ -49,8 +49,10 @@ vi.mock('@fastgpt/service/support/openapi/tools', () => ({
   updateApiKeyUsage: mockUpdateApiKeyUsage
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
+    getAllModels: () => [],
+    version: 'test',
     getDefaultModelData: mockGetDefaultModelData,
     getRerankModelData: mockGetRerankModelData,
     getEmbeddingModelData: mockGetEmbeddingModelData,
@@ -59,6 +61,8 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
     getOptionalVlmModelData: mockGetOptionalVlmModelData
   }),
   getTeamModelHandle: async () => ({
+    getAllModels: () => [],
+    version: 'test',
     getDefaultModelData: mockGetDefaultModelData,
     getRerankModelData: mockGetRerankModelData,
     getEmbeddingModelData: mockGetEmbeddingModelData,
@@ -127,7 +131,7 @@ describe('searchTest query image auth', () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuthModelUse.mockResolvedValue(undefined);
+    mockAssertAuthModels.mockResolvedValue({ models: [] });
 
     mockAuthDataset.mockResolvedValue({
       dataset: {
@@ -287,7 +291,7 @@ describe('searchTest query image auth', () => {
     expect(mockDeepRagSearch).not.toHaveBeenCalled();
   });
 
-  it('should validate auxiliary models with authModelUse', async () => {
+  it('should validate auxiliary models with assertAuthModels', async () => {
     mockGetRerankModelData.mockReturnValue({
       modelId: 'rerank-id',
       model: 'rerank-model',
@@ -319,21 +323,15 @@ describe('searchTest query image auth', () => {
       {} as any
     );
 
-    expect(mockAuthModelUse).toHaveBeenCalledWith({
-      modelId: 'rerank-id',
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
-    });
-    expect(mockAuthModelUse).toHaveBeenCalledWith({
-      modelId: 'extension-id',
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
-    });
-    expect(mockAuthModelUse).toHaveBeenCalledWith({
-      modelId: 'deepsearch-id',
-      teamId: 'team-1',
-      tmbId: 'tmb-1'
-    });
+    expect(mockAssertAuthModels).toHaveBeenCalledOnce();
+    expect(mockAssertAuthModels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actor: expect.objectContaining({ teamId: 'team-1', tmbId: 'tmb-1' }),
+        modelIds: expect.arrayContaining(['rerank-id', 'extension-id', 'deepsearch-id']),
+        action: 'use',
+        handle: expect.anything()
+      })
+    );
   });
 
   it('should reject search when auxiliary model is unauthorized', async () => {
@@ -344,7 +342,7 @@ describe('searchTest query image auth', () => {
       type: 'llm',
       config: {}
     });
-    mockAuthModelUse.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
+    mockAssertAuthModels.mockRejectedValueOnce(new UserError(ModelErrEnum.unAuthModel));
 
     await expect(
       handler(

@@ -1,16 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
-import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 import {
   createNodeSummary,
   createWorkflowRuntimeSummary
 } from '@fastgpt/service/core/workflow/dispatch/utils/summary';
-import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   getLLMModelDataMock,
@@ -28,7 +28,7 @@ const {
   ensureAppSandboxRuntimeReadyMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock }),
   getTeamModelHandle: async () => ({ getLLMModelData: getLLMModelDataMock })
 }));

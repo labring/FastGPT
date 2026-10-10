@@ -1,32 +1,32 @@
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
 import {
-  migrateWorkflowToCurrent,
-  isLegacyV1Workflow
+  isLegacyV1Workflow,
+  migrateWorkflowToCurrent
 } from '@fastgpt/global/core/workflow/migration';
-import pLimit from 'p-limit';
 import { Types } from '@fastgpt/service/common/mongo';
 import {
   MongoTransactionConflictError,
   mongoSessionRun
 } from '@fastgpt/service/common/mongo/sessionRun';
+import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import {
   decodeToolSetNodesFromStorage,
   encodeMcpToolSetNodesForStorage
 } from '@fastgpt/service/core/app/jsonSchemaStorage';
+import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
+import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
 import { resolveStoredAppResources } from '@fastgpt/service/core/app/resources';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
-import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { filterAuthorizedAppResources } from '@fastgpt/service/support/permission/app/resource';
-import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/index';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { parseLegacyMcpChildApps } from '@fastgpt/service/core/app/mcp';
-import { getMCPToolSetRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
+import pLimit from 'p-limit';
 
 type LegacyResourceRefs = {
   skillIds?: unknown;

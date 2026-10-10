@@ -1,30 +1,30 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
-import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
-import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
-import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
-import { checkTeamAiPointsAndLock } from './utils';
+import { delay } from '@fastgpt/global/common/system/utils';
 import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
-import { delay } from '@fastgpt/global/common/system/utils';
-import { text2Chunks } from '@fastgpt/service/worker/function';
-import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
-import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
-import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
+import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { text2Chunks } from '@fastgpt/service/worker/function';
+import { checkTeamAiPointsAndLock } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 

@@ -210,9 +210,9 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
         await putModelsStatus({ modelIds: [modelId], isActive, channelType });
         toast({
           status: 'success',
-          title: t(isActive ? 'config_model:status_enabled' : 'config_model:status_disabled', {
-            name: model
-          })
+          title: isActive
+            ? t('config_model:status_enabled', { name: model })
+            : t('config_model:status_disabled', { name: model })
         });
         refreshModels();
       } finally {
@@ -309,7 +309,7 @@ const ModelTable = ({ Tab, channelType }: { Tab: React.ReactNode; channelType: C
 
   const [showModelId, setShowModelId] = useState(true);
 
-  // 与服务端 authModelManage 保持一致：root 或拥有“安装模型”权限（Per）才能进入管理操作
+  // 入口级粗筛：root 或拥有“安装模型”权限才展示管理操作；单个模型的最终判定以服务端 authModelConfig（action: config）为准
   const canManageModel = Boolean(isRoot || userInfo?.team?.permission?.hasModelCreatePer);
 
   return (

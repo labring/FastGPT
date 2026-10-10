@@ -1,10 +1,10 @@
-import { createModelHandle } from '@fastgpt/service/core/ai/model/handle';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   getCachedSystemModelHandle,
   publishSystemModelHandle
-} from '@fastgpt/service/core/ai/model/cache';
+} from '@fastgpt/service/core/ai/model/catalog/cache';
+import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 
 /** 测试显式注入目录，不再依赖 Node 全局变量。默认值按当前真实 handle 的槽位读取。 */
 export const getModelTestDefaults = (): SystemDefaultModelType => {

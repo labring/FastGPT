@@ -1,23 +1,30 @@
-import type { SystemDefaultModelType } from '../../type';
-import { getModelProviderMetadata, preloadModelProviders } from '../provider/controller';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
+
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
+  type AIModelDataType,
   type EmbeddingModelDataType,
   type LLMModelDataType,
   type RerankModelDataType,
   type STTModelDataType,
-  type TTSModelDataType,
-  type AIModelDataType
+  type TTSModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { hashStr } from '@fastgpt/global/common/string/tools';
-import { readModelCatalogSnapshot, readModelCatalogRevision } from './entity';
-import { withTimeout } from '@fastgpt/global/common/system/utils';
-import { createModelHandle } from '../handle';
-import { getCachedSystemModelHandle, publishSystemModelHandle } from '../cache';
-import { desensitizeModel } from '../transform';
-import { formatDbModelToRuntimeModel } from '../runtime';
+import type { SystemDefaultModelType } from '../../type';
 import { resolveEffectiveDefaultModelIds } from '../default/resolve';
+import { getModelProviderMetadata, preloadModelProviders } from '../provider/controller';
+import { formatDbModelToRuntimeModel } from '../runtime';
+import { desensitizeModel } from '../transform';
+import {
+  getCachedSystemModelHandle,
+  getScopedTeamModelHandle,
+  publishSystemModelHandle
+} from './cache';
+import { readModelCatalogRevision, readModelCatalogSnapshot } from './entity';
+import { createModelHandle, type ModelHandle } from './handle';
 
 /**
  * 只读取数据库安装实例并原子发布运行时模型快照，不执行插件请求、历史迁移或自动预装。
@@ -43,9 +50,8 @@ const publishInstalledModels = async ({ language = 'en' }: { language?: string }
       pushModel(formatDbModelToRuntimeModel(dbModel, { language, fallbackProvider: false }));
     });
 
-    const _systemActiveModelList = _systemModelList.filter(
-      (model) => model.isActive && (model.scope === ModelScopeEnum.system || !model.scope)
-    );
+    // 快照已按 system 作用域读取，这里只需按启用状态过滤。
+    const _systemActiveModelList = _systemModelList.filter((model) => model.isActive);
     // 两类目录只在候选集合上不同，默认槽位和回退规则由同一解析器负责。
     const effectiveDefaults = resolveEffectiveDefaultModelIds({
       models: _systemActiveModelList,
@@ -204,3 +210,15 @@ export const updatedReloadSystemModel = async () => {
     );
   });
 };
+
+/** 读取经过修订号检查的系统目录，明确不包含任何团队模型。 */
+export const getSystemModelHandle = async (): Promise<ModelHandle> => {
+  await refreshModelHandle();
+  const handle = getCachedSystemModelHandle();
+  if (!handle) throw new UserError(ModelErrEnum.unExist);
+  return handle;
+};
+
+/** 读取系统与指定团队的完整目录；teamId 必须来自鉴权身份。 */
+export const getTeamModelHandle = async ({ teamId }: { teamId: string }): Promise<ModelHandle> =>
+  getScopedTeamModelHandle({ teamId, systemHandle: await getSystemModelHandle() });

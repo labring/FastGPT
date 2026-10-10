@@ -1,23 +1,20 @@
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
-import { Types, type ClientSession } from '../../../../common/mongo';
+import { type ClientSession } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { MongoAIModelCatalog } from './schema';
 import { ModelDefaultIdsSchema, type ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
 import { MongoAIModel } from '../schema';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 
 /** 运行时模型目录必须显式声明作用域；团队目录不能缺省成系统目录。 */
 export type ModelCatalogScope =
   | { scope: ModelScopeEnum.system }
   | { scope: ModelScopeEnum.team; teamId: string };
 
-/** 目录身份用于模型查询和版本记录，禁止无效团队身份触发跨域读取。 */
-const getCatalogFilter = (context: ModelCatalogScope) => {
-  if (context.scope === ModelScopeEnum.system) return { scope: ModelScopeEnum.system };
-  if (!Types.ObjectId.isValid(context.teamId)) throw new UserError(ModelErrEnum.unExist);
-  return { scope: ModelScopeEnum.team, teamId: context.teamId };
-};
+/** 目录身份用于模型查询和版本记录；teamId 来自鉴权身份，团队目录在类型上必须携带。 */
+const getCatalogFilter = (context: ModelCatalogScope) =>
+  context.scope === ModelScopeEnum.system
+    ? { scope: ModelScopeEnum.system }
+    : { scope: ModelScopeEnum.team, teamId: context.teamId };
 
 /** 在调用方提供的事务中递增目录版本，不自行决定业务事务边界。 */
 export const incrementModelCatalogRevision = (context: ModelCatalogScope, session: ClientSession) =>

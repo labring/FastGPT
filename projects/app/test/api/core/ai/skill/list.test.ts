@@ -1,37 +1,37 @@
-import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 
-import { describe, expect, it } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/list';
 import handlerV2 from '@/pages/api/core/ai/skill/listV2';
+import { onCreateApp } from '@/pages/api/core/app/create';
 import publishHandler from '@/pages/api/core/app/version/publish';
-import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   ListSkillsQuery,
   ListSkillsResponse,
   ListSkillsV2Query
 } from '@fastgpt/global/core/ai/skill/api';
-import { onCreateApp } from '@/pages/api/core/app/create';
+import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { AppListSortEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
   OwnerRoleVal,
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { Types } from '@fastgpt/service/common/mongo';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { getUser } from '@test/datas/users';
+import { Call } from '@test/utils/request';
+import { describe, expect, it } from 'vitest';
 
 describe('POST /api/core/ai/skill/list', () => {
   it('文件夹和 Skill 统一按修改时间混排', async () => {

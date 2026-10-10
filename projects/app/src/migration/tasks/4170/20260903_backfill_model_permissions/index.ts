@@ -1,5 +1,5 @@
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { clearAllMyModelsCache } from '@fastgpt/service/support/permission/model/cache';
+import { clearAllMemberModelsCache } from '@fastgpt/service/support/permission/model/cache';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import type { SystemMigrationContext } from '@/migration/registry';
 import { runIncrementalModelReferenceMigration } from '../20260903_model_references/incremental';
@@ -49,6 +49,6 @@ export const backfillModelPermissionReferences = async (context: SystemMigration
     });
     return { processedCount: result.processedCount };
   } finally {
-    await clearAllMyModelsCache();
+    await clearAllMemberModelsCache();
   }
 };

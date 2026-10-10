@@ -1,19 +1,19 @@
-import {
-  getModelProviderMetadata,
-  preloadModelProviders
-} from '@fastgpt/service/core/ai/model/provider/controller';
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { authModelScope } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { refreshModelTemplates } from '@fastgpt/service/core/ai/model/template';
+import { sortModelsByProvider } from '@fastgpt/global/core/ai/model/provider';
 import {
   GetModelTemplatesQuerySchema,
   GetModelTemplatesResponseSchema,
   type GetModelTemplatesQuery,
   type GetModelTemplatesResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { sortModelsByProvider } from '@fastgpt/global/core/ai/model/provider';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  getModelProviderMetadata,
+  preloadModelProviders
+} from '@fastgpt/service/core/ai/model/provider/controller';
+import { refreshModelTemplates } from '@fastgpt/service/core/ai/model/template';
 
 /**
  * 实时返回 Plugin 模型模板；响应不会写入任何运行时或持久化模型缓存。
@@ -26,7 +26,7 @@ async function handler(
     req,
     querySchema: GetModelTemplatesQuerySchema
   }).query;
-  await authModelManage({ req, channelType });
+  await authModelScope({ req, channelType });
 
   await preloadModelProviders();
   const models = await refreshModelTemplates();

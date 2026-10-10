@@ -1,17 +1,17 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { rebuildDatasetDataIndexes } from '@/service/core/dataset/data/data';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { checkTeamAiPointsAndLock } from './utils';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
 import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
-import { cleanupUnusedDatasetSynonymMappings } from '@fastgpt/service/core/dataset/synonym/controller';
+import { checkTeamAiPointsAndLock } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 

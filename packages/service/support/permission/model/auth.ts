@@ -1,176 +1,208 @@
-import {
-  assertMemberModelPermission,
-  assertTeamModelEnabled,
-  assertModelInstancePolicy,
-  type ModelInstanceOwner
-} from './policy';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
-import { isTeamModel, scopeToChannelType } from '@fastgpt/global/core/ai/model/utils';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { getTeamModelHandle } from '../../../core/ai/model/index';
-import { authUserPer } from '../user/auth';
-import { getMemberModelIds } from './catalog';
-import type { AuthModeType } from '../type';
-import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
+import { isTeamModel } from '@fastgpt/global/core/ai/model/utils';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { Permission } from '@fastgpt/global/support/permission/controller';
+import type { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import type { ModelHandle } from '../../../core/ai/model/catalog/handle';
+import { getTeamModelHandle } from '../../../core/ai/model/catalog/service';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
+import { getGroupsByTmbId } from '../memberGroup/controllers';
+import { getOrgsByTmbId } from '../org/controllers';
+import { resourcePermissionRepo } from '../repository/resourcePermissionRepo';
+import { getMemberModelsCache, setMemberModelsCache } from './cache';
 
 /**
- * 模型/渠道接口的作用域鉴权守卫（不含成员管理权限，权限校验见 authModelManage）：
- * - 解析登录态与当前成员身份 (tmbId)
- * - system 作用域：仅允许系统管理员 (root) 操作
- * - team 作用域：仅商业版可用，数据始终绑定当前成员
+ * 模型鉴权动作。与通用 Read/Write/Manage 位掩码不同，三种动作按模型域规则独立判定，不做包含计算：
+ *
+ * | action   | 系统模型                                             | 团队模型                               |
+ * | -------- | ---------------------------------------------------- | -------------------------------------- |
+ * | `use`    | root / 团队管理员；未配置任何 ACL（默认开放）；命中 ACL | 归属成员；命中 ACL                     |
+ * | `config` | 仅 root                                              | 归属成员且具备 `hasModelCreatePer`     |
+ * | `grant`  | root / 团队管理员                                    | 仅归属成员                             |
+ *
+ * root 与团队管理员不能使用或管理其他成员的团队模型，这是有意设计。
  */
-export const authModelScopeOperation = async ({
-  req,
-  channelType = 'team'
-}: {
-  req: AuthModeType['req'];
-  channelType?: ChannelType;
-}) => {
-  const authRes = await authUserPer({ req, authToken: true });
+export type ModelAuthAction =
+  /** 使用：在应用、知识库、辅助生成等业务中选择或调用模型。 */
+  | 'use'
+  /** 配置：查看完整配置、测试连通性、编辑、启停、删除、维护渠道绑定。 */
+  | 'config'
+  /** 授权：查看和修改模型协作者。 */
+  | 'grant';
 
-  if (channelType === 'system' && !authRes.isRoot) {
-    return Promise.reject(ModelErrEnum.rootOnlyPermit);
-  }
-  if (channelType === 'team') await assertTeamModelEnabled();
+type MemberModelActor = {
+  source?: 'member';
+  teamId: string;
+  tmbId: string;
+  /** 必填，避免调用方遗漏 root 身份后按普通成员计算。 */
+  isRoot: boolean;
+  /**
+   * 团队级权限；HTTP 鉴权已拿到团队成员时直接传入，缺省时内部读取一次。
+   * 不要传 authApp / authDataset 返回的资源权限 `permission`。
+   */
+  teamPermission?: Pick<TeamPermission, 'hasManagePer' | 'hasModelCreatePer'>;
+};
+/** 外链身份来自服务端保存的发布配置；只允许 `use`，固定按非管理员计算且不读写成员缓存。 */
+type OutLinkModelActor = {
+  source: 'outLink';
+  teamId: string;
+  tmbId: string;
+};
+export type ModelActor = MemberModelActor | OutLinkModelActor;
 
-  return authRes;
+/** 解析成员的团队能力；root 拥有全部团队能力，其余成员优先复用调用方已读取的团队权限。 */
+const getMemberAbility = async (actor: MemberModelActor) => {
+  if (actor.isRoot) return { hasManagePer: true, hasModelCreatePer: true };
+  const { hasManagePer, hasModelCreatePer } =
+    actor.teamPermission ?? (await getTmbInfoByTmbId({ tmbId: actor.tmbId })).permission;
+  return { hasManagePer, hasModelCreatePer };
 };
 
 /**
- * 模型管理台接口（读写）的统一鉴权守卫，在作用域校验之上追加成员的管理权限校验：
- * root 不受限；普通成员操作 team 作用域时必须拥有 hasModelCreatePer（只看 Per，不看 Role）。
- * 所有管理台的模型/渠道/日志/监控接口都应使用它，避免各 handler 各自拼装权限判断而遗漏。
+ * 计算身份在当前目录快照下可使用（`use`）的完整模型 ID 集合，包含停用模型；启用状态由 typed getter 判断。
+ * 成员结果按 catalogVersion + hasManagePer 缓存；外链身份每次实时计算，避免与发布者本人互相覆盖缓存。
+ * 存储异常正常抛出，不转换为无权限。
  */
-export const authModelManage = async ({
-  req,
-  channelType = 'team',
-  resource = 'model'
+export const getAuthorizedModelIds = async ({
+  actor,
+  handle
 }: {
-  req: AuthModeType['req'];
-  channelType?: ChannelType;
-  resource?: 'model' | 'channel';
-}) => {
-  const authRes = await authModelScopeOperation({ req, channelType });
-  if (!authRes.isRoot) {
-    await assertMemberModelPermission(authRes.tmb.permission, resource);
+  actor: ModelActor;
+  handle: ModelHandle;
+}): Promise<Set<string>> => {
+  const { teamId, tmbId } = actor;
+  const isOutLink = actor.source === 'outLink';
+  const hasManagePer = isOutLink ? false : (await getMemberAbility(actor)).hasManagePer;
+
+  if (!isOutLink) {
+    const cached = await getMemberModelsCache({
+      teamId,
+      tmbId,
+      catalogVersion: handle.version,
+      hasManagePer
+    });
+    if (cached) return new Set(cached.modelIds);
   }
-  return authRes;
+
+  const [groups, orgs, aclList] = await Promise.all([
+    getGroupsByTmbId({ teamId, tmbId }),
+    getOrgsByTmbId({ teamId, tmbId }),
+    resourcePermissionRepo.findByTeam({ teamId, resourceType: PerResourceTypeEnum.model })
+  ]);
+  const groupIds = new Set(groups.map((group) => String(group._id)));
+  const orgIds = new Set(orgs.map((org) => String(org.orgId)));
+  // 配置过任意 ACL 的系统模型不再默认开放。
+  const configuredResourceIds = new Set(
+    aclList.flatMap((acl) => (acl.resourceId ? [String(acl.resourceId)] : []))
+  );
+  // 模型沿用任一 collaborator 授权即可的规则：个人、用户组、直属组织任一命中读权限即授权，
+  // 不用个人 ACL 覆盖组或组织授权。
+  const grantedIds = new Set(
+    aclList.flatMap((acl) => {
+      if (!acl.resourceId) return [];
+      const isHit =
+        (acl.tmbId && String(acl.tmbId) === tmbId) ||
+        (acl.groupId && groupIds.has(String(acl.groupId))) ||
+        (acl.orgId && orgIds.has(String(acl.orgId)));
+      return isHit && new Permission({ role: acl.permission }).hasReadPer
+        ? [String(acl.resourceId)]
+        : [];
+    })
+  );
+  // 团队 handle 只包含系统模型和本团队模型，无需再判断团队归属。
+  const authorizedIds = handle
+    .getAllModels()
+    .filter((model) => {
+      if (isTeamModel(model)) return model.tmbId === tmbId || grantedIds.has(model.modelId);
+      return (
+        hasManagePer || !configuredResourceIds.has(model.modelId) || grantedIds.has(model.modelId)
+      );
+    })
+    .map((model) => model.modelId);
+
+  if (!isOutLink) {
+    await setMemberModelsCache({
+      teamId,
+      tmbId,
+      modelIds: authorizedIds,
+      catalogVersion: handle.version,
+      hasManagePer
+    });
+  }
+  return new Set(authorizedIds);
 };
 
 /**
- * 草稿模型预览鉴权；已安装模型入口通过 authAndGetModelInstance 使用同一策略：
- * - team 模型：需要登录成员；非 root 还需 hasModelCreatePer。模型已有归属时只允许归属成员访问，
- *   即使是 root 也不能越权读取或测试其他成员的私有模型，且对外统一表现为「模型不存在」。
- * - system 模型：仅 root。
- * 返回的 ownerTmbId 是本次操作应使用的成员桶（模型归属成员，草稿模型回退为当前成员）。
+ * 按 action 批量检查模型权限，返回去重后保持输入顺序的无权限 ID，全部通过返回 `[]`。
+ * 只用于需要按结果过滤的场景（目录、展示摘要、协作者批量列表、应用资源鉴权）；
+ * 其他场景使用 `assertAuthModels`。不存在的 ID 视为无权限，类型和启用状态留给调用方判断。
+ * 调用方已有 handle 时必须传入，保证鉴权与后续读取使用同一目录快照。
  */
-export const authModelInstanceAccess = async ({
-  req,
-  model,
-  resource = 'model'
+export const authModels = async ({
+  actor,
+  modelIds,
+  action,
+  handle: inputHandle
 }: {
-  req: AuthModeType['req'];
-  model: ModelInstanceOwner;
-  resource?: 'model' | 'channel';
-}) => {
-  const actor = await authUserPer({ req, authToken: true });
-  return assertModelInstancePolicy({ model, actor, resource, allowMissingOwner: true });
-};
+  actor: ModelActor;
+  modelIds: string[];
+  action: ModelAuthAction;
+  handle?: ModelHandle;
+}): Promise<string[]> => {
+  const ids = [...new Set(modelIds)];
+  if (ids.length === 0) return [];
+  // 外链只代表发布者使用模型，不具备配置和授权能力。
+  if (actor.source === 'outLink' && action !== 'use') return ids;
 
-/**
- * 统一的模型实例获取与操作权限守卫：
- * 1. 按 channelType 执行会话登录态与作用域合法性校验；
- * 2. 基于解析出的团队上下文（teamId）安全加载 Scoped ModelHandle，避免跨团队/未授权模型探测；
- * 3. 定位模型并校验作用域匹配（若指定了 channelType，必须与模型自身的 scope 严格匹配）；
- * 4. 执行模型实例级归属与权限校验（团队模型仅允许当前团队创建者访问，禁止跨团队或跨成员探测）；
- * 5. 返回统一的租户与模型数据对象。
- */
-export const authAndGetModelInstance = async ({
-  req,
-  modelId,
-  channelType,
-  resource = 'model'
-}: {
-  req: AuthModeType['req'];
-  modelId: string;
-  channelType?: ChannelType;
-  resource?: 'model' | 'channel';
-}): Promise<{
-  teamId: string;
-  tmbId: string;
-  ownerTmbId?: string;
-  model: AIModelDataType;
-}> => {
-  // 显式作用域先校验；旧调用未声明时，按已安装实例的真实归属执行策略。
-  const actor = channelType
-    ? await authModelScopeOperation({ req, channelType })
-    : await authUserPer({ req, authToken: true });
-  const modelHandle = await getTeamModelHandle({ teamId: actor.teamId });
-  const model = modelHandle.findModelData({ modelId });
-  if (!model || (channelType && channelType !== scopeToChannelType(model.scope))) {
-    return Promise.reject(ModelErrEnum.unExist);
-  }
-  const access = await assertModelInstancePolicy({ model, actor, resource });
-  return { ...access, model };
-};
+  const handle = inputHandle ?? (await getTeamModelHandle({ teamId: actor.teamId }));
 
-/**
- * 校验指定成员是否有权使用某个模型（执行调用入口统一使用此方法鉴权）。
- * 检查项：
- * 1. 模型是否存在且已启用 (isActive)
- * 2. 如果是团队模型，校验其所属 teamId 必须与当前 teamId 一致
- * 3. 校验该模型在成员的可用模型列表 (getMemberModelIds) 中
- * 若 optional 为 true，任何鉴权失败或模型不存在时不抛出异常，而是返回 undefined。
- */
-export async function authModelUse(params: {
-  modelId: string;
-  tmbId: string;
-  teamId: string;
-  optional?: false;
-}): Promise<AIModelDataType>;
-export async function authModelUse(params: {
-  modelId: string;
-  tmbId: string;
-  teamId: string;
-  optional: boolean;
-}): Promise<AIModelDataType | undefined>;
-export async function authModelUse({
-  modelId,
-  tmbId,
-  teamId,
-  optional = false
-}: {
-  modelId: string;
-  tmbId: string;
-  teamId: string;
-  optional?: boolean;
-}): Promise<AIModelDataType | undefined> {
-  const modelHandle = await getTeamModelHandle({ teamId });
-  const modelData = modelHandle.findModelData({ modelId });
-  if (!modelData || !modelData.isActive) {
-    if (optional) return undefined;
-    return Promise.reject(new UserError(ModelErrEnum.unExist));
+  if (actor.source === 'outLink' || action === 'use') {
+    const authorizedIds = await getAuthorizedModelIds({ actor, handle });
+    return ids.filter((modelId) => !authorizedIds.has(modelId));
   }
 
-  if (isTeamModel(modelData)) {
-    if (modelData.teamId && modelData.teamId !== teamId) {
-      if (optional) return undefined;
-      return Promise.reject(new UserError(ModelErrEnum.unAuthModel));
+  const { hasManagePer, hasModelCreatePer } = await getMemberAbility(actor);
+  return ids.filter((modelId) => {
+    const model = handle.findModelData({ modelId });
+    if (!model) return true;
+
+    if (isTeamModel(model)) {
+      const isOwner = model.tmbId === actor.tmbId;
+      return action === 'config' ? !(isOwner && hasModelCreatePer) : !isOwner;
     }
-  }
-
-  const allowedModelIds = await getMemberModelIds({
-    teamId,
-    tmbId,
-    includeInactive: false,
-    catalogSnapshot: { models: modelHandle.getAllModels(), version: modelHandle.version }
+    // 系统模型配置只能由 root 修改；授权可由团队管理员维护。
+    return action === 'config' ? !actor.isRoot : !hasManagePer;
   });
+};
 
-  if (!allowedModelIds.includes(modelId)) {
-    if (optional) return undefined;
-    return Promise.reject(new UserError(ModelErrEnum.unAuthModel));
+/**
+ * 断言全部模型具备 action 权限，失败抛 `UserError`：`config` 抛 `unExist`（不暴露模型是否存在），
+ * `use` / `grant` 抛 `unAuthModel`。通过时返回同一快照的 handle 和按输入顺序去重解析的模型，
+ * 调用方应复用该 handle 读取 typed 模型，不再重复调用 `getTeamModelHandle`。
+ */
+export const assertAuthModels = async ({
+  actor,
+  modelIds,
+  action,
+  handle: inputHandle
+}: {
+  actor: ModelActor;
+  modelIds: string[];
+  action: ModelAuthAction;
+  handle?: ModelHandle;
+}): Promise<{ handle: ModelHandle; models: AIModelDataType[] }> => {
+  const handle = inputHandle ?? (await getTeamModelHandle({ teamId: actor.teamId }));
+  const deniedIds = await authModels({ actor, modelIds, action, handle });
+  if (deniedIds.length > 0) {
+    throw new UserError(action === 'config' ? ModelErrEnum.unExist : ModelErrEnum.unAuthModel);
   }
 
-  return modelData;
-}
+  // 无权限判断已排除不存在的 ID，这里只做类型收窄。
+  const models = [...new Set(modelIds)].flatMap((modelId) => {
+    const model = handle.findModelData({ modelId });
+    return model ? [model] : [];
+  });
+  return { handle, models };
+};

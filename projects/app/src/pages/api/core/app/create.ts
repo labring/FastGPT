@@ -1,12 +1,16 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppFolderTypeList, ToolTypeList, AppTypeList } from '@fastgpt/global/core/app/constants';
-import type { AppResourcesType } from '@fastgpt/global/core/app/type';
-import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import {
+  AppFolderTypeList,
+  AppTypeEnum,
+  AppTypeList,
+  ToolTypeList
+} from '@fastgpt/global/core/app/constants';
+import type { AppResourcesType, AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type';
+import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
+import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import {
   CreateAppRequestBodySchema,
   CreateAppResponseSchema,
@@ -17,33 +21,31 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { type ApiRequestProps } from '@fastgpt/next/type';
+import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nAppType } from '@fastgpt/service/support/user/audit/util';
-import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
-import { formatModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
-import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import {
   beforeUpdateAppFormat,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
-import { migrateWorkflowToCurrent } from '@fastgpt/global/core/workflow/migration';
-import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResources } from '@fastgpt/service/core/app/resources';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
+import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { checkAppResourceReadPermissions } from '@fastgpt/service/support/permission/app/resource';
+import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
+import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { addAuditLog, getI18nAppType } from '@fastgpt/service/support/user/audit/util';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 

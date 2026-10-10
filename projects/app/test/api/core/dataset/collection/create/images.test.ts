@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockResolveMultipleFormData,
@@ -83,7 +83,7 @@ vi.mock('@fastgpt/service/core/dataset/collection/controller', () => ({
   createCollectionAndInsertData: mockCreateCollectionAndInsertData
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
     getEmbeddingModelData: mockGetDatasetEmbeddingModel,
     getVlmModelData: mockGetDatasetVlmModel

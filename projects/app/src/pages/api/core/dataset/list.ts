@@ -1,32 +1,32 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import type { ApiRequestProps } from '@fastgpt/next/type';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { desensitizeModel } from '@fastgpt/service/core/ai/model/transform';
 
-import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
-import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
 import {
   GetDatasetListBodySchema,
   GetDatasetListResponseSchema,
   type GetDatasetListResponse
 } from '@fastgpt/global/openapi/core/dataset/api';
-import { AppListSortEnum } from '@fastgpt/global/core/app/constants';
+import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { Types } from '@fastgpt/service/common/mongo';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getResourcePermissionsByTeam } from '@fastgpt/service/support/permission/resourcePermissionService';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
   const { parentId, type, searchKey, sort, tmbIds } = parseApiInput({

@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { createModelHandle } from '@fastgpt/service/core/ai/model/handle';
-import { publishSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
-import { clearTeamModelCatalogCache } from '@fastgpt/service/core/ai/model/teamModelCache';
+import {
+  clearTeamModelCatalogCache,
+  publishSystemModelHandle
+} from '@fastgpt/service/core/ai/model/catalog/cache';
+import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { axiosMock, getConfigMock, getTeamModelHandleMock } = vi.hoisted(() => ({
   axiosMock: vi.fn(),
@@ -19,23 +21,22 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/config', () => ({
   getAIProxyAdminConfig: getConfigMock
 }));
 
-vi.mock('@fastgpt/service/core/ai/model/index', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/index')>()),
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
   getTeamModelHandle: getTeamModelHandleMock
 }));
 
 import {
-  getBatchChannelsAffectedModels,
-  getChannelAffectedModels,
   getChannelModels,
+  getChannelsAffectedModels,
   getSystemAssociableModels
 } from '@fastgpt/service/core/ai/model/channel/association';
+import { resetChannelCache } from '@fastgpt/service/core/ai/model/channel/cache';
 import {
   getMemberChannelList,
   getSystemChannelList
 } from '@fastgpt/service/core/ai/model/channel/list';
 import { resolveChannelForOperation } from '@fastgpt/service/core/ai/model/channel/resolve';
-import { resetChannelCache } from '@fastgpt/service/core/ai/model/channel/cache';
 import type {
   AiproxyChannel,
   AiproxyGroupChannel
@@ -82,6 +83,10 @@ const TMB_B = '60000000000000000000000b';
 
 const GROUP_A = encodeURIComponent(`fastgpt:tmb:${TMB_A}`);
 const GROUP_B = encodeURIComponent(`fastgpt:tmb:${TMB_B}`);
+const TEAM_ID = '6000000000000000000000aa';
+const SYSTEM_SCOPE = { channelType: 'system' as const, teamId: TEAM_ID, tmbId: TMB_A };
+const GROUP_A_SCOPE = { channelType: 'team' as const, teamId: TEAM_ID, tmbId: TMB_A };
+const GROUP_B_SCOPE = { channelType: 'team' as const, teamId: TEAM_ID, tmbId: TMB_B };
 
 const SYSTEM_CHANNELS: AiproxyChannel[] = [
   makeChannel(101, { name: 'Sys GPT', models: ['gpt-4o'] }),
@@ -206,25 +211,28 @@ describe('channel controller — delete protection / refs', () => {
     resetChannelCache();
   });
 
-  it('getChannelAffectedModels keeps models served by exactly one channel of the bucket', async () => {
+  it('getChannelsAffectedModels keeps models served by exactly one channel of the bucket', async () => {
     // text-embedding-3-small is only on ch-sys-3 → affected
-    const sysAffected = await getChannelAffectedModels(
-      SYSTEM_CHANNELS[2],
-      '6000000000000000000000aa'
-    );
+    const sysAffected = await getChannelsAffectedModels({
+      channels: [SYSTEM_CHANNELS[2]],
+      ...SYSTEM_SCOPE
+    });
     expect(sysAffected).toEqual([
       { modelId: 'sys-emb-1', name: 'Sys Embedding', model: 'text-embedding-3-small' }
     ]);
 
     // gpt-4o is on two system channels → not affected
-    const sysSafe = await getChannelAffectedModels(SYSTEM_CHANNELS[0], '6000000000000000000000aa');
+    const sysSafe = await getChannelsAffectedModels({
+      channels: [SYSTEM_CHANNELS[0]],
+      ...SYSTEM_SCOPE
+    });
     expect(sysSafe).toEqual([]);
 
     // When both channels providing gpt-4o are deleted together, gpt-4o is affected
-    const batchAffected = await getBatchChannelsAffectedModels(
-      [SYSTEM_CHANNELS[0], SYSTEM_CHANNELS[1]],
-      '6000000000000000000000aa'
-    );
+    const batchAffected = await getChannelsAffectedModels({
+      channels: [SYSTEM_CHANNELS[0], SYSTEM_CHANNELS[1]],
+      ...SYSTEM_SCOPE
+    });
     expect(batchAffected).toEqual([
       { modelId: 'sys-llm-1', name: 'Sys GPT-4o', model: 'gpt-4o' },
       { modelId: 'sys-llm-2', name: 'Sys Claude', model: 'claude-3-5-sonnet' }
@@ -263,7 +271,10 @@ describe('channel controller — delete protection / refs', () => {
 
     // SYSTEM_CHANNELS[2] serves 'text-embedding-3-small'.
     // If deleted, normal sys-emb-1 is affected, but sys-direct-1 is NOT affected.
-    const affected = await getChannelAffectedModels(SYSTEM_CHANNELS[2], '6000000000000000000000aa');
+    const affected = await getChannelsAffectedModels({
+      channels: [SYSTEM_CHANNELS[2]],
+      ...SYSTEM_SCOPE
+    });
     expect(affected).toEqual([
       { modelId: 'sys-emb-1', name: 'Sys Embedding', model: 'text-embedding-3-small' }
     ]);
@@ -272,30 +283,30 @@ describe('channel controller — delete protection / refs', () => {
 
   it('group bucket counts ignore other members channels (route scope isolation)', async () => {
     // qwen-plus appears once within group A (ch-b-1 is another owner's bucket)
-    const aAffected = await getChannelAffectedModels(
-      GROUP_A_CHANNELS[0],
-      '6000000000000000000000aa'
-    );
+    const aAffected = await getChannelsAffectedModels({
+      channels: [GROUP_A_CHANNELS[0]],
+      ...GROUP_A_SCOPE
+    });
     expect(aAffected).toEqual([{ modelId: 'own-a-1', name: 'A Qwen Plus', model: 'qwen-plus' }]);
 
-    const bAffected = await getChannelAffectedModels(
-      GROUP_B_CHANNELS[0],
-      '6000000000000000000000aa'
-    );
+    const bAffected = await getChannelsAffectedModels({
+      channels: [GROUP_B_CHANNELS[0]],
+      ...GROUP_B_SCOPE
+    });
     expect(bAffected).toEqual([{ modelId: 'own-b-1', name: 'B Qwen Plus', model: 'qwen-plus' }]);
   });
 
   it('getChannelModels returns ALL bucket models matched by upstream name (no only-channel filter)', async () => {
     // gpt-4o is on two system channels → affectedModels is empty, models lists it
-    expect(await getChannelModels(SYSTEM_CHANNELS[0], '6000000000000000000000aa')).toEqual([
+    expect(await getChannelModels({ channel: SYSTEM_CHANNELS[0], ...SYSTEM_SCOPE })).toEqual([
       { modelId: 'sys-llm-1', name: 'Sys GPT-4o', model: 'gpt-4o' }
     ]);
-    expect(await getChannelModels(SYSTEM_CHANNELS[1], '6000000000000000000000aa')).toEqual([
+    expect(await getChannelModels({ channel: SYSTEM_CHANNELS[1], ...SYSTEM_SCOPE })).toEqual([
       { modelId: 'sys-llm-1', name: 'Sys GPT-4o', model: 'gpt-4o' },
       { modelId: 'sys-llm-2', name: 'Sys Claude', model: 'claude-3-5-sonnet' }
     ]);
     // Owner bucket only counts the owner's models
-    expect(await getChannelModels(GROUP_A_CHANNELS[0], '6000000000000000000000aa')).toEqual([
+    expect(await getChannelModels({ channel: GROUP_A_CHANNELS[0], ...GROUP_A_SCOPE })).toEqual([
       { modelId: 'own-a-1', name: 'A Qwen Plus', model: 'qwen-plus' }
     ]);
   });
@@ -333,19 +344,19 @@ describe('channel controller — delete protection / refs', () => {
     expect(systemModels.some((m) => m.id === 'own-a-gpt4o')).toBe(false);
 
     // System channel 101 serves 'gpt-4o'. It should only pair with sys-llm-1, not own-a-gpt4o.
-    const modelsOnSysChannel = await getChannelModels(
-      SYSTEM_CHANNELS[0],
-      '6000000000000000000000aa'
-    );
+    const modelsOnSysChannel = await getChannelModels({
+      channel: SYSTEM_CHANNELS[0],
+      ...SYSTEM_SCOPE
+    });
     expect(modelsOnSysChannel).toEqual([
       { modelId: 'sys-llm-1', name: 'Sys GPT-4o', model: 'gpt-4o' }
     ]);
 
     // Deleting system channels should not mark own-a-gpt4o as affected
-    const batchAffected = await getBatchChannelsAffectedModels(
-      [SYSTEM_CHANNELS[0], SYSTEM_CHANNELS[1]],
-      '6000000000000000000000aa'
-    );
+    const batchAffected = await getChannelsAffectedModels({
+      channels: [SYSTEM_CHANNELS[0], SYSTEM_CHANNELS[1]],
+      ...SYSTEM_SCOPE
+    });
     expect(batchAffected.some((m) => m.modelId === 'own-a-gpt4o')).toBe(false);
   });
 });

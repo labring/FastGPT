@@ -1,24 +1,24 @@
-import { getSystemModelHandle } from '../ai/model/index';
-import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { LangEnum, type localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { withTimeout } from '@fastgpt/global/common/system/utils';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
+import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
+import { getSystemModelHandle } from '../ai/model/catalog/service';
 
-import { MongoChat } from './chatSchema';
-import { buildChatSourceQuery, type ChatSourceParams } from './source';
 import {
   AUTO_EXECUTE_QUERY_SENTINEL,
   CHAT_FIXED_TITLE_I18N,
   ChatSourceTypeEnum,
   type ChatFixedTitleKey
 } from '@fastgpt/global/core/chat/constants';
+import { MongoChat } from './chatSchema';
+import { buildChatSourceQuery, type ChatSourceParams } from './source';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 

@@ -5,80 +5,37 @@ import { getMemberGroupId } from '../../../../thirdProvider/aiproxy/group';
 import { tolerateNotFound } from '../../../../thirdProvider/aiproxy/error';
 import { getAiproxyClientByScope } from './client';
 
-/**
- * 按渠道归属路由查找目标渠道（系统渠道或私有分组渠道）
- */
-
-export type ResolvedChannel =
-  | { kind: 'system'; channel: AiproxyChannel }
-  | { kind: 'group'; channel: AiproxyGroupChannel; groupId: string };
+type ChannelScope = { channelType: ChannelType; tmbId: string };
 
 /**
- * Resolve a channel for a member/root operation by its declared kind.
- * an id that does not exist in the declared scope rejects with ModelErrEnum.channelNotExist.
+ * 在操作者作用域内读取渠道：system 走系统渠道 API，team 固定走当前会话成员的分组 API。
+ * 归属由 API 路径保证（root 也不能借渠道 ID 跨成员操作），作用域内不存在即 `channelNotExist`。
+ * 后续写入直接使用同一 `getAiproxyClientByScope`，分组只由 tmbId 推导，无需回传分组信息。
  */
 export const resolveChannelForOperation = async ({
   id,
-  channelType,
-  tmbId
-}: {
-  id: number;
-  channelType: ChannelType;
-  tmbId: string;
-}): Promise<ResolvedChannel> => {
-  if (channelType === 'system') {
-    // Handlers reject non-root callers with rootOnlyPermit before this point.
-    const channel = await tolerateNotFound(() =>
-      getAiproxyClientByScope({ channelType, tmbId }).channels.get(id)
-    );
-    if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
-    return { kind: 'system', channel };
-  }
-
-  // team scope 始终绑定当前会话成员，root 也不能借渠道 ID 跨成员操作。
-  const groupId = getMemberGroupId(tmbId);
-  const channel = await tolerateNotFound(() =>
-    getAiproxyClientByScope({ channelType, tmbId }).channels.get(id)
-  );
+  ...scope
+}: ChannelScope & { id: number }): Promise<AiproxyChannel | AiproxyGroupChannel> => {
+  const channel = await tolerateNotFound(() => getAiproxyClientByScope(scope).channels.get(id));
   if (!channel) return Promise.reject(ModelErrEnum.channelNotExist);
-  return { kind: 'group', channel, groupId };
+  return channel;
 };
 
-/**
- * 批量校验并解析渠道。所有渠道必须均存在且属于操作者权限范围。
- */
-export const resolveChannelsForOperation = async ({
+/** 批量校验并读取渠道，所有渠道必须均存在于操作者作用域。 */
+export const resolveChannelsForOperation = ({
   ids,
-  channelType,
-  tmbId
-}: {
-  ids: number[];
-  channelType: ChannelType;
-  tmbId: string;
-}): Promise<ResolvedChannel[]> => {
-  return Promise.all(ids.map((id) => resolveChannelForOperation({ id, channelType, tmbId })));
-};
+  ...scope
+}: ChannelScope & { ids: number[] }): Promise<Array<AiproxyChannel | AiproxyGroupChannel>> =>
+  Promise.all(ids.map((id) => resolveChannelForOperation({ id, ...scope })));
 
 /**
- * 推导日志/监控只读范围，并在存在 channelId 时校验其属于目标 bucket。
- * 与跨成员运维解析不同，team 对 root 也固定使用当前会话 tmbId，禁止借 channelId
- * 读取其他成员的私有渠道数据。
+ * 推导日志/监控只读范围；存在 channelId 时校验其属于当前作用域。
+ * 入口能力（system 仅 root）已由路由层 `authModelScope` 保证；team 固定使用会话 tmbId 推导分组。
  */
 export const resolveChannelObservabilityScope = async ({
-  channelType,
   channelId,
-  tmbId,
-  isRoot
-}: {
-  channelType: ChannelType;
-  channelId?: number;
-  tmbId: string;
-  isRoot: boolean;
-}): Promise<{ groupId?: string }> => {
-  if (channelType === 'system' && !isRoot) return Promise.reject(ModelErrEnum.rootOnlyPermit);
-  if (channelId !== undefined) {
-    const resolved = await resolveChannelForOperation({ id: channelId, channelType, tmbId });
-    return resolved.kind === 'group' ? { groupId: resolved.groupId } : {};
-  }
-  return channelType === 'team' ? { groupId: getMemberGroupId(tmbId) } : {};
+  ...scope
+}: ChannelScope & { channelId?: number }): Promise<{ groupId?: string }> => {
+  if (channelId !== undefined) await resolveChannelForOperation({ id: channelId, ...scope });
+  return scope.channelType === 'team' ? { groupId: getMemberGroupId(scope.tmbId) } : {};
 };

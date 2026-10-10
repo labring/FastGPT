@@ -1,8 +1,6 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import { createDatasetDataIndex } from '@/service/core/dataset/data/dataIndex';
-import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { NextAPI } from '@/service/middleware/entry';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import {
   CreateDatasetDataIndexBodySchema,
   DatasetDataIndexResponseSchema,
@@ -10,10 +8,12 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> {
   const { dataId, type, text } = parseApiInput({

@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
-import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import { describe, expect, it, vi } from 'vitest';
 
 const createModel = (
   data: Pick<AIModelDataType, 'modelId' | 'name' | 'model'> &
@@ -41,7 +41,7 @@ const mockModels: Record<string, AIModelDataType> = {
   })
 };
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({
     findModelData: (reference: { modelId?: string; model?: string }) => {
       if (reference.modelId) {

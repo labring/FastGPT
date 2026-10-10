@@ -1,7 +1,7 @@
-import { MongoDataset } from '../schema';
+import type { ModelHandle } from '../../ai/model/catalog/handle';
+import { getTeamModelHandle } from '../../ai/model/catalog/service';
 import { getDatasetModelReference } from '../model';
-import { getTeamModelHandle } from '../../ai/model/index';
-import type { ModelHandle } from '../../ai/model/handle';
+import { MongoDataset } from '../schema';
 
 /**
  * 搜索的视觉能力是可选增强：按知识库顺序选择第一个启用且支持视觉的模型。

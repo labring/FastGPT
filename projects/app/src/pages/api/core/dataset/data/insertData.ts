@@ -1,29 +1,28 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 /*
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
-import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { createDatasetData } from '@/service/core/dataset/data/data';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
+import { hasSameValue } from '@/service/core/dataset/data/utils';
+import { NextAPI } from '@/service/middleware/entry';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { simpleText } from '@fastgpt/global/common/string/tools';
-import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   InsertDataBodySchema,
   InsertDataResponseSchema,
   type InsertDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 
 async function handler(req: ApiRequestProps): Promise<InsertDataResponse> {
   const { collectionId, q, a, indexes, metadata } = parseApiInput({

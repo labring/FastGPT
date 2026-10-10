@@ -24,13 +24,11 @@ const mocks = vi.hoisted(() => {
     batchDelete: vi.fn(),
     batchUpdateStatus: vi.fn()
   };
-  const getChannelAffectedModels = vi.fn().mockResolvedValue([]);
-  const getBatchChannelsAffectedModels = vi.fn().mockResolvedValue([]);
+  const getChannelsAffectedModels = vi.fn().mockResolvedValue([]);
   return {
     group,
     system,
-    getChannelAffectedModels,
-    getBatchChannelsAffectedModels,
+    getChannelsAffectedModels,
     groupFactory: vi.fn((_groupId: string) => ({ channels: group }))
   };
 });
@@ -43,8 +41,7 @@ vi.mock('@fastgpt/service/thirdProvider/aiproxy/client', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/model/channel/association', () => ({
-  getChannelAffectedModels: mocks.getChannelAffectedModels,
-  getBatchChannelsAffectedModels: mocks.getBatchChannelsAffectedModels
+  getChannelsAffectedModels: mocks.getChannelsAffectedModels
 }));
 
 import {
@@ -349,7 +346,7 @@ describe('channel service', () => {
     it('deletes team channel and returns affected models', async () => {
       const affected = [{ modelId: 'm-1', name: 'M1', model: 'gpt-4o' }];
       mocks.group.get.mockResolvedValue(makeChannel(1));
-      mocks.getChannelAffectedModels.mockResolvedValue(affected);
+      mocks.getChannelsAffectedModels.mockResolvedValue(affected);
 
       const res = await deleteChannel({
         teamId: TEAM_ID,
@@ -358,17 +355,19 @@ describe('channel service', () => {
         tmbId: TMB_ID
       });
 
-      expect(mocks.getChannelAffectedModels).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 1 }),
-        TEAM_ID
-      );
+      expect(mocks.getChannelsAffectedModels).toHaveBeenCalledWith({
+        channels: [expect.objectContaining({ id: 1 })],
+        channelType: 'team',
+        teamId: TEAM_ID,
+        tmbId: TMB_ID
+      });
       expect(mocks.group.delete).toHaveBeenCalledWith(1);
       expect(res).toEqual({ affectedModels: affected });
     });
 
     it('deletes system channel and returns affected models', async () => {
       mocks.system.get.mockResolvedValue({ ...makeChannel(2), group_id: undefined });
-      mocks.getChannelAffectedModels.mockResolvedValue([]);
+      mocks.getChannelsAffectedModels.mockResolvedValue([]);
 
       const res = await deleteChannel({
         teamId: TEAM_ID,
@@ -401,7 +400,7 @@ describe('channel service', () => {
     it('batch deletes team channels and returns affected models', async () => {
       mocks.group.get.mockImplementation((id: number) => Promise.resolve(makeChannel(id)));
       const affected = [{ modelId: 'm-1', name: 'M1', model: 'gpt-4o' }];
-      mocks.getBatchChannelsAffectedModels.mockResolvedValue(affected);
+      mocks.getChannelsAffectedModels.mockResolvedValue(affected);
 
       const res = await batchOperateChannels({
         teamId: TEAM_ID,
@@ -409,10 +408,12 @@ describe('channel service', () => {
         tmbId: TMB_ID
       });
 
-      expect(mocks.getBatchChannelsAffectedModels).toHaveBeenCalledWith(
-        [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
-        TEAM_ID
-      );
+      expect(mocks.getChannelsAffectedModels).toHaveBeenCalledWith({
+        channels: [expect.objectContaining({ id: 1 }), expect.objectContaining({ id: 2 })],
+        channelType: 'team',
+        teamId: TEAM_ID,
+        tmbId: TMB_ID
+      });
       expect(mocks.group.batchDelete).toHaveBeenCalledWith([1, 2]);
       expect(res).toEqual({ affectedModels: affected });
     });
@@ -421,7 +422,7 @@ describe('channel service', () => {
       mocks.system.get.mockImplementation((id: number) =>
         Promise.resolve({ ...makeChannel(id), group_id: undefined })
       );
-      mocks.getBatchChannelsAffectedModels.mockResolvedValue([]);
+      mocks.getChannelsAffectedModels.mockResolvedValue([]);
 
       const res = await batchOperateChannels({
         teamId: TEAM_ID,
@@ -443,7 +444,7 @@ describe('channel service', () => {
       });
 
       expect(mocks.group.batchUpdateStatus).toHaveBeenCalledWith([1, 2], 0);
-      expect(mocks.getBatchChannelsAffectedModels).not.toHaveBeenCalled();
+      expect(mocks.getChannelsAffectedModels).not.toHaveBeenCalled();
       expect(res).toEqual({});
     });
 
@@ -459,7 +460,7 @@ describe('channel service', () => {
       });
 
       expect(mocks.system.batchUpdateStatus).toHaveBeenCalledWith([3, 4], 1);
-      expect(mocks.getBatchChannelsAffectedModels).not.toHaveBeenCalled();
+      expect(mocks.getChannelsAffectedModels).not.toHaveBeenCalled();
       expect(res).toEqual({});
     });
 

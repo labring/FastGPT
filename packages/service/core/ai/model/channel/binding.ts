@@ -1,16 +1,21 @@
-import type { AddChannelData, UpdateChannelData } from '../../../../thirdProvider/aiproxy/type';
+import type {
+  AddChannelData,
+  AiproxyChannel,
+  AiproxyGroupChannel,
+  UpdateChannelData
+} from '../../../../thirdProvider/aiproxy/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { tolerateNotFound } from '../../../../thirdProvider/aiproxy/error';
-import { resolveChannelsForOperation, type ResolvedChannel } from './resolve';
-import { getAiproxyClientByGroupId, getAiproxyClientByScope } from './client';
+import { resolveChannelsForOperation } from './resolve';
+import { getAiproxyClientByScope } from './client';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.AI.MODEL);
 
 /** 从渠道配置中剔除指定模型名及其 model_mapping 条目；没有任何变化时返回 undefined。 */
 const stripModelsFromChannel = (
-  channel: ResolvedChannel['channel'],
+  channel: AiproxyChannel | AiproxyGroupChannel,
   modelNames: Set<string>
 ): Pick<AddChannelData, 'models' | 'model_mapping'> | undefined => {
   const currentModels = channel.models ?? [];
@@ -47,33 +52,30 @@ export const updateModelChannelBindings = async ({
   channelType: ChannelType;
   tmbId: string;
 }): Promise<void> => {
-  // 渠道已完成归属校验，后续写入必须使用解析出的同一分组。
-  const getResolvedChannelClient = (item: ResolvedChannel) =>
-    getAiproxyClientByGroupId(item.kind === 'group' ? item.groupId : undefined).channels;
-
   const trimmedModel = model.trim();
   if (!trimmedModel) return Promise.reject(ModelErrEnum.invalidModelConfig);
 
-  const [addResolved, removeResolved] = await Promise.all([
+  const [addChannels, removeChannels] = await Promise.all([
     resolveChannelsForOperation({ ids: addChannelIds, channelType, tmbId }),
     resolveChannelsForOperation({ ids: removeChannelIds, channelType, tmbId })
   ]);
+  const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
 
   await Promise.all([
-    ...addResolved.map(async (item) => {
-      const currentModels = item.channel.models ?? [];
+    ...addChannels.map(async (channel) => {
+      const currentModels = channel.models ?? [];
       if (currentModels.includes(trimmedModel)) return;
-      await getResolvedChannelClient(item).update(item.channel.id, {
+      await client.update(channel.id, {
         models: [...currentModels, trimmedModel],
-        ...(item.channel.model_mapping !== undefined && {
-          model_mapping: item.channel.model_mapping
+        ...(channel.model_mapping !== undefined && {
+          model_mapping: channel.model_mapping
         })
       });
     }),
-    ...removeResolved.map(async (item) => {
-      const patch = stripModelsFromChannel(item.channel, new Set([trimmedModel]));
+    ...removeChannels.map(async (channel) => {
+      const patch = stripModelsFromChannel(channel, new Set([trimmedModel]));
       if (!patch) return;
-      await getResolvedChannelClient(item).update(item.channel.id, patch);
+      await client.update(channel.id, patch);
     })
   ]);
 };

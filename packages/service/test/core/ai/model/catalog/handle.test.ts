@@ -1,20 +1,20 @@
-import { assertModelAvailable } from '@fastgpt/service/core/ai/utils';
-import { describe, expect, expectTypeOf, it } from 'vitest';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type {
-  LLMModelDataType,
-  ModelReferenceType,
-  AIModelDataType
-} from '@fastgpt/global/core/ai/model/schema';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError, getErrText } from '@fastgpt/global/common/error/utils';
-import { createModelHandle } from '../../../../core/ai/model/handle';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type {
+  AIModelDataType,
+  LLMModelDataType,
+  ModelReferenceType
+} from '@fastgpt/global/core/ai/model/schema';
 import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
+import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
+import { assertModelAvailable } from '@fastgpt/service/core/ai/utils';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 
 const vlm: LLMModelDataType = {
   modelId: '68ee0bd23d17260b7829b137',
   type: ModelTypeEnum.llm,
-  scope: 'system' as const,
+  scope: ModelScopeEnum.system,
   provider: 'OpenAI',
   model: 'test-vlm',
   name: 'Visual model',
@@ -48,7 +48,7 @@ describe('getVlmModelData and model lookup', () => {
     const teamModel: AIModelDataType = {
       modelId: 'team-model-id',
       type: ModelTypeEnum.llm,
-      scope: 'team' as const,
+      scope: ModelScopeEnum.team,
       provider: 'OpenAI',
       model: 'team-vlm',
       name: 'Team Visual model',
@@ -69,7 +69,7 @@ describe('getVlmModelData and model lookup', () => {
     const sysGpt: AIModelDataType = {
       modelId: 'sys-gpt-id',
       type: ModelTypeEnum.llm,
-      scope: 'system' as const,
+      scope: ModelScopeEnum.system,
       provider: 'OpenAI',
       model: 'gpt-4o',
       name: 'System GPT-4o',
@@ -79,7 +79,7 @@ describe('getVlmModelData and model lookup', () => {
     const memberAGpt: AIModelDataType = {
       modelId: 'member-a-gpt-id',
       type: ModelTypeEnum.llm,
-      scope: 'team' as const,
+      scope: ModelScopeEnum.team,
       tmbId: 'member-a',
       teamId: 'team-1',
       provider: 'OpenAI',
@@ -91,7 +91,7 @@ describe('getVlmModelData and model lookup', () => {
     const memberBGpt: AIModelDataType = {
       modelId: 'member-b-gpt-id',
       type: ModelTypeEnum.llm,
-      scope: 'team' as const,
+      scope: ModelScopeEnum.team,
       tmbId: 'member-b',
       teamId: 'team-1',
       provider: 'OpenAI',

@@ -1,30 +1,29 @@
-import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
-import { authModelUse } from '@fastgpt/service/support/permission/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { isImageEmbeddingModel } from '@fastgpt/global/core/ai/model/utils';
+import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { assertAuthModels } from '@fastgpt/service/support/permission/model/auth';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import {
-  RebuildEmbeddingBodySchema,
-  RebuildEmbeddingResponseSchema,
-  type RebuildEmbeddingResponse
-} from '@fastgpt/global/openapi/core/dataset/training/api';
 import { seedDatasetRebuildTasks } from '@/service/core/dataset/queues/rebuild';
 import {
   rebuildableDatasetDataMatch,
   rebuildingDatasetDataMatch
 } from '@fastgpt/global/core/dataset/data/utils';
+import {
+  RebuildEmbeddingBodySchema,
+  RebuildEmbeddingResponseSchema,
+  type RebuildEmbeddingResponse
+} from '@fastgpt/global/openapi/core/dataset/training/api';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { type ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = parseApiInput({
@@ -32,16 +31,19 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     bodySchema: RebuildEmbeddingBodySchema
   }).body;
 
-  const { teamId, tmbId, dataset } = await authDataset({
+  const { teamId, tmbId, isRoot, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
     datasetId,
     per: OwnerPermissionVal
   });
-  const modelHandle = await getTeamModelHandle({ teamId });
+  const { handle: modelHandle } = await assertAuthModels({
+    actor: { teamId, tmbId, isRoot },
+    modelIds: [vectorModelId],
+    action: 'use'
+  });
   const vectorModelData = modelHandle.getEmbeddingModelData({ modelId: vectorModelId });
-  await authModelUse({ modelId: vectorModelData.modelId, tmbId, teamId });
 
   // check vector model
   if (String(dataset.vectorModelId || '') === vectorModelData.modelId) {

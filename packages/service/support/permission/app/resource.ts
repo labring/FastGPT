@@ -1,9 +1,12 @@
-import type { AppResource, AppResourcesType } from '@fastgpt/global/core/app/type';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import type { AppResource, AppResourcesType } from '@fastgpt/global/core/app/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Types, type ClientSession } from '../../../common/mongo';
+import type { ModelHandle } from '../../../core/ai/model/catalog/handle';
+import { getTeamModelHandle } from '../../../core/ai/model/catalog/service';
 import {
   getAppResourceKey,
   hasAppResource,
@@ -15,17 +18,16 @@ import {
   getAppDraftResourceBaseline,
   getAppLatestVersion
 } from '../../../core/app/version/controller';
-import { authDatasetByTmbId } from '../dataset/auth';
-import { authSkillByTmbId } from '../skill/auth';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
-import { getMemberModelIds } from '../model/catalog';
+import { authDatasetByTmbId } from '../dataset/auth';
+import { assertAuthModels, authModels } from '../model/auth';
+import { authSkillByTmbId } from '../skill/auth';
 import { authAppByTmbId } from './auth';
-import { getTeamModelHandle } from '../../../core/ai/model/index';
 
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 type UnauthorizedAppResource = {
   resource: AppResource;
@@ -98,16 +100,17 @@ export const getUnauthorizedAppResources = async ({
   const modelResources = normalizedResources.filter((resource) => resource.type === 'model');
   const modelCatalog = await (async () => {
     if (modelResources.length === 0) return;
-    const { teamId } = await getTmbInfoByTmbId({ tmbId });
+    const { teamId, permission } = await getTmbInfoByTmbId({ tmbId });
     const handle = await getTeamModelHandle({ teamId });
-    const modelIds = await getMemberModelIds({
-      teamId,
-      tmbId,
-      catalogSnapshot: { models: handle.getAllModels(), version: handle.version }
+    const denied = await authModels({
+      actor: { teamId, tmbId, isRoot, teamPermission: permission },
+      modelIds: modelResources.map(({ id }) => id),
+      action: 'use',
+      handle
     });
     return {
       activeModelIds: new Set(handle.getActiveModels().map((model) => model.modelId)),
-      permittedModelIds: new Set(modelIds)
+      deniedModelIds: new Set(denied)
     };
   })();
   const rootAccess = isRoot && allowRootCrossTeam;
@@ -155,7 +158,7 @@ export const getUnauthorizedAppResources = async ({
         if (!modelCatalog?.activeModelIds.has(resource.id)) {
           return { resource, error: ModelErrEnum.unExist };
         }
-        if (!modelCatalog.permittedModelIds.has(resource.id)) {
+        if (modelCatalog.deniedModelIds.has(resource.id)) {
           return { resource, error: ERROR_ENUM.unAuthModel };
         }
       } catch (error) {
@@ -284,29 +287,42 @@ export const resolveAppResourcesByPermission = async ({
 };
 
 /**
- * 校验独立辅助调用点（如问题引导、TTS 音频生成）使用的模型资源。
- * 目标为 App 时严格校验当前正式 Version 的资源快照；非 App 或动态场景按成员个人模型权限校验。
+ * 校验独立辅助调用点（如问题引导、TTS 音频生成）使用的模型资源，失败抛 `UserError(unAuthModel)`。
+ * - 目标为 App：只认当前正式 Version 的资源快照，与调用者身份无关（外链也走此分支）。
+ * - 非 App（skillEdit、chatAgentHelper）：只有登录成员能进入，直接按成员 `use` 权限校验。
+ * 模型类型与启用状态由调用方的 typed getter 校验；调用方必须传入读取模型时使用的 handle，避免重复读取目录。
  */
 export const authTargetModelResource = async ({
   targetType,
   targetId,
   modelId,
+  teamId,
   tmbId,
+  isRoot,
+  handle,
   resources
 }: {
   targetType: ChatSourceTypeEnum;
   targetId?: string;
   modelId: string;
+  teamId: string;
   tmbId: string;
+  isRoot: boolean;
+  handle: ModelHandle;
+  /** App 正式版本资源快照；调用方已读取版本时传入，避免重复查询。 */
   resources?: AppResourcesType;
 }) => {
-  const modelResource = { type: 'model' as const, id: modelId };
   if (targetType === ChatSourceTypeEnum.app && targetId) {
     const snapshot = resources ?? (await getAppLatestVersion(targetId)).resources;
-    if (!hasAppResource({ resources: snapshot, resource: modelResource })) {
-      throw ERROR_ENUM.unAuthModel;
+    if (!hasAppResource({ resources: snapshot, resource: { type: 'model', id: modelId } })) {
+      throw new UserError(ModelErrEnum.unAuthModel);
     }
     return;
   }
-  await checkAppResourceReadPermissions({ resources: [modelResource], tmbId });
+  await assertAuthModels({
+    actor: { teamId, tmbId, isRoot },
+    modelIds: [modelId],
+    action: 'use',
+    handle
+  });
 };

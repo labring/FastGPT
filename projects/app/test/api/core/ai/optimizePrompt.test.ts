@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.unmock('@fastgpt/service/common/response');
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
-  authModelUse: vi.fn(),
+  assertAuthModels: vi.fn(),
   getLLMModelData: vi.fn(),
   createLLMResponse: vi.fn(),
   formatModelChars2Points: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
-  authModelUse: mocks.authModelUse
+  assertAuthModels: mocks.assertAuthModels
 }));
 
 vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
@@ -31,7 +31,7 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: mocks.createLLMResponse
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: async () => ({ getLLMModelData: mocks.getLLMModelData }),
   getTeamModelHandle: async () => ({ getLLMModelData: mocks.getLLMModelData })
 }));
@@ -61,7 +61,7 @@ import handler from '@/pages/api/core/ai/optimizePrompt';
 describe('optimizePrompt SSE error handling', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authCert.mockResolvedValue({ teamId: 'team-1', tmbId: 'member-1' });
+    mocks.authCert.mockResolvedValue({ teamId: 'team-1', tmbId: 'member-1', isRoot: false });
     mocks.getLLMModelData.mockReturnValue({
       modelId: '68ad85a7463006c963799a05',
       model: 'gpt-4o'
@@ -71,7 +71,10 @@ describe('optimizePrompt SSE error handling', () => {
       modelName: 'gpt-4o',
       modelId: '68ad85a7463006c963799a05'
     });
-    mocks.authModelUse.mockResolvedValue(undefined);
+    mocks.assertAuthModels.mockResolvedValue({
+      handle: { getLLMModelData: mocks.getLLMModelData },
+      models: []
+    });
   });
 
   it('treats a missing original prompt as an empty string', async () => {
@@ -178,8 +181,8 @@ describe('optimizePrompt SSE error handling', () => {
     expect(res.end).not.toHaveBeenCalled();
   });
 
-  it('calls authModelUse and handles unauthorized model error gracefully in SSE', async () => {
-    mocks.authModelUse.mockRejectedValueOnce(new UserError('unAuthModel'));
+  it('calls assertAuthModels and handles unauthorized model error gracefully in SSE', async () => {
+    mocks.assertAuthModels.mockRejectedValueOnce(new UserError('unAuthModel'));
     const chunks: string[] = [];
     const res = {
       setHeader: vi.fn(),
@@ -198,11 +201,12 @@ describe('optimizePrompt SSE error handling', () => {
       res as any
     );
 
-    expect(mocks.authModelUse).toHaveBeenCalledWith({
-      modelId: '68ad85a7463006c963799a05',
-      tmbId: 'member-1',
-      teamId: 'team-1'
+    expect(mocks.assertAuthModels).toHaveBeenCalledWith({
+      actor: { teamId: 'team-1', tmbId: 'member-1', isRoot: false },
+      modelIds: ['68ad85a7463006c963799a05'],
+      action: 'use'
     });
+    expect(mocks.getLLMModelData).not.toHaveBeenCalled();
     expect(res.end).toHaveBeenCalled();
     const output = chunks.join('');
     expect(output).toContain('event: error');

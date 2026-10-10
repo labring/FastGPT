@@ -1,25 +1,25 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import {
-  claimTrainingTask,
-  TrainingLeaseLostError,
-  type TrainingTaskLease
-} from '@fastgpt/service/core/dataset/training/service';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { checkTeamAiPointsAndLock } from './utils';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { delay } from '@fastgpt/global/common/system/utils';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
 import { getMaxIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import type {
   DatasetDataSchemaType,
   DatasetSchemaType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { delay } from '@fastgpt/global/common/system/utils';
-import type { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { isDatasetDataIndexed } from '@fastgpt/global/core/dataset/data/utils';
-import { updateDatasetDataByIndexes } from '@/service/core/dataset/data/data';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import {
+  claimTrainingTask,
+  TrainingLeaseLostError,
+  type TrainingTaskLease
+} from '@fastgpt/service/core/dataset/training/service';
 import { getIndexTrainingUpdateInput } from './indexInput';
+import { checkTeamAiPointsAndLock } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 

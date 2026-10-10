@@ -1,10 +1,10 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
 import {
   GetSystemModelsResponseSchema,
   type GetSystemModelsResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
+import { getSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getModelProviderMetadata } from '@fastgpt/service/core/ai/model/provider/controller';
 
 /** 返回无需鉴权的公开系统模型价格目录。 */
 async function handler(): Promise<GetSystemModelsResponse> {

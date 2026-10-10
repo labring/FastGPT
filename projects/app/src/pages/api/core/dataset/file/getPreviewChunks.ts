@@ -1,33 +1,33 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
-import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/next/type';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authDatasetFileKey } from '@fastgpt/service/support/permission/auth/file';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import {
-  createDatasetFileS3KeyFilter,
-  isAuthorizedDatasetFileS3Key
-} from '@fastgpt/service/common/s3/sources/dataset/key';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize,
   maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import {
+  createDatasetFileS3KeyFilter,
+  isAuthorizedDatasetFileS3Key
+} from '@fastgpt/service/common/s3/sources/dataset/key';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
+import { authDatasetFileKey } from '@fastgpt/service/support/permission/auth/file';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
 
-import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
-import { addDays } from 'date-fns';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
   type GetPreviewChunksBody,
   type GetPreviewChunksResponse
 } from '@fastgpt/global/openapi/core/dataset/file/api';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { addDays } from 'date-fns';
 
 async function handler(
   req: ApiRequestProps<GetPreviewChunksBody>

@@ -1,20 +1,20 @@
-import type { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
 import {
   GetAppVersionDetailQuerySchema,
   GetAppVersionDetailResponseSchema,
   type GetAppVersionDetailResponseType
 } from '@fastgpt/global/openapi/core/app/version/api';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 import { normalizeAppVersionWorkflow } from '@fastgpt/service/core/app/version/controller';
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { AppResourcesSchema } from '@fastgpt/global/core/app/type';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import type { NextApiRequest } from 'next';
 
 async function handler(req: NextApiRequest): Promise<GetAppVersionDetailResponseType> {
   const { versionId, appId } = parseApiInput({

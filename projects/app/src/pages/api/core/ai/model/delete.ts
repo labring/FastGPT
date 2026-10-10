@@ -1,12 +1,12 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { authModelConfig } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteModelsBodySchema,
   type DeleteModelsBody
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import { deleteModelsWithLifecycle } from '@fastgpt/service/core/ai/model/lifecycle';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { deleteModels } from '@fastgpt/service/core/ai/model/service';
 
 async function handler(req: ApiRequestProps<DeleteModelsBody>): Promise<void> {
   const { modelIds, channelType } = parseApiInput({
@@ -14,13 +14,15 @@ async function handler(req: ApiRequestProps<DeleteModelsBody>): Promise<void> {
     bodySchema: DeleteModelsBodySchema
   }).body;
 
-  const { tmbId, teamId } = await authModelManage({ req, channelType });
+  const {
+    actor: { tmbId, teamId }
+  } = await authModelConfig({ req, modelIds, channelType });
 
-  await deleteModelsWithLifecycle({
+  await deleteModels({
     modelIds,
     channelType,
     teamId,
-    tmbId: channelType === 'team' ? tmbId : undefined
+    tmbId
   });
 }
 

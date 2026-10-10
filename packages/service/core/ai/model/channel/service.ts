@@ -11,8 +11,8 @@ import type {
 import type { ChannelType } from '@fastgpt/global/core/ai/model/scope';
 import { getCachedTypeMetas } from './cache';
 import { resolveChannelForOperation, resolveChannelsForOperation } from './resolve';
-import { getAiproxyClientByGroupId, getAiproxyClientByScope } from './client';
-import { getChannelAffectedModels, getBatchChannelsAffectedModels } from './association';
+import { getAiproxyClientByScope } from './client';
+import { getChannelsAffectedModels } from './association';
 
 /** 获取并缓存渠道提供商的表单元数据。 */
 export const getChannelTypeMetas = (): Promise<
@@ -97,10 +97,8 @@ export const updateChannel = async ({
   tmbId,
   channelData
 }: ChannelScope & { id: number; channelData: Partial<ChannelConfig> }): Promise<void> => {
-  const resolved = await resolveChannelForOperation({ id, channelType, tmbId });
-  const client = getAiproxyClientByGroupId(
-    resolved.kind === 'group' ? resolved.groupId : undefined
-  ).channels;
+  await resolveChannelForOperation({ id, channelType, tmbId });
+  const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
 
   if (channelData.name) {
     await assertChannelNameUnique({ client, name: channelData.name, excludeId: id });
@@ -123,10 +121,8 @@ export const updateChannelStatus = async ({
   channelType,
   tmbId
 }: UpdateChannelStatusBody & Pick<ChannelScope, 'tmbId'>): Promise<void> => {
-  const resolved = await resolveChannelForOperation({ id, channelType, tmbId });
-  await getAiproxyClientByGroupId(
-    resolved.kind === 'group' ? resolved.groupId : undefined
-  ).channels.updateStatus(id, status);
+  await resolveChannelForOperation({ id, channelType, tmbId });
+  await getAiproxyClientByScope({ channelType, tmbId }).channels.updateStatus(id, status);
 };
 
 /** 删除已校验归属的渠道，删除前按 teamId 读取模型目录并计算失去全部可用渠道的模型。 */
@@ -141,11 +137,14 @@ export const deleteChannel = async ({
 }): Promise<{
   affectedModels: AffectedModel[];
 }> => {
-  const resolved = await resolveChannelForOperation({ id, channelType, tmbId });
-  const affectedModels = await getChannelAffectedModels(resolved.channel, teamId);
-  await getAiproxyClientByGroupId(
-    resolved.kind === 'group' ? resolved.groupId : undefined
-  ).channels.delete(id);
+  const channel = await resolveChannelForOperation({ id, channelType, tmbId });
+  const affectedModels = await getChannelsAffectedModels({
+    channels: [channel],
+    channelType,
+    teamId,
+    tmbId
+  });
+  await getAiproxyClientByScope({ channelType, tmbId }).channels.delete(id);
   return { affectedModels };
 };
 
@@ -159,25 +158,20 @@ export const batchOperateChannels = async ({
   tmbId: string;
   teamId: string;
 }): Promise<{ affectedModels?: AffectedModel[] }> => {
-  const resolved = await resolveChannelsForOperation({
-    ids: body.ids,
-    channelType: body.channelType,
-    tmbId
-  });
+  const { channelType } = body;
+  const channels = await resolveChannelsForOperation({ ids: body.ids, channelType, tmbId });
+  const client = getAiproxyClientByScope({ channelType, tmbId }).channels;
   if (body.action === 'delete') {
-    const affectedModels = await getBatchChannelsAffectedModels(
-      resolved.map((item) => item.channel),
-      teamId
-    );
-    await getAiproxyClientByScope({ channelType: body.channelType, tmbId }).channels.batchDelete(
-      body.ids
-    );
+    const affectedModels = await getChannelsAffectedModels({
+      channels,
+      channelType,
+      teamId,
+      tmbId
+    });
+    await client.batchDelete(body.ids);
     return { affectedModels };
   }
 
-  await getAiproxyClientByScope({
-    channelType: body.channelType,
-    tmbId
-  }).channels.batchUpdateStatus(body.ids, body.status);
+  await client.batchUpdateStatus(body.ids, body.status);
   return {};
 };

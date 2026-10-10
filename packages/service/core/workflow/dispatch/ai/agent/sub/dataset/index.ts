@@ -1,40 +1,40 @@
-import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
-import { getTeamModelHandle } from '../../../../../../ai/model/index';
-import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createLLMResponse } from '../../../../../../ai/llm/request';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { countPromptTokens } from '../../../../../../../common/string/tiktoken/index';
-import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { resolveReadableCollectionIds } from '../../../../../../../support/permission/collection/auth';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getDatasetSearchToolResponsePrompt } from '@fastgpt/global/core/ai/prompt/dataset.const';
-import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
-import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
+import { calculateCompressionThresholds } from '../../../../../../ai/llm/compress/constants';
+import { createLLMResponse } from '../../../../../../ai/llm/request';
+import { getTeamModelHandle } from '../../../../../../ai/model/catalog/service';
+import { parseJsonArgs } from '../../../../../../ai/utils';
 import {
   defaultSearchDatasetData,
   type DefaultSearchDatasetDataProps
 } from '../../../../../../dataset/search';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getLogger, LogCategories } from '../../../../../../../common/logger';
-import type { DispatchSubAppResponse } from '../../type';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { DatasetSearchToolSchema } from './utils';
-import { formatCollectionFilterMatchParam } from '@fastgpt/global/core/dataset/search/tagFilter';
-import { parseJsonArgs } from '../../../../../../ai/utils';
-import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import {
-  createImageCaptionChildNodeResponse,
-  createChunkSelectionChildNodeResponse,
-  createQueryExtensionChildNodeResponse
-} from '../../../../dataset/nodeResponse';
+import { getDatasetSearchAuxiliaryModels } from '../../../../../../dataset/search/auxiliaryModels';
+import { getDatasetSearchVlmModel } from '../../../../../../dataset/search/vlm';
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 import { loadWorkflowDatasetResource } from '../../../../../utils/resource';
-import { resolveReadableCollectionIds } from '../../../../../../../support/permission/collection/auth';
+import {
+  createChunkSelectionChildNodeResponse,
+  createImageCaptionChildNodeResponse,
+  createQueryExtensionChildNodeResponse
+} from '../../../../dataset/nodeResponse';
 import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
-import type { LLMModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { createNodeSummary, getNodeSummaryData } from '../../../../utils/summary';
+import type { DispatchSubAppResponse } from '../../type';
+import { DatasetSearchToolSchema } from './utils';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {

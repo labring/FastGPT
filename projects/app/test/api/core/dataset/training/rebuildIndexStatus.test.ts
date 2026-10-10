@@ -1,20 +1,20 @@
-import { getModelTestDefaults, addModelTestModel } from '@test/modelCache';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/core/dataset/training/rebuildEmbedding';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexStatusEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { getRootUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
-import type { EmbeddingModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { serviceEnv } from '@fastgpt/service/env';
-vi.unmock('@fastgpt/service/core/ai/model');
+import { getRootUser } from '@test/datas/users';
+import { addModelTestModel, getModelTestDefaults } from '@test/modelCache';
+import { Call } from '@test/utils/request';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+vi.unmock('@fastgpt/service/core/ai/model/catalog/service');
 
 import { enqueueNextDatasetRebuildTask } from '@/service/core/dataset/queues/rebuild';
 import { enqueueNextDatasetSynonymRebuildTask } from '@/service/core/dataset/queues/rebuildSynonym';

@@ -849,6 +849,7 @@ export class WorkflowQueue {
       // await assertWorkflowNodeModelResources({
       //   node,
       //   params,
+      //   teamId: this.data.runningUserInfo.teamId,
       //   tmbId: this.data.runningUserInfo.tmbId
       // });
       const nodeSummary = createNodeSummary();

@@ -1,46 +1,46 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
 /* Dataset collection source parse, not max size. */
 
-import { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { delay } from '@fastgpt/global/common/system/utils';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   DatasetSourceReadTypeEnum,
+  ParagraphChunkAIModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import type {
   DatasetCollectionSchemaType,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { checkTeamAiPointsAndLock } from './utils';
-import { delay } from '@fastgpt/global/common/system/utils';
-import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
-import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
-import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
+import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import {
   preCreateDatasetDataAndPushToTrainingQueue,
   pushDataListToTrainingQueue
 } from '@fastgpt/service/core/dataset/training/controller';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { hashStr } from '@fastgpt/global/common/string/tools';
-import { postCreateParagraphTitle } from '@fastgpt/service/thirdProvider/fastgptPro/api';
-import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   claimTrainingTask,
   TrainingLeaseLostError
 } from '@fastgpt/service/core/dataset/training/service';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { postCreateParagraphTitle } from '@fastgpt/service/thirdProvider/fastgptPro/api';
+import { getDatasetIultmzhFileParseConfig } from '@fastgpt/service/thirdProvider/sangfor/parseConfig';
+import { checkTeamAiPointsAndLock } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 

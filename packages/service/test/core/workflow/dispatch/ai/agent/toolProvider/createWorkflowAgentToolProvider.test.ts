@@ -1,9 +1,9 @@
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createWorkflowAgentToolProvider as createWorkflowAgentToolProviderWithoutContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/toolProvider';
 import {
   getWorkflowFileContext,
   runWithContext
 } from '@fastgpt/service/core/workflow/utils/context';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { describe, expect, it, vi } from 'vitest';
 
 const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock, getLLMModelDataMock } =
@@ -18,17 +18,17 @@ const { dispatchWorkflowReadFilesMock, dispatchAgentDatasetSearchMock, getLLMMod
     }))
   }));
 
-vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()),
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()),
   getSystemModelHandle: async () => ({
     ...(await (
-      await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
     ).getSystemModelHandle()),
     getLLMModelData: getLLMModelDataMock
   }),
   getTeamModelHandle: async () => ({
     ...(await (
-      await importOriginal<typeof import('@fastgpt/service/core/ai/model')>()
+      await importOriginal<typeof import('@fastgpt/service/core/ai/model/catalog/service')>()
     ).getSystemModelHandle()),
     getLLMModelData: getLLMModelDataMock
   })

@@ -1,15 +1,15 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { authModelScope } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
-import { searchChannelLogs } from '@fastgpt/service/core/ai/model/channel/observability';
-import { resolveChannelObservabilityScope } from '@fastgpt/service/core/ai/model/channel/resolve';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetChannelLogsQuerySchema,
   GetChannelLogsResponseSchema,
   type GetChannelLogsQuery,
   type GetChannelLogsResponse
 } from '@fastgpt/global/openapi/core/ai/model/channel/api';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { searchChannelLogs } from '@fastgpt/service/core/ai/model/channel/observability';
+import { resolveChannelObservabilityScope } from '@fastgpt/service/core/ai/model/channel/resolve';
 
 /**
  * 查询当前登录成员可访问范围内的渠道日志。
@@ -20,12 +20,11 @@ async function handler(
 ): Promise<GetChannelLogsResponse> {
   const query = parseApiInput({ req, querySchema: GetChannelLogsQuerySchema }).query;
   const { channelType, channelId, ...filters } = query;
-  const { tmbId, isRoot } = await authModelManage({ req, channelType, resource: 'channel' });
+  const { tmbId } = await authModelScope({ req, channelType });
   const { groupId } = await resolveChannelObservabilityScope({
     channelType,
     channelId,
-    tmbId,
-    isRoot
+    tmbId
   });
 
   const result = await searchChannelLogs({ ...filters, channelId, groupId });

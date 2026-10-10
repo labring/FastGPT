@@ -1,14 +1,14 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { authModelScope } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelManage } from '@fastgpt/service/support/permission/model/auth';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { createModelsFromTemplatesWithLifecycle } from '@fastgpt/service/core/ai/model/lifecycle';
 import {
   CreateModelsFromTemplatesBodySchema,
-  type CreateModelsFromTemplatesBody,
   CreateModelsFromTemplatesResponseSchema,
+  type CreateModelsFromTemplatesBody,
   type CreateModelsFromTemplatesResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createModelsFromTemplates } from '@fastgpt/service/core/ai/model/service';
 
 async function handler(
   req: ApiRequestProps<CreateModelsFromTemplatesBody>
@@ -18,14 +18,14 @@ async function handler(
     bodySchema: CreateModelsFromTemplatesBodySchema
   }).body;
 
-  const { tmbId, teamId } = await authModelManage({ req, channelType });
+  const { tmbId, teamId } = await authModelScope({ req, channelType });
 
-  const result = await createModelsFromTemplatesWithLifecycle({
+  const result = await createModelsFromTemplates({
     templates,
     channelIds,
     channelType,
-    tmbId: channelType === 'team' ? tmbId : undefined,
-    teamId: channelType === 'team' ? teamId : undefined
+    teamId,
+    tmbId
   });
 
   return CreateModelsFromTemplatesResponseSchema.parse(result);

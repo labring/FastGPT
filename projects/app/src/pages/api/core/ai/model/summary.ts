@@ -6,13 +6,14 @@ import {
   type GetModelSummariesBody,
   type GetModelSummariesResponse
 } from '@fastgpt/global/openapi/core/ai/model/summary';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getMemberModelCatalogPermission } from '@fastgpt/service/support/permission/model/catalog';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
 import { getAppDraftResourceBaseline } from '@fastgpt/service/core/app/version/controller';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { isKnownUnauthorizedError } from '@fastgpt/service/support/permission/app/resource';
+import { authModels } from '@fastgpt/service/support/permission/model/auth';
 
 /**
  * 只返回展示白名单字段；停用模型照常鉴权，无权限模型允许显示名称，但绝不泄露执行配置。
@@ -27,12 +28,9 @@ export async function handler(
   }).body;
   const identity = await authModelViewer({ req, outLinkAuthData });
   const modelHandle = await getTeamModelHandle({ teamId: identity.teamId });
-  const { modelIds: permittedIds } = await getMemberModelCatalogPermission({
-    ...identity,
-    includeInactive: true,
-    catalogSnapshot: { models: modelHandle.getAllModels(), version: modelHandle.version }
-  });
-  const permitted = new Set(permittedIds);
+  const deniedIds = new Set(
+    await authModels({ actor: identity, modelIds, action: 'use', handle: modelHandle })
+  );
 
   const appBaselineModelIds = new Set<string>();
   if (appId && !outLinkAuthData) {
@@ -49,8 +47,9 @@ export async function handler(
           appBaselineModelIds.add(resource.id);
         }
       });
-    } catch {
-      // 鉴权失败或非本团队应用时不合并基线模型，回退到用户自身权限
+    } catch (error) {
+      // 鉴权失败或非本团队应用时不合并基线模型，回退到用户自身权限；存储异常正常抛出。
+      if (!isKnownUnauthorizedError(error)) throw error;
     }
   }
 
@@ -58,7 +57,7 @@ export async function handler(
     models: modelIds.map((modelId) => {
       const model = modelHandle.findModelData({ modelId });
       if (!model) return { modelId, status: 'deleted' };
-      const isPermitted = permitted.has(modelId) || appBaselineModelIds.has(modelId);
+      const isPermitted = !deniedIds.has(modelId) || appBaselineModelIds.has(modelId);
       return {
         modelId,
         name: model.name,

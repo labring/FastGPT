@@ -1,17 +1,19 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { authModelScopeOperation } from '@fastgpt/service/support/permission/model/auth';
-import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { AIModelDocumentDataSchema } from '@fastgpt/global/core/ai/model/schema';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import { AIModelDocumentDataSchema } from '@fastgpt/global/core/ai/model/schema';
 import {
   GetSystemModelConfigJsonResponseSchema,
   ImportedSystemModelSchema,
   type GetSystemModelConfigJsonResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 
 async function handler(req: ApiRequestProps): Promise<GetSystemModelConfigJsonResponse> {
-  await authModelScopeOperation({ req, channelType: 'system' });
+  const actor = await authUserPer({ req, authToken: true });
+  if (!actor.isRoot) throw ModelErrEnum.rootOnlyPermit;
 
   const models = await MongoAIModel.find({ scope: ModelScopeEnum.system }).lean();
 

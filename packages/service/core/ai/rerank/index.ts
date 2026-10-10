@@ -1,14 +1,14 @@
-import { getSystemModelHandle } from '../model/index';
 import { axiosWithoutSSRF } from '../../../common/api/axios';
+import { getSystemModelHandle } from '../model/catalog/service';
 
-import { getModelAxiosConfig } from '../config';
-import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
-import { type RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { countPromptTokens } from '../../../common/string/tiktoken';
-import { getLogger, LogCategories } from '../../../common/logger';
-import { text2Chunks } from '../../../worker/function';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { UserError } from '@fastgpt/global/common/error/utils';
+import { type RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getLogger, LogCategories } from '../../../common/logger';
+import { countPromptTokens } from '../../../common/string/tiktoken';
+import { normalizeRelayNoChannelError } from '../../../thirdProvider/aiproxy/error';
+import { text2Chunks } from '../../../worker/function';
+import { getModelAxiosConfig } from '../config';
 
 const logger = getLogger(LogCategories.MODULE.AI.RERANK);
 

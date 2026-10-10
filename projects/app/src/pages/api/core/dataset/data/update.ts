@@ -1,26 +1,25 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 import {
-  updateDatasetDataSystemIndexes,
-  updateDatasetDataByIndexes
+  updateDatasetDataByIndexes,
+  updateDatasetDataSystemIndexes
 } from '@/service/core/dataset/data/data';
-import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { NextAPI } from '@/service/middleware/entry';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
-import { type ApiRequestProps } from '@fastgpt/next/type';
-import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
-import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import {
   UpdateDatasetDataBodySchema,
   UpdateDatasetDataResponseSchema,
   type UpdateDatasetDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
-import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { createDatasetFileS3KeyFilter } from '@fastgpt/service/common/s3/sources/dataset/key';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { replaceS3KeysToPreviewUrls } from '@fastgpt/service/common/s3/utils/preview';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
+import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { addHours } from 'date-fns';
 
 async function handler(req: ApiRequestProps): Promise<UpdateDatasetDataResponse> {

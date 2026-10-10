@@ -1,13 +1,13 @@
 import {
   getCachedSystemModelHandle,
   publishSystemModelHandle
-} from '@fastgpt/service/core/ai/model/cache';
+} from '@fastgpt/service/core/ai/model/catalog/cache';
 
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { type CreateModelBody } from '@fastgpt/global/openapi/core/ai/model/api';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const external = vi.hoisted(() => ({
   listModels: vi.fn()
@@ -20,27 +20,32 @@ vi.mock('@fastgpt/service/core/ai/model/provider/controller', () => ({
   preloadModelProviders: vi.fn().mockResolvedValue(undefined),
   getModelProvider: (provider: string) => ({ id: provider, name: provider, avatar: '', order: 0 })
 }));
+vi.mock('@fastgpt/service/core/ai/model/channel/binding', () => ({
+  updateModelChannelBindings: vi.fn().mockResolvedValue(undefined),
+  syncModelNameInChannels: vi.fn().mockResolvedValue(undefined),
+  removeModelsFromChannels: vi.fn().mockResolvedValue(undefined)
+}));
 
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { connectionMongo } from '@fastgpt/service/common/mongo';
+import * as catalogEntity from '@fastgpt/service/core/ai/model/catalog/entity';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+import {
+  loadInstalledModels,
+  refreshModelHandle
+} from '@fastgpt/service/core/ai/model/catalog/service';
+import { updateSystemDefaultModels } from '@fastgpt/service/core/ai/model/default/service';
+import { importSystemModels } from '@fastgpt/service/core/ai/model/import';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import {
   createModel as createSystemModel,
   createModelsFromTemplates as createSystemModelsFromTemplates,
   deleteModels as deleteSystemModels,
-  updateModel as updateSystemModel,
-  updateModelStatus
-} from '@fastgpt/service/core/ai/model/mutation';
-import { updateSystemDefaultModels } from '@fastgpt/service/core/ai/model/default/service';
-import { importSystemModels } from '@fastgpt/service/core/ai/model/import';
-import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+  updateModelStatus,
+  updateModel as updateSystemModel
+} from '@fastgpt/service/core/ai/model/service';
 import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
-import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
-import * as catalogEntity from '@fastgpt/service/core/ai/model/catalog/entity';
-import {
-  refreshModelHandle,
-  loadInstalledModels
-} from '@fastgpt/service/core/ai/model/catalog/service';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 /** 通过接口真实 schema 的推导类型构造完整草稿。 */
 const createDraft = (model: string): CreateModelBody['modelData'] => ({

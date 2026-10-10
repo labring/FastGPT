@@ -1,14 +1,18 @@
+import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import {
   ModelStatusProbeConfigDefaults,
   ModelStatusProbeConfigSchema,
   type ModelStatusProbeConfig
 } from '@fastgpt/global/common/system/config/modelStatus';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
+import { batchRun, delay } from '@fastgpt/global/common/system/utils';
+import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import {
   ModelStatusProbeStatusEnum,
   type ModelStatusProbeStatus
 } from '@fastgpt/global/core/ai/model/status';
-import type { AIModelDataType } from '@fastgpt/global/core/ai/model/schema';
 import type {
   GetModelStatusResponse,
   ModelStatusProbeConfigResponse,
@@ -16,22 +20,18 @@ import type {
   ModelStatusProbeRecord,
   ModelStatusProbeTimelinePoint,
   RunModelStatusProbeResponse,
-  UpdateModelStatusProbeConfigBody,
   TestModelStatusWebhookBody,
-  TestModelStatusWebhookResponse
+  TestModelStatusWebhookResponse,
+  UpdateModelStatusProbeConfigBody
 } from '@fastgpt/global/openapi/admin/system/model/status';
-import { LeaseCache, RedisLeaseUnavailableError } from '@fastgpt/dal/redis/caches';
-import { batchRun, delay } from '@fastgpt/global/common/system/utils';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { MongoSystemConfigs } from '../../../common/system/config/schema';
-import { getSystemModelHandle } from '../model/index';
 import { MongoUser } from '../../../support/user/schema';
 import { getUserDefaultTeam } from '../../../support/user/team/controller';
+import { getSystemModelHandle } from '../model/catalog/service';
+import { MODEL_TEST_TIMEOUT_MS, testModelConnection } from '../model/test';
 import { MongoModelStatusProbeRecord } from './schema';
 import type { ModelStatusProbeRecordType } from './type';
-import { MODEL_TEST_TIMEOUT_MS, testModelConnection } from '../model/test';
 
 /** 模型探测单次调用的超时时间（复用模型测试统一超时常量） */
 const MODEL_STATUS_REQUEST_TIMEOUT_MS = MODEL_TEST_TIMEOUT_MS;

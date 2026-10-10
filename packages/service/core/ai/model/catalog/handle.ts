@@ -1,21 +1,21 @@
-import { assertModelAvailable } from '../utils';
-import { cloneDeep } from 'lodash-es';
+import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { isSystemModel, isTeamModel } from '@fastgpt/global/core/ai/model/utils';
+import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
+import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
 import type {
+  AIModelDataType,
   EmbeddingModelDataType,
   LLMModelDataType,
   ModelReferenceType,
   RerankModelDataType,
   STTModelDataType,
-  AIModelDataType,
   TTSModelDataType
 } from '@fastgpt/global/core/ai/model/schema';
-import type { ModelDefaultIds } from '@fastgpt/global/core/ai/model/default';
-import type { SystemDefaultModelType } from '../type';
-import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
-import { UserError } from '@fastgpt/global/common/error/utils';
-import { getModelReferenceValue, isEmptyModelValue } from '@fastgpt/global/core/ai/model/reference';
+import { isSystemModel, isTeamModel } from '@fastgpt/global/core/ai/model/utils';
+import { cloneDeep } from 'lodash-es';
+import type { SystemDefaultModelType } from '../../type';
+import { assertModelAvailable } from '../../utils';
 
 type ModelSnapshot = {
   models: AIModelDataType[];

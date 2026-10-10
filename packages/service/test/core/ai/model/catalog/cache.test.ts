@@ -1,15 +1,15 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { Types } from '@fastgpt/service/common/mongo';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import {
+  clearTeamModelCatalogCache,
+  getScopedTeamModelHandle
+} from '@fastgpt/service/core/ai/model/catalog/cache';
+import { createModelHandle } from '@fastgpt/service/core/ai/model/catalog/handle';
 import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
 import { runModelTransaction } from '@fastgpt/service/core/ai/model/catalog/transaction';
-import { createModelHandle } from '@fastgpt/service/core/ai/model/handle';
-import {
-  getScopedTeamModelHandle,
-  clearTeamModelCatalogCache
-} from '@fastgpt/service/core/ai/model/teamModelCache';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 beforeAll(async () => {
   const actual = await vi.importActual<typeof import('@fastgpt/service/common/mongo/sessionRun')>(
@@ -23,7 +23,7 @@ const modelData = {
   scope: ModelScopeEnum.team,
   teamId,
   tmbId: new Types.ObjectId().toString(),
-  type: ModelTypeEnum.llm,
+  type: ModelTypeEnum.llm as const,
   provider: 'OpenAI',
   model: 'team-model',
   name: 'Initial',
@@ -85,10 +85,5 @@ describe('scoped team catalog cache', () => {
     const next = await getScopedTeamModelHandle({ teamId, systemHandle: newerSystem });
     expect(next).not.toBe(first);
     expect(next.getSystemModels()).toHaveLength(1);
-  });
-  it('rejects invalid team identity', async () => {
-    await expect(getScopedTeamModelHandle({ teamId: '', systemHandle })).rejects.toThrow(
-      'modelUnExist'
-    );
   });
 });

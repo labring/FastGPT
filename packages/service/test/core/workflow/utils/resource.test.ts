@@ -1,20 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   mongoDatasetFind: vi.fn(),
   mongoDatasetFindOne: vi.fn(),
-  checkAppResourceReadPermissions: vi.fn(),
+  assertAuthModels: vi.fn(),
   resolveAppResourcesByPermission: vi.fn(),
   getSystemModelHandle: vi.fn(),
   getTeamModelHandle: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: mocks.getSystemModelHandle,
   getTeamModelHandle: mocks.getSystemModelHandle
 }));
@@ -32,8 +32,11 @@ vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => {
 });
 
 vi.mock('@fastgpt/service/support/permission/app/resource', () => ({
-  checkAppResourceReadPermissions: mocks.checkAppResourceReadPermissions,
   resolveAppResourcesByPermission: mocks.resolveAppResourcesByPermission
+}));
+
+vi.mock('@fastgpt/service/support/permission/model/auth', () => ({
+  assertAuthModels: mocks.assertAuthModels
 }));
 
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
@@ -58,7 +61,7 @@ describe('workflow resource context', () => {
       createFindResult([{ _id: 'dataset-1' }, { _id: 'dataset-2' }])
     );
     mocks.mongoDatasetFindOne.mockReturnValue(createFindResult({ _id: 'dataset-2' }));
-    mocks.checkAppResourceReadPermissions.mockResolvedValue(undefined);
+    mocks.assertAuthModels.mockResolvedValue({ handle: {}, models: [] });
     mocks.getSystemModelHandle.mockResolvedValue({
       getAllModels: () => [],
       getSystemDefaultModelIds: () => ({})
@@ -114,6 +117,7 @@ describe('workflow resource context', () => {
         assertWorkflowNodeModelResources({
           node: createNode(FlowNodeInputTypeEnum.selectLLMModel),
           params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
+          teamId: 'team-1',
           tmbId: 'tmb-1'
         })
       ).resolves.toBeUndefined();
@@ -121,6 +125,7 @@ describe('workflow resource context', () => {
         assertWorkflowNodeModelResources({
           node: createNode(FlowNodeInputTypeEnum.selectLLMModel),
           params: { [NodeInputKeyEnum.aiModelId]: 'missing-model' },
+          teamId: 'team-1',
           tmbId: 'tmb-1'
         })
       ).rejects.toBeInstanceOf(WorkflowResourceError);
@@ -128,12 +133,17 @@ describe('workflow resource context', () => {
         assertWorkflowNodeModelResources({
           node: createNode(FlowNodeInputTypeEnum.reference),
           params: { [NodeInputKeyEnum.aiModelId]: 'model-1' },
+          teamId: 'team-1',
           tmbId: 'tmb-1'
         })
       ).resolves.toBeUndefined();
     });
 
-    expect(mocks.checkAppResourceReadPermissions).toHaveBeenCalledOnce();
+    expect(mocks.assertAuthModels).toHaveBeenCalledExactlyOnceWith({
+      actor: { teamId: 'team-1', tmbId: 'tmb-1', isRoot: false },
+      modelIds: ['model-1'],
+      action: 'use'
+    });
   });
 
   it('does not authorize dataset models when no dataset is selected', async () => {
@@ -166,10 +176,11 @@ describe('workflow resource context', () => {
           [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: true,
           [NodeInputKeyEnum.datasetSearchExtensionModelId]: 'missing-model'
         },
+        teamId: 'team-1',
         tmbId: 'tmb-1'
       })
     ).resolves.toBeUndefined();
-    expect(mocks.checkAppResourceReadPermissions).not.toHaveBeenCalled();
+    expect(mocks.assertAuthModels).not.toHaveBeenCalled();
   });
 
   it('normalizes legacy model name and legacy keys when preparing debug context', async () => {
@@ -217,6 +228,7 @@ describe('workflow resource context', () => {
       assertWorkflowNodeModelResources({
         node: nodes[0],
         params: { [NodeInputKeyEnum.aiModelId]: 'resolved-model-id' },
+        teamId: 'team-1',
         tmbId: 'tmb-1'
       })
     );

@@ -1,18 +1,30 @@
-import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
-import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
-import { readModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog/entity';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import { Types } from '@fastgpt/service/common/mongo';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
-import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import { publishSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
+import { Types } from '@fastgpt/service/common/mongo';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import {
+  clearTeamModelCatalogCache,
+  publishSystemModelHandle
+} from '@fastgpt/service/core/ai/model/catalog/cache';
+import { readModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog/entity';
+import { MongoAIModelCatalog } from '@fastgpt/service/core/ai/model/catalog/schema';
+import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
+import {
+  createModel,
+  createModelsFromTemplates,
+  deleteModels,
+  importSystemModels,
+  restoreModelName,
+  updateModel,
+  updateModelStatus
+} from '@fastgpt/service/core/ai/model/service';
+import { MongoModelStatusProbeRecord } from '@fastgpt/service/core/ai/modelStatus/schema';
+import { resourcePermissionRepo } from '@fastgpt/service/support/permission/repository/resourcePermissionRepo';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const proxy = vi.hoisted(() => ({ append: vi.fn(), rename: vi.fn(), remove: vi.fn() }));
 // 只替换渠道 I/O 边界，模型、版本、ACL 和补偿更新均执行真实数据库实现。
@@ -21,13 +33,6 @@ vi.mock('@fastgpt/service/core/ai/model/channel/binding', () => ({
   syncModelNameInChannels: proxy.rename,
   removeModelsFromChannels: proxy.remove
 }));
-import {
-  createModelWithLifecycle,
-  createModelsFromTemplatesWithLifecycle,
-  updateModelWithLifecycle,
-  deleteModelsWithLifecycle,
-  importSystemModelsWithLifecycle
-} from '@fastgpt/service/core/ai/model/lifecycle';
 
 beforeAll(async () => {
   const actual = await vi.importActual<typeof import('@fastgpt/service/common/mongo/sessionRun')>(
@@ -61,8 +66,8 @@ beforeEach(async () => {
 
 describe('model lifecycle', () => {
   it('preserves stable identity and synchronizes an edited upstream identifier', async () => {
-    const model = await createModelWithLifecycle({ ...owner, modelData: draft, channelIds: [1] });
-    await updateModelWithLifecycle({
+    const model = await createModel({ ...owner, modelData: draft, channelIds: [1] });
+    await updateModel({
       ...owner,
       modelId: model.modelId,
       modelData: { ...draft, model: 'renamed' }
@@ -74,7 +79,7 @@ describe('model lifecycle', () => {
   });
   it('keeps a committed creation successful when the channel binding fails', async () => {
     proxy.append.mockRejectedValueOnce(new Error('proxy unavailable'));
-    const created = await createModelWithLifecycle({ ...owner, modelData: draft, channelIds: [1] });
+    const created = await createModel({ ...owner, modelData: draft, channelIds: [1] });
     expect(await MongoAIModel.exists({ _id: created.modelId })).toBeTruthy();
     expect(proxy.append).toHaveBeenCalledWith({
       model: draft.model,
@@ -91,9 +96,9 @@ describe('model lifecycle', () => {
       .spyOn(templates, 'refreshModelTemplates')
       .mockResolvedValue([draft, second]);
     try {
-      await createModelWithLifecycle({ ...owner, modelData: draft });
+      await createModel({ ...owner, modelData: draft });
       proxy.append.mockRejectedValueOnce(new Error('first binding failed'));
-      const result = await createModelsFromTemplatesWithLifecycle({
+      const result = await createModelsFromTemplates({
         ...owner,
         templates: [draft, second].map(({ model, type }) => ({ model, type })),
         channelIds: [1]
@@ -107,10 +112,10 @@ describe('model lifecycle', () => {
   });
 
   it('compensates the Mongo identifier after failed channel synchronization', async () => {
-    const model = await createModelWithLifecycle({ ...owner, modelData: draft });
+    const model = await createModel({ ...owner, modelData: draft });
     proxy.rename.mockRejectedValueOnce(new Error('proxy unavailable'));
     await expect(
-      updateModelWithLifecycle({
+      updateModel({
         ...owner,
         modelId: model.modelId,
         modelData: { ...draft, model: 'renamed' }
@@ -119,8 +124,8 @@ describe('model lifecycle', () => {
     expect((await MongoAIModel.findById(model.modelId).lean())?.model).toBe('original');
   });
   it('imports stable IDs through the same rename and deletion cleanup used by ordinary CRUD', async () => {
-    const retained = await createModelWithLifecycle({ ...owner, modelData: draft });
-    const removed = await createModelWithLifecycle({
+    const retained = await createModel({ ...owner, modelData: draft });
+    const removed = await createModel({
       ...owner,
       modelData: { ...draft, model: 'removed' }
     });
@@ -131,7 +136,7 @@ describe('model lifecycle', () => {
       tmbId: new Types.ObjectId(),
       permission: ReadPermissionVal
     });
-    await importSystemModelsWithLifecycle({
+    await importSystemModels({
       config: [{ ...draft, modelId: retained.modelId, model: 'imported-name' }]
     });
     expect(await MongoAIModel.countDocuments({})).toBe(1);
@@ -147,15 +152,15 @@ describe('model lifecycle', () => {
     });
   });
   it('compensates failed import renames, continues later renames and cleans deleted mappings', async () => {
-    const first = await createModelWithLifecycle({ ...owner, modelData: draft });
-    const second = await createModelWithLifecycle({
+    const first = await createModel({ ...owner, modelData: draft });
+    const second = await createModel({
       ...owner,
       modelData: { ...draft, model: 'second' }
     });
-    await createModelWithLifecycle({ ...owner, modelData: { ...draft, model: 'removed' } });
+    await createModel({ ...owner, modelData: { ...draft, model: 'removed' } });
     proxy.rename.mockRejectedValueOnce(new Error('first rename failed'));
     await expect(
-      importSystemModelsWithLifecycle({
+      importSystemModels({
         config: [
           { ...draft, modelId: first.modelId, model: 'first-renamed' },
           { ...draft, modelId: second.modelId, model: 'second-renamed' }
@@ -172,8 +177,8 @@ describe('model lifecycle', () => {
     });
   });
   it('cleans all teams ACL and probe history only for the deleted model', async () => {
-    const removed = await createModelWithLifecycle({ ...owner, modelData: draft });
-    const retained = await createModelWithLifecycle({
+    const removed = await createModel({ ...owner, modelData: draft });
+    const retained = await createModel({
       ...owner,
       modelData: { ...draft, model: 'retained' }
     });
@@ -199,7 +204,7 @@ describe('model lifecycle', () => {
         requestEndedAt: new Date()
       });
     }
-    await deleteModelsWithLifecycle({ ...owner, modelIds: [removed.modelId] });
+    await deleteModels({ ...owner, modelIds: [removed.modelId] });
     expect(await MongoResourcePermission.countDocuments({ resourceId: removed.modelId })).toBe(0);
     expect(await MongoModelStatusProbeRecord.countDocuments({ modelId: removed.modelId })).toBe(0);
     expect(await MongoResourcePermission.countDocuments({ resourceId: retained.modelId })).toBe(2);
@@ -208,16 +213,16 @@ describe('model lifecycle', () => {
   });
 
   it('rolls back entity deletion and the catalog revision if cross-domain cleanup fails', async () => {
-    const created = await createModelWithLifecycle({ ...owner, modelData: draft });
+    const created = await createModel({ ...owner, modelData: draft });
     const context = { scope: ModelScopeEnum.system } as const;
     const revision = await readModelCatalogRevision(context);
     const cleanup = vi
       .spyOn(resourcePermissionRepo, 'deleteByResourceIdsAcrossTeams')
       .mockRejectedValueOnce(new Error('ACL unavailable'));
     try {
-      await expect(
-        deleteModelsWithLifecycle({ ...owner, modelIds: [created.modelId] })
-      ).rejects.toThrow('ACL unavailable');
+      await expect(deleteModels({ ...owner, modelIds: [created.modelId] })).rejects.toThrow(
+        'ACL unavailable'
+      );
       expect(await MongoAIModel.exists({ _id: created.modelId })).toBeTruthy();
       expect(await readModelCatalogRevision(context)).toBe(revision);
       expect(proxy.remove).not.toHaveBeenCalled();
@@ -227,11 +232,95 @@ describe('model lifecycle', () => {
   });
 
   it('keeps a committed deletion successful when channel cleanup fails', async () => {
-    const model = await createModelWithLifecycle({ ...owner, modelData: draft });
+    const model = await createModel({ ...owner, modelData: draft });
     proxy.remove.mockRejectedValueOnce(new Error('proxy unavailable'));
-    expect(await deleteModelsWithLifecycle({ ...owner, modelIds: [model.modelId] })).toEqual([
-      'original'
-    ]);
+    expect(await deleteModels({ ...owner, modelIds: [model.modelId] })).toEqual(['original']);
     expect(await MongoAIModel.countDocuments({})).toBe(0);
+  });
+});
+
+describe('team model writes', () => {
+  const teamId = new Types.ObjectId().toString();
+  const tmbId = new Types.ObjectId().toString();
+  const owner = { channelType: 'team' as const, teamId, tmbId };
+  const context = { scope: ModelScopeEnum.team, teamId } as const;
+  const draft = {
+    scope: ModelScopeEnum.team,
+    type: ModelTypeEnum.llm as const,
+    provider: 'OpenAI',
+    model: 'custom',
+    name: 'Custom',
+    isActive: true,
+    config: { maxContext: 16000, maxResponse: 8000, quoteMaxToken: 12000 }
+  };
+
+  beforeEach(async () => {
+    await Promise.all([MongoAIModel.deleteMany({}), MongoAIModelCatalog.deleteMany({})]);
+    clearTeamModelCatalogCache();
+  });
+
+  describe('team model mutations', () => {
+    it('binds trusted ownership and increments only the team catalog revision', async () => {
+      const result = await createModel({
+        ...owner,
+        modelData: { ...draft, teamId: new Types.ObjectId().toString() }
+      });
+      expect(await MongoAIModel.findById(result.modelId).lean()).toMatchObject({ teamId, tmbId });
+      expect(await readModelCatalogRevision(context)).toBe(1);
+      expect(await readModelCatalogRevision({ scope: ModelScopeEnum.system })).toBe(0);
+    });
+    it('rolls back a batch that includes another member model', async () => {
+      const own = await createModel({ ...owner, modelData: draft });
+      const other = await createModel({
+        ...owner,
+        tmbId: new Types.ObjectId().toString(),
+        modelData: draft
+      });
+      await expect(
+        updateModelStatus({
+          modelIds: [own.modelId, other.modelId],
+          isActive: false,
+          channelType: 'team',
+          teamId,
+          tmbId
+        })
+      ).rejects.toThrow('modelUnExist');
+      expect(await MongoAIModel.countDocuments({ isActive: true })).toBe(2);
+      expect(await readModelCatalogRevision(context)).toBe(2);
+    });
+    it('rejects type changes and duplicate names without committing revisions', async () => {
+      const a = await createModel({ ...owner, modelData: draft });
+      await createModel({ ...owner, modelData: { ...draft, model: 'other' } });
+      await expect(
+        updateModel({ ...owner, modelId: a.modelId, modelData: { ...draft, model: 'other' } })
+      ).rejects.toThrow('modelAlreadyExists');
+      await expect(
+        updateModel({
+          ...owner,
+          modelId: a.modelId,
+          modelData: { ...draft, type: ModelTypeEnum.stt, config: {} }
+        })
+      ).rejects.toThrow('Model type cannot be changed');
+      expect(await readModelCatalogRevision(context)).toBe(2);
+    });
+    it('does not let rename compensation overwrite a subsequent rename', async () => {
+      const a = await createModel({ ...owner, modelData: draft });
+      await updateModel({ ...owner, modelId: a.modelId, modelData: { ...draft, model: 'second' } });
+      await updateModel({ ...owner, modelId: a.modelId, modelData: { ...draft, model: 'third' } });
+      await restoreModelName({
+        ...owner,
+        modelId: a.modelId,
+        oldModel: 'custom',
+        newModel: 'second'
+      });
+      expect((await MongoAIModel.findById(a.modelId).lean())?.model).toBe('third');
+    });
+    it('rejects cross-team deletion even for a matching member ID', async () => {
+      const a = await createModel({ ...owner, modelData: draft });
+      await expect(
+        deleteModels({ ...owner, teamId: new Types.ObjectId().toString(), modelIds: [a.modelId] })
+      ).rejects.toThrow('modelUnExist');
+      expect(await MongoAIModel.countDocuments({})).toBe(1);
+    });
   });
 });

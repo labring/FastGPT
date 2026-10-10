@@ -1,39 +1,37 @@
-import { getTeamModelHandle } from '../../../../ai/model/index';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
+import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  AppFormEditFormType,
+  SelectedAgentSkillItemType
+} from '@fastgpt/global/core/app/formEdit/type';
+import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
   ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { AgentToolType } from '@fastgpt/global/core/app/tool/type';
-import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
-import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { getAgentDatasetParams, getSubapps } from './sub/utils';
-import { useUserContext } from './adapter/userContext';
-import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getLogger, LogCategories } from '../../../../../common/logger';
+import { getTeamModelHandle } from '../../../../ai/model/catalog/service';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
+import { useUserContext } from './adapter/userContext';
+import { getAgentDatasetParams, getSubapps } from './sub/utils';
 
-import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
-import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
-import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
-import { getWorkflowFileMaxAmount } from '../../../utils/context';
-import { createAgentNodeResponseCollector } from './nodeResponseCollector';
+import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
 import {
   assertSandboxAvailable,
   resolveAppSandboxAvailability
 } from '../../../../ai/sandbox/interface/runtime';
-import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
-import { replaceAgentPromptToolReferences } from './adapter/prompt';
+import { nodeHasDynamicInput } from '../../../../app/resources';
+import { getWorkflowFileMaxAmount } from '../../../utils/context';
+import { runtimeSummaryToNodeSummary, stripNodeSummaryErrorFields } from '../../utils/summary';
 import {
-  buildAgentLoopCoreInput,
-  buildAgentLoopCorePausedMemories,
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
+  buildAgentLoopCoreInput,
+  buildAgentLoopCorePausedMemories,
   buildAgentLoopCoreProviderStateMemories,
   buildAgentLoopCoreRequestMessages,
   createAgentLoopCoreChildInteractiveParams,
@@ -42,8 +40,12 @@ import {
   readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
-import { buildDefaultAgentSystemPrompt } from '../../../../ai/llm/agentLoop/interface';
-import { nodeHasDynamicInput } from '../../../../app/resources';
+import { ensureWorkflowSandboxReadyForUse } from '../sandbox';
+import { replaceAgentPromptToolReferences } from './adapter/prompt';
+import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
+import { createAgentNodeResponseCollector } from './nodeResponseCollector';
+import { ensureAgentSandboxRuntime, type AgentSandboxPrepareAction } from './sub/sandbox';
+import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];

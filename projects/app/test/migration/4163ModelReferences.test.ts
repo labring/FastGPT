@@ -29,11 +29,11 @@ import { createSystemMigrationRunner } from '@/migration/runner';
 import { systemMigrations } from '@/migration/registry';
 import { getMigrationStates } from '@/migration/entity';
 
-const cacheMocks = vi.hoisted(() => ({ clearAllMyModelsCache: vi.fn() }));
+const cacheMocks = vi.hoisted(() => ({ clearAllMemberModelsCache: vi.fn() }));
 
 vi.mock('@fastgpt/service/support/permission/model/cache', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@fastgpt/service/support/permission/model/cache')>()),
-  clearAllMyModelsCache: cacheMocks.clearAllMyModelsCache
+  clearAllMemberModelsCache: cacheMocks.clearAllMemberModelsCache
 }));
 
 const createStoredModel = ({ model, type }: { model: string; type: ModelTypeEnum }) =>
@@ -288,7 +288,7 @@ describe('4163 dataset model reference migration', () => {
     await expect(
       MongoResourcePermission.collection.findOne({ resourceName: 'removed-model' })
     ).resolves.toBeNull();
-    expect(cacheMocks.clearAllMyModelsCache).toHaveBeenCalledTimes(1);
+    expect(cacheMocks.clearAllMemberModelsCache).toHaveBeenCalledTimes(1);
   });
 
   it('migrates app, app-version, and template stages with one independent model snapshot', async () => {
@@ -400,7 +400,7 @@ describe('4163 dataset model reference migration', () => {
     expect([...state.getProgress().values()].every((item) => item.status === 'succeeded')).toBe(
       true
     );
-    expect(cacheMocks.clearAllMyModelsCache).not.toHaveBeenCalled();
+    expect(cacheMocks.clearAllMemberModelsCache).not.toHaveBeenCalled();
   });
 
   it('preserves unrelated legacy workflow values while backfilling config and model IDs', async () => {

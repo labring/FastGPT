@@ -1,33 +1,33 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
-import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
-import { addDays } from 'date-fns';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { addDays } from 'date-fns';
 
-import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import path from 'node:path';
-import fs from 'node:fs';
-import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
-import { multer } from '@fastgpt/service/common/file/multer';
-import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
-import { validateUploadFile } from '@fastgpt/service/common/s3/validation/upload';
 import {
   InsertImagesBodySchema,
   InsertImagesResponseSchema,
   type InsertImagesResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
-import { datasetImageCollectionFileType } from '@fastgpt/global/common/file/constants';
-import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
-import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
+import { multer } from '@fastgpt/service/common/file/multer';
 import { assertUploadRateLimit } from '@fastgpt/service/common/rateLimit/interface/upload';
+import { decodeMultipartFilename } from '@fastgpt/service/common/s3/filename';
+import { getFileS3Key, uploadImage2S3Bucket } from '@fastgpt/service/common/s3/utils';
+import { parseAllowedExtensions } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import { validateUploadFile } from '@fastgpt/service/common/s3/validation/upload';
+import { preCreateDatasetDataAndPushToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import fs from 'node:fs';
+import path from 'node:path';
 
 async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
   const filepaths: string[] = [];

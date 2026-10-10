@@ -1,16 +1,16 @@
-import type { ApiRequestProps } from '@fastgpt/next/type';
+import { authModelConfig } from '@/service/core/ai/model/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { authAndGetModelInstance } from '@fastgpt/service/support/permission/model/auth';
-import { updateModelChannelBindings } from '@fastgpt/service/core/ai/model/channel/binding';
-import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateModelChannelsBodySchema,
   type UpdateModelChannelsBody
 } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { ApiRequestProps } from '@fastgpt/next/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { updateModelChannelBindings } from '@fastgpt/service/core/ai/model/channel/binding';
 
 /**
  * 追加或解除模型与渠道的关联。
- * 统一通过 authAndGetModelInstance 进行鉴权、作用域比对与模型定位。
+ * 统一校验配置权限与操作作用域后，按模型名维护渠道绑定。
  */
 async function handler(req: ApiRequestProps<UpdateModelChannelsBody>): Promise<void> {
   const { modelId, channelType, addChannelIds, removeChannelIds } = parseApiInput({
@@ -18,12 +18,10 @@ async function handler(req: ApiRequestProps<UpdateModelChannelsBody>): Promise<v
     bodySchema: UpdateModelChannelsBodySchema
   }).body;
 
-  const { tmbId, model } = await authAndGetModelInstance({
-    req,
-    modelId,
-    channelType,
-    resource: 'channel'
-  });
+  const {
+    actor: { tmbId },
+    models: [model]
+  } = await authModelConfig({ req, modelIds: [modelId], channelType });
 
   await updateModelChannelBindings({
     model: model.model,

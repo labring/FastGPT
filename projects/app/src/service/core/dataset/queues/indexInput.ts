@@ -1,13 +1,13 @@
-import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/index';
-import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
+import { isModelConfigError } from '@fastgpt/global/common/error/model';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
 import type {
   DatasetDataSchemaType,
   DatasetSchemaType,
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
-import { isModelConfigError } from '@fastgpt/global/common/error/model';
+import { getTeamModelHandle } from '@fastgpt/service/core/ai/model/catalog/service';
+import { getDatasetModelReference } from '@fastgpt/service/core/dataset/model';
 
 type PopulateType = {
   dataset: Pick<DatasetSchemaType, 'vectorModelId' | 'vectorModel' | 'vlmModelId' | 'vlmModel'>;

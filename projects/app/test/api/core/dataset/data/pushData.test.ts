@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   parseApiInput: vi.fn(),
@@ -31,7 +31,7 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkDatasetIndexLimit: mocks.checkDatasetIndexLimit
 }));
 
-vi.mock('@fastgpt/service/core/ai/model', () => ({
+vi.mock('@fastgpt/service/core/ai/model/catalog/service', () => ({
   getSystemModelHandle: mocks.getSystemModelHandle,
   getTeamModelHandle: mocks.getSystemModelHandle
 }));

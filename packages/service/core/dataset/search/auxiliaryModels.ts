@@ -1,6 +1,6 @@
-import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { isModelConfigError } from '@fastgpt/global/common/error/model';
-import type { ModelHandle } from '../../ai/model/handle';
+import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import type { ModelHandle } from '../../ai/model/catalog/handle';
 
 /**
  * 搜索辅助模型优先使用用户配置，未填写、停用、缺失或类型不符时回退对应系统默认。

@@ -1,5 +1,11 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { ModelScopeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  clearTeamModelCatalogCache,
+  publishSystemModelHandle
+} from '@fastgpt/service/core/ai/model/catalog/cache';
+import { incrementModelCatalogRevision } from '@fastgpt/service/core/ai/model/catalog/entity';
 import { MongoAIModel } from '@fastgpt/service/core/ai/model/schema';
 import { Call } from '@test/utils/request';
 import { getRootUser } from '@test/datas/users';
@@ -63,6 +69,15 @@ const buildLlmUpdateData = () => {
   return modelData;
 };
 
+/** 直接写库的模型必须同步递增目录修订号，否则配置鉴权读取的目录快照中不存在该模型。 */
+const insertSystemModel = async (doc: Record<string, unknown>) => {
+  const model = await MongoAIModel.create(doc);
+  await mongoSessionRun((session) =>
+    incrementModelCatalogRevision({ scope: ModelScopeEnum.system }, session)
+  );
+  return model;
+};
+
 const callApi = async ({
   handler,
   body,
@@ -96,6 +111,9 @@ describe('admin settings model create/update api', () => {
     });
     channelMocks.syncModelNameInChannels.mockReset().mockResolvedValue(undefined);
     channelMocks.updateModelChannelBindings.mockReset().mockResolvedValue(undefined);
+    // 丢弃 fixture 目录，配置鉴权从数据库目录快照读取模型。
+    publishSystemModelHandle(undefined);
+    clearTeamModelCatalogCache();
   });
 
   it('creates a custom model through the dedicated create endpoint', async () => {
@@ -142,7 +160,7 @@ describe('admin settings model create/update api', () => {
   });
 
   it('saves a free LLM tier and removes persisted and submitted legacy prices', async () => {
-    const model = await MongoAIModel.create({
+    const model = await insertSystemModel({
       ...buildLlmDocument(),
       inputPrice: 1,
       outputPrice: 3,
@@ -219,7 +237,7 @@ describe('admin settings model create/update api', () => {
   });
 
   it('validates edited config', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
+    const existing = await insertSystemModel(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
@@ -232,7 +250,7 @@ describe('admin settings model create/update api', () => {
   });
 
   it('submits edited model config successfully', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
+    const existing = await insertSystemModel(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
@@ -245,7 +263,7 @@ describe('admin settings model create/update api', () => {
   });
 
   it('updates an existing model only by modelId', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
+    const existing = await insertSystemModel(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
@@ -264,7 +282,7 @@ describe('admin settings model create/update api', () => {
   });
 
   it('clears omitted optional model fields instead of keeping stale values', async () => {
-    const existing = await MongoAIModel.create({
+    const existing = await insertSystemModel({
       ...buildLlmDocument(),
       requestUrl: 'https://old.example.com/v1',
       requestAuth: 'old-secret',
@@ -295,7 +313,7 @@ describe('admin settings model create/update api', () => {
   });
 
   it('accepts and persists a null max temperature', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
+    const existing = await insertSystemModel(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {
@@ -314,7 +332,7 @@ describe('admin settings model create/update api', () => {
   });
 
   it('rejects non-canonical values instead of repairing them', async () => {
-    const existing = await MongoAIModel.create(buildLlmDocument());
+    const existing = await insertSystemModel(buildLlmDocument());
     const res = await callApi({
       handler: updateModelApi,
       body: {

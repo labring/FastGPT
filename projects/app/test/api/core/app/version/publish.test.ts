@@ -1,5 +1,3 @@
-import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
-import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import handler from '@/pages/api/core/app/version/publish';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { RerankModelDataType, TTSModelDataType } from '@fastgpt/global/core/ai/model/schema';
@@ -14,10 +12,12 @@ import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getRootUser, getUser } from '@test/datas/users';
+import { getModelTestDefaults, setModelTestSnapshot } from '@test/modelCache';
 import { Call } from '@test/utils/request';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 

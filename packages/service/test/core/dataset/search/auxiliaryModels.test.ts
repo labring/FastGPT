@@ -1,14 +1,14 @@
-import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/cache';
+import { UserError } from '@fastgpt/global/common/error/utils';
+import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMModelDataType, RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
+import { getCachedSystemModelHandle } from '@fastgpt/service/core/ai/model/catalog/cache';
 import {
-  getModelTestMap,
   getModelTestDefaults,
+  getModelTestMap,
   setModelTestMap,
   setModelTestSnapshot
 } from '@test/modelCache';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ModelScopeEnum, ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import type { LLMModelDataType, RerankModelDataType } from '@fastgpt/global/core/ai/model/schema';
-import { UserError } from '@fastgpt/global/common/error/utils';
 
 import { getDatasetSearchAuxiliaryModels as resolveModels } from '../../../../core/dataset/search/auxiliaryModels';
 
