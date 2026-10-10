@@ -7,6 +7,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { Trans, useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import UserBox from '@fastgpt/web/components/common/UserBox';
+import PermissionIconText from '@/components/support/permission/IconText';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
@@ -426,12 +427,19 @@ const List = ({
         </Box>
 
         <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
-          <HStack flex={'1 0 0'} spacing={3}>
+          <HStack flex={'1 0 0'} minW={0} spacing={3.5}>
             <UserBox
               sourceMember={skill.sourceMember}
               fontSize="xs"
               avatarSize="1rem"
-              spacing={1}
+              spacing={0.5}
+              minW={0}
+            />
+            <PermissionIconText
+              flexShrink={0}
+              private={skill.private}
+              color={'myGray.500'}
+              iconColor={'myGray.400'}
             />
             {!isFolder && isSkillReady && (
               <>
