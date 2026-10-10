@@ -24,7 +24,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/api';
 
 async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
-  const { parentId, name, intro } = parseApiInput({
+  const { parentId, name, intro, inheritPermission } = parseApiInput({
     req,
     bodySchema: CreateDatasetFolderBodySchema
   }).body;
@@ -58,7 +58,9 @@ async function handler(req: ApiRequestProps<CreateDatasetFolderBody>) {
           intro,
           teamId,
           tmbId,
-          type: DatasetTypeEnum.folder
+          type: DatasetTypeEnum.folder,
+          // 独立态创建（sangfor 专用）：下级建权不合并父级快照，只写 owner
+          inheritPermission
         }
       ],
       { session }

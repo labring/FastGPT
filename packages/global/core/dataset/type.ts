@@ -27,7 +27,7 @@ import { ParentIdSchema } from '../../common/parentFolder/type';
 import z from 'zod';
 import { ObjectIdSchema } from '../../common/type/mongo';
 import { PermissionSchema } from '../../support/permission/controller';
-import { IntSchema, NumSchema } from '../../common/zod';
+import { BoolSchema, IntSchema, NumSchema } from '../../common/zod';
 import { LOGO_ICON } from '../../common/system/constants';
 
 /* ===== Tag Type ===== */
@@ -136,6 +136,26 @@ export const sangforFileParseConfigSchema = z
   })
   .meta({ description: '外部文档解析配置' });
 export type IultmzhFileParseConfigType = z.infer<typeof sangforFileParseConfigSchema>;
+
+/* ===== Inherit permission ===== */
+// 独立态创建开关（sangfor 专用，FastGPT UI 未使用），只对文件夹创建生效；dataset/collection 三处创建入参共用。
+const inheritPermissionMetadata = {
+  example: true,
+  description:
+    '是否继承父级权限（默认 true），仅对文件夹（type=folder）生效，仅供 sangfor 使用（FastGPT UI 未使用）：true = 继承父级（根 folder 继承 dataset）；false = 独立创建，仅写 owner 权限快照、不合并父级权限，父级后续权限变更也不再传播到该节点'
+};
+export const InheritPermissionSchema = BoolSchema.optional().meta(inheritPermissionMetadata);
+
+// API 入参解析时，未提供该字段按继承态处理；内部 service schema 仍可使用可选的基础 schema。
+export const InheritPermissionInputSchema =
+  InheritPermissionSchema.default(true).meta(inheritPermissionMetadata);
+
+/** API 请求可省略继承标记，但 schema 解析后的结果始终包含 boolean 值。 */
+export type WithOptionalInheritPermission<T extends { inheritPermission: boolean }> = Omit<
+  T,
+  'inheritPermission'
+> &
+  Partial<Pick<T, 'inheritPermission'>>;
 
 /* ===== Dataset ===== */
 export const DatasetSchema = z
