@@ -14,8 +14,8 @@ import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import AdminFormItem from '@/pageComponents/admin/settings/AdminFormItem';
-import { getInitFormData, postUpdateConfig } from '@/web/admin/system/api';
-import { formatConfigStore2FormSchema, formatFormData2ConfigStore } from '@/web/admin/config/adapt';
+import { getInitFormData } from '@/web/admin/system/api';
+import { formatConfigStore2FormSchema } from '@/web/admin/config/adapt';
 import type { ConfigFormType, ConfigStoreType } from '@/pageComponents/admin/config/type';
 import {
   defaultAuditLogRetentionDays,
@@ -100,13 +100,14 @@ let defaultExtraPointPackages: PointsPackageItem[] = [
 ];
 
 export type PlansSettingSectionHandle = {
-  /** 由父页面统一保存按钮调用；表单校验失败时静默跳过。 */
-  save: () => Promise<void>;
+  /** 校验并获取套餐数据；表单校验失败时返回 undefined */
+  getSubPlansData: () => Promise<Record<string, unknown> | undefined>;
+  /** 重新拉取配置 */
+  reload: () => Promise<unknown>;
 };
 
 type PlansSettingSectionProps = {
-  /** 上报旧通道的保存状态，供父页面统一展示保存中效果。 */
-  onSavingChange?: (saving: boolean) => void;
+  className?: string;
 };
 
 /**
@@ -137,16 +138,11 @@ const DateInput = ({
 /**
  * 订阅套餐配置区块。
  *
- * subPlans 不在新的 system_instance_configs 11 个 Domain 内，运行时仍由
- * global.subPlans（旧 systemConfigs 集合）读取，因此本区块必须沿用
- * /proApi/admin/system 的读写通道，不能走 useDomainConfig。
- *
- * 保存时先重新拉取一次完整旧配置再合并本次 subPlans 修改，避免用挂载时的
- * 快照覆盖其它管理员并发改动的 feConfigs / systemEnv。
+ * subPlans 不在新的 system_instance_configs 11 个 Domain 内，由 commercial
+ * 页面统一批量事务保存写入 MongoSystemConfigs，与商业配置原子生效。
  */
 const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSectionProps>(
-  (props, ref) => {
-    const { onSavingChange } = props;
+  (_props, ref) => {
     const { t } = useSafeTranslation();
 
     const [openPlan, setOpenPlan] = useState(false);
@@ -187,44 +183,25 @@ const PlansSettingSection = forwardRef<PlansSettingSectionHandle, PlansSettingSe
       errorToast: '获取订阅套餐配置出错'
     });
 
-    const { runAsync: saveConfig, loading: loadingSave } = useRequest(postUpdateConfig, {
-      manual: true,
-      // 成功提示由父页面统一弹出；失败直接抛出，交由父页面的 errorToast 处理，
-      // 避免一次保存同时出现订阅套餐与整页配置两条提示。
-      errorToast: '订阅套餐保存失败'
-    });
-
-    useEffect(() => {
-      onSavingChange?.(loadingSave);
-    }, [loadingSave, onSavingChange]);
-
     useEffect(() => {
       void loadConfig();
     }, [loadConfig]);
 
-    const save = useCallback(async () => {
+    const getSubPlansData = useCallback(async () => {
       const formData = await new Promise<ConfigFormType['paySettings'] | undefined>((resolve) => {
         void handleSubmit(
           (data) => resolve(data),
           () => resolve(undefined)
         )();
       });
-      if (!formData) return;
+      if (!formData) return undefined;
+      return (formData.subPlans as Record<string, unknown>) ?? {};
+    }, [handleSubmit]);
 
-      // 提交前重新拉取完整旧配置，只替换 subPlans，避免覆盖并发的其它配置改动
-      const latestForm = formatConfigStore2FormSchema(await getInitFormData());
-
-      await saveConfig(
-        formatFormData2ConfigStore({
-          ...latestForm,
-          paySettings: { ...latestForm.paySettings, subPlans: formData.subPlans }
-        })
-      );
-
-      void loadConfig();
-    }, [handleSubmit, loadConfig, saveConfig]);
-
-    useImperativeHandle(ref, () => ({ save }), [save]);
+    useImperativeHandle(ref, () => ({ getSubPlansData, reload: loadConfig }), [
+      getSubPlansData,
+      loadConfig
+    ]);
 
     return (
       <Box>

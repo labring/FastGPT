@@ -33,7 +33,7 @@ async function handler(
 ): Promise<BatchUpdateDomainConfigResponse> {
   const auth = await authSystemAdmin({ req });
 
-  const { items } = parseApiInput({
+  const { items, subPlans } = parseApiInput({
     req,
     bodySchema: BatchUpdateDomainConfigBodySchema
   }).body;
@@ -62,19 +62,18 @@ async function handler(
   const siteItem = items.find((i) => i.domain === 'site');
   const previousSiteConfig = siteItem ? (await getDomainConfig('site')).effectiveConfig : undefined;
 
-  // 4. 事务批量原子写入
+  // 4. 事务批量原子写入（含可选套餐写入）
   const updatedDomains = await batchUpdateDomainConfigs({
     items,
+    subPlans,
     actor: {
       actor: 'admin',
       userId: auth.userId
     }
   });
 
-  // 5. 刷新全站运行时配置
-  await initSystemConfig().catch((error) => {
-    logger.error('Failed to refresh runtime config after batch instance config update', { error });
-  });
+  // 5. 刷新全站运行时配置：必须成功应用才返回，失败向外抛错，保证保存响应与运行时状态一致
+  await initSystemConfig();
 
   // 6. 站点域头像生命周期处理
   if (siteItem && previousSiteConfig) {

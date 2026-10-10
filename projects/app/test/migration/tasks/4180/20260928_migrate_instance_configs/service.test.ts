@@ -269,7 +269,7 @@ describe('applyInstanceConfigMigration (field-level backfill)', () => {
     // 无法在不改管理员值的前提下消解冲突：跳过该域回填、告警，但不抛错阻塞启动
     expect(result.backfilledDomains).toEqual([]);
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('conflicts with existing values'),
+      expect.stringContaining('conflict with existing values'),
       expect.objectContaining({ domain: 'performance' })
     );
 

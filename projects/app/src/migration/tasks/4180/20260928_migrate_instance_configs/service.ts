@@ -648,30 +648,52 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 /**
  * 计算 target 相对已有 overrides 缺失的子树（只补缺、不覆盖）。
  *
- * 已有对象上存在该 key 就不再下沉，数组与 null 都按原子值处理，
- * 因此管理员显式清空的值（'' / [] / null）不会被迁移重新填回。
+ * 两类路径不补写：
+ * - 已有值：文档上存在该 key 就不再下沉，数组与 null 按原子值处理；
+ * - 使用方明确设为内置默认值的路径（explicitDefaultPaths）：稀疏 overrides 中缺键既可能是
+ *   "从未配置"，也可能是"明确清空/设回默认值"，只有前者才能补写。
  * 返回 undefined 表示该域无需写入。
  */
-const computeMissingOverrides = (
-  existing: unknown,
-  target: Record<string, unknown>
-): Record<string, unknown> | undefined => {
+const computeMissingOverrides = ({
+  existing,
+  target,
+  explicitDefaultPaths,
+  prefix = []
+}: {
+  existing: unknown;
+  target: Record<string, unknown>;
+  explicitDefaultPaths: Set<string>;
+  prefix?: string[];
+}): Record<string, unknown> | undefined => {
   const existingObject = isPlainObject(existing) ? existing : undefined;
   const missing: Record<string, unknown> = {};
 
   for (const [key, targetValue] of Object.entries(target)) {
     if (targetValue === undefined) continue;
 
-    // 已有文档没有这个键：整棵子树一起补写
-    if (!existingObject || !(key in existingObject)) {
-      missing[key] = targetValue;
+    const path = [...prefix, key];
+    const keyPresent = !!existingObject && key in existingObject;
+    const existingValue = existingObject?.[key];
+
+    if (isPlainObject(targetValue)) {
+      // 已有键是非对象原子值：视为已配置，不再下钻
+      if (keyPresent && !isPlainObject(existingValue)) continue;
+
+      // 即使整棵子树缺失也要下钻，才能识别更深层的"显式默认值"
+      const nested = computeMissingOverrides({
+        existing: keyPresent ? existingValue : undefined,
+        target: targetValue,
+        explicitDefaultPaths,
+        prefix: path
+      });
+      if (nested) missing[key] = nested;
       continue;
     }
 
-    if (isPlainObject(targetValue)) {
-      const nested = computeMissingOverrides(existingObject[key], targetValue);
-      if (nested) missing[key] = nested;
-    }
+    // 叶子（含数组/null）：已有值优先；使用方明确设过默认值的也不再补写
+    if (keyPresent || explicitDefaultPaths.has(path.join('.'))) continue;
+
+    missing[key] = targetValue;
   }
 
   return Object.keys(missing).length > 0 ? missing : undefined;
@@ -714,7 +736,7 @@ const flattenOverridePaths = (value: Record<string, unknown>, prefix: string[] =
  */
 export const inspectInstanceConfigMigration = async () => {
   const [existingDocs, legacyFastgpt, legacyPro] = await Promise.all([
-    MongoSystemInstanceConfig.find({}, { _id: 1, overrides: 1 }).lean(),
+    MongoSystemInstanceConfig.find({}, { _id: 1, overrides: 1, explicitDefaultPaths: 1 }).lean(),
     MongoSystemConfigs.findOne({ type: SystemConfigsTypeEnum.fastgpt })
       .sort({ createTime: -1 })
       .lean(),
@@ -740,16 +762,31 @@ export const inspectInstanceConfigMigration = async () => {
   ).length;
 
   // 已有域里仍缺失的字段：整域存在不代表迁移已完成，客户已配置的环境变量可能还没进来
-  const existingOverridesByDomain = new Map<string, Record<string, unknown>>(
-    existingDocs.map((doc) => [String(doc._id), (doc.overrides ?? {}) as Record<string, unknown>])
+  const existingDocsByDomain = new Map<
+    string,
+    { overrides: Record<string, unknown>; explicitDefaultPaths: Set<string> }
+  >(
+    existingDocs.map((doc) => [
+      String(doc._id),
+      {
+        overrides: (doc.overrides ?? {}) as Record<string, unknown>,
+        explicitDefaultPaths: new Set(
+          Array.isArray((doc as any).explicitDefaultPaths) ? (doc as any).explicitDefaultPaths : []
+        )
+      }
+    ])
   );
   const pendingBackfillPaths: string[] = [];
   const pendingBackfillDomainCount = SYSTEM_INSTANCE_CONFIG_DOMAINS.filter((domain) => {
     const targetOverrides = overrides[domain];
-    const existingOverrides = existingOverridesByDomain.get(domain);
-    if (!targetOverrides || !existingOverrides) return false;
+    const existingEntry = existingDocsByDomain.get(domain);
+    if (!targetOverrides || !existingEntry) return false;
 
-    const missing = computeMissingOverrides(existingOverrides, targetOverrides);
+    const missing = computeMissingOverrides({
+      existing: existingEntry.overrides,
+      target: targetOverrides,
+      explicitDefaultPaths: existingEntry.explicitDefaultPaths
+    });
     if (!missing) return false;
 
     pendingBackfillPaths.push(...flattenOverridePaths(missing).map((path) => `${domain}.${path}`));
@@ -792,9 +829,39 @@ export const applyInstanceConfigMigration = async ({
   const backfilledDomains: SystemInstanceConfigDomainKey[] = [];
   const backfilledPaths: string[] = [];
 
+  /** 从对象中按路径删除嵌套叶子；返回是否发生删除。用于回填跨字段冲突时剔除坏叶子。 */
+  const removeNestedPath = (
+    target: Record<string, unknown>,
+    path: (string | number)[]
+  ): boolean => {
+    const [head, ...rest] = path;
+    if (head === undefined) return false;
+    if (rest.length === 0) {
+      if (typeof head === 'string' && head in target) {
+        delete target[head];
+        return true;
+      }
+      return false;
+    }
+    const child = target[head as string];
+    if (child && typeof child === 'object' && !Array.isArray(child)) {
+      const removed = removeNestedPath(child as Record<string, unknown>, rest);
+      if (removed && Object.keys(child).length === 0) {
+        delete target[head as string];
+      }
+      return removed;
+    }
+    return false;
+  };
+
   /**
    * 回填单个域：revision 乐观锁重试，只写缺失字段。
    * 返回本次补写的叶子路径，空数组表示无需写入（不递增 revision）。
+   *
+   * 跨字段冲突解决（P1-6）：补进来的字段可能与管理员的既有值冲突（例如
+   * parallelMaxConcurrency > maxLoopTimes）。此时不能整域跳过（否则独立的合法字段如
+   * parseMaxProcess 也被连带丢弃），而应逐个剔除与既有值冲突的待补叶子，
+   * 让独立合法的字段正常迁入，冲突项记录告警。
    */
   const backfillDomain = async (
     domain: SystemInstanceConfigDomainKey,
@@ -806,29 +873,52 @@ export const applyInstanceConfigMigration = async ({
       if (!doc) return [];
 
       const existingOverrides = (doc.overrides ?? {}) as Record<string, unknown>;
-      const missing = computeMissingOverrides(existingOverrides, targetOverrides);
+      const explicitDefaultPaths = new Set(
+        Array.isArray((doc as any).explicitDefaultPaths)
+          ? ((doc as any).explicitDefaultPaths as string[])
+          : []
+      );
+      const missing = computeMissingOverrides({
+        existing: existingOverrides,
+        target: targetOverrides,
+        explicitDefaultPaths
+      });
       if (!missing) return [];
 
-      const mergedOverrides = mergeMissingOverrides(existingOverrides, missing);
-      // 合并结果必须能被运行时解析：补进来的字段可能与管理员的既有值构成跨字段冲突
-      // （例如 parallelMaxConcurrency > maxLoopTimes）。这类冲突无法在不改管理员值的前提下消解，
-      // 因此跳过该域回填并告警，而不是抛错阻塞启动；管理员可依据告警手动收敛配置。
-      try {
-        resolveDomainEffectiveConfig(domain, mergedOverrides);
-      } catch (error) {
-        logger.warn(
-          'Instance config backfill skipped: merged config conflicts with existing values',
-          { domain, missingPaths: flattenOverridePaths(missing), error }
-        );
-        return [];
+      // 循环剔除待补字段中的冲突叶子，直到与既有值合并后能通过终审校验
+      const candidateMissing = structuredClone(missing);
+      for (;;) {
+        const merged = mergeMissingOverrides(existingOverrides, candidateMissing);
+        try {
+          resolveDomainEffectiveConfig(domain, merged);
+          break;
+        } catch (error) {
+          const issues = (error as { issues?: { path?: (string | number)[] }[] })?.issues ?? [];
+          const badPath = issues.find(
+            (issue) => Array.isArray(issue.path) && issue.path.length > 0
+          )?.path;
+          if (!badPath || !removeNestedPath(candidateMissing, badPath)) {
+            // 无法定位具体叶子（例如整域类型矛盾）：放弃本次回填并告警
+            logger.warn(
+              'Instance config backfill skipped: unresolvable conflict with existing values',
+              { domain, missingPaths: flattenOverridePaths(missing), error }
+            );
+            return [];
+          }
+          logger.warn(
+            'Instance config backfill skipped conflicting field: conflicts with existing values',
+            { domain, field: badPath.join('.') }
+          );
+        }
       }
 
+      const mergedOverrides = mergeMissingOverrides(existingOverrides, candidateMissing);
       const updated = await MongoSystemInstanceConfig.updateOne(
         { _id: domain, revision: doc.revision },
         { $set: { overrides: mergedOverrides, updatedAt: new Date() }, $inc: { revision: 1 } },
         { runValidators: true }
       );
-      if (updated.modifiedCount > 0) return flattenOverridePaths(missing);
+      if (updated.modifiedCount > 0) return flattenOverridePaths(candidateMissing);
     }
 
     throw new Error(
