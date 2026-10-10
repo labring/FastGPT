@@ -14,8 +14,9 @@ const ResourceCardSkeleton = () => (
     data-virtual-item=""
     display="flex"
     flexDirection="column"
-    h="138px"
-    py={3}
+    h="146px"
+    pt={5}
+    pb={3}
     px={5}
     border="1px solid"
     borderColor="myGray.200"

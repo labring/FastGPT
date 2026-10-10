@@ -221,7 +221,8 @@ const List = () => {
       <MyBox
         key={app._id}
         data-virtual-item=""
-        py={3}
+        pt={5}
+        pb={3}
         px={5}
         cursor={isBatchMode ? (canBatchOperate ? 'pointer' : 'not-allowed') : 'pointer'}
         border={'1px solid'}
@@ -722,7 +723,8 @@ const ForbiddenCreateButton = () => {
   const { t } = useTranslation();
   return (
     <MyBox
-      py={3}
+      pt={5}
+      pb={3}
       px={5}
       cursor={'not-allowed'}
       border={'base'}

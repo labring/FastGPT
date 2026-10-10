@@ -181,7 +181,8 @@ const ToolCard = ({
             borderColor: '#DFE2EA'
           }
         : {
-            py: 3,
+            pt: 5,
+            pb: 3,
             px: 5,
             border: 'base'
           })}
